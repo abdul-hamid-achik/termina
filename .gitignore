@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Nuxt
+.nuxt/
+.output/
+.data/
+dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# Database
+*.sqlite
+*.sqlite-journal
+
+# vecgrep
+.vecgrep/
+
+# Claude
+.claude/worktrees/
