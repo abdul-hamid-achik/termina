@@ -1,0 +1,51 @@
+import { Effect } from 'effect'
+import { getGameRuntime } from '../../plugins/game-server'
+
+export default defineOAuthDiscordEventHandler({
+  async onSuccess(event, { user, tokens }) {
+    const runtime = getGameRuntime()
+    if (!runtime) {
+      throw createError({ statusCode: 503, message: 'Game server not ready' })
+    }
+
+    const playerId = `discord_${user.id}`
+
+    const existing = await Effect.runPromise(
+      runtime.dbService.getPlayerByProvider('discord', String(user.id)),
+    )
+
+    let player = existing
+    if (!player) {
+      const avatarHash = user.avatar
+      const avatarUrl = avatarHash
+        ? `https://cdn.discordapp.com/avatars/${user.id}/${avatarHash}.png`
+        : null
+
+      player = await Effect.runPromise(
+        runtime.dbService.createPlayer({
+          id: playerId,
+          username: user.username ?? user.global_name ?? `discord_${user.id}`,
+          email: user.email ?? null,
+          avatarUrl,
+          provider: 'discord',
+          providerId: String(user.id),
+        }),
+      )
+    }
+
+    await setUserSession(event, {
+      user: {
+        id: player.id,
+        username: player.username,
+        avatarUrl: player.avatarUrl,
+        provider: 'discord',
+      },
+    })
+
+    return sendRedirect(event, '/')
+  },
+  onError(event, error) {
+    console.error('[Auth] Discord OAuth error:', error)
+    return sendRedirect(event, '/login?error=discord')
+  },
+})

@@ -1,0 +1,147 @@
+/* ── Terminal Theme ─────────────────────────────────────────────── */
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #0f0f1a;
+  --bg-panel: #12121f;
+  --border-color: #1a1a2e;
+  --border-glow: #2a2a4e;
+  --text-primary: #e0e0e0;
+  --text-dim: #7f8c8d;
+  --color-radiant: #2ecc71;
+  --color-dire: #e94560;
+  --color-self: #3498db;
+  --color-gold: #f39c12;
+  --color-mana: #9b59b6;
+  --color-damage: #e74c3c;
+  --color-healing: #2ecc71;
+  --color-system: #7f8c8d;
+  --color-zone: #1abc9c;
+  --color-ability: #00d4ff;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* ── Reset & Base ──────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Selection ─────────────────────────────────────────────────── */
+
+::selection {
+  background: var(--color-radiant);
+  color: var(--bg-primary);
+}
+
+::-moz-selection {
+  background: var(--color-radiant);
+  color: var(--bg-primary);
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-glow);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-glow) var(--bg-secondary);
+}
+
+/* ── Links ─────────────────────────────────────────────────────── */
+
+a {
+  color: var(--color-ability);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+a:hover {
+  color: var(--color-radiant);
+}
+
+/* ── Focus ─────────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 1px solid var(--color-ability);
+  outline-offset: 2px;
+}
+
+/* ── Blinking Cursor ───────────────────────────────────────────── */
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ── Scanline Overlay (subtle) ─────────────────────────────────── */
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.scanline-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Glow Effect ───────────────────────────────────────────────── */
+
+.text-glow {
+  text-shadow: 0 0 8px currentColor;
+}
+
+.border-glow {
+  box-shadow: 0 0 4px var(--border-glow), inset 0 0 4px rgba(42, 42, 78, 0.3);
+}

@@ -31,6 +31,7 @@ export default defineNuxtConfig({
     '@fontsource/jetbrains-mono/400.css',
     '@fontsource/jetbrains-mono/700.css',
     '~/assets/css/terminal.css',
+    '~/assets/css/game.css',
   ],
 
   runtimeConfig: {

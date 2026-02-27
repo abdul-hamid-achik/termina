@@ -1,0 +1,317 @@
+/* ── Game-Specific Styles ──────────────────────────────────────── */
+
+/* ── Panel Layout ──────────────────────────────────────────────── */
+
+.game-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr 1fr;
+  gap: 2px;
+  height: 100vh;
+  background: var(--bg-primary);
+}
+
+.game-grid__bar {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1024px) {
+  .game-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .game-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto repeat(4, 1fr);
+  }
+}
+
+/* ── Combat Log ────────────────────────────────────────────────── */
+
+.combat-log {
+  overflow-y: auto;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.combat-log__entry {
+  padding: 1px 8px;
+  border-left: 2px solid transparent;
+}
+
+.combat-log__entry:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.combat-log__entry--damage {
+  border-left-color: var(--color-damage);
+}
+
+.combat-log__entry--healing {
+  border-left-color: var(--color-healing);
+}
+
+.combat-log__entry--kill {
+  border-left-color: var(--color-dire);
+  font-weight: 700;
+}
+
+.combat-log__entry--gold {
+  border-left-color: var(--color-gold);
+}
+
+.combat-log__entry--system {
+  border-left-color: var(--color-system);
+  color: var(--text-dim);
+}
+
+.combat-log__entry--ability {
+  border-left-color: var(--color-ability);
+}
+
+.combat-log__tick {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  margin-right: 4px;
+}
+
+/* ── ASCII Map ─────────────────────────────────────────────────── */
+
+.ascii-map {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: auto;
+}
+
+.ascii-map__zone {
+  display: inline-block;
+  padding: 2px 4px;
+  cursor: default;
+}
+
+.ascii-map__zone--current {
+  color: var(--color-self);
+  font-weight: 700;
+}
+
+.ascii-map__zone--allied {
+  color: var(--color-radiant);
+}
+
+.ascii-map__zone--enemy {
+  color: var(--color-dire);
+}
+
+.ascii-map__zone--fogged {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+/* ── Command Input ─────────────────────────────────────────────── */
+
+.cmd-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+}
+
+.cmd-input__prompt {
+  color: var(--color-radiant);
+  font-weight: 700;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.cmd-input__field {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  outline: none;
+  caret-color: var(--color-radiant);
+}
+
+.cmd-input__field::placeholder {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+/* ── Status Bars ───────────────────────────────────────────────── */
+
+.status-bar {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.status-bar__hp {
+  color: var(--color-radiant);
+}
+
+.status-bar__mp {
+  color: var(--color-mana);
+}
+
+/* ── Ability Slots ─────────────────────────────────────────────── */
+
+.ability-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-color);
+  font-size: 0.75rem;
+}
+
+.ability-slot--ready {
+  border-color: var(--color-ability);
+  color: var(--color-ability);
+}
+
+.ability-slot--cooldown {
+  border-color: var(--border-color);
+  color: var(--text-dim);
+}
+
+/* ── Item Slots ────────────────────────────────────────────────── */
+
+.item-slot {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  font-size: 0.75rem;
+  min-width: 100px;
+}
+
+.item-slot--empty {
+  color: var(--text-dim);
+  border-style: dashed;
+}
+
+/* ── Tab Completion ────────────────────────────────────────────── */
+
+.tab-completion {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tab-completion__item {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tab-completion__item:hover,
+.tab-completion__item--active {
+  background: var(--border-color);
+  color: var(--color-ability);
+}
+
+/* ── Scoreboard ────────────────────────────────────────────────── */
+
+.scoreboard {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.scoreboard th {
+  color: var(--text-dim);
+  font-weight: 400;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.scoreboard td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(26, 26, 46, 0.5);
+}
+
+.scoreboard tr--radiant td {
+  border-left: 2px solid var(--color-radiant);
+}
+
+.scoreboard tr--dire td {
+  border-left: 2px solid var(--color-dire);
+}
+
+/* ── Shop Grid ─────────────────────────────────────────────────── */
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px;
+}
+
+.shop-item {
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.shop-item:hover {
+  border-color: var(--color-gold);
+}
+
+.shop-item__cost {
+  color: var(--color-gold);
+}
+
+.shop-item--affordable {
+  border-color: var(--border-glow);
+}
+
+.shop-item--too-expensive {
+  opacity: 0.5;
+}
+
+/* ── Mobile Command Presets ────────────────────────────────────── */
+
+.cmd-presets {
+  display: none;
+  gap: 4px;
+  padding: 4px 8px;
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .cmd-presets {
+    display: flex;
+  }
+}
+
+.cmd-preset-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cmd-preset-btn:active {
+  background: var(--border-color);
+}
