@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '~~/shared/types/game'
+import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import { areAdjacent, getAdjacentZones } from '../map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
@@ -7,6 +7,8 @@ import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalcula
 import { placeWard } from '../map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '../protocol/events'
+import { buyItem, sellItem } from '../items/shop'
+import { awardLastHit, awardTowerKill } from './GoldDistributor'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -107,7 +109,11 @@ function hasDebuff(player: PlayerState, type: string): boolean {
 export function resolveActions(
   state: GameState,
   actions: PlayerAction[],
-): Effect.Effect<{ state: GameState; events: GameEngineEvent[]; heroAttackers: Map<string, string> }> {
+): Effect.Effect<{
+  state: GameState
+  events: GameEngineEvent[]
+  heroAttackers: Map<string, string>
+}> {
   return Effect.sync(() => {
     // Filter to valid actions only
     const validActions = actions.filter((a) => validateAction(state, a) === null)
@@ -116,10 +122,19 @@ export function resolveActions(
     const events: GameEngineEvent[] = []
     const heroAttackers = new Map<string, string>()
     let zones = { ...state.zones }
+    let creeps = [...state.creeps]
+    let towers = [...state.towers]
+    const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
+    const towerKills: Array<{ zone: string; team: TeamId }> = []
 
     // Phase 1: Instant abilities (stuns, silences)
     const instantCasts = validActions.filter(
-      (a) => a.command.type === 'cast' && isInstantAbility(players[a.playerId]!, a.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' }),
+      (a) =>
+        a.command.type === 'cast' &&
+        isInstantAbility(
+          players[a.playerId]!,
+          a.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' },
+        ),
     )
     for (const action of instantCasts) {
       const result = resolveInstantAbility(state, players, action, events)
@@ -128,8 +143,6 @@ export function resolveActions(
 
     // Phase 2: Movement — all moves resolve simultaneously
     const moves = validActions.filter((a) => a.command.type === 'move')
-    // Capture positions before movement for attack miss detection
-    const preMovePlayers = { ...players }
 
     for (const action of moves) {
       const cmd = action.command as { type: 'move'; zone: string }
@@ -145,7 +158,12 @@ export function resolveActions(
     // Phase 3: Attacks + targeted abilities — simultaneous
     const attacks = validActions.filter((a) => a.command.type === 'attack')
     const targetedCasts = validActions.filter(
-      (a) => a.command.type === 'cast' && !isInstantAbility(players[a.playerId]!, a.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' }),
+      (a) =>
+        a.command.type === 'cast' &&
+        !isInstantAbility(
+          players[a.playerId]!,
+          a.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' },
+        ),
     )
 
     for (const action of attacks) {
@@ -184,6 +202,58 @@ export function resolveActions(
           amount: damage,
           damageType: 'physical',
         })
+      } else if (cmd.target.kind === 'creep') {
+        const creepIdx = cmd.target.index
+        const creep = creeps[creepIdx]
+        if (!creep || creep.hp <= 0) continue
+        if (creep.zone !== attacker.zone) continue
+
+        const hero = attacker.heroId ? HEROES[attacker.heroId] : null
+        const attackDamage = hero ? hero.baseStats.attack : 50
+        const newHp = Math.max(0, creep.hp - attackDamage)
+
+        creeps[creepIdx] = { ...creep, hp: newHp }
+
+        if (newHp <= 0) {
+          creepKills.push({ playerId: action.playerId, creepType: creep.type })
+        }
+
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          sourceId: action.playerId,
+          targetId: `creep_${creepIdx}`,
+          amount: attackDamage,
+          damageType: 'physical',
+        })
+      } else if (cmd.target.kind === 'tower') {
+        const targetZone = cmd.target.zone
+        const tower = towers.find((t) => t.zone === targetZone && t.alive)
+        if (!tower) continue
+        if (tower.zone !== attacker.zone) continue
+
+        const hero = attacker.heroId ? HEROES[attacker.heroId] : null
+        const attackDamage = hero ? hero.baseStats.attack : 50
+        const newHp = Math.max(0, tower.hp - attackDamage)
+
+        towers = towers.map((t) =>
+          t.zone === tower.zone && t.team === tower.team
+            ? { ...t, hp: newHp, alive: newHp > 0 }
+            : t,
+        )
+
+        if (newHp <= 0) {
+          towerKills.push({ zone: tower.zone, team: tower.team })
+        }
+
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          sourceId: action.playerId,
+          targetId: `tower_${tower.zone}`,
+          amount: attackDamage,
+          damageType: 'physical',
+        })
       }
     }
 
@@ -216,6 +286,52 @@ export function resolveActions(
       }
     }
 
+    // Phase 5: Buy/Sell
+    const buys = validActions.filter((a) => a.command.type === 'buy')
+    for (const action of buys) {
+      const cmd = action.command as { type: 'buy'; item: string }
+      const tempState: GameState = { ...state, players, creeps, towers }
+      const result = Effect.runSync(
+        buyItem(tempState, action.playerId, cmd.item).pipe(Effect.orElseSucceed(() => null)),
+      )
+      if (result) {
+        players = { ...result.players }
+      }
+    }
+
+    const sells = validActions.filter((a) => a.command.type === 'sell')
+    for (const action of sells) {
+      const cmd = action.command as { type: 'sell'; item: string }
+      const player = players[action.playerId]
+      if (!player) continue
+      const slotIdx = player.items.indexOf(cmd.item)
+      if (slotIdx === -1) continue
+      const tempState: GameState = { ...state, players, creeps, towers }
+      const result = Effect.runSync(
+        sellItem(tempState, action.playerId, slotIdx).pipe(Effect.orElseSucceed(() => null)),
+      )
+      if (result) {
+        players = { ...result.players }
+      }
+    }
+
+    // Award gold for creep last-hits
+    for (const kill of creepKills) {
+      const tempState: GameState = { ...state, players, creeps, towers }
+      const awarded = awardLastHit(tempState, kill.playerId, kill.creepType)
+      players = { ...awarded.players }
+    }
+
+    // Award gold for tower kills
+    for (const kill of towerKills) {
+      const nearbyAllies = Object.entries(players)
+        .filter(([, p]) => p.zone === kill.zone && p.team !== kill.team && p.alive)
+        .map(([id]) => id)
+      const tempState: GameState = { ...state, players, creeps, towers }
+      const awarded = awardTowerKill(tempState, kill.zone, nearbyAllies)
+      players = { ...awarded.players }
+    }
+
     // Handle ward placements
     const wardActions = validActions.filter((a) => a.command.type === 'ward')
     for (const action of wardActions) {
@@ -239,6 +355,8 @@ export function resolveActions(
       ...state,
       players,
       zones,
+      creeps,
+      towers,
     }
 
     return { state: updatedState, events, heroAttackers }
@@ -247,7 +365,10 @@ export function resolveActions(
 
 // ── Ability helpers ────────────────────────────────────────────
 
-function isInstantAbility(player: PlayerState, cmd: { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' }): boolean {
+function isInstantAbility(
+  player: PlayerState,
+  cmd: { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' },
+): boolean {
   if (!player.heroId) return false
   const hero = HEROES[player.heroId]
   if (!hero) return false
@@ -299,13 +420,25 @@ function resolveInstantAbility(
       if (cmd.target?.kind === 'hero') {
         const targetId = findHeroByName(updatedPlayers, cmd.target.name)
         if (targetId) {
-          updatedPlayers = applyBuffToPlayer(updatedPlayers, targetId, effect.type, effect.duration ?? 1, caster.id)
+          updatedPlayers = applyBuffToPlayer(
+            updatedPlayers,
+            targetId,
+            effect.type,
+            effect.duration ?? 1,
+            caster.id,
+          )
         }
       } else {
         // AoE: apply to all enemies in zone
         for (const [pid, p] of Object.entries(updatedPlayers)) {
           if (p.zone === caster.zone && p.team !== caster.team && p.alive) {
-            updatedPlayers = applyBuffToPlayer(updatedPlayers, pid, effect.type, effect.duration ?? 1, caster.id)
+            updatedPlayers = applyBuffToPlayer(
+              updatedPlayers,
+              pid,
+              effect.type,
+              effect.duration ?? 1,
+              caster.id,
+            )
           }
         }
       }
@@ -316,9 +449,8 @@ function resolveInstantAbility(
         const targetId = findHeroByName(updatedPlayers, cmd.target.name)
         if (targetId && updatedPlayers[targetId]) {
           const target = updatedPlayers[targetId]!
-          const dmg = dmgType === 'physical'
-            ? calculatePhysicalDamage(effect.value, 0)
-            : effect.value
+          const dmg =
+            dmgType === 'physical' ? calculatePhysicalDamage(effect.value, 0) : effect.value
           const newHp = Math.max(0, target.hp - dmg)
           updatedPlayers = {
             ...updatedPlayers,
@@ -382,9 +514,8 @@ function resolveTargetedAbility(
         if (targetId && updatedPlayers[targetId]) {
           const target = updatedPlayers[targetId]!
           if (target.zone === caster.zone && target.alive) {
-            const dmg = dmgType === 'physical'
-              ? calculatePhysicalDamage(effect.value, 0)
-              : effect.value
+            const dmg =
+              dmgType === 'physical' ? calculatePhysicalDamage(effect.value, 0) : effect.value
             const newHp = Math.max(0, target.hp - dmg)
             updatedPlayers = {
               ...updatedPlayers,
@@ -403,10 +534,14 @@ function resolveTargetedAbility(
       } else if (ability.targetType === 'none') {
         // AoE damage to all enemies in zone
         for (const [pid, p] of Object.entries(updatedPlayers)) {
-          if (p.zone === caster.zone && p.team !== caster.team && p.alive && pid !== action.playerId) {
-            const dmg = dmgType === 'physical'
-              ? calculatePhysicalDamage(effect.value, 0)
-              : effect.value
+          if (
+            p.zone === caster.zone &&
+            p.team !== caster.team &&
+            p.alive &&
+            pid !== action.playerId
+          ) {
+            const dmg =
+              dmgType === 'physical' ? calculatePhysicalDamage(effect.value, 0) : effect.value
             const newHp = Math.max(0, p.hp - dmg)
             updatedPlayers = {
               ...updatedPlayers,
@@ -446,10 +581,22 @@ function resolveTargetedAbility(
       if (cmd.target?.kind === 'hero') {
         const targetId = findHeroByName(updatedPlayers, cmd.target.name)
         if (targetId) {
-          updatedPlayers = applyBuffToPlayer(updatedPlayers, targetId, effect.type, effect.duration ?? 1, caster.id)
+          updatedPlayers = applyBuffToPlayer(
+            updatedPlayers,
+            targetId,
+            effect.type,
+            effect.duration ?? 1,
+            caster.id,
+          )
         }
       } else if (cmd.target?.kind === 'self' || ability.targetType === 'self') {
-        updatedPlayers = applyBuffToPlayer(updatedPlayers, action.playerId, effect.type, effect.duration ?? 1, caster.id)
+        updatedPlayers = applyBuffToPlayer(
+          updatedPlayers,
+          action.playerId,
+          effect.type,
+          effect.duration ?? 1,
+          caster.id,
+        )
       }
     }
   }
@@ -480,10 +627,7 @@ function applyBuffToPlayer(
     ...players,
     [playerId]: {
       ...player,
-      buffs: [
-        ...player.buffs,
-        { id: type, stacks: 1, ticksRemaining: duration, source: sourceId },
-      ],
+      buffs: [...player.buffs, { id: type, stacks: 1, ticksRemaining: duration, source: sourceId }],
     },
   }
 }

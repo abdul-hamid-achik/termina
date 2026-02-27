@@ -1,7 +1,23 @@
 import { Effect, Layer } from 'effect'
 import { RedisService, makeRedisServiceLive, type RedisServiceApi } from '../services/RedisService'
-import { DatabaseService, DatabaseServiceLive, type DatabaseServiceApi } from '../services/DatabaseService'
-import { WebSocketService, WebSocketServiceLive, type WebSocketServiceApi } from '../services/WebSocketService'
+import {
+  DatabaseService,
+  DatabaseServiceLive,
+  type DatabaseServiceApi,
+} from '../services/DatabaseService'
+import {
+  WebSocketService,
+  WebSocketServiceLive,
+  type WebSocketServiceApi,
+} from '../services/WebSocketService'
+import { gameLoggerLive } from '../utils/logger'
+import { createInMemoryStateManager } from '../game/engine/StateManager'
+import { startGameLoop, type GameCallbacks } from '../game/engine/GameLoop'
+import { toGameEvent } from '../game/protocol/events'
+import type { TeamId } from '~~/shared/types/game'
+import type { NewMatch, NewMatchPlayer } from '../db/schema'
+import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
+import { sendToPeer } from '../services/PeerRegistry'
 
 interface GameRuntime {
   redisService: RedisServiceApi
@@ -18,7 +34,7 @@ export function getGameRuntime(): GameRuntime | null {
 
 export default defineNitroPlugin(async (nitroApp) => {
   const config = useRuntimeConfig()
-  const redisUrl = config.redis.url as string
+  const redisUrl = (config.redis as { url: string }).url
 
   // Build Effect layers
   const redisLayer = makeRedisServiceLive(redisUrl)
@@ -33,12 +49,222 @@ export default defineNitroPlugin(async (nitroApp) => {
   })
 
   const { redis, db, ws } = await Effect.runPromise(
-    Effect.provide(services, mainLayer),
+    Effect.provide(services, Layer.mergeAll(mainLayer, gameLoggerLive)),
   )
 
   // Start matchmaking loop
   const { startMatchmakingLoop } = await import('../game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
+
+  // Subscribe to game_ready events from lobby
+  await Effect.runPromise(
+    redis.subscribe('matchmaking:game_ready', async (message) => {
+      try {
+        const gameData = JSON.parse(message) as {
+          lobbyId: string
+          players: { playerId: string; team: TeamId; heroId: string; mmr: number }[]
+        }
+
+        const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+        // Create a standalone state manager for this game
+        const stateManager = createInMemoryStateManager()
+
+        // Create player setups
+        const playerSetups = gameData.players.map((p) => ({
+          id: p.playerId,
+          name: p.playerId,
+          team: p.team,
+          heroId: p.heroId,
+        }))
+
+        // Create game
+        await Effect.runPromise(stateManager.createGame(gameId, playerSetups))
+
+        // Register bots for this game (lane assignment, tracking)
+        registerBots(
+          gameId,
+          gameData.players.map((p) => ({ playerId: p.playerId, team: p.team })),
+        )
+
+        // Set phase to playing
+        await Effect.runPromise(
+          stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })),
+        )
+
+        // Notify real players that the game is starting via PeerRegistry
+        // (players aren't registered with WebSocketService yet — that happens
+        // when they respond with 'join_game')
+        for (const p of gameData.players) {
+          if (isBot(p.playerId)) continue
+          sendToPeer(p.playerId, {
+            type: 'game_starting',
+            gameId,
+          })
+        }
+
+        // Start game loop with callbacks
+        const callbacks: GameCallbacks = {
+          onTickState: (gId, playerId, filteredState) => {
+            if (isBot(playerId)) return // No WebSocket for bots
+            Effect.runPromise(
+              ws.sendToPlayer(playerId, {
+                type: 'tick_state',
+                tick: filteredState.tick,
+                state: filteredState,
+              }),
+            ).catch(() => {})
+          },
+
+          onEvents: (gId, events) => {
+            Effect.runPromise(
+              ws.broadcastToGame(gId, {
+                type: 'events',
+                tick: 0,
+                events: events.map(toGameEvent),
+              }),
+            ).catch(() => {})
+          },
+
+          onGameOver: async (gId, winner) => {
+            try {
+              // Get final game state
+              const finalState = await Effect.runPromise(stateManager.getState(gId))
+
+              // Build match record
+              const matchRecord: NewMatch = {
+                id: gId,
+                mode: 'ranked_5v5',
+                winner,
+                durationTicks: finalState.tick,
+                endedAt: new Date(),
+              }
+
+              // Build match player records (real players only)
+              const realPlayers = gameData.players.filter((p) => !isBot(p.playerId))
+              const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
+                const ps = finalState.players[p.playerId]
+                const isWinner = p.team === winner
+                const mmrChange = isWinner ? 25 : -25
+                return {
+                  matchId: gId,
+                  playerId: p.playerId,
+                  team: p.team,
+                  heroId: p.heroId,
+                  kills: ps?.kills ?? 0,
+                  deaths: ps?.deaths ?? 0,
+                  assists: ps?.assists ?? 0,
+                  goldEarned: ps?.gold ?? 0,
+                  damageDealt: 0,
+                  healingDone: 0,
+                  finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
+                  finalLevel: ps?.level ?? 1,
+                  mmrChange,
+                }
+              })
+
+              // Record match to DB
+              await Effect.runPromise(db.recordMatch(matchRecord, matchPlayerRecords))
+
+              // Update player stats (real players only)
+              for (const p of realPlayers) {
+                const isWinner = p.team === winner
+                const newMmr = p.mmr + (isWinner ? 25 : -25)
+                const ps = finalState.players[p.playerId]
+
+                await Effect.runPromise(db.updatePlayerMMR(p.playerId, newMmr))
+                await Effect.runPromise(db.incrementGamesPlayed(p.playerId))
+                if (isWinner) {
+                  await Effect.runPromise(db.incrementWins(p.playerId))
+                }
+                await Effect.runPromise(
+                  db.updateHeroStats(p.playerId, p.heroId, {
+                    won: isWinner,
+                    kills: ps?.kills ?? 0,
+                    deaths: ps?.deaths ?? 0,
+                    assists: ps?.assists ?? 0,
+                  }),
+                )
+              }
+
+              // Build end stats for clients
+              const endStats: Record<
+                string,
+                {
+                  kills: number
+                  deaths: number
+                  assists: number
+                  gold: number
+                  items: (string | null)[]
+                  heroDamage: number
+                  towerDamage: number
+                }
+              > = {}
+              for (const p of gameData.players) {
+                const ps = finalState.players[p.playerId]
+                endStats[p.playerId] = {
+                  kills: ps?.kills ?? 0,
+                  deaths: ps?.deaths ?? 0,
+                  assists: ps?.assists ?? 0,
+                  gold: ps?.gold ?? 0,
+                  items: ps?.items ?? [],
+                  heroDamage: 0,
+                  towerDamage: 0,
+                }
+              }
+
+              // Broadcast game over to all real players
+              for (const p of realPlayers) {
+                await Effect.runPromise(
+                  ws.sendToPlayer(p.playerId, {
+                    type: 'game_over',
+                    winner,
+                    stats: endStats,
+                  }),
+                ).catch(() => {})
+              }
+
+              // Cleanup bot tracking
+              cleanupGame(gId)
+            } catch (err) {
+              Effect.runPromise(
+                Effect.logError('Game over persistence failed').pipe(
+                  Effect.annotateLogs({ gameId: gId, error: String(err) }),
+                  Effect.withLogSpan('game_over_persist'),
+                  Effect.provide(gameLoggerLive),
+                ),
+              )
+            }
+          },
+        }
+
+        // Start the game loop (runs asynchronously)
+        Effect.runPromise(startGameLoop(gameId, stateManager, callbacks)).catch((err) => {
+          Effect.runPromise(
+            Effect.logError('Game loop error').pipe(
+              Effect.annotateLogs({ gameId, error: String(err) }),
+              Effect.provide(gameLoggerLive),
+            ),
+          )
+        })
+
+        Effect.runPromise(
+          Effect.logInfo('Game created').pipe(
+            Effect.annotateLogs({ gameId, playerCount: gameData.players.length }),
+            Effect.withLogSpan('game_creation'),
+            Effect.provide(gameLoggerLive),
+          ),
+        )
+      } catch (err) {
+        Effect.runPromise(
+          Effect.logError('Failed to process game_ready event').pipe(
+            Effect.annotateLogs({ error: String(err) }),
+            Effect.provide(gameLoggerLive),
+          ),
+        )
+      }
+    }),
+  )
 
   _runtime = {
     redisService: redis,
@@ -47,7 +273,9 @@ export default defineNitroPlugin(async (nitroApp) => {
     matchmakingInterval,
   }
 
-  console.log('[TERMINA] Game server initialized')
+  await Effect.runPromise(
+    Effect.logInfo('Game server initialized').pipe(Effect.provide(gameLoggerLive)),
+  )
 
   // Cleanup on shutdown
   nitroApp.hooks.hook('close', async () => {
@@ -56,6 +284,8 @@ export default defineNitroPlugin(async (nitroApp) => {
     }
     await Effect.runPromise(redis.shutdown())
     _runtime = null
-    console.log('[TERMINA] Game server shut down')
+    await Effect.runPromise(
+      Effect.logInfo('Game server shut down').pipe(Effect.provide(gameLoggerLive)),
+    )
   })
 })

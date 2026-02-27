@@ -4,16 +4,14 @@ import type { WebSocketServiceApi } from '../../services/WebSocketService'
 import type { DatabaseServiceApi } from '../../services/DatabaseService'
 import type { TeamId } from '~~/shared/types/game'
 import type { QueueEntry } from './queue'
+import { HERO_IDS } from '~~/shared/constants/heroes'
+import { isBot } from '../ai/BotManager'
+import { sendToPeer } from '../../services/PeerRegistry'
 
 const PICK_TIME_SECONDS = 30
 const PICK_TIME_MS = PICK_TIME_SECONDS * 1000
 
-// Available heroes (placeholder list - will be populated by hero definitions)
-const AVAILABLE_HEROES = [
-  'vex', 'korr', 'lyra', 'thane', 'nyx',
-  'zara', 'rook', 'ember', 'shade', 'flux',
-  'iris', 'kael', 'mira', 'dusk', 'vale',
-]
+const AVAILABLE_HEROES = [...HERO_IDS]
 
 export interface LobbyPlayer {
   playerId: string
@@ -34,6 +32,11 @@ export interface Lobby {
 }
 
 const activeLobbies = new Map<string, Lobby>()
+const playerToLobby = new Map<string, string>()
+
+export function getPlayerLobby(playerId: string): string | undefined {
+  return playerToLobby.get(playerId)
+}
 
 function generateId(): string {
   return `lobby_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -57,7 +60,7 @@ export function createLobby(
   const players: LobbyPlayer[] = sorted.map((entry, i) => ({
     playerId: entry.playerId,
     mmr: entry.mmr,
-    team: i % 2 === 0 ? 'radiant' : 'dire' as TeamId,
+    team: i % 2 === 0 ? 'radiant' : ('dire' as TeamId),
     heroId: null,
     ready: false,
   }))
@@ -74,15 +77,32 @@ export function createLobby(
 
   activeLobbies.set(lobbyId, lobby)
 
-  // Notify all players they're in a lobby
+  // Track player → lobby mapping
   for (const p of players) {
-    Effect.runPromise(
-      ws.sendToPlayer(p.playerId, {
-        type: 'announcement',
-        message: `Match found! You are on team ${p.team.toUpperCase()}. Hero pick phase starting...`,
-        level: 'info',
-      }),
-    ).catch(() => {})
+    playerToLobby.set(p.playerId, lobbyId)
+  }
+
+  Effect.runPromise(
+    Effect.logInfo('Lobby created').pipe(
+      Effect.annotateLogs({ lobbyId, playerCount: players.length }),
+    ),
+  )
+
+  // Send lobby_state to each player with their team and the full roster
+  const allPlayers = players.map((p) => ({
+    playerId: p.playerId,
+    team: p.team,
+    heroId: p.heroId,
+  }))
+
+  for (const p of players) {
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, {
+      type: 'lobby_state',
+      lobbyId,
+      team: p.team,
+      players: allPlayers,
+    })
   }
 
   // Start the first pick timer
@@ -98,6 +118,21 @@ function startPickTimer(
   db: DatabaseServiceApi,
 ): void {
   if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+
+  // If current picker is a bot, auto-pick immediately
+  const pickIdx = lobby.pickOrder[lobby.currentPickIndex]
+  if (pickIdx !== undefined) {
+    const player = lobby.players[pickIdx]
+    if (player && !player.heroId && isBot(player.playerId)) {
+      const available = AVAILABLE_HEROES.filter((h) => !lobby.pickedHeroes.has(h))
+      if (available.length > 0) {
+        const randomHero = available[Math.floor(Math.random() * available.length)]!
+        // Use setTimeout(0) to avoid deep recursion from confirmPick -> startPickTimer chain
+        setTimeout(() => confirmPick(lobby, player.playerId, randomHero, ws, redis, db), 0)
+        return
+      }
+    }
+  }
 
   lobby.pickTimer = setTimeout(() => {
     // Auto-pick random hero on timeout
@@ -144,6 +179,9 @@ export function pickHero(
   }
 
   confirmPick(lobby, playerId, heroId, ws, redis, db)
+  Effect.runPromise(
+    Effect.logDebug('Hero picked').pipe(Effect.annotateLogs({ lobbyId, playerId, heroId })),
+  )
   return { success: true }
 }
 
@@ -163,13 +201,12 @@ function confirmPick(
 
   // Broadcast pick to all players in lobby
   for (const p of lobby.players) {
-    Effect.runPromise(
-      ws.sendToPlayer(p.playerId, {
-        type: 'hero_pick',
-        playerId,
-        heroId,
-      }),
-    ).catch(() => {})
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, {
+      type: 'hero_pick',
+      playerId,
+      heroId,
+    })
   }
 
   lobby.currentPickIndex++
@@ -190,7 +227,7 @@ function startReadyCheck(
   lobby: Lobby,
   ws: WebSocketServiceApi,
   redis: RedisServiceApi,
-  db: DatabaseServiceApi,
+  _db: DatabaseServiceApi,
 ): void {
   // For now, auto-ready all players and transition to game
   for (const p of lobby.players) {
@@ -201,13 +238,12 @@ function startReadyCheck(
 
   // Notify players game is starting
   for (const p of lobby.players) {
-    Effect.runPromise(
-      ws.sendToPlayer(p.playerId, {
-        type: 'announcement',
-        message: 'All heroes picked! Game starting...',
-        level: 'info',
-      }),
-    ).catch(() => {})
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, {
+      type: 'announcement',
+      message: 'All heroes picked! Game starting...',
+      level: 'info',
+    })
   }
 
   // Transition to game (publish to Redis for game engine to pick up)
@@ -221,14 +257,21 @@ function startReadyCheck(
     })),
   }
 
-  Effect.runPromise(
-    redis.publish('matchmaking:game_ready', JSON.stringify(gameData)),
-  ).catch((err) => {
-    console.error('[Lobby] Failed to publish game_ready:', err)
-  })
+  Effect.runPromise(redis.publish('matchmaking:game_ready', JSON.stringify(gameData))).catch(
+    (err) => {
+      Effect.runPromise(
+        Effect.logError('Failed to publish game_ready').pipe(
+          Effect.annotateLogs({ lobbyId: lobby.id, error: String(err) }),
+        ),
+      )
+    },
+  )
 
   // Cleanup
   if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+  for (const p of lobby.players) {
+    playerToLobby.delete(p.playerId)
+  }
   activeLobbies.delete(lobby.id)
 }
 
@@ -244,13 +287,13 @@ export function cancelLobby(lobbyId: string, ws: WebSocketServiceApi): void {
   if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
 
   for (const p of lobby.players) {
-    Effect.runPromise(
-      ws.sendToPlayer(p.playerId, {
-        type: 'announcement',
-        message: 'Match cancelled. Returning to queue...',
-        level: 'warning',
-      }),
-    ).catch(() => {})
+    playerToLobby.delete(p.playerId)
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, {
+      type: 'announcement',
+      message: 'Match cancelled. Returning to queue...',
+      level: 'warning',
+    })
   }
 
   activeLobbies.delete(lobbyId)

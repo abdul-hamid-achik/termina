@@ -24,7 +24,10 @@ export function useGameSocket() {
   function connect(gameId: string, playerId: string) {
     currentGameId = gameId
     currentPlayerId = playerId
-    gameStore.gameId = gameId
+    // Only set gameStore.gameId for real game IDs, not the lobby placeholder
+    if (gameId !== 'lobby') {
+      gameStore.gameId = gameId
+    }
     gameStore.playerId = playerId
     reconnectAttempts = 0
     _open()

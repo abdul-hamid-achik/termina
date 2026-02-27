@@ -1,6 +1,9 @@
 import { Effect } from 'effect'
 import type { ClientMessage, ServerMessage } from '~~/shared/types/protocol'
 import { getGameRuntime } from '../plugins/game-server'
+import { submitAction } from '../game/engine/GameLoop'
+import { pickHero } from '../game/matchmaking/lobby'
+import { registerPeer, unregisterPeer } from '../services/PeerRegistry'
 
 interface PeerContext {
   playerId: string | null
@@ -19,12 +22,15 @@ export default defineWebSocketHandler({
     const playerId = url.searchParams.get('playerId')
 
     if (!playerId) {
-      peer.send(JSON.stringify({ type: 'error', code: 'AUTH_REQUIRED', message: 'Missing playerId' }))
+      peer.send(
+        JSON.stringify({ type: 'error', code: 'AUTH_REQUIRED', message: 'Missing playerId' }),
+      )
       peer.close(4001, 'Missing playerId')
       return
     }
 
     peerState.set(peer, { playerId, gameId: null })
+    registerPeer(playerId, peer)
 
     // Cancel any pending disconnect timer for this player
     const timer = disconnectTimers.get(playerId)
@@ -33,13 +39,17 @@ export default defineWebSocketHandler({
       disconnectTimers.delete(playerId)
     }
 
-    peer.send(JSON.stringify({ type: 'announcement', message: 'Connected to TERMINA', level: 'info' }))
+    peer.send(
+      JSON.stringify({ type: 'announcement', message: 'Connected to TERMINA', level: 'info' }),
+    )
   },
 
   message(peer, message) {
     const ctx = peerState.get(peer)
     if (!ctx?.playerId) {
-      peer.send(JSON.stringify({ type: 'error', code: 'NOT_AUTHENTICATED', message: 'Not authenticated' }))
+      peer.send(
+        JSON.stringify({ type: 'error', code: 'NOT_AUTHENTICATED', message: 'Not authenticated' }),
+      )
       return
     }
 
@@ -47,7 +57,9 @@ export default defineWebSocketHandler({
     try {
       parsed = JSON.parse(typeof message === 'string' ? message : message.toString())
     } catch {
-      peer.send(JSON.stringify({ type: 'error', code: 'INVALID_JSON', message: 'Invalid JSON message' }))
+      peer.send(
+        JSON.stringify({ type: 'error', code: 'INVALID_JSON', message: 'Invalid JSON message' }),
+      )
       return
     }
 
@@ -61,21 +73,86 @@ export default defineWebSocketHandler({
         if (!runtime) break
         ctx.gameId = parsed.gameId
         // Re-add connection via runtime
-        const addConn = runtime.wsService.addConnection(parsed.gameId, ctx.playerId, peer.websocket as unknown as WebSocket)
+        const addConn = runtime.wsService.addConnection(
+          parsed.gameId,
+          ctx.playerId,
+          peer.websocket as unknown as WebSocket,
+        )
         Effect.runSync(addConn)
-        peer.send(JSON.stringify({ type: 'announcement', message: 'Reconnected to game', level: 'info' }))
+        peer.send(
+          JSON.stringify({ type: 'announcement', message: 'Reconnected to game', level: 'info' }),
+        )
         break
       }
 
-      case 'action':
+      case 'action': {
+        if (!ctx.gameId) {
+          peer.send(JSON.stringify({ type: 'error', code: 'NO_GAME', message: 'Not in a game' }))
+          break
+        }
+        submitAction(ctx.gameId, ctx.playerId, parsed.command)
+        break
+      }
+
+      case 'join_game': {
+        const runtime = getGameRuntime()
+        if (!runtime) break
+        ctx.gameId = parsed.gameId
+        const addConn = runtime.wsService.addConnection(
+          parsed.gameId,
+          ctx.playerId,
+          peer.websocket as unknown as WebSocket,
+        )
+        Effect.runSync(addConn)
+        peer.send(JSON.stringify({ type: 'announcement', message: 'Joined game', level: 'info' }))
+        break
+      }
+
+      case 'hero_pick': {
+        const runtime = getGameRuntime()
+        if (!runtime) {
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'NO_GAME_SERVER',
+              message: 'Game server not ready',
+            }),
+          )
+          break
+        }
+        const result = pickHero(
+          parsed.lobbyId,
+          ctx.playerId,
+          parsed.heroId,
+          runtime.wsService,
+          runtime.redisService,
+          runtime.dbService,
+        )
+        if (!result.success) {
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'PICK_FAILED',
+              message: result.error ?? 'Hero pick failed',
+            }),
+          )
+        }
+        break
+      }
+
       case 'chat':
       case 'ping_map': {
         const runtime = getGameRuntime()
         if (!runtime) {
-          peer.send(JSON.stringify({ type: 'error', code: 'NO_GAME_SERVER', message: 'Game server not ready' }))
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'NO_GAME_SERVER',
+              message: 'Game server not ready',
+            }),
+          )
           break
         }
-        // Route to game engine via pub/sub
         const routeMsg = runtime.redisService.publish(
           `game:${ctx.gameId}:actions`,
           JSON.stringify({ playerId: ctx.playerId, ...parsed }),
@@ -91,6 +168,7 @@ export default defineWebSocketHandler({
     if (!ctx?.playerId) return
 
     const { playerId, gameId } = ctx
+    unregisterPeer(playerId)
 
     if (gameId) {
       // Allow reconnect within window before removing from game

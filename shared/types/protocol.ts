@@ -1,5 +1,5 @@
 import type { Command } from './commands'
-import type { GameState, GameEvent, TeamId } from './game'
+import type { GameEvent, TeamId } from './game'
 
 // ── Client → Server ──────────────────────────────────────────────
 
@@ -9,13 +9,15 @@ export type ClientMessage =
   | { type: 'ping_map'; zone: string }
   | { type: 'heartbeat' }
   | { type: 'reconnect'; gameId: string; playerId: string }
+  | { type: 'join_game'; gameId: string }
+  | { type: 'hero_pick'; lobbyId: string; heroId: string }
 
 // ── Server → Client ──────────────────────────────────────────────
 
 export interface TickStateMessage {
   type: 'tick_state'
   tick: number
-  state: GameState
+  state: unknown // Fog-of-war filtered PlayerVisibleState, not full GameState
 }
 
 export interface EventsMessage {
@@ -64,6 +66,18 @@ export interface HeroPickMessage {
   heroId: string
 }
 
+export interface LobbyStateMessage {
+  type: 'lobby_state'
+  lobbyId: string
+  team: TeamId
+  players: { playerId: string; team: TeamId; heroId: string | null }[]
+}
+
+export interface GameStartingMessage {
+  type: 'game_starting'
+  gameId: string
+}
+
 export type ServerMessage =
   | TickStateMessage
   | EventsMessage
@@ -72,3 +86,5 @@ export type ServerMessage =
   | ErrorMessage
   | QueueUpdateMessage
   | HeroPickMessage
+  | LobbyStateMessage
+  | GameStartingMessage
