@@ -23,8 +23,6 @@ export default defineEventHandler(async (event) => {
     return { matches }
   }
 
-  const matches = await Effect.runPromise(
-    runtime.dbService.getMatchHistory(playerId, limit),
-  )
+  const matches = await Effect.runPromise(runtime.dbService.getMatchHistory(playerId, limit))
   return { matches }
 })

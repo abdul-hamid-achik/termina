@@ -27,6 +27,8 @@ export interface PlayerState {
   buffs: BuffState[]
   alive: boolean
   respawnTick: number | null
+  defense: number
+  magicResist: number
   kills: number
   deaths: number
   assists: number
@@ -82,4 +84,26 @@ export interface WardState {
   team: TeamId
   placedTick: number
   expiryTick: number
+}
+
+export interface FoggedPlayer {
+  id: string
+  name: string
+  team: string
+  heroId: string | null
+  level: number
+  alive: boolean
+  fogged: true
+}
+
+export interface PlayerVisibleState {
+  tick: number
+  phase: GamePhase
+  teams: { radiant: TeamState; dire: TeamState }
+  players: Record<string, PlayerState | FoggedPlayer>
+  zones: Record<string, ZoneRuntimeState>
+  creeps: CreepState[]
+  towers: TowerState[]
+  events: GameEvent[]
+  visibleZones: string[]
 }

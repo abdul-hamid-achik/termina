@@ -130,13 +130,10 @@ function resolveW(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     if (player.mp < W_MANA) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: W_MANA, current: player.mp }),
-      )
+      return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
     }
 
-    // Target zone (encoded as hero target name = zone id)
-    const zoneId = target?.kind === 'hero' ? target.name : undefined
+    const zoneId = target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId) {
       return yield* Effect.fail(
         new InvalidTargetError({ target: 'none', reason: 'Requires a zone target' }),
@@ -147,8 +144,22 @@ function resolveW(
     caster = setCooldown(caster, 'w', W_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
 
+    // Add a temporary ward for vision (simulates decoy presence)
+    const zones = { ...state.zones }
+    const targetZoneState = zones[zoneId]
+    if (targetZoneState) {
+      zones[zoneId] = {
+        ...targetZoneState,
+        wards: [...targetZoneState.wards, {
+          team: caster.team,
+          placedTick: state.tick,
+          expiryTick: state.tick + 3,
+        }],
+      }
+    }
+
     return {
-      state: updatePlayer(state, caster),
+      state: { ...updatePlayer(state, caster), zones },
       events: [
         {
           tick: state.tick,
@@ -266,7 +277,7 @@ function resolveR(
       )
     }
 
-    const zoneId = target?.kind === 'hero' ? target.name : undefined
+    const zoneId = target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId || !state.zones[zoneId]) {
       return yield* Effect.fail(
         new InvalidTargetError({ target: zoneId ?? 'none', reason: 'Invalid zone target' }),
@@ -299,20 +310,12 @@ function resolveR(
 // ── Passive: Stealth ──────────────────────────────────────────────
 // If no action for 2 consecutive ticks, gain invisibility. Broken by any action.
 
-function resolveHeroPassive(
-  state: GameState,
-  playerId: string,
-  event: GameEvent,
-): GameState {
+function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   const player = state.players[playerId]
   if (!player) return state
 
   // If the player performed an action, break stealth and reset idle counter
-  if (
-    event.type === 'attack' ||
-    event.type === 'ability_cast' ||
-    event.type === 'item_used'
-  ) {
+  if (event.type === 'attack' || event.type === 'ability_cast' || event.type === 'item_used') {
     const isActor =
       event.payload['attackerId'] === playerId || event.payload['playerId'] === playerId
     if (isActor) {

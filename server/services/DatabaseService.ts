@@ -28,20 +28,30 @@ export interface HeroStatUpdate {
 
 export interface DatabaseServiceApi {
   readonly getPlayer: (id: string) => Effect.Effect<Player | null>
-  readonly getPlayerByProvider: (provider: string, providerId: string) => Effect.Effect<Player | null>
+  readonly getPlayerByProvider: (
+    provider: string,
+    providerId: string,
+  ) => Effect.Effect<Player | null>
   readonly createPlayer: (data: NewPlayer) => Effect.Effect<Player>
   readonly updatePlayerMMR: (id: string, mmr: number) => Effect.Effect<void>
   readonly recordMatch: (match: NewMatch, players: NewMatchPlayer[]) => Effect.Effect<string>
   readonly getMatchHistory: (playerId: string, limit?: number) => Effect.Effect<Match[]>
   readonly getMatch: (id: string) => Effect.Effect<MatchWithPlayers | null>
   readonly getLeaderboard: (limit?: number) => Effect.Effect<Player[]>
-  readonly updateHeroStats: (playerId: string, heroId: string, stats: HeroStatUpdate) => Effect.Effect<void>
+  readonly updateHeroStats: (
+    playerId: string,
+    heroId: string,
+    stats: HeroStatUpdate,
+  ) => Effect.Effect<void>
   readonly getHeroStats: (playerId: string) => Effect.Effect<HeroStat[]>
   readonly incrementGamesPlayed: (playerId: string) => Effect.Effect<void>
   readonly incrementWins: (playerId: string) => Effect.Effect<void>
 }
 
-export class DatabaseService extends Context.Tag('DatabaseService')<DatabaseService, DatabaseServiceApi>() {}
+export class DatabaseService extends Context.Tag('DatabaseService')<
+  DatabaseService,
+  DatabaseServiceApi
+>() {}
 
 export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   getPlayer: (id) =>
@@ -73,7 +83,11 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
     Effect.promise(async () => {
       const db = useDb()
       await db.update(players).set({ mmr }).where(eq(players.id, id))
-    }),
+    }).pipe(
+      Effect.tap(() =>
+        Effect.logDebug('MMR updated').pipe(Effect.annotateLogs({ playerId: id, newMmr: mmr })),
+      ),
+    ),
 
   recordMatch: (match, matchPlayerData) =>
     Effect.promise(async () => {
@@ -83,7 +97,11 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
         await db.insert(matchPlayers).values(matchPlayerData)
       }
       return match.id
-    }),
+    }).pipe(
+      Effect.tap((matchId) =>
+        Effect.logInfo('Match persisted').pipe(Effect.annotateLogs({ matchId })),
+      ),
+    ),
 
   getMatchHistory: (playerId, limit = 20) =>
     Effect.promise(async () => {
@@ -97,12 +115,6 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       if (playerMatches.length === 0) return []
 
       const matchIds = playerMatches.map((m) => m.matchId)
-      const result = await db
-        .select()
-        .from(matches)
-        .where(eq(matches.id, matchIds[0]!))
-        .orderBy(desc(matches.createdAt))
-
       // Fetch all matches for the IDs
       const allMatches: Match[] = []
       for (const mid of matchIds) {
@@ -119,10 +131,7 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       const match = matchResult[0]
       if (!match) return null
 
-      const mpRows = await db
-        .select()
-        .from(matchPlayers)
-        .where(eq(matchPlayers.matchId, id))
+      const mpRows = await db.select().from(matchPlayers).where(eq(matchPlayers.matchId, id))
 
       const playersInMatch = await Promise.all(
         mpRows.map(async (mp) => {
@@ -147,10 +156,7 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   updateHeroStats: (playerId, heroId, stats) =>
     Effect.promise(async () => {
       const db = useDb()
-      const existing = await db
-        .select()
-        .from(heroStats)
-        .where(eq(heroStats.playerId, playerId))
+      const existing = await db.select().from(heroStats).where(eq(heroStats.playerId, playerId))
 
       const stat = existing.find((s) => s.heroId === heroId)
 

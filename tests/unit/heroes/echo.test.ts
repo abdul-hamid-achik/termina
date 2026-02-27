@@ -1,17 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState, BuffState } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '../../../shared/types/game'
 import {
   resolveAbility,
   getAbilityLevel,
   applyBuff,
-  getBuffStacks,
-  InsufficientManaError,
-  CooldownError,
-  InvalidTargetError,
 } from '../../../server/game/heroes/_base'
-// Register echo hero
-import '../../../server/game/heroes/echo'
+// Register echo hero and import helpers
 import { getResonanceMultiplier } from '../../../server/game/heroes/echo'
 
 // ── Test Helpers ──────────────────────────────────────────────────
@@ -35,6 +30,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
+    defense: 3,
+    magicResist: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -52,10 +49,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   })
 }
 
-function makeState(
-  players: PlayerState[],
-  overrides: Partial<GameState> = {},
-): GameState {
+function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): GameState {
   const playerMap: Record<string, PlayerState> = {}
   for (const p of players) {
     playerMap[p.id] = p
@@ -105,9 +99,7 @@ describe('Echo Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
@@ -120,9 +112,7 @@ describe('Echo Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedPlayer = result.state.players['p1']!
       expect(updatedPlayer.mp).toBe(280 - 60) // Level 1 Q costs 60 mana

@@ -1,5 +1,5 @@
 import type { Command } from './commands'
-import type { GameEvent, TeamId } from './game'
+import type { GameEvent, TeamId, PlayerVisibleState } from './game'
 
 // ── Client → Server ──────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ export type ClientMessage =
 export interface TickStateMessage {
   type: 'tick_state'
   tick: number
-  state: unknown // Fog-of-war filtered PlayerVisibleState, not full GameState
+  state: PlayerVisibleState
 }
 
 export interface EventsMessage {

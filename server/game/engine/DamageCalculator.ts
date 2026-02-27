@@ -56,11 +56,10 @@ export function applyDamage(
   damageType: DamageType,
 ): Effect.Effect<PlayerState> {
   return Effect.sync(() => {
-    const effectiveDamage = calculateEffectiveDamage(
-      damage,
-      damageType,
-      { defense: target.defense ?? 0, magicResist: target.magicResist ?? 0 },
-    )
+    const effectiveDamage = calculateEffectiveDamage(damage, damageType, {
+      defense: target.defense ?? 0,
+      magicResist: target.magicResist ?? 0,
+    })
     return applyRawDamage(target, effectiveDamage)
   })
 }

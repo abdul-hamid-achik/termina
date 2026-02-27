@@ -12,109 +12,42 @@ defineEmits<{
 
 <template>
   <button
-    class="ascii-btn"
-    :class="{
-      'ascii-btn--primary': variant === 'primary',
-      'ascii-btn--danger': variant === 'danger',
-      'ascii-btn--ghost': variant === 'ghost',
-      'ascii-btn--disabled': disabled,
-    }"
+    class="group inline-flex items-center gap-1 border px-1 py-1.5 font-mono text-sm transition-all duration-100 select-none"
+    :class="[
+      disabled ? 'pointer-events-none cursor-not-allowed opacity-35' : 'cursor-pointer',
+      variant === 'primary'
+        ? 'border-radiant hover:bg-radiant/10 hover:shadow-glow-radiant active:bg-radiant active:text-bg-primary'
+        : variant === 'danger'
+          ? 'border-dire hover:bg-dire/10 hover:shadow-glow-dire active:bg-dire active:text-bg-primary'
+          : variant === 'ghost'
+            ? 'border-transparent hover:border-border'
+            : 'border-border bg-transparent text-text-primary hover:border-border-glow hover:bg-border-glow/20 active:bg-text-primary active:text-bg-primary',
+    ]"
     :disabled="disabled"
     @click="$emit('click', $event)"
   >
-    <span class="ascii-btn__bracket">[</span>
-    <span class="ascii-btn__label">{{ label }}</span>
-    <span class="ascii-btn__bracket">]</span>
+    <span
+      class="transition-colors duration-100"
+      :class="
+        variant === 'primary'
+          ? 'text-radiant'
+          : variant === 'danger'
+            ? 'text-dire'
+            : 'text-text-dim'
+      "
+      >[</span
+    >
+    <span class="px-1 uppercase tracking-widest">{{ label }}</span>
+    <span
+      class="transition-colors duration-100"
+      :class="
+        variant === 'primary'
+          ? 'text-radiant'
+          : variant === 'danger'
+            ? 'text-dire'
+            : 'text-text-dim'
+      "
+      >]</span
+    >
   </button>
 </template>
-
-<style scoped>
-.ascii-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 4px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.1s;
-  user-select: none;
-}
-
-.ascii-btn:hover {
-  border-color: var(--border-glow);
-  background: rgba(42, 42, 78, 0.2);
-}
-
-.ascii-btn:active {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-}
-
-.ascii-btn__bracket {
-  color: var(--text-dim);
-}
-
-.ascii-btn__label {
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0 4px;
-}
-
-/* Primary */
-.ascii-btn--primary {
-  border-color: var(--color-radiant);
-}
-
-.ascii-btn--primary .ascii-btn__bracket {
-  color: var(--color-radiant);
-}
-
-.ascii-btn--primary:hover {
-  background: rgba(46, 204, 113, 0.1);
-  box-shadow: 0 0 8px rgba(46, 204, 113, 0.2);
-}
-
-.ascii-btn--primary:active {
-  background: var(--color-radiant);
-  color: var(--bg-primary);
-}
-
-/* Danger */
-.ascii-btn--danger {
-  border-color: var(--color-dire);
-}
-
-.ascii-btn--danger .ascii-btn__bracket {
-  color: var(--color-dire);
-}
-
-.ascii-btn--danger:hover {
-  background: rgba(233, 69, 96, 0.1);
-  box-shadow: 0 0 8px rgba(233, 69, 96, 0.2);
-}
-
-.ascii-btn--danger:active {
-  background: var(--color-dire);
-  color: var(--bg-primary);
-}
-
-/* Ghost */
-.ascii-btn--ghost {
-  border-color: transparent;
-}
-
-.ascii-btn--ghost:hover {
-  border-color: var(--border-color);
-}
-
-/* Disabled */
-.ascii-btn--disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-</style>

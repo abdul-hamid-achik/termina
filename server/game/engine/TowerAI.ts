@@ -1,4 +1,4 @@
-import type { GameState, TowerState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { GameState, TowerState } from '~~/shared/types/game'
 import { TOWER_ATTACK } from '~~/shared/constants/balance'
 
 export interface TowerAction {

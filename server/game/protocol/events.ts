@@ -122,7 +122,11 @@ export type GameEngineEvent =
   | RoshanKilledEvent
 
 /** Convert an engine event to the wire GameEvent format. */
-export function toGameEvent(event: GameEngineEvent): { tick: number; type: string; payload: Record<string, unknown> } {
+export function toGameEvent(event: GameEngineEvent): {
+  tick: number
+  type: string
+  payload: Record<string, unknown>
+} {
   const { _tag, tick, ...payload } = event
   return { tick, type: _tag, payload: payload as Record<string, unknown> }
 }

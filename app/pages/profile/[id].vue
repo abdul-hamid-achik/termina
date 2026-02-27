@@ -1,158 +1,135 @@
 <script setup lang="ts">
-const route = useRoute()
-const playerId = route.params.id as string
+import { useAuthStore } from '~/stores/auth'
 
-const mockProfile = {
-  name: playerId === 'me' ? 'you' : playerId,
-  rating: 2150,
-  rank: 42,
-  wins: 89,
-  losses: 67,
-  favoriteHero: 'phantom',
-  totalGames: 156,
-  winRate: '57.1%',
-  avgKda: '5.2/3.1/8.7',
-  recentMatches: [
-    { id: 1, hero: 'phantom', result: 'WIN', kda: '8/2/5', duration: '24:32' },
-    { id: 2, hero: 'vortex', result: 'LOSS', kda: '3/7/4', duration: '31:15' },
-    { id: 3, hero: 'phantom', result: 'WIN', kda: '12/1/9', duration: '28:44' },
-    { id: 4, hero: 'ironclad', result: 'WIN', kda: '2/4/15', duration: '35:01' },
-    { id: 5, hero: 'spectre', result: 'LOSS', kda: '6/5/3', duration: '22:18' },
-  ],
+const route = useRoute()
+const authStore = useAuthStore()
+
+const playerId = computed(() => {
+  const id = route.params.id as string
+  return id === 'me' ? (authStore.user?.id ?? '') : id
+})
+
+const { data: profileData, status: profileStatus } = await useFetch(
+  () => `/api/player/${playerId.value}`,
+  {
+    watch: [playerId],
+  },
+)
+
+const { data: matchData } = await useFetch(() => `/api/match/history?player=${playerId.value}`, {
+  watch: [playerId],
+})
+
+const player = computed(() => (profileData.value as Record<string, unknown>)?.player ?? null)
+const recentMatches = computed(() => (matchData.value as Record<string, unknown>)?.matches ?? [])
+
+function formatDuration(ticks: number | null): string {
+  if (!ticks) return '--:--'
+  const totalSeconds = Math.floor(ticks / 2)
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '--'
+  return new Date(dateStr).toLocaleDateString()
 }
 </script>
 
 <template>
-  <div class="profile-page">
-    <TerminalPanel title="Player Profile">
-      <div class="profile-header">
-        <span class="profile-prompt">&gt;_ whois {{ mockProfile.name }}</span>
-      </div>
+  <div class="mx-auto mt-6 flex max-w-[600px] flex-col gap-4">
+    <div v-if="profileStatus === 'pending'" class="py-10 text-center text-[0.85rem] text-text-dim">
+      Loading profile<span class="animate-blink">_</span>
+    </div>
 
-      <div class="profile-stats">
-        <div class="stat-row">
-          <span class="stat-label">Rating:</span>
-          <span class="stat-value stat-rating">{{ mockProfile.rating }}</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Rank:</span>
-          <span class="stat-value">#{{ mockProfile.rank }}</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Record:</span>
-          <span class="stat-value">
-            <span class="stat-wins">{{ mockProfile.wins }}W</span>
-            /
-            <span class="stat-losses">{{ mockProfile.losses }}L</span>
-            ({{ mockProfile.winRate }})
-          </span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Avg KDA:</span>
-          <span class="stat-value">{{ mockProfile.avgKda }}</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Top Hero:</span>
-          <span class="stat-value stat-hero">{{ mockProfile.favoriteHero }}</span>
-        </div>
-      </div>
-    </TerminalPanel>
+    <div v-else-if="!player" class="py-10 text-center">
+      <TerminalPanel title="Error">
+        <p class="p-4 text-[0.85rem] text-dire">Player not found.</p>
+      </TerminalPanel>
+    </div>
 
-    <TerminalPanel title="Recent Matches" class="profile-matches">
-      <table class="scoreboard">
-        <thead>
-          <tr>
-            <th>Hero</th>
-            <th>Result</th>
-            <th>KDA</th>
-            <th>Duration</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="m in mockProfile.recentMatches" :key="m.id">
-            <td class="match-hero">{{ m.hero }}</td>
-            <td :class="m.result === 'WIN' ? 'match-win' : 'match-loss'">{{ m.result }}</td>
-            <td>{{ m.kda }}</td>
-            <td class="match-duration">{{ m.duration }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </TerminalPanel>
+    <template v-else>
+      <TerminalPanel title="Player Profile">
+        <div class="mb-3 border-b border-border pb-3">
+          <span class="text-[0.8rem] text-text-dim">&gt;_ whois {{ player.username }}</span>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <div class="flex gap-2 text-[0.85rem]">
+            <span class="min-w-[80px] text-text-dim">Rating:</span>
+            <span class="font-bold text-gold">{{ player.mmr ?? 1000 }}</span>
+          </div>
+          <div class="flex gap-2 text-[0.85rem]">
+            <span class="min-w-[80px] text-text-dim">Games:</span>
+            <span class="text-text-primary">{{ player.gamesPlayed ?? 0 }}</span>
+          </div>
+          <div class="flex gap-2 text-[0.85rem]">
+            <span class="min-w-[80px] text-text-dim">Record:</span>
+            <span class="text-text-primary">
+              <span class="text-radiant">{{ player.wins ?? 0 }}W</span>
+              /
+              <span class="text-dire">{{ (player.gamesPlayed ?? 0) - (player.wins ?? 0) }}L</span>
+              <template v-if="player.gamesPlayed > 0">
+                ({{ ((player.wins / player.gamesPlayed) * 100).toFixed(1) }}%)
+              </template>
+            </span>
+          </div>
+          <div class="flex gap-2 text-[0.85rem]">
+            <span class="min-w-[80px] text-text-dim">Joined:</span>
+            <span class="text-text-primary">{{ formatDate(player.createdAt) }}</span>
+          </div>
+        </div>
+      </TerminalPanel>
+
+      <TerminalPanel title="Recent Matches">
+        <div v-if="recentMatches.length === 0" class="py-4 text-center text-[0.8rem] text-text-dim">
+          No matches played yet.
+        </div>
+        <table v-else class="w-full border-collapse text-xs">
+          <thead>
+            <tr>
+              <th
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Mode
+              </th>
+              <th
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Result
+              </th>
+              <th
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Duration
+              </th>
+              <th
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Date
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="m in recentMatches" :key="m.id">
+              <td class="border-b border-border/50 px-1.5 py-1 text-ability">{{ m.mode }}</td>
+              <td
+                class="border-b border-border/50 px-1.5 py-1 font-bold"
+                :class="m.winner ? 'text-radiant' : 'text-text-dim'"
+              >
+                {{ m.winner ?? 'IN PROGRESS' }}
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">
+                {{ formatDuration(m.durationTicks) }}
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">
+                {{ formatDate(m.createdAt) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </TerminalPanel>
+    </template>
   </div>
 </template>
-
-<style scoped>
-.profile-page {
-  max-width: 600px;
-  margin: 24px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.profile-header {
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.profile-prompt {
-  color: var(--text-dim);
-  font-size: 0.8rem;
-}
-
-.profile-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.stat-row {
-  display: flex;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-
-.stat-label {
-  color: var(--text-dim);
-  min-width: 80px;
-}
-
-.stat-value {
-  color: var(--text-primary);
-}
-
-.stat-rating {
-  color: var(--color-gold);
-  font-weight: 700;
-}
-
-.stat-wins {
-  color: var(--color-radiant);
-}
-
-.stat-losses {
-  color: var(--color-dire);
-}
-
-.stat-hero {
-  color: var(--color-ability);
-}
-
-.match-hero {
-  color: var(--color-ability);
-}
-
-.match-win {
-  color: var(--color-radiant);
-  font-weight: 700;
-}
-
-.match-loss {
-  color: var(--color-dire);
-}
-
-.match-duration {
-  color: var(--text-dim);
-}
-</style>

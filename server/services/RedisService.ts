@@ -65,7 +65,9 @@ export function makeRedisServiceLive(redisUrl: string) {
       Effect.promise(async () => {
         const client = getClient(redisUrl)
         await client.publish(channel, message)
-      }),
+      }).pipe(
+        Effect.tap(() => Effect.logDebug('Redis published').pipe(Effect.annotateLogs({ channel }))),
+      ),
 
     subscribe: (channel, handler) =>
       Effect.sync(() => {
@@ -74,7 +76,11 @@ export function makeRedisServiceLive(redisUrl: string) {
         sub.on('message', (ch, msg) => {
           if (ch === channel) handler(msg)
         })
-      }),
+      }).pipe(
+        Effect.tap(() =>
+          Effect.logDebug('Redis subscribed').pipe(Effect.annotateLogs({ channel })),
+        ),
+      ),
 
     zadd: (key, score, member) =>
       Effect.promise(async () => {
@@ -106,7 +112,7 @@ export function makeRedisServiceLive(redisUrl: string) {
         if (_subscriber) await _subscriber.quit()
         _client = null
         _subscriber = null
-      }),
+      }).pipe(Effect.tap(() => Effect.logInfo('Redis connection closed'))),
   })
 }
 

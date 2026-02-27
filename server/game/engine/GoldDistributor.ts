@@ -1,4 +1,4 @@
-import type { GameState, PlayerState } from '~~/shared/types/game'
+import type { GameState } from '~~/shared/types/game'
 import {
   PASSIVE_GOLD_PER_TICK,
   CREEP_GOLD_MIN,
@@ -47,7 +47,7 @@ export function awardLastHit(
 
 /** Award gold for denying a creep. 50% of the gold goes to the denier. */
 export function awardDeny(state: GameState, playerId: string): GameState {
-  const denyGold = Math.floor((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2 * 0.5)
+  const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * 0.5)
   return updatePlayerGold(state, playerId, denyGold)
 }
 
@@ -70,7 +70,8 @@ export function awardKill(
   const killer = state.players[killerId]
   if (!killer) return state
 
-  const streak = killer.kills // Current kills act as streak indicator
+  // Cap streak bonus to prevent infinite scaling; a proper killStreak field would be better
+  const streak = Math.min(killer.kills, 10)
   const killerGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * streak
   updatedState = updatePlayerGold(updatedState, killerId, killerGold)
 
@@ -86,11 +87,7 @@ export function awardKill(
 }
 
 /** Award tower kill gold. Split evenly among all nearby allies. */
-export function awardTowerKill(
-  state: GameState,
-  _zone: string,
-  nearbyAllies: string[],
-): GameState {
+export function awardTowerKill(state: GameState, _zone: string, nearbyAllies: string[]): GameState {
   if (nearbyAllies.length === 0) return state
 
   let updatedState = state

@@ -29,8 +29,8 @@ function parseTarget(raw: string): TargetRef | null {
   if (raw === 'self') return { kind: 'self' }
   if (raw.startsWith('hero:')) return { kind: 'hero', name: raw.slice(5) }
   if (raw.startsWith('creep:')) {
-    const idx = parseInt(raw.slice(6), 10)
-    if (!isNaN(idx)) return { kind: 'creep', index: idx }
+    const idx = Number.parseInt(raw.slice(6), 10)
+    if (!Number.isNaN(idx)) return { kind: 'creep', index: idx }
   }
   if (raw.startsWith('tower:')) return { kind: 'tower', zone: raw.slice(6) }
   // If it looks like a hero name without prefix, try hero
@@ -48,13 +48,13 @@ export function useCommands() {
 
     // Expand shortcuts
     const parts = trimmed.split(/\s+/)
-    const shortcut = SHORTCUTS[parts[0]]
+    const shortcut = SHORTCUTS[parts[0]!]
     if (shortcut) {
       trimmed = shortcut + (parts.length > 1 ? ' ' + parts.slice(1).join(' ') : '')
     }
 
     const tokens = trimmed.split(/\s+/)
-    const cmd = tokens[0]
+    const cmd = tokens[0]!
 
     switch (cmd) {
       case 'move': {
@@ -83,7 +83,7 @@ export function useCommands() {
         const item = tokens[1]
         if (!item) return null
         const targetStr = tokens[2]
-        const target = targetStr ? parseTarget(targetStr) ?? targetStr : undefined
+        const target = targetStr ? (parseTarget(targetStr) ?? targetStr) : undefined
         return { type: 'use', item, target }
       }
 
@@ -141,15 +141,28 @@ export function useCommands() {
 
     // Expand shortcut for first token matching
     if (parts.length === 1) {
-      const cmds = ['move', 'attack', 'cast', 'use', 'buy', 'sell', 'ward', 'scan', 'status', 'map', 'chat', 'ping']
+      const cmds = [
+        'move',
+        'attack',
+        'cast',
+        'use',
+        'buy',
+        'sell',
+        'ward',
+        'scan',
+        'status',
+        'map',
+        'chat',
+        'ping',
+      ]
       const shortcuts = Object.keys(SHORTCUTS)
       const all = [...cmds, ...shortcuts]
       return all
-        .filter(c => c.startsWith(parts[0]))
-        .map(c => ({ text: c, description: SHORTCUTS[c] ? `→ ${SHORTCUTS[c]}` : undefined }))
+        .filter((c) => c.startsWith(parts[0]!))
+        .map((c) => ({ text: c, description: SHORTCUTS[c] ? `→ ${SHORTCUTS[c]}` : undefined }))
     }
 
-    const expanded = SHORTCUTS[parts[0]] ?? parts[0]
+    const expanded = SHORTCUTS[parts[0]!] ?? parts[0]!
     const expandedTokens = expanded.split(/\s+/)
     const baseCmd = expandedTokens[0]
 
@@ -166,13 +179,14 @@ export function useCommands() {
     if (baseCmd === 'cast') {
       // If we only have "cast" + partial, suggest ability slots
       if (expandedTokens.length === 1 && parts.length === 2) {
-        const slot = parts[1]
+        const slot = parts[1]!
         return ['q', 'w', 'e', 'r']
-          .filter(s => s.startsWith(slot))
-          .map(s => ({ text: `cast ${s}` }))
+          .filter((s) => s.startsWith(slot))
+          .map((s) => ({ text: `cast ${s}` }))
       }
       // If we have the slot, suggest targets
-      const partial = expandedTokens.length === 2 ? parts.slice(1).join(' ') : parts.slice(2).join(' ')
+      const partial =
+        expandedTokens.length === 2 ? parts.slice(1).join(' ') : parts.slice(2).join(' ')
       return _suggestTargets(partial, context)
     }
 
@@ -187,10 +201,10 @@ export function useCommands() {
 
     if (baseCmd === 'chat') {
       if (parts.length === 2) {
-        const partial = parts[1]
+        const partial = parts[1]!
         return ['team', 'all']
-          .filter(c => c.startsWith(partial))
-          .map(c => ({ text: `chat ${c}` }))
+          .filter((c) => c.startsWith(partial))
+          .map((c) => ({ text: `chat ${c}` }))
       }
     }
 
@@ -205,9 +219,9 @@ export function useCommands() {
     const visibleIds = Object.keys(context.visibleZones)
     const zonePool = visibleIds.length > 0 ? visibleIds : ZONE_IDS
     return zonePool
-      .filter(id => id.includes(partial))
+      .filter((id) => id.includes(partial))
       .slice(0, 10)
-      .map(id => ({ text: id, description: ZONE_MAP[id]?.name }))
+      .map((id) => ({ text: id, description: ZONE_MAP[id]?.name }))
   }
 
   function _suggestAdjacentZones(partial: string, context: GameContext): Suggestion[] {
@@ -215,8 +229,8 @@ export function useCommands() {
     const zone = ZONE_MAP[context.player.zone]
     if (!zone) return []
     return zone.adjacentTo
-      .filter(id => id.includes(partial))
-      .map(id => ({ text: id, description: ZONE_MAP[id]?.name }))
+      .filter((id) => id.includes(partial))
+      .map((id) => ({ text: id, description: ZONE_MAP[id]?.name }))
   }
 
   function _suggestTargets(partial: string, context: GameContext): Suggestion[] {
@@ -225,7 +239,7 @@ export function useCommands() {
 
     // Suggest enemy heroes in zone
     const enemies = Object.values(context.allPlayers).filter(
-      p => p.zone === context.player!.zone && p.team !== context.player!.team && p.alive,
+      (p) => p.zone === context.player!.zone && p.team !== context.player!.team && p.alive,
     )
     for (const e of enemies) {
       const ref = `hero:${e.heroId ?? e.name}`

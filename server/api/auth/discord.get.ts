@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import { getGameRuntime } from '../../plugins/game-server'
 
 export default defineOAuthDiscordEventHandler({
-  async onSuccess(event, { user, tokens }) {
+  async onSuccess(event, { user, tokens: _tokens }) {
     const runtime = getGameRuntime()
     if (!runtime) {
       throw createError({ statusCode: 503, message: 'Game server not ready' })
@@ -45,6 +45,7 @@ export default defineOAuthDiscordEventHandler({
     return sendRedirect(event, '/')
   },
   onError(event, error) {
+    // eslint-disable-next-line no-console
     console.error('[Auth] Discord OAuth error:', error)
     return sendRedirect(event, '/login?error=discord')
   },

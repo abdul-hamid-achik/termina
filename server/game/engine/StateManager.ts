@@ -1,6 +1,7 @@
 import { Context, Effect, Layer } from 'effect'
 import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
+import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '../map/zones'
 
 // ── Error types ────────────────────────────────────────────────
@@ -32,18 +33,14 @@ export interface StateManagerApi {
     players: PlayerSetup[],
   ) => Effect.Effect<GameState, GameAlreadyExistsError>
 
-  readonly getState: (
-    gameId: string,
-  ) => Effect.Effect<GameState, GameNotFoundError>
+  readonly getState: (gameId: string) => Effect.Effect<GameState, GameNotFoundError>
 
   readonly updateState: (
     gameId: string,
     fn: (s: GameState) => GameState,
   ) => Effect.Effect<GameState, GameNotFoundError>
 
-  readonly deleteGame: (
-    gameId: string,
-  ) => Effect.Effect<void>
+  readonly deleteGame: (gameId: string) => Effect.Effect<void>
 
   readonly listGames: () => Effect.Effect<string[]>
 }
@@ -56,20 +53,26 @@ const games = new Map<string, GameState>()
 
 /** Create initial player state from setup. */
 function createPlayerState(setup: PlayerSetup): PlayerState {
+  const hero = setup.heroId ? HEROES[setup.heroId] : null
+  const baseHp = hero?.baseStats.hp ?? 0
+  const baseMp = hero?.baseStats.mp ?? 0
+
   return {
     id: setup.id,
     name: setup.name,
     team: setup.team,
     heroId: setup.heroId,
     zone: setup.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain',
-    hp: 0, // Will be set when hero is picked
-    maxHp: 0,
-    mp: 0,
-    maxMp: 0,
+    hp: baseHp,
+    maxHp: baseHp,
+    mp: baseMp,
+    maxMp: baseMp,
     level: 1,
     xp: 0,
     gold: STARTING_GOLD,
     items: [null, null, null, null, null, null],
+    defense: hero?.baseStats.defense ?? 0,
+    magicResist: hero?.baseStats.magicResist ?? 0,
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
@@ -143,6 +146,53 @@ export const StateManagerLive = Layer.succeed(StateManager, {
       return [...games.keys()]
     }),
 })
+
+/** Create a standalone in-memory StateManager (no Effect Layer needed). */
+export function createInMemoryStateManager(): StateManagerApi {
+  const localGames = new Map<string, GameState>()
+
+  return {
+    createGame: (gameId, players) =>
+      Effect.gen(function* () {
+        if (localGames.has(gameId)) {
+          return yield* Effect.fail(new GameAlreadyExistsError(gameId))
+        }
+        const state = createInitialGameState(gameId, players)
+        localGames.set(gameId, state)
+        return state
+      }),
+
+    getState: (gameId) =>
+      Effect.gen(function* () {
+        const state = localGames.get(gameId)
+        if (!state) {
+          return yield* Effect.fail(new GameNotFoundError(gameId))
+        }
+        return state
+      }),
+
+    updateState: (gameId, fn) =>
+      Effect.gen(function* () {
+        const current = localGames.get(gameId)
+        if (!current) {
+          return yield* Effect.fail(new GameNotFoundError(gameId))
+        }
+        const updated = fn(current)
+        localGames.set(gameId, updated)
+        return updated
+      }),
+
+    deleteGame: (gameId) =>
+      Effect.sync(() => {
+        localGames.delete(gameId)
+      }),
+
+    listGames: () =>
+      Effect.sync(() => {
+        return [...localGames.keys()]
+      }),
+  }
+}
 
 /** Clear all games. Useful for tests. */
 export function clearAllGames(): void {

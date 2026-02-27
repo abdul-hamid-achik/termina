@@ -1,4 +1,4 @@
-import type { CreepState, GameState } from '~~/shared/types/game'
+import type { CreepState } from '~~/shared/types/game'
 import {
   CREEP_WAVE_INTERVAL_TICKS,
   MELEE_CREEPS_PER_WAVE,
@@ -30,11 +30,7 @@ const LANE_SPAWN_ZONES: Record<string, { radiant: string; dire: string }> = {
 }
 
 /** Spawn a wave of creeps for one team on one lane. */
-function spawnWave(
-  team: 'radiant' | 'dire',
-  lane: string,
-  waveNumber: number,
-): CreepState[] {
+function spawnWave(team: 'radiant' | 'dire', lane: string, waveNumber: number): CreepState[] {
   const spawnZone = LANE_SPAWN_ZONES[lane]
   if (!spawnZone) return []
   const zone = spawnZone[team]

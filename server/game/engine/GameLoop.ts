@@ -1,5 +1,5 @@
-import { Context, Effect, Layer, Queue, Ref, Schedule, Fiber } from 'effect'
-import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
+import { Effect, Schedule, Fiber } from 'effect'
+import type { GameState, TeamId } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
 import {
   TICK_DURATION_MS,
@@ -10,15 +10,18 @@ import {
   XP_PER_LEVEL,
   MAX_LEVEL,
 } from '~~/shared/constants/balance'
-import { StateManager, type StateManagerApi } from './StateManager'
+import type { StateManagerApi } from './StateManager'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
 import { distributePassiveGold } from './GoldDistributor'
 import { runCreepAI, applyCreepActions } from './CreepAI'
 import { runTowerAI, applyTowerActions } from './TowerAI'
-import { spawnCreepWaves, spawnRunes } from '../map/spawner'
+import { spawnCreepWaves } from '../map/spawner'
 import { removeExpiredWards } from '../map/zones'
-import { calculateVision, filterStateForPlayer } from './VisionCalculator'
+import { filterStateForPlayer } from './VisionCalculator'
+import { levelUpHero, processDoTs, tickAllBuffs } from '../heroes/_base'
 import { toGameEvent, type GameEngineEvent } from '../protocol/events'
+import { getBotPlayerIds, getBotLane } from '../ai/BotManager'
+import { decideBotAction } from '../ai/BotAI'
 
 // ── Action queue per game ──────────────────────────────────────
 
@@ -59,8 +62,20 @@ export function processTick(
   state: GameState,
 ): Effect.Effect<{ state: GameState; events: GameEngineEvent[] }> {
   return Effect.gen(function* () {
-    let currentState = { ...state, tick: state.tick + 1, events: [] }
+    let currentState: GameState = { ...state, tick: state.tick + 1, events: [] }
     const allEvents: GameEngineEvent[] = []
+
+    // 0. Run bot AI — inject bot actions before draining
+    const botPlayerIds = getBotPlayerIds(gameId)
+    for (const botId of botPlayerIds) {
+      const bot = currentState.players[botId]
+      if (bot && bot.alive) {
+        const command = decideBotAction(currentState, bot, getBotLane(gameId, botId))
+        if (command) {
+          submitAction(gameId, botId, command)
+        }
+      }
+    }
 
     // 1. Collect all player actions from queue
     const actions = drainActions(gameId)
@@ -99,6 +114,12 @@ export function processTick(
     // 10. Fountain healing
     currentState = applyFountainHealing(currentState)
 
+    // 10.5. Process DoT damage
+    currentState = processDoTs(currentState)
+
+    // 10.6. Tick all buffs (decrement durations, remove expired)
+    currentState = tickAllBuffs(currentState)
+
     // 11. Handle deaths — check for newly dead players
     currentState = handleDeaths(currentState, allEvents)
 
@@ -116,6 +137,7 @@ export function processTick(
         amount: 0,
         reason: `game_over:${winner}`,
       })
+      yield* Effect.logInfo('Win condition met').pipe(Effect.annotateLogs({ gameId, winner }))
     }
 
     // 14. Store events on state
@@ -124,6 +146,10 @@ export function processTick(
       events: allEvents.map(toGameEvent),
     }
 
+    yield* Effect.logDebug('Tick processed').pipe(
+      Effect.annotateLogs({ gameId, tick: currentState.tick, actionCount: validActions.length }),
+    )
+
     return { state: currentState, events: allEvents }
   })
 }
@@ -131,7 +157,11 @@ export function processTick(
 // ── Game lifecycle ─────────────────────────────────────────────
 
 export interface GameCallbacks {
-  onTickState: (gameId: string, playerId: string, state: ReturnType<typeof filterStateForPlayer>) => void
+  onTickState: (
+    gameId: string,
+    playerId: string,
+    state: ReturnType<typeof filterStateForPlayer>,
+  ) => void
   onEvents: (gameId: string, events: GameEngineEvent[]) => void
   onGameOver: (gameId: string, winner: TeamId) => void
 }
@@ -151,6 +181,8 @@ export function startGameLoop(
   return Effect.gen(function* () {
     const state = yield* stateManager.getState(gameId)
     if (state.phase === 'ended') return
+
+    yield* Effect.logInfo('Game loop started').pipe(Effect.annotateLogs({ gameId }))
 
     // Set phase to playing
     yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
@@ -173,33 +205,42 @@ export function startGameLoop(
         callbacks.onEvents(gameId, events)
       }
 
-      // Check win
-      const winner = checkWinCondition(newState)
-      if (winner) {
-        callbacks.onGameOver(gameId, winner)
+      // Check win — phase is set to 'ended' by processTick when win condition fires
+      if (newState.phase === 'ended') {
+        const winner = checkWinCondition(newState)
+        if (winner) callbacks.onGameOver(gameId, winner)
       }
     })
 
     // Repeat on fixed schedule
-    const repeated = Effect.repeat(
-      tickLoop,
-      Schedule.fixed(`${TICK_DURATION_MS} millis`),
+    const repeated = Effect.repeat(tickLoop, Schedule.fixed(`${TICK_DURATION_MS} millis`))
+
+    const withErrorHandling = Effect.catchAll(repeated, (error) =>
+      Effect.logError('Game loop tick error').pipe(
+        Effect.annotateLogs({ gameId, error: String(error) }),
+      ),
     )
 
-    yield* Effect.catchAll(repeated, (error) =>
-      Effect.sync(() => {
-        console.error(`[GameLoop] Error in game ${gameId}:`, error)
-      }),
-    )
-  })
+    const fiber = yield* Effect.fork(withErrorHandling)
+    activeGames.set(gameId, fiber)
+
+    yield* Effect.logInfo('Game loop running as fiber').pipe(Effect.annotateLogs({ gameId }))
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logError('Failed to start game loop').pipe(
+        Effect.annotateLogs({ gameId, error: String(error) }),
+      ),
+    ),
+  )
 }
 
 /** Stop a running game loop. */
 export function stopGameLoop(gameId: string): Effect.Effect<void> {
-  return Effect.sync(() => {
+  return Effect.gen(function* () {
     const fiber = activeGames.get(gameId)
     if (fiber) {
       activeGames.delete(gameId)
+      yield* Fiber.interrupt(fiber)
     }
   })
 }
@@ -241,9 +282,11 @@ function applyFountainHealing(state: GameState): GameState {
       (player.team === 'radiant' && player.zone === 'radiant-fountain') ||
       (player.team === 'dire' && player.zone === 'dire-fountain')
 
-    if (isInFountain) {
-      const hpHeal = Math.floor(player.maxHp * FOUNTAIN_HEAL_PER_TICK_PERCENT / 100)
-      const mpHeal = Math.floor(player.maxMp * FOUNTAIN_MANA_PER_TICK_PERCENT / 100)
+    // Skip healing if player is in combat (soft check — full combat tracking would need a separate system)
+    const inCombat = player.buffs.some(b => b.id === 'inCombat')
+    if (isInFountain && !inCombat) {
+      const hpHeal = Math.floor((player.maxHp * FOUNTAIN_HEAL_PER_TICK_PERCENT) / 100)
+      const mpHeal = Math.floor((player.maxMp * FOUNTAIN_MANA_PER_TICK_PERCENT) / 100)
       players[pid] = {
         ...player,
         hp: Math.min(player.maxHp, player.hp + hpHeal),
@@ -263,18 +306,21 @@ function handleDeaths(state: GameState, events: GameEngineEvent[]): GameState {
 
   for (const [pid, player] of Object.entries(players)) {
     if (!player.alive && player.respawnTick === null) {
+      const alreadyCounted = events.some(e => e._tag === 'death' && e.playerId === pid)
       const respawnTicks = RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * player.level
       players[pid] = {
         ...player,
         respawnTick: state.tick + respawnTicks,
-        deaths: player.deaths + 1,
+        deaths: alreadyCounted ? player.deaths : player.deaths + 1,
       }
-      events.push({
-        _tag: 'death',
-        tick: state.tick,
-        playerId: pid,
-        respawnTick: state.tick + respawnTicks,
-      })
+      if (!alreadyCounted) {
+        events.push({
+          _tag: 'death',
+          tick: state.tick,
+          playerId: pid,
+          respawnTick: state.tick + respawnTicks,
+        })
+      }
       changed = true
     }
   }
@@ -292,10 +338,7 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
 
     const nextLevelXp = XP_PER_LEVEL[player.level + 1]
     if (nextLevelXp !== undefined && player.xp >= nextLevelXp) {
-      players[pid] = {
-        ...player,
-        level: player.level + 1,
-      }
+      players[pid] = levelUpHero(player)
       events.push({
         _tag: 'level_up',
         tick: state.tick,

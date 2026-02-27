@@ -48,7 +48,7 @@ export const parseClientMessageEither = Schema.decodeUnknownEither(ClientMessage
 const GameEventSchema = Schema.Struct({
   tick: Schema.Number,
   type: Schema.String,
-  payload: Schema.Record(Schema.String, Schema.Unknown),
+  payload: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
 })
 
 const PlayerEndStatsSchema = Schema.Struct({
@@ -87,7 +87,7 @@ const AnnouncementSchema = Schema.Struct({
 const GameOverSchema = Schema.Struct({
   type: Schema.Literal('game_over'),
   winner: Schema.Union(Schema.Literal('radiant'), Schema.Literal('dire')),
-  stats: Schema.Record(Schema.String, PlayerEndStatsSchema),
+  stats: Schema.Record({ key: Schema.String, value: PlayerEndStatsSchema }),
 })
 
 const ErrorSchema = Schema.Struct({

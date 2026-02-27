@@ -12,7 +12,6 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
-  healPlayer,
   deductMana,
   setCooldown,
   applyBuff,
@@ -121,9 +120,7 @@ function resolveW(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     if (player.mp < W_MANA) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: W_MANA, current: player.mp }),
-      )
+      return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
     }
 
     let caster = deductMana(player, W_MANA)
@@ -227,11 +224,7 @@ function resolveR(
 // ── Passive: Resonance ────────────────────────────────────────────
 // Consecutive attacks on same target: +10% damage per stack, max 5.
 
-function resolveHeroPassive(
-  state: GameState,
-  playerId: string,
-  event: GameEvent,
-): GameState {
+function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'attack' || event.payload['attackerId'] !== playerId) return state
 
   const player = state.players[playerId]

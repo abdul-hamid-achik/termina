@@ -32,6 +32,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
+    defense: 3,
+    magicResist: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -51,10 +53,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   })
 }
 
-function makeState(
-  players: PlayerState[],
-  overrides: Partial<GameState> = {},
-): GameState {
+function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): GameState {
   const playerMap: Record<string, PlayerState> = {}
   for (const p of players) {
     playerMap[p.id] = p
@@ -160,9 +159,7 @@ describe('Daemon Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       const dot = updatedEnemy.buffs.find((b) => b.id === 'inject_dot')
@@ -176,9 +173,7 @@ describe('Daemon Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const dot = result.state.players['e1']!.buffs.find((b) => b.id === 'inject_dot')
       expect(dot!.stacks).toBe(60) // 180 total / 3 ticks = 60 per tick at level 4
@@ -189,9 +184,7 @@ describe('Daemon Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(300 - 50) // Level 1 costs 50
@@ -209,9 +202,7 @@ describe('Daemon Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       expect(hasBuff(result.state.players['p1']!, 'stealth')).toBe(false)
     })
@@ -230,9 +221,7 @@ describe('Daemon Hero', () => {
       const enemy = makeEnemy({ hp: 100, maxHp: 550 }) // 100/550 ≈ 18% — below 30%
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       // Should deal massive pure damage, likely killing the target
       expect(result.state.players['e1']!.hp).toBe(0)
@@ -244,9 +233,7 @@ describe('Daemon Hero', () => {
       const enemy = makeEnemy({ hp: 400, maxHp: 550 }) // 400/550 ≈ 73% — above 30%
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       // Ability fails but doesn't error — no mana deducted, no cooldown
       const updated = result.state.players['p1']!

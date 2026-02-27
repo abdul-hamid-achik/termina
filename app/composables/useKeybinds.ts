@@ -70,8 +70,9 @@ export function useKeybinds(callbacks: KeybindCallbacks, active: () => boolean) 
     }
 
     // Quick cast shortcuts
-    if (settings.quickCastEnabled && QUICKCAST_MAP[e.key]) {
-      callbacks.onQuickCast?.(QUICKCAST_MAP[e.key])
+    const quickCastSlot = QUICKCAST_MAP[e.key]
+    if (settings.quickCastEnabled && quickCastSlot) {
+      callbacks.onQuickCast?.(quickCastSlot)
     }
   }
 

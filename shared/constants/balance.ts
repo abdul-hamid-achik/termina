@@ -22,14 +22,14 @@ export const MAX_LEVEL = 25
 
 /** XP required to reach each level (index = level, index 0 unused). */
 export const XP_PER_LEVEL: readonly number[] = [
-  0,    // 0 (unused)
-  0,    // 1 (start)
-  100,  // 2
-  200,  // 3
-  350,  // 4
-  500,  // 5
-  700,  // 6
-  900,  // 7
+  0, // 0 (unused)
+  0, // 1 (start)
+  100, // 2
+  200, // 3
+  350, // 4
+  500, // 5
+  700, // 6
+  900, // 7
   1150, // 8
   1400, // 9
   1700, // 10

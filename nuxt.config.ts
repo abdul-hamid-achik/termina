@@ -7,32 +7,23 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  modules: [
-    '@pinia/nuxt',
-    '@unocss/nuxt',
-    '@nuxt/eslint',
-    'nuxt-auth-utils',
-  ],
+  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', '@nuxt/eslint', 'nuxt-auth-utils'],
 
   app: {
     head: {
       title: 'TERMINA',
       meta: [
-        { name: 'description', content: 'A text-based multiplayer MOBA — where every command is a kill' },
+        {
+          name: 'description',
+          content: 'A text-based multiplayer MOBA — where every command is a kill',
+        },
         { name: 'theme-color', content: '#0a0a0f' },
       ],
-      link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-      ],
+      link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
     },
   },
 
-  css: [
-    '@fontsource/jetbrains-mono/400.css',
-    '@fontsource/jetbrains-mono/700.css',
-    '~/assets/css/terminal.css',
-    '~/assets/css/game.css',
-  ],
+  css: ['@fontsource/jetbrains-mono/400.css', '@fontsource/jetbrains-mono/700.css'],
 
   runtimeConfig: {
     sessionSecret: '',
@@ -49,6 +40,12 @@ export default defineNuxtConfig({
       websocket: true,
     },
   },
+
+  tailwindcss: {
+    cssPath: '~/assets/css/terminal.css',
+  },
+
+  components: [{ path: '~/components', pathPrefix: false }],
 
   typescript: {
     strict: true,

@@ -34,44 +34,15 @@ const percentage = computed(() => {
 </script>
 
 <template>
-  <span class="progress-bar">
-    <span class="progress-bar__bracket">[</span>
-    <span
-      class="progress-bar__fill"
-      :style="{ color: `var(--color-${color}, ${color})` }"
-    >{{ bar }}</span>
-    <span class="progress-bar__bracket">]</span>
-    <span v-if="showLabel" class="progress-bar__label">
+  <span class="inline-flex items-center gap-1 whitespace-nowrap font-mono text-[0.8rem]">
+    <span class="text-text-dim">[</span>
+    <span class="tracking-[-0.05em]" :style="{ color: `rgb(var(--color-${color}, ${color}))` }">{{
+      bar
+    }}</span>
+    <span class="text-text-dim">]</span>
+    <span v-if="showLabel" class="text-text-primary text-xs">
       {{ value }}/{{ max }}
-      <span class="progress-bar__pct">({{ percentage }}%)</span>
+      <span class="text-text-dim">({{ percentage }}%)</span>
     </span>
   </span>
 </template>
-
-<style scoped>
-.progress-bar {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.progress-bar__bracket {
-  color: var(--text-dim);
-}
-
-.progress-bar__fill {
-  letter-spacing: -0.05em;
-}
-
-.progress-bar__label {
-  color: var(--text-primary);
-  font-size: 0.75rem;
-}
-
-.progress-bar__pct {
-  color: var(--text-dim);
-}
-</style>

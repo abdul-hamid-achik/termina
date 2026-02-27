@@ -48,7 +48,6 @@ export function useGameState() {
   }
 
   // Reset countdown on each tick change
-  const _tickWatcher = computed(() => store.tick)
   let lastTick = store.tick
 
   // Manual polling since we can't use watch in a composable without setup
@@ -68,7 +67,7 @@ export function useGameState() {
     if (!store.player) return []
     const zone = ZONE_MAP[store.player.zone]
     if (!zone) return []
-    return zone.adjacentTo.map(id => ZONE_MAP[id]).filter(Boolean)
+    return zone.adjacentTo.map((id) => ZONE_MAP[id]).filter(Boolean)
   })
 
   const playerHp = computed(() => {

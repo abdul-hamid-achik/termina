@@ -1,4 +1,12 @@
-import { pgTable, text, integer, timestamp, boolean, jsonb, serial, real } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  text,
+  integer,
+  timestamp,
+  jsonb,
+  serial,
+  index,
+} from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 // ── Players ───────────────────────────────────────────────────────
@@ -40,8 +48,12 @@ export const matchesRelations = relations(matches, ({ many }) => ({
 
 export const matchPlayers = pgTable('match_players', {
   id: serial('id').primaryKey(),
-  matchId: text('match_id').notNull().references(() => matches.id),
-  playerId: text('player_id').notNull().references(() => players.id),
+  matchId: text('match_id')
+    .notNull()
+    .references(() => matches.id),
+  playerId: text('player_id')
+    .notNull()
+    .references(() => players.id),
   team: text('team', { enum: ['radiant', 'dire'] }).notNull(),
   heroId: text('hero_id').notNull(),
   kills: integer('kills').notNull().default(0),
@@ -53,7 +65,10 @@ export const matchPlayers = pgTable('match_players', {
   finalItems: jsonb('final_items').$type<string[]>().default([]),
   finalLevel: integer('final_level').notNull().default(1),
   mmrChange: integer('mmr_change').notNull().default(0),
-})
+}, (table) => [
+  index('match_players_match_id_idx').on(table.matchId),
+  index('match_players_player_id_idx').on(table.playerId),
+])
 
 export const matchPlayersRelations = relations(matchPlayers, ({ one }) => ({
   match: one(matches, { fields: [matchPlayers.matchId], references: [matches.id] }),
@@ -64,14 +79,19 @@ export const matchPlayersRelations = relations(matchPlayers, ({ one }) => ({
 
 export const heroStats = pgTable('hero_stats', {
   id: serial('id').primaryKey(),
-  playerId: text('player_id').notNull().references(() => players.id),
+  playerId: text('player_id')
+    .notNull()
+    .references(() => players.id),
   heroId: text('hero_id').notNull(),
   gamesPlayed: integer('games_played').notNull().default(0),
   wins: integer('wins').notNull().default(0),
   totalKills: integer('total_kills').notNull().default(0),
   totalDeaths: integer('total_deaths').notNull().default(0),
   totalAssists: integer('total_assists').notNull().default(0),
-})
+}, (table) => [
+  index('hero_stats_player_id_idx').on(table.playerId),
+  index('hero_stats_hero_id_idx').on(table.heroId),
+])
 
 export const heroStatsRelations = relations(heroStats, ({ one }) => ({
   player: one(players, { fields: [heroStats.playerId], references: [players.id] }),

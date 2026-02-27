@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onUnmounted, watch } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useLobbyStore } from '~/stores/lobby'
 import { useGameStore } from '~/stores/game'
@@ -11,7 +11,11 @@ const lobbyStore = useLobbyStore()
 const gameStore = useGameStore()
 const router = useRouter()
 
-const { connect, onMessage, disconnect, send, connected } = useGameSocket()
+onMounted(() => {
+  if (!authStore.isAuthenticated) navigateTo('/login')
+})
+
+const { connect, onMessage, disconnect, send } = useGameSocket()
 
 let removeHandler: (() => void) | null = null
 
@@ -68,11 +72,6 @@ function handleHeroPick(heroId: string) {
   }
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 // Navigate to /play when game is starting
 watch(

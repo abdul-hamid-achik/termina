@@ -4,7 +4,10 @@ import {
   filterStateForPlayer,
   type FoggedPlayer,
 } from '../../../server/game/engine/VisionCalculator'
-import type { GameState, PlayerState, ZoneRuntimeState, TowerState } from '../../../shared/types/game'
+import type {
+  GameState,
+  PlayerState,
+} from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -26,6 +29,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
+    defense: 3,
+    magicResist: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -188,7 +193,13 @@ describe('VisionCalculator', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
-          e1: makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', name: 'VisibleEnemy', hp: 300 }),
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'mid-river',
+            name: 'VisibleEnemy',
+            hp: 300,
+          }),
         },
       })
 

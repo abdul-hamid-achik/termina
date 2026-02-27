@@ -24,6 +24,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
+    defense: 3,
+    magicResist: 15,
     kills: 0,
     deaths: 0,
     assists: 0,

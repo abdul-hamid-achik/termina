@@ -1,12 +1,11 @@
 import { Effect, Data } from 'effect'
-import type { GameState, PlayerState, GameEvent } from '~~/shared/types/game'
+import type { GameState, PlayerState } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { MAX_ITEMS, WARD_DURATION_TICKS, WARD_LIMIT_PER_TEAM } from '~~/shared/constants/balance'
-import { ITEMS, getItem } from './registry'
+import { getItem } from './registry'
 import {
   applyBuff,
-  healPlayer,
   updatePlayer,
   getAlliesInZone,
   updatePlayers,
@@ -14,6 +13,7 @@ import {
 import { areAdjacent } from '../map/topology'
 
 // ── Typed Errors ──────────────────────────────────────────────────
+/* eslint-disable unicorn/throw-new-error */
 
 export class NotInShopError extends Data.TaggedError('NotInShopError')<{
   readonly zone: string
@@ -36,6 +36,7 @@ export class ItemOnCooldownError extends Data.TaggedError('ItemOnCooldownError')
   readonly itemId: string
   readonly ticksRemaining: number
 }> {}
+/* eslint-enable unicorn/throw-new-error */
 
 export type ShopError =
   | NotInShopError
@@ -236,11 +237,10 @@ function useBlinkModule(
   target?: TargetRef | string,
 ): Effect.Effect<GameState, ItemError> {
   return Effect.gen(function* () {
-    const zoneId = typeof target === 'string' ? target : target?.kind === 'hero' ? target.name : undefined
+    const zoneId =
+      typeof target === 'string' ? target : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId || !areAdjacent(player.zone, zoneId)) {
-      return yield* Effect.fail(
-        new ItemNotFoundError({ itemId: 'blink_module' }),
-      )
+      return yield* Effect.fail(new ItemNotFoundError({ itemId: 'blink_module' }))
     }
 
     let updated: PlayerState = { ...player, zone: zoneId }
@@ -294,7 +294,8 @@ function useObserverWard(
   target?: TargetRef | string,
 ): Effect.Effect<GameState, ItemError> {
   return Effect.gen(function* () {
-    const zoneId = typeof target === 'string' ? target : target?.kind === 'hero' ? target.name : undefined
+    const zoneId =
+      typeof target === 'string' ? target : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId || !state.zones[zoneId]) {
       return yield* Effect.fail(new ItemNotFoundError({ itemId: 'observer_ward' }))
     }
@@ -309,7 +310,7 @@ function useObserverWard(
       return yield* Effect.fail(new ItemNotFoundError({ itemId: 'observer_ward' }))
     }
 
-    let updated = consumeItem(player, slot)
+    const updated = consumeItem(player, slot)
     const updatedZones = {
       ...state.zones,
       [zoneId]: {
@@ -330,7 +331,7 @@ function useObserverWard(
 }
 
 function useSmokeOfDeceit(state: GameState, player: PlayerState, slot: number): GameState {
-  let updated = consumeItem(player, slot)
+  const updated = consumeItem(player, slot)
 
   // Apply smoke buff to self and all allies in zone
   const allies = getAlliesInZone(state, player)

@@ -3,11 +3,13 @@ import type { RedisServiceApi } from '../../services/RedisService'
 import type { WebSocketServiceApi } from '../../services/WebSocketService'
 import type { DatabaseServiceApi } from '../../services/DatabaseService'
 import { createLobby } from './lobby'
+import { createBotPlayers } from '../ai/BotManager'
 
 const QUEUE_KEY = 'matchmaking:queue'
 const QUEUE_TIMES_KEY = 'matchmaking:queue_times'
 const MATCH_SIZE = 10 // 5v5
 const MATCHMAKING_INTERVAL_MS = 5000
+const BOT_FILL_WAIT_MS = 10_000 // Fill with bots after 10s wait
 
 // MMR range expansion over time
 const MMR_RANGES: { afterSeconds: number; range: number }[] = [
@@ -34,14 +36,14 @@ function getMmrRange(waitTimeSeconds: number): number {
   return range
 }
 
-export function joinQueue(
-  redis: RedisServiceApi,
-  entry: QueueEntry,
-): Effect.Effect<void> {
+export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Effect<void> {
   const data = JSON.stringify(entry)
   return Effect.gen(function* () {
     yield* redis.zadd(QUEUE_KEY, entry.mmr, data)
     yield* redis.set(`${QUEUE_TIMES_KEY}:${entry.playerId}`, String(entry.joinedAt))
+    yield* Effect.logInfo('Player joined queue').pipe(
+      Effect.annotateLogs({ playerId: entry.playerId, mmr: entry.mmr, mode: entry.mode }),
+    )
   })
 }
 
@@ -61,6 +63,7 @@ export function leaveQueue(
       }
     }
     yield* redis.del(`${QUEUE_TIMES_KEY}:${playerId}`)
+    yield* Effect.logInfo('Player left queue').pipe(Effect.annotateLogs({ playerId }))
   })
 }
 
@@ -71,15 +74,42 @@ async function tryFormMatch(
 ): Promise<void> {
   const program = Effect.gen(function* () {
     const queueSize = yield* redis.zcard(QUEUE_KEY)
-    if (queueSize < MATCH_SIZE) return
 
     // Get all queued players
     const allEntries = yield* redis.zrangebyscore(QUEUE_KEY, 0, 99999)
     const players: QueueEntry[] = allEntries.map((raw) => JSON.parse(raw))
 
-    if (players.length < MATCH_SIZE) return
-
     const now = Date.now()
+
+    // Bot fill: if any player has waited > BOT_FILL_WAIT_MS and we have at least 1 player
+    if (players.length > 0 && players.length < MATCH_SIZE) {
+      const longestWait = Math.max(...players.map((p) => now - p.joinedAt))
+      if (longestWait >= BOT_FILL_WAIT_MS) {
+        const botsNeeded = MATCH_SIZE - players.length
+        const botEntries = createBotPlayers(
+          botsNeeded,
+          players.map((p) => p.playerId),
+        )
+        const allPlayers = [...players, ...botEntries]
+
+        // Remove real players from queue
+        for (const raw of allEntries) {
+          yield* redis.zrem(QUEUE_KEY, raw)
+        }
+        for (const p of players) {
+          yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}`)
+        }
+
+        createLobby(allPlayers, ws, redis, db)
+        yield* Effect.logInfo('Match formed with bots').pipe(
+          Effect.annotateLogs({ realPlayers: players.length, bots: botsNeeded }),
+        )
+        return
+      }
+    }
+
+    if (queueSize < MATCH_SIZE) return
+    if (players.length < MATCH_SIZE) return
 
     // Sort by MMR
     players.sort((a, b) => a.mmr - b.mmr)
@@ -99,8 +129,12 @@ async function tryFormMatch(
 
       if (allWithinRange) {
         // Remove matched players from queue
-        for (const raw of allEntries.slice(i, i + MATCH_SIZE)) {
-          yield* redis.zrem(QUEUE_KEY, raw)
+        for (const p of group) {
+          const raw = allEntries.find(r => {
+            const entry: QueueEntry = JSON.parse(r)
+            return entry.playerId === p.playerId
+          })
+          if (raw) yield* redis.zrem(QUEUE_KEY, raw)
         }
         for (const p of group) {
           yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}`)
@@ -108,13 +142,20 @@ async function tryFormMatch(
 
         // Create lobby
         createLobby(group, ws, redis, db)
+        yield* Effect.logInfo('Match formed').pipe(
+          Effect.annotateLogs({ queueSize: players.length, matchSize: MATCH_SIZE }),
+        )
         return
       }
     }
   })
 
   await Effect.runPromise(program).catch((err) => {
-    console.error('[Matchmaking] Error forming match:', err)
+    Effect.runPromise(
+      Effect.logError('Matchmaking error forming match').pipe(
+        Effect.annotateLogs({ error: String(err) }),
+      ),
+    )
   })
 }
 

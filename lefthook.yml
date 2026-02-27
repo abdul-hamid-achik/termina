@@ -1,0 +1,16 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: lint
+      glob: "*.{ts,vue}"
+      run: bunx eslint {staged_files} --fix
+      stage_fixed: true
+
+    - name: knip
+      run: bunx knip --no-progress
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: test
+      run: bun run test:unit -- --run

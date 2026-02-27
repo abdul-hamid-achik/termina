@@ -1,147 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ── Terminal Theme ─────────────────────────────────────────────── */
 
 :root {
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #0f0f1a;
-  --bg-panel: #12121f;
-  --border-color: #1a1a2e;
-  --border-glow: #2a2a4e;
-  --text-primary: #e0e0e0;
-  --text-dim: #7f8c8d;
-  --color-radiant: #2ecc71;
-  --color-dire: #e94560;
-  --color-self: #3498db;
-  --color-gold: #f39c12;
-  --color-mana: #9b59b6;
-  --color-damage: #e74c3c;
-  --color-healing: #2ecc71;
-  --color-system: #7f8c8d;
-  --color-zone: #1abc9c;
-  --color-ability: #00d4ff;
+  --bg-primary: 10 10 15;
+  --bg-secondary: 15 15 26;
+  --bg-panel: 18 18 31;
+  --border-color: 26 26 46;
+  --border-glow: 42 42 78;
+  --text-primary: 224 224 224;
+  --text-dim: 127 140 141;
+  --color-radiant: 46 204 113;
+  --color-dire: 233 69 96;
+  --color-self: 52 152 219;
+  --color-gold: 243 156 18;
+  --color-mana: 155 89 182;
+  --color-damage: 231 76 60;
+  --color-healing: 46 204 113;
+  --color-system: 127 140 141;
+  --color-zone: 26 188 156;
+  --color-ability: 0 212 255;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* ── Reset & Base ──────────────────────────────────────────────── */
+/* ── Base Layer ────────────────────────────────────────────────── */
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+    font-family: var(--font-mono);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgb(var(--color-radiant));
+    color: rgb(var(--bg-primary));
+  }
+
+  ::-moz-selection {
+    background: rgb(var(--color-radiant));
+    color: rgb(var(--bg-primary));
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--bg-secondary));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-glow));
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--text-dim));
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--border-glow)) rgb(var(--bg-secondary));
+  }
+
+  a {
+    color: rgb(var(--color-ability));
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  a:hover {
+    color: rgb(var(--color-radiant));
+  }
+
+  :focus-visible {
+    outline: 1px solid rgb(var(--color-ability));
+    outline-offset: 2px;
+  }
 }
 
-html {
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* ── Utilities Layer ───────────────────────────────────────────── */
 
-body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  line-height: 1.6;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* ── Selection ─────────────────────────────────────────────────── */
-
-::selection {
-  background: var(--color-radiant);
-  color: var(--bg-primary);
-}
-
-::-moz-selection {
-  background: var(--color-radiant);
-  color: var(--bg-primary);
-}
-
-/* ── Scrollbar ─────────────────────────────────────────────────── */
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-glow);
-  border-radius: 0;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dim);
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-glow) var(--bg-secondary);
-}
-
-/* ── Links ─────────────────────────────────────────────────────── */
-
-a {
-  color: var(--color-ability);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-
-a:hover {
-  color: var(--color-radiant);
-}
-
-/* ── Focus ─────────────────────────────────────────────────────── */
-
-:focus-visible {
-  outline: 1px solid var(--color-ability);
-  outline-offset: 2px;
-}
-
-/* ── Blinking Cursor ───────────────────────────────────────────── */
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-.cursor-blink {
-  animation: blink 1s step-end infinite;
-}
-
-/* ── Scanline Overlay (subtle) ─────────────────────────────────── */
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
-}
-
-.scanline-overlay::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
-/* ── Glow Effect ───────────────────────────────────────────────── */
-
-.text-glow {
-  text-shadow: 0 0 8px currentColor;
-}
-
-.border-glow {
-  box-shadow: 0 0 4px var(--border-glow), inset 0 0 4px rgba(42, 42, 78, 0.3);
+@layer utilities {
+  .scanline-overlay::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
 }

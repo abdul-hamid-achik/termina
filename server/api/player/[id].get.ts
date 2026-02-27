@@ -18,6 +18,6 @@ export default defineEventHandler(async (event) => {
   }
 
   // Don't expose email
-  const { email, ...publicProfile } = player
+  const { email: _email, ...publicProfile } = player
   return { player: publicProfile }
 })

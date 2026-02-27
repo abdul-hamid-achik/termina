@@ -2,6 +2,7 @@ export type TargetRef =
   | { kind: 'hero'; name: string }
   | { kind: 'creep'; index: number }
   | { kind: 'tower'; zone: string }
+  | { kind: 'zone'; zone: string }
   | { kind: 'self' }
 
 export type Command =

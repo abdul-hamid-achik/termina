@@ -19,10 +19,14 @@ function getTowerTier(zoneId: string): number {
 /** Get tower max HP by tier. */
 function getTowerMaxHp(tier: number): number {
   switch (tier) {
-    case 1: return TOWER_HP_T1
-    case 2: return TOWER_HP_T2
-    case 3: return TOWER_HP_T3
-    default: return 0
+    case 1:
+      return TOWER_HP_T1
+    case 2:
+      return TOWER_HP_T2
+    case 3:
+      return TOWER_HP_T3
+    default:
+      return 0
   }
 }
 

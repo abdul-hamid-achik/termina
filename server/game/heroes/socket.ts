@@ -12,7 +12,6 @@ import {
   scaleValue,
   findTargetPlayer,
   getAllEnemyPlayers,
-  dealDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -275,11 +274,7 @@ function resolveR(
 // ── Passive: Handshake ────────────────────────────────────────────
 // When you attack a hero, gain vision of them for 5 ticks.
 
-function resolveHeroPassive(
-  state: GameState,
-  playerId: string,
-  event: GameEvent,
-): GameState {
+function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'attack' || event.payload['attackerId'] !== playerId) return state
 
   const player = state.players[playerId]

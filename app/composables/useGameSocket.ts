@@ -40,7 +40,7 @@ export function useGameSocket() {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${window.location.host}/ws?playerId=${currentPlayerId}`
+    const url = `${protocol}//${window.location.host}/ws?playerId=${currentPlayerId}&gameId=${currentGameId}`
     ws = new WebSocket(url)
 
     ws.onopen = () => {

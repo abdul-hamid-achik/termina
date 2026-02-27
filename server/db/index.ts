@@ -6,7 +6,7 @@ let _db: ReturnType<typeof createDb> | null = null
 
 function createDb() {
   const config = useRuntimeConfig()
-  const connectionString = config.database.url as string
+  const connectionString = (config.database as { url: string }).url
   const client = postgres(connectionString)
   return drizzle(client, { schema })
 }

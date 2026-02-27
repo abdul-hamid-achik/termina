@@ -7,6 +7,8 @@ import type {
   ZoneRuntimeState,
   TeamState,
   TeamId,
+  TowerState,
+  CreepState,
 } from '~~/shared/types/game'
 import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
 import { ZONE_MAP } from '~~/shared/constants/zones'
@@ -34,6 +36,8 @@ export const useGameStore = defineStore('game', () => {
   const visibleZones = ref<Record<string, ZoneRuntimeState>>({})
   const allPlayers = ref<Record<string, PlayerState>>({})
   const teams = ref<{ radiant: TeamState; dire: TeamState } | null>(null)
+  const towers = ref<TowerState[]>([])
+  const creeps = ref<CreepState[]>([])
   const events = ref<GameEvent[]>([])
   const announcements = ref<string[]>([])
   const nextTickIn = ref(0)
@@ -65,41 +69,56 @@ export const useGameStore = defineStore('game', () => {
   const nearbyEnemies = computed(() => {
     if (!player.value) return []
     return Object.values(allPlayers.value).filter(
-      p => p.zone === player.value!.zone && p.team !== player.value!.team && p.alive,
+      (p) => p.zone === player.value!.zone && p.team !== player.value!.team && p.alive,
     )
   })
 
   const nearbyAllies = computed(() => {
     if (!player.value) return []
     return Object.values(allPlayers.value).filter(
-      p => p.zone === player.value!.zone && p.team === player.value!.team && p.id !== player.value!.id && p.alive,
+      (p) =>
+        p.zone === player.value!.zone &&
+        p.team === player.value!.team &&
+        p.id !== player.value!.id &&
+        p.alive,
     )
   })
 
   // ── Actions ─────────────────────────────────────────────────────
   function updateFromTick(msg: TickStateMessage) {
-    tick.value = msg.tick
-    phase.value = msg.state.phase
-    allPlayers.value = msg.state.players
-    visibleZones.value = msg.state.zones
-    teams.value = msg.state.teams
+    const state = msg.state as {
+      phase: GamePhase
+      players: Record<string, PlayerState>
+      zones: Record<string, ZoneRuntimeState>
+      teams: { radiant: TeamState; dire: TeamState }
+      towers?: TowerState[]
+      creeps?: CreepState[]
+    }
 
-    if (playerId.value && msg.state.players[playerId.value]) {
-      player.value = msg.state.players[playerId.value]
+    tick.value = msg.tick
+    phase.value = state.phase
+    allPlayers.value = state.players
+    visibleZones.value = state.zones
+    teams.value = state.teams
+    if (state.towers) towers.value = state.towers
+    if (state.creeps) creeps.value = state.creeps
+
+    if (playerId.value && state.players[playerId.value]) {
+      player.value = state.players[playerId.value] ?? null
     }
 
     // Update scoreboard from players
-    scoreboard.value = Object.values(msg.state.players).map(p => ({
+    scoreboard.value = Object.values(state.players).map((p: Record<string, unknown>) => ({
       id: p.id,
       name: p.name,
       heroId: p.heroId ?? '',
       team: p.team,
-      kills: p.kills,
-      deaths: p.deaths,
-      assists: p.assists,
-      gold: p.gold,
-      level: p.level,
-      items: p.items,
+      kills: p.kills ?? 0,
+      deaths: p.deaths ?? 0,
+      assists: p.assists ?? 0,
+      gold: p.fogged ? 0 : (p.gold ?? 0),
+      level: p.level ?? 0,
+      items: p.fogged ? [] : (p.items ?? []),
     }))
   }
 
@@ -136,6 +155,8 @@ export const useGameStore = defineStore('game', () => {
     visibleZones.value = {}
     allPlayers.value = {}
     teams.value = null
+    towers.value = []
+    creeps.value = []
     events.value = []
     announcements.value = []
     nextTickIn.value = 0
@@ -154,6 +175,8 @@ export const useGameStore = defineStore('game', () => {
     visibleZones,
     allPlayers,
     teams,
+    towers,
+    creeps,
     events,
     announcements,
     nextTickIn,

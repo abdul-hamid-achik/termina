@@ -22,18 +22,23 @@ export const useSettingsStore = defineStore('settings', () => {
       if (typeof data.quickCastEnabled === 'boolean') quickCastEnabled.value = data.quickCastEnabled
       if (data.theme) theme.value = data.theme
       if (data.fontSize) fontSize.value = data.fontSize
-    } catch { /* ignore corrupt data */ }
+    } catch {
+      /* ignore corrupt data */
+    }
   }
 
   function save() {
     if (import.meta.server) return
-    localStorage.setItem('termina:settings', JSON.stringify({
-      audioEnabled: audioEnabled.value,
-      audioVolume: audioVolume.value,
-      quickCastEnabled: quickCastEnabled.value,
-      theme: theme.value,
-      fontSize: fontSize.value,
-    }))
+    localStorage.setItem(
+      'termina:settings',
+      JSON.stringify({
+        audioEnabled: audioEnabled.value,
+        audioVolume: audioVolume.value,
+        quickCastEnabled: quickCastEnabled.value,
+        theme: theme.value,
+        fontSize: fontSize.value,
+      }),
+    )
   }
 
   // Auto-persist on change

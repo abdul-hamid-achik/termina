@@ -28,13 +28,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function login(provider: 'github' | 'discord' = 'github') {
-    navigateTo(`/auth/${provider}`, { external: true })
+    navigateTo(`/api/auth/${provider}`, { external: true })
   }
 
   async function logout() {
     try {
       await $fetch('/api/auth/logout', { method: 'POST' })
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     user.value = null
     navigateTo('/')
   }

@@ -279,7 +279,7 @@ export function getLobby(lobbyId: string): Lobby | undefined {
   return activeLobbies.get(lobbyId)
 }
 
-export function cancelLobby(lobbyId: string, ws: WebSocketServiceApi): void {
+export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   const lobby = activeLobbies.get(lobbyId)
   if (!lobby) return
 

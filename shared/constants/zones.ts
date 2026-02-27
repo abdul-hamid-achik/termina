@@ -304,8 +304,6 @@ export const ZONES: readonly Zone[] = [
   },
 ] as const
 
-export const ZONE_MAP: Record<string, Zone> = Object.fromEntries(
-  ZONES.map((z) => [z.id, z]),
-)
+export const ZONE_MAP: Record<string, Zone> = Object.fromEntries(ZONES.map((z) => [z.id, z]))
 
 export const ZONE_IDS = ZONES.map((z) => z.id)

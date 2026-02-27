@@ -10,7 +10,6 @@ import {
   registerHero,
   scaleValue,
   findTargetPlayer,
-  getEnemiesInZone,
   dealDamage,
   deductMana,
   setCooldown,
@@ -280,11 +279,7 @@ function resolveR(
 // When an ability hits 2+ enemy heroes, deal 20% bonus damage to all targets.
 // This is checked by the ability resolver after determining hit targets.
 
-function resolveHeroPassive(
-  state: GameState,
-  playerId: string,
-  event: GameEvent,
-): GameState {
+function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   // Pattern Match triggers on ability_cast with multiple targets
   if (event.type !== 'ability_cast' || event.payload['playerId'] !== playerId) return state
 
@@ -292,9 +287,7 @@ function resolveHeroPassive(
   if (!targets || targets.length < 2) return state
 
   // Apply 20% bonus damage to all targets
-  const bonusDamage = Math.round(
-    ((event.payload['damage'] as number) ?? 0) * PATTERN_MATCH_BONUS,
-  )
+  const bonusDamage = Math.round(((event.payload['damage'] as number) ?? 0) * PATTERN_MATCH_BONUS)
   if (bonusDamage <= 0) return state
 
   const updatedPlayers = targets

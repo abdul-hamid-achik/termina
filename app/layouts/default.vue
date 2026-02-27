@@ -8,120 +8,39 @@ const navLinks = [
 </script>
 
 <template>
-  <div class="layout-default scanline-overlay">
-    <header class="nav-bar">
-      <NuxtLink to="/" class="nav-logo">
-        <pre class="nav-logo__art">╔╦╗╔═╗╦═╗╔╦╗╦╔╗╔╔═╗
+  <div class="flex min-h-screen flex-col scanline-overlay">
+    <header
+      class="flex items-center justify-between border-b border-border bg-bg-secondary px-4 py-2 max-sm:flex-col max-sm:gap-2"
+    >
+      <NuxtLink to="/" class="text-radiant no-underline">
+        <pre class="m-0 text-[0.55rem] leading-tight max-sm:text-[0.45rem]">
+╔╦╗╔═╗╦═╗╔╦╗╦╔╗╔╔═╗
  ║ ║╣ ╠╦╝║║║║║║║╠═╣
- ╩ ╚═╝╩╚═╩ ╩╩╝╚╝╩ ╩</pre>
+ ╩ ╚═╝╩╚═╩ ╩╩╝╚╝╩ ╩</pre
+        >
       </NuxtLink>
-      <nav class="nav-links">
+      <nav class="flex gap-2 max-sm:flex-wrap max-sm:justify-center">
         <NuxtLink
           v-for="link in navLinks"
           :key="link.to"
           :to="link.to"
-          class="nav-link"
+          class="px-1 py-1 text-[0.8rem] text-text-dim no-underline transition-colors duration-150 hover:text-ability [&.router-link-active]:text-ability"
         >
           [{{ link.label }}]
         </NuxtLink>
       </nav>
     </header>
 
-    <main class="layout-main">
+    <main class="flex-1 p-4">
       <slot />
     </main>
 
-    <footer class="nav-footer">
-      <span class="nav-footer__text">TERMINA v0.1.0-alpha</span>
-      <span class="nav-footer__sep">|</span>
-      <span class="nav-footer__text">&gt;_ where every command is a kill</span>
+    <footer
+      class="flex items-center justify-center gap-2 border-t border-border bg-bg-secondary px-4 py-2"
+    >
+      <span class="text-[0.7rem] text-text-dim">TERMINA v0.1.0-alpha</span>
+      <span class="text-[0.7rem] text-border">|</span>
+      <span class="text-[0.7rem] text-text-dim">&gt;_ where every command is a kill</span>
     </footer>
   </div>
 </template>
-
-<style scoped>
-.layout-default {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-}
-
-.nav-logo {
-  text-decoration: none;
-  color: var(--color-radiant);
-}
-
-.nav-logo__art {
-  font-size: 0.55rem;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.nav-links {
-  display: flex;
-  gap: 8px;
-}
-
-.nav-link {
-  color: var(--text-dim);
-  font-size: 0.8rem;
-  padding: 4px 4px;
-  transition: color 0.15s;
-  text-decoration: none;
-}
-
-.nav-link:hover,
-.nav-link.router-link-active {
-  color: var(--color-ability);
-}
-
-.layout-main {
-  flex: 1;
-  padding: 16px;
-}
-
-.nav-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-}
-
-.nav-footer__text {
-  color: var(--text-dim);
-  font-size: 0.7rem;
-}
-
-.nav-footer__sep {
-  color: var(--border-color);
-  font-size: 0.7rem;
-}
-
-@media (max-width: 640px) {
-  .nav-bar {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .nav-logo__art {
-    font-size: 0.45rem;
-  }
-
-  .nav-links {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
-</style>

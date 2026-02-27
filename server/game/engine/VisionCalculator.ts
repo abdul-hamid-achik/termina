@@ -1,5 +1,13 @@
-import type { GameState, PlayerState, ZoneRuntimeState, TowerState, CreepState } from '~~/shared/types/game'
+import type {
+  GameState,
+  PlayerState,
+  ZoneRuntimeState,
+  FoggedPlayer,
+  PlayerVisibleState,
+} from '~~/shared/types/game'
 import { getAdjacentZones } from '../map/topology'
+
+export type { FoggedPlayer, PlayerVisibleState }
 
 /**
  * Calculate the set of zone IDs visible to a given player.
@@ -60,34 +68,6 @@ function addZoneWithAdjacent(visible: Set<string>, zoneId: string): void {
   for (const adj of getAdjacentZones(zoneId)) {
     visible.add(adj)
   }
-}
-
-/**
- * Visible state that a player receives — all info from non-visible zones is stripped.
- * CRITICAL SECURITY: This is the fog-of-war filter. Never leak fogged data.
- */
-export interface PlayerVisibleState {
-  tick: number
-  phase: GameState['phase']
-  teams: GameState['teams']
-  players: Record<string, PlayerState | FoggedPlayer>
-  zones: Record<string, ZoneRuntimeState>
-  creeps: CreepState[]
-  towers: TowerState[]
-  events: GameState['events']
-  visibleZones: string[]
-}
-
-/** Minimal player info for fogged (invisible) players. */
-export interface FoggedPlayer {
-  id: string
-  name: string
-  team: string
-  heroId: string | null
-  level: number
-  alive: boolean
-  // No zone, HP, MP, items, buffs, or position data
-  fogged: true
 }
 
 /**
@@ -158,7 +138,8 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
   const filteredEvents = state.events.filter((e) => {
     // Always show team-relevant events
     if (e.payload['team'] === team) return true
-    if (e.payload['playerId'] && state.players[e.payload['playerId'] as string]?.team === team) return true
+    if (e.payload['playerId'] && state.players[e.payload['playerId'] as string]?.team === team)
+      return true
     // Show events in visible zones
     if (e.payload['zone'] && visible.has(e.payload['zone'] as string)) return true
     return false

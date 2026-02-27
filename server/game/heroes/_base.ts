@@ -6,6 +6,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { calculateEffectiveDamage } from '../engine/DamageCalculator'
 
 // ── Typed Errors ──────────────────────────────────────────────────
+/* eslint-disable unicorn/throw-new-error */
 
 export class InsufficientManaError extends Data.TaggedError('InsufficientManaError')<{
   readonly required: number
@@ -21,6 +22,7 @@ export class InvalidTargetError extends Data.TaggedError('InvalidTargetError')<{
   readonly target: string
   readonly reason: string
 }> {}
+/* eslint-enable unicorn/throw-new-error */
 
 export type AbilityError = InsufficientManaError | CooldownError | InvalidTargetError
 
@@ -165,10 +167,7 @@ export function addEvent(state: GameState, event: GameEvent): GameState {
 
 // ── Target Resolution ─────────────────────────────────────────────
 
-export function findTargetPlayer(
-  state: GameState,
-  target: TargetRef,
-): PlayerState | undefined {
+export function findTargetPlayer(state: GameState, target: TargetRef): PlayerState | undefined {
   if (target.kind === 'hero') {
     return Object.values(state.players).find(
       (p) => p.heroId === target.name || p.name === target.name || p.id === target.name,
@@ -267,11 +266,7 @@ export function resetAllCooldowns(player: PlayerState): PlayerState {
 
 // ── Passive Resolution ────────────────────────────────────────────
 
-export function resolvePassive(
-  state: GameState,
-  playerId: string,
-  event: GameEvent,
-): GameState {
+export function resolvePassive(state: GameState, playerId: string, event: GameEvent): GameState {
   const player = state.players[playerId]
   if (!player?.heroId || !player.alive) return state
   const resolver = heroRegistry.get(player.heroId)
@@ -297,6 +292,36 @@ export function levelUpHero(player: PlayerState): PlayerState {
   }
 }
 
+// ── DoT & Buff Tick Helpers ───────────────────────────────────────
+
+export function processDoTs(state: GameState): GameState {
+  let updated = state
+  for (const [_pid, player] of Object.entries(updated.players)) {
+    if (!player.alive) continue
+    const dotBuffs = player.buffs.filter(b => b.id.includes('dot'))
+    if (dotBuffs.length === 0) continue
+    let target = player
+    for (const dot of dotBuffs) {
+      const newHp = Math.max(0, target.hp - dot.stacks)
+      target = { ...target, hp: newHp, alive: newHp > 0 }
+    }
+    updated = updatePlayer(updated, target)
+  }
+  return updated
+}
+
+export function tickAllBuffs(state: GameState): GameState {
+  let updated = state
+  for (const [_pid, player] of Object.entries(updated.players)) {
+    if (!player.alive) continue
+    const ticked = tickBuffs(player)
+    if (ticked !== player) {
+      updated = updatePlayer(updated, ticked)
+    }
+  }
+  return updated
+}
+
 // ── Core Ability Resolver ─────────────────────────────────────────
 
 export function resolveAbility(
@@ -314,15 +339,11 @@ export function resolveAbility(
     }
 
     if (hasBuff(player, 'stun')) {
-      return yield* Effect.fail(
-        new InvalidTargetError({ target: ability, reason: 'Stunned' }),
-      )
+      return yield* Effect.fail(new InvalidTargetError({ target: ability, reason: 'Stunned' }))
     }
 
     if (hasBuff(player, 'silence')) {
-      return yield* Effect.fail(
-        new InvalidTargetError({ target: ability, reason: 'Silenced' }),
-      )
+      return yield* Effect.fail(new InvalidTargetError({ target: ability, reason: 'Silenced' }))
     }
 
     const abilityLevel = getAbilityLevel(player.level, ability)

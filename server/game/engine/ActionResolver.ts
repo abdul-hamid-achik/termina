@@ -1,9 +1,9 @@
 import { Effect } from 'effect'
 import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
-import { areAdjacent, getAdjacentZones } from '../map/topology'
+import { areAdjacent } from '../map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalculator'
+import { calculatePhysicalDamage } from './DamageCalculator'
 import { placeWard } from '../map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '../protocol/events'
@@ -17,6 +17,7 @@ export interface PlayerAction {
   command: Command
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ResolvedChanges {
   players: Record<string, PlayerState>
   events: GameEngineEvent[]
@@ -121,8 +122,8 @@ export function resolveActions(
     let players = { ...state.players }
     const events: GameEngineEvent[] = []
     const heroAttackers = new Map<string, string>()
-    let zones = { ...state.zones }
-    let creeps = [...state.creeps]
+    const zones = { ...state.zones }
+    const creeps = [...state.creeps]
     let towers = [...state.towers]
     const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
     const towerKills: Array<{ zone: string; team: TeamId }> = []

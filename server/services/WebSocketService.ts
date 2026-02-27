@@ -33,7 +33,11 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
       }
       gameMap.set(playerId, ws)
       playerToGame.set(playerId, gameId)
-    }),
+    }).pipe(
+      Effect.tap(() =>
+        Effect.logDebug('WS registered').pipe(Effect.annotateLogs({ playerId, gameId })),
+      ),
+    ),
 
   removeConnection: (playerId) =>
     Effect.sync(() => {
@@ -48,7 +52,9 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
         }
         playerToGame.delete(playerId)
       }
-    }),
+    }).pipe(
+      Effect.tap(() => Effect.logDebug('WS removed').pipe(Effect.annotateLogs({ playerId }))),
+    ),
 
   sendToPlayer: (playerId, message) =>
     Effect.sync(() => {

@@ -64,9 +64,7 @@ function resolveQ(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     if (player.mp < Q_MANA) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: Q_MANA, current: player.mp }),
-      )
+      return yield* Effect.fail(new InsufficientManaError({ required: Q_MANA, current: player.mp }))
     }
 
     // Target is a zone — encoded as hero target with zone name
@@ -173,10 +171,7 @@ function resolveE(
       )
     }
 
-    const targetPlayer =
-      target.kind === 'self'
-        ? player
-        : findTargetPlayer(state, target)
+    const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
     if (!targetPlayer || !targetPlayer.alive || targetPlayer.zone !== player.zone) {
       return yield* Effect.fail(
         new InvalidTargetError({
@@ -195,8 +190,7 @@ function resolveE(
         ? healPlayer(caster, healAmount)
         : healPlayer(targetPlayer, healAmount)
 
-    const players =
-      targetPlayer.id === player.id ? [healed] : [caster, healed]
+    const players = targetPlayer.id === player.id ? [healed] : [caster, healed]
 
     return {
       state: updatePlayers(state, players),
@@ -273,11 +267,7 @@ function resolveR(
 // ── Passive: Watchtower ───────────────────────────────────────────
 // Extends vision by +1 zone. Implemented as a buff check in VisionCalculator.
 
-function resolveHeroPassive(
-  state: GameState,
-  playerId: string,
-  _event: GameEvent,
-): GameState {
+function resolveHeroPassive(state: GameState, playerId: string, _event: GameEvent): GameState {
   // Watchtower is a permanent passive — ensure the buff exists
   const player = state.players[playerId]
   if (!player) return state

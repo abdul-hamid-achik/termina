@@ -249,11 +249,7 @@ function resolveR(
 // ── Passive: Hardened ─────────────────────────────────────────────
 // Permanently take 10% reduced damage. Applied via buff check in dealDamage.
 
-function resolveHeroPassive(
-  state: GameState,
-  playerId: string,
-  _event: GameEvent,
-): GameState {
+function resolveHeroPassive(state: GameState, playerId: string, _event: GameEvent): GameState {
   const player = state.players[playerId]
   if (!player) return state
 

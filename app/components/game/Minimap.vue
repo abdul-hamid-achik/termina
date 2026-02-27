@@ -22,82 +22,29 @@ function indicator(zone: MinimapZone): string {
 }
 
 function indicatorClass(zone: MinimapZone): string {
-  if (zone.fogged) return 'mm__ind--fogged'
-  if (zone.hasPlayer) return 'mm__ind--self'
-  if (zone.hasAllies) return 'mm__ind--ally'
-  if (zone.hasEnemies) return 'mm__ind--enemy'
+  if (zone.fogged) return 'text-text-dim opacity-50'
+  if (zone.hasPlayer) return 'text-self font-bold'
+  if (zone.hasAllies) return 'text-radiant'
+  if (zone.hasEnemies) return 'text-dire'
   return ''
 }
 </script>
 
 <template>
-  <div class="minimap">
+  <div class="flex flex-col gap-0.5 text-xs">
     <div
       v-for="zone in zones"
       :key="zone.id"
-      class="mm__zone"
-      :class="{ 'mm__zone--current': zone.id === playerZone }"
+      class="flex items-center gap-1.5 px-1 py-px"
+      :class="{ 'bg-self/10': zone.id === playerZone }"
     >
-      <span class="mm__ind" :class="indicatorClass(zone)">[{{ indicator(zone) }}]</span>
-      <span class="mm__name">{{ zone.name }}</span>
+      <span class="w-6 shrink-0 text-center" :class="indicatorClass(zone)"
+        >[{{ indicator(zone) }}]</span
+      >
+      <span class="text-text-dim" :class="{ '!text-self': zone.id === playerZone }">{{
+        zone.name
+      }}</span>
     </div>
-    <div v-if="!zones.length" class="mm__empty">&gt;_ no zone data</div>
+    <div v-if="!zones.length" class="p-1 text-text-dim">&gt;_ no zone data</div>
   </div>
 </template>
-
-<style scoped>
-.minimap {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.75rem;
-}
-
-.mm__zone {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 1px 4px;
-}
-
-.mm__zone--current {
-  background: rgba(52, 152, 219, 0.1);
-}
-
-.mm__ind {
-  flex-shrink: 0;
-  width: 24px;
-  text-align: center;
-}
-
-.mm__ind--self {
-  color: var(--color-self);
-  font-weight: 700;
-}
-
-.mm__ind--ally {
-  color: var(--color-radiant);
-}
-
-.mm__ind--enemy {
-  color: var(--color-dire);
-}
-
-.mm__ind--fogged {
-  color: var(--text-dim);
-  opacity: 0.5;
-}
-
-.mm__name {
-  color: var(--text-dim);
-}
-
-.mm__zone--current .mm__name {
-  color: var(--color-self);
-}
-
-.mm__empty {
-  color: var(--text-dim);
-  padding: 4px;
-}
-</style>

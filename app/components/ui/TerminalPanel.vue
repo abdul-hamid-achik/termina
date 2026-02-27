@@ -7,80 +7,24 @@ defineProps<{
 
 <template>
   <div
-    class="terminal-panel"
+    class="flex flex-col overflow-hidden border border-border bg-bg-panel"
     :class="{
-      'terminal-panel--highlight': variant === 'highlight',
-      'terminal-panel--danger': variant === 'danger',
+      'border-border-glow shadow-glow-highlight': variant === 'highlight',
+      'border-dire shadow-[0_0_6px_rgba(233,69,96,0.2)]': variant === 'danger',
     }"
   >
-    <div v-if="title" class="terminal-panel__header">
-      <span class="terminal-panel__corner">┌─</span>
-      <span class="terminal-panel__title">{{ title }}</span>
-      <span class="terminal-panel__line">─┐</span>
+    <div
+      v-if="title"
+      class="flex h-6 items-center overflow-hidden border-b border-border bg-bg-secondary px-2 text-xs select-none"
+    >
+      <span class="shrink-0 text-text-dim">┌─</span>
+      <span class="truncate px-1.5 font-bold uppercase tracking-wide text-ability">{{
+        title
+      }}</span>
+      <span class="flex-1 overflow-hidden text-right text-text-dim">─┐</span>
     </div>
-    <div class="terminal-panel__body">
+    <div class="flex-1 overflow-auto p-2">
       <slot />
     </div>
   </div>
 </template>
-
-<style scoped>
-.terminal-panel {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.terminal-panel--highlight {
-  border-color: var(--border-glow);
-  box-shadow: 0 0 6px rgba(42, 42, 78, 0.4);
-}
-
-.terminal-panel--danger {
-  border-color: var(--color-dire);
-  box-shadow: 0 0 6px rgba(233, 69, 96, 0.2);
-}
-
-.terminal-panel__header {
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  height: 24px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  font-size: 0.75rem;
-  user-select: none;
-  overflow: hidden;
-}
-
-.terminal-panel__corner {
-  color: var(--text-dim);
-  flex-shrink: 0;
-}
-
-.terminal-panel__title {
-  color: var(--color-ability);
-  padding: 0 6px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.terminal-panel__line {
-  color: var(--text-dim);
-  flex: 1;
-  overflow: hidden;
-  text-align: right;
-}
-
-.terminal-panel__body {
-  flex: 1;
-  overflow: auto;
-  padding: 8px;
-}
-</style>

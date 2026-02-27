@@ -39,75 +39,28 @@ function zoneLabel(zone: ZoneDisplay): string {
   return parts.join(' ') || '[ ]'
 }
 
-function zoneClass(zone: ZoneDisplay): string {
-  if (zone.fogged) return 'ascii-map__zone--fogged'
-  if (zone.playerHere) return 'ascii-map__zone--current'
-  if (zone.allies.length > 0) return 'ascii-map__zone--allied'
-  if (zone.enemyCount > 0) return 'ascii-map__zone--enemy'
+function zoneClasses(zone: ZoneDisplay): string {
+  if (zone.fogged) return 'text-text-dim opacity-50'
+  if (zone.playerHere) return 'text-self font-bold'
+  if (zone.allies.length > 0) return 'text-radiant'
+  if (zone.enemyCount > 0) return 'text-dire'
   return ''
 }
 </script>
 
 <template>
-  <div class="ascii-map-wrapper">
-    <pre class="ascii-map"><template v-for="zone in zones" :key="zone.id"
+  <div class="h-full overflow-auto">
+    <pre
+      class="m-0 whitespace-pre font-mono text-xs leading-relaxed"
+    ><template v-for="zone in zones" :key="zone.id"
 ><span
-  class="ascii-map__zone"
-  :class="zoneClass(zone)"
+  class="block cursor-default px-1 py-px hover:bg-white/[0.03]"
+  :class="zoneClasses(zone)"
 >{{ zone.name.padEnd(12) }} {{ zoneLabel(zone) }}
 </span></template
 ></pre>
-    <div v-if="!zones.length" class="ascii-map__empty">
+    <div v-if="!zones.length" class="p-2 text-[0.8rem] text-text-dim">
       &gt;_ loading map data...
     </div>
   </div>
 </template>
-
-<style scoped>
-.ascii-map-wrapper {
-  height: 100%;
-  overflow: auto;
-}
-
-.ascii-map {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  line-height: 1.6;
-  margin: 0;
-  white-space: pre;
-}
-
-.ascii-map__zone {
-  display: block;
-  padding: 1px 4px;
-  cursor: default;
-}
-
-.ascii-map__zone:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.ascii-map__zone--current {
-  color: var(--color-self);
-  font-weight: 700;
-}
-
-.ascii-map__zone--allied {
-  color: var(--color-radiant);
-}
-
-.ascii-map__zone--enemy {
-  color: var(--color-dire);
-}
-
-.ascii-map__zone--fogged {
-  color: var(--text-dim);
-  opacity: 0.5;
-}
-
-.ascii-map__empty {
-  color: var(--text-dim);
-  padding: 8px;
-  font-size: 0.8rem;
-}
-</style>

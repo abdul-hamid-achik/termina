@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import type { ClientMessage, ServerMessage } from '~~/shared/types/protocol'
+import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
 import { pickHero } from '../game/matchmaking/lobby'
@@ -163,7 +163,7 @@ export default defineWebSocketHandler({
     }
   },
 
-  close(peer, details) {
+  close(peer, _details) {
     const ctx = peerState.get(peer)
     if (!ctx?.playerId) return
 
@@ -195,6 +195,7 @@ export default defineWebSocketHandler({
   },
 
   error(peer, error) {
+    // eslint-disable-next-line no-console
     console.error('[WS] Error:', error)
   },
 })
