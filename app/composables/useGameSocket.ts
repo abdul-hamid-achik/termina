@@ -4,11 +4,13 @@ import { useGameStore } from '~/stores/game'
 import { socketLog } from '~/utils/logger'
 
 const MAX_RECONNECT_DELAY = 30_000
+const MAX_RECONNECT_ATTEMPTS = 20
 const HEARTBEAT_INTERVAL = 10_000
 
 export function useGameSocket() {
   const connected = ref(false)
   const reconnecting = ref(false)
+  const connectionLost = ref(false)
   const latency = ref(0)
 
   let ws: WebSocket | null = null
@@ -51,12 +53,16 @@ export function useGameSocket() {
       socketLog.info('Connected', { gameId: currentGameId })
       connected.value = true
       reconnecting.value = false
+      connectionLost.value = false
+      const isReconnect = reconnectAttempts > 0
       reconnectAttempts = 0
       _startHeartbeat()
 
-      // If connecting to a game (not lobby), send join_game to register ctx.gameId on server
-      if (currentGameId && currentPlayerId) {
-        if (currentGameId !== 'lobby') {
+      // If connecting to a game (not lobby), send join_game or reconnect
+      if (currentGameId && currentPlayerId && currentGameId !== 'lobby') {
+        if (isReconnect) {
+          send({ type: 'reconnect', gameId: currentGameId, playerId: currentPlayerId })
+        } else {
           send({ type: 'join_game', gameId: currentGameId })
         }
       }
@@ -178,6 +184,12 @@ export function useGameSocket() {
   function _scheduleReconnect() {
     // Don't reconnect if intentionally disconnected
     if (!currentGameId || !currentPlayerId) return
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      connectionLost.value = true
+      reconnecting.value = false
+      socketLog.warn('Max reconnect attempts reached', { attempts: reconnectAttempts })
+      return
+    }
     reconnecting.value = true
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY)
     reconnectAttempts++
@@ -200,6 +212,7 @@ export function useGameSocket() {
   return {
     connected,
     reconnecting,
+    connectionLost,
     latency,
     connect,
     send,

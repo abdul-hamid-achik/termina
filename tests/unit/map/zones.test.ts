@@ -132,16 +132,16 @@ describe('Zones', () => {
       placeWard(zones, 'mid-river', 'radiant', 10)
       expect(zones['mid-river']!.wards).toHaveLength(1)
 
-      removeExpiredWards(zones, 10 + WARD_DURATION_TICKS + 1)
-      expect(zones['mid-river']!.wards).toHaveLength(0)
+      const updated = removeExpiredWards(zones, 10 + WARD_DURATION_TICKS + 1)
+      expect(updated['mid-river']!.wards).toHaveLength(0)
     })
 
     it('keeps wards that have not expired', () => {
       const zones = initializeZoneStates()
       placeWard(zones, 'mid-river', 'radiant', 10)
 
-      removeExpiredWards(zones, 10 + WARD_DURATION_TICKS - 1)
-      expect(zones['mid-river']!.wards).toHaveLength(1)
+      const updated = removeExpiredWards(zones, 10 + WARD_DURATION_TICKS - 1)
+      expect(updated['mid-river']!.wards).toHaveLength(1)
     })
 
     it('removes ward at exactly expiry tick', () => {
@@ -149,8 +149,8 @@ describe('Zones', () => {
       placeWard(zones, 'mid-river', 'radiant', 10)
 
       // expiryTick = 10 + WARD_DURATION_TICKS. Filter keeps w.expiryTick > currentTick
-      removeExpiredWards(zones, 10 + WARD_DURATION_TICKS)
-      expect(zones['mid-river']!.wards).toHaveLength(0)
+      const updated = removeExpiredWards(zones, 10 + WARD_DURATION_TICKS)
+      expect(updated['mid-river']!.wards).toHaveLength(0)
     })
   })
 

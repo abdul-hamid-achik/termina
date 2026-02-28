@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
+import { ITEMS } from '~~/server/game/items/registry'
 
 interface HeroData {
   name: string
@@ -40,11 +41,14 @@ function cdLabel(cd: number): string {
 
 <template>
   <div class="flex flex-col gap-2 text-[0.8rem]">
-    <div class="flex flex-wrap items-baseline gap-2">
-      <span class="text-[0.9rem] font-bold text-self">{{ hero.name }}</span>
-      <span class="text-gold">Lv.{{ hero.level }}</span>
-      <span class="text-zone">@ {{ hero.zone }}</span>
-      <span v-if="!hero.alive" class="font-bold text-dire">[DEAD]</span>
+    <div class="flex items-start gap-2">
+      <HeroAvatar v-if="heroId" :hero-id="heroId" :size="48" :class="{ 'opacity-50': !hero.alive }" />
+      <div class="flex flex-wrap items-baseline gap-2">
+        <span class="text-[0.9rem] font-bold text-self">{{ hero.name }}</span>
+        <span class="text-gold">Lv.{{ hero.level }}</span>
+        <span class="text-zone">@ {{ hero.zone }}</span>
+        <span v-if="!hero.alive" class="font-bold text-dire">[DEAD]</span>
+      </div>
     </div>
 
     <div class="flex flex-col gap-0.5">
@@ -111,7 +115,7 @@ function cdLabel(cd: number): string {
           class="inline-flex items-center border px-2 py-0.5 text-xs"
           :class="hero.items[i] ? 'border-border' : 'border-dashed border-border text-text-dim'"
         >
-          {{ hero.items[i] || '[empty]' }}
+          {{ hero.items[i] ? (ITEMS[hero.items[i]!]?.name ?? hero.items[i]) : '[empty]' }}
         </span>
       </div>
     </div>

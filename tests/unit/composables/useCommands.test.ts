@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { useCommands, type GameContext } from '../../../app/composables/useCommands'
 import type { PlayerState } from '../../../shared/types/game'
+import type { ItemDef } from '../../../shared/types/items'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -717,6 +718,164 @@ describe('useCommands', () => {
 
         const texts = suggestions.map(s => s.text)
         expect(texts.some(t => t.includes('mid'))).toBe(true)
+      })
+    })
+
+    describe('buy item completion', () => {
+      const sampleItems: Record<string, ItemDef> = {
+        healing_salve: {
+          id: 'healing_salve', name: 'Healing Salve', cost: 150, stats: {}, consumable: true, maxStacks: 3,
+          active: { id: 'healing_salve_active', name: 'Heal', description: 'Restore HP', cooldownTicks: 0 },
+        },
+        boots_of_speed: {
+          id: 'boots_of_speed', name: 'Boots of Speed', cost: 500, stats: { moveSpeed: 1 }, consumable: false,
+        },
+        blink_module: {
+          id: 'blink_module', name: 'Blink Module', cost: 2150, stats: { attack: 10 }, consumable: false,
+          active: { id: 'blink_active', name: 'Blink', description: 'Teleport to adjacent zone', cooldownTicks: 12 },
+        },
+      }
+
+      it('returns items matching partial with cost in description', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({ items: sampleItems })
+        const suggestions = autocomplete('buy heal', context)
+
+        expect(suggestions.length).toBeGreaterThan(0)
+        const salve = suggestions.find(s => s.text === 'healing_salve')
+        expect(salve).toBeDefined()
+        expect(salve!.description).toContain('150g')
+      })
+
+      it('shows [affordable] when player has enough gold', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          player: makePlayer({ gold: 300 }),
+          items: sampleItems,
+        })
+        const suggestions = autocomplete('buy heal', context)
+        const salve = suggestions.find(s => s.text === 'healing_salve')
+
+        expect(salve).toBeDefined()
+        expect(salve!.description).toContain('[affordable]')
+      })
+
+      it('shows gold needed when player cannot afford', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          player: makePlayer({ gold: 100 }),
+          items: sampleItems,
+        })
+        const suggestions = autocomplete('buy boots', context)
+        const boots = suggestions.find(s => s.text === 'boots_of_speed')
+
+        expect(boots).toBeDefined()
+        expect(boots!.description).toContain('[need 400g]')
+      })
+
+      it('returns empty when no items in context', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggestions = autocomplete('buy heal', context)
+
+        expect(suggestions).toEqual([])
+      })
+    })
+
+    describe('sell item completion', () => {
+      const sampleItems: Record<string, ItemDef> = {
+        boots_of_speed: {
+          id: 'boots_of_speed', name: 'Boots of Speed', cost: 500, stats: { moveSpeed: 1 }, consumable: false,
+        },
+        healing_salve: {
+          id: 'healing_salve', name: 'Healing Salve', cost: 150, stats: {}, consumable: true, maxStacks: 3,
+          active: { id: 'healing_salve_active', name: 'Heal', description: 'Restore HP', cooldownTicks: 0 },
+        },
+        blink_module: {
+          id: 'blink_module', name: 'Blink Module', cost: 2150, stats: { attack: 10 }, consumable: false,
+          active: { id: 'blink_active', name: 'Blink', description: 'Teleport', cooldownTicks: 12 },
+        },
+      }
+
+      it('suggests only owned items matching partial', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          player: makePlayer({ items: ['boots_of_speed', 'healing_salve', null, null, null, null] }),
+          items: sampleItems,
+        })
+        const suggestions = autocomplete('sell boots', context)
+        const texts = suggestions.map(s => s.text)
+
+        expect(texts).toContain('boots_of_speed')
+        expect(texts).not.toContain('blink_module')
+      })
+
+      it('includes sell price in description', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          player: makePlayer({ items: ['boots_of_speed', null, null, null, null, null] }),
+          items: sampleItems,
+        })
+        const suggestions = autocomplete('sell boots', context)
+        const boots = suggestions.find(s => s.text === 'boots_of_speed')
+
+        expect(boots).toBeDefined()
+        expect(boots!.description).toContain('sell: 250g')
+      })
+
+      it('returns empty when no items in context', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggestions = autocomplete('sell boots', context)
+
+        expect(suggestions).toEqual([])
+      })
+    })
+
+    describe('use item completion', () => {
+      const sampleItems: Record<string, ItemDef> = {
+        boots_of_speed: {
+          id: 'boots_of_speed', name: 'Boots of Speed', cost: 500, stats: { moveSpeed: 1 }, consumable: false,
+        },
+        blink_module: {
+          id: 'blink_module', name: 'Blink Module', cost: 2150, stats: { attack: 10 }, consumable: false,
+          active: { id: 'blink_active', name: 'Blink', description: 'Teleport to adjacent zone', cooldownTicks: 12 },
+        },
+      }
+
+      it('suggests only active items owned by player', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          player: makePlayer({ items: ['boots_of_speed', 'blink_module', null, null, null, null] }),
+          items: sampleItems,
+        })
+        // Use a partial that matches both items' shared substring
+        const suggestions = autocomplete('use b', context)
+        const texts = suggestions.map(s => s.text)
+
+        expect(texts).toContain('blink_module')
+        expect(texts).not.toContain('boots_of_speed')
+      })
+
+      it('includes active ability description', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          player: makePlayer({ items: ['blink_module', null, null, null, null, null] }),
+          items: sampleItems,
+        })
+        const suggestions = autocomplete('use blink', context)
+        const blink = suggestions.find(s => s.text === 'blink_module')
+
+        expect(blink).toBeDefined()
+        expect(blink!.description).toContain('Teleport to adjacent zone')
+      })
+
+      it('returns empty when no items in context', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggestions = autocomplete('use blink', context)
+
+        expect(suggestions).toEqual([])
       })
     })
 

@@ -83,18 +83,27 @@ export function placeWard(
     placedTick: currentTick,
     expiryTick: currentTick + WARD_DURATION_TICKS,
   }
-  zoneState.wards.push(ward)
+  zones[zoneId] = { ...zoneState, wards: [...zoneState.wards, ward] }
   return true
 }
 
-/** Remove expired wards from all zones. */
+/** Remove expired wards from all zones. Returns a new zones record. */
 export function removeExpiredWards(
   zones: Record<string, ZoneRuntimeState>,
   currentTick: number,
-): void {
-  for (const zrs of Object.values(zones)) {
-    zrs.wards = zrs.wards.filter((w) => w.expiryTick > currentTick)
+): Record<string, ZoneRuntimeState> {
+  let changed = false
+  const updated: Record<string, ZoneRuntimeState> = {}
+  for (const [id, zrs] of Object.entries(zones)) {
+    const filtered = zrs.wards.filter((w) => w.expiryTick > currentTick)
+    if (filtered.length !== zrs.wards.length) {
+      updated[id] = { ...zrs, wards: filtered }
+      changed = true
+    } else {
+      updated[id] = zrs
+    }
   }
+  return changed ? updated : zones
 }
 
 /** Check if a tower at a zone can be attacked (preceding tower must be destroyed). */

@@ -70,7 +70,7 @@ export interface LobbyStateMessage {
   type: 'lobby_state'
   lobbyId: string
   team: TeamId
-  players: { playerId: string; team: TeamId; heroId: string | null }[]
+  players: { playerId: string; username: string; team: TeamId; heroId: string | null }[]
 }
 
 export interface GameStartingMessage {
@@ -81,6 +81,35 @@ export interface GameStartingMessage {
 export interface GameCountdownMessage {
   type: 'game_countdown'
   seconds: number
+}
+
+export interface QueueRosterMessage {
+  type: 'queue_roster'
+  players: { username: string; mmrBracket: string }[]
+  total: number
+}
+
+export interface QueueFillingMessage {
+  type: 'queue_filling'
+  botsCount: number
+}
+
+export interface HeartbeatAckMessage {
+  type: 'heartbeat_ack'
+  timestamp: number
+}
+
+export interface ChatBroadcastMessage {
+  type: 'chat'
+  playerId: string
+  channel: 'team' | 'all'
+  message: string
+}
+
+export interface PingMapBroadcastMessage {
+  type: 'ping_map'
+  playerId: string
+  zone: string
 }
 
 export type ServerMessage =
@@ -94,3 +123,8 @@ export type ServerMessage =
   | LobbyStateMessage
   | GameStartingMessage
   | GameCountdownMessage
+  | QueueRosterMessage
+  | QueueFillingMessage
+  | HeartbeatAckMessage
+  | ChatBroadcastMessage
+  | PingMapBroadcastMessage

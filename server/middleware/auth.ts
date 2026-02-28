@@ -16,8 +16,10 @@ export default defineEventHandler(async (event) => {
     return
   }
 
-  // Allow WebSocket upgrade
+  // Validate session for WebSocket upgrade and attach to request
   if (path === '/ws' || path.startsWith('/ws')) {
+    const session = await getUserSession(event)
+    ;(event.node.req as unknown as Record<string, unknown>).__authSession = session ?? null
     return
   }
 

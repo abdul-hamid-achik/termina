@@ -25,6 +25,14 @@ function handleServerMessage(msg: ServerMessage) {
       lobbyStore.playersInQueue = msg.playersInQueue
       lobbyStore.estimatedWaitSeconds = msg.estimatedWaitSeconds
       break
+    case 'queue_roster':
+      lobbyStore.queueRoster = msg.players
+      lobbyStore.matchSize = msg.total
+      break
+    case 'queue_filling':
+      lobbyStore.botsFilling = true
+      lobbyStore.botsCount = msg.botsCount
+      break
     case 'announcement':
       break
     case 'error':
@@ -41,7 +49,7 @@ function handleServerMessage(msg: ServerMessage) {
         msg.team,
         msg.players.map((p) => ({
           playerId: p.playerId,
-          name: p.playerId,
+          name: p.username ?? p.playerId,
           heroId: p.heroId,
           team: p.team,
         })),
@@ -252,6 +260,10 @@ onUnmounted(() => {
         <MatchQueue
           :players-in-queue="lobbyStore.playersInQueue"
           :estimated-wait-seconds="lobbyStore.estimatedWaitSeconds"
+          :roster="lobbyStore.queueRoster"
+          :match-size="lobbyStore.matchSize"
+          :bots-filling="lobbyStore.botsFilling"
+          :bots-count="lobbyStore.botsCount"
           @cancel="handleLeaveQueue"
         />
       </template>

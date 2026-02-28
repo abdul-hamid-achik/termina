@@ -14,12 +14,63 @@ import { gameLoggerLive } from '../utils/logger'
 import { gameLog } from '../utils/log'
 import { createInMemoryStateManager } from '../game/engine/StateManager'
 import { startGameLoop, type GameCallbacks } from '../game/engine/GameLoop'
-import { toGameEvent } from '../game/protocol/events'
-import type { TeamId } from '~~/shared/types/game'
+import { toGameEvent, type GameEngineEvent } from '../game/protocol/events'
+import { calculateVision } from '../game/engine/VisionCalculator'
+import type { TeamId, GameState } from '~~/shared/types/game'
 import type { NewMatch, NewMatchPlayer } from '../db/schema'
 import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
 import { sendToPeer, setPlayerGame, clearPlayerGame } from '../services/PeerRegistry'
 import { cleanupLobby } from '../game/matchmaking/lobby'
+
+/** Check if a game event is visible to a specific player based on vision. */
+function isEventVisibleToPlayer(
+  event: GameEngineEvent,
+  playerId: string,
+  playerTeam: TeamId | undefined,
+  visibleZones: Set<string>,
+  state: GameState,
+): boolean {
+  // Global events always visible
+  switch (event._tag) {
+    case 'kill':
+    case 'death':
+    case 'tower_kill':
+    case 'roshan_killed':
+    case 'level_up':
+      return true
+  }
+  // Check per-event visibility
+  switch (event._tag) {
+    case 'damage':
+    case 'heal': {
+      if (event.sourceId === playerId || event.targetId === playerId) return true
+      if (state.players[event.sourceId]?.team === playerTeam) return true
+      if (state.players[event.targetId]?.team === playerTeam) return true
+      const srcZone = state.players[event.sourceId]?.zone
+      const tgtZone = state.players[event.targetId]?.zone
+      return !!(srcZone && visibleZones.has(srcZone)) || !!(tgtZone && visibleZones.has(tgtZone))
+    }
+    case 'creep_lasthit':
+    case 'gold_change':
+    case 'item_purchased':
+      if (event.playerId === playerId) return true
+      return state.players[event.playerId]?.team === playerTeam
+    case 'ability_used': {
+      if (event.playerId === playerId) return true
+      if (state.players[event.playerId]?.team === playerTeam) return true
+      const casterZone = state.players[event.playerId]?.zone
+      return !!(casterZone && visibleZones.has(casterZone))
+    }
+    case 'ward_placed':
+      if (event.playerId === playerId) return true
+      return event.team === playerTeam || visibleZones.has(event.zone)
+    case 'rune_picked':
+      if (event.playerId === playerId) return true
+      return visibleZones.has(event.zone)
+    default:
+      return true
+  }
+}
 
 interface GameRuntime {
   redisService: RedisServiceApi
@@ -137,14 +188,38 @@ export default defineNitroPlugin(async (nitroApp) => {
           },
 
           onEvents: (gId, events) => {
-            const msg = {
-              type: 'events' as const,
-              tick: events[0]?.tick ?? 0,
-              events: events.map(toGameEvent),
+            if (events.length === 0) return
+
+            let state: GameState | null = null
+            try {
+              state = Effect.runSync(stateManager.getState(gId))
+            } catch {
+              // State unavailable — fall back to unfiltered
             }
+
             for (const p of gameData.players) {
               if (isBot(p.playerId)) continue
-              sendToPeer(p.playerId, msg)
+
+              if (state) {
+                const visibleZones = calculateVision(state, p.playerId)
+                const playerTeam = state.players[p.playerId]?.team
+                const visibleEvents = events.filter((e) =>
+                  isEventVisibleToPlayer(e, p.playerId, playerTeam, visibleZones, state!),
+                )
+                if (visibleEvents.length > 0) {
+                  sendToPeer(p.playerId, {
+                    type: 'events' as const,
+                    tick: visibleEvents[0]?.tick ?? 0,
+                    events: visibleEvents.map(toGameEvent),
+                  })
+                }
+              } else {
+                sendToPeer(p.playerId, {
+                  type: 'events' as const,
+                  tick: events[0]?.tick ?? 0,
+                  events: events.map(toGameEvent),
+                })
+              }
             }
           },
 

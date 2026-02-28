@@ -34,12 +34,32 @@ export default defineOAuthDiscordEventHandler({
       )
     }
 
+    // Ensure provider is linked in playerProviders table
+    try {
+      const discordAvatar = user.avatar
+        ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
+        : null
+      await Effect.runPromise(
+        runtime.dbService.linkProvider(
+          player.id,
+          'discord',
+          String(user.id),
+          user.username ?? user.global_name ?? null,
+          discordAvatar,
+        ),
+      )
+    } catch {
+      // Already linked — ignore duplicate
+    }
+
     await setUserSession(event, {
       user: {
         id: player.id,
         username: player.username,
         avatarUrl: player.avatarUrl,
+        selectedAvatar: player.selectedAvatar,
         provider: 'discord',
+        hasPassword: !!player.passwordHash,
       },
     })
 

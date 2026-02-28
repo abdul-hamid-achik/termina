@@ -2,8 +2,8 @@ import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
-import { pickHero, getPlayerLobby, getLobby } from '../game/matchmaking/lobby'
-import { registerPeer, unregisterPeer, getPlayerGame } from '../services/PeerRegistry'
+import { pickHero, getPlayerLobby, getLobby, cancelLobby } from '../game/matchmaking/lobby'
+import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../services/PeerRegistry'
 import { wsLog } from '../utils/log'
 
 interface PeerContext {
@@ -20,13 +20,25 @@ export default defineWebSocketHandler({
   open(peer) {
     const reqUrl = peer.request?.url || peer.websocket?.url || ''
     const url = new URL(reqUrl, 'http://localhost')
-    const playerId = url.searchParams.get('playerId')
+    const queryPlayerId = url.searchParams.get('playerId')
+
+    // Allow bot connections without auth (bots are server-side only, but keep the path open)
+    let playerId: string | null = null
+    if (queryPlayerId?.startsWith('bot_')) {
+      playerId = queryPlayerId
+    } else {
+      // Derive playerId from authenticated session (attached by auth middleware)
+      const session = (peer.request as Record<string, unknown> | undefined)?.__authSession as
+        | { user?: { id?: string } }
+        | null
+      playerId = (session?.user?.id as string) ?? null
+    }
 
     if (!playerId) {
       peer.send(
-        JSON.stringify({ type: 'error', code: 'AUTH_REQUIRED', message: 'Missing playerId' }),
+        JSON.stringify({ type: 'error', code: 'AUTH_REQUIRED', message: 'Authentication required' }),
       )
-      peer.close(4001, 'Missing playerId')
+      peer.close(4001, 'Authentication required')
       return
     }
 
@@ -71,6 +83,7 @@ export default defineWebSocketHandler({
               team: teamId,
               players: lobby.players.map((p) => ({
                 playerId: p.playerId,
+                username: p.username,
                 team: p.team,
                 heroId: p.heroId,
               })),
@@ -103,7 +116,7 @@ export default defineWebSocketHandler({
 
     switch (parsed.type) {
       case 'heartbeat':
-        // Acknowledge heartbeat
+        peer.send(JSON.stringify({ type: 'heartbeat_ack', timestamp: Date.now() }))
         break
 
       case 'reconnect': {
@@ -144,6 +157,14 @@ export default defineWebSocketHandler({
       case 'join_game': {
         const runtime = getGameRuntime()
         if (!runtime) break
+
+        // Verify the player is assigned to this game
+        const assignedGame = getPlayerGame(ctx.playerId)
+        if (!assignedGame || assignedGame !== parsed.gameId) {
+          peer.send(JSON.stringify({ type: 'error', code: 'NOT_ASSIGNED', message: 'Not assigned to this game' }))
+          break
+        }
+
         wsLog.info('join_game received', { playerId: ctx.playerId, gameId: parsed.gameId })
         ctx.gameId = parsed.gameId
         try {
@@ -197,21 +218,25 @@ export default defineWebSocketHandler({
       case 'chat':
       case 'ping_map': {
         const runtime = getGameRuntime()
-        if (!runtime) {
+        if (!runtime || !ctx.gameId) {
           peer.send(
             JSON.stringify({
               type: 'error',
-              code: 'NO_GAME_SERVER',
-              message: 'Game server not ready',
+              code: 'NO_GAME',
+              message: 'Not in a game',
             }),
           )
           break
         }
-        const routeMsg = runtime.redisService.publish(
-          `game:${ctx.gameId}:actions`,
-          JSON.stringify({ playerId: ctx.playerId, ...parsed }),
-        )
-        Effect.runPromise(routeMsg).catch((err) => {
+        const outMsg = { playerId: ctx.playerId, ...parsed }
+        Effect.runPromise(
+          Effect.gen(function* () {
+            const connections = yield* runtime.wsService.getConnections(ctx.gameId!)
+            for (const [pid] of connections) {
+              sendToPeer(pid, outMsg)
+            }
+          }),
+        ).catch((err) => {
           wsLog.warn('Failed to route message', { type: parsed.type, gameId: ctx.gameId, error: err })
         })
         break
@@ -226,6 +251,16 @@ export default defineWebSocketHandler({
     const { playerId, gameId } = ctx
     wsLog.info('Peer disconnected', { playerId, gameId })
     unregisterPeer(playerId, peer)
+
+    // Handle disconnect during lobby/picking phase
+    const lobbyId = getPlayerLobby(playerId)
+    if (lobbyId) {
+      const runtime = getGameRuntime()
+      if (runtime) {
+        wsLog.info('Player disconnected during lobby — cancelling', { playerId, lobbyId })
+        cancelLobby(lobbyId, runtime.wsService)
+      }
+    }
 
     if (gameId) {
       // Allow reconnect within window before removing from game

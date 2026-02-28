@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface ZoneDisplay {
   id: string
   name: string
@@ -66,8 +68,16 @@ const SHORT_NAMES: Record<string, string> = {
   'roshan-pit': 'Rosh',
 }
 
+const zoneMap = computed(() => {
+  const map = new Map<string, ZoneDisplay>()
+  for (const z of props.zones) {
+    map.set(z.id, z)
+  }
+  return map
+})
+
 function getZone(id: string): ZoneDisplay | undefined {
-  return props.zones.find((z) => z.id === id)
+  return zoneMap.value.get(id)
 }
 
 function cellText(zone: ZoneDisplay): string {

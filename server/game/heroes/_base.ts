@@ -302,7 +302,12 @@ export function processDoTs(state: GameState): GameState {
     if (dotBuffs.length === 0) continue
     let target = player
     for (const dot of dotBuffs) {
-      const newHp = Math.max(0, target.hp - dot.stacks)
+      const damageType: DamageType = dot.id.includes('phys') ? 'physical' : 'magical'
+      const effectiveDamage = calculateEffectiveDamage(dot.stacks, damageType, {
+        defense: target.defense,
+        magicResist: target.magicResist,
+      })
+      const newHp = Math.max(0, target.hp - effectiveDamage)
       target = { ...target, hp: newHp, alive: newHp > 0 }
     }
     updated = updatePlayer(updated, target)

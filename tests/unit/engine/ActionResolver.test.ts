@@ -248,7 +248,7 @@ describe('ActionResolver', () => {
       expect(cd.r).toBe(4)
     })
 
-    it('should expire buffs with 0 remaining ticks', () => {
+    it('should preserve buffs without ticking them (buff ticking is done in GameLoop)', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -263,17 +263,16 @@ describe('ActionResolver', () => {
 
       const result = Effect.runSync(resolveActions(state, []))
       const buffs = result.state.players['p1']!.buffs
-      // ticksRemaining 1 -> 0, should be removed
-      // ticksRemaining 3 -> 2, should remain
-      expect(buffs.length).toBe(1)
-      expect(buffs[0]!.id).toBe('buff')
-      expect(buffs[0]!.ticksRemaining).toBe(2)
+      // Buffs are NOT ticked down in ActionResolver — that's handled by tickAllBuffs in GameLoop
+      expect(buffs.length).toBe(2)
+      expect(buffs[0]!.ticksRemaining).toBe(1)
+      expect(buffs[1]!.ticksRemaining).toBe(3)
     })
 
     it('should place wards in valid zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'radiant' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'radiant', items: ['observer_ward', null, null, null, null, null] }),
         },
       })
 

@@ -6,6 +6,7 @@ defineProps<{
   kills: number
   deaths: number
   assists: number
+  heroId?: string
   connected?: boolean
   reconnecting?: boolean
   latency?: number
@@ -20,6 +21,7 @@ function formatGold(n: number): string {
   <div
     class="flex items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-secondary px-3 py-1 text-[0.8rem]"
   >
+    <HeroAvatar v-if="heroId" :hero-id="heroId" :size="24" />
     <span class="inline-flex gap-1">
       <span class="text-text-dim">Tick:</span>
       <span class="text-text-primary">{{ tick }}</span>

@@ -33,12 +33,29 @@ export default defineOAuthGitHubEventHandler({
         )
       }
 
+      // Ensure provider is linked in playerProviders table
+      try {
+        await Effect.runPromise(
+          runtime.dbService.linkProvider(
+            player.id,
+            'github',
+            String(user.id),
+            user.login,
+            user.avatar_url ?? null,
+          ),
+        )
+      } catch {
+        // Already linked — ignore duplicate
+      }
+
       await setUserSession(event, {
         user: {
           id: player.id,
           username: player.username,
           avatarUrl: player.avatarUrl,
+          selectedAvatar: player.selectedAvatar,
           provider: 'github',
+          hasPassword: !!player.passwordHash,
         },
       })
 

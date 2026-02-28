@@ -23,8 +23,9 @@ const BOT_NAMES = [
 const LANE_ASSIGNMENTS: string[] = ['top', 'top', 'mid', 'bot', 'bot']
 
 /** Create bot queue entries to fill remaining slots. */
-export function createBotPlayers(count: number, existingPlayerIds: string[]): QueueEntry[] {
+export function createBotPlayers(count: number, existingPlayerIds: string[], averageMmr?: number): QueueEntry[] {
   const bots: QueueEntry[] = []
+  const botMmr = averageMmr ?? 1000
   let nameIdx = 0
   for (let i = 0; i < count; i++) {
     let botId = BOT_NAMES[nameIdx]!
@@ -35,7 +36,8 @@ export function createBotPlayers(count: number, existingPlayerIds: string[]): Qu
     }
     bots.push({
       playerId: botId,
-      mmr: 1000,
+      username: botId.replace('bot_', 'Bot ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      mmr: botMmr,
       joinedAt: Date.now(),
       mode: 'ranked_5v5',
     })

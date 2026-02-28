@@ -1,5 +1,6 @@
 import type { GameState, TowerState } from '~~/shared/types/game'
 import { TOWER_ATTACK } from '~~/shared/constants/balance'
+import { calculatePhysicalDamage } from './DamageCalculator'
 
 export interface TowerAction {
   towerZone: string
@@ -101,7 +102,8 @@ export function applyTowerActions(state: GameState, actions: TowerAction[]): Gam
     if (action.targetType === 'hero') {
       const target = players[action.targetId]
       if (target && target.alive) {
-        const newHp = Math.max(0, target.hp - action.damage)
+        const damage = calculatePhysicalDamage(action.damage, target.defense)
+        const newHp = Math.max(0, target.hp - damage)
         players = {
           ...players,
           [action.targetId]: {
@@ -112,9 +114,13 @@ export function applyTowerActions(state: GameState, actions: TowerAction[]): Gam
         }
       }
     } else {
-      const target = creeps.find((c) => c.id === action.targetId)
+      const targetId = action.targetId
+      const target = creeps.find((c) => c.id === targetId)
       if (target && target.hp > 0) {
-        target.hp = Math.max(0, target.hp - action.damage)
+        const newHp = Math.max(0, target.hp - action.damage)
+        creeps = creeps.map((c) =>
+          c.id === targetId ? { ...c, hp: newHp } : c,
+        )
       }
     }
   }

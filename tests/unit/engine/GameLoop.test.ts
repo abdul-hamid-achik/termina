@@ -12,10 +12,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'radiant',
     heroId: 'echo',
     zone: 'mid-t1-rad',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    hp: 550,
+    maxHp: 550,
+    mp: 280,
+    maxMp: 280,
     level: 1,
     xp: 0,
     gold: 600,
@@ -124,19 +124,19 @@ describe('GameLoop', () => {
             id: 'p1',
             zone: 'radiant-fountain',
             hp: 100,
-            maxHp: 500,
+            maxHp: 550,
             mp: 50,
-            maxMp: 200,
+            maxMp: 280,
           }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
         },
       })
 
       const result = Effect.runSync(processTick('game4', state))
-      // Fountain heals 15% per tick: 500 * 0.15 = 75
-      expect(result.state.players['p1']!.hp).toBe(175)
-      // Mana: 200 * 0.15 = 30
-      expect(result.state.players['p1']!.mp).toBe(80)
+      // Fountain heals 15% per tick: 550 * 0.15 = 82
+      expect(result.state.players['p1']!.hp).toBe(182)
+      // Mana: echo base 280, 280 * 0.15 = 42; 50 + 42 = 92
+      expect(result.state.players['p1']!.mp).toBe(92)
     })
 
     it('should respawn dead players when respawn tick is reached', () => {
@@ -147,8 +147,8 @@ describe('GameLoop', () => {
             id: 'p1',
             alive: false,
             hp: 0,
-            maxHp: 500,
-            maxMp: 200,
+            maxHp: 550,
+            maxMp: 280,
             respawnTick: 10,
           }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
@@ -159,7 +159,7 @@ describe('GameLoop', () => {
       expect(result.state.tick).toBe(10)
       const p1 = result.state.players['p1']!
       expect(p1.alive).toBe(true)
-      expect(p1.hp).toBe(500) // Full HP
+      expect(p1.hp).toBe(550) // Full HP (echo base HP)
       expect(p1.zone).toBe('radiant-fountain')
     })
 
@@ -231,9 +231,9 @@ describe('GameLoop', () => {
             id: 'p1',
             zone: 'radiant-fountain',
             mp: 50,
-            maxMp: 200,
-            hp: 500,
-            maxHp: 500,
+            maxMp: 280,
+            hp: 550,
+            maxHp: 550,
           }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
         },
@@ -250,7 +250,7 @@ describe('GameLoop', () => {
             id: 'p1',
             zone: 'mid-river',
             hp: 100,
-            maxHp: 500,
+            maxHp: 550,
           }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
         },
@@ -269,7 +269,7 @@ describe('GameLoop', () => {
             team: 'radiant',
             zone: 'dire-fountain',
             hp: 100,
-            maxHp: 500,
+            maxHp: 550,
           }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
         },
@@ -285,18 +285,18 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'radiant-fountain',
-            hp: 490,
-            maxHp: 500,
-            mp: 195,
-            maxMp: 200,
+            hp: 540,
+            maxHp: 550,
+            mp: 275,
+            maxMp: 280,
           }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
         },
       })
 
       const result = Effect.runSync(processTick('game-cap-heal', state))
-      expect(result.state.players['p1']!.hp).toBe(500)
-      expect(result.state.players['p1']!.mp).toBe(200)
+      expect(result.state.players['p1']!.hp).toBe(550)
+      expect(result.state.players['p1']!.mp).toBe(280)
     })
 
     it('should reject invalid actions and still process valid ones', () => {

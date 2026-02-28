@@ -3,6 +3,7 @@ import { runTowerAI, applyTowerActions, type TowerAction } from '../../../server
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { TOWER_ATTACK } from '../../../shared/constants/balance'
+import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -213,10 +214,10 @@ describe('TowerAI', () => {
   })
 
   describe('applyTowerActions', () => {
-    it('should apply damage to heroes', () => {
+    it('should apply damage to heroes with defense reduction', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-t1-rad', hp: 500 }),
+          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-t1-rad', hp: 500, defense: 3 }),
         },
       })
 
@@ -225,7 +226,8 @@ describe('TowerAI', () => {
       ]
 
       const result = applyTowerActions(state, actions)
-      expect(result.players['p1']!.hp).toBe(500 - TOWER_ATTACK)
+      const expectedDamage = calculatePhysicalDamage(TOWER_ATTACK, 3)
+      expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
 

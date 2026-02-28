@@ -41,7 +41,7 @@
     </div>
 
     <div class="flex flex-wrap justify-center gap-3">
-      <NuxtLink to="/play" class="no-underline">
+      <NuxtLink to="/lobby" class="no-underline">
         <AsciiButton label="ENTER THE TERMINAL" variant="primary" />
       </NuxtLink>
       <NuxtLink to="/learn" class="no-underline">

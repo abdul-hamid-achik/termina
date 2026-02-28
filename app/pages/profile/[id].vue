@@ -9,6 +9,10 @@ const playerId = computed(() => {
   return id === 'me' ? (authStore.user?.id ?? '') : id
 })
 
+const isOwnProfile = computed(() => {
+  return authStore.user?.id === playerId.value
+})
+
 const { data: profileData, status: profileStatus } = await useFetch(
   () => `/api/player/${playerId.value}`,
   {
@@ -25,7 +29,7 @@ const recentMatches = computed(() => (matchData.value as Record<string, unknown>
 
 function formatDuration(ticks: number | null): string {
   if (!ticks) return '--:--'
-  const totalSeconds = Math.floor(ticks / 2)
+  const totalSeconds = ticks * 4
   const m = Math.floor(totalSeconds / 60)
   const s = totalSeconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
@@ -51,8 +55,24 @@ function formatDate(dateStr: string | null): string {
 
     <template v-else>
       <TerminalPanel title="Player Profile">
-        <div class="mb-3 border-b border-border pb-3">
-          <span class="text-[0.8rem] text-text-dim">&gt;_ whois {{ player.username }}</span>
+        <div class="mb-3 flex items-center justify-between border-b border-border pb-3">
+          <div class="flex items-center gap-3">
+            <ClientOnly>
+              <HeroAvatar
+                v-if="player.selectedAvatar"
+                :hero-id="player.selectedAvatar"
+                :size="48"
+              />
+            </ClientOnly>
+            <span class="text-[0.8rem] text-text-dim">&gt;_ whois {{ player.username }}</span>
+          </div>
+          <NuxtLink
+            v-if="isOwnProfile"
+            to="/profile/settings"
+            class="text-[0.75rem] text-ability no-underline hover:text-radiant"
+          >
+            [EDIT]
+          </NuxtLink>
         </div>
 
         <div class="flex flex-col gap-1.5">

@@ -1,11 +1,12 @@
 import { Context, Effect, Layer } from 'effect'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import { useDb } from '../db'
 import {
   players,
   matches,
   matchPlayers,
   heroStats,
+  playerProviders,
   type Player,
   type NewPlayer,
   type Match,
@@ -13,6 +14,7 @@ import {
   type NewMatchPlayer,
   type HeroStat,
   type MatchPlayer,
+  type PlayerProvider,
 } from '../db/schema'
 
 export interface MatchWithPlayers extends Match {
@@ -46,6 +48,20 @@ export interface DatabaseServiceApi {
   readonly getHeroStats: (playerId: string) => Effect.Effect<HeroStat[]>
   readonly incrementGamesPlayed: (playerId: string) => Effect.Effect<void>
   readonly incrementWins: (playerId: string) => Effect.Effect<void>
+  readonly getPlayerByUsername: (username: string) => Effect.Effect<Player | null>
+  readonly createLocalPlayer: (username: string, passwordHash: string) => Effect.Effect<Player>
+  readonly linkProvider: (
+    playerId: string,
+    provider: string,
+    providerId: string,
+    username: string | null,
+    avatarUrl: string | null,
+  ) => Effect.Effect<PlayerProvider>
+  readonly unlinkProvider: (playerId: string, provider: string) => Effect.Effect<void>
+  readonly getPlayerProviders: (playerId: string) => Effect.Effect<PlayerProvider[]>
+  readonly updatePlayerAvatar: (playerId: string, heroId: string | null) => Effect.Effect<void>
+  readonly updatePlayerUsername: (playerId: string, username: string) => Effect.Effect<void>
+  readonly updatePlayerPassword: (playerId: string, passwordHash: string) => Effect.Effect<void>
 }
 
 export class DatabaseService extends Context.Tag('DatabaseService')<
@@ -212,5 +228,98 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
           .set({ wins: p[0].wins + 1 })
           .where(eq(players.id, playerId))
       }
+    }),
+
+  getPlayerByUsername: (username) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const result = await db
+        .select()
+        .from(players)
+        .where(eq(players.username, username))
+        .limit(1)
+      return result[0] ?? null
+    }),
+
+  createLocalPlayer: (username, passwordHash) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const id = `local_${crypto.randomUUID()}`
+      const result = await db
+        .insert(players)
+        .values({
+          id,
+          username,
+          passwordHash,
+          provider: 'local',
+          providerId: id,
+        })
+        .returning()
+      return result[0]!
+    }),
+
+  linkProvider: (playerId, provider, providerId, username, avatarUrl) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const result = await db
+        .insert(playerProviders)
+        .values({
+          playerId,
+          provider,
+          providerId,
+          providerUsername: username,
+          providerAvatarUrl: avatarUrl,
+        })
+        .returning()
+      return result[0]!
+    }),
+
+  unlinkProvider: (playerId, provider) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db
+        .delete(playerProviders)
+        .where(
+          and(
+            eq(playerProviders.playerId, playerId),
+            eq(playerProviders.provider, provider),
+          ),
+        )
+    }),
+
+  getPlayerProviders: (playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      return db
+        .select()
+        .from(playerProviders)
+        .where(eq(playerProviders.playerId, playerId))
+    }),
+
+  updatePlayerAvatar: (playerId, heroId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db
+        .update(players)
+        .set({ selectedAvatar: heroId })
+        .where(eq(players.id, playerId))
+    }),
+
+  updatePlayerUsername: (playerId, username) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db
+        .update(players)
+        .set({ username })
+        .where(eq(players.id, playerId))
+    }),
+
+  updatePlayerPassword: (playerId, passwordHash) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db
+        .update(players)
+        .set({ passwordHash })
+        .where(eq(players.id, playerId))
     }),
 })

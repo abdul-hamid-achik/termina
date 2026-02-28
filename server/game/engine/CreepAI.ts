@@ -4,6 +4,7 @@ import {
   RANGED_CREEP_ATTACK,
   SIEGE_CREEP_ATTACK,
 } from '~~/shared/constants/balance'
+import { calculatePhysicalDamage } from './DamageCalculator'
 
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
 const LANE_ROUTES: Record<string, { radiant: string[]; dire: string[] }> = {
@@ -212,7 +213,7 @@ export function runCreepAI(state: GameState): CreepAction[] {
  */
 export function applyCreepActions(state: GameState, actions: CreepAction[]): GameState {
   let creeps = [...state.creeps.map((c) => ({ ...c }))]
-  const towers = [...state.towers.map((t) => ({ ...t }))]
+  let towers = [...state.towers.map((t) => ({ ...t }))]
   let players = { ...state.players }
 
   for (const action of actions) {
@@ -222,21 +223,28 @@ export function applyCreepActions(state: GameState, actions: CreepAction[]): Gam
     switch (action.action) {
       case 'move': {
         if (action.targetZone) {
-          creep.zone = action.targetZone
+          creeps = creeps.map((c) =>
+            c.id === action.creepId ? { ...c, zone: action.targetZone! } : c,
+          )
         }
         break
       }
       case 'attack_creep': {
         const target = creeps.find((c) => c.id === action.targetId)
         if (target && target.hp > 0) {
-          target.hp = Math.max(0, target.hp - (action.damage ?? 0))
+          const newHp = Math.max(0, target.hp - (action.damage ?? 0))
+          creeps = creeps.map((c) =>
+            c.id === action.targetId ? { ...c, hp: newHp } : c,
+          )
         }
         break
       }
       case 'attack_hero': {
         if (action.targetId && players[action.targetId]) {
           const target = players[action.targetId]!
-          const newHp = Math.max(0, target.hp - (action.damage ?? 0))
+          const rawDamage = action.damage ?? 0
+          const damage = calculatePhysicalDamage(rawDamage, target.defense)
+          const newHp = Math.max(0, target.hp - damage)
           players = {
             ...players,
             [action.targetId]: {
@@ -249,12 +257,13 @@ export function applyCreepActions(state: GameState, actions: CreepAction[]): Gam
         break
       }
       case 'attack_tower': {
-        const tower = towers.find((t) => t.zone === action.targetZone && t.alive)
-        if (tower) {
-          tower.hp = Math.max(0, tower.hp - (action.damage ?? 0))
-          if (tower.hp === 0) {
-            tower.alive = false
-          }
+        const towerIdx = towers.findIndex((t) => t.zone === action.targetZone && t.alive)
+        if (towerIdx >= 0) {
+          const tower = towers[towerIdx]!
+          const newHp = Math.max(0, tower.hp - (action.damage ?? 0))
+          towers = towers.map((t, i) =>
+            i === towerIdx ? { ...t, hp: newHp, alive: newHp > 0 } : t,
+          )
         }
         break
       }

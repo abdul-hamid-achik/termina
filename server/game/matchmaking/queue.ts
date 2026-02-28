@@ -23,6 +23,7 @@ const MMR_RANGES: { afterSeconds: number; range: number }[] = [
 
 export interface QueueEntry {
   playerId: string
+  username: string
   mmr: number
   joinedAt: number
   mode: 'ranked_5v5' | 'quick_3v3' | '1v1'
@@ -83,13 +84,26 @@ async function tryFormMatch(
 
     const now = Date.now()
 
-    // Push queue status to all real (non-bot) players via WS
+    // Build roster info for all queued players
+    const rosterPlayers = players
+      .filter((p) => !isBot(p.playerId))
+      .map((p) => {
+        const base = Math.round(p.mmr / 100) * 100
+        return { username: p.username, mmrBracket: `${base - 100}-${base + 100}` }
+      })
+
+    // Push queue status + roster to all real (non-bot) players via WS
     for (const p of players) {
       if (!isBot(p.playerId)) {
         sendToPeer(p.playerId, {
           type: 'queue_update',
           playersInQueue: players.length,
           estimatedWaitSeconds: Math.max(0, Math.round((BOT_FILL_WAIT_MS - (now - p.joinedAt)) / 1000)),
+        })
+        sendToPeer(p.playerId, {
+          type: 'queue_roster',
+          players: rosterPlayers,
+          total: MATCH_SIZE,
         })
       }
     }
@@ -100,9 +114,21 @@ async function tryFormMatch(
       if (longestWait >= BOT_FILL_WAIT_MS) {
         const botsNeeded = MATCH_SIZE - players.length
         matchLog.info('Filling with bots', { realPlayers: players.length, botsNeeded })
+        // Notify players that bots are filling
+        for (const p of players) {
+          if (!isBot(p.playerId)) {
+            sendToPeer(p.playerId, {
+              type: 'queue_filling',
+              botsCount: botsNeeded,
+            })
+          }
+        }
+
+        const avgMmr = Math.round(players.reduce((sum, p) => sum + p.mmr, 0) / players.length)
         const botEntries = createBotPlayers(
           botsNeeded,
           players.map((p) => p.playerId),
+          avgMmr,
         )
         const allPlayers = [...players, ...botEntries]
 

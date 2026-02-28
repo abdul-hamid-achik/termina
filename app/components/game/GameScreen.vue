@@ -28,23 +28,50 @@ const localEvents = ref<
 const showShop = ref(false)
 const showScoreboard = ref(false)
 
+// Quick buy pinned items (persisted in localStorage)
+const pinnedItems = ref<string[]>([])
+if (import.meta.client) {
+  try {
+    const raw = localStorage.getItem('termina:quickbuy')
+    if (raw) pinnedItems.value = JSON.parse(raw)
+  } catch { /* ignore */ }
+}
+function savePins() {
+  if (import.meta.client) {
+    localStorage.setItem('termina:quickbuy', JSON.stringify(pinnedItems.value))
+  }
+}
+function pinItem(itemId: string) {
+  if (!pinnedItems.value.includes(itemId)) {
+    pinnedItems.value.push(itemId)
+    savePins()
+  }
+}
+function unpinItem(itemId: string) {
+  pinnedItems.value = pinnedItems.value.filter((id) => id !== itemId)
+  savePins()
+}
+
+// Categorize items for the shop
+function getItemCategory(item: { id: string; cost: number; consumable: boolean }): 'starter' | 'core' | 'consumable' {
+  if (item.consumable) return 'consumable'
+  if (item.cost <= 500) return 'starter'
+  return 'core'
+}
+
 // Format items from registry as ShopItem[] for ItemShop component
 const shopItems = computed(() => {
-  return Object.values(ITEMS).map((item) => {
-    const statParts: string[] = []
-    for (const [key, val] of Object.entries(item.stats)) {
-      if (val) statParts.push(`+${val} ${key}`)
-    }
-    if (item.active) statParts.push(`Active: ${item.active.description}`)
-    if (item.passive) statParts.push(`Passive: ${item.passive.description}`)
-    return {
-      id: item.id,
-      name: item.name,
-      cost: item.cost,
-      stats: statParts.join(', ') || (item.consumable ? 'Consumable' : 'No stats'),
-    }
-  })
+  return Object.values(ITEMS).map((item) => ({
+    id: item.id,
+    name: item.name,
+    cost: item.cost,
+    def: item,
+    category: getItemCategory(item),
+  }))
 })
+
+const playerItems = computed(() => gameStore.player?.items ?? [null, null, null, null, null, null])
+const playerBuffs = computed(() => gameStore.player?.buffs ?? [])
 
 onMounted(() => {
   if (gameStore.gameId && gameStore.playerId) {
@@ -69,6 +96,14 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Tab') {
     e.preventDefault()
     showScoreboard.value = true
+    return
+  }
+  // Number keys 1-6 for item use (only when not focused on input)
+  const target = e.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+  const slot = Number.parseInt(e.key, 10)
+  if (slot >= 1 && slot <= 6) {
+    handleItemUseBySlot(slot - 1)
   }
 }
 
@@ -164,6 +199,8 @@ const combatEvents = computed(() => {
   const mapped = gameStore.events.map((e) => {
     let text = ''
     let type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' = 'system'
+    let killerHeroId: string | undefined
+    let victimHeroId: string | undefined
 
     switch (e.type) {
       case 'damage':
@@ -178,6 +215,8 @@ const combatEvents = computed(() => {
         const goldPart = e.payload.goldAwarded ? ` (+${e.payload.goldAwarded}g)` : ''
         text = `[KILL] ${e.payload.killerId} eliminated ${e.payload.victimId}!${goldPart}`
         type = 'kill'
+        killerHeroId = e.payload.killerId ? gameStore.allPlayers[e.payload.killerId as string]?.heroId ?? undefined : undefined
+        victimHeroId = e.payload.victimId ? gameStore.allPlayers[e.payload.victimId as string]?.heroId ?? undefined : undefined
         break
       }
       case 'death': {
@@ -218,7 +257,7 @@ const combatEvents = computed(() => {
         type = 'system'
     }
 
-    return { tick: e.tick, text, type }
+    return { tick: e.tick, text, type, killerHeroId, victimHeroId }
   })
 
   return [...mapped, ...localEvents.value].sort((a, b) => a.tick - b.tick)
@@ -413,6 +452,25 @@ function handleQuickAction(cmd: string) {
   handleCommand(cmd.toLowerCase())
 }
 
+// ── Item use from inventory bar / keybinds ───────────────────
+function handleItemUse(_slotIndex: number, itemId: string) {
+  if (!gameStore.player?.alive) {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: 'Cannot use items while dead',
+      type: 'system',
+    })
+    return
+  }
+  handleCommand(`use ${itemId}`)
+}
+
+function handleItemUseBySlot(slotIndex: number) {
+  const itemId = gameStore.player?.items[slotIndex]
+  if (!itemId) return
+  handleItemUse(slotIndex, itemId)
+}
+
 // ── Game over ──────────────────────────────────────────────────
 
 const isGameOver = computed(() => gameStore.phase === 'ended')
@@ -457,7 +515,7 @@ v-if="!gameStore.isAlive && gameStore.player"
       <div class="text-center">
         <p class="text-2xl font-bold text-dire">PROCESS TERMINATED</p>
         <p v-if="gameStore.player.respawnTick" class="mt-2 text-text-dim">
-          Respawning in {{ gameStore.player.respawnTick - gameStore.tick }} ticks
+          Respawning in {{ Math.max(0, gameStore.player.respawnTick - gameStore.tick) }} ticks
         </p>
       </div>
     </div>
@@ -469,6 +527,7 @@ v-if="!gameStore.isAlive && gameStore.player"
       :kills="playerKills"
       :deaths="playerDeaths"
       :assists="playerAssists"
+      :hero-id="gameStore.player?.heroId ?? undefined"
       :connected="connected"
       :reconnecting="reconnecting"
       :latency="latency"
@@ -489,13 +548,16 @@ v-if="!gameStore.isAlive && gameStore.player"
 
     <!-- Scoreboard overlay (Tab hold) -->
     <div
-      v-if="showScoreboard"
+      v-if="showScoreboard && gameStore.teams"
       class="absolute inset-0 z-30 flex items-center justify-center bg-black/80"
     >
-      <div class="w-full max-w-3xl border border-border bg-bg-primary p-4">
-        <div class="mb-2 text-center text-[0.9rem] font-bold text-text-primary">SCOREBOARD</div>
-        <Scoreboard :players="gameStore.scoreboard" />
-        <div class="mt-2 text-center text-[0.7rem] text-text-dim">Release Tab to close</div>
+      <div class="w-full max-w-4xl border border-border bg-bg-primary">
+        <Scoreboard
+          :players="gameStore.scoreboard"
+          :teams="gameStore.teams"
+          :current-tick="currentTick"
+          :current-player-id="gameStore.playerId ?? ''"
+        />
       </div>
     </div>
 
@@ -514,15 +576,47 @@ v-if="!gameStore.isAlive && gameStore.player"
             [CLOSE]
           </button>
         </div>
+        <div
+          v-if="!gameStore.canBuy"
+          class="mb-2 border border-dire/30 bg-dire/5 px-3 py-1.5 text-xs text-dire"
+        >
+          [WARN] You must be in the fountain or base zone to purchase items.
+        </div>
+        <div
+          v-if="playerItems.filter(Boolean).length >= 6"
+          class="mb-2 border border-gold/30 bg-gold/5 px-3 py-1.5 text-xs text-gold"
+        >
+          [WARN] Inventory full (6/6 slots). Sell an item to make room.
+        </div>
         <ItemShop
           :items="shopItems"
           :gold="playerGold"
+          :owned-items="playerItems"
+          :pinned-items="pinnedItems"
           @buy="handleBuyItem"
+          @pin="pinItem"
+          @unpin="unpinItem"
         />
       </div>
     </div>
 
     <div class="game-grid__cmd flex min-h-0 flex-col justify-end">
+      <!-- Inventory Bar (above command input) -->
+      <div class="flex items-center gap-2 border-t border-border bg-bg-secondary px-2 py-1">
+        <InventoryBar
+          :items="playerItems"
+          :buffs="playerBuffs"
+          @use="handleItemUse"
+        />
+        <QuickBuy
+          v-if="pinnedItems.length"
+          :pinned-items="pinnedItems"
+          :gold="playerGold"
+          :can-buy="gameStore.canBuy"
+          @buy="handleBuyItem"
+          @unpin="unpinItem"
+        />
+      </div>
       <div class="hidden gap-1 px-2 py-1 overflow-x-auto lg:hidden max-lg:flex">
         <button
           v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP']"
@@ -537,6 +631,10 @@ v-if="!gameStore.isAlive && gameStore.player"
       <CommandInput
         placeholder="Enter command (Tab for autocomplete)..."
         :tick-countdown="gameStore.nextTickIn"
+        :player="gameStore.player"
+        :visible-zones="gameStore.visibleZones"
+        :all-players="gameStore.allPlayers"
+        :items="ITEMS"
         @submit="handleCommand"
       />
     </div>

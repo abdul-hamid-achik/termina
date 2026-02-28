@@ -7,6 +7,7 @@ import {
   RANGED_CREEP_ATTACK,
   SIEGE_CREEP_ATTACK,
 } from '../../../shared/constants/balance'
+import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -348,11 +349,11 @@ describe('CreepAI', () => {
       expect(result.creeps.find((c) => c.id === 'c2')).toBeUndefined()
     })
 
-    it('should apply damage to heroes', () => {
+    it('should apply damage to heroes with defense reduction', () => {
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
         players: {
-          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 500 }),
+          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 500, defense: 3 }),
         },
       })
 
@@ -361,7 +362,8 @@ describe('CreepAI', () => {
       ]
 
       const result = applyCreepActions(state, actions)
-      expect(result.players['p1']!.hp).toBe(500 - MELEE_CREEP_ATTACK)
+      const expectedDamage = calculatePhysicalDamage(MELEE_CREEP_ATTACK, 3)
+      expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
 
@@ -369,7 +371,7 @@ describe('CreepAI', () => {
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
         players: {
-          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 10 }),
+          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 1, defense: 0 }),
         },
       })
 

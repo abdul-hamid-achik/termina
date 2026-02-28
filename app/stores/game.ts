@@ -25,6 +25,9 @@ export interface ScoreboardEntry {
   gold: number
   level: number
   items: (string | null)[]
+  alive: boolean
+  respawnTick: number | null
+  fogged: boolean
 }
 
 export const useGameStore = defineStore('game', () => {
@@ -122,6 +125,9 @@ export const useGameStore = defineStore('game', () => {
       gold: p.fogged ? 0 : (p.gold ?? 0),
       level: p.level ?? 0,
       items: p.fogged ? [] : (p.items ?? []),
+      alive: (p.alive as boolean) ?? true,
+      respawnTick: (p.respawnTick as number | null) ?? null,
+      fogged: !!(p.fogged as boolean),
     }))
   }
 

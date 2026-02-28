@@ -97,9 +97,16 @@ export function processTick(
     }
 
     // 3. Resolve actions via ActionResolver
+    const preTowers = currentState.towers
     const resolved = yield* resolveActions(currentState, validActions)
     currentState = resolved.state
     allEvents.push(...resolved.events)
+
+    // 3.5. Track tower kills and update team stats
+    currentState = trackTowerKills(currentState, preTowers, allEvents)
+
+    // 3.6. Apply inCombat buffs based on damage events
+    currentState = applyInCombatBuffs(currentState, resolved.events)
 
     // 4. Run CreepAI
     const creepActions = runCreepAI(currentState)
@@ -116,7 +123,10 @@ export function processTick(
     }
 
     // 7. Remove expired wards
-    removeExpiredWards(currentState.zones, currentState.tick)
+    const updatedZones = removeExpiredWards(currentState.zones, currentState.tick)
+    if (updatedZones !== currentState.zones) {
+      currentState = { ...currentState, zones: updatedZones }
+    }
 
     // 8. Distribute passive gold
     currentState = distributePassiveGold(currentState)
@@ -198,7 +208,7 @@ function buildGameLoop(
   // doesn't kill the entire game loop.
   const tickLoop = Effect.gen(function* () {
     const currentState = yield* stateManager.getState(gameId)
-    if (currentState.phase === 'ended') return
+    if (currentState.phase === 'ended') return yield* Effect.interrupt
 
     const { state: newState, events, rejectedActions } = yield* processTick(gameId, currentState)
     yield* stateManager.updateState(gameId, () => newState)
@@ -237,6 +247,7 @@ function buildGameLoop(
     if (newState.phase === 'ended') {
       const winner = checkWinCondition(newState)
       if (winner) callbacks.onGameOver(gameId, winner)
+      return yield* Effect.interrupt
     }
   }).pipe(
     // Recover from individual tick failures so the loop keeps running
@@ -284,6 +295,7 @@ export function stopGameLoop(gameId: string): Effect.Effect<void> {
       activeGames.delete(gameId)
       yield* Fiber.interrupt(fiber)
     }
+    gameActionQueues.delete(gameId)
   })
 }
 
@@ -348,6 +360,7 @@ function handleDeaths(
   heroAttackers?: Map<string, string>,
 ): GameState {
   let players = { ...state.players }
+  let teams = { ...state.teams }
   let changed = false
 
   for (const [pid, player] of Object.entries(players)) {
@@ -426,6 +439,14 @@ function handleDeaths(
           }
         }
 
+        // Increment team kill counter
+        const killerTeam = players[killerId]!.team
+        const teamState = teams[killerTeam]
+        teams = {
+          ...teams,
+          [killerTeam]: { ...teamState, kills: teamState.kills + 1 },
+        }
+
         // Emit kill event
         events.push({
           _tag: 'kill',
@@ -440,7 +461,7 @@ function handleDeaths(
     }
   }
 
-  return changed ? { ...state, players } : state
+  return changed ? { ...state, players, teams } : state
 }
 
 /** Check XP thresholds and level up players. */
@@ -465,6 +486,76 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
   }
 
   return changed ? { ...state, players } : state
+}
+
+/** Apply inCombat buff to players who dealt or received hero damage this tick. */
+function applyInCombatBuffs(state: GameState, events: GameEngineEvent[]): GameState {
+  const combatPlayers = new Set<string>()
+  for (const event of events) {
+    if (event._tag === 'damage') {
+      if (state.players[event.sourceId]) {
+        combatPlayers.add(event.sourceId)
+      }
+      if (state.players[event.targetId]) {
+        combatPlayers.add(event.targetId)
+      }
+    }
+  }
+
+  if (combatPlayers.size === 0) return state
+
+  let players = { ...state.players }
+  for (const pid of combatPlayers) {
+    const player = players[pid]
+    if (!player || !player.alive) continue
+
+    const existing = player.buffs.findIndex((b) => b.id === 'inCombat')
+    const buffs = [...player.buffs]
+    if (existing >= 0) {
+      buffs[existing] = { ...buffs[existing]!, ticksRemaining: 3 }
+    } else {
+      buffs.push({ id: 'inCombat', stacks: 1, ticksRemaining: 3, source: 'system' })
+    }
+    players = { ...players, [pid]: { ...player, buffs } }
+  }
+
+  return { ...state, players }
+}
+
+/** Track tower kills by comparing pre-tick and post-tick tower state. */
+function trackTowerKills(
+  state: GameState,
+  preTowers: GameState['towers'],
+  events: GameEngineEvent[],
+): GameState {
+  let teams = { ...state.teams }
+  let changed = false
+
+  for (let i = 0; i < state.towers.length; i++) {
+    const before = preTowers[i]
+    const after = state.towers[i]
+    if (before && after && before.alive && !after.alive) {
+      // Tower was destroyed — the killing team is the opposing team
+      const killerTeam = after.team === 'radiant' ? 'dire' : 'radiant'
+      const teamState = teams[killerTeam]
+      teams = {
+        ...teams,
+        [killerTeam]: { ...teamState, towerKills: teamState.towerKills + 1 },
+      }
+
+      events.push({
+        _tag: 'tower_kill',
+        tick: state.tick,
+        zone: after.zone,
+        team: after.team,
+        killerTeam,
+      })
+
+      changed = true
+    }
+  }
+
+  return changed ? { ...state, teams } : state
 }
 
 /**

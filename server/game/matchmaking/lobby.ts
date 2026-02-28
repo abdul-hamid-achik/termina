@@ -17,6 +17,7 @@ const AVAILABLE_HEROES = [...HERO_IDS]
 
 export interface LobbyPlayer {
   playerId: string
+  username: string
   mmr: number
   team: TeamId
   heroId: string | null
@@ -61,6 +62,7 @@ export function createLobby(
   const sorted = [...queueEntries].sort((a, b) => b.mmr - a.mmr)
   const players: LobbyPlayer[] = sorted.map((entry, i) => ({
     playerId: entry.playerId,
+    username: entry.username,
     mmr: entry.mmr,
     team: i % 2 === 0 ? 'radiant' : ('dire' as TeamId),
     heroId: null,
@@ -89,6 +91,7 @@ export function createLobby(
   // Send lobby_state to each player with their team and the full roster
   const allPlayers = players.map((p) => ({
     playerId: p.playerId,
+    username: p.username,
     team: p.team,
     heroId: p.heroId,
   }))
@@ -131,7 +134,7 @@ function startPickTimer(
     if (player && !player.heroId && isBot(player.playerId)) {
       const randomHero = pickRandomHero(lobby)
       lobbyLog.debug('Bot picking hero', { lobbyId: lobby.id, playerId: player.playerId, heroId: randomHero })
-      setTimeout(() => confirmPick(lobby, player.playerId, randomHero, ws, redis, db), BOT_PICK_DELAY_MS)
+      lobby.pickTimer = setTimeout(() => confirmPick(lobby, player.playerId, randomHero, ws, redis, db), BOT_PICK_DELAY_MS)
       return
     }
   }

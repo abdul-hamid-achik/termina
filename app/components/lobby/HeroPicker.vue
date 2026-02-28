@@ -106,6 +106,7 @@ function heroNameById(heroId: string | null): string {
             "
           >
             <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
+            <HeroAvatar v-if="radiantRoster[i]?.heroId" :hero-id="radiantRoster[i]!.heroId!" :size="20" />
             <span class="min-w-0 flex-1 truncate font-mono">
               {{ radiantRoster[i]?.name ?? '---' }}
             </span>
@@ -142,6 +143,7 @@ function heroNameById(heroId: string | null): string {
             "
           >
             <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
+            <HeroAvatar v-if="direRoster[i]?.heroId" :hero-id="direRoster[i]!.heroId!" :size="20" />
             <span class="min-w-0 flex-1 truncate font-mono">
               {{ direRoster[i]?.name ?? '---' }}
             </span>
@@ -169,18 +171,23 @@ function heroNameById(heroId: string | null): string {
           }"
           @click="selectHero(hero.id)"
         >
-          <div class="mb-0.5 flex items-center gap-1">
-            <span class="text-[0.75rem] font-bold text-ability">{{
-              ROLE_ICONS[hero.role] || '??'
-            }}</span>
-            <span class="truncate text-[0.75rem] font-bold uppercase text-text-primary">{{
-              hero.name
-            }}</span>
-          </div>
-          <div class="flex gap-1.5 text-[0.6rem] text-text-dim">
-            <span>HP:{{ hero.baseStats.hp }}</span>
-            <span>ATK:{{ hero.baseStats.attack }}</span>
-            <span>DEF:{{ hero.baseStats.defense }}</span>
+          <div class="flex items-center gap-1.5">
+            <HeroAvatar :hero-id="hero.id" :size="32" />
+            <div class="min-w-0 flex-1">
+              <div class="mb-0.5 flex items-center gap-1">
+                <span class="text-[0.75rem] font-bold text-ability">{{
+                  ROLE_ICONS[hero.role] || '??'
+                }}</span>
+                <span class="truncate text-[0.75rem] font-bold uppercase text-text-primary">{{
+                  hero.name
+                }}</span>
+              </div>
+              <div class="flex gap-1.5 text-[0.6rem] text-text-dim">
+                <span>HP:{{ hero.baseStats.hp }}</span>
+                <span>ATK:{{ hero.baseStats.attack }}</span>
+                <span>DEF:{{ hero.baseStats.defense }}</span>
+              </div>
+            </div>
           </div>
           <div
             v-if="hero.picked"

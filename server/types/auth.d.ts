@@ -3,7 +3,9 @@ declare module '#auth-utils' {
     id: string
     username: string
     avatarUrl: string | null
-    provider: 'github' | 'discord'
+    selectedAvatar: string | null
+    provider: 'github' | 'discord' | 'local'
+    hasPassword: boolean
   }
 }
 

@@ -11,6 +11,10 @@ export const useLobbyStore = defineStore('lobby', () => {
   const queueTime = ref(0)
   const playersInQueue = ref(0)
   const estimatedWaitSeconds = ref(0)
+  const queueRoster = ref<{ username: string; mmrBracket: string }[]>([])
+  const matchSize = ref(10)
+  const botsFilling = ref(false)
+  const botsCount = ref(0)
   const lobbyId = ref<string | null>(null)
   const gameId = ref<string | null>(null)
   const team = ref<TeamId | null>(null)
@@ -183,6 +187,10 @@ export const useLobbyStore = defineStore('lobby', () => {
     queueTime.value = 0
     playersInQueue.value = 0
     estimatedWaitSeconds.value = 0
+    queueRoster.value = []
+    matchSize.value = 10
+    botsFilling.value = false
+    botsCount.value = 0
     lobbyId.value = null
     gameId.value = null
     team.value = null
@@ -205,6 +213,10 @@ export const useLobbyStore = defineStore('lobby', () => {
     queueTime,
     playersInQueue,
     estimatedWaitSeconds,
+    queueRoster,
+    matchSize,
+    botsFilling,
+    botsCount,
     lobbyId,
     gameId,
     team,

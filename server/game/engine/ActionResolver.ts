@@ -4,7 +4,7 @@ import type { Command, TargetRef } from '~~/shared/types/commands'
 import { areAdjacent } from '../map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalculator'
-import { placeWard } from '../map/zones'
+import { placeWard, canAttackTower } from '../map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '../protocol/events'
 import { buyItem, sellItem } from '../items/shop'
@@ -182,7 +182,7 @@ export function resolveActions(
         ),
     )
     for (const action of instantCasts) {
-      const result = resolveInstantAbility(state, players, action, events)
+      const result = resolveInstantAbility(state, players, action, events, heroAttackers)
       players = result.players
     }
 
@@ -225,12 +225,15 @@ export function resolveActions(
         // Check if target is in the same zone (post-movement)
         if (target.zone !== attacker.zone) continue
 
+        // Prevent friendly fire
+        if (target.team === attacker.team) continue
+
         // Attack hit — use effective stats (base + level scaling + items)
         let attackDamage = getEffectiveAttack(attacker)
 
-        // Null Pointer passive: 15% crit chance, 1.75x damage
+        // Null Pointer passive: 15% crit chance, 2x damage
         if (attacker.items.includes('null_pointer') && Math.random() < 0.15) {
-          attackDamage = Math.round(attackDamage * 1.75)
+          attackDamage = Math.round(attackDamage * 2)
         }
 
         const defense = getEffectiveDefense(target)
@@ -285,6 +288,7 @@ export function resolveActions(
         const tower = towers.find((t) => t.zone === targetZone && t.alive)
         if (!tower) continue
         if (tower.zone !== attacker.zone) continue
+        if (!canAttackTower(towers, targetZone)) continue
 
         const attackDamage = getEffectiveAttack(attacker)
         const newHp = Math.max(0, tower.hp - attackDamage)
@@ -317,7 +321,7 @@ export function resolveActions(
 
     // Resolve targeted casts
     for (const action of targetedCasts) {
-      const result = resolveTargetedAbility(state, players, action, events)
+      const result = resolveTargetedAbility(state, players, action, events, heroAttackers)
       players = result.players
     }
 
@@ -333,27 +337,23 @@ export function resolveActions(
         }
       }
 
-      // Tick down buff durations
-      const buffs = player.buffs
-        .map((b) => ({ ...b, ticksRemaining: b.ticksRemaining - 1 }))
-        .filter((b) => b.ticksRemaining > 0)
-
       let hp = player.hp
 
-      // Garbage Collector passive: 5% max HP regen when out of combat (no damage taken this tick)
+      // Garbage Collector passive: 5% max HP regen when out of combat (no damage for 3 ticks)
       if (player.items.includes('garbage_collector')) {
         const tookDamage = events.some(
           (e) => e._tag === 'damage' && e.targetId === pid,
         )
         const dealtDamage = heroAttackers.has(pid)
-        if (!tookDamage && !dealtDamage) {
+        const inCombat = player.buffs.some((b) => b.id === 'inCombat')
+        if (!tookDamage && !dealtDamage && !inCombat) {
           hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.05))
         }
       }
 
       players = {
         ...players,
-        [pid]: { ...player, hp, cooldowns, buffs },
+        [pid]: { ...player, hp, cooldowns },
       }
     }
 
@@ -383,6 +383,29 @@ export function resolveActions(
       )
       if (result) {
         players = { ...result.players }
+      }
+    }
+
+    // Recalculate maxHp/maxMp based on items
+    for (const [pid, player] of Object.entries(players)) {
+      const hero = player.heroId ? HEROES[player.heroId] : null
+      if (!hero) continue
+      const baseMaxHp = hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * (player.level - 1)
+      const baseMaxMp = hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * (player.level - 1)
+      const itemBonuses = getItemStatBonuses(player.items)
+      const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0)
+      const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0)
+      if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
+        players = {
+          ...players,
+          [pid]: {
+            ...player,
+            maxHp: newMaxHp,
+            maxMp: newMaxMp,
+            hp: Math.min(player.hp, newMaxHp),
+            mp: Math.min(player.mp, newMaxMp),
+          },
+        }
       }
     }
 
@@ -429,8 +452,15 @@ export function resolveActions(
       const cmd = action.command as { type: 'ward'; zone: string }
       const player = players[action.playerId]
       if (player) {
+        const wardSlot = player.items.indexOf('observer_ward')
+        if (wardSlot === -1) continue
+
         const placed = placeWard(zones, cmd.zone, player.team, state.tick)
         if (placed) {
+          const newItems = [...player.items]
+          newItems[wardSlot] = null
+          players = { ...players, [action.playerId]: { ...player, items: newItems } }
+
           events.push({
             _tag: 'ward_placed',
             tick: state.tick,
@@ -476,6 +506,7 @@ function resolveInstantAbility(
   players: Record<string, PlayerState>,
   action: PlayerAction,
   events: GameEngineEvent[],
+  heroAttackers: Map<string, string>,
 ): { players: Record<string, PlayerState> } {
   const cmd = action.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r'; target?: TargetRef }
   const caster = players[action.playerId]
@@ -511,13 +542,16 @@ function resolveInstantAbility(
       if (cmd.target?.kind === 'hero') {
         const targetId = findHeroByName(updatedPlayers, cmd.target.name)
         if (targetId) {
-          updatedPlayers = applyBuffToPlayer(
-            updatedPlayers,
-            targetId,
-            effect.type,
-            effect.duration ?? 1,
-            caster.id,
-          )
+          const ccTarget = updatedPlayers[targetId]
+          if (ccTarget && ccTarget.zone === caster.zone) {
+            updatedPlayers = applyBuffToPlayer(
+              updatedPlayers,
+              targetId,
+              effect.type,
+              effect.duration ?? 1,
+              caster.id,
+            )
+          }
         }
       } else {
         // AoE: apply to all enemies in zone
@@ -540,23 +574,26 @@ function resolveInstantAbility(
         const targetId = findHeroByName(updatedPlayers, cmd.target.name)
         if (targetId && updatedPlayers[targetId]) {
           const target = updatedPlayers[targetId]!
-          const dmg =
-            dmgType === 'physical'
-              ? calculatePhysicalDamage(effect.value, getEffectiveDefense(target))
-              : calculateMagicalDamage(effect.value, getEffectiveMagicResist(target))
-          const newHp = Math.max(0, target.hp - dmg)
-          updatedPlayers = {
-            ...updatedPlayers,
-            [targetId]: { ...target, hp: newHp, alive: newHp > 0 },
+          if (target.zone === caster.zone && target.alive) {
+            const dmg =
+              dmgType === 'physical'
+                ? calculatePhysicalDamage(effect.value, getEffectiveDefense(target))
+                : calculateMagicalDamage(effect.value, getEffectiveMagicResist(target))
+            const newHp = Math.max(0, target.hp - dmg)
+            updatedPlayers = {
+              ...updatedPlayers,
+              [targetId]: { ...target, hp: newHp, alive: newHp > 0 },
+            }
+            heroAttackers.set(action.playerId, targetId)
+            events.push({
+              _tag: 'damage',
+              tick: state.tick,
+              sourceId: action.playerId,
+              targetId,
+              amount: dmg,
+              damageType: dmgType,
+            })
           }
-          events.push({
-            _tag: 'damage',
-            tick: state.tick,
-            sourceId: action.playerId,
-            targetId,
-            amount: dmg,
-            damageType: dmgType,
-          })
         }
       }
     }
@@ -570,6 +607,7 @@ function resolveTargetedAbility(
   players: Record<string, PlayerState>,
   action: PlayerAction,
   events: GameEngineEvent[],
+  heroAttackers: Map<string, string>,
 ): { players: Record<string, PlayerState> } {
   const cmd = action.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r'; target?: TargetRef }
   const caster = players[action.playerId]
@@ -616,6 +654,7 @@ function resolveTargetedAbility(
               ...updatedPlayers,
               [targetId]: { ...target, hp: newHp, alive: newHp > 0 },
             }
+            heroAttackers.set(action.playerId, targetId)
             events.push({
               _tag: 'damage',
               tick: state.tick,
@@ -644,6 +683,7 @@ function resolveTargetedAbility(
               ...updatedPlayers,
               [pid]: { ...p, hp: newHp, alive: newHp > 0 },
             }
+            heroAttackers.set(action.playerId, pid)
             events.push({
               _tag: 'damage',
               tick: state.tick,
@@ -660,6 +700,7 @@ function resolveTargetedAbility(
       const targetId = findHeroByName(updatedPlayers, cmd.target.name)
       if (targetId && updatedPlayers[targetId]) {
         const target = updatedPlayers[targetId]!
+        if (target.team !== caster.team) continue
         const newHp = Math.min(target.maxHp, target.hp + effect.value)
         updatedPlayers = {
           ...updatedPlayers,

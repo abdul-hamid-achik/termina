@@ -9,8 +9,29 @@ export const useAuthStore = defineStore('auth', () => {
     await fetchSession()
   }
 
-  function login(provider: 'github' | 'discord' = 'github') {
+  function loginOAuth(provider: 'github' | 'discord' = 'github') {
     navigateTo(`/api/auth/${provider}`, { external: true })
+  }
+
+  // Keep backward compat
+  const login = loginOAuth
+
+  async function loginWithCredentials(username: string, password: string) {
+    const res = await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: { username, password },
+    })
+    await fetchSession()
+    return res
+  }
+
+  async function register(username: string, password: string) {
+    const res = await $fetch('/api/auth/register', {
+      method: 'POST',
+      body: { username, password },
+    })
+    await fetchSession()
+    return res
   }
 
   async function logout() {
@@ -23,6 +44,9 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     fetchUser,
     login,
+    loginOAuth,
+    loginWithCredentials,
+    register,
     logout,
   }
 })

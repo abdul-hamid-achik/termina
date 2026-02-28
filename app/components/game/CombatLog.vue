@@ -5,6 +5,8 @@ interface LogEvent {
   tick: number
   text: string
   type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability'
+  killerHeroId?: string
+  victimHeroId?: string
 }
 
 const props = defineProps<{
@@ -77,12 +79,14 @@ function typeColor(type: LogEvent['type']): string {
     >
       <div
         v-for="(event, i) in events"
-        :key="i"
+        :key="`${event.tick}-${event.type}-${i}`"
         class="border-l-2 border-l-transparent px-2 py-px hover:bg-white/[0.02]"
         :class="borderColors[event.type]"
       >
         <span class="mr-1 text-[0.7rem] text-text-dim">[T{{ event.tick }}]</span>
+        <HeroAvatar v-if="event.type === 'kill' && event.killerHeroId" :hero-id="event.killerHeroId" :size="16" class="mr-1 inline-flex align-middle" />
         <span :style="{ color: typeColor(event.type) }">{{ event.text }}</span>
+        <HeroAvatar v-if="event.type === 'kill' && event.victimHeroId" :hero-id="event.victimHeroId" :size="16" class="ml-1 inline-flex align-middle" />
       </div>
       <div v-if="!events.length" class="p-2 text-[0.8rem] text-text-dim">
         &gt;_ awaiting events...

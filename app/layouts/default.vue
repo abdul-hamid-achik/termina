@@ -1,12 +1,20 @@
 <script setup lang="ts">
 const { loggedIn, clear: clearSession } = useUserSession()
 
-const navLinks = [
+const publicNavLinks = [
   { label: 'PLAY', to: '/lobby' },
   { label: 'LEARN', to: '/learn' },
   { label: 'LEADERBOARD', to: '/leaderboard' },
-  { label: 'PROFILE', to: '/profile/me' },
 ]
+
+const authNavLinks = [
+  { label: 'PROFILE', to: '/profile/me' },
+  { label: 'SETTINGS', to: '/profile/settings' },
+]
+
+const navLinks = computed(() =>
+  loggedIn.value ? [...publicNavLinks, ...authNavLinks] : publicNavLinks,
+)
 
 async function logout() {
   await clearSession()

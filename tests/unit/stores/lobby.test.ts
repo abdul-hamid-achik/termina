@@ -336,6 +336,76 @@ describe('Lobby Store', () => {
     })
   })
 
+  describe('queue roster', () => {
+    it('has empty roster by default', () => {
+      const store = useLobbyStore()
+      expect(store.queueRoster).toEqual([])
+    })
+
+    it('can set roster array', () => {
+      const store = useLobbyStore()
+      store.queueRoster = [
+        { username: 'player1', mmrBracket: 'gold' },
+        { username: 'player2', mmrBracket: 'silver' },
+      ]
+
+      expect(store.queueRoster).toHaveLength(2)
+      expect(store.queueRoster[0]!.username).toBe('player1')
+      expect(store.queueRoster[1]!.mmrBracket).toBe('silver')
+    })
+  })
+
+  describe('bot filling state', () => {
+    it('has botsFilling false and botsCount 0 by default', () => {
+      const store = useLobbyStore()
+      expect(store.botsFilling).toBe(false)
+      expect(store.botsCount).toBe(0)
+    })
+
+    it('can set botsFilling and botsCount', () => {
+      const store = useLobbyStore()
+      store.botsFilling = true
+      store.botsCount = 3
+
+      expect(store.botsFilling).toBe(true)
+      expect(store.botsCount).toBe(3)
+    })
+  })
+
+  describe('matchSize', () => {
+    it('defaults to 10', () => {
+      const store = useLobbyStore()
+      expect(store.matchSize).toBe(10)
+    })
+
+    it('can be updated', () => {
+      const store = useLobbyStore()
+      store.matchSize = 6
+      expect(store.matchSize).toBe(6)
+    })
+  })
+
+  describe('_reset clears new queue state', () => {
+    it('resets queueRoster, botsFilling, botsCount, matchSize on leaveQueue', async () => {
+      mockFetch.mockResolvedValue({ success: true, queueSize: 1 })
+      const store = useLobbyStore()
+
+      await store.joinQueue()
+      store.queueRoster = [{ username: 'p1', mmrBracket: 'gold' }]
+      store.botsFilling = true
+      store.botsCount = 3
+      store.matchSize = 6
+
+      mockFetch.mockResolvedValue({})
+      await store.leaveQueue()
+
+      expect(store.queueRoster).toEqual([])
+      expect(store.botsFilling).toBe(false)
+      expect(store.botsCount).toBe(0)
+      expect(store.matchSize).toBe(10)
+    })
+  })
+
   describe('full queue lifecycle', () => {
     it('flows from idle → searching → found → picking → starting', async () => {
       mockFetch.mockResolvedValue({ success: true, queueSize: 2 })

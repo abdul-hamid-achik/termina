@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Player not found' })
   }
 
-  // Don't expose email
-  const { email: _email, ...publicProfile } = player
+  // Don't expose sensitive fields
+  const { email: _email, passwordHash: _passwordHash, ...publicProfile } = player
   return { player: publicProfile }
 })

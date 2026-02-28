@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import type { TeamId } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
+import { HEROES } from '~~/shared/constants/heroes'
+import { ITEMS } from '~~/server/game/items/registry'
 
 const props = defineProps<{
   winner: TeamId
@@ -168,7 +170,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
               :class="{ 'bg-ability/5 font-bold': p.isCurrentPlayer }"
             >
               <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
-                {{ p.heroId }}
+                {{ HEROES[p.heroId]?.name ?? p.heroId }}
               </td>
               <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
                 {{ p.name }}
@@ -190,7 +192,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
               </td>
               <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
                 <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
-                  {{ item || '-' }}{{ i < 5 ? ' ' : '' }}
+                  {{ (item ? ITEMS[item]?.name ?? item : '-') }}{{ i < 5 ? ' ' : '' }}
                 </span>
               </td>
             </tr>
@@ -234,7 +236,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
               :class="{ 'bg-ability/5 font-bold': p.isCurrentPlayer }"
             >
               <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
-                {{ p.heroId }}
+                {{ HEROES[p.heroId]?.name ?? p.heroId }}
               </td>
               <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
                 {{ p.name }}
@@ -256,7 +258,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
               </td>
               <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
                 <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
-                  {{ item || '-' }}{{ i < 5 ? ' ' : '' }}
+                  {{ (item ? ITEMS[item]?.name ?? item : '-') }}{{ i < 5 ? ' ' : '' }}
                 </span>
               </td>
             </tr>

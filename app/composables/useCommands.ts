@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
+import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 
@@ -13,6 +14,7 @@ export interface GameContext {
   player: PlayerState | null
   visibleZones: Record<string, ZoneRuntimeState>
   allPlayers: Record<string, PlayerState>
+  items?: Record<string, ItemDef>
 }
 
 const SHORTCUTS: Record<string, string> = {
@@ -196,8 +198,15 @@ export function useCommands() {
     }
 
     if (baseCmd === 'buy') {
-      // No items constant yet, suggest placeholder
-      return []
+      return _suggestBuyItems(parts.slice(1).join(' '), context)
+    }
+
+    if (baseCmd === 'sell') {
+      return _suggestOwnedItems(parts.slice(1).join(' '), context)
+    }
+
+    if (baseCmd === 'use') {
+      return _suggestActiveItems(parts.slice(1).join(' '), context)
     }
 
     if (baseCmd === 'ward') {
@@ -278,6 +287,45 @@ export function useCommands() {
     }
 
     return suggestions.slice(0, 10)
+  }
+
+  function _suggestBuyItems(partial: string, context: GameContext): Suggestion[] {
+    if (!context.items) return []
+    const gold = context.player?.gold ?? 0
+    return Object.values(context.items)
+      .filter((item) => item.id.includes(partial) || item.name.toLowerCase().includes(partial))
+      .slice(0, 10)
+      .map((item) => ({
+        text: item.id,
+        description: `${item.name} (${item.cost}g)${gold >= item.cost ? ' [affordable]' : ' [need ' + (item.cost - gold) + 'g]'}`,
+      }))
+  }
+
+  function _suggestOwnedItems(partial: string, context: GameContext): Suggestion[] {
+    if (!context.player || !context.items) return []
+    const owned = context.player.items.filter((id): id is string => id != null)
+    const unique = [...new Set(owned)]
+    return unique
+      .filter((id) => id.includes(partial))
+      .map((id) => {
+        const item = context.items![id]
+        return { text: id, description: item ? `${item.name} (sell: ${Math.floor(item.cost / 2)}g)` : id }
+      })
+  }
+
+  function _suggestActiveItems(partial: string, context: GameContext): Suggestion[] {
+    if (!context.player || !context.items) return []
+    const owned = context.player.items.filter((id): id is string => id != null)
+    const unique = [...new Set(owned)]
+    return unique
+      .filter((id) => {
+        const item = context.items![id]
+        return item?.active && id.includes(partial)
+      })
+      .map((id) => {
+        const item = context.items![id]!
+        return { text: id, description: `${item.name} — ${item.active!.description}` }
+      })
   }
 
   function addToHistory(cmd: string) {

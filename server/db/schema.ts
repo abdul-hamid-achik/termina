@@ -6,6 +6,7 @@ import {
   jsonb,
   serial,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -16,8 +17,12 @@ export const players = pgTable('players', {
   username: text('username').notNull().unique(),
   email: text('email'),
   avatarUrl: text('avatar_url'),
-  provider: text('provider', { enum: ['github', 'discord'] }).notNull(),
-  providerId: text('provider_id').notNull(),
+  passwordHash: text('password_hash'),
+  selectedAvatar: text('selected_avatar'),
+  /** @deprecated Use playerProviders table instead */
+  provider: text('provider', { enum: ['github', 'discord', 'local'] }),
+  /** @deprecated Use playerProviders table instead */
+  providerId: text('provider_id'),
   mmr: integer('mmr').notNull().default(1000),
   gamesPlayed: integer('games_played').notNull().default(0),
   wins: integer('wins').notNull().default(0),
@@ -27,6 +32,28 @@ export const players = pgTable('players', {
 export const playersRelations = relations(players, ({ many }) => ({
   matchPlayers: many(matchPlayers),
   heroStats: many(heroStats),
+  providers: many(playerProviders),
+}))
+
+// ── Player Providers ─────────────────────────────────────────────
+
+export const playerProviders = pgTable('player_providers', {
+  id: serial('id').primaryKey(),
+  playerId: text('player_id')
+    .notNull()
+    .references(() => players.id),
+  provider: text('provider').notNull(),
+  providerId: text('provider_id').notNull(),
+  providerUsername: text('provider_username'),
+  providerAvatarUrl: text('provider_avatar_url'),
+  linkedAt: timestamp('linked_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('player_providers_provider_provider_id_idx').on(table.provider, table.providerId),
+  index('player_providers_player_id_idx').on(table.playerId),
+])
+
+export const playerProvidersRelations = relations(playerProviders, ({ one }) => ({
+  player: one(players, { fields: [playerProviders.playerId], references: [players.id] }),
 }))
 
 // ── Matches ───────────────────────────────────────────────────────
@@ -107,3 +134,5 @@ export type MatchPlayer = typeof matchPlayers.$inferSelect
 export type NewMatchPlayer = typeof matchPlayers.$inferInsert
 export type HeroStat = typeof heroStats.$inferSelect
 export type NewHeroStat = typeof heroStats.$inferInsert
+export type PlayerProvider = typeof playerProviders.$inferSelect
+export type NewPlayerProvider = typeof playerProviders.$inferInsert

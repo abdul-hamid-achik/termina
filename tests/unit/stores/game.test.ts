@@ -409,6 +409,74 @@ describe('Game Store', () => {
         expect(store.scoreboard[0]!.gold).toBe(0)
         expect(store.scoreboard[0]!.items).toEqual([])
       })
+
+      it('scoreboard entries include alive and respawnTick fields', () => {
+        const store = useGameStore()
+
+        const alive = makePlayer({ id: 'p1', alive: true, respawnTick: null })
+        const dead = makePlayer({ id: 'p2', alive: false, respawnTick: 20, team: 'dire' })
+        store.updateFromTick(makeTickMessage({ tick: 15, players: { p1: alive, p2: dead } }))
+
+        const p1Entry = store.scoreboard.find(e => e.id === 'p1')
+        const p2Entry = store.scoreboard.find(e => e.id === 'p2')
+        expect(p1Entry!.alive).toBe(true)
+        expect(p1Entry!.respawnTick).toBeNull()
+        expect(p2Entry!.alive).toBe(false)
+        expect(p2Entry!.respawnTick).toBe(20)
+      })
+
+      it('scoreboard marks fogged field on fogged players', () => {
+        const store = useGameStore()
+
+        const foggedPlayer = {
+          id: 'e1',
+          name: 'FoggedEnemy',
+          team: 'dire',
+          heroId: 'daemon',
+          level: 5,
+          alive: true,
+          fogged: true,
+          kills: 2,
+          deaths: 0,
+          assists: 1,
+          gold: 999,
+          items: ['boots'],
+        }
+        const normalPlayer = makePlayer({ id: 'p1' })
+
+        store.updateFromTick(makeTickMessage({
+          players: { e1: foggedPlayer as unknown as PlayerState, p1: normalPlayer },
+        }))
+
+        const foggedEntry = store.scoreboard.find(e => e.id === 'e1')
+        const normalEntry = store.scoreboard.find(e => e.id === 'p1')
+        expect(foggedEntry!.fogged).toBe(true)
+        expect(normalEntry!.fogged).toBe(false)
+      })
+
+      it('team stats (kills, towerKills, gold) are accessible', () => {
+        const store = useGameStore()
+        const teams = makeTeams()
+        store.updateFromTick(makeTickMessage({ teams }))
+
+        expect(store.teams!.radiant.kills).toBe(5)
+        expect(store.teams!.radiant.towerKills).toBe(1)
+        expect(store.teams!.radiant.gold).toBe(5000)
+        expect(store.teams!.dire.kills).toBe(3)
+        expect(store.teams!.dire.towerKills).toBe(0)
+        expect(store.teams!.dire.gold).toBe(4200)
+      })
+
+      it('respawn tick countdown can be calculated from current tick', () => {
+        const store = useGameStore()
+
+        const dead = makePlayer({ id: 'p1', alive: false, respawnTick: 25 })
+        store.updateFromTick(makeTickMessage({ tick: 20, players: { p1: dead } }))
+
+        const entry = store.scoreboard.find(e => e.id === 'p1')!
+        const remainingTicks = entry.respawnTick! - store.tick
+        expect(remainingTicks).toBe(5)
+      })
     })
 
     describe('addEvents', () => {
