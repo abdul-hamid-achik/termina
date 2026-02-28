@@ -508,10 +508,11 @@ function handleReturnToMenu() {
   />
 
   <!-- Active Game Screen -->
-  <div v-else class="game-grid relative bg-bg-primary">
+  <div v-else class="game-grid relative bg-bg-primary" data-testid="game-screen">
     <div
 v-if="!gameStore.isAlive && gameStore.player"
-         class="absolute inset-0 z-20 flex items-center justify-center bg-black/70">
+         class="absolute inset-0 z-20 flex items-center justify-center bg-black/70"
+         data-testid="death-overlay">
       <div class="text-center">
         <p class="text-2xl font-bold text-dire">PROCESS TERMINATED</p>
         <p v-if="gameStore.player.respawnTick" class="mt-2 text-text-dim">

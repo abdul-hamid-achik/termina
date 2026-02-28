@@ -35,5 +35,9 @@ Thumbs.db
 # vecgrep
 .vecgrep/
 
+# Playwright
+playwright-report/
+test-results/
+
 # Claude
 .claude/worktrees/

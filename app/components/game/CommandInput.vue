@@ -332,7 +332,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="cmd-input-wrapper relative cursor-text" @click="focusInput">
+  <div class="cmd-input-wrapper relative cursor-text" data-testid="command-input" @click="focusInput">
     <!-- Suggestions dropdown -->
     <div
       v-if="open && suggestions.length > 0"
@@ -378,6 +378,7 @@ onUnmounted(() => {
       <input
         ref="inputEl"
         v-model="input"
+        data-testid="command-input-field"
         class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
         :disabled="disabled"
         :placeholder="placeholder"

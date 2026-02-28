@@ -36,14 +36,15 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Current password is required' })
     }
 
-    const valid = await Bun.password.verify(currentPassword, player.passwordHash)
+    // verifyPassword auto-imported from nuxt-auth-utils (hash first, then plain)
+    const valid = await verifyPassword(player.passwordHash, currentPassword)
     if (!valid) {
       throw createError({ statusCode: 401, message: 'Current password is incorrect' })
     }
   }
 
-  // Hash and save new password
-  const passwordHash = await Bun.password.hash(newPassword)
+  // Hash and save new password (hashPassword auto-imported from nuxt-auth-utils)
+  const passwordHash = await hashPassword(newPassword)
   await Effect.runPromise(
     runtime.dbService.updatePlayerPassword(playerId, passwordHash),
   )

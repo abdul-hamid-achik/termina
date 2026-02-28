@@ -72,7 +72,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col gap-4 bg-bg-primary p-4">
+  <div class="flex min-h-screen flex-col gap-4 bg-bg-primary p-4" data-testid="post-game">
     <div
       class="border p-4 text-center"
       :class="
@@ -268,8 +268,8 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
     </div>
 
     <div class="flex justify-center gap-4 pt-2">
-      <AsciiButton label="PLAY AGAIN" variant="primary" @click="emit('playAgain')" />
-      <AsciiButton label="MAIN MENU" variant="ghost" @click="emit('returnToMenu')" />
+      <AsciiButton label="PLAY AGAIN" variant="primary" data-testid="play-again-btn" @click="emit('playAgain')" />
+      <AsciiButton label="MAIN MENU" variant="ghost" data-testid="return-to-menu-btn" @click="emit('returnToMenu')" />
     </div>
   </div>
 </template>

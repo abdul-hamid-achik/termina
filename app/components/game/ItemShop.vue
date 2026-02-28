@@ -73,7 +73,7 @@ function formatStats(def: ItemDef): string[] {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div class="flex flex-col gap-2" data-testid="item-shop">
     <!-- Category tabs -->
     <div class="flex gap-1 border-b border-border pb-1">
       <button

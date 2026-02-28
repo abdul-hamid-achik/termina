@@ -64,7 +64,7 @@ function typeColor(type: LogEvent['type']): string {
 </script>
 
 <template>
-  <div class="relative flex h-full flex-col">
+  <div class="relative flex h-full flex-col" data-testid="combat-log">
     <div
       v-if="pinned"
       class="absolute inset-x-0 top-0 z-[1] cursor-pointer border-b border-border bg-bg-secondary px-2 py-0.5 text-center text-[0.7rem] text-text-dim"

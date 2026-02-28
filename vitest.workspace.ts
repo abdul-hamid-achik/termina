@@ -17,12 +17,4 @@ export default defineWorkspace([
       environment: 'node',
     },
   },
-  {
-    extends: './vitest.config.ts',
-    test: {
-      name: 'e2e',
-      include: ['tests/e2e/**/*.test.ts'],
-      environment: 'happy-dom',
-    },
-  },
 ])

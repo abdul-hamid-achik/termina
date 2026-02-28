@@ -40,8 +40,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 409, message: 'Username already taken' })
     }
 
-    // Hash password with Bun's built-in argon2id
-    const passwordHash = await Bun.password.hash(password)
+    // Hash password (hashPassword auto-imported from nuxt-auth-utils)
+    const passwordHash = await hashPassword(password)
 
     // Create player
     const player = await Effect.runPromise(

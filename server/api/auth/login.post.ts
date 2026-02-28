@@ -26,7 +26,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 401, message: 'Invalid credentials' })
     }
 
-    const valid = await Bun.password.verify(password, player.passwordHash)
+    // verifyPassword auto-imported from nuxt-auth-utils (hash first, then plain)
+    const valid = await verifyPassword(player.passwordHash, password)
     if (!valid) {
       throw createError({ statusCode: 401, message: 'Invalid credentials' })
     }

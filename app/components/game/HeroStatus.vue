@@ -40,7 +40,7 @@ function cdLabel(cd: number): string {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 text-[0.8rem]">
+  <div class="flex flex-col gap-2 text-[0.8rem]" data-testid="hero-status">
     <div class="flex items-start gap-2">
       <HeroAvatar v-if="heroId" :hero-id="heroId" :size="48" :class="{ 'opacity-50': !hero.alive }" />
       <div class="flex flex-wrap items-baseline gap-2">

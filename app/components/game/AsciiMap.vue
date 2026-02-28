@@ -107,7 +107,7 @@ function cellClasses(zone: ZoneDisplay): string {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col" data-testid="ascii-map">
     <!-- RADIANT header -->
     <div class="px-1 text-center text-[0.6rem] font-bold tracking-widest text-radiant opacity-70">
       RADIANT

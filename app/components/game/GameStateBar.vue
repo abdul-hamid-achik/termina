@@ -20,6 +20,7 @@ function formatGold(n: number): string {
 <template>
   <div
     class="flex items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-secondary px-3 py-1 text-[0.8rem]"
+    data-testid="game-state-bar"
   >
     <HeroAvatar v-if="heroId" :hero-id="heroId" :size="24" />
     <span class="inline-flex gap-1">

@@ -54,7 +54,7 @@ const gameTimeFormatted = computed(() => {
 </script>
 
 <template>
-  <div class="scoreboard">
+  <div class="scoreboard" data-testid="scoreboard">
     <!-- Header -->
     <div class="scoreboard__header">
       <div class="scoreboard__team-label scoreboard__team-label--radiant">

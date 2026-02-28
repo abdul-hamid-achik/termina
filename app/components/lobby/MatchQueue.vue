@@ -153,7 +153,7 @@ const filledCount = computed(() => {
 </script>
 
 <template>
-  <div class="w-full max-w-[480px]">
+  <div class="w-full max-w-[480px]" data-testid="match-queue">
     <TerminalPanel title="Matchmaking">
       <div class="flex flex-col gap-3 p-4">
         <!-- Header: progress -->

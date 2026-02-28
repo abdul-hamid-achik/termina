@@ -86,7 +86,7 @@ function heroNameById(heroId: string | null): string {
 </script>
 
 <template>
-  <div class="flex h-full flex-col bg-bg-primary p-3">
+  <div class="flex h-full flex-col bg-bg-primary p-3" data-testid="hero-picker">
     <!-- TOP: Team panels side-by-side -->
     <div class="mb-2 grid grid-cols-[1fr_auto_1fr] gap-2">
       <!-- Radiant panel -->
@@ -161,6 +161,7 @@ function heroNameById(heroId: string | null): string {
         <div
           v-for="hero in heroList"
           :key="hero.id"
+          :data-testid="'hero-card-' + hero.id"
           class="relative cursor-pointer border border-border bg-bg-panel p-1.5 transition-all duration-150"
           :class="{
             'border-ability shadow-glow-ability': selectedHero === hero.id && !confirmed,
