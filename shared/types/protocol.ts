@@ -78,6 +78,11 @@ export interface GameStartingMessage {
   gameId: string
 }
 
+export interface GameCountdownMessage {
+  type: 'game_countdown'
+  seconds: number
+}
+
 export type ServerMessage =
   | TickStateMessage
   | EventsMessage
@@ -88,3 +93,4 @@ export type ServerMessage =
   | HeroPickMessage
   | LobbyStateMessage
   | GameStartingMessage
+  | GameCountdownMessage

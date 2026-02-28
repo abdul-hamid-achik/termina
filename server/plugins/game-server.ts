@@ -11,13 +11,15 @@ import {
   type WebSocketServiceApi,
 } from '../services/WebSocketService'
 import { gameLoggerLive } from '../utils/logger'
+import { gameLog } from '../utils/log'
 import { createInMemoryStateManager } from '../game/engine/StateManager'
 import { startGameLoop, type GameCallbacks } from '../game/engine/GameLoop'
 import { toGameEvent } from '../game/protocol/events'
 import type { TeamId } from '~~/shared/types/game'
 import type { NewMatch, NewMatchPlayer } from '../db/schema'
 import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
-import { sendToPeer } from '../services/PeerRegistry'
+import { sendToPeer, setPlayerGame } from '../services/PeerRegistry'
+import { cleanupLobby } from '../game/matchmaking/lobby'
 
 interface GameRuntime {
   redisService: RedisServiceApi
@@ -66,6 +68,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         }
 
         const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        gameLog.info('game_ready received', { lobbyId: gameData.lobbyId, playerCount: gameData.players.length })
 
         // Create a standalone state manager for this game
         const stateManager = createInMemoryStateManager()
@@ -97,33 +100,38 @@ export default defineNitroPlugin(async (nitroApp) => {
         // when they respond with 'join_game')
         for (const p of gameData.players) {
           if (isBot(p.playerId)) continue
+          gameLog.debug('Sending game_starting', { playerId: p.playerId, gameId })
+          setPlayerGame(p.playerId, gameId)
           sendToPeer(p.playerId, {
             type: 'game_starting',
             gameId,
           })
         }
 
+        // Clean up the lobby now that the game is created
+        cleanupLobby(gameData.lobbyId)
+
         // Start game loop with callbacks
         const callbacks: GameCallbacks = {
           onTickState: (gId, playerId, filteredState) => {
-            if (isBot(playerId)) return // No WebSocket for bots
-            Effect.runPromise(
-              ws.sendToPlayer(playerId, {
-                type: 'tick_state',
-                tick: filteredState.tick,
-                state: filteredState,
-              }),
-            ).catch(() => {})
+            if (isBot(playerId)) return
+            sendToPeer(playerId, {
+              type: 'tick_state',
+              tick: filteredState.tick,
+              state: filteredState,
+            })
           },
 
           onEvents: (gId, events) => {
-            Effect.runPromise(
-              ws.broadcastToGame(gId, {
-                type: 'events',
-                tick: 0,
-                events: events.map(toGameEvent),
-              }),
-            ).catch(() => {})
+            const msg = {
+              type: 'events' as const,
+              tick: events[0]?.tick ?? 0,
+              events: events.map(toGameEvent),
+            }
+            for (const p of gameData.players) {
+              if (isBot(p.playerId)) continue
+              sendToPeer(p.playerId, msg)
+            }
           },
 
           onGameOver: async (gId, winner) => {
@@ -215,13 +223,11 @@ export default defineNitroPlugin(async (nitroApp) => {
 
               // Broadcast game over to all real players
               for (const p of realPlayers) {
-                await Effect.runPromise(
-                  ws.sendToPlayer(p.playerId, {
-                    type: 'game_over',
-                    winner,
-                    stats: endStats,
-                  }),
-                ).catch(() => {})
+                sendToPeer(p.playerId, {
+                  type: 'game_over',
+                  winner,
+                  stats: endStats,
+                })
               }
 
               // Cleanup bot tracking
@@ -238,6 +244,8 @@ export default defineNitroPlugin(async (nitroApp) => {
           },
         }
 
+        gameLog.info('Game created — starting loop', { gameId, playerCount: gameData.players.length })
+
         // Start the game loop (runs asynchronously)
         Effect.runPromise(startGameLoop(gameId, stateManager, callbacks)).catch((err) => {
           Effect.runPromise(
@@ -248,20 +256,8 @@ export default defineNitroPlugin(async (nitroApp) => {
           )
         })
 
-        Effect.runPromise(
-          Effect.logInfo('Game created').pipe(
-            Effect.annotateLogs({ gameId, playerCount: gameData.players.length }),
-            Effect.withLogSpan('game_creation'),
-            Effect.provide(gameLoggerLive),
-          ),
-        )
       } catch (err) {
-        Effect.runPromise(
-          Effect.logError('Failed to process game_ready event').pipe(
-            Effect.annotateLogs({ error: String(err) }),
-            Effect.provide(gameLoggerLive),
-          ),
-        )
+        gameLog.error('Failed to process game_ready event', { error: String(err) })
       }
     }),
   )

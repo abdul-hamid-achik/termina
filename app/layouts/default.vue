@@ -1,10 +1,17 @@
 <script setup lang="ts">
+const { loggedIn, clear: clearSession } = useUserSession()
+
 const navLinks = [
-  { label: 'PLAY', to: '/play' },
+  { label: 'PLAY', to: '/lobby' },
   { label: 'LEARN', to: '/learn' },
   { label: 'LEADERBOARD', to: '/leaderboard' },
   { label: 'PROFILE', to: '/profile/me' },
 ]
+
+async function logout() {
+  await clearSession()
+  navigateTo('/login')
+}
 </script>
 
 <template>
@@ -19,7 +26,7 @@ const navLinks = [
  ╩ ╚═╝╩╚═╩ ╩╩╝╚╝╩ ╩</pre
         >
       </NuxtLink>
-      <nav class="flex gap-2 max-sm:flex-wrap max-sm:justify-center">
+      <nav class="flex items-center gap-2 max-sm:flex-wrap max-sm:justify-center">
         <NuxtLink
           v-for="link in navLinks"
           :key="link.to"
@@ -28,10 +35,24 @@ const navLinks = [
         >
           [{{ link.label }}]
         </NuxtLink>
+        <button
+          v-if="loggedIn"
+          class="cursor-pointer border-none bg-transparent px-1 py-1 text-[0.8rem] text-text-dim transition-colors duration-150 hover:text-dire"
+          @click="logout"
+        >
+          [LOGOUT]
+        </button>
+        <NuxtLink
+          v-else
+          to="/login"
+          class="px-1 py-1 text-[0.8rem] text-text-dim no-underline transition-colors duration-150 hover:text-radiant"
+        >
+          [LOGIN]
+        </NuxtLink>
       </nav>
     </header>
 
-    <main class="flex-1 p-4">
+    <main class="flex flex-1 flex-col p-4">
       <slot />
     </main>
 

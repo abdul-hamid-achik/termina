@@ -3,8 +3,9 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
 import { useCommands } from '~/composables/useCommands'
-import { ZONES } from '~~/shared/constants/zones'
+import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import type { TowerState } from '~~/shared/types/game'
+import { uiLog } from '~/utils/logger'
 
 const gameStore = useGameStore()
 const gameSocket = useGameSocket()
@@ -21,7 +22,10 @@ const localEvents = ref<
 
 onMounted(() => {
   if (gameStore.gameId && gameStore.playerId) {
+    uiLog.info('GameScreen connecting', { gameId: gameStore.gameId, playerId: gameStore.playerId })
     gameSocket.connect(gameStore.gameId, gameStore.playerId)
+  } else {
+    uiLog.warn('GameScreen mounted without gameId or playerId', { gameId: gameStore.gameId, playerId: gameStore.playerId })
   }
 })
 
@@ -127,8 +131,18 @@ const combatEvents = computed(() => {
 // We'll track them via onMessage.
 const towers = ref<TowerState[]>([])
 
+let firstTickLogged = false
 gameSocket.onMessage((msg) => {
   if (msg.type === 'tick_state') {
+    if (!firstTickLogged) {
+      firstTickLogged = true
+      uiLog.info('First tick_state received — game is live')
+      localEvents.value.push({
+        tick: 0,
+        text: '>_ Connected to game server. Stream active.',
+        type: 'system',
+      })
+    }
     const state = msg.state as Record<string, unknown>
     if (state.towers) {
       towers.value = state.towers
@@ -199,16 +213,64 @@ function getTowerTier(zoneId: string): number {
 // ── Command handling ───────────────────────────────────────────
 
 function handleCommand(cmd: string) {
-  const parsed = commands.parse(cmd)
-  if (parsed) {
-    gameSocket.send({ type: 'action', command: parsed })
-  } else {
+  const { command, error } = commands.parse(cmd)
+  if (command) {
+    uiLog.debug('Command sent', { type: command.type })
+    gameSocket.send({ type: 'action', command })
+  } else if (error) {
     localEvents.value.push({
       tick: gameStore.tick,
-      text: `Unknown command: ${cmd}`,
+      text: error,
       type: 'system',
     })
   }
+}
+
+function handleQuickAction(cmd: string) {
+  uiLog.debug('Quick action', { cmd })
+  const p = gameStore.player
+  if (!p) return
+
+  if (cmd === 'MOVE') {
+    // Show adjacent zones as a hint
+    const zone = ZONE_MAP[p.zone]
+    if (zone) {
+      const adjacent = zone.adjacentTo.join(', ')
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: `Adjacent zones: ${adjacent}`,
+        type: 'system',
+      })
+    }
+    return
+  }
+
+  if (cmd === 'ATK') {
+    // Auto-target nearest enemy in zone
+    const enemies = Object.values(gameStore.allPlayers).filter(
+      (e) => e.zone === p.zone && e.team !== p.team && e.alive,
+    )
+    if (enemies.length > 0) {
+      const target = enemies[0]!
+      const targetRef = `hero:${target.heroId ?? target.name}`
+      handleCommand(`attack ${targetRef}`)
+    } else {
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: 'No enemies in your zone. Usage: attack <target>',
+        type: 'system',
+      })
+    }
+    return
+  }
+
+  // Q/W/E/R — cast ability
+  if (['Q', 'W', 'E', 'R'].includes(cmd)) {
+    handleCommand(`cast ${cmd.toLowerCase()}`)
+    return
+  }
+
+  handleCommand(cmd.toLowerCase())
 }
 
 // ── Game over ──────────────────────────────────────────────────
@@ -288,15 +350,7 @@ v-if="!gameStore.isAlive && gameStore.player"
           v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE']"
           :key="cmd"
           class="whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-text-primary active:bg-border"
-          @click="
-            handleCommand(
-              cmd === 'ATK'
-                ? 'attack'
-                : cmd.length === 1
-                  ? `cast ${cmd.toLowerCase()}`
-                  : cmd.toLowerCase(),
-            )
-          "
+          @click="handleQuickAction(cmd)"
         >
           {{ cmd }}
         </button>

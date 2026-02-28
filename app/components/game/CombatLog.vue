@@ -74,7 +74,6 @@ function typeColor(type: LogEvent['type']): string {
       ref="logEl"
       class="flex-1 overflow-y-auto py-1 text-[0.8rem] leading-normal"
       @scroll="handleScroll"
-      @click="togglePin"
     >
       <div
         v-for="(event, i) in events"

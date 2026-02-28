@@ -12,6 +12,7 @@ import type {
 } from '~~/shared/types/game'
 import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { gameLog } from '~/utils/logger'
 
 export interface ScoreboardEntry {
   id: string
@@ -94,6 +95,8 @@ export const useGameStore = defineStore('game', () => {
       towers?: TowerState[]
       creeps?: CreepState[]
     }
+
+    gameLog.trace('tick_state', { tick: msg.tick, players: Object.keys(state.players).length, zones: Object.keys(state.zones).length })
 
     tick.value = msg.tick
     phase.value = state.phase

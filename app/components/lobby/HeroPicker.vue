@@ -7,7 +7,7 @@ const props = withDefaults(
   defineProps<{
     team: TeamId
     pickedHeroes?: Record<string, string>
-    teamRoster?: Array<{ playerId: string; name: string; heroId: string | null }>
+    teamRoster?: Array<{ playerId: string; name: string; heroId: string | null; team: TeamId }>
     timeRemaining?: number
   }>(),
   {
@@ -53,6 +53,9 @@ const heroList = computed(() =>
 
 const selectedHeroDef = computed(() => (selectedHero.value ? HEROES[selectedHero.value] : null))
 
+const radiantRoster = computed(() => props.teamRoster.filter((m) => m.team === 'radiant'))
+const direRoster = computed(() => props.teamRoster.filter((m) => m.team === 'dire'))
+
 const ROLE_ICONS: Record<string, string> = {
   carry: '>>',
   support: '++',
@@ -75,97 +78,137 @@ function confirmPick() {
   emit('pick', selectedHero.value)
   emit('confirm')
 }
+
+function heroNameById(heroId: string | null): string {
+  if (!heroId) return '...'
+  return HEROES[heroId]?.name ?? heroId
+}
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col gap-3 bg-bg-primary p-4">
-    <div class="flex items-center justify-between border-b border-border pb-2">
-      <span class="text-base font-bold tracking-widest text-ability">SELECT YOUR HERO</span>
-      <span
-        class="text-xl font-bold text-text-primary"
-        :class="{ 'animate-blink text-dire': countdown <= 10 }"
-      >
-        {{ countdown }}s
-      </span>
-    </div>
-
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
-      <div
-        v-for="hero in heroList"
-        :key="hero.id"
-        class="relative cursor-pointer border border-border bg-bg-panel p-2.5 transition-all duration-150"
-        :class="{
-          'border-ability shadow-glow-ability': selectedHero === hero.id && !confirmed,
-          'border-radiant shadow-[0_0_8px_rgba(46,204,113,0.3)]':
-            confirmed && selectedHero === hero.id,
-          'cursor-not-allowed opacity-30': hero.picked,
-          'hover:border-border-glow': !hero.picked,
-        }"
-        @click="selectHero(hero.id)"
-      >
-        <div class="mb-1 flex items-center gap-1.5">
-          <span class="text-[0.85rem] font-bold text-ability">{{
-            ROLE_ICONS[hero.role] || '??'
-          }}</span>
-          <span class="text-[0.85rem] font-bold uppercase text-text-primary">{{ hero.name }}</span>
+  <div class="flex h-full flex-col bg-bg-primary p-3">
+    <!-- TOP: Team panels side-by-side -->
+    <div class="mb-2 grid grid-cols-[1fr_auto_1fr] gap-2">
+      <!-- Radiant panel -->
+      <div class="border border-border bg-bg-panel p-2">
+        <div class="mb-1 text-center text-[0.7rem] font-bold tracking-widest text-radiant">
+          RADIANT
         </div>
-        <div class="mb-1.5 text-[0.7rem] uppercase tracking-widest text-text-dim">
-          {{ hero.role }}
-        </div>
-        <div class="flex gap-2 text-[0.65rem] text-text-dim">
-          <span>HP:{{ hero.baseStats.hp }}</span>
-          <span>MP:{{ hero.baseStats.mp }}</span>
-          <span>ATK:{{ hero.baseStats.attack }}</span>
-          <span>DEF:{{ hero.baseStats.defense }}</span>
-        </div>
-        <div
-          v-if="hero.picked"
-          class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[0.8rem] font-bold tracking-[0.2em] text-dire"
-        >
-          PICKED
-        </div>
-      </div>
-    </div>
-
-    <div v-if="selectedHeroDef" class="max-h-60 overflow-auto">
-      <TerminalPanel :title="selectedHeroDef.name">
-        <div class="flex flex-col gap-2">
-          <div class="text-xs italic leading-normal text-text-dim">{{ selectedHeroDef.lore }}</div>
-          <div class="flex flex-col gap-1">
-            <div class="flex items-start gap-1.5 py-0.5 text-xs">
-              <span class="w-4 shrink-0 font-bold text-ability">P</span>
-              <span class="min-w-[120px] shrink-0 font-bold text-text-primary">{{
-                selectedHeroDef.passive.name
-              }}</span>
-              <span class="text-text-dim">{{ selectedHeroDef.passive.description }}</span>
-            </div>
-            <div
-              v-for="slot in ['q', 'w', 'e', 'r'] as const"
-              :key="slot"
-              class="flex items-start gap-1.5 py-0.5 text-xs"
-            >
-              <span class="w-4 shrink-0 font-bold text-ability">{{ slot.toUpperCase() }}</span>
-              <span class="min-w-[120px] shrink-0 font-bold text-text-primary">{{
-                selectedHeroDef.abilities[slot].name
-              }}</span>
-              <span class="text-text-dim">{{ selectedHeroDef.abilities[slot].description }}</span>
-            </div>
+        <div class="flex flex-col gap-0.5">
+          <div
+            v-for="(slot, i) in 5"
+            :key="'rad-' + i"
+            class="flex items-center gap-1.5 px-1.5 py-0.5 text-[0.75rem]"
+            :class="
+              radiantRoster[i]?.heroId
+                ? 'border-l-2 border-radiant text-radiant'
+                : 'border-l-2 border-border text-text-dim'
+            "
+          >
+            <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
+            <span class="min-w-0 flex-1 truncate font-mono">
+              {{ radiantRoster[i]?.name ?? '---' }}
+            </span>
+            <span class="shrink-0 text-[0.65rem] font-bold uppercase">
+              {{ heroNameById(radiantRoster[i]?.heroId ?? null) }}
+            </span>
           </div>
         </div>
-      </TerminalPanel>
-    </div>
+      </div>
 
-    <div class="flex items-center justify-between border-t border-border pt-2">
-      <div class="flex items-center gap-3 text-xs">
-        <span class="font-bold text-text-dim">TEAM:</span>
+      <!-- VS + countdown -->
+      <div class="flex flex-col items-center justify-center gap-1 px-3">
+        <span class="text-lg font-bold text-text-dim">VS</span>
         <span
-          v-for="member in teamRoster"
-          :key="member.playerId"
-          :class="member.heroId ? 'text-radiant' : 'text-text-dim'"
+          class="text-xl font-bold tabular-nums text-text-primary"
+          :class="{ 'animate-blink text-dire': countdown <= 10 }"
         >
-          {{ member.name }} {{ member.heroId ? `[${member.heroId}]` : '[...]' }}
+          {{ countdown }}s
         </span>
       </div>
+
+      <!-- Dire panel -->
+      <div class="border border-border bg-bg-panel p-2">
+        <div class="mb-1 text-center text-[0.7rem] font-bold tracking-widest text-dire">DIRE</div>
+        <div class="flex flex-col gap-0.5">
+          <div
+            v-for="(slot, i) in 5"
+            :key="'dire-' + i"
+            class="flex items-center gap-1.5 px-1.5 py-0.5 text-[0.75rem]"
+            :class="
+              direRoster[i]?.heroId
+                ? 'border-l-2 border-dire text-dire'
+                : 'border-l-2 border-border text-text-dim'
+            "
+          >
+            <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
+            <span class="min-w-0 flex-1 truncate font-mono">
+              {{ direRoster[i]?.name ?? '---' }}
+            </span>
+            <span class="shrink-0 text-[0.65rem] font-bold uppercase">
+              {{ heroNameById(direRoster[i]?.heroId ?? null) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: Compact hero grid -->
+    <div class="min-h-0 flex-1 overflow-auto">
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1.5">
+        <div
+          v-for="hero in heroList"
+          :key="hero.id"
+          class="relative cursor-pointer border border-border bg-bg-panel p-1.5 transition-all duration-150"
+          :class="{
+            'border-ability shadow-glow-ability': selectedHero === hero.id && !confirmed,
+            'border-radiant shadow-[0_0_8px_rgba(46,204,113,0.3)]':
+              confirmed && selectedHero === hero.id,
+            'cursor-not-allowed opacity-30': hero.picked,
+            'hover:border-border-glow': !hero.picked,
+          }"
+          @click="selectHero(hero.id)"
+        >
+          <div class="mb-0.5 flex items-center gap-1">
+            <span class="text-[0.75rem] font-bold text-ability">{{
+              ROLE_ICONS[hero.role] || '??'
+            }}</span>
+            <span class="truncate text-[0.75rem] font-bold uppercase text-text-primary">{{
+              hero.name
+            }}</span>
+          </div>
+          <div class="flex gap-1.5 text-[0.6rem] text-text-dim">
+            <span>HP:{{ hero.baseStats.hp }}</span>
+            <span>ATK:{{ hero.baseStats.attack }}</span>
+            <span>DEF:{{ hero.baseStats.defense }}</span>
+          </div>
+          <div
+            v-if="hero.picked"
+            class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[0.7rem] font-bold tracking-[0.15em] text-dire"
+          >
+            PICKED
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM: Selected hero details + confirm -->
+    <div class="mt-2 flex items-end gap-3 border-t border-border pt-2">
+      <div v-if="selectedHeroDef" class="min-w-0 flex-1">
+        <div class="mb-1 text-[0.8rem] font-bold uppercase text-ability">
+          {{ selectedHeroDef.name }}
+        </div>
+        <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[0.65rem] text-text-dim">
+          <span
+            v-for="slot in ['q', 'w', 'e', 'r'] as const"
+            :key="slot"
+          >
+            <span class="font-bold text-ability">{{ slot.toUpperCase() }}</span>
+            {{ selectedHeroDef.abilities[slot].name }}
+          </span>
+        </div>
+      </div>
+      <div v-else class="min-w-0 flex-1 text-[0.75rem] text-text-dim">Select a hero...</div>
       <AsciiButton
         label="CONFIRM"
         variant="primary"

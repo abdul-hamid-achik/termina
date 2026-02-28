@@ -1,5 +1,6 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '../../plugins/game-server'
+import { authLog } from '../../utils/log'
 
 export default defineOAuthDiscordEventHandler({
   async onSuccess(event, { user, tokens: _tokens }) {
@@ -45,8 +46,7 @@ export default defineOAuthDiscordEventHandler({
     return sendRedirect(event, '/')
   },
   onError(event, error) {
-    // eslint-disable-next-line no-console
-    console.error('[Auth] Discord OAuth error:', error)
+    authLog.error('Discord OAuth error', error)
     return sendRedirect(event, '/login?error=discord')
   },
 })

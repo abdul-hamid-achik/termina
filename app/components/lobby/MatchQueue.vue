@@ -38,7 +38,7 @@ function formatTime(seconds: number): string {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-bg-primary p-4">
+  <div class="w-full">
     <TerminalPanel title="Matchmaking">
       <div class="flex min-w-[320px] flex-col items-center gap-4 p-6">
         <div class="text-center">

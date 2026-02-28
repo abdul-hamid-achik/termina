@@ -38,13 +38,18 @@ function parseTarget(raw: string): TargetRef | null {
   return null
 }
 
+export interface ParseResult {
+  command: Command | null
+  error: string | null
+}
+
 export function useCommands() {
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
 
-  function parse(input: string): Command | null {
+  function parse(input: string): ParseResult {
     let trimmed = input.trim().toLowerCase()
-    if (!trimmed) return null
+    if (!trimmed) return { command: null, error: null }
 
     // Expand shortcuts
     const parts = trimmed.split(/\s+/)
@@ -59,77 +64,77 @@ export function useCommands() {
     switch (cmd) {
       case 'move': {
         const zone = tokens[1]
-        if (!zone) return null
-        return { type: 'move', zone }
+        if (!zone) return { command: null, error: 'Usage: move <zone>' }
+        return { command: { type: 'move', zone }, error: null }
       }
 
       case 'attack': {
         const targetStr = tokens[1]
-        if (!targetStr) return null
+        if (!targetStr) return { command: null, error: 'Usage: attack <target>  (e.g. attack hero:axe, attack creep:0, attack tower:mid-t1-rad)' }
         const target = parseTarget(targetStr)
-        if (!target) return null
-        return { type: 'attack', target }
+        if (!target) return { command: null, error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, tower:<zone>, or self` }
+        return { command: { type: 'attack', target }, error: null }
       }
 
       case 'cast': {
         const ability = tokens[1] as 'q' | 'w' | 'e' | 'r'
-        if (!['q', 'w', 'e', 'r'].includes(ability)) return null
+        if (!['q', 'w', 'e', 'r'].includes(ability)) return { command: null, error: 'Usage: cast <q|w|e|r> [target]' }
         const targetStr = tokens[2]
         const target = targetStr ? parseTarget(targetStr) : undefined
-        return { type: 'cast', ability, target: target ?? undefined }
+        return { command: { type: 'cast', ability, target: target ?? undefined }, error: null }
       }
 
       case 'use': {
         const item = tokens[1]
-        if (!item) return null
+        if (!item) return { command: null, error: 'Usage: use <item> [target]' }
         const targetStr = tokens[2]
         const target = targetStr ? (parseTarget(targetStr) ?? targetStr) : undefined
-        return { type: 'use', item, target }
+        return { command: { type: 'use', item, target }, error: null }
       }
 
       case 'buy': {
         const item = tokens[1]
-        if (!item) return null
-        return { type: 'buy', item }
+        if (!item) return { command: null, error: 'Usage: buy <item>' }
+        return { command: { type: 'buy', item }, error: null }
       }
 
       case 'sell': {
         const item = tokens[1]
-        if (!item) return null
-        return { type: 'sell', item }
+        if (!item) return { command: null, error: 'Usage: sell <item>' }
+        return { command: { type: 'sell', item }, error: null }
       }
 
       case 'ward': {
         const zone = tokens[1]
-        if (!zone) return null
-        return { type: 'ward', zone }
+        if (!zone) return { command: null, error: 'Usage: ward <zone>' }
+        return { command: { type: 'ward', zone }, error: null }
       }
 
       case 'scan':
-        return { type: 'scan' }
+        return { command: { type: 'scan' }, error: null }
 
       case 'status':
-        return { type: 'status' }
+        return { command: { type: 'status' }, error: null }
 
       case 'map':
-        return { type: 'map' }
+        return { command: { type: 'map' }, error: null }
 
       case 'chat': {
         const channel = tokens[1] as 'team' | 'all'
-        if (!['team', 'all'].includes(channel)) return null
+        if (!['team', 'all'].includes(channel)) return { command: null, error: 'Usage: chat <team|all> <message>' }
         const message = tokens.slice(2).join(' ')
-        if (!message) return null
-        return { type: 'chat', channel, message }
+        if (!message) return { command: null, error: 'Usage: chat <team|all> <message>' }
+        return { command: { type: 'chat', channel, message }, error: null }
       }
 
       case 'ping': {
         const zone = tokens[1]
-        if (!zone) return null
-        return { type: 'ping', zone }
+        if (!zone) return { command: null, error: 'Usage: ping <zone>' }
+        return { command: { type: 'ping', zone }, error: null }
       }
 
       default:
-        return null
+        return { command: null, error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, scan, status, map, chat, ping` }
     }
   }
 

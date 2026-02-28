@@ -1,4 +1,4 @@
-import { Effect } from 'effect'
+import { Effect, Duration } from 'effect'
 import type { RedisServiceApi } from '../../services/RedisService'
 import type { WebSocketServiceApi } from '../../services/WebSocketService'
 import type { DatabaseServiceApi } from '../../services/DatabaseService'
@@ -7,9 +7,11 @@ import type { QueueEntry } from './queue'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 import { isBot } from '../ai/BotManager'
 import { sendToPeer } from '../../services/PeerRegistry'
+import { lobbyLog } from '../../utils/log'
 
-const PICK_TIME_SECONDS = 30
+const PICK_TIME_SECONDS = 15
 const PICK_TIME_MS = PICK_TIME_SECONDS * 1000
+const BOT_PICK_DELAY_MS = 1500
 
 const AVAILABLE_HEROES = [...HERO_IDS]
 
@@ -82,11 +84,7 @@ export function createLobby(
     playerToLobby.set(p.playerId, lobbyId)
   }
 
-  Effect.runPromise(
-    Effect.logInfo('Lobby created').pipe(
-      Effect.annotateLogs({ lobbyId, playerCount: players.length }),
-    ),
-  )
+  lobbyLog.info('Lobby created', { lobbyId, playerCount: players.length })
 
   // Send lobby_state to each player with their team and the full roster
   const allPlayers = players.map((p) => ({
@@ -111,6 +109,13 @@ export function createLobby(
   return lobby
 }
 
+function pickRandomHero(lobby: Lobby): string {
+  // Prefer unpicked heroes, but allow duplicates if all are taken
+  const available = AVAILABLE_HEROES.filter((h) => !lobby.pickedHeroes.has(h))
+  const pool = available.length > 0 ? available : AVAILABLE_HEROES
+  return pool[Math.floor(Math.random() * pool.length)]!
+}
+
 function startPickTimer(
   lobby: Lobby,
   ws: WebSocketServiceApi,
@@ -119,18 +124,15 @@ function startPickTimer(
 ): void {
   if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
 
-  // If current picker is a bot, auto-pick immediately
+  // If current picker is a bot, auto-pick after a visible delay
   const pickIdx = lobby.pickOrder[lobby.currentPickIndex]
   if (pickIdx !== undefined) {
     const player = lobby.players[pickIdx]
     if (player && !player.heroId && isBot(player.playerId)) {
-      const available = AVAILABLE_HEROES.filter((h) => !lobby.pickedHeroes.has(h))
-      if (available.length > 0) {
-        const randomHero = available[Math.floor(Math.random() * available.length)]!
-        // Use setTimeout(0) to avoid deep recursion from confirmPick -> startPickTimer chain
-        setTimeout(() => confirmPick(lobby, player.playerId, randomHero, ws, redis, db), 0)
-        return
-      }
+      const randomHero = pickRandomHero(lobby)
+      lobbyLog.debug('Bot picking hero', { lobbyId: lobby.id, playerId: player.playerId, heroId: randomHero })
+      setTimeout(() => confirmPick(lobby, player.playerId, randomHero, ws, redis, db), BOT_PICK_DELAY_MS)
+      return
     }
   }
 
@@ -141,10 +143,7 @@ function startPickTimer(
     const player = lobby.players[pickIdx]
     if (!player || player.heroId) return
 
-    const available = AVAILABLE_HEROES.filter((h) => !lobby.pickedHeroes.has(h))
-    if (available.length === 0) return
-
-    const randomHero = available[Math.floor(Math.random() * available.length)]!
+    const randomHero = pickRandomHero(lobby)
     confirmPick(lobby, player.playerId, randomHero, ws, redis, db)
   }, PICK_TIME_MS)
 }
@@ -169,19 +168,18 @@ export function pickHero(
     return { success: false, error: 'Not your turn to pick' }
   }
 
-  // Check hero is available
-  if (lobby.pickedHeroes.has(heroId)) {
-    return { success: false, error: 'Hero already picked' }
-  }
-
   if (!AVAILABLE_HEROES.includes(heroId)) {
     return { success: false, error: 'Invalid hero' }
   }
 
+  // Check hero is available (allow duplicates when all unique heroes are exhausted)
+  const available = AVAILABLE_HEROES.filter((h) => !lobby.pickedHeroes.has(h))
+  if (available.length > 0 && lobby.pickedHeroes.has(heroId)) {
+    return { success: false, error: 'Hero already picked' }
+  }
+
   confirmPick(lobby, playerId, heroId, ws, redis, db)
-  Effect.runPromise(
-    Effect.logDebug('Hero picked').pipe(Effect.annotateLogs({ lobbyId, playerId, heroId })),
-  )
+  lobbyLog.debug('Hero picked', { lobbyId, playerId, heroId })
   return { success: true }
 }
 
@@ -236,17 +234,18 @@ function startReadyCheck(
 
   lobby.phase = 'starting'
 
-  // Notify players game is starting
+  lobbyLog.info('Ready check started', { lobbyId: lobby.id })
+
+  // Send 3-second countdown to all real players
   for (const p of lobby.players) {
     if (isBot(p.playerId)) continue
     sendToPeer(p.playerId, {
-      type: 'announcement',
-      message: 'All heroes picked! Game starting...',
-      level: 'info',
+      type: 'game_countdown',
+      seconds: 3,
     })
   }
 
-  // Transition to game (publish to Redis for game engine to pick up)
+  // Transition to game after 3s countdown (publish to Redis for game engine to pick up)
   const gameData = {
     lobbyId: lobby.id,
     players: lobby.players.map((p) => ({
@@ -257,22 +256,34 @@ function startReadyCheck(
     })),
   }
 
-  Effect.runPromise(redis.publish('matchmaking:game_ready', JSON.stringify(gameData))).catch(
-    (err) => {
-      Effect.runPromise(
-        Effect.logError('Failed to publish game_ready').pipe(
-          Effect.annotateLogs({ lobbyId: lobby.id, error: String(err) }),
-        ),
-      )
-    },
+  Effect.runPromise(
+    Effect.sleep(Duration.seconds(3)).pipe(
+      Effect.andThen(() => {
+        lobbyLog.info('Publishing game_ready', { lobbyId: lobby.id })
+        return redis.publish('matchmaking:game_ready', JSON.stringify(gameData))
+      }),
+      Effect.catchAll((err) => {
+        lobbyLog.error('Failed to publish game_ready', { lobbyId: lobby.id, error: String(err) })
+        return Effect.void
+      }),
+    ),
   )
 
-  // Cleanup
   if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+  // NOTE: Do NOT delete the lobby from activeLobbies/playerToLobby here.
+  // The game-server will call cleanupLobby() after the game is created.
+  // This prevents a race where the poll returns 'searching' between lobby
+  // end and game creation.
+}
+
+export function cleanupLobby(lobbyId: string): void {
+  const lobby = activeLobbies.get(lobbyId)
+  if (!lobby) return
   for (const p of lobby.players) {
     playerToLobby.delete(p.playerId)
   }
-  activeLobbies.delete(lobby.id)
+  activeLobbies.delete(lobbyId)
+  lobbyLog.info('Lobby cleaned up', { lobbyId })
 }
 
 export function getLobby(lobbyId: string): Lobby | undefined {

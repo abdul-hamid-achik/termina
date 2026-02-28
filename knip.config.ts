@@ -8,6 +8,8 @@ const config: KnipConfig = {
     'app/components/**/*.vue',
     'app/composables/**/*.ts',
     'app/stores/**/*.ts',
+    'app/middleware/**/*.ts',
+    'app/utils/**/*.ts',
     'server/**/*.ts',
     'shared/**/*.ts',
   ],
@@ -23,6 +25,7 @@ const config: KnipConfig = {
     '@fontsource/jetbrains-mono',
     // Provided by Nuxt, not directly imported
     'vue-router',
+    'consola',
     // Peer dep of @effect/schema, pins effect version
     '@effect/platform',
   ],

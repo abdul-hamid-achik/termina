@@ -26,7 +26,12 @@ export default defineNuxtConfig({
   css: ['@fontsource/jetbrains-mono/400.css', '@fontsource/jetbrains-mono/700.css'],
 
   runtimeConfig: {
-    sessionSecret: '',
+    session: {
+      password: '',
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
     oauth: {
       github: { clientId: '', clientSecret: '' },
       discord: { clientId: '', clientSecret: '' },

@@ -4,6 +4,7 @@ import type { WebSocketServiceApi } from '../../services/WebSocketService'
 import type { DatabaseServiceApi } from '../../services/DatabaseService'
 import { createLobby } from './lobby'
 import { createBotPlayers } from '../ai/BotManager'
+import { matchLog } from '../../utils/log'
 
 const QUEUE_KEY = 'matchmaking:queue'
 const QUEUE_TIMES_KEY = 'matchmaking:queue_times'
@@ -86,6 +87,7 @@ async function tryFormMatch(
       const longestWait = Math.max(...players.map((p) => now - p.joinedAt))
       if (longestWait >= BOT_FILL_WAIT_MS) {
         const botsNeeded = MATCH_SIZE - players.length
+        matchLog.info('Filling with bots', { realPlayers: players.length, botsNeeded })
         const botEntries = createBotPlayers(
           botsNeeded,
           players.map((p) => p.playerId),
@@ -101,9 +103,7 @@ async function tryFormMatch(
         }
 
         createLobby(allPlayers, ws, redis, db)
-        yield* Effect.logInfo('Match formed with bots').pipe(
-          Effect.annotateLogs({ realPlayers: players.length, bots: botsNeeded }),
-        )
+        matchLog.info('Match formed with bots', { realPlayers: players.length, bots: botsNeeded })
         return
       }
     }
@@ -142,9 +142,7 @@ async function tryFormMatch(
 
         // Create lobby
         createLobby(group, ws, redis, db)
-        yield* Effect.logInfo('Match formed').pipe(
-          Effect.annotateLogs({ queueSize: players.length, matchSize: MATCH_SIZE }),
-        )
+        matchLog.info('Match formed', { queueSize: players.length, matchSize: MATCH_SIZE })
         return
       }
     }

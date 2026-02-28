@@ -1,8 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TeamId } from '~~/shared/types/game'
+import { lobbyLog } from '~/utils/logger'
 
 export type QueueStatus = 'idle' | 'searching' | 'found' | 'picking' | 'starting'
+
+type PollResponse =
+  | { status: 'searching'; playersInQueue: number; estimatedWaitSeconds: number }
+  | {
+      status: 'lobby'
+      lobbyId: string
+      team: TeamId
+      players: { playerId: string; team: TeamId; heroId: string | null }[]
+      phase: string
+    }
+  | { status: 'game_starting'; gameId: string }
 
 export const useLobbyStore = defineStore('lobby', () => {
   const queueStatus = ref<QueueStatus>('idle')
@@ -10,9 +22,13 @@ export const useLobbyStore = defineStore('lobby', () => {
   const playersInQueue = ref(0)
   const estimatedWaitSeconds = ref(0)
   const lobbyId = ref<string | null>(null)
+  const gameId = ref<string | null>(null)
   const team = ref<TeamId | null>(null)
   const pickedHeroes = ref<Record<string, string>>({})
-  const teamRoster = ref<Array<{ playerId: string; name: string; heroId: string | null }>>([])
+  const teamRoster = ref<
+    Array<{ playerId: string; name: string; heroId: string | null; team: TeamId }>
+  >([])
+  const countdown = ref(0)
 
   let queueTimer: ReturnType<typeof setInterval> | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -28,8 +44,7 @@ export const useLobbyStore = defineStore('lobby', () => {
       queueTime.value = 0
       _startTimers()
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[Lobby] Failed to join queue:', err)
+      lobbyLog.error('Failed to join queue', err)
       throw err
     }
   }
@@ -45,11 +60,52 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   async function pollQueueStatus() {
     try {
-      const res = await $fetch<{ playersInQueue: number; estimatedWaitSeconds: number }>(
-        '/api/queue/status',
-      )
-      playersInQueue.value = res.playersInQueue
-      estimatedWaitSeconds.value = res.estimatedWaitSeconds
+      const res = await $fetch<PollResponse>('/api/queue/status')
+
+      lobbyLog.debug('Poll result', { status: res.status, queueStatus: queueStatus.value })
+
+      if (res.status === 'game_starting') {
+        // Game created — skip straight to starting
+        gameId.value = res.gameId
+        if (queueStatus.value !== 'starting') {
+          allPicksComplete()
+          // Start countdown in case WS game_countdown message was missed
+          if (countdown.value <= 0) startCountdown(5)
+        }
+      } else if (res.status === 'lobby') {
+        // Always sync lobby/team info when we have it
+        if (queueStatus.value === 'searching' || !lobbyId.value) {
+          lobbyId.value = res.lobbyId
+          setTeamInfo(
+            res.team,
+            res.players.map((p) => ({
+              playerId: p.playerId,
+              name: p.playerId,
+              heroId: p.heroId,
+              team: p.team,
+            })),
+          )
+        }
+
+        // Sync pickedHeroes from poll data
+        for (const p of res.players) {
+          if (p.heroId) {
+            pickedHeroes.value = { ...pickedHeroes.value, [p.playerId]: p.heroId }
+          }
+        }
+
+        if (res.phase === 'starting' && queueStatus.value !== 'starting') {
+          // All picks done, game is about to start
+          allPicksComplete()
+          // Start countdown in case WS game_countdown message was missed
+          if (countdown.value <= 0) startCountdown(10)
+        } else if (queueStatus.value === 'searching') {
+          matchFound(res.lobbyId)
+        }
+      } else if (res.status === 'searching') {
+        playersInQueue.value = res.playersInQueue
+        estimatedWaitSeconds.value = res.estimatedWaitSeconds
+      }
     } catch {
       // Ignore poll errors
     }
@@ -58,10 +114,13 @@ export const useLobbyStore = defineStore('lobby', () => {
   function matchFound(id?: string) {
     queueStatus.value = 'found'
     if (id) lobbyId.value = id
-    _stopTimers()
-    // Transition to picking after a brief delay
+    lobbyLog.info('Match found', { lobbyId: id })
+    // Transition to picking after a brief delay — guard against race with allPicksComplete
     setTimeout(() => {
-      queueStatus.value = 'picking'
+      if (queueStatus.value === 'found') {
+        queueStatus.value = 'picking'
+        lobbyLog.debug('Transitioned to picking')
+      }
     }, 1500)
   }
 
@@ -72,15 +131,37 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   function allPicksComplete() {
+    // Stop queue timer but keep poll timer running as fallback
+    // for detecting game_starting if the WS message is missed
+    if (queueTimer) {
+      clearInterval(queueTimer)
+      queueTimer = null
+    }
     queueStatus.value = 'starting'
+    lobbyLog.info('All picks complete — transitioning to starting')
   }
 
   function setTeamInfo(
     teamId: TeamId,
-    roster: Array<{ playerId: string; name: string; heroId: string | null }>,
+    roster: Array<{ playerId: string; name: string; heroId: string | null; team: TeamId }>,
   ) {
     team.value = teamId
     teamRoster.value = roster
+  }
+
+  let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+  function startCountdown(seconds: number) {
+    lobbyLog.debug('Starting countdown', { seconds })
+    countdown.value = seconds
+    if (countdownTimer) clearInterval(countdownTimer)
+    countdownTimer = setInterval(() => {
+      countdown.value = Math.max(0, countdown.value - 1)
+      if (countdown.value <= 0 && countdownTimer) {
+        clearInterval(countdownTimer)
+        countdownTimer = null
+      }
+    }, 1000)
   }
 
   function _startTimers() {
@@ -100,6 +181,10 @@ export const useLobbyStore = defineStore('lobby', () => {
       clearInterval(pollTimer)
       pollTimer = null
     }
+    if (countdownTimer) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
   }
 
   function _reset() {
@@ -109,9 +194,11 @@ export const useLobbyStore = defineStore('lobby', () => {
     playersInQueue.value = 0
     estimatedWaitSeconds.value = 0
     lobbyId.value = null
+    gameId.value = null
     team.value = null
     pickedHeroes.value = {}
     teamRoster.value = []
+    countdown.value = 0
   }
 
   function $dispose() {
@@ -125,9 +212,11 @@ export const useLobbyStore = defineStore('lobby', () => {
     playersInQueue,
     estimatedWaitSeconds,
     lobbyId,
+    gameId,
     team,
     pickedHeroes,
     teamRoster,
+    countdown,
     // Actions
     joinQueue,
     leaveQueue,
@@ -136,6 +225,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     heroPicked,
     allPicksComplete,
     setTeamInfo,
+    startCountdown,
     $dispose,
   }
 })

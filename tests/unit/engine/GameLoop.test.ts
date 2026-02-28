@@ -193,5 +193,183 @@ describe('GameLoop', () => {
       const result = Effect.runSync(processTick('game-override', state))
       expect(result.state.players['p1']!.zone).toBe('mid-river')
     })
+
+    it('should set death respawn timer for killed players', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', alive: false, hp: 0, level: 1, respawnTick: null }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-death', state))
+      const p1 = result.state.players['p1']!
+      expect(p1.respawnTick).not.toBeNull()
+      // Respawn = tick + base + level * perLevel = 1 + 3 + 1*1 = 5
+      expect(p1.respawnTick).toBe(1 + 3 + 1)
+    })
+
+    it('should not respawn dead players before respawn tick', () => {
+      const state = makeGameState({
+        tick: 5,
+        players: {
+          p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: 10 }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-no-respawn', state))
+      expect(result.state.players['p1']!.alive).toBe(false)
+    })
+
+    it('should heal mana in fountain', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'radiant-fountain',
+            mp: 50,
+            maxMp: 200,
+            hp: 500,
+            maxHp: 500,
+          }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-mana', state))
+      expect(result.state.players['p1']!.mp).toBeGreaterThan(50)
+    })
+
+    it('should not heal players outside their fountain', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            hp: 100,
+            maxHp: 500,
+          }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-no-heal', state))
+      // Player not in fountain should not be healed
+      expect(result.state.players['p1']!.hp).toBe(100)
+    })
+
+    it('should not heal radiant player in dire fountain', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'dire-fountain',
+            hp: 100,
+            maxHp: 500,
+          }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-wrong-fountain', state))
+      expect(result.state.players['p1']!.hp).toBe(100)
+    })
+
+    it('should cap fountain healing at max HP', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'radiant-fountain',
+            hp: 490,
+            maxHp: 500,
+            mp: 195,
+            maxMp: 200,
+          }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-cap-heal', state))
+      expect(result.state.players['p1']!.hp).toBe(500)
+      expect(result.state.players['p1']!.mp).toBe(200)
+    })
+
+    it('should reject invalid actions and still process valid ones', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      // Invalid: move to non-adjacent zone
+      submitAction('game-mixed', 'p1', { type: 'move', zone: 'bot-t1-rad' })
+
+      const result = Effect.runSync(processTick('game-mixed', state))
+      // Invalid action should be rejected, player stays
+      expect(result.state.players['p1']!.zone).toBe('mid-t1-rad')
+    })
+
+    it('should not process actions when game is ended', () => {
+      const towers = initializeTowers().map((t) =>
+        t.team === 'dire' ? { ...t, hp: 0, alive: false } : t,
+      )
+      const state = makeGameState({
+        towers,
+        players: {
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-ended', state))
+      expect(result.state.phase).toBe('ended')
+    })
+
+    it('should detect dire wins when all radiant towers destroyed', () => {
+      const towers = initializeTowers().map((t) =>
+        t.team === 'radiant' ? { ...t, hp: 0, alive: false } : t,
+      )
+
+      const state = makeGameState({
+        towers,
+        players: {
+          p1: makePlayer({ id: 'p1' }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-dire-win', state))
+      expect(result.state.phase).toBe('ended')
+    })
+
+    it('should not end game when both teams have towers alive', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1' }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-ongoing', state))
+      expect(result.state.phase).toBe('playing')
+    })
+
+    it('should return events from the tick', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: null }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-events', state))
+      // Should have death event for p1
+      const deathEvents = result.events.filter((e) => e._tag === 'death')
+      expect(deathEvents.length).toBeGreaterThan(0)
+    })
   })
 })

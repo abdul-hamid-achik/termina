@@ -525,6 +525,342 @@ export const HEROES: Record<string, HeroDef> = {
       },
     },
   },
+
+  proxy: {
+    id: 'proxy',
+    name: 'Proxy',
+    role: 'support',
+    lore: 'A network intermediary that intercepts traffic and redirects harm. Proxy shields allies by absorbing and rerouting damage through cached connections.',
+    baseStats: {
+      hp: 580,
+      mp: 380,
+      attack: 42,
+      defense: 4,
+      magicResist: 20,
+      moveSpeed: 1,
+      attackRange: 'ranged',
+    },
+    growthPerLevel: {
+      hp: 55,
+      mp: 35,
+      attack: 3,
+      defense: 1,
+    },
+    passive: {
+      id: 'proxy-passive',
+      name: 'Middleman',
+      description:
+        'Redirects 12% of damage dealt to the nearest ally within the same zone to Proxy instead.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [{ type: 'buff', value: 12, description: 'Damage redirect %' }],
+    },
+    abilities: {
+      q: {
+        id: 'proxy-q',
+        name: 'Packet Redirect',
+        description:
+          'Hurl a redirected packet at an enemy, dealing magical damage and slowing them for 2 ticks.',
+        manaCost: 70,
+        cooldownTicks: 3,
+        targetType: 'unit',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 85, damageType: 'magical' },
+          { type: 'slow', value: 25, duration: 2 },
+        ],
+      },
+      w: {
+        id: 'proxy-w',
+        name: 'Cache Shield',
+        description:
+          'Grant an allied hero a cached response shield that absorbs damage for 3 ticks.',
+        manaCost: 90,
+        cooldownTicks: 5,
+        targetType: 'hero',
+        effects: [{ type: 'shield', value: 140, duration: 3 }],
+      },
+      e: {
+        id: 'proxy-e',
+        name: 'Load Balance',
+        description:
+          'Split healing evenly among all allied heroes in the zone, restoring HP to each.',
+        manaCost: 100,
+        cooldownTicks: 4,
+        targetType: 'none',
+        effects: [{ type: 'heal', value: 180, description: 'Total healing split among allies' }],
+      },
+      r: {
+        id: 'proxy-r',
+        name: 'Reverse Proxy',
+        description:
+          'Swap positions with an allied hero, granting both brief invulnerability for 1 tick.',
+        manaCost: 200,
+        cooldownTicks: 22,
+        targetType: 'hero',
+        effects: [
+          { type: 'teleport', value: 1, description: 'Position swap with ally' },
+          { type: 'buff', value: 1, duration: 1, description: 'Invulnerability' },
+        ],
+      },
+    },
+  },
+
+  malloc: {
+    id: 'malloc',
+    name: 'Malloc',
+    role: 'carry',
+    lore: 'A memory allocator that grows in power the more resources it claims. Malloc scales relentlessly, converting gold into raw destructive force.',
+    baseStats: {
+      hp: 520,
+      mp: 300,
+      attack: 62,
+      defense: 2,
+      magicResist: 14,
+      moveSpeed: 1,
+      attackRange: 'melee',
+    },
+    growthPerLevel: {
+      hp: 50,
+      mp: 25,
+      attack: 8,
+      defense: 1,
+    },
+    passive: {
+      id: 'malloc-passive',
+      name: 'Heap Growth',
+      description: 'Gain +1 bonus attack damage for every 100 gold currently held.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [{ type: 'buff', value: 1, description: 'Attack per 100 gold' }],
+    },
+    abilities: {
+      q: {
+        id: 'malloc-q',
+        name: 'Allocate',
+        description:
+          'Allocate additional resources, buffing attack damage by 25 for 3 ticks.',
+        manaCost: 60,
+        cooldownTicks: 4,
+        targetType: 'self',
+        effects: [{ type: 'buff', value: 25, duration: 3, description: 'Bonus attack damage' }],
+      },
+      w: {
+        id: 'malloc-w',
+        name: 'Free()',
+        description:
+          'Deallocate a target, dealing physical damage. Deals 40% bonus damage if the target is below 30% HP.',
+        manaCost: 70,
+        cooldownTicks: 3,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 110, damageType: 'physical' },
+          { type: 'damage', value: 44, damageType: 'physical', description: 'Bonus if target below 30% HP' },
+        ],
+      },
+      e: {
+        id: 'malloc-e',
+        name: 'Pointer Dereference',
+        description:
+          'Dash to a target enemy, closing the gap and stunning them for 1 tick.',
+        manaCost: 80,
+        cooldownTicks: 5,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 75, damageType: 'physical' },
+          { type: 'stun', value: 1, duration: 1 },
+        ],
+      },
+      r: {
+        id: 'malloc-r',
+        name: 'Stack Overflow',
+        description:
+          'Overflow the stack with raw power, dealing massive physical damage to all enemies in the zone. Costs 20% of current HP and MP.',
+        manaCost: 150,
+        cooldownTicks: 22,
+        targetType: 'none',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 280, damageType: 'physical', description: 'AOE damage' },
+        ],
+      },
+    },
+  },
+
+  cipher: {
+    id: 'cipher',
+    name: 'Cipher',
+    role: 'assassin',
+    lore: 'An encryption algorithm given form. Cipher strikes from encrypted obscurity, decrypting enemies to expose their weaknesses before delivering lethal bursts of data.',
+    baseStats: {
+      hp: 480,
+      mp: 320,
+      attack: 64,
+      defense: 2,
+      magicResist: 13,
+      moveSpeed: 2,
+      attackRange: 'melee',
+    },
+    growthPerLevel: {
+      hp: 45,
+      mp: 22,
+      attack: 7,
+      defense: 1,
+    },
+    passive: {
+      id: 'cipher-passive',
+      name: 'Encryption Key',
+      description:
+        'Each attack reduces the target\'s defense by 2 for 3 ticks, stacking up to 4 times.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [{ type: 'debuff', value: 2, duration: 3, description: 'Defense reduction per stack' }],
+    },
+    abilities: {
+      q: {
+        id: 'cipher-q',
+        name: 'XOR Strike',
+        description:
+          'Strike with an XOR-encoded blade, dealing bonus magical damage on top of the physical attack.',
+        manaCost: 50,
+        cooldownTicks: 2,
+        targetType: 'hero',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 70, damageType: 'magical' },
+          { type: 'damage', value: 40, damageType: 'physical', description: 'Base strike' },
+        ],
+      },
+      w: {
+        id: 'cipher-w',
+        name: 'Encrypt',
+        description:
+          'Encrypt self, becoming invisible for 2 ticks. Taking damage or attacking breaks stealth.',
+        manaCost: 80,
+        cooldownTicks: 6,
+        targetType: 'self',
+        effects: [{ type: 'buff', value: 1, duration: 2, description: 'Stealth' }],
+      },
+      e: {
+        id: 'cipher-e',
+        name: 'Decrypt',
+        description:
+          'Decrypt a target enemy, revealing them for 3 ticks and silencing them for 1 tick.',
+        manaCost: 90,
+        cooldownTicks: 5,
+        targetType: 'hero',
+        effects: [
+          { type: 'reveal', value: 1, duration: 3 },
+          { type: 'silence', value: 1, duration: 1 },
+        ],
+      },
+      r: {
+        id: 'cipher-r',
+        name: 'Brute Force',
+        description:
+          'Unleash 6 rapid decryption strikes on a target, each dealing magical damage. Applies Encryption Key stacks.',
+        manaCost: 220,
+        cooldownTicks: 20,
+        targetType: 'hero',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 55, damageType: 'magical', description: 'Per hit (x6)' },
+          { type: 'debuff', value: 6, description: 'Encryption Key stacks applied' },
+        ],
+      },
+    },
+  },
+
+  firewall: {
+    id: 'firewall',
+    name: 'Firewall',
+    role: 'tank',
+    lore: 'A sentient packet filter that stands between allies and destruction. Firewall blocks, reflects, and punishes all who dare breach its perimeter.',
+    baseStats: {
+      hp: 720,
+      mp: 270,
+      attack: 48,
+      defense: 7,
+      magicResist: 22,
+      moveSpeed: 1,
+      attackRange: 'melee',
+    },
+    growthPerLevel: {
+      hp: 75,
+      mp: 18,
+      attack: 4,
+      defense: 2,
+      magicResist: 2,
+    },
+    passive: {
+      id: 'firewall-passive',
+      name: 'Packet Inspection',
+      description:
+        'Reflect 8% of all damage taken back to the attacker as magical damage.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [{ type: 'damage', value: 8, damageType: 'magical', description: 'Damage reflect %' }],
+    },
+    abilities: {
+      q: {
+        id: 'firewall-q',
+        name: 'Port Block',
+        description:
+          'Block a target\'s ports, dealing physical damage and stunning them for 1 tick.',
+        manaCost: 70,
+        cooldownTicks: 3,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 95, damageType: 'physical' },
+          { type: 'stun', value: 1, duration: 1 },
+        ],
+      },
+      w: {
+        id: 'firewall-w',
+        name: 'DMZ',
+        description:
+          'Create a demilitarized zone shield around self that absorbs damage for 3 ticks. When the shield expires or breaks, it explodes dealing magical damage to nearby enemies.',
+        manaCost: 80,
+        cooldownTicks: 5,
+        targetType: 'self',
+        effects: [
+          { type: 'shield', value: 200, duration: 3 },
+          { type: 'damage', value: 80, damageType: 'magical', description: 'Explosion on break' },
+        ],
+      },
+      e: {
+        id: 'firewall-e',
+        name: 'Access Control',
+        description:
+          'Enforce access control in the zone, taunting all enemies to attack Firewall for 2 ticks.',
+        manaCost: 60,
+        cooldownTicks: 4,
+        targetType: 'none',
+        effects: [{ type: 'taunt', value: 1, duration: 2 }],
+      },
+      r: {
+        id: 'firewall-r',
+        name: 'Deep Packet Inspection',
+        description:
+          'Perform deep inspection on all enemies in the zone, rooting them for 2 ticks and dealing magical damage over time.',
+        manaCost: 250,
+        cooldownTicks: 24,
+        targetType: 'none',
+        damageType: 'magical',
+        effects: [
+          { type: 'root', value: 1, duration: 2 },
+          { type: 'dot', value: 120, duration: 3, damageType: 'magical', description: 'Total damage over 3 ticks' },
+        ],
+      },
+    },
+  },
 } as const
 
 export const HERO_IDS = Object.keys(HEROES) as ReadonlyArray<string>

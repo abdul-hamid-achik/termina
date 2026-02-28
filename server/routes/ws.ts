@@ -4,6 +4,7 @@ import { getGameRuntime } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
 import { pickHero } from '../game/matchmaking/lobby'
 import { registerPeer, unregisterPeer } from '../services/PeerRegistry'
+import { wsLog } from '../utils/log'
 
 interface PeerContext {
   playerId: string | null
@@ -30,7 +31,9 @@ export default defineWebSocketHandler({
     }
 
     peerState.set(peer, { playerId, gameId: null })
-    registerPeer(playerId, peer)
+    const rawWs = peer.websocket as unknown as { send: (data: string | ArrayBuffer | Uint8Array) => number | undefined } | null
+    registerPeer(playerId, peer, rawWs)
+    wsLog.info('Peer connected', { playerId })
 
     // Cancel any pending disconnect timer for this player
     const timer = disconnectTimers.get(playerId)
@@ -70,26 +73,35 @@ export default defineWebSocketHandler({
 
       case 'reconnect': {
         const runtime = getGameRuntime()
-        if (!runtime) break
-        ctx.gameId = parsed.gameId
-        // Re-add connection via runtime
-        const addConn = runtime.wsService.addConnection(
-          parsed.gameId,
-          ctx.playerId,
-          peer.websocket as unknown as WebSocket,
-        )
-        Effect.runSync(addConn)
-        peer.send(
-          JSON.stringify({ type: 'announcement', message: 'Reconnected to game', level: 'info' }),
-        )
+        if (!runtime) {
+          peer.send(JSON.stringify({ type: 'error', code: 'NO_GAME_SERVER', message: 'Game server not ready' }))
+          break
+        }
+        try {
+          ctx.gameId = parsed.gameId
+          const addConn = runtime.wsService.addConnection(
+            parsed.gameId,
+            ctx.playerId,
+            peer.websocket as unknown as WebSocket,
+          )
+          Effect.runSync(addConn)
+          peer.send(
+            JSON.stringify({ type: 'announcement', message: 'Reconnected to game', level: 'info' }),
+          )
+        } catch (err) {
+          wsLog.error('Reconnect failed', { playerId: ctx.playerId, gameId: parsed.gameId, error: err })
+          peer.send(JSON.stringify({ type: 'error', code: 'RECONNECT_FAILED', message: 'Failed to reconnect' }))
+        }
         break
       }
 
       case 'action': {
         if (!ctx.gameId) {
+          wsLog.warn('Action rejected — no gameId', { playerId: ctx.playerId })
           peer.send(JSON.stringify({ type: 'error', code: 'NO_GAME', message: 'Not in a game' }))
           break
         }
+        wsLog.debug('Action received', { playerId: ctx.playerId, gameId: ctx.gameId, command: parsed.command.type })
         submitAction(ctx.gameId, ctx.playerId, parsed.command)
         break
       }
@@ -97,6 +109,7 @@ export default defineWebSocketHandler({
       case 'join_game': {
         const runtime = getGameRuntime()
         if (!runtime) break
+        wsLog.info('join_game received', { playerId: ctx.playerId, gameId: parsed.gameId })
         ctx.gameId = parsed.gameId
         const addConn = runtime.wsService.addConnection(
           parsed.gameId,
@@ -109,6 +122,7 @@ export default defineWebSocketHandler({
       }
 
       case 'hero_pick': {
+        wsLog.debug('hero_pick received', { playerId: ctx.playerId, lobbyId: parsed.lobbyId, heroId: parsed.heroId })
         const runtime = getGameRuntime()
         if (!runtime) {
           peer.send(
@@ -157,7 +171,9 @@ export default defineWebSocketHandler({
           `game:${ctx.gameId}:actions`,
           JSON.stringify({ playerId: ctx.playerId, ...parsed }),
         )
-        Effect.runPromise(routeMsg).catch(() => {})
+        Effect.runPromise(routeMsg).catch((err) => {
+          wsLog.warn('Failed to route message', { type: parsed.type, gameId: ctx.gameId, error: err })
+        })
         break
       }
     }
@@ -168,7 +184,8 @@ export default defineWebSocketHandler({
     if (!ctx?.playerId) return
 
     const { playerId, gameId } = ctx
-    unregisterPeer(playerId)
+    wsLog.info('Peer disconnected', { playerId, gameId })
+    unregisterPeer(playerId, peer)
 
     if (gameId) {
       // Allow reconnect within window before removing from game
@@ -195,7 +212,6 @@ export default defineWebSocketHandler({
   },
 
   error(peer, error) {
-    // eslint-disable-next-line no-console
-    console.error('[WS] Error:', error)
+    wsLog.error('WebSocket error', { error })
   },
 })

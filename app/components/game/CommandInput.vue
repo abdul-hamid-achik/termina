@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import {
-  ComboboxRoot,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxViewport,
-} from 'reka-ui'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 withDefaults(
   defineProps<{
@@ -64,6 +57,13 @@ function handleSubmit() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    handleSubmit()
+    return
+  }
+
   if (e.key === 'ArrowUp' && !open.value) {
     e.preventDefault()
     if (historyIndex.value < history.value.length - 1) {
@@ -90,12 +90,12 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-function handleInput() {
+watch(input, () => {
   historyIndex.value = -1
   if (input.value.includes(' ')) {
     open.value = false
   }
-}
+})
 
 function handleSelect(val: string) {
   input.value = val + ' '
@@ -107,10 +107,6 @@ function focusInput() {
   inputEl.value?.focus()
 }
 
-onMounted(() => {
-  focusInput()
-})
-
 function handleClickOutside(e: MouseEvent) {
   const target = e.target as HTMLElement
   if (!target.closest('.cmd-input-wrapper')) {
@@ -119,6 +115,7 @@ function handleClickOutside(e: MouseEvent) {
 }
 
 onMounted(() => {
+  focusInput()
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -129,61 +126,46 @@ onUnmounted(() => {
 
 <template>
   <div class="cmd-input-wrapper relative cursor-text" @click="focusInput">
-    <ComboboxRoot
-      v-model:search-term="input"
-      :open="open && filtered.length > 0"
-      @update:open="open = $event"
+    <div
+      v-if="open && filtered.length > 0"
+      class="absolute inset-x-0 bottom-full z-10 max-h-[200px] overflow-y-auto border border-border bg-bg-panel"
     >
       <div
-        v-if="open && filtered.length > 0"
-        class="absolute inset-x-0 bottom-full z-10 max-h-[200px] overflow-y-auto border border-border bg-bg-panel"
+        v-for="cmd in filtered"
+        :key="cmd"
+        class="cursor-pointer px-3 py-1 font-mono text-[0.8rem] text-text-primary hover:bg-border hover:text-ability"
+        @click.stop="handleSelect(cmd)"
       >
-        <ComboboxContent position="inline">
-          <ComboboxViewport>
-            <ComboboxItem
-              v-for="cmd in filtered"
-              :key="cmd"
-              :value="cmd"
-              class="cursor-pointer px-3 py-1 font-mono text-[0.8rem] text-text-primary data-[highlighted]:bg-border data-[highlighted]:text-ability"
-              @click.stop="handleSelect(cmd)"
-            >
-              {{ cmd }}
-            </ComboboxItem>
-          </ComboboxViewport>
-        </ComboboxContent>
+        {{ cmd }}
       </div>
+    </div>
 
-      <div
-        class="flex items-center gap-2 border-t border-border bg-bg-primary px-3 py-2"
-        :class="{ 'opacity-50': disabled }"
+    <div
+      class="flex items-center gap-2 border-t border-border bg-bg-primary px-3 py-2"
+      :class="{ 'opacity-50': disabled }"
+    >
+      <span class="shrink-0 font-bold text-radiant select-none">&gt;_</span>
+      <input
+        ref="inputEl"
+        v-model="input"
+        class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
+        :disabled="disabled"
+        :placeholder="placeholder"
+        spellcheck="false"
+        autocomplete="off"
+        @keydown="handleKeydown"
       >
-        <span class="shrink-0 font-bold text-radiant select-none">&gt;_</span>
-        <ComboboxInput as-child>
-          <input
-            ref="inputEl"
-            v-model="input"
-            class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
-            :disabled="disabled"
-            :placeholder="placeholder"
-            spellcheck="false"
-            autocomplete="off"
-            @keydown.enter="handleSubmit"
-            @keydown="handleKeydown"
-            @input="handleInput"
-          >
-        </ComboboxInput>
-        <span
-          v-if="!input"
-          class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"
-          >█</span
-        >
-        <span
-          v-if="tickCountdown > 0"
-          class="shrink-0 whitespace-nowrap text-[0.7rem] text-text-dim"
-        >
-          Next tick in {{ (tickCountdown / 1000).toFixed(1) }}s
-        </span>
-      </div>
-    </ComboboxRoot>
+      <span
+        v-if="!input"
+        class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"
+        >█</span
+      >
+      <span
+        v-if="tickCountdown > 0"
+        class="shrink-0 whitespace-nowrap text-[0.7rem] text-text-dim"
+      >
+        Next tick in {{ (tickCountdown / 1000).toFixed(1) }}s
+      </span>
+    </div>
   </div>
 </template>

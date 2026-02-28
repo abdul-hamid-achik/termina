@@ -1,6 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import type { ClientMessage, ServerMessage } from '~~/shared/types/protocol'
 import { useGameStore } from '~/stores/game'
+import { socketLog } from '~/utils/logger'
 
 const MAX_RECONNECT_DELAY = 30_000
 const HEARTBEAT_INTERVAL = 10_000
@@ -41,17 +42,21 @@ export function useGameSocket() {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const url = `${protocol}//${window.location.host}/ws?playerId=${currentPlayerId}&gameId=${currentGameId}`
+    socketLog.debug('Connecting', { url })
     ws = new WebSocket(url)
 
     ws.onopen = () => {
+      socketLog.info('Connected', { gameId: currentGameId })
       connected.value = true
       reconnecting.value = false
       reconnectAttempts = 0
       _startHeartbeat()
 
-      // If reconnecting to an existing game, send reconnect message
+      // If connecting to a game (not lobby), send join_game to register ctx.gameId on server
       if (currentGameId && currentPlayerId) {
-        send({ type: 'reconnect', gameId: currentGameId, playerId: currentPlayerId })
+        if (currentGameId !== 'lobby') {
+          send({ type: 'join_game', gameId: currentGameId })
+        }
       }
     }
 
@@ -68,6 +73,8 @@ export function useGameSocket() {
         latency.value = Date.now() - lastPingTime
       }
 
+      socketLog.trace(`Received: ${msg.type}`, { type: msg.type, ...('tick' in msg ? { tick: msg.tick } : {}) })
+
       // Route to game store
       switch (msg.type) {
         case 'tick_state':
@@ -78,6 +85,10 @@ export function useGameSocket() {
           break
         case 'announcement':
           gameStore.addAnnouncement(msg.message)
+          break
+        case 'error':
+          socketLog.warn('Server error', { code: msg.code, message: msg.message })
+          gameStore.addAnnouncement(`[ERROR] ${msg.message}`)
           break
         case 'game_over':
           gameStore.setGameOver(msg.winner, msg.stats)
@@ -91,6 +102,7 @@ export function useGameSocket() {
     }
 
     ws.onclose = () => {
+      socketLog.warn('Disconnected', { gameId: currentGameId })
       connected.value = false
       _stopHeartbeat()
       _scheduleReconnect()
@@ -103,6 +115,7 @@ export function useGameSocket() {
 
   function send(message: ClientMessage) {
     if (ws && ws.readyState === WebSocket.OPEN) {
+      socketLog.trace(`Sending: ${message.type}`, { type: message.type })
       ws.send(JSON.stringify(message))
     }
   }
@@ -120,11 +133,19 @@ export function useGameSocket() {
     _clearReconnect()
     reconnecting.value = false
     if (ws) {
+      // Null out all handlers BEFORE closing to prevent:
+      // - "WebSocket is closed before the connection is established" errors
+      // - Reconnect attempts from onclose
+      ws.onopen = null
       ws.onclose = null
+      ws.onerror = null
+      ws.onmessage = null
       ws.close()
       ws = null
     }
     connected.value = false
+    currentGameId = null
+    currentPlayerId = null
   }
 
   function _startHeartbeat() {
@@ -143,7 +164,8 @@ export function useGameSocket() {
   }
 
   function _scheduleReconnect() {
-    if (!currentGameId || !currentPlayerId) return
+    // Don't reconnect if intentionally disconnected or if this was a lobby connection
+    if (!currentGameId || !currentPlayerId || currentGameId === 'lobby') return
     reconnecting.value = true
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY)
     reconnectAttempts++

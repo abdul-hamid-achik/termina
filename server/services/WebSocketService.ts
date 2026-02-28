@@ -1,5 +1,6 @@
 import { Context, Effect, Layer } from 'effect'
 import type { ServerMessage } from '~~/shared/types/protocol'
+import { wsLog } from '../utils/log'
 
 export interface WebSocketServiceApi {
   readonly addConnection: (gameId: string, playerId: string, ws: WebSocket) => Effect.Effect<void>
@@ -33,6 +34,7 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
       }
       gameMap.set(playerId, ws)
       playerToGame.set(playerId, gameId)
+      wsLog.debug('addConnection', { playerId, gameId })
     }).pipe(
       Effect.tap(() =>
         Effect.logDebug('WS registered').pipe(Effect.annotateLogs({ playerId, gameId })),
@@ -63,8 +65,11 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
       const gameMap = gameConnections.get(gameId)
       if (!gameMap) return
       const ws = gameMap.get(playerId)
-      if (ws && ws.readyState === WebSocket.OPEN) {
+      if (!ws) return
+      try {
         ws.send(JSON.stringify(message))
+      } catch (err) {
+        wsLog.warn('send failed', { playerId, error: err })
       }
     }),
 
@@ -73,9 +78,11 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
       const gameMap = gameConnections.get(gameId)
       if (!gameMap) return
       const data = JSON.stringify(message)
-      for (const ws of gameMap.values()) {
-        if (ws.readyState === WebSocket.OPEN) {
+      for (const [playerId, ws] of gameMap.entries()) {
+        try {
           ws.send(data)
+        } catch (err) {
+          wsLog.warn('broadcast send failed', { playerId, error: err })
         }
       }
     }),
@@ -85,10 +92,12 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
       const gameMap = gameConnections.get(gameId)
       if (!gameMap) return
       for (const [playerId, ws] of gameMap.entries()) {
-        if (ws.readyState !== WebSocket.OPEN) continue
         const msg = filterFn(playerId)
-        if (msg) {
+        if (!msg) continue
+        try {
           ws.send(JSON.stringify(msg))
+        } catch (err) {
+          wsLog.warn('filtered send failed', { playerId, error: err })
         }
       }
     }),
