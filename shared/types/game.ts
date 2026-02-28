@@ -32,6 +32,8 @@ export interface PlayerState {
   kills: number
   deaths: number
   assists: number
+  damageDealt: number
+  towerDamageDealt: number
 }
 
 export interface CreepState {

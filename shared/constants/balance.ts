@@ -5,7 +5,7 @@ export const ACTION_WINDOW_MS = 3500
 
 // ── Gold ─────────────────────────────────────────────────────────
 
-export const PASSIVE_GOLD_PER_TICK = 1
+export const PASSIVE_GOLD_PER_TICK = 2
 export const CREEP_GOLD_MIN = 30
 export const CREEP_GOLD_MAX = 50
 export const SIEGE_CREEP_GOLD = 75
@@ -103,5 +103,5 @@ export const TOWER_DEFENSE = 20
 
 // ── Fountain ─────────────────────────────────────────────────────
 
-export const FOUNTAIN_HEAL_PER_TICK_PERCENT = 25
-export const FOUNTAIN_MANA_PER_TICK_PERCENT = 25
+export const FOUNTAIN_HEAL_PER_TICK_PERCENT = 15
+export const FOUNTAIN_MANA_PER_TICK_PERCENT = 15

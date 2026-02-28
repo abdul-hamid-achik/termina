@@ -6,6 +6,9 @@ defineProps<{
   kills: number
   deaths: number
   assists: number
+  connected?: boolean
+  reconnecting?: boolean
+  latency?: number
 }>()
 
 function formatGold(n: number): string {
@@ -39,5 +42,9 @@ function formatGold(n: number): string {
         >/<span class="text-text-dim">{{ assists }}</span>
       </span>
     </span>
+    <span class="text-border">|</span>
+    <span v-if="reconnecting" class="text-dire">[RECONNECTING...]</span>
+    <span v-else-if="connected" class="text-radiant">[CONNECTED {{ latency }}ms]</span>
+    <span v-else class="text-text-dim">[OFFLINE]</span>
   </div>
 </template>

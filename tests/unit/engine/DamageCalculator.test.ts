@@ -34,6 +34,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     kills: 0,
     deaths: 0,
     assists: 0,
+    damageDealt: 0,
+    towerDamageDealt: 0,
     ...overrides,
   }
 }

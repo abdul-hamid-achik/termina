@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
 import { useCommands } from '~/composables/useCommands'
+import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
+import { ITEMS } from '~~/server/game/items/registry'
 import type { TowerState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
 
 const gameStore = useGameStore()
 const gameSocket = useGameSocket()
 const commands = useCommands()
+const { playSound } = useAudio()
+const { connected, reconnecting, latency } = gameSocket
 
 // Local combat log for parsed errors + game events
 const localEvents = ref<
@@ -20,6 +24,28 @@ const localEvents = ref<
   }>
 >([])
 
+// ── Shop & Scoreboard state ──────────────────────────────────
+const showShop = ref(false)
+const showScoreboard = ref(false)
+
+// Format items from registry as ShopItem[] for ItemShop component
+const shopItems = computed(() => {
+  return Object.values(ITEMS).map((item) => {
+    const statParts: string[] = []
+    for (const [key, val] of Object.entries(item.stats)) {
+      if (val) statParts.push(`+${val} ${key}`)
+    }
+    if (item.active) statParts.push(`Active: ${item.active.description}`)
+    if (item.passive) statParts.push(`Passive: ${item.passive.description}`)
+    return {
+      id: item.id,
+      name: item.name,
+      cost: item.cost,
+      stats: statParts.join(', ') || (item.consumable ? 'Consumable' : 'No stats'),
+    }
+  })
+})
+
 onMounted(() => {
   if (gameStore.gameId && gameStore.playerId) {
     uiLog.info('GameScreen connecting', { gameId: gameStore.gameId, playerId: gameStore.playerId })
@@ -27,10 +53,75 @@ onMounted(() => {
   } else {
     uiLog.warn('GameScreen mounted without gameId or playerId', { gameId: gameStore.gameId, playerId: gameStore.playerId })
   }
+
+  // Keyboard listener for Tab (scoreboard toggle)
+  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
 })
 
 onUnmounted(() => {
   gameSocket.disconnect()
+  window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('keyup', onKeyUp)
+})
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Tab') {
+    e.preventDefault()
+    showScoreboard.value = true
+  }
+}
+
+function onKeyUp(e: KeyboardEvent) {
+  if (e.key === 'Tab') {
+    e.preventDefault()
+    showScoreboard.value = false
+  }
+}
+
+// ── Audio cues ───────────────────────────────────────────────
+
+// Play 'tick' sound on each new tick
+watch(() => gameStore.tick, () => {
+  playSound('tick')
+})
+
+// Watch game events for audio cues
+watch(() => gameStore.events.length, (newLen, oldLen) => {
+  if (newLen <= (oldLen ?? 0)) return
+  const newEvents = gameStore.events.slice(oldLen ?? 0)
+  const pid = gameStore.playerId
+  if (!pid) return
+
+  for (const e of newEvents) {
+    switch (e.type) {
+      case 'damage':
+        if (e.payload.sourceId === pid || e.payload.targetId === pid) {
+          playSound('damage')
+        }
+        break
+      case 'death':
+        if (e.payload.playerId === pid) {
+          playSound('death')
+        }
+        break
+      case 'gold_change':
+        if (e.payload.playerId === pid) {
+          playSound('gold')
+        }
+        break
+      case 'level_up':
+        if (e.payload.playerId === pid) {
+          playSound('ready')
+        }
+        break
+      case 'kill':
+        if (e.payload.killerId === pid) {
+          playSound('kill')
+        }
+        break
+    }
+  }
 })
 
 // ── Derived state ──────────────────────────────────────────────
@@ -83,20 +174,27 @@ const combatEvents = computed(() => {
         text = `${e.payload.sourceId} healed ${e.payload.targetId} for ${e.payload.amount}`
         type = 'healing'
         break
-      case 'kill':
-        text = `KILL: ${e.payload.killerId} eliminated ${e.payload.victimId}!`
+      case 'kill': {
+        const goldPart = e.payload.goldAwarded ? ` (+${e.payload.goldAwarded}g)` : ''
+        text = `[KILL] ${e.payload.killerId} eliminated ${e.payload.victimId}!${goldPart}`
         type = 'kill'
         break
-      case 'death':
-        text = `${e.payload.playerId} died (respawn at tick ${e.payload.respawnTick})`
+      }
+      case 'death': {
+        const respawnTick = e.payload.respawnTick as number | undefined
+        const respawnText = respawnTick != null
+          ? ` (respawn in ${respawnTick - gameStore.tick} ticks)`
+          : ''
+        text = `[DEATH] ${e.payload.playerId} was terminated${respawnText}`
         type = 'damage'
         break
+      }
       case 'gold_change':
         text = `${e.payload.playerId} ${(e.payload.amount as number) >= 0 ? 'earned' : 'lost'} ${Math.abs(e.payload.amount as number)}g (${e.payload.reason})`
         type = 'gold'
         break
       case 'level_up':
-        text = `${e.payload.playerId} reached level ${e.payload.newLevel}!`
+        text = `[LEVEL UP] ${e.payload.playerId} reached level ${e.payload.newLevel}!`
         type = 'system'
         break
       case 'ability_used':
@@ -104,7 +202,7 @@ const combatEvents = computed(() => {
         type = 'ability'
         break
       case 'tower_kill':
-        text = `${e.payload.killerTeam} destroyed ${e.payload.team} tower in ${e.payload.zone}!`
+        text = `[KILL] ${e.payload.killerTeam} destroyed ${e.payload.team} tower in ${e.payload.zone}!`
         type = 'kill'
         break
       case 'creep_lasthit':
@@ -226,10 +324,19 @@ function handleCommand(cmd: string) {
   }
 }
 
+function handleBuyItem(itemId: string) {
+  handleCommand(`buy ${itemId}`)
+}
+
 function handleQuickAction(cmd: string) {
   uiLog.debug('Quick action', { cmd })
   const p = gameStore.player
   if (!p) return
+
+  if (cmd === 'SHOP') {
+    showShop.value = !showShop.value
+    return
+  }
 
   if (cmd === 'MOVE') {
     // Show adjacent zones as a hint
@@ -329,6 +436,9 @@ v-if="!gameStore.isAlive && gameStore.player"
       :kills="playerKills"
       :deaths="playerDeaths"
       :assists="playerAssists"
+      :connected="connected"
+      :reconnecting="reconnecting"
+      :latency="latency"
     />
 
     <TerminalPanel title="Map" class="game-grid__map min-h-0">
@@ -340,16 +450,52 @@ v-if="!gameStore.isAlive && gameStore.player"
     </TerminalPanel>
 
     <TerminalPanel title="Hero Status" class="game-grid__hero min-h-0">
-      <HeroStatus v-if="heroData" :hero="heroData" />
+      <HeroStatus v-if="heroData" :hero="heroData" :hero-id="gameStore.player?.heroId ?? undefined" />
       <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
     </TerminalPanel>
+
+    <!-- Scoreboard overlay (Tab hold) -->
+    <div
+      v-if="showScoreboard"
+      class="absolute inset-0 z-30 flex items-center justify-center bg-black/80"
+    >
+      <div class="w-full max-w-3xl border border-border bg-bg-primary p-4">
+        <div class="mb-2 text-center text-[0.9rem] font-bold text-text-primary">SCOREBOARD</div>
+        <Scoreboard :players="gameStore.scoreboard" />
+        <div class="mt-2 text-center text-[0.7rem] text-text-dim">Release Tab to close</div>
+      </div>
+    </div>
+
+    <!-- Item Shop overlay -->
+    <div
+      v-if="showShop"
+      class="absolute inset-0 z-30 flex items-center justify-center bg-black/80"
+    >
+      <div class="w-full max-w-2xl border border-border bg-bg-primary p-4">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-[0.9rem] font-bold text-gold">&gt;_ ITEM SHOP</span>
+          <button
+            class="border border-border px-2 py-0.5 font-mono text-[0.7rem] text-text-dim hover:text-text-primary"
+            @click="showShop = false"
+          >
+            [CLOSE]
+          </button>
+        </div>
+        <ItemShop
+          :items="shopItems"
+          :gold="playerGold"
+          @buy="handleBuyItem"
+        />
+      </div>
+    </div>
 
     <div class="game-grid__cmd flex min-h-0 flex-col justify-end">
       <div class="hidden gap-1 px-2 py-1 overflow-x-auto lg:hidden max-lg:flex">
         <button
-          v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE']"
+          v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP']"
           :key="cmd"
           class="whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-text-primary active:bg-border"
+          :class="{ 'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy }"
           @click="handleQuickAction(cmd)"
         >
           {{ cmd }}

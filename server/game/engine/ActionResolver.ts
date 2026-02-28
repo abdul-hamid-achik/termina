@@ -3,12 +3,15 @@ import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import { areAdjacent } from '../map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { calculatePhysicalDamage } from './DamageCalculator'
+import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalculator'
 import { placeWard } from '../map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '../protocol/events'
 import { buyItem, sellItem } from '../items/shop'
 import { awardLastHit, awardTowerKill } from './GoldDistributor'
+import { ITEMS } from '../items/registry'
+import { CREEP_XP } from '~~/shared/constants/balance'
+import type { ItemStats } from '~~/shared/types/items'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -22,6 +25,45 @@ interface ResolvedChanges {
   players: Record<string, PlayerState>
   events: GameEngineEvent[]
   heroAttackers: Map<string, string> // attackerId -> victimId
+}
+
+// ── Item Stat Bonuses ─────────────────────────────────────────
+
+/** Sum up all stat bonuses from a player's equipped items. */
+export function getItemStatBonuses(items: (string | null)[]): ItemStats {
+  const totals: Required<ItemStats> = { hp: 0, mp: 0, attack: 0, defense: 0, magicResist: 0, moveSpeed: 0 }
+  for (const itemId of items) {
+    if (!itemId) continue
+    const item = ITEMS[itemId]
+    if (!item) continue
+    totals.hp += item.stats.hp ?? 0
+    totals.mp += item.stats.mp ?? 0
+    totals.attack += item.stats.attack ?? 0
+    totals.defense += item.stats.defense ?? 0
+    totals.magicResist += item.stats.magicResist ?? 0
+    totals.moveSpeed += item.stats.moveSpeed ?? 0
+  }
+  return totals
+}
+
+/** Get effective attack damage for a player (base hero stat + item bonuses). */
+function getEffectiveAttack(player: PlayerState): number {
+  const hero = player.heroId ? HEROES[player.heroId] : null
+  const baseAttack = hero ? hero.baseStats.attack + (hero.growthPerLevel.attack ?? 0) * (player.level - 1) : 50
+  const itemBonus = getItemStatBonuses(player.items).attack ?? 0
+  return baseAttack + itemBonus
+}
+
+/** Get effective defense for a player (base stat + item bonuses). */
+function getEffectiveDefense(player: PlayerState): number {
+  const itemBonus = getItemStatBonuses(player.items).defense ?? 0
+  return player.defense + itemBonus
+}
+
+/** Get effective magic resist for a player (base stat + item bonuses). */
+function getEffectiveMagicResist(player: PlayerState): number {
+  const itemBonus = getItemStatBonuses(player.items).magicResist ?? 0
+  return player.magicResist + itemBonus
 }
 
 // ── Validation ─────────────────────────────────────────────────
@@ -127,6 +169,8 @@ export function resolveActions(
     let towers = [...state.towers]
     const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
     const towerKills: Array<{ zone: string; team: TeamId }> = []
+    // Track damage dealt per player for post-game stats
+    const damageTracker = new Map<string, { hero: number; tower: number }>()
 
     // Phase 1: Instant abilities (stuns, silences)
     const instantCasts = validActions.filter(
@@ -181,10 +225,15 @@ export function resolveActions(
         // Check if target is in the same zone (post-movement)
         if (target.zone !== attacker.zone) continue
 
-        // Attack hit
-        const hero = attacker.heroId ? HEROES[attacker.heroId] : null
-        const attackDamage = hero ? hero.baseStats.attack : 50
-        const defense = 0 // Base defense from hero stats handled in full system
+        // Attack hit — use effective stats (base + level scaling + items)
+        let attackDamage = getEffectiveAttack(attacker)
+
+        // Null Pointer passive: 15% crit chance, 1.75x damage
+        if (attacker.items.includes('null_pointer') && Math.random() < 0.15) {
+          attackDamage = Math.round(attackDamage * 1.75)
+        }
+
+        const defense = getEffectiveDefense(target)
         const damage = calculatePhysicalDamage(attackDamage, defense)
 
         const newHp = Math.max(0, target.hp - damage)
@@ -194,6 +243,11 @@ export function resolveActions(
         }
 
         heroAttackers.set(action.playerId, targetId)
+
+        // Track hero damage dealt
+        const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+        dt.hero += damage
+        damageTracker.set(action.playerId, dt)
 
         events.push({
           _tag: 'damage',
@@ -209,8 +263,7 @@ export function resolveActions(
         if (!creep || creep.hp <= 0) continue
         if (creep.zone !== attacker.zone) continue
 
-        const hero = attacker.heroId ? HEROES[attacker.heroId] : null
-        const attackDamage = hero ? hero.baseStats.attack : 50
+        const attackDamage = getEffectiveAttack(attacker)
         const newHp = Math.max(0, creep.hp - attackDamage)
 
         creeps[creepIdx] = { ...creep, hp: newHp }
@@ -233,8 +286,7 @@ export function resolveActions(
         if (!tower) continue
         if (tower.zone !== attacker.zone) continue
 
-        const hero = attacker.heroId ? HEROES[attacker.heroId] : null
-        const attackDamage = hero ? hero.baseStats.attack : 50
+        const attackDamage = getEffectiveAttack(attacker)
         const newHp = Math.max(0, tower.hp - attackDamage)
 
         towers = towers.map((t) =>
@@ -246,6 +298,11 @@ export function resolveActions(
         if (newHp <= 0) {
           towerKills.push({ zone: tower.zone, team: tower.team })
         }
+
+        // Track tower damage dealt
+        const tdt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+        tdt.tower += attackDamage
+        damageTracker.set(action.playerId, tdt)
 
         events.push({
           _tag: 'damage',
@@ -264,7 +321,7 @@ export function resolveActions(
       players = result.players
     }
 
-    // Phase 4: Passive effects, cooldown ticks
+    // Phase 4: Passive effects, cooldown ticks, item passives
     for (const [pid, player] of Object.entries(players)) {
       if (!player.alive) continue
 
@@ -281,9 +338,22 @@ export function resolveActions(
         .map((b) => ({ ...b, ticksRemaining: b.ticksRemaining - 1 }))
         .filter((b) => b.ticksRemaining > 0)
 
+      let hp = player.hp
+
+      // Garbage Collector passive: 5% max HP regen when out of combat (no damage taken this tick)
+      if (player.items.includes('garbage_collector')) {
+        const tookDamage = events.some(
+          (e) => e._tag === 'damage' && e.targetId === pid,
+        )
+        const dealtDamage = heroAttackers.has(pid)
+        if (!tookDamage && !dealtDamage) {
+          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.05))
+        }
+      }
+
       players = {
         ...players,
-        [pid]: { ...player, cooldowns, buffs },
+        [pid]: { ...player, hp, cooldowns, buffs },
       }
     }
 
@@ -316,11 +386,16 @@ export function resolveActions(
       }
     }
 
-    // Award gold for creep last-hits
+    // Award gold and XP for creep last-hits
     for (const kill of creepKills) {
       const tempState: GameState = { ...state, players, creeps, towers }
       const awarded = awardLastHit(tempState, kill.playerId, kill.creepType)
       players = { ...awarded.players }
+      // Award XP for creep kill
+      const killer = players[kill.playerId]
+      if (killer) {
+        players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + CREEP_XP } }
+      }
     }
 
     // Award gold for tower kills
@@ -331,6 +406,21 @@ export function resolveActions(
       const tempState: GameState = { ...state, players, creeps, towers }
       const awarded = awardTowerKill(tempState, kill.zone, nearbyAllies)
       players = { ...awarded.players }
+    }
+
+    // Apply damage tracking to player states
+    for (const [pid, dmg] of damageTracker.entries()) {
+      const p = players[pid]
+      if (p) {
+        players = {
+          ...players,
+          [pid]: {
+            ...p,
+            damageDealt: p.damageDealt + dmg.hero,
+            towerDamageDealt: p.towerDamageDealt + dmg.tower,
+          },
+        }
+      }
     }
 
     // Handle ward placements
@@ -451,7 +541,9 @@ function resolveInstantAbility(
         if (targetId && updatedPlayers[targetId]) {
           const target = updatedPlayers[targetId]!
           const dmg =
-            dmgType === 'physical' ? calculatePhysicalDamage(effect.value, 0) : effect.value
+            dmgType === 'physical'
+              ? calculatePhysicalDamage(effect.value, getEffectiveDefense(target))
+              : calculateMagicalDamage(effect.value, getEffectiveMagicResist(target))
           const newHp = Math.max(0, target.hp - dmg)
           updatedPlayers = {
             ...updatedPlayers,
@@ -516,7 +608,9 @@ function resolveTargetedAbility(
           const target = updatedPlayers[targetId]!
           if (target.zone === caster.zone && target.alive) {
             const dmg =
-              dmgType === 'physical' ? calculatePhysicalDamage(effect.value, 0) : effect.value
+              dmgType === 'physical'
+                ? calculatePhysicalDamage(effect.value, getEffectiveDefense(target))
+                : calculateMagicalDamage(effect.value, getEffectiveMagicResist(target))
             const newHp = Math.max(0, target.hp - dmg)
             updatedPlayers = {
               ...updatedPlayers,
@@ -542,7 +636,9 @@ function resolveTargetedAbility(
             pid !== action.playerId
           ) {
             const dmg =
-              dmgType === 'physical' ? calculatePhysicalDamage(effect.value, 0) : effect.value
+              dmgType === 'physical'
+                ? calculatePhysicalDamage(effect.value, getEffectiveDefense(p))
+                : calculateMagicalDamage(effect.value, getEffectiveMagicResist(p))
             const newHp = Math.max(0, p.hp - dmg)
             updatedPlayers = {
               ...updatedPlayers,

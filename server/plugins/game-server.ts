@@ -165,7 +165,7 @@ export default defineNitroPlugin(async (nitroApp) => {
                   deaths: ps?.deaths ?? 0,
                   assists: ps?.assists ?? 0,
                   goldEarned: ps?.gold ?? 0,
-                  damageDealt: 0,
+                  damageDealt: ps?.damageDealt ?? 0,
                   healingDone: 0,
                   finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
                   finalLevel: ps?.level ?? 1,
@@ -219,8 +219,8 @@ export default defineNitroPlugin(async (nitroApp) => {
                   assists: ps?.assists ?? 0,
                   gold: ps?.gold ?? 0,
                   items: ps?.items ?? [],
-                  heroDamage: 0,
-                  towerDamage: 0,
+                  heroDamage: ps?.damageDealt ?? 0,
+                  towerDamage: ps?.towerDamageDealt ?? 0,
                 }
               }
 

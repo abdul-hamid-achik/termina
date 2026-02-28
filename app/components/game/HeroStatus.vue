@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref, computed } from 'vue'
+import { HEROES } from '~~/shared/constants/heroes'
+
 interface HeroData {
   name: string
   level: number
@@ -14,9 +17,21 @@ interface HeroData {
   alive: boolean
 }
 
-defineProps<{
+const props = defineProps<{
   hero: HeroData
+  heroId?: string
 }>()
+
+const hoveredAbility = ref<string | null>(null)
+
+const heroDef = computed(() => {
+  if (!props.heroId) return null
+  return HEROES[props.heroId] ?? null
+})
+
+function getAbilityDef(key: 'q' | 'w' | 'e' | 'r') {
+  return heroDef.value?.abilities[key] ?? null
+}
 
 function cdLabel(cd: number): string {
   return cd <= 0 ? 'RDY' : `${cd}`
@@ -49,13 +64,40 @@ function cdLabel(cd: number): string {
         <span
           v-for="key in ['q', 'w', 'e', 'r'] as const"
           :key="key"
-          class="inline-flex items-center gap-0.5 border px-1.5 py-0.5 text-xs"
+          class="relative inline-flex items-center gap-0.5 border px-1.5 py-0.5 text-xs"
           :class="
             hero.cooldowns[key] <= 0 ? 'border-ability text-ability' : 'border-border text-text-dim'
           "
+          @mouseenter="hoveredAbility = key"
+          @mouseleave="hoveredAbility = null"
         >
           <span class="font-bold">{{ key.toUpperCase() }}</span>
           <span>[{{ cdLabel(hero.cooldowns[key]) }}]</span>
+
+          <!-- Ability tooltip -->
+          <div
+            v-if="hoveredAbility === key && getAbilityDef(key)"
+            class="absolute bottom-full left-0 z-40 mb-1 w-56 border border-border bg-bg-secondary p-2 text-[0.7rem] shadow-lg"
+          >
+            <div class="font-bold text-ability">{{ getAbilityDef(key)!.name }}</div>
+            <div class="mt-0.5 flex gap-2 text-text-dim">
+              <span>Mana: <span class="text-mana">{{ getAbilityDef(key)!.manaCost }}</span></span>
+              <span>CD: <span class="text-text-primary">{{ getAbilityDef(key)!.cooldownTicks }}t</span></span>
+            </div>
+            <div class="mt-1 text-text-primary">{{ getAbilityDef(key)!.description }}</div>
+            <div v-if="getAbilityDef(key)!.effects.length" class="mt-1 border-t border-border pt-1">
+              <div
+                v-for="(effect, i) in getAbilityDef(key)!.effects"
+                :key="i"
+                class="text-text-dim"
+              >
+                <span class="text-gold">{{ effect.type }}</span>: {{ effect.value
+                }}<span v-if="effect.damageType"> ({{ effect.damageType }})</span
+                ><span v-if="effect.duration"> / {{ effect.duration }}t</span
+                ><span v-if="effect.description"> - {{ effect.description }}</span>
+              </div>
+            </div>
+          </div>
         </span>
       </div>
     </div>

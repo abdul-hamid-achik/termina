@@ -29,6 +29,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     kills: 0,
     deaths: 0,
     assists: 0,
+    damageDealt: 0,
+    towerDamageDealt: 0,
     ...overrides,
   }
 }
@@ -69,9 +71,9 @@ describe('GameLoop', () => {
       const state = makeGameState()
       const result = Effect.runSync(processTick('game1', state))
 
-      // Both players start with 600g, should get +1 passive gold
-      expect(result.state.players['p1']!.gold).toBe(601)
-      expect(result.state.players['p2']!.gold).toBe(601)
+      // Both players start with 600g, should get +2 passive gold
+      expect(result.state.players['p1']!.gold).toBe(602)
+      expect(result.state.players['p2']!.gold).toBe(602)
     })
 
     it('should not give passive gold to dead players', () => {
@@ -83,7 +85,7 @@ describe('GameLoop', () => {
       })
       const result = Effect.runSync(processTick('game1', state))
       expect(result.state.players['p1']!.gold).toBe(600) // no gold for dead
-      expect(result.state.players['p2']!.gold).toBe(601) // alive gets gold
+      expect(result.state.players['p2']!.gold).toBe(602) // alive gets gold
     })
 
     it('should process submitted actions', () => {
@@ -131,10 +133,10 @@ describe('GameLoop', () => {
       })
 
       const result = Effect.runSync(processTick('game4', state))
-      // Fountain heals 25% per tick: 500 * 0.25 = 125
-      expect(result.state.players['p1']!.hp).toBe(225)
-      // Mana: 200 * 0.25 = 50
-      expect(result.state.players['p1']!.mp).toBe(100)
+      // Fountain heals 15% per tick: 500 * 0.15 = 75
+      expect(result.state.players['p1']!.hp).toBe(175)
+      // Mana: 200 * 0.15 = 30
+      expect(result.state.players['p1']!.mp).toBe(80)
     })
 
     it('should respawn dead players when respawn tick is reached', () => {

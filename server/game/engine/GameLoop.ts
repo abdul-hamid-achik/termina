@@ -10,10 +10,12 @@ import {
   FOUNTAIN_MANA_PER_TICK_PERCENT,
   XP_PER_LEVEL,
   MAX_LEVEL,
+  HERO_KILL_XP_BASE,
+  HERO_KILL_XP_PER_LEVEL,
 } from '~~/shared/constants/balance'
 import type { StateManagerApi } from './StateManager'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
-import { distributePassiveGold } from './GoldDistributor'
+import { distributePassiveGold, awardKill } from './GoldDistributor'
 import { runCreepAI, applyCreepActions } from './CreepAI'
 import { runTowerAI, applyTowerActions } from './TowerAI'
 import { spawnCreepWaves } from '../map/spawner'
@@ -122,8 +124,8 @@ export function processTick(
     // 10.6. Tick all buffs (decrement durations, remove expired)
     currentState = tickAllBuffs(currentState)
 
-    // 11. Handle deaths — check for newly dead players
-    currentState = handleDeaths(currentState, allEvents)
+    // 11. Handle deaths — check for newly dead players, attribute kills
+    currentState = handleDeaths(currentState, allEvents, resolved.heroAttackers)
 
     // 12. Check level ups
     currentState = checkLevelUps(currentState, allEvents)
@@ -318,9 +320,13 @@ function applyFountainHealing(state: GameState): GameState {
   return changed ? { ...state, players } : state
 }
 
-/** Handle newly dead players — set respawn timers. */
-function handleDeaths(state: GameState, events: GameEngineEvent[]): GameState {
-  const players = { ...state.players }
+/** Handle newly dead players — set respawn timers, attribute kills/assists, award gold/XP. */
+function handleDeaths(
+  state: GameState,
+  events: GameEngineEvent[],
+  heroAttackers?: Map<string, string>,
+): GameState {
+  let players = { ...state.players }
   let changed = false
 
   for (const [pid, player] of Object.entries(players)) {
@@ -340,6 +346,75 @@ function handleDeaths(state: GameState, events: GameEngineEvent[]): GameState {
           respawnTick: state.tick + respawnTicks,
         })
       }
+
+      // Determine killer from heroAttackers (who attacked this victim)
+      let killerId: string | null = null
+      if (heroAttackers) {
+        for (const [attackerId, victimId] of heroAttackers.entries()) {
+          if (victimId === pid) {
+            killerId = attackerId
+            break
+          }
+        }
+      }
+
+      if (killerId && players[killerId]) {
+        // Award kill gold
+        const assisters = heroAttackers
+          ? [...heroAttackers.entries()]
+              .filter(([aid, vid]) => vid === pid && aid !== killerId)
+              .map(([aid]) => aid)
+          : []
+        const tempState: GameState = { ...state, players }
+        const awarded = awardKill(tempState, killerId, pid, assisters)
+        players = { ...awarded.players }
+
+        // Increment kill count
+        const killer = players[killerId]!
+        players[killerId] = { ...killer, kills: killer.kills + 1 }
+
+        // Increment assist counts
+        for (const assistId of assisters) {
+          const assister = players[assistId]
+          if (assister) {
+            players[assistId] = { ...assister, assists: assister.assists + 1 }
+          }
+        }
+
+        // Award XP for hero kill to killer
+        const victim = players[pid]!
+        const killXp = HERO_KILL_XP_BASE + HERO_KILL_XP_PER_LEVEL * victim.level
+        const killerForXp = players[killerId]!
+        players[killerId] = { ...killerForXp, xp: killerForXp.xp + killXp }
+
+        // Award 50% XP to assisters
+        const assistXp = Math.floor(killXp * 0.5)
+        for (const assistId of assisters) {
+          const assister = players[assistId]
+          if (assister) {
+            players[assistId] = { ...assister, xp: assister.xp + assistXp }
+          }
+        }
+
+        // Segfault Blade passive: reset all cooldowns on hero kill
+        const killerAfterXp = players[killerId]!
+        if (killerAfterXp.items.includes('segfault_blade')) {
+          players[killerId] = {
+            ...killerAfterXp,
+            cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          }
+        }
+
+        // Emit kill event
+        events.push({
+          _tag: 'kill',
+          tick: state.tick,
+          killerId,
+          victimId: pid,
+          assisters,
+        } as GameEngineEvent)
+      }
+
       changed = true
     }
   }
