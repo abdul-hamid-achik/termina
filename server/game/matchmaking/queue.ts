@@ -149,11 +149,7 @@ async function tryFormMatch(
   })
 
   await Effect.runPromise(program).catch((err) => {
-    Effect.runPromise(
-      Effect.logError('Matchmaking error forming match').pipe(
-        Effect.annotateLogs({ error: String(err) }),
-      ),
-    )
+    matchLog.error('Matchmaking error forming match', { error: String(err) })
   })
 }
 

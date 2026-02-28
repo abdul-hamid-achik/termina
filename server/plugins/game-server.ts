@@ -43,15 +43,13 @@ export default defineNitroPlugin(async (nitroApp) => {
   const mainLayer = Layer.mergeAll(redisLayer, DatabaseServiceLive, WebSocketServiceLive)
 
   // Extract service implementations by running a simple Effect
-  const services = Effect.gen(function* () {
-    const redis = yield* RedisService
-    const db = yield* DatabaseService
-    const ws = yield* WebSocketService
-    return { redis, db, ws }
-  })
-
   const { redis, db, ws } = await Effect.runPromise(
-    Effect.provide(services, Layer.mergeAll(mainLayer, gameLoggerLive)),
+    Effect.gen(function* () {
+      const redis = yield* RedisService
+      const db = yield* DatabaseService
+      const ws = yield* WebSocketService
+      return { redis, db, ws }
+    }).pipe(Effect.provide(Layer.mergeAll(mainLayer, gameLoggerLive))),
   )
 
   // Start matchmaking loop
@@ -81,18 +79,18 @@ export default defineNitroPlugin(async (nitroApp) => {
           heroId: p.heroId,
         }))
 
-        // Create game
-        await Effect.runPromise(stateManager.createGame(gameId, playerSetups))
+        // Initialise game state in a single Effect pipeline
+        await Effect.runPromise(
+          Effect.gen(function* () {
+            yield* stateManager.createGame(gameId, playerSetups)
+            yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
+          }),
+        )
 
         // Register bots for this game (lane assignment, tracking)
         registerBots(
           gameId,
           gameData.players.map((p) => ({ playerId: p.playerId, team: p.team })),
-        )
-
-        // Set phase to playing
-        await Effect.runPromise(
-          stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })),
         )
 
         // Notify real players that the game is starting via PeerRegistry
@@ -136,10 +134,8 @@ export default defineNitroPlugin(async (nitroApp) => {
 
           onGameOver: async (gId, winner) => {
             try {
-              // Get final game state
               const finalState = await Effect.runPromise(stateManager.getState(gId))
 
-              // Build match record
               const matchRecord: NewMatch = {
                 id: gId,
                 mode: 'ranked_5v5',
@@ -148,7 +144,6 @@ export default defineNitroPlugin(async (nitroApp) => {
                 endedAt: new Date(),
               }
 
-              // Build match player records (real players only)
               const realPlayers = gameData.players.filter((p) => !isBot(p.playerId))
               const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
                 const ps = finalState.players[p.playerId]
@@ -171,29 +166,30 @@ export default defineNitroPlugin(async (nitroApp) => {
                 }
               })
 
-              // Record match to DB
-              await Effect.runPromise(db.recordMatch(matchRecord, matchPlayerRecords))
+              // Persist match + player stats in a single Effect pipeline
+              await Effect.runPromise(
+                Effect.gen(function* () {
+                  yield* db.recordMatch(matchRecord, matchPlayerRecords)
 
-              // Update player stats (real players only)
-              for (const p of realPlayers) {
-                const isWinner = p.team === winner
-                const newMmr = p.mmr + (isWinner ? 25 : -25)
-                const ps = finalState.players[p.playerId]
+                  for (const p of realPlayers) {
+                    const isWinner = p.team === winner
+                    const newMmr = p.mmr + (isWinner ? 25 : -25)
+                    const ps = finalState.players[p.playerId]
 
-                await Effect.runPromise(db.updatePlayerMMR(p.playerId, newMmr))
-                await Effect.runPromise(db.incrementGamesPlayed(p.playerId))
-                if (isWinner) {
-                  await Effect.runPromise(db.incrementWins(p.playerId))
-                }
-                await Effect.runPromise(
-                  db.updateHeroStats(p.playerId, p.heroId, {
-                    won: isWinner,
-                    kills: ps?.kills ?? 0,
-                    deaths: ps?.deaths ?? 0,
-                    assists: ps?.assists ?? 0,
-                  }),
-                )
-              }
+                    yield* db.updatePlayerMMR(p.playerId, newMmr)
+                    yield* db.incrementGamesPlayed(p.playerId)
+                    if (isWinner) {
+                      yield* db.incrementWins(p.playerId)
+                    }
+                    yield* db.updateHeroStats(p.playerId, p.heroId, {
+                      won: isWinner,
+                      kills: ps?.kills ?? 0,
+                      deaths: ps?.deaths ?? 0,
+                      assists: ps?.assists ?? 0,
+                    })
+                  }
+                }),
+              )
 
               // Build end stats for clients
               const endStats: Record<
@@ -233,13 +229,7 @@ export default defineNitroPlugin(async (nitroApp) => {
               // Cleanup bot tracking
               cleanupGame(gId)
             } catch (err) {
-              Effect.runPromise(
-                Effect.logError('Game over persistence failed').pipe(
-                  Effect.annotateLogs({ gameId: gId, error: String(err) }),
-                  Effect.withLogSpan('game_over_persist'),
-                  Effect.provide(gameLoggerLive),
-                ),
-              )
+              gameLog.error('Game over persistence failed', { gameId: gId, error: String(err) })
             }
           },
         }
@@ -252,12 +242,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
         // Start the game loop (runs asynchronously via forkDaemon)
         Effect.runPromise(startGameLoop(gameId, stateManager, callbacks)).catch((err) => {
-          Effect.runPromise(
-            Effect.logError('Game loop error').pipe(
-              Effect.annotateLogs({ gameId, error: String(err) }),
-              Effect.provide(gameLoggerLive),
-            ),
-          )
+          gameLog.error('Game loop error', { gameId, error: String(err) })
         })
 
       } catch (err) {
@@ -273,9 +258,7 @@ export default defineNitroPlugin(async (nitroApp) => {
     matchmakingInterval,
   }
 
-  await Effect.runPromise(
-    Effect.logInfo('Game server initialized').pipe(Effect.provide(gameLoggerLive)),
-  )
+  gameLog.info('Game server initialized')
 
   // Cleanup on shutdown
   nitroApp.hooks.hook('close', async () => {
@@ -284,8 +267,6 @@ export default defineNitroPlugin(async (nitroApp) => {
     }
     await Effect.runPromise(redis.shutdown())
     _runtime = null
-    await Effect.runPromise(
-      Effect.logInfo('Game server shut down').pipe(Effect.provide(gameLoggerLive)),
-    )
+    gameLog.info('Game server shut down')
   })
 })

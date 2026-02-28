@@ -111,13 +111,18 @@ export default defineWebSocketHandler({
         if (!runtime) break
         wsLog.info('join_game received', { playerId: ctx.playerId, gameId: parsed.gameId })
         ctx.gameId = parsed.gameId
-        const addConn = runtime.wsService.addConnection(
-          parsed.gameId,
-          ctx.playerId,
-          peer.websocket as unknown as WebSocket,
-        )
-        Effect.runSync(addConn)
-        peer.send(JSON.stringify({ type: 'announcement', message: 'Joined game', level: 'info' }))
+        try {
+          Effect.runSync(
+            runtime.wsService.addConnection(
+              parsed.gameId,
+              ctx.playerId,
+              peer.websocket as unknown as WebSocket,
+            ),
+          )
+          peer.send(JSON.stringify({ type: 'announcement', message: 'Joined game', level: 'info' }))
+        } catch (err) {
+          wsLog.error('join_game addConnection failed', { playerId: ctx.playerId, gameId: parsed.gameId, error: err })
+        }
         break
       }
 
@@ -195,14 +200,18 @@ export default defineWebSocketHandler({
           disconnectTimers.delete(playerId)
           const runtime = getGameRuntime()
           if (runtime) {
-            Effect.runSync(runtime.wsService.removeConnection(playerId))
-            // Notify game that player has fully disconnected
+            // Remove connection + notify disconnect in a single pipeline
             Effect.runPromise(
-              runtime.redisService.publish(
-                `game:${gameId}:events`,
-                JSON.stringify({ type: 'player_disconnect', playerId }),
-              ),
-            ).catch(() => {})
+              Effect.gen(function* () {
+                yield* runtime.wsService.removeConnection(playerId)
+                yield* runtime.redisService.publish(
+                  `game:${gameId}:events`,
+                  JSON.stringify({ type: 'player_disconnect', playerId }),
+                )
+              }),
+            ).catch((err) => {
+              wsLog.warn('Disconnect cleanup failed', { playerId, error: String(err) })
+            })
           }
         }, RECONNECT_WINDOW_MS),
       )
