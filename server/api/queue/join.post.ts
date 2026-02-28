@@ -1,6 +1,7 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '../../plugins/game-server'
 import { joinQueue, getQueueSize } from '../../game/matchmaking/queue'
+import { getPlayerGame } from '../../services/PeerRegistry'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -21,6 +22,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const playerId = session.user.id as string
+
+  // Prevent re-queuing if player is already in an active game
+  const activeGameId = getPlayerGame(playerId)
+  if (activeGameId) {
+    throw createError({ statusCode: 409, message: 'Already in an active game' })
+  }
+
   const player = await Effect.runPromise(runtime.dbService.getPlayer(playerId))
 
   await Effect.runPromise(

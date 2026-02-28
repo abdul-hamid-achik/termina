@@ -245,6 +245,18 @@ gameSocket.onMessage((msg) => {
     if (state.towers) {
       towers.value = state.towers
     }
+  } else if (msg.type === 'announcement') {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: `>_ ${msg.message}`,
+      type: 'system',
+    })
+  } else if (msg.type === 'error') {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: `[ERROR] ${msg.message}`,
+      type: 'system',
+    })
   }
 })
 
@@ -313,6 +325,27 @@ function getTowerTier(zoneId: string): number {
 function handleCommand(cmd: string) {
   const { command, error } = commands.parse(cmd)
   if (command) {
+    // Client-side validation for move commands
+    if (command.type === 'move' && gameStore.player) {
+      const playerZone = ZONE_MAP[gameStore.player.zone]
+      if (playerZone && command.zone !== gameStore.player.zone && !playerZone.adjacentTo.includes(command.zone)) {
+        localEvents.value.push({
+          tick: gameStore.tick,
+          text: `Cannot move to ${command.zone} — not adjacent. Adjacent zones: ${playerZone.adjacentTo.join(', ')}`,
+          type: 'system',
+        })
+        return
+      }
+    }
+    // Client-side validation for cast mana cost
+    if (command.type === 'cast' && gameStore.player && !gameStore.player.alive) {
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: 'Cannot act while dead',
+        type: 'system',
+      })
+      return
+    }
     uiLog.debug('Command sent', { type: command.type })
     gameSocket.send({ type: 'action', command })
   } else if (error) {

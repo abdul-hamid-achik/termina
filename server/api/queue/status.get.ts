@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '../../plugins/game-server'
-import { getQueueSize } from '../../game/matchmaking/queue'
+import { getQueueSize, isPlayerInQueue } from '../../game/matchmaking/queue'
 import { getPlayerLobby, getLobby } from '../../game/matchmaking/lobby'
 import { getPlayerGame } from '../../services/PeerRegistry'
 
@@ -44,11 +44,18 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const size = await Effect.runPromise(getQueueSize(runtime.redisService))
-
-  return {
-    status: 'searching' as const,
-    playersInQueue: size,
-    estimatedWaitSeconds: Math.max(10, size * 3),
+  // Only return 'searching' if the player is actually in the queue
+  if (playerId) {
+    const inQueue = await Effect.runPromise(isPlayerInQueue(runtime.redisService, playerId))
+    if (inQueue) {
+      const size = await Effect.runPromise(getQueueSize(runtime.redisService))
+      return {
+        status: 'searching' as const,
+        playersInQueue: size,
+        estimatedWaitSeconds: Math.max(10, size * 3),
+      }
+    }
   }
+
+  return { status: 'idle' as const }
 })

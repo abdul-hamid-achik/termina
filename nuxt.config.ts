@@ -23,8 +23,6 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['@fontsource/jetbrains-mono/400.css', '@fontsource/jetbrains-mono/700.css'],
-
   runtimeConfig: {
     session: {
       password: '',

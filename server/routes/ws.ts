@@ -2,8 +2,8 @@ import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
-import { pickHero } from '../game/matchmaking/lobby'
-import { registerPeer, unregisterPeer } from '../services/PeerRegistry'
+import { pickHero, getPlayerLobby, getLobby } from '../game/matchmaking/lobby'
+import { registerPeer, unregisterPeer, getPlayerGame } from '../services/PeerRegistry'
 import { wsLog } from '../utils/log'
 
 interface PeerContext {
@@ -42,9 +42,44 @@ export default defineWebSocketHandler({
       disconnectTimers.delete(playerId)
     }
 
-    peer.send(
-      JSON.stringify({ type: 'announcement', message: 'Connected to TERMINA', level: 'info' }),
-    )
+    const announcementMsg = JSON.stringify({ type: 'announcement', message: 'Connected to TERMINA', level: 'info' })
+    peer.send(announcementMsg)
+    wsLog.debug('Sent announcement to peer', { playerId, peerType: peer.constructor?.name })
+
+    // Re-send game_starting if this player is already in an active game (reconnect recovery)
+    const existingGameId = getPlayerGame(playerId)
+    if (existingGameId) {
+      peer.send(
+        JSON.stringify({
+          type: 'game_starting',
+          gameId: existingGameId,
+        }),
+      )
+      wsLog.info('Re-sent game_starting on reconnect', { playerId, gameId: existingGameId })
+    } else {
+      // Re-send lobby_state if this player is already in a lobby (reconnect recovery)
+      const existingLobbyId = getPlayerLobby(playerId)
+      if (existingLobbyId) {
+        const lobby = getLobby(existingLobbyId)
+        if (lobby) {
+          const playerEntry = lobby.players.find((p) => p.playerId === playerId)
+          const teamId = playerEntry?.team ?? 'radiant'
+          peer.send(
+            JSON.stringify({
+              type: 'lobby_state',
+              lobbyId: existingLobbyId,
+              team: teamId,
+              players: lobby.players.map((p) => ({
+                playerId: p.playerId,
+                team: p.team,
+                heroId: p.heroId,
+              })),
+            }),
+          )
+          wsLog.info('Re-sent lobby_state on reconnect', { playerId, lobbyId: existingLobbyId })
+        }
+      }
+    }
   },
 
   message(peer, message) {

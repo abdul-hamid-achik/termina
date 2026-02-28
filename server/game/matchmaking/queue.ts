@@ -3,7 +3,8 @@ import type { RedisServiceApi } from '../../services/RedisService'
 import type { WebSocketServiceApi } from '../../services/WebSocketService'
 import type { DatabaseServiceApi } from '../../services/DatabaseService'
 import { createLobby } from './lobby'
-import { createBotPlayers } from '../ai/BotManager'
+import { createBotPlayers, isBot } from '../ai/BotManager'
+import { sendToPeer } from '../../services/PeerRegistry'
 import { matchLog } from '../../utils/log'
 
 const QUEUE_KEY = 'matchmaking:queue'
@@ -81,6 +82,17 @@ async function tryFormMatch(
     const players: QueueEntry[] = allEntries.map((raw) => JSON.parse(raw))
 
     const now = Date.now()
+
+    // Push queue status to all real (non-bot) players via WS
+    for (const p of players) {
+      if (!isBot(p.playerId)) {
+        sendToPeer(p.playerId, {
+          type: 'queue_update',
+          playersInQueue: players.length,
+          estimatedWaitSeconds: Math.max(0, Math.round((BOT_FILL_WAIT_MS - (now - p.joinedAt)) / 1000)),
+        })
+      }
+    }
 
     // Bot fill: if any player has waited > BOT_FILL_WAIT_MS and we have at least 1 player
     if (players.length > 0 && players.length < MATCH_SIZE) {
@@ -165,4 +177,8 @@ export function startMatchmakingLoop(
 
 export function getQueueSize(redis: RedisServiceApi): Effect.Effect<number> {
   return redis.zcard(QUEUE_KEY)
+}
+
+export function isPlayerInQueue(redis: RedisServiceApi, playerId: string): Effect.Effect<boolean> {
+  return Effect.map(redis.get(`${QUEUE_TIMES_KEY}:${playerId}`), (val) => val !== null)
 }

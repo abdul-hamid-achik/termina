@@ -2,19 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TeamId } from '~~/shared/types/game'
 import { lobbyLog } from '~/utils/logger'
+import { useGameStore } from '~/stores/game'
 
 export type QueueStatus = 'idle' | 'searching' | 'found' | 'picking' | 'starting'
-
-type PollResponse =
-  | { status: 'searching'; playersInQueue: number; estimatedWaitSeconds: number }
-  | {
-      status: 'lobby'
-      lobbyId: string
-      team: TeamId
-      players: { playerId: string; team: TeamId; heroId: string | null }[]
-      phase: string
-    }
-  | { status: 'game_starting'; gameId: string }
 
 export const useLobbyStore = defineStore('lobby', () => {
   const queueStatus = ref<QueueStatus>('idle')
@@ -31,7 +21,6 @@ export const useLobbyStore = defineStore('lobby', () => {
   const countdown = ref(0)
 
   let queueTimer: ReturnType<typeof setInterval> | null = null
-  let pollTimer: ReturnType<typeof setInterval> | null = null
 
   async function joinQueue(mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5') {
     try {
@@ -42,7 +31,7 @@ export const useLobbyStore = defineStore('lobby', () => {
       playersInQueue.value = res.queueSize
       queueStatus.value = 'searching'
       queueTime.value = 0
-      _startTimers()
+      _startQueueTimer()
     } catch (err) {
       lobbyLog.error('Failed to join queue', err)
       throw err
@@ -58,75 +47,67 @@ export const useLobbyStore = defineStore('lobby', () => {
     _reset()
   }
 
-  async function pollQueueStatus() {
+  /** One-shot HTTP recovery for page refresh — not polled. */
+  async function recoverState() {
     try {
-      const res = await $fetch<PollResponse>('/api/queue/status')
+      const res = await $fetch<
+        | { status: 'idle' }
+        | { status: 'searching'; playersInQueue: number; estimatedWaitSeconds: number }
+        | {
+            status: 'lobby'
+            lobbyId: string
+            team: TeamId
+            players: { playerId: string; team: TeamId; heroId: string | null }[]
+            phase: string
+          }
+        | { status: 'game_starting'; gameId: string }
+      >('/api/queue/status')
 
-      lobbyLog.debug('Poll result', { status: res.status, queueStatus: queueStatus.value })
+      lobbyLog.debug('Recovery result', { status: res.status })
 
-      if (res.status === 'game_starting') {
-        // Game created — skip straight to starting
+      if (res.status === 'idle') {
+        return null
+      } else if (res.status === 'game_starting') {
         gameId.value = res.gameId
-        if (queueStatus.value !== 'starting') {
-          allPicksComplete()
-          // Start countdown in case WS game_countdown message was missed
-          if (countdown.value <= 0) startCountdown(3)
-        }
+        // Also set gameStore.gameId so the lobby.vue navigation watcher triggers
+        const gameStore = useGameStore()
+        gameStore.gameId = res.gameId
+        allPicksComplete()
+        if (countdown.value <= 0) startCountdown(3)
       } else if (res.status === 'lobby') {
-        // Always sync lobby/team info when we have it
-        if (queueStatus.value === 'searching' || !lobbyId.value) {
-          lobbyId.value = res.lobbyId
-          setTeamInfo(
-            res.team,
-            res.players.map((p) => ({
-              playerId: p.playerId,
-              name: p.playerId,
-              heroId: p.heroId,
-              team: p.team,
-            })),
-          )
-        }
-
-        // Sync pickedHeroes AND teamRoster from poll data.
-        // The poll may have heroId values that WS hero_pick messages missed.
+        lobbyId.value = res.lobbyId
+        setTeamInfo(
+          res.team,
+          res.players.map((p) => ({
+            playerId: p.playerId,
+            name: p.playerId,
+            heroId: p.heroId,
+            team: p.team,
+          })),
+        )
         for (const p of res.players) {
           if (p.heroId) {
             pickedHeroes.value = { ...pickedHeroes.value, [p.playerId]: p.heroId }
           }
         }
-        // Also update teamRoster heroIds so the roster names display correctly
-        if (teamRoster.value.length > 0) {
-          let rosterChanged = false
-          for (const p of res.players) {
-            if (p.heroId) {
-              const existing = teamRoster.value.find((m) => m.playerId === p.playerId)
-              if (existing && existing.heroId !== p.heroId) {
-                rosterChanged = true
-              }
-            }
-          }
-          if (rosterChanged) {
-            teamRoster.value = teamRoster.value.map((m) => {
-              const polled = res.players.find((p) => p.playerId === m.playerId)
-              return polled?.heroId ? { ...m, heroId: polled.heroId } : m
-            })
-          }
-        }
-
-        if (res.phase === 'starting' && queueStatus.value !== 'starting') {
-          // All picks done, game is about to start
+        if (res.phase === 'starting') {
           allPicksComplete()
-          // Start countdown in case WS game_countdown message was missed
           if (countdown.value <= 0) startCountdown(3)
-        } else if (queueStatus.value === 'searching') {
+        } else {
           matchFound(res.lobbyId)
         }
       } else if (res.status === 'searching') {
+        queueStatus.value = 'searching'
         playersInQueue.value = res.playersInQueue
         estimatedWaitSeconds.value = res.estimatedWaitSeconds
+        queueTime.value = 0
+        _startQueueTimer()
       }
+
+      return res.status !== 'searching' ? res.status : 'searching'
     } catch {
-      // Ignore poll errors
+      // No active session — stay idle
+      return null
     }
   }
 
@@ -150,12 +131,7 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   function allPicksComplete() {
-    // Stop queue timer but keep poll timer running as fallback
-    // for detecting game_starting if the WS message is missed
-    if (queueTimer) {
-      clearInterval(queueTimer)
-      queueTimer = null
-    }
+    _stopQueueTimer()
     queueStatus.value = 'starting'
     lobbyLog.info('All picks complete — transitioning to starting')
   }
@@ -183,31 +159,26 @@ export const useLobbyStore = defineStore('lobby', () => {
     }, 1000)
   }
 
-  function _startTimers() {
-    _stopTimers()
+  function _startQueueTimer() {
+    _stopQueueTimer()
     queueTimer = setInterval(() => {
       queueTime.value++
     }, 1000)
-    pollTimer = setInterval(pollQueueStatus, 2000)
   }
 
-  function _stopTimers() {
+  function _stopQueueTimer() {
     if (queueTimer) {
       clearInterval(queueTimer)
       queueTimer = null
     }
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
-    }
+  }
+
+  function _reset() {
+    _stopQueueTimer()
     if (countdownTimer) {
       clearInterval(countdownTimer)
       countdownTimer = null
     }
-  }
-
-  function _reset() {
-    _stopTimers()
     queueStatus.value = 'idle'
     queueTime.value = 0
     playersInQueue.value = 0
@@ -221,7 +192,11 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   function $dispose() {
-    _stopTimers()
+    _stopQueueTimer()
+    if (countdownTimer) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
   }
 
   return {
@@ -239,7 +214,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     // Actions
     joinQueue,
     leaveQueue,
-    pollQueueStatus,
+    recoverState,
     matchFound,
     heroPicked,
     allPicksComplete,

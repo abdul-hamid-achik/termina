@@ -18,7 +18,7 @@ import { toGameEvent } from '../game/protocol/events'
 import type { TeamId } from '~~/shared/types/game'
 import type { NewMatch, NewMatchPlayer } from '../db/schema'
 import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
-import { sendToPeer, setPlayerGame } from '../services/PeerRegistry'
+import { sendToPeer, setPlayerGame, clearPlayerGame } from '../services/PeerRegistry'
 import { cleanupLobby } from '../game/matchmaking/lobby'
 
 interface GameRuntime {
@@ -127,6 +127,15 @@ export default defineNitroPlugin(async (nitroApp) => {
             })
           },
 
+          onActionRejected: (gId, playerId, reason) => {
+            if (isBot(playerId)) return
+            sendToPeer(playerId, {
+              type: 'announcement',
+              message: reason,
+              level: 'warning',
+            })
+          },
+
           onEvents: (gId, events) => {
             const msg = {
               type: 'events' as const,
@@ -231,6 +240,11 @@ export default defineNitroPlugin(async (nitroApp) => {
                   winner,
                   stats: endStats,
                 })
+              }
+
+              // Clear player→game mappings so they can re-queue
+              for (const p of realPlayers) {
+                clearPlayerGame(p.playerId)
               }
 
               // Cleanup bot tracking

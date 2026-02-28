@@ -248,10 +248,9 @@ describe('Lobby Store', () => {
     })
   })
 
-  describe('pollQueueStatus', () => {
-    it('updates queue info on searching status', async () => {
+  describe('recoverState', () => {
+    it('recovers searching state from server', async () => {
       const store = useLobbyStore()
-      store.queueStatus = 'searching' as never
 
       mockFetch.mockResolvedValue({
         status: 'searching',
@@ -259,15 +258,16 @@ describe('Lobby Store', () => {
         estimatedWaitSeconds: 30,
       })
 
-      await store.pollQueueStatus()
+      const result = await store.recoverState()
 
+      expect(result).toBe('searching')
+      expect(store.queueStatus).toBe('searching')
       expect(store.playersInQueue).toBe(7)
       expect(store.estimatedWaitSeconds).toBe(30)
     })
 
-    it('handles lobby status by calling matchFound', async () => {
+    it('recovers lobby state by calling matchFound', async () => {
       const store = useLobbyStore()
-      store.queueStatus = 'searching' as never
 
       mockFetch.mockResolvedValue({
         status: 'lobby',
@@ -279,37 +279,37 @@ describe('Lobby Store', () => {
         phase: 'picking',
       })
 
-      await store.pollQueueStatus()
+      const result = await store.recoverState()
 
+      expect(result).toBe('lobby')
       expect(store.lobbyId).toBe('lobby-abc')
       expect(store.team).toBe('dire')
-      // matchFound will set status to 'found'
       expect(store.queueStatus).toBe('found')
     })
 
-    it('handles game_starting status', async () => {
+    it('recovers game_starting state', async () => {
       const store = useLobbyStore()
-      store.queueStatus = 'searching' as never
 
       mockFetch.mockResolvedValue({
         status: 'game_starting',
         gameId: 'game-xyz',
       })
 
-      await store.pollQueueStatus()
+      const result = await store.recoverState()
 
+      expect(result).toBe('game_starting')
       expect(store.gameId).toBe('game-xyz')
       expect(store.queueStatus).toBe('starting')
     })
 
-    it('ignores poll errors silently', async () => {
+    it('returns null on errors silently', async () => {
       const store = useLobbyStore()
 
       mockFetch.mockRejectedValue(new Error('Network error'))
 
-      // Should not throw
-      await store.pollQueueStatus()
+      const result = await store.recoverState()
 
+      expect(result).toBeNull()
       expect(store.queueStatus).toBe('idle')
     })
   })

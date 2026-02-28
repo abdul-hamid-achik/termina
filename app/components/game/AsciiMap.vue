@@ -78,16 +78,16 @@ function cellText(zone: ZoneDisplay): string {
   if (zone.tower) {
     indicators.push(zone.tower.alive ? '\u2713' : '\u2717')
   }
-  if (zone.playerHere) indicators.push('*')
+  if (zone.playerHere) indicators.push('>>YOU')
   if (zone.allies.length > 0) indicators.push(`${zone.allies.length}A`)
   if (zone.enemyCount > 0) indicators.push(`${zone.enemyCount}E`)
 
-  return indicators.length > 0 ? `${name} ${indicators.join('')}` : name
+  return indicators.length > 0 ? `${name} ${indicators.join(' ')}` : name
 }
 
 function cellClasses(zone: ZoneDisplay): string {
   if (zone.fogged) return 'text-text-dim opacity-40'
-  if (zone.playerHere) return 'text-self font-bold bg-white/[0.06]'
+  if (zone.playerHere) return 'text-self font-bold bg-self/10 border border-self/30'
   if (zone.allies.length > 0) return 'text-radiant'
   if (zone.enemyCount > 0) return 'text-dire'
   return 'text-text-dim'

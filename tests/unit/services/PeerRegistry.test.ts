@@ -41,7 +41,8 @@ describe('PeerRegistry', () => {
       registered.push({ playerId: 'p1', peer })
 
       sendToPeer('p1', { type: 'test' })
-      expect(rawWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'test' }))
+      // crossws peer is used as primary send path
+      expect(peer.send).toHaveBeenCalledWith(JSON.stringify({ type: 'test' }))
     })
 
     it('unregisters a peer so sending drops the message', () => {
@@ -94,10 +95,10 @@ describe('PeerRegistry', () => {
 
       // 4. New peer should still be registered and messages should deliver
       sendToPeer('player1', { type: 'tick_state', tick: 1 })
-      expect(newRawWs.send).toHaveBeenCalledWith(
+      expect(newPeer.send).toHaveBeenCalledWith(
         JSON.stringify({ type: 'tick_state', tick: 1 }),
       )
-      expect(oldRawWs.send).not.toHaveBeenCalled()
+      expect(oldPeer.send).not.toHaveBeenCalled()
     })
 
     it('removes peer when the same peer unregisters', () => {
@@ -127,8 +128,8 @@ describe('PeerRegistry', () => {
 
       // New peer is still active
       sendToPeer('player3', { type: 'reconnected' })
-      expect(rawWs2.send).toHaveBeenCalledWith(JSON.stringify({ type: 'reconnected' }))
-      expect(rawWs1.send).not.toHaveBeenCalled()
+      expect(peer2.send).toHaveBeenCalledWith(JSON.stringify({ type: 'reconnected' }))
+      expect(peer1.send).not.toHaveBeenCalled()
     })
   })
 
@@ -140,27 +141,28 @@ describe('PeerRegistry', () => {
       registered.push({ playerId: 'p5', peer })
 
       sendToPeer('p5', { type: 'tick_state', tick: 42, state: { hp: 100 } })
-      expect(rawWs.send).toHaveBeenCalledWith(
+      // crossws peer is the primary send path
+      expect(peer.send).toHaveBeenCalledWith(
         JSON.stringify({ type: 'tick_state', tick: 42, state: { hp: 100 } }),
       )
     })
 
-    it('falls back to crossws peer when rawWs.send throws', () => {
+    it('falls back to rawWs when crossws peer.send throws', () => {
       const rawWs = makeRawWs()
-      rawWs.send.mockImplementation(() => { throw new Error('rawWs failed') })
       const peer = makePeer()
+      peer.send.mockImplementation(() => { throw new Error('peer failed') })
       registerPeer('p6', peer, rawWs)
       registered.push({ playerId: 'p6', peer })
 
       sendToPeer('p6', { type: 'test' })
-      expect(peer.send).toHaveBeenCalledWith(JSON.stringify({ type: 'test' }))
+      expect(rawWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'test' }))
     })
 
-    it('warns when both rawWs and crossws peer fail', () => {
-      const rawWs = makeRawWs()
-      rawWs.send.mockImplementation(() => { throw new Error('rawWs failed') })
+    it('warns when both crossws peer and rawWs fail', () => {
       const peer = makePeer()
       peer.send.mockImplementation(() => { throw new Error('peer failed') })
+      const rawWs = makeRawWs()
+      rawWs.send.mockImplementation(() => { throw new Error('rawWs failed') })
       registerPeer('p7', peer, rawWs)
       registered.push({ playerId: 'p7', peer })
 

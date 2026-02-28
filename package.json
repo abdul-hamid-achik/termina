@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A text-based multiplayer MOBA played through a terminal-inspired browser UI",
   "scripts": {
-    "dev": "bun --bun nuxt dev",
+    "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",

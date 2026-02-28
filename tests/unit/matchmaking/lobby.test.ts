@@ -288,6 +288,7 @@ describe('Lobby', () => {
 
   describe('pick phases and transitions', () => {
     it('transitions to starting after all heroes are picked', () => {
+      vi.useFakeTimers()
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
@@ -299,12 +300,17 @@ describe('Lobby', () => {
         pickHero(lobby.id, picker.playerId, heroId, ws as never, redis as never, db as never)
       }
 
-      // After all picks, lobby should transition to starting phase
+      // There's a 1.5s delay between last pick and ready_check transition
+      vi.advanceTimersByTime(1600)
+
+      // After all picks + delay, lobby should transition to starting phase
       // (ready_check auto-readies all players and moves to starting)
       expect(lobby.phase).toBe('starting')
+      vi.useRealTimers()
     })
 
     it('rejects picks during non-picking phase', () => {
+      vi.useFakeTimers()
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
@@ -315,10 +321,14 @@ describe('Lobby', () => {
         pickHero(lobby.id, picker.playerId, HERO_IDS[i]!, ws as never, redis as never, db as never)
       }
 
+      // Advance past the delay so phase transitions to starting
+      vi.advanceTimersByTime(1600)
+
       // Try to pick another hero — should fail
       const result = pickHero(lobby.id, 'player_0', 'kernel', ws as never, redis as never, db as never)
       expect(result.success).toBe(false)
       expect(result.error).toBe('Not in picking phase')
+      vi.useRealTimers()
     })
   })
 })

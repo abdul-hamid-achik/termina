@@ -39,6 +39,7 @@ export function useGameSocket() {
       ws.onclose = null
       ws.close()
     }
+    connected.value = false
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const url = `${protocol}//${window.location.host}/ws?playerId=${currentPlayerId}&gameId=${currentGameId}`
@@ -46,6 +47,7 @@ export function useGameSocket() {
     ws = new WebSocket(url)
 
     ws.onopen = () => {
+      console.log('[WS] onopen — connected', { gameId: currentGameId, readyState: ws?.readyState })
       socketLog.info('Connected', { gameId: currentGameId })
       connected.value = true
       reconnecting.value = false
@@ -65,8 +67,10 @@ export function useGameSocket() {
       try {
         msg = JSON.parse(event.data)
       } catch {
+        console.warn('[WS] Failed to parse message', event.data)
         return
       }
+      console.log('[WS] message received:', msg.type)
 
       // Measure latency from heartbeat round-trip
       if (lastPingTime && msg.type === 'announcement') {
@@ -93,6 +97,13 @@ export function useGameSocket() {
         case 'game_over':
           gameStore.setGameOver(msg.winner, msg.stats)
           break
+        case 'game_starting':
+          // Fallback: ensure gameStore.gameId is set even if no external handler processes this
+          if (!gameStore.gameId) {
+            socketLog.info('game_starting received — setting gameId', { gameId: msg.gameId })
+            gameStore.gameId = msg.gameId
+          }
+          break
       }
 
       // Notify all registered handlers
@@ -101,15 +112,16 @@ export function useGameSocket() {
       }
     }
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      console.log('[WS] onclose', { code: event.code, reason: event.reason, gameId: currentGameId })
       socketLog.warn('Disconnected', { gameId: currentGameId })
       connected.value = false
       _stopHeartbeat()
       _scheduleReconnect()
     }
 
-    ws.onerror = () => {
-      // onclose will fire after onerror
+    ws.onerror = (event) => {
+      console.error('[WS] onerror', event)
     }
   }
 
@@ -164,8 +176,8 @@ export function useGameSocket() {
   }
 
   function _scheduleReconnect() {
-    // Don't reconnect if intentionally disconnected or if this was a lobby connection
-    if (!currentGameId || !currentPlayerId || currentGameId === 'lobby') return
+    // Don't reconnect if intentionally disconnected
+    if (!currentGameId || !currentPlayerId) return
     reconnecting.value = true
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY)
     reconnectAttempts++

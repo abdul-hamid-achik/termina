@@ -212,8 +212,11 @@ function confirmPick(
   // Check if all heroes are picked
   if (lobby.currentPickIndex >= lobby.pickOrder.length) {
     if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
-    lobby.phase = 'ready_check'
-    startReadyCheck(lobby, ws, redis, db)
+    // Brief delay so the UI can display the last hero pick before transitioning
+    setTimeout(() => {
+      lobby.phase = 'ready_check'
+      startReadyCheck(lobby, ws, redis, db)
+    }, 1500)
     return
   }
 

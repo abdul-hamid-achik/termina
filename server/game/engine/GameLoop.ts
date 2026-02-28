@@ -64,10 +64,11 @@ function drainActions(gameId: string): PlayerAction[] {
 export function processTick(
   gameId: string,
   state: GameState,
-): Effect.Effect<{ state: GameState; events: GameEngineEvent[] }> {
+): Effect.Effect<{ state: GameState; events: GameEngineEvent[]; rejectedActions: Array<{ playerId: string; reason: string }> }> {
   return Effect.gen(function* () {
     let currentState: GameState = { ...state, tick: state.tick + 1, events: [] }
     const allEvents: GameEngineEvent[] = []
+    const rejectedActions: Array<{ playerId: string; reason: string }> = []
 
     // 0. Run bot AI — inject bot actions before draining
     const botPlayerIds = getBotPlayerIds(gameId)
@@ -85,7 +86,15 @@ export function processTick(
     const actions = drainActions(gameId)
 
     // 2. Validate actions against current state
-    const validActions = actions.filter((a) => validateAction(currentState, a) === null)
+    const validActions: PlayerAction[] = []
+    for (const action of actions) {
+      const error = validateAction(currentState, action)
+      if (error === null) {
+        validActions.push(action)
+      } else {
+        rejectedActions.push({ playerId: action.playerId, reason: error })
+      }
+    }
 
     // 3. Resolve actions via ActionResolver
     const resolved = yield* resolveActions(currentState, validActions)
@@ -154,7 +163,7 @@ export function processTick(
       Effect.annotateLogs({ gameId, tick: currentState.tick, actionCount: validActions.length }),
     )
 
-    return { state: currentState, events: allEvents }
+    return { state: currentState, events: allEvents, rejectedActions }
   })
 }
 
@@ -168,6 +177,7 @@ export interface GameCallbacks {
   ) => void
   onEvents: (gameId: string, events: GameEngineEvent[]) => void
   onGameOver: (gameId: string, winner: TeamId) => void
+  onActionRejected?: (gameId: string, playerId: string, reason: string) => void
 }
 
 /** Active game fibers, keyed by gameId. */
@@ -190,8 +200,19 @@ function buildGameLoop(
     const currentState = yield* stateManager.getState(gameId)
     if (currentState.phase === 'ended') return
 
-    const { state: newState, events } = yield* processTick(gameId, currentState)
+    const { state: newState, events, rejectedActions } = yield* processTick(gameId, currentState)
     yield* stateManager.updateState(gameId, () => newState)
+
+    // Send feedback for rejected player actions
+    if (callbacks.onActionRejected) {
+      for (const rejected of rejectedActions) {
+        try {
+          callbacks.onActionRejected(gameId, rejected.playerId, rejected.reason)
+        } catch {
+          // Non-critical — don't let feedback failures affect the game loop
+        }
+      }
+    }
 
     // Log every 10th tick to verify loop is alive
     if (newState.tick % 10 === 0) {

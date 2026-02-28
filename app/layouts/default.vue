@@ -35,20 +35,22 @@ async function logout() {
         >
           [{{ link.label }}]
         </NuxtLink>
-        <button
-          v-if="loggedIn"
-          class="cursor-pointer border-none bg-transparent px-1 py-1 text-[0.8rem] text-text-dim transition-colors duration-150 hover:text-dire"
-          @click="logout"
-        >
-          [LOGOUT]
-        </button>
-        <NuxtLink
-          v-else
-          to="/login"
-          class="px-1 py-1 text-[0.8rem] text-text-dim no-underline transition-colors duration-150 hover:text-radiant"
-        >
-          [LOGIN]
-        </NuxtLink>
+        <ClientOnly>
+          <button
+            v-if="loggedIn"
+            class="cursor-pointer border-none bg-transparent px-1 py-1 text-[0.8rem] text-text-dim transition-colors duration-150 hover:text-dire"
+            @click="logout"
+          >
+            [LOGOUT]
+          </button>
+          <NuxtLink
+            v-else
+            to="/login"
+            class="px-1 py-1 text-[0.8rem] text-text-dim no-underline transition-colors duration-150 hover:text-radiant"
+          >
+            [LOGIN]
+          </NuxtLink>
+        </ClientOnly>
       </nav>
     </header>
 

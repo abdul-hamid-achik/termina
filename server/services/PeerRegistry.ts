@@ -5,9 +5,10 @@ import { peerLog } from '../utils/log'
 // This allows lobby and game-server to send messages to players
 // who aren't yet registered with WebSocketService (via addConnection).
 //
-// We store both the crossws peer (for use within handlers) and the raw
-// websocket (for reliable send from outside handlers — e.g. matchmaking timers).
-// On Bun, crossws peer.send() may not deliver when called outside handler scope.
+// We store both the crossws peer and the raw websocket (peer.websocket).
+// The crossws peer's send() method is the primary path — it correctly
+// delegates to the underlying WebSocket on all adapters (Node, Bun).
+// The rawWs (peer.websocket Proxy) is kept as a fallback.
 
 type CrosswsPeer = { send: (data: string) => void }
 type RawWs = { send: (data: string | ArrayBuffer | Uint8Array) => number | undefined }
@@ -61,14 +62,17 @@ export function sendToPeer(playerId: string, message: unknown) {
   }
   const data = JSON.stringify(message)
   try {
-    // Use the raw websocket for reliable delivery outside handler scope
-    entry.rawWs.send(data)
-  } catch {
+    // Use the crossws peer as primary — it properly delegates to the
+    // underlying WebSocket via its send() method, which works from any
+    // scope on both Node and Bun adapters.
+    // The rawWs (peer.websocket) is a Proxy that can silently fail when
+    // native methods are called with wrong `this` binding.
+    entry.crosswsPeer.send(data)
+  } catch (err) {
     try {
-      // Fall back to crossws peer
-      entry.crosswsPeer.send(data)
+      entry.rawWs.send(data)
     } catch {
-      peerLog.warn('Failed to send', { playerId, type: (message as { type?: string }).type })
+      peerLog.warn('Failed to send to peer', { playerId, type: (message as { type?: string }).type, error: String(err) })
     }
   }
 }
