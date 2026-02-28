@@ -248,7 +248,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
         // Brief delay to let clients navigate to /play and open game WS
         // before the first tick tries to send data
-        await new Promise((resolve) => setTimeout(resolve, 2000))
+        await Effect.runPromise(Effect.sleep('2 seconds'))
 
         // Start the game loop (runs asynchronously via forkDaemon)
         Effect.runPromise(startGameLoop(gameId, stateManager, callbacks)).catch((err) => {
