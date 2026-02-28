@@ -70,7 +70,7 @@ export const useLobbyStore = defineStore('lobby', () => {
         if (queueStatus.value !== 'starting') {
           allPicksComplete()
           // Start countdown in case WS game_countdown message was missed
-          if (countdown.value <= 0) startCountdown(5)
+          if (countdown.value <= 0) startCountdown(3)
         }
       } else if (res.status === 'lobby') {
         // Always sync lobby/team info when we have it
@@ -98,7 +98,7 @@ export const useLobbyStore = defineStore('lobby', () => {
           // All picks done, game is about to start
           allPicksComplete()
           // Start countdown in case WS game_countdown message was missed
-          if (countdown.value <= 0) startCountdown(10)
+          if (countdown.value <= 0) startCountdown(3)
         } else if (queueStatus.value === 'searching') {
           matchFound(res.lobbyId)
         }

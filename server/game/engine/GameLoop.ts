@@ -22,6 +22,7 @@ import { levelUpHero, processDoTs, tickAllBuffs } from '../heroes/_base'
 import { toGameEvent, type GameEngineEvent } from '../protocol/events'
 import { getBotPlayerIds, getBotLane } from '../ai/BotManager'
 import { decideBotAction } from '../ai/BotAI'
+import { engineLog } from '../../utils/log'
 
 // ── Action queue per game ──────────────────────────────────────
 
@@ -187,7 +188,8 @@ export function startGameLoop(
     // Set phase to playing
     yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
 
-    // Run the tick loop
+    // Run a single tick with per-tick error recovery so one bad tick
+    // doesn't kill the entire game loop.
     const tickLoop = Effect.gen(function* () {
       const currentState = yield* stateManager.getState(gameId)
       if (currentState.phase === 'ended') return
@@ -195,10 +197,19 @@ export function startGameLoop(
       const { state: newState, events } = yield* processTick(gameId, currentState)
       yield* stateManager.updateState(gameId, () => newState)
 
+      // Log every 10th tick to verify loop is alive
+      if (newState.tick % 10 === 0) {
+        engineLog.debug('Tick', { gameId, tick: newState.tick })
+      }
+
       // Broadcast filtered state to each player
       for (const playerId of Object.keys(newState.players)) {
         const visibleState = filterStateForPlayer(newState, playerId)
-        callbacks.onTickState(gameId, playerId, visibleState)
+        try {
+          callbacks.onTickState(gameId, playerId, visibleState)
+        } catch (err) {
+          engineLog.warn('Failed to send tick_state', { gameId, playerId, error: String(err) })
+        }
       }
 
       if (events.length > 0) {
@@ -210,20 +221,25 @@ export function startGameLoop(
         const winner = checkWinCondition(newState)
         if (winner) callbacks.onGameOver(gameId, winner)
       }
-    })
+    }).pipe(
+      // Recover from individual tick failures so the loop keeps running
+      Effect.catchAll((error) => {
+        engineLog.error('Tick error (recovering)', { gameId, error: String(error) })
+        return Effect.void
+      }),
+    )
 
     // Repeat on fixed schedule
     const repeated = Effect.repeat(tickLoop, Schedule.fixed(`${TICK_DURATION_MS} millis`))
 
-    const withErrorHandling = Effect.catchAll(repeated, (error) =>
-      Effect.logError('Game loop tick error').pipe(
-        Effect.annotateLogs({ gameId, error: String(error) }),
-      ),
-    )
-
-    const fiber = yield* Effect.fork(withErrorHandling)
+    // Use forkDaemon so the game loop fiber persists beyond the parent
+    // scope (Effect.runPromise in game-server.ts). A regular Effect.fork
+    // would create a child fiber that gets interrupted when the parent
+    // effect completes.
+    const fiber = yield* Effect.forkDaemon(repeated)
     activeGames.set(gameId, fiber)
 
+    engineLog.info('Game loop fiber forked', { gameId })
     yield* Effect.logInfo('Game loop running as fiber').pipe(Effect.annotateLogs({ gameId }))
   }).pipe(
     Effect.catchAll((error) =>

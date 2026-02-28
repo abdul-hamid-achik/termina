@@ -246,7 +246,11 @@ export default defineNitroPlugin(async (nitroApp) => {
 
         gameLog.info('Game created — starting loop', { gameId, playerCount: gameData.players.length })
 
-        // Start the game loop (runs asynchronously)
+        // Brief delay to let clients navigate to /play and open game WS
+        // before the first tick tries to send data
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+
+        // Start the game loop (runs asynchronously via forkDaemon)
         Effect.runPromise(startGameLoop(gameId, stateManager, callbacks)).catch((err) => {
           Effect.runPromise(
             Effect.logError('Game loop error').pipe(
