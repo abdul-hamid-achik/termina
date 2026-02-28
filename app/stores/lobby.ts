@@ -87,10 +87,29 @@ export const useLobbyStore = defineStore('lobby', () => {
           )
         }
 
-        // Sync pickedHeroes from poll data
+        // Sync pickedHeroes AND teamRoster from poll data.
+        // The poll may have heroId values that WS hero_pick messages missed.
         for (const p of res.players) {
           if (p.heroId) {
             pickedHeroes.value = { ...pickedHeroes.value, [p.playerId]: p.heroId }
+          }
+        }
+        // Also update teamRoster heroIds so the roster names display correctly
+        if (teamRoster.value.length > 0) {
+          let rosterChanged = false
+          for (const p of res.players) {
+            if (p.heroId) {
+              const existing = teamRoster.value.find((m) => m.playerId === p.playerId)
+              if (existing && existing.heroId !== p.heroId) {
+                rosterChanged = true
+              }
+            }
+          }
+          if (rosterChanged) {
+            teamRoster.value = teamRoster.value.map((m) => {
+              const polled = res.players.find((p) => p.playerId === m.playerId)
+              return polled?.heroId ? { ...m, heroId: polled.heroId } : m
+            })
           }
         }
 

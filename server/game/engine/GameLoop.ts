@@ -1,3 +1,4 @@
+import type { ManagedRuntime } from 'effect';
 import { Effect, Schedule, Fiber } from 'effect'
 import type { GameState, TeamId } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
@@ -171,83 +172,85 @@ export interface GameCallbacks {
 const activeGames = new Map<string, Fiber.RuntimeFiber<void, never>>()
 
 /**
- * Start the game loop for a given game.
- * Returns an Effect that runs the tick loop as a fiber.
+ * Build the game loop Effect for a given game.
+ * The returned Effect runs the tick loop directly (no forking) — it stays
+ * alive for the entire game duration. The caller is responsible for
+ * running it (typically via Effect.runFork for a root-level fiber).
+ */
+function buildGameLoop(
+  gameId: string,
+  stateManager: StateManagerApi,
+  callbacks: GameCallbacks,
+): Effect.Effect<void> {
+  // Run a single tick with per-tick error recovery so one bad tick
+  // doesn't kill the entire game loop.
+  const tickLoop = Effect.gen(function* () {
+    const currentState = yield* stateManager.getState(gameId)
+    if (currentState.phase === 'ended') return
+
+    const { state: newState, events } = yield* processTick(gameId, currentState)
+    yield* stateManager.updateState(gameId, () => newState)
+
+    // Log every 10th tick to verify loop is alive
+    if (newState.tick % 10 === 0) {
+      engineLog.debug('Tick', { gameId, tick: newState.tick })
+    }
+
+    // Broadcast filtered state to each player
+    for (const playerId of Object.keys(newState.players)) {
+      const visibleState = filterStateForPlayer(newState, playerId)
+      try {
+        callbacks.onTickState(gameId, playerId, visibleState)
+      } catch (err) {
+        engineLog.warn('Failed to send tick_state', { gameId, playerId, error: String(err) })
+      }
+    }
+
+    if (events.length > 0) {
+      callbacks.onEvents(gameId, events)
+    }
+
+    // Check win — phase is set to 'ended' by processTick when win condition fires
+    if (newState.phase === 'ended') {
+      const winner = checkWinCondition(newState)
+      if (winner) callbacks.onGameOver(gameId, winner)
+    }
+  }).pipe(
+    // Recover from individual tick failures so the loop keeps running
+    Effect.catchAll((error) => {
+      engineLog.error('Tick error (recovering)', { gameId, error: String(error) })
+      return Effect.void
+    }),
+  )
+
+  return Effect.gen(function* () {
+    yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
+    engineLog.info('Game loop starting', { gameId })
+    yield* Effect.repeat(tickLoop, Schedule.fixed(`${TICK_DURATION_MS} millis`))
+  }).pipe(
+    Effect.catchAll((error) => {
+      engineLog.error('Game loop fatal error', { gameId, error: String(error) })
+      return Effect.void
+    }),
+  )
+}
+
+/**
+ * Start the game loop as a fiber within a ManagedRuntime.
+ * The runtime provides all layers (logger, services) to the fiber,
+ * ensuring Effect.logInfo/logDebug use the proper game logger.
+ * Falls back to Effect.runFork if no runtime is provided.
  */
 export function startGameLoop(
   gameId: string,
   stateManager: StateManagerApi,
   callbacks: GameCallbacks,
-): Effect.Effect<void> {
-  return Effect.gen(function* () {
-    const state = yield* stateManager.getState(gameId)
-    if (state.phase === 'ended') return
-
-    yield* Effect.logInfo('Game loop started').pipe(Effect.annotateLogs({ gameId }))
-
-    // Set phase to playing
-    yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
-
-    // Run a single tick with per-tick error recovery so one bad tick
-    // doesn't kill the entire game loop.
-    const tickLoop = Effect.gen(function* () {
-      const currentState = yield* stateManager.getState(gameId)
-      if (currentState.phase === 'ended') return
-
-      const { state: newState, events } = yield* processTick(gameId, currentState)
-      yield* stateManager.updateState(gameId, () => newState)
-
-      // Log every 10th tick to verify loop is alive
-      if (newState.tick % 10 === 0) {
-        engineLog.debug('Tick', { gameId, tick: newState.tick })
-      }
-
-      // Broadcast filtered state to each player
-      for (const playerId of Object.keys(newState.players)) {
-        const visibleState = filterStateForPlayer(newState, playerId)
-        try {
-          callbacks.onTickState(gameId, playerId, visibleState)
-        } catch (err) {
-          engineLog.warn('Failed to send tick_state', { gameId, playerId, error: String(err) })
-        }
-      }
-
-      if (events.length > 0) {
-        callbacks.onEvents(gameId, events)
-      }
-
-      // Check win — phase is set to 'ended' by processTick when win condition fires
-      if (newState.phase === 'ended') {
-        const winner = checkWinCondition(newState)
-        if (winner) callbacks.onGameOver(gameId, winner)
-      }
-    }).pipe(
-      // Recover from individual tick failures so the loop keeps running
-      Effect.catchAll((error) => {
-        engineLog.error('Tick error (recovering)', { gameId, error: String(error) })
-        return Effect.void
-      }),
-    )
-
-    // Repeat on fixed schedule
-    const repeated = Effect.repeat(tickLoop, Schedule.fixed(`${TICK_DURATION_MS} millis`))
-
-    // Use forkDaemon so the game loop fiber persists beyond the parent
-    // scope (Effect.runPromise in game-server.ts). A regular Effect.fork
-    // would create a child fiber that gets interrupted when the parent
-    // effect completes.
-    const fiber = yield* Effect.forkDaemon(repeated)
-    activeGames.set(gameId, fiber)
-
-    engineLog.info('Game loop fiber forked', { gameId })
-    yield* Effect.logInfo('Game loop running as fiber').pipe(Effect.annotateLogs({ gameId }))
-  }).pipe(
-    Effect.catchAll((error) =>
-      Effect.logError('Failed to start game loop').pipe(
-        Effect.annotateLogs({ gameId, error: String(error) }),
-      ),
-    ),
-  )
+  runtime?: ManagedRuntime.ManagedRuntime<never, never>,
+): void {
+  const loop = buildGameLoop(gameId, stateManager, callbacks)
+  const fiber = runtime ? runtime.runFork(loop) : Effect.runFork(loop)
+  activeGames.set(gameId, fiber)
+  engineLog.info('Game loop fiber started', { gameId })
 }
 
 /** Stop a running game loop. */

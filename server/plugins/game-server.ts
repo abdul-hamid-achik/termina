@@ -1,4 +1,4 @@
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, ManagedRuntime } from 'effect'
 import { RedisService, makeRedisServiceLive, type RedisServiceApi } from '../services/RedisService'
 import {
   DatabaseService,
@@ -25,6 +25,7 @@ interface GameRuntime {
   redisService: RedisServiceApi
   wsService: WebSocketServiceApi
   dbService: DatabaseServiceApi
+  managedRuntime: ManagedRuntime.ManagedRuntime<never, never>
   matchmakingInterval: ReturnType<typeof setInterval> | null
 }
 
@@ -42,14 +43,20 @@ export default defineNitroPlugin(async (nitroApp) => {
   const redisLayer = makeRedisServiceLive(redisUrl)
   const mainLayer = Layer.mergeAll(redisLayer, DatabaseServiceLive, WebSocketServiceLive)
 
-  // Extract service implementations by running a simple Effect
-  const { redis, db, ws } = await Effect.runPromise(
+  // Create a ManagedRuntime that owns the lifecycle of all services.
+  // This provides layers (including the game logger) to all effects run
+  // through it, including long-lived game loop fibers.
+  const appLayer = Layer.mergeAll(mainLayer, gameLoggerLive)
+  const managedRuntime = ManagedRuntime.make(appLayer)
+
+  // Extract service implementations via the managed runtime
+  const { redis, db, ws } = await managedRuntime.runPromise(
     Effect.gen(function* () {
       const redis = yield* RedisService
       const db = yield* DatabaseService
       const ws = yield* WebSocketService
       return { redis, db, ws }
-    }).pipe(Effect.provide(Layer.mergeAll(mainLayer, gameLoggerLive))),
+    }),
   )
 
   // Start matchmaking loop
@@ -57,7 +64,7 @@ export default defineNitroPlugin(async (nitroApp) => {
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
 
   // Subscribe to game_ready events from lobby
-  await Effect.runPromise(
+  await managedRuntime.runPromise(
     redis.subscribe('matchmaking:game_ready', async (message) => {
       try {
         const gameData = JSON.parse(message) as {
@@ -80,7 +87,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         }))
 
         // Initialise game state in a single Effect pipeline
-        await Effect.runPromise(
+        await managedRuntime.runPromise(
           Effect.gen(function* () {
             yield* stateManager.createGame(gameId, playerSetups)
             yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
@@ -134,7 +141,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
           onGameOver: async (gId, winner) => {
             try {
-              const finalState = await Effect.runPromise(stateManager.getState(gId))
+              const finalState = await managedRuntime.runPromise(stateManager.getState(gId))
 
               const matchRecord: NewMatch = {
                 id: gId,
@@ -167,7 +174,7 @@ export default defineNitroPlugin(async (nitroApp) => {
               })
 
               // Persist match + player stats in a single Effect pipeline
-              await Effect.runPromise(
+              await managedRuntime.runPromise(
                 Effect.gen(function* () {
                   yield* db.recordMatch(matchRecord, matchPlayerRecords)
 
@@ -238,12 +245,11 @@ export default defineNitroPlugin(async (nitroApp) => {
 
         // Brief delay to let clients navigate to /play and open game WS
         // before the first tick tries to send data
-        await Effect.runPromise(Effect.sleep('2 seconds'))
+        await managedRuntime.runPromise(Effect.sleep('2 seconds'))
 
-        // Start the game loop (runs asynchronously via forkDaemon)
-        Effect.runPromise(startGameLoop(gameId, stateManager, callbacks)).catch((err) => {
-          gameLog.error('Game loop error', { gameId, error: String(err) })
-        })
+        // Start the game loop as a fiber within the managed runtime.
+        // This gives the loop access to all layers (logger, etc.)
+        startGameLoop(gameId, stateManager, callbacks, managedRuntime)
 
       } catch (err) {
         gameLog.error('Failed to process game_ready event', { error: String(err) })
@@ -255,17 +261,20 @@ export default defineNitroPlugin(async (nitroApp) => {
     redisService: redis,
     wsService: ws,
     dbService: db,
+    managedRuntime,
     matchmakingInterval,
   }
 
   gameLog.info('Game server initialized')
 
-  // Cleanup on shutdown
+  // Cleanup on shutdown — dispose the managed runtime which cleans up
+  // all service layers (Redis connections, etc.)
   nitroApp.hooks.hook('close', async () => {
     if (_runtime?.matchmakingInterval) {
       clearInterval(_runtime.matchmakingInterval)
     }
-    await Effect.runPromise(redis.shutdown())
+    await managedRuntime.runPromise(redis.shutdown())
+    await managedRuntime.dispose()
     _runtime = null
     gameLog.info('Game server shut down')
   })
