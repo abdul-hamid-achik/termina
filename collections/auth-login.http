@@ -1,0 +1,107 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user for login tests
+# @name setupLoginUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "login_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+loginUsername from body.user.username
+<<<
+
+### Logout after registration (clear session)
+# @name logoutAfterSetup
+# @depends setupLoginUser
+POST {{baseUrl}}/api/auth/logout
+Content-Type: application/json
+
+>>>
+expect status 200
+<<<
+
+### Login: missing username
+# @name loginMissingUsername
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 400
+expect body.message contains "Username and password are required"
+<<<
+
+### Login: missing password
+# @name loginMissingPassword
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "someuser"
+}
+
+>>>
+expect status 400
+expect body.message contains "Username and password are required"
+<<<
+
+### Login: invalid credentials (user not found)
+# @name loginInvalidUser
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "nonexistent_user_xyz",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 401
+expect body.message contains "Invalid credentials"
+<<<
+
+### Login: wrong password
+# @name loginWrongPassword
+# @depends logoutAfterSetup
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{loginUsername}}",
+  "password": "WrongPassword99!"
+}
+
+>>>
+expect status 401
+expect body.message contains "Invalid credentials"
+<<<
+
+### Login: successful login
+# @name loginSuccess
+# @depends logoutAfterSetup
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{loginUsername}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+expect body.user exists
+expect body.user.username == "{{loginUsername}}"
+expect body.user.provider == "local"
+expect body.user.hasPassword == true
+<<<

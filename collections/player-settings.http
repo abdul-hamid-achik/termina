@@ -1,0 +1,133 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user for settings tests
+# @name setupSettingsUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "set_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+settingsPlayerId from body.user.id
+settingsUsername from body.user.username
+settingsCookie from header Set-Cookie
+<<<
+
+### Settings: update username
+# @name updateUsername
+# @depends setupSettingsUser
+PUT {{baseUrl}}/api/player/settings
+Content-Type: application/json
+Cookie: {{settingsCookie}}
+
+{
+  "username": "ren_{{$random(10000, 99999)}}"
+}
+
+>>>
+expect status 200
+expect body.user exists
+expect body.user.id == "{{settingsPlayerId}}"
+<<<
+
+### Settings: username too short
+# @name settingsUsernameTooShort
+# @depends setupSettingsUser
+PUT {{baseUrl}}/api/player/settings
+Content-Type: application/json
+Cookie: {{settingsCookie}}
+
+{
+  "username": "ab"
+}
+
+>>>
+expect status 400
+expect body.message contains "3-20 characters"
+<<<
+
+### Settings: username too long
+# @name settingsUsernameTooLong
+# @depends setupSettingsUser
+PUT {{baseUrl}}/api/player/settings
+Content-Type: application/json
+Cookie: {{settingsCookie}}
+
+{
+  "username": "abcdefghijklmnopqrstu"
+}
+
+>>>
+expect status 400
+expect body.message contains "3-20 characters"
+<<<
+
+### Settings: username invalid chars
+# @name settingsUsernameInvalidChars
+# @depends setupSettingsUser
+PUT {{baseUrl}}/api/player/settings
+Content-Type: application/json
+Cookie: {{settingsCookie}}
+
+{
+  "username": "bad@user!"
+}
+
+>>>
+expect status 400
+expect body.message contains "letters, numbers, and underscores"
+<<<
+
+### Settings: set valid avatar
+# @name settingsSetAvatar
+# @depends setupSettingsUser
+PUT {{baseUrl}}/api/player/settings
+Content-Type: application/json
+Cookie: {{settingsCookie}}
+
+{
+  "selectedAvatar": "echo"
+}
+
+>>>
+expect status 200
+expect body.user.selectedAvatar == "echo"
+<<<
+
+### Settings: set invalid avatar
+# @name settingsInvalidAvatar
+# @depends setupSettingsUser
+PUT {{baseUrl}}/api/player/settings
+Content-Type: application/json
+Cookie: {{settingsCookie}}
+
+{
+  "selectedAvatar": "invalid_hero_xyz"
+}
+
+>>>
+expect status 400
+expect body.message contains "Invalid avatar"
+<<<
+
+### Settings: clear avatar (null)
+# @name settingsClearAvatar
+# @depends settingsSetAvatar
+PUT {{baseUrl}}/api/player/settings
+Content-Type: application/json
+Cookie: {{settingsCookie}}
+
+{
+  "selectedAvatar": null
+}
+
+>>>
+expect status 200
+<<<

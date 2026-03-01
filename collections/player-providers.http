@@ -1,0 +1,40 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user for provider tests
+# @name setupProvidersUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "prov_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+provCookie from header Set-Cookie
+<<<
+
+### Get linked providers
+# @name getProviders
+# @depends setupProvidersUser
+GET {{baseUrl}}/api/player/providers
+Cookie: {{provCookie}}
+
+>>>
+expect status 200
+<<<
+
+### Unlink: invalid provider
+# @name unlinkInvalidProvider
+# @depends setupProvidersUser
+DELETE {{baseUrl}}/api/player/providers/twitter
+Cookie: {{provCookie}}
+
+>>>
+expect status 400
+expect body.message contains "Invalid provider"
+<<<

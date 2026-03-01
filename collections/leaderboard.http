@@ -1,0 +1,28 @@
+@baseUrl = http://localhost:3000
+
+### Leaderboard: default request
+# @name leaderboardDefault
+GET {{baseUrl}}/api/leaderboard
+
+>>>
+expect status 200
+expect body.leaderboard exists
+<<<
+
+### Leaderboard: with custom limit
+# @name leaderboardLimit
+GET {{baseUrl}}/api/leaderboard?limit=5
+
+>>>
+expect status 200
+expect body.leaderboard exists
+<<<
+
+### Leaderboard: limit capped at 500
+# @name leaderboardMaxLimit
+GET {{baseUrl}}/api/leaderboard?limit=1000
+
+>>>
+expect status 200
+expect body.leaderboard exists
+<<<

@@ -1,0 +1,11 @@
+@baseUrl = http://localhost:3000
+
+### Logout returns success
+# @name logoutSuccess
+POST {{baseUrl}}/api/auth/logout
+Content-Type: application/json
+
+>>>
+expect status 200
+expect body.success == true
+<<<

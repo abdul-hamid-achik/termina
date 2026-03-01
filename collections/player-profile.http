@@ -1,0 +1,43 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user
+# @name setupProfileUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "prof_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+profilePlayerId from body.user.id
+profileUsername from body.user.username
+<<<
+
+### Get player profile by ID
+# @name getProfile
+# @depends setupProfileUser
+GET {{baseUrl}}/api/player/{{profilePlayerId}}
+
+>>>
+expect status 200
+expect body.player exists
+expect body.player.id == "{{profilePlayerId}}"
+expect body.player.username == "{{profileUsername}}"
+expect body.player.mmr exists
+expect body.player.gamesPlayed exists
+<<<
+
+### Get player profile: not found
+# @name getProfileNotFound
+GET {{baseUrl}}/api/player/nonexistent_player_xyz_123
+
+>>>
+expect status 404
+expect body.message contains "not found"
+<<<

@@ -20,6 +20,7 @@ const config: KnipConfig = {
     'tests/**/*.ts',
   ],
   ignore: ['eslint.config.mjs'],
+  ignoreBinaries: ['hitspec'],
   ignoreDependencies: [
     // Fonts loaded via CSS
     '@fontsource/jetbrains-mono',

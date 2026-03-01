@@ -1,0 +1,152 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user for queue tests
+# @name setupQueueUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "q_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+qCookie from header Set-Cookie
+<<<
+
+### Queue status: idle when not in queue
+# @name queueStatusIdle
+# @depends setupQueueUser
+GET {{baseUrl}}/api/queue/status
+Cookie: {{qCookie}}
+
+>>>
+expect status 200
+expect body.status == "idle"
+<<<
+
+### Queue join: successful
+# @name queueJoin
+# @depends queueStatusIdle
+POST {{baseUrl}}/api/queue/join
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+{}
+
+>>>
+expect status 200
+expect body.success == true
+expect body.queueSize exists
+<<<
+
+### Queue status: searching after join
+# @name queueStatusSearching
+# @depends queueJoin
+GET {{baseUrl}}/api/queue/status
+Cookie: {{qCookie}}
+
+>>>
+expect status 200
+expect body.status == "searching"
+expect body.playersInQueue exists
+expect body.estimatedWaitSeconds exists
+<<<
+
+### Queue leave: successful
+# @name queueLeave
+# @depends queueStatusSearching
+POST {{baseUrl}}/api/queue/leave
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+>>>
+expect status 200
+expect body.success == true
+<<<
+
+### Queue status: idle after leaving
+# @name queueStatusIdleAfterLeave
+# @depends queueLeave
+GET {{baseUrl}}/api/queue/status
+Cookie: {{qCookie}}
+
+>>>
+expect status 200
+expect body.status == "idle"
+<<<
+
+### Queue join: invalid game mode
+# @name queueJoinInvalidMode
+# @depends queueStatusIdleAfterLeave
+POST {{baseUrl}}/api/queue/join
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+{
+  "mode": "invalid_mode"
+}
+
+>>>
+expect status 400
+expect body.message contains "Invalid game mode"
+<<<
+
+### Queue join: valid ranked_5v5 mode
+# @name queueJoinRanked
+# @depends queueJoinInvalidMode
+POST {{baseUrl}}/api/queue/join
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+{
+  "mode": "ranked_5v5"
+}
+
+>>>
+expect status 200
+expect body.success == true
+<<<
+
+### Queue join: already in queue (duplicate)
+# @name queueJoinDuplicate
+# @depends queueJoinRanked
+POST {{baseUrl}}/api/queue/join
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+{}
+
+>>>
+expect status 409
+expect body.message contains "Already in queue"
+<<<
+
+### Cleanup: leave queue
+# @name queueCleanup
+# @depends queueJoinDuplicate
+POST {{baseUrl}}/api/queue/leave
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+>>>
+expect status 200
+<<<
+
+### Queue pick: missing body fields
+# @name queuePickMissing
+# @depends setupQueueUser
+POST {{baseUrl}}/api/queue/pick
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+{}
+
+>>>
+expect status 400
+expect body.message contains "Missing lobbyId or heroId"
+<<<

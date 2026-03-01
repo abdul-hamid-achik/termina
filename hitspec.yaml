@@ -1,0 +1,15 @@
+defaultEnvironment: dev
+
+timeout: 10000
+retries: 0
+followRedirects: false
+
+headers:
+  Content-Type: application/json
+  Accept: application/json
+
+environments:
+  dev:
+    baseUrl: http://localhost:3000
+  ci:
+    baseUrl: http://localhost:3000

@@ -1,0 +1,127 @@
+@baseUrl = http://localhost:3000
+
+### Register: missing username
+# @name registerMissingUsername
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 400
+expect body.message contains "Username and password are required"
+<<<
+
+### Register: missing password
+# @name registerMissingPassword
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser"
+}
+
+>>>
+expect status 400
+expect body.message contains "Username and password are required"
+<<<
+
+### Register: username too short
+# @name registerUsernameTooShort
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "ab",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 400
+expect body.message contains "3-20 characters"
+<<<
+
+### Register: username too long
+# @name registerUsernameTooLong
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "abcdefghijklmnopqrstu",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 400
+expect body.message contains "3-20 characters"
+<<<
+
+### Register: username invalid characters
+# @name registerUsernameInvalidChars
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "user@name!",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 400
+expect body.message contains "letters, numbers, and underscores"
+<<<
+
+### Register: password too short
+# @name registerPasswordTooShort
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "validuser",
+  "password": "short"
+}
+
+>>>
+expect status 400
+expect body.message contains "at least 8 characters"
+<<<
+
+### Register: successful registration
+# @name registerSuccess
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "hs_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+expect body.user exists
+expect body.user.username exists
+expect body.user.provider == "local"
+expect body.user.hasPassword == true
+<<<
+
+>>>capture
+registeredUsername from body.user.username
+<<<
+
+### Register: duplicate username
+# @name registerDuplicate
+# @depends registerSuccess
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "{{registeredUsername}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 409
+expect body.message contains "already taken"
+<<<

@@ -1,0 +1,59 @@
+@baseUrl = http://localhost:3000
+
+### Match: not found
+# @name matchNotFound
+GET {{baseUrl}}/api/match/nonexistent_match_xyz_123
+
+>>>
+expect status 404
+expect body.message contains "not found"
+<<<
+
+### Match history: with explicit player param
+# @name matchHistoryByPlayer
+GET {{baseUrl}}/api/match/history?player=nonexistent_player
+
+>>>
+expect status 200
+expect body.matches exists
+<<<
+
+### Setup: register user for match history
+# @name setupMatchHistoryUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "mh_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+matchCookie from header Set-Cookie
+<<<
+
+### Match history: authenticated user (no player param)
+# @name matchHistoryAuth
+# @depends setupMatchHistoryUser
+GET {{baseUrl}}/api/match/history
+Cookie: {{matchCookie}}
+
+>>>
+expect status 200
+expect body.matches exists
+<<<
+
+### Match history: with custom limit
+# @name matchHistoryLimit
+# @depends setupMatchHistoryUser
+GET {{baseUrl}}/api/match/history?limit=5
+Cookie: {{matchCookie}}
+
+>>>
+expect status 200
+expect body.matches exists
+<<<
