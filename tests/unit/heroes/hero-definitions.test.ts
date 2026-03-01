@@ -3,14 +3,16 @@ import { HEROES, HERO_IDS } from '../../../shared/constants/heroes'
 import type { HeroDef } from '../../../shared/types/hero'
 
 describe('Hero Definitions', () => {
-  it('should have exactly 10 heroes', () => {
-    expect(HERO_IDS.length).toBe(10)
+  it('should have exactly 18 heroes', () => {
+    expect(HERO_IDS.length).toBe(18)
   })
 
   it('should have all expected hero IDs', () => {
     const expected = [
       'echo', 'sentry', 'daemon', 'kernel', 'regex', 'socket',
       'proxy', 'malloc', 'cipher', 'firewall',
+      'null_ref', 'lambda', 'mutex', 'ping', 'cron', 'traceroute',
+      'thread', 'cache',
     ]
     for (const id of expected) {
       expect(HERO_IDS).toContain(id)

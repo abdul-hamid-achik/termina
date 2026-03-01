@@ -360,6 +360,278 @@ const sprites: Record<string, HeroSpriteData> = {
       '0033444554433000', // 15 base
     ],
   },
+
+  // ── Null ── Mage, Ranged — Void caster, dark energy
+  // Dark purple/void black with magenta energy
+  null_ref: {
+    palette: [
+      '#08001a', // 1: void black
+      '#15002e', // 2: very dark purple
+      '#2a0052', // 3: dark purple
+      '#4a0080', // 4: purple
+      '#7b00b8', // 5: bright purple
+      '#c800ff', // 6: magenta energy
+      '#e066ff', // 7: light magenta
+      '#ffbbff', // 8: pink highlight
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0000000870000000', // 0  energy wisp
+      '0000007657000000', // 1  energy glow
+      '0000066556600000', // 2  head crown
+      '0000455555540000', // 3  head top
+      '0004455555440000', // 4  head
+      '0004487784440000', // 5  eyes (8=bright 7=glow)
+      '0004444444440000', // 6  face
+      '0000433553400000', // 7  lower face
+      '0000044444000000', // 8  chin
+      '0000034443000000', // 9  neck
+      '0006534445360000', // 10 collar with energy
+      '0065534445356000', // 11 shoulders
+      '0653445544345600', // 12 upper body energy
+      '0633344443336000', // 13 body
+      '0033344443330000', // 14 body
+      '0023333333320000', // 15 base
+    ],
+  },
+
+  // ── Lambda ── Mage, Ranged — Functional caster, code brackets
+  // Neon green/lime with code motif
+  lambda: {
+    palette: [
+      '#001a00', // 1: very dark green
+      '#003300', // 2: dark green
+      '#006600', // 3: forest green
+      '#00aa00', // 4: green
+      '#00ff00', // 5: neon green
+      '#66ff66', // 6: light green
+      '#bbffbb', // 7: pale green glow
+      '#ffff00', // 8: yellow accent
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0000005650000000', // 0  lambda tip
+      '0000045654000000', // 1  lambda symbol top
+      '0000443453400000', // 2  lambda arms
+      '0004434434400000', // 3  head top
+      '0004444444400000', // 4  head
+      '0004468864400000', // 5  eyes (8=bright 6=glow)
+      '0004443344400000', // 6  face
+      '0000443344000000', // 7  lower face
+      '0000044340000000', // 8  chin
+      '0000034430000000', // 9  neck
+      '0003444544300000', // 10 collar
+      '0034445544430000', // 11 shoulders
+      '0324345543230000', // 12 body with code lines
+      '0322345543220000', // 13 body
+      '0322344443220000', // 14 body
+      '0022333333220000', // 15 base
+    ],
+  },
+
+  // ── Mutex ── Offlaner, Melee — Lock/padlock, bronze armor
+  // Bronze/copper with lock shape
+  mutex: {
+    palette: [
+      '#1a0e00', // 1: dark shadow
+      '#3a2200', // 2: dark bronze
+      '#6e4000', // 3: bronze
+      '#a06818', // 4: medium bronze
+      '#c48830', // 5: copper
+      '#d4a050', // 6: light copper
+      '#e8c878', // 7: gold highlight
+      '#fff0c0', // 8: cream highlight
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0000055555500000', // 0  lock arch top
+      '0000565005650000', // 1  lock arch
+      '0000560000650000', // 2  lock arch sides
+      '0005566666550000', // 3  head top (lock body)
+      '0005555555550000', // 4  head
+      '0005587785550000', // 5  eyes (8=bright 7=glow)
+      '0005555555550000', // 6  face
+      '0005546645550000', // 7  keyhole motif
+      '0000555555500000', // 8  chin
+      '0000044554000000', // 9  neck
+      '0055544445555000', // 10 wide pauldrons
+      '0565544445565000', // 11 shoulders
+      '0555545454555000', // 12 chest
+      '0455456654554000', // 13 body
+      '0445455554444000', // 14 body
+      '0044445554440000', // 15 base
+    ],
+  },
+
+  // ── Ping ── Offlaner, Ranged — Network ping, circular waves
+  // Bright yellow/electric with wave pattern
+  ping: {
+    palette: [
+      '#1a1400', // 1: dark shadow
+      '#3a3000', // 2: dark yellow
+      '#6e5e00', // 3: amber
+      '#a09000', // 4: yellow-amber
+      '#d4c800', // 5: bright yellow
+      '#ffee00', // 6: neon yellow
+      '#ffff66', // 7: light yellow
+      '#ffffff', // 8: white spark
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0000000870000000', // 0  signal spark
+      '0000007667000000', // 1  signal top
+      '0000066566600000', // 2  signal ring
+      '0000455555400000', // 3  head top
+      '0004444444400000', // 4  head
+      '0004478874400000', // 5  eyes (8=bright 7=glow)
+      '0004444444400000', // 6  face
+      '0000443344000000', // 7  lower face
+      '0000044440000000', // 8  chin
+      '0000034430000000', // 9  neck
+      '0073444544370000', // 10 collar + wave rings
+      '0734444444370000', // 11 shoulders + waves
+      '7334445544337000', // 12 body + wave pattern
+      '0332344443230000', // 13 body
+      '0322344443220000', // 14 body
+      '0022333333220000', // 15 base
+    ],
+  },
+
+  // ── Cron ── Support, Melee — Clock/timer, blue armor
+  // Blue/silver with clock motif
+  cron: {
+    palette: [
+      '#000a1e', // 1: very dark blue
+      '#001a3e', // 2: dark blue
+      '#003a7e', // 3: blue
+      '#0060b8', // 4: bright blue
+      '#5090d0', // 5: light blue
+      '#90b8e0', // 6: pale blue
+      '#c0c8d0', // 7: silver
+      '#f0f4ff', // 8: white highlight
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0000044444400000', // 0  clock top
+      '0004444844440000', // 1  clock face (8=12 o'clock)
+      '0004440844400000', // 2  clock hands
+      '0044440844440000', // 3  head / clock
+      '0044448444440000', // 4  head (8=center)
+      '0033478874330000', // 5  eyes (8=bright 7=glow)
+      '0033444444330000', // 6  face
+      '0003332233300000', // 7  lower face
+      '0000334433000000', // 8  chin
+      '0000033330000000', // 9  neck
+      '0034443334430000', // 10 collar
+      '0344443334440000', // 11 shoulders
+      '0323345543230000', // 12 body
+      '0322344443220000', // 13 body
+      '0322334433220000', // 14 body
+      '0022333333220000', // 15 base
+    ],
+  },
+
+  // ── Traceroute ── Assassin, Ranged — Arrow/path trail
+  // Red/orange with arrow motif
+  traceroute: {
+    palette: [
+      '#1a0200', // 1: very dark red
+      '#3e0800', // 2: dark red
+      '#7e1800', // 3: dark red-orange
+      '#b83000', // 4: red-orange
+      '#e85000', // 5: orange
+      '#ff7820', // 6: bright orange
+      '#ffa040', // 7: light orange
+      '#ffd080', // 8: cream highlight
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0000000600000000', // 0  arrow tip
+      '0000005650000000', // 1  arrowhead
+      '0000045554000000', // 2  arrowhead wider
+      '0000444444400000', // 3  head top
+      '0004444444400000', // 4  head
+      '0004478874400000', // 5  eyes (8=bright 7=glow)
+      '0004443344400000', // 6  face
+      '0000443344000000', // 7  lower face
+      '0000044340000000', // 8  chin
+      '0000034430000000', // 9  neck
+      '0003454454300000', // 10 collar
+      '0034445544430000', // 11 shoulders
+      '0323344443230000', // 12 body
+      '6322345543226000', // 13 body + trail marks
+      '0622344443260000', // 14 body + trail
+      '0062333333600000', // 15 base + trail
+    ],
+  },
+
+  // ── Thread ── Carry, Ranged — Interweaving lines, multi-color
+  // Multi-color with interwoven threads
+  thread: {
+    palette: [
+      '#0a0a1e', // 1: dark base
+      '#1e1e3e', // 2: dark indigo
+      '#3a6ee8', // 3: blue thread
+      '#e83a6e', // 4: red thread
+      '#3ae86e', // 5: green thread
+      '#e8c83a', // 6: gold thread
+      '#a0b0ff', // 7: light blue glow
+      '#ffffff', // 8: white highlight
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0000004540000000', // 0  thread cross top
+      '0000043534000000', // 1  thread cross
+      '0000334453300000', // 2  head crown
+      '0003225522300000', // 3  head top
+      '0002334433200000', // 4  head
+      '0002387783200000', // 5  eyes (8=bright 7=glow)
+      '0002234432200000', // 6  face
+      '0000223322000000', // 7  lower face
+      '0000022220000000', // 8  chin
+      '0000022220000000', // 9  neck
+      '0034522254300000', // 10 collar (thread colors)
+      '0345233325430000', // 11 shoulders
+      '3452233322543000', // 12 body threads
+      '0432255224340000', // 13 body woven
+      '0422233322240000', // 14 body
+      '0022222222200000', // 15 base
+    ],
+  },
+
+  // ── Cache ── Tank, Ranged — Layered box/storage shape
+  // Teal/silver with stacked layers
+  cache: {
+    palette: [
+      '#001a18', // 1: very dark teal
+      '#003a34', // 2: dark teal
+      '#006a60', // 3: teal
+      '#00a090', // 4: bright teal
+      '#40c8b8', // 5: light teal
+      '#80e0d0', // 6: pale teal
+      '#b0b8c0', // 7: silver
+      '#e0f0f0', // 8: white highlight
+    ],
+    //          0123456789abcdef
+    grid: [
+      '0077777777770000', // 0  top layer
+      '0076666666670000', // 1  top layer front
+      '0055555555555000', // 2  2nd layer top
+      '0054444444450000', // 3  2nd layer front
+      '0004444444400000', // 4  head top
+      '0004478874400000', // 5  eyes (8=bright 7=glow)
+      '0004443344400000', // 6  face
+      '0000443344000000', // 7  lower face
+      '0000044440000000', // 8  chin
+      '0000034430000000', // 9  neck
+      '0003444544300000', // 10 collar
+      '0034455554430000', // 11 shoulders
+      '0324455554320000', // 12 body
+      '0322344443220000', // 13 body
+      '0322334433220000', // 14 body
+      '0022333333220000', // 15 base
+    ],
+  },
 }
 
 // ── Export ────────────────────────────────────────────────────────

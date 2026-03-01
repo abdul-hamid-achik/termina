@@ -861,6 +861,727 @@ export const HEROES: Record<string, HeroDef> = {
       },
     },
   },
+  null_ref: {
+    id: 'null_ref',
+    name: 'Null',
+    role: 'mage',
+    lore: 'A void reference that consumes all it touches. Null drains the essence from enemies, growing stronger with each deletion it causes.',
+    baseStats: {
+      hp: 440,
+      mp: 420,
+      attack: 38,
+      defense: 1,
+      magicResist: 16,
+      moveSpeed: 1,
+      attackRange: 'ranged',
+    },
+    growthPerLevel: {
+      hp: 42,
+      mp: 40,
+      attack: 3,
+      defense: 1,
+    },
+    passive: {
+      id: 'null_ref-passive',
+      name: 'Void Drain',
+      description:
+        'On kill, restore 15% max MP and reduce all ability cooldowns by 2 ticks.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'heal', value: 15, description: 'MP restore % on kill' },
+        { type: 'buff', value: 2, description: 'Cooldown reduction ticks' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'null_ref-q',
+        name: 'Void Bolt',
+        description:
+          'Fire a bolt of void energy that deals magical damage and shreds the target\'s magic resistance by 5 for 3 ticks.',
+        manaCost: 55,
+        cooldownTicks: 2,
+        targetType: 'unit',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 90, damageType: 'magical' },
+          { type: 'debuff', value: 5, duration: 3, description: 'Magic resist shred' },
+        ],
+      },
+      w: {
+        id: 'null_ref-w',
+        name: 'Null Pointer',
+        description:
+          'Silence a target enemy hero for 2 ticks, preventing them from casting abilities.',
+        manaCost: 80,
+        cooldownTicks: 5,
+        targetType: 'hero',
+        effects: [
+          { type: 'silence', value: 1, duration: 2 },
+        ],
+      },
+      e: {
+        id: 'null_ref-e',
+        name: 'Void Zone',
+        description:
+          'Create a zone of null space, dealing magical damage over time to all enemies in the zone for 3 ticks and revealing them.',
+        manaCost: 90,
+        cooldownTicks: 6,
+        targetType: 'none',
+        damageType: 'magical',
+        effects: [
+          { type: 'dot', value: 120, duration: 3, damageType: 'magical', description: 'Total damage over 3 ticks' },
+          { type: 'reveal', value: 1, duration: 3 },
+        ],
+      },
+      r: {
+        id: 'null_ref-r',
+        name: 'Dereference',
+        description:
+          'Unleash a devastating null dereference on all enemies in the zone, dealing massive magical damage. Enemies below 25% HP take 50% bonus damage.',
+        manaCost: 280,
+        cooldownTicks: 24,
+        targetType: 'none',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 240, damageType: 'magical' },
+          { type: 'execute', value: 25, description: 'Execute threshold % for bonus damage' },
+        ],
+      },
+    },
+  },
+
+  lambda: {
+    id: 'lambda',
+    name: 'Lambda',
+    role: 'mage',
+    lore: 'An anonymous function of pure destruction. Lambda chains abilities into devastating combos, rewarding rapid casting with amplified power.',
+    baseStats: {
+      hp: 460,
+      mp: 400,
+      attack: 40,
+      defense: 1,
+      magicResist: 17,
+      moveSpeed: 1,
+      attackRange: 'ranged',
+    },
+    growthPerLevel: {
+      hp: 38,
+      mp: 38,
+      attack: 3,
+      defense: 1,
+    },
+    passive: {
+      id: 'lambda-passive',
+      name: 'Closure',
+      description:
+        'Casting 3 abilities within 4 ticks activates Closure: next ability costs no mana and deals 30% bonus damage.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'buff', value: 30, description: 'Bonus damage % when Closure active' },
+        { type: 'buff', value: 3, description: 'Casts needed to trigger' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'lambda-q',
+        name: 'Invoke',
+        description:
+          'Fire a quick bolt of functional energy, dealing magical damage to a target.',
+        manaCost: 40,
+        cooldownTicks: 2,
+        targetType: 'unit',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 75, damageType: 'magical' },
+        ],
+      },
+      w: {
+        id: 'lambda-w',
+        name: 'Return',
+        description:
+          'Mark current zone. After 2 ticks, teleport back to the marked zone.',
+        manaCost: 70,
+        cooldownTicks: 6,
+        targetType: 'self',
+        effects: [
+          { type: 'teleport', value: 2, description: 'Delayed return after 2 ticks' },
+        ],
+      },
+      e: {
+        id: 'lambda-e',
+        name: 'Map',
+        description:
+          'Apply a slowing field to all enemies in the zone, reducing move speed for 2 ticks and dealing magical damage.',
+        manaCost: 80,
+        cooldownTicks: 4,
+        targetType: 'none',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 70, damageType: 'magical' },
+          { type: 'slow', value: 30, duration: 2 },
+        ],
+      },
+      r: {
+        id: 'lambda-r',
+        name: 'Reduce',
+        description:
+          'Channel all accumulated function calls into a single target, dealing massive magical damage. Stuns for 1 tick if Closure is active.',
+        manaCost: 250,
+        cooldownTicks: 22,
+        targetType: 'hero',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 300, damageType: 'magical' },
+          { type: 'stun', value: 1, duration: 1, description: 'Only if Closure active' },
+        ],
+      },
+    },
+  },
+
+  mutex: {
+    id: 'mutex',
+    name: 'Mutex',
+    role: 'offlaner',
+    lore: 'A mutual exclusion lock given form. Mutex thrives in contested space, growing harder to move and more dangerous the longer it holds its ground.',
+    baseStats: {
+      hp: 680,
+      mp: 260,
+      attack: 55,
+      defense: 6,
+      magicResist: 20,
+      moveSpeed: 1,
+      attackRange: 'melee',
+    },
+    growthPerLevel: {
+      hp: 70,
+      mp: 20,
+      attack: 6,
+      defense: 2,
+    },
+    passive: {
+      id: 'mutex-passive',
+      name: 'Deadlock',
+      description:
+        'Gain +1 defense and +3 attack per tick while remaining in the same zone, stacking up to 5 times. Moving resets stacks.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'buff', value: 1, description: 'Defense per stack' },
+        { type: 'buff', value: 3, description: 'Attack per stack' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'mutex-q',
+        name: 'Lock',
+        description:
+          'Slam the target with a locking mechanism, dealing physical damage and rooting them for 1 tick.',
+        manaCost: 60,
+        cooldownTicks: 3,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 90, damageType: 'physical' },
+          { type: 'root', value: 1, duration: 1 },
+        ],
+      },
+      w: {
+        id: 'mutex-w',
+        name: 'Critical Section',
+        description:
+          'Enter a critical section, gaining a shield and bonus defense for 2 ticks. Roots self during the duration.',
+        manaCost: 70,
+        cooldownTicks: 5,
+        targetType: 'self',
+        effects: [
+          { type: 'shield', value: 180, duration: 2 },
+          { type: 'buff', value: 10, duration: 2, description: 'Bonus defense' },
+          { type: 'root', value: 1, duration: 2, description: 'Self-root' },
+        ],
+      },
+      e: {
+        id: 'mutex-e',
+        name: 'Spinlock',
+        description:
+          'Rapidly strike enemies in the zone 3 times, each hit applying a stacking 10% slow for 2 ticks.',
+        manaCost: 50,
+        cooldownTicks: 4,
+        targetType: 'none',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 40, damageType: 'physical', description: 'Per hit (x3)' },
+          { type: 'slow', value: 10, duration: 2, description: 'Stacking slow per hit' },
+        ],
+      },
+      r: {
+        id: 'mutex-r',
+        name: 'Priority Inversion',
+        description:
+          'Invert priority in the zone, fearing all enemies for 2 ticks and dealing physical damage. Bonus damage for each Deadlock stack.',
+        manaCost: 200,
+        cooldownTicks: 24,
+        targetType: 'none',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 150, damageType: 'physical', description: 'Base + 30 per Deadlock stack' },
+          { type: 'fear', value: 1, duration: 2 },
+        ],
+      },
+    },
+  },
+
+  ping: {
+    id: 'ping',
+    name: 'Ping',
+    role: 'offlaner',
+    lore: 'A relentless ICMP echo that probes enemy defenses from afar. Ping disrupts timing, delays responses, and controls space through persistent harassment.',
+    baseStats: {
+      hp: 580,
+      mp: 310,
+      attack: 50,
+      defense: 4,
+      magicResist: 18,
+      moveSpeed: 1,
+      attackRange: 'ranged',
+    },
+    growthPerLevel: {
+      hp: 55,
+      mp: 28,
+      attack: 5,
+      defense: 1,
+    },
+    passive: {
+      id: 'ping-passive',
+      name: 'Latency',
+      description:
+        'Basic attacks add +1 tick to the target\'s next ability cooldown.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'debuff', value: 1, description: 'Cooldown increase per attack' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'ping-q',
+        name: 'ICMP Echo',
+        description:
+          'Send a probing ping that deals magical damage. Can target enemies in adjacent zones for 60% damage.',
+        manaCost: 45,
+        cooldownTicks: 2,
+        targetType: 'unit',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 80, damageType: 'magical' },
+          { type: 'damage', value: 48, damageType: 'magical', description: 'Adjacent zone damage (60%)' },
+        ],
+      },
+      w: {
+        id: 'ping-w',
+        name: 'Timeout',
+        description:
+          'Disrupt a target\'s connection, silencing them for 1 tick and reducing their attack damage by 20% for 3 ticks.',
+        manaCost: 75,
+        cooldownTicks: 5,
+        targetType: 'hero',
+        effects: [
+          { type: 'silence', value: 1, duration: 1 },
+          { type: 'debuff', value: 20, duration: 3, description: 'Attack reduction %' },
+        ],
+      },
+      e: {
+        id: 'ping-e',
+        name: 'Tracepath',
+        description:
+          'Trace the network path, granting vision of the current and adjacent zones for 3 ticks and boosting move speed.',
+        manaCost: 60,
+        cooldownTicks: 6,
+        targetType: 'self',
+        effects: [
+          { type: 'reveal', value: 2, duration: 3, description: 'Zone vision range' },
+          { type: 'buff', value: 1, duration: 2, description: 'Move speed bonus' },
+        ],
+      },
+      r: {
+        id: 'ping-r',
+        name: 'Flood',
+        description:
+          'Flood the zone with packets, dealing magical damage over time for 3 ticks and slowing enemies who try to leave.',
+        manaCost: 200,
+        cooldownTicks: 22,
+        targetType: 'none',
+        damageType: 'magical',
+        effects: [
+          { type: 'dot', value: 180, duration: 3, damageType: 'magical', description: 'Total damage over 3 ticks' },
+          { type: 'slow', value: 40, duration: 3, description: 'Movement slow %' },
+        ],
+      },
+    },
+  },
+
+  cron: {
+    id: 'cron',
+    name: 'Cron',
+    role: 'support',
+    lore: 'A scheduled task daemon that executes healing protocols on a precise timer. Cron maintains the team with clockwork efficiency, cleansing corruption and rallying allies.',
+    baseStats: {
+      hp: 620,
+      mp: 380,
+      attack: 42,
+      defense: 5,
+      magicResist: 22,
+      moveSpeed: 1,
+      attackRange: 'melee',
+    },
+    growthPerLevel: {
+      hp: 60,
+      mp: 30,
+      attack: 3,
+      defense: 1,
+    },
+    passive: {
+      id: 'cron-passive',
+      name: 'Scheduled Task',
+      description:
+        'Every 4th game tick, automatically heal the lowest HP ally in the zone for 40 HP.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'heal', value: 40, description: 'Auto-heal amount' },
+        { type: 'buff', value: 4, description: 'Tick interval' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'cron-q',
+        name: 'Uptime',
+        description:
+          'Buff an allied hero, increasing their attack by 15 and defense by 5 for 3 ticks.',
+        manaCost: 65,
+        cooldownTicks: 3,
+        targetType: 'hero',
+        effects: [
+          { type: 'buff', value: 15, duration: 3, description: 'Bonus attack' },
+          { type: 'buff', value: 5, duration: 3, description: 'Bonus defense' },
+        ],
+      },
+      w: {
+        id: 'cron-w',
+        name: 'Purge',
+        description:
+          'Cleanse all debuffs from an allied hero and grant them a shield for 2 ticks.',
+        manaCost: 90,
+        cooldownTicks: 5,
+        targetType: 'hero',
+        effects: [
+          { type: 'buff', value: 1, description: 'Debuff cleanse' },
+          { type: 'shield', value: 130, duration: 2 },
+        ],
+      },
+      e: {
+        id: 'cron-e',
+        name: 'Kill Signal',
+        description:
+          'Send a kill signal to an enemy, dealing physical damage and taunting them for 1 tick.',
+        manaCost: 55,
+        cooldownTicks: 4,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 75, damageType: 'physical' },
+          { type: 'taunt', value: 1, duration: 1 },
+        ],
+      },
+      r: {
+        id: 'cron-r',
+        name: 'Crontab',
+        description:
+          'Install a healing crontab for all allies in the zone, restoring HP and MP over 4 ticks.',
+        manaCost: 250,
+        cooldownTicks: 25,
+        targetType: 'none',
+        effects: [
+          { type: 'heal', value: 300, description: 'Total HP restored over 4 ticks' },
+          { type: 'buff', value: 60, description: 'Total MP restored over 4 ticks' },
+        ],
+      },
+    },
+  },
+
+  traceroute: {
+    id: 'traceroute',
+    name: 'Traceroute',
+    role: 'assassin',
+    lore: 'A roaming hunter that traces the path between nodes, gaining momentum with each hop. Traceroute strikes hardest when targets are isolated and far from help.',
+    baseStats: {
+      hp: 470,
+      mp: 290,
+      attack: 62,
+      defense: 2,
+      magicResist: 14,
+      moveSpeed: 2,
+      attackRange: 'ranged',
+    },
+    growthPerLevel: {
+      hp: 44,
+      mp: 22,
+      attack: 7,
+      defense: 1,
+    },
+    passive: {
+      id: 'traceroute-passive',
+      name: 'Hop Count',
+      description:
+        'Moving to a new zone grants +20% bonus damage per zone moved, stacking up to 3 times. Stacks decay after 2 ticks without moving.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'buff', value: 20, description: 'Bonus damage % per hop' },
+        { type: 'buff', value: 3, description: 'Max stacks' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'traceroute-q',
+        name: 'Probe',
+        description:
+          'Fire a tracing probe at a target, dealing physical damage. Deals 35% bonus damage if the target has no allies in their zone.',
+        manaCost: 50,
+        cooldownTicks: 3,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 100, damageType: 'physical' },
+          { type: 'damage', value: 35, damageType: 'physical', description: 'Isolation bonus %' },
+        ],
+      },
+      w: {
+        id: 'traceroute-w',
+        name: 'TTL',
+        description:
+          'Set a time-to-live trap on a target. After 1 tick delay, root the target for 2 ticks.',
+        manaCost: 70,
+        cooldownTicks: 5,
+        targetType: 'hero',
+        effects: [
+          { type: 'root', value: 1, duration: 2, description: 'Delayed root after 1 tick' },
+        ],
+      },
+      e: {
+        id: 'traceroute-e',
+        name: 'Next Hop',
+        description:
+          'Dash to an adjacent zone, leaving a shadow at the origin. Can recast within 2 ticks to return to shadow.',
+        manaCost: 60,
+        cooldownTicks: 5,
+        targetType: 'zone',
+        effects: [
+          { type: 'teleport', value: 1, description: 'Dash to adjacent zone' },
+          { type: 'buff', value: 2, duration: 2, description: 'Return shadow duration' },
+        ],
+      },
+      r: {
+        id: 'traceroute-r',
+        name: 'Full Trace',
+        description:
+          'Reveal all enemy heroes on the map for 3 ticks and gain a massive damage boost of 50% for 2 ticks.',
+        manaCost: 200,
+        cooldownTicks: 30,
+        targetType: 'none',
+        effects: [
+          { type: 'reveal', value: 99, duration: 3, description: 'Global reveal' },
+          { type: 'buff', value: 50, duration: 2, description: 'Damage boost %' },
+        ],
+      },
+    },
+  },
+
+  thread: {
+    id: 'thread',
+    name: 'Thread',
+    role: 'carry',
+    lore: 'A parallel execution unit that multiplies its strikes across targets. Thread starts slow but becomes an unstoppable force in teamfights, weaving destruction through every enemy.',
+    baseStats: {
+      hp: 530,
+      mp: 270,
+      attack: 60,
+      defense: 3,
+      magicResist: 15,
+      moveSpeed: 1,
+      attackRange: 'ranged',
+    },
+    growthPerLevel: {
+      hp: 52,
+      mp: 24,
+      attack: 8,
+      defense: 1,
+    },
+    passive: {
+      id: 'thread-passive',
+      name: 'Multithread',
+      description:
+        'Basic attacks splash to 1 additional enemy in the zone for 40% damage. At level 10+, splashes to 2 additional enemies.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'damage', value: 40, damageType: 'physical', description: 'Splash damage %' },
+        { type: 'buff', value: 1, description: 'Extra targets (2 at level 10+)' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'thread-q',
+        name: 'Fork',
+        description:
+          'Fork a new thread of power, dealing physical damage to a target and buffing own attack by 20 for 3 ticks.',
+        manaCost: 55,
+        cooldownTicks: 3,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 85, damageType: 'physical' },
+          { type: 'buff', value: 20, duration: 3, description: 'Bonus attack' },
+        ],
+      },
+      w: {
+        id: 'thread-w',
+        name: 'Sync Barrier',
+        description:
+          'Create a synchronization barrier shield. Shield strength increases by 40 for each allied hero in the zone.',
+        manaCost: 70,
+        cooldownTicks: 5,
+        targetType: 'self',
+        effects: [
+          { type: 'shield', value: 100, duration: 3, description: 'Base shield + 40 per ally' },
+        ],
+      },
+      e: {
+        id: 'thread-e',
+        name: 'Yield',
+        description:
+          'Mark a target. Consecutive attacks on the marked target deal 25% bonus damage for 3 ticks.',
+        manaCost: 60,
+        cooldownTicks: 4,
+        targetType: 'hero',
+        effects: [
+          { type: 'debuff', value: 25, duration: 3, description: 'Bonus damage taken %' },
+        ],
+      },
+      r: {
+        id: 'thread-r',
+        name: 'Thread Pool',
+        description:
+          'Overclock all threads: for the next 4 ticks, basic attacks hit ALL enemies in the zone.',
+        manaCost: 250,
+        cooldownTicks: 28,
+        targetType: 'self',
+        effects: [
+          { type: 'buff', value: 4, duration: 4, description: 'AoE attacks duration' },
+        ],
+      },
+    },
+  },
+
+  cache: {
+    id: 'cache',
+    name: 'Cache',
+    role: 'tank',
+    lore: 'A memory cache that absorbs and stores incoming data. Cache converts the punishment it endures into explosive offensive power, punishing enemies who dare attack it.',
+    baseStats: {
+      hp: 700,
+      mp: 260,
+      attack: 45,
+      defense: 7,
+      magicResist: 24,
+      moveSpeed: 1,
+      attackRange: 'ranged',
+    },
+    growthPerLevel: {
+      hp: 72,
+      mp: 18,
+      attack: 4,
+      defense: 2,
+      magicResist: 2,
+    },
+    passive: {
+      id: 'cache-passive',
+      name: 'Write-Back',
+      description:
+        'Stores 15% of all damage taken as cached energy, up to 30% of max HP. Cached energy can be consumed by abilities.',
+      manaCost: 0,
+      cooldownTicks: 0,
+      targetType: 'none',
+      effects: [
+        { type: 'buff', value: 15, description: 'Damage stored %' },
+        { type: 'buff', value: 30, description: 'Max stored % of max HP' },
+      ],
+    },
+    abilities: {
+      q: {
+        id: 'cache-q',
+        name: 'Cache Hit',
+        description:
+          'Strike a target with stored energy, dealing physical damage plus 50% of currently cached energy as bonus damage.',
+        manaCost: 55,
+        cooldownTicks: 3,
+        targetType: 'hero',
+        damageType: 'physical',
+        effects: [
+          { type: 'damage', value: 80, damageType: 'physical' },
+          { type: 'damage', value: 50, damageType: 'physical', description: '% of cached energy as bonus' },
+        ],
+      },
+      w: {
+        id: 'cache-w',
+        name: 'Flush',
+        description:
+          'Flush the cache, converting all stored energy into a shield that lasts 3 ticks.',
+        manaCost: 60,
+        cooldownTicks: 5,
+        targetType: 'self',
+        effects: [
+          { type: 'shield', value: 1, duration: 3, description: 'Shield equal to cached energy' },
+        ],
+      },
+      e: {
+        id: 'cache-e',
+        name: 'Invalidate',
+        description:
+          'Invalidate a target\'s healing cache, dealing magical damage and applying anti-heal (50% reduced healing) for 3 ticks.',
+        manaCost: 65,
+        cooldownTicks: 4,
+        targetType: 'hero',
+        damageType: 'magical',
+        effects: [
+          { type: 'damage', value: 70, damageType: 'magical' },
+          { type: 'debuff', value: 50, duration: 3, description: 'Healing reduction %' },
+        ],
+      },
+      r: {
+        id: 'cache-r',
+        name: 'Eviction',
+        description:
+          'Evict all cached energy in a devastating burst, dealing pure AoE damage equal to 100% of cached energy to all enemies in the zone and slowing them.',
+        manaCost: 180,
+        cooldownTicks: 24,
+        targetType: 'none',
+        damageType: 'pure',
+        effects: [
+          { type: 'damage', value: 1, damageType: 'pure', description: 'Damage equals cached energy' },
+          { type: 'slow', value: 35, duration: 2, description: 'Movement slow %' },
+        ],
+      },
+    },
+  },
 } as const
 
 export const HERO_IDS = Object.keys(HEROES) as ReadonlyArray<string>
