@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Chat', () => {
+test.describe('Chat', () => {
   test('chat team <message> sends team chat', async ({ gamePage }) => {
     const input = gamePage.getByTestId('command-input-field')
     await input.fill('chat team hello from e2e')

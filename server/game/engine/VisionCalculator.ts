@@ -85,7 +85,11 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
       players: {},
       zones: {},
       creeps: [],
+      neutrals: [],
       towers: state.towers, // Tower states are public (you can see HP bars)
+      runes: state.runes,
+      roshan: state.roshan,
+      aegis: state.aegis,
       events: [],
       visibleZones: [],
     }
@@ -152,7 +156,11 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
     players: filteredPlayers,
     zones: filteredZones,
     creeps: filteredCreeps,
+    neutrals: state.neutrals, // Neutrals are visible in their zones (public info)
     towers: state.towers, // Towers are always visible (global info)
+    runes: state.runes,
+    roshan: state.roshan,
+    aegis: state.aegis,
     events: filteredEvents,
     visibleZones: [...visible],
   }

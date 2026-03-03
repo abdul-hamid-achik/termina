@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures/game'
 import { installWsInterceptor, getWsJsonMessages } from '../../helpers/websocket'
 
-test.describe.skip('WebSocket Connection', () => {
+test.describe('WebSocket Connection', () => {
   test('WebSocket connects on GameScreen mount', async ({ gamePage }) => {
     // The game screen should show [CONNECTED] in the state bar
     const bar = gamePage.getByTestId('game-state-bar')
@@ -40,9 +40,7 @@ test.describe.skip('WebSocket Connection', () => {
     // Check sent messages for join_game
     await page.waitForTimeout(3_000)
     const sentMessages = await getWsJsonMessages(page, 'sent')
-    const _joinMessages = sentMessages.filter(
-      (m) => m.type === 'join_game' || m.type === 'join',
-    )
+    const _joinMessages = sentMessages.filter((m) => m.type === 'join_game' || m.type === 'join')
     // Should have sent at least one join message
     expect(sentMessages.length).toBeGreaterThan(0)
   })

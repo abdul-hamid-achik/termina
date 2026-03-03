@@ -16,8 +16,10 @@ bun run dev
 bun run test              # Watch mode (all projects)
 bun run test:unit         # Unit tests only (node env)
 bun run test:integration  # Integration tests (node env)
-bun run test:e2e          # E2E tests (happy-dom env)
+bun run test:e2e          # E2E tests (Playwright, browser)
+bun run test:api          # API tests (hitspec, requires running server)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
+hitspec run collections/auth-register.http         # Single hitspec collection
 
 # Lint & format
 bun run lint
@@ -87,7 +89,7 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 - **Discriminated unions**: Protocol messages use `{ type: '...' }` discriminator
 - **Unused vars**: Prefix with `_` (e.g., `_details`)
 - **Type imports**: ESLint enforces `import type { ... }` for type-only imports
-- **Testing**: Vitest with `vi.fn()` mocks; tests use `describe/it` blocks; mock WebSocket/PeerRegistry in unit tests
+- **Testing**: Vitest for unit tests (`vi.fn()` mocks, `describe/it` blocks); hitspec for API tests (`.http` files in `collections/`); Playwright for E2E browser tests (`tests/e2e/`)
 - **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind extends them (e.g., `text-radiant`, `bg-bg-primary`, `text-dire`)
 
 ## Important Gotchas

@@ -1,8 +1,10 @@
 import { test, expect } from '../../fixtures/game'
 import { test as authTest, expect as authExpect } from '../../fixtures/base'
 
-test.describe.skip('Game Screen', () => {
-  test('game screen renders grid: map, log, hero status, command input, state bar', async ({ gamePage }) => {
+test.describe('Game Screen', () => {
+  test('game screen renders grid: map, log, hero status, command input, state bar', async ({
+    gamePage,
+  }) => {
     await expect(gamePage.getByTestId('game-screen')).toBeVisible()
     await expect(gamePage.getByTestId('ascii-map')).toBeVisible()
     await expect(gamePage.getByTestId('combat-log')).toBeVisible()

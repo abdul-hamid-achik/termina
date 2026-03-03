@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Death Overlay', () => {
+test.describe('Death Overlay', () => {
   test.setTimeout(120_000)
 
   test('death shows "PROCESS TERMINATED" overlay with respawn countdown', async ({ gamePage }) => {

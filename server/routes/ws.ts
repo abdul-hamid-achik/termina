@@ -5,6 +5,7 @@ import { submitAction } from '../game/engine/GameLoop'
 import { pickHero, getPlayerLobby, getLobby, cancelLobby } from '../game/matchmaking/lobby'
 import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../services/PeerRegistry'
 import { wsLog } from '../utils/log'
+import { verifyWsTicket } from '../utils/ws-ticket'
 
 interface PeerContext {
   playerId: string | null
@@ -32,6 +33,17 @@ export default defineWebSocketHandler({
         | { user?: { id?: string } }
         | null
       playerId = (session?.user?.id as string) ?? null
+
+      // Fallback: verify signed ticket (works through proxy chains where session is lost)
+      if (!playerId) {
+        const ticket = url.searchParams.get('ticket')
+        if (ticket) {
+          const secret = useRuntimeConfig().session?.password as string | undefined
+          if (secret) {
+            playerId = verifyWsTicket(ticket, secret)
+          }
+        }
+      }
     }
 
     if (!playerId) {

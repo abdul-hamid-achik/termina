@@ -1,12 +1,12 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('ASCII Map', () => {
+test.describe('ASCII Map', () => {
   test('map renders zone grid', async ({ gamePage }) => {
     const map = gamePage.getByTestId('ascii-map')
     await expect(map).toBeVisible()
     // Should show RADIANT and DIRE headers
     await expect(map.getByText('RADIANT')).toBeVisible()
-    await expect(map.getByText('DIRE')).toBeVisible()
+    await expect(map.getByText('DIRE', { exact: true })).toBeVisible()
     // Should show column headers
     await expect(map.getByText('TOP')).toBeVisible()
     await expect(map.getByText('MID')).toBeVisible()

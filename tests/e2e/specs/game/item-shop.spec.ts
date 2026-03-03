@@ -1,16 +1,19 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Item Shop', () => {
+// Helper: open the shop via the SHOP quick-action button (force-click since it's mobile-only)
+async function openShop(gamePage: import('@playwright/test').Page) {
+  await gamePage.getByRole('button', { name: 'SHOP' }).click({ force: true })
+  await expect(gamePage.getByText('ITEM SHOP')).toBeVisible({ timeout: 2_000 })
+}
+
+test.describe('Item Shop', () => {
   test('shop opens via SHOP button', async ({ gamePage }) => {
-    // Click the SHOP quick-action button
-    await gamePage.getByRole('button', { name: 'SHOP' }).click()
-    await expect(gamePage.getByText('ITEM SHOP')).toBeVisible({ timeout: 2_000 })
+    await openShop(gamePage)
     await expect(gamePage.getByTestId('item-shop')).toBeVisible()
   })
 
   test('category tabs filter items (ALL, STARTER, CORE, CONSUMABLE)', async ({ gamePage }) => {
-    await gamePage.getByRole('button', { name: 'SHOP' }).click()
-    await expect(gamePage.getByTestId('item-shop')).toBeVisible({ timeout: 2_000 })
+    await openShop(gamePage)
 
     // All tabs should be visible
     const shop = gamePage.getByTestId('item-shop')
@@ -28,9 +31,8 @@ test.describe.skip('Item Shop', () => {
   })
 
   test('search input filters by item name', async ({ gamePage }) => {
-    await gamePage.getByRole('button', { name: 'SHOP' }).click()
+    await openShop(gamePage)
     const shop = gamePage.getByTestId('item-shop')
-    await expect(shop).toBeVisible({ timeout: 2_000 })
 
     // Get initial item count
     const allItems = shop.locator('[class*="border p-1.5"]')
@@ -43,9 +45,8 @@ test.describe.skip('Item Shop', () => {
   })
 
   test('affordable items have glow; too expensive items are dimmed', async ({ gamePage }) => {
-    await gamePage.getByRole('button', { name: 'SHOP' }).click()
+    await openShop(gamePage)
     const shop = gamePage.getByTestId('item-shop')
-    await expect(shop).toBeVisible({ timeout: 2_000 })
 
     // Check that item cards exist
     const items = shop.locator('[class*="border p-1.5"]')
@@ -62,9 +63,8 @@ test.describe.skip('Item Shop', () => {
   })
 
   test('clicking affordable item triggers buy command', async ({ gamePage }) => {
-    await gamePage.getByRole('button', { name: 'SHOP' }).click()
+    await openShop(gamePage)
     const shop = gamePage.getByTestId('item-shop')
-    await expect(shop).toBeVisible({ timeout: 2_000 })
 
     // Click on an affordable item (has [BUY] label)
     const buyLabel = shop.getByText('[BUY]').first()
@@ -77,8 +77,7 @@ test.describe.skip('Item Shop', () => {
   })
 
   test('shop closes via [CLOSE]', async ({ gamePage }) => {
-    await gamePage.getByRole('button', { name: 'SHOP' }).click()
-    await expect(gamePage.getByText('ITEM SHOP')).toBeVisible({ timeout: 2_000 })
+    await openShop(gamePage)
     await gamePage.getByText('[CLOSE]').click()
     await expect(gamePage.getByText('ITEM SHOP')).not.toBeVisible({ timeout: 2_000 })
   })

@@ -16,6 +16,9 @@ Expert in the server-side game loop and combat systems.
 - `DamageCalculator.ts` — physical/magical/pure damage formulas
 - `GoldDistributor.ts` — passive gold, kill bounties, last-hit rewards
 - `CreepAI.ts`, `TowerAI.ts` — NPC behavior each tick
+- `NeutralAI.ts` — neutral creep spawning in jungle, attacking heroes
+- `RoshanAI.ts` — Roshan attacks, death handling, aegis drops
+- `RuneAI.ts` — rune spawning, buffs, pickup
 
 **Conventions**: Immutable state updates via spread. All engine functions return `Effect.Effect<...>`. Game state is `Record<string, PlayerState>` keyed by playerId. One action per player per tick.
 
@@ -28,7 +31,7 @@ Expert in hero definitions, abilities, and game balance.
 **Key files**:
 - `shared/constants/heroes.ts` — `HEROES` registry, `HERO_IDS` list
 - `server/game/heroes/_base.ts` — `levelUpHero`, `processDoTs`, `tickAllBuffs`
-- `server/game/heroes/<name>.ts` — individual hero definitions (10 heroes: echo, sentry, daemon, kernel, regex, socket, proxy, malloc, cipher, firewall)
+- `server/game/heroes/<name>.ts` — individual hero definitions (20 heroes)
 
 **Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6, magicResist 2–5. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/root/slow/shield/dot/buff types.
 
@@ -117,7 +120,7 @@ Expert in zone topology, creep spawning, towers, and wards.
 **Key files**:
 - `shared/constants/zones.ts` — 29 zones with `adjacentTo` arrays (fountain → base → T3 → T2 → T1 → river)
 - `topology.ts` — `areAdjacent`, `findPath` (BFS), `getDistance`
-- `spawner.ts` — `spawnCreepWaves` (every 8 ticks: 3 melee + 1 ranged, siege every 5th wave)
+- `spawner.ts` — `spawnCreepWaves` (every 8 ticks: 3 melee + 1 ranged, siege every 5th wave), `spawnRunes` (every 60 ticks), `spawnNeutralCreeps` (every 60 ticks)
 - `zones.ts` — `initializeZoneStates`, `initializeTowers`, `placeWard`, `removeExpiredWards`
 
 **Map layout**: 3 lanes (top/mid/bot), 4 jungle zones, 2 rune spots, Roshan pit, 2 bases + fountains. Each lane has 3 tower tiers per side with a river crossing in between.

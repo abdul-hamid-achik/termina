@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Inventory', () => {
+test.describe('Inventory', () => {
   test('inventory bar shows 6 slots', async ({ gamePage }) => {
     // Hero status shows 6 item slots
     const heroStatus = gamePage.getByTestId('hero-status')

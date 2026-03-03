@@ -77,7 +77,11 @@ export default defineEventHandler(async (event) => {
     if (err && typeof err === 'object' && 'statusCode' in err) {
       throw err
     }
+    const detail = err instanceof Error ? err.message : String(err)
     authLog.error('Registration error', err)
-    throw createError({ statusCode: 500, message: 'Registration failed' })
+    throw createError({
+      statusCode: 500,
+      message: import.meta.dev ? `Registration failed: ${detail}` : 'Registration failed',
+    })
   }
 })

@@ -3,6 +3,7 @@ import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '../map/zones'
+import { initializeRoshan } from '../map/spawner'
 
 // ── Error types ────────────────────────────────────────────────
 
@@ -102,7 +103,11 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
     players: playerStates,
     zones: initializeZoneStates(),
     creeps: [],
+    neutrals: [],
     towers: initializeTowers(),
+    runes: [],
+    roshan: initializeRoshan(),
+    aegis: null,
     events: [],
   }
 }

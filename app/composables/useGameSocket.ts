@@ -36,16 +36,31 @@ export function useGameSocket() {
     _open()
   }
 
-  function _open() {
+  async function _open() {
     if (ws) {
       ws.onclose = null
       ws.close()
     }
     connected.value = false
 
+    // Fetch a signed WS ticket via HTTP (auth works over HTTP even when WS proxy loses session)
+    let ticket = ''
+    try {
+      const res = await fetch('/api/auth/ws-ticket')
+      if (res.ok) {
+        const data = await res.json()
+        ticket = data.ticket ?? ''
+      }
+    } catch {
+      // Graceful degradation — try connecting without ticket
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${window.location.host}/ws?playerId=${currentPlayerId}&gameId=${currentGameId}`
-    socketLog.debug('Connecting', { url })
+    let url = `${protocol}//${window.location.host}/ws?playerId=${currentPlayerId}&gameId=${currentGameId}`
+    if (ticket) {
+      url += `&ticket=${encodeURIComponent(ticket)}`
+    }
+    socketLog.debug('Connecting', { url: url.replace(/ticket=[^&]+/, 'ticket=***') })
     ws = new WebSocket(url)
 
     ws.onopen = () => {

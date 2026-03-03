@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Command Input', () => {
+test.describe('Command Input', () => {
   test('input field accepts text and clears on Enter', async ({ gamePage }) => {
     const input = gamePage.getByTestId('command-input-field')
     await input.fill('status')
@@ -19,14 +19,14 @@ test.describe.skip('Command Input', () => {
 
   test('arrow keys navigate autocomplete; Tab accepts suggestion', async ({ gamePage }) => {
     const input = gamePage.getByTestId('command-input-field')
-    await input.fill('move ')
-    // Wait for suggestions
+    await input.fill('move r')
+    // Wait for suggestions (zones starting with "r")
     await gamePage.locator('.cmd-input-wrapper .bg-bg-panel').waitFor({ timeout: 3_000 })
     // Press down arrow to select
     await input.press('ArrowDown')
     // Press Tab to accept
     await input.press('Tab')
-    // Input should now have the accepted suggestion
+    // Input should now have the accepted suggestion: "move <zone> "
     const value = await input.inputValue()
     expect(value.length).toBeGreaterThan(5) // "move " + zone name
   })

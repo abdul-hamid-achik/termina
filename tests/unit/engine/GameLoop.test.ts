@@ -3,7 +3,7 @@ import { Effect } from 'effect'
 import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { resetCreepIdCounter } from '../../../server/game/map/spawner'
+import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -49,7 +49,11 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     zones: initializeZoneStates(),
     creeps: [],
+    neutrals: [],
     towers: initializeTowers(),
+    runes: [],
+    roshan: initializeRoshan(),
+    aegis: null,
     events: [],
     ...overrides,
   }

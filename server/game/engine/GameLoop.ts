@@ -18,7 +18,10 @@ import { resolveActions, validateAction, type PlayerAction } from './ActionResol
 import { distributePassiveGold, awardKill } from './GoldDistributor'
 import { runCreepAI, applyCreepActions } from './CreepAI'
 import { runTowerAI, applyTowerActions } from './TowerAI'
-import { spawnCreepWaves } from '../map/spawner'
+import { runRoshanAI, processRoshanDamage } from './RoshanAI'
+import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
+import { spawnCreepWaves, spawnRunes } from '../map/spawner'
+import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '../map/zones'
 import { filterStateForPlayer } from './VisionCalculator'
 import { levelUpHero, processDoTs, tickAllBuffs } from '../heroes/_base'
@@ -112,15 +115,76 @@ export function processTick(
     const creepActions = runCreepAI(currentState)
     currentState = applyCreepActions(currentState, creepActions)
 
+    // 4.1 Run NeutralAI (neutrals attack heroes in their zone)
+    const neutralActions = runNeutralAI(currentState)
+    currentState = applyNeutralActions(currentState, neutralActions)
+
     // 5. Run TowerAI
     const towerActions = runTowerAI(currentState, resolved.heroAttackers)
     currentState = applyTowerActions(currentState, towerActions)
+
+    // 5.5. Run RoshanAI (attacks heroes in roshan-pit)
+    const roshanActions = runRoshanAI(currentState)
+    for (const action of roshanActions) {
+      const target = currentState.players[action.targetId]
+      if (target && target.alive) {
+        const newHp = Math.max(0, target.hp - action.damage)
+        currentState = {
+          ...currentState,
+          players: {
+            ...currentState.players,
+            [action.targetId]: { ...target, hp: newHp, alive: newHp > 0 },
+          },
+        }
+        allEvents.push({
+          _tag: 'damage',
+          tick: currentState.tick,
+          sourceId: 'roshan',
+          targetId: action.targetId,
+          amount: action.damage,
+          damageType: 'physical',
+        })
+      }
+    }
+
+    // 5.6. Process Roshan damage and death/respawn
+    // Track damage dealt to Roshan from hero attacks
+    const roshanDamage = new Map<string, number>()
+    for (const event of allEvents) {
+      if (event._tag === 'damage' && event.targetId === 'roshan') {
+        const current = roshanDamage.get(event.sourceId) ?? 0
+        roshanDamage.set(event.sourceId, current + event.amount)
+      }
+    }
+    const roshanResult = processRoshanDamage(currentState, roshanDamage)
+    currentState = roshanResult.state
+    if (roshanResult.roshanKilled) {
+      allEvents.push(...roshanResult.events.filter(e => e._tag === 'roshan_killed'))
+    }
 
     // 6. Spawn creep waves
     const newCreeps = spawnCreepWaves(currentState.tick)
     if (newCreeps.length > 0) {
       currentState = { ...currentState, creeps: [...currentState.creeps, ...newCreeps] }
     }
+
+    // 6.1 Spawn neutral creeps in jungle camps
+    const newNeutrals = spawnNeutralCreeps(currentState.tick)
+    if (newNeutrals.length > 0) {
+      currentState = { ...currentState, neutrals: [...currentState.neutrals, ...newNeutrals] }
+    }
+
+    // 6.2 Spawn runes
+    const newRunes = spawnRunes(currentState.tick)
+    if (newRunes.length > 0) {
+      currentState = { ...currentState, runes: [...currentState.runes, ...newRunes] }
+    }
+
+    // 6.3 Remove expired runes
+    currentState = removeExpiredRunes(currentState)
+
+    // 6.4 Process rune buff effects (regen, etc)
+    currentState = processRuneBuffs(currentState)
 
     // 7. Remove expired wards
     const updatedZones = removeExpiredWards(currentState.zones, currentState.tick)

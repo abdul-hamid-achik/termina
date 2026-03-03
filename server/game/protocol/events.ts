@@ -106,6 +106,15 @@ export interface RoshanKilledEvent {
   readonly goldAwarded: number
 }
 
+export interface NeutralKilledEvent {
+  readonly _tag: 'neutral_killed'
+  readonly tick: number
+  readonly playerId: string
+  readonly neutralId: string
+  readonly neutralType: string
+  readonly zone: string
+}
+
 export type GameEngineEvent =
   | DamageEvent
   | HealEvent
@@ -120,6 +129,7 @@ export type GameEngineEvent =
   | WardPlacedEvent
   | RunePickedEvent
   | RoshanKilledEvent
+  | NeutralKilledEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

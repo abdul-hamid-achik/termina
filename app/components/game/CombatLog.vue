@@ -33,7 +33,7 @@ function handleScroll() {
   if (!logEl.value) return
   const { scrollTop, scrollHeight, clientHeight } = logEl.value
   const atBottom = scrollHeight - scrollTop - clientHeight < 20
-  if (atBottom) pinned.value = false
+  pinned.value = !atBottom
 }
 
 function togglePin() {

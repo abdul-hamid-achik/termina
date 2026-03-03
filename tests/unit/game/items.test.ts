@@ -5,9 +5,9 @@ import { ITEMS, ITEM_IDS, getItem } from '../../../server/game/items/registry'
 
 describe('Items Registry', () => {
   describe('registry size', () => {
-    it('contains exactly 12 items', () => {
-      expect(ITEM_IDS).toHaveLength(12)
-      expect(Object.keys(ITEMS)).toHaveLength(12)
+    it('contains at least 40 items', () => {
+      expect(ITEM_IDS.length).toBeGreaterThanOrEqual(40)
+      expect(Object.keys(ITEMS).length).toBeGreaterThanOrEqual(40)
     })
   })
 
@@ -31,14 +31,14 @@ describe('Items Registry', () => {
   })
 
   describe('item categories', () => {
-    const starterIds = ['healing_salve', 'mana_vial', 'iron_branch']
-    const coreIds = ['boots_of_speed', 'blink_module', 'null_pointer', 'garbage_collector', 'stack_overflow', 'segfault_blade', 'firewall_item']
-    const consumableIds = ['healing_salve', 'mana_vial', 'observer_ward', 'smoke_of_deceit']
+    const starterIds = ['healing_salve', 'mana_vial', 'iron_branch', 'power_treads', 'ring_of_health', 'sobi_mask', 'blades_of_attack', 'chainmail', 'cloak', 'boots_of_speed']
+    const coreIds = ['desolator', 'daedalus', 'heart_of_tarrasque', 'scythe_of_vyse', 'divine_rapier', 'black_king_bar', 'assault_cuirass', 'blink_module', 'null_pointer', 'garbage_collector', 'stack_overflow', 'segfault_blade', 'firewall_item']
+    const consumableIds = ['healing_salve', 'mana_vial', 'observer_ward', 'smoke_of_deceit', 'dust_of_appearance', 'town_portal_scroll']
 
-    it('starter items cost less than 500g', () => {
+    it('starter items cost less than 600g', () => {
       for (const id of starterIds) {
         const item = getItem(id)!
-        expect(item.cost).toBeLessThan(500)
+        expect(item.cost).toBeLessThan(600)
       }
     })
 

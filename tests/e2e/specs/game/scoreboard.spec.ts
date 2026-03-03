@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Scoreboard', () => {
+test.describe('Scoreboard', () => {
   test('Tab key press shows scoreboard overlay', async ({ gamePage }) => {
     await gamePage.keyboard.down('Tab')
     await expect(gamePage.getByTestId('scoreboard')).toBeVisible({ timeout: 2_000 })

@@ -296,6 +296,19 @@ gameSocket.onMessage((msg) => {
       text: `[ERROR] ${msg.message}`,
       type: 'system',
     })
+  } else if (msg.type === 'chat') {
+    const tag = msg.channel === 'team' ? '[TEAM]' : '[ALL]'
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: `${tag} ${msg.playerId}: ${msg.message}`,
+      type: 'system',
+    })
+  } else if (msg.type === 'ping_map') {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: `[PING] ${msg.playerId} pinged ${msg.zone}`,
+      type: 'system',
+    })
   }
 })
 
@@ -383,6 +396,17 @@ function handleCommand(cmd: string) {
         text: 'Cannot act while dead',
         type: 'system',
       })
+      return
+    }
+    // Chat and ping are top-level WS messages, not game actions
+    if (command.type === 'chat') {
+      uiLog.debug('Chat sent', { channel: command.channel })
+      gameSocket.send({ type: 'chat', channel: command.channel, message: command.message })
+      return
+    }
+    if (command.type === 'ping') {
+      uiLog.debug('Ping sent', { zone: command.zone })
+      gameSocket.send({ type: 'ping_map', zone: command.zone })
       return
     }
     uiLog.debug('Command sent', { type: command.type })

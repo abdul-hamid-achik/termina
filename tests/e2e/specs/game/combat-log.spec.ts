@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Combat Log', () => {
+test.describe('Combat Log', () => {
   test('after first tick, "Connected to game server" message appears', async ({ gamePage }) => {
     const log = gamePage.getByTestId('combat-log')
     await expect(log).toBeVisible()
@@ -24,8 +24,15 @@ test.describe.skip('Combat Log', () => {
     const log = gamePage.getByTestId('combat-log')
     await expect(log).toBeVisible()
 
-    // Wait for events
-    await gamePage.waitForTimeout(8_000)
+    // Send enough chat messages to overflow the combat log container
+    const input = gamePage.getByTestId('command-input-field')
+    for (let i = 0; i < 20; i++) {
+      await input.fill(`chat all line ${i} padding text to fill the log`)
+      await input.press('Enter')
+    }
+
+    // Wait for messages to render
+    await expect(log.getByText(/line 19/)).toBeVisible({ timeout: 10_000 })
 
     // Scroll to top manually
     const scrollContainer = log.locator('[class*="overflow-y-auto"]')

@@ -211,10 +211,15 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter') {
     e.preventDefault()
     e.stopImmediatePropagation()
-    if (open.value && suggestions.value.length > 0 && suggestions.value.length === 1) {
-      // Single suggestion — accept it
-      acceptSuggestion(suggestions.value[0]!)
-      return
+    if (open.value && suggestions.value.length === 1) {
+      // Single suggestion — only accept if it would actually change the input
+      const lastToken = input.value.trim().split(/\s+/).pop()?.toLowerCase() ?? ''
+      if (lastToken !== suggestions.value[0]!.text.toLowerCase()) {
+        acceptSuggestion(suggestions.value[0]!)
+        return
+      }
+      // Input already matches the suggestion — close dropdown and fall through to submit
+      open.value = false
     }
     handleSubmit()
     return

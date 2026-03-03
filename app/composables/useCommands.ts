@@ -121,6 +121,12 @@ export function useCommands() {
       case 'map':
         return { command: { type: 'map' }, error: null }
 
+      case 'aegis':
+        return { command: { type: 'aegis' }, error: null }
+
+      case 'rune':
+        return { command: { type: 'rune' }, error: null }
+
       case 'chat': {
         const channel = tokens[1] as 'team' | 'all'
         if (!['team', 'all'].includes(channel)) return { command: null, error: 'Usage: chat <team|all> <message>' }
@@ -136,7 +142,7 @@ export function useCommands() {
       }
 
       default:
-        return { command: null, error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, scan, status, map, chat, ping` }
+        return { command: null, error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping` }
     }
   }
 
@@ -156,6 +162,8 @@ export function useCommands() {
         'buy',
         'sell',
         'ward',
+        'aegis',
+        'rune',
         'scan',
         'status',
         'map',

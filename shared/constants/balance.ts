@@ -74,6 +74,23 @@ export const WARD_LIMIT_PER_TEAM = 3
 export const ROSHAN_RESPAWN_TICKS = 90
 export const ROSHAN_BASE_HP = 5000
 export const ROSHAN_HP_PER_MINUTE = 100
+export const ROSHAN_ATTACK = 150
+export const ROSHAN_ATTACK_RANGE = 1 // adjacent zones
+export const ROSHAN_AEGIS_TICKS = 300 // 5 minutes at 4s/tick
+
+// ── Runes ───────────────────────────────────────────────────────────
+
+export const RUNE_INTERVAL_TICKS = 60 // Spawn every 60 ticks (4 min)
+export const RUNE_DURATION_TICKS = 30 // Runes expire after 30 ticks (2 min)
+
+// Rune buff durations (in ticks)
+export const RUNE_BUFF_TICKS = {
+  haste: 15,    // 60 seconds
+  dd: 15,       // 60 seconds  
+  regen: 15,    // 60 seconds
+  arcane: 15,   // 60 seconds
+  invis: 15,    // 60 seconds
+} as const
 
 // ── Surrender ────────────────────────────────────────────────────
 
@@ -92,6 +109,25 @@ export const SIEGE_CREEP_HP = 700
 export const MELEE_CREEP_ATTACK = 20
 export const RANGED_CREEP_ATTACK = 30
 export const SIEGE_CREEP_ATTACK = 50
+
+// ── Neutral Creeps ─────────────────────────────────────────────────
+
+export const NEUTRAL_CREEPS_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
+
+// Neutral creep types with stats
+export const NEUTRAL_CREEPS = {
+  // Small camp
+  kobold: { hp: 250, attack: 10, gold: 20, xp: 25 },
+  // Medium camp  
+  ogre_mage: { hp: 550, attack: 25, gold: 40, xp: 50 },
+  // Large camp
+  centaur: { hp: 900, attack: 40, gold: 60, xp: 80 },
+  // Ancient
+  ancient_dragon: { hp: 1500, attack: 75, gold: 150, xp: 200 },
+  ancient_rock_golem: { hp: 2000, attack: 60, gold: 200, xp: 250 },
+} as const
+
+export type NeutralCreepType = keyof typeof NEUTRAL_CREEPS
 
 // ── Towers ───────────────────────────────────────────────────────
 

@@ -44,6 +44,15 @@ export interface CreepState {
   type: 'melee' | 'ranged' | 'siege'
 }
 
+export interface NeutralCreepState {
+  id: string
+  zone: string
+  hp: number
+  maxHp: number
+  type: string // 'kobold', 'ogre_mage', 'centaur', 'ancient_dragon', 'ancient_rock_golem'
+  alive: boolean
+}
+
 export interface TowerState {
   team: TeamId
   zone: string
@@ -65,6 +74,19 @@ export interface TeamState {
   gold: number
 }
 
+export interface RuneState {
+  zone: string
+  type: 'haste' | 'dd' | 'regen' | 'arcane' | 'invis'
+  tick: number
+}
+
+export interface RoshanState {
+  alive: boolean
+  hp: number
+  maxHp: number
+  deathTick: number | null
+}
+
 export interface GameState {
   tick: number
   phase: GamePhase
@@ -72,7 +94,11 @@ export interface GameState {
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
   creeps: CreepState[]
+  neutrals: NeutralCreepState[]
   towers: TowerState[]
+  runes: RuneState[]
+  roshan: RoshanState
+  aegis: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
 }
 
@@ -105,7 +131,11 @@ export interface PlayerVisibleState {
   players: Record<string, PlayerState | FoggedPlayer>
   zones: Record<string, ZoneRuntimeState>
   creeps: CreepState[]
+  neutrals: NeutralCreepState[]
   towers: TowerState[]
+  runes: RuneState[]
+  roshan: RoshanState
+  aegis: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
   visibleZones: string[]
 }

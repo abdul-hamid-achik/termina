@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: 'tests/e2e/specs',
   globalSetup: 'tests/e2e/global-setup.ts',
+  globalTeardown: 'tests/e2e/global-teardown.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -21,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: 'bun run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       NUXT_DATABASE_URL:

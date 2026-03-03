@@ -7,6 +7,7 @@ import {
 } from '../../../server/game/engine/ActionResolver'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+import { initializeRoshan } from '../../../server/game/map/spawner'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -49,7 +50,11 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
+    neutrals: [],
     towers: initializeTowers(),
+    runes: [],
+    roshan: initializeRoshan(),
+    aegis: null,
     events: [],
     ...overrides,
   }

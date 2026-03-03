@@ -1,8 +1,10 @@
 import { test, expect } from '../../fixtures/base'
 
-test.describe.skip('Smoke Test', () => {
+test.describe('Smoke Test', () => {
   // Tag this test for filtering: bun run test:e2e -- --grep smoke
-  test('full game session: home -> register -> lobby -> game -> game over -> profile -> logout', async ({ page }) => {
+  test('full game session: home -> register -> lobby -> game -> game over -> profile -> logout', async ({
+    page,
+  }) => {
     test.setTimeout(300_000) // 5 minute timeout for full game
 
     // 1. Home page loads

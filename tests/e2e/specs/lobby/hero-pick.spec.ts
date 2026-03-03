@@ -1,28 +1,14 @@
 import { test, expect } from '../../fixtures/base'
 
-// Helper to get to hero pick phase — uses HTTP polling since WebSocket
-// may not work through the Nuxt dev proxy in test environments
+// Helper to get to hero pick phase — waits for the natural UI flow
+// instead of polling + reloading (which cancels the lobby via WS disconnect).
 async function navigateToHeroPick(page: import('@playwright/test').Page) {
   await page.goto('/lobby')
   await page.getByText('FIND MATCH').click()
 
-  // Poll the queue status API until the match enters lobby/picking phase
-  // (bots auto-fill after ~10s, matchmaking loop runs every ~5s)
-  const startTime = Date.now()
-  const timeout = 45_000
-  while (Date.now() - startTime < timeout) {
-    const res = await page.request.get('/api/queue/status')
-    const data = await res.json()
-    if (data.status === 'lobby' || data.status === 'game_starting') {
-      break
-    }
-    await page.waitForTimeout(2000)
-  }
-
-  // Reload the lobby page to trigger the recovery mechanism
-  // which reads the lobby state via HTTP and shows the hero picker
-  await page.goto('/lobby')
-  await page.getByTestId('hero-picker').waitFor({ timeout: 15_000 })
+  // Wait for hero picker to appear naturally via WS lobby_state.
+  // DO NOT reload — navigating away disconnects WS, triggering cancelLobby.
+  await page.getByTestId('hero-picker').waitFor({ timeout: 45_000 })
 }
 
 test.describe('Hero Pick', () => {

@@ -9,8 +9,10 @@ import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '../protocol/events'
 import { buyItem, sellItem } from '../items/shop'
 import { awardLastHit, awardTowerKill } from './GoldDistributor'
+import { pickupAegis } from './RoshanAI'
+import { pickupRune } from './RuneAI'
 import { ITEMS } from '../items/registry'
-import { CREEP_XP } from '~~/shared/constants/balance'
+import { CREEP_XP, NEUTRAL_CREEPS, type NeutralCreepType } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -126,6 +128,8 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'map':
     case 'chat':
     case 'ping':
+    case 'aegis':
+    case 'rune':
       return null
     default:
       return null
@@ -166,8 +170,10 @@ export function resolveActions(
     const heroAttackers = new Map<string, string>()
     const zones = { ...state.zones }
     const creeps = [...state.creeps]
+    let neutrals = [...state.neutrals]
     let towers = [...state.towers]
     const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
+    const neutralKills: Array<{ playerId: string; neutralId: string }> = []
     const towerKills: Array<{ zone: string; team: TeamId }> = []
     // Track damage dealt per player for post-game stats
     const damageTracker = new Map<string, { hero: number; tower: number }>()
@@ -219,8 +225,9 @@ export function resolveActions(
       if (cmd.target.kind === 'hero') {
         const targetId = findHeroByName(players, cmd.target.name)
         if (!targetId) continue
-        const target = players[targetId]
-        if (!target || !target.alive) continue
+        const targetPlayer = players[targetId]
+        if (!targetPlayer || !targetPlayer.alive) continue
+        let target = targetPlayer
 
         // Check if target is in the same zone (post-movement)
         if (target.zone !== attacker.zone) continue
@@ -231,18 +238,147 @@ export function resolveActions(
         // Attack hit — use effective stats (base + level scaling + items)
         let attackDamage = getEffectiveAttack(attacker)
 
-        // Null Pointer passive: 15% crit chance, 2x damage
+        // ── Item passive: Critical strikes ──
+        let critMultiplier = 1
+
+        // Null Pointer: 15% chance, 2x damage
         if (attacker.items.includes('null_pointer') && Math.random() < 0.15) {
-          attackDamage = Math.round(attackDamage * 2)
+          critMultiplier = 2
+        }
+        // Crystalys: 20% chance, 1.75x damage (cheaper, weaker)
+        else if (attacker.items.includes('crystalys') && Math.random() < 0.20) {
+          critMultiplier = 1.75
+        }
+        // Daedalus: 30% chance, 2.4x damage (upgrades Crystalys)
+        else if (attacker.items.includes('daedalus') && Math.random() < 0.30) {
+          critMultiplier = 2.4
         }
 
-        const defense = getEffectiveDefense(target)
-        const damage = calculatePhysicalDamage(attackDamage, defense)
+        attackDamage = Math.round(attackDamage * critMultiplier)
 
-        const newHp = Math.max(0, target.hp - damage)
+        // ── Item passive: Monkey King Bar (true strike + bonus magical) ──
+        let bonusMagicDamage = 0
+        if (attacker.items.includes('monkey_king_bar')) {
+          bonusMagicDamage = 50 // Added as separate magical damage
+        }
+
+        // ── Item passive: Skull Basher (25% bash) ──
+        if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
+          // Apply stun buff to target (will be processed later)
+        }
+
+        // ── Item passive: Maelstrom chain lightning (25% chance) ──
+        if (attacker.items.includes('maelstrom') && Math.random() < 0.25) {
+          // Find another enemy in zone to chain to
+          const chainTargets = Object.values(players).filter(
+            (p) => p.zone === attacker.zone && p.team !== attacker.team && p.alive && p.id !== target.id,
+          )
+          if (chainTargets.length > 0) {
+            const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
+            const chainDamage = calculateMagicalDamage(60, chainTarget.magicResist)
+            const chainNewHp = Math.max(0, chainTarget.hp - chainDamage)
+            players = {
+              ...players,
+              [chainTarget.id]: { ...chainTarget, hp: chainNewHp, alive: chainNewHp > 0 },
+            }
+            events.push({
+              _tag: 'damage',
+              tick: state.tick,
+              sourceId: action.playerId,
+              targetId: chainTarget.id,
+              amount: chainDamage,
+              damageType: 'magical',
+            })
+          }
+        }
+
+        // ── Item passive: Silver Edge bonus damage from invis ──
+        const silverEdgeBonus = attacker.buffs.find((b) => b.id === 'silver_edge_bonus')
+        if (silverEdgeBonus) {
+          attackDamage += silverEdgeBonus.stacks
+        }
+
+        let defense = getEffectiveDefense(target)
+
+        // ── Item passive: Desolator (armor reduction on hit) ──
+        if (attacker.items.includes('desolator')) {
+          defense = Math.max(0, defense - 5) // -5 defense for this attack
+          // Apply debuff for future attacks
+          const corruptionDebuff = { id: 'corruption', stacks: 5, ticksRemaining: 3, source: attacker.id }
+          target = { ...target, buffs: [...target.buffs, corruptionDebuff] }
+        }
+
+        // ── Item passive: Assault Cuirass enemy armor reduction ──
+        // Check if any enemy in zone has assault_cuirass (aura affects us)
+        for (const [, zonePlayer] of Object.entries(players)) {
+          if (zonePlayer.zone === target.zone && zonePlayer.team !== target.team && zonePlayer.items.includes('assault_cuirass')) {
+            defense = Math.max(0, defense - 5)
+            break
+          }
+        }
+
+        // ── Item passive: Vanguard damage block (on target) ──
+        let blockedDamage = 0
+        if (target.items.includes('vanguard') && Math.random() < 0.60) {
+          blockedDamage = 50
+        }
+
+        // Calculate final damage
+        let damage = calculatePhysicalDamage(attackDamage, defense)
+        damage = Math.max(0, damage - blockedDamage)
+
+        // ── Item passive: Ghost form (immune to physical) ──
+        if (target.buffs.some((b) => b.id === 'ghost_form')) {
+          damage = 0 // Physical damage is nullified
+        }
+
+        // Apply bonus magical damage from MKB
+        let totalDamage = damage
+        if (bonusMagicDamage > 0) {
+          const magicDmg = calculateMagicalDamage(bonusMagicDamage, target.magicResist)
+          totalDamage += magicDmg
+          events.push({
+            _tag: 'damage',
+            tick: state.tick,
+            sourceId: action.playerId,
+            targetId,
+            amount: magicDmg,
+            damageType: 'magical',
+          })
+        }
+
+        const newHp = Math.max(0, target.hp - totalDamage)
+        let updatedTarget: PlayerState = { ...target, hp: newHp, alive: newHp > 0 }
+
+        // ── Item passive: Skull Basher stun application ──
+        if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
+          updatedTarget = {
+            ...updatedTarget,
+            buffs: [...updatedTarget.buffs, { id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id }],
+          }
+        }
+
+        // ── Item passive: Blade Mail damage return ──
+        if (target.buffs.some((b) => b.id === 'blade_mail')) {
+          const returnDamage = Math.round(damage) // 100% return
+          const attackerNewHp = Math.max(0, attacker.hp - returnDamage)
+          players = {
+            ...players,
+            [action.playerId]: { ...attacker, hp: attackerNewHp, alive: attackerNewHp > 0 },
+          }
+          events.push({
+            _tag: 'damage',
+            tick: state.tick,
+            sourceId: targetId,
+            targetId: action.playerId,
+            amount: returnDamage,
+            damageType: 'pure',
+          })
+        }
+
         players = {
           ...players,
-          [targetId]: { ...target, hp: newHp, alive: newHp > 0 },
+          [targetId]: updatedTarget,
         }
 
         heroAttackers.set(action.playerId, targetId)
@@ -316,6 +452,48 @@ export function resolveActions(
           amount: attackDamage,
           damageType: 'physical',
         })
+      } else if (cmd.target.kind === 'roshan') {
+        // Attack Roshan
+        const roshan = state.roshan
+        if (!roshan.alive) continue
+        if (attacker.zone !== 'roshan-pit') continue
+
+        const attackDamage = getEffectiveAttack(attacker)
+        const _newHp = Math.max(0, roshan.hp - attackDamage)
+
+        // We'll apply this at the end via state update
+
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          sourceId: action.playerId,
+          targetId: 'roshan',
+          amount: attackDamage,
+          damageType: 'physical',
+        })
+      } else if (cmd.target.kind === 'neutral') {
+        const neutralIdx = cmd.target.index
+        const neutral = neutrals[neutralIdx]
+        if (!neutral || !neutral.alive) continue
+        if (neutral.zone !== attacker.zone) continue
+
+        const attackDamage = getEffectiveAttack(attacker)
+        const newHp = Math.max(0, neutral.hp - attackDamage)
+
+        neutrals[neutralIdx] = { ...neutral, hp: newHp, alive: newHp > 0 }
+
+        if (newHp <= 0) {
+          neutralKills.push({ playerId: action.playerId, neutralId: neutral.id })
+        }
+
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          sourceId: action.playerId,
+          targetId: neutral.id,
+          amount: attackDamage,
+          damageType: 'physical',
+        })
       }
     }
 
@@ -338,8 +516,28 @@ export function resolveActions(
       }
 
       let hp = player.hp
+      let mp = player.mp
 
-      // Garbage Collector passive: 5% max HP regen when out of combat (no damage for 3 ticks)
+      // ── Item passive: Ring of Health (2% HP regen per tick) ──
+      if (player.items.includes('ring_of_health')) {
+        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.02))
+      }
+
+      // ── Item passive: Sobi Mask (2% MP regen per tick) ──
+      if (player.items.includes('sobi_mask')) {
+        mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * 0.02))
+      }
+
+      // ── Item passive: Heart of Tarrasque (5% HP regen when out of combat) ──
+      if (player.items.includes('heart_of_tarrasque')) {
+        const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
+        const inCombat = player.buffs.some((b) => b.id === 'inCombat')
+        if (!tookDamage && !inCombat) {
+          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.05))
+        }
+      }
+
+      // ── Item passive: Garbage Collector (5% HP regen when out of combat) ──
       if (player.items.includes('garbage_collector')) {
         const tookDamage = events.some(
           (e) => e._tag === 'damage' && e.targetId === pid,
@@ -351,9 +549,27 @@ export function resolveActions(
         }
       }
 
+      // ── Item passive: Aether Lens (reduce cooldowns by 1) ──
+      if (player.items.includes('aether_lens')) {
+        for (const slot of ['q', 'w', 'e', 'r'] as const) {
+          if (cooldowns[slot] > 0) {
+            cooldowns[slot] = Math.max(0, cooldowns[slot] - 1)
+          }
+        }
+      }
+
+      // ── Item passive: Linken's Sphere (spellblock refresh) ──
+      if (player.items.includes('linkens_sphere')) {
+        const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
+        if (!linkenBuff) {
+          // Refresh spellblock if not present
+          player.buffs.push({ id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' })
+        }
+      }
+
       players = {
         ...players,
-        [pid]: { ...player, hp, cooldowns },
+        [pid]: { ...player, hp, mp, cooldowns },
       }
     }
 
@@ -384,6 +600,24 @@ export function resolveActions(
       if (result) {
         players = { ...result.players }
       }
+    }
+
+    // Handle aegis pickup
+    const aegisPickups = validActions.filter((a) => a.command.type === 'aegis')
+    for (const action of aegisPickups) {
+      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes, roshan: state.roshan, aegis: state.aegis }
+      const result = pickupAegis(tempState, action.playerId)
+      players = { ...result.players }
+    }
+
+    // Handle rune pickup
+    const runePickups = validActions.filter((a) => a.command.type === 'rune')
+    for (const action of runePickups) {
+      const player = players[action.playerId]
+      if (!player) continue
+      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes, roshan: state.roshan, aegis: state.aegis }
+      const result = pickupRune(tempState, action.playerId, player.zone)
+      players = { ...result.players }
     }
 
     // Recalculate maxHp/maxMp based on items
@@ -419,6 +653,33 @@ export function resolveActions(
       if (killer) {
         players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + CREEP_XP } }
       }
+    }
+
+    // Award gold and XP for neutral creep kills
+    for (const kill of neutralKills) {
+      const neutral = neutrals.find((n) => n.id === kill.neutralId)
+      if (!neutral) continue
+      const stats = NEUTRAL_CREEPS[neutral.type as NeutralCreepType]
+      if (!stats) continue
+
+      const killer = players[kill.playerId]
+      if (killer) {
+        // Award gold and XP
+        const updatedKiller: PlayerState = { ...killer, gold: killer.gold + stats.gold, xp: killer.xp + stats.xp }
+        players = { ...players, [kill.playerId]: updatedKiller }
+
+        events.push({
+          _tag: 'neutral_killed' as const,
+          tick: state.tick,
+          playerId: kill.playerId,
+          neutralId: neutral.id,
+          neutralType: neutral.type,
+          zone: neutral.zone,
+        })
+      }
+
+      // Remove the dead neutral
+      neutrals = neutrals.filter((n) => n.id !== kill.neutralId)
     }
 
     // Award gold for tower kills
@@ -477,6 +738,7 @@ export function resolveActions(
       players,
       zones,
       creeps,
+      neutrals,
       towers,
     }
 

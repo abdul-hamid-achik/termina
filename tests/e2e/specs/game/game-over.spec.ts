@@ -1,17 +1,17 @@
 import { test, expect } from '../../fixtures/game'
 
-test.describe.skip('Game Over', () => {
-  test.setTimeout(300_000) // 5 min timeout for game completion
+test.describe('Game Over', () => {
+  test.setTimeout(900_000) // 15 min timeout — a full bot game with 9 towers/team takes 10-15 min
 
   test('game over screen shows RADIANT/DIRE VICTORY banner', async ({ gamePage }) => {
-    // Wait for game to end
-    await gamePage.getByTestId('post-game').waitFor({ timeout: 300_000 })
+    // Wait for game to end (bots must destroy all 9 enemy towers)
+    await gamePage.getByTestId('post-game').waitFor({ timeout: 900_000 })
     const victory = gamePage.getByText(/RADIANT VICTORY|DIRE VICTORY/)
     await expect(victory).toBeVisible()
   })
 
   test('personal stats section shows K/D/A, damage, gold', async ({ gamePage }) => {
-    await gamePage.getByTestId('post-game').waitFor({ timeout: 300_000 })
+    await gamePage.getByTestId('post-game').waitFor({ timeout: 900_000 })
     const postGame = gamePage.getByTestId('post-game')
     await expect(postGame.getByText('K/D/A')).toBeVisible()
     await expect(postGame.getByText('Hero Damage')).toBeVisible()
@@ -19,7 +19,7 @@ test.describe.skip('Game Over', () => {
   })
 
   test('full scoreboard with all 10 players by team', async ({ gamePage }) => {
-    await gamePage.getByTestId('post-game').waitFor({ timeout: 300_000 })
+    await gamePage.getByTestId('post-game').waitFor({ timeout: 900_000 })
     const postGame = gamePage.getByTestId('post-game')
     // Should show both team sections
     await expect(postGame.getByText('RADIANT')).toBeVisible()
@@ -31,7 +31,7 @@ test.describe.skip('Game Over', () => {
   })
 
   test('PLAY AGAIN navigates to /lobby; MAIN MENU navigates to /', async ({ gamePage }) => {
-    await gamePage.getByTestId('post-game').waitFor({ timeout: 300_000 })
+    await gamePage.getByTestId('post-game').waitFor({ timeout: 900_000 })
 
     // Test MAIN MENU button
     await gamePage.getByTestId('return-to-menu-btn').click()
