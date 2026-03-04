@@ -171,13 +171,13 @@ export function processTick(
     // 6.1 Spawn neutral creeps in jungle camps
     const newNeutrals = spawnNeutralCreeps(currentState.tick)
     if (newNeutrals.length > 0) {
-      currentState = { ...currentState, neutrals: [...currentState.neutrals, ...newNeutrals] }
+      currentState = { ...currentState, neutrals: [...(currentState.neutrals ?? []), ...newNeutrals] }
     }
 
     // 6.2 Spawn runes
     const newRunes = spawnRunes(currentState.tick)
     if (newRunes.length > 0) {
-      currentState = { ...currentState, runes: [...currentState.runes, ...newRunes] }
+      currentState = { ...currentState, runes: [...(currentState.runes ?? []), ...newRunes] }
     }
 
     // 6.3 Remove expired runes

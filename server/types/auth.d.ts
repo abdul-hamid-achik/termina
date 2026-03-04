@@ -9,4 +9,21 @@ declare module '#auth-utils' {
   }
 }
 
+declare module '@nuxt/schema' {
+  interface RuntimeConfig {
+    session: {
+      password: string
+      cookie: {
+        secure: boolean
+      }
+    }
+    oauth: {
+      github: { clientId: string; clientSecret: string }
+      discord: { clientId: string; clientSecret: string }
+    }
+    redis: { url: string }
+    database: { url: string }
+  }
+}
+
 export {}

@@ -98,12 +98,67 @@ function onKeyDown(e: KeyboardEvent) {
     showScoreboard.value = true
     return
   }
+  // S key for shop toggle (only when not focused on input)
+  if (e.key.toLowerCase() === 's') {
+    const target = e.target as HTMLElement
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+    e.preventDefault()
+    showShop.value = !showShop.value
+    return
+  }
   // Number keys 1-6 for item use (only when not focused on input)
   const target = e.target as HTMLElement
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
   const slot = Number.parseInt(e.key, 10)
   if (slot >= 1 && slot <= 6) {
+    e.preventDefault()
     handleItemUseBySlot(slot - 1)
+  }
+  
+  // Arrow keys for quick movement (only when input not focused)
+  if (!target.closest('.cmd-input-wrapper')) {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      handleArrowMove(e.key)
+    }
+  }
+}
+
+function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight') {
+  const p = gameStore.player
+  if (!p) return
+  
+  const playerZone = ZONE_MAP[p.zone]
+  if (!playerZone || !playerZone.adjacentTo.length) return
+  
+  // Map arrow keys to adjacent zones based on map position
+  // This is a simplified approach - we use the first adjacent zone in a direction
+  const adjacent = playerZone.adjacentTo
+  
+  // Simple heuristic based on zone naming patterns
+  let targetZone: string | null = null
+  
+  if (direction === 'ArrowUp') {
+    // Move toward radiant base (top of map)
+    targetZone = adjacent.find(z => z.includes('rad') || z.includes('t3-rad') || z === 'radiant-base' || z === 'radiant-fountain') ?? null
+  } else if (direction === 'ArrowDown') {
+    // Move toward dire base (bottom of map)
+    targetZone = adjacent.find(z => z.includes('dire') || z.includes('t3-dire') || z === 'dire-base' || z === 'dire-fountain') ?? null
+  } else if (direction === 'ArrowLeft') {
+    // Move toward left side (top lane or jungle)
+    targetZone = adjacent.find(z => z.startsWith('top-') || z.startsWith('jungle-rad')) ?? null
+  } else if (direction === 'ArrowRight') {
+    // Move toward right side (bot lane or jungle)
+    targetZone = adjacent.find(z => z.startsWith('bot-') || z.startsWith('jungle-dire')) ?? null
+  }
+  
+  // Fallback: just pick first adjacent
+  if (!targetZone && adjacent.length > 0) {
+    targetZone = adjacent[0]!
+  }
+  
+  if (targetZone) {
+    handleCommand(`move ${targetZone}`)
   }
 }
 
@@ -424,6 +479,35 @@ function handleBuyItem(itemId: string) {
   handleCommand(`buy ${itemId}`)
 }
 
+function handleZoneClick(zoneId: string) {
+  const p = gameStore.player
+  if (!p) return
+  
+  // Check if zone is adjacent or current
+  const playerZone = ZONE_MAP[p.zone]
+  if (!playerZone) return
+  
+  if (p.zone === zoneId) {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: `Already in ${zoneId}`,
+      type: 'system',
+    })
+    return
+  }
+  
+  if (!playerZone.adjacentTo.includes(zoneId)) {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: `Cannot move to ${zoneId} — not adjacent`,
+      type: 'system',
+    })
+    return
+  }
+  
+  handleCommand(`move ${zoneId}`)
+}
+
 function handleQuickAction(cmd: string) {
   uiLog.debug('Quick action', { cmd })
   const p = gameStore.player
@@ -559,7 +643,9 @@ v-if="!gameStore.isAlive && gameStore.player"
     />
 
     <TerminalPanel title="Map" class="game-grid__map min-h-0">
-      <AsciiMap :zones="mapZones" :player-zone="playerZone" />
+      <div class="flex h-full items-center justify-center">
+        <AsciiMap :zones="mapZones" :player-zone="playerZone" @zone-click="handleZoneClick" />
+      </div>
     </TerminalPanel>
 
     <TerminalPanel title="Combat Log" class="game-grid__log min-h-0">
@@ -641,6 +727,14 @@ v-if="!gameStore.isAlive && gameStore.player"
           @buy="handleBuyItem"
           @unpin="unpinItem"
         />
+        <button
+          class="ml-auto whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-gold hover:text-text-primary active:bg-border"
+          :class="{ 'border-gold': gameStore.canBuy }"
+          title="Shop (S)"
+          @click="showShop = !showShop"
+        >
+          [SHOP]
+        </button>
       </div>
       <div class="hidden gap-1 px-2 py-1 overflow-x-auto lg:hidden max-lg:flex">
         <button
@@ -660,7 +754,9 @@ v-if="!gameStore.isAlive && gameStore.player"
         :visible-zones="gameStore.visibleZones"
         :all-players="gameStore.allPlayers"
         :items="ITEMS"
+        :can-act="gameStore.canAct"
         @submit="handleCommand"
+        @action-sent="gameStore.markActionSent()"
       />
     </div>
   </div>
@@ -670,7 +766,7 @@ v-if="!gameStore.isAlive && gameStore.player"
 .game-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   gap: 2px;
   height: 100vh;
 }
@@ -679,7 +775,7 @@ v-if="!gameStore.isAlive && gameStore.player"
   grid-column: 1 / -1;
 }
 .game-grid__map {
-  grid-row: 2;
+  grid-row: 2 / 5;
   grid-column: 1;
 }
 .game-grid__log {
@@ -688,10 +784,10 @@ v-if="!gameStore.isAlive && gameStore.player"
 }
 .game-grid__hero {
   grid-row: 3;
-  grid-column: 1;
+  grid-column: 2;
 }
 .game-grid__cmd {
-  grid-row: 3 / 5;
+  grid-row: 4;
   grid-column: 2;
 }
 

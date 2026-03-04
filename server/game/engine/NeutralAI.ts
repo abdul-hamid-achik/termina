@@ -70,7 +70,7 @@ export interface NeutralAction {
 export function runNeutralAI(state: GameState): NeutralAction[] {
   const actions: NeutralAction[] = []
 
-  for (const neutral of state.neutrals) {
+  for (const neutral of (state.neutrals ?? [])) {
     if (!neutral.alive) continue
 
     // Find enemies in the same zone
@@ -105,7 +105,7 @@ export function applyNeutralActions(
   const players = { ...state.players }
 
   for (const action of actions) {
-    const neutral = state.neutrals.find((n) => n.id === action.neutralId)
+    const neutral = (state.neutrals ?? []).find((n) => n.id === action.neutralId)
     if (!neutral || !neutral.alive) continue
 
     const target = players[action.targetId]

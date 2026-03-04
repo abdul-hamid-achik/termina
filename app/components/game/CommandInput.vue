@@ -15,6 +15,7 @@ const props = withDefaults(
     visibleZones?: Record<string, ZoneRuntimeState>
     allPlayers?: Record<string, PlayerState>
     items?: Record<string, ItemDef>
+    canAct?: boolean
   }>(),
   {
     placeholder: 'Enter command...',
@@ -23,11 +24,13 @@ const props = withDefaults(
     visibleZones: () => ({}),
     allPlayers: () => ({}),
     items: () => ({}),
+    canAct: true,
   },
 )
 
 const emit = defineEmits<{
   submit: [command: string]
+  actionSent: []
 }>()
 
 const { parse, autocomplete, addToHistory } = useCommands()
@@ -169,6 +172,11 @@ function handleSubmit() {
   const cmd = input.value.trim()
   if (!cmd) return
 
+  // If can't act, show message and return
+  if (!props.canAct) {
+    return
+  }
+
   // If dropdown open and item selected, accept it instead
   if (open.value && suggestions.value.length > 0) {
     acceptSuggestion(suggestions.value[selectedIndex.value]!)
@@ -176,6 +184,7 @@ function handleSubmit() {
   }
 
   emit('submit', cmd)
+  emit('actionSent')
   addToHistory(cmd)
   history.value.unshift(cmd)
   if (history.value.length > 50) history.value.pop()
@@ -186,9 +195,15 @@ function handleSubmit() {
 
 function acceptSuggestion(suggestion: Suggestion) {
   const parts = input.value.trim().split(/\s+/)
+  const suggestionParts = suggestion.text.split(/\s+/)
 
-  // If only one part, this is a command completion — add space to continue
-  if (parts.length <= 1) {
+  // If suggestion is a complete command (multiple parts), replace entire input
+  // This handles shortcuts like "cast r" being suggested when typing "cast r"
+  if (suggestionParts.length > 1) {
+    input.value = suggestion.text + ' '
+  }
+  // If only one part in input, this is a command completion — add space to continue
+  else if (parts.length <= 1) {
     input.value = suggestion.text + ' '
   } else {
     // Replace the argument part
@@ -377,7 +392,7 @@ onUnmounted(() => {
     <!-- Input row -->
     <div
       class="flex items-center gap-2 border-t border-border bg-bg-primary px-3 py-2"
-      :class="{ 'opacity-50': disabled }"
+      :class="{ 'opacity-50': disabled || !canAct }"
     >
       <span class="shrink-0 font-bold text-radiant select-none">&gt;_</span>
       <input
@@ -385,22 +400,24 @@ onUnmounted(() => {
         v-model="input"
         data-testid="command-input-field"
         class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
-        :disabled="disabled"
-        :placeholder="placeholder"
+        :disabled="disabled || !canAct"
+        :placeholder="!canAct ? 'Action sent - wait for next tick' : placeholder"
         spellcheck="false"
         autocomplete="off"
         @keydown="handleKeydown"
       >
       <span
-        v-if="!input"
+        v-if="!input && canAct"
         class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"
         >&#x2588;</span
       >
       <span
         v-if="tickCountdown > 0"
-        class="shrink-0 whitespace-nowrap text-[0.7rem] text-text-dim"
+        class="shrink-0 whitespace-nowrap text-[0.7rem]"
+        :class="canAct ? 'text-text-dim' : 'text-dire'"
       >
-        Next tick in {{ (tickCountdown / 1000).toFixed(1) }}s
+        <template v-if="canAct">Next tick in {{ (tickCountdown / 1000).toFixed(1) }}s</template>
+        <template v-else>WAITING...</template>
       </span>
     </div>
   </div>

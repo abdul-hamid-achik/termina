@@ -117,6 +117,18 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (!sellZone?.shop) return 'Not in a shop zone'
       return null
     }
+    case 'use': {
+      // Check player owns the item
+      const ownedItems = player.items.filter(Boolean)
+      if (!ownedItems.includes(cmd.item)) return 'Item not owned'
+      // Check item has active ability
+      const itemDef = ITEMS[cmd.item]
+      if (!itemDef?.active) return 'Item has no active ability'
+      // Check item is not on cooldown (via buff)
+      const cdBuff = player.buffs.find((b) => b.id === `item_cd_${cmd.item}`)
+      if (cdBuff && cdBuff.ticksRemaining > 0) return 'Item on cooldown'
+      return null
+    }
     case 'ward': {
       if (!areAdjacent(player.zone, cmd.zone) && player.zone !== cmd.zone) {
         return 'Ward zone must be current or adjacent'
@@ -170,7 +182,7 @@ export function resolveActions(
     const heroAttackers = new Map<string, string>()
     const zones = { ...state.zones }
     const creeps = [...state.creeps]
-    let neutrals = [...state.neutrals]
+    let neutrals = [...(state.neutrals ?? [])]
     let towers = [...state.towers]
     const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
     const neutralKills: Array<{ playerId: string; neutralId: string }> = []
@@ -605,7 +617,7 @@ export function resolveActions(
     // Handle aegis pickup
     const aegisPickups = validActions.filter((a) => a.command.type === 'aegis')
     for (const action of aegisPickups) {
-      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes, roshan: state.roshan, aegis: state.aegis }
+      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes ?? [], roshan: state.roshan, aegis: state.aegis }
       const result = pickupAegis(tempState, action.playerId)
       players = { ...result.players }
     }
@@ -615,7 +627,7 @@ export function resolveActions(
     for (const action of runePickups) {
       const player = players[action.playerId]
       if (!player) continue
-      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes, roshan: state.roshan, aegis: state.aegis }
+      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes ?? [], roshan: state.roshan, aegis: state.aegis }
       const result = pickupRune(tempState, action.playerId, player.zone)
       players = { ...result.players }
     }

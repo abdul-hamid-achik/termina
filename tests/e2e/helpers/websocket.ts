@@ -10,7 +10,7 @@ export async function installWsInterceptor(page: Page): Promise<void> {
 
     const OriginalWebSocket = window.WebSocket
 
-    // @ts-expect-error — overriding WebSocket constructor
+    // Override WebSocket constructor for message interception
     window.WebSocket = function (url: string, protocols?: string | string[]) {
       const ws = new OriginalWebSocket(url, protocols)
 

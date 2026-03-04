@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 
 interface ZoneDisplay {
   id: string
@@ -14,6 +15,10 @@ interface ZoneDisplay {
 const props = defineProps<{
   zones: ZoneDisplay[]
   playerZone: string
+}>()
+
+const emit = defineEmits<{
+  zoneClick: [zoneId: string]
 }>()
 
 // 5-column spatial grid: TOP LANE | RAD JUNGLE | MID LANE | DIRE JUNGLE | BOT LANE
@@ -103,7 +108,23 @@ function cellClasses(zone: ZoneDisplay): string {
   return 'text-text-dim'
 }
 
+function zoneClickable(zoneId: string): boolean {
+  if (!props.playerZone) return false
+  return isAdjacent(zoneId)
+}
 
+
+function isAdjacent(zoneId: string): boolean {
+  const playerZ = props.playerZone
+  if (!playerZ) return false
+  const playerZoneData = ZONE_MAP[playerZ]
+  if (!playerZoneData) return false
+  return playerZoneData.adjacentTo.includes(zoneId) || playerZ === zoneId
+}
+
+function handleZoneClick(zoneId: string) {
+  emit('zoneClick', zoneId)
+}
 </script>
 
 <template>
@@ -137,9 +158,14 @@ function cellClasses(zone: ZoneDisplay): string {
         <template v-for="(zoneId, ci) in row" :key="ci">
           <div
             v-if="zoneId && getZone(zoneId)"
-            class="cursor-default px-0.5 py-px text-center font-mono text-[0.7rem] leading-tight hover:bg-white/[0.03]"
-            :class="cellClasses(getZone(zoneId)!)"
-            :title="zoneId"
+            class="px-0.5 py-px text-center font-mono text-[0.7rem] leading-tight transition-colors"
+            :class="[
+              cellClasses(getZone(zoneId)!),
+              zoneClickable(zoneId) ? 'cursor-pointer hover:bg-radiant/20' : 'cursor-default',
+              zoneClickable(zoneId) && !getZone(zoneId)!.playerHere ? 'border border-dashed border-radiant/30' : ''
+            ]"
+            :title="zoneId + (zoneClickable(zoneId) ? ' (click to move)' : '')"
+            @click="zoneClickable(zoneId) && handleZoneClick(zoneId)"
           >
             {{ cellText(getZone(zoneId)!) }}
           </div>

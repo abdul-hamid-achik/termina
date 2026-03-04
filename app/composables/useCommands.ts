@@ -27,6 +27,41 @@ const SHORTCUTS: Record<string, string> = {
   b: 'buy',
 }
 
+// Zone aliases for easier typing
+const ZONE_ALIASES: Record<string, string> = {
+  // Lane shortcuts
+  mid: 'mid-river',
+  top: 'top-river',
+  bot: 'bot-river',
+  // Full lane paths
+  'top-lane': 'top-t1-rad',
+  'mid-lane': 'mid-river',
+  'bot-lane': 'bot-river',
+  // Jungles
+  'jg-rad': 'jungle-rad-top',
+  'jg-radiant': 'jungle-rad-top',
+  'jg-dire': 'jungle-dire-top',
+  'jungle-rad': 'jungle-rad-top',
+  'jungle-dire': 'jungle-dire-top',
+  // Bases
+  base: 'radiant-base',
+  fountain: 'radiant-fountain',
+  // Roshan
+  roshan: 'roshan-pit',
+  rosh: 'roshan-pit',
+  // Runes
+  'rune-top': 'rune-top',
+  'rune-bot': 'rune-bot',
+  rune: 'mid-river',
+}
+
+// Reverse lookup for aliases -> full zone IDs
+const ALIAS_TO_ZONE: Record<string, string[]> = {}
+for (const [alias, zoneId] of Object.entries(ZONE_ALIASES)) {
+  if (!ALIAS_TO_ZONE[zoneId]) ALIAS_TO_ZONE[zoneId] = []
+  ALIAS_TO_ZONE[zoneId].push(alias)
+}
+
 function parseTarget(raw: string): TargetRef | null {
   if (raw === 'self') return { kind: 'self' }
   if (raw.startsWith('hero:')) return { kind: 'hero', name: raw.slice(5) }
@@ -43,6 +78,19 @@ function parseTarget(raw: string): TargetRef | null {
 export interface ParseResult {
   command: Command | null
   error: string | null
+}
+
+/** Resolve a zone alias to the actual zone ID, or return the input if it's already a valid zone. */
+function resolveZoneAlias(zoneInput: string): string {
+  // Check if it's already a valid zone ID
+  if (ZONE_IDS.includes(zoneInput)) return zoneInput
+  // Check if it's an alias
+  if (ZONE_ALIASES[zoneInput]) return ZONE_ALIASES[zoneInput]
+  // Check if it matches a zone ID prefix (e.g., "mid" -> "mid-river" if unambiguous)
+  const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
+  if (matches.length === 1) return matches[0]!
+  // Return as-is (let server validate)
+  return zoneInput
 }
 
 export function useCommands() {
@@ -67,7 +115,8 @@ export function useCommands() {
       case 'move': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: move <zone>' }
-        return { command: { type: 'move', zone }, error: null }
+        const resolvedZone = resolveZoneAlias(zone)
+        return { command: { type: 'move', zone: resolvedZone }, error: null }
       }
 
       case 'attack': {
@@ -109,7 +158,8 @@ export function useCommands() {
       case 'ward': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: ward <zone>' }
-        return { command: { type: 'ward', zone }, error: null }
+        const resolvedZone = resolveZoneAlias(zone)
+        return { command: { type: 'ward', zone: resolvedZone }, error: null }
       }
 
       case 'scan':
@@ -138,7 +188,8 @@ export function useCommands() {
       case 'ping': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: ping <zone>' }
-        return { command: { type: 'ping', zone }, error: null }
+        const resolvedZone = resolveZoneAlias(zone)
+        return { command: { type: 'ping', zone: resolvedZone }, error: null }
       }
 
       default:
@@ -240,19 +291,67 @@ export function useCommands() {
   function _suggestZones(partial: string, context: GameContext): Suggestion[] {
     const visibleIds = Object.keys(context.visibleZones)
     const zonePool = visibleIds.length > 0 ? visibleIds : ZONE_IDS
-    return zonePool
-      .filter((id) => id.includes(partial))
-      .slice(0, 10)
-      .map((id) => ({ text: id, description: ZONE_MAP[id]?.name }))
+    
+    const suggestions: Suggestion[] = []
+    
+    // First add prefix matches (higher priority)
+    const prefixMatches = zonePool.filter((id) => id.startsWith(partial))
+    for (const id of prefixMatches) {
+      suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
+    }
+    
+    // Then add substring matches that aren't prefix matches
+    const substringMatches = zonePool.filter((id) => !id.startsWith(partial) && id.includes(partial))
+    for (const id of substringMatches) {
+      suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
+    }
+    
+    // Also suggest aliases that match
+    const matchingAliases = Object.entries(ZONE_ALIASES).filter(([alias]) => 
+      alias.startsWith(partial) || alias.includes(partial)
+    )
+    for (const [alias, zoneId] of matchingAliases) {
+      if (!suggestions.some(s => s.text === alias)) {
+        suggestions.push({ text: alias, description: `→ ${ZONE_MAP[zoneId]?.name ?? zoneId}` })
+      }
+    }
+    
+    return suggestions.slice(0, 10)
   }
 
   function _suggestAdjacentZones(partial: string, context: GameContext): Suggestion[] {
     if (!context.player) return _suggestZones(partial, context)
     const zone = ZONE_MAP[context.player.zone]
     if (!zone) return []
-    return zone.adjacentTo
-      .filter((id) => id.includes(partial))
-      .map((id) => ({ text: id, description: ZONE_MAP[id]?.name }))
+    
+    const suggestions: Suggestion[] = []
+    const adjacent = zone.adjacentTo
+    
+    // Prefix matches first
+    const prefixMatches = adjacent.filter((id) => id.startsWith(partial))
+    for (const id of prefixMatches) {
+      suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
+    }
+    
+    // Then substring matches
+    const substringMatches = adjacent.filter((id) => !id.startsWith(partial) && id.includes(partial))
+    for (const id of substringMatches) {
+      suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
+    }
+    
+    // Also suggest aliases for adjacent zones
+    for (const zoneId of adjacent) {
+      const matchingAliases = Object.entries(ZONE_ALIASES).filter(
+        ([alias, zid]) => zid === zoneId && (alias.startsWith(partial) || alias.includes(partial))
+      )
+      for (const [alias] of matchingAliases) {
+        if (!suggestions.some(s => s.text === alias)) {
+          suggestions.push({ text: alias, description: `→ ${ZONE_MAP[zoneId]?.name}` })
+        }
+      }
+    }
+    
+    return suggestions
   }
 
   function _suggestTargets(partial: string, context: GameContext): Suggestion[] {

@@ -44,7 +44,11 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
+    neutrals: [],
     towers: initializeTowers(),
+    runes: [],
+    roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
+    aegis: null,
     events: [],
     ...overrides,
   }

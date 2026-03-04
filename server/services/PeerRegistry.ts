@@ -15,7 +15,7 @@ type RawWs = { send: (data: string | ArrayBuffer | Uint8Array) => number | undef
 
 interface PeerEntry {
   crosswsPeer: CrosswsPeer
-  rawWs: RawWs
+  rawWs: RawWs | CrosswsPeer
 }
 
 const peers = new Map<string, PeerEntry>()
@@ -23,7 +23,7 @@ const peers = new Map<string, PeerEntry>()
 export function registerPeer(
   playerId: string,
   crosswsPeer: CrosswsPeer,
-  rawWs: RawWs | null | undefined,
+  rawWs: RawWs | CrosswsPeer | null | undefined,
 ) {
   // If rawWs is unavailable (some crossws adapters), fall back to the crossws peer
   peers.set(playerId, { crosswsPeer, rawWs: rawWs ?? crosswsPeer })

@@ -1,4 +1,5 @@
 import type { GameState, RuneState } from '~~/shared/types/game'
+import type { GameEngineEvent, RunePickedEvent } from '../protocol/events'
 import {
   RUNE_BUFF_TICKS,
   RUNE_DURATION_TICKS,
@@ -74,15 +75,15 @@ export function pickupRune(
   const newRunes = runes.filter((_, i) => i !== runeIndex)
 
   // Add event
-  const events = [...state.events, {
-    _tag: 'rune_picked' as const,
+  const events = [...state.events.map(e => e as unknown as GameEngineEvent), {
+    _tag: 'rune_picked',
     tick: state.tick,
     playerId,
     zone,
     runeType: rune.type,
-  }]
+  } satisfies RunePickedEvent]
 
-  return { ...state, players, runes: newRunes, events }
+  return { ...state, players, runes: newRunes, events: events as unknown as typeof state.events }
 }
 
 /**

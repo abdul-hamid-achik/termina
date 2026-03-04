@@ -1,5 +1,5 @@
 import type { GameState } from '~~/shared/types/game'
-import type { GameEngineEvent } from '../protocol/events'
+import type { GameEngineEvent, RoshanDamageEvent, RoshanRespawnEvent, RoshanKilledInternalEvent, AegisPickedEvent } from '../protocol/events'
 import {
   ROSHAN_ATTACK,
   ROSHAN_AEGIS_TICKS,
@@ -68,7 +68,7 @@ export function applyRoshanActions(
   // Check for Roshan death from hero attacks this tick
   // We need to check if Roshan took damage from events
   const _roshanDamageEvents = state.events.filter(
-    (e) => e._tag === 'roshan_damage' || (e.payload && e.payload['targetId'] === 'roshan'),
+    (e) => e.type === 'roshan_damage' || (e.payload && e.payload['targetId'] === 'roshan'),
   )
 
   // Apply Roshan HP changes - we'll track this via events in the game loop
@@ -90,7 +90,7 @@ export function processRoshanDamage(
   damageDealt: Map<string, number>, // playerId -> damage
 ): { state: GameState; roshanKilled: boolean; aegisDropped: boolean; events: GameEngineEvent[] } {
   let roshan = { ...state.roshan }
-  const events = [...state.events]
+  const events: GameEngineEvent[] = state.events.map(e => e as unknown as GameEngineEvent)
   let roshanKilled = false
   let aegisDropped = false
 
@@ -101,10 +101,12 @@ export function processRoshanDamage(
       roshan = respawnRoshan(roshan)
       events.push({
         _tag: 'roshan_respawn',
-        payload: { tick: state.tick, hp: roshan.hp, maxHp: roshan.maxHp },
-      })
+        tick: state.tick,
+        hp: roshan.hp,
+        maxHp: roshan.maxHp,
+      } satisfies RoshanRespawnEvent)
     }
-    return { state: { ...state, roshan, events }, roshanKilled: false, aegisDropped: false, events }
+    return { state: { ...state, roshan, events: [...events] as unknown as GameEvent[] }, roshanKilled: false, aegisDropped: false, events }
   }
 
   // Calculate total damage to Roshan this tick
@@ -119,13 +121,11 @@ export function processRoshanDamage(
 
     events.push({
       _tag: 'roshan_damage',
-      payload: {
-        tick: state.tick,
-        damage: totalDamage,
-        hp: newHp,
-        maxHp: roshan.maxHp,
-      },
-    })
+      tick: state.tick,
+      damage: totalDamage,
+      hp: newHp,
+      maxHp: roshan.maxHp,
+    } satisfies RoshanDamageEvent)
 
     // Roshan died
     if (newHp <= 0) {
@@ -175,18 +175,18 @@ export function processRoshanDamage(
           }
         }
         if (lowestDmgDealer) {
-          const player = players[lowestDmgDealer]
+          const player = players[lowestDmgDealer]!
           players[lowestDmgDealer] = { ...player, gold: player.gold + remainingGold }
         }
       }
 
       events.push({
         _tag: 'roshan_killed',
-        payload: { tick: state.tick },
-      })
+        tick: state.tick,
+      } satisfies RoshanKilledInternalEvent)
 
       return {
-        state: { ...state, players, roshan, aegis, events },
+        state: { ...state, players, roshan, aegis, events: events as unknown as GameEvent[] },
         roshanKilled: true,
         aegisDropped: true,
         events,
@@ -194,7 +194,7 @@ export function processRoshanDamage(
     }
   }
 
-  return { state: { ...state, roshan, events }, roshanKilled, aegisDropped, events }
+  return { state: { ...state, roshan, events: events as unknown as GameEvent[] }, roshanKilled, aegisDropped, events }
 }
 
 /**
@@ -229,10 +229,11 @@ export function pickupAegis(state: GameState, playerId: string): GameState {
   // Remove aegis from the ground
   const newAegis = null
 
-  const events = [...state.events, {
+  const events = [...state.events.map(e => e as unknown as GameEngineEvent), {
     _tag: 'aegis_picked',
-    payload: { tick: state.tick, playerId },
-  }]
+    tick: state.tick,
+    playerId,
+  } satisfies AegisPickedEvent]
 
-  return { ...state, players, aegis: newAegis, events }
+  return { ...state, players, aegis: newAegis, events: events as unknown as typeof state.events }
 }

@@ -115,6 +115,32 @@ export interface NeutralKilledEvent {
   readonly zone: string
 }
 
+export interface RoshanDamageEvent {
+  readonly _tag: 'roshan_damage'
+  readonly tick: number
+  readonly damage: number
+  readonly hp: number
+  readonly maxHp: number
+}
+
+export interface RoshanRespawnEvent {
+  readonly _tag: 'roshan_respawn'
+  readonly tick: number
+  readonly hp: number
+  readonly maxHp: number
+}
+
+export interface RoshanKilledInternalEvent {
+  readonly _tag: 'roshan_killed'
+  readonly tick: number
+}
+
+export interface AegisPickedEvent {
+  readonly _tag: 'aegis_picked'
+  readonly tick: number
+  readonly playerId: string
+}
+
 export type GameEngineEvent =
   | DamageEvent
   | HealEvent
@@ -130,6 +156,10 @@ export type GameEngineEvent =
   | RunePickedEvent
   | RoshanKilledEvent
   | NeutralKilledEvent
+  | RoshanDamageEvent
+  | RoshanRespawnEvent
+  | RoshanKilledInternalEvent
+  | AegisPickedEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

@@ -49,6 +49,9 @@ export const useGameStore = defineStore('game', () => {
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
   const winner = ref<TeamId | null>(null)
 
+  // Track if player has acted this tick (resets each tick)
+  const lastActionTick = ref<number>(-1)
+
   // ── Getters ─────────────────────────────────────────────────────
   const currentZone = computed(() => {
     if (!player.value) return null
@@ -56,6 +59,12 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const isAlive = computed(() => player.value?.alive ?? false)
+
+  const canAct = computed(() => {
+    if (!player.value || !isAlive.value) return false
+    // Can act if we haven't acted this tick yet
+    return lastActionTick.value !== tick.value
+  })
 
   const canBuy = computed(() => {
     if (!player.value || !isAlive.value) return false
@@ -114,21 +123,24 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // Update scoreboard from players
-    scoreboard.value = Object.values(state.players).map((p: Record<string, unknown>) => ({
-      id: p.id,
-      name: p.name,
-      heroId: p.heroId ?? '',
-      team: p.team,
-      kills: p.kills ?? 0,
-      deaths: p.deaths ?? 0,
-      assists: p.assists ?? 0,
-      gold: p.fogged ? 0 : (p.gold ?? 0),
-      level: p.level ?? 0,
-      items: p.fogged ? [] : (p.items ?? []),
-      alive: (p.alive as boolean) ?? true,
-      respawnTick: (p.respawnTick as number | null) ?? null,
-      fogged: !!(p.fogged as boolean),
-    }))
+    scoreboard.value = Object.values(state.players).map((p) => {
+      const isFogged = (p as { fogged?: boolean }).fogged ?? false
+      return ({
+        id: p.id,
+        name: p.name,
+        heroId: p.heroId ?? '',
+        team: p.team,
+        kills: p.kills ?? 0,
+        deaths: p.deaths ?? 0,
+        assists: p.assists ?? 0,
+        gold: isFogged ? 0 : (p.gold ?? 0),
+        level: p.level ?? 0,
+        items: isFogged ? [] : (p.items ?? []),
+        alive: (p.alive as boolean) ?? true,
+        respawnTick: (p.respawnTick as number | null) ?? null,
+        fogged: isFogged,
+      })
+    })
   }
 
   function addEvents(newEvents: GameEvent[]) {
@@ -156,6 +168,10 @@ export const useGameStore = defineStore('game', () => {
     phase.value = 'ended'
   }
 
+  function markActionSent() {
+    lastActionTick.value = tick.value
+  }
+
   function reset() {
     gameId.value = null
     phase.value = 'waiting'
@@ -172,6 +188,7 @@ export const useGameStore = defineStore('game', () => {
     scoreboard.value = []
     gameOverStats.value = null
     winner.value = null
+    lastActionTick.value = -1
   }
 
   return {
@@ -192,9 +209,11 @@ export const useGameStore = defineStore('game', () => {
     scoreboard,
     gameOverStats,
     winner,
+    lastActionTick,
     // Getters
     currentZone,
     isAlive,
+    canAct,
     canBuy,
     kda,
     heroLevel,
@@ -206,6 +225,7 @@ export const useGameStore = defineStore('game', () => {
     addAnnouncement,
     setPhase,
     setGameOver,
+    markActionSent,
     reset,
   }
 })
