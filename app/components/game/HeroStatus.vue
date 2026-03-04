@@ -23,6 +23,10 @@ const props = defineProps<{
   heroId?: string
 }>()
 
+const emit = defineEmits<{
+  castAbility: [ability: 'q' | 'w' | 'e' | 'r']
+}>()
+
 const hoveredAbility = ref<string | null>(null)
 
 const heroDef = computed(() => {
@@ -68,10 +72,13 @@ function cdLabel(cd: number): string {
         <span
           v-for="key in ['q', 'w', 'e', 'r'] as const"
           :key="key"
-          class="relative inline-flex items-center gap-0.5 border px-1.5 py-0.5 text-xs"
+          class="relative inline-flex cursor-pointer items-center gap-0.5 border px-1.5 py-0.5 text-xs transition-all duration-150"
           :class="
-            hero.cooldowns[key] <= 0 ? 'border-ability text-ability' : 'border-border text-text-dim'
+            hero.cooldowns[key] <= 0 
+              ? 'border-ability text-ability hover:bg-ability/20 hover:scale-105' 
+              : 'border-border text-text-dim opacity-60'
           "
+          @click="hero.cooldowns[key] <= 0 && emit('castAbility', key)"
           @mouseenter="hoveredAbility = key"
           @mouseleave="hoveredAbility = null"
         >

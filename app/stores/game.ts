@@ -9,6 +9,7 @@ import type {
   TeamId,
   TowerState,
   CreepState,
+  NeutralCreepState,
 } from '~~/shared/types/game'
 import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
 import { ZONE_MAP } from '~~/shared/constants/zones'
@@ -42,6 +43,7 @@ export const useGameStore = defineStore('game', () => {
   const teams = ref<{ radiant: TeamState; dire: TeamState } | null>(null)
   const towers = ref<TowerState[]>([])
   const creeps = ref<CreepState[]>([])
+  const neutrals = ref<NeutralCreepState[]>([])
   const events = ref<GameEvent[]>([])
   const announcements = ref<string[]>([])
   const nextTickIn = ref(0)
@@ -106,6 +108,7 @@ export const useGameStore = defineStore('game', () => {
       teams: { radiant: TeamState; dire: TeamState }
       towers?: TowerState[]
       creeps?: CreepState[]
+      neutrals?: NeutralCreepState[]
     }
 
     gameLog.trace('tick_state', { tick: msg.tick, players: Object.keys(state.players).length, zones: Object.keys(state.zones).length })
@@ -117,6 +120,7 @@ export const useGameStore = defineStore('game', () => {
     teams.value = state.teams
     if (state.towers) towers.value = state.towers
     if (state.creeps) creeps.value = state.creeps
+    if (state.neutrals) neutrals.value = state.neutrals
 
     if (playerId.value && state.players[playerId.value]) {
       player.value = state.players[playerId.value] ?? null

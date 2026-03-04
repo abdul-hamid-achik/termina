@@ -103,7 +103,7 @@ function formatStats(def: ItemDef): string[] {
     </div>
 
     <!-- Item grid -->
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-1">
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-1 overflow-y-auto max-h-[300px] p-1">
       <div
         v-for="item in filtered"
         :key="item.id"

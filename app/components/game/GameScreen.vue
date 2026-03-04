@@ -93,22 +93,37 @@ onUnmounted(() => {
 })
 
 function onKeyDown(e: KeyboardEvent) {
+  const target = e.target as HTMLElement
+  const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
+  
+  // Tab: autocomplete when input is focused, toggle scoreboard when not
   if (e.key === 'Tab') {
     e.preventDefault()
+    if (isInputFocused) {
+      // Let CommandInput handle autocomplete - don't do anything here
+      return
+    }
     showScoreboard.value = true
     return
   }
+  
+  // Q/W/E/R for abilities - only when not in input
+  if (!isInputFocused && ['q', 'w', 'e', 'r'].includes(e.key.toLowerCase())) {
+    e.preventDefault()
+    handleQuickAction(e.key.toLowerCase())
+    return
+  }
+  
   // S key for shop toggle (only when not focused on input)
   if (e.key.toLowerCase() === 's') {
-    const target = e.target as HTMLElement
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+    if (isInputFocused) return
     e.preventDefault()
     showShop.value = !showShop.value
     return
   }
+  
   // Number keys 1-6 for item use (only when not focused on input)
-  const target = e.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+  if (isInputFocused) return
   const slot = Number.parseInt(e.key, 10)
   if (slot >= 1 && slot <= 6) {
     e.preventDefault()
@@ -400,6 +415,15 @@ const mapZones = computed(() => {
       }
     }
 
+    // Creeps in this zone
+    const creepsInZone = gameStore.creeps.filter(c => c.zone === zone.id)
+    const creepCount = creepsInZone.length
+    const creepTypes = [...new Set(creepsInZone.map(c => c.type))]
+
+    // Neutrals in this zone
+    const neutralsInZone = gameStore.neutrals.filter(n => n.zone === zone.id && n.alive)
+    const neutralCount = neutralsInZone.length
+
     // Tower info
     const tower = towersByZone.value.get(zone.id)
     const towerDisplay = tower
@@ -414,6 +438,9 @@ const mapZones = computed(() => {
       enemyCount,
       tower: towerDisplay,
       fogged,
+      creepCount,
+      creepTypes,
+      neutralCount,
     }
   })
 })
@@ -551,8 +578,8 @@ function handleQuickAction(cmd: string) {
     return
   }
 
-  // Q/W/E/R — cast ability
-  if (['Q', 'W', 'E', 'R'].includes(cmd)) {
+  // Q/W/E/R — cast ability (accept both upper and lowercase)
+  if (['Q', 'W', 'E', 'R', 'q', 'w', 'e', 'r'].includes(cmd)) {
     handleCommand(`cast ${cmd.toLowerCase()}`)
     return
   }
@@ -582,6 +609,24 @@ function handleItemUseBySlot(slotIndex: number) {
 // ── Game over ──────────────────────────────────────────────────
 
 const isGameOver = computed(() => gameStore.phase === 'ended')
+
+// Get the most recent death event for the player
+const lastDeathEvent = computed(() => {
+  const pid = gameStore.playerId
+  if (!pid) return null
+  // Find the most recent kill event where the player was the victim
+  const kills = gameStore.events.filter(e => e.type === 'kill' && e.payload.victimId === pid)
+  return kills.length > 0 ? kills[kills.length - 1] : null
+})
+
+const killerName = computed(() => {
+  const death = lastDeathEvent.value
+  if (!death) return null
+  const killerId = death.payload.killerId as string | undefined
+  if (!killerId) return null
+  const killer = gameStore.allPlayers[killerId]
+  return killer?.heroId ?? killer?.name ?? killerId
+})
 
 const postGamePlayers = computed(() => {
   return Object.values(gameStore.allPlayers).map((p) => ({
@@ -618,14 +663,19 @@ function handleReturnToMenu() {
   <!-- Active Game Screen -->
   <div v-else class="game-grid relative bg-bg-primary" data-testid="game-screen">
     <div
-v-if="!gameStore.isAlive && gameStore.player"
-         class="absolute inset-0 z-20 flex items-center justify-center bg-black/70"
-         data-testid="death-overlay">
-      <div class="text-center">
-        <p class="text-2xl font-bold text-dire">PROCESS TERMINATED</p>
-        <p v-if="gameStore.player.respawnTick" class="mt-2 text-text-dim">
-          Respawning in {{ Math.max(0, gameStore.player.respawnTick - gameStore.tick) }} ticks
+      v-if="!gameStore.isAlive && gameStore.player"
+      class="game-grid__map death-overlay"
+      data-testid="death-overlay">
+      <div class="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dire bg-bg-panel p-6 text-center shadow-lg shadow-dire/20">
+        <div class="mb-4 text-5xl">☠</div>
+        <p class="text-3xl font-bold text-dire">PROCESS TERMINATED</p>
+        <p v-if="killerName" class="mt-4 text-lg text-text-primary">
+          Killed by <span class="font-bold text-dire">{{ killerName }}</span>
         </p>
+        <p v-if="gameStore.player.respawnTick" class="mt-4 text-text-dim">
+          Respawning in <span class="text-radiant font-bold">{{ Math.max(0, gameStore.player.respawnTick - gameStore.tick) }}</span> ticks...
+        </p>
+        <p class="mt-6 text-sm text-text-dim">Wait for respawn or look for safe areas on the map</p>
       </div>
     </div>
     <GameStateBar
@@ -653,7 +703,12 @@ v-if="!gameStore.isAlive && gameStore.player"
     </TerminalPanel>
 
     <TerminalPanel title="Hero Status" class="game-grid__hero min-h-0">
-      <HeroStatus v-if="heroData" :hero="heroData" :hero-id="gameStore.player?.heroId ?? undefined" />
+      <HeroStatus 
+        v-if="heroData" 
+        :hero="heroData" 
+        :hero-id="gameStore.player?.heroId ?? undefined" 
+        @cast-ability="handleQuickAction"
+      />
       <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
     </TerminalPanel>
 
@@ -677,7 +732,7 @@ v-if="!gameStore.isAlive && gameStore.player"
       v-if="showShop"
       class="absolute inset-0 z-30 flex items-center justify-center bg-black/80"
     >
-      <div class="w-full max-w-2xl border border-border bg-bg-primary p-4">
+      <div class="flex max-h-[85vh] w-full max-w-2xl flex-col border border-border bg-bg-primary p-4">
         <div class="mb-2 flex items-center justify-between">
           <span class="text-[0.9rem] font-bold text-gold">&gt;_ ITEM SHOP</span>
           <button
@@ -736,12 +791,12 @@ v-if="!gameStore.isAlive && gameStore.player"
           [SHOP]
         </button>
       </div>
-      <div class="hidden gap-1 px-2 py-1 overflow-x-auto lg:hidden max-lg:flex">
+      <div class="flex gap-1 overflow-x-auto px-2 py-1">
         <button
           v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP']"
           :key="cmd"
           class="whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-text-primary active:bg-border"
-          :class="{ 'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy }"
+          :class="{ 'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy, 'border-ability text-ability': ['Q','W','E','R'].includes(cmd) }"
           @click="handleQuickAction(cmd)"
         >
           {{ cmd }}
@@ -765,7 +820,7 @@ v-if="!gameStore.isAlive && gameStore.player"
 <style scoped>
 .game-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 7fr 3fr;
   grid-template-rows: auto 1fr auto auto;
   gap: 2px;
   height: 100vh;
@@ -789,6 +844,16 @@ v-if="!gameStore.isAlive && gameStore.player"
 .game-grid__cmd {
   grid-row: 4;
   grid-column: 2;
+}
+
+.death-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 1024px) {
