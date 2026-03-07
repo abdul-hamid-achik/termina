@@ -35,6 +35,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     assists: 0,
     damageDealt: 0,
     towerDamageDealt: 0,
+    killStreak: 0,
     ...overrides,
   }
 }
@@ -277,7 +278,12 @@ describe('ActionResolver', () => {
     it('should place wards in valid zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'radiant', items: ['observer_ward', null, null, null, null, null] }),
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            items: ['observer_ward', null, null, null, null, null],
+          }),
         },
       })
 
@@ -288,6 +294,57 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, actions))
       const wardEvents = result.events.filter((e) => e._tag === 'ward_placed')
       expect(wardEvents.length).toBe(1)
+    })
+
+    it('should apply stun buff when Skull Basher bash procs', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            items: ['skull_basher', null, null, null, null, null],
+          }),
+          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'dire', name: 'Enemy', hp: 500 }),
+        },
+      })
+
+      const actions: PlayerAction[] = [
+        { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'Enemy' } } },
+      ]
+
+      let foundStun = false
+      for (let i = 0; i < 50; i++) {
+        const result = Effect.runSync(resolveActions(state, actions))
+        const target = result.state.players['p2']
+        const hasStun = target?.buffs.some((b) => b.id === 'stun') ?? false
+        if (hasStun) {
+          foundStun = true
+          break
+        }
+      }
+
+      expect(foundStun).toBe(true)
+    })
+
+    it('should not mutate player object when adding buffs from Linken refresh', () => {
+      const originalBuffs: any[] = []
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            items: ['linkens_sphere', null, null, null, null, null],
+            buffs: [],
+          }),
+        },
+      })
+
+      originalBuffs.push(state.players['p1']!.buffs)
+
+      const result = Effect.runSync(resolveActions(state, []))
+
+      expect(result.state.players['p1']!.buffs).not.toBe(originalBuffs[0])
+      expect(result.state.players['p1']!.buffs.length).toBeGreaterThan(0)
     })
   })
 })

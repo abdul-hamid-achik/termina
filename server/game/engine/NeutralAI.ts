@@ -1,18 +1,31 @@
 import type { GameState, NeutralCreepState } from '~~/shared/types/game'
-import { NEUTRAL_CREEPS, NEUTRAL_CREEPS_INTERVAL_TICKS, type NeutralCreepType } from '~~/shared/constants/balance'
+import {
+  NEUTRAL_CREEPS,
+  NEUTRAL_CREEPS_INTERVAL_TICKS,
+  type NeutralCreepType,
+} from '~~/shared/constants/balance'
 
 let neutralIdCounter = 0
+let gameInstanceSuffix = ''
 
 function nextNeutralId(): string {
-  return `neutral_${++neutralIdCounter}`
+  return `neutral_${gameInstanceSuffix}_${++neutralIdCounter}`
 }
 
-export function resetNeutralIdCounter(): void {
+export function resetNeutralIdCounter(gameId?: string): void {
   neutralIdCounter = 0
+  gameInstanceSuffix = gameId
+    ? gameId.replace(/-/g, '_').slice(0, 8)
+    : Math.random().toString(36).slice(2, 10)
 }
 
 /** Jungle camp zones */
-const JUNGLE_ZONES = ['jungle-rad-top', 'jungle-rad-bot', 'jungle-dire-top', 'jungle-dire-bot'] as const
+const JUNGLE_ZONES = [
+  'jungle-rad-top',
+  'jungle-rad-bot',
+  'jungle-dire-top',
+  'jungle-dire-bot',
+] as const
 
 /** Spawn neutral creeps in jungle camps */
 export function spawnNeutralCreeps(tick: number): NeutralCreepState[] {
@@ -24,12 +37,12 @@ export function spawnNeutralCreeps(tick: number): NeutralCreepState[] {
   for (const zone of JUNGLE_ZONES) {
     // Each camp gets 1-2 random neutrals
     const campSize = Math.random() < 0.5 ? 1 : 2
-    
+
     for (let i = 0; i < campSize; i++) {
       // Random creep type (weighted towards smaller ones)
       const roll = Math.random()
       let creepType: NeutralCreepType
-      
+
       if (roll < 0.4) {
         creepType = 'kobold'
       } else if (roll < 0.7) {
@@ -43,7 +56,7 @@ export function spawnNeutralCreeps(tick: number): NeutralCreepState[] {
       }
 
       const stats = NEUTRAL_CREEPS[creepType]!
-      
+
       neutrals.push({
         id: nextNeutralId(),
         zone,
@@ -70,7 +83,7 @@ export interface NeutralAction {
 export function runNeutralAI(state: GameState): NeutralAction[] {
   const actions: NeutralAction[] = []
 
-  for (const neutral of (state.neutrals ?? [])) {
+  for (const neutral of state.neutrals ?? []) {
     if (!neutral.alive) continue
 
     // Find enemies in the same zone
@@ -98,10 +111,7 @@ export function runNeutralAI(state: GameState): NeutralAction[] {
 /**
  * Apply neutral creep attacks to players
  */
-export function applyNeutralActions(
-  state: GameState,
-  actions: NeutralAction[],
-): GameState {
+export function applyNeutralActions(state: GameState, actions: NeutralAction[]): GameState {
   const players = { ...state.players }
 
   for (const action of actions) {
@@ -128,7 +138,11 @@ export function applyNeutralActions(
 export function handleNeutralDeaths(
   state: GameState,
   damageTracker: Map<string, number>, // neutralId -> damage
-): { state: GameState; events: GameState['events']; rewards: Array<{ playerId: string; gold: number; xp: number }> } {
+): {
+  state: GameState
+  events: GameState['events']
+  rewards: Array<{ playerId: string; gold: number; xp: number }>
+} {
   const events = [...state.events]
   const rewards: Array<{ playerId: string; gold: number; xp: number }> = []
 

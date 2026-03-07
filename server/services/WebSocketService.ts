@@ -20,13 +20,35 @@ export class WebSocketService extends Context.Tag('WebSocketService')<
   WebSocketServiceApi
 >() {}
 
-// In-memory connection state
 const gameConnections = new Map<string, Map<string, WebSocket>>()
 const playerToGame = new Map<string, string>()
+
+function removeConnectionFromMaps(playerId: string): void {
+  const gameId = playerToGame.get(playerId)
+  if (gameId) {
+    const gameMap = gameConnections.get(gameId)
+    if (gameMap) {
+      gameMap.delete(playerId)
+      if (gameMap.size === 0) {
+        gameConnections.delete(gameId)
+      }
+    }
+    playerToGame.delete(playerId)
+  }
+}
 
 export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
   addConnection: (gameId, playerId, ws) =>
     Effect.sync(() => {
+      if (ws.readyState !== 1) {
+        wsLog.warn('Rejected non-OPEN WebSocket connection', {
+          playerId,
+          gameId,
+          readyState: ws.readyState,
+        })
+        return
+      }
+
       let gameMap = gameConnections.get(gameId)
       if (!gameMap) {
         gameMap = new Map()
@@ -43,17 +65,7 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
 
   removeConnection: (playerId) =>
     Effect.sync(() => {
-      const gameId = playerToGame.get(playerId)
-      if (gameId) {
-        const gameMap = gameConnections.get(gameId)
-        if (gameMap) {
-          gameMap.delete(playerId)
-          if (gameMap.size === 0) {
-            gameConnections.delete(gameId)
-          }
-        }
-        playerToGame.delete(playerId)
-      }
+      removeConnectionFromMaps(playerId)
     }).pipe(
       Effect.tap(() => Effect.logDebug('WS removed').pipe(Effect.annotateLogs({ playerId }))),
     ),
@@ -69,7 +81,8 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
       try {
         ws.send(JSON.stringify(message))
       } catch (err) {
-        wsLog.warn('send failed', { playerId, error: err })
+        wsLog.warn('send failed - removing connection', { playerId, error: err })
+        removeConnectionFromMaps(playerId)
       }
     }),
 
@@ -78,12 +91,19 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
       const gameMap = gameConnections.get(gameId)
       if (!gameMap) return
       const data = JSON.stringify(message)
+      const deadConnections: string[] = []
+
       for (const [playerId, ws] of gameMap.entries()) {
         try {
           ws.send(data)
         } catch (err) {
           wsLog.warn('broadcast send failed', { playerId, error: err })
+          deadConnections.push(playerId)
         }
+      }
+
+      for (const playerId of deadConnections) {
+        removeConnectionFromMaps(playerId)
       }
     }),
 
@@ -91,6 +111,8 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
     Effect.sync(() => {
       const gameMap = gameConnections.get(gameId)
       if (!gameMap) return
+      const deadConnections: string[] = []
+
       for (const [playerId, ws] of gameMap.entries()) {
         const msg = filterFn(playerId)
         if (!msg) continue
@@ -98,7 +120,12 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
           ws.send(JSON.stringify(msg))
         } catch (err) {
           wsLog.warn('filtered send failed', { playerId, error: err })
+          deadConnections.push(playerId)
         }
+      }
+
+      for (const playerId of deadConnections) {
+        removeConnectionFromMaps(playerId)
       }
     }),
 

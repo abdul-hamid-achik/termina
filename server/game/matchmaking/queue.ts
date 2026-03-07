@@ -9,11 +9,12 @@ import { matchLog } from '../../utils/log'
 
 const QUEUE_KEY = 'matchmaking:queue'
 const QUEUE_TIMES_KEY = 'matchmaking:queue_times'
-const MATCH_SIZE = 10 // 5v5
+const MATCH_SIZE = 10
 const MATCHMAKING_INTERVAL_MS = 5000
-const BOT_FILL_WAIT_MS = 10_000 // Fill with bots after 10s wait
+const BOT_FILL_WAIT_MS = 10_000
+const MATCHMAKING_LOCK_KEY = 'matchmaking:lock'
+const MATCHMAKING_LOCK_TTL_SECONDS = 5
 
-// MMR range expansion over time
 const MMR_RANGES: { afterSeconds: number; range: number }[] = [
   { afterSeconds: 0, range: 50 },
   { afterSeconds: 30, range: 100 },
@@ -39,11 +40,39 @@ function getMmrRange(waitTimeSeconds: number): number {
   return range
 }
 
-export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Effect<void> {
+export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Effect<void, Error> {
   const data = JSON.stringify(entry)
+  const queueKey = `${QUEUE_KEY}:${entry.mode}`
+  const queueTimeKey = `${QUEUE_TIMES_KEY}:${entry.playerId}:${entry.mode}`
+
+  const luaScript = `
+    local timeKey = KEYS[1]
+    local queueKey = KEYS[2]
+    local playerId = ARGV[1]
+    local score = tonumber(ARGV[2])
+    local member = ARGV[3]
+    local joinedAt = ARGV[4]
+    
+    if redis.call('EXISTS', timeKey) == 1 then
+      return 'DUPLICATE'
+    end
+    
+    redis.call('SET', timeKey, joinedAt)
+    redis.call('ZADD', queueKey, score, member)
+    return 'OK'
+  `
+
   return Effect.gen(function* () {
-    yield* redis.zadd(QUEUE_KEY, entry.mmr, data)
-    yield* redis.set(`${QUEUE_TIMES_KEY}:${entry.playerId}`, String(entry.joinedAt))
+    const result = yield* redis.eval(
+      luaScript,
+      [queueTimeKey, queueKey],
+      [entry.playerId, entry.mmr, data, String(entry.joinedAt)],
+    )
+
+    if (result === 'DUPLICATE') {
+      return yield* Effect.fail(new Error('already in queue'))
+    }
+
     yield* Effect.logInfo('Player joined queue').pipe(
       Effect.annotateLogs({ playerId: entry.playerId, mmr: entry.mmr, mode: entry.mode }),
     )
@@ -54,18 +83,19 @@ export function leaveQueue(
   redis: RedisServiceApi,
   playerId: string,
   mmr: number,
+  mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5',
 ): Effect.Effect<void> {
+  const queueKey = `${QUEUE_KEY}:${mode}`
   return Effect.gen(function* () {
-    // We need to find and remove the entry; search around the player's MMR
-    const entries = yield* redis.zrangebyscore(QUEUE_KEY, mmr - 1000, mmr + 1000)
+    const entries = yield* redis.zrangebyscore(queueKey, mmr - 1000, mmr + 1000)
     for (const raw of entries) {
       const entry: QueueEntry = JSON.parse(raw)
       if (entry.playerId === playerId) {
-        yield* redis.zrem(QUEUE_KEY, raw)
+        yield* redis.zrem(queueKey, raw)
         break
       }
     }
-    yield* redis.del(`${QUEUE_TIMES_KEY}:${playerId}`)
+    yield* redis.del(`${QUEUE_TIMES_KEY}:${playerId}:${mode}`)
     yield* Effect.logInfo('Player left queue').pipe(Effect.annotateLogs({ playerId }))
   })
 }
@@ -75,114 +105,132 @@ async function tryFormMatch(
   ws: WebSocketServiceApi,
   db: DatabaseServiceApi,
 ): Promise<void> {
+  const lockValue = `${Date.now()}_${Math.random()}`
+
   const program = Effect.gen(function* () {
-    const queueSize = yield* redis.zcard(QUEUE_KEY)
-
-    // Get all queued players
-    const allEntries = yield* redis.zrangebyscore(QUEUE_KEY, 0, 99999)
-    const players: QueueEntry[] = allEntries.map((raw) => JSON.parse(raw))
-
-    const now = Date.now()
-
-    // Build roster info for all queued players
-    const rosterPlayers = players
-      .filter((p) => !isBot(p.playerId))
-      .map((p) => {
-        const base = Math.round(p.mmr / 100) * 100
-        return { username: p.username, mmrBracket: `${base - 100}-${base + 100}` }
-      })
-
-    // Push queue status + roster to all real (non-bot) players via WS
-    for (const p of players) {
-      if (!isBot(p.playerId)) {
-        sendToPeer(p.playerId, {
-          type: 'queue_update',
-          playersInQueue: players.length,
-          estimatedWaitSeconds: Math.max(0, Math.round((BOT_FILL_WAIT_MS - (now - p.joinedAt)) / 1000)),
-        })
-        sendToPeer(p.playerId, {
-          type: 'queue_roster',
-          players: rosterPlayers,
-          total: MATCH_SIZE,
-        })
-      }
+    const acquired = yield* redis.setnx(
+      MATCHMAKING_LOCK_KEY,
+      lockValue,
+      MATCHMAKING_LOCK_TTL_SECONDS,
+    )
+    if (acquired !== 1) {
+      matchLog.debug('Could not acquire matchmaking lock, skipping')
+      return
     }
 
-    // Bot fill: if any player has waited > BOT_FILL_WAIT_MS and we have at least 1 player
-    if (players.length > 0 && players.length < MATCH_SIZE) {
-      const longestWait = Math.max(...players.map((p) => now - p.joinedAt))
-      if (longestWait >= BOT_FILL_WAIT_MS) {
-        const botsNeeded = MATCH_SIZE - players.length
-        matchLog.info('Filling with bots', { realPlayers: players.length, botsNeeded })
-        // Notify players that bots are filling
+    try {
+      const modes: Array<'ranked_5v5' | 'quick_3v3' | '1v1'> = ['ranked_5v5', 'quick_3v3', '1v1']
+
+      for (const mode of modes) {
+        const queueKey = `${QUEUE_KEY}:${mode}`
+        const queueSize = yield* redis.zcard(queueKey)
+
+        if (queueSize === 0) continue
+
+        const allEntries = yield* redis.zrangebyscore(queueKey, 0, 99999)
+        const players: QueueEntry[] = allEntries.map((raw) => JSON.parse(raw))
+
+        const now = Date.now()
+
+        const rosterPlayers = players
+          .filter((p) => !isBot(p.playerId))
+          .map((p) => {
+            const base = Math.round(p.mmr / 100) * 100
+            return { username: p.username, mmrBracket: `${base - 100}-${base + 100}` }
+          })
+
         for (const p of players) {
           if (!isBot(p.playerId)) {
             sendToPeer(p.playerId, {
-              type: 'queue_filling',
-              botsCount: botsNeeded,
+              type: 'queue_update',
+              playersInQueue: players.length,
+              estimatedWaitSeconds: Math.max(
+                0,
+                Math.round((BOT_FILL_WAIT_MS - (now - p.joinedAt)) / 1000),
+              ),
+            })
+            sendToPeer(p.playerId, {
+              type: 'queue_roster',
+              players: rosterPlayers,
+              total: MATCH_SIZE,
             })
           }
         }
 
-        const avgMmr = Math.round(players.reduce((sum, p) => sum + p.mmr, 0) / players.length)
-        const botEntries = createBotPlayers(
-          botsNeeded,
-          players.map((p) => p.playerId),
-          avgMmr,
-        )
-        const allPlayers = [...players, ...botEntries]
+        if (players.length > 0 && players.length < MATCH_SIZE) {
+          const longestWait = Math.max(...players.map((p) => now - p.joinedAt))
+          if (longestWait >= BOT_FILL_WAIT_MS) {
+            const botsNeeded = MATCH_SIZE - players.length
+            matchLog.info('Filling with bots', { realPlayers: players.length, botsNeeded })
+            for (const p of players) {
+              if (!isBot(p.playerId)) {
+                sendToPeer(p.playerId, {
+                  type: 'queue_filling',
+                  botsCount: botsNeeded,
+                })
+              }
+            }
 
-        // Remove real players from queue
-        for (const raw of allEntries) {
-          yield* redis.zrem(QUEUE_KEY, raw)
+            const avgMmr = Math.round(players.reduce((sum, p) => sum + p.mmr, 0) / players.length)
+            const botEntries = createBotPlayers(
+              botsNeeded,
+              players.map((p) => p.playerId),
+              avgMmr,
+            )
+            const allPlayers = [...players, ...botEntries]
+
+            for (const raw of allEntries) {
+              yield* redis.zrem(queueKey, raw)
+            }
+            for (const p of players) {
+              yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}:${mode}`)
+            }
+
+            createLobby(allPlayers, ws, redis, db)
+            matchLog.info('Match formed with bots', {
+              realPlayers: players.length,
+              bots: botsNeeded,
+            })
+            return
+          }
         }
-        for (const p of players) {
-          yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}`)
-        }
 
-        createLobby(allPlayers, ws, redis, db)
-        matchLog.info('Match formed with bots', { realPlayers: players.length, bots: botsNeeded })
-        return
-      }
-    }
+        if (queueSize < MATCH_SIZE) continue
+        if (players.length < MATCH_SIZE) continue
 
-    if (queueSize < MATCH_SIZE) return
-    if (players.length < MATCH_SIZE) return
+        players.sort((a, b) => a.mmr - b.mmr)
 
-    // Sort by MMR
-    players.sort((a, b) => a.mmr - b.mmr)
+        for (let i = 0; i <= players.length - MATCH_SIZE; i++) {
+          const group = players.slice(i, i + MATCH_SIZE)
+          const minMmr = group[0]!.mmr
+          const maxMmr = group[group.length - 1]!.mmr
 
-    // Try to find a group of MATCH_SIZE players within acceptable MMR range
-    for (let i = 0; i <= players.length - MATCH_SIZE; i++) {
-      const group = players.slice(i, i + MATCH_SIZE)
-      const minMmr = group[0]!.mmr
-      const maxMmr = group[group.length - 1]!.mmr
-
-      // Check if all players in this group have waited long enough for this range
-      const allWithinRange = group.every((p) => {
-        const waitTime = (now - p.joinedAt) / 1000
-        const allowedRange = getMmrRange(waitTime)
-        return maxMmr - minMmr <= allowedRange * 2
-      })
-
-      if (allWithinRange) {
-        // Remove matched players from queue
-        for (const p of group) {
-          const raw = allEntries.find(r => {
-            const entry: QueueEntry = JSON.parse(r)
-            return entry.playerId === p.playerId
+          const allWithinRange = group.every((p) => {
+            const waitTime = (now - p.joinedAt) / 1000
+            const allowedRange = getMmrRange(waitTime)
+            return maxMmr - minMmr <= allowedRange * 2
           })
-          if (raw) yield* redis.zrem(QUEUE_KEY, raw)
-        }
-        for (const p of group) {
-          yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}`)
-        }
 
-        // Create lobby
-        createLobby(group, ws, redis, db)
-        matchLog.info('Match formed', { queueSize: players.length, matchSize: MATCH_SIZE })
-        return
+          if (allWithinRange) {
+            for (const p of group) {
+              const raw = allEntries.find((r) => {
+                const entry: QueueEntry = JSON.parse(r)
+                return entry.playerId === p.playerId
+              })
+              if (raw) yield* redis.zrem(queueKey, raw)
+            }
+            for (const p of group) {
+              yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}:${mode}`)
+            }
+
+            createLobby(group, ws, redis, db)
+            matchLog.info('Match formed', { queueSize: players.length, matchSize: MATCH_SIZE })
+            return
+          }
+        }
       }
+    } finally {
+      yield* redis.getdel(MATCHMAKING_LOCK_KEY)
     }
   })
 
@@ -201,10 +249,25 @@ export function startMatchmakingLoop(
   }, MATCHMAKING_INTERVAL_MS)
 }
 
-export function getQueueSize(redis: RedisServiceApi): Effect.Effect<number> {
-  return redis.zcard(QUEUE_KEY)
+export function getQueueSize(
+  redis: RedisServiceApi,
+  mode?: 'ranked_5v5' | 'quick_3v3' | '1v1',
+): Effect.Effect<number> {
+  const queueKey = mode ? `${QUEUE_KEY}:${mode}` : `${QUEUE_KEY}:ranked_5v5`
+  return redis.zcard(queueKey)
 }
 
-export function isPlayerInQueue(redis: RedisServiceApi, playerId: string): Effect.Effect<boolean> {
-  return Effect.map(redis.get(`${QUEUE_TIMES_KEY}:${playerId}`), (val) => val !== null)
+export function isPlayerInQueue(
+  redis: RedisServiceApi,
+  playerId: string,
+  mode?: 'ranked_5v5' | 'quick_3v3' | '1v1',
+): Effect.Effect<boolean> {
+  const modes = mode ? [mode] : (['ranked_5v5', 'quick_3v3', '1v1'] as const)
+  return Effect.gen(function* () {
+    for (const m of modes) {
+      const val = yield* redis.get(`${QUEUE_TIMES_KEY}:${playerId}:${m}`)
+      if (val !== null) return true
+    }
+    return false
+  })
 }

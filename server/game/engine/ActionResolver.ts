@@ -14,6 +14,8 @@ import { pickupRune } from './RuneAI'
 import { ITEMS } from '../items/registry'
 import { CREEP_XP, NEUTRAL_CREEPS, type NeutralCreepType } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
+import { runAntiCheatChecks } from '../../utils/AntiCheat'
+import { wsLog } from '../../utils/log'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -33,7 +35,14 @@ interface ResolvedChanges {
 
 /** Sum up all stat bonuses from a player's equipped items. */
 export function getItemStatBonuses(items: (string | null)[]): ItemStats {
-  const totals: Required<ItemStats> = { hp: 0, mp: 0, attack: 0, defense: 0, magicResist: 0, moveSpeed: 0 }
+  const totals: Required<ItemStats> = {
+    hp: 0,
+    mp: 0,
+    attack: 0,
+    defense: 0,
+    magicResist: 0,
+    moveSpeed: 0,
+  }
   for (const itemId of items) {
     if (!itemId) continue
     const item = ITEMS[itemId]
@@ -51,7 +60,9 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
 /** Get effective attack damage for a player (base hero stat + item bonuses). */
 function getEffectiveAttack(player: PlayerState): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
-  const baseAttack = hero ? hero.baseStats.attack + (hero.growthPerLevel.attack ?? 0) * (player.level - 1) : 50
+  const baseAttack = hero
+    ? hero.baseStats.attack + (hero.growthPerLevel.attack ?? 0) * (player.level - 1)
+    : 50
   const itemBonus = getItemStatBonuses(player.items).attack ?? 0
   return baseAttack + itemBonus
 }
@@ -143,6 +154,24 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'aegis':
     case 'rune':
       return null
+    case 'buyback':
+      // Validation happens in GameLoop where we have access to buyback system
+      return null
+    case 'surrender':
+      // Always valid, handled in GameLoop
+      return null
+    case 'missing':
+      // Ping system, always valid
+      return null
+    case 'deny':
+      // Can only deny allied creeps below 50% HP
+      if (command.target.kind !== 'creep') {
+        return 'Can only deny creeps'
+      }
+      return null
+    case 'select_talent':
+      // Validation happens in GameLoop where we have access to talent trees
+      return null
     default:
       return null
   }
@@ -174,8 +203,36 @@ export function resolveActions(
   heroAttackers: Map<string, string>
 }> {
   return Effect.sync(() => {
-    // Filter to valid actions only
-    const validActions = actions.filter((a) => validateAction(state, a) === null)
+    // Run anti-cheat validation on all actions
+    const cheatDetections: Array<{ playerId: string; command: Command; violations: any[] }> = []
+    const validActions = actions.filter((a) => {
+      const validationError = validateAction(state, a)
+      if (validationError) {
+        wsLog.debug('Action validation failed', {
+          playerId: a.playerId,
+          command: a.command.type,
+          error: validationError,
+        })
+        return false
+      }
+
+      // Anti-cheat checks
+      const violations = runAntiCheatChecks(state, a.playerId, a.command)
+      if (violations.length > 0) {
+        wsLog.warn('Anti-cheat violation detected', {
+          playerId: a.playerId,
+          command: a.command.type,
+          violations: violations.map((v) => ({ type: v.violationType, severity: v.severity })),
+        })
+        cheatDetections.push({ playerId: a.playerId, command: a.command, violations })
+        // Only reject critical violations
+        if (violations.some((v) => v.severity === 'critical')) {
+          return false
+        }
+      }
+
+      return true
+    })
 
     let players = { ...state.players }
     const events: GameEngineEvent[] = []
@@ -220,6 +277,7 @@ export function resolveActions(
 
     // Phase 3: Attacks + targeted abilities — simultaneous
     const attacks = validActions.filter((a) => a.command.type === 'attack')
+    const denies = validActions.filter((a) => a.command.type === 'deny')
     const targetedCasts = validActions.filter(
       (a) =>
         a.command.type === 'cast' &&
@@ -228,6 +286,54 @@ export function resolveActions(
           a.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' },
         ),
     )
+
+    // Process denies — allied creeps below 50% HP
+    for (const action of denies) {
+      const cmd = action.command as { type: 'deny'; target: { kind: 'creep'; index: number } }
+      const denier = players[action.playerId]
+      if (!denier || !denier.alive) continue
+
+      const creepIdx = cmd.target.index
+      const creep = creeps[creepIdx]
+      if (!creep || creep.hp <= 0) continue
+      if (creep.zone !== denier.zone) continue
+      
+      // Check if creep is allied and below 50% HP
+      if (creep.team !== denier.team) continue
+      const creepMaxHp = creep.type === 'siege' ? SIEGE_CREEP_HP : creep.type === 'ranged' ? RANGED_CREEP_HP : MELEE_CREEP_HP
+      if (creep.hp > creepMaxHp * 0.5) continue // Can only deny below 50% HP
+
+      // Deny successful — creep dies, denier gets 50% gold/XP
+      creeps[creepIdx] = { ...creep, hp: 0 }
+      
+      // Award deny gold (50% of last hit value)
+      const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * 0.5)
+      players = {
+        ...players,
+        [action.playerId]: {
+          ...denier,
+          gold: denier.gold + denyGold,
+        },
+      }
+      
+      // Award 50% XP
+      players = {
+        ...players,
+        [action.playerId]: {
+          ...denier,
+          xp: denier.xp + Math.floor(CREEP_XP * 0.5),
+        },
+      }
+
+      events.push({
+        _tag: 'creep_deny',
+        tick: state.tick,
+        playerId: action.playerId,
+        creepId: creep.id,
+        creepType: creep.type,
+        goldAwarded: denyGold,
+      })
+    }
 
     for (const action of attacks) {
       const cmd = action.command as { type: 'attack'; target: TargetRef }
@@ -258,11 +364,11 @@ export function resolveActions(
           critMultiplier = 2
         }
         // Crystalys: 20% chance, 1.75x damage (cheaper, weaker)
-        else if (attacker.items.includes('crystalys') && Math.random() < 0.20) {
+        else if (attacker.items.includes('crystalys') && Math.random() < 0.2) {
           critMultiplier = 1.75
         }
         // Daedalus: 30% chance, 2.4x damage (upgrades Crystalys)
-        else if (attacker.items.includes('daedalus') && Math.random() < 0.30) {
+        else if (attacker.items.includes('daedalus') && Math.random() < 0.3) {
           critMultiplier = 2.4
         }
 
@@ -283,7 +389,8 @@ export function resolveActions(
         if (attacker.items.includes('maelstrom') && Math.random() < 0.25) {
           // Find another enemy in zone to chain to
           const chainTargets = Object.values(players).filter(
-            (p) => p.zone === attacker.zone && p.team !== attacker.team && p.alive && p.id !== target.id,
+            (p) =>
+              p.zone === attacker.zone && p.team !== attacker.team && p.alive && p.id !== target.id,
           )
           if (chainTargets.length > 0) {
             const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
@@ -316,14 +423,23 @@ export function resolveActions(
         if (attacker.items.includes('desolator')) {
           defense = Math.max(0, defense - 5) // -5 defense for this attack
           // Apply debuff for future attacks
-          const corruptionDebuff = { id: 'corruption', stacks: 5, ticksRemaining: 3, source: attacker.id }
+          const corruptionDebuff = {
+            id: 'corruption',
+            stacks: 5,
+            ticksRemaining: 3,
+            source: attacker.id,
+          }
           target = { ...target, buffs: [...target.buffs, corruptionDebuff] }
         }
 
         // ── Item passive: Assault Cuirass enemy armor reduction ──
         // Check if any enemy in zone has assault_cuirass (aura affects us)
         for (const [, zonePlayer] of Object.entries(players)) {
-          if (zonePlayer.zone === target.zone && zonePlayer.team !== target.team && zonePlayer.items.includes('assault_cuirass')) {
+          if (
+            zonePlayer.zone === target.zone &&
+            zonePlayer.team !== target.team &&
+            zonePlayer.items.includes('assault_cuirass')
+          ) {
             defense = Math.max(0, defense - 5)
             break
           }
@@ -331,7 +447,7 @@ export function resolveActions(
 
         // ── Item passive: Vanguard damage block (on target) ──
         let blockedDamage = 0
-        if (target.items.includes('vanguard') && Math.random() < 0.60) {
+        if (target.items.includes('vanguard') && Math.random() < 0.6) {
           blockedDamage = 50
         }
 
@@ -366,7 +482,10 @@ export function resolveActions(
         if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
           updatedTarget = {
             ...updatedTarget,
-            buffs: [...updatedTarget.buffs, { id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id }],
+            buffs: [
+              ...updatedTarget.buffs,
+              { id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id },
+            ],
           }
         }
 
@@ -551,9 +670,7 @@ export function resolveActions(
 
       // ── Item passive: Garbage Collector (5% HP regen when out of combat) ──
       if (player.items.includes('garbage_collector')) {
-        const tookDamage = events.some(
-          (e) => e._tag === 'damage' && e.targetId === pid,
-        )
+        const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
         const dealtDamage = heroAttackers.has(pid)
         const inCombat = player.buffs.some((b) => b.id === 'inCombat')
         if (!tookDamage && !dealtDamage && !inCombat) {
@@ -571,17 +688,20 @@ export function resolveActions(
       }
 
       // ── Item passive: Linken's Sphere (spellblock refresh) ──
+      let buffs = player.buffs
       if (player.items.includes('linkens_sphere')) {
         const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
         if (!linkenBuff) {
-          // Refresh spellblock if not present
-          player.buffs.push({ id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' })
+          buffs = [
+            ...player.buffs,
+            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' },
+          ]
         }
       }
 
       players = {
         ...players,
-        [pid]: { ...player, hp, mp, cooldowns },
+        [pid]: { ...player, hp, mp, cooldowns, buffs },
       }
     }
 
@@ -617,7 +737,15 @@ export function resolveActions(
     // Handle aegis pickup
     const aegisPickups = validActions.filter((a) => a.command.type === 'aegis')
     for (const action of aegisPickups) {
-      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes ?? [], roshan: state.roshan, aegis: state.aegis }
+      const tempState: GameState = {
+        ...state,
+        players,
+        creeps,
+        towers,
+        runes: state.runes ?? [],
+        roshan: state.roshan,
+        aegis: state.aegis,
+      }
       const result = pickupAegis(tempState, action.playerId)
       players = { ...result.players }
     }
@@ -627,7 +755,15 @@ export function resolveActions(
     for (const action of runePickups) {
       const player = players[action.playerId]
       if (!player) continue
-      const tempState: GameState = { ...state, players, creeps, towers, runes: state.runes ?? [], roshan: state.roshan, aegis: state.aegis }
+      const tempState: GameState = {
+        ...state,
+        players,
+        creeps,
+        towers,
+        runes: state.runes ?? [],
+        roshan: state.roshan,
+        aegis: state.aegis,
+      }
       const result = pickupRune(tempState, action.playerId, player.zone)
       players = { ...result.players }
     }
@@ -642,14 +778,20 @@ export function resolveActions(
       const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0)
       const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0)
       if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
+        // Preserve HP/MP percentage when max changes to avoid losing HP on item sell
+        const hpPercent = player.maxHp > 0 ? player.hp / player.maxHp : 1
+        const mpPercent = player.maxMp > 0 ? player.mp / player.maxMp : 1
+        const newHp = Math.floor(newMaxHp * hpPercent)
+        const newMp = Math.floor(newMaxMp * mpPercent)
+
         players = {
           ...players,
           [pid]: {
             ...player,
             maxHp: newMaxHp,
             maxMp: newMaxMp,
-            hp: Math.min(player.hp, newMaxHp),
-            mp: Math.min(player.mp, newMaxMp),
+            hp: newHp,
+            mp: newMp,
           },
         }
       }
@@ -677,7 +819,11 @@ export function resolveActions(
       const killer = players[kill.playerId]
       if (killer) {
         // Award gold and XP
-        const updatedKiller: PlayerState = { ...killer, gold: killer.gold + stats.gold, xp: killer.xp + stats.xp }
+        const updatedKiller: PlayerState = {
+          ...killer,
+          gold: killer.gold + stats.gold,
+          xp: killer.xp + stats.xp,
+        }
         players = { ...players, [kill.playerId]: updatedKiller }
 
         events.push({
@@ -802,11 +948,23 @@ function resolveInstantAbility(
     },
   }
 
+  const cooldownTicks = ability.cooldownTicks
   events.push({
     _tag: 'ability_used',
     tick: state.tick,
     playerId: action.playerId,
     abilityId: ability.id,
+    cooldown: cooldownTicks,
+  })
+  
+  // Also emit detailed cooldown event for UI tracking
+  events.push({
+    _tag: 'cooldown_used',
+    tick: state.tick,
+    playerId: action.playerId,
+    abilityId: cmd.ability,
+    cooldownTicks,
+    readyAtTick: state.tick + cooldownTicks,
   })
 
   // Apply effects
@@ -903,11 +1061,23 @@ function resolveTargetedAbility(
     },
   }
 
+  const cooldownTicks = ability.cooldownTicks
   events.push({
     _tag: 'ability_used',
     tick: state.tick,
     playerId: action.playerId,
     abilityId: ability.id,
+    cooldown: cooldownTicks,
+  })
+  
+  // Also emit detailed cooldown event for UI tracking
+  events.push({
+    _tag: 'cooldown_used',
+    tick: state.tick,
+    playerId: action.playerId,
+    abilityId: cmd.ability,
+    cooldownTicks,
+    readyAtTick: state.tick + cooldownTicks,
   })
 
   // Apply damage effects

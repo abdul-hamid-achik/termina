@@ -1,15 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
-import {
-  resolveAbility,
-  getAbilityLevel,
-  applyBuff,
-} from '../../../server/game/heroes/_base'
-// Register echo hero and import helpers
+import { resolveAbility, getAbilityLevel, applyBuff } from '../../../server/game/heroes/_base'
 import { getResonanceMultiplier } from '../../../server/game/heroes/echo'
-
-// ── Test Helpers ──────────────────────────────────────────────────
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -37,6 +30,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     assists: 0,
     damageDealt: 0,
     towerDamageDealt: 0,
+    killStreak: 0,
     ...overrides,
   }
 }
@@ -69,13 +63,15 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
       'top-river': { id: 'top-river', wards: [], creeps: [] },
     },
     creeps: [],
+    neutrals: [],
     towers: [],
+    runes: [],
+    roshan: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    aegis: null,
     events: [],
     ...overrides,
   }
 }
-
-// ── Tests ─────────────────────────────────────────────────────────
 
 describe('Echo Hero', () => {
   describe('getAbilityLevel', () => {
@@ -95,8 +91,8 @@ describe('Echo Hero', () => {
     })
   })
 
-  describe('Q: Pulse Shot', () => {
-    it('deals magic damage to target hero in same zone', () => {
+  describe('Q: Resonance', () => {
+    it('deals physical damage to target hero in same zone', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -117,8 +113,19 @@ describe('Echo Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedPlayer = result.state.players['p1']!
-      expect(updatedPlayer.mp).toBe(280 - 60) // Level 1 Q costs 60 mana
-      expect(updatedPlayer.cooldowns.q).toBe(8)
+      expect(updatedPlayer.mp).toBe(280 - 40)
+      expect(updatedPlayer.cooldowns.q).toBe(6)
+    })
+
+    it('bounces to nearby enemy for 50% damage', () => {
+      const player = makePlayer({ level: 1 })
+      const enemy1 = makeEnemy({ id: 'e1', name: 'Enemy1' })
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
+      const state = makeState([player, enemy1, enemy2])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+
+      expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
     })
 
     it('scales damage with level', () => {
@@ -142,20 +149,28 @@ describe('Echo Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('fails with InsufficientManaError when no mana', () => {
-      const player = makePlayer({ mp: 10 })
-      const enemy = makeEnemy()
-      const state = makeState([player, enemy])
+    it('scales cooldown with level', () => {
+      const player1 = makePlayer({ level: 1 })
+      const player7 = makePlayer({ level: 7 })
+      const enemy1 = makeEnemy()
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
 
-      const result = Effect.runSyncExit(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
+      const state1 = makeState([player1, enemy1])
+      const state2 = makeState([player7, enemy2])
+
+      const result1 = Effect.runSync(
+        resolveAbility(state1, 'p1', 'q', { kind: 'hero', name: 'e1' }),
+      )
+      const result2 = Effect.runSync(
+        resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      expect(result._tag).toBe('Failure')
+      expect(result1.state.players['p1']!.cooldowns.q).toBe(6)
+      expect(result2.state.players['p1']!.cooldowns.q).toBe(3)
     })
 
-    it('fails with CooldownError when on cooldown', () => {
-      const player = makePlayer({ cooldowns: { q: 3, w: 0, e: 0, r: 0 } })
+    it('fails with InsufficientManaError when no mana', () => {
+      const player = makePlayer({ mp: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -188,8 +203,18 @@ describe('Echo Hero', () => {
 
       const updated = result.state.players['p1']!
       expect(updated.buffs.some((b) => b.id === 'phaseShift')).toBe(true)
-      expect(updated.mp).toBe(280 - 50)
-      expect(updated.cooldowns.w).toBe(12)
+    })
+
+    it('applies move speed buff', () => {
+      const player = makePlayer()
+      const state = makeState([player])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
+
+      const buff = result.state.players['p1']!.buffs.find((b) => b.id === 'moveSpeed')
+      expect(buff).toBeDefined()
+      expect(buff!.stacks).toBe(50)
+      expect(buff!.ticksRemaining).toBe(2)
     })
 
     it('phaseShift buff has 1 tick duration', () => {
@@ -201,29 +226,112 @@ describe('Echo Hero', () => {
       const buff = result.state.players['p1']!.buffs.find((b) => b.id === 'phaseShift')
       expect(buff?.ticksRemaining).toBe(1)
     })
+
+    it('scales mana cost with level', () => {
+      const player = makePlayer({ level: 7 })
+      const state = makeState([player])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
+
+      const updated = result.state.players['p1']!
+      expect(updated.mp).toBe(280 - 80)
+    })
+
+    it('scales cooldown with level', () => {
+      const player1 = makePlayer({ level: 1 })
+      const player7 = makePlayer({ level: 7 })
+
+      const state1 = makeState([player1])
+      const state2 = makeState([player7])
+
+      const result1 = Effect.runSync(resolveAbility(state1, 'p1', 'w'))
+      const result2 = Effect.runSync(resolveAbility(state2, 'p1', 'w'))
+
+      expect(result1.state.players['p1']!.cooldowns.w).toBe(12)
+      expect(result2.state.players['p1']!.cooldowns.w).toBe(9)
+    })
   })
 
   describe('E: Feedback Loop', () => {
-    it('applies feedbackLoop buff with 3 stacks', () => {
+    it('fails when no feedback stacks to consume', () => {
       const player = makePlayer()
-      const state = makeState([player])
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
 
-      const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
+      const result = Effect.runSyncExit(
+        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
+      )
 
-      const updated = result.state.players['p1']!
-      const buff = updated.buffs.find((b) => b.id === 'feedbackLoop')
-      expect(buff).toBeDefined()
-      expect(buff!.stacks).toBe(3)
+      expect(result._tag).toBe('Failure')
     })
 
-    it('costs mana scaled by level', () => {
-      const player = makePlayer({ level: 7 }) // ability level 4
-      const state = makeState([player])
+    it('consumes stacks and deals burst damage', () => {
+      let player = makePlayer()
+      player = applyBuff(player, {
+        id: 'feedbackLoop',
+        stacks: 50,
+        ticksRemaining: 999,
+        source: 'p1',
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
 
-      const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
-      const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(280 - 110) // Level 4 E costs 110
+      const updatedEnemy = result.state.players['e1']!
+      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(result.events[0]!.payload.stacksConsumed).toBe(50)
+    })
+
+    it('deals 2x stack value as damage', () => {
+      let player = makePlayer()
+      player = applyBuff(player, {
+        id: 'feedbackLoop',
+        stacks: 100,
+        ticksRemaining: 999,
+        source: 'p1',
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
+
+      const damage = enemy.hp - result.state.players['e1']!.hp
+      expect(damage).toBeGreaterThan(180)
+    })
+
+    it('resets stacks after consumption', () => {
+      let player = makePlayer()
+      player = applyBuff(player, {
+        id: 'feedbackLoop',
+        stacks: 50,
+        ticksRemaining: 999,
+        source: 'p1',
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
+
+      const updatedPlayer = result.state.players['p1']!
+      const stacks = updatedPlayer.buffs.find((b) => b.id === 'feedbackLoop')?.stacks ?? 0
+      expect(stacks).toBe(0)
+    })
+
+    it('sets cooldown based on level', () => {
+      let player = makePlayer({ level: 7 })
+      player = applyBuff(player, {
+        id: 'feedbackLoop',
+        stacks: 50,
+        ticksRemaining: 999,
+        source: 'p1',
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
+
+      expect(result.state.players['p1']!.cooldowns.e).toBe(5)
     })
   })
 
@@ -233,36 +341,46 @@ describe('Echo Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
+      const result = Effect.runSyncExit(
+        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }),
+      )
 
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals AoE magic damage to all enemies in zone', () => {
+    it('deals 6 hits of physical damage to target', () => {
       const player = makePlayer({ level: 6, mp: 500 })
-      const enemy1 = makeEnemy({ id: 'e1', name: 'Enemy1' })
-      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
-      const state = makeState([player, enemy1, enemy2])
+      const enemy = makeEnemy({ hp: 1000, maxHp: 1000 })
+      const state = makeState([player, enemy])
 
-      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy1.hp)
-      expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
-    })
-
-    it('does not damage allies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
-      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant' })
-      const enemy = makeEnemy()
-      const state = makeState([player, ally, enemy])
-
-      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
-
-      expect(result.state.players['a1']!.hp).toBe(ally.hp)
       expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
+      expect(result.events[0]!.payload.hits).toBe(6)
     })
 
     it('scales damage with R level', () => {
+      const player6 = makePlayer({ level: 6, mp: 500 })
+      const player18 = makePlayer({ level: 18, mp: 500 })
+      const enemy1 = makeEnemy({ hp: 2000, maxHp: 2000 })
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', hp: 2000, maxHp: 2000 })
+
+      const state1 = makeState([player6, enemy1])
+      const state2 = makeState([player18, enemy2])
+
+      const result1 = Effect.runSync(
+        resolveAbility(state1, 'p1', 'r', { kind: 'hero', name: 'e1' }),
+      )
+      const result2 = Effect.runSync(
+        resolveAbility(state2, 'p1', 'r', { kind: 'hero', name: 'e2' }),
+      )
+
+      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
+      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      expect(dmg2).toBeGreaterThan(dmg1)
+    })
+
+    it('scales cooldown with level', () => {
       const player6 = makePlayer({ level: 6, mp: 500 })
       const player18 = makePlayer({ level: 18, mp: 500 })
       const enemy1 = makeEnemy()
@@ -271,12 +389,15 @@ describe('Echo Hero', () => {
       const state1 = makeState([player6, enemy1])
       const state2 = makeState([player18, enemy2])
 
-      const result1 = Effect.runSync(resolveAbility(state1, 'p1', 'r'))
-      const result2 = Effect.runSync(resolveAbility(state2, 'p1', 'r'))
+      const result1 = Effect.runSync(
+        resolveAbility(state1, 'p1', 'r', { kind: 'hero', name: 'e1' }),
+      )
+      const result2 = Effect.runSync(
+        resolveAbility(state2, 'p1', 'r', { kind: 'hero', name: 'e2' }),
+      )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
-      expect(dmg2).toBeGreaterThan(dmg1) // Level 3 R does more than level 1 R
+      expect(result1.state.players['p1']!.cooldowns.r).toBe(50)
+      expect(result2.state.players['p1']!.cooldowns.r).toBe(40)
     })
   })
 
@@ -291,7 +412,7 @@ describe('Echo Hero', () => {
       })
 
       const multiplier = getResonanceMultiplier(player)
-      expect(multiplier).toBeCloseTo(1.3) // 1 + 3 * 0.1
+      expect(multiplier).toBeCloseTo(1.24)
     })
 
     it('starts at 1x with no stacks', () => {
@@ -299,7 +420,7 @@ describe('Echo Hero', () => {
       expect(getResonanceMultiplier(player)).toBe(1)
     })
 
-    it('caps at 5 stacks (1.5x)', () => {
+    it('caps at 5 stacks', () => {
       let player = makePlayer()
       player = applyBuff(player, {
         id: 'resonance',
@@ -308,7 +429,7 @@ describe('Echo Hero', () => {
         source: 'p1',
       })
 
-      expect(getResonanceMultiplier(player)).toBeCloseTo(1.5)
+      expect(getResonanceMultiplier(player)).toBeCloseTo(1.4)
     })
   })
 

@@ -77,6 +77,7 @@ export function useGameSocket() {
       if (currentGameId && currentPlayerId && currentGameId !== 'lobby') {
         if (isReconnect) {
           send({ type: 'reconnect', gameId: currentGameId, playerId: currentPlayerId })
+          send({ type: 'request_state' })
         } else {
           send({ type: 'join_game', gameId: currentGameId })
         }
@@ -98,7 +99,10 @@ export function useGameSocket() {
         latency.value = Date.now() - lastPingTime
       }
 
-      socketLog.trace(`Received: ${msg.type}`, { type: msg.type, ...('tick' in msg ? { tick: msg.tick } : {}) })
+      socketLog.trace(`Received: ${msg.type}`, {
+        type: msg.type,
+        ...('tick' in msg ? { tick: msg.tick } : {}),
+      })
 
       // Route to game store
       switch (msg.type) {
@@ -119,11 +123,21 @@ export function useGameSocket() {
           gameStore.setGameOver(msg.winner, msg.stats)
           break
         case 'game_starting':
-          // Fallback: ensure gameStore.gameId is set even if no external handler processes this
           if (!gameStore.gameId) {
             socketLog.info('game_starting received — setting gameId', { gameId: msg.gameId })
             gameStore.gameId = msg.gameId
           }
+          break
+        case 'full_state':
+          gameStore.updateFromTick({ type: 'tick_state', tick: msg.tick, state: msg.state })
+          break
+        case 'game_not_found':
+          socketLog.warn('Game not found', { gameId: msg.gameId })
+          gameStore.addAnnouncement('[ERROR] Game not found. Redirecting to lobby...')
+          disconnect()
+          setTimeout(() => {
+            window.location.href = '/lobby'
+          }, 2000)
           break
       }
 

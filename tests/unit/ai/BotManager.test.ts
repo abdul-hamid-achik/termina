@@ -77,9 +77,9 @@ describe('BotManager', () => {
 
     it('registers bots for a game', () => {
       const players = [
-        { playerId: 'bot_alpha', team: 'radiant' as const },
-        { playerId: 'bot_beta', team: 'dire' as const },
-        { playerId: 'human1', team: 'radiant' as const },
+        { playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' },
+        { playerId: 'bot_beta', team: 'dire' as const, heroId: 'sentry' },
+        { playerId: 'human1', team: 'radiant' as const, heroId: 'daemon' },
       ]
       registerBots('test-game', players)
 
@@ -99,22 +99,23 @@ describe('BotManager', () => {
       cleanupGame('test-game')
     })
 
-    it('assigns lanes to bots', () => {
+    it('assigns lanes to bots based on hero roles', () => {
       const players = [
-        { playerId: 'bot_alpha', team: 'radiant' as const },
-        { playerId: 'bot_beta', team: 'radiant' as const },
-        { playerId: 'bot_gamma', team: 'radiant' as const },
-        { playerId: 'bot_delta', team: 'radiant' as const },
-        { playerId: 'bot_epsilon', team: 'radiant' as const },
+        { playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' }, // carry -> bot
+        { playerId: 'bot_beta', team: 'radiant' as const, heroId: 'sentry' }, // support -> bot (after mage takes mid)
+        { playerId: 'bot_gamma', team: 'radiant' as const, heroId: 'daemon' }, // assassin -> top
+        { playerId: 'bot_delta', team: 'radiant' as const, heroId: 'kernel' }, // tank -> top
+        { playerId: 'bot_epsilon', team: 'radiant' as const, heroId: 'regex' }, // mage -> mid
       ]
       registerBots('test-game', players)
 
-      // Lane pattern: top, top, mid, bot, bot
-      expect(getBotLane('test-game', 'bot_alpha')).toBe('top')
-      expect(getBotLane('test-game', 'bot_beta')).toBe('top')
-      expect(getBotLane('test-game', 'bot_gamma')).toBe('mid')
-      expect(getBotLane('test-game', 'bot_delta')).toBe('bot')
-      expect(getBotLane('test-game', 'bot_epsilon')).toBe('bot')
+      // Priority order: carry, mage, assassin, tank, support
+      // So mage (regex) gets mid before support (sentry)
+      expect(getBotLane('test-game', 'bot_alpha')).toBe('bot') // carry
+      expect(getBotLane('test-game', 'bot_beta')).toBe('bot') // support -> bot (mid taken by mage)
+      expect(getBotLane('test-game', 'bot_gamma')).toBe('top') // assassin
+      expect(getBotLane('test-game', 'bot_delta')).toBe('top') // tank
+      expect(getBotLane('test-game', 'bot_epsilon')).toBe('mid') // mage
     })
 
     it('defaults to mid for unknown bot', () => {
@@ -129,9 +130,7 @@ describe('BotManager', () => {
 
   describe('cleanupGame', () => {
     it('removes bot tracking for a game', () => {
-      const players = [
-        { playerId: 'bot_alpha', team: 'radiant' as const },
-      ]
+      const players = [{ playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' }]
       registerBots('test-game', players)
       expect(getBotPlayerIds('test-game')).toHaveLength(1)
 
@@ -141,6 +140,27 @@ describe('BotManager', () => {
 
     it('does not crash when cleaning up unknown game', () => {
       expect(() => cleanupGame('nonexistent')).not.toThrow()
+    })
+  })
+
+  describe('Bot Name Pool Expansion', () => {
+    it('should generate unique names for >10 bots', () => {
+      const bots = createBotPlayers(15, [])
+      const ids = bots.map((b) => b.playerId)
+
+      expect(bots).toHaveLength(15)
+      expect(new Set(ids).size).toBe(15)
+    })
+
+    it('should generate unique names for >50 bots', () => {
+      const bots = createBotPlayers(60, [])
+      const ids = bots.map((b) => b.playerId)
+
+      expect(bots).toHaveLength(60)
+      expect(new Set(ids).size).toBe(60)
+      for (const id of ids) {
+        expect(id.startsWith('bot_')).toBe(true)
+      }
     })
   })
 })

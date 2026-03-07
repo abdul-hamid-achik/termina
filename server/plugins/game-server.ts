@@ -124,7 +124,10 @@ export default defineNitroPlugin(async (nitroApp) => {
         }
 
         const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-        gameLog.info('game_ready received', { lobbyId: gameData.lobbyId, playerCount: gameData.players.length })
+        gameLog.info('game_ready received', {
+          lobbyId: gameData.lobbyId,
+          playerCount: gameData.players.length,
+        })
 
         // Create a standalone state manager for this game
         const stateManager = createInMemoryStateManager()
@@ -148,7 +151,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Register bots for this game (lane assignment, tracking)
         registerBots(
           gameId,
-          gameData.players.map((p) => ({ playerId: p.playerId, team: p.team })),
+          gameData.players.map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
         )
 
         // Notify real players that the game is starting via PeerRegistry
@@ -330,7 +333,10 @@ export default defineNitroPlugin(async (nitroApp) => {
           },
         }
 
-        gameLog.info('Game created — starting loop', { gameId, playerCount: gameData.players.length })
+        gameLog.info('Game created — starting loop', {
+          gameId,
+          playerCount: gameData.players.length,
+        })
 
         // Brief delay to let clients navigate to /play and open game WS
         // before the first tick tries to send data
@@ -339,7 +345,6 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Start the game loop as a fiber within the managed runtime.
         // This gives the loop access to all layers (logger, etc.)
         startGameLoop(gameId, stateManager, callbacks, managedRuntime)
-
       } catch (err) {
         gameLog.error('Failed to process game_ready event', { error: String(err) })
       }

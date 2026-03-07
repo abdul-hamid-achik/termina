@@ -34,57 +34,59 @@ export const HEROES: Record<string, HeroDef> = {
     abilities: {
       q: {
         id: 'echo-q',
-        name: 'Pulse Shot',
+        name: 'Resonance',
         description:
-          'Fire a pulse of energy that damages the target and bounces to one nearby enemy for 50% damage.',
-        manaCost: 60,
-        cooldownTicks: 2,
-        targetType: 'unit',
+          'Fire a projectile dealing physical damage to target and bouncing to 1 nearby enemy for 50% damage.',
+        manaCost: 40,
+        cooldownTicks: 6,
+        targetType: 'hero',
         damageType: 'physical',
         effects: [
           { type: 'damage', value: 80, damageType: 'physical' },
-          { type: 'damage', value: 40, damageType: 'physical', description: 'Bounce damage' },
+          { type: 'damage', value: 40, damageType: 'physical', description: 'Bounce damage (50%)' },
         ],
       },
       w: {
         id: 'echo-w',
         name: 'Phase Shift',
-        description:
-          'Briefly shift out of phase, dodging all attacks for 1 tick and gaining bonus move speed.',
-        manaCost: 80,
-        cooldownTicks: 5,
+        description: 'Dodge 1 attack and gain 50% move speed for 2 ticks.',
+        manaCost: 50,
+        cooldownTicks: 12,
         targetType: 'self',
         effects: [
-          { type: 'buff', value: 1, duration: 1, description: 'Evasion' },
-          { type: 'buff', value: 1, duration: 2, description: 'Move speed bonus' },
+          { type: 'buff', value: 1, duration: 1, description: 'Dodge 1 attack' },
+          { type: 'buff', value: 50, duration: 2, description: 'Move speed %' },
         ],
       },
       e: {
         id: 'echo-e',
         name: 'Feedback Loop',
         description:
-          'Passively steals 5 attack damage from each hero hit, lasting 3 ticks. Active: consume all stacks for a burst of damage.',
-        manaCost: 50,
-        cooldownTicks: 4,
+          'Passive: Attacks store 10 HP as feedback stacks. Active: Consume stacks to deal 2x as burst damage.',
+        manaCost: 0,
+        cooldownTicks: 8,
         targetType: 'hero',
         damageType: 'physical',
         effects: [
-          { type: 'debuff', value: 5, duration: 3, description: 'Attack steal per stack' },
-          { type: 'damage', value: 30, damageType: 'physical', description: 'Per stack consumed' },
+          { type: 'buff', value: 10, description: 'HP stored per attack' },
+          {
+            type: 'damage',
+            value: 20,
+            damageType: 'physical',
+            description: 'Per stack (2x stored)',
+          },
         ],
       },
       r: {
         id: 'echo-r',
-        name: 'Infinite Recursion',
-        description:
-          'Unleash a cascade of echoing strikes on a target, hitting 6 times over 2 ticks. Each hit applies Resonance stacks.',
-        manaCost: 200,
-        cooldownTicks: 20,
+        name: 'Cascade',
+        description: 'Unleash 6 attacks over 3 ticks on a target, each dealing physical damage.',
+        manaCost: 150,
+        cooldownTicks: 50,
         targetType: 'hero',
         damageType: 'physical',
         effects: [
           { type: 'damage', value: 60, damageType: 'physical', description: 'Per hit (x6)' },
-          { type: 'buff', value: 6, description: 'Resonance stacks applied' },
         ],
       },
     },
@@ -127,46 +129,43 @@ export const HEROES: Record<string, HeroDef> = {
       q: {
         id: 'sentry-q',
         name: 'Mend Protocol',
-        description:
-          'Heal an allied hero for a moderate amount. If the target is below 30% HP, heal for double.',
+        description: 'Heal an allied hero.',
         manaCost: 80,
-        cooldownTicks: 3,
+        cooldownTicks: 6,
         targetType: 'hero',
-        effects: [{ type: 'heal', value: 120 }],
+        effects: [{ type: 'heal', value: 80 }],
       },
       w: {
         id: 'sentry-w',
         name: 'Barrier',
         description: 'Grant a shield to an ally that absorbs damage for 3 ticks.',
         manaCost: 100,
-        cooldownTicks: 5,
+        cooldownTicks: 10,
         targetType: 'hero',
-        effects: [{ type: 'shield', value: 150, duration: 3 }],
+        effects: [{ type: 'shield', value: 100, duration: 3 }],
       },
       e: {
         id: 'sentry-e',
         name: 'Scan Pulse',
-        description:
-          'Reveal all enemy heroes in the current zone and adjacent zones for 2 ticks. Slows revealed enemies.',
+        description: 'Reveal zone and slow enemies 30% for 2 ticks.',
         manaCost: 70,
-        cooldownTicks: 6,
+        cooldownTicks: 12,
         targetType: 'none',
         effects: [
-          { type: 'reveal', value: 2, duration: 2 },
+          { type: 'reveal', value: 1, duration: 2 },
           { type: 'slow', value: 30, duration: 2, description: 'Movement slow %' },
         ],
       },
       r: {
         id: 'sentry-r',
         name: 'Fortify',
-        description:
-          'Grant all allied heroes in the zone a massive shield and defense boost for 3 ticks.',
+        description: 'Grant all allies +3 defense and 150 shield for 4 ticks.',
         manaCost: 250,
-        cooldownTicks: 25,
+        cooldownTicks: 60,
         targetType: 'none',
         effects: [
-          { type: 'shield', value: 300, duration: 3 },
-          { type: 'buff', value: 15, duration: 3, description: 'Bonus defense' },
+          { type: 'shield', value: 150, duration: 4 },
+          { type: 'buff', value: 3, duration: 4, description: 'Bonus defense' },
         ],
       },
     },
@@ -209,27 +208,29 @@ export const HEROES: Record<string, HeroDef> = {
       q: {
         id: 'daemon-q',
         name: 'Inject',
-        description:
-          'Apply a DoT debuff on the target, dealing magical damage over 3 ticks.',
+        description: 'Apply a DoT debuff on the target, dealing magical damage over 3 ticks.',
         manaCost: 50,
         cooldownTicks: 7,
         targetType: 'hero',
         damageType: 'magical',
         effects: [
-          { type: 'dot', value: 60, duration: 3, damageType: 'magical', description: 'Total damage over 3 ticks' },
+          {
+            type: 'dot',
+            value: 60,
+            duration: 3,
+            damageType: 'magical',
+            description: 'Total damage over 3 ticks',
+          },
         ],
       },
       w: {
         id: 'daemon-w',
         name: 'Fork Bomb',
-        description:
-          'Create a decoy in the target zone for 3 ticks, granting vision of that zone.',
+        description: 'Create a decoy in the target zone for 3 ticks, granting vision of that zone.',
         manaCost: 100,
         cooldownTicks: 18,
         targetType: 'zone',
-        effects: [
-          { type: 'reveal', value: 3, duration: 3, description: 'Zone vision via decoy' },
-        ],
+        effects: [{ type: 'reveal', value: 3, duration: 3, description: 'Zone vision via decoy' }],
       },
       e: {
         id: 'daemon-e',
@@ -248,14 +249,11 @@ export const HEROES: Record<string, HeroDef> = {
       r: {
         id: 'daemon-r',
         name: 'Root Access',
-        description:
-          'Teleport to any zone on the map.',
+        description: 'Teleport to any zone on the map.',
         manaCost: 200,
         cooldownTicks: 60,
         targetType: 'zone',
-        effects: [
-          { type: 'teleport', value: 1, description: 'Global teleport' },
-        ],
+        effects: [{ type: 'teleport', value: 1, description: 'Global teleport' }],
       },
     },
   },
@@ -382,14 +380,14 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'regex-q',
         name: 'Match',
         description:
-          'Launch a pattern bolt that deals magical damage and marks the target, increasing magic damage taken by 10% for 3 ticks.',
+          'Launch a pattern bolt that deals magical damage and marks the target, increasing magic damage taken by 15% for 3 ticks.',
         manaCost: 60,
-        cooldownTicks: 2,
-        targetType: 'unit',
+        cooldownTicks: 5,
+        targetType: 'hero',
         damageType: 'magical',
         effects: [
-          { type: 'damage', value: 100, damageType: 'magical' },
-          { type: 'debuff', value: 10, duration: 3, description: 'Magic vulnerability %' },
+          { type: 'damage', value: 70, damageType: 'magical' },
+          { type: 'debuff', value: 15, duration: 3, description: 'Magic vulnerability %' },
         ],
       },
       w: {
@@ -397,39 +395,44 @@ export const HEROES: Record<string, HeroDef> = {
         name: 'Capture Group',
         description: 'Root an enemy hero in place for 2 ticks, dealing magical damage over time.',
         manaCost: 90,
-        cooldownTicks: 5,
+        cooldownTicks: 10,
         targetType: 'hero',
         damageType: 'magical',
         effects: [
           { type: 'root', value: 1, duration: 2 },
-          { type: 'dot', value: 50, duration: 2, damageType: 'magical' },
+          {
+            type: 'dot',
+            value: 30,
+            duration: 3,
+            damageType: 'magical',
+            description: 'Per tick for 3 ticks',
+          },
         ],
       },
       e: {
         id: 'regex-e',
         name: 'Substitution',
         description:
-          'Swap positions with a target hero (ally or enemy). Deals magical damage to enemies upon swap.',
+          'Swap positions with a target hero (ally or enemy). Both are stunned for 1 tick.',
         manaCost: 100,
-        cooldownTicks: 6,
+        cooldownTicks: 15,
         targetType: 'hero',
-        damageType: 'magical',
         effects: [
           { type: 'teleport', value: 1, description: 'Position swap' },
-          { type: 'damage', value: 80, damageType: 'magical', description: 'On enemy swap' },
+          { type: 'stun', value: 1, duration: 1, description: 'Both stunned' },
         ],
       },
       r: {
         id: 'regex-r',
         name: 'Catastrophic Backtracking',
         description:
-          'Unleash a devastating pattern that deals massive magical damage to all enemies in the zone, scaling with their missing mana.',
+          'Deal damage to a target based on their missing mana. Each 100 missing mana deals 50 damage. Also silences for 2 ticks.',
         manaCost: 300,
-        cooldownTicks: 25,
-        targetType: 'none',
+        cooldownTicks: 60,
+        targetType: 'hero',
         damageType: 'magical',
         effects: [
-          { type: 'damage', value: 250, damageType: 'magical', description: 'Base damage' },
+          { type: 'damage', value: 50, damageType: 'magical', description: 'Per 100 missing mana' },
           { type: 'silence', value: 1, duration: 2 },
         ],
       },
@@ -640,8 +643,7 @@ export const HEROES: Record<string, HeroDef> = {
       q: {
         id: 'malloc-q',
         name: 'Allocate',
-        description:
-          'Allocate additional resources, buffing attack damage by 25 for 3 ticks.',
+        description: 'Allocate additional resources, buffing attack damage by 25 for 3 ticks.',
         manaCost: 60,
         cooldownTicks: 4,
         targetType: 'self',
@@ -658,14 +660,18 @@ export const HEROES: Record<string, HeroDef> = {
         damageType: 'physical',
         effects: [
           { type: 'damage', value: 110, damageType: 'physical' },
-          { type: 'damage', value: 44, damageType: 'physical', description: 'Bonus if target below 30% HP' },
+          {
+            type: 'damage',
+            value: 44,
+            damageType: 'physical',
+            description: 'Bonus if target below 30% HP',
+          },
         ],
       },
       e: {
         id: 'malloc-e',
         name: 'Pointer Dereference',
-        description:
-          'Dash to a target enemy, closing the gap and stunning them for 1 tick.',
+        description: 'Dash to a target enemy, closing the gap and stunning them for 1 tick.',
         manaCost: 80,
         cooldownTicks: 5,
         targetType: 'hero',
@@ -715,11 +721,13 @@ export const HEROES: Record<string, HeroDef> = {
       id: 'cipher-passive',
       name: 'Encryption Key',
       description:
-        'Each attack reduces the target\'s defense by 2 for 3 ticks, stacking up to 4 times.',
+        "Each attack reduces the target's defense by 2 for 3 ticks, stacking up to 4 times.",
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
-      effects: [{ type: 'debuff', value: 2, duration: 3, description: 'Defense reduction per stack' }],
+      effects: [
+        { type: 'debuff', value: 2, duration: 3, description: 'Defense reduction per stack' },
+      ],
     },
     abilities: {
       q: {
@@ -760,17 +768,15 @@ export const HEROES: Record<string, HeroDef> = {
         ],
       },
       r: {
-        id: 'cipher-r',
-        name: 'Brute Force',
-        description:
-          'Unleash 6 rapid decryption strikes on a target, each dealing magical damage. Applies Encryption Key stacks.',
-        manaCost: 220,
-        cooldownTicks: 20,
+        id: 'echo-r',
+        name: 'Cascade',
+        description: 'Unleash 6 attacks over 3 ticks on a target, each dealing physical damage.',
+        manaCost: 150,
+        cooldownTicks: 50,
         targetType: 'hero',
-        damageType: 'magical',
+        damageType: 'physical',
         effects: [
-          { type: 'damage', value: 55, damageType: 'magical', description: 'Per hit (x6)' },
-          { type: 'debuff', value: 6, description: 'Encryption Key stacks applied' },
+          { type: 'damage', value: 60, damageType: 'physical', description: 'Per hit (x6)' },
         ],
       },
     },
@@ -800,19 +806,20 @@ export const HEROES: Record<string, HeroDef> = {
     passive: {
       id: 'firewall-passive',
       name: 'Packet Inspection',
-      description:
-        'Reflect 8% of all damage taken back to the attacker as magical damage.',
+      description: 'Reflect 8% of all damage taken back to the attacker as magical damage.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
-      effects: [{ type: 'damage', value: 8, damageType: 'magical', description: 'Damage reflect %' }],
+      effects: [
+        { type: 'damage', value: 8, damageType: 'magical', description: 'Damage reflect %' },
+      ],
     },
     abilities: {
       q: {
         id: 'firewall-q',
         name: 'Port Block',
         description:
-          'Block a target\'s ports, dealing physical damage and stunning them for 1 tick.',
+          "Block a target's ports, dealing physical damage and stunning them for 1 tick.",
         manaCost: 70,
         cooldownTicks: 3,
         targetType: 'hero',
@@ -856,7 +863,13 @@ export const HEROES: Record<string, HeroDef> = {
         damageType: 'magical',
         effects: [
           { type: 'root', value: 1, duration: 2 },
-          { type: 'dot', value: 120, duration: 3, damageType: 'magical', description: 'Total damage over 3 ticks' },
+          {
+            type: 'dot',
+            value: 120,
+            duration: 3,
+            damageType: 'magical',
+            description: 'Total damage over 3 ticks',
+          },
         ],
       },
     },
@@ -884,8 +897,7 @@ export const HEROES: Record<string, HeroDef> = {
     passive: {
       id: 'null_ref-passive',
       name: 'Void Drain',
-      description:
-        'On kill, restore 15% max MP and reduce all ability cooldowns by 2 ticks.',
+      description: 'On kill, restore 15% max MP and reduce all ability cooldowns by 2 ticks.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
@@ -899,7 +911,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'null_ref-q',
         name: 'Void Bolt',
         description:
-          'Fire a bolt of void energy that deals magical damage and shreds the target\'s magic resistance by 5 for 3 ticks.',
+          "Fire a bolt of void energy that deals magical damage and shreds the target's magic resistance by 5 for 3 ticks.",
         manaCost: 55,
         cooldownTicks: 2,
         targetType: 'unit',
@@ -917,9 +929,7 @@ export const HEROES: Record<string, HeroDef> = {
         manaCost: 80,
         cooldownTicks: 5,
         targetType: 'hero',
-        effects: [
-          { type: 'silence', value: 1, duration: 2 },
-        ],
+        effects: [{ type: 'silence', value: 1, duration: 2 }],
       },
       e: {
         id: 'null_ref-e',
@@ -931,7 +941,13 @@ export const HEROES: Record<string, HeroDef> = {
         targetType: 'none',
         damageType: 'magical',
         effects: [
-          { type: 'dot', value: 120, duration: 3, damageType: 'magical', description: 'Total damage over 3 ticks' },
+          {
+            type: 'dot',
+            value: 120,
+            duration: 3,
+            damageType: 'magical',
+            description: 'Total damage over 3 ticks',
+          },
           { type: 'reveal', value: 1, duration: 3 },
         ],
       },
@@ -989,27 +1005,21 @@ export const HEROES: Record<string, HeroDef> = {
       q: {
         id: 'lambda-q',
         name: 'Invoke',
-        description:
-          'Fire a quick bolt of functional energy, dealing magical damage to a target.',
+        description: 'Fire a quick bolt of functional energy, dealing magical damage to a target.',
         manaCost: 40,
         cooldownTicks: 2,
         targetType: 'unit',
         damageType: 'magical',
-        effects: [
-          { type: 'damage', value: 75, damageType: 'magical' },
-        ],
+        effects: [{ type: 'damage', value: 75, damageType: 'magical' }],
       },
       w: {
         id: 'lambda-w',
         name: 'Return',
-        description:
-          'Mark current zone. After 2 ticks, teleport back to the marked zone.',
+        description: 'Mark current zone. After 2 ticks, teleport back to the marked zone.',
         manaCost: 70,
         cooldownTicks: 6,
         targetType: 'self',
-        effects: [
-          { type: 'teleport', value: 2, description: 'Delayed return after 2 ticks' },
-        ],
+        effects: [{ type: 'teleport', value: 2, description: 'Delayed return after 2 ticks' }],
       },
       e: {
         id: 'lambda-e',
@@ -1128,7 +1138,12 @@ export const HEROES: Record<string, HeroDef> = {
         targetType: 'none',
         damageType: 'physical',
         effects: [
-          { type: 'damage', value: 150, damageType: 'physical', description: 'Base + 30 per Deadlock stack' },
+          {
+            type: 'damage',
+            value: 150,
+            damageType: 'physical',
+            description: 'Base + 30 per Deadlock stack',
+          },
           { type: 'fear', value: 1, duration: 2 },
         ],
       },
@@ -1158,14 +1173,11 @@ export const HEROES: Record<string, HeroDef> = {
     passive: {
       id: 'ping-passive',
       name: 'Latency',
-      description:
-        'Basic attacks add +1 tick to the target\'s next ability cooldown.',
+      description: "Basic attacks add +1 tick to the target's next ability cooldown.",
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
-      effects: [
-        { type: 'debuff', value: 1, description: 'Cooldown increase per attack' },
-      ],
+      effects: [{ type: 'debuff', value: 1, description: 'Cooldown increase per attack' }],
     },
     abilities: {
       q: {
@@ -1179,14 +1191,19 @@ export const HEROES: Record<string, HeroDef> = {
         damageType: 'magical',
         effects: [
           { type: 'damage', value: 80, damageType: 'magical' },
-          { type: 'damage', value: 48, damageType: 'magical', description: 'Adjacent zone damage (60%)' },
+          {
+            type: 'damage',
+            value: 48,
+            damageType: 'magical',
+            description: 'Adjacent zone damage (60%)',
+          },
         ],
       },
       w: {
         id: 'ping-w',
         name: 'Timeout',
         description:
-          'Disrupt a target\'s connection, silencing them for 1 tick and reducing their attack damage by 20% for 3 ticks.',
+          "Disrupt a target's connection, silencing them for 1 tick and reducing their attack damage by 20% for 3 ticks.",
         manaCost: 75,
         cooldownTicks: 5,
         targetType: 'hero',
@@ -1218,7 +1235,13 @@ export const HEROES: Record<string, HeroDef> = {
         targetType: 'none',
         damageType: 'magical',
         effects: [
-          { type: 'dot', value: 180, duration: 3, damageType: 'magical', description: 'Total damage over 3 ticks' },
+          {
+            type: 'dot',
+            value: 180,
+            duration: 3,
+            damageType: 'magical',
+            description: 'Total damage over 3 ticks',
+          },
           { type: 'slow', value: 40, duration: 3, description: 'Movement slow %' },
         ],
       },
@@ -1275,8 +1298,7 @@ export const HEROES: Record<string, HeroDef> = {
       w: {
         id: 'cron-w',
         name: 'Purge',
-        description:
-          'Cleanse all debuffs from an allied hero and grant them a shield for 2 ticks.',
+        description: 'Cleanse all debuffs from an allied hero and grant them a shield for 2 ticks.',
         manaCost: 90,
         cooldownTicks: 5,
         targetType: 'hero',
@@ -1389,16 +1411,15 @@ export const HEROES: Record<string, HeroDef> = {
         ],
       },
       r: {
-        id: 'traceroute-r',
-        name: 'Full Trace',
-        description:
-          'Reveal all enemy heroes on the map for 3 ticks and gain a massive damage boost of 50% for 2 ticks.',
-        manaCost: 200,
-        cooldownTicks: 30,
+        id: 'sentry-r',
+        name: 'Fortify',
+        description: 'Grant all allies +3 defense and 150 shield for 4 ticks.',
+        manaCost: 250,
+        cooldownTicks: 60,
         targetType: 'none',
         effects: [
-          { type: 'reveal', value: 99, duration: 3, description: 'Global reveal' },
-          { type: 'buff', value: 50, duration: 2, description: 'Damage boost %' },
+          { type: 'shield', value: 150, duration: 4 },
+          { type: 'buff', value: 3, duration: 4, description: 'Bonus defense' },
         ],
       },
     },
@@ -1472,9 +1493,7 @@ export const HEROES: Record<string, HeroDef> = {
         manaCost: 60,
         cooldownTicks: 4,
         targetType: 'hero',
-        effects: [
-          { type: 'debuff', value: 25, duration: 3, description: 'Bonus damage taken %' },
-        ],
+        effects: [{ type: 'debuff', value: 25, duration: 3, description: 'Bonus damage taken %' }],
       },
       r: {
         id: 'thread-r',
@@ -1484,9 +1503,7 @@ export const HEROES: Record<string, HeroDef> = {
         manaCost: 250,
         cooldownTicks: 28,
         targetType: 'self',
-        effects: [
-          { type: 'buff', value: 4, duration: 4, description: 'AoE attacks duration' },
-        ],
+        effects: [{ type: 'buff', value: 4, duration: 4, description: 'AoE attacks duration' }],
       },
     },
   },
@@ -1537,7 +1554,12 @@ export const HEROES: Record<string, HeroDef> = {
         damageType: 'physical',
         effects: [
           { type: 'damage', value: 80, damageType: 'physical' },
-          { type: 'damage', value: 50, damageType: 'physical', description: '% of cached energy as bonus' },
+          {
+            type: 'damage',
+            value: 50,
+            damageType: 'physical',
+            description: '% of cached energy as bonus',
+          },
         ],
       },
       w: {
@@ -1556,7 +1578,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'cache-e',
         name: 'Invalidate',
         description:
-          'Invalidate a target\'s healing cache, dealing magical damage and applying anti-heal (50% reduced healing) for 3 ticks.',
+          "Invalidate a target's healing cache, dealing magical damage and applying anti-heal (50% reduced healing) for 3 ticks.",
         manaCost: 65,
         cooldownTicks: 4,
         targetType: 'hero',
@@ -1576,7 +1598,12 @@ export const HEROES: Record<string, HeroDef> = {
         targetType: 'none',
         damageType: 'pure',
         effects: [
-          { type: 'damage', value: 1, damageType: 'pure', description: 'Damage equals cached energy' },
+          {
+            type: 'damage',
+            value: 1,
+            damageType: 'pure',
+            description: 'Damage equals cached energy',
+          },
           { type: 'slow', value: 35, duration: 2, description: 'Movement slow %' },
         ],
       },

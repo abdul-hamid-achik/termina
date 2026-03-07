@@ -87,7 +87,20 @@ const preview = computed(() => {
   const cmd = parts[0]?.toLowerCase()
 
   // If still typing just the command name, show hint
-  const commands = ['move', 'attack', 'cast', 'use', 'buy', 'sell', 'ward', 'scan', 'status', 'map', 'chat', 'ping']
+  const commands = [
+    'move',
+    'attack',
+    'cast',
+    'use',
+    'buy',
+    'sell',
+    'ward',
+    'scan',
+    'status',
+    'map',
+    'chat',
+    'ping',
+  ]
   if (parts.length === 1 && commands.some((c) => c.startsWith(cmd!)) && !commands.includes(cmd!)) {
     return { type: 'dim' as const, text: `-- typing: ${cmd}...` }
   }
@@ -116,7 +129,11 @@ const preview = computed(() => {
   // Contextual validation for move adjacency
   if (command.type === 'move' && props.player) {
     const playerZone = ZONE_MAP[props.player.zone]
-    if (playerZone && command.zone !== props.player.zone && !playerZone.adjacentTo.includes(command.zone)) {
+    if (
+      playerZone &&
+      command.zone !== props.player.zone &&
+      !playerZone.adjacentTo.includes(command.zone)
+    ) {
       return { type: 'error' as const, text: `!! Not adjacent to current zone` }
     }
     const destZone = ZONE_MAP[command.zone]
@@ -125,19 +142,33 @@ const preview = computed(() => {
 
   if (command.type === 'attack') {
     const t = command.target
-    const label = t.kind === 'hero' ? `hero ${t.name}` : t.kind === 'creep' ? `creep #${t.index}` : t.kind === 'tower' ? `tower in ${t.zone}` : 'self'
+    const label =
+      t.kind === 'hero'
+        ? `hero ${t.name}`
+        : t.kind === 'creep'
+          ? `creep #${t.index}`
+          : t.kind === 'tower'
+            ? `tower in ${t.zone}`
+            : 'self'
     return { type: 'valid' as const, text: `>> Attack ${label}` }
   }
 
   if (command.type === 'cast') {
-    return { type: 'valid' as const, text: `>> Cast ${command.ability.toUpperCase()}${command.target ? ' on target' : ''}` }
+    return {
+      type: 'valid' as const,
+      text: `>> Cast ${command.ability.toUpperCase()}${command.target ? ' on target' : ''}`,
+    }
   }
 
   if (command.type === 'buy') {
     const item = props.items?.[command.item]
     if (item) {
       const gold = props.player?.gold ?? 0
-      if (gold < item.cost) return { type: 'error' as const, text: `!! Not enough gold (need ${item.cost - gold}g more)` }
+      if (gold < item.cost)
+        return {
+          type: 'error' as const,
+          text: `!! Not enough gold (need ${item.cost - gold}g more)`,
+        }
       return { type: 'valid' as const, text: `>> Buy ${item.name} (-${item.cost}g)` }
     }
     return { type: 'valid' as const, text: `>> Buy ${command.item}` }
@@ -243,7 +274,8 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowUp') {
     e.preventDefault()
     if (open.value && suggestions.value.length > 0) {
-      selectedIndex.value = selectedIndex.value > 0 ? selectedIndex.value - 1 : suggestions.value.length - 1
+      selectedIndex.value =
+        selectedIndex.value > 0 ? selectedIndex.value - 1 : suggestions.value.length - 1
       scrollSelectedIntoView()
     } else if (!open.value) {
       if (historyIndex.value < history.value.length - 1) {
@@ -257,7 +289,8 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
     if (open.value && suggestions.value.length > 0) {
-      selectedIndex.value = selectedIndex.value < suggestions.value.length - 1 ? selectedIndex.value + 1 : 0
+      selectedIndex.value =
+        selectedIndex.value < suggestions.value.length - 1 ? selectedIndex.value + 1 : 0
       scrollSelectedIntoView()
     } else if (!open.value) {
       if (historyIndex.value > 0) {
@@ -328,7 +361,7 @@ function handleClickOutside(e: MouseEvent) {
 function highlightParts(text: string): Array<{ text: string; highlight: boolean }> {
   const val = input.value.trim().toLowerCase()
   const parts = val.split(/\s+/)
-  const partial = parts.length > 1 ? parts[parts.length - 1]! : parts[0] ?? ''
+  const partial = parts.length > 1 ? parts[parts.length - 1]! : (parts[0] ?? '')
   if (!partial) return [{ text, highlight: false }]
 
   const idx = text.toLowerCase().indexOf(partial.toLowerCase())
@@ -337,7 +370,8 @@ function highlightParts(text: string): Array<{ text: string; highlight: boolean 
   const result: Array<{ text: string; highlight: boolean }> = []
   if (idx > 0) result.push({ text: text.slice(0, idx), highlight: false })
   result.push({ text: text.slice(idx, idx + partial.length), highlight: true })
-  if (idx + partial.length < text.length) result.push({ text: text.slice(idx + partial.length), highlight: false })
+  if (idx + partial.length < text.length)
+    result.push({ text: text.slice(idx + partial.length), highlight: false })
   return result
 }
 
@@ -352,7 +386,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="cmd-input-wrapper relative cursor-text" data-testid="command-input" @click="focusInput">
+  <div
+    class="cmd-input-wrapper relative cursor-text"
+    data-testid="command-input"
+    @click="focusInput"
+  >
     <!-- Suggestions dropdown -->
     <div
       v-if="open && suggestions.length > 0"
@@ -364,12 +402,18 @@ onUnmounted(() => {
         :key="s.text"
         class="flex cursor-pointer items-center gap-2 px-3 py-1 font-mono text-[0.8rem]"
         :class="[
-          i === selectedIndex ? 'cmd-selected bg-border text-ability' : 'text-text-primary hover:bg-border/50',
+          i === selectedIndex
+            ? 'cmd-selected bg-border text-ability'
+            : 'text-text-primary hover:bg-border/50',
         ]"
         @click.stop="handleSelect(s)"
         @mouseenter="selectedIndex = i"
       >
-        <span class="shrink-0"><template v-for="(part, j) in highlightParts(s.text)" :key="j"><span :class="{ 'text-ability': part.highlight }">{{ part.text }}</span></template></span>
+        <span class="shrink-0"
+          ><template v-for="(part, j) in highlightParts(s.text)" :key="j"
+            ><span :class="{ 'text-ability': part.highlight }">{{ part.text }}</span></template
+          ></span
+        >
         <span v-if="s.description" class="ml-auto truncate text-[0.7rem] text-text-dim">
           {{ s.description }}
         </span>
@@ -379,6 +423,8 @@ onUnmounted(() => {
     <!-- Inline validation preview -->
     <div
       v-if="preview"
+      data-testid="command-preview"
+      aria-live="polite"
       class="border-t border-border/50 px-3 py-0.5 font-mono text-[0.7rem]"
       :class="{
         'text-radiant': preview.type === 'valid',
@@ -399,13 +445,14 @@ onUnmounted(() => {
         ref="inputEl"
         v-model="input"
         data-testid="command-input-field"
+        aria-label="Command input"
         class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
         :disabled="disabled || !canAct"
         :placeholder="!canAct ? 'Action sent - wait for next tick' : placeholder"
         spellcheck="false"
         autocomplete="off"
         @keydown="handleKeydown"
-      >
+      />
       <span
         v-if="!input && canAct"
         class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"

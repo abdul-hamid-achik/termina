@@ -83,6 +83,15 @@ function createPlayerState(setup: PlayerSetup): PlayerState {
     assists: 0,
     damageDealt: 0,
     towerDamageDealt: 0,
+    killStreak: 0,
+    buybackCost: 0, // Will be calculated on death
+    buybackCooldown: undefined,
+    talents: {
+      tier10: null,
+      tier15: null,
+      tier20: null,
+      tier25: null,
+    },
   }
 }
 
@@ -109,6 +118,8 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
+    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    lastSeen: {},
   }
 }
 

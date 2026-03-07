@@ -11,6 +11,8 @@ export type ClientMessage =
   | { type: 'reconnect'; gameId: string; playerId: string }
   | { type: 'join_game'; gameId: string }
   | { type: 'hero_pick'; lobbyId: string; heroId: string }
+  | { type: 'hero_ban'; lobbyId: string; heroId: string }
+  | { type: 'request_state' }
 
 // ── Server → Client ──────────────────────────────────────────────
 
@@ -66,11 +68,20 @@ export interface HeroPickMessage {
   heroId: string
 }
 
+export interface HeroBanMessage {
+  type: 'hero_ban'
+  playerId: string
+  heroId: string
+}
+
 export interface LobbyStateMessage {
   type: 'lobby_state'
   lobbyId: string
   team: TeamId
   players: { playerId: string; username: string; team: TeamId; heroId: string | null }[]
+  phase?: 'banning' | 'picking'
+  bannedHeroes?: string[]
+  currentBanIndex?: number
 }
 
 export interface GameStartingMessage {
@@ -112,6 +123,17 @@ export interface PingMapBroadcastMessage {
   zone: string
 }
 
+export interface FullStateMessage {
+  type: 'full_state'
+  tick: number
+  state: PlayerVisibleState
+}
+
+export interface GameNotFoundMessage {
+  type: 'game_not_found'
+  gameId: string
+}
+
 export type ServerMessage =
   | TickStateMessage
   | EventsMessage
@@ -128,3 +150,7 @@ export type ServerMessage =
   | HeartbeatAckMessage
   | ChatBroadcastMessage
   | PingMapBroadcastMessage
+  | FullStateMessage
+  | GameNotFoundMessage
+  | FullStateMessage
+  | GameNotFoundMessage

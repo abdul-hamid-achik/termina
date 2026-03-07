@@ -1,9 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Effect } from 'effect'
-import {
-  WebSocketService,
-  WebSocketServiceLive,
-} from '../../../server/services/WebSocketService'
+import { WebSocketService, WebSocketServiceLive } from '../../../server/services/WebSocketService'
 import { wsLog } from '../../../server/utils/log'
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -19,7 +16,10 @@ function runWithService<A>(
     removeConnection: (playerId: string) => Effect.Effect<void>
     sendToPlayer: (playerId: string, message: unknown) => Effect.Effect<void>
     broadcastToGame: (gameId: string, message: unknown) => Effect.Effect<void>
-    broadcastFiltered: (gameId: string, filterFn: (playerId: string) => unknown | null) => Effect.Effect<void>
+    broadcastFiltered: (
+      gameId: string,
+      filterFn: (playerId: string) => unknown | null,
+    ) => Effect.Effect<void>
     getConnections: (gameId: string) => Effect.Effect<Map<string, WebSocket>>
     getPlayerGame: (playerId: string) => Effect.Effect<string | null>
   }) => Effect.Effect<A>,
@@ -116,9 +116,7 @@ describe('WebSocketService', () => {
         Effect.gen(function* () {
           yield* svc.addConnection('game_3', 'player_3', ws)
           yield* svc.sendToPlayer('player_3', { type: 'tick_state', tick: 1 })
-          expect(ws.send).toHaveBeenCalledWith(
-            JSON.stringify({ type: 'tick_state', tick: 1 }),
-          )
+          expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'tick_state', tick: 1 }))
         }),
       )
     })
@@ -158,7 +156,11 @@ describe('WebSocketService', () => {
         Effect.gen(function* () {
           yield* svc.addConnection('game_4', 'p1', ws1)
           yield* svc.addConnection('game_4', 'p2', ws2)
-          yield* svc.broadcastToGame('game_4', { type: 'announcement', message: 'test', level: 'info' })
+          yield* svc.broadcastToGame('game_4', {
+            type: 'announcement',
+            message: 'test',
+            level: 'info',
+          })
           const expected = JSON.stringify({ type: 'announcement', message: 'test', level: 'info' })
           expect(ws1.send).toHaveBeenCalledWith(expected)
           expect(ws2.send).toHaveBeenCalledWith(expected)
@@ -229,6 +231,79 @@ describe('WebSocketService', () => {
           expect(gameId).toBeNull()
         }),
       )
+    })
+  })
+
+  describe('connection state validation', () => {
+    it('should reject non-OPEN WebSocket connections', async () => {
+      const ws = { send: vi.fn(), readyState: 2 } as unknown as WebSocket
+      const warnSpy = vi.spyOn(wsLog, 'warn').mockImplementation(() => {})
+
+      await runWithService((svc) =>
+        Effect.gen(function* () {
+          yield* svc.addConnection('game_x', 'player_x', ws)
+          const connections = yield* svc.getConnections('game_x')
+          expect(connections.size).toBe(0)
+        }),
+      )
+
+      warnSpy.mockRestore()
+    })
+
+    it('should accept OPEN WebSocket connections', async () => {
+      const ws = { send: vi.fn(), readyState: 1 } as unknown as WebSocket
+
+      await runWithService((svc) =>
+        Effect.gen(function* () {
+          yield* svc.addConnection('game_y', 'player_y', ws)
+          const connections = yield* svc.getConnections('game_y')
+          expect(connections.size).toBe(1)
+        }),
+      )
+    })
+  })
+
+  describe('dead connection removal', () => {
+    it('should remove connection on send failure', async () => {
+      const ws = {
+        send: vi.fn().mockImplementation(() => {
+          throw new Error('Connection closed')
+        }),
+        readyState: 1,
+      } as unknown as WebSocket
+      const warnSpy = vi.spyOn(wsLog, 'warn').mockImplementation(() => {})
+
+      await runWithService((svc) =>
+        Effect.gen(function* () {
+          yield* svc.addConnection('game_z', 'player_z', ws)
+          yield* svc.sendToPlayer('player_z', { type: 'test' })
+          const connections = yield* svc.getConnections('game_z')
+          expect(connections.size).toBe(0)
+        }),
+      )
+
+      warnSpy.mockRestore()
+    })
+
+    it('should clean up playerToGame map on connection removal', async () => {
+      const ws = {
+        send: vi.fn().mockImplementation(() => {
+          throw new Error('Connection closed')
+        }),
+        readyState: 1,
+      } as unknown as WebSocket
+      const warnSpy = vi.spyOn(wsLog, 'warn').mockImplementation(() => {})
+
+      await runWithService((svc) =>
+        Effect.gen(function* () {
+          yield* svc.addConnection('game_w', 'player_w', ws)
+          yield* svc.sendToPlayer('player_w', { type: 'test' })
+          const gameId = yield* svc.getPlayerGame('player_w')
+          expect(gameId).toBeNull()
+        }),
+      )
+
+      warnSpy.mockRestore()
     })
   })
 })

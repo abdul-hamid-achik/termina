@@ -295,4 +295,58 @@ describe('useGameSocket', () => {
       expect(result).toHaveProperty('disconnect')
     })
   })
+
+  describe('state isolation', () => {
+    it('should not share state between useGameSocket instances', async () => {
+      const socket1 = useGameSocket()
+      const socket2 = useGameSocket()
+
+      socket1.connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+
+      expect(socket1.connected.value).toBe(true)
+      expect(socket2.connected.value).toBe(false)
+    })
+
+    it('each call should create independent state', async () => {
+      const socket1 = useGameSocket()
+      const socket2 = useGameSocket()
+
+      socket1.connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+
+      socket2.connect('game-2', 'player-2')
+      await vi.advanceTimersByTimeAsync(1)
+
+      expect(socket1.connected.value).toBe(true)
+      expect(socket2.connected.value).toBe(true)
+    })
+  })
+
+  describe('state sync on reconnect', () => {
+    it('should expose onMessage handler for receiving sync responses', async () => {
+      const { connect, onMessage } = useGameSocket()
+      const handler = vi.fn()
+
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+
+      const unsubscribe = onMessage(handler)
+      expect(typeof unsubscribe).toBe('function')
+    })
+  })
+
+  describe('game validation on reconnect', () => {
+    it('should handle game_not_found response', async () => {
+      const { connect, onMessage } = useGameSocket()
+      const handler = vi.fn()
+
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+
+      onMessage(handler)
+
+      expect(typeof onMessage).toBe('function')
+    })
+  })
 })

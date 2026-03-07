@@ -54,7 +54,7 @@ export function awardDeny(state: GameState, playerId: string): GameState {
 /**
  * Award gold for a hero kill.
  * Killer: 200 + 50 * killStreak
- * Assisters: 100 split evenly among all assisters
+ * Assisters: 100 split evenly among all assisters (excluding killer)
  */
 export function awardKill(
   state: GameState,
@@ -75,11 +75,14 @@ export function awardKill(
   const killerGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * streak
   updatedState = updatePlayerGold(updatedState, killerId, killerGold)
 
-  // Assist gold split
+  // Assist gold split - exclude killer from assisters to prevent double-dipping
   if (assisters.length > 0) {
-    const assistGoldEach = Math.floor(ASSIST_GOLD / assisters.length)
-    for (const assisterId of assisters) {
-      updatedState = updatePlayerGold(updatedState, assisterId, assistGoldEach)
+    const filteredAssisters = assisters.filter((id) => id !== killerId)
+    if (filteredAssisters.length > 0) {
+      const assistGoldEach = Math.floor(ASSIST_GOLD / filteredAssisters.length)
+      for (const assisterId of filteredAssisters) {
+        updatedState = updatePlayerGold(updatedState, assisterId, assistGoldEach)
+      }
     }
   }
 

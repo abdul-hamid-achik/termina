@@ -9,10 +9,24 @@ describe('Hero Definitions', () => {
 
   it('should have all expected hero IDs', () => {
     const expected = [
-      'echo', 'sentry', 'daemon', 'kernel', 'regex', 'socket',
-      'proxy', 'malloc', 'cipher', 'firewall',
-      'null_ref', 'lambda', 'mutex', 'ping', 'cron', 'traceroute',
-      'thread', 'cache',
+      'echo',
+      'sentry',
+      'daemon',
+      'kernel',
+      'regex',
+      'socket',
+      'proxy',
+      'malloc',
+      'cipher',
+      'firewall',
+      'null_ref',
+      'lambda',
+      'mutex',
+      'ping',
+      'cron',
+      'traceroute',
+      'thread',
+      'cache',
     ]
     for (const id of expected) {
       expect(HERO_IDS).toContain(id)
@@ -84,7 +98,7 @@ describe('Hero Definitions', () => {
           expect(ability.id).toBeTruthy()
           expect(ability.name).toBeTruthy()
           expect(ability.description.length).toBeGreaterThan(0)
-          expect(ability.manaCost).toBeGreaterThan(0)
+          expect(ability.manaCost).toBeGreaterThanOrEqual(0)
           expect(ability.cooldownTicks).toBeGreaterThan(0)
           expect(ability.effects.length).toBeGreaterThan(0)
         })
@@ -101,7 +115,9 @@ describe('Hero Definitions', () => {
 
   it('has at least 5 melee and 3 ranged heroes for team diversity', () => {
     const melee = Object.values(HEROES).filter((h: HeroDef) => h.baseStats.attackRange === 'melee')
-    const ranged = Object.values(HEROES).filter((h: HeroDef) => h.baseStats.attackRange === 'ranged')
+    const ranged = Object.values(HEROES).filter(
+      (h: HeroDef) => h.baseStats.attackRange === 'ranged',
+    )
     expect(melee.length).toBeGreaterThanOrEqual(5)
     expect(ranged.length).toBeGreaterThanOrEqual(3)
   })

@@ -52,6 +52,15 @@ export interface CreepLasthitEvent {
   readonly goldAwarded: number
 }
 
+export interface CreepDenyEvent {
+  readonly _tag: 'creep_deny'
+  readonly tick: number
+  readonly playerId: string
+  readonly creepId: string
+  readonly creepType: 'melee' | 'ranged' | 'siege'
+  readonly goldAwarded: number
+}
+
 export interface GoldChangeEvent {
   readonly _tag: 'gold_change'
   readonly tick: number
@@ -73,6 +82,43 @@ export interface AbilityUsedEvent {
   readonly playerId: string
   readonly abilityId: string
   readonly targetId?: string
+  readonly cooldown?: number
+}
+
+export interface CooldownEvent {
+  readonly _tag: 'cooldown_used'
+  readonly tick: number
+  readonly playerId: string
+  readonly abilityId: string
+  readonly cooldownTicks: number
+  readonly readyAtTick: number
+}
+
+export interface PowerSpikeEvent {
+  readonly _tag: 'power_spike'
+  readonly tick: number
+  readonly playerId: string
+  readonly spikeType: 'level_6' | 'level_12' | 'level_18' | 'core_item'
+  readonly itemId?: string
+  readonly message: string
+}
+
+export interface EnemyMissingEvent {
+  readonly _tag: 'enemy_missing'
+  readonly tick: number
+  readonly playerId: string
+  readonly lastSeenZone: string
+  readonly lastSeenTick: number
+  readonly reportedBy: string
+}
+
+export interface ContestLasthitEvent {
+  readonly _tag: 'contest_lasthit'
+  readonly tick: number
+  readonly farmerId: string
+  readonly harasserId: string
+  readonly damageDealt: number
+  readonly success: boolean
 }
 
 export interface ItemPurchasedEvent {
@@ -141,6 +187,15 @@ export interface AegisPickedEvent {
   readonly playerId: string
 }
 
+export interface TalentSelectedEvent {
+  readonly _tag: 'talent_selected'
+  readonly tick: number
+  readonly playerId: string
+  readonly talentId: string
+  readonly tier: number
+  readonly talentName: string
+}
+
 export type GameEngineEvent =
   | DamageEvent
   | HealEvent
@@ -148,9 +203,14 @@ export type GameEngineEvent =
   | DeathEvent
   | TowerKillEvent
   | CreepLasthitEvent
+  | CreepDenyEvent
   | GoldChangeEvent
   | LevelUpEvent
   | AbilityUsedEvent
+  | CooldownEvent
+  | PowerSpikeEvent
+  | EnemyMissingEvent
+  | ContestLasthitEvent
   | ItemPurchasedEvent
   | WardPlacedEvent
   | RunePickedEvent
@@ -160,6 +220,7 @@ export type GameEngineEvent =
   | RoshanRespawnEvent
   | RoshanKilledInternalEvent
   | AegisPickedEvent
+  | TalentSelectedEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

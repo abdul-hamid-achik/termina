@@ -31,6 +31,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     assists: 0,
     damageDealt: 0,
     towerDamageDealt: 0,
+    killStreak: 0,
+    buybackCost: 0,
     ...overrides,
   }
 }
@@ -55,6 +57,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
+    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    lastSeen: {},
     ...overrides,
   }
 }

@@ -28,10 +28,12 @@ export interface Lobby {
   id: string
   players: LobbyPlayer[]
   pickedHeroes: Set<string>
+  bannedHeroes: Set<string> // Track banned heroes
   pickOrder: number[]
   currentPickIndex: number
   pickTimer: ReturnType<typeof setTimeout> | null
-  phase: 'picking' | 'ready_check' | 'starting' | 'cancelled'
+  phase: 'banning' | 'picking' | 'ready_check' | 'starting' | 'cancelled'
+  currentBanIndex: number // Track ban phase progress
 }
 
 const activeLobbies = new Map<string, Lobby>()
@@ -50,6 +52,18 @@ function generateId(): string {
 // Pick order: R1, D1, D2, R2, R3, D3, D4, R4, R5, D5
 const PICK_SEQUENCE_10 = [0, 5, 6, 1, 2, 7, 8, 3, 4, 9]
 
+function snakeDraftTeams(sortedByMmr: QueueEntry[]): LobbyPlayer[] {
+  const snakeOrder = [0, 1, 1, 0, 0, 1, 1, 0, 0, 1]
+  return sortedByMmr.map((entry, i) => ({
+    playerId: entry.playerId,
+    username: entry.username,
+    mmr: entry.mmr,
+    team: snakeOrder[i] === 0 ? 'radiant' : ('dire' as TeamId),
+    heroId: null,
+    ready: false,
+  }))
+}
+
 export function createLobby(
   queueEntries: QueueEntry[],
   ws: WebSocketServiceApi,
@@ -58,37 +72,29 @@ export function createLobby(
 ): Lobby {
   const lobbyId = generateId()
 
-  // Assign teams: sort by MMR and alternate to balance
   const sorted = [...queueEntries].sort((a, b) => b.mmr - a.mmr)
-  const players: LobbyPlayer[] = sorted.map((entry, i) => ({
-    playerId: entry.playerId,
-    username: entry.username,
-    mmr: entry.mmr,
-    team: i % 2 === 0 ? 'radiant' : ('dire' as TeamId),
-    heroId: null,
-    ready: false,
-  }))
+  const players = snakeDraftTeams(sorted)
 
   const lobby: Lobby = {
     id: lobbyId,
     players,
     pickedHeroes: new Set(),
+    bannedHeroes: new Set(),
     pickOrder: PICK_SEQUENCE_10.slice(0, players.length),
     currentPickIndex: 0,
+    currentBanIndex: 0, // Radiant bans first (index 0), Dire bans second (index 1)
     pickTimer: null,
-    phase: 'picking',
+    phase: 'banning', // Start with ban phase
   }
 
   activeLobbies.set(lobbyId, lobby)
 
-  // Track player → lobby mapping
   for (const p of players) {
     playerToLobby.set(p.playerId, lobbyId)
   }
 
   lobbyLog.info('Lobby created', { lobbyId, playerCount: players.length })
 
-  // Send lobby_state to each player with their team and the full roster
   const allPlayers = players.map((p) => ({
     playerId: p.playerId,
     username: p.username,
@@ -103,11 +109,13 @@ export function createLobby(
       lobbyId,
       team: p.team,
       players: allPlayers,
+      phase: 'banning',
+      bannedHeroes: [],
+      currentBanIndex: 0,
     })
   }
 
-  // Start the first pick timer
-  startPickTimer(lobby, ws, redis, db)
+  startBanTimer(lobby, ws, redis, db)
 
   return lobby
 }
@@ -133,8 +141,15 @@ function startPickTimer(
     const player = lobby.players[pickIdx]
     if (player && !player.heroId && isBot(player.playerId)) {
       const randomHero = pickRandomHero(lobby)
-      lobbyLog.debug('Bot picking hero', { lobbyId: lobby.id, playerId: player.playerId, heroId: randomHero })
-      lobby.pickTimer = setTimeout(() => confirmPick(lobby, player.playerId, randomHero, ws, redis, db), BOT_PICK_DELAY_MS)
+      lobbyLog.debug('Bot picking hero', {
+        lobbyId: lobby.id,
+        playerId: player.playerId,
+        heroId: randomHero,
+      })
+      lobby.pickTimer = setTimeout(
+        () => confirmPick(lobby, player.playerId, randomHero, ws, redis, db),
+        BOT_PICK_DELAY_MS,
+      )
       return
     }
   }
@@ -148,6 +163,116 @@ function startPickTimer(
 
     const randomHero = pickRandomHero(lobby)
     confirmPick(lobby, player.playerId, randomHero, ws, redis, db)
+  }, PICK_TIME_MS)
+}
+
+/** Ban a hero during the ban phase (1 ban per team) */
+export function banHero(
+  lobbyId: string,
+  playerId: string,
+  heroId: string,
+  ws: WebSocketServiceApi,
+  redis: RedisServiceApi,
+  db: DatabaseServiceApi,
+): { success: boolean; error?: string } {
+  const lobby = activeLobbies.get(lobbyId)
+  if (!lobby) return { success: false, error: 'Lobby not found' }
+  if (lobby.phase !== 'banning') return { success: false, error: 'Not in ban phase' }
+
+  // Check it's this player's turn to ban
+  // Ban order: Radiant captain (index 0) bans first, Dire captain (index 5) bans second
+  const currentBanPlayerIndex = lobby.currentBanIndex === 0 ? 0 : 5
+  const currentBanPlayer = lobby.players[currentBanPlayerIndex]
+  
+  if (!currentBanPlayer || currentBanPlayer.playerId !== playerId) {
+    return { success: false, error: 'Not your turn to ban' }
+  }
+
+  if (!AVAILABLE_HEROES.includes(heroId)) {
+    return { success: false, error: 'Invalid hero' }
+  }
+
+  if (lobby.bannedHeroes.has(heroId)) {
+    return { success: false, error: 'Hero already banned' }
+  }
+
+  // Confirm ban
+  lobby.bannedHeroes.add(heroId)
+  lobby.currentBanIndex++
+
+  // Broadcast ban to all players
+  for (const p of lobby.players) {
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, {
+      type: 'hero_ban',
+      playerId,
+      heroId,
+    })
+  }
+
+  lobbyLog.debug('Hero banned', { lobbyId, playerId, heroId })
+
+  // Check if both bans are done
+  if (lobby.currentBanIndex >= 2) {
+    if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+    // Brief delay then transition to pick phase
+    setTimeout(() => {
+      lobby.phase = 'picking'
+      lobby.currentPickIndex = 0
+      startPickTimer(lobby, ws, redis, db)
+    }, 1000)
+    return { success: true }
+  }
+
+  // Start timer for next ban (Dire's ban)
+  if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+  lobby.pickTimer = setTimeout(() => {
+    // Auto-ban random hero on timeout
+    const available = AVAILABLE_HEROES.filter((h) => !lobby.bannedHeroes.has(h))
+    if (available.length > 0) {
+      const randomBan = available[Math.floor(Math.random() * available.length)]!
+      banHero(lobbyId, lobby.players[5]!.playerId, randomBan, ws, redis, db)
+    }
+  }, PICK_TIME_MS)
+
+  return { success: true }
+}
+
+/** Start ban timer for current team's captain */
+function startBanTimer(
+  lobby: Lobby,
+  ws: WebSocketServiceApi,
+  redis: RedisServiceApi,
+  db: DatabaseServiceApi,
+): void {
+  if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+
+  // Determine which captain should ban
+  const currentBanPlayerIndex = lobby.currentBanIndex === 0 ? 0 : 5
+  const currentBanPlayer = lobby.players[currentBanPlayerIndex]
+  
+  if (!currentBanPlayer) return
+
+  // If captain is a bot, auto-ban after delay
+  if (isBot(currentBanPlayer.playerId)) {
+    const available = AVAILABLE_HEROES.filter((h) => !lobby.bannedHeroes.has(h))
+    const randomBan = available[Math.floor(Math.random() * available.length)]!
+    lobby.pickTimer = setTimeout(
+      () => banHero(lobby.id, currentBanPlayer.playerId, randomBan, ws, redis, db),
+      BOT_PICK_DELAY_MS,
+    )
+    return
+  }
+
+  // Human captain - wait for ban input
+  lobby.pickTimer = setTimeout(() => {
+    // Auto-ban random hero on timeout
+    const available = AVAILABLE_HEROES.filter((h) => !lobby.bannedHeroes.has(h))
+    if (available.length > 0 && lobby.currentBanIndex < 2) {
+      const randomBan = available[Math.floor(Math.random() * available.length)]!
+      const banPlayerIndex = lobby.currentBanIndex === 0 ? 0 : 5
+      banHero(lobby.id, lobby.players[banPlayerIndex]!.playerId, randomBan, ws, redis, db)
+    }
   }, PICK_TIME_MS)
 }
 
@@ -301,7 +426,10 @@ export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   if (!lobby) return
 
   lobby.phase = 'cancelled'
-  if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+  if (lobby.pickTimer) {
+    clearTimeout(lobby.pickTimer)
+    lobby.pickTimer = null
+  }
 
   for (const p of lobby.players) {
     playerToLobby.delete(p.playerId)
@@ -314,4 +442,31 @@ export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   }
 
   activeLobbies.delete(lobbyId)
+}
+
+export function replacePlayerWithBot(
+  lobbyId: string,
+  playerId: string,
+  botId: string,
+): { success: boolean; error?: string } {
+  const lobby = activeLobbies.get(lobbyId)
+  if (!lobby) return { success: false, error: 'Lobby not found' }
+
+  const player = lobby.players.find((p) => p.playerId === playerId)
+  if (!player) return { success: false, error: 'Player not found' }
+
+  player.playerId = botId
+  player.username = botId.replace('bot_', 'Bot ').replace(/\b\w/g, (c) => c.toUpperCase())
+
+  for (const p of lobby.players) {
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, {
+      type: 'announcement',
+      message: `${player.username} has been replaced by a bot.`,
+      level: 'info',
+    })
+  }
+
+  lobbyLog.info('Player replaced with bot', { lobbyId, playerId, botId })
+  return { success: true }
 }

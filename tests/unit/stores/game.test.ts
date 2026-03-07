@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore } from '../../../app/stores/game'
 import type { TickStateMessage, PlayerEndStats } from '../../../shared/types/protocol'
-import type { PlayerState, GameEvent, TeamState, ZoneRuntimeState } from '../../../shared/types/game'
+import type {
+  PlayerState,
+  GameEvent,
+  TeamState,
+  ZoneRuntimeState,
+} from '../../../shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -32,6 +37,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     assists: 3,
     damageDealt: 0,
     towerDamageDealt: 0,
+    killStreak: 0,
     ...overrides,
   }
 }
@@ -47,13 +53,15 @@ function makeZone(id: string): ZoneRuntimeState {
   return { id, wards: [], creeps: [] }
 }
 
-function makeTickMessage(overrides: Partial<{
-  tick: number
-  phase: string
-  players: Record<string, PlayerState>
-  zones: Record<string, ZoneRuntimeState>
-  teams: { radiant: TeamState; dire: TeamState }
-}> = {}): TickStateMessage {
+function makeTickMessage(
+  overrides: Partial<{
+    tick: number
+    phase: string
+    players: Record<string, PlayerState>
+    zones: Record<string, ZoneRuntimeState>
+    teams: { radiant: TeamState; dire: TeamState }
+  }> = {},
+): TickStateMessage {
   const players = overrides.players ?? { p1: makePlayer() }
   return {
     type: 'tick_state',
@@ -107,9 +115,11 @@ describe('Game Store', () => {
       it('returns zone data for player zone', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ zone: 'radiant-fountain' }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ zone: 'radiant-fountain' }) },
+          }),
+        )
 
         expect(store.currentZone).not.toBeNull()
         expect(store.currentZone!.id).toBe('radiant-fountain')
@@ -119,9 +129,11 @@ describe('Game Store', () => {
       it('returns null for unknown zone', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ zone: 'nonexistent-zone' }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ zone: 'nonexistent-zone' }) },
+          }),
+        )
 
         expect(store.currentZone).toBeNull()
       })
@@ -136,9 +148,11 @@ describe('Game Store', () => {
       it('returns true when player is alive', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ alive: true }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ alive: true }) },
+          }),
+        )
 
         expect(store.isAlive).toBe(true)
       })
@@ -146,9 +160,11 @@ describe('Game Store', () => {
       it('returns false when player is dead', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ alive: false }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ alive: false }) },
+          }),
+        )
 
         expect(store.isAlive).toBe(false)
       })
@@ -163,9 +179,11 @@ describe('Game Store', () => {
       it('returns true when alive in shop zone', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ zone: 'radiant-fountain', alive: true }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ zone: 'radiant-fountain', alive: true }) },
+          }),
+        )
 
         expect(store.canBuy).toBe(true)
       })
@@ -173,9 +191,11 @@ describe('Game Store', () => {
       it('returns false when alive in non-shop zone', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ zone: 'mid-t1-rad', alive: true }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ zone: 'mid-t1-rad', alive: true }) },
+          }),
+        )
 
         expect(store.canBuy).toBe(false)
       })
@@ -183,9 +203,11 @@ describe('Game Store', () => {
       it('returns false when dead in shop zone', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ zone: 'radiant-fountain', alive: false }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ zone: 'radiant-fountain', alive: false }) },
+          }),
+        )
 
         expect(store.canBuy).toBe(false)
       })
@@ -200,9 +222,11 @@ describe('Game Store', () => {
       it('returns formatted KDA string', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ kills: 5, deaths: 2, assists: 7 }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ kills: 5, deaths: 2, assists: 7 }) },
+          }),
+        )
 
         expect(store.kda).toBe('5/2/7')
       })
@@ -217,9 +241,11 @@ describe('Game Store', () => {
       it('returns player level', () => {
         const store = useGameStore()
         store.playerId = 'p1'
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer({ level: 8 }) },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer({ level: 8 }) },
+          }),
+        )
 
         expect(store.heroLevel).toBe(8)
       })
@@ -235,18 +261,38 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
 
-        const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'dire', zone: 'mid-t1-rad', alive: true })
-        const allyOther = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant', zone: 'mid-t1-rad', alive: true })
-        const farEnemy = makePlayer({ id: 'e2', name: 'FarEnemy', team: 'dire', zone: 'bot-t1-dire', alive: true })
+        const enemy = makePlayer({
+          id: 'e1',
+          name: 'Enemy',
+          team: 'dire',
+          zone: 'mid-t1-rad',
+          alive: true,
+        })
+        const allyOther = makePlayer({
+          id: 'a1',
+          name: 'Ally',
+          team: 'radiant',
+          zone: 'mid-t1-rad',
+          alive: true,
+        })
+        const farEnemy = makePlayer({
+          id: 'e2',
+          name: 'FarEnemy',
+          team: 'dire',
+          zone: 'bot-t1-dire',
+          alive: true,
+        })
 
-        store.updateFromTick(makeTickMessage({
-          players: {
-            p1: makePlayer(),
-            e1: enemy,
-            a1: allyOther,
-            e2: farEnemy,
-          },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: {
+              p1: makePlayer(),
+              e1: enemy,
+              a1: allyOther,
+              e2: farEnemy,
+            },
+          }),
+        )
 
         expect(store.nearbyEnemies).toHaveLength(1)
         expect(store.nearbyEnemies[0]!.id).toBe('e1')
@@ -258,9 +304,11 @@ describe('Game Store', () => {
 
         const deadEnemy = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-t1-rad', alive: false })
 
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer(), e1: deadEnemy },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer(), e1: deadEnemy },
+          }),
+        )
 
         expect(store.nearbyEnemies).toHaveLength(0)
       })
@@ -276,11 +324,19 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
 
-        const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant', zone: 'mid-t1-rad', alive: true })
+        const ally = makePlayer({
+          id: 'a1',
+          name: 'Ally',
+          team: 'radiant',
+          zone: 'mid-t1-rad',
+          alive: true,
+        })
 
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer(), a1: ally },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer(), a1: ally },
+          }),
+        )
 
         expect(store.nearbyAllies).toHaveLength(1)
         expect(store.nearbyAllies[0]!.id).toBe('a1')
@@ -292,9 +348,11 @@ describe('Game Store', () => {
 
         const deadAlly = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-t1-rad', alive: false })
 
-        store.updateFromTick(makeTickMessage({
-          players: { p1: makePlayer(), a1: deadAlly },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { p1: makePlayer(), a1: deadAlly },
+          }),
+        )
 
         expect(store.nearbyAllies).toHaveLength(0)
       })
@@ -354,10 +412,10 @@ describe('Game Store', () => {
         const store = useGameStore()
 
         const msg = makeTickMessage()
-        ;(msg.state as Record<string, unknown>).towers = [
+        ;(msg.state as unknown as Record<string, unknown>).towers = [
           { team: 'radiant', zone: 'mid-t1-rad', hp: 1500, maxHp: 2000, alive: true },
         ]
-        ;(msg.state as Record<string, unknown>).creeps = [
+        ;(msg.state as unknown as Record<string, unknown>).creeps = [
           { id: 'c1', team: 'radiant', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
         ]
 
@@ -365,6 +423,44 @@ describe('Game Store', () => {
 
         expect(store.towers).toHaveLength(1)
         expect(store.creeps).toHaveLength(1)
+      })
+
+      it('stores towers in game store and persists across updates', () => {
+        const store = useGameStore()
+
+        const msg1 = makeTickMessage({ tick: 1 })
+        ;(msg1.state as unknown as Record<string, unknown>).towers = [
+          { team: 'radiant', zone: 'mid-t1-rad', hp: 1500, maxHp: 2000, alive: true },
+          { team: 'dire', zone: 'mid-t1-dire', hp: 2000, maxHp: 2000, alive: true },
+        ]
+
+        store.updateFromTick(msg1)
+
+        expect(store.towers).toHaveLength(2)
+        expect(store.towers[0]!.zone).toBe('mid-t1-rad')
+        expect(store.towers[1]!.zone).toBe('mid-t1-dire')
+      })
+
+      it('updates towers from tick_state', () => {
+        const store = useGameStore()
+
+        const msg1 = makeTickMessage({ tick: 1 })
+        ;(msg1.state as unknown as Record<string, unknown>).towers = [
+          { team: 'radiant', zone: 'mid-t1-rad', hp: 2000, maxHp: 2000, alive: true },
+        ]
+
+        store.updateFromTick(msg1)
+        expect(store.towers).toHaveLength(1)
+        expect(store.towers[0]!.hp).toBe(2000)
+
+        const msg2 = makeTickMessage({ tick: 2 })
+        ;(msg2.state as unknown as Record<string, unknown>).towers = [
+          { team: 'radiant', zone: 'mid-t1-rad', hp: 1500, maxHp: 2000, alive: true },
+        ]
+
+        store.updateFromTick(msg2)
+        expect(store.towers).toHaveLength(1)
+        expect(store.towers[0]!.hp).toBe(1500)
       })
 
       it('builds scoreboard from players', () => {
@@ -417,8 +513,8 @@ describe('Game Store', () => {
         const dead = makePlayer({ id: 'p2', alive: false, respawnTick: 20, team: 'dire' })
         store.updateFromTick(makeTickMessage({ tick: 15, players: { p1: alive, p2: dead } }))
 
-        const p1Entry = store.scoreboard.find(e => e.id === 'p1')
-        const p2Entry = store.scoreboard.find(e => e.id === 'p2')
+        const p1Entry = store.scoreboard.find((e) => e.id === 'p1')
+        const p2Entry = store.scoreboard.find((e) => e.id === 'p2')
         expect(p1Entry!.alive).toBe(true)
         expect(p1Entry!.respawnTick).toBeNull()
         expect(p2Entry!.alive).toBe(false)
@@ -444,12 +540,14 @@ describe('Game Store', () => {
         }
         const normalPlayer = makePlayer({ id: 'p1' })
 
-        store.updateFromTick(makeTickMessage({
-          players: { e1: foggedPlayer as unknown as PlayerState, p1: normalPlayer },
-        }))
+        store.updateFromTick(
+          makeTickMessage({
+            players: { e1: foggedPlayer as unknown as PlayerState, p1: normalPlayer },
+          }),
+        )
 
-        const foggedEntry = store.scoreboard.find(e => e.id === 'e1')
-        const normalEntry = store.scoreboard.find(e => e.id === 'p1')
+        const foggedEntry = store.scoreboard.find((e) => e.id === 'e1')
+        const normalEntry = store.scoreboard.find((e) => e.id === 'p1')
         expect(foggedEntry!.fogged).toBe(true)
         expect(normalEntry!.fogged).toBe(false)
       })
@@ -473,7 +571,7 @@ describe('Game Store', () => {
         const dead = makePlayer({ id: 'p1', alive: false, respawnTick: 25 })
         store.updateFromTick(makeTickMessage({ tick: 20, players: { p1: dead } }))
 
-        const entry = store.scoreboard.find(e => e.id === 'p1')!
+        const entry = store.scoreboard.find((e) => e.id === 'p1')!
         const remainingTicks = entry.respawnTick! - store.tick
         expect(remainingTicks).toBe(5)
       })
@@ -546,7 +644,15 @@ describe('Game Store', () => {
         const store = useGameStore()
 
         const stats: Record<string, PlayerEndStats> = {
-          p1: { kills: 5, deaths: 1, assists: 3, gold: 5000, items: ['boots'], heroDamage: 8000, towerDamage: 2000 },
+          p1: {
+            kills: 5,
+            deaths: 1,
+            assists: 3,
+            gold: 5000,
+            items: ['boots'],
+            heroDamage: 8000,
+            towerDamage: 2000,
+          },
         }
 
         store.setGameOver('radiant', stats)
@@ -613,7 +719,15 @@ describe('Game Store', () => {
 
       // Game ends
       store.setGameOver('dire', {
-        p1: { kills: 3, deaths: 5, assists: 2, gold: 3000, items: [], heroDamage: 5000, towerDamage: 1000 },
+        p1: {
+          kills: 3,
+          deaths: 5,
+          assists: 2,
+          gold: 3000,
+          items: [],
+          heroDamage: 5000,
+          towerDamage: 1000,
+        },
       })
       expect(store.phase).toBe('ended')
       expect(store.winner).toBe('dire')

@@ -29,6 +29,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     assists: 0,
     damageDealt: 0,
     towerDamageDealt: 0,
+    killStreak: 0,
+    buybackCost: 0,
     ...overrides,
   }
 }
@@ -50,6 +52,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
+    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    lastSeen: {},
     ...overrides,
   }
 }
@@ -84,7 +88,14 @@ describe('BotAI - decideBotAction', () => {
         hp: 500,
         maxHp: 500,
         gold: 0,
-        items: ['boots_of_speed', 'null_pointer', 'garbage_collector', 'blink_module', 'stack_overflow', 'segfault_blade'],
+        items: [
+          'boots_of_speed',
+          'null_pointer',
+          'garbage_collector',
+          'blink_module',
+          'stack_overflow',
+          'segfault_blade',
+        ],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -104,11 +115,11 @@ describe('BotAI - decideBotAction', () => {
       }
     })
 
-    it('does not retreat when HP is at 25%', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 125, maxHp: 500 })
+    it('does not retreat when HP is above retreat threshold', () => {
+      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 180, maxHp: 500 }) // 36% HP
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      // 125/500 = 25% => not < 25, so no retreat — moves forward instead
+      // 180/500 = 36% => above 30% retreat threshold, so moves forward
       expect(action).not.toBeNull()
       expect(action!.type).toBe('move')
       // Should advance along lane (forward), not retreat (backward toward base)
@@ -120,7 +131,13 @@ describe('BotAI - decideBotAction', () => {
 
   describe('combat - hero targeting', () => {
     it('attacks enemy hero in same zone', () => {
-      const bot = makePlayer({ zone: 'mid-river', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 0,
+        cooldowns: { q: 1, w: 1, e: 1, r: 1 },
+      })
       const enemy = makePlayer({
         id: 'enemy1',
         team: 'dire',
@@ -134,7 +151,13 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('targets lowest HP enemy hero', () => {
-      const bot = makePlayer({ zone: 'mid-river', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 0,
+        cooldowns: { q: 1, w: 1, e: 1, r: 1 },
+      })
       const enemy1 = makePlayer({
         id: 'enemy1',
         team: 'dire',
@@ -216,6 +239,7 @@ describe('BotAI - decideBotAction', () => {
         maxHp: 500,
         mp: 0,
         maxMp: 200,
+        cooldowns: { q: 0, w: 0, e: 1, r: 0 }, // E costs 0 mana, so put it on CD
       })
       const enemy = makePlayer({
         id: 'enemy1',
@@ -327,7 +351,14 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({
         zone: 'radiant-fountain',
         gold: 10000,
-        items: ['boots_of_speed', 'null_pointer', 'garbage_collector', 'blink_module', 'stack_overflow', 'segfault_blade'],
+        items: [
+          'boots_of_speed',
+          'null_pointer',
+          'garbage_collector',
+          'blink_module',
+          'stack_overflow',
+          'segfault_blade',
+        ],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -373,7 +404,13 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('prioritizes hero attacks over creep attacks', () => {
-      const bot = makePlayer({ zone: 'mid-river', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 0,
+        cooldowns: { q: 1, w: 1, e: 1, r: 1 },
+      })
       const enemy = makePlayer({
         id: 'enemy1',
         team: 'dire',

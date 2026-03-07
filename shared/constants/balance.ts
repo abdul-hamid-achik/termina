@@ -60,6 +60,12 @@ export const HERO_KILL_XP_PER_LEVEL = 20
 export const RESPAWN_BASE_TICKS = 3
 export const RESPAWN_PER_LEVEL_TICKS = 1
 
+// ── Buyback ──────────────────────────────────────────────────────
+
+export const BUYBACK_BASE_COST = 100
+export const BUYBACK_COST_PER_LEVEL = 25
+export const BUYBACK_COOLDOWN_TICKS = 90 // 6 minutes at 4s/tick
+
 // ── Inventory ────────────────────────────────────────────────────
 
 export const MAX_ITEMS = 6
@@ -94,7 +100,8 @@ export const RUNE_BUFF_TICKS = {
 
 // ── Surrender ────────────────────────────────────────────────────
 
-export const SURRENDER_MIN_TICK = 225
+export const SURRENDER_MIN_TICK = 225 // 15 minutes at 4s/tick
+export const SURRENDER_VOTE_THRESHOLD = 0.6 // 60% majority required
 
 // ── Creep Waves ──────────────────────────────────────────────────
 

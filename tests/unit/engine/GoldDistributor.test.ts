@@ -45,6 +45,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     assists: 0,
     damageDealt: 0,
     towerDamageDealt: 0,
+    killStreak: 0,
+    killStreak: 0,
     ...overrides,
   }
 }
@@ -61,6 +63,10 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones: initializeZoneStates(),
     creeps: [],
     towers: initializeTowers(),
+    neutrals: [],
+    runes: [],
+    roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
+    aegis: null,
     events: [],
     ...overrides,
   }
@@ -258,6 +264,28 @@ describe('GoldDistributor', () => {
       // Only killer should get gold
       expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
       expect(result.players['victim']!.gold).toBe(100)
+    })
+
+    it('should prevent killer from double-dipping assist gold', () => {
+      const state = makeGameState({
+        players: {
+          killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          a1: makePlayer({ id: 'a1', gold: 100 }),
+          a2: makePlayer({ id: 'a2', gold: 100 }),
+        },
+      })
+
+      // Killer is also in assisters list (should not get assist gold)
+      const result = awardKill(state, 'killer', 'victim', ['killer', 'a1', 'a2'])
+
+      // Killer should only get kill bounty, not assist gold
+      expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
+
+      // Assisters should split assist gold (100 / 2 = 50 each)
+      const assistGoldEach = Math.floor(ASSIST_GOLD / 2)
+      expect(result.players['a1']!.gold).toBe(100 + assistGoldEach)
+      expect(result.players['a2']!.gold).toBe(100 + assistGoldEach)
     })
 
     it('should return state unchanged for unknown killer', () => {

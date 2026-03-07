@@ -20,22 +20,27 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_DAMAGE = [100, 150, 200, 250] as const
-const Q_MANA = [60, 80, 100, 120] as const
-const Q_COOLDOWN = 6
+const Q_DAMAGE = [70, 100, 130, 160] as const
+const Q_MANA = 60
+const Q_COOLDOWN = [5, 4, 3, 2] as const
+const Q_VULNERABILITY = 15
 
-const W_MANA = [70, 90, 110, 130] as const
-const W_COOLDOWN = 12
+const W_MANA = 90
+const W_COOLDOWN = [10, 9, 8, 7] as const
+const W_ROOT_DURATION = 2
+const W_DOT_DAMAGE = [30, 40, 50, 60] as const
+const W_DOT_DURATION = 3
 
-const E_DAMAGE = [50, 80, 110, 140] as const
-const E_MANA = [100, 130, 160, 190] as const
-const E_COOLDOWN = 20
+const E_MANA = 100
+const E_COOLDOWN = [15, 14, 13, 12] as const
+const E_STUN_DURATION = 1
 
-const R_DAMAGE = [300, 500, 700] as const
-const R_MANA = [200, 350, 500] as const
-const R_COOLDOWN = 45
+const R_MANA = 300
+const R_COOLDOWN = [60, 55, 50] as const
+const R_DAMAGE_PER_MANA = [50, 75, 100] as const
+const R_SILENCE_DURATION = 2
 
-const PATTERN_MATCH_BONUS = 0.2 // 20% bonus
+const PATTERN_MATCH_BONUS = 0.15
 
 // ── Ability Resolver ──────────────────────────────────────────────
 
@@ -52,13 +57,13 @@ function resolveHeroAbility(
     case 'w':
       return resolveW(state, player, level, target)
     case 'e':
-      return resolveE(state, player, level)
+      return resolveE(state, player, level, target)
     case 'r':
       return resolveR(state, player, level, target)
   }
 }
 
-// Q: Grep — magic damage to target hero
+// Q: Match — magic damage + magic vulnerability
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -72,11 +77,8 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
-      )
+    if (player.mp < Q_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: Q_MANA, current: player.mp }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -86,11 +88,17 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, manaCost)
-    caster = setCooldown(caster, 'q', Q_COOLDOWN)
+    let caster = deductMana(player, Q_MANA)
+    caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const damage = scaleValue(Q_DAMAGE, level)
-    const updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    updatedTarget = applyBuff(updatedTarget, {
+      id: 'magicVulnerability',
+      stacks: Q_VULNERABILITY,
+      ticksRemaining: 3,
+      source: player.id,
+    })
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -104,6 +112,7 @@ function resolveQ(
             targetId: targetPlayer.id,
             damage,
             damageType: 'magical',
+            vulnerability: Q_VULNERABILITY,
           },
         },
       ],
@@ -111,7 +120,7 @@ function resolveQ(
   })
 }
 
-// W: Sed — debuff target hero: -30% attack damage for 3 ticks
+// W: Capture Group — root + DoT
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -125,11 +134,8 @@ function resolveW(
       )
     }
 
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
-      )
+    if (player.mp < W_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -139,18 +145,25 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, manaCost)
-    caster = setCooldown(caster, 'w', W_COOLDOWN)
+    let caster = deductMana(player, W_MANA)
+    caster = setCooldown(caster, 'w', scaleValue(W_COOLDOWN, level))
 
-    const debuffed = applyBuff(targetPlayer, {
-      id: 'sed_debuff',
-      stacks: 30, // 30% attack reduction
-      ticksRemaining: 3,
+    const dotDamage = scaleValue(W_DOT_DAMAGE, level)
+    let updatedTarget = applyBuff(targetPlayer, {
+      id: 'root',
+      stacks: 1,
+      ticksRemaining: W_ROOT_DURATION,
+      source: player.id,
+    })
+    updatedTarget = applyBuff(updatedTarget, {
+      id: 'dot_magical',
+      stacks: dotDamage,
+      ticksRemaining: W_DOT_DURATION,
       source: player.id,
     })
 
     return {
-      state: updatePlayers(state, [caster, debuffed]),
+      state: updatePlayers(state, [caster, updatedTarget]),
       events: [
         {
           tick: state.tick,
@@ -159,9 +172,10 @@ function resolveW(
             playerId: player.id,
             ability: 'w',
             targetId: targetPlayer.id,
-            effect: 'attack_reduction',
-            value: 30,
-            duration: 3,
+            effect: 'root',
+            duration: W_ROOT_DURATION,
+            dotDamage,
+            dotDuration: W_DOT_DURATION,
           },
         },
       ],
@@ -169,27 +183,55 @@ function resolveW(
   })
 }
 
-// E: Awk — zone control, enemies entering take magic damage for 4 ticks
+// E: Substitution — swap positions + stun both
 function resolveE(
   state: GameState,
   player: PlayerState,
   level: number,
+  target?: TargetRef,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
+    if (!target || target.kind !== 'hero') {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InvalidTargetError({ target: 'none', reason: 'Requires a hero target' }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
-    caster = setCooldown(caster, 'e', E_COOLDOWN)
+    if (player.mp < E_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: E_MANA, current: player.mp }))
+    }
 
-    const damage = scaleValue(E_DAMAGE, level)
+    const targetPlayer = findTargetPlayer(state, target)
+    if (!targetPlayer || !targetPlayer.alive) {
+      return yield* Effect.fail(
+        new InvalidTargetError({ target: target.name, reason: 'Target not found or dead' }),
+      )
+    }
+
+    let caster = deductMana(player, E_MANA)
+    caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
+
+    const casterZone = caster.zone
+    const targetZone = targetPlayer.zone
+
+    let updatedCaster = { ...caster, zone: targetZone }
+    let updatedTarget = { ...targetPlayer, zone: casterZone }
+
+    updatedCaster = applyBuff(updatedCaster, {
+      id: 'stun',
+      stacks: 1,
+      ticksRemaining: E_STUN_DURATION,
+      source: player.id,
+    })
+    updatedTarget = applyBuff(updatedTarget, {
+      id: 'stun',
+      stacks: 1,
+      ticksRemaining: E_STUN_DURATION,
+      source: player.id,
+    })
 
     return {
-      state: updatePlayer(state, caster),
+      state: updatePlayers(state, [updatedCaster, updatedTarget]),
       events: [
         {
           tick: state.tick,
@@ -197,24 +239,11 @@ function resolveE(
           payload: {
             playerId: player.id,
             ability: 'e',
-            zone: player.zone,
-            effect: 'zone_control',
-            damage,
-            damageType: 'magical',
-            duration: 4,
-            expiryTick: state.tick + 4,
-          },
-        },
-        {
-          tick: state.tick,
-          type: 'zone_control_placed',
-          payload: {
-            owner: player.id,
-            team: player.team,
-            zone: player.zone,
-            damage,
-            damageType: 'magical',
-            expiryTick: state.tick + 4,
+            targetId: targetPlayer.id,
+            effect: 'swap',
+            casterZone,
+            targetZone,
+            stunDuration: E_STUN_DURATION,
           },
         },
       ],
@@ -222,7 +251,7 @@ function resolveE(
   })
 }
 
-// R: Eval — massive magic damage to target hero
+// R: Catastrophic Backtracking — damage based on missing mana + silence
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -236,11 +265,8 @@ function resolveR(
       )
     }
 
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
-      )
+    if (player.mp < R_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: R_MANA, current: player.mp }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -250,11 +276,20 @@ function resolveR(
       )
     }
 
-    let caster = deductMana(player, manaCost)
-    caster = setCooldown(caster, 'r', R_COOLDOWN)
+    let caster = deductMana(player, R_MANA)
+    caster = setCooldown(caster, 'r', scaleValue(R_COOLDOWN, level))
 
-    const damage = scaleValue(R_DAMAGE, level)
-    const updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    const missingMana = targetPlayer.maxMp - targetPlayer.mp
+    const damagePerMana = scaleValue(R_DAMAGE_PER_MANA, level)
+    const damage = Math.floor((missingMana / 100) * damagePerMana)
+
+    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    updatedTarget = applyBuff(updatedTarget, {
+      id: 'silence',
+      stacks: 1,
+      ticksRemaining: R_SILENCE_DURATION,
+      source: player.id,
+    })
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -268,6 +303,8 @@ function resolveR(
             targetId: targetPlayer.id,
             damage,
             damageType: 'magical',
+            missingMana,
+            silenceDuration: R_SILENCE_DURATION,
           },
         },
       ],
@@ -275,27 +312,47 @@ function resolveR(
   })
 }
 
-// ── Passive: Pattern Match ────────────────────────────────────────
-// When an ability hits 2+ enemy heroes, deal 20% bonus damage to all targets.
-// This is checked by the ability resolver after determining hit targets.
+// ── Passive: Pattern Cache ────────────────────────────────────────
+// Casting an ability on the same target within 3 ticks deals 15% bonus damage.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
-  // Pattern Match triggers on ability_cast with multiple targets
   if (event.type !== 'ability_cast' || event.payload['playerId'] !== playerId) return state
 
-  const targets = event.payload['targets'] as string[] | undefined
-  if (!targets || targets.length < 2) return state
+  const targetId = event.payload['targetId'] as string | undefined
+  if (!targetId) return state
 
-  // Apply 20% bonus damage to all targets
-  const bonusDamage = Math.round(((event.payload['damage'] as number) ?? 0) * PATTERN_MATCH_BONUS)
-  if (bonusDamage <= 0) return state
+  const player = state.players[playerId]
+  if (!player) return state
 
-  const updatedPlayers = targets
-    .map((tid) => state.players[tid])
-    .filter((p): p is PlayerState => !!p && p.alive)
-    .map((p) => dealDamage(p, bonusDamage, 'magical'))
+  const lastTarget = player.buffs.find((b) => b.id === 'patternCacheTarget')?.source
+  const lastCastTick = player.buffs.find((b) => b.id === 'patternCacheTick')?.stacks ?? 0
 
-  return updatePlayers(state, updatedPlayers)
+  const currentTick = state.tick
+  const damage = event.payload['damage'] as number | undefined
+
+  if (lastTarget === targetId && currentTick - lastCastTick <= 3 && damage) {
+    const bonusDamage = Math.round(damage * PATTERN_MATCH_BONUS)
+    const targetPlayer = state.players[targetId]
+    if (targetPlayer && targetPlayer.alive) {
+      const updatedTarget = dealDamage(targetPlayer, bonusDamage, 'magical')
+      return updatePlayer(state, updatedTarget)
+    }
+  }
+
+  let updatedPlayer = applyBuff(player, {
+    id: 'patternCacheTarget',
+    stacks: 1,
+    ticksRemaining: 999,
+    source: targetId,
+  })
+  updatedPlayer = applyBuff(updatedPlayer, {
+    id: 'patternCacheTick',
+    stacks: currentTick,
+    ticksRemaining: 999,
+    source: playerId,
+  })
+
+  return updatePlayer(state, updatedPlayer)
 }
 
 registerHero('regex', resolveHeroAbility, resolveHeroPassive)

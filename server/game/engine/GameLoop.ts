@@ -29,6 +29,10 @@ import { toGameEvent, type GameEngineEvent } from '../protocol/events'
 import { getBotPlayerIds, getBotLane } from '../ai/BotManager'
 import { decideBotAction } from '../ai/BotAI'
 import { engineLog } from '../../utils/log'
+import { calculateBuybackCost, buyback } from './BuybackSystem'
+import { voteSurrender } from './SurrenderSystem'
+import { TALENT_TREES } from '../heroes/talent-trees'
+import { markPlayerActive, detectAFKPlayers, recordLeaver } from '../../services/LeaverSystem'
 
 // ── Action queue per game ──────────────────────────────────────
 
@@ -88,9 +92,117 @@ export function processTick(
     // 1. Collect all player actions from queue
     const actions = drainActions(gameId)
 
-    // 2. Validate actions against current state
+    // 1.2. Mark players as active when they take actions
+    for (const action of actions) {
+      Effect.runPromise(
+        markPlayerActive(gameId, action.playerId).pipe(
+          Effect.catchAll(() => Effect.void),
+        ),
+      )
+    }
+
+    // 1.5. Handle special commands (buyback, surrender) before validation
+    for (const action of actions) {
+      if (action.command.type === 'buyback') {
+        const buybackResult = buyback(currentState, action.playerId)
+        if (buybackResult.success && buybackResult.newState) {
+          currentState = buybackResult.newState
+          const player = currentState.players[action.playerId]
+          if (player) {
+            allEvents.push({
+              _tag: 'heal',
+              tick: currentState.tick,
+              sourceId: 'buyback',
+              targetId: action.playerId,
+              amount: player.maxHp,
+            })
+            allEvents.push({
+              _tag: 'power_spike',
+              tick: currentState.tick,
+              playerId: action.playerId,
+              spikeType: 'core_item',
+              itemId: 'buyback',
+              message: `${player.name} used buyback!`,
+            })
+          }
+        } else {
+          rejectedActions.push({ playerId: action.playerId, reason: buybackResult.reason || 'Buyback failed' })
+        }
+      } else if (action.command.type === 'surrender') {
+        const vote = action.command.vote === 'yes'
+        const player = currentState.players[action.playerId]
+        if (player && vote) {
+          const result = voteSurrender(currentState, action.playerId)
+          if (result.success) {
+            if (result.surrendered) {
+              // Game will end via win condition check
+              engineLog.info('Surrender passed', {
+                team: player.team,
+                votes: result.votes
+              })
+            } else {
+              // Broadcast vote status
+              engineLog.debug('Surrender vote cast', {
+                playerId: action.playerId,
+                votes: result.votes,
+              })
+            }
+          }
+        }
+      } else if (action.command.type === 'select_talent') {
+        const player = currentState.players[action.playerId]
+        if (player && player.heroId) {
+          const talentTree = TALENT_TREES[player.heroId]
+          if (talentTree) {
+            const tierKey = `tier${action.command.tier}` as keyof typeof player.talents
+            const selectedTalentId = action.command.talentId
+            
+            // Check if talent is valid for this tier
+            const tierTalents = talentTree.tiers[action.command.tier]
+            const isValidTalent = tierTalents.some(t => t.id === selectedTalentId)
+            
+            // Check if player hasn't already selected a talent for this tier
+            const alreadySelected = player.talents[tierKey] !== null
+            
+            if (isValidTalent && !alreadySelected && player.level >= action.command.tier) {
+              // Apply talent selection
+              const updatedPlayers = { ...currentState.players }
+              updatedPlayers[action.playerId] = {
+                ...player,
+                talents: {
+                  ...player.talents,
+                  [tierKey]: selectedTalentId,
+                },
+              }
+              currentState = { ...currentState, players: updatedPlayers }
+              
+              // Emit talent selection event
+              const selectedTalent = tierTalents.find(t => t.id === selectedTalentId)
+              allEvents.push({
+                _tag: 'talent_selected',
+                tick: currentState.tick,
+                playerId: action.playerId,
+                talentId: selectedTalentId,
+                tier: action.command.tier,
+                talentName: selectedTalent?.name || 'Unknown',
+              })
+            } else {
+              rejectedActions.push({
+                playerId: action.playerId,
+                reason: alreadySelected ? 'Talent already selected for this tier' : isValidTalent ? 'Level requirement not met' : 'Invalid talent',
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Validate actions against current state (filter out already-handled commands)
     const validActions: PlayerAction[] = []
     for (const action of actions) {
+      if (action.command.type === 'buyback' || action.command.type === 'surrender') {
+        continue // Already handled
+      }
       const error = validateAction(currentState, action)
       if (error === null) {
         validActions.push(action)
@@ -110,6 +222,11 @@ export function processTick(
 
     // 3.6. Apply inCombat buffs based on damage events
     currentState = applyInCombatBuffs(currentState, resolved.events)
+
+    // 3.7. Track last seen positions and detect missing enemies
+    const lastSeenUpdate = trackLastSeenAndMissing(currentState, allEvents)
+    currentState = lastSeenUpdate.state
+    allEvents.push(...lastSeenUpdate.events)
 
     // 4. Run CreepAI
     const creepActions = runCreepAI(currentState)
@@ -292,6 +409,19 @@ function buildGameLoop(
     if (newState.tick % 10 === 0) {
       engineLog.debug('Tick', { gameId, tick: newState.tick })
     }
+    
+    // Check for AFK players every 60 ticks and record leavers
+    if (newState.tick % 60 === 0) {
+      const afkPlayers = detectAFKPlayers(newState)
+      for (const afk of afkPlayers) {
+        Effect.runPromise(
+          recordLeaver(afk.playerId, gameId, newState, 'afk').pipe(
+            Effect.catchAll(() => Effect.void),
+          ),
+        )
+        engineLog.warn('AFK player detected', { gameId, playerId: afk.playerId, ticksAFK: afk.ticksAFK })
+      }
+    }
 
     // Broadcast filtered state to each player
     for (const playerId of Object.keys(newState.players)) {
@@ -431,10 +561,13 @@ function handleDeaths(
     if (!player.alive && player.respawnTick === null) {
       const alreadyCounted = events.some(e => e._tag === 'death' && e.playerId === pid)
       const respawnTicks = RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * player.level
+      const buybackCost = calculateBuybackCost(player)
+      
       players[pid] = {
         ...player,
         respawnTick: state.tick + respawnTicks,
         deaths: alreadyCounted ? player.deaths : player.deaths + 1,
+        buybackCost,
       }
       if (!alreadyCounted) {
         events.push({
@@ -538,13 +671,26 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
 
     const nextLevelXp = XP_PER_LEVEL[player.level + 1]
     if (nextLevelXp !== undefined && player.xp >= nextLevelXp) {
+      const newLevel = player.level + 1
       players[pid] = levelUpHero(player)
       events.push({
         _tag: 'level_up',
         tick: state.tick,
         playerId: pid,
-        newLevel: player.level + 1,
+        newLevel,
       })
+      
+      // Power spike notifications for key levels
+      if (newLevel === 6 || newLevel === 12 || newLevel === 18) {
+        events.push({
+          _tag: 'power_spike',
+          tick: state.tick,
+          playerId: pid,
+          spikeType: `level_${newLevel}` as 'level_6' | 'level_12' | 'level_18',
+          message: `${player.name} reached level ${newLevel}! Ultimate powers online.`,
+        })
+      }
+      
       changed = true
     }
   }
@@ -634,4 +780,65 @@ function checkWinCondition(state: GameState): TeamId | null {
   if (direTowersAlive === 0) return 'radiant'
 
   return null
+}
+
+/**
+ * Track last seen positions for all players and detect missing enemies
+ */
+function trackLastSeenAndMissing(
+  state: GameState,
+  events: GameEngineEvent[],
+): { state: GameState; events: GameEngineEvent[] } {
+  const updatedLastSeen = { ...state.lastSeen }
+  const newEvents: GameEngineEvent[] = []
+  
+  // Update last seen for all alive players based on their current zone
+  for (const [pid, player] of Object.entries(state.players)) {
+    if (player.alive) {
+      updatedLastSeen[pid] = {
+        zone: player.zone,
+        tick: state.tick,
+      }
+    }
+  }
+  
+  // Detect missing enemies - if a player hasn't been seen in 2 ticks and was last in lane
+  const MISSING_THRESHOLD = 2 // ticks
+  for (const [pid, player] of Object.entries(state.players)) {
+    if (!player.alive) continue
+    
+    const enemyTeam = player.team === 'radiant' ? 'dire' : 'radiant'
+    const enemies = Object.values(state.players).filter(p => p.team === enemyTeam && p.alive)
+    
+    for (const enemy of enemies) {
+      const lastSeen = state.lastSeen[enemy.id]
+      if (!lastSeen) continue
+      
+      const ticksSinceSeen = state.tick - lastSeen.tick
+      if (ticksSinceSeen >= MISSING_THRESHOLD) {
+        // Check if not already reported this tick
+        const alreadyReported = events.some(
+          e => e._tag === 'enemy_missing' && 
+               e.playerId === enemy.id && 
+               e.tick === state.tick
+        )
+        
+        if (!alreadyReported) {
+          newEvents.push({
+            _tag: 'enemy_missing',
+            tick: state.tick,
+            playerId: enemy.id,
+            lastSeenZone: lastSeen.zone,
+            lastSeenTick: lastSeen.tick,
+            reportedBy: pid,
+          })
+        }
+      }
+    }
+  }
+  
+  return {
+    state: { ...state, lastSeen: updatedLastSeen },
+    events: newEvents,
+  }
 }

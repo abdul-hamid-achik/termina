@@ -34,6 +34,15 @@ export interface PlayerState {
   assists: number
   damageDealt: number
   towerDamageDealt: number
+  killStreak: number
+  buybackCost: number
+  buybackCooldown?: number // tick when buyback becomes available again
+  talents: {
+    tier10: string | null // Talent ID chosen at level 10
+    tier15: string | null // Talent ID chosen at level 15
+    tier20: string | null // Talent ID chosen at level 20
+    tier25: string | null // Talent ID chosen at level 25
+  }
 }
 
 export interface CreepState {
@@ -100,6 +109,8 @@ export interface GameState {
   roshan: RoshanState
   aegis: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
+  surrenderVotes: { radiant: Set<string>; dire: Set<string> }
+  lastSeen: Record<string, { zone: string; tick: number }> // Track last seen position for each player
 }
 
 export interface ZoneRuntimeState {

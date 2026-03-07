@@ -22,18 +22,25 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = 50
-const Q_COOLDOWN = 10
+const Q_HEAL = [80, 120, 160, 200] as const
+const Q_MANA = 80
+const Q_COOLDOWN = [6, 5, 4, 3] as const
 
-const W_MANA = [80, 100, 120, 140] as const
-const W_COOLDOWN = 14
+const W_SHIELD = [100, 150, 200, 250] as const
+const W_MANA = 100
+const W_COOLDOWN = [10, 9, 8, 7] as const
+const W_DURATION = 3
 
-const E_HEAL = [100, 160, 220, 280] as const
-const E_MANA = [60, 80, 100, 120] as const
-const E_COOLDOWN = 6
+const E_MANA = 70
+const E_COOLDOWN = [12, 11, 10, 9] as const
+const E_SLOW_VALUE = 30
+const E_SLOW_DURATION = 2
 
-const R_MANA = [250, 350, 450] as const
-const R_COOLDOWN = 50
+const R_MANA = 250
+const R_COOLDOWN = [60, 55, 50] as const
+const R_SHIELD = 150
+const R_DEFENSE_BONUS = 3
+const R_DURATION = 4
 
 // ── Ability Resolver ──────────────────────────────────────────────
 
@@ -46,112 +53,18 @@ function resolveHeroAbility(
 ): Effect.Effect<AbilityResult, AbilityError> {
   switch (slot) {
     case 'q':
-      return resolveQ(state, player, target)
+      return resolveQ(state, player, level, target)
     case 'w':
-      return resolveW(state, player, level)
+      return resolveW(state, player, level, target)
     case 'e':
-      return resolveE(state, player, level, target)
+      return resolveE(state, player, level)
     case 'r':
-      return resolveR(state, player, level, target)
+      return resolveR(state, player, level)
   }
 }
 
-// Q: Ping — reveal target zone for 3 ticks (add temporary ward)
+// Q: Mend Protocol — heal ally
 function resolveQ(
-  state: GameState,
-  player: PlayerState,
-  target?: TargetRef,
-): Effect.Effect<AbilityResult, AbilityError> {
-  return Effect.gen(function* () {
-    if (player.mp < Q_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: Q_MANA, current: player.mp }))
-    }
-
-    // Target is a zone — encoded as hero target with zone name
-    const zoneId =
-      target?.kind === 'hero' ? target.name : target?.kind === 'self' ? player.zone : undefined
-    if (!zoneId) {
-      return yield* Effect.fail(
-        new InvalidTargetError({ target: 'none', reason: 'Requires a zone target' }),
-      )
-    }
-
-    let caster = deductMana(player, Q_MANA)
-    caster = setCooldown(caster, 'q', Q_COOLDOWN)
-
-    // Add temporary ward to the target zone
-    const zoneState = state.zones[zoneId]
-    const updatedZones = { ...state.zones }
-    if (zoneState) {
-      updatedZones[zoneId] = {
-        ...zoneState,
-        wards: [
-          ...zoneState.wards,
-          { team: player.team, placedTick: state.tick, expiryTick: state.tick + 3 },
-        ],
-      }
-    }
-
-    return {
-      state: { ...updatePlayer(state, caster), zones: updatedZones },
-      events: [
-        {
-          tick: state.tick,
-          type: 'ability_cast',
-          payload: { playerId: player.id, ability: 'q', zone: zoneId },
-        },
-      ],
-    }
-  })
-}
-
-// W: Firewall — all allies in zone gain 30% damage reduction for 2 ticks
-function resolveW(
-  state: GameState,
-  player: PlayerState,
-  level: number,
-): Effect.Effect<AbilityResult, AbilityError> {
-  return Effect.gen(function* () {
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
-      )
-    }
-
-    let caster = deductMana(player, manaCost)
-    caster = setCooldown(caster, 'w', W_COOLDOWN)
-
-    // Apply firewall buff to self and all allies in zone
-    const allies = getAlliesInZone(state, player)
-    const allAffected = [caster, ...allies].map((p) =>
-      applyBuff(p, {
-        id: 'firewallDefense',
-        stacks: 1,
-        ticksRemaining: 2,
-        source: player.id,
-      }),
-    )
-
-    return {
-      state: updatePlayers(state, allAffected),
-      events: [
-        {
-          tick: state.tick,
-          type: 'ability_cast',
-          payload: {
-            playerId: player.id,
-            ability: 'w',
-            targets: allAffected.map((a) => a.id),
-          },
-        },
-      ],
-    }
-  })
-}
-
-// E: Patch — heal target ally
-function resolveE(
   state: GameState,
   player: PlayerState,
   level: number,
@@ -164,11 +77,8 @@ function resolveE(
       )
     }
 
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
-      )
+    if (player.mp < Q_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: Q_MANA, current: player.mp }))
     }
 
     const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
@@ -181,10 +91,10 @@ function resolveE(
       )
     }
 
-    let caster = deductMana(player, manaCost)
-    caster = setCooldown(caster, 'e', E_COOLDOWN)
+    let caster = deductMana(player, Q_MANA)
+    caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
-    const healAmount = scaleValue(E_HEAL, level)
+    const healAmount = scaleValue(Q_HEAL, level)
     const healed =
       targetPlayer.id === player.id
         ? healPlayer(caster, healAmount)
@@ -200,7 +110,7 @@ function resolveE(
           type: 'ability_cast',
           payload: {
             playerId: player.id,
-            ability: 'e',
+            ability: 'q',
             targetId: targetPlayer.id,
             heal: healAmount,
           },
@@ -210,52 +120,127 @@ function resolveE(
   })
 }
 
-// R: Lockdown — silence all enemies in target zone for 3 ticks
-function resolveR(
+// W: Barrier — shield ally
+function resolveW(
   state: GameState,
   player: PlayerState,
   level: number,
   target?: TargetRef,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (!target || (target.kind !== 'hero' && target.kind !== 'self')) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InvalidTargetError({ target: 'none', reason: 'Requires a hero target' }),
       )
     }
 
-    const zoneId =
-      target?.kind === 'hero' ? target.name : target?.kind === 'self' ? player.zone : undefined
-    if (!zoneId) {
+    if (player.mp < W_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
+    }
+
+    const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
+    if (!targetPlayer || !targetPlayer.alive || targetPlayer.zone !== player.zone) {
       return yield* Effect.fail(
-        new InvalidTargetError({ target: 'none', reason: 'Requires a zone target' }),
+        new InvalidTargetError({
+          target: target.kind === 'hero' ? target.name : 'self',
+          reason: 'Target not in same zone or dead',
+        }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
-    caster = setCooldown(caster, 'r', R_COOLDOWN)
+    let caster = deductMana(player, W_MANA)
+    caster = setCooldown(caster, 'w', scaleValue(W_COOLDOWN, level))
 
-    const enemies = getEnemiesInZone(state, player, zoneId)
-    const silenced = enemies.map((e) =>
-      applyBuff(e, {
-        id: 'silence',
-        stacks: 1,
-        ticksRemaining: 3,
+    const shieldAmount = scaleValue(W_SHIELD, level)
+
+    if (targetPlayer.id === player.id) {
+      caster = applyBuff(caster, {
+        id: 'shield',
+        stacks: shieldAmount,
+        ticksRemaining: W_DURATION,
         source: player.id,
-      }),
-    )
+      })
+      return {
+        state: updatePlayer(state, caster),
+        events: [
+          {
+            tick: state.tick,
+            type: 'ability_cast',
+            payload: {
+              playerId: player.id,
+              ability: 'w',
+              targetId: targetPlayer.id,
+              shield: shieldAmount,
+              duration: W_DURATION,
+            },
+          },
+        ],
+      }
+    }
+
+    const shielded = applyBuff(targetPlayer, {
+      id: 'shield',
+      stacks: shieldAmount,
+      ticksRemaining: W_DURATION,
+      source: player.id,
+    })
 
     return {
-      state: updatePlayers(state, [caster, ...silenced]),
+      state: updatePlayers(state, [caster, shielded]),
       events: [
         {
           tick: state.tick,
           type: 'ability_cast',
           payload: {
             playerId: player.id,
-            ability: 'r',
-            zone: zoneId,
+            ability: 'w',
+            targetId: targetPlayer.id,
+            shield: shieldAmount,
+            duration: W_DURATION,
+          },
+        },
+      ],
+    }
+  })
+}
+
+// E: Scan Pulse — reveal zone + slow enemies
+function resolveE(
+  state: GameState,
+  player: PlayerState,
+  level: number,
+): Effect.Effect<AbilityResult, AbilityError> {
+  return Effect.gen(function* () {
+    if (player.mp < E_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: E_MANA, current: player.mp }))
+    }
+
+    let caster = deductMana(player, E_MANA)
+    caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
+
+    const enemies = getEnemiesInZone(state, player)
+    const slowed = enemies.map((e) =>
+      applyBuff(e, {
+        id: 'slow',
+        stacks: E_SLOW_VALUE,
+        ticksRemaining: E_SLOW_DURATION,
+        source: player.id,
+      }),
+    )
+
+    return {
+      state: updatePlayers(state, [caster, ...slowed]),
+      events: [
+        {
+          tick: state.tick,
+          type: 'ability_cast',
+          payload: {
+            playerId: player.id,
+            ability: 'e',
+            zone: player.zone,
+            effect: 'reveal',
+            slow: E_SLOW_VALUE,
+            duration: E_SLOW_DURATION,
             targets: enemies.map((e) => e.id),
           },
         },
@@ -264,17 +249,67 @@ function resolveR(
   })
 }
 
-// ── Passive: Watchtower ───────────────────────────────────────────
-// Extends vision by +1 zone. Implemented as a buff check in VisionCalculator.
+// R: Fortify — all allies +3 defense, 150 shield
+function resolveR(
+  state: GameState,
+  player: PlayerState,
+  level: number,
+): Effect.Effect<AbilityResult, AbilityError> {
+  return Effect.gen(function* () {
+    if (player.mp < R_MANA) {
+      return yield* Effect.fail(new InsufficientManaError({ required: R_MANA, current: player.mp }))
+    }
+
+    let caster = deductMana(player, R_MANA)
+    caster = setCooldown(caster, 'r', scaleValue(R_COOLDOWN, level))
+
+    const allies = getAlliesInZone(state, player)
+    const allAffected = [caster, ...allies].map((p) => {
+      let updated = applyBuff(p, {
+        id: 'shield',
+        stacks: R_SHIELD,
+        ticksRemaining: R_DURATION,
+        source: player.id,
+      })
+      updated = applyBuff(updated, {
+        id: 'defenseBuff',
+        stacks: R_DEFENSE_BONUS,
+        ticksRemaining: R_DURATION,
+        source: player.id,
+      })
+      return updated
+    })
+
+    return {
+      state: updatePlayers(state, allAffected),
+      events: [
+        {
+          tick: state.tick,
+          type: 'ability_cast',
+          payload: {
+            playerId: player.id,
+            ability: 'r',
+            shield: R_SHIELD,
+            defense: R_DEFENSE_BONUS,
+            duration: R_DURATION,
+            targets: allAffected.map((a) => a.id),
+          },
+        },
+      ],
+    }
+  })
+}
+
+// ── Passive: Overwatch ────────────────────────────────────────────
+// Grants vision of adjacent zones. Allied heroes in same zone gain 5 bonus defense.
 
 function resolveHeroPassive(state: GameState, playerId: string, _event: GameEvent): GameState {
-  // Watchtower is a permanent passive — ensure the buff exists
   const player = state.players[playerId]
   if (!player) return state
 
-  if (!player.buffs.some((b) => b.id === 'watchtower')) {
+  if (!player.buffs.some((b) => b.id === 'overwatch')) {
     const updated = applyBuff(player, {
-      id: 'watchtower',
+      id: 'overwatch',
       stacks: 1,
       ticksRemaining: 9999,
       source: playerId,
