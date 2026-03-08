@@ -36,6 +36,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     damageDealt: 0,
     towerDamageDealt: 0,
     killStreak: 0,
+    buybackCost: 100,
+    talents: {
+      tier10: null,
+      tier15: null,
+      tier20: null,
+      tier25: null,
+    },
     ...overrides,
   }
 }
@@ -45,8 +52,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -57,6 +64,10 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
+    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    lastSeen: {},
+    timeOfDay: 'day',
+    dayNightTick: 0,
     ...overrides,
   }
 }
@@ -296,6 +307,94 @@ describe('ActionResolver', () => {
       expect(wardEvents.length).toBe(1)
     })
 
+    it('should place sentry wards for true sight', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            items: ['sentry_ward', null, null, null, null, null],
+          }),
+        },
+      })
+
+      const actions: PlayerAction[] = [
+        { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+      const wardEvents = result.events.filter((e) => e._tag === 'ward_placed')
+      expect(wardEvents.length).toBe(1)
+      expect(wardEvents[0]!.wardType).toBe('sentry')
+      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('sentry')
+    })
+
+    it('should store ward type correctly for observer wards', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            items: ['observer_ward', null, null, null, null, null],
+          }),
+        },
+      })
+
+      const actions: PlayerAction[] = [
+        { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('observer')
+    })
+
+    it('should use different durations for sentry and observer wards', () => {
+      const observerState = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            items: ['observer_ward', null, null, null, null, null],
+          }),
+        },
+      })
+
+      const sentryState = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            items: ['sentry_ward', null, null, null, null, null],
+          }),
+        },
+      })
+
+      const tick = 10
+
+      const observerResult = Effect.runSync(
+        resolveActions({ ...observerState, tick }, [
+          { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+        ]),
+      )
+
+      const sentryResult = Effect.runSync(
+        resolveActions({ ...sentryState, tick }, [
+          { playerId: 'p1', command: { type: 'ward', zone: 'mid-river' } },
+        ]),
+      )
+
+      const observerWard = observerResult.state.zones['mid-river']!.wards[0]!
+      const sentryWard = sentryResult.state.zones['mid-river']!.wards[0]!
+
+      expect(observerWard.type).toBe('observer')
+      expect(sentryWard.type).toBe('sentry')
+      expect(sentryWard.expiryTick).toBeLessThan(observerWard.expiryTick)
+    })
+
     it('should apply stun buff when Skull Basher bash procs', () => {
       const state = makeGameState({
         players: {
@@ -344,7 +443,195 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, []))
 
       expect(result.state.players['p1']!.buffs).not.toBe(originalBuffs[0])
-      expect(result.state.players['p1']!.buffs.length).toBeGreaterThan(0)
+      expect(result.state.players['p1']!.buffs).toHaveLength(1)
+      expect(result.state.players['p1']!.buffs[0]!.id).toBe('spellblock')
+    })
+
+    it('should cancel TP channeling when player moves', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-t1-rad',
+            buffs: [
+              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
+              {
+                id: 'tp_destination',
+                stacks: 1,
+                ticksRemaining: 3,
+                source: 'town_portal_scroll',
+                destination: 'radiant-fountain',
+              },
+            ],
+          }),
+        },
+      })
+
+      const actions: PlayerAction[] = [
+        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-rad' } },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      expect(result.state.players['p1']!.zone).toBe('mid-t2-rad')
+      expect(result.state.players['p1']!.buffs).toHaveLength(0)
+
+      const tpCancelEvents = result.events.filter((e) => e._tag === 'teleport_cancelled')
+      expect(tpCancelEvents.length).toBe(1)
+      expect(tpCancelEvents[0]!.reason).toBe('movement')
+    })
+
+    it('should cancel TP channeling when player takes damage', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            buffs: [
+              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
+              {
+                id: 'tp_destination',
+                stacks: 1,
+                ticksRemaining: 3,
+                source: 'town_portal_scroll',
+                destination: 'radiant-fountain',
+              },
+            ],
+          }),
+          p2: makePlayer({
+            id: 'p2',
+            zone: 'mid-river',
+            team: 'dire',
+            name: 'Enemy',
+          }),
+        },
+      })
+
+      const actions: PlayerAction[] = [
+        { playerId: 'p2', command: { type: 'attack', target: { kind: 'hero', name: 'Player1' } } },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      expect(result.state.players['p1']!.buffs).toHaveLength(0)
+
+      const tpCancelEvents = result.events.filter((e) => e._tag === 'teleport_cancelled')
+      expect(tpCancelEvents.length).toBe(1)
+      expect(tpCancelEvents[0]!.reason).toBe('damage')
+    })
+
+    it('should not cancel TP if player has no tp_channeling buff', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-t1-rad',
+            buffs: [{ id: 'some_other_buff', stacks: 1, ticksRemaining: 2, source: 'test' }],
+          }),
+        },
+      })
+
+      const actions: PlayerAction[] = [
+        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-rad' } },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      expect(result.state.players['p1']!.zone).toBe('mid-t2-rad')
+      expect(result.state.players['p1']!.buffs).toHaveLength(1)
+
+      const tpCancelEvents = result.events.filter((e) => e._tag === 'teleport_cancelled')
+      expect(tpCancelEvents.length).toBe(0)
+    })
+  })
+
+  describe('glyph', () => {
+    it('should make all friendly towers invulnerable when glyph is used', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant' }),
+        },
+      })
+
+      const actions: PlayerAction[] = [{ playerId: 'p1', command: { type: 'glyph' } }]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      const radiantTowers = result.state.towers.filter((t) => t.team === 'radiant')
+      const direTowers = result.state.towers.filter((t) => t.team === 'dire')
+
+      for (const tower of radiantTowers) {
+        expect(tower.invulnerable).toBe(true)
+      }
+      for (const tower of direTowers) {
+        expect(tower.invulnerable).toBe(false)
+      }
+
+      expect(result.state.teams.radiant.glyphUsedTick).toBe(state.tick)
+      expect(result.state.teams.dire.glyphUsedTick).toBeNull()
+
+      const glyphEvents = result.events.filter((e) => e._tag === 'glyph_used')
+      expect(glyphEvents.length).toBe(1)
+      expect(glyphEvents[0]!.team).toBe('radiant')
+    })
+
+    it('should block attack on invulnerable tower', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-t1-dire',
+            team: 'radiant',
+          }),
+        },
+        towers: initializeTowers().map((t) =>
+          t.zone === 'mid-t1-dire' ? { ...t, invulnerable: true } : t,
+        ),
+      })
+
+      const actions: PlayerAction[] = [
+        {
+          playerId: 'p1',
+          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-dire' } },
+        },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-dire')
+      expect(tower?.hp).toBe(tower?.maxHp)
+
+      const invulnEvents = result.events.filter((e) => e._tag === 'tower_invulnerable')
+      expect(invulnEvents.length).toBe(1)
+      expect(invulnEvents[0]!.zone).toBe('mid-t1-dire')
+    })
+
+    it('should reject glyph when on cooldown', () => {
+      const state = makeGameState({
+        tick: 100,
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant' }),
+        },
+        teams: {
+          radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 50 },
+          dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+        },
+      })
+
+      const actions: PlayerAction[] = [{ playerId: 'p1', command: { type: 'glyph' } }]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      const radiantTowers = result.state.towers.filter((t) => t.team === 'radiant')
+      for (const tower of radiantTowers) {
+        expect(tower.invulnerable).toBe(false)
+      }
+
+      const cooldownEvents = result.events.filter((e) => e._tag === 'glyph_on_cooldown')
+      expect(cooldownEvents.length).toBe(1)
+      expect(cooldownEvents[0]!.playerId).toBe('p1')
+      expect(cooldownEvents[0]!.remainingTicks).toBeGreaterThan(0)
     })
   })
 })

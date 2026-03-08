@@ -1,7 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CommandInput from '../../../app/components/game/CommandInput.vue'
-import type { PlayerState } from '../../../shared/types/game'
 
 describe('CommandInput', () => {
   describe('accessibility', () => {
@@ -62,9 +61,17 @@ describe('CommandInput', () => {
         props: { canAct: true },
       })
 
+      const vm = wrapper.vm as { input: string; open: boolean }
       const input = wrapper.find('input')
-      await input.setValue('move mid')
+
+      vm.input = 'move mid'
+      await wrapper.vm.$nextTick()
+
+      vm.open = false
+      await wrapper.vm.$nextTick()
+
       await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
 
       expect(wrapper.emitted('submit')).toBeTruthy()
       expect(wrapper.emitted('submit')![0]).toEqual(['move mid'])

@@ -452,7 +452,7 @@ onUnmounted(() => {
         spellcheck="false"
         autocomplete="off"
         @keydown="handleKeydown"
-      />
+      >
       <span
         v-if="!input && canAct"
         class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"

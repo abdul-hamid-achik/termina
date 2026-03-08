@@ -7,6 +7,7 @@ export interface BuffState {
   stacks: number
   ticksRemaining: number
   source: string
+  destination?: string
 }
 
 export interface PlayerState {
@@ -68,6 +69,7 @@ export interface TowerState {
   hp: number
   maxHp: number
   alive: boolean
+  invulnerable: boolean
 }
 
 export interface GameEvent {
@@ -81,6 +83,7 @@ export interface TeamState {
   kills: number
   towerKills: number
   gold: number
+  glyphUsedTick: number | null
 }
 
 export interface RuneState {
@@ -111,6 +114,8 @@ export interface GameState {
   events: GameEvent[]
   surrenderVotes: { radiant: Set<string>; dire: Set<string> }
   lastSeen: Record<string, { zone: string; tick: number }> // Track last seen position for each player
+  timeOfDay: 'day' | 'night'
+  dayNightTick: number
 }
 
 export interface ZoneRuntimeState {
@@ -123,6 +128,7 @@ export interface WardState {
   team: TeamId
   placedTick: number
   expiryTick: number
+  type: 'observer' | 'sentry'
 }
 
 export interface FoggedPlayer {
@@ -149,4 +155,6 @@ export interface PlayerVisibleState {
   aegis: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
   visibleZones: string[]
+  timeOfDay: 'day' | 'night'
+  dayNightTick: number
 }

@@ -18,7 +18,7 @@ const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const lobbyDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 const RECONNECT_WINDOW_MS = 60_000
-const LOBBY_DISCONNECT_GRACE_MS = 30_000
+const _LOBBY_DISCONNECT_GRACE_MS = 30_000
 
 export default defineWebSocketHandler({
   open(peer) {

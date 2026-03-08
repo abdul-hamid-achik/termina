@@ -40,9 +40,7 @@ describe('StateManager', () => {
     })
 
     it('should initialize players with correct starting gold', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.gold).toBe(STARTING_GOLD)
@@ -58,18 +56,14 @@ describe('StateManager', () => {
     })
 
     it('should place dire players in dire fountain', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', team: 'dire', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'dire', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.zone).toBe('dire-fountain')
     })
 
     it('should initialize players with hero base stats', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       const p1 = state.players['p1']!
@@ -81,9 +75,7 @@ describe('StateManager', () => {
     })
 
     it('should initialize players at level 1 with 0 xp', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.level).toBe(1)
@@ -91,18 +83,14 @@ describe('StateManager', () => {
     })
 
     it('should initialize players with empty items', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.items).toEqual([null, null, null, null, null, null])
     })
 
     it('should initialize players as alive', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.alive).toBe(true)
@@ -110,18 +98,14 @@ describe('StateManager', () => {
     })
 
     it('should initialize cooldowns at 0', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.cooldowns).toEqual({ q: 0, w: 0, e: 0, r: 0 })
     })
 
     it('should initialize KDA at 0', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: 'echo' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.players['p1']!.kills).toBe(0)
@@ -130,19 +114,27 @@ describe('StateManager', () => {
     })
 
     it('should initialize team states', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', team: 'radiant' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'radiant' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.teams.radiant).toEqual({ id: 'radiant', kills: 0, towerKills: 0, gold: 0 })
-      expect(state.teams.dire).toEqual({ id: 'dire', kills: 0, towerKills: 0, gold: 0 })
+      expect(state.teams.radiant).toEqual({
+        id: 'radiant',
+        kills: 0,
+        towerKills: 0,
+        gold: 0,
+        glyphUsedTick: null,
+      })
+      expect(state.teams.dire).toEqual({
+        id: 'dire',
+        kills: 0,
+        towerKills: 0,
+        gold: 0,
+        glyphUsedTick: null,
+      })
     })
 
     it('should initialize towers', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.towers.length).toBeGreaterThan(0)
@@ -150,18 +142,14 @@ describe('StateManager', () => {
     })
 
     it('should initialize zones', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(Object.keys(state.zones).length).toBeGreaterThan(0)
     })
 
     it('should start with empty creeps and events', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1' }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       expect(state.creeps).toHaveLength(0)
@@ -178,9 +166,7 @@ describe('StateManager', () => {
     })
 
     it('should handle null heroId', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', heroId: null }),
-      ]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', heroId: null })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
       // With null heroId, stats default to 0
@@ -210,9 +196,7 @@ describe('StateManager', () => {
       const players: PlayerSetup[] = [makePlayerSetup()]
       Effect.runSync(sm.createGame('game1', players))
 
-      const updated = Effect.runSync(
-        sm.updateState('game1', (s) => ({ ...s, tick: 42 })),
-      )
+      const updated = Effect.runSync(sm.updateState('game1', (s) => ({ ...s, tick: 42 })))
       expect(updated.tick).toBe(42)
 
       // Verify the update persisted
@@ -221,9 +205,7 @@ describe('StateManager', () => {
     })
 
     it('should fail for non-existent game', () => {
-      const result = Effect.runSyncExit(
-        sm.updateState('nonexistent', (s) => s),
-      )
+      const result = Effect.runSyncExit(sm.updateState('nonexistent', (s) => s))
       expect(result._tag).toBe('Failure')
     })
 

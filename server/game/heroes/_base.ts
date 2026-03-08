@@ -298,7 +298,7 @@ export function processDoTs(state: GameState): GameState {
   let updated = state
   for (const [_pid, player] of Object.entries(updated.players)) {
     if (!player.alive) continue
-    const dotBuffs = player.buffs.filter(b => b.id.includes('dot'))
+    const dotBuffs = player.buffs.filter((b) => b.id.includes('dot'))
     if (dotBuffs.length === 0) continue
     let target = player
     for (const dot of dotBuffs) {
@@ -317,13 +317,44 @@ export function processDoTs(state: GameState): GameState {
 
 export function tickAllBuffs(state: GameState): GameState {
   let updated = state
+  const events: GameEvent[] = []
+
   for (const [_pid, player] of Object.entries(updated.players)) {
     if (!player.alive) continue
-    const ticked = tickBuffs(player)
-    if (ticked !== player) {
-      updated = updatePlayer(updated, ticked)
+
+    const tpChannelingBuff = player.buffs.find((b) => b.id === 'tp_channeling')
+    const tpDestBuff = player.buffs.find((b) => b.id === 'tp_destination')
+
+    if (tpChannelingBuff && tpChannelingBuff.ticksRemaining === 1 && tpDestBuff?.destination) {
+      const tpDestination = tpDestBuff.destination
+      const ticked = tickBuffs(player)
+      const teleported: PlayerState = {
+        ...ticked,
+        zone: tpDestination,
+        buffs: ticked.buffs.filter((b) => b.id !== 'tp_channeling' && b.id !== 'tp_destination'),
+      }
+      updated = updatePlayer(updated, teleported)
+
+      events.push({
+        tick: state.tick,
+        type: 'teleport_complete',
+        payload: {
+          playerId: player.id,
+          destination: tpDestination,
+        },
+      })
+    } else {
+      const ticked = tickBuffs(player)
+      if (ticked !== player) {
+        updated = updatePlayer(updated, ticked)
+      }
     }
   }
+
+  if (events.length > 0) {
+    updated = { ...updated, events: [...updated.events, ...events] }
+  }
+
   return updated
 }
 

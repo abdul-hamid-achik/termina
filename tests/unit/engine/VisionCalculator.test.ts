@@ -4,10 +4,7 @@ import {
   filterStateForPlayer,
   type FoggedPlayer,
 } from '../../../server/game/engine/VisionCalculator'
-import type {
-  GameState,
-  PlayerState,
-} from '../../../shared/types/game'
+import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -95,6 +92,7 @@ describe('VisionCalculator', () => {
         team: 'radiant',
         placedTick: 0,
         expiryTick: 100,
+        type: 'observer',
       })
 
       const state = makeGameState({
@@ -237,6 +235,7 @@ describe('VisionCalculator', () => {
         team: 'dire',
         placedTick: 0,
         expiryTick: 100,
+        type: 'observer',
       })
 
       const state = makeGameState({
@@ -247,9 +246,67 @@ describe('VisionCalculator', () => {
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
-      // dire-base should be fogged; its wards should be hidden
       const dZone = filtered.zones['dire-base']
       expect(dZone?.wards.length).toBe(0)
+    })
+
+    it('should reveal invisible enemies in true sight zones', () => {
+      const zones = initializeZoneStates()
+      zones['mid-river']!.wards.push({
+        team: 'radiant',
+        placedTick: 0,
+        expiryTick: 100,
+        type: 'sentry',
+      })
+
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'mid-river',
+            name: 'InvisEnemy',
+            hp: 300,
+            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+          }),
+        },
+        zones,
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      const enemy = filtered.players['e1']!
+      expect('fogged' in enemy).toBe(false)
+      expect((enemy as PlayerState).hp).toBe(300)
+    })
+
+    it('should not reveal invisible enemies outside true sight zones', () => {
+      const zones = initializeZoneStates()
+      zones['mid-river']!.wards.push({
+        team: 'radiant',
+        placedTick: 0,
+        expiryTick: 100,
+        type: 'observer',
+      })
+
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'mid-river',
+            name: 'InvisEnemy',
+            hp: 300,
+            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+          }),
+        },
+        zones,
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      const enemy = filtered.players['e1']!
+      expect('fogged' in enemy).toBe(true)
     })
 
     it('should include visibleZones in the output', () => {

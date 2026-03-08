@@ -102,20 +102,24 @@ describe('BotManager', () => {
     it('assigns lanes to bots based on hero roles', () => {
       const players = [
         { playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' }, // carry -> bot
-        { playerId: 'bot_beta', team: 'radiant' as const, heroId: 'sentry' }, // support -> bot (after mage takes mid)
-        { playerId: 'bot_gamma', team: 'radiant' as const, heroId: 'daemon' }, // assassin -> top
-        { playerId: 'bot_delta', team: 'radiant' as const, heroId: 'kernel' }, // tank -> top
-        { playerId: 'bot_epsilon', team: 'radiant' as const, heroId: 'regex' }, // mage -> mid
+        { playerId: 'bot_beta', team: 'radiant' as const, heroId: 'sentry' }, // support
+        { playerId: 'bot_gamma', team: 'radiant' as const, heroId: 'daemon' }, // assassin
+        { playerId: 'bot_delta', team: 'radiant' as const, heroId: 'kernel' }, // tank
+        { playerId: 'bot_epsilon', team: 'radiant' as const, heroId: 'regex' }, // mage
       ]
       registerBots('test-game', players)
 
       // Priority order: carry, mage, assassin, tank, support
-      // So mage (regex) gets mid before support (sentry)
+      // 1. carry (bot_alpha) -> preferred ['bot', 'top', 'mid'] -> bot=0 -> assign 'bot'
+      // 2. mage (bot_epsilon) -> preferred ['mid', 'top', 'bot'] -> mid=0 -> assign 'mid'
+      // 3. assassin (bot_gamma) -> preferred ['mid', 'top', 'bot'] -> mid=1 < 2 -> assign 'mid'
+      // 4. tank (bot_delta) -> preferred ['top', 'mid', 'bot'] -> top=0 -> assign 'top'
+      // 5. support (bot_beta) -> preferred ['mid', 'bot', 'top'] -> mid=2 full -> bot=1 -> assign 'bot'
       expect(getBotLane('test-game', 'bot_alpha')).toBe('bot') // carry
-      expect(getBotLane('test-game', 'bot_beta')).toBe('bot') // support -> bot (mid taken by mage)
-      expect(getBotLane('test-game', 'bot_gamma')).toBe('top') // assassin
-      expect(getBotLane('test-game', 'bot_delta')).toBe('top') // tank
       expect(getBotLane('test-game', 'bot_epsilon')).toBe('mid') // mage
+      expect(getBotLane('test-game', 'bot_gamma')).toBe('mid') // assassin (mid has room)
+      expect(getBotLane('test-game', 'bot_delta')).toBe('top') // tank
+      expect(getBotLane('test-game', 'bot_beta')).toBe('bot') // support (mid full)
     })
 
     it('defaults to mid for unknown bot', () => {

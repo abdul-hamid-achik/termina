@@ -4,7 +4,8 @@ import {
   TOWER_HP_T1,
   TOWER_HP_T2,
   TOWER_HP_T3,
-  WARD_DURATION_TICKS,
+  OBSERVER_WARD_DURATION_TICKS,
+  SENTRY_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
 
@@ -56,6 +57,7 @@ export function initializeTowers(): TowerState[] {
       hp: maxHp,
       maxHp,
       alive: true,
+      invulnerable: false,
     })
   }
   return towers
@@ -67,8 +69,8 @@ export function placeWard(
   zoneId: string,
   team: TeamId,
   currentTick: number,
+  wardType: 'observer' | 'sentry' = 'observer',
 ): boolean {
-  // Count existing wards for this team
   let teamWardCount = 0
   for (const zrs of Object.values(zones)) {
     teamWardCount += zrs.wards.filter((w) => w.team === team).length
@@ -78,10 +80,14 @@ export function placeWard(
   const zoneState = zones[zoneId]
   if (!zoneState) return false
 
+  const duration =
+    wardType === 'observer' ? OBSERVER_WARD_DURATION_TICKS : SENTRY_WARD_DURATION_TICKS
+
   const ward: WardState = {
     team,
     placedTick: currentTick,
-    expiryTick: currentTick + WARD_DURATION_TICKS,
+    expiryTick: currentTick + duration,
+    type: wardType,
   }
   zones[zoneId] = { ...zoneState, wards: [...zoneState.wards, ward] }
   return true

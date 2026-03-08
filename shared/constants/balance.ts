@@ -72,8 +72,10 @@ export const MAX_ITEMS = 6
 
 // ── Wards ────────────────────────────────────────────────────────
 
-export const WARD_DURATION_TICKS = 45
+export const OBSERVER_WARD_DURATION_TICKS = 45
+export const SENTRY_WARD_DURATION_TICKS = 30
 export const WARD_LIMIT_PER_TEAM = 3
+export const SENTRY_WARD_TRUE_SIGHT_RADIUS = 1
 
 // ── Roshan ───────────────────────────────────────────────────────
 
@@ -91,11 +93,11 @@ export const RUNE_DURATION_TICKS = 30 // Runes expire after 30 ticks (2 min)
 
 // Rune buff durations (in ticks)
 export const RUNE_BUFF_TICKS = {
-  haste: 15,    // 60 seconds
-  dd: 15,       // 60 seconds  
-  regen: 15,    // 60 seconds
-  arcane: 15,   // 60 seconds
-  invis: 15,    // 60 seconds
+  haste: 15, // 60 seconds
+  dd: 15, // 60 seconds
+  regen: 15, // 60 seconds
+  arcane: 15, // 60 seconds
+  invis: 15, // 60 seconds
 } as const
 
 // ── Surrender ────────────────────────────────────────────────────
@@ -125,7 +127,7 @@ export const NEUTRAL_CREEPS_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
 export const NEUTRAL_CREEPS = {
   // Small camp
   kobold: { hp: 250, attack: 10, gold: 20, xp: 25 },
-  // Medium camp  
+  // Medium camp
   ogre_mage: { hp: 550, attack: 25, gold: 40, xp: 50 },
   // Large camp
   centaur: { hp: 900, attack: 40, gold: 60, xp: 80 },
@@ -148,3 +150,47 @@ export const TOWER_DEFENSE = 20
 
 export const FOUNTAIN_HEAL_PER_TICK_PERCENT = 15
 export const FOUNTAIN_MANA_PER_TICK_PERCENT = 15
+
+export const GLYPH_DURATION_TICKS = 5
+export const GLYPH_COOLDOWN_TICKS = 300
+
+// ── Day/Night Cycle ──────────────────────────────────────────────
+
+export const DAY_DURATION_TICKS = 300
+export const NIGHT_DURATION_TICKS = 240
+export const NIGHT_VISION_PENALTY = 1
+
+// ── Deny System ──────────────────────────────────────────────────
+
+export const DENY_HP_THRESHOLD = 0.5
+export const DENY_GOLD_RATIO = 0.5
+export const DENY_XP_RATIO = 0.5
+
+// ── Assist System ────────────────────────────────────────────────
+
+export const ASSIST_XP_RATIO = 0.5
+
+// ── Item Passives ────────────────────────────────────────────────
+
+export const NULL_POINTER_CRIT_CHANCE = 0.15
+export const NULL_POINTER_CRIT_MULTIPLIER = 2.0
+export const CRYSTALYS_CRIT_CHANCE = 0.2
+export const CRYSTALYS_CRIT_MULTIPLIER = 1.75
+export const DAEDALUS_CRIT_CHANCE = 0.3
+export const DAEDALUS_CRIT_MULTIPLIER = 2.4
+export const VANGUARD_BLOCK_CHANCE = 0.6
+export const VANGUARD_BLOCK_AMOUNT = 50
+export const DESOLATOR_ARMOR_REDUCTION = 5
+export const MKB_BONUS_DAMAGE = 50
+
+// ── Regeneration ─────────────────────────────────────────────────
+
+export const RING_OF_HEALTH_REGEN_PERCENT = 0.02
+export const SOBI_MASK_REGEN_PERCENT = 0.02
+export const HEART_REGEN_PERCENT = 0.05
+export const REGEN_RUNE_HEAL_PERCENT = 0.05
+
+// ── Combat ───────────────────────────────────────────────────────
+
+export const IN_COMBAT_BUFF_DURATION = 3
+export const POWER_SPIKE_LEVELS = [6, 12, 18] as const

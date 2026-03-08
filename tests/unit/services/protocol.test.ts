@@ -12,10 +12,7 @@ import type {
   GameCountdownMessage,
   GameOverMessage,
 } from '../../../shared/types/protocol'
-import {
-  parseCommand,
-  parseCommandEither,
-} from '../../../server/game/protocol/commands'
+import { parseCommand, parseCommandEither } from '../../../server/game/protocol/commands'
 import {
   parseClientMessage,
   parseClientMessageEither,
@@ -562,6 +559,7 @@ describe('Game Engine Events', () => {
         playerId: 'p1',
         zone: 'mid-river',
         team: 'radiant',
+        wardType: 'observer',
       }
       const wire = toGameEvent(event)
       expect(wire.type).toBe('ward_placed')

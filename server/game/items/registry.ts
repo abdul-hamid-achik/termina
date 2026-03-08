@@ -296,7 +296,8 @@ const etherealBlade: ItemDef = {
   active: {
     id: 'ethereal_blade_active',
     name: 'Ether Blast',
-    description: 'Target becomes ethereal for 2 ticks (immune to physical, vulnerable to magical +40%).',
+    description:
+      'Target becomes ethereal for 2 ticks (immune to physical, vulnerable to magical +40%).',
     cooldownTicks: 15,
   },
 }
@@ -591,6 +592,21 @@ const observerWard: ItemDef = {
   },
 }
 
+const sentryWard: ItemDef = {
+  id: 'sentry_ward',
+  name: 'Sentry Ward',
+  cost: 75,
+  stats: {},
+  consumable: true,
+  maxStacks: 4,
+  active: {
+    id: 'sentry_ward_active',
+    name: 'Place Sentry Ward',
+    description: 'Reveals invisible units in the area. Lasts 30 ticks. Max 3 active per team.',
+    cooldownTicks: 0,
+  },
+}
+
 const smokeOfDeceit: ItemDef = {
   id: 'smoke_of_deceit',
   name: 'Smoke of Deceit',
@@ -695,6 +711,7 @@ export const ITEMS: Record<string, ItemDef> = {
 
   // Consumables
   observer_ward: observerWard,
+  sentry_ward: sentryWard,
   smoke_of_deceit: smokeOfDeceit,
   dust_of_appearance: dustOfAppearance,
   town_portal_scroll: townPortalScroll,

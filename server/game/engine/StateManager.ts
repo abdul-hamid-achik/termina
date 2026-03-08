@@ -106,8 +106,8 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
     tick: 0,
     phase: 'picking',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: playerStates,
     zones: initializeZoneStates(),
@@ -120,6 +120,8 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
     events: [],
     surrenderVotes: { radiant: new Set(), dire: new Set() },
     lastSeen: {},
+    timeOfDay: 'day',
+    dayNightTick: 0,
   }
 }
 

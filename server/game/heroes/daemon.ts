@@ -133,7 +133,8 @@ function resolveW(
       return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
     }
 
-    const zoneId = target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
+    const zoneId =
+      target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId) {
       return yield* Effect.fail(
         new InvalidTargetError({ target: 'none', reason: 'Requires a zone target' }),
@@ -150,11 +151,15 @@ function resolveW(
     if (targetZoneState) {
       zones[zoneId] = {
         ...targetZoneState,
-        wards: [...targetZoneState.wards, {
-          team: caster.team,
-          placedTick: state.tick,
-          expiryTick: state.tick + 3,
-        }],
+        wards: [
+          ...targetZoneState.wards,
+          {
+            team: caster.team,
+            placedTick: state.tick,
+            expiryTick: state.tick + 3,
+            type: 'observer',
+          },
+        ],
       }
     }
 
@@ -277,7 +282,8 @@ function resolveR(
       )
     }
 
-    const zoneId = target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
+    const zoneId =
+      target?.kind === 'zone' ? target.zone : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId || !state.zones[zoneId]) {
       return yield* Effect.fail(
         new InvalidTargetError({ target: zoneId ?? 'none', reason: 'Invalid zone target' }),

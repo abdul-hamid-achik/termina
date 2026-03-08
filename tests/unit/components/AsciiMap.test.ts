@@ -74,14 +74,17 @@ describe('AsciiMap', () => {
       const zones = [makeZone({ id: 'radiant-fountain' }), makeZone({ id: 'mid-t1-rad' })]
       const wrapper = mount(AsciiMap, {
         props: { zones, playerZone: 'radiant-fountain' },
-        attachTo: document.body,
       })
+
+      expect(wrapper.vm.focusedZoneId).toBe(null)
 
       const grid = wrapper.find('[role="grid"]')
       await grid.trigger('keydown', { key: 'ArrowRight' })
 
-      const focusedCell = document.activeElement
-      expect(focusedCell?.hasAttribute('role', 'gridcell')).toBe(true)
+      expect(wrapper.vm.focusedZoneId).toBe('radiant-fountain')
+
+      await grid.trigger('keydown', { key: 'ArrowRight' })
+      expect(wrapper.vm.focusedZoneId).toBe('mid-t1-rad')
     })
 
     it('should announce zone updates to screen readers', async () => {

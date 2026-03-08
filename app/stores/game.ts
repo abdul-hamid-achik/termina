@@ -50,6 +50,8 @@ export const useGameStore = defineStore('game', () => {
   const scoreboard = ref<ScoreboardEntry[]>([])
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
   const winner = ref<TeamId | null>(null)
+  const timeOfDay = ref<'day' | 'night'>('day')
+  const dayNightTick = ref(0)
 
   // Track if player has acted this tick (resets each tick)
   const lastActionTick = ref<number>(-1)
@@ -109,9 +111,15 @@ export const useGameStore = defineStore('game', () => {
       towers?: TowerState[]
       creeps?: CreepState[]
       neutrals?: NeutralCreepState[]
+      timeOfDay?: 'day' | 'night'
+      dayNightTick?: number
     }
 
-    gameLog.trace('tick_state', { tick: msg.tick, players: Object.keys(state.players).length, zones: Object.keys(state.zones).length })
+    gameLog.trace('tick_state', {
+      tick: msg.tick,
+      players: Object.keys(state.players).length,
+      zones: Object.keys(state.zones).length,
+    })
 
     tick.value = msg.tick
     phase.value = state.phase
@@ -121,6 +129,8 @@ export const useGameStore = defineStore('game', () => {
     if (state.towers) towers.value = state.towers
     if (state.creeps) creeps.value = state.creeps
     if (state.neutrals) neutrals.value = state.neutrals
+    if (state.timeOfDay) timeOfDay.value = state.timeOfDay
+    if (state.dayNightTick !== undefined) dayNightTick.value = state.dayNightTick
 
     if (playerId.value && state.players[playerId.value]) {
       player.value = state.players[playerId.value] ?? null
@@ -129,7 +139,7 @@ export const useGameStore = defineStore('game', () => {
     // Update scoreboard from players
     scoreboard.value = Object.values(state.players).map((p) => {
       const isFogged = (p as { fogged?: boolean }).fogged ?? false
-      return ({
+      return {
         id: p.id,
         name: p.name,
         heroId: p.heroId ?? '',
@@ -143,7 +153,7 @@ export const useGameStore = defineStore('game', () => {
         alive: (p.alive as boolean) ?? true,
         respawnTick: (p.respawnTick as number | null) ?? null,
         fogged: isFogged,
-      })
+      }
     })
   }
 
@@ -193,6 +203,8 @@ export const useGameStore = defineStore('game', () => {
     gameOverStats.value = null
     winner.value = null
     lastActionTick.value = -1
+    timeOfDay.value = 'day'
+    dayNightTick.value = 0
   }
 
   return {
@@ -214,6 +226,8 @@ export const useGameStore = defineStore('game', () => {
     gameOverStats,
     winner,
     lastActionTick,
+    timeOfDay,
+    dayNightTick,
     // Getters
     currentZone,
     isAlive,

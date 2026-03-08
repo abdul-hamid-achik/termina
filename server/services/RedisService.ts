@@ -232,7 +232,11 @@ function handleMessage(channel: string, message: string) {
       try {
         handler(message)
       } catch (err) {
-        console.error(`Redis handler error for channel ${channel}:`, err)
+        Effect.runSync(
+          Effect.logError(`Redis handler error for channel ${channel}`).pipe(
+            Effect.annotateLogs({ error: String(err) }),
+          ),
+        )
       }
     }
   }
@@ -242,7 +246,11 @@ function resubscribeAll() {
   if (!_subscriber) return
   for (const [channel] of subscriptions) {
     _subscriber.subscribe(channel).catch((err) => {
-      console.error(`Failed to resubscribe to ${channel}:`, err)
+      Effect.runSync(
+        Effect.logError(`Failed to resubscribe to ${channel}`).pipe(
+          Effect.annotateLogs({ error: String(err) }),
+        ),
+      )
     })
   }
 }
@@ -256,11 +264,13 @@ function getSubscriber(url: string): Redis {
     })
 
     _subscriber.on('error', (err: Error) => {
-      console.error('Redis subscriber error:', err)
+      Effect.runSync(
+        Effect.logError('Redis subscriber error').pipe(Effect.annotateLogs({ error: err.message })),
+      )
     })
 
     _subscriber.on('close', () => {
-      console.log('Redis subscriber closed, attempting reconnect...')
+      Effect.runSync(Effect.logInfo('Redis subscriber closed, attempting reconnect...'))
       setTimeout(() => {
         if (_subscriber) {
           resubscribeAll()

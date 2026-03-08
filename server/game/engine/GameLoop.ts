@@ -1,4 +1,4 @@
-import type { ManagedRuntime } from 'effect';
+import type { ManagedRuntime } from 'effect'
 import { Effect, Schedule, Fiber } from 'effect'
 import type { GameState, TeamId } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
@@ -12,6 +12,9 @@ import {
   MAX_LEVEL,
   HERO_KILL_XP_BASE,
   HERO_KILL_XP_PER_LEVEL,
+  DAY_DURATION_TICKS,
+  NIGHT_DURATION_TICKS,
+  GLYPH_DURATION_TICKS,
 } from '~~/shared/constants/balance'
 import type { StateManagerApi } from './StateManager'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
@@ -32,7 +35,11 @@ import { engineLog } from '../../utils/log'
 import { calculateBuybackCost, buyback } from './BuybackSystem'
 import { voteSurrender } from './SurrenderSystem'
 import { TALENT_TREES } from '../heroes/talent-trees'
-import { markPlayerActive, detectAFKPlayers, recordLeaver } from '../../services/LeaverSystem'
+import {
+  markPlayerActiveSafe,
+  detectAFKPlayers,
+  recordLeaverSafe,
+} from '../../services/LeaverSystem'
 
 // ── Action queue per game ──────────────────────────────────────
 
@@ -71,7 +78,11 @@ function drainActions(gameId: string): PlayerAction[] {
 export function processTick(
   gameId: string,
   state: GameState,
-): Effect.Effect<{ state: GameState; events: GameEngineEvent[]; rejectedActions: Array<{ playerId: string; reason: string }> }> {
+): Effect.Effect<{
+  state: GameState
+  events: GameEngineEvent[]
+  rejectedActions: Array<{ playerId: string; reason: string }>
+}> {
   return Effect.gen(function* () {
     let currentState: GameState = { ...state, tick: state.tick + 1, events: [] }
     const allEvents: GameEngineEvent[] = []
@@ -94,11 +105,7 @@ export function processTick(
 
     // 1.2. Mark players as active when they take actions
     for (const action of actions) {
-      Effect.runPromise(
-        markPlayerActive(gameId, action.playerId).pipe(
-          Effect.catchAll(() => Effect.void),
-        ),
-      )
+      markPlayerActiveSafe(gameId, action.playerId)
     }
 
     // 1.5. Handle special commands (buyback, surrender) before validation
@@ -126,7 +133,10 @@ export function processTick(
             })
           }
         } else {
-          rejectedActions.push({ playerId: action.playerId, reason: buybackResult.reason || 'Buyback failed' })
+          rejectedActions.push({
+            playerId: action.playerId,
+            reason: buybackResult.reason || 'Buyback failed',
+          })
         }
       } else if (action.command.type === 'surrender') {
         const vote = action.command.vote === 'yes'
@@ -138,7 +148,7 @@ export function processTick(
               // Game will end via win condition check
               engineLog.info('Surrender passed', {
                 team: player.team,
-                votes: result.votes
+                votes: result.votes,
               })
             } else {
               // Broadcast vote status
@@ -156,14 +166,14 @@ export function processTick(
           if (talentTree) {
             const tierKey = `tier${action.command.tier}` as keyof typeof player.talents
             const selectedTalentId = action.command.talentId
-            
+
             // Check if talent is valid for this tier
             const tierTalents = talentTree.tiers[action.command.tier]
-            const isValidTalent = tierTalents.some(t => t.id === selectedTalentId)
-            
+            const isValidTalent = tierTalents.some((t) => t.id === selectedTalentId)
+
             // Check if player hasn't already selected a talent for this tier
             const alreadySelected = player.talents[tierKey] !== null
-            
+
             if (isValidTalent && !alreadySelected && player.level >= action.command.tier) {
               // Apply talent selection
               const updatedPlayers = { ...currentState.players }
@@ -175,9 +185,9 @@ export function processTick(
                 },
               }
               currentState = { ...currentState, players: updatedPlayers }
-              
+
               // Emit talent selection event
-              const selectedTalent = tierTalents.find(t => t.id === selectedTalentId)
+              const selectedTalent = tierTalents.find((t) => t.id === selectedTalentId)
               allEvents.push({
                 _tag: 'talent_selected',
                 tick: currentState.tick,
@@ -189,7 +199,11 @@ export function processTick(
             } else {
               rejectedActions.push({
                 playerId: action.playerId,
-                reason: alreadySelected ? 'Talent already selected for this tier' : isValidTalent ? 'Level requirement not met' : 'Invalid talent',
+                reason: alreadySelected
+                  ? 'Talent already selected for this tier'
+                  : isValidTalent
+                    ? 'Level requirement not met'
+                    : 'Invalid talent',
               })
             }
           }
@@ -227,6 +241,28 @@ export function processTick(
     const lastSeenUpdate = trackLastSeenAndMissing(currentState, allEvents)
     currentState = lastSeenUpdate.state
     allEvents.push(...lastSeenUpdate.events)
+
+    // 3.8. Expire glyph invulnerability
+    if (currentState.teams.radiant.glyphUsedTick !== null) {
+      if (currentState.tick - currentState.teams.radiant.glyphUsedTick >= GLYPH_DURATION_TICKS) {
+        currentState = {
+          ...currentState,
+          towers: currentState.towers.map((t) =>
+            t.team === 'radiant' ? { ...t, invulnerable: false } : t,
+          ),
+        }
+      }
+    }
+    if (currentState.teams.dire.glyphUsedTick !== null) {
+      if (currentState.tick - currentState.teams.dire.glyphUsedTick >= GLYPH_DURATION_TICKS) {
+        currentState = {
+          ...currentState,
+          towers: currentState.towers.map((t) =>
+            t.team === 'dire' ? { ...t, invulnerable: false } : t,
+          ),
+        }
+      }
+    }
 
     // 4. Run CreepAI
     const creepActions = runCreepAI(currentState)
@@ -276,7 +312,7 @@ export function processTick(
     const roshanResult = processRoshanDamage(currentState, roshanDamage)
     currentState = roshanResult.state
     if (roshanResult.roshanKilled) {
-      allEvents.push(...roshanResult.events.filter(e => e._tag === 'roshan_killed'))
+      allEvents.push(...roshanResult.events.filter((e) => e._tag === 'roshan_killed'))
     }
 
     // 6. Spawn creep waves
@@ -288,7 +324,10 @@ export function processTick(
     // 6.1 Spawn neutral creeps in jungle camps
     const newNeutrals = spawnNeutralCreeps(currentState.tick)
     if (newNeutrals.length > 0) {
-      currentState = { ...currentState, neutrals: [...(currentState.neutrals ?? []), ...newNeutrals] }
+      currentState = {
+        ...currentState,
+        neutrals: [...(currentState.neutrals ?? []), ...newNeutrals],
+      }
     }
 
     // 6.2 Spawn runes
@@ -342,6 +381,26 @@ export function processTick(
         reason: `game_over:${winner}`,
       })
       yield* Effect.logInfo('Win condition met').pipe(Effect.annotateLogs({ gameId, winner }))
+    }
+
+    // 13.5. Progress day/night cycle
+    let newTimeOfDay = currentState.timeOfDay
+    let newDayNightTick = currentState.dayNightTick + 1
+
+    if (currentState.timeOfDay === 'day' && newDayNightTick >= DAY_DURATION_TICKS) {
+      newTimeOfDay = 'night'
+      newDayNightTick = 0
+      allEvents.push({ _tag: 'night_falls', tick: currentState.tick })
+    } else if (currentState.timeOfDay === 'night' && newDayNightTick >= NIGHT_DURATION_TICKS) {
+      newTimeOfDay = 'day'
+      newDayNightTick = 0
+      allEvents.push({ _tag: 'day_breaks', tick: currentState.tick })
+    }
+
+    currentState = {
+      ...currentState,
+      timeOfDay: newTimeOfDay,
+      dayNightTick: newDayNightTick,
     }
 
     // 14. Store events on state
@@ -409,17 +468,17 @@ function buildGameLoop(
     if (newState.tick % 10 === 0) {
       engineLog.debug('Tick', { gameId, tick: newState.tick })
     }
-    
+
     // Check for AFK players every 60 ticks and record leavers
     if (newState.tick % 60 === 0) {
       const afkPlayers = detectAFKPlayers(newState)
       for (const afk of afkPlayers) {
-        Effect.runPromise(
-          recordLeaver(afk.playerId, gameId, newState, 'afk').pipe(
-            Effect.catchAll(() => Effect.void),
-          ),
-        )
-        engineLog.warn('AFK player detected', { gameId, playerId: afk.playerId, ticksAFK: afk.ticksAFK })
+        recordLeaverSafe(afk.playerId, gameId, newState, 'afk')
+        engineLog.warn('AFK player detected', {
+          gameId,
+          playerId: afk.playerId,
+          ticksAFK: afk.ticksAFK,
+        })
       }
     }
 
@@ -531,7 +590,7 @@ function applyFountainHealing(state: GameState): GameState {
       (player.team === 'dire' && player.zone === 'dire-fountain')
 
     // Skip healing if player is in combat (soft check — full combat tracking would need a separate system)
-    const inCombat = player.buffs.some(b => b.id === 'inCombat')
+    const inCombat = player.buffs.some((b) => b.id === 'inCombat')
     if (isInFountain && !inCombat) {
       const hpHeal = Math.floor((player.maxHp * FOUNTAIN_HEAL_PER_TICK_PERCENT) / 100)
       const mpHeal = Math.floor((player.maxMp * FOUNTAIN_MANA_PER_TICK_PERCENT) / 100)
@@ -559,10 +618,27 @@ function handleDeaths(
 
   for (const [pid, player] of Object.entries(players)) {
     if (!player.alive && player.respawnTick === null) {
-      const alreadyCounted = events.some(e => e._tag === 'death' && e.playerId === pid)
+      if (player.buffs.some((b) => b.id === 'aegis')) {
+        players[pid] = {
+          ...player,
+          alive: true,
+          hp: player.maxHp,
+          mp: player.maxMp,
+          buffs: player.buffs.filter((b) => b.id !== 'aegis'),
+        }
+        events.push({
+          _tag: 'aegis_used',
+          tick: state.tick,
+          playerId: pid,
+        })
+        changed = true
+        continue
+      }
+
+      const alreadyCounted = events.some((e) => e._tag === 'death' && e.playerId === pid)
       const respawnTicks = RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * player.level
       const buybackCost = calculateBuybackCost(player)
-      
+
       players[pid] = {
         ...player,
         respawnTick: state.tick + respawnTicks,
@@ -679,7 +755,7 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
         playerId: pid,
         newLevel,
       })
-      
+
       // Power spike notifications for key levels
       if (newLevel === 6 || newLevel === 12 || newLevel === 18) {
         events.push({
@@ -690,7 +766,7 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
           message: `${player.name} reached level ${newLevel}! Ultimate powers online.`,
         })
       }
-      
+
       changed = true
     }
   }
@@ -791,7 +867,7 @@ function trackLastSeenAndMissing(
 ): { state: GameState; events: GameEngineEvent[] } {
   const updatedLastSeen = { ...state.lastSeen }
   const newEvents: GameEngineEvent[] = []
-  
+
   // Update last seen for all alive players based on their current zone
   for (const [pid, player] of Object.entries(state.players)) {
     if (player.alive) {
@@ -801,28 +877,26 @@ function trackLastSeenAndMissing(
       }
     }
   }
-  
+
   // Detect missing enemies - if a player hasn't been seen in 2 ticks and was last in lane
   const MISSING_THRESHOLD = 2 // ticks
   for (const [pid, player] of Object.entries(state.players)) {
     if (!player.alive) continue
-    
+
     const enemyTeam = player.team === 'radiant' ? 'dire' : 'radiant'
-    const enemies = Object.values(state.players).filter(p => p.team === enemyTeam && p.alive)
-    
+    const enemies = Object.values(state.players).filter((p) => p.team === enemyTeam && p.alive)
+
     for (const enemy of enemies) {
       const lastSeen = state.lastSeen[enemy.id]
       if (!lastSeen) continue
-      
+
       const ticksSinceSeen = state.tick - lastSeen.tick
       if (ticksSinceSeen >= MISSING_THRESHOLD) {
         // Check if not already reported this tick
         const alreadyReported = events.some(
-          e => e._tag === 'enemy_missing' && 
-               e.playerId === enemy.id && 
-               e.tick === state.tick
+          (e) => e._tag === 'enemy_missing' && e.playerId === enemy.id && e.tick === state.tick,
         )
-        
+
         if (!alreadyReported) {
           newEvents.push({
             _tag: 'enemy_missing',
@@ -836,7 +910,7 @@ function trackLastSeenAndMissing(
       }
     }
   }
-  
+
   return {
     state: { ...state, lastSeen: updatedLastSeen },
     events: newEvents,

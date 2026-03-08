@@ -12,7 +12,34 @@ import { awardLastHit, awardTowerKill } from './GoldDistributor'
 import { pickupAegis } from './RoshanAI'
 import { pickupRune } from './RuneAI'
 import { ITEMS } from '../items/registry'
-import { CREEP_XP, NEUTRAL_CREEPS, type NeutralCreepType } from '~~/shared/constants/balance'
+import {
+  CREEP_XP,
+  NEUTRAL_CREEPS,
+  type NeutralCreepType,
+  CREEP_GOLD_MIN,
+  CREEP_GOLD_MAX,
+  MELEE_CREEP_HP,
+  RANGED_CREEP_HP,
+  SIEGE_CREEP_HP,
+  GLYPH_COOLDOWN_TICKS,
+  DENY_HP_THRESHOLD,
+  DENY_GOLD_RATIO,
+  DENY_XP_RATIO,
+  NULL_POINTER_CRIT_CHANCE,
+  NULL_POINTER_CRIT_MULTIPLIER,
+  CRYSTALYS_CRIT_CHANCE,
+  CRYSTALYS_CRIT_MULTIPLIER,
+  DAEDALUS_CRIT_CHANCE,
+  DAEDALUS_CRIT_MULTIPLIER,
+  VANGUARD_BLOCK_CHANCE,
+  VANGUARD_BLOCK_AMOUNT,
+  DESOLATOR_ARMOR_REDUCTION,
+  MKB_BONUS_DAMAGE,
+  RING_OF_HEALTH_REGEN_PERCENT,
+  SOBI_MASK_REGEN_PERCENT,
+  HEART_REGEN_PERCENT,
+  // IN_COMBAT_BUFF_DURATION,
+} from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks } from '../../utils/AntiCheat'
 import { wsLog } from '../../utils/log'
@@ -29,6 +56,40 @@ interface ResolvedChanges {
   players: Record<string, PlayerState>
   events: GameEngineEvent[]
   heroAttackers: Map<string, string> // attackerId -> victimId
+}
+
+// ── Batch Update System ────────────────────────────────────────
+
+interface PlayerUpdates {
+  [playerId: string]: Partial<PlayerState>
+}
+
+function applyPlayerUpdates(
+  players: Record<string, PlayerState>,
+  updates: PlayerUpdates,
+): Record<string, PlayerState> {
+  if (Object.keys(updates).length === 0) return players
+
+  const newPlayers = { ...players }
+  for (const [id, changes] of Object.entries(updates)) {
+    const player = newPlayers[id]
+    if (player) {
+      newPlayers[id] = { ...player, ...changes }
+    }
+  }
+  return newPlayers
+}
+
+// function mergeUpdates(base: PlayerUpdates, additional: PlayerUpdates): PlayerUpdates {
+  const result = { ...base }
+  for (const [id, changes] of Object.entries(additional)) {
+    if (result[id]) {
+      result[id] = { ...result[id], ...changes }
+    } else {
+      result[id] = changes
+    }
+  }
+  return result
 }
 
 // ── Item Stat Bonuses ─────────────────────────────────────────
@@ -58,24 +119,24 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
 }
 
 /** Get effective attack damage for a player (base hero stat + item bonuses). */
-function getEffectiveAttack(player: PlayerState): number {
+function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
   const baseAttack = hero
     ? hero.baseStats.attack + (hero.growthPerLevel.attack ?? 0) * (player.level - 1)
     : 50
-  const itemBonus = getItemStatBonuses(player.items).attack ?? 0
+  const itemBonus = itemStats?.attack ?? getItemStatBonuses(player.items).attack ?? 0
   return baseAttack + itemBonus
 }
 
 /** Get effective defense for a player (base stat + item bonuses). */
-function getEffectiveDefense(player: PlayerState): number {
-  const itemBonus = getItemStatBonuses(player.items).defense ?? 0
+function getEffectiveDefense(player: PlayerState, itemStats?: ItemStats): number {
+  const itemBonus = itemStats?.defense ?? getItemStatBonuses(player.items).defense ?? 0
   return player.defense + itemBonus
 }
 
 /** Get effective magic resist for a player (base stat + item bonuses). */
-function getEffectiveMagicResist(player: PlayerState): number {
-  const itemBonus = getItemStatBonuses(player.items).magicResist ?? 0
+function getEffectiveMagicResist(player: PlayerState, itemStats?: ItemStats): number {
+  const itemBonus = itemStats?.magicResist ?? getItemStatBonuses(player.items).magicResist ?? 0
   return player.magicResist + itemBonus
 }
 
@@ -164,13 +225,13 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       // Ping system, always valid
       return null
     case 'deny':
-      // Can only deny allied creeps below 50% HP
-      if (command.target.kind !== 'creep') {
+      if (cmd.target.kind !== 'creep') {
         return 'Can only deny creeps'
       }
       return null
     case 'select_talent':
-      // Validation happens in GameLoop where we have access to talent trees
+      return null
+    case 'glyph':
       return null
     default:
       return null
@@ -244,8 +305,33 @@ export function resolveActions(
     const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
     const neutralKills: Array<{ playerId: string; neutralId: string }> = []
     const towerKills: Array<{ zone: string; team: TeamId }> = []
-    // Track damage dealt per player for post-game stats
     const damageTracker = new Map<string, { hero: number; tower: number }>()
+
+    // Build hero lookup index (once per resolveActions)
+    const heroIndex = new Map<string, string>()
+    for (const [id, p] of Object.entries(players)) {
+      heroIndex.set(p.name.toLowerCase(), id)
+      heroIndex.set(p.id.toLowerCase(), id)
+      if (p.heroId) heroIndex.set(p.heroId.toLowerCase(), id)
+    }
+    const findHeroByNameCached = (name: string): string | null => {
+      return heroIndex.get(name.toLowerCase()) ?? null
+    }
+
+    // Item stat cache
+    const itemStatCache = new Map<string, ItemStats>()
+    const getCachedItemStats = (playerId: string, items: (string | null)[]): ItemStats => {
+      const key = `${playerId}:${items.filter(Boolean).join(',')}`
+      let cached = itemStatCache.get(key)
+      if (!cached) {
+        cached = getItemStatBonuses(items)
+        itemStatCache.set(key, cached)
+      }
+      return cached
+    }
+
+    // Batch update accumulator
+    let playerUpdates: PlayerUpdates = {}
 
     // Phase 1: Instant abilities (stuns, silences)
     const instantCasts = validActions.filter(
@@ -263,17 +349,32 @@ export function resolveActions(
 
     // Phase 2: Movement — all moves resolve simultaneously
     const moves = validActions.filter((a) => a.command.type === 'move')
+    playerUpdates = {}
 
     for (const action of moves) {
       const cmd = action.command as { type: 'move'; zone: string }
       const player = players[action.playerId]
       if (player && player.alive) {
-        players = {
-          ...players,
-          [action.playerId]: { ...player, zone: cmd.zone },
+        const updates: Partial<PlayerState> = { zone: cmd.zone }
+
+        if (player.buffs.some((b) => b.id === 'tp_channeling')) {
+          updates.buffs = player.buffs.filter(
+            (b) => b.id !== 'tp_channeling' && b.id !== 'tp_destination',
+          )
+          events.push({
+            _tag: 'teleport_cancelled',
+            tick: state.tick,
+            playerId: action.playerId,
+            reason: 'movement',
+          })
         }
+
+        playerUpdates[action.playerId] = playerUpdates[action.playerId]
+          ? { ...playerUpdates[action.playerId], ...updates }
+          : updates
       }
     }
+    players = applyPlayerUpdates(players, playerUpdates)
 
     // Phase 3: Attacks + targeted abilities — simultaneous
     const attacks = validActions.filter((a) => a.command.type === 'attack')
@@ -288,6 +389,7 @@ export function resolveActions(
     )
 
     // Process denies — allied creeps below 50% HP
+    playerUpdates = {}
     for (const action of denies) {
       const cmd = action.command as { type: 'deny'; target: { kind: 'creep'; index: number } }
       const denier = players[action.playerId]
@@ -297,32 +399,23 @@ export function resolveActions(
       const creep = creeps[creepIdx]
       if (!creep || creep.hp <= 0) continue
       if (creep.zone !== denier.zone) continue
-      
-      // Check if creep is allied and below 50% HP
-      if (creep.team !== denier.team) continue
-      const creepMaxHp = creep.type === 'siege' ? SIEGE_CREEP_HP : creep.type === 'ranged' ? RANGED_CREEP_HP : MELEE_CREEP_HP
-      if (creep.hp > creepMaxHp * 0.5) continue // Can only deny below 50% HP
 
-      // Deny successful — creep dies, denier gets 50% gold/XP
+      if (creep.team !== denier.team) continue
+      const creepMaxHp =
+        creep.type === 'siege'
+          ? SIEGE_CREEP_HP
+          : creep.type === 'ranged'
+            ? RANGED_CREEP_HP
+            : MELEE_CREEP_HP
+      if (creep.hp > creepMaxHp * DENY_HP_THRESHOLD) continue
+
       creeps[creepIdx] = { ...creep, hp: 0 }
-      
-      // Award deny gold (50% of last hit value)
-      const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * 0.5)
-      players = {
-        ...players,
-        [action.playerId]: {
-          ...denier,
-          gold: denier.gold + denyGold,
-        },
-      }
-      
-      // Award 50% XP
-      players = {
-        ...players,
-        [action.playerId]: {
-          ...denier,
-          xp: denier.xp + Math.floor(CREEP_XP * 0.5),
-        },
+
+      const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
+      playerUpdates[action.playerId] = {
+        ...playerUpdates[action.playerId],
+        gold: denier.gold + denyGold,
+        xp: denier.xp + Math.floor(CREEP_XP * DENY_XP_RATIO),
       }
 
       events.push({
@@ -334,6 +427,7 @@ export function resolveActions(
         goldAwarded: denyGold,
       })
     }
+    players = applyPlayerUpdates(players, playerUpdates)
 
     for (const action of attacks) {
       const cmd = action.command as { type: 'attack'; target: TargetRef }
@@ -341,53 +435,37 @@ export function resolveActions(
       if (!attacker || !attacker.alive) continue
 
       if (cmd.target.kind === 'hero') {
-        const targetId = findHeroByName(players, cmd.target.name)
+        const targetId = findHeroByNameCached(cmd.target.name)
         if (!targetId) continue
-        const targetPlayer = players[targetId]
-        if (!targetPlayer || !targetPlayer.alive) continue
-        let target = targetPlayer
+        const target = players[targetId]
+        if (!target || !target.alive) continue
 
-        // Check if target is in the same zone (post-movement)
         if (target.zone !== attacker.zone) continue
-
-        // Prevent friendly fire
         if (target.team === attacker.team) continue
 
-        // Attack hit — use effective stats (base + level scaling + items)
-        let attackDamage = getEffectiveAttack(attacker)
+        const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
+        const targetItemStats = getCachedItemStats(targetId, target.items)
 
-        // ── Item passive: Critical strikes ──
+        let attackDamage = getEffectiveAttack(attacker, attackerItemStats)
+
         let critMultiplier = 1
 
-        // Null Pointer: 15% chance, 2x damage
-        if (attacker.items.includes('null_pointer') && Math.random() < 0.15) {
-          critMultiplier = 2
-        }
-        // Crystalys: 20% chance, 1.75x damage (cheaper, weaker)
-        else if (attacker.items.includes('crystalys') && Math.random() < 0.2) {
-          critMultiplier = 1.75
-        }
-        // Daedalus: 30% chance, 2.4x damage (upgrades Crystalys)
-        else if (attacker.items.includes('daedalus') && Math.random() < 0.3) {
-          critMultiplier = 2.4
+        if (attacker.items.includes('null_pointer') && Math.random() < NULL_POINTER_CRIT_CHANCE) {
+          critMultiplier = NULL_POINTER_CRIT_MULTIPLIER
+        } else if (attacker.items.includes('crystalys') && Math.random() < CRYSTALYS_CRIT_CHANCE) {
+          critMultiplier = CRYSTALYS_CRIT_MULTIPLIER
+        } else if (attacker.items.includes('daedalus') && Math.random() < DAEDALUS_CRIT_CHANCE) {
+          critMultiplier = DAEDALUS_CRIT_MULTIPLIER
         }
 
         attackDamage = Math.round(attackDamage * critMultiplier)
 
-        // ── Item passive: Monkey King Bar (true strike + bonus magical) ──
         let bonusMagicDamage = 0
         if (attacker.items.includes('monkey_king_bar')) {
-          bonusMagicDamage = 50 // Added as separate magical damage
+          bonusMagicDamage = MKB_BONUS_DAMAGE
         }
 
-        // ── Item passive: Skull Basher (25% bash) ──
-        if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
-          // Apply stun buff to target (will be processed later)
-        }
-
-        // ── Item passive: Maelstrom chain lightning (25% chance) ──
         if (attacker.items.includes('maelstrom') && Math.random() < 0.25) {
-          // Find another enemy in zone to chain to
           const chainTargets = Object.values(players).filter(
             (p) =>
               p.zone === attacker.zone && p.team !== attacker.team && p.alive && p.id !== target.id,
@@ -396,9 +474,10 @@ export function resolveActions(
             const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
             const chainDamage = calculateMagicalDamage(60, chainTarget.magicResist)
             const chainNewHp = Math.max(0, chainTarget.hp - chainDamage)
-            players = {
-              ...players,
-              [chainTarget.id]: { ...chainTarget, hp: chainNewHp, alive: chainNewHp > 0 },
+            playerUpdates[chainTarget.id] = {
+              ...playerUpdates[chainTarget.id],
+              hp: chainNewHp,
+              alive: chainNewHp > 0,
             }
             events.push({
               _tag: 'damage',
@@ -411,56 +490,40 @@ export function resolveActions(
           }
         }
 
-        // ── Item passive: Silver Edge bonus damage from invis ──
         const silverEdgeBonus = attacker.buffs.find((b) => b.id === 'silver_edge_bonus')
         if (silverEdgeBonus) {
           attackDamage += silverEdgeBonus.stacks
         }
 
-        let defense = getEffectiveDefense(target)
+        let defense = getEffectiveDefense(target, targetItemStats)
 
-        // ── Item passive: Desolator (armor reduction on hit) ──
         if (attacker.items.includes('desolator')) {
-          defense = Math.max(0, defense - 5) // -5 defense for this attack
-          // Apply debuff for future attacks
-          const corruptionDebuff = {
-            id: 'corruption',
-            stacks: 5,
-            ticksRemaining: 3,
-            source: attacker.id,
-          }
-          target = { ...target, buffs: [...target.buffs, corruptionDebuff] }
+          defense = Math.max(0, defense - DESOLATOR_ARMOR_REDUCTION)
         }
 
-        // ── Item passive: Assault Cuirass enemy armor reduction ──
-        // Check if any enemy in zone has assault_cuirass (aura affects us)
         for (const [, zonePlayer] of Object.entries(players)) {
           if (
             zonePlayer.zone === target.zone &&
             zonePlayer.team !== target.team &&
             zonePlayer.items.includes('assault_cuirass')
           ) {
-            defense = Math.max(0, defense - 5)
+            defense = Math.max(0, defense - DESOLATOR_ARMOR_REDUCTION)
             break
           }
         }
 
-        // ── Item passive: Vanguard damage block (on target) ──
         let blockedDamage = 0
-        if (target.items.includes('vanguard') && Math.random() < 0.6) {
-          blockedDamage = 50
+        if (target.items.includes('vanguard') && Math.random() < VANGUARD_BLOCK_CHANCE) {
+          blockedDamage = VANGUARD_BLOCK_AMOUNT
         }
 
-        // Calculate final damage
         let damage = calculatePhysicalDamage(attackDamage, defense)
         damage = Math.max(0, damage - blockedDamage)
 
-        // ── Item passive: Ghost form (immune to physical) ──
         if (target.buffs.some((b) => b.id === 'ghost_form')) {
-          damage = 0 // Physical damage is nullified
+          damage = 0
         }
 
-        // Apply bonus magical damage from MKB
         let totalDamage = damage
         if (bonusMagicDamage > 0) {
           const magicDmg = calculateMagicalDamage(bonusMagicDamage, target.magicResist)
@@ -476,26 +539,29 @@ export function resolveActions(
         }
 
         const newHp = Math.max(0, target.hp - totalDamage)
-        let updatedTarget: PlayerState = { ...target, hp: newHp, alive: newHp > 0 }
+        let newBuffs = [...target.buffs]
 
-        // ── Item passive: Skull Basher stun application ──
         if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
-          updatedTarget = {
-            ...updatedTarget,
-            buffs: [
-              ...updatedTarget.buffs,
-              { id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id },
-            ],
-          }
+          newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id })
         }
 
-        // ── Item passive: Blade Mail damage return ──
+        if (newBuffs.some((b) => b.id === 'tp_channeling')) {
+          newBuffs = newBuffs.filter((b) => b.id !== 'tp_channeling' && b.id !== 'tp_destination')
+          events.push({
+            _tag: 'teleport_cancelled',
+            tick: state.tick,
+            playerId: targetId,
+            reason: 'damage',
+          })
+        }
+
         if (target.buffs.some((b) => b.id === 'blade_mail')) {
-          const returnDamage = Math.round(damage) // 100% return
+          const returnDamage = Math.round(damage)
           const attackerNewHp = Math.max(0, attacker.hp - returnDamage)
-          players = {
-            ...players,
-            [action.playerId]: { ...attacker, hp: attackerNewHp, alive: attackerNewHp > 0 },
+          playerUpdates[action.playerId] = {
+            ...playerUpdates[action.playerId],
+            hp: attackerNewHp,
+            alive: attackerNewHp > 0,
           }
           events.push({
             _tag: 'damage',
@@ -507,14 +573,15 @@ export function resolveActions(
           })
         }
 
-        players = {
-          ...players,
-          [targetId]: updatedTarget,
+        playerUpdates[targetId] = {
+          ...playerUpdates[targetId],
+          hp: newHp,
+          alive: newHp > 0,
+          buffs: newBuffs,
         }
 
         heroAttackers.set(action.playerId, targetId)
 
-        // Track hero damage dealt
         const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
         dt.hero += damage
         damageTracker.set(action.playerId, dt)
@@ -533,7 +600,8 @@ export function resolveActions(
         if (!creep || creep.hp <= 0) continue
         if (creep.zone !== attacker.zone) continue
 
-        const attackDamage = getEffectiveAttack(attacker)
+        const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
+        const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
         const newHp = Math.max(0, creep.hp - attackDamage)
 
         creeps[creepIdx] = { ...creep, hp: newHp }
@@ -555,9 +623,18 @@ export function resolveActions(
         const tower = towers.find((t) => t.zone === targetZone && t.alive)
         if (!tower) continue
         if (tower.zone !== attacker.zone) continue
+        if (tower.invulnerable) {
+          events.push({
+            _tag: 'tower_invulnerable',
+            tick: state.tick,
+            zone: tower.zone,
+          })
+          continue
+        }
         if (!canAttackTower(towers, targetZone)) continue
 
-        const attackDamage = getEffectiveAttack(attacker)
+        const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
+        const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
         const newHp = Math.max(0, tower.hp - attackDamage)
 
         towers = towers.map((t) =>
@@ -570,7 +647,6 @@ export function resolveActions(
           towerKills.push({ zone: tower.zone, team: tower.team })
         }
 
-        // Track tower damage dealt
         const tdt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
         tdt.tower += attackDamage
         damageTracker.set(action.playerId, tdt)
@@ -584,15 +660,12 @@ export function resolveActions(
           damageType: 'physical',
         })
       } else if (cmd.target.kind === 'roshan') {
-        // Attack Roshan
         const roshan = state.roshan
         if (!roshan.alive) continue
         if (attacker.zone !== 'roshan-pit') continue
 
-        const attackDamage = getEffectiveAttack(attacker)
-        const _newHp = Math.max(0, roshan.hp - attackDamage)
-
-        // We'll apply this at the end via state update
+        const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
+        const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
 
         events.push({
           _tag: 'damage',
@@ -608,7 +681,8 @@ export function resolveActions(
         if (!neutral || !neutral.alive) continue
         if (neutral.zone !== attacker.zone) continue
 
-        const attackDamage = getEffectiveAttack(attacker)
+        const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
+        const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
         const newHp = Math.max(0, neutral.hp - attackDamage)
 
         neutrals[neutralIdx] = { ...neutral, hp: newHp, alive: newHp > 0 }
@@ -628,6 +702,9 @@ export function resolveActions(
       }
     }
 
+    // Apply all attack phase updates at once
+    players = applyPlayerUpdates(players, playerUpdates)
+
     // Resolve targeted casts
     for (const action of targetedCasts) {
       const result = resolveTargetedAbility(state, players, action, events, heroAttackers)
@@ -635,10 +712,10 @@ export function resolveActions(
     }
 
     // Phase 4: Passive effects, cooldown ticks, item passives
+    playerUpdates = {}
     for (const [pid, player] of Object.entries(players)) {
       if (!player.alive) continue
 
-      // Tick down cooldowns
       const cooldowns = { ...player.cooldowns }
       for (const slot of ['q', 'w', 'e', 'r'] as const) {
         if (cooldowns[slot] > 0) {
@@ -649,36 +726,31 @@ export function resolveActions(
       let hp = player.hp
       let mp = player.mp
 
-      // ── Item passive: Ring of Health (2% HP regen per tick) ──
       if (player.items.includes('ring_of_health')) {
-        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.02))
+        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * RING_OF_HEALTH_REGEN_PERCENT))
       }
 
-      // ── Item passive: Sobi Mask (2% MP regen per tick) ──
       if (player.items.includes('sobi_mask')) {
-        mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * 0.02))
+        mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * SOBI_MASK_REGEN_PERCENT))
       }
 
-      // ── Item passive: Heart of Tarrasque (5% HP regen when out of combat) ──
       if (player.items.includes('heart_of_tarrasque')) {
         const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
         const inCombat = player.buffs.some((b) => b.id === 'inCombat')
         if (!tookDamage && !inCombat) {
-          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.05))
+          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
         }
       }
 
-      // ── Item passive: Garbage Collector (5% HP regen when out of combat) ──
       if (player.items.includes('garbage_collector')) {
         const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
         const dealtDamage = heroAttackers.has(pid)
         const inCombat = player.buffs.some((b) => b.id === 'inCombat')
         if (!tookDamage && !dealtDamage && !inCombat) {
-          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.05))
+          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
         }
       }
 
-      // ── Item passive: Aether Lens (reduce cooldowns by 1) ──
       if (player.items.includes('aether_lens')) {
         for (const slot of ['q', 'w', 'e', 'r'] as const) {
           if (cooldowns[slot] > 0) {
@@ -687,7 +759,6 @@ export function resolveActions(
         }
       }
 
-      // ── Item passive: Linken's Sphere (spellblock refresh) ──
       let buffs = player.buffs
       if (player.items.includes('linkens_sphere')) {
         const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
@@ -699,11 +770,9 @@ export function resolveActions(
         }
       }
 
-      players = {
-        ...players,
-        [pid]: { ...player, hp, mp, cooldowns, buffs },
-      }
+      playerUpdates[pid] = { hp, mp, cooldowns, buffs }
     }
+    players = applyPlayerUpdates(players, playerUpdates)
 
     // Phase 5: Buy/Sell
     const buys = validActions.filter((a) => a.command.type === 'buy')
@@ -732,6 +801,43 @@ export function resolveActions(
       if (result) {
         players = { ...result.players }
       }
+    }
+
+    // Handle glyph commands
+    let teams = { ...state.teams }
+    const glyphActions = validActions.filter((a) => a.command.type === 'glyph')
+    for (const action of glyphActions) {
+      const player = players[action.playerId]
+      if (!player) continue
+
+      const team = player.team
+      const teamState = teams[team]
+
+      if (teamState.glyphUsedTick !== null) {
+        const ticksSinceUse = state.tick - teamState.glyphUsedTick
+        if (ticksSinceUse < GLYPH_COOLDOWN_TICKS) {
+          events.push({
+            _tag: 'glyph_on_cooldown',
+            tick: state.tick,
+            playerId: action.playerId,
+            remainingTicks: GLYPH_COOLDOWN_TICKS - ticksSinceUse,
+          })
+          continue
+        }
+      }
+
+      towers = towers.map((t) => (t.team === team ? { ...t, invulnerable: true } : t))
+
+      teams = {
+        ...teams,
+        [team]: { ...teamState, glyphUsedTick: state.tick },
+      }
+
+      events.push({
+        _tag: 'glyph_used',
+        tick: state.tick,
+        team,
+      })
     }
 
     // Handle aegis pickup
@@ -871,10 +977,12 @@ export function resolveActions(
       const cmd = action.command as { type: 'ward'; zone: string }
       const player = players[action.playerId]
       if (player) {
-        const wardSlot = player.items.indexOf('observer_ward')
+        const wardSlot = player.items.findIndex((i) => i === 'observer_ward' || i === 'sentry_ward')
         if (wardSlot === -1) continue
 
-        const placed = placeWard(zones, cmd.zone, player.team, state.tick)
+        const wardType = player.items[wardSlot] === 'sentry_ward' ? 'sentry' : 'observer'
+
+        const placed = placeWard(zones, cmd.zone, player.team, state.tick, wardType)
         if (placed) {
           const newItems = [...player.items]
           newItems[wardSlot] = null
@@ -886,6 +994,7 @@ export function resolveActions(
             playerId: action.playerId,
             zone: cmd.zone,
             team: player.team,
+            wardType,
           })
         }
       }
@@ -898,6 +1007,7 @@ export function resolveActions(
       creeps,
       neutrals,
       towers,
+      teams,
     }
 
     return { state: updatedState, events, heroAttackers }
@@ -956,7 +1066,7 @@ function resolveInstantAbility(
     abilityId: ability.id,
     cooldown: cooldownTicks,
   })
-  
+
   // Also emit detailed cooldown event for UI tracking
   events.push({
     _tag: 'cooldown_used',
@@ -1069,7 +1179,7 @@ function resolveTargetedAbility(
     abilityId: ability.id,
     cooldown: cooldownTicks,
   })
-  
+
   // Also emit detailed cooldown event for UI tracking
   events.push({
     _tag: 'cooldown_used',

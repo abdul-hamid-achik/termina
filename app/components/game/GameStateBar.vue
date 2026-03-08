@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '~~/shared/constants/balance'
+
 defineProps<{
   tick: number
   gameTime: string
@@ -10,10 +12,21 @@ defineProps<{
   connected?: boolean
   reconnecting?: boolean
   latency?: number
+  timeOfDay?: 'day' | 'night'
+  dayNightTick?: number
 }>()
 
 function formatGold(n: number): string {
   return n.toLocaleString()
+}
+
+function formatTimeRemaining(tick: number, timeOfDay: string): string {
+  const totalTicks = timeOfDay === 'day' ? DAY_DURATION_TICKS : NIGHT_DURATION_TICKS
+  const remaining = totalTicks - tick
+  const seconds = Math.ceil(remaining * 4)
+  const minutes = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 </script>
 
@@ -30,6 +43,14 @@ function formatGold(n: number): string {
     <span class="text-border">|</span>
     <span class="inline-flex gap-1">
       <span class="text-text-primary">{{ gameTime }}</span>
+    </span>
+    <span class="text-border">|</span>
+    <span class="inline-flex gap-1">
+      <span v-if="timeOfDay === 'day'" class="text-yellow-400">Day</span>
+      <span v-else class="text-blue-300">Night</span>
+      <span v-if="dayNightTick !== undefined && timeOfDay" class="text-text-dim text-xs">
+        ({{ formatTimeRemaining(dayNightTick, timeOfDay) }})
+      </span>
     </span>
     <span class="text-border">|</span>
     <span class="inline-flex gap-1">

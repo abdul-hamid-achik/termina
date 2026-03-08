@@ -1,6 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { Effect } from 'effect'
-import {
+import { describe, it, expect, vi } from 'vitest'
   processDoTs,
   tickAllBuffs,
   levelUpHero,
@@ -25,21 +23,12 @@ import {
   deductMana,
   setCooldown,
   resetAllCooldowns,
-  resolveAbility,
-  InsufficientManaError,
-  CooldownError,
-  InvalidTargetError,
   registerHero,
-  getHeroResolver,
-} from '../../../server/game/heroes/_base'
-import type { GameState, PlayerState, BuffState, GameEvent } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { HEROES } from '../../../shared/constants/heroes'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
-    name: 'Player1',
     team: 'radiant',
     heroId: 'echo',
     zone: 'mid-t1-rad',
@@ -63,6 +52,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     damageDealt: 0,
     towerDamageDealt: 0,
     killStreak: 0,
+    buybackCost: 100,
+    talents: {
+      tier10: null,
+      tier15: null,
+      tier20: null,
+      tier25: null,
+    },
     ...overrides,
   }
 }
@@ -72,8 +68,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -84,6 +80,10 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
+    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    lastSeen: {},
+    timeOfDay: 'day',
+    dayNightTick: 0,
     ...overrides,
   }
 }
@@ -658,6 +658,92 @@ describe('_base hero utilities', () => {
       expect(resolver).toBeUndefined()
     })
   })
-})
 
-import { vi } from 'vitest'
+  describe('TP channeling completion', () => {
+    it('should complete teleport after channeling duration', () => {
+      const player = makePlayer({
+        zone: 'mid-t1-rad',
+        buffs: [
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
+          {
+            id: 'tp_destination',
+            stacks: 1,
+            ticksRemaining: 2,
+            source: 'town_portal_scroll',
+            destination: 'radiant-fountain',
+          },
+        ],
+      })
+      const state = makeGameState({ players: { p1: player } })
+
+      const result = tickAllBuffs(state)
+
+      expect(result.players['p1']!.zone).toBe('radiant-fountain')
+      expect(result.players['p1']!.buffs).toHaveLength(0)
+      expect(result.events).toHaveLength(1)
+      expect(result.events[0]!.type).toBe('teleport_complete')
+      expect(result.events[0]!.payload.destination).toBe('radiant-fountain')
+    })
+
+    it('should not teleport while channeling is in progress', () => {
+      const player = makePlayer({
+        zone: 'mid-t1-rad',
+        buffs: [
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
+          {
+            id: 'tp_destination',
+            stacks: 1,
+            ticksRemaining: 3,
+            source: 'town_portal_scroll',
+            destination: 'radiant-fountain',
+          },
+        ],
+      })
+      const state = makeGameState({ players: { p1: player } })
+
+      const result = tickAllBuffs(state)
+
+      expect(result.players['p1']!.zone).toBe('mid-t1-rad')
+      expect(result.players['p1']!.buffs).toHaveLength(2)
+      expect(result.events).toHaveLength(0)
+    })
+
+    it('should teleport to dire fountain for dire player', () => {
+      const player = makePlayer({
+        team: 'dire',
+        zone: 'mid-t1-dire',
+        buffs: [
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
+          {
+            id: 'tp_destination',
+            stacks: 1,
+            ticksRemaining: 2,
+            source: 'town_portal_scroll',
+            destination: 'dire-fountain',
+          },
+        ],
+      })
+      const state = makeGameState({ players: { p1: player } })
+
+      const result = tickAllBuffs(state)
+
+      expect(result.players['p1']!.zone).toBe('dire-fountain')
+      expect(result.players['p1']!.buffs).toHaveLength(0)
+    })
+
+    it('should handle missing destination buff gracefully', () => {
+      const player = makePlayer({
+        zone: 'mid-t1-rad',
+        buffs: [
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
+        ],
+      })
+      const state = makeGameState({ players: { p1: player } })
+
+      const result = tickAllBuffs(state)
+
+      expect(result.players['p1']!.zone).toBe('mid-t1-rad')
+      expect(result.players['p1']!.buffs).toHaveLength(0)
+    })
+  })
+})

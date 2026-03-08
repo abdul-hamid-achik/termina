@@ -34,7 +34,9 @@ if (import.meta.client) {
   try {
     const raw = localStorage.getItem('termina:quickbuy')
     if (raw) pinnedItems.value = JSON.parse(raw)
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 function savePins() {
   if (import.meta.client) {
@@ -53,7 +55,11 @@ function unpinItem(itemId: string) {
 }
 
 // Categorize items for the shop
-function getItemCategory(item: { id: string; cost: number; consumable: boolean }): 'starter' | 'core' | 'consumable' {
+function getItemCategory(item: {
+  id: string
+  cost: number
+  consumable: boolean
+}): 'starter' | 'core' | 'consumable' {
   if (item.consumable) return 'consumable'
   if (item.cost <= 500) return 'starter'
   return 'core'
@@ -78,7 +84,10 @@ onMounted(() => {
     uiLog.info('GameScreen connecting', { gameId: gameStore.gameId, playerId: gameStore.playerId })
     gameSocket.connect(gameStore.gameId, gameStore.playerId)
   } else {
-    uiLog.warn('GameScreen mounted without gameId or playerId', { gameId: gameStore.gameId, playerId: gameStore.playerId })
+    uiLog.warn('GameScreen mounted without gameId or playerId', {
+      gameId: gameStore.gameId,
+      playerId: gameStore.playerId,
+    })
   }
 
   // Keyboard listener for Tab (scoreboard toggle)
@@ -95,7 +104,7 @@ onUnmounted(() => {
 function onKeyDown(e: KeyboardEvent) {
   const target = e.target as HTMLElement
   const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
-  
+
   // Tab: autocomplete when input is focused, toggle scoreboard when not
   if (e.key === 'Tab') {
     e.preventDefault()
@@ -106,14 +115,14 @@ function onKeyDown(e: KeyboardEvent) {
     showScoreboard.value = true
     return
   }
-  
+
   // Q/W/E/R for abilities - only when not in input
   if (!isInputFocused && ['q', 'w', 'e', 'r'].includes(e.key.toLowerCase())) {
     e.preventDefault()
     handleQuickAction(e.key.toLowerCase())
     return
   }
-  
+
   // S key for shop toggle (only when not focused on input)
   if (e.key.toLowerCase() === 's') {
     if (isInputFocused) return
@@ -121,7 +130,7 @@ function onKeyDown(e: KeyboardEvent) {
     showShop.value = !showShop.value
     return
   }
-  
+
   // Number keys 1-6 for item use (only when not focused on input)
   if (isInputFocused) return
   const slot = Number.parseInt(e.key, 10)
@@ -129,10 +138,15 @@ function onKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     handleItemUseBySlot(slot - 1)
   }
-  
+
   // Arrow keys for quick movement (only when input not focused)
   if (!target.closest('.cmd-input-wrapper')) {
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    if (
+      e.key === 'ArrowUp' ||
+      e.key === 'ArrowDown' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight'
+    ) {
       e.preventDefault()
       handleArrowMove(e.key)
     }
@@ -142,36 +156,47 @@ function onKeyDown(e: KeyboardEvent) {
 function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight') {
   const p = gameStore.player
   if (!p) return
-  
+
   const playerZone = ZONE_MAP[p.zone]
   if (!playerZone || !playerZone.adjacentTo.length) return
-  
+
   // Map arrow keys to adjacent zones based on map position
   // This is a simplified approach - we use the first adjacent zone in a direction
   const adjacent = playerZone.adjacentTo
-  
+
   // Simple heuristic based on zone naming patterns
   let targetZone: string | null = null
-  
+
   if (direction === 'ArrowUp') {
     // Move toward radiant base (top of map)
-    targetZone = adjacent.find(z => z.includes('rad') || z.includes('t3-rad') || z === 'radiant-base' || z === 'radiant-fountain') ?? null
+    targetZone =
+      adjacent.find(
+        (z) =>
+          z.includes('rad') ||
+          z.includes('t3-rad') ||
+          z === 'radiant-base' ||
+          z === 'radiant-fountain',
+      ) ?? null
   } else if (direction === 'ArrowDown') {
     // Move toward dire base (bottom of map)
-    targetZone = adjacent.find(z => z.includes('dire') || z.includes('t3-dire') || z === 'dire-base' || z === 'dire-fountain') ?? null
+    targetZone =
+      adjacent.find(
+        (z) =>
+          z.includes('dire') || z.includes('t3-dire') || z === 'dire-base' || z === 'dire-fountain',
+      ) ?? null
   } else if (direction === 'ArrowLeft') {
     // Move toward left side (top lane or jungle)
-    targetZone = adjacent.find(z => z.startsWith('top-') || z.startsWith('jungle-rad')) ?? null
+    targetZone = adjacent.find((z) => z.startsWith('top-') || z.startsWith('jungle-rad')) ?? null
   } else if (direction === 'ArrowRight') {
     // Move toward right side (bot lane or jungle)
-    targetZone = adjacent.find(z => z.startsWith('bot-') || z.startsWith('jungle-dire')) ?? null
+    targetZone = adjacent.find((z) => z.startsWith('bot-') || z.startsWith('jungle-dire')) ?? null
   }
-  
+
   // Fallback: just pick first adjacent
   if (!targetZone && adjacent.length > 0) {
     targetZone = adjacent[0]!
   }
-  
+
   if (targetZone) {
     handleCommand(`move ${targetZone}`)
   }
@@ -187,47 +212,53 @@ function onKeyUp(e: KeyboardEvent) {
 // ── Audio cues ───────────────────────────────────────────────
 
 // Play 'tick' sound on each new tick
-watch(() => gameStore.tick, () => {
-  playSound('tick')
-})
+watch(
+  () => gameStore.tick,
+  () => {
+    playSound('tick')
+  },
+)
 
 // Watch game events for audio cues
-watch(() => gameStore.events.length, (newLen, oldLen) => {
-  if (newLen <= (oldLen ?? 0)) return
-  const newEvents = gameStore.events.slice(oldLen ?? 0)
-  const pid = gameStore.playerId
-  if (!pid) return
+watch(
+  () => gameStore.events.length,
+  (newLen, oldLen) => {
+    if (newLen <= (oldLen ?? 0)) return
+    const newEvents = gameStore.events.slice(oldLen ?? 0)
+    const pid = gameStore.playerId
+    if (!pid) return
 
-  for (const e of newEvents) {
-    switch (e.type) {
-      case 'damage':
-        if (e.payload.sourceId === pid || e.payload.targetId === pid) {
-          playSound('damage')
-        }
-        break
-      case 'death':
-        if (e.payload.playerId === pid) {
-          playSound('death')
-        }
-        break
-      case 'gold_change':
-        if (e.payload.playerId === pid) {
-          playSound('gold')
-        }
-        break
-      case 'level_up':
-        if (e.payload.playerId === pid) {
-          playSound('ready')
-        }
-        break
-      case 'kill':
-        if (e.payload.killerId === pid) {
-          playSound('kill')
-        }
-        break
+    for (const e of newEvents) {
+      switch (e.type) {
+        case 'damage':
+          if (e.payload.sourceId === pid || e.payload.targetId === pid) {
+            playSound('damage')
+          }
+          break
+        case 'death':
+          if (e.payload.playerId === pid) {
+            playSound('death')
+          }
+          break
+        case 'gold_change':
+          if (e.payload.playerId === pid) {
+            playSound('gold')
+          }
+          break
+        case 'level_up':
+          if (e.payload.playerId === pid) {
+            playSound('ready')
+          }
+          break
+        case 'kill':
+          if (e.payload.killerId === pid) {
+            playSound('kill')
+          }
+          break
+      }
     }
-  }
-})
+  },
+)
 
 // ── Derived state ──────────────────────────────────────────────
 
@@ -285,15 +316,18 @@ const combatEvents = computed(() => {
         const goldPart = e.payload.goldAwarded ? ` (+${e.payload.goldAwarded}g)` : ''
         text = `[KILL] ${e.payload.killerId} eliminated ${e.payload.victimId}!${goldPart}`
         type = 'kill'
-        killerHeroId = e.payload.killerId ? gameStore.allPlayers[e.payload.killerId as string]?.heroId ?? undefined : undefined
-        victimHeroId = e.payload.victimId ? gameStore.allPlayers[e.payload.victimId as string]?.heroId ?? undefined : undefined
+        killerHeroId = e.payload.killerId
+          ? (gameStore.allPlayers[e.payload.killerId as string]?.heroId ?? undefined)
+          : undefined
+        victimHeroId = e.payload.victimId
+          ? (gameStore.allPlayers[e.payload.victimId as string]?.heroId ?? undefined)
+          : undefined
         break
       }
       case 'death': {
         const respawnTick = e.payload.respawnTick as number | undefined
-        const respawnText = respawnTick != null
-          ? ` (respawn in ${respawnTick - gameStore.tick} ticks)`
-          : ''
+        const respawnText =
+          respawnTick != null ? ` (respawn in ${respawnTick - gameStore.tick} ticks)` : ''
         text = `[DEATH] ${e.payload.playerId} was terminated${respawnText}`
         type = 'damage'
         break
@@ -416,12 +450,12 @@ const mapZones = computed(() => {
     }
 
     // Creeps in this zone
-    const creepsInZone = gameStore.creeps.filter(c => c.zone === zone.id)
+    const creepsInZone = gameStore.creeps.filter((c) => c.zone === zone.id)
     const creepCount = creepsInZone.length
-    const creepTypes = [...new Set(creepsInZone.map(c => c.type))]
+    const creepTypes = [...new Set(creepsInZone.map((c) => c.type))]
 
     // Neutrals in this zone
-    const neutralsInZone = gameStore.neutrals.filter(n => n.zone === zone.id && n.alive)
+    const neutralsInZone = gameStore.neutrals.filter((n) => n.zone === zone.id && n.alive)
     const neutralCount = neutralsInZone.length
 
     // Tower info
@@ -462,7 +496,11 @@ function handleCommand(cmd: string) {
     // Client-side validation for move commands
     if (command.type === 'move' && gameStore.player) {
       const playerZone = ZONE_MAP[gameStore.player.zone]
-      if (playerZone && command.zone !== gameStore.player.zone && !playerZone.adjacentTo.includes(command.zone)) {
+      if (
+        playerZone &&
+        command.zone !== gameStore.player.zone &&
+        !playerZone.adjacentTo.includes(command.zone)
+      ) {
         localEvents.value.push({
           tick: gameStore.tick,
           text: `Cannot move to ${command.zone} — not adjacent. Adjacent zones: ${playerZone.adjacentTo.join(', ')}`,
@@ -509,11 +547,11 @@ function handleBuyItem(itemId: string) {
 function handleZoneClick(zoneId: string) {
   const p = gameStore.player
   if (!p) return
-  
+
   // Check if zone is adjacent or current
   const playerZone = ZONE_MAP[p.zone]
   if (!playerZone) return
-  
+
   if (p.zone === zoneId) {
     localEvents.value.push({
       tick: gameStore.tick,
@@ -522,7 +560,7 @@ function handleZoneClick(zoneId: string) {
     })
     return
   }
-  
+
   if (!playerZone.adjacentTo.includes(zoneId)) {
     localEvents.value.push({
       tick: gameStore.tick,
@@ -531,7 +569,7 @@ function handleZoneClick(zoneId: string) {
     })
     return
   }
-  
+
   handleCommand(`move ${zoneId}`)
 }
 
@@ -615,7 +653,7 @@ const lastDeathEvent = computed(() => {
   const pid = gameStore.playerId
   if (!pid) return null
   // Find the most recent kill event where the player was the victim
-  const kills = gameStore.events.filter(e => e.type === 'kill' && e.payload.victimId === pid)
+  const kills = gameStore.events.filter((e) => e.type === 'kill' && e.payload.victimId === pid)
   return kills.length > 0 ? kills[kills.length - 1] : null
 })
 
@@ -665,15 +703,22 @@ function handleReturnToMenu() {
     <div
       v-if="!gameStore.isAlive && gameStore.player"
       class="game-grid__map death-overlay"
-      data-testid="death-overlay">
-      <div class="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dire bg-bg-panel p-6 text-center shadow-lg shadow-dire/20">
+      data-testid="death-overlay"
+    >
+      <div
+        class="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dire bg-bg-panel p-6 text-center shadow-lg shadow-dire/20"
+      >
         <div class="mb-4 text-5xl">☠</div>
         <p class="text-3xl font-bold text-dire">PROCESS TERMINATED</p>
         <p v-if="killerName" class="mt-4 text-lg text-text-primary">
           Killed by <span class="font-bold text-dire">{{ killerName }}</span>
         </p>
         <p v-if="gameStore.player.respawnTick" class="mt-4 text-text-dim">
-          Respawning in <span class="text-radiant font-bold">{{ Math.max(0, gameStore.player.respawnTick - gameStore.tick) }}</span> ticks...
+          Respawning in
+          <span class="text-radiant font-bold">{{
+            Math.max(0, gameStore.player.respawnTick - gameStore.tick)
+          }}</span>
+          ticks...
         </p>
         <p class="mt-6 text-sm text-text-dim">Wait for respawn or look for safe areas on the map</p>
       </div>
@@ -690,6 +735,8 @@ function handleReturnToMenu() {
       :connected="connected"
       :reconnecting="reconnecting"
       :latency="latency"
+      :time-of-day="gameStore.timeOfDay"
+      :day-night-tick="gameStore.dayNightTick"
     />
 
     <TerminalPanel title="Map" class="game-grid__map min-h-0">
@@ -703,10 +750,10 @@ function handleReturnToMenu() {
     </TerminalPanel>
 
     <TerminalPanel title="Hero Status" class="game-grid__hero min-h-0">
-      <HeroStatus 
-        v-if="heroData" 
-        :hero="heroData" 
-        :hero-id="gameStore.player?.heroId ?? undefined" 
+      <HeroStatus
+        v-if="heroData"
+        :hero="heroData"
+        :hero-id="gameStore.player?.heroId ?? undefined"
         @cast-ability="handleQuickAction"
       />
       <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
@@ -728,11 +775,10 @@ function handleReturnToMenu() {
     </div>
 
     <!-- Item Shop overlay -->
-    <div
-      v-if="showShop"
-      class="absolute inset-0 z-30 flex items-center justify-center bg-black/80"
-    >
-      <div class="flex max-h-[85vh] w-full max-w-2xl flex-col border border-border bg-bg-primary p-4">
+    <div v-if="showShop" class="absolute inset-0 z-30 flex items-center justify-center bg-black/80">
+      <div
+        class="flex max-h-[85vh] w-full max-w-2xl flex-col border border-border bg-bg-primary p-4"
+      >
         <div class="mb-2 flex items-center justify-between">
           <span class="text-[0.9rem] font-bold text-gold">&gt;_ ITEM SHOP</span>
           <button
@@ -769,11 +815,7 @@ function handleReturnToMenu() {
     <div class="game-grid__cmd flex min-h-0 flex-col justify-end">
       <!-- Inventory Bar (above command input) -->
       <div class="flex items-center gap-2 border-t border-border bg-bg-secondary px-2 py-1">
-        <InventoryBar
-          :items="playerItems"
-          :buffs="playerBuffs"
-          @use="handleItemUse"
-        />
+        <InventoryBar :items="playerItems" :buffs="playerBuffs" @use="handleItemUse" />
         <QuickBuy
           v-if="pinnedItems.length"
           :pinned-items="pinnedItems"
@@ -796,7 +838,10 @@ function handleReturnToMenu() {
           v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP']"
           :key="cmd"
           class="whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-text-primary active:bg-border"
-          :class="{ 'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy, 'border-ability text-ability': ['Q','W','E','R'].includes(cmd) }"
+          :class="{
+            'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy,
+            'border-ability text-ability': ['Q', 'W', 'E', 'R'].includes(cmd),
+          }"
           @click="handleQuickAction(cmd)"
         >
           {{ cmd }}

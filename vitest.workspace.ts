@@ -6,7 +6,16 @@ export default defineWorkspace([
     test: {
       name: 'unit',
       include: ['tests/unit/**/*.test.ts'],
+      exclude: ['tests/unit/components/**/*.test.ts'],
       environment: 'node',
+    },
+  },
+  {
+    extends: './vitest.config.ts',
+    test: {
+      name: 'components',
+      include: ['tests/unit/components/**/*.test.ts'],
+      environment: 'happy-dom',
     },
   },
   {

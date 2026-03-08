@@ -5,7 +5,7 @@ import {
   applyNeutralActions,
   resetNeutralIdCounter,
 } from '../../../server/game/engine/NeutralAI'
-import type { GameState, PlayerState, NeutralCreepState } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeRoshan } from '../../../server/game/map/spawner'
 

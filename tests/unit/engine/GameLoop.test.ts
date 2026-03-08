@@ -4,6 +4,7 @@ import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
+import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '../../../shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -33,6 +34,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     towerDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
+    talents: { tier10: null, tier15: null, tier20: null, tier25: null },
     ...overrides,
   }
 }
@@ -42,8 +44,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {
       p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'radiant-fountain' }),
@@ -59,6 +61,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     events: [],
     surrenderVotes: { radiant: new Set(), dire: new Set() },
     lastSeen: {},
+    timeOfDay: 'day',
+    dayNightTick: 0,
     ...overrides,
   }
 }
@@ -380,6 +384,136 @@ describe('GameLoop', () => {
       // Should have death event for p1
       const deathEvents = result.events.filter((e) => e._tag === 'death')
       expect(deathEvents.length).toBeGreaterThan(0)
+    })
+
+    it('should resurrect player with aegis instead of setting respawn timer', () => {
+      const state = makeGameState({
+        tick: 10,
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            alive: false,
+            hp: 0,
+            mp: 0,
+            zone: 'mid-river',
+            respawnTick: null,
+            buffs: [{ id: 'aegis', stacks: 1, ticksRemaining: 999, source: 'roshan' }],
+          }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-aegis', state))
+      const p1 = result.state.players['p1']!
+
+      expect(p1.alive).toBe(true)
+      expect(p1.hp).toBe(550)
+      expect(p1.mp).toBe(280)
+      expect(p1.respawnTick).toBeNull()
+      expect(p1.buffs).toEqual([])
+      expect(p1.zone).toBe('mid-river')
+
+      const aegisEvents = result.events.filter((e) => e._tag === 'aegis_used')
+      expect(aegisEvents.length).toBe(1)
+    })
+
+    it('should set respawn timer for player without aegis', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: null }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-no-aegis', state))
+      const p1 = result.state.players['p1']!
+
+      expect(p1.alive).toBe(false)
+      expect(p1.respawnTick).not.toBeNull()
+    })
+
+    it('should consume aegis buff on resurrection', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            alive: false,
+            hp: 0,
+            mp: 0,
+            respawnTick: null,
+            buffs: [
+              { id: 'aegis', stacks: 1, ticksRemaining: 999, source: 'roshan' },
+              { id: 'regeneration', stacks: 1, ticksRemaining: 5, source: 'rune' },
+            ],
+          }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game-aegis-consume', state))
+      const p1 = result.state.players['p1']!
+
+      expect(p1.alive).toBe(true)
+      expect(p1.buffs.some((b) => b.id === 'aegis')).toBe(false)
+      expect(p1.buffs.some((b) => b.id === 'regeneration')).toBe(true)
+    })
+  })
+
+  describe('day/night cycle', () => {
+    it('should progress dayNightTick each tick', () => {
+      const state = makeGameState({ dayNightTick: 0 })
+      const result = Effect.runSync(processTick('game-dn-1', state))
+      expect(result.state.dayNightTick).toBe(1)
+    })
+
+    it('should transition from day to night after DAY_DURATION_TICKS', () => {
+      const state = makeGameState({
+        timeOfDay: 'day',
+        dayNightTick: DAY_DURATION_TICKS - 1,
+      })
+      const result = Effect.runSync(processTick('game-dn-2', state))
+      expect(result.state.timeOfDay).toBe('night')
+      expect(result.state.dayNightTick).toBe(0)
+    })
+
+    it('should emit night_falls event when transitioning to night', () => {
+      const state = makeGameState({
+        timeOfDay: 'day',
+        dayNightTick: DAY_DURATION_TICKS - 1,
+      })
+      const result = Effect.runSync(processTick('game-dn-3', state))
+      const nightFallsEvents = result.events.filter((e) => e._tag === 'night_falls')
+      expect(nightFallsEvents.length).toBe(1)
+    })
+
+    it('should transition from night to day after NIGHT_DURATION_TICKS', () => {
+      const state = makeGameState({
+        timeOfDay: 'night',
+        dayNightTick: NIGHT_DURATION_TICKS - 1,
+      })
+      const result = Effect.runSync(processTick('game-dn-4', state))
+      expect(result.state.timeOfDay).toBe('day')
+      expect(result.state.dayNightTick).toBe(0)
+    })
+
+    it('should emit day_breaks event when transitioning to day', () => {
+      const state = makeGameState({
+        timeOfDay: 'night',
+        dayNightTick: NIGHT_DURATION_TICKS - 1,
+      })
+      const result = Effect.runSync(processTick('game-dn-5', state))
+      const dayBreaksEvents = result.events.filter((e) => e._tag === 'day_breaks')
+      expect(dayBreaksEvents.length).toBe(1)
+    })
+
+    it('should not transition before duration is reached', () => {
+      const state = makeGameState({
+        timeOfDay: 'day',
+        dayNightTick: DAY_DURATION_TICKS - 2,
+      })
+      const result = Effect.runSync(processTick('game-dn-6', state))
+      expect(result.state.timeOfDay).toBe('day')
+      expect(result.state.dayNightTick).toBe(DAY_DURATION_TICKS - 1)
     })
   })
 })

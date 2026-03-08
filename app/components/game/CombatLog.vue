@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, computed } from 'vue'
 
 interface LogEvent {
   tick: number
@@ -16,6 +16,13 @@ const props = defineProps<{
 const logEl = ref<HTMLElement>()
 const pinned = ref(false)
 const lastEvent = ref<LogEvent | null>(null)
+
+const MAX_VISIBLE_EVENTS = 100
+
+const visibleEvents = computed(() => {
+  if (props.events.length <= MAX_VISIBLE_EVENTS) return props.events
+  return props.events.slice(-MAX_VISIBLE_EVENTS)
+})
 
 function scrollToBottom() {
   if (logEl.value && !pinned.value) {
@@ -104,7 +111,7 @@ function eventAriaLabel(event: LogEvent): string {
       @scroll="handleScroll"
     >
       <div
-        v-for="(event, i) in events"
+        v-for="(event, i) in visibleEvents"
         :key="`${event.tick}-${event.type}-${i}`"
         data-testid="log-event"
         :aria-label="eventAriaLabel(event)"

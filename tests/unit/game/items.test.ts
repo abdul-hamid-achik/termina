@@ -31,9 +31,42 @@ describe('Items Registry', () => {
   })
 
   describe('item categories', () => {
-    const starterIds = ['healing_salve', 'mana_vial', 'iron_branch', 'power_treads', 'ring_of_health', 'sobi_mask', 'blades_of_attack', 'chainmail', 'cloak', 'boots_of_speed']
-    const coreIds = ['desolator', 'daedalus', 'heart_of_tarrasque', 'scythe_of_vyse', 'divine_rapier', 'black_king_bar', 'assault_cuirass', 'blink_module', 'null_pointer', 'garbage_collector', 'stack_overflow', 'segfault_blade', 'firewall_item']
-    const consumableIds = ['healing_salve', 'mana_vial', 'observer_ward', 'smoke_of_deceit', 'dust_of_appearance', 'town_portal_scroll']
+    const starterIds = [
+      'healing_salve',
+      'mana_vial',
+      'iron_branch',
+      'power_treads',
+      'ring_of_health',
+      'sobi_mask',
+      'blades_of_attack',
+      'chainmail',
+      'cloak',
+      'boots_of_speed',
+    ]
+    const coreIds = [
+      'desolator',
+      'daedalus',
+      'heart_of_tarrasque',
+      'scythe_of_vyse',
+      'divine_rapier',
+      'black_king_bar',
+      'assault_cuirass',
+      'blink_module',
+      'null_pointer',
+      'garbage_collector',
+      'stack_overflow',
+      'segfault_blade',
+      'firewall_item',
+    ]
+    const consumableIds = [
+      'healing_salve',
+      'mana_vial',
+      'observer_ward',
+      'sentry_ward',
+      'smoke_of_deceit',
+      'dust_of_appearance',
+      'town_portal_scroll',
+    ]
 
     it('starter items cost less than 600g', () => {
       for (const id of starterIds) {
@@ -57,7 +90,7 @@ describe('Items Registry', () => {
     })
 
     it('non-consumable items have consumable=false', () => {
-      const nonConsumable = ITEM_IDS.filter(id => !consumableIds.includes(id))
+      const nonConsumable = ITEM_IDS.filter((id) => !consumableIds.includes(id))
       for (const id of nonConsumable) {
         const item = getItem(id)!
         expect(item.consumable).toBe(false)
@@ -74,7 +107,7 @@ describe('Items Registry', () => {
     })
 
     it('items with active ability have required active fields', () => {
-      const itemsWithActive = Object.values(ITEMS).filter(i => i.active)
+      const itemsWithActive = Object.values(ITEMS).filter((i) => i.active)
       expect(itemsWithActive.length).toBeGreaterThan(0)
 
       for (const item of itemsWithActive) {
@@ -86,7 +119,7 @@ describe('Items Registry', () => {
     })
 
     it('items with passive ability have required passive fields', () => {
-      const itemsWithPassive = Object.values(ITEMS).filter(i => i.passive)
+      const itemsWithPassive = Object.values(ITEMS).filter((i) => i.passive)
       expect(itemsWithPassive.length).toBeGreaterThan(0)
 
       for (const item of itemsWithPassive) {
@@ -97,7 +130,7 @@ describe('Items Registry', () => {
     })
 
     it('consumable items with active have zero cooldown', () => {
-      const consumablesWithActive = Object.values(ITEMS).filter(i => i.consumable && i.active)
+      const consumablesWithActive = Object.values(ITEMS).filter((i) => i.consumable && i.active)
       for (const item of consumablesWithActive) {
         expect(item.active!.cooldownTicks).toBe(0)
       }

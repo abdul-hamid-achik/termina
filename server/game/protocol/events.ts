@@ -135,6 +135,7 @@ export interface WardPlacedEvent {
   readonly playerId: string
   readonly zone: string
   readonly team: TeamId
+  readonly wardType: 'observer' | 'sentry'
 }
 
 export interface RunePickedEvent {
@@ -187,6 +188,12 @@ export interface AegisPickedEvent {
   readonly playerId: string
 }
 
+export interface AegisUsedEvent {
+  readonly _tag: 'aegis_used'
+  readonly tick: number
+  readonly playerId: string
+}
+
 export interface TalentSelectedEvent {
   readonly _tag: 'talent_selected'
   readonly tick: number
@@ -194,6 +201,49 @@ export interface TalentSelectedEvent {
   readonly talentId: string
   readonly tier: number
   readonly talentName: string
+}
+
+export interface TeleportCompleteEvent {
+  readonly _tag: 'teleport_complete'
+  readonly tick: number
+  readonly playerId: string
+  readonly destination: string
+}
+
+export interface TeleportCancelledEvent {
+  readonly _tag: 'teleport_cancelled'
+  readonly tick: number
+  readonly playerId: string
+  readonly reason: 'movement' | 'damage'
+}
+
+export interface NightFallsEvent {
+  readonly _tag: 'night_falls'
+  readonly tick: number
+}
+
+export interface DayBreaksEvent {
+  readonly _tag: 'day_breaks'
+  readonly tick: number
+}
+
+export interface GlyphUsedEvent {
+  readonly _tag: 'glyph_used'
+  readonly tick: number
+  readonly team: TeamId
+}
+
+export interface GlyphOnCooldownEvent {
+  readonly _tag: 'glyph_on_cooldown'
+  readonly tick: number
+  readonly playerId: string
+  readonly remainingTicks: number
+}
+
+export interface TowerInvulnerableEvent {
+  readonly _tag: 'tower_invulnerable'
+  readonly tick: number
+  readonly zone: string
 }
 
 export type GameEngineEvent =
@@ -220,7 +270,15 @@ export type GameEngineEvent =
   | RoshanRespawnEvent
   | RoshanKilledInternalEvent
   | AegisPickedEvent
+  | AegisUsedEvent
   | TalentSelectedEvent
+  | TeleportCompleteEvent
+  | TeleportCancelledEvent
+  | NightFallsEvent
+  | DayBreaksEvent
+  | GlyphUsedEvent
+  | GlyphOnCooldownEvent
+  | TowerInvulnerableEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

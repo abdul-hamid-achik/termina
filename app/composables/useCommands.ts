@@ -121,15 +121,25 @@ export function useCommands() {
 
       case 'attack': {
         const targetStr = tokens[1]
-        if (!targetStr) return { command: null, error: 'Usage: attack <target>  (e.g. attack hero:axe, attack creep:0, attack tower:mid-t1-rad)' }
+        if (!targetStr)
+          return {
+            command: null,
+            error:
+              'Usage: attack <target>  (e.g. attack hero:axe, attack creep:0, attack tower:mid-t1-rad)',
+          }
         const target = parseTarget(targetStr)
-        if (!target) return { command: null, error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, tower:<zone>, or self` }
+        if (!target)
+          return {
+            command: null,
+            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, tower:<zone>, or self`,
+          }
         return { command: { type: 'attack', target }, error: null }
       }
 
       case 'cast': {
         const ability = tokens[1] as 'q' | 'w' | 'e' | 'r'
-        if (!['q', 'w', 'e', 'r'].includes(ability)) return { command: null, error: 'Usage: cast <q|w|e|r> [target]' }
+        if (!['q', 'w', 'e', 'r'].includes(ability))
+          return { command: null, error: 'Usage: cast <q|w|e|r> [target]' }
         const targetStr = tokens[2]
         const target = targetStr ? parseTarget(targetStr) : undefined
         return { command: { type: 'cast', ability, target: target ?? undefined }, error: null }
@@ -179,7 +189,8 @@ export function useCommands() {
 
       case 'chat': {
         const channel = tokens[1] as 'team' | 'all'
-        if (!['team', 'all'].includes(channel)) return { command: null, error: 'Usage: chat <team|all> <message>' }
+        if (!['team', 'all'].includes(channel))
+          return { command: null, error: 'Usage: chat <team|all> <message>' }
         const message = tokens.slice(2).join(' ')
         if (!message) return { command: null, error: 'Usage: chat <team|all> <message>' }
         return { command: { type: 'chat', channel, message }, error: null }
@@ -192,8 +203,14 @@ export function useCommands() {
         return { command: { type: 'ping', zone: resolvedZone }, error: null }
       }
 
+      case 'glyph':
+        return { command: { type: 'glyph' }, error: null }
+
       default:
-        return { command: null, error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping` }
+        return {
+          command: null,
+          error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph`,
+        }
     }
   }
 
@@ -220,6 +237,7 @@ export function useCommands() {
         'map',
         'chat',
         'ping',
+        'glyph',
       ]
       const shortcuts = Object.keys(SHORTCUTS)
       const all = [...cmds, ...shortcuts]
@@ -291,31 +309,33 @@ export function useCommands() {
   function _suggestZones(partial: string, context: GameContext): Suggestion[] {
     const visibleIds = Object.keys(context.visibleZones)
     const zonePool = visibleIds.length > 0 ? visibleIds : ZONE_IDS
-    
+
     const suggestions: Suggestion[] = []
-    
+
     // First add prefix matches (higher priority)
     const prefixMatches = zonePool.filter((id) => id.startsWith(partial))
     for (const id of prefixMatches) {
       suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
     }
-    
+
     // Then add substring matches that aren't prefix matches
-    const substringMatches = zonePool.filter((id) => !id.startsWith(partial) && id.includes(partial))
+    const substringMatches = zonePool.filter(
+      (id) => !id.startsWith(partial) && id.includes(partial),
+    )
     for (const id of substringMatches) {
       suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
     }
-    
+
     // Also suggest aliases that match
-    const matchingAliases = Object.entries(ZONE_ALIASES).filter(([alias]) => 
-      alias.startsWith(partial) || alias.includes(partial)
+    const matchingAliases = Object.entries(ZONE_ALIASES).filter(
+      ([alias]) => alias.startsWith(partial) || alias.includes(partial),
     )
     for (const [alias, zoneId] of matchingAliases) {
-      if (!suggestions.some(s => s.text === alias)) {
+      if (!suggestions.some((s) => s.text === alias)) {
         suggestions.push({ text: alias, description: `→ ${ZONE_MAP[zoneId]?.name ?? zoneId}` })
       }
     }
-    
+
     return suggestions.slice(0, 10)
   }
 
@@ -323,34 +343,36 @@ export function useCommands() {
     if (!context.player) return _suggestZones(partial, context)
     const zone = ZONE_MAP[context.player.zone]
     if (!zone) return []
-    
+
     const suggestions: Suggestion[] = []
     const adjacent = zone.adjacentTo
-    
+
     // Prefix matches first
     const prefixMatches = adjacent.filter((id) => id.startsWith(partial))
     for (const id of prefixMatches) {
       suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
     }
-    
+
     // Then substring matches
-    const substringMatches = adjacent.filter((id) => !id.startsWith(partial) && id.includes(partial))
+    const substringMatches = adjacent.filter(
+      (id) => !id.startsWith(partial) && id.includes(partial),
+    )
     for (const id of substringMatches) {
       suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
     }
-    
+
     // Also suggest aliases for adjacent zones
     for (const zoneId of adjacent) {
       const matchingAliases = Object.entries(ZONE_ALIASES).filter(
-        ([alias, zid]) => zid === zoneId && (alias.startsWith(partial) || alias.includes(partial))
+        ([alias, zid]) => zid === zoneId && (alias.startsWith(partial) || alias.includes(partial)),
       )
       for (const [alias] of matchingAliases) {
-        if (!suggestions.some(s => s.text === alias)) {
+        if (!suggestions.some((s) => s.text === alias)) {
           suggestions.push({ text: alias, description: `→ ${ZONE_MAP[zoneId]?.name}` })
         }
       }
     }
-    
+
     return suggestions
   }
 
@@ -416,7 +438,10 @@ export function useCommands() {
       .filter((id) => id.includes(partial))
       .map((id) => {
         const item = context.items![id]
-        return { text: id, description: item ? `${item.name} (sell: ${Math.floor(item.cost / 2)}g)` : id }
+        return {
+          text: id,
+          description: item ? `${item.name} (sell: ${Math.floor(item.cost / 2)}g)` : id,
+        }
       })
   }
 

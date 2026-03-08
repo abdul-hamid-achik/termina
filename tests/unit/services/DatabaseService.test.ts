@@ -1,6 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { Effect } from 'effect'
-import { DatabaseService, DatabaseServiceLive } from '../../../server/services/DatabaseService'
+import { describe, it, vi } from 'vitest'
 
 vi.mock('../../../server/db', () => ({
   useDb: vi.fn(),
@@ -9,7 +7,6 @@ vi.mock('../../../server/db', () => ({
 vi.mock('../../../server/db/schema', () => ({
   players: {
     id: 'id',
-    username: 'username',
     provider: 'provider',
     providerId: 'providerId',
     mmr: 'mmr',

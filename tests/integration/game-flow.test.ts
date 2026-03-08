@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { GameState } from '~~/shared/types/game'
 import { makeGameServer } from '~~/server/plugins/game-server'
-import { Effect, Layer } from 'effect'
+import { Effect } from 'effect'
 import { createTestServices } from '../utils/test-services'
 
 /**
@@ -14,7 +14,7 @@ describe('Game Flow Integration', () => {
 
   beforeEach(() => {
     // Setup test services for each test
-    const { wsService, redisService, dbService } = createTestServices()
+    const { wsService: _wsService, redisService: _redisService, dbService: _dbService } = createTestServices()
     gameServer = makeGameServer()
   })
 
@@ -28,7 +28,7 @@ describe('Game Flow Integration', () => {
   describe('Full Game Lifecycle', () => {
     it('should complete a full game from queue to end', async () => {
       // This test simulates a complete 5v5 game with bots
-      const mode = 'ranked_5v5'
+      const _mode = 'ranked_5v5'
       const playerCount = 10
 
       // Step 1: Create players and add to queue
@@ -74,8 +74,8 @@ describe('Game Flow Integration', () => {
     })
 
     it('should handle player disconnect and reconnect', async () => {
-      const playerId = 'test_player'
-      const gameId = 'test_game'
+      const _playerId = 'test_player'
+      const _gameId = 'test_game'
 
       // Simulate disconnect
       // Verify reconnect timer is set

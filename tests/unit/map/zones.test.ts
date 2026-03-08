@@ -11,7 +11,7 @@ import {
   TOWER_HP_T1,
   TOWER_HP_T2,
   TOWER_HP_T3,
-  WARD_DURATION_TICKS,
+  OBSERVER_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '../../../shared/constants/balance'
 
@@ -99,7 +99,7 @@ describe('Zones', () => {
       expect(zones['mid-river']!.wards).toHaveLength(1)
       expect(zones['mid-river']!.wards[0]!.team).toBe('radiant')
       expect(zones['mid-river']!.wards[0]!.placedTick).toBe(10)
-      expect(zones['mid-river']!.wards[0]!.expiryTick).toBe(10 + WARD_DURATION_TICKS)
+      expect(zones['mid-river']!.wards[0]!.expiryTick).toBe(10 + OBSERVER_WARD_DURATION_TICKS)
     })
 
     it('returns false for unknown zone', () => {
@@ -132,7 +132,7 @@ describe('Zones', () => {
       placeWard(zones, 'mid-river', 'radiant', 10)
       expect(zones['mid-river']!.wards).toHaveLength(1)
 
-      const updated = removeExpiredWards(zones, 10 + WARD_DURATION_TICKS + 1)
+      const updated = removeExpiredWards(zones, 10 + OBSERVER_WARD_DURATION_TICKS + 1)
       expect(updated['mid-river']!.wards).toHaveLength(0)
     })
 
@@ -140,7 +140,7 @@ describe('Zones', () => {
       const zones = initializeZoneStates()
       placeWard(zones, 'mid-river', 'radiant', 10)
 
-      const updated = removeExpiredWards(zones, 10 + WARD_DURATION_TICKS - 1)
+      const updated = removeExpiredWards(zones, 10 + OBSERVER_WARD_DURATION_TICKS - 1)
       expect(updated['mid-river']!.wards).toHaveLength(1)
     })
 
@@ -148,8 +148,8 @@ describe('Zones', () => {
       const zones = initializeZoneStates()
       placeWard(zones, 'mid-river', 'radiant', 10)
 
-      // expiryTick = 10 + WARD_DURATION_TICKS. Filter keeps w.expiryTick > currentTick
-      const updated = removeExpiredWards(zones, 10 + WARD_DURATION_TICKS)
+      // expiryTick = 10 + OBSERVER_WARD_DURATION_TICKS. Filter keeps w.expiryTick > currentTick
+      const updated = removeExpiredWards(zones, 10 + OBSERVER_WARD_DURATION_TICKS)
       expect(updated['mid-river']!.wards).toHaveLength(0)
     })
   })

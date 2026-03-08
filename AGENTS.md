@@ -9,6 +9,7 @@ Expert in the server-side game loop and combat systems.
 **Owns**: `server/game/engine/`, `shared/constants/balance.ts`
 
 **Key files**:
+
 - `GameLoop.ts` — tick pipeline, `processTick`, `submitAction`, `buildGameLoop`
 - `ActionResolver.ts` — `validateAction`, `resolveActions` (phase-ordered: instant → move → attack → passive → buy)
 - `StateManager.ts` — `createPlayerState`, `createInitialGameState`, in-memory Effect service
@@ -20,6 +21,14 @@ Expert in the server-side game loop and combat systems.
 - `RoshanAI.ts` — Roshan attacks, death handling, aegis drops
 - `RuneAI.ts` — rune spawning, buffs, pickup
 
+**Mechanics**:
+
+- Glyph/Fortification — team-wide tower invulnerability (5 tick duration, 300 tick cooldown). Command: `glyph`. Key files: ActionResolver.ts (glyph phase), GameLoop.ts (expiration)
+- Day/Night Cycle — time-based vision system (Day: 300 ticks, Night: 240 ticks, night vision penalty: -1 zone). Key files: GameLoop.ts (time progression), VisionCalculator.ts (penalty)
+- TP Scroll Channeling — teleport with interrupt (2 tick channel, cancels on damage/movement). Key files: \_base.ts (channeling completion), ActionResolver.ts (cancellation)
+- Sentry Wards — true sight mechanic, reveals invisible units (75g cost, 240 tick duration). Key files: VisionCalculator.ts (true sight), zones.ts (ward types)
+- Aegis Resurrection — instant revive at death location with full HP/MP. Key files: GameLoop.ts (aegis check in handleDeaths)
+
 **Conventions**: Immutable state updates via spread. All engine functions return `Effect.Effect<...>`. Game state is `Record<string, PlayerState>` keyed by playerId. One action per player per tick.
 
 ## hero-designer
@@ -29,11 +38,14 @@ Expert in hero definitions, abilities, and game balance.
 **Owns**: `server/game/heroes/`, `shared/constants/heroes.ts`, `shared/types/hero.ts`
 
 **Key files**:
+
 - `shared/constants/heroes.ts` — `HEROES` registry, `HERO_IDS` list
 - `server/game/heroes/_base.ts` — `levelUpHero`, `processDoTs`, `tickAllBuffs`
 - `server/game/heroes/<name>.ts` — individual hero definitions (20 heroes)
 
 **Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6, magicResist 2–5. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/root/slow/shield/dot/buff types.
+
+**Mechanics constants** (balance.ts): GLYPH_DURATION_TICKS = 5, GLYPH_COOLDOWN_TICKS = 300, DAY_DURATION_TICKS = 300, NIGHT_DURATION_TICKS = 240, NIGHT_VISION_PENALTY = 1, SENTRY_WARD_DURATION_TICKS = 240.
 
 ## frontend
 
@@ -42,6 +54,7 @@ Expert in the Vue 3 game UI, stores, and WebSocket integration.
 **Owns**: `app/`
 
 **Key files**:
+
 - `composables/useGameSocket.ts` — WebSocket lifecycle, auto-reconnect, message routing
 - `composables/useCommands.ts` — command parsing (`move`, `attack`, `cast`, `buy`, etc.) and autocomplete
 - `stores/game.ts` — `updateFromTick`, player state, scoreboard, events
@@ -59,6 +72,7 @@ Expert in the queue, lobby, and hero pick systems.
 **Owns**: `server/game/matchmaking/`, `server/api/queue/`
 
 **Key files**:
+
 - `queue.ts` — `joinQueue`, `leaveQueue`, `startMatchmakingLoop` (Redis sorted set by MMR)
 - `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck` (alternating pick order)
 - `server/api/queue/join.post.ts`, `status.get.ts`, `pick.post.ts` — HTTP endpoints
@@ -72,6 +86,7 @@ Expert in Effect-TS services, WebSocket infrastructure, and the plugin lifecycle
 **Owns**: `server/services/`, `server/plugins/game-server.ts`, `server/routes/ws.ts`
 
 **Key files**:
+
 - `PeerRegistry.ts` — `registerPeer`, `unregisterPeer`, `sendToPeer` (crosswsPeer primary, rawWs fallback)
 - `WebSocketService.ts` — per-game connection tracking via Effect Layer
 - `RedisService.ts` — pub/sub with `ioredis`, Effect-wrapped
@@ -88,6 +103,7 @@ Expert in writing and maintaining Vitest tests.
 **Owns**: `tests/`
 
 **Key files**:
+
 - `tests/unit/engine/` — GameLoop, ActionResolver, StateManager, VisionCalculator, DamageCalculator
 - `tests/unit/heroes/` — per-hero stat and ability validation
 - `tests/unit/services/` — PeerRegistry, WebSocketService, protocol
@@ -106,6 +122,7 @@ Expert in NPC bot behavior and lane assignment.
 **Owns**: `server/game/ai/`
 
 **Key files**:
+
 - `BotManager.ts` — `registerBots`, `getBotPlayerIds`, `getBotLane`, `isBot`, `cleanupGame`
 - `BotAI.ts` — `decideBotAction` (lane-based movement, attack priority, ability usage)
 
@@ -118,6 +135,7 @@ Expert in zone topology, creep spawning, towers, and wards.
 **Owns**: `server/game/map/`, `shared/constants/zones.ts`, `shared/types/map.ts`
 
 **Key files**:
+
 - `shared/constants/zones.ts` — 29 zones with `adjacentTo` arrays (fountain → base → T3 → T2 → T1 → river)
 - `topology.ts` — `areAdjacent`, `findPath` (BFS), `getDistance`
 - `spawner.ts` — `spawnCreepWaves` (every 8 ticks: 3 melee + 1 ranged, siege every 5th wave), `spawnRunes` (every 60 ticks), `spawnNeutralCreeps` (every 60 ticks)

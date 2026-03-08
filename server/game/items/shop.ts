@@ -2,7 +2,11 @@ import { Effect, Data } from 'effect'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { MAX_ITEMS, WARD_DURATION_TICKS, WARD_LIMIT_PER_TEAM } from '~~/shared/constants/balance'
+import {
+  MAX_ITEMS,
+  OBSERVER_WARD_DURATION_TICKS,
+  WARD_LIMIT_PER_TEAM,
+} from '~~/shared/constants/balance'
 import { getItem } from './registry'
 import {
   applyBuff,
@@ -333,7 +337,8 @@ function useObserverWard(
           {
             team: player.team,
             placedTick: state.tick,
-            expiryTick: state.tick + WARD_DURATION_TICKS,
+            expiryTick: state.tick + OBSERVER_WARD_DURATION_TICKS,
+            type: 'observer' as const,
           },
         ],
       },
@@ -385,24 +390,23 @@ function useTownPortalScroll(
   player: PlayerState,
   slot: number,
 ): Effect.Effect<GameState, ItemError> {
-  // Consume the scroll
   let updated = consumeItem(player, slot)
 
-  // Apply channeling buff (2 tick delay before teleport)
+  const fountainZone = player.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+
   updated = applyBuff(updated, {
     id: 'tp_channeling',
     stacks: 1,
-    ticksRemaining: 2,
+    ticksRemaining: 3,
     source: 'town_portal_scroll',
   })
 
-  // Store destination as buff source
-  const fountainZone = player.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
   updated = applyBuff(updated, {
     id: 'tp_destination',
     stacks: 1,
-    ticksRemaining: 3,
-    source: fountainZone,
+    ticksRemaining: 4,
+    source: 'town_portal_scroll',
+    destination: fountainZone,
   })
 
   return Effect.succeed(updatePlayer(state, updated))
@@ -455,7 +459,8 @@ function useForceStaff(
       return yield* Effect.fail(new InvalidTargetError({ reason: 'No adjacent zone to push to' }))
     }
 
-    const pushZone = currentZone.adjacentTo[Math.floor(Math.random() * currentZone.adjacentTo.length)]!
+    const pushZone =
+      currentZone.adjacentTo[Math.floor(Math.random() * currentZone.adjacentTo.length)]!
 
     let updated: PlayerState = { ...targetPlayer, zone: pushZone }
 

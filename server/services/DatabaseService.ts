@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from 'effect'
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, desc, and, sql } from 'drizzle-orm'
 import { useDb } from '../db'
 import {
   players,
@@ -122,22 +122,15 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   getMatchHistory: (playerId, limit = 20) =>
     Effect.promise(async () => {
       const db = useDb()
-      const playerMatches = await db
-        .select({ matchId: matchPlayers.matchId })
+      const results = await db
+        .select({ match: matches })
         .from(matchPlayers)
+        .innerJoin(matches, eq(matchPlayers.matchId, matches.id))
         .where(eq(matchPlayers.playerId, playerId))
+        .orderBy(desc(matches.createdAt))
         .limit(limit)
 
-      if (playerMatches.length === 0) return []
-
-      const matchIds = playerMatches.map((m) => m.matchId)
-      // Fetch all matches for the IDs
-      const allMatches: Match[] = []
-      for (const mid of matchIds) {
-        const m = await db.select().from(matches).where(eq(matches.id, mid)).limit(1)
-        if (m[0]) allMatches.push(m[0])
-      }
-      return allMatches.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      return results.map((r) => r.match)
     }),
 
   getMatch: (id) =>
@@ -147,18 +140,16 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       const match = matchResult[0]
       if (!match) return null
 
-      const mpRows = await db.select().from(matchPlayers).where(eq(matchPlayers.matchId, id))
+      const results = await db
+        .select()
+        .from(matchPlayers)
+        .innerJoin(players, eq(matchPlayers.playerId, players.id))
+        .where(eq(matchPlayers.matchId, id))
 
-      const playersInMatch = await Promise.all(
-        mpRows.map(async (mp) => {
-          const pResult = await db
-            .select()
-            .from(players)
-            .where(eq(players.id, mp.playerId))
-            .limit(1)
-          return { ...mp, player: pResult[0]! }
-        }),
-      )
+      const playersInMatch = results.map((r) => ({
+        ...r.match_players,
+        player: r.players,
+      }))
 
       return { ...match, players: playersInMatch }
     }),
@@ -172,23 +163,9 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   updateHeroStats: (playerId, heroId, stats) =>
     Effect.promise(async () => {
       const db = useDb()
-      const existing = await db.select().from(heroStats).where(eq(heroStats.playerId, playerId))
-
-      const stat = existing.find((s) => s.heroId === heroId)
-
-      if (stat) {
-        await db
-          .update(heroStats)
-          .set({
-            gamesPlayed: stat.gamesPlayed + 1,
-            wins: stat.wins + (stats.won ? 1 : 0),
-            totalKills: stat.totalKills + stats.kills,
-            totalDeaths: stat.totalDeaths + stats.deaths,
-            totalAssists: stat.totalAssists + stats.assists,
-          })
-          .where(eq(heroStats.id, stat.id))
-      } else {
-        await db.insert(heroStats).values({
+      await db
+        .insert(heroStats)
+        .values({
           playerId,
           heroId,
           gamesPlayed: 1,
@@ -197,7 +174,16 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
           totalDeaths: stats.deaths,
           totalAssists: stats.assists,
         })
-      }
+        .onConflictDoUpdate({
+          target: [heroStats.playerId, heroStats.heroId],
+          set: {
+            gamesPlayed: sql`games_played + 1`,
+            wins: sql`wins + ${stats.won ? 1 : 0}`,
+            totalKills: sql`total_kills + ${stats.kills}`,
+            totalDeaths: sql`total_deaths + ${stats.deaths}`,
+            totalAssists: sql`total_assists + ${stats.assists}`,
+          },
+        })
     }),
 
   getHeroStats: (playerId) =>
@@ -209,35 +195,25 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   incrementGamesPlayed: (playerId) =>
     Effect.promise(async () => {
       const db = useDb()
-      const p = await db.select().from(players).where(eq(players.id, playerId)).limit(1)
-      if (p[0]) {
-        await db
-          .update(players)
-          .set({ gamesPlayed: p[0].gamesPlayed + 1 })
-          .where(eq(players.id, playerId))
-      }
+      await db
+        .update(players)
+        .set({ gamesPlayed: sql`games_played + 1` })
+        .where(eq(players.id, playerId))
     }),
 
   incrementWins: (playerId) =>
     Effect.promise(async () => {
       const db = useDb()
-      const p = await db.select().from(players).where(eq(players.id, playerId)).limit(1)
-      if (p[0]) {
-        await db
-          .update(players)
-          .set({ wins: p[0].wins + 1 })
-          .where(eq(players.id, playerId))
-      }
+      await db
+        .update(players)
+        .set({ wins: sql`wins + 1` })
+        .where(eq(players.id, playerId))
     }),
 
   getPlayerByUsername: (username) =>
     Effect.promise(async () => {
       const db = useDb()
-      const result = await db
-        .select()
-        .from(players)
-        .where(eq(players.username, username))
-        .limit(1)
+      const result = await db.select().from(players).where(eq(players.username, username)).limit(1)
       return result[0] ?? null
     }),
 
@@ -279,47 +255,30 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       const db = useDb()
       await db
         .delete(playerProviders)
-        .where(
-          and(
-            eq(playerProviders.playerId, playerId),
-            eq(playerProviders.provider, provider),
-          ),
-        )
+        .where(and(eq(playerProviders.playerId, playerId), eq(playerProviders.provider, provider)))
     }),
 
   getPlayerProviders: (playerId) =>
     Effect.promise(async () => {
       const db = useDb()
-      return db
-        .select()
-        .from(playerProviders)
-        .where(eq(playerProviders.playerId, playerId))
+      return db.select().from(playerProviders).where(eq(playerProviders.playerId, playerId))
     }),
 
   updatePlayerAvatar: (playerId, heroId) =>
     Effect.promise(async () => {
       const db = useDb()
-      await db
-        .update(players)
-        .set({ selectedAvatar: heroId })
-        .where(eq(players.id, playerId))
+      await db.update(players).set({ selectedAvatar: heroId }).where(eq(players.id, playerId))
     }),
 
   updatePlayerUsername: (playerId, username) =>
     Effect.promise(async () => {
       const db = useDb()
-      await db
-        .update(players)
-        .set({ username })
-        .where(eq(players.id, playerId))
+      await db.update(players).set({ username }).where(eq(players.id, playerId))
     }),
 
   updatePlayerPassword: (playerId, passwordHash) =>
     Effect.promise(async () => {
       const db = useDb()
-      await db
-        .update(players)
-        .set({ passwordHash })
-        .where(eq(players.id, playerId))
+      await db.update(players).set({ passwordHash }).where(eq(players.id, playerId))
     }),
 })
