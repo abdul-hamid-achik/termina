@@ -31,6 +31,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     towerDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
+    talents: { tier10: null, tier15: null, tier20: null, tier25: null },
     ...overrides,
   }
 }
@@ -40,8 +41,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -54,6 +55,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     events: [],
     surrenderVotes: { radiant: new Set(), dire: new Set() },
     lastSeen: {},
+    timeOfDay: 'day',
+    dayNightTick: 0,
     ...overrides,
   }
 }
@@ -259,14 +262,13 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
         { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
-        { id: 'creep-2', team: 'dire', zone: 'mid-t1-rad', hp: 100, type: 'ranged' },
+        { id: 'creep-2', team: 'dire', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).not.toBeNull()
       expect(action!.type).toBe('attack')
       if (action!.type === 'attack') {
-        // Should target lowest HP creep (index 1)
         expect(action!.target).toEqual({ kind: 'creep', index: 1 })
       }
     })
