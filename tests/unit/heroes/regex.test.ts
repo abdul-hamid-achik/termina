@@ -344,8 +344,7 @@ describe('Regex Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
-      const missingMana = 280 - 100
-      const expectedDamage = Math.floor((missingMana / 100) * 50)
+      const _missingMana = 280 - 100
       const actualDamage = enemy.hp - result.state.players['e1']!.hp
       expect(actualDamage).toBeGreaterThan(0)
     })

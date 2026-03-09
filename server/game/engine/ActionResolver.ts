@@ -41,7 +41,7 @@ import {
   // IN_COMBAT_BUFF_DURATION,
 } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
-import { runAntiCheatChecks } from '../../utils/AntiCheat'
+import { runAntiCheatChecks, type CheatDetection } from '../../utils/AntiCheat'
 import { wsLog } from '../../utils/log'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -78,18 +78,6 @@ function applyPlayerUpdates(
     }
   }
   return newPlayers
-}
-
-// function mergeUpdates(base: PlayerUpdates, additional: PlayerUpdates): PlayerUpdates {
-  const result = { ...base }
-  for (const [id, changes] of Object.entries(additional)) {
-    if (result[id]) {
-      result[id] = { ...result[id], ...changes }
-    } else {
-      result[id] = changes
-    }
-  }
-  return result
 }
 
 // ── Item Stat Bonuses ─────────────────────────────────────────
@@ -265,7 +253,11 @@ export function resolveActions(
 }> {
   return Effect.sync(() => {
     // Run anti-cheat validation on all actions
-    const cheatDetections: Array<{ playerId: string; command: Command; violations: any[] }> = []
+    const cheatDetections: Array<{
+      playerId: string
+      command: Command
+      violations: CheatDetection[]
+    }> = []
     const validActions = actions.filter((a) => {
       const validationError = validateAction(state, a)
       if (validationError) {

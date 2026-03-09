@@ -9,7 +9,6 @@ import {
   getCriticalViolators,
   clearPlayerViolations,
   cleanupAntiCheat,
-  type CheatDetection,
 } from '~~/server/utils/AntiCheat'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
@@ -264,7 +263,10 @@ describe('AntiCheat', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            items: ['item1', 'item2', 'item3', 'item4', 'item5', 'item6', 'item7'] as any,
+            items: ['item1', 'item2', 'item3', 'item4', 'item5', 'item6', 'item7'] as unknown as (
+              | string
+              | null
+            )[],
           }),
         },
       })
@@ -334,9 +336,21 @@ describe('AntiCheat', () => {
       runAntiCheatChecks(state, 'p3', command)
 
       const criticalViolators = getCriticalViolators()
-      expect(criticalViolators.some((v: { playerId: string; violationCount: number }) => v.playerId === 'p1')).toBe(true)
-      expect(criticalViolators.some((v: { playerId: string; violationCount: number }) => v.playerId === 'p2')).toBe(true)
-      expect(criticalViolators.some((v: { playerId: string; violationCount: number }) => v.playerId === 'p3')).toBe(false)
+      expect(
+        criticalViolators.some(
+          (v: { playerId: string; violationCount: number }) => v.playerId === 'p1',
+        ),
+      ).toBe(true)
+      expect(
+        criticalViolators.some(
+          (v: { playerId: string; violationCount: number }) => v.playerId === 'p2',
+        ),
+      ).toBe(true)
+      expect(
+        criticalViolators.some(
+          (v: { playerId: string; violationCount: number }) => v.playerId === 'p3',
+        ),
+      ).toBe(false)
     })
   })
 

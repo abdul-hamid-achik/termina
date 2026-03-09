@@ -8,7 +8,7 @@ import type {
   RuneState,
 } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
-import type { AbilityDef, TargetType, HeroRole } from '~~/shared/types/hero'
+import type { AbilityDef, TargetType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { findPath, getDistance } from '../map/topology'
 import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
@@ -264,7 +264,7 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
   return bot.cooldowns[slot] === 0 && bot.mp >= ability.manaCost
 }
 
-function calculateThreatScore(enemy: PlayerState, bot: PlayerState, state: GameState): number {
+function calculateThreatScore(enemy: PlayerState, _bot: PlayerState, _state: GameState): number {
   let score = 0
   const hero = enemy.heroId ? HEROES[enemy.heroId] : null
   if (hero) {

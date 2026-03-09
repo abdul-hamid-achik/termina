@@ -1,17 +1,11 @@
-import { Effect, Layer } from 'effect'
+import { Effect } from 'effect'
 import type { WebSocketService } from '~~/server/services/WebSocketService'
-import { RedisService, type RedisServiceApi } from '~~/server/services/RedisService'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
 import type { DatabaseService } from '~~/server/services/DatabaseService'
 
 /**
  * Mock implementations of services for integration testing
  */
-
-export interface TestServices {
-  wsService: WebSocketService
-  redisService: RedisServiceApi
-  dbService: DatabaseService
-}
 
 const mockRedisApi: RedisServiceApi = {
   get: () => Effect.succeed(null),
@@ -38,17 +32,11 @@ const mockRedisApi: RedisServiceApi = {
   shutdown: () => Effect.succeed(void 0),
 }
 
-export const MockRedisServiceLayer = Layer.succeed(RedisService, mockRedisApi)
-
-export function createMockRedisService(): RedisServiceApi {
-  return mockRedisApi
-}
-
 /**
  * Create mock services for testing
  * These services use in-memory stores instead of real connections
  */
-export function createTestServices(): TestServices {
+export function createTestServices() {
   // Mock WebSocket Service
   const wsService = {
     addConnection: (_gameId: string, _playerId: string, _ws: WebSocket) => Effect.succeed(void 0),
@@ -57,19 +45,6 @@ export function createTestServices(): TestServices {
     sendToPlayer: (_playerId: string, _message: unknown) => Effect.succeed(void 0),
     broadcastToGame: (_gameId: string, _message: unknown) => Effect.succeed(void 0),
   } as unknown as WebSocketService
-
-  // Mock Redis Service
-  const _redisService = {
-    publish: (_channel: string, _message: string) => Effect.succeed(void 0),
-    subscribe: (_channel: string) => Effect.succeed(void 0),
-    get: (_key: string) => Effect.succeed<string | null>(null),
-    set: (_key: string, _value: string) => Effect.succeed(void 0),
-    del: (_key: string) => Effect.succeed(void 0),
-    zadd: (_key: string, _score: number, _member: string) => Effect.succeed(void 0),
-    zrem: (_key: string, _member: string) => Effect.succeed(void 0),
-    zrange: (_key: string, _start: number, _stop: number) => Effect.succeed<string[]>([]),
-    zcard: (_key: string) => Effect.succeed<number>(0),
-  } as unknown as RedisService
 
   // Mock Database Service
   const dbService = {
@@ -81,30 +56,4 @@ export function createTestServices(): TestServices {
   } as unknown as DatabaseService
 
   return { wsService, redisService: mockRedisApi, dbService }
-}
-
-/**
- * Create a mock WebSocket for testing
- */
-export function createMockWebSocket(): WebSocket & { sentMessages: string[] } {
-  const mockWs = {
-    sentMessages: [] as string[],
-    send: function (data: string | ArrayBuffer | Uint8Array) {
-      if (typeof data === 'string') {
-        this.sentMessages.push(data)
-      }
-      return undefined
-    },
-    close: function () {
-      // Mock close
-    },
-    // Add other required WebSocket properties
-    readyState: 1,
-    CONNECTING: 0,
-    OPEN: 1,
-    CLOSING: 2,
-    CLOSED: 3,
-  } as WebSocket & { sentMessages: string[] }
-
-  return mockWs
 }

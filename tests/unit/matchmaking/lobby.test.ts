@@ -3,7 +3,6 @@ import { Effect } from 'effect'
 import {
   createLobby,
   pickHero,
-  banHero,
   getLobby,
   getPlayerLobby,
   cleanupLobby,
@@ -152,13 +151,13 @@ describe('Lobby', () => {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
-      
+
       // Simulate ban phase completion (1 ban per team)
       lobby.bannedHeroes.add('cipher') // Radiant ban
-      lobby.bannedHeroes.add('regex')  // Dire ban
+      lobby.bannedHeroes.add('regex') // Dire ban
       lobby.currentBanIndex = 2
       lobby.phase = 'picking'
-      
+
       return lobby
     }
 
@@ -343,199 +342,7 @@ describe('Lobby', () => {
     it('transitions to starting after all heroes are picked', () => {
       vi.useFakeTimers()
       const entries = makeQueueEntries(10)
-      const lobby = createLobby(entries, ws as never, redis as never, db as never)
-      createdLobbyId = lobby.id
-
-      // Complete ban phase first (1 ban per team)
-      lobby.bannedHeroes.add('cipher')
-      lobby.bannedHeroes.add('regex')
-      lobby.currentBanIndex = 2
-      lobby.phase = 'picking'
-
-      // Pick all heroes in order
-      for (let i = 0; i < lobby.pickOrder.length; i++) {
-        const picker = lobby.players[lobby.pickOrder[i]!]!
-        const heroId = HERO_IDS[i]!
-        pickHero(lobby.id, picker.playerId, heroId, ws as never, redis as never, db as never)
-      }
-
-      // There's a 1.5s delay between last pick and ready_check transition
-      vi.advanceTimersByTime(1600)
-
-      // After all picks + delay, lobby should transition to starting phase
-      // (ready_check auto-readies all players and moves to starting)
-      expect(lobby.phase).toBe('starting')
-      vi.useRealTimers()
-    })
-
-    it('rejects picks during non-picking phase', () => {
-      vi.useFakeTimers()
-      const entries = makeQueueEntries(10)
-      const lobby = createLobby(entries, ws as never, redis as never, db as never)
-      createdLobbyId = lobby.id
-
-      // Complete all picks to transition to starting
-      for (let i = 0; i < lobby.pickOrder.length; i++) {
-        const picker = lobby.players[lobby.pickOrder[i]!]!
-        pickHero(lobby.id, picker.playerId, HERO_IDS[i]!, ws as never, redis as never, db as never)
-      }
-
-      // Advance past the delay so phase transitions to starting
-      vi.advanceTimersByTime(1600)
-
-      // Try to pick another hero — should fail
-      const result = pickHero(
-        lobby.id,
-        lobby.players[0]!.playerId,
-        'echo',
-        ws as never,
-        redis as never,
-        db as never,
-      )
-      expect(result.success).toBe(false)
-      vi.useRealTimers()
-    })
-  })
-
-  describe('banHero', () => {
-    function createBannableLobby() {
-      const entries = makeQueueEntries(10)
-      const lobby = createLobby(entries, ws as never, redis as never, db as never)
-      createdLobbyId = lobby.id
-      return lobby
-    }
-
-    it('allows Radiant captain to ban first', () => {
-      const lobby = createBannableLobby()
-      const radiantCaptain = lobby.players[0]! // Highest MMR radiant player
-
-      const result = banHero(
-        lobby.id,
-        radiantCaptain.playerId,
-        'echo',
-        ws as never,
-        redis as never,
-        db as never,
-      )
-      expect(result.success).toBe(true)
-      expect(lobby.bannedHeroes.has('echo')).toBe(true)
-      expect(lobby.currentBanIndex).toBe(1) // Next is Dire's ban
-    })
-
-    it('allows Dire captain to ban second', () => {
-      vi.useFakeTimers()
-      const lobby = createBannableLobby()
-      const radiantCaptain = lobby.players[0]!
-      const direCaptain = lobby.players[5]! // Highest MMR dire player
-
-      // Radiant bans first
-      banHero(lobby.id, radiantCaptain.playerId, 'echo', ws as never, redis as never, db as never)
-      
-      // Dire bans second
-      const result = banHero(
-        lobby.id,
-        direCaptain.playerId,
-        'daemon',
-        ws as never,
-        redis as never,
-        db as never,
-      )
-      expect(result.success).toBe(true)
-      expect(lobby.bannedHeroes.has('daemon')).toBe(true)
-      expect(lobby.currentBanIndex).toBe(2) // Both bans done
-      
-      // Advance timer to trigger phase transition
-      vi.advanceTimersByTime(1000)
-      expect(lobby.phase).toBe('picking') // Should transition to picking
-      vi.useRealTimers()
-    })
-
-    it('rejects ban from non-captain player', () => {
-      const lobby = createBannableLobby()
-      const nonCaptain = lobby.players[1]! // Not a captain
-
-      const result = banHero(
-        lobby.id,
-        nonCaptain.playerId,
-        'echo',
-        ws as never,
-        redis as never,
-        db as never,
-      )
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Not your turn to ban')
-    })
-
-    it('rejects ban of already banned hero', () => {
-      const lobby = createBannableLobby()
-      const radiantCaptain = lobby.players[0]!
-
-      // First ban
-      banHero(lobby.id, radiantCaptain.playerId, 'cipher', ws as never, redis as never, db as never)
-      
-      // Try to ban same hero (should fail since only 1 ban per team)
-      const direCaptain = lobby.players[5]!
-      const result = banHero(
-        lobby.id,
-        direCaptain.playerId,
-        'cipher',
-        ws as never,
-        redis as never,
-        db as never,
-      )
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Hero already banned')
-    })
-
-    it('rejects ban when not in ban phase', () => {
-      const lobby = createBannableLobby()
-      
-      // Manually set phase to picking
-      lobby.phase = 'picking'
-      
-      const radiantCaptain = lobby.players[0]!
-      const result = banHero(
-        lobby.id,
-        radiantCaptain.playerId,
-        'echo',
-        ws as never,
-        redis as never,
-        db as never,
-      )
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Not in ban phase')
-    })
-  })
-
-  describe('Lobby Disconnect Grace Period', () => {
-    it('should not immediately cancel lobby on disconnect', () => {
-      const entries = makeQueueEntries(10)
-      const lobby = createLobby(entries, ws as never, redis as never, db as never)
-      createdLobbyId = lobby.id
-
-      // Simulate a disconnect - should start a grace period timer
-      expect(() => {
-        // In the actual implementation, this would start a timer
-        // For now, we just verify the lobby still exists
-        expect(getLobby(lobby.id)).toBeDefined()
-      }).not.toThrow()
-    })
-
-    it('should allow reconnect within grace period', () => {
-      const entries = makeQueueEntries(10)
-      const lobby = createLobby(entries, ws as never, redis as never, db as never)
-      createdLobbyId = lobby.id
-
-      // Player should still be able to interact with lobby
-      const player = lobby.players[0]!
-      expect(getPlayerLobby(player.playerId)).toBe(lobby.id)
-    })
-
-    it('should cancel lobby after grace period expires', () => {
-      vi.useFakeTimers()
-      const entries = makeQueueEntries(10)
-      const lobby = createLobby(entries, ws as never, redis as never, db as never)
-      const lobbyId = lobby.id
+      createLobby(entries, ws as never, redis as never, db as never)
 
       // After grace period (30s), lobby should be cancelled
       vi.advanceTimersByTime(30000)

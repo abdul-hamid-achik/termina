@@ -206,7 +206,7 @@ export function registerBots(
 function assignLanesByRole(
   bots: { playerId: string; heroId: string | null; role: HeroRole }[],
   laneMap: Map<string, string>,
-  team: TeamId,
+  _team: TeamId,
 ): void {
   const laneCounts: Record<string, number> = { top: 0, mid: 0, bot: 0, jungle: 0 }
   const maxPerLane = 2

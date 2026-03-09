@@ -12,10 +12,10 @@ import type { QueueEntry } from '../../../server/game/matchmaking/queue'
 // ── Mocks ──────────────────────────────────────────────────────────
 
 vi.mock('../../../server/game/matchmaking/lobby', () => ({
-  createLobby: vi.fn((entries: any[]) => {
-    const sorted = [...entries].sort((a: any, b: any) => b.mmr - a.mmr)
+  createLobby: vi.fn((entries: QueueEntry[]) => {
+    const sorted = [...entries].sort((a, b) => b.mmr - a.mmr)
     const snakeOrder = [0, 1, 1, 0, 0, 1, 1, 0, 0, 1]
-    const players = sorted.map((entry: any, i: number) => ({
+    const players = sorted.map((entry, i) => ({
       playerId: entry.playerId,
       username: entry.username,
       mmr: entry.mmr,

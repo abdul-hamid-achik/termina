@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import {
   processDoTs,
   tickAllBuffs,
   levelUpHero,
@@ -24,11 +25,16 @@ import { describe, it, expect, vi } from 'vitest'
   setCooldown,
   resetAllCooldowns,
   registerHero,
-import { HEROES } from '../../../shared/constants/heroes'
+  getHeroResolver,
+  type HeroAbilityResolver,
+  type HeroPassiveResolver,
+} from '../../../server/game/heroes/_base'
+import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
+    name: 'TestPlayer',
     team: 'radiant',
     heroId: 'echo',
     zone: 'mid-t1-rad',
@@ -647,7 +653,11 @@ describe('_base hero utilities', () => {
       const mockResolver = vi.fn()
       const mockPassive = vi.fn()
 
-      registerHero('test_hero', mockResolver as any, mockPassive as any)
+      registerHero(
+        'test_hero',
+        mockResolver as unknown as HeroAbilityResolver,
+        mockPassive as unknown as HeroPassiveResolver,
+      )
       const resolver = getHeroResolver('test_hero')
 
       expect(resolver).toBeDefined()

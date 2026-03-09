@@ -427,7 +427,7 @@ describe('ActionResolver', () => {
     })
 
     it('should not mutate player object when adding buffs from Linken refresh', () => {
-      const originalBuffs: any[] = []
+      const originalBuffs: BuffState[][] = []
       const state = makeGameState({
         players: {
           p1: makePlayer({

@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { GameState } from '~~/shared/types/game'
 import { makeGameServer } from '~~/server/plugins/game-server'
 import { Effect } from 'effect'
 import { createTestServices } from '../utils/test-services'
@@ -14,7 +13,11 @@ describe('Game Flow Integration', () => {
 
   beforeEach(() => {
     // Setup test services for each test
-    const { wsService: _wsService, redisService: _redisService, dbService: _dbService } = createTestServices()
+    const {
+      wsService: _wsService,
+      redisService: _redisService,
+      dbService: _dbService,
+    } = createTestServices()
     gameServer = makeGameServer()
   })
 
@@ -91,7 +94,6 @@ describe('Game Flow Integration', () => {
       // Start game with 10 players
       // 4 players vote surrender
       // Verify vote fails (needs 60% = 6 players)
-
       // 6 players vote surrender
       // Verify game ends
     })
