@@ -34,6 +34,12 @@ export interface StateManagerApi {
     players: PlayerSetup[],
   ) => Effect.Effect<GameState, GameAlreadyExistsError>
 
+  /**
+   * Load an existing GameState directly (e.g. from a snapshot). Overwrites
+   * any existing state for the same gameId. Used by the resume path on boot.
+   */
+  readonly loadGame: (gameId: string, state: GameState) => Effect.Effect<GameState>
+
   readonly getState: (gameId: string) => Effect.Effect<GameState, GameNotFoundError>
 
   readonly updateState: (
@@ -136,6 +142,12 @@ export const StateManagerLive = Layer.succeed(StateManager, {
       return state
     }),
 
+  loadGame: (gameId, state) =>
+    Effect.sync(() => {
+      games.set(gameId, state)
+      return state
+    }),
+
   getState: (gameId) =>
     Effect.gen(function* () {
       const state = games.get(gameId)
@@ -178,6 +190,12 @@ export function createInMemoryStateManager(): StateManagerApi {
           return yield* Effect.fail(new GameAlreadyExistsError(gameId))
         }
         const state = createInitialGameState(gameId, players)
+        localGames.set(gameId, state)
+        return state
+      }),
+
+    loadGame: (gameId, state) =>
+      Effect.sync(() => {
         localGames.set(gameId, state)
         return state
       }),

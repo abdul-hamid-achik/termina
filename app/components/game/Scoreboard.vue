@@ -262,18 +262,24 @@ const gameTimeFormatted = computed(() => {
 }
 
 .scoreboard__team-label {
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .scoreboard__team-label--radiant {
   color: rgb(var(--color-radiant));
+  text-shadow:
+    0 0 6px rgb(var(--color-radiant) / 0.9),
+    0 0 16px rgb(var(--color-radiant) / 0.45);
 }
 
 .scoreboard__team-label--dire {
   color: rgb(var(--color-dire));
+  text-shadow:
+    0 0 6px rgb(var(--color-dire) / 0.9),
+    0 0 16px rgb(var(--color-dire) / 0.45);
 }
 
 .scoreboard__match-info {
@@ -290,9 +296,22 @@ const gameTimeFormatted = computed(() => {
 }
 
 .scoreboard__kills-summary {
-  font-size: 1.1rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.scoreboard__kills-summary .text-radiant {
+  text-shadow:
+    0 0 6px rgb(var(--color-radiant) / 0.85),
+    0 0 14px rgb(var(--color-radiant) / 0.4);
+}
+
+.scoreboard__kills-summary .text-dire {
+  text-shadow:
+    0 0 6px rgb(var(--color-dire) / 0.85),
+    0 0 14px rgb(var(--color-dire) / 0.4);
 }
 
 .scoreboard__vs {
@@ -425,8 +444,10 @@ const gameTimeFormatted = computed(() => {
 }
 
 .scoreboard__player-row--self {
-  background: rgba(var(--color-ability), 0.08);
-  box-shadow: inset 2px 0 0 rgb(var(--color-ability));
+  background: rgb(var(--color-ability) / 0.1);
+  box-shadow:
+    inset 3px 0 0 rgb(var(--color-ability)),
+    inset 0 0 14px rgb(var(--color-ability) / 0.18);
 }
 
 .scoreboard__player-row--self.scoreboard__player-row--dead {
@@ -485,12 +506,18 @@ const gameTimeFormatted = computed(() => {
 
 .scoreboard__alive-dot--radiant {
   background: rgb(var(--color-radiant));
-  box-shadow: 0 0 4px rgba(var(--color-radiant), 0.5);
+  box-shadow:
+    0 0 6px rgb(var(--color-radiant) / 0.9),
+    0 0 14px rgb(var(--color-radiant) / 0.5);
+  animation: glow-pulse 2.4s ease-in-out infinite;
 }
 
 .scoreboard__alive-dot--dire {
   background: rgb(var(--color-dire));
-  box-shadow: 0 0 4px rgba(var(--color-dire), 0.5);
+  box-shadow:
+    0 0 6px rgb(var(--color-dire) / 0.9),
+    0 0 14px rgb(var(--color-dire) / 0.5);
+  animation: glow-pulse 2.4s ease-in-out infinite;
 }
 
 .scoreboard__dead-label {

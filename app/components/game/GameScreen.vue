@@ -209,7 +209,21 @@ function onKeyUp(e: KeyboardEvent) {
   }
 }
 
-// ── Audio cues ───────────────────────────────────────────────
+// ── Audio cues + screen shake ──────────────────────────────────
+
+const screenShake = ref<'none' | 'light' | 'strong'>('none')
+let shakeTimer: ReturnType<typeof setTimeout> | null = null
+function triggerShake(level: 'light' | 'strong') {
+  if (shakeTimer) clearTimeout(shakeTimer)
+  // re-trigger by going none → level on next frame
+  screenShake.value = 'none'
+  requestAnimationFrame(() => {
+    screenShake.value = level
+    shakeTimer = setTimeout(() => {
+      screenShake.value = 'none'
+    }, level === 'strong' ? 600 : 400)
+  })
+}
 
 // Play 'tick' sound on each new tick
 watch(
@@ -219,7 +233,7 @@ watch(
   },
 )
 
-// Watch game events for audio cues
+// Watch game events for audio cues + shake
 watch(
   () => gameStore.events.length,
   (newLen, oldLen) => {
@@ -231,13 +245,17 @@ watch(
     for (const e of newEvents) {
       switch (e.type) {
         case 'damage':
-          if (e.payload.sourceId === pid || e.payload.targetId === pid) {
+          if (e.payload.targetId === pid) {
+            playSound('damage')
+            triggerShake('light')
+          } else if (e.payload.sourceId === pid) {
             playSound('damage')
           }
           break
         case 'death':
           if (e.payload.playerId === pid) {
             playSound('death')
+            triggerShake('strong')
           }
           break
         case 'gold_change':
@@ -253,7 +271,13 @@ watch(
         case 'kill':
           if (e.payload.killerId === pid) {
             playSound('kill')
+            triggerShake('light')
           }
+          break
+        case 'tower_kill':
+          // Audible to everyone — towers are global events
+          playSound('tower_fall')
+          if (e.payload.killerId === pid) triggerShake('light')
           break
       }
     }
@@ -583,6 +607,11 @@ function handleQuickAction(cmd: string) {
     return
   }
 
+  if (cmd === 'SCORE') {
+    showScoreboard.value = !showScoreboard.value
+    return
+  }
+
   if (cmd === 'MOVE') {
     // Show adjacent zones as a hint
     const zone = ZONE_MAP[p.zone]
@@ -618,6 +647,7 @@ function handleQuickAction(cmd: string) {
 
   // Q/W/E/R — cast ability (accept both upper and lowercase)
   if (['Q', 'W', 'E', 'R', 'q', 'w', 'e', 'r'].includes(cmd)) {
+    playSound('cast')
     handleCommand(`cast ${cmd.toLowerCase()}`)
     return
   }
@@ -694,33 +724,40 @@ function handleReturnToMenu() {
     :stats="gameStore.gameOverStats"
     :players="postGamePlayers"
     :current-player-id="gameStore.playerId ?? ''"
+    :game-id="gameStore.gameId ?? null"
     @play-again="handlePlayAgain"
     @return-to-menu="handleReturnToMenu"
   />
 
   <!-- Active Game Screen -->
-  <div v-else class="game-grid relative bg-bg-primary" data-testid="game-screen">
+  <div
+    v-else
+    class="game-grid relative bg-bg-primary"
+    :class="{ 'anim-shake': screenShake === 'light', 'anim-shake-strong': screenShake === 'strong' }"
+    data-testid="game-screen"
+    :data-game-id="gameStore.gameId ?? ''"
+  >
     <div
       v-if="!gameStore.isAlive && gameStore.player"
       class="game-grid__map death-overlay"
       data-testid="death-overlay"
     >
       <div
-        class="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dire bg-bg-panel p-6 text-center shadow-lg shadow-dire/20"
+        class="anim-fade-in-up flex h-full flex-col items-center justify-center rounded-lg border-2 border-dire bg-bg-panel p-6 text-center bloom-dire"
       >
-        <div class="mb-4 text-5xl">☠</div>
-        <p class="text-3xl font-bold text-dire">PROCESS TERMINATED</p>
-        <p v-if="killerName" class="mt-4 text-lg text-text-primary">
-          Killed by <span class="font-bold text-dire">{{ killerName }}</span>
+        <div class="mb-4 text-6xl text-dire text-glow-dire anim-glow-pulse">☠</div>
+        <p class="t-display text-dire text-glow-dire tracking-widest">PROCESS TERMINATED</p>
+        <p v-if="killerName" class="t-h3 mt-5 text-text-primary">
+          Killed by <span class="text-dire text-glow-dire">{{ killerName }}</span>
         </p>
-        <p v-if="gameStore.player.respawnTick" class="mt-4 text-text-dim">
+        <p v-if="gameStore.player.respawnTick" class="mt-5 t-body text-text-dim">
           Respawning in
-          <span class="text-radiant font-bold">{{
+          <span class="text-radiant text-glow-radiant font-bold t-mono-num">{{
             Math.max(0, gameStore.player.respawnTick - gameStore.tick)
           }}</span>
           ticks...
         </p>
-        <p class="mt-6 text-sm text-text-dim">Wait for respawn or look for safe areas on the map</p>
+        <p class="mt-6 t-caption">Wait for respawn or buyback to return instantly</p>
       </div>
     </div>
     <GameStateBar
@@ -759,10 +796,12 @@ function handleReturnToMenu() {
       <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
     </TerminalPanel>
 
-    <!-- Scoreboard overlay (Tab hold) -->
+    <!-- Scoreboard overlay (Tab hold on desktop, SCORE button on mobile) -->
     <div
       v-if="showScoreboard && gameStore.teams"
-      class="absolute inset-0 z-30 flex items-center justify-center bg-black/80"
+      class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 p-2 anim-fade-in-up"
+      data-testid="scoreboard-overlay"
+      @click.self="showScoreboard = false"
     >
       <div class="w-full max-w-4xl border border-border bg-bg-primary">
         <Scoreboard
@@ -771,6 +810,12 @@ function handleReturnToMenu() {
           :current-tick="currentTick"
           :current-player-id="gameStore.playerId ?? ''"
         />
+        <button
+          class="block w-full border-t border-border bg-bg-secondary py-2 t-caption hover:text-text-primary"
+          @click="showScoreboard = false"
+        >
+          [tap outside or here to close]
+        </button>
       </div>
     </div>
 
@@ -833,14 +878,15 @@ function handleReturnToMenu() {
           [SHOP]
         </button>
       </div>
-      <div class="flex gap-1 overflow-x-auto px-2 py-1">
+      <div class="flex gap-1 overflow-x-auto px-2 py-1.5">
         <button
-          v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP']"
+          v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP', 'SCORE']"
           :key="cmd"
-          class="whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-text-primary active:bg-border"
+          class="min-h-[40px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono text-[0.75rem] font-bold text-text-primary transition-all active:bg-border active:scale-95"
           :class="{
             'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy,
-            'border-ability text-ability': ['Q', 'W', 'E', 'R'].includes(cmd),
+            'border-ability text-ability shadow-glow-ability': ['Q', 'W', 'E', 'R'].includes(cmd),
+            'border-self text-self': cmd === 'SCORE',
           }"
           @click="handleQuickAction(cmd)"
         >
@@ -903,8 +949,9 @@ function handleReturnToMenu() {
 
 @media (max-width: 1024px) {
   .game-grid {
+    /* Map gets more vertical real estate than log/hero on tablet */
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto 1fr 1fr 1fr auto;
+    grid-template-rows: auto 2fr 1fr 1fr auto;
   }
   .game-grid__map {
     grid-column: 1 / -1;
@@ -926,8 +973,10 @@ function handleReturnToMenu() {
 
 @media (max-width: 640px) {
   .game-grid {
+    /* On phones, prioritize map + hero status. Log gets the smallest slice. */
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr 1fr 1fr auto;
+    grid-template-rows: auto minmax(220px, 2.5fr) minmax(80px, 1fr) minmax(120px, 1.4fr) auto;
+    gap: 1px;
   }
   .game-grid__map {
     grid-column: 1;

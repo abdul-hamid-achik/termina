@@ -14,8 +14,10 @@ import { gameLoggerLive } from '../utils/logger'
 import { gameLog } from '../utils/log'
 import { createInMemoryStateManager } from '../game/engine/StateManager'
 import { startGameLoop, type GameCallbacks } from '../game/engine/GameLoop'
+import { deleteSnapshot, readSnapshot, listSnapshotGameIds } from '../game/engine/StateSnapshot'
 import { toGameEvent, type GameEngineEvent } from '../game/protocol/events'
-import { calculateVision } from '../game/engine/VisionCalculator'
+import { calculateVision, filterStateForSpectator } from '../game/engine/VisionCalculator'
+import { getSpectatorsOfGame, clearGameSpectators } from '../services/SpectatorRegistry'
 import type { TeamId, GameState } from '~~/shared/types/game'
 import type { NewMatch, NewMatchPlayer } from '../db/schema'
 import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
@@ -114,6 +116,193 @@ export default defineNitroPlugin(async (nitroApp) => {
   const { startMatchmakingLoop } = await import('../game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
 
+  // Build the callbacks for a single game. Captured separately from the
+  // game_ready handler so the snapshot-resume path can use the same shape.
+  type StartPlayer = { playerId: string; team: TeamId; heroId: string; mmr: number }
+  function buildCallbacks(
+    players: StartPlayer[],
+    stateManager: ReturnType<typeof createInMemoryStateManager>,
+  ): GameCallbacks {
+    return {
+      onTickState: (_gId, playerId, filteredState) => {
+        if (isBot(playerId)) return
+        sendToPeer(playerId, {
+          type: 'tick_state',
+          tick: filteredState.tick,
+          state: filteredState,
+        })
+      },
+
+      onSpectatorTick: (gId, fullState) => {
+        const watchers = getSpectatorsOfGame(gId)
+        if (watchers.length === 0) return
+        const fogless = filterStateForSpectator(fullState)
+        const payload = JSON.stringify({
+          type: 'spectator_tick',
+          tick: fogless.tick,
+          state: fogless,
+        })
+        for (const watcher of watchers) {
+          try {
+            watcher.send(payload)
+          } catch (err) {
+            gameLog.warn('Spectator send failed', { gameId: gId, error: String(err) })
+          }
+        }
+      },
+
+      onActionRejected: (_gId, playerId, reason) => {
+        if (isBot(playerId)) return
+        sendToPeer(playerId, {
+          type: 'announcement',
+          message: reason,
+          level: 'warning',
+        })
+      },
+
+      onEvents: (gId, events) => {
+        if (events.length === 0) return
+
+        let state: GameState | null = null
+        try {
+          state = Effect.runSync(stateManager.getState(gId))
+        } catch {
+          // State unavailable — fall back to unfiltered
+        }
+
+        for (const p of players) {
+          if (isBot(p.playerId)) continue
+
+          if (state) {
+            const visibleZones = calculateVision(state, p.playerId)
+            const playerTeam = state.players[p.playerId]?.team
+            const visibleEvents = events.filter((e) =>
+              isEventVisibleToPlayer(e, p.playerId, playerTeam, visibleZones, state!),
+            )
+            if (visibleEvents.length > 0) {
+              sendToPeer(p.playerId, {
+                type: 'events' as const,
+                tick: visibleEvents[0]?.tick ?? 0,
+                events: visibleEvents.map(toGameEvent),
+              })
+            }
+          } else {
+            sendToPeer(p.playerId, {
+              type: 'events' as const,
+              tick: events[0]?.tick ?? 0,
+              events: events.map(toGameEvent),
+            })
+          }
+        }
+      },
+
+      onGameOver: async (gId, winner) => {
+        try {
+          const finalState = await managedRuntime.runPromise(stateManager.getState(gId))
+
+          const matchRecord: NewMatch = {
+            id: gId,
+            mode: 'ranked_5v5',
+            winner,
+            durationTicks: finalState.tick,
+            endedAt: new Date(),
+          }
+
+          const realPlayers = players.filter((p) => !isBot(p.playerId))
+          const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
+            const ps = finalState.players[p.playerId]
+            const isWinner = p.team === winner
+            const mmrChange = isWinner ? 25 : -25
+            return {
+              matchId: gId,
+              playerId: p.playerId,
+              team: p.team,
+              heroId: p.heroId,
+              kills: ps?.kills ?? 0,
+              deaths: ps?.deaths ?? 0,
+              assists: ps?.assists ?? 0,
+              goldEarned: ps?.gold ?? 0,
+              damageDealt: ps?.damageDealt ?? 0,
+              healingDone: 0,
+              finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
+              finalLevel: ps?.level ?? 1,
+              mmrChange,
+            }
+          })
+
+          await managedRuntime.runPromise(
+            Effect.gen(function* () {
+              yield* db.recordMatch(matchRecord, matchPlayerRecords)
+
+              for (const p of realPlayers) {
+                const isWinner = p.team === winner
+                const newMmr = p.mmr + (isWinner ? 25 : -25)
+                const ps = finalState.players[p.playerId]
+
+                yield* db.updatePlayerMMR(p.playerId, newMmr)
+                yield* db.incrementGamesPlayed(p.playerId)
+                if (isWinner) {
+                  yield* db.incrementWins(p.playerId)
+                }
+                yield* db.updateHeroStats(p.playerId, p.heroId, {
+                  won: isWinner,
+                  kills: ps?.kills ?? 0,
+                  deaths: ps?.deaths ?? 0,
+                  assists: ps?.assists ?? 0,
+                })
+              }
+            }),
+          )
+
+          const endStats: Record<
+            string,
+            {
+              kills: number
+              deaths: number
+              assists: number
+              gold: number
+              items: (string | null)[]
+              heroDamage: number
+              towerDamage: number
+            }
+          > = {}
+          for (const p of players) {
+            const ps = finalState.players[p.playerId]
+            endStats[p.playerId] = {
+              kills: ps?.kills ?? 0,
+              deaths: ps?.deaths ?? 0,
+              assists: ps?.assists ?? 0,
+              gold: ps?.gold ?? 0,
+              items: ps?.items ?? [],
+              heroDamage: ps?.damageDealt ?? 0,
+              towerDamage: ps?.towerDamageDealt ?? 0,
+            }
+          }
+
+          for (const p of realPlayers) {
+            sendToPeer(p.playerId, {
+              type: 'game_over',
+              winner,
+              stats: endStats,
+            })
+          }
+
+          for (const p of realPlayers) {
+            clearPlayerGame(p.playerId)
+          }
+
+          cleanupGame(gId)
+          clearGameSpectators(gId)
+          // Leave the snapshot + action log behind so PostGame can show a
+          // replay link. The Redis TTL (8h) cleans them up eventually, and
+          // the resume-on-boot path already skips ended-phase snapshots.
+        } catch (err) {
+          gameLog.error('Game over persistence failed', { gameId: gId, error: String(err) })
+        }
+      },
+    }
+  }
+
   // Subscribe to game_ready events from lobby
   await managedRuntime.runPromise(
     redis.subscribe('matchmaking:game_ready', async (message) => {
@@ -170,168 +359,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Clean up the lobby now that the game is created
         cleanupLobby(gameData.lobbyId)
 
-        // Start game loop with callbacks
-        const callbacks: GameCallbacks = {
-          onTickState: (gId, playerId, filteredState) => {
-            if (isBot(playerId)) return
-            sendToPeer(playerId, {
-              type: 'tick_state',
-              tick: filteredState.tick,
-              state: filteredState,
-            })
-          },
-
-          onActionRejected: (gId, playerId, reason) => {
-            if (isBot(playerId)) return
-            sendToPeer(playerId, {
-              type: 'announcement',
-              message: reason,
-              level: 'warning',
-            })
-          },
-
-          onEvents: (gId, events) => {
-            if (events.length === 0) return
-
-            let state: GameState | null = null
-            try {
-              state = Effect.runSync(stateManager.getState(gId))
-            } catch {
-              // State unavailable — fall back to unfiltered
-            }
-
-            for (const p of gameData.players) {
-              if (isBot(p.playerId)) continue
-
-              if (state) {
-                const visibleZones = calculateVision(state, p.playerId)
-                const playerTeam = state.players[p.playerId]?.team
-                const visibleEvents = events.filter((e) =>
-                  isEventVisibleToPlayer(e, p.playerId, playerTeam, visibleZones, state!),
-                )
-                if (visibleEvents.length > 0) {
-                  sendToPeer(p.playerId, {
-                    type: 'events' as const,
-                    tick: visibleEvents[0]?.tick ?? 0,
-                    events: visibleEvents.map(toGameEvent),
-                  })
-                }
-              } else {
-                sendToPeer(p.playerId, {
-                  type: 'events' as const,
-                  tick: events[0]?.tick ?? 0,
-                  events: events.map(toGameEvent),
-                })
-              }
-            }
-          },
-
-          onGameOver: async (gId, winner) => {
-            try {
-              const finalState = await managedRuntime.runPromise(stateManager.getState(gId))
-
-              const matchRecord: NewMatch = {
-                id: gId,
-                mode: 'ranked_5v5',
-                winner,
-                durationTicks: finalState.tick,
-                endedAt: new Date(),
-              }
-
-              const realPlayers = gameData.players.filter((p) => !isBot(p.playerId))
-              const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
-                const ps = finalState.players[p.playerId]
-                const isWinner = p.team === winner
-                const mmrChange = isWinner ? 25 : -25
-                return {
-                  matchId: gId,
-                  playerId: p.playerId,
-                  team: p.team,
-                  heroId: p.heroId,
-                  kills: ps?.kills ?? 0,
-                  deaths: ps?.deaths ?? 0,
-                  assists: ps?.assists ?? 0,
-                  goldEarned: ps?.gold ?? 0,
-                  damageDealt: ps?.damageDealt ?? 0,
-                  healingDone: 0,
-                  finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
-                  finalLevel: ps?.level ?? 1,
-                  mmrChange,
-                }
-              })
-
-              // Persist match + player stats in a single Effect pipeline
-              await managedRuntime.runPromise(
-                Effect.gen(function* () {
-                  yield* db.recordMatch(matchRecord, matchPlayerRecords)
-
-                  for (const p of realPlayers) {
-                    const isWinner = p.team === winner
-                    const newMmr = p.mmr + (isWinner ? 25 : -25)
-                    const ps = finalState.players[p.playerId]
-
-                    yield* db.updatePlayerMMR(p.playerId, newMmr)
-                    yield* db.incrementGamesPlayed(p.playerId)
-                    if (isWinner) {
-                      yield* db.incrementWins(p.playerId)
-                    }
-                    yield* db.updateHeroStats(p.playerId, p.heroId, {
-                      won: isWinner,
-                      kills: ps?.kills ?? 0,
-                      deaths: ps?.deaths ?? 0,
-                      assists: ps?.assists ?? 0,
-                    })
-                  }
-                }),
-              )
-
-              // Build end stats for clients
-              const endStats: Record<
-                string,
-                {
-                  kills: number
-                  deaths: number
-                  assists: number
-                  gold: number
-                  items: (string | null)[]
-                  heroDamage: number
-                  towerDamage: number
-                }
-              > = {}
-              for (const p of gameData.players) {
-                const ps = finalState.players[p.playerId]
-                endStats[p.playerId] = {
-                  kills: ps?.kills ?? 0,
-                  deaths: ps?.deaths ?? 0,
-                  assists: ps?.assists ?? 0,
-                  gold: ps?.gold ?? 0,
-                  items: ps?.items ?? [],
-                  heroDamage: ps?.damageDealt ?? 0,
-                  towerDamage: ps?.towerDamageDealt ?? 0,
-                }
-              }
-
-              // Broadcast game over to all real players
-              for (const p of realPlayers) {
-                sendToPeer(p.playerId, {
-                  type: 'game_over',
-                  winner,
-                  stats: endStats,
-                })
-              }
-
-              // Clear player→game mappings so they can re-queue
-              for (const p of realPlayers) {
-                clearPlayerGame(p.playerId)
-              }
-
-              // Cleanup bot tracking
-              cleanupGame(gId)
-            } catch (err) {
-              gameLog.error('Game over persistence failed', { gameId: gId, error: String(err) })
-            }
-          },
-        }
+        const callbacks = buildCallbacks(gameData.players, stateManager)
 
         gameLog.info('Game created — starting loop', {
           gameId,
@@ -343,8 +371,11 @@ export default defineNitroPlugin(async (nitroApp) => {
         await managedRuntime.runPromise(Effect.sleep('2 seconds'))
 
         // Start the game loop as a fiber within the managed runtime.
-        // This gives the loop access to all layers (logger, etc.)
-        startGameLoop(gameId, stateManager, callbacks, managedRuntime)
+        // The snapshot meta lets the resume path rebuild the same callbacks
+        // after a process restart.
+        startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, {
+          players: gameData.players,
+        })
       } catch (err) {
         gameLog.error('Failed to process game_ready event', { error: String(err) })
       }
@@ -357,6 +388,63 @@ export default defineNitroPlugin(async (nitroApp) => {
     dbService: db,
     managedRuntime,
     matchmakingInterval,
+  }
+
+  // Resume any in-progress games whose snapshots survived a restart.
+  // Best-effort: failures are logged and the game is dropped.
+  try {
+    const gameIds = await managedRuntime.runPromise(listSnapshotGameIds(redis))
+    if (gameIds.length > 0) {
+      gameLog.info('Found snapshots to resume', { count: gameIds.length })
+    }
+    for (const gameId of gameIds) {
+      const snap = await managedRuntime.runPromise(readSnapshot(redis, gameId))
+      if (!snap) continue
+
+      // Snapshots for ended games shouldn't exist (deleteSnapshot runs on
+      // game-over) but handle them defensively.
+      if (snap.state.phase === 'ended') {
+        await managedRuntime.runPromise(deleteSnapshot(redis, gameId))
+        continue
+      }
+
+      if (!snap.meta) {
+        gameLog.warn('Snapshot has no meta — cannot resume', { gameId })
+        await managedRuntime.runPromise(deleteSnapshot(redis, gameId))
+        continue
+      }
+
+      const stateManager = createInMemoryStateManager()
+      await managedRuntime.runPromise(stateManager.loadGame(gameId, snap.state))
+
+      registerBots(
+        gameId,
+        snap.meta.players.map((p) => ({
+          playerId: p.playerId,
+          team: p.team,
+          heroId: p.heroId,
+        })),
+      )
+
+      for (const p of snap.meta.players) {
+        if (!isBot(p.playerId)) {
+          setPlayerGame(p.playerId, gameId)
+        }
+      }
+
+      const callbacks = buildCallbacks(snap.meta.players, stateManager)
+      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, {
+        players: snap.meta.players,
+      })
+
+      gameLog.info('Resumed game from snapshot', {
+        gameId,
+        tick: snap.state.tick,
+        ageMs: Date.now() - snap.savedAt,
+      })
+    }
+  } catch (err) {
+    gameLog.error('Snapshot resume failed', { error: String(err) })
   }
 
   gameLog.info('Game server initialized')

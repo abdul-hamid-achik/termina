@@ -4,7 +4,14 @@ import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
-import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '../../../shared/constants/balance'
+import {
+  DAY_DURATION_TICKS,
+  NIGHT_DURATION_TICKS,
+  PASSIVE_GOLD_PER_TICK,
+  RESPAWN_BASE_TICKS,
+  RESPAWN_PER_LEVEL_TICKS,
+  RESPAWN_FREE_LEVELS,
+} from '../../../shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -83,9 +90,9 @@ describe('GameLoop', () => {
       const state = makeGameState()
       const result = Effect.runSync(processTick('game1', state))
 
-      // Both players start with 600g, should get +2 passive gold
-      expect(result.state.players['p1']!.gold).toBe(602)
-      expect(result.state.players['p2']!.gold).toBe(602)
+      // Both players start with 600g, should get +PASSIVE_GOLD_PER_TICK
+      expect(result.state.players['p1']!.gold).toBe(600 + PASSIVE_GOLD_PER_TICK)
+      expect(result.state.players['p2']!.gold).toBe(600 + PASSIVE_GOLD_PER_TICK)
     })
 
     it('should not give passive gold to dead players', () => {
@@ -97,7 +104,7 @@ describe('GameLoop', () => {
       })
       const result = Effect.runSync(processTick('game1', state))
       expect(result.state.players['p1']!.gold).toBe(600) // no gold for dead
-      expect(result.state.players['p2']!.gold).toBe(602) // alive gets gold
+      expect(result.state.players['p2']!.gold).toBe(600 + PASSIVE_GOLD_PER_TICK)
     })
 
     it('should process submitted actions', () => {
@@ -219,8 +226,10 @@ describe('GameLoop', () => {
       const result = Effect.runSync(processTick('game-death', state))
       const p1 = result.state.players['p1']!
       expect(p1.respawnTick).not.toBeNull()
-      // Respawn = tick + base + level * perLevel = 1 + 3 + 1*1 = 5
-      expect(p1.respawnTick).toBe(1 + 3 + 1)
+      // Respawn = tick + base + max(0, level - free) * perLevel
+      // tick=1, level=1, base=2, free=4 → 1 + 2 + 0 = 3
+      const scaled = Math.max(0, 1 - RESPAWN_FREE_LEVELS)
+      expect(p1.respawnTick).toBe(1 + RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * scaled)
     })
 
     it('should not respawn dead players before respawn tick', () => {

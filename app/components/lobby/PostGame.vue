@@ -16,6 +16,7 @@ const props = defineProps<{
   }>
   currentPlayerId: string
   mmrChange?: number
+  gameId?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -74,15 +75,12 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
 <template>
   <div class="flex min-h-screen flex-col gap-4 bg-bg-primary p-4" data-testid="post-game">
     <div
-      class="border p-4 text-center"
-      :class="
-        winner === 'radiant'
-          ? 'border-radiant shadow-glow-radiant-lg'
-          : 'border-dire shadow-glow-dire-lg'
-      "
+      class="anim-fade-in-up border-2 p-6 text-center"
+      :class="winner === 'radiant' ? 'border-radiant bloom-radiant' : 'border-dire bloom-dire'"
     >
+      <div class="t-caption mb-2 text-text-muted">// match concluded</div>
       <span
-        class="text-2xl font-bold tracking-[0.2em] text-glow"
+        class="t-display tracking-[0.2em] anim-glow-pulse"
         :class="winner === 'radiant' ? 'text-radiant' : 'text-dire'"
       >
         {{ winner === 'radiant' ? 'RADIANT VICTORY' : 'DIRE VICTORY' }}
@@ -91,38 +89,40 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
 
     <div v-if="myStats">
       <TerminalPanel title="Your Performance">
-        <div class="flex flex-wrap gap-4">
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[0.7rem] uppercase tracking-widest text-text-dim">K/D/A</span>
-            <span class="text-base font-bold">
-              <span class="text-radiant">{{ myStats.kills }}</span>
-              <span class="mx-0.5 text-text-dim">/</span>
-              <span class="text-dire">{{ myStats.deaths }}</span>
-              <span class="mx-0.5 text-text-dim">/</span>
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+          <div class="flex flex-col gap-1">
+            <span class="t-caption uppercase">K/D/A</span>
+            <span class="t-h1 t-mono-num">
+              <span class="text-radiant text-glow-radiant">{{ myStats.kills }}</span>
+              <span class="mx-0.5 text-text-muted">/</span>
+              <span class="text-dire text-glow-dire">{{ myStats.deaths }}</span>
+              <span class="mx-0.5 text-text-muted">/</span>
               <span class="text-text-dim">{{ myStats.assists }}</span>
             </span>
           </div>
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[0.7rem] uppercase tracking-widest text-text-dim">Hero Damage</span>
-            <span class="text-base font-bold text-text-primary">{{
+          <div class="flex flex-col gap-1">
+            <span class="t-caption uppercase">Hero Damage</span>
+            <span class="t-h1 text-text-primary text-glow-sm t-mono-num">{{
               myStats.heroDamage.toLocaleString()
             }}</span>
           </div>
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[0.7rem] uppercase tracking-widest text-text-dim">Tower Damage</span>
-            <span class="text-base font-bold text-text-primary">{{
+          <div class="flex flex-col gap-1">
+            <span class="t-caption uppercase">Tower Damage</span>
+            <span class="t-h1 text-text-primary text-glow-sm t-mono-num">{{
               myStats.towerDamage.toLocaleString()
             }}</span>
           </div>
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[0.7rem] uppercase tracking-widest text-text-dim">Gold Earned</span>
-            <span class="text-base font-bold text-gold">{{ myStats.gold.toLocaleString() }}</span>
+          <div class="flex flex-col gap-1">
+            <span class="t-caption uppercase">Gold Earned</span>
+            <span class="t-h1 text-gold text-glow-gold t-mono-num">{{
+              myStats.gold.toLocaleString()
+            }}</span>
           </div>
-          <div v-if="mmrChange !== undefined" class="flex flex-col gap-0.5">
-            <span class="text-[0.7rem] uppercase tracking-widest text-text-dim">MMR</span>
+          <div v-if="mmrChange !== undefined" class="flex flex-col gap-1">
+            <span class="t-caption uppercase">MMR</span>
             <span
-              class="text-base font-bold"
-              :class="mmrChange >= 0 ? 'text-radiant' : 'text-dire'"
+              class="t-h1 t-mono-num"
+              :class="mmrChange >= 0 ? 'text-radiant text-glow-radiant' : 'text-dire text-glow-dire'"
             >
               {{ mmrChange >= 0 ? '+' : '' }}{{ mmrChange }}
             </span>
@@ -133,7 +133,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
 
     <div>
       <TerminalPanel title="Scoreboard">
-        <div class="text-xs font-bold tracking-widest text-radiant pb-1 pt-1.5">RADIANT</div>
+        <div class="t-h3 pb-1 pt-1.5 text-radiant text-glow-radiant">RADIANT</div>
         <table class="mb-3 w-full border-collapse text-xs">
           <thead>
             <tr>
@@ -167,7 +167,8 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
             <tr
               v-for="p in radiantPlayers"
               :key="p.id"
-              :class="{ 'bg-ability/5 font-bold': p.isCurrentPlayer }"
+              class="anim-fade-in-up"
+              :class="{ 'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]': p.isCurrentPlayer }"
             >
               <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
                 {{ HEROES[p.heroId]?.name ?? p.heroId }}
@@ -199,7 +200,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
           </tbody>
         </table>
 
-        <div class="text-xs font-bold tracking-widest text-dire pb-1 pt-1.5">DIRE</div>
+        <div class="t-h3 pb-1 pt-1.5 text-dire text-glow-dire">DIRE</div>
         <table class="w-full border-collapse text-xs">
           <thead>
             <tr>
@@ -233,7 +234,8 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
             <tr
               v-for="p in direPlayers"
               :key="p.id"
-              :class="{ 'bg-ability/5 font-bold': p.isCurrentPlayer }"
+              class="anim-fade-in-up"
+              :class="{ 'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]': p.isCurrentPlayer }"
             >
               <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
                 {{ HEROES[p.heroId]?.name ?? p.heroId }}
@@ -267,8 +269,15 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
       </TerminalPanel>
     </div>
 
-    <div class="flex justify-center gap-4 pt-2">
+    <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
       <AsciiButton label="PLAY AGAIN" variant="primary" data-testid="play-again-btn" @click="emit('playAgain')" />
+      <NuxtLink
+        v-if="gameId"
+        :to="`/replay/${gameId}`"
+        class="inline-flex items-center gap-1 border border-ability bg-bg-secondary px-3 py-1.5 font-mono text-sm text-ability shadow-glow-ability transition-all hover:bg-ability/10 hover:shadow-glow-ability-lg"
+      >
+        [WATCH REPLAY]
+      </NuxtLink>
       <AsciiButton label="MAIN MENU" variant="ghost" data-testid="return-to-menu-btn" @click="emit('returnToMenu')" />
     </div>
   </div>

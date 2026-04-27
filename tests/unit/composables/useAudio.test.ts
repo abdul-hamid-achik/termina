@@ -5,25 +5,64 @@ import { useAudio } from '~/composables/useAudio'
 import type { SoundName } from '~/composables/useAudio'
 import { useSettingsStore } from '~/stores/settings'
 
-const mockOsc = {
-  type: '',
-  frequency: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
-  connect: vi.fn(),
-  start: vi.fn(),
-  stop: vi.fn(),
-}
-const _mockGain = {
-  gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
-  connect: vi.fn(),
-}
-const mockAudioCtx = {
-  state: 'running',
-  currentTime: 0,
-  destination: {},
-  createOscillator: vi.fn(() => ({ ...mockOsc })),
-  createGain: vi.fn(() => ({
-    gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+function makeOsc() {
+  return {
+    type: '',
+    frequency: {
+      setValueAtTime: vi.fn(),
+      linearRampToValueAtTime: vi.fn(),
+      exponentialRampToValueAtTime: vi.fn(),
+    },
+    detune: { setValueAtTime: vi.fn() },
     connect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+  }
+}
+
+function makeGain() {
+  return {
+    gain: {
+      value: 0,
+      setValueAtTime: vi.fn(),
+      linearRampToValueAtTime: vi.fn(),
+      exponentialRampToValueAtTime: vi.fn(),
+    },
+    connect: vi.fn(),
+  }
+}
+
+function makeFilter() {
+  return {
+    type: '',
+    frequency: {
+      setValueAtTime: vi.fn(),
+      exponentialRampToValueAtTime: vi.fn(),
+    },
+    connect: vi.fn(),
+  }
+}
+
+function makeBufferSource() {
+  return {
+    buffer: null,
+    connect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+  }
+}
+
+const mockAudioCtx = {
+  state: 'running' as 'running' | 'suspended',
+  currentTime: 0,
+  sampleRate: 44100,
+  destination: {},
+  createOscillator: vi.fn(() => makeOsc()),
+  createGain: vi.fn(() => makeGain()),
+  createBiquadFilter: vi.fn(() => makeFilter()),
+  createBufferSource: vi.fn(() => makeBufferSource()),
+  createBuffer: vi.fn((_channels: number, length: number) => ({
+    getChannelData: vi.fn(() => new Float32Array(length)),
   })),
   resume: vi.fn(),
 }
@@ -70,29 +109,37 @@ describe('useAudio', () => {
     expect(mockAudioCtx.createGain).toHaveBeenCalled()
   })
 
-  it('plays all 7 sound types without error', () => {
+  it('plays every sound type without throwing', () => {
     vi.mocked(useSettingsStore).mockReturnValue({
       audioEnabled: true,
       audioVolume: 0.5,
     } as ReturnType<typeof useSettingsStore>)
 
     const { playSound } = useAudio()
-    const sounds: SoundName[] = ['tick', 'submit', 'damage', 'kill', 'death', 'gold', 'ready']
+    const sounds: SoundName[] = [
+      'tick',
+      'submit',
+      'damage',
+      'kill',
+      'death',
+      'gold',
+      'ready',
+      'cast',
+      'tower_fall',
+    ]
 
     for (const name of sounds) {
       expect(() => playSound(name)).not.toThrow()
     }
 
-    expect(mockAudioCtx.createOscillator).toHaveBeenCalledTimes(7)
-    expect(mockAudioCtx.createGain).toHaveBeenCalledTimes(7)
+    // Each sound creates at least one oscillator
+    expect(mockAudioCtx.createOscillator.mock.calls.length).toBeGreaterThanOrEqual(sounds.length)
   })
 
-  it('respects volume from settings store', () => {
-    const gainSetValue = vi.fn()
-    mockAudioCtx.createGain.mockReturnValue({
-      gain: { setValueAtTime: gainSetValue, exponentialRampToValueAtTime: vi.fn() },
-      connect: vi.fn(),
-    })
+  it('applies volume to master gain', () => {
+    const masterGain = makeGain()
+    // First createGain call is the master; subsequent ones are per-layer
+    mockAudioCtx.createGain.mockReturnValueOnce(masterGain)
 
     vi.mocked(useSettingsStore).mockReturnValue({
       audioEnabled: true,
@@ -102,9 +149,8 @@ describe('useAudio', () => {
     const { playSound } = useAudio()
     playSound('tick')
 
-    // The gain should be def.gain * settings.audioVolume
-    // tick has gain: 0.15, volume is 0.8, so 0.15 * 0.8 = 0.12
-    expect(gainSetValue).toHaveBeenCalledWith(0.15 * 0.8, 0)
+    // tick has no masterGain override (default 1), so master.gain.value should equal volume
+    expect(masterGain.gain.value).toBe(0.8)
   })
 
   it('resumes AudioContext when suspended', () => {

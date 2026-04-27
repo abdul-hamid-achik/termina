@@ -47,11 +47,11 @@ function cdLabel(cd: number): string {
   <div class="flex flex-col gap-2 text-[0.8rem]" data-testid="hero-status">
     <div class="flex items-start gap-2">
       <HeroAvatar v-if="heroId" :hero-id="heroId" :size="48" :class="{ 'opacity-50': !hero.alive }" />
-      <div class="flex flex-wrap items-baseline gap-2">
-        <span class="text-[0.9rem] font-bold text-self">{{ hero.name }}</span>
-        <span class="text-gold">Lv.{{ hero.level }}</span>
-        <span class="text-zone">@ {{ hero.zone }}</span>
-        <span v-if="!hero.alive" class="font-bold text-dire">[DEAD]</span>
+      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span class="t-h2 text-self text-glow-sm t-mono-num">{{ hero.name }}</span>
+        <span class="t-caption text-gold t-mono-num">Lv.{{ hero.level }}</span>
+        <span class="t-caption text-zone">@ {{ hero.zone }}</span>
+        <span v-if="!hero.alive" class="t-h3 text-dire text-glow anim-glow-pulse">[DEAD]</span>
       </div>
     </div>
 
@@ -67,22 +67,23 @@ function cdLabel(cd: number): string {
     </div>
 
     <div class="flex flex-col gap-1">
-      <span class="text-[0.7rem] uppercase tracking-wide text-text-dim">Abilities</span>
-      <div class="flex flex-wrap gap-1">
+      <span class="t-caption uppercase">Abilities</span>
+      <div class="flex flex-wrap gap-1.5">
         <span
           v-for="key in ['q', 'w', 'e', 'r'] as const"
           :key="key"
-          class="relative inline-flex cursor-pointer items-center gap-0.5 border px-1.5 py-0.5 text-xs transition-all duration-150"
+          class="relative inline-flex min-h-[36px] min-w-[44px] cursor-pointer items-center gap-1 border px-2 py-1 text-xs t-mono-num transition-all duration-150"
           :class="
-            hero.cooldowns[key] <= 0 
-              ? 'border-ability text-ability hover:bg-ability/20 hover:scale-105' 
-              : 'border-border text-text-dim opacity-60'
+            hero.cooldowns[key] <= 0
+              ? 'border-ability text-ability shadow-glow-ability hover:bg-ability/15 hover:shadow-glow-ability-lg hover:scale-[1.06]'
+              : 'border-border text-text-muted opacity-70'
           "
           @click="hero.cooldowns[key] <= 0 && emit('castAbility', key)"
           @mouseenter="hoveredAbility = key"
           @mouseleave="hoveredAbility = null"
+          @touchstart.passive="hoveredAbility = key"
         >
-          <span class="font-bold">{{ key.toUpperCase() }}</span>
+          <span class="font-bold" :class="hero.cooldowns[key] <= 0 ? 'text-glow-sm' : ''">{{ key.toUpperCase() }}</span>
           <span>[{{ cdLabel(hero.cooldowns[key]) }}]</span>
 
           <!-- Ability tooltip -->
@@ -114,7 +115,7 @@ function cdLabel(cd: number): string {
     </div>
 
     <div class="flex flex-col gap-1">
-      <span class="text-[0.7rem] uppercase tracking-wide text-text-dim">Items</span>
+      <span class="t-caption uppercase">Items</span>
       <div class="flex flex-wrap gap-1">
         <span
           v-for="(item, i) in 6"
@@ -128,7 +129,7 @@ function cdLabel(cd: number): string {
     </div>
 
     <div v-if="hero.buffs.length" class="flex flex-col gap-1">
-      <span class="text-[0.7rem] uppercase tracking-wide text-text-dim">Buffs</span>
+      <span class="t-caption uppercase">Buffs</span>
       <div class="flex flex-wrap gap-2">
         <span v-for="buff in hero.buffs" :key="buff.id" class="text-xs text-ability">
           {{ buff.id
@@ -139,8 +140,8 @@ function cdLabel(cd: number): string {
     </div>
 
     <div class="mt-1 flex items-center gap-1">
-      <span class="font-bold text-gold">$</span>
-      <span class="text-[0.9rem] font-bold text-gold">{{ hero.gold.toLocaleString() }}</span>
+      <span class="font-bold text-gold text-glow-gold">$</span>
+      <span class="t-h2 text-gold text-glow-gold t-mono-num">{{ hero.gold.toLocaleString() }}</span>
     </div>
   </div>
 </template>

@@ -1,4 +1,4 @@
-import type { GameState } from '~~/shared/types/game'
+import type { GameState, TeamId } from '~~/shared/types/game'
 import {
   PASSIVE_GOLD_PER_TICK,
   CREEP_GOLD_MIN,
@@ -8,7 +8,30 @@ import {
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
   TOWER_GOLD,
+  COMEBACK_BONUS_MAX,
+  COMEBACK_PENALTY_MAX,
+  COMEBACK_FULL_GAP,
 } from '~~/shared/constants/balance'
+
+/**
+ * Compute the comeback multiplier for kill bounty based on the team
+ * net-worth gap. Returns a value in [1 - COMEBACK_PENALTY_MAX,
+ * 1 + COMEBACK_BONUS_MAX]. >1 means killer's team is behind (bonus).
+ * Exported for tests.
+ */
+export function comebackMultiplier(state: GameState, killerTeam: TeamId): number {
+  let killerNet = 0
+  let enemyNet = 0
+  for (const p of Object.values(state.players)) {
+    if (p.team === killerTeam) killerNet += p.gold
+    else enemyNet += p.gold
+  }
+  // Positive gap = killer is behind by `gap` gold
+  const gap = enemyNet - killerNet
+  const ratio = Math.max(-1, Math.min(1, gap / COMEBACK_FULL_GAP))
+  if (ratio >= 0) return 1 + ratio * COMEBACK_BONUS_MAX
+  return 1 + ratio * COMEBACK_PENALTY_MAX
+}
 
 /** Award passive gold to all alive players. +1g per tick. */
 export function distributePassiveGold(state: GameState): GameState {
@@ -72,7 +95,8 @@ export function awardKill(
 
   // Cap streak bonus to prevent infinite scaling; a proper killStreak field would be better
   const streak = Math.min(killer.kills, 10)
-  const killerGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * streak
+  const baseGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * streak
+  const killerGold = Math.round(baseGold * comebackMultiplier(state, killer.team))
   updatedState = updatePlayerGold(updatedState, killerId, killerGold)
 
   // Assist gold split - exclude killer from assisters to prevent double-dipping

@@ -32,43 +32,45 @@ function formatTimeRemaining(tick: number, timeOfDay: string): string {
 
 <template>
   <div
-    class="flex items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-secondary px-3 py-1 text-[0.8rem]"
+    class="flex items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-secondary px-3 py-1.5 text-[0.8rem] t-mono-num"
     data-testid="game-state-bar"
   >
     <HeroAvatar v-if="heroId" :hero-id="heroId" :size="24" />
     <span class="inline-flex gap-1">
-      <span class="text-text-dim">Tick:</span>
+      <span class="t-caption">Tick</span>
       <span class="text-text-primary">{{ tick }}</span>
     </span>
     <span class="text-border">|</span>
     <span class="inline-flex gap-1">
-      <span class="text-text-primary">{{ gameTime }}</span>
+      <span class="text-text-primary text-glow-sm">{{ gameTime }}</span>
     </span>
     <span class="text-border">|</span>
-    <span class="inline-flex gap-1">
-      <span v-if="timeOfDay === 'day'" class="text-yellow-400">Day</span>
-      <span v-else class="text-blue-300">Night</span>
-      <span v-if="dayNightTick !== undefined && timeOfDay" class="text-text-dim text-xs">
+    <span class="inline-flex items-center gap-1">
+      <span v-if="timeOfDay === 'day'" class="text-gold text-glow-gold">Day</span>
+      <span v-else class="text-self text-glow-sm">Night</span>
+      <span v-if="dayNightTick !== undefined && timeOfDay" class="t-caption">
         ({{ formatTimeRemaining(dayNightTick, timeOfDay) }})
       </span>
     </span>
     <span class="text-border">|</span>
     <span class="inline-flex gap-1">
-      <span class="text-text-dim">Gold:</span>
-      <span class="text-gold">{{ formatGold(gold) }}</span>
+      <span class="t-caption">Gold</span>
+      <span class="text-gold text-glow-gold font-bold">{{ formatGold(gold) }}</span>
     </span>
     <span class="text-border">|</span>
     <span class="inline-flex gap-1">
-      <span class="text-text-dim">KDA:</span>
-      <span class="text-text-primary">
-        <span class="text-radiant">{{ kills }}</span
-        >/<span class="text-dire">{{ deaths }}</span
-        >/<span class="text-text-dim">{{ assists }}</span>
+      <span class="t-caption">KDA</span>
+      <span>
+        <span class="text-radiant text-glow-radiant font-bold">{{ kills }}</span
+        ><span class="text-text-muted">/</span
+        ><span class="text-dire text-glow-dire font-bold">{{ deaths }}</span
+        ><span class="text-text-muted">/</span
+        ><span class="text-text-dim font-bold">{{ assists }}</span>
       </span>
     </span>
     <span class="text-border">|</span>
-    <span v-if="reconnecting" class="text-dire">[RECONNECTING...]</span>
-    <span v-else-if="connected" class="text-radiant">[CONNECTED {{ latency }}ms]</span>
-    <span v-else class="text-text-dim">[OFFLINE]</span>
+    <span v-if="reconnecting" class="text-dire text-glow-dire animate-pulse">[RECONNECTING...]</span>
+    <span v-else-if="connected" class="text-radiant text-glow-sm">[ONLINE {{ latency }}ms]</span>
+    <span v-else class="text-text-muted">[OFFLINE]</span>
   </div>
 </template>

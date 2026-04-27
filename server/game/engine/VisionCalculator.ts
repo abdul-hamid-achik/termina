@@ -20,12 +20,17 @@ for (const [zoneId, zoneData] of Object.entries(ZONE_MAP)) {
 interface VisionCacheEntry {
   vision: Set<string>
   playerZone: string
+  playerAlive: boolean
+  timeOfDay: 'day' | 'night'
   wardKey: string
   towerKey: string
   teammateKey: string
 }
 
 const visionCache = new Map<string, VisionCacheEntry>()
+
+/** Cap on cache size — evicts oldest entries when exceeded. */
+const VISION_CACHE_MAX = 256
 
 function buildWardKey(state: GameState, team: TeamId): string {
   const wards: string[] = []
@@ -71,11 +76,14 @@ export function calculateVision(state: GameState, playerId: string): Set<string>
   const wardKey = buildWardKey(state, team)
   const towerKey = buildTowerKey(state, team)
   const teammateKey = buildTeammateKey(state, team, playerId)
+  const timeOfDay = state.timeOfDay
 
   const cached = visionCache.get(playerId)
   if (
     cached &&
     cached.playerZone === player.zone &&
+    cached.playerAlive === player.alive &&
+    cached.timeOfDay === timeOfDay &&
     cached.wardKey === wardKey &&
     cached.towerKey === towerKey &&
     cached.teammateKey === teammateKey
@@ -84,9 +92,19 @@ export function calculateVision(state: GameState, playerId: string): Set<string>
   }
 
   const vision = calculateVisionUncached(state, player, team)
+
+  // Bounded LRU-ish: re-set moves the key to the most-recent insertion order.
+  // When over the cap, drop the oldest insertion.
+  if (visionCache.size >= VISION_CACHE_MAX && !visionCache.has(playerId)) {
+    const oldest = visionCache.keys().next().value
+    if (oldest !== undefined) visionCache.delete(oldest)
+  }
+  visionCache.delete(playerId)
   visionCache.set(playerId, {
     vision,
     playerZone: player.zone,
+    playerAlive: player.alive,
+    timeOfDay,
     wardKey,
     towerKey,
     teammateKey,
@@ -169,6 +187,32 @@ function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
 
 function isInvisible(player: PlayerState): boolean {
   return player.buffs.some((b) => b.id.includes('invisible') || b.id === 'invis')
+}
+
+/**
+ * Build a `PlayerVisibleState` for a spectator — same shape as
+ * `filterStateForPlayer` but with no fog applied. All players, zones,
+ * creeps, and events are exposed. Reuses the player-state shape so the
+ * existing renderer can consume it without changes.
+ */
+export function filterStateForSpectator(state: GameState): PlayerVisibleState {
+  return {
+    tick: state.tick,
+    phase: state.phase,
+    teams: state.teams,
+    players: { ...state.players },
+    zones: { ...state.zones },
+    creeps: state.creeps,
+    neutrals: state.neutrals ?? [],
+    towers: state.towers,
+    runes: state.runes ?? [],
+    roshan: state.roshan,
+    aegis: state.aegis,
+    events: state.events,
+    visibleZones: Object.keys(state.zones),
+    timeOfDay: state.timeOfDay,
+    dayNightTick: state.dayNightTick,
+  }
 }
 
 /**

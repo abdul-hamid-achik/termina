@@ -141,8 +141,9 @@ describe('Shop', () => {
     })
 
     it('fails when inventory is full', async () => {
+      // 6 distinct items so we hit InventoryFullError, not MaxStacksError
       const player = makePlayer({
-        items: ['iron_branch', 'iron_branch', 'iron_branch', 'iron_branch', 'iron_branch', 'iron_branch'],
+        items: ['blink_module', 'aether_lens', 'dagon', 'shivas_guard', 'desolator', 'maelstrom'],
         gold: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -153,6 +154,40 @@ describe('Shop', () => {
       if (Exit.isFailure(exit)) {
         const error = exit.cause.toString()
         expect(error).toContain('InventoryFullError')
+      }
+    })
+
+    it('fails when buying past maxStacks for a consumable', async () => {
+      // iron_branch has maxStacks: 3
+      const player = makePlayer({
+        items: ['iron_branch', 'iron_branch', 'iron_branch', null, null, null],
+        gold: 5000,
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isFailure(exit)) {
+        const error = exit.cause.toString()
+        expect(error).toContain('MaxStacksError')
+      }
+    })
+
+    it('fails when buying a duplicate of a non-consumable unique item', async () => {
+      // aether_lens has no maxStacks set -> defaults to 1 for non-consumables
+      const player = makePlayer({
+        items: ['aether_lens', null, null, null, null, null],
+        gold: 5000,
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(buyItem(state, 'player_1', 'aether_lens'))
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isFailure(exit)) {
+        const error = exit.cause.toString()
+        expect(error).toContain('MaxStacksError')
       }
     })
 

@@ -46,6 +46,11 @@ export class ItemOnCooldownError extends Data.TaggedError('ItemOnCooldownError')
 export class InvalidTargetError extends Data.TaggedError('InvalidTargetError')<{
   readonly reason: string
 }> {}
+
+export class MaxStacksError extends Data.TaggedError('MaxStacksError')<{
+  readonly itemId: string
+  readonly maxStacks: number
+}> {}
 /* eslint-enable unicorn/throw-new-error */
 
 export type ShopError =
@@ -53,6 +58,7 @@ export type ShopError =
   | InsufficientGoldError
   | InventoryFullError
   | ItemNotFoundError
+  | MaxStacksError
 
 export type ItemError = ItemNotFoundError | ItemOnCooldownError | InvalidTargetError
 
@@ -85,6 +91,14 @@ export function buyItem(
       return yield* Effect.fail(
         new InsufficientGoldError({ required: item.cost, current: player.gold }),
       )
+    }
+
+    // Stack-cap: consumables may stack up to maxStacks; non-consumables
+    // default to unique (1 per inventory) unless maxStacks is set.
+    const stackCap = item.consumable ? (item.maxStacks ?? Infinity) : (item.maxStacks ?? 1)
+    const ownedCount = player.items.filter((i) => i === itemId).length
+    if (ownedCount >= stackCap) {
+      return yield* Effect.fail(new MaxStacksError({ itemId, maxStacks: stackCap }))
     }
 
     // Check inventory space

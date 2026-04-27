@@ -115,20 +115,25 @@ function eventAriaLabel(event: LogEvent): string {
         :key="`${event.tick}-${event.type}-${i}`"
         data-testid="log-event"
         :aria-label="eventAriaLabel(event)"
-        class="border-l-2 border-l-transparent px-2 py-px hover:bg-white/[0.02]"
-        :class="borderColors[event.type]"
+        class="anim-fade-in-up border-l-2 border-l-transparent px-2 py-px t-mono-num hover:bg-white/[0.03]"
+        :class="[borderColors[event.type], event.type === 'kill' ? 'bg-dire/[0.04]' : '']"
       >
-        <span class="mr-1 text-[0.7rem] text-text-dim">[T{{ event.tick }}]</span>
-        <span class="mr-1 text-[0.65rem] font-bold" :style="{ color: typeColor(event.type) }">{{
-          typePrefix(event.type)
-        }}</span>
+        <span class="mr-1 text-[0.7rem] text-text-muted">[T{{ event.tick }}]</span>
+        <span
+          class="mr-1 text-[0.65rem] font-bold"
+          :class="event.type === 'kill' ? 'text-glow-dire' : event.type === 'gold' ? 'text-glow-gold' : ''"
+          :style="{ color: typeColor(event.type) }"
+        >{{ typePrefix(event.type) }}</span>
         <HeroAvatar
           v-if="event.type === 'kill' && event.killerHeroId"
           :hero-id="event.killerHeroId"
           :size="16"
           class="mr-1 inline-flex align-middle"
         />
-        <span :style="{ color: typeColor(event.type) }">{{ event.text }}</span>
+        <span
+          :class="event.type === 'kill' ? 'font-bold text-glow-sm' : ''"
+          :style="{ color: typeColor(event.type) }"
+        >{{ event.text }}</span>
         <HeroAvatar
           v-if="event.type === 'kill' && event.victimHeroId"
           :hero-id="event.victimHeroId"

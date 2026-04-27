@@ -13,6 +13,8 @@ export type ClientMessage =
   | { type: 'hero_pick'; lobbyId: string; heroId: string }
   | { type: 'hero_ban'; lobbyId: string; heroId: string }
   | { type: 'request_state' }
+  | { type: 'spectate'; gameId: string }
+  | { type: 'unspectate' }
 
 // ── Server → Client ──────────────────────────────────────────────
 
@@ -134,6 +136,21 @@ export interface GameNotFoundMessage {
   gameId: string
 }
 
+export interface SpectatorTickMessage {
+  type: 'spectator_tick'
+  tick: number
+  /**
+   * Spectators receive a `PlayerVisibleState` with all players/zones revealed
+   * — same shape as the in-game tick_state so the renderer can be reused.
+   */
+  state: PlayerVisibleState
+}
+
+export interface SpectatorAckMessage {
+  type: 'spectator_ack'
+  gameId: string
+}
+
 export type ServerMessage =
   | TickStateMessage
   | EventsMessage
@@ -152,5 +169,5 @@ export type ServerMessage =
   | PingMapBroadcastMessage
   | FullStateMessage
   | GameNotFoundMessage
-  | FullStateMessage
-  | GameNotFoundMessage
+  | SpectatorTickMessage
+  | SpectatorAckMessage

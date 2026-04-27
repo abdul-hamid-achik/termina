@@ -6,6 +6,7 @@ import {
   TICK_DURATION_MS,
   RESPAWN_BASE_TICKS,
   RESPAWN_PER_LEVEL_TICKS,
+  RESPAWN_FREE_LEVELS,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
   FOUNTAIN_MANA_PER_TICK_PERCENT,
   XP_PER_LEVEL,
@@ -40,6 +41,9 @@ import {
   detectAFKPlayers,
   recordLeaverSafe,
 } from '../../services/LeaverSystem'
+import { writeSnapshot, SNAPSHOT_EVERY_N_TICKS, type SnapshotMeta } from './StateSnapshot'
+import { appendActions } from './ActionLog'
+import type { RedisServiceApi } from '../../services/RedisService'
 
 // ── Action queue per game ──────────────────────────────────────
 
@@ -53,9 +57,17 @@ export function submitAction(gameId: string, playerId: string, command: Command)
     queue = []
     gameActionQueues.set(gameId, queue)
   }
-  // Only one action per player per tick
+  // Only one action per player per tick — second submissions overwrite the
+  // first. Log the loss so it's observable instead of silent.
   const existing = queue.findIndex((a) => a.playerId === playerId)
   if (existing >= 0) {
+    const dropped = queue[existing]!.command.type
+    engineLog.debug('Action overwritten in same tick', {
+      gameId,
+      playerId,
+      dropped,
+      replacedWith: command.type,
+    })
     queue[existing] = { playerId, command }
   } else {
     queue.push({ playerId, command })
@@ -82,6 +94,8 @@ export function processTick(
   state: GameState
   events: GameEngineEvent[]
   rejectedActions: Array<{ playerId: string; reason: string }>
+  /** All actions drained this tick — exposed so callers can persist them. */
+  actions: PlayerAction[]
 }> {
   return Effect.gen(function* () {
     let currentState: GameState = { ...state, tick: state.tick + 1, events: [] }
@@ -108,108 +122,11 @@ export function processTick(
       markPlayerActiveSafe(gameId, action.playerId)
     }
 
-    // 1.5. Handle special commands (buyback, surrender) before validation
-    for (const action of actions) {
-      if (action.command.type === 'buyback') {
-        const buybackResult = buyback(currentState, action.playerId)
-        if (buybackResult.success && buybackResult.newState) {
-          currentState = buybackResult.newState
-          const player = currentState.players[action.playerId]
-          if (player) {
-            allEvents.push({
-              _tag: 'heal',
-              tick: currentState.tick,
-              sourceId: 'buyback',
-              targetId: action.playerId,
-              amount: player.maxHp,
-            })
-            allEvents.push({
-              _tag: 'power_spike',
-              tick: currentState.tick,
-              playerId: action.playerId,
-              spikeType: 'core_item',
-              itemId: 'buyback',
-              message: `${player.name} used buyback!`,
-            })
-          }
-        } else {
-          rejectedActions.push({
-            playerId: action.playerId,
-            reason: buybackResult.reason || 'Buyback failed',
-          })
-        }
-      } else if (action.command.type === 'surrender') {
-        const vote = action.command.vote === 'yes'
-        const player = currentState.players[action.playerId]
-        if (player && vote) {
-          const result = voteSurrender(currentState, action.playerId)
-          if (result.success) {
-            if (result.surrendered) {
-              // Game will end via win condition check
-              engineLog.info('Surrender passed', {
-                team: player.team,
-                votes: result.votes,
-              })
-            } else {
-              // Broadcast vote status
-              engineLog.debug('Surrender vote cast', {
-                playerId: action.playerId,
-                votes: result.votes,
-              })
-            }
-          }
-        }
-      } else if (action.command.type === 'select_talent') {
-        const player = currentState.players[action.playerId]
-        if (player && player.heroId) {
-          const talentTree = TALENT_TREES[player.heroId]
-          if (talentTree) {
-            const tierKey = `tier${action.command.tier}` as keyof typeof player.talents
-            const selectedTalentId = action.command.talentId
-
-            // Check if talent is valid for this tier
-            const tierTalents = talentTree.tiers[action.command.tier]
-            const isValidTalent = tierTalents.some((t) => t.id === selectedTalentId)
-
-            // Check if player hasn't already selected a talent for this tier
-            const alreadySelected = player.talents[tierKey] !== null
-
-            if (isValidTalent && !alreadySelected && player.level >= action.command.tier) {
-              // Apply talent selection
-              const updatedPlayers = { ...currentState.players }
-              updatedPlayers[action.playerId] = {
-                ...player,
-                talents: {
-                  ...player.talents,
-                  [tierKey]: selectedTalentId,
-                },
-              }
-              currentState = { ...currentState, players: updatedPlayers }
-
-              // Emit talent selection event
-              const selectedTalent = tierTalents.find((t) => t.id === selectedTalentId)
-              allEvents.push({
-                _tag: 'talent_selected',
-                tick: currentState.tick,
-                playerId: action.playerId,
-                talentId: selectedTalentId,
-                tier: action.command.tier,
-                talentName: selectedTalent?.name || 'Unknown',
-              })
-            } else {
-              rejectedActions.push({
-                playerId: action.playerId,
-                reason: alreadySelected
-                  ? 'Talent already selected for this tier'
-                  : isValidTalent
-                    ? 'Level requirement not met'
-                    : 'Invalid talent',
-              })
-            }
-          }
-        }
-      }
-    }
+    // 1.5. Handle special commands (buyback, surrender, talent) before validation
+    const specialResult = processSpecialActions(currentState, actions)
+    currentState = specialResult.state
+    allEvents.push(...specialResult.events)
+    rejectedActions.push(...specialResult.rejectedActions)
 
     // 2. Validate actions against current state (filter out already-handled commands)
     const validActions: PlayerAction[] = []
@@ -243,110 +160,18 @@ export function processTick(
     allEvents.push(...lastSeenUpdate.events)
 
     // 3.8. Expire glyph invulnerability
-    if (currentState.teams.radiant.glyphUsedTick !== null) {
-      if (currentState.tick - currentState.teams.radiant.glyphUsedTick >= GLYPH_DURATION_TICKS) {
-        currentState = {
-          ...currentState,
-          towers: currentState.towers.map((t) =>
-            t.team === 'radiant' ? { ...t, invulnerable: false } : t,
-          ),
-        }
-      }
-    }
-    if (currentState.teams.dire.glyphUsedTick !== null) {
-      if (currentState.tick - currentState.teams.dire.glyphUsedTick >= GLYPH_DURATION_TICKS) {
-        currentState = {
-          ...currentState,
-          towers: currentState.towers.map((t) =>
-            t.team === 'dire' ? { ...t, invulnerable: false } : t,
-          ),
-        }
-      }
-    }
+    currentState = expireGlyph(currentState)
 
-    // 4. Run CreepAI
-    const creepActions = runCreepAI(currentState)
-    currentState = applyCreepActions(currentState, creepActions)
+    // 4–5.6. NPC AI (creeps, neutrals, towers, Roshan)
+    const npcResult = runNPCAI(currentState, {
+      heroAttackers: resolved.heroAttackers,
+      priorEvents: allEvents,
+    })
+    currentState = npcResult.state
+    allEvents.push(...npcResult.events)
 
-    // 4.1 Run NeutralAI (neutrals attack heroes in their zone)
-    const neutralActions = runNeutralAI(currentState)
-    currentState = applyNeutralActions(currentState, neutralActions)
-
-    // 5. Run TowerAI
-    const towerActions = runTowerAI(currentState, resolved.heroAttackers)
-    currentState = applyTowerActions(currentState, towerActions)
-
-    // 5.5. Run RoshanAI (attacks heroes in roshan-pit)
-    const roshanActions = runRoshanAI(currentState)
-    for (const action of roshanActions) {
-      const target = currentState.players[action.targetId]
-      if (target && target.alive) {
-        const newHp = Math.max(0, target.hp - action.damage)
-        currentState = {
-          ...currentState,
-          players: {
-            ...currentState.players,
-            [action.targetId]: { ...target, hp: newHp, alive: newHp > 0 },
-          },
-        }
-        allEvents.push({
-          _tag: 'damage',
-          tick: currentState.tick,
-          sourceId: 'roshan',
-          targetId: action.targetId,
-          amount: action.damage,
-          damageType: 'physical',
-        })
-      }
-    }
-
-    // 5.6. Process Roshan damage and death/respawn
-    // Track damage dealt to Roshan from hero attacks
-    const roshanDamage = new Map<string, number>()
-    for (const event of allEvents) {
-      if (event._tag === 'damage' && event.targetId === 'roshan') {
-        const current = roshanDamage.get(event.sourceId) ?? 0
-        roshanDamage.set(event.sourceId, current + event.amount)
-      }
-    }
-    const roshanResult = processRoshanDamage(currentState, roshanDamage)
-    currentState = roshanResult.state
-    if (roshanResult.roshanKilled) {
-      allEvents.push(...roshanResult.events.filter((e) => e._tag === 'roshan_killed'))
-    }
-
-    // 6. Spawn creep waves
-    const newCreeps = spawnCreepWaves(currentState.tick)
-    if (newCreeps.length > 0) {
-      currentState = { ...currentState, creeps: [...currentState.creeps, ...newCreeps] }
-    }
-
-    // 6.1 Spawn neutral creeps in jungle camps
-    const newNeutrals = spawnNeutralCreeps(currentState.tick)
-    if (newNeutrals.length > 0) {
-      currentState = {
-        ...currentState,
-        neutrals: [...(currentState.neutrals ?? []), ...newNeutrals],
-      }
-    }
-
-    // 6.2 Spawn runes
-    const newRunes = spawnRunes(currentState.tick)
-    if (newRunes.length > 0) {
-      currentState = { ...currentState, runes: [...(currentState.runes ?? []), ...newRunes] }
-    }
-
-    // 6.3 Remove expired runes
-    currentState = removeExpiredRunes(currentState)
-
-    // 6.4 Process rune buff effects (regen, etc)
-    currentState = processRuneBuffs(currentState)
-
-    // 7. Remove expired wards
-    const updatedZones = removeExpiredWards(currentState.zones, currentState.tick)
-    if (updatedZones !== currentState.zones) {
-      currentState = { ...currentState, zones: updatedZones }
-    }
+    // 6–7. Spawn waves / neutrals / runes; expire runes + wards
+    currentState = runSpawning(currentState)
 
     // 8. Distribute passive gold
     currentState = distributePassiveGold(currentState)
@@ -384,24 +209,9 @@ export function processTick(
     }
 
     // 13.5. Progress day/night cycle
-    let newTimeOfDay = currentState.timeOfDay
-    let newDayNightTick = currentState.dayNightTick + 1
-
-    if (currentState.timeOfDay === 'day' && newDayNightTick >= DAY_DURATION_TICKS) {
-      newTimeOfDay = 'night'
-      newDayNightTick = 0
-      allEvents.push({ _tag: 'night_falls', tick: currentState.tick })
-    } else if (currentState.timeOfDay === 'night' && newDayNightTick >= NIGHT_DURATION_TICKS) {
-      newTimeOfDay = 'day'
-      newDayNightTick = 0
-      allEvents.push({ _tag: 'day_breaks', tick: currentState.tick })
-    }
-
-    currentState = {
-      ...currentState,
-      timeOfDay: newTimeOfDay,
-      dayNightTick: newDayNightTick,
-    }
+    const dayNight = progressDayNight(currentState)
+    currentState = dayNight.state
+    allEvents.push(...dayNight.events)
 
     // 14. Store events on state
     currentState = {
@@ -413,7 +223,7 @@ export function processTick(
       Effect.annotateLogs({ gameId, tick: currentState.tick, actionCount: validActions.length }),
     )
 
-    return { state: currentState, events: allEvents, rejectedActions }
+    return { state: currentState, events: allEvents, rejectedActions, actions }
   })
 }
 
@@ -428,6 +238,11 @@ export interface GameCallbacks {
   onEvents: (gameId: string, events: GameEngineEvent[]) => void
   onGameOver: (gameId: string, winner: TeamId) => void
   onActionRejected?: (gameId: string, playerId: string, reason: string) => void
+  /**
+   * Fires once per tick with the unfiltered (fogless) state. Optional —
+   * implemented by the plugin to broadcast to spectators. Skipped if not set.
+   */
+  onSpectatorTick?: (gameId: string, state: GameState) => void
 }
 
 /** Active game fibers, keyed by gameId. */
@@ -443,6 +258,8 @@ function buildGameLoop(
   gameId: string,
   stateManager: StateManagerApi,
   callbacks: GameCallbacks,
+  redis?: RedisServiceApi,
+  snapshotMeta?: SnapshotMeta,
 ): Effect.Effect<void> {
   // Run a single tick with per-tick error recovery so one bad tick
   // doesn't kill the entire game loop.
@@ -450,8 +267,25 @@ function buildGameLoop(
     const currentState = yield* stateManager.getState(gameId)
     if (currentState.phase === 'ended') return yield* Effect.interrupt
 
-    const { state: newState, events, rejectedActions } = yield* processTick(gameId, currentState)
+    const {
+      state: newState,
+      events,
+      rejectedActions,
+      actions,
+    } = yield* processTick(gameId, currentState)
     yield* stateManager.updateState(gameId, () => newState)
+
+    // Persist this tick's actions for replay/debugging. Forked so a slow
+    // Redis write never blocks the broadcast.
+    if (redis && actions.length > 0) {
+      yield* Effect.forkDaemon(
+        appendActions(
+          redis,
+          gameId,
+          actions.map((a) => ({ tick: newState.tick, playerId: a.playerId, command: a.command })),
+        ),
+      )
+    }
 
     // Send feedback for rejected player actions
     if (callbacks.onActionRejected) {
@@ -482,6 +316,12 @@ function buildGameLoop(
       }
     }
 
+    // Periodic state snapshot (best-effort; failures don't break the loop).
+    // Forked so a slow Redis write doesn't block tick broadcast.
+    if (redis && newState.tick % SNAPSHOT_EVERY_N_TICKS === 0) {
+      yield* Effect.forkDaemon(writeSnapshot(redis, gameId, newState, snapshotMeta))
+    }
+
     // Broadcast filtered state to each player
     for (const playerId of Object.keys(newState.players)) {
       const visibleState = filterStateForPlayer(newState, playerId)
@@ -489,6 +329,16 @@ function buildGameLoop(
         callbacks.onTickState(gameId, playerId, visibleState)
       } catch (err) {
         engineLog.warn('Failed to send tick_state', { gameId, playerId, error: String(err) })
+      }
+    }
+
+    // Spectator tick — fogless full state. Fired once regardless of how many
+    // spectators are watching; the plugin fans out to each one.
+    if (callbacks.onSpectatorTick) {
+      try {
+        callbacks.onSpectatorTick(gameId, newState)
+      } catch (err) {
+        engineLog.warn('Failed to broadcast spectator_tick', { gameId, error: String(err) })
       }
     }
 
@@ -519,6 +369,15 @@ function buildGameLoop(
       engineLog.error('Game loop fatal error', { gameId, error: String(error) })
       return Effect.void
     }),
+    // Guarantee per-game maps are cleaned up no matter how the loop ends
+    // (natural win, crash, interrupt). Without this, gameActionQueues leaks
+    // entries for any game that ends without an explicit stopGameLoop call.
+    Effect.ensuring(
+      Effect.sync(() => {
+        gameActionQueues.delete(gameId)
+        activeGames.delete(gameId)
+      }),
+    ),
   )
 }
 
@@ -533,8 +392,10 @@ export function startGameLoop(
   stateManager: StateManagerApi,
   callbacks: GameCallbacks,
   runtime?: ManagedRuntime.ManagedRuntime<never, never>,
+  redis?: RedisServiceApi,
+  snapshotMeta?: SnapshotMeta,
 ): void {
-  const loop = buildGameLoop(gameId, stateManager, callbacks)
+  const loop = buildGameLoop(gameId, stateManager, callbacks, redis, snapshotMeta)
   const fiber = runtime ? runtime.runFork(loop) : Effect.runFork(loop)
   activeGames.set(gameId, fiber)
   engineLog.info('Game loop fiber started', { gameId })
@@ -550,6 +411,269 @@ export function stopGameLoop(gameId: string): Effect.Effect<void> {
     }
     gameActionQueues.delete(gameId)
   })
+}
+
+// ── Tick phases (extracted for testability) ───────────────────
+
+/**
+ * Handle special commands (buyback, surrender, select_talent) that bypass
+ * the normal action-resolution path. Mutates state for buyback/talent,
+ * records votes for surrender, and pushes events + rejection reasons.
+ *
+ * Returns the updated state plus events/rejections to merge into the tick.
+ * Pure (no I/O, no Effect) — easy to test in isolation.
+ */
+export function processSpecialActions(
+  state: GameState,
+  actions: PlayerAction[],
+): {
+  state: GameState
+  events: GameEngineEvent[]
+  rejectedActions: Array<{ playerId: string; reason: string }>
+} {
+  let currentState = state
+  const events: GameEngineEvent[] = []
+  const rejectedActions: Array<{ playerId: string; reason: string }> = []
+
+  for (const action of actions) {
+    if (action.command.type === 'buyback') {
+      const buybackResult = buyback(currentState, action.playerId)
+      if (buybackResult.success && buybackResult.newState) {
+        currentState = buybackResult.newState
+        const player = currentState.players[action.playerId]
+        if (player) {
+          events.push({
+            _tag: 'heal',
+            tick: currentState.tick,
+            sourceId: 'buyback',
+            targetId: action.playerId,
+            amount: player.maxHp,
+          })
+          events.push({
+            _tag: 'power_spike',
+            tick: currentState.tick,
+            playerId: action.playerId,
+            spikeType: 'core_item',
+            itemId: 'buyback',
+            message: `${player.name} used buyback!`,
+          })
+        }
+      } else {
+        rejectedActions.push({
+          playerId: action.playerId,
+          reason: buybackResult.reason || 'Buyback failed',
+        })
+      }
+    } else if (action.command.type === 'surrender') {
+      const vote = action.command.vote === 'yes'
+      const player = currentState.players[action.playerId]
+      if (player && vote) {
+        const result = voteSurrender(currentState, action.playerId)
+        if (result.success) {
+          if (result.surrendered) {
+            engineLog.info('Surrender passed', {
+              team: player.team,
+              votes: result.votes,
+            })
+          } else {
+            engineLog.debug('Surrender vote cast', {
+              playerId: action.playerId,
+              votes: result.votes,
+            })
+          }
+        }
+      }
+    } else if (action.command.type === 'select_talent') {
+      const player = currentState.players[action.playerId]
+      if (player && player.heroId) {
+        const talentTree = TALENT_TREES[player.heroId]
+        if (talentTree) {
+          const tierKey = `tier${action.command.tier}` as keyof typeof player.talents
+          const selectedTalentId = action.command.talentId
+
+          const tierTalents = talentTree.tiers[action.command.tier]
+          const isValidTalent = tierTalents.some((t) => t.id === selectedTalentId)
+          const alreadySelected = player.talents[tierKey] !== null
+
+          if (isValidTalent && !alreadySelected && player.level >= action.command.tier) {
+            const updatedPlayers = { ...currentState.players }
+            updatedPlayers[action.playerId] = {
+              ...player,
+              talents: { ...player.talents, [tierKey]: selectedTalentId },
+            }
+            currentState = { ...currentState, players: updatedPlayers }
+
+            const selectedTalent = tierTalents.find((t) => t.id === selectedTalentId)
+            events.push({
+              _tag: 'talent_selected',
+              tick: currentState.tick,
+              playerId: action.playerId,
+              talentId: selectedTalentId,
+              tier: action.command.tier,
+              talentName: selectedTalent?.name || 'Unknown',
+            })
+          } else {
+            rejectedActions.push({
+              playerId: action.playerId,
+              reason: alreadySelected
+                ? 'Talent already selected for this tier'
+                : isValidTalent
+                  ? 'Level requirement not met'
+                  : 'Invalid talent',
+            })
+          }
+        }
+      }
+    }
+  }
+
+  return { state: currentState, events, rejectedActions }
+}
+
+/**
+ * Run all NPC AIs (creeps, neutrals, towers, Roshan) and apply their actions.
+ *
+ * Tower AI needs `heroAttackers` from the prior `resolveActions` step so it
+ * can prioritize heroes that recently attacked allies. Roshan damage is
+ * tallied by scanning the events emitted earlier in the tick.
+ */
+export function runNPCAI(
+  state: GameState,
+  ctx: { heroAttackers: Set<string>; priorEvents: GameEngineEvent[] },
+): { state: GameState; events: GameEngineEvent[] } {
+  let s = state
+  const events: GameEngineEvent[] = []
+
+  // Creeps
+  s = applyCreepActions(s, runCreepAI(s))
+
+  // Neutrals
+  s = applyNeutralActions(s, runNeutralAI(s))
+
+  // Towers
+  s = applyTowerActions(s, runTowerAI(s, ctx.heroAttackers))
+
+  // Roshan attacks
+  for (const action of runRoshanAI(s)) {
+    const target = s.players[action.targetId]
+    if (target && target.alive) {
+      const newHp = Math.max(0, target.hp - action.damage)
+      s = {
+        ...s,
+        players: {
+          ...s.players,
+          [action.targetId]: { ...target, hp: newHp, alive: newHp > 0 },
+        },
+      }
+      events.push({
+        _tag: 'damage',
+        tick: s.tick,
+        sourceId: 'roshan',
+        targetId: action.targetId,
+        amount: action.damage,
+        damageType: 'physical',
+      })
+    }
+  }
+
+  // Roshan damage tally — sum hero damage on roshan from prior + new events.
+  const roshanDamage = new Map<string, number>()
+  for (const event of [...ctx.priorEvents, ...events]) {
+    if (event._tag === 'damage' && event.targetId === 'roshan') {
+      roshanDamage.set(event.sourceId, (roshanDamage.get(event.sourceId) ?? 0) + event.amount)
+    }
+  }
+  const roshanResult = processRoshanDamage(s, roshanDamage)
+  s = roshanResult.state
+  if (roshanResult.roshanKilled) {
+    events.push(...roshanResult.events.filter((e) => e._tag === 'roshan_killed'))
+  }
+
+  return { state: s, events }
+}
+
+/**
+ * Spawn periodic content for the tick: creep waves, jungle neutrals, runes;
+ * and clean up expired runes and wards. Pure: same state object if nothing
+ * spawned and nothing expired.
+ */
+export function runSpawning(state: GameState): GameState {
+  let s = state
+
+  const newCreeps = spawnCreepWaves(s.tick)
+  if (newCreeps.length > 0) {
+    s = { ...s, creeps: [...s.creeps, ...newCreeps] }
+  }
+
+  const newNeutrals = spawnNeutralCreeps(s.tick)
+  if (newNeutrals.length > 0) {
+    s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
+  }
+
+  const newRunes = spawnRunes(s.tick)
+  if (newRunes.length > 0) {
+    s = { ...s, runes: [...(s.runes ?? []), ...newRunes] }
+  }
+
+  s = removeExpiredRunes(s)
+  s = processRuneBuffs(s)
+
+  const updatedZones = removeExpiredWards(s.zones, s.tick)
+  if (updatedZones !== s.zones) {
+    s = { ...s, zones: updatedZones }
+  }
+
+  return s
+}
+
+/**
+ * Drop tower invulnerability for any team whose glyph effect has expired.
+ * Pure: returns a new state if anything changed, the same state otherwise.
+ */
+export function expireGlyph(state: GameState): GameState {
+  const radiantUsed = state.teams.radiant.glyphUsedTick
+  const direUsed = state.teams.dire.glyphUsedTick
+  const radiantExpired = radiantUsed !== null && state.tick - radiantUsed >= GLYPH_DURATION_TICKS
+  const direExpired = direUsed !== null && state.tick - direUsed >= GLYPH_DURATION_TICKS
+
+  if (!radiantExpired && !direExpired) return state
+
+  return {
+    ...state,
+    towers: state.towers.map((t) => {
+      if (t.team === 'radiant' && radiantExpired) return { ...t, invulnerable: false }
+      if (t.team === 'dire' && direExpired) return { ...t, invulnerable: false }
+      return t
+    }),
+  }
+}
+
+/**
+ * Progress the day/night counter and emit a transition event when the cycle
+ * flips. Returns the updated state and any emitted events.
+ */
+export function progressDayNight(state: GameState): {
+  state: GameState
+  events: GameEngineEvent[]
+} {
+  const events: GameEngineEvent[] = []
+  let timeOfDay = state.timeOfDay
+  let dayNightTick = state.dayNightTick + 1
+
+  if (timeOfDay === 'day' && dayNightTick >= DAY_DURATION_TICKS) {
+    timeOfDay = 'night'
+    dayNightTick = 0
+    events.push({ _tag: 'night_falls', tick: state.tick })
+  } else if (timeOfDay === 'night' && dayNightTick >= NIGHT_DURATION_TICKS) {
+    timeOfDay = 'day'
+    dayNightTick = 0
+    events.push({ _tag: 'day_breaks', tick: state.tick })
+  }
+
+  return {
+    state: { ...state, timeOfDay, dayNightTick },
+    events,
+  }
 }
 
 // ── Helper functions ───────────────────────────────────────────
@@ -636,7 +760,8 @@ function handleDeaths(
       }
 
       const alreadyCounted = events.some((e) => e._tag === 'death' && e.playerId === pid)
-      const respawnTicks = RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * player.level
+      const scaledLevels = Math.max(0, player.level - RESPAWN_FREE_LEVELS)
+      const respawnTicks = RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * scaledLevels
       const buybackCost = calculateBuybackCost(player)
 
       players[pid] = {

@@ -86,12 +86,12 @@ function heroNameById(heroId: string | null): string {
 </script>
 
 <template>
-  <div class="flex h-full flex-col bg-bg-primary p-3" data-testid="hero-picker">
-    <!-- TOP: Team panels side-by-side -->
-    <div class="mb-2 grid grid-cols-[1fr_auto_1fr] gap-2">
+  <div class="flex h-full flex-col bg-bg-primary p-2 sm:p-3" data-testid="hero-picker">
+    <!-- TOP: Team panels side-by-side; on phones, VS sits between stacked panels via grid -->
+    <div class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr]">
       <!-- Radiant panel -->
-      <div class="border border-border bg-bg-panel p-2">
-        <div class="mb-1 text-center text-[0.7rem] font-bold tracking-widest text-radiant">
+      <div class="border border-border bg-bg-panel p-2 shadow-glow-radiant">
+        <div class="t-h3 mb-1 text-center text-radiant text-glow-radiant">
           RADIANT
         </div>
         <div class="flex flex-col gap-0.5">
@@ -118,19 +118,25 @@ function heroNameById(heroId: string | null): string {
       </div>
 
       <!-- VS + countdown -->
-      <div class="flex flex-col items-center justify-center gap-1 px-3">
-        <span class="text-lg font-bold text-text-dim">VS</span>
+      <div class="flex flex-row items-center justify-center gap-3 py-1 sm:flex-col sm:gap-1 sm:px-3 sm:py-0">
+        <span class="t-h2 text-text-muted tracking-[0.2em]">VS</span>
         <span
-          class="text-xl font-bold tabular-nums text-text-primary"
-          :class="{ 'animate-blink text-dire': countdown <= 10 }"
+          class="t-display tabular-nums"
+          :class="
+            countdown <= 10
+              ? 'text-dire text-glow-dire animate-pulse'
+              : countdown <= 20
+                ? 'text-warn text-glow'
+                : 'text-text-primary text-glow-sm'
+          "
         >
-          {{ countdown }}s
+          {{ countdown }}<span class="t-h3 ml-0.5 text-text-muted">s</span>
         </span>
       </div>
 
       <!-- Dire panel -->
-      <div class="border border-border bg-bg-panel p-2">
-        <div class="mb-1 text-center text-[0.7rem] font-bold tracking-widest text-dire">DIRE</div>
+      <div class="border border-border bg-bg-panel p-2 shadow-glow-dire">
+        <div class="t-h3 mb-1 text-center text-dire text-glow-dire">DIRE</div>
         <div class="flex flex-col gap-0.5">
           <div
             v-for="(slot, i) in 5"
@@ -157,18 +163,17 @@ function heroNameById(heroId: string | null): string {
 
     <!-- MIDDLE: Compact hero grid -->
     <div class="min-h-0 flex-1 overflow-auto">
-      <div class="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1.5">
+      <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]">
         <div
           v-for="hero in heroList"
           :key="hero.id"
           :data-testid="'hero-card-' + hero.id"
-          class="relative cursor-pointer border border-border bg-bg-panel p-1.5 transition-all duration-150"
+          class="relative cursor-pointer border border-border bg-bg-panel p-2 transition-all duration-150"
           :class="{
-            'border-ability shadow-glow-ability': selectedHero === hero.id && !confirmed,
-            'border-radiant shadow-[0_0_8px_rgba(46,204,113,0.3)]':
-              confirmed && selectedHero === hero.id,
+            'border-ability bloom-ability scale-[1.02]': selectedHero === hero.id && !confirmed,
+            'border-radiant bloom-radiant': confirmed && selectedHero === hero.id,
             'cursor-not-allowed opacity-30': hero.picked,
-            'hover:border-border-glow': !hero.picked,
+            'hover:border-border-glow hover:scale-[1.02] hover:shadow-glow-highlight': !hero.picked && selectedHero !== hero.id,
           }"
           @click="selectHero(hero.id)"
         >
@@ -192,7 +197,7 @@ function heroNameById(heroId: string | null): string {
           </div>
           <div
             v-if="hero.picked"
-            class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[0.7rem] font-bold tracking-[0.15em] text-dire"
+            class="t-h3 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-dire text-glow-dire"
           >
             PICKED
           </div>
@@ -201,22 +206,31 @@ function heroNameById(heroId: string | null): string {
     </div>
 
     <!-- BOTTOM: Selected hero details + confirm -->
-    <div class="mt-2 flex items-end gap-3 border-t border-border pt-2">
-      <div v-if="selectedHeroDef" class="min-w-0 flex-1">
-        <div class="mb-1 text-[0.8rem] font-bold uppercase text-ability">
+    <div class="mt-2 flex flex-col items-stretch gap-3 border-t border-border pt-2 sm:flex-row sm:items-end">
+      <div v-if="selectedHeroDef" class="anim-fade-in-up min-w-0 flex-1">
+        <div class="t-h2 mb-1 text-ability text-glow-ability">
           {{ selectedHeroDef.name }}
         </div>
-        <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[0.65rem] text-text-dim">
-          <span
+        <div class="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+          <div
             v-for="slot in ['q', 'w', 'e', 'r'] as const"
             :key="slot"
+            class="border-l-2 border-ability/40 pl-2"
           >
-            <span class="font-bold text-ability">{{ slot.toUpperCase() }}</span>
-            {{ selectedHeroDef.abilities[slot].name }}
-          </span>
+            <div class="flex items-baseline gap-1.5 t-mono-num">
+              <span class="t-h3 text-ability text-glow-ability">{{ slot.toUpperCase() }}</span>
+              <span class="text-[0.7rem] font-bold uppercase text-text-primary">{{
+                selectedHeroDef.abilities[slot].name
+              }}</span>
+            </div>
+            <div class="t-caption flex gap-2 t-mono-num">
+              <span>MP <span class="text-mana">{{ selectedHeroDef.abilities[slot].manaCost }}</span></span>
+              <span>CD <span class="text-text-primary">{{ selectedHeroDef.abilities[slot].cooldownTicks }}t</span></span>
+            </div>
+          </div>
         </div>
       </div>
-      <div v-else class="min-w-0 flex-1 text-[0.75rem] text-text-dim">Select a hero...</div>
+      <div v-else class="min-w-0 flex-1 t-caption">&gt;_ select a hero to deploy...</div>
       <AsciiButton
         label="CONFIRM"
         variant="primary"

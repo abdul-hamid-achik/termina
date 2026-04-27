@@ -4,6 +4,7 @@ import { getGameRuntime } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
 import { pickHero, banHero, getPlayerLobby, getLobby, cancelLobby } from '../game/matchmaking/lobby'
 import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../services/PeerRegistry'
+import { addSpectator, removeSpectator } from '../services/SpectatorRegistry'
 import { wsLog } from '../utils/log'
 import { verifyWsTicket } from '../utils/ws-ticket'
 import { checkRateLimit, resetRateLimit } from '../utils/RateLimiter'
@@ -369,6 +370,24 @@ export default defineWebSocketHandler({
         })
         break
       }
+
+      case 'spectate': {
+        // Subscribe this peer to a game's tick stream as a fogless spectator.
+        // No game-server interaction needed — the registry alone is enough,
+        // because the game loop's onSpectatorTick fans out from there.
+        addSpectator(ctx.playerId, parsed.gameId, {
+          send: (data) => peer.send(data),
+        })
+        peer.send(JSON.stringify({ type: 'spectator_ack', gameId: parsed.gameId }))
+        wsLog.info('Spectator subscribed', { playerId: ctx.playerId, gameId: parsed.gameId })
+        break
+      }
+
+      case 'unspectate': {
+        removeSpectator(ctx.playerId)
+        wsLog.info('Spectator unsubscribed', { playerId: ctx.playerId })
+        break
+      }
     }
   },
 
@@ -379,6 +398,7 @@ export default defineWebSocketHandler({
     const { playerId, gameId } = ctx
     wsLog.info('Peer disconnected', { playerId, gameId })
     unregisterPeer(playerId, peer)
+    removeSpectator(playerId)
 
     const existingTimer = disconnectTimers.get(playerId)
     if (existingTimer) {

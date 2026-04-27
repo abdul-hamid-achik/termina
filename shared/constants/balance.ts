@@ -5,7 +5,7 @@ export const ACTION_WINDOW_MS = 3500
 
 // ── Gold ─────────────────────────────────────────────────────────
 
-export const PASSIVE_GOLD_PER_TICK = 2
+export const PASSIVE_GOLD_PER_TICK = 4
 export const CREEP_GOLD_MIN = 30
 export const CREEP_GOLD_MAX = 50
 export const SIEGE_CREEP_GOLD = 75
@@ -15,6 +15,16 @@ export const ASSIST_GOLD = 100
 export const TOWER_GOLD = 500
 export const ROSHAN_GOLD = 600
 export const STARTING_GOLD = 600
+
+/**
+ * Comeback bounty: kill gold is multiplied by a factor based on the
+ * net-worth gap between teams. The killer earns up to +50% if their
+ * team is behind, and as little as -30% if their team is far ahead.
+ * Net-worth gap of COMEBACK_FULL_GAP gold yields the cap multiplier.
+ */
+export const COMEBACK_BONUS_MAX = 0.5
+export const COMEBACK_PENALTY_MAX = 0.3
+export const COMEBACK_FULL_GAP = 8000
 
 // ── XP ───────────────────────────────────────────────────────────
 
@@ -56,9 +66,14 @@ export const HERO_KILL_XP_PER_LEVEL = 20
 
 // ── Respawn ──────────────────────────────────────────────────────
 
-/** Respawn time in ticks = base + level * perLevel */
-export const RESPAWN_BASE_TICKS = 3
+/**
+ * Respawn time in ticks = base + max(0, level - freeLevels) * perLevel
+ * Early-game deaths (lv 1–4) only pay the base, so a lane gank doesn't
+ * cost an entire wave-and-a-half. Mid/late game still scales.
+ */
+export const RESPAWN_BASE_TICKS = 2
 export const RESPAWN_PER_LEVEL_TICKS = 1
+export const RESPAWN_FREE_LEVELS = 4
 
 // ── Buyback ──────────────────────────────────────────────────────
 

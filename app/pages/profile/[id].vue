@@ -129,6 +129,11 @@ function formatDate(dateStr: string | null): string {
               >
                 Date
               </th>
+              <th
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Watch
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -145,6 +150,20 @@ function formatDate(dateStr: string | null): string {
               </td>
               <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">
                 {{ formatDate(m.createdAt) }}
+              </td>
+              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-1">
+                <NuxtLink
+                  v-if="m.winner"
+                  :to="`/replay/${m.id}`"
+                  class="text-ability no-underline hover:text-radiant"
+                  >[replay]</NuxtLink
+                >
+                <NuxtLink
+                  v-else
+                  :to="`/spectate/${m.id}`"
+                  class="text-warn no-underline hover:text-radiant"
+                  >[spectate]</NuxtLink
+                >
               </td>
             </tr>
           </tbody>

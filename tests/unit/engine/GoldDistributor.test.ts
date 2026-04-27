@@ -5,6 +5,7 @@ import {
   awardDeny,
   awardKill,
   awardTowerKill,
+  comebackMultiplier,
 } from '../../../server/game/engine/GoldDistributor'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
@@ -267,12 +268,17 @@ describe('GoldDistributor', () => {
     })
 
     it('should prevent killer from double-dipping assist gold', () => {
+      // Balanced team net worth so the comeback multiplier is 1.
+      // Radiant: killer(100) + a1(100) + a2(100) = 300
+      // Dire: victim(100) + d1(100) + d2(100) = 300
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
           victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
           a1: makePlayer({ id: 'a1', gold: 100 }),
           a2: makePlayer({ id: 'a2', gold: 100 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', gold: 100 }),
+          d2: makePlayer({ id: 'd2', team: 'dire', gold: 100 }),
         },
       })
 
@@ -362,6 +368,40 @@ describe('GoldDistributor', () => {
       expect(result.players['p1']!.gold).toBe(goldEach)
       expect(result.players['p2']!.gold).toBe(goldEach)
       expect(result.players['p3']!.gold).toBe(goldEach)
+    })
+  })
+
+  describe('comebackMultiplier', () => {
+    it('returns ~1 when teams are equal in net worth', () => {
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', gold: 1000 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', gold: 1000 }),
+        },
+      })
+      expect(comebackMultiplier(state, 'radiant')).toBe(1)
+    })
+
+    it('boosts kill gold for the team that is far behind', () => {
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', gold: 0 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', gold: 10_000 }),
+        },
+      })
+      // Radiant is 10k behind → ratio capped at 1, multiplier = 1 + 0.5 = 1.5
+      expect(comebackMultiplier(state, 'radiant')).toBeCloseTo(1.5, 5)
+    })
+
+    it('penalizes kill gold for the team that is far ahead', () => {
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', gold: 10_000 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', gold: 0 }),
+        },
+      })
+      // Radiant is 10k ahead → ratio = -1, multiplier = 1 - 0.3 = 0.7
+      expect(comebackMultiplier(state, 'radiant')).toBeCloseTo(0.7, 5)
     })
   })
 })
