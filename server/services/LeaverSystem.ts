@@ -8,6 +8,7 @@ import { Effect, Layer } from 'effect'
 import type { GameState } from '~~/shared/types/game'
 import { RedisService } from './RedisService'
 import { engineLog } from '../utils/log'
+import { isBot } from '../game/ai/BotManager'
 
 const _mockRedisService = Layer.succeed(RedisService, {
   get: () => Effect.succeed(null),
@@ -67,10 +68,11 @@ export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ti
 
   for (const [playerId, player] of Object.entries(state.players)) {
     if (!player.alive) continue
+    if (isBot(playerId)) continue
 
-    // Track last action tick (this would be updated when player takes actions)
-    const lastActionTick =
-      (player as unknown as { lastActionTick?: number }).lastActionTick ?? state.tick
+    // lastActionTick is stamped in GameLoop when actions are drained.
+    // A player who has never acted counts as AFK since game start (tick 0).
+    const lastActionTick = player.lastActionTick ?? 0
 
     const ticksSinceAction = state.tick - lastActionTick
     if (ticksSinceAction >= AFK_THRESHOLD_TICKS) {

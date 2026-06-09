@@ -193,17 +193,18 @@ describe('Spawner', () => {
     describe('respawnRoshan', () => {
       it('restores alive status and full HP', () => {
         const dead = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: 100 }
-        const respawned = respawnRoshan(dead)
+        const respawned = respawnRoshan(dead, 0)
         expect(respawned.alive).toBe(true)
         expect(respawned.hp).toBe(ROSHAN_BASE_HP)
         expect(respawned.deathTick).toBeNull()
       })
 
-      it('preserves maxHp', () => {
-        const dead = { alive: false, hp: 0, maxHp: 6000, deathTick: 100 }
-        const respawned = respawnRoshan(dead)
-        expect(respawned.hp).toBe(6000)
-        expect(respawned.maxHp).toBe(6000)
+      it('scales maxHp with minutes elapsed', () => {
+        const dead = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: 100 }
+        // 150 ticks * 4s = 600s = 10 minutes
+        const respawned = respawnRoshan(dead, 150)
+        expect(respawned.hp).toBe(ROSHAN_BASE_HP + 10 * 100)
+        expect(respawned.maxHp).toBe(ROSHAN_BASE_HP + 10 * 100)
       })
     })
   })

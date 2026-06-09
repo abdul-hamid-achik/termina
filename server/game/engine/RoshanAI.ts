@@ -98,7 +98,7 @@ export function processRoshanDamage(
   if (!roshan.alive) {
     // Check for respawn
     if (shouldRoshanRespawn(roshan, state.tick)) {
-      roshan = respawnRoshan(roshan)
+      roshan = respawnRoshan(roshan, state.tick)
       events.push({
         _tag: 'roshan_respawn',
         tick: state.tick,

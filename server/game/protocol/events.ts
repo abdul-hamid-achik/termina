@@ -246,6 +246,22 @@ export interface TowerInvulnerableEvent {
   readonly zone: string
 }
 
+export interface SurrenderVoteEvent {
+  readonly _tag: 'surrender_vote'
+  readonly tick: number
+  readonly playerId: string
+  readonly team: 'radiant' | 'dire'
+  readonly votesFor: number
+  readonly votesNeeded: number
+}
+
+export interface SurrenderedEvent {
+  readonly _tag: 'surrendered'
+  readonly tick: number
+  readonly team: 'radiant' | 'dire'
+  readonly winner: 'radiant' | 'dire'
+}
+
 export type GameEngineEvent =
   | DamageEvent
   | HealEvent
@@ -279,6 +295,8 @@ export type GameEngineEvent =
   | GlyphUsedEvent
   | GlyphOnCooldownEvent
   | TowerInvulnerableEvent
+  | SurrenderVoteEvent
+  | SurrenderedEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

@@ -278,8 +278,8 @@ export function resolveActions(
           violations: violations.map((v) => ({ type: v.violationType, severity: v.severity })),
         })
         cheatDetections.push({ playerId: a.playerId, command: a.command, violations })
-        // Only reject critical violations
-        if (violations.some((v) => v.severity === 'critical')) {
+        // Reject high and critical violations; lower severities are logged only
+        if (violations.some((v) => v.severity === 'critical' || v.severity === 'high')) {
           return false
         }
       }

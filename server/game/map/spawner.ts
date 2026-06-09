@@ -9,6 +9,8 @@ import {
   SIEGE_CREEP_HP,
   ROSHAN_RESPAWN_TICKS,
   ROSHAN_BASE_HP,
+  ROSHAN_HP_PER_MINUTE,
+  TICK_DURATION_MS,
 } from '~~/shared/constants/balance'
 
 let creepIdCounter = 0
@@ -111,12 +113,14 @@ export function shouldRoshanRespawn(roshan: RoshanState, currentTick: number): b
   return currentTick - roshan.deathTick >= ROSHAN_RESPAWN_TICKS
 }
 
-/** Respawn Roshan with increased HP. */
-export function respawnRoshan(roshan: RoshanState): RoshanState {
+/** Respawn Roshan with increased HP (+ROSHAN_HP_PER_MINUTE per game minute elapsed). */
+export function respawnRoshan(roshan: RoshanState, currentTick: number): RoshanState {
+  const minutesElapsed = Math.floor((currentTick * TICK_DURATION_MS) / 60_000)
+  const scaledMaxHp = ROSHAN_BASE_HP + minutesElapsed * ROSHAN_HP_PER_MINUTE
   return {
     alive: true,
-    hp: roshan.maxHp,
-    maxHp: roshan.maxHp,
+    hp: scaledMaxHp,
+    maxHp: scaledMaxHp,
     deathTick: null,
   }
 }

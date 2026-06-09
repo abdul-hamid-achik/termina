@@ -11,6 +11,8 @@ export interface SurrenderResult {
   surrendered?: boolean
   reason?: string
   votes?: { for: number; against: number; total: number; needed: number }
+  /** State with the vote recorded — callers must use this for the vote to persist. */
+  state: GameState
 }
 
 /**
@@ -47,58 +49,46 @@ export function canSurrender(state: GameState, team: TeamId): { can: boolean; re
  */
 export function voteSurrender(state: GameState, playerId: string): SurrenderResult {
   const player = state.players[playerId]
-  
+
   if (!player) {
-    return { success: false, reason: 'Player not found' }
+    return { success: false, reason: 'Player not found', state }
   }
-  
+
   if (!player.alive) {
-    return { success: false, reason: 'Dead players cannot vote' }
+    return { success: false, reason: 'Dead players cannot vote', state }
   }
-  
+
   const can = canSurrender(state, player.team)
   if (!can.can) {
-    return { success: false, reason: can.reason }
+    return { success: false, reason: can.reason, state }
   }
-  
+
   // Add vote
   const updatedVotes = { ...state.surrenderVotes }
   const teamVotes = new Set(updatedVotes[player.team])
   teamVotes.add(playerId)
   updatedVotes[player.team] = teamVotes
-  
+  const updatedState: GameState = { ...state, surrenderVotes: updatedVotes }
+
   // Count votes
   const alivePlayers = Object.values(state.players).filter(
     p => p.team === player.team && p.alive
   )
-  
+
   const totalAlive = alivePlayers.length
   const votesFor = teamVotes.size
   const votesNeeded = Math.ceil(totalAlive * SURRENDER_VOTE_THRESHOLD)
-  
-  // Check if surrender passed
-  if (votesFor >= votesNeeded) {
-    return {
-      success: true,
-      surrendered: true,
-      votes: {
-        for: votesFor,
-        against: totalAlive - votesFor,
-        total: totalAlive,
-        needed: votesNeeded,
-      },
-    }
-  }
-  
+
   return {
     success: true,
-    surrendered: false,
+    surrendered: votesFor >= votesNeeded,
     votes: {
       for: votesFor,
       against: totalAlive - votesFor,
       total: totalAlive,
       needed: votesNeeded,
     },
+    state: updatedState,
   }
 }
 

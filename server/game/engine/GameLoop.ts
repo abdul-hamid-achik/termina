@@ -34,7 +34,7 @@ import { getBotPlayerIds, getBotLane } from '../ai/BotManager'
 import { decideBotAction } from '../ai/BotAI'
 import { engineLog } from '../../utils/log'
 import { calculateBuybackCost, buyback } from './BuybackSystem'
-import { voteSurrender } from './SurrenderSystem'
+import { voteSurrender, removeSurrenderVote } from './SurrenderSystem'
 import { TALENT_TREES } from '../heroes/talent-trees'
 import {
   markPlayerActiveSafe,
@@ -120,6 +120,16 @@ export function processTick(
     // 1.2. Mark players as active when they take actions
     for (const action of actions) {
       markPlayerActiveSafe(gameId, action.playerId)
+      const actor = currentState.players[action.playerId]
+      if (actor) {
+        currentState = {
+          ...currentState,
+          players: {
+            ...currentState.players,
+            [action.playerId]: { ...actor, lastActionTick: currentState.tick },
+          },
+        }
+      }
     }
 
     // 1.5. Handle special commands (buyback, surrender, talent) before validation
@@ -194,10 +204,13 @@ export function processTick(
     // 12. Check level ups
     currentState = checkLevelUps(currentState, allEvents)
 
-    // 13. Check win condition
-    const winner = checkWinCondition(currentState)
+    // 13. Check win condition (phase may already be 'ended' via surrender)
+    const winner =
+      currentState.phase === 'ended'
+        ? (currentState.winner ?? null)
+        : checkWinCondition(currentState)
     if (winner) {
-      currentState = { ...currentState, phase: 'ended' }
+      currentState = { ...currentState, phase: 'ended', winner }
       allEvents.push({
         _tag: 'gold_change',
         tick: currentState.tick,
@@ -346,9 +359,9 @@ function buildGameLoop(
       callbacks.onEvents(gameId, events)
     }
 
-    // Check win — phase is set to 'ended' by processTick when win condition fires
+    // Check win — phase is set to 'ended' by processTick (towers or surrender)
     if (newState.phase === 'ended') {
-      const winner = checkWinCondition(newState)
+      const winner = newState.winner ?? checkWinCondition(newState)
       if (winner) callbacks.onGameOver(gameId, winner)
       return yield* Effect.interrupt
     }
@@ -467,10 +480,29 @@ export function processSpecialActions(
     } else if (action.command.type === 'surrender') {
       const vote = action.command.vote === 'yes'
       const player = currentState.players[action.playerId]
-      if (player && vote) {
+      if (player && !vote) {
+        currentState = removeSurrenderVote(currentState, action.playerId)
+      } else if (player && vote) {
         const result = voteSurrender(currentState, action.playerId)
         if (result.success) {
+          currentState = result.state
+          events.push({
+            _tag: 'surrender_vote',
+            tick: currentState.tick,
+            playerId: action.playerId,
+            team: player.team,
+            votesFor: result.votes?.for ?? 0,
+            votesNeeded: result.votes?.needed ?? 0,
+          })
           if (result.surrendered) {
+            const winner = player.team === 'radiant' ? 'dire' : 'radiant'
+            currentState = { ...currentState, phase: 'ended', winner }
+            events.push({
+              _tag: 'surrendered',
+              tick: currentState.tick,
+              team: player.team,
+              winner,
+            })
             engineLog.info('Surrender passed', {
               team: player.team,
               votes: result.votes,
@@ -481,6 +513,11 @@ export function processSpecialActions(
               votes: result.votes,
             })
           }
+        } else {
+          rejectedActions.push({
+            playerId: action.playerId,
+            reason: result.reason || 'Surrender vote failed',
+          })
         }
       }
     } else if (action.command.type === 'select_talent') {

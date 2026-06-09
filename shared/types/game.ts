@@ -38,6 +38,7 @@ export interface PlayerState {
   killStreak: number
   buybackCost: number
   buybackCooldown?: number // tick when buyback becomes available again
+  lastActionTick?: number // last tick this player submitted any action (AFK detection)
   talents: {
     tier10: string | null // Talent ID chosen at level 10
     tier15: string | null // Talent ID chosen at level 15
@@ -112,6 +113,7 @@ export interface GameState {
   roshan: RoshanState
   aegis: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
+  winner?: TeamId | null // set when the game ends (towers destroyed or surrender)
   surrenderVotes: { radiant: Set<string>; dire: Set<string> }
   lastSeen: Record<string, { zone: string; tick: number }> // Track last seen position for each player
   timeOfDay: 'day' | 'night'
