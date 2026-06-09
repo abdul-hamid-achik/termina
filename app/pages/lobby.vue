@@ -42,6 +42,10 @@ function handleServerMessage(msg: ServerMessage) {
       lobbyLog.debug('Hero pick received', { playerId: msg.playerId, heroId: msg.heroId })
       lobbyStore.heroPicked(msg.playerId, msg.heroId)
       break
+    case 'pick_turn':
+      lobbyLog.debug('Pick turn received', { playerId: msg.playerId })
+      lobbyStore.setPickTurn(msg.playerId, msg.username, msg.timeRemainingMs)
+      break
     case 'lobby_state':
       lobbyLog.info('Lobby state received', { lobbyId: msg.lobbyId, team: msg.team })
       lobbyStore.lobbyId = msg.lobbyId
@@ -236,6 +240,8 @@ onUnmounted(() => {
       :team="lobbyStore.team ?? 'radiant'"
       :picked-heroes="lobbyStore.pickedHeroes"
       :team-roster="lobbyStore.teamRoster"
+      :current-picker="lobbyStore.currentPicker"
+      :pick-deadline="lobbyStore.pickDeadline"
       @pick="handleHeroPick"
     />
 

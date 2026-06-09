@@ -221,14 +221,21 @@ function handleGridKeydown(e: KeyboardEvent) {
               role="gridcell"
               :tabindex="focusedZoneId === zoneId ? 0 : -1"
               :aria-label="zoneAriaLabel(getZone(zoneId)!)"
-              class="relative flex min-h-[70px] cursor-pointer flex-col items-center justify-center px-1 py-2 text-center font-mono text-xs leading-tight transition-all hover:scale-105"
+              class="relative flex min-h-[70px] flex-col items-center justify-center px-1 py-2 text-center font-mono text-xs leading-tight transition-all"
               :class="[
                 cellClasses(getZone(zoneId)!),
                 zoneClickable(zoneId)
-                  ? 'bg-radiant/10 border-2 border-dashed border-radiant/60'
-                  : 'border-2 border-border/50 bg-bg-secondary/50',
+                  ? 'bg-radiant/10 cursor-pointer border-2 border-dashed border-radiant/60 hover:scale-105'
+                  : 'cursor-default border-2 border-border/50 bg-bg-secondary/50',
               ]"
-              :title="zoneId + (zoneClickable(zoneId) ? ' (click to move)' : '')"
+              :title="
+                zoneId +
+                (zoneClickable(zoneId)
+                  ? ' (click to move)'
+                  : getZone(zoneId)!.fogged
+                    ? ' (fogged — no vision)'
+                    : ' (not adjacent)')
+              "
               @click="zoneClickable(zoneId) && handleZoneClick(zoneId)"
               @focus="focusedZoneId = zoneId"
             >

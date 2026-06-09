@@ -23,6 +23,16 @@ export const useLobbyStore = defineStore('lobby', () => {
     Array<{ playerId: string; name: string; heroId: string | null; team: TeamId }>
   >([])
   const countdown = ref(0)
+  // Whose turn it is in the snake draft + the server-authoritative deadline
+  // (epoch ms). Components derive the pick countdown from this instead of
+  // running their own drifting timers.
+  const currentPicker = ref<{ playerId: string; username: string } | null>(null)
+  const pickDeadline = ref<number | null>(null)
+
+  function setPickTurn(playerId: string, username: string, timeRemainingMs: number) {
+    currentPicker.value = { playerId, username }
+    pickDeadline.value = Date.now() + timeRemainingMs
+  }
 
   let queueTimer: ReturnType<typeof setInterval> | null = null
 
@@ -197,6 +207,8 @@ export const useLobbyStore = defineStore('lobby', () => {
     pickedHeroes.value = {}
     teamRoster.value = []
     countdown.value = 0
+    currentPicker.value = null
+    pickDeadline.value = null
   }
 
   function $dispose() {
@@ -223,6 +235,8 @@ export const useLobbyStore = defineStore('lobby', () => {
     pickedHeroes,
     teamRoster,
     countdown,
+    currentPicker,
+    pickDeadline,
     // Actions
     joinQueue,
     leaveQueue,
@@ -232,6 +246,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     allPicksComplete,
     setTeamInfo,
     startCountdown,
+    setPickTurn,
     $dispose,
   }
 })

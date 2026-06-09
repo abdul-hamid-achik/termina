@@ -9,11 +9,17 @@ const props = withDefaults(
     pickedHeroes?: Record<string, string>
     teamRoster?: Array<{ playerId: string; name: string; heroId: string | null; team: TeamId }>
     timeRemaining?: number
+    /** Whose turn it is in the snake draft (from the server's pick_turn message). */
+    currentPicker?: { playerId: string; username: string } | null
+    /** Server-authoritative pick deadline (epoch ms). Countdown derives from this. */
+    pickDeadline?: number | null
   }>(),
   {
     pickedHeroes: () => ({}),
     teamRoster: () => [],
     timeRemaining: 30,
+    currentPicker: null,
+    pickDeadline: null,
   },
 )
 
@@ -24,14 +30,26 @@ const emit = defineEmits<{
 
 const selectedHero = ref<string | null>(null)
 const confirmed = ref(false)
-const countdown = ref(props.timeRemaining)
+// Fallback local countdown when no server deadline is available
+const localCountdown = ref(props.timeRemaining)
+// Clock tick to re-derive the deadline countdown; the deadline itself is the
+// time source, so this can't drift from the server
+const nowMs = ref(Date.now())
+
+const countdown = computed(() => {
+  if (props.pickDeadline != null) {
+    return Math.max(0, Math.ceil((props.pickDeadline - nowMs.value) / 1000))
+  }
+  return localCountdown.value
+})
 
 let timer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
-  countdown.value = props.timeRemaining
+  localCountdown.value = props.timeRemaining
   timer = setInterval(() => {
-    countdown.value = Math.max(0, countdown.value - 1)
+    nowMs.value = Date.now()
+    localCountdown.value = Math.max(0, localCountdown.value - 1)
   }, 1000)
 })
 
@@ -131,6 +149,13 @@ function heroNameById(heroId: string | null): string {
           "
         >
           {{ countdown }}<span class="t-h3 ml-0.5 text-text-muted">s</span>
+        </span>
+        <span
+          v-if="currentPicker"
+          class="t-h3 max-w-[140px] truncate text-center text-text-dim"
+          data-testid="pick-turn"
+        >
+          {{ currentPicker.username }} picking…
         </span>
       </div>
 

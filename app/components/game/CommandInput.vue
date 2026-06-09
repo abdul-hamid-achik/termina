@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useCommands } from '~/composables/useCommands'
+import { useCommands, validateCommand } from '~/composables/useCommands'
 import type { GameContext, Suggestion } from '~/composables/useCommands'
 import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
@@ -126,16 +126,11 @@ const preview = computed(() => {
   if (error) return { type: 'error' as const, text: `!! ${error}` }
   if (!command) return null
 
-  // Contextual validation for move adjacency
-  if (command.type === 'move' && props.player) {
-    const playerZone = ZONE_MAP[props.player.zone]
-    if (
-      playerZone &&
-      command.zone !== props.player.zone &&
-      !playerZone.adjacentTo.includes(command.zone)
-    ) {
-      return { type: 'error' as const, text: `!! Not adjacent to current zone` }
-    }
+  // Pre-flight validation against game state (mirrors server rules)
+  const validationError = validateCommand(command, gameContext.value)
+  if (validationError) return { type: 'error' as const, text: `!! ${validationError}` }
+
+  if (command.type === 'move') {
     const destZone = ZONE_MAP[command.zone]
     return { type: 'valid' as const, text: `>> Move to ${destZone?.name ?? command.zone}` }
   }
@@ -163,12 +158,6 @@ const preview = computed(() => {
   if (command.type === 'buy') {
     const item = props.items?.[command.item]
     if (item) {
-      const gold = props.player?.gold ?? 0
-      if (gold < item.cost)
-        return {
-          type: 'error' as const,
-          text: `!! Not enough gold (need ${item.cost - gold}g more)`,
-        }
       return { type: 'valid' as const, text: `>> Buy ${item.name} (-${item.cost}g)` }
     }
     return { type: 'valid' as const, text: `>> Buy ${command.item}` }
@@ -211,6 +200,13 @@ function handleSubmit() {
   // If dropdown open and item selected, accept it instead
   if (open.value && suggestions.value.length > 0) {
     acceptSuggestion(suggestions.value[selectedIndex.value]!)
+    return
+  }
+
+  // Block submission of commands that would be rejected — in a one-action-
+  // per-tick game a wasted action is the worst outcome. The preview line
+  // already shows why it's invalid.
+  if (preview.value?.type === 'error') {
     return
   }
 

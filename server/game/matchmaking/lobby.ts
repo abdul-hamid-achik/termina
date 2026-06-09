@@ -135,6 +135,23 @@ function startPickTimer(
 ): void {
   if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
 
+  // Tell all clients whose turn it is and the authoritative deadline so the
+  // pick countdown is server-synced instead of a drifting client timer.
+  const turnIdx = lobby.pickOrder[lobby.currentPickIndex]
+  const turnPlayer = turnIdx !== undefined ? lobby.players[turnIdx] : undefined
+  if (turnPlayer) {
+    const turnIsBot = isBot(turnPlayer.playerId)
+    for (const p of lobby.players) {
+      if (isBot(p.playerId)) continue
+      sendToPeer(p.playerId, {
+        type: 'pick_turn',
+        playerId: turnPlayer.playerId,
+        username: turnPlayer.username,
+        timeRemainingMs: turnIsBot ? BOT_PICK_DELAY_MS : PICK_TIME_MS,
+      })
+    }
+  }
+
   // If current picker is a bot, auto-pick after a visible delay
   const pickIdx = lobby.pickOrder[lobby.currentPickIndex]
   if (pickIdx !== undefined) {

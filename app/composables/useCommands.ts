@@ -3,7 +3,7 @@ import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
-import { HERO_IDS } from '~~/shared/constants/heroes'
+import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
 
 export interface Suggestion {
   text: string
@@ -78,6 +78,112 @@ function parseTarget(raw: string): TargetRef | null {
 export interface ParseResult {
   command: Command | null
   error: string | null
+}
+
+function hasDebuff(player: PlayerState, type: string): boolean {
+  return player.buffs.some((b) => b.id.includes(type))
+}
+
+/**
+ * Pre-flight validation mirroring the server's validateAction rules
+ * (ActionResolver.ts) so illegal actions are caught before submission
+ * instead of wasting the player's one action this tick.
+ * Returns an error string, or null if the command would be accepted.
+ */
+export function validateCommand(command: Command, context: GameContext): string | null {
+  const player = context.player
+  if (!player) return null
+  if (!player.alive) return 'Cannot act while dead'
+
+  switch (command.type) {
+    case 'move': {
+      const zone = ZONE_MAP[player.zone]
+      if (!zone) return null
+      if (command.zone !== player.zone && !zone.adjacentTo.includes(command.zone)) {
+        return `Not adjacent — from ${player.zone} you can reach: ${zone.adjacentTo.join(', ')}`
+      }
+      if (hasDebuff(player, 'root') || hasDebuff(player, 'stun')) {
+        return 'Cannot move while rooted or stunned'
+      }
+      return null
+    }
+    case 'attack': {
+      if (hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
+      const t = command.target
+      if (t.kind === 'hero') {
+        const target = Object.values(context.allPlayers).find(
+          (p) => p.heroId === t.name || p.name.toLowerCase() === t.name.toLowerCase(),
+        )
+        if (target && (!target.alive || target.zone !== player.zone)) {
+          return `${t.name} is not in your zone`
+        }
+      }
+      if (t.kind === 'tower' && t.zone !== player.zone) {
+        return 'Must be in the tower’s zone to attack it'
+      }
+      return null
+    }
+    case 'cast': {
+      if (hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
+      if (hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
+      if (!player.heroId) return 'No hero selected'
+      const hero = HEROES[player.heroId]
+      if (!hero) return null
+      const ability = hero.abilities[command.ability]
+      if (!ability) return 'Unknown ability'
+      const cd = player.cooldowns[command.ability]
+      if (cd > 0) return `${ability.name} on cooldown (${cd} tick${cd === 1 ? '' : 's'})`
+      if (player.mp < ability.manaCost) {
+        return `Not enough mana (need ${ability.manaCost}, have ${player.mp})`
+      }
+      return null
+    }
+    case 'buy': {
+      const zone = ZONE_MAP[player.zone]
+      if (!zone?.shop) return 'Not in a shop zone — return to base or fountain'
+      const item = context.items?.[command.item]
+      if (item) {
+        if (player.gold < item.cost) {
+          return `Not enough gold (need ${item.cost - player.gold}g more)`
+        }
+        const stackCap = item.consumable ? (item.maxStacks ?? Infinity) : (item.maxStacks ?? 1)
+        const ownedCount = player.items.filter((i) => i === command.item).length
+        if (ownedCount >= stackCap) {
+          return `Already own ${item.name}${stackCap > 1 ? ` (max ${stackCap})` : ''}`
+        }
+        if (player.items.every((slot) => slot !== null)) {
+          return 'Inventory full (6/6) — sell an item first'
+        }
+      }
+      return null
+    }
+    case 'sell': {
+      const zone = ZONE_MAP[player.zone]
+      if (!zone?.shop) return 'Not in a shop zone — return to base or fountain'
+      if (!player.items.includes(command.item)) return 'Item not owned'
+      return null
+    }
+    case 'use': {
+      if (!player.items.includes(command.item)) return 'Item not owned'
+      const item = context.items?.[command.item]
+      if (item && !item.active) return `${item.name} has no active ability`
+      const cdBuff = player.buffs.find((b) => b.id === `item_cd_${command.item}`)
+      if (cdBuff && cdBuff.ticksRemaining > 0) {
+        return `Item on cooldown (${cdBuff.ticksRemaining} ticks)`
+      }
+      return null
+    }
+    case 'ward': {
+      const zone = ZONE_MAP[player.zone]
+      if (!zone) return null
+      if (command.zone !== player.zone && !zone.adjacentTo.includes(command.zone)) {
+        return 'Ward zone must be current or adjacent'
+      }
+      return null
+    }
+    default:
+      return null
+  }
 }
 
 /** Resolve a zone alias to the actual zone ID, or return the input if it's already a valid zone. */

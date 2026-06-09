@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { useCommands, type GameContext } from '../../../app/composables/useCommands'
+import { useCommands, validateCommand, type GameContext } from '../../../app/composables/useCommands'
 import type { PlayerState } from '../../../shared/types/game'
 import type { ItemDef } from '../../../shared/types/items'
 
@@ -933,5 +933,148 @@ describe('useCommands', () => {
 
       expect(historyIndex.value).toBe(-1)
     })
+  })
+})
+
+// ── validateCommand Tests ─────────────────────────────────────────
+
+describe('validateCommand', () => {
+  it('rejects all actions while dead', () => {
+    const ctx = makeContext({ player: makePlayer({ alive: false }) })
+    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/dead/i)
+  })
+
+  it('passes a valid adjacent move', () => {
+    // mid-t1-rad is adjacent to mid-river and mid-t2-rad
+    expect(validateCommand({ type: 'move', zone: 'mid-river' }, makeContext())).toBeNull()
+  })
+
+  it('rejects a non-adjacent move and lists reachable zones', () => {
+    const err = validateCommand({ type: 'move', zone: 'dire-fountain' }, makeContext())
+    expect(err).toMatch(/Not adjacent/)
+    expect(err).toContain('mid-river')
+  })
+
+  it('rejects move while rooted', () => {
+    const ctx = makeContext({
+      player: makePlayer({
+        buffs: [{ id: 'root', stacks: 1, ticksRemaining: 2, source: 'e1' }],
+      }),
+    })
+    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/rooted/)
+  })
+
+  it('rejects cast on cooldown with tick count', () => {
+    const ctx = makeContext({
+      player: makePlayer({ cooldowns: { q: 3, w: 0, e: 0, r: 0 } }),
+    })
+    const err = validateCommand({ type: 'cast', ability: 'q' }, ctx)
+    expect(err).toMatch(/cooldown/)
+    expect(err).toContain('3')
+  })
+
+  it('rejects cast without enough mana', () => {
+    // echo r costs 150 mana
+    const ctx = makeContext({ player: makePlayer({ mp: 100 }) })
+    const err = validateCommand({ type: 'cast', ability: 'r' }, ctx)
+    expect(err).toMatch(/mana/)
+  })
+
+  it('allows cast with enough mana and no cooldown', () => {
+    const ctx = makeContext({ player: makePlayer({ mp: 280 }) })
+    expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toBeNull()
+  })
+
+  it('rejects cast while silenced', () => {
+    const ctx = makeContext({
+      player: makePlayer({
+        buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 1, source: 'e1' }],
+      }),
+    })
+    expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toMatch(/silenced/)
+  })
+
+  it('rejects buy outside a shop zone', () => {
+    // mid-t1-rad has no shop
+    const items: Record<string, ItemDef> = {
+      boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
+    }
+    const err = validateCommand({ type: 'buy', item: 'boots' }, makeContext({ items }))
+    expect(err).toMatch(/shop/)
+  })
+
+  it('rejects buy without enough gold in a shop zone', () => {
+    const items: Record<string, ItemDef> = {
+      boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
+    }
+    const ctx = makeContext({
+      player: makePlayer({ zone: 'radiant-fountain', gold: 100, items: [null, null, null, null, null, null] }),
+      items,
+    })
+    const err = validateCommand({ type: 'buy', item: 'boots' }, ctx)
+    expect(err).toMatch(/gold/)
+    expect(err).toContain('400')
+  })
+
+  it('rejects duplicate unique item purchase', () => {
+    const items: Record<string, ItemDef> = {
+      boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
+    }
+    const ctx = makeContext({
+      player: makePlayer({ zone: 'radiant-fountain', gold: 9999 }),
+      items,
+    })
+    expect(validateCommand({ type: 'buy', item: 'boots' }, ctx)).toMatch(/Already own/)
+  })
+
+  it('rejects buy with a full inventory', () => {
+    const items: Record<string, ItemDef> = {
+      sword: { id: 'sword', name: 'Sword', cost: 500, stats: {}, consumable: false },
+    }
+    const ctx = makeContext({
+      player: makePlayer({
+        zone: 'radiant-fountain',
+        gold: 9999,
+        items: ['a', 'b', 'c', 'd', 'e', 'f'],
+      }),
+      items,
+    })
+    expect(validateCommand({ type: 'buy', item: 'sword' }, ctx)).toMatch(/Inventory full/)
+  })
+
+  it('rejects attacking a hero that is not in your zone', () => {
+    const ctx = makeContext({
+      allPlayers: {
+        p1: makePlayer(),
+        e1: makePlayer({ id: 'e1', name: 'Enemy', heroId: 'daemon', team: 'dire', zone: 'mid-river' }),
+      },
+    })
+    expect(validateCommand({ type: 'attack', target: { kind: 'hero', name: 'daemon' } }, ctx)).toMatch(
+      /not in your zone/,
+    )
+  })
+
+  it('allows attacking a hero in your zone', () => {
+    expect(
+      validateCommand({ type: 'attack', target: { kind: 'hero', name: 'daemon' } }, makeContext()),
+    ).toBeNull()
+  })
+
+  it('rejects ward placement in a non-adjacent zone', () => {
+    expect(validateCommand({ type: 'ward', zone: 'dire-base' }, makeContext())).toMatch(/adjacent/)
+  })
+
+  it('rejects use of an item the player does not own', () => {
+    const items: Record<string, ItemDef> = {
+      tp: {
+        id: 'tp',
+        name: 'TP Scroll',
+        cost: 80,
+        stats: {},
+        consumable: true,
+        active: { id: 'tp-active', name: 'Teleport', description: 'Teleport', cooldownTicks: 10 },
+      },
+    }
+    expect(validateCommand({ type: 'use', item: 'tp' }, makeContext({ items }))).toMatch(/not owned/i)
   })
 })

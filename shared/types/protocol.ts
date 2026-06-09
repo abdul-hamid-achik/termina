@@ -76,6 +76,15 @@ export interface HeroBanMessage {
   heroId: string
 }
 
+export interface PickTurnMessage {
+  type: 'pick_turn'
+  /** The player whose turn it is to pick. */
+  playerId: string
+  username: string
+  /** Time until the server auto-picks for them (ms). */
+  timeRemainingMs: number
+}
+
 export interface LobbyStateMessage {
   type: 'lobby_state'
   lobbyId: string
@@ -159,6 +168,8 @@ export type ServerMessage =
   | ErrorMessage
   | QueueUpdateMessage
   | HeroPickMessage
+  | HeroBanMessage
+  | PickTurnMessage
   | LobbyStateMessage
   | GameStartingMessage
   | GameCountdownMessage

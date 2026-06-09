@@ -2,9 +2,10 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
-import { useCommands } from '~/composables/useCommands'
+import { useCommands, validateCommand } from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
+import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/server/game/items/registry'
 import type { TowerState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
@@ -517,31 +518,6 @@ function getTowerTier(zoneId: string): number {
 function handleCommand(cmd: string) {
   const { command, error } = commands.parse(cmd)
   if (command) {
-    // Client-side validation for move commands
-    if (command.type === 'move' && gameStore.player) {
-      const playerZone = ZONE_MAP[gameStore.player.zone]
-      if (
-        playerZone &&
-        command.zone !== gameStore.player.zone &&
-        !playerZone.adjacentTo.includes(command.zone)
-      ) {
-        localEvents.value.push({
-          tick: gameStore.tick,
-          text: `Cannot move to ${command.zone} — not adjacent. Adjacent zones: ${playerZone.adjacentTo.join(', ')}`,
-          type: 'system',
-        })
-        return
-      }
-    }
-    // Client-side validation for cast mana cost
-    if (command.type === 'cast' && gameStore.player && !gameStore.player.alive) {
-      localEvents.value.push({
-        tick: gameStore.tick,
-        text: 'Cannot act while dead',
-        type: 'system',
-      })
-      return
-    }
     // Chat and ping are top-level WS messages, not game actions
     if (command.type === 'chat') {
       uiLog.debug('Chat sent', { channel: command.channel })
@@ -551,6 +527,22 @@ function handleCommand(cmd: string) {
     if (command.type === 'ping') {
       uiLog.debug('Ping sent', { zone: command.zone })
       gameSocket.send({ type: 'ping_map', zone: command.zone })
+      return
+    }
+    // Pre-flight validation mirroring server rules — don't waste the one
+    // action this tick on a command the server will reject.
+    const validationError = validateCommand(command, {
+      player: gameStore.player,
+      visibleZones: gameStore.visibleZones,
+      allPlayers: gameStore.allPlayers,
+      items: ITEMS,
+    })
+    if (validationError) {
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: validationError,
+        type: 'system',
+      })
       return
     }
     uiLog.debug('Command sent', { type: command.type })
@@ -654,6 +646,33 @@ function handleQuickAction(cmd: string) {
 
   handleCommand(cmd.toLowerCase())
 }
+
+// ── Quick action button availability ─────────────────────────
+// Greys out Q/W/E/R when on cooldown or unaffordable so players can see
+// at a glance which abilities are actually castable this tick.
+const abilityButtonState = computed(() => {
+  const p = gameStore.player
+  const result: Record<string, { ready: boolean; label: string }> = {}
+  for (const slot of ['q', 'w', 'e', 'r'] as const) {
+    const upper = slot.toUpperCase()
+    if (!p || !p.alive || !p.heroId) {
+      result[upper] = { ready: false, label: upper }
+      continue
+    }
+    const cd = p.cooldowns[slot]
+    if (cd > 0) {
+      result[upper] = { ready: false, label: `${upper}·${cd}` }
+      continue
+    }
+    const ability = HEROES[p.heroId]?.abilities[slot]
+    if (ability && p.mp < ability.manaCost) {
+      result[upper] = { ready: false, label: upper }
+      continue
+    }
+    result[upper] = { ready: true, label: upper }
+  }
+  return result
+})
 
 // ── Item use from inventory bar / keybinds ───────────────────
 function handleItemUse(_slotIndex: number, itemId: string) {
@@ -885,12 +904,15 @@ function handleReturnToMenu() {
           class="min-h-[40px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono text-[0.75rem] font-bold text-text-primary transition-all active:bg-border active:scale-95"
           :class="{
             'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy,
-            'border-ability text-ability shadow-glow-ability': ['Q', 'W', 'E', 'R'].includes(cmd),
+            'border-ability text-ability shadow-glow-ability':
+              ['Q', 'W', 'E', 'R'].includes(cmd) && abilityButtonState[cmd]?.ready,
+            'cursor-not-allowed border-border/50 text-text-dim opacity-50':
+              ['Q', 'W', 'E', 'R'].includes(cmd) && !abilityButtonState[cmd]?.ready,
             'border-self text-self': cmd === 'SCORE',
           }"
           @click="handleQuickAction(cmd)"
         >
-          {{ cmd }}
+          {{ ['Q', 'W', 'E', 'R'].includes(cmd) ? abilityButtonState[cmd]?.label : cmd }}
         </button>
       </div>
       <CommandInput
