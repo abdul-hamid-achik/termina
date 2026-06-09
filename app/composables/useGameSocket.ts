@@ -76,8 +76,14 @@ export function useGameSocket() {
       // If connecting to a game (not lobby), send join_game or reconnect
       if (currentGameId && currentPlayerId && currentGameId !== 'lobby') {
         if (isReconnect) {
-          send({ type: 'reconnect', gameId: currentGameId, playerId: currentPlayerId })
-          send({ type: 'request_state' })
+          // lastTick lets the server replay the visible events missed while
+          // disconnected; the reconnect response includes a full_state snapshot.
+          send({
+            type: 'reconnect',
+            gameId: currentGameId,
+            playerId: currentPlayerId,
+            lastTick: gameStore.tick > 0 ? gameStore.tick : undefined,
+          })
         } else {
           send({ type: 'join_game', gameId: currentGameId })
         }

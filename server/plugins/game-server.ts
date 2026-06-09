@@ -16,7 +16,11 @@ import { createInMemoryStateManager } from '../game/engine/StateManager'
 import { startGameLoop, type GameCallbacks } from '../game/engine/GameLoop'
 import { deleteSnapshot, readSnapshot, listSnapshotGameIds } from '../game/engine/StateSnapshot'
 import { toGameEvent, type GameEngineEvent } from '../game/protocol/events'
-import { calculateVision, filterStateForSpectator } from '../game/engine/VisionCalculator'
+import {
+  calculateVision,
+  filterStateForPlayer,
+  filterStateForSpectator,
+} from '../game/engine/VisionCalculator'
 import { getSpectatorsOfGame, clearGameSpectators } from '../services/SpectatorRegistry'
 import type { TeamId, GameState } from '~~/shared/types/game'
 import type { NewMatch, NewMatchPlayer } from '../db/schema'
@@ -83,6 +87,72 @@ interface GameRuntime {
 }
 
 let _runtime: GameRuntime | null = null
+
+// ── Live game registry (reconnect support) ─────────────────────
+// Each game's state manager lives in callback closures; this registry gives
+// the WS route access to current state + a recent-event ring so reconnecting
+// players get an immediate snapshot and the events they missed.
+
+const RECENT_EVENTS_CAP = 300
+
+interface LiveGameEntry {
+  stateManager: ReturnType<typeof createInMemoryStateManager>
+  recentEvents: GameEngineEvent[]
+}
+
+const liveGames = new Map<string, LiveGameEntry>()
+
+function registerLiveGame(
+  gameId: string,
+  stateManager: ReturnType<typeof createInMemoryStateManager>,
+): void {
+  liveGames.set(gameId, { stateManager, recentEvents: [] })
+}
+
+function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
+  const entry = liveGames.get(gameId)
+  if (!entry) return
+  entry.recentEvents.push(...events)
+  if (entry.recentEvents.length > RECENT_EVENTS_CAP) {
+    entry.recentEvents.splice(0, entry.recentEvents.length - RECENT_EVENTS_CAP)
+  }
+}
+
+/**
+ * Build the payload for a reconnecting player: the current vision-filtered
+ * state plus the visible events they missed since `sinceTick` (exclusive).
+ * Returns null if the game isn't live on this instance.
+ */
+export function getReconnectPayload(
+  gameId: string,
+  playerId: string,
+  sinceTick?: number,
+): {
+  tick: number
+  state: ReturnType<typeof filterStateForPlayer>
+  events: ReturnType<typeof toGameEvent>[]
+} | null {
+  const entry = liveGames.get(gameId)
+  if (!entry) return null
+
+  let state: GameState
+  try {
+    state = Effect.runSync(entry.stateManager.getState(gameId))
+  } catch {
+    return null
+  }
+
+  const filteredState = filterStateForPlayer(state, playerId)
+  const playerTeam = state.players[playerId]?.team
+  const visibleZones = calculateVision(state, playerId)
+  const missed = entry.recentEvents.filter(
+    (e) =>
+      (sinceTick === undefined || e.tick > sinceTick) &&
+      isEventVisibleToPlayer(e, playerId, playerTeam, visibleZones, state),
+  )
+
+  return { tick: state.tick, state: filteredState, events: missed.map(toGameEvent) }
+}
 
 export function getGameRuntime(): GameRuntime | null {
   return _runtime
@@ -162,6 +232,8 @@ export default defineNitroPlugin(async (nitroApp) => {
 
       onEvents: (gId, events) => {
         if (events.length === 0) return
+
+        recordRecentEvents(gId, events)
 
         let state: GameState | null = null
         try {
@@ -293,6 +365,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
           cleanupGame(gId)
           clearGameSpectators(gId)
+          liveGames.delete(gId)
           // Leave the snapshot + action log behind so PostGame can show a
           // replay link. The Redis TTL (8h) cleans them up eventually, and
           // the resume-on-boot path already skips ended-phase snapshots.
@@ -320,6 +393,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
         // Create a standalone state manager for this game
         const stateManager = createInMemoryStateManager()
+        registerLiveGame(gameId, stateManager)
 
         // Create player setups
         const playerSetups = gameData.players.map((p) => ({
@@ -416,6 +490,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
       const stateManager = createInMemoryStateManager()
       await managedRuntime.runPromise(stateManager.loadGame(gameId, snap.state))
+      registerLiveGame(gameId, stateManager)
 
       registerBots(
         gameId,

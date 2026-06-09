@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
-import { getGameRuntime } from '../plugins/game-server'
+import { getGameRuntime, getReconnectPayload } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
 import { pickHero, banHero, getPlayerLobby, getLobby, cancelLobby } from '../game/matchmaking/lobby'
 import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../services/PeerRegistry'
@@ -182,6 +182,23 @@ export default defineWebSocketHandler({
           peer.send(
             JSON.stringify({ type: 'announcement', message: 'Reconnected to game', level: 'info' }),
           )
+          // Send the current state immediately (instead of waiting up to a
+          // full tick) plus the visible events missed while disconnected.
+          const payload = getReconnectPayload(parsed.gameId, ctx.playerId, parsed.lastTick)
+          if (payload) {
+            peer.send(
+              JSON.stringify({ type: 'full_state', tick: payload.tick, state: payload.state }),
+            )
+            if (payload.events.length > 0) {
+              peer.send(
+                JSON.stringify({
+                  type: 'events',
+                  tick: payload.tick,
+                  events: payload.events,
+                }),
+              )
+            }
+          }
         } catch (err) {
           wsLog.error('Reconnect failed', {
             playerId: ctx.playerId,
@@ -194,6 +211,28 @@ export default defineWebSocketHandler({
               code: 'RECONNECT_FAILED',
               message: 'Failed to reconnect',
             }),
+          )
+        }
+        break
+      }
+
+      case 'request_state': {
+        if (!ctx.gameId) {
+          peer.send(JSON.stringify({ type: 'error', code: 'NO_GAME', message: 'Not in a game' }))
+          break
+        }
+        const statePayload = getReconnectPayload(ctx.gameId, ctx.playerId)
+        if (statePayload) {
+          peer.send(
+            JSON.stringify({
+              type: 'full_state',
+              tick: statePayload.tick,
+              state: statePayload.state,
+            }),
+          )
+        } else {
+          peer.send(
+            JSON.stringify({ type: 'game_not_found', gameId: ctx.gameId }),
           )
         }
         break

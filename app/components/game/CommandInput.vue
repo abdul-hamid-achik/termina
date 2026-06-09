@@ -16,6 +16,8 @@ const props = withDefaults(
     allPlayers?: Record<string, PlayerState>
     items?: Record<string, ItemDef>
     canAct?: boolean
+    /** The command queued for the next tick (shown while waiting). */
+    pendingCommand?: string | null
   }>(),
   {
     placeholder: 'Enter command...',
@@ -25,12 +27,12 @@ const props = withDefaults(
     allPlayers: () => ({}),
     items: () => ({}),
     canAct: true,
+    pendingCommand: null,
   },
 )
 
 const emit = defineEmits<{
   submit: [command: string]
-  actionSent: []
 }>()
 
 const { parse, autocomplete, addToHistory } = useCommands()
@@ -211,7 +213,6 @@ function handleSubmit() {
   }
 
   emit('submit', cmd)
-  emit('actionSent')
   addToHistory(cmd)
   history.value.unshift(cmd)
   if (history.value.length > 50) history.value.pop()
@@ -444,7 +445,13 @@ onUnmounted(() => {
         aria-label="Command input"
         class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
         :disabled="disabled || !canAct"
-        :placeholder="!canAct ? 'Action sent - wait for next tick' : placeholder"
+        :placeholder="
+          !canAct
+            ? pendingCommand
+              ? `Queued: ${pendingCommand} — resolves next tick`
+              : 'Action sent - wait for next tick'
+            : placeholder
+        "
         spellcheck="false"
         autocomplete="off"
         @keydown="handleKeydown"

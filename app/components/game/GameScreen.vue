@@ -14,7 +14,7 @@ const gameStore = useGameStore()
 const gameSocket = useGameSocket()
 const commands = useCommands()
 const { playSound } = useAudio()
-const { connected, reconnecting, latency } = gameSocket
+const { connected, reconnecting, connectionLost, latency } = gameSocket
 
 // Local combat log for parsed errors + game events
 const localEvents = ref<
@@ -547,6 +547,7 @@ function handleCommand(cmd: string) {
     }
     uiLog.debug('Command sent', { type: command.type })
     gameSocket.send({ type: 'action', command })
+    gameStore.markActionSent(cmd)
   } else if (error) {
     localEvents.value.push({
       tick: gameStore.tick,
@@ -724,6 +725,10 @@ const postGamePlayers = computed(() => {
   }))
 })
 
+function reloadPage() {
+  window.location.reload()
+}
+
 function handlePlayAgain() {
   gameStore.reset()
   navigateTo('/lobby')
@@ -779,6 +784,25 @@ function handleReturnToMenu() {
         <p class="mt-6 t-caption">Wait for respawn or buyback to return instantly</p>
       </div>
     </div>
+    <!-- Connection lost: all reconnect attempts exhausted -->
+    <div
+      v-if="connectionLost"
+      class="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg-primary/90"
+      data-testid="connection-lost-overlay"
+    >
+      <div class="text-4xl text-dire text-glow-dire">⚠ CONNECTION LOST</div>
+      <p class="max-w-md text-center text-sm text-text-dim">
+        Could not reach the game server after multiple attempts. The match may still be running —
+        reload to try again.
+      </p>
+      <button
+        class="border border-dire px-4 py-2 font-mono text-dire transition-all hover:bg-dire/10 active:scale-95"
+        @click="reloadPage"
+      >
+        [RELOAD]
+      </button>
+    </div>
+
     <GameStateBar
       class="game-grid__bar"
       :tick="currentTick"
@@ -923,8 +947,8 @@ function handleReturnToMenu() {
         :all-players="gameStore.allPlayers"
         :items="ITEMS"
         :can-act="gameStore.canAct"
+        :pending-command="gameStore.pendingCommand"
         @submit="handleCommand"
-        @action-sent="gameStore.markActionSent()"
       />
     </div>
   </div>

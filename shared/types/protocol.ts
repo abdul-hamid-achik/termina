@@ -8,7 +8,7 @@ export type ClientMessage =
   | { type: 'chat'; channel: 'team' | 'all'; message: string }
   | { type: 'ping_map'; zone: string }
   | { type: 'heartbeat' }
-  | { type: 'reconnect'; gameId: string; playerId: string }
+  | { type: 'reconnect'; gameId: string; playerId: string; lastTick?: number }
   | { type: 'join_game'; gameId: string }
   | { type: 'hero_pick'; lobbyId: string; heroId: string }
   | { type: 'hero_ban'; lobbyId: string; heroId: string }

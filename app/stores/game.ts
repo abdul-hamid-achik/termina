@@ -56,6 +56,10 @@ export const useGameStore = defineStore('game', () => {
   // Track if player has acted this tick (resets each tick)
   const lastActionTick = ref<number>(-1)
 
+  // Human-readable description of the action queued for the next tick,
+  // e.g. "move mid-river". Cleared when the tick resolves.
+  const pendingCommand = ref<string | null>(null)
+
   // ── Getters ─────────────────────────────────────────────────────
   const currentZone = computed(() => {
     if (!player.value) return null
@@ -121,6 +125,9 @@ export const useGameStore = defineStore('game', () => {
       zones: Object.keys(state.zones).length,
     })
 
+    if (msg.tick !== tick.value) {
+      pendingCommand.value = null
+    }
     tick.value = msg.tick
     phase.value = state.phase
     allPlayers.value = state.players
@@ -182,8 +189,9 @@ export const useGameStore = defineStore('game', () => {
     phase.value = 'ended'
   }
 
-  function markActionSent() {
+  function markActionSent(description?: string) {
     lastActionTick.value = tick.value
+    if (description) pendingCommand.value = description
   }
 
   function reset() {
@@ -203,6 +211,7 @@ export const useGameStore = defineStore('game', () => {
     gameOverStats.value = null
     winner.value = null
     lastActionTick.value = -1
+    pendingCommand.value = null
     timeOfDay.value = 'day'
     dayNightTick.value = 0
   }
@@ -222,6 +231,7 @@ export const useGameStore = defineStore('game', () => {
     events,
     announcements,
     nextTickIn,
+    pendingCommand,
     scoreboard,
     gameOverStats,
     winner,
