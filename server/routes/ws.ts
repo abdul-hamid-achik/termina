@@ -7,7 +7,8 @@ import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../serv
 import { addSpectator, removeSpectator } from '../services/SpectatorRegistry'
 import { wsLog } from '../utils/log'
 import { verifyWsTicket } from '../utils/ws-ticket'
-import { checkRateLimit, resetRateLimit } from '../utils/RateLimiter'
+import { checkRateLimit, checkScopedRateLimit, resetRateLimit } from '../utils/RateLimiter'
+import { clientMessageSchema } from '../utils/ws-schemas'
 
 interface PeerContext {
   playerId: string | null
@@ -144,15 +145,30 @@ export default defineWebSocketHandler({
       return
     }
 
-    let parsed: ClientMessage
+    let rawParsed: unknown
     try {
-      parsed = JSON.parse(typeof message === 'string' ? message : message.toString())
+      rawParsed = JSON.parse(typeof message === 'string' ? message : message.toString())
     } catch {
       peer.send(
         JSON.stringify({ type: 'error', code: 'INVALID_JSON', message: 'Invalid JSON message' }),
       )
       return
     }
+
+    // Schema validation — malformed or out-of-contract messages are rejected
+    // before they can reach game/lobby state.
+    const validated = clientMessageSchema.safeParse(rawParsed)
+    if (!validated.success) {
+      wsLog.warn('Invalid message rejected', {
+        playerId: ctx.playerId,
+        type: (rawParsed as { type?: string })?.type ?? 'unknown',
+      })
+      peer.send(
+        JSON.stringify({ type: 'error', code: 'INVALID_MESSAGE', message: 'Invalid message' }),
+      )
+      return
+    }
+    const parsed: ClientMessage = validated.data as ClientMessage
 
     switch (parsed.type) {
       case 'heartbeat':
@@ -311,6 +327,12 @@ export default defineWebSocketHandler({
           lobbyId: parsed.lobbyId,
           heroId: parsed.heroId,
         })
+        if (!checkScopedRateLimit('lobby', ctx.playerId)) {
+          peer.send(
+            JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Slow down' }),
+          )
+          break
+        }
         const runtime = getGameRuntime()
         if (!runtime) {
           peer.send(
@@ -348,6 +370,12 @@ export default defineWebSocketHandler({
           lobbyId: parsed.lobbyId,
           heroId: parsed.heroId,
         })
+        if (!checkScopedRateLimit('lobby', ctx.playerId)) {
+          peer.send(
+            JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Slow down' }),
+          )
+          break
+        }
         const runtime = getGameRuntime()
         if (!runtime) {
           peer.send(
@@ -411,6 +439,19 @@ export default defineWebSocketHandler({
       }
 
       case 'spectate': {
+        // Players in a game may not spectate it — the spectator stream is
+        // fogless, which would be a free maphack for participants.
+        const playerCurrentGame = getPlayerGame(ctx.playerId)
+        if (playerCurrentGame === parsed.gameId) {
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'SPECTATE_FORBIDDEN',
+              message: 'Cannot spectate a game you are playing in',
+            }),
+          )
+          break
+        }
         // Subscribe this peer to a game's tick stream as a fogless spectator.
         // No game-server interaction needed — the registry alone is enough,
         // because the game loop's onSpectatorTick fans out from there.

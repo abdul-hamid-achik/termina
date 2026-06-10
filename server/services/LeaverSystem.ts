@@ -84,16 +84,27 @@ export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ti
 }
 
 /**
- * Safely record a leaver violation (fire-and-forget with mock fallback)
- * Use this for async calls where RedisService may not be available
+ * Safely record a leaver violation (fire-and-forget).
+ * Persists to Redis when a service is provided; otherwise just logs.
  */
 export function recordLeaverSafe(
   playerId: string,
   gameId: string,
   state: GameState,
   reason: 'afk' | 'disconnect' | 'feed' | 'grief' = 'afk',
+  redis?: import('./RedisService').RedisServiceApi,
 ): void {
-  engineLog.warn('Leaver detected (async)', { playerId, gameId, reason })
+  engineLog.warn('Leaver detected', { playerId, gameId, reason })
+  if (!redis) return
+  void Effect.runPromise(
+    recordLeaver(playerId, gameId, state, reason).pipe(
+      Effect.provideService(RedisService, redis),
+      Effect.catchAll((err) => {
+        engineLog.warn('Leaver record failed', { playerId, error: String(err) })
+        return Effect.void
+      }),
+    ),
+  )
 }
 
 /**
@@ -104,7 +115,7 @@ export function recordLeaver(
   gameId: string,
   state: GameState,
   reason: 'afk' | 'disconnect' | 'feed' | 'grief' = 'afk',
-): Effect.Effect<void> {
+): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
 
@@ -148,7 +159,7 @@ export function recordLeaver(
 /**
  * Get player's current penalty status
  */
-export function getPlayerPenalty(playerId: string): Effect.Effect<PlayerPenalty> {
+export function getPlayerPenalty(playerId: string): Effect.Effect<PlayerPenalty, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     const scoreData = yield* redis.get(`leaver:score:${playerId}`)
@@ -172,7 +183,7 @@ export function getPlayerPenalty(playerId: string): Effect.Effect<PlayerPenalty>
 /**
  * Check if a player is in low-priority queue
  */
-export function isLowPriority(playerId: string): Effect.Effect<boolean> {
+export function isLowPriority(playerId: string): Effect.Effect<boolean, never, RedisService> {
   return Effect.gen(function* () {
     const penalty = yield* getPlayerPenalty(playerId)
     return penalty.lowPriority
@@ -182,7 +193,7 @@ export function isLowPriority(playerId: string): Effect.Effect<boolean> {
 /**
  * Decrement low-priority games remaining after completing a game
  */
-export function completeLowPriorityGame(playerId: string): Effect.Effect<void> {
+export function completeLowPriorityGame(playerId: string): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     const penalty = yield* getPlayerPenalty(playerId)
@@ -207,7 +218,7 @@ export function completeLowPriorityGame(playerId: string): Effect.Effect<void> {
  * Decay leaver score over time (1 point per day)
  * Call this periodically (daily cron job)
  */
-export function decayLeaverScores(): Effect.Effect<void> {
+export function decayLeaverScores(): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     const keys = yield* redis.keys('leaver:score:*')
@@ -236,7 +247,7 @@ export function decayLeaverScores(): Effect.Effect<void> {
 export function getPlayerLeaverHistory(
   playerId: string,
   limit = 10,
-): Effect.Effect<LeaverRecord[]> {
+): Effect.Effect<LeaverRecord[], never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     const records = yield* redis.lrange(`leaver:records:${playerId}`, -limit, -1)
@@ -248,7 +259,7 @@ export function getPlayerLeaverHistory(
  * Integration: Track player actions to detect AFK
  * Call this whenever a player takes an action
  */
-export function markPlayerActive(gameId: string, playerId: string): Effect.Effect<void> {
+export function markPlayerActive(gameId: string, playerId: string): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     // Store last action tick in Redis for persistence

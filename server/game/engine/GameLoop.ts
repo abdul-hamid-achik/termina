@@ -362,7 +362,7 @@ function buildGameLoop(
     if (newState.tick % 60 === 0) {
       const afkPlayers = detectAFKPlayers(newState)
       for (const afk of afkPlayers) {
-        recordLeaverSafe(afk.playerId, gameId, newState, 'afk')
+        recordLeaverSafe(afk.playerId, gameId, newState, 'afk', redis)
         engineLog.warn('AFK player detected', {
           gameId,
           playerId: afk.playerId,

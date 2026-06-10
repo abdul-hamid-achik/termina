@@ -3,11 +3,16 @@ import { getGameRuntime } from '../../plugins/game-server'
 import { joinQueue, getQueueSize, isPlayerInQueue } from '../../game/matchmaking/queue'
 import { getPlayerGame } from '../../services/PeerRegistry'
 import { getPlayerLobby } from '../../game/matchmaking/lobby'
+import { checkScopedRateLimit } from '../../utils/RateLimiter'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, message: 'Authentication required' })
+  }
+
+  if (!checkScopedRateLimit('queue', session.user.id as string)) {
+    throw createError({ statusCode: 429, message: 'Too many queue requests — slow down' })
   }
 
   const runtime = getGameRuntime()

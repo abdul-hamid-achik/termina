@@ -40,6 +40,8 @@ const violationSeverity: Record<ViolationType, 'low' | 'medium' | 'high' | 'crit
 }
 
 const playerViolations = new Map<string, CheatDetection[]>()
+const MAX_VIOLATIONS_PER_PLAYER = 50
+const MAX_TRACKED_VIOLATORS = 5000
 
 /**
  * Validate that a player can only see and act on visible zones
@@ -169,8 +171,9 @@ export function validatePlayerStats(state: GameState, playerId: string): CheatDe
   const player = state.players[playerId]
   if (!player) return null
 
+  if (!player.heroId) return null
   const hero = HEROES[player.heroId]
-  if (!hero || !player.heroId) return null
+  if (!hero) return null
 
   // Check HP is within valid range
   if (player.hp > player.maxHp) {
@@ -234,10 +237,15 @@ export function runAntiCheatChecks(
   const statsViolation = validatePlayerStats(state, playerId)
   if (statsViolation) violations.push(statsViolation)
 
-  // Record violations
+  // Record violations — keep only the most recent per player so the history
+  // map can't grow without bound over a long-lived process.
   if (violations.length > 0) {
     const existing = playerViolations.get(playerId) || []
-    playerViolations.set(playerId, [...existing, ...violations])
+    playerViolations.set(playerId, [...existing, ...violations].slice(-MAX_VIOLATIONS_PER_PLAYER))
+    if (playerViolations.size > MAX_TRACKED_VIOLATORS) {
+      const oldest = playerViolations.keys().next().value
+      if (oldest !== undefined) playerViolations.delete(oldest)
+    }
   }
 
   return violations

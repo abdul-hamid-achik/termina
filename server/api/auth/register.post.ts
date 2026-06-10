@@ -1,8 +1,14 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '../../plugins/game-server'
 import { authLog } from '../../utils/log'
+import { checkScopedRateLimit } from '../../utils/RateLimiter'
 
 export default defineEventHandler(async (event) => {
+  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
+  if (!checkScopedRateLimit('auth', ip)) {
+    throw createError({ statusCode: 429, message: 'Too many attempts — try again shortly' })
+  }
+
   const body = await readBody<{ username?: string; password?: string }>(event)
 
   // Validate input

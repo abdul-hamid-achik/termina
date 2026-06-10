@@ -22,6 +22,20 @@ interface PlayerRateLimitState {
 
 const playerStates = new Map<string, PlayerRateLimitState>()
 
+// Bound the tracked-key map: when it grows past the cap, evict entries that
+// have been idle long enough to be fully refilled anyway.
+const MAX_TRACKED_KEYS = 10_000
+const IDLE_EVICT_MS = 10 * 60 * 1000
+
+function evictStaleStates(now: number): void {
+  if (playerStates.size < MAX_TRACKED_KEYS) return
+  for (const [key, state] of playerStates) {
+    if (now - state.lastRefill > IDLE_EVICT_MS) {
+      playerStates.delete(key)
+    }
+  }
+}
+
 /**
  * Check if a player can perform an action using token bucket algorithm.
  * @param playerId - The player ID
@@ -30,6 +44,7 @@ const playerStates = new Map<string, PlayerRateLimitState>()
  */
 export function checkRateLimit(playerId: string, config: RateLimitConfig = DEFAULT_CONFIG): boolean {
   const now = Date.now()
+  evictStaleStates(now)
   let state = playerStates.get(playerId)
 
   if (!state) {
@@ -91,6 +106,27 @@ export function resetRateLimit(playerId: string): void {
  */
 export function cleanupRateLimiters(): void {
   playerStates.clear()
+}
+
+// ── Scoped limits for non-action surfaces ────────────────────────
+// Same token-bucket state, namespaced keys, per-scope budgets.
+
+const SCOPE_CONFIGS: Record<string, RateLimitConfig> = {
+  // Credential endpoints: slow enough to blunt brute force per IP
+  auth: { maxActionsPerSecond: 0.5, maxBurstSize: 5 },
+  // Queue join/leave per user
+  queue: { maxActionsPerSecond: 1, maxBurstSize: 5 },
+  // Draft picks/bans per user
+  lobby: { maxActionsPerSecond: 2, maxBurstSize: 6 },
+}
+
+/**
+ * Rate-limit an operation in a named scope (e.g. 'auth' keyed by IP,
+ * 'lobby' keyed by player). Returns true if the operation is allowed.
+ */
+export function checkScopedRateLimit(scope: keyof typeof SCOPE_CONFIGS, key: string): boolean {
+  const config = SCOPE_CONFIGS[scope] ?? DEFAULT_CONFIG
+  return checkRateLimit(`${scope}:${key}`, config)
 }
 
 /**
