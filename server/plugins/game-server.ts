@@ -27,6 +27,7 @@ import type { NewMatch, NewMatchPlayer } from '../db/schema'
 import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
 import { sendToPeer, setPlayerGame, clearPlayerGame } from '../services/PeerRegistry'
 import { cleanupLobby } from '../game/matchmaking/lobby'
+import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '../game/matchmaking/elo'
 
 /** Check if a game event is visible to a specific player based on vision. */
 function isEventVisibleToPlayer(
@@ -281,10 +282,18 @@ export default defineNitroPlugin(async (nitroApp) => {
           }
 
           const realPlayers = players.filter((p) => !isBot(p.playerId))
+          // Elo: each player's change is measured against the enemy team's
+          // average MMR (bots included — they queue with a real bracket).
+          const mmrChanges = new Map<string, number>()
+          for (const p of realPlayers) {
+            const enemyAvg = teamAverageMmr(
+              players.filter((e) => e.team !== p.team).map((e) => e.mmr),
+            )
+            mmrChanges.set(p.playerId, calculateMmrChange(p.mmr, enemyAvg, p.team === winner))
+          }
           const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
             const ps = finalState.players[p.playerId]
-            const isWinner = p.team === winner
-            const mmrChange = isWinner ? 25 : -25
+            const mmrChange = mmrChanges.get(p.playerId) ?? 0
             return {
               matchId: gId,
               playerId: p.playerId,
@@ -308,7 +317,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
               for (const p of realPlayers) {
                 const isWinner = p.team === winner
-                const newMmr = p.mmr + (isWinner ? 25 : -25)
+                const newMmr = applyMmrChange(p.mmr, mmrChanges.get(p.playerId) ?? 0)
                 const ps = finalState.players[p.playerId]
 
                 yield* db.updatePlayerMMR(p.playerId, newMmr)
