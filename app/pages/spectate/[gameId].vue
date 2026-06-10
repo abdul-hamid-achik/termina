@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
-import type { PlayerVisibleState } from '~~/shared/types/game'
+import type { PlayerState, PlayerVisibleState } from '~~/shared/types/game'
 
 definePageMeta({ ssr: false })
 
@@ -85,18 +85,13 @@ onUnmounted(() => {
   ws?.close()
 })
 
-const radiantPlayers = computed(() => {
+// The spectator stream is fogless, so every entry is a full PlayerState.
+const allPlayers = computed<PlayerState[]>(() => {
   if (!visibleState.value) return []
-  return Object.values(visibleState.value.players).filter(
-    (p): p is Extract<typeof p, { team: 'radiant' }> => p.team === 'radiant',
-  )
+  return Object.values(visibleState.value.players) as PlayerState[]
 })
-const direPlayers = computed(() => {
-  if (!visibleState.value) return []
-  return Object.values(visibleState.value.players).filter(
-    (p): p is Extract<typeof p, { team: 'dire' }> => p.team === 'dire',
-  )
-})
+const radiantPlayers = computed(() => allPlayers.value.filter((p) => p.team === 'radiant'))
+const direPlayers = computed(() => allPlayers.value.filter((p) => p.team === 'dire'))
 
 function heroName(id: string | null | undefined): string {
   if (!id) return '???'

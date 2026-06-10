@@ -228,6 +228,7 @@ export const useGameStore = defineStore('game', () => {
     teams,
     towers,
     creeps,
+    neutrals,
     events,
     announcements,
     nextTickIn,

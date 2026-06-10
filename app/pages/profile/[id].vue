@@ -13,6 +13,25 @@ const isOwnProfile = computed(() => {
   return authStore.user?.id === playerId.value
 })
 
+interface ProfilePlayer {
+  id: string
+  username: string
+  avatarUrl: string | null
+  selectedAvatar: string | null
+  mmr: number
+  gamesPlayed: number
+  wins: number
+  createdAt: string | null
+}
+
+interface MatchSummary {
+  id: string
+  mode: string
+  winner: 'radiant' | 'dire' | null
+  durationTicks: number | null
+  createdAt: string | null
+}
+
 const { data: profileData, status: profileStatus } = await useFetch(
   () => `/api/player/${playerId.value}`,
   {
@@ -24,8 +43,12 @@ const { data: matchData } = await useFetch(() => `/api/match/history?player=${pl
   watch: [playerId],
 })
 
-const player = computed(() => (profileData.value as Record<string, unknown>)?.player ?? null)
-const recentMatches = computed(() => (matchData.value as Record<string, unknown>)?.matches ?? [])
+const player = computed<ProfilePlayer | null>(
+  () => (profileData.value as { player?: ProfilePlayer } | null)?.player ?? null,
+)
+const recentMatches = computed<MatchSummary[]>(
+  () => (matchData.value as { matches?: MatchSummary[] } | null)?.matches ?? [],
+)
 
 function formatDuration(ticks: number | null): string {
   if (!ticks) return '--:--'

@@ -619,7 +619,7 @@ export function processSpecialActions(
  */
 export function runNPCAI(
   state: GameState,
-  ctx: { heroAttackers: Set<string>; priorEvents: GameEngineEvent[] },
+  ctx: { heroAttackers: Map<string, string>; priorEvents: GameEngineEvent[] },
 ): { state: GameState; events: GameEngineEvent[] } {
   let s = state
   const events: GameEngineEvent[] = []

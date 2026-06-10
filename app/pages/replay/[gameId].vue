@@ -219,7 +219,7 @@ watchEffect(() => {
       <div v-else-if="error" class="border border-dire bloom-dire p-4">
         <div class="t-h3 text-dire text-glow-dire">REPLAY UNAVAILABLE</div>
         <div class="t-caption mt-1">
-          {{ String(error.value?.statusMessage ?? error.value?.message ?? 'unknown error') }}
+          {{ String(error.statusMessage ?? error.message ?? 'unknown error') }}
         </div>
         <div class="mt-2 t-caption">
           Replays are kept for ~8 hours after a game starts and are dropped on game-over.

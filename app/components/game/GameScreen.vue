@@ -409,7 +409,7 @@ gameSocket.onMessage((msg) => {
         type: 'system',
       })
     }
-    const state = msg.state as Record<string, unknown>
+    const state = msg.state as unknown as { towers?: TowerState[] }
     if (state.towers) {
       towers.value = state.towers
     }

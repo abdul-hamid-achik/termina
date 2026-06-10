@@ -22,6 +22,8 @@ export type AbilityEffectType =
 
 export type HeroRole = 'carry' | 'support' | 'tank' | 'assassin' | 'mage' | 'offlaner'
 
+export type HeroId = string
+
 export type AbilityTargetType = 'self' | 'hero' | 'zone' | 'point'
 
 export type PrimaryAttribute = 'strength' | 'agility' | 'intelligence'
