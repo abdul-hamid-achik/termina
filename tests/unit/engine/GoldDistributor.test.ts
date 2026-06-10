@@ -198,11 +198,11 @@ describe('GoldDistributor', () => {
       expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
     })
 
-    it('should award streak bonus based on killer kills', () => {
+    it('should award shutdown bonus based on the victim kill streak', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 3 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          killer: makePlayer({ id: 'killer', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100, killStreak: 3 }),
         },
       })
 
@@ -211,17 +211,29 @@ describe('GoldDistributor', () => {
       expect(result.players['killer']!.gold).toBe(100 + expectedGold)
     })
 
-    it('should cap streak bonus at 10 kills', () => {
+    it('should cap the shutdown bonus at a 10 streak', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', gold: 100, kills: 15 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          killer: makePlayer({ id: 'killer', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100, killStreak: 15 }),
         },
       })
 
       const expectedGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * 10
       const result = awardKill(state, 'killer', 'victim', [])
       expect(result.players['killer']!.gold).toBe(100 + expectedGold)
+    })
+
+    it('killer own streak does not inflate the bounty', () => {
+      const state = makeGameState({
+        players: {
+          killer: makePlayer({ id: 'killer', gold: 100, kills: 8, killStreak: 8 }),
+          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100, killStreak: 0 }),
+        },
+      })
+
+      const result = awardKill(state, 'killer', 'victim', [])
+      expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
     })
 
     it('should split assist gold among assisters', () => {

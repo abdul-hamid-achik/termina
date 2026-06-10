@@ -50,6 +50,46 @@ import type { RedisServiceApi } from '../../services/RedisService'
 /** Pending actions collected during the action window. */
 const gameActionQueues = new Map<string, PlayerAction[]>()
 
+// ── Assist tracking ────────────────────────────────────────────
+// Kill/assist credit comes from actual damage dealt within a recent window,
+// not just attack commands — so DoTs, abilities, and item procs count.
+
+const ASSIST_WINDOW_TICKS = 5
+
+/** gameId -> victimId -> attackerId -> tick of last damage dealt */
+const recentHeroDamage = new Map<string, Map<string, Map<string, number>>>()
+
+function trackHeroDamage(gameId: string, state: GameState, events: GameEngineEvent[]): void {
+  let game = recentHeroDamage.get(gameId)
+  if (!game) {
+    game = new Map()
+    recentHeroDamage.set(gameId, game)
+  }
+  for (const e of events) {
+    if (e._tag !== 'damage') continue
+    const src = state.players[e.sourceId]
+    const tgt = state.players[e.targetId]
+    if (!src || !tgt || src.team === tgt.team) continue
+    let victimMap = game.get(e.targetId)
+    if (!victimMap) {
+      victimMap = new Map()
+      game.set(e.targetId, victimMap)
+    }
+    victimMap.set(e.sourceId, state.tick)
+  }
+  // Prune contributions older than the window
+  for (const [victimId, victimMap] of game) {
+    for (const [attackerId, tick] of victimMap) {
+      if (state.tick - tick > ASSIST_WINDOW_TICKS) victimMap.delete(attackerId)
+    }
+    if (victimMap.size === 0) game.delete(victimId)
+  }
+}
+
+function getDamageContributors(gameId: string, victimId: string): string[] {
+  return [...(recentHeroDamage.get(gameId)?.get(victimId)?.keys() ?? [])]
+}
+
 /** Submit an action for the current tick. */
 export function submitAction(gameId: string, playerId: string, command: Command): void {
   let queue = gameActionQueues.get(gameId)
@@ -107,7 +147,7 @@ export function processTick(
     for (const botId of botPlayerIds) {
       const bot = currentState.players[botId]
       if (bot && bot.alive) {
-        const command = decideBotAction(currentState, bot, getBotLane(gameId, botId))
+        const command = decideBotAction(currentState, bot, getBotLane(gameId, botId), gameId)
         if (command) {
           submitAction(gameId, botId, command)
         }
@@ -198,8 +238,10 @@ export function processTick(
     // 10.6. Tick all buffs (decrement durations, remove expired)
     currentState = tickAllBuffs(currentState)
 
-    // 11. Handle deaths — check for newly dead players, attribute kills
-    currentState = handleDeaths(currentState, allEvents, resolved.heroAttackers)
+    // 11. Handle deaths — check for newly dead players, attribute kills.
+    // Damage dealt this tick (attacks, abilities, DoTs) feeds assist credit.
+    trackHeroDamage(gameId, currentState, allEvents)
+    currentState = handleDeaths(gameId, currentState, allEvents, resolved.heroAttackers)
 
     // 12. Check level ups
     currentState = checkLevelUps(currentState, allEvents)
@@ -389,6 +431,7 @@ function buildGameLoop(
       Effect.sync(() => {
         gameActionQueues.delete(gameId)
         activeGames.delete(gameId)
+        recentHeroDamage.delete(gameId)
       }),
     ),
   )
@@ -769,6 +812,7 @@ function applyFountainHealing(state: GameState): GameState {
 
 /** Handle newly dead players — set respawn timers, attribute kills/assists, award gold/XP. */
 function handleDeaths(
+  gameId: string,
   state: GameState,
   events: GameEngineEvent[],
   heroAttackers?: Map<string, string>,
@@ -805,6 +849,7 @@ function handleDeaths(
         ...player,
         respawnTick: state.tick + respawnTicks,
         deaths: alreadyCounted ? player.deaths : player.deaths + 1,
+        killStreak: 0,
         buybackCost,
       }
       if (!alreadyCounted) {
@@ -816,31 +861,47 @@ function handleDeaths(
         })
       }
 
-      // Determine killer from heroAttackers (who attacked this victim)
+      // Everyone who damaged the victim recently shares credit — direct
+      // attackers from this tick plus DoT/ability/item damage in the window.
+      const contributors = new Set(getDamageContributors(gameId, pid))
+      if (heroAttackers) {
+        for (const [attackerId, victimId] of heroAttackers.entries()) {
+          if (victimId === pid) contributors.add(attackerId)
+        }
+      }
+      contributors.delete(pid)
+
+      // Killer preference: a direct attacker this tick, else any recent contributor
       let killerId: string | null = null
       if (heroAttackers) {
         for (const [attackerId, victimId] of heroAttackers.entries()) {
-          if (victimId === pid) {
+          if (victimId === pid && players[attackerId]) {
             killerId = attackerId
             break
           }
         }
       }
+      if (!killerId) {
+        killerId = [...contributors].find((id) => players[id]) ?? null
+      }
+
+      // The victim's damage record is spent — a future death starts fresh
+      recentHeroDamage.get(gameId)?.delete(pid)
 
       if (killerId && players[killerId]) {
         // Award kill gold
-        const assisters = heroAttackers
-          ? [...heroAttackers.entries()]
-              .filter(([aid, vid]) => vid === pid && aid !== killerId)
-              .map(([aid]) => aid)
-          : []
+        const assisters = [...contributors].filter((id) => id !== killerId && players[id])
         const tempState: GameState = { ...state, players }
         const awarded = awardKill(tempState, killerId, pid, assisters)
         players = { ...awarded.players }
 
-        // Increment kill count
+        // Increment kill count + streak
         const killer = players[killerId]!
-        players[killerId] = { ...killer, kills: killer.kills + 1 }
+        players[killerId] = {
+          ...killer,
+          kills: killer.kills + 1,
+          killStreak: (killer.killStreak ?? 0) + 1,
+        }
 
         // Increment assist counts
         for (const assistId of assisters) {

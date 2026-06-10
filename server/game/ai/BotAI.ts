@@ -500,8 +500,9 @@ export function decideBotAction(
   state: GameState,
   bot: PlayerState,
   assignedLane: string,
+  gameId?: string,
 ): Command | null {
-  const config = getBotDifficultyConfig(state.tick.toString(), bot.id)
+  const config = getBotDifficultyConfig(gameId ?? '', bot.id)
   if (!bot.alive) {
     if (bot.respawnTick !== null && state.tick >= bot.respawnTick) {
       const fountain = getFountainZone(bot.team)
@@ -544,6 +545,9 @@ export function decideBotAction(
     if (Math.random() < config.lastHitAccuracy || lowestCreep.hp <= 50) {
       return { type: 'attack', target: { kind: 'creep', index: creepIdx } }
     }
+    // Failed the last-hit roll — hold position in lane with the wave rather
+    // than marching forward mid-fight.
+    return null
   }
   const enemyTower = getEnemyTowerInZone(state, bot)
   if (enemyTower && getAlliedCreepsInZone(state, bot).length > 0) {
@@ -557,9 +561,22 @@ export function decideBotAction(
   }
   const nextZone = getNextLaneZone(bot, assignedLane)
   if (nextZone) {
+    // Push into enemy territory only with creep support — a solo level-1
+    // hero walking to the enemy base just feeds.
+    if (!isOwnSide(nextZone, bot.team) && getAlliedCreepsInZone(state, bot).length === 0) {
+      return null
+    }
     return { type: 'move', zone: nextZone }
   }
   return null
+}
+
+/** Whether a zone is on the given team's half of the map (rivers/runes/roshan are neutral). */
+function isOwnSide(zone: string, team: TeamId): boolean {
+  if (team === 'radiant') {
+    return zone.endsWith('-rad') || zone.startsWith('radiant') || zone.startsWith('jungle-rad')
+  }
+  return zone.endsWith('-dire') || zone.startsWith('dire') || zone.startsWith('jungle-dire')
 }
 
 export function cleanupBotState(playerId: string): void {

@@ -68,12 +68,12 @@ export const HERO_KILL_XP_PER_LEVEL = 20
 
 /**
  * Respawn time in ticks = base + max(0, level - freeLevels) * perLevel
- * Early-game deaths (lv 1–4) only pay the base, so a lane gank doesn't
- * cost an entire wave-and-a-half. Mid/late game still scales.
+ * Level 1 death = 3 ticks (12s) — roughly a creep wave, so a gank always
+ * costs something. Scales smoothly: lvl 5 ≈ 28s, lvl 10 ≈ 48s, lvl 25 ≈ 108s.
  */
-export const RESPAWN_BASE_TICKS = 2
+export const RESPAWN_BASE_TICKS = 3
 export const RESPAWN_PER_LEVEL_TICKS = 1
-export const RESPAWN_FREE_LEVELS = 4
+export const RESPAWN_FREE_LEVELS = 1
 
 // ── Buyback ──────────────────────────────────────────────────────
 
@@ -188,7 +188,9 @@ export const ASSIST_XP_RATIO = 0.5
 // ── Item Passives ────────────────────────────────────────────────
 
 export const NULL_POINTER_CRIT_CHANCE = 0.15
-export const NULL_POINTER_CRIT_MULTIPLIER = 2.0
+// 1.5x keeps the budget crit item below Crystalys (+15% expected damage at
+// 1950g) — at 2.0x it matched Crystalys' expected output for 550g less.
+export const NULL_POINTER_CRIT_MULTIPLIER = 1.5
 export const CRYSTALYS_CRIT_CHANCE = 0.2
 export const CRYSTALYS_CRIT_MULTIPLIER = 1.75
 export const DAEDALUS_CRIT_CHANCE = 0.3

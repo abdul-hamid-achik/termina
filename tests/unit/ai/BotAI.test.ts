@@ -120,15 +120,23 @@ describe('BotAI - decideBotAction', () => {
 
     it('does not retreat when HP is above retreat threshold', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 180, maxHp: 500 }) // 36% HP
-      const state = makeGameState({ players: { [bot.id]: bot } })
+      const allyCreep = { id: 'c1', team: 'radiant' as const, zone: 'mid-t1-rad', hp: 300, type: 'melee' as const }
+      const state = makeGameState({ players: { [bot.id]: bot }, creeps: [allyCreep] })
       const action = decideBotAction(state, bot, 'mid')
-      // 180/500 = 36% => above 30% retreat threshold, so moves forward
+      // 180/500 = 36% => above 30% retreat threshold, advances with creep support
       expect(action).not.toBeNull()
       expect(action!.type).toBe('move')
       // Should advance along lane (forward), not retreat (backward toward base)
       if (action!.type === 'move') {
         expect(action!.zone).toBe('mid-river') // forward, not mid-t2-rad (backward)
       }
+    })
+
+    it('holds position at the frontier without creep support', () => {
+      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500 })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      // Next zone is mid-river (neutral territory) and no allied creeps — wait
+      expect(decideBotAction(state, bot, 'mid')).toBeNull()
     })
   })
 
@@ -194,8 +202,8 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: deadEnemy } })
       const action = decideBotAction(state, bot, 'mid')
-      // Should not target dead enemy, should move instead
-      expect(action!.type).not.toBe('attack')
+      // Should not target the dead enemy (may hold position or move)
+      expect(action?.type ?? 'hold').not.toBe('attack')
     })
   })
 
@@ -307,17 +315,25 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-t1-dire', hp: 400, maxHp: 500, mp: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      // No allied creeps -> should move forward instead
-      expect(action!.type).toBe('move')
+      // No allied creeps -> holds position (deep in enemy territory, no support)
+      expect(action?.type ?? 'hold').not.toBe('attack')
     })
   })
 
   describe('movement - lane pathing', () => {
-    it('moves forward along assigned lane when no targets', () => {
+    it('moves forward along assigned lane with creep support', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
-      const state = makeGameState({ players: { [bot.id]: bot } })
+      const allyCreep = { id: 'c1', team: 'radiant' as const, zone: 'mid-t1-rad', hp: 300, type: 'melee' as const }
+      const state = makeGameState({ players: { [bot.id]: bot }, creeps: [allyCreep] })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'move', zone: 'mid-river' })
+    })
+
+    it('advances freely on its own side of the map', () => {
+      const bot = makePlayer({ zone: 'mid-t3-rad', hp: 400, maxHp: 500, mp: 0 })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'move', zone: 'mid-t2-rad' })
     })
 
     it('moves toward lane start when off-lane', () => {

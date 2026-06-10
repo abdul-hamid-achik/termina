@@ -1,4 +1,5 @@
-import type { GameState, TeamId } from '~~/shared/types/game'
+import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
+import { getItem } from '../items/registry'
 import {
   PASSIVE_GOLD_PER_TICK,
   CREEP_GOLD_MIN,
@@ -19,12 +20,22 @@ import {
  * 1 + COMEBACK_BONUS_MAX]. >1 means killer's team is behind (bonus).
  * Exported for tests.
  */
+/** A player's net worth: unspent gold plus the full cost of owned items. */
+export function playerNetWorth(player: PlayerState): number {
+  let worth = player.gold
+  for (const itemId of player.items) {
+    if (!itemId) continue
+    worth += getItem(itemId)?.cost ?? 0
+  }
+  return worth
+}
+
 export function comebackMultiplier(state: GameState, killerTeam: TeamId): number {
   let killerNet = 0
   let enemyNet = 0
   for (const p of Object.values(state.players)) {
-    if (p.team === killerTeam) killerNet += p.gold
-    else enemyNet += p.gold
+    if (p.team === killerTeam) killerNet += playerNetWorth(p)
+    else enemyNet += playerNetWorth(p)
   }
   // Positive gap = killer is behind by `gap` gold
   const gap = enemyNet - killerNet
@@ -93,8 +104,9 @@ export function awardKill(
   const killer = state.players[killerId]
   if (!killer) return state
 
-  // Cap streak bonus to prevent infinite scaling; a proper killStreak field would be better
-  const streak = Math.min(killer.kills, 10)
+  // Shutdown bounty: the bonus scales with the VICTIM's kill streak, so
+  // ending a fed player's run pays out — anti-snowball, not pro-snowball.
+  const streak = Math.min(victim.killStreak ?? 0, 10)
   const baseGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * streak
   const killerGold = Math.round(baseGold * comebackMultiplier(state, killer.team))
   updatedState = updatePlayerGold(updatedState, killerId, killerGold)

@@ -435,6 +435,12 @@ export function resolveActions(
         if (target.zone !== attacker.zone) continue
         if (target.team === attacker.team) continue
 
+        // Damage from earlier attackers this phase must stack — read pending
+        // hp/buffs so simultaneous focus-fire isn't last-write-wins.
+        const targetPendingHp = (playerUpdates[targetId]?.hp as number | undefined) ?? target.hp
+        const targetPendingBuffs =
+          (playerUpdates[targetId]?.buffs as typeof target.buffs | undefined) ?? target.buffs
+
         const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
         const targetItemStats = getCachedItemStats(targetId, target.items)
 
@@ -465,7 +471,9 @@ export function resolveActions(
           if (chainTargets.length > 0) {
             const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
             const chainDamage = calculateMagicalDamage(60, chainTarget.magicResist)
-            const chainNewHp = Math.max(0, chainTarget.hp - chainDamage)
+            const chainPendingHp =
+              (playerUpdates[chainTarget.id]?.hp as number | undefined) ?? chainTarget.hp
+            const chainNewHp = Math.max(0, chainPendingHp - chainDamage)
             playerUpdates[chainTarget.id] = {
               ...playerUpdates[chainTarget.id],
               hp: chainNewHp,
@@ -530,8 +538,8 @@ export function resolveActions(
           })
         }
 
-        const newHp = Math.max(0, target.hp - totalDamage)
-        let newBuffs = [...target.buffs]
+        const newHp = Math.max(0, targetPendingHp - totalDamage)
+        let newBuffs = [...targetPendingBuffs]
 
         if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
           newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id })
@@ -549,7 +557,9 @@ export function resolveActions(
 
         if (target.buffs.some((b) => b.id === 'blade_mail')) {
           const returnDamage = Math.round(damage)
-          const attackerNewHp = Math.max(0, attacker.hp - returnDamage)
+          const attackerPendingHp =
+            (playerUpdates[action.playerId]?.hp as number | undefined) ?? attacker.hp
+          const attackerNewHp = Math.max(0, attackerPendingHp - returnDamage)
           playerUpdates[action.playerId] = {
             ...playerUpdates[action.playerId],
             hp: attackerNewHp,

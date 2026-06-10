@@ -40,6 +40,7 @@ const R_MANA = [150, 250, 350] as const
 const R_COOLDOWN = 50
 
 const HEAP_GROWTH_PER_100_GOLD = 1
+const HEAP_GROWTH_MAX_BONUS = 40 // cap so hoarding past 4000g stops scaling
 
 // ── Ability Resolver ──────────────────────────────────────────────
 
@@ -271,7 +272,10 @@ function resolveHeroPassive(state: GameState, playerId: string, _event: GameEven
   const player = state.players[playerId]
   if (!player) return state
 
-  const bonusAttack = Math.floor(player.gold / 100) * HEAP_GROWTH_PER_100_GOLD
+  const bonusAttack = Math.min(
+    HEAP_GROWTH_MAX_BONUS,
+    Math.floor(player.gold / 100) * HEAP_GROWTH_PER_100_GOLD,
+  )
   const currentBonus = getBuffStacks(player, 'heapGrowth')
 
   if (currentBonus !== bonusAttack) {
