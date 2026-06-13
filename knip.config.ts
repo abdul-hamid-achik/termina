@@ -46,6 +46,10 @@ const config: KnipConfig = {
     '@fontsource/jetbrains-mono',
     // Provided by Nuxt, not directly imported
     'vue-router',
+    // CLI type-checker — run via `npx vue-tsc` and Nuxt's typeCheck:true
+    // (vite-plugin-checker), not imported in source. Pinned as a direct devDep
+    // so the @nuxt/kit override can't drop it from the install.
+    'vue-tsc',
   ],
   // The pre-commit gate cares most about unused FILES and DEPENDENCIES (real
   // bloat / supply-chain surface) — those stay errors. Unused exports/types are
