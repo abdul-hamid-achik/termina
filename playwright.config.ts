@@ -37,6 +37,9 @@ export default defineConfig({
       // Ancient destruction in ~2-4 minutes instead of 35-50. Required by
       // the game-over and smoke specs, which play a game to completion.
       TERMINA_TEST_FAST_GAME: process.env.TERMINA_TEST_FAST_GAME ?? '8',
+      // The suite registers ~50 users from one IP; the per-IP auth limit would
+      // 429 most of them. Disable rate limiting for the test server only.
+      TERMINA_DISABLE_RATE_LIMIT: '1',
     },
   },
 

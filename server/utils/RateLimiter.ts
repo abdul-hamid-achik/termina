@@ -22,6 +22,18 @@ interface PlayerRateLimitState {
 
 const playerStates = new Map<string, PlayerRateLimitState>()
 
+// Test escape hatch: the e2e suite registers ~50 users from one IP in quick
+// succession, which the per-IP auth limit (5 burst, 0.5/s) would 429. When
+// TERMINA_DISABLE_RATE_LIMIT is set (playwright webServer env only — never
+// production), rate checks always pass. Unit tests don't set it, so they still
+// exercise the real token-bucket behaviour.
+function rateLimitDisabled(): boolean {
+  return (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.TERMINA_DISABLE_RATE_LIMIT === '1'
+  )
+}
+
 // Bound the tracked-key map: when it grows past the cap, evict entries that
 // have been idle long enough to be fully refilled anyway.
 const MAX_TRACKED_KEYS = 10_000
@@ -43,6 +55,7 @@ function evictStaleStates(now: number): void {
  * @returns true if action is allowed, false if rate limited
  */
 export function checkRateLimit(playerId: string, config: RateLimitConfig = DEFAULT_CONFIG): boolean {
+  if (rateLimitDisabled()) return true
   const now = Date.now()
   evictStaleStates(now)
   let state = playerStates.get(playerId)
