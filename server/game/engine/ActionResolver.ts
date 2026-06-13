@@ -21,7 +21,7 @@ import { awardLastHit, awardTowerKill } from './GoldDistributor'
 import { pickupAegis } from './RoshanAI'
 import { pickupRune } from './RuneAI'
 import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
-import { ITEMS } from '../items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 import {
   CREEP_XP,
   NEUTRAL_CREEPS,

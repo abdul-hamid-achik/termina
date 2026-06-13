@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ITEMS } from '~~/server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 import type { ItemDef } from '~~/shared/types/items'
 import type { BuffState } from '~~/shared/types/game'
 import { useTapInspect } from '~/composables/useTapInspect'

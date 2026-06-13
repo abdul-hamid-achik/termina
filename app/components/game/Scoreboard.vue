@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import type { TeamState, TeamId } from '~~/shared/types/game'
 import type { ScoreboardEntry } from '~/stores/game'
-import { ITEMS } from '~~/server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 import { usePointerCoarse } from '~/composables/useTapInspect'
 
 const props = defineProps<{

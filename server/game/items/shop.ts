@@ -7,7 +7,7 @@ import {
   OBSERVER_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
-import { getItem } from './registry'
+import { getItem } from '~~/shared/constants/items'
 import {
   applyBuff,
   updatePlayer,

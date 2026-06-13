@@ -1,5 +1,5 @@
 import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
-import { getItem } from '../items/registry'
+import { getItem } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
   CREEP_GOLD_MIN,

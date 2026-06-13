@@ -26,10 +26,9 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
-    "@effect/platform": "^0.72.0",
-    "@effect/schema": "^0.75.0",
     "@fontsource/jetbrains-mono": "^5.1.0",
     "@pinia/nuxt": "^0.9.0",
+    "consola": "^3.4.2",
     "drizzle-orm": "^0.38.0",
     "effect": "^3.12.0",
     "ioredis": "^5.4.0",

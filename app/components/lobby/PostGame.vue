@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { TeamId } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 import { HEROES } from '~~/shared/constants/heroes'
-import { ITEMS } from '~~/server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 
 const props = defineProps<{
   winner: TeamId

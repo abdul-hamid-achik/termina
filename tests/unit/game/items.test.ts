@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ITEMS, ITEM_IDS, getItem } from '../../../server/game/items/registry'
+import { ITEMS, ITEM_IDS, getItem } from '~~/shared/constants/items'
 
 // ── Tests ──────────────────────────────────────────────────────────
 

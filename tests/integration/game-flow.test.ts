@@ -9,7 +9,7 @@ import {
 import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
 import { buyItem, sellItem } from '~~/server/game/items/shop'
-import { getItem } from '~~/server/game/items/registry'
+import { getItem } from '~~/shared/constants/items'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   KILL_BOUNTY_BASE,

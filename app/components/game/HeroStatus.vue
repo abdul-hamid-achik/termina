@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
-import { ITEMS } from '~~/server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 import { useTapInspect } from '~/composables/useTapInspect'
 
 interface HeroData {

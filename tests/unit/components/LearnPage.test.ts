@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import LearnPage from '../../../app/pages/learn.vue'
 import { HEROES, HERO_IDS } from '../../../shared/constants/heroes'
-import { ITEMS } from '../../../server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
   ANCIENT_HP,

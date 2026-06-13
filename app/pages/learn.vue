@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HeroRole } from '~~/shared/types/hero'
 import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
-import { ITEMS } from '~~/server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 import {
   TICK_DURATION_MS,
   ACTION_WINDOW_MS,

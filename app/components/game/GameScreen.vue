@@ -6,7 +6,7 @@ import { useCommands, validateCommand, buybackCostFor } from '~/composables/useC
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
-import { ITEMS } from '~~/server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 import type { TowerState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
 import {

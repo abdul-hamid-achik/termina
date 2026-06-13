@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import QuickBuy from '../../../app/components/game/QuickBuy.vue'
-import { ITEMS } from '../../../server/game/items/registry'
+import { ITEMS } from '~~/shared/constants/items'
 
 const SALVE_COST = ITEMS.healing_salve!.cost
 
