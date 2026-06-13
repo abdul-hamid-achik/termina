@@ -274,6 +274,11 @@
   .anim-flash {
     animation: flash 0.2s ease-out;
   }
+  /* Gentle tick-resolution pulse — a faint ability-blue wash that fades, much
+     softer than the white anim-flash (which strobes too hard every 4s). */
+  .anim-tick-pulse {
+    animation: tick-pulse 0.45s ease-out;
+  }
 }
 
 /* ── Keyframes ────────────────────────────────────────────────── */
@@ -364,13 +369,23 @@
   }
 }
 
+@keyframes tick-pulse {
+  0% {
+    box-shadow: inset 0 0 0 9999px rgb(var(--color-ability) / 0.14);
+  }
+  100% {
+    box-shadow: inset 0 0 0 9999px transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-shake,
   .anim-shake-strong,
   .anim-pop,
   .anim-fade-in-up,
   .anim-glow-pulse,
-  .anim-flash {
+  .anim-flash,
+  .anim-tick-pulse {
     animation: none;
   }
 }

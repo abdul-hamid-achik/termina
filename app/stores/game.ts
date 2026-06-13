@@ -11,11 +11,17 @@ import type {
   AncientState,
   CreepState,
   NeutralCreepState,
+  RoshanState,
+  RuneState,
 } from '~~/shared/types/game'
 import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 import { gameLog } from '~/utils/logger'
+import { playerNetWorth } from '~/utils/strategy'
+
+/** How many ticks of team net-worth history to keep for the trend sparkline. */
+const NET_WORTH_HISTORY_MAX = 40
 
 /** How often (ms) the client-side tick countdown refreshes. */
 const COUNTDOWN_REFRESH_MS = 100
@@ -50,7 +56,27 @@ export const useGameStore = defineStore('game', () => {
   const ancients = ref<{ radiant: AncientState; dire: AncientState } | null>(null)
   const creeps = ref<CreepState[]>([])
   const neutrals = ref<NeutralCreepState[]>([])
+  // Objective layer — streamed in every tick payload (PlayerVisibleState) but
+  // previously discarded by updateFromTick. Surfaced here for the War Room HUD.
+  const roshan = ref<RoshanState | null>(null)
+  const runes = ref<RuneState[]>([])
+  const aegis = ref<{ zone: string; tick: number; holderId: string | null } | null>(null)
+  // Last-seen position per player (zone + tick) — drives "last seen mid 4t ago"
+  // for fogged enemies. Server only includes positions the team is allowed to know.
+  const lastSeen = ref<Record<string, { zone: string; tick: number }>>({})
+  // Last-known net worth per player — carried forward while a player is fogged so
+  // the gold-lead readout stays stable instead of cratering whenever enemies
+  // drop out of vision (you can't see a fogged enemy's gold).
+  const knownNetWorth = ref<Record<string, number>>({})
+  // Per-team net-worth history (one sample per tick) for the trend sparkline.
+  const netWorthHistory = ref<{ radiant: number[]; dire: number[] }>({ radiant: [], dire: [] })
   const events = ref<GameEvent[]>([])
+  // Monotonic counter + the most-recent batch. Consumers (audio/shake/flash/KDA)
+  // react to `eventSeq` and read `latestEvents` instead of diffing `events.length`
+  // — which pins at 200 once the buffer caps below, silently killing game-feel
+  // mid-game.
+  const eventSeq = ref(0)
+  const latestEvents = ref<GameEvent[]>([])
   const announcements = ref<string[]>([])
   const nextTickIn = ref(0)
   const lastTickAt = ref<number | null>(null)
@@ -119,6 +145,26 @@ export const useGameStore = defineStore('game', () => {
     )
   })
 
+  // Full rosters (incl. dead + fogged) — drive the War Room enemy threat sheet
+  // and ally status, independent of the player's current zone.
+  const enemyPlayers = computed<PlayerState[]>(() => {
+    if (!player.value) return []
+    return Object.values(allPlayers.value).filter((p) => p.team !== player.value!.team)
+  })
+
+  const allyPlayers = computed<PlayerState[]>(() => {
+    if (!player.value) return []
+    return Object.values(allPlayers.value).filter(
+      (p) => p.team === player.value!.team && p.id !== player.value!.id,
+    )
+  })
+
+  /** Current team net worth (latest history sample). */
+  const netWorth = computed(() => ({
+    radiant: netWorthHistory.value.radiant.at(-1) ?? 0,
+    dire: netWorthHistory.value.dire.at(-1) ?? 0,
+  }))
+
   // ── Actions ─────────────────────────────────────────────────────
 
   /** Recompute the ms remaining until the next tick from wall-clock time. */
@@ -170,6 +216,9 @@ export const useGameStore = defineStore('game', () => {
       ancients?: { radiant: AncientState; dire: AncientState }
       creeps?: CreepState[]
       neutrals?: NeutralCreepState[]
+      roshan?: RoshanState
+      runes?: RuneState[]
+      aegis?: { zone: string; tick: number; holderId: string | null } | null
       timeOfDay?: 'day' | 'night'
       dayNightTick?: number
     }
@@ -196,6 +245,46 @@ export const useGameStore = defineStore('game', () => {
     if (state.ancients) ancients.value = state.ancients
     if (state.creeps) creeps.value = state.creeps
     if (state.neutrals) neutrals.value = state.neutrals
+    if (state.roshan) roshan.value = state.roshan
+    if (state.runes) runes.value = state.runes
+    if ('aegis' in state) aegis.value = state.aegis ?? null
+    // Fog-safe last-seen tracking: record a player's position ONLY on the ticks
+    // where they arrive un-fogged (fogged enemies come through as FoggedPlayer
+    // with no `zone`). This can never leak a position the team didn't actually
+    // observe, so it needs no server/vision change — unlike exposing the server's
+    // global lastSeen map, which would reveal enemies still hidden in fog.
+    {
+      const seen = { ...lastSeen.value }
+      for (const p of Object.values(state.players)) {
+        const zone = (p as { zone?: string }).zone
+        if (zone && p.alive) seen[p.id] = { zone, tick: msg.tick }
+      }
+      lastSeen.value = seen
+    }
+    // Net-worth tracking: update last-known worth only for un-fogged players,
+    // then sum per team (carrying forward fogged enemies' last-known value) and
+    // append one sample per team to the trend history.
+    {
+      const known = { ...knownNetWorth.value }
+      for (const p of Object.values(state.players)) {
+        if (!(p as { fogged?: boolean }).fogged) {
+          known[p.id] = playerNetWorth(p as { gold?: number; items?: (string | null)[] })
+        }
+      }
+      knownNetWorth.value = known
+      const teamWorth = (team: TeamId) =>
+        Object.values(state.players)
+          .filter((p) => p.team === team)
+          .reduce((sum, p) => sum + (known[p.id] ?? 0), 0)
+      const push = (arr: number[], v: number) => {
+        const next = [...arr, v]
+        return next.length > NET_WORTH_HISTORY_MAX ? next.slice(-NET_WORTH_HISTORY_MAX) : next
+      }
+      netWorthHistory.value = {
+        radiant: push(netWorthHistory.value.radiant, teamWorth('radiant')),
+        dire: push(netWorthHistory.value.dire, teamWorth('dire')),
+      }
+    }
     if (state.timeOfDay) timeOfDay.value = state.timeOfDay
     if (state.dayNightTick !== undefined) dayNightTick.value = state.dayNightTick
 
@@ -225,11 +314,16 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function addEvents(newEvents: GameEvent[]) {
+    if (newEvents.length === 0) return
     events.value.push(...newEvents)
     // Keep last 200 events
     if (events.value.length > 200) {
       events.value = events.value.slice(-200)
     }
+    // Expose the new batch + bump the monotonic seq so reactive consumers fire
+    // even after the 200-cap freezes events.length.
+    latestEvents.value = newEvents
+    eventSeq.value += newEvents.length
   }
 
   function addAnnouncement(text: string) {
@@ -266,7 +360,15 @@ export const useGameStore = defineStore('game', () => {
     ancients.value = null
     creeps.value = []
     neutrals.value = []
+    roshan.value = null
+    runes.value = []
+    aegis.value = null
+    lastSeen.value = {}
+    knownNetWorth.value = {}
+    netWorthHistory.value = { radiant: [], dire: [] }
     events.value = []
+    eventSeq.value = 0
+    latestEvents.value = []
     announcements.value = []
     stopTickCountdown()
     scoreboard.value = []
@@ -293,7 +395,15 @@ export const useGameStore = defineStore('game', () => {
     ancients,
     creeps,
     neutrals,
+    roshan,
+    runes,
+    aegis,
+    lastSeen,
+    knownNetWorth,
+    netWorthHistory,
     events,
+    eventSeq,
+    latestEvents,
     announcements,
     nextTickIn,
     lastTickAt,
@@ -314,6 +424,9 @@ export const useGameStore = defineStore('game', () => {
     heroLevel,
     nearbyEnemies,
     nearbyAllies,
+    enemyPlayers,
+    allyPlayers,
+    netWorth,
     // Actions
     updateFromTick,
     addEvents,

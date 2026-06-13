@@ -15,13 +15,26 @@ export type CombatLineType =
   | 'system'
   | 'ability'
   | 'victory'
+  | 'objective'
+
+/**
+ * How relevant a line is to the local player — drives visual salience so the
+ * fight that matters to ME reads loud and bystander chip dims out:
+ *  - mine-in:  damage/effects landing ON me (loudest)
+ *  - mine-out: my own actions
+ *  - ally:     involves a teammate
+ *  - world:    everyone else's chip / neutral events
+ */
+export type Salience = 'mine-in' | 'mine-out' | 'ally' | 'world'
 
 export interface CombatLine {
   tick: number
   text: string
   type: CombatLineType
+  salience?: Salience
   killerHeroId?: string
   victimHeroId?: string
+  assisterHeroIds?: string[]
   /** How many ticks of identical structure damage this line represents (>=1). */
   count?: number
   /**

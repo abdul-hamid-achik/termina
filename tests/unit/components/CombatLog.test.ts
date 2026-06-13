@@ -12,7 +12,8 @@ import {
 interface LogEvent {
   tick: number
   text: string
-  type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' | 'victory'
+  type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' | 'victory' | 'objective'
+  salience?: 'mine-in' | 'mine-out' | 'ally' | 'world'
   killerHeroId?: string
   victimHeroId?: string
 }
@@ -62,11 +63,32 @@ describe('CombatLog', () => {
   })
 
   describe('event display', () => {
-    it('should display tick number', () => {
+    it('should display the tick as a beat header', () => {
       const events = [makeEvent({ tick: 42 })]
       const wrapper = mount(CombatLog, { props: { events } })
 
-      expect(wrapper.text()).toContain('[T42]')
+      expect(wrapper.text()).toContain('TICK 42')
+    })
+
+    it('groups consecutive same-tick events under one beat header', () => {
+      const events = [
+        makeEvent({ tick: 10, type: 'damage', text: 'a' }),
+        makeEvent({ tick: 10, type: 'damage', text: 'b' }),
+        makeEvent({ tick: 11, type: 'kill', text: 'c' }),
+      ]
+      const wrapper = mount(CombatLog, { props: { events } })
+      const text = wrapper.text()
+      // one header per distinct tick
+      expect(text.match(/TICK 10/g)).toHaveLength(1)
+      expect(text.match(/TICK 11/g)).toHaveLength(1)
+      // all three event lines still render
+      expect(wrapper.findAll('[data-testid="log-event"]')).toHaveLength(3)
+    })
+
+    it('marks incoming-to-me damage with a YOU salience marker', () => {
+      const events = [makeEvent({ type: 'damage', text: 'hit', salience: 'mine-in' })]
+      const wrapper = mount(CombatLog, { props: { events } })
+      expect(wrapper.text()).toContain('YOU')
     })
 
     it('should color events by type', () => {
@@ -216,5 +238,38 @@ describe('CombatLog victory line', () => {
     // Exactly one bracket tag — no leftover [KILL] doubling, no "tower in base".
     expect(text).not.toContain('[KILL]')
     expect(text).not.toContain('tower')
+  })
+})
+
+describe('CombatLog filters + density', () => {
+  const events: LogEvent[] = [
+    { tick: 1, text: 'sys chat line', type: 'system' }, // salience-less → always shown
+    { tick: 1, text: 'I hit them', type: 'damage', salience: 'mine-out' },
+    { tick: 1, text: 'bystander chip', type: 'damage', salience: 'world' },
+    { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+    { tick: 1, text: 'night falls', type: 'objective', salience: 'world' },
+  ]
+
+  it('always keeps salience-less system/chat lines under non-ALL filters', async () => {
+    const wrapper = mount(CombatLog, { props: { events } })
+    await wrapper.get('[data-testid="log-filter-combat"]').trigger('click')
+    expect(wrapper.text()).toContain('sys chat line') // system never filtered away
+    expect(wrapper.text()).toContain('I hit them') // combat kept
+    expect(wrapper.text()).not.toContain('night falls') // objective filtered out under COMBAT
+  })
+
+  it('ME filter shows only my events (plus system)', async () => {
+    const wrapper = mount(CombatLog, { props: { events } })
+    await wrapper.get('[data-testid="log-filter-me"]').trigger('click')
+    expect(wrapper.text()).toContain('I hit them')
+    expect(wrapper.text()).not.toContain('bystander chip')
+  })
+
+  it('terse density hides bystander chip but keeps kills + objectives', async () => {
+    const wrapper = mount(CombatLog, { props: { events } })
+    await wrapper.get('[data-testid="log-density-toggle"]').trigger('click') // verbose -> terse
+    expect(wrapper.text()).not.toContain('bystander chip')
+    expect(wrapper.text()).toContain('a kill happened')
+    expect(wrapper.text()).toContain('night falls')
   })
 })

@@ -227,6 +227,13 @@ describe('asciiMapModel', () => {
       expect(texts).toContain('☘ 3 neutrals')
     })
 
+    it('names enemies when known instead of just a count', () => {
+      const zone = makeZone({ enemyCount: 2, enemyNames: ['Razor', 'Lina'] })
+      const texts = compactIndicators(zone).map((i) => i.text)
+      expect(texts).toContain('! Razor, Lina')
+      expect(texts).not.toContain('!2 enemies')
+    })
+
     it('reports clear when there is nothing to show', () => {
       const inds = compactIndicators(makeZone())
       expect(inds).toEqual([{ text: 'clear', cls: 'text-text-dim' }])

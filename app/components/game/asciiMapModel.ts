@@ -19,6 +19,8 @@ export interface ZoneDisplay {
   creepCount?: number
   creepTypes?: string[]
   neutralCount?: number
+  /** Names of visible enemy heroes in the zone (shown on compact cards). */
+  enemyNames?: string[]
 }
 
 export interface AncientsDisplay {
@@ -222,7 +224,10 @@ export function compactIndicators(
     })
   }
 
-  if (zone.enemyCount > 0) {
+  if (zone.enemyNames && zone.enemyNames.length > 0) {
+    // Name the threats when we have them — "who is here" beats "how many".
+    out.push({ text: `! ${zone.enemyNames.join(', ')}`, cls: 'text-dire' })
+  } else if (zone.enemyCount > 0) {
     out.push({
       text: `!${zone.enemyCount} ${zone.enemyCount === 1 ? 'enemy' : 'enemies'}`,
       cls: 'text-dire',

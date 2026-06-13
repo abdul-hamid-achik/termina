@@ -9,12 +9,14 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import type { TowerState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
+import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
 import {
-  collapseStructureDamage,
-  isStructureTarget,
-  teamLabel,
-  type CombatLine,
-} from '~/utils/combatLog'
+  buildCombatLines,
+  deriveKillFeed,
+  type NarrativeContext,
+  type KillFeedEntry,
+} from '~/utils/combatNarrative'
+import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 
 const gameStore = useGameStore()
 const gameSocket = useGameSocket()
@@ -219,6 +221,11 @@ function onKeyUp(e: KeyboardEvent) {
 
 // ── Audio cues + screen shake ──────────────────────────────────
 
+// ── Game-feel: impact keys (bumped to replay one-shot animations) ──
+const heroFlashKey = ref(0) // I took damage → red flash on the hero panel
+const kdaPopKey = ref(0) // I got a kill → KDA pop
+const tickPulseKey = ref(0) // each tick → reveal flash in the Tick Theater
+
 const screenShake = ref<'none' | 'light' | 'strong'>('none')
 let shakeTimer: ReturnType<typeof setTimeout> | null = null
 function triggerShake(level: 'light' | 'strong') {
@@ -239,6 +246,9 @@ watch(
   () => gameStore.tick,
   () => {
     playSound('tick')
+    // Reveal beat: bump the pulse key so the Theater header flashes as the
+    // tick's resolution lands.
+    tickPulseKey.value++
     const buffered = gameStore.consumeBufferedCommand()
     if (buffered) {
       handleCommand(buffered)
@@ -246,12 +256,13 @@ watch(
   },
 )
 
-// Watch game events for audio cues + shake
+// Watch game events for audio cues + shake. Keyed on the store's monotonic
+// eventSeq (not events.length, which freezes at the 200-event cap and would
+// stop firing mid-game); the newest batch is read from latestEvents.
 watch(
-  () => gameStore.events.length,
-  (newLen, oldLen) => {
-    if (newLen <= (oldLen ?? 0)) return
-    const newEvents = gameStore.events.slice(oldLen ?? 0)
+  () => gameStore.eventSeq,
+  () => {
+    const newEvents = gameStore.latestEvents
     const pid = gameStore.playerId
     if (!pid) return
 
@@ -261,6 +272,7 @@ watch(
           if (e.payload.targetId === pid) {
             playSound('damage')
             triggerShake('light')
+            heroFlashKey.value++
           } else if (e.payload.sourceId === pid) {
             playSound('damage')
           }
@@ -285,6 +297,7 @@ watch(
           if (e.payload.killerId === pid) {
             playSound('kill')
             triggerShake('light')
+            kdaPopKey.value++
           }
           break
         case 'tower_kill':
@@ -370,104 +383,60 @@ function abilityLabel(id: unknown): string {
   return abilityNameById[id] ?? id
 }
 
-// Map game events to CombatLog format
-const combatEvents = computed(() => {
-  const mapped: CombatLine[] = gameStore.events.map((e) => {
-    let text = ''
-    let type: CombatLine['type'] = 'system'
-    let killerHeroId: string | undefined
-    let victimHeroId: string | undefined
-    let dedupKey: string | undefined
-    let dmgAmount: number | undefined
+// Build the combat log + kill feed from the engine event stream. The big
+// per-event switch now lives in combatNarrative (covering all ~33 event types
+// with salience), so this is a thin store→context adapter.
+const narrativeCtx = computed<NarrativeContext>(() => ({
+  playerId: gameStore.playerId,
+  myTeam: gameStore.player?.team,
+  entityLabel,
+  abilityLabel,
+  teamOf: (id) => (typeof id === 'string' ? gameStore.allPlayers[id]?.team : undefined),
+  heroIdOf: (id) =>
+    typeof id === 'string' ? (gameStore.allPlayers[id]?.heroId ?? undefined) : undefined,
+  itemName: (id) => ITEMS[id]?.name ?? id,
+}))
 
-    switch (e.type) {
-      case 'damage':
-        text = `${entityLabel(e.payload.sourceId)} dealt ${e.payload.amount} ${e.payload.damageType ?? ''} damage to ${entityLabel(e.payload.targetId)}`
-        type = 'damage'
-        // Structure damage (a hero/creep chipping a tower or the Core) repeats
-        // every tick; flag it so consecutive identical lines collapse into one
-        // running line instead of flooding the log. Hero-vs-hero damage is left
-        // un-keyed so it never merges.
-        if (isStructureTarget(e.payload.targetId)) {
-          dedupKey = `dmg:${String(e.payload.sourceId)}->${String(e.payload.targetId)}`
-          dmgAmount = Number(e.payload.amount) || 0
-        }
-        break
-      case 'heal':
-        text = `${entityLabel(e.payload.sourceId)} healed ${entityLabel(e.payload.targetId)} for ${e.payload.amount}`
-        type = 'healing'
-        break
-      case 'kill': {
-        const goldPart = e.payload.goldAwarded ? ` (+${e.payload.goldAwarded}g)` : ''
-        text = `[KILL] ${entityLabel(e.payload.killerId)} eliminated ${entityLabel(e.payload.victimId)}!${goldPart}`
-        type = 'kill'
-        killerHeroId = e.payload.killerId
-          ? (gameStore.allPlayers[e.payload.killerId as string]?.heroId ?? undefined)
-          : undefined
-        victimHeroId = e.payload.victimId
-          ? (gameStore.allPlayers[e.payload.victimId as string]?.heroId ?? undefined)
-          : undefined
-        break
-      }
-      case 'death': {
-        const respawnTick = e.payload.respawnTick as number | undefined
-        const respawnText =
-          respawnTick != null ? ` (respawn in ${respawnTick - gameStore.tick} ticks)` : ''
-        text = `[DEATH] ${entityLabel(e.payload.playerId)} was terminated${respawnText}`
-        type = 'damage'
-        break
-      }
-      case 'gold_change':
-        text = `${entityLabel(e.payload.playerId)} ${(e.payload.amount as number) >= 0 ? 'earned' : 'lost'} ${Math.abs(e.payload.amount as number)}g (${e.payload.reason})`
-        type = 'gold'
-        break
-      case 'level_up':
-        text = `[LEVEL UP] ${entityLabel(e.payload.playerId)} reached level ${e.payload.newLevel}!`
-        type = 'system'
-        break
-      case 'ability_used':
-        text = `${entityLabel(e.payload.playerId)} used ${abilityLabel(e.payload.abilityId)}${e.payload.targetId ? ` on ${entityLabel(e.payload.targetId)}` : ''}`
-        type = 'ability'
-        break
-      case 'tower_kill':
-        text = `[KILL] ${e.payload.killerTeam} destroyed ${e.payload.team} tower in ${e.payload.zone}!`
-        type = 'kill'
-        break
-      case 'ancient_destroyed':
-        // The CombatLog renders the [VICTORY] tag for victory-type lines, so the
-        // text carries no bracket tag (avoids the old doubled-[KILL] line) and
-        // no longer reads as a "tower in <base>".
-        text = `${teamLabel(String(e.payload.killerTeam))} destroyed the ${teamLabel(String(e.payload.team))} Core!`
-        type = 'victory'
-        break
-      case 'creep_lasthit':
-        text = `${entityLabel(e.payload.playerId)} last-hit ${e.payload.creepType} creep (+${e.payload.goldAwarded}g)`
-        type = 'gold'
-        break
-      case 'item_purchased':
-        text = `${entityLabel(e.payload.playerId)} purchased ${ITEMS[e.payload.itemId as string]?.name ?? e.payload.itemId} (-${e.payload.cost}g)`
-        type = 'gold'
-        break
-      default:
-        text = `${e.type}: ${JSON.stringify(e.payload)}`
-        type = 'system'
-    }
-
-    return { tick: e.tick, text, type, killerHeroId, victimHeroId, dedupKey, dmgAmount }
-  })
-
-  // Collapse consecutive structure-damage spam (same source chipping the same
-  // tower/Core every tick) into one running line with a hit count + total.
-  const collapsed = collapseStructureDamage(
-    mapped,
-    ({ baseText, count, total }) => `${baseText} (${count} hits, ${total} total)`,
-  )
-
-  return [...collapsed, ...localEvents.value].sort((a, b) => a.tick - b.tick)
+const combatEvents = computed<CombatLine[]>(() => {
+  const lines = buildCombatLines(gameStore.events, narrativeCtx.value, collapseStructureDamage)
+  return [...lines, ...localEvents.value].sort((a, b) => a.tick - b.tick)
 })
+
+// Cinematic headline plays — first blood, multi-kills, shutdowns, tower/Roshan/Core.
+const killFeed = computed<KillFeedEntry[]>(() =>
+  deriveKillFeed(gameStore.events, narrativeCtx.value),
+)
 
 // Ancients (team cores) live in the game store — shown on the base zones of the map.
 const ancients = computed(() => gameStore.ancients)
+
+// ── Tick Theater drama + low-HP danger framing ───────────────────
+const THEATER_BAR_WIDTH = 24
+
+/** Wide countdown bar that drains over the 4s tick — the Theater heartbeat. */
+const theaterBar = computed(() => {
+  const remaining = Math.max(0, Math.min(TICK_DURATION_MS, gameStore.nextTickIn))
+  const filled = Math.round((remaining / TICK_DURATION_MS) * THEATER_BAR_WIDTH)
+  return '█'.repeat(filled) + '░'.repeat(THEATER_BAR_WIDTH - filled)
+})
+
+/** Anticipation: the last ~1s before resolution. */
+const tickImminent = computed(() => gameStore.nextTickIn > 0 && gameStore.nextTickIn < 1000)
+
+/** Theater header label: planning vs already-committed-and-waiting. */
+const theaterStatus = computed(() => {
+  if (!gameStore.isAlive) return 'DOWN'
+  return gameStore.canAct ? 'AWAITING ORDERS' : 'RESOLVING'
+})
+
+const hpPct = computed(() => {
+  const p = gameStore.player
+  return p && p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 100
+})
+/** Hero panel turns to the danger variant under 30% HP. */
+const heroDanger = computed(() => gameStore.isAlive && hpPct.value <= 30)
+/** A red vignette pulses over the whole screen under 15% HP. */
+const heroCritical = computed(() => gameStore.isAlive && hpPct.value <= 15)
 
 let firstTickLogged = false
 gameSocket.onMessage((msg) => {
@@ -529,6 +498,7 @@ const mapZones = computed(() => {
 
     // Count allies and enemies in this zone
     const allies: string[] = []
+    const enemyNames: string[] = []
     let enemyCount = 0
 
     if (!fogged) {
@@ -539,6 +509,7 @@ const mapZones = computed(() => {
           allies.push(p.heroId ?? p.name)
         } else {
           enemyCount++
+          enemyNames.push((p.heroId && HEROES[p.heroId]?.name) || p.name)
         }
       }
     }
@@ -570,6 +541,7 @@ const mapZones = computed(() => {
       playerHere: zone.id === playerZoneId,
       allies,
       enemyCount,
+      enemyNames,
       tower: towerDisplay,
       fogged,
       creepCount,
@@ -889,7 +861,7 @@ function handleReturnToMenu() {
   >
     <div
       v-if="!gameStore.isAlive && gameStore.player"
-      class="game-grid__map death-overlay"
+      class="death-overlay"
       data-testid="death-overlay"
     >
       <div
@@ -951,6 +923,21 @@ function handleReturnToMenu() {
       </button>
     </div>
 
+    <!-- Kill feed: cinematic headline plays overlaid near the top -->
+    <KillFeed
+      class="game-grid__killfeed"
+      :entries="killFeed"
+      :current-tick="currentTick"
+    />
+
+    <!-- Critical-HP red vignette pulse over the whole screen -->
+    <div
+      v-if="heroCritical"
+      class="anim-glow-pulse pointer-events-none absolute inset-0 z-[15]"
+      style="box-shadow: inset 0 0 120px rgba(255, 78, 110, 0.55)"
+      aria-hidden="true"
+    />
+
     <GameStateBar
       class="game-grid__bar"
       :tick="currentTick"
@@ -966,45 +953,98 @@ function handleReturnToMenu() {
       :time-of-day="gameStore.timeOfDay"
       :day-night-tick="gameStore.dayNightTick"
       :next-tick-in="gameStore.nextTickIn"
+      :teams="gameStore.teams"
+      :ancients="ancients"
+      :net-worth-radiant="gameStore.netWorth.radiant"
+      :net-worth-dire="gameStore.netWorth.dire"
+      :kda-pop-key="kdaPopKey"
     />
 
-    <TerminalPanel title="Map" class="game-grid__map min-h-0">
-      <div class="flex h-full items-center justify-center">
+    <!-- War Room: strategic dashboard (left) -->
+    <TerminalPanel title="War Room" class="game-grid__war min-h-0">
+      <WarRoom />
+    </TerminalPanel>
+
+    <!-- Tick Theater: the combat narrative is the centerpiece -->
+    <TerminalPanel title="Combat Log" class="game-grid__log min-h-0">
+      <div class="flex h-full min-h-0 flex-col">
+        <!-- Tick heartbeat header — drains over the 4s tick, flashes on reveal -->
+        <div
+          :key="tickPulseKey"
+          class="anim-tick-pulse flex shrink-0 items-center gap-2 border-b border-border bg-bg-secondary/70 px-2 py-1 font-mono text-[0.72rem]"
+          data-testid="theater-header"
+        >
+          <span
+            class="font-bold tracking-wider"
+            :class="
+              !gameStore.isAlive
+                ? 'text-dire'
+                : gameStore.canAct
+                  ? tickImminent
+                    ? 'text-warn anim-glow-pulse'
+                    : 'text-ability'
+                  : 'text-gold anim-glow-pulse'
+            "
+            >&gt;&gt; {{ theaterStatus }}</span
+          >
+          <span
+            class="flex-1 truncate tracking-[-0.05em]"
+            :class="tickImminent ? 'text-warn' : 'text-ability'"
+            aria-hidden="true"
+            >{{ theaterBar }}</span
+          >
+          <span class="shrink-0 text-text-dim"
+            >T-{{ (gameStore.nextTickIn / 1000).toFixed(1) }}s</span
+          >
+        </div>
+        <CombatLog class="min-h-0 flex-1" :events="combatEvents" />
+      </div>
+    </TerminalPanel>
+
+    <!-- Right rail: hero / current-zone fight / compact map -->
+    <div class="game-grid__rail flex min-h-0 flex-col gap-1 overflow-y-auto">
+      <TerminalPanel title="Hero Status" :variant="heroDanger ? 'danger' : 'default'" class="shrink-0">
+        <div class="relative">
+          <!-- Damage flash: a stateless keyed overlay so HeroStatus (and its
+               canvas avatar + open tooltips) is NOT remounted on every hit. -->
+          <div
+            :key="heroFlashKey"
+            class="anim-flash pointer-events-none absolute inset-0 z-10"
+            aria-hidden="true"
+          />
+          <HeroStatus
+            v-if="heroData"
+            :hero="heroData"
+            :hero-id="gameStore.player?.heroId ?? undefined"
+            @cast-ability="handleQuickAction"
+          />
+          <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
+        </div>
+      </TerminalPanel>
+
+      <TerminalPanel :title="`Zone: ${currentZoneName}`" class="min-h-0 flex-1">
+        <ZonePanel
+          :zone-name="currentZoneName"
+          :player-team="gameStore.player?.team ?? 'radiant'"
+          :enemies="gameStore.nearbyEnemies"
+          :allies="gameStore.nearbyAllies"
+          :creeps="zoneCreeps"
+          :neutrals="zoneNeutrals"
+          :tower="zoneTower"
+          @command="handleCommand"
+        />
+      </TerminalPanel>
+
+      <TerminalPanel title="Map" class="shrink-0">
         <AsciiMap
           :zones="mapZones"
           :player-zone="playerZone"
           :ancients="ancients"
+          force-mode="compact"
           @zone-click="handleZoneClick"
         />
-      </div>
-    </TerminalPanel>
-
-    <TerminalPanel title="Combat Log" class="game-grid__log min-h-0">
-      <CombatLog :events="combatEvents" />
-    </TerminalPanel>
-
-    <TerminalPanel title="Hero Status" class="game-grid__hero min-h-0">
-      <HeroStatus
-        v-if="heroData"
-        :hero="heroData"
-        :hero-id="gameStore.player?.heroId ?? undefined"
-        @cast-ability="handleQuickAction"
-      />
-      <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
-    </TerminalPanel>
-
-    <TerminalPanel :title="`Zone: ${currentZoneName}`" class="game-grid__zone min-h-0">
-      <ZonePanel
-        :zone-name="currentZoneName"
-        :player-team="gameStore.player?.team ?? 'radiant'"
-        :enemies="gameStore.nearbyEnemies"
-        :allies="gameStore.nearbyAllies"
-        :creeps="zoneCreeps"
-        :neutrals="zoneNeutrals"
-        :tower="zoneTower"
-        @command="handleCommand"
-      />
-    </TerminalPanel>
+      </TerminalPanel>
+    </div>
 
     <!-- Scoreboard overlay (Tab hold on desktop, SCORE button on mobile) -->
     <div
@@ -1124,10 +1164,13 @@ function handleReturnToMenu() {
 </template>
 
 <style scoped>
+/* Desktop: three columns — War Room (left) | Tick Theater / combat log
+   (center, the focal surface) | hero+zone+map rail (right). The log is now the
+   largest single panel; the near-static map is demoted to a compact rail widget. */
 .game-grid {
   display: grid;
-  grid-template-columns: 7fr 3fr;
-  grid-template-rows: auto 1fr auto auto auto;
+  grid-template-columns: minmax(190px, 2.4fr) minmax(0, 5fr) minmax(244px, 3.3fr);
+  grid-template-rows: auto 1fr auto;
   gap: 2px;
   /* dvh tracks the real visible height on mobile (URL bar collapse); vh is the fallback */
   height: 100vh;
@@ -1136,26 +1179,34 @@ function handleReturnToMenu() {
 
 .game-grid__bar {
   grid-column: 1 / -1;
+  grid-row: 1;
 }
-.game-grid__map {
-  grid-row: 2 / 6;
+.game-grid__war {
   grid-column: 1;
+  grid-row: 2;
 }
 .game-grid__log {
+  grid-column: 2;
   grid-row: 2;
-  grid-column: 2;
 }
-.game-grid__hero {
-  grid-row: 3;
-  grid-column: 2;
-}
-.game-grid__zone {
-  grid-row: 4;
-  grid-column: 2;
+.game-grid__rail {
+  grid-column: 3;
+  grid-row: 2;
 }
 .game-grid__cmd {
-  grid-row: 5;
-  grid-column: 2;
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+/* Kill feed floats over the top-center, below the bar. */
+.game-grid__killfeed {
+  position: absolute;
+  top: 4.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  width: max-content;
+  max-width: 92%;
 }
 
 .death-overlay {
@@ -1169,66 +1220,63 @@ function handleReturnToMenu() {
 }
 
 @media (max-width: 1024px) {
+  /* Tablet: combat log spans full width as the primary surface; War Room and
+     the hero/zone/map rail share the row beneath it. */
   .game-grid {
-    /* Map gets more vertical real estate than log/hero on tablet.
-       The compact zone-card map needs a guaranteed minimum to stay usable.
-       Hero status and zone panel share a row side-by-side. */
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto minmax(240px, 2fr) 1fr 1fr auto;
+    grid-template-rows: auto minmax(220px, 1.7fr) minmax(170px, 1fr) auto;
   }
-  .game-grid__map {
+  .game-grid__bar {
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 1;
   }
   .game-grid__log {
     grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .game-grid__war {
+    grid-column: 1;
     grid-row: 3;
   }
-  .game-grid__hero {
-    grid-column: 1;
-    grid-row: 4;
-  }
-  .game-grid__zone {
+  .game-grid__rail {
     grid-column: 2;
-    grid-row: 4;
+    grid-row: 3;
   }
   .game-grid__cmd {
     grid-column: 1 / -1;
-    grid-row: 5;
+    grid-row: 4;
   }
 }
 
 @media (max-width: 640px) {
+  /* Phone: single column, log still primary directly under the bar; the rail
+     (hero/zone/map) and War Room stack below, each scrolling internally. */
   .game-grid {
-    /* On phones, prioritize map + hero + zone (touch targeting).
-       The compact map (current zone + tappable adjacent cards) scrolls
-       internally, so 200px keeps it usable without starving the zone
-       panel below it. The log gets the smallest slice. */
     grid-template-columns: 1fr;
     grid-template-rows:
-      auto minmax(200px, 2fr) minmax(96px, 1fr) minmax(120px, 1.3fr)
-      minmax(64px, 0.8fr) auto;
+      auto minmax(200px, 1.9fr) minmax(120px, 1.1fr)
+      minmax(96px, 0.9fr) auto;
     gap: 1px;
   }
-  .game-grid__map {
+  .game-grid__bar {
     grid-column: 1;
-    grid-row: 2;
-  }
-  .game-grid__hero {
-    grid-column: 1;
-    grid-row: 3;
-  }
-  .game-grid__zone {
-    grid-column: 1;
-    grid-row: 4;
+    grid-row: 1;
   }
   .game-grid__log {
     grid-column: 1;
-    grid-row: 5;
+    grid-row: 2;
+  }
+  .game-grid__rail {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .game-grid__war {
+    grid-column: 1;
+    grid-row: 4;
   }
   .game-grid__cmd {
     grid-column: 1;
-    grid-row: 6;
+    grid-row: 5;
   }
 }
 </style>

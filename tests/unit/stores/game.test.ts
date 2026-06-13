@@ -747,3 +747,89 @@ describe('Game Store', () => {
     })
   })
 })
+
+describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objectives / rosters)', () => {
+  // A FoggedPlayer arrives without zone/hp/cooldowns; cast at the call site.
+  const fogged = (id: string, team: 'radiant' | 'dire', alive = true) =>
+    ({ id, name: id, team, heroId: 'null_ref', level: 3, alive, fogged: true }) as unknown as PlayerState
+
+  it('records last-seen only for un-fogged players, never overwriting from fog', () => {
+    const store = useGameStore()
+    store.playerId = 'me'
+    const me = makePlayer({ id: 'me', team: 'radiant', zone: 'mid-river' })
+    const enemyVisible = makePlayer({ id: 'e1', team: 'dire', zone: 'top-river' })
+    store.updateFromTick(makeTickMessage({ tick: 10, players: { me, e1: enemyVisible } }))
+    expect(store.lastSeen['e1']).toEqual({ zone: 'top-river', tick: 10 })
+
+    // e1 now fogged (no zone) — last-seen must stay at the last observed position.
+    store.updateFromTick(makeTickMessage({ tick: 14, players: { me, e1: fogged('e1', 'dire') } }))
+    expect(store.lastSeen['e1']).toEqual({ zone: 'top-river', tick: 10 })
+  })
+
+  it('carries an enemy net worth forward while fogged (no crater to zero)', () => {
+    const store = useGameStore()
+    store.playerId = 'me'
+    const me = makePlayer({ id: 'me', team: 'radiant' })
+    const enemy = makePlayer({ id: 'e1', team: 'dire', gold: 1000, items: [] })
+    store.updateFromTick(makeTickMessage({ tick: 10, players: { me, e1: enemy } }))
+    const direBefore = store.netWorth.dire
+    expect(direBefore).toBe(1000)
+
+    store.updateFromTick(makeTickMessage({ tick: 14, players: { me, e1: fogged('e1', 'dire') } }))
+    expect(store.netWorth.dire).toBe(direBefore) // carried forward, not 0
+  })
+
+  it('caps net-worth history at 40 samples', () => {
+    const store = useGameStore()
+    const me = makePlayer({ id: 'me' })
+    for (let t = 1; t <= 45; t++) {
+      store.updateFromTick(makeTickMessage({ tick: t, players: { me } }))
+    }
+    expect(store.netWorthHistory.radiant.length).toBe(40)
+  })
+
+  it('ingests roshan/runes/aegis and clears aegis when null', () => {
+    const store = useGameStore()
+    const base = makeTickMessage({ tick: 10 })
+    const s = base.state as unknown as Record<string, unknown>
+    s.roshan = { alive: false, hp: 0, maxHp: 5000, deathTick: 10 }
+    s.runes = [{ zone: 'rune-top', type: 'haste', tick: 10 }]
+    s.aegis = { zone: 'roshan-pit', tick: 10, holderId: null }
+    store.updateFromTick(base)
+    expect(store.roshan?.alive).toBe(false)
+    expect(store.runes).toHaveLength(1)
+    expect(store.aegis?.zone).toBe('roshan-pit')
+
+    const next = makeTickMessage({ tick: 14 })
+    ;(next.state as unknown as Record<string, unknown>).aegis = null
+    store.updateFromTick(next)
+    expect(store.aegis).toBeNull()
+  })
+
+  it('rosters: empty before player data; enemyPlayers includes fogged, allyPlayers excludes self', () => {
+    const store = useGameStore()
+    expect(store.enemyPlayers).toEqual([])
+    store.playerId = 'me'
+    const me = makePlayer({ id: 'me', team: 'radiant' })
+    const ally = makePlayer({ id: 'a1', team: 'radiant' })
+    store.updateFromTick(
+      makeTickMessage({ tick: 10, players: { me, a1: ally, e1: fogged('e1', 'dire') } }),
+    )
+    expect(store.enemyPlayers.map((p) => p.id)).toEqual(['e1'])
+    expect(store.allyPlayers.map((p) => p.id)).toEqual(['a1'])
+  })
+
+  it('bumps eventSeq + exposes latestEvents so game-feel survives the 200-cap', () => {
+    const store = useGameStore()
+    const mk = (n: number): GameEvent[] =>
+      Array.from({ length: n }, (_, i) => ({ tick: 1, type: 'damage', payload: { amount: i } }))
+    store.addEvents(mk(150))
+    expect(store.events.length).toBe(150)
+    const seqAfter150 = store.eventSeq
+    // Push past the 200 cap — events.length pins at 200 but eventSeq keeps moving.
+    store.addEvents(mk(100))
+    expect(store.events.length).toBe(200)
+    expect(store.eventSeq).toBe(seqAfter150 + 100)
+    expect(store.latestEvents.length).toBe(100)
+  })
+})

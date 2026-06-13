@@ -61,4 +61,37 @@ describe('GameStateBar', () => {
       expect(wrapper.find('[data-testid="tick-countdown"]').exists()).toBe(false)
     })
   })
+
+  describe('macro strip', () => {
+    const teams = {
+      radiant: { id: 'radiant', kills: 12, towerKills: 3, gold: 0, glyphUsedTick: null },
+      dire: { id: 'dire', kills: 8, towerKills: 1, gold: 0, glyphUsedTick: null },
+    }
+    const ancients = {
+      radiant: { team: 'radiant', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      dire: { team: 'dire', hp: 3000, maxHp: 6000, alive: true, vulnerable: true },
+    }
+
+    it('is hidden without team data', () => {
+      expect(mountBar(baseProps).find('[data-testid="macro-strip"]').exists()).toBe(false)
+    })
+
+    it('shows team score, net-worth lead, towers, and Core HP', () => {
+      const w = mountBar({
+        ...baseProps,
+        teams,
+        ancients,
+        netWorthRadiant: 12000,
+        netWorthDire: 8000,
+      })
+      const strip = w.find('[data-testid="macro-strip"]')
+      expect(strip.exists()).toBe(true)
+      expect(strip.text()).toContain('12') // radiant kills
+      expect(strip.text()).toContain('8') // dire kills
+      const lead = w.find('[data-testid="networth-lead"]')
+      expect(lead.text()).toContain('RAD')
+      expect(lead.text()).toContain('4.0k')
+      expect(strip.text()).toContain('50%') // dire core at half
+    })
+  })
 })
