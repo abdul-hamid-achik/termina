@@ -216,7 +216,7 @@ describe('AncientSystem', () => {
       expect(result.state.ancients.dire.hp).toBe(ANCIENT_HP - 20)
     })
 
-    it('destroys the Ancient at 0 HP and emits a structure-kill event', () => {
+    it('destroys the Ancient at 0 HP and emits a dedicated ancient_destroyed event', () => {
       const base = vulnerableState({
         players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'dire-base' }) },
       })
@@ -228,9 +228,12 @@ describe('AncientSystem', () => {
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.state.ancients.dire.hp).toBe(0)
       expect(result.state.ancients.dire.alive).toBe(false)
-      const killEvent = result.events.find((e) => e._tag === 'tower_kill')
+      // No tower_kill reuse — the Ancient has its own event so the UI does not
+      // render a misleading "destroyed tower in <base>" line.
+      expect(result.events.some((e) => e._tag === 'tower_kill')).toBe(false)
+      const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
       expect(killEvent).toBeDefined()
-      expect(killEvent).toMatchObject({ zone: 'dire-base', team: 'dire', killerTeam: 'radiant' })
+      expect(killEvent).toMatchObject({ team: 'dire', killerTeam: 'radiant' })
     })
 
     it('rejects attacks on an already-destroyed Ancient', () => {

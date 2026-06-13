@@ -40,6 +40,10 @@ export default defineConfig({
       // The suite registers ~50 users from one IP; the per-IP auth limit would
       // 429 most of them. Disable rate limiting for the test server only.
       TERMINA_DISABLE_RATE_LIMIT: '1',
+      // Opt-in for test-only server hooks (server/api/test/*). Enables the
+      // /api/test/force-end route the game-over + smoke specs use to end a
+      // game deterministically instead of playing a full match to completion.
+      TERMINA_TEST_HOOKS: '1',
     },
   },
 

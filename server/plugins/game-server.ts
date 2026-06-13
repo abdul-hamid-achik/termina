@@ -159,6 +159,46 @@ export function getGameRuntime(): GameRuntime | null {
   return _runtime
 }
 
+/**
+ * Test-only hook: force a live game to end with the given winner.
+ *
+ * Sets the game's phase to 'ended' + winner via its state manager (mirroring
+ * how this plugin already drives `updateState`). The running GameLoop fiber
+ * picks this up on its next tick — its win-condition block (GameLoop.ts ~282)
+ * sees `phase === 'ended'` with a winner and fires `callbacks.onGameOver`,
+ * which persists the match and broadcasts `game_over` to clients. So forcing
+ * the state ends the game cleanly, exactly as an Ancient kill would.
+ *
+ * Returns false if no such live game exists (e.g. on another instance, or
+ * already ended). HARD no-op in production — never end real matches.
+ *
+ * Gated again at the API layer (server/api/test/force-end.post.ts), but the
+ * production guard lives here too so no caller can ever reach it in prod.
+ */
+export function forceEndGame(gameId: string, winner: TeamId): boolean {
+  if (process.env.NODE_ENV === 'production') return false
+
+  const entry = liveGames.get(gameId)
+  if (!entry) return false
+
+  const runtime = _runtime
+  if (!runtime) return false
+
+  try {
+    runtime.managedRuntime.runSync(
+      entry.stateManager.updateState(gameId, (s) => ({
+        ...s,
+        phase: 'ended' as const,
+        winner,
+      })),
+    )
+    return true
+  } catch (err) {
+    gameLog.error('forceEndGame failed', { gameId, error: String(err) })
+    return false
+  }
+}
+
 export default defineNitroPlugin(async (nitroApp) => {
   const config = useRuntimeConfig()
   const redisUrl = (config.redis as { url: string }).url

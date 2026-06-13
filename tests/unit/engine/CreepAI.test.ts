@@ -559,7 +559,7 @@ describe('CreepAI', () => {
       expect(result.events[0]!._tag).toBe('damage')
     })
 
-    it('destroys the Ancient and emits a structure-kill event', () => {
+    it('destroys the Ancient and emits a dedicated ancient_destroyed event', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
@@ -576,8 +576,10 @@ describe('CreepAI', () => {
       const result = applyCreepActions(state, actions)
       expect(result.state.ancients.dire.alive).toBe(false)
       expect(result.state.ancients.dire.hp).toBe(0)
-      const killEvent = result.events.find((e) => e._tag === 'tower_kill')
+      expect(result.events.some((e) => e._tag === 'tower_kill')).toBe(false)
+      const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
       expect(killEvent).toBeDefined()
+      expect(killEvent).toMatchObject({ team: 'dire', killerTeam: 'radiant' })
     })
 
     it('does not damage an invulnerable Ancient even if an action sneaks through', () => {

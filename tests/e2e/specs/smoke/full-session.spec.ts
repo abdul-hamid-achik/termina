@@ -5,10 +5,10 @@ test.describe('Smoke Test', () => {
   test('full game session: home -> register -> lobby -> game -> game over -> profile -> logout', async ({
     page,
   }) => {
-    // Full game under TERMINA_TEST_FAST_GAME ends via Ancient destruction.
-    // With one idle human + 9 bots the slow tail reaches ~8 min of real time,
-    // so budget generously for the in-game wait plus registration/lobby/nav.
-    test.setTimeout(720_000)
+    // The game is ended deterministically via the /api/test/force-end hook
+    // (see game-over.spec.ts), so the in-game phase is near-instant. Budget
+    // covers registration + lobby matchmaking + navigation only.
+    test.setTimeout(240_000)
 
     // 1. Home page loads
     await page.goto('/')
@@ -84,13 +84,21 @@ test.describe('Smoke Test', () => {
     await cmdInput.fill('chat team hello from e2e test')
     await cmdInput.press('Enter')
 
-    // 12. Wait for game to end via Ancient destruction. Bot games vary widely
-    // (fast ~1 min, slow tail ~8 min at fast-game factor 8), so wait generously.
-    await page.getByTestId('post-game').waitFor({ timeout: 540_000 })
+    // 12. End the game deterministically via the test-only force-end hook
+    // (gated on TERMINA_TEST_HOOKS=1 in playwright.config.ts) instead of
+    // playing the full bot match to an Ancient kill. The running GameLoop
+    // broadcasts game_over on its next tick, so the post-game screen appears
+    // almost immediately.
+    const gameId = await page.getByTestId('game-screen').getAttribute('data-game-id')
+    expect(gameId).toBeTruthy()
+    const forceEndRes = await page.request.post('/api/test/force-end', {
+      data: { gameId, winner: 'radiant' },
+    })
+    expect(forceEndRes.ok()).toBe(true)
+    await page.getByTestId('post-game').waitFor({ timeout: 30_000 })
 
-    // 13. Verify game over screen
-    const victoryText = page.getByText(/RADIANT VICTORY|DIRE VICTORY/)
-    await expect(victoryText).toBeVisible()
+    // 13. Verify game over screen — we forced a radiant win.
+    await expect(page.getByText('RADIANT VICTORY')).toBeVisible()
 
     // 14. Click MAIN MENU
     await page.getByTestId('return-to-menu-btn').click()

@@ -1,15 +1,16 @@
 import { test, expect } from '../../fixtures/game'
 
-// Games end when a team destroys the enemy Ancient. The fast-game test hook
-// (TERMINA_TEST_FAST_GAME, set in playwright.config.ts) shrinks Ancient/tower
-// HP and speeds the tick. A live game has one idle human (the test browser)
-// plus 9 bots, so it runs longer and far more variably than the all-bot sim —
-// the slow tail reaches ~tick 930 (~8 min of real time at factor 8). The four
-// post-game assertions all inspect the SAME end screen, so we play ONE game to
-// completion and assert everything in sequence rather than replaying a full
-// match four times (which is what made the suite take hours).
-const GAME_END_TIMEOUT = 540_000 // wait for the post-game screen to appear
-const TEST_TIMEOUT = 720_000 // total budget: fixture matchmaking + the game
+// Games normally end when a team destroys the enemy Ancient — minutes of bot
+// play even under the fast-game hook, and highly variable. Instead we end the
+// game deterministically: once the gamePage fixture has the live game loaded,
+// we read its gameId off the game screen and POST /api/test/force-end (a
+// test-only server hook, gated on TERMINA_TEST_HOOKS=1 in playwright.config.ts).
+// That flips the game's phase to 'ended'; the running GameLoop broadcasts
+// game_over on its next tick (<1s under the fast-game interval), so the
+// post-game screen appears almost immediately. The four post-game assertions
+// all inspect the SAME end screen, so we end ONE game and assert in sequence.
+const GAME_END_TIMEOUT = 30_000 // post-game screen is near-instant after force-end
+const TEST_TIMEOUT = 240_000 // budget: fixture matchmaking + lobby + nav
 
 test.describe('Game Over', () => {
   test.setTimeout(TEST_TIMEOUT)
@@ -17,12 +18,23 @@ test.describe('Game Over', () => {
   test('post-game screen shows victory, personal stats, full scoreboard, and navigates home', async ({
     gamePage,
   }) => {
-    // Wait for game to end (a team destroys the enemy Ancient)
+    // The fixture has navigated to /play and waited for the game screen + first
+    // tick. Read the live gameId off the game screen, then force the game to end.
+    const gameId = await gamePage.getByTestId('game-screen').getAttribute('data-game-id')
+    expect(gameId).toBeTruthy()
+
+    const res = await gamePage.request.post('/api/test/force-end', {
+      data: { gameId, winner: 'radiant' },
+    })
+    expect(res.ok()).toBe(true)
+    expect((await res.json()).ended).toBe(true)
+
+    // The next tick broadcasts game_over → the client renders the post-game screen.
     const postGame = gamePage.getByTestId('post-game')
     await postGame.waitFor({ timeout: GAME_END_TIMEOUT })
 
-    // Victory banner
-    await expect(gamePage.getByText(/RADIANT VICTORY|DIRE VICTORY/)).toBeVisible()
+    // Victory banner — we forced a radiant win.
+    await expect(gamePage.getByText('RADIANT VICTORY')).toBeVisible()
 
     // Personal stats section
     await expect(postGame.getByText('K/D/A')).toBeVisible()

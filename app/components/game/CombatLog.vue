@@ -4,9 +4,11 @@ import { ref, watch, nextTick, onMounted, computed } from 'vue'
 interface LogEvent {
   tick: number
   text: string
-  type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability'
+  type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' | 'victory'
   killerHeroId?: string
   victimHeroId?: string
+  /** Number of times this running line has been collapsed (dedup of structure damage). */
+  count?: number
 }
 
 const props = defineProps<{
@@ -61,6 +63,7 @@ const borderColors: Record<string, string> = {
   gold: 'border-l-gold',
   system: 'border-l-system text-text-dim',
   ability: 'border-l-ability',
+  victory: 'border-l-gold font-bold',
 }
 
 function typeColor(type: LogEvent['type']): string {
@@ -71,6 +74,7 @@ function typeColor(type: LogEvent['type']): string {
     gold: 'rgb(var(--color-gold))',
     system: 'rgb(var(--color-system))',
     ability: 'rgb(var(--color-ability))',
+    victory: 'rgb(var(--color-gold))',
   }
   return map[type] ?? 'rgb(var(--text-primary))'
 }
@@ -83,6 +87,7 @@ function typePrefix(type: LogEvent['type']): string {
     gold: '[GOLD]',
     system: '[SYS]',
     ability: '[ABILITY]',
+    victory: '[VICTORY]',
   }
   return map[type] ?? ''
 }
@@ -131,7 +136,7 @@ function eventAriaLabel(event: LogEvent): string {
           class="mr-1 inline-flex align-middle"
         />
         <span
-          :class="event.type === 'kill' ? 'font-bold text-glow-sm' : ''"
+          :class="event.type === 'kill' || event.type === 'victory' ? 'font-bold text-glow-sm' : ''"
           :style="{ color: typeColor(event.type) }"
         >{{ event.text }}</span>
         <HeroAvatar

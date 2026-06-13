@@ -9,6 +9,12 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/server/game/items/registry'
 import type { TowerState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
+import {
+  collapseStructureDamage,
+  isStructureTarget,
+  teamLabel,
+  type CombatLine,
+} from '~/utils/combatLog'
 
 const gameStore = useGameStore()
 const gameSocket = useGameSocket()
@@ -347,6 +353,12 @@ function entityLabel(id: unknown): string {
     const zone = id.slice('tower_'.length)
     return `tower (${zone})`
   }
+  if (id.startsWith('ancient_')) {
+    const team = id.slice('ancient_'.length)
+    if (team === 'radiant') return 'the Radiant Core'
+    if (team === 'dire') return 'the Dire Core'
+    return `the ${team} Core`
+  }
   if (id === 'roshan') return 'Roshan'
   if (id === 'buyback') return 'buyback'
   if (id === 'fountain') return 'the fountain'
@@ -360,16 +372,26 @@ function abilityLabel(id: unknown): string {
 
 // Map game events to CombatLog format
 const combatEvents = computed(() => {
-  const mapped = gameStore.events.map((e) => {
+  const mapped: CombatLine[] = gameStore.events.map((e) => {
     let text = ''
-    let type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' = 'system'
+    let type: CombatLine['type'] = 'system'
     let killerHeroId: string | undefined
     let victimHeroId: string | undefined
+    let dedupKey: string | undefined
+    let dmgAmount: number | undefined
 
     switch (e.type) {
       case 'damage':
         text = `${entityLabel(e.payload.sourceId)} dealt ${e.payload.amount} ${e.payload.damageType ?? ''} damage to ${entityLabel(e.payload.targetId)}`
         type = 'damage'
+        // Structure damage (a hero/creep chipping a tower or the Core) repeats
+        // every tick; flag it so consecutive identical lines collapse into one
+        // running line instead of flooding the log. Hero-vs-hero damage is left
+        // un-keyed so it never merges.
+        if (isStructureTarget(e.payload.targetId)) {
+          dedupKey = `dmg:${String(e.payload.sourceId)}->${String(e.payload.targetId)}`
+          dmgAmount = Number(e.payload.amount) || 0
+        }
         break
       case 'heal':
         text = `${entityLabel(e.payload.sourceId)} healed ${entityLabel(e.payload.targetId)} for ${e.payload.amount}`
@@ -411,6 +433,13 @@ const combatEvents = computed(() => {
         text = `[KILL] ${e.payload.killerTeam} destroyed ${e.payload.team} tower in ${e.payload.zone}!`
         type = 'kill'
         break
+      case 'ancient_destroyed':
+        // The CombatLog renders the [VICTORY] tag for victory-type lines, so the
+        // text carries no bracket tag (avoids the old doubled-[KILL] line) and
+        // no longer reads as a "tower in <base>".
+        text = `${teamLabel(String(e.payload.killerTeam))} destroyed the ${teamLabel(String(e.payload.team))} Core!`
+        type = 'victory'
+        break
       case 'creep_lasthit':
         text = `${entityLabel(e.payload.playerId)} last-hit ${e.payload.creepType} creep (+${e.payload.goldAwarded}g)`
         type = 'gold'
@@ -424,10 +453,17 @@ const combatEvents = computed(() => {
         type = 'system'
     }
 
-    return { tick: e.tick, text, type, killerHeroId, victimHeroId }
+    return { tick: e.tick, text, type, killerHeroId, victimHeroId, dedupKey, dmgAmount }
   })
 
-  return [...mapped, ...localEvents.value].sort((a, b) => a.tick - b.tick)
+  // Collapse consecutive structure-damage spam (same source chipping the same
+  // tower/Core every tick) into one running line with a hit count + total.
+  const collapsed = collapseStructureDamage(
+    mapped,
+    ({ baseText, count, total }) => `${baseText} (${count} hits, ${total} total)`,
+  )
+
+  return [...collapsed, ...localEvents.value].sort((a, b) => a.tick - b.tick)
 })
 
 // Ancients (team cores) live in the game store — shown on the base zones of the map.

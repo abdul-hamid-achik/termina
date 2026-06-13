@@ -43,6 +43,15 @@ export interface TowerKillEvent {
   readonly killerTeam: TeamId
 }
 
+export interface AncientDestroyedEvent {
+  readonly _tag: 'ancient_destroyed'
+  readonly tick: number
+  /** The team whose Ancient (Core) fell. */
+  readonly team: TeamId
+  /** The team that destroyed it (the winner). */
+  readonly killerTeam: TeamId
+}
+
 export interface CreepLasthitEvent {
   readonly _tag: 'creep_lasthit'
   readonly tick: number
@@ -268,6 +277,7 @@ export type GameEngineEvent =
   | KillEvent
   | DeathEvent
   | TowerKillEvent
+  | AncientDestroyedEvent
   | CreepLasthitEvent
   | CreepDenyEvent
   | GoldChangeEvent

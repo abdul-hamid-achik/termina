@@ -148,14 +148,13 @@ describe('Game Flow Integration', () => {
       expect(endState.ancients.radiant.alive).toBe(true)
 
       // Hero damage was routed to the Ancient and its destruction was
-      // announced (tower_kill in the base zone is the structure-down event).
+      // announced via the dedicated ancient_destroyed event (not a reused
+      // tower_kill, which would render a misleading "tower in <base>" line).
       expect(
         allEvents.some((e) => e._tag === 'damage' && e.targetId === 'ancient_dire'),
       ).toBe(true)
       expect(
-        allEvents.some(
-          (e) => e._tag === 'tower_kill' && e.zone === 'dire-base' && e.killerTeam === 'radiant',
-        ),
+        allEvents.some((e) => e._tag === 'ancient_destroyed' && e.team === 'dire' && e.killerTeam === 'radiant'),
       ).toBe(true)
     })
 

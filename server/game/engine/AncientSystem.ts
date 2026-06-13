@@ -144,12 +144,12 @@ export function resolveAncientAttack(
     },
   ]
   if (destroyed) {
-    // Reuse the tower_kill shape for the structure-destroyed announcement —
-    // the Ancient is effectively the final tower, in the base zone.
+    // Dedicated victory announcement — the Ancient (Core) is not a tower, so it
+    // gets its own event instead of reusing the tower_kill shape (which would
+    // render a misleading "destroyed <team> tower in <team>-base" line).
     events.push({
-      _tag: 'tower_kill',
+      _tag: 'ancient_destroyed',
       tick: state.tick,
-      zone: ANCIENT_ZONES[targetTeam],
       team: targetTeam,
       killerTeam: attackerTeam,
     })
