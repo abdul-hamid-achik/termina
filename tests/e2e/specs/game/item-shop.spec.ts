@@ -19,15 +19,18 @@ test.describe('Item Shop', () => {
   test('category tabs filter items (ALL, STARTER, CORE, CONSUMABLE)', async ({ gamePage }) => {
     await openShop(gamePage)
 
-    // All tabs should be visible
+    // All tab BUTTONS should be visible. Use role+exact, not getByText —
+    // item descriptions in the grid contain words like "all"/"core" ("reduce
+    // all ability cooldowns"), so getByText('ALL') matches the tab plus many
+    // tooltips (strict-mode violation).
     const shop = gamePage.getByTestId('item-shop')
-    await expect(shop.getByText('ALL')).toBeVisible()
-    await expect(shop.getByText('STARTER')).toBeVisible()
-    await expect(shop.getByText('CORE')).toBeVisible()
-    await expect(shop.getByText('CONSUMABLE')).toBeVisible()
+    await expect(shop.getByRole('button', { name: 'ALL', exact: true })).toBeVisible()
+    await expect(shop.getByRole('button', { name: 'STARTER', exact: true })).toBeVisible()
+    await expect(shop.getByRole('button', { name: 'CORE', exact: true })).toBeVisible()
+    await expect(shop.getByRole('button', { name: 'CONSUMABLE', exact: true })).toBeVisible()
 
     // Click STARTER tab to filter
-    await shop.getByText('STARTER').click()
+    await shop.getByRole('button', { name: 'STARTER', exact: true }).click()
     // Items should still be visible (filtered set)
     const items = shop.locator('[data-testid^="shop-item-"]')
     const count = await items.count()

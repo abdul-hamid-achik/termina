@@ -310,9 +310,54 @@ export default defineNitroPlugin(async (nitroApp) => {
       },
 
       onGameOver: async (gId, winner) => {
+        let finalState: GameState
         try {
-          const finalState = await managedRuntime.runPromise(stateManager.getState(gId))
+          finalState = await managedRuntime.runPromise(stateManager.getState(gId))
+        } catch (err) {
+          gameLog.error('Game over: could not read final state', {
+            gameId: gId,
+            error: String(err),
+          })
+          return
+        }
 
+        const realPlayers = players.filter((p) => !isBot(p.playerId))
+
+        // Build the end-of-game stats (no DB needed) and broadcast game_over
+        // FIRST. Players must reach the post-game screen even if DB persistence
+        // fails — a database hiccup must never strand everyone in a dead game.
+        const endStats: Record<
+          string,
+          {
+            kills: number
+            deaths: number
+            assists: number
+            gold: number
+            items: (string | null)[]
+            heroDamage: number
+            towerDamage: number
+          }
+        > = {}
+        for (const p of players) {
+          const ps = finalState.players[p.playerId]
+          endStats[p.playerId] = {
+            kills: ps?.kills ?? 0,
+            deaths: ps?.deaths ?? 0,
+            assists: ps?.assists ?? 0,
+            gold: ps?.gold ?? 0,
+            items: ps?.items ?? [],
+            heroDamage: ps?.damageDealt ?? 0,
+            towerDamage: ps?.towerDamageDealt ?? 0,
+          }
+        }
+
+        for (const p of realPlayers) {
+          sendToPeer(p.playerId, { type: 'game_over', winner, stats: endStats })
+        }
+
+        // Persist the match + MMR separately — failure is logged but never
+        // blocks the broadcast above or the cleanup below.
+        try {
           const matchRecord: NewMatch = {
             id: gId,
             mode: 'ranked_5v5',
@@ -320,8 +365,6 @@ export default defineNitroPlugin(async (nitroApp) => {
             durationTicks: finalState.tick,
             endedAt: new Date(),
           }
-
-          const realPlayers = players.filter((p) => !isBot(p.playerId))
           // Elo: each player's change is measured against the enemy team's
           // average MMR (bots included — they queue with a real bracket).
           const mmrChanges = new Map<string, number>()
@@ -374,53 +417,20 @@ export default defineNitroPlugin(async (nitroApp) => {
               }
             }),
           )
-
-          const endStats: Record<
-            string,
-            {
-              kills: number
-              deaths: number
-              assists: number
-              gold: number
-              items: (string | null)[]
-              heroDamage: number
-              towerDamage: number
-            }
-          > = {}
-          for (const p of players) {
-            const ps = finalState.players[p.playerId]
-            endStats[p.playerId] = {
-              kills: ps?.kills ?? 0,
-              deaths: ps?.deaths ?? 0,
-              assists: ps?.assists ?? 0,
-              gold: ps?.gold ?? 0,
-              items: ps?.items ?? [],
-              heroDamage: ps?.damageDealt ?? 0,
-              towerDamage: ps?.towerDamageDealt ?? 0,
-            }
-          }
-
-          for (const p of realPlayers) {
-            sendToPeer(p.playerId, {
-              type: 'game_over',
-              winner,
-              stats: endStats,
-            })
-          }
-
-          for (const p of realPlayers) {
-            clearPlayerGame(p.playerId)
-          }
-
-          cleanupGame(gId)
-          clearGameSpectators(gId)
-          liveGames.delete(gId)
-          // Leave the snapshot + action log behind so PostGame can show a
-          // replay link. The Redis TTL (8h) cleans them up eventually, and
-          // the resume-on-boot path already skips ended-phase snapshots.
         } catch (err) {
           gameLog.error('Game over persistence failed', { gameId: gId, error: String(err) })
         }
+
+        // Cleanup always runs, regardless of persistence outcome.
+        for (const p of realPlayers) {
+          clearPlayerGame(p.playerId)
+        }
+        cleanupGame(gId)
+        clearGameSpectators(gId)
+        liveGames.delete(gId)
+        // Leave the snapshot + action log behind so PostGame can show a replay
+        // link. The Redis TTL (8h) cleans them up; the resume-on-boot path
+        // already skips ended-phase snapshots.
       },
     }
   }

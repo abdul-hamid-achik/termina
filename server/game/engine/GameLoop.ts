@@ -372,7 +372,23 @@ function buildGameLoop(
   // doesn't kill the entire game loop.
   const tickLoop = Effect.gen(function* () {
     const currentState = yield* stateManager.getState(gameId)
-    if (currentState.phase === 'ended') return yield* Effect.interrupt
+    if (currentState.phase === 'ended') {
+      // The game can be ended out-of-band — the test-only force-end hook, or a
+      // resumed already-finished snapshot — without processTick having fired
+      // the game-over broadcast below. If a winner is set, fire onGameOver once
+      // so the client receives game_over and renders the post-game screen, then
+      // stop. (A normal in-tick end fires onGameOver at the bottom of this loop
+      // and interrupts, so it never re-reaches this branch — no double fire.)
+      const winner = currentState.winner ?? checkWinCondition(currentState)
+      if (winner) {
+        try {
+          callbacks.onGameOver(gameId, winner)
+        } catch (err) {
+          engineLog.warn('onGameOver (out-of-band end) failed', { gameId, error: String(err) })
+        }
+      }
+      return yield* Effect.interrupt
+    }
 
     const {
       state: newState,
