@@ -4,6 +4,11 @@ import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
+import {
+  BUYBACK_BASE_COST,
+  BUYBACK_COST_PER_LEVEL,
+  SURRENDER_MIN_TICK,
+} from '~~/shared/constants/balance'
 
 export interface Suggestion {
   text: string
@@ -15,6 +20,19 @@ export interface GameContext {
   visibleZones: Record<string, ZoneRuntimeState>
   allPlayers: Record<string, PlayerState>
   items?: Record<string, ItemDef>
+  /** Current game tick — enables cooldown/timing validation when provided. */
+  tick?: number
+}
+
+/**
+ * Buyback cost for a player. Prefers the server-computed `buybackCost`
+ * (set on death); falls back to mirroring the server formula in
+ * BuybackSystem.calculateBuybackCost — base + level scaling + a 10g
+ * per-death penalty (the penalty is hardcoded server-side).
+ */
+export function buybackCostFor(player: PlayerState): number {
+  if (player.buybackCost && player.buybackCost > 0) return player.buybackCost
+  return BUYBACK_BASE_COST + player.level * BUYBACK_COST_PER_LEVEL + player.deaths * 10
 }
 
 const SHORTCUTS: Record<string, string> = {
@@ -64,6 +82,8 @@ for (const [alias, zoneId] of Object.entries(ZONE_ALIASES)) {
 
 function parseTarget(raw: string): TargetRef | null {
   if (raw === 'self') return { kind: 'self' }
+  // The enemy team's core structure ("the Mainframe")
+  if (raw === 'ancient' || raw === 'mainframe' || raw === 'core') return { kind: 'ancient' }
   if (raw.startsWith('hero:')) return { kind: 'hero', name: raw.slice(5) }
   if (raw.startsWith('creep:')) {
     const idx = Number.parseInt(raw.slice(6), 10)
@@ -93,9 +113,34 @@ function hasDebuff(player: PlayerState, type: string): boolean {
 export function validateCommand(command: Command, context: GameContext): string | null {
   const player = context.player
   if (!player) return null
-  if (!player.alive) return 'Cannot act while dead'
+  // Buyback and surrender are exactly the commands a dead player needs —
+  // they bypass the dead-player gate (server handles them as special actions).
+  if (!player.alive && command.type !== 'buyback' && command.type !== 'surrender') {
+    return 'Cannot act while dead'
+  }
 
   switch (command.type) {
+    case 'buyback': {
+      if (player.alive) return 'Buyback is only available while dead'
+      if (
+        context.tick !== undefined &&
+        player.buybackCooldown &&
+        context.tick < player.buybackCooldown
+      ) {
+        return `Buyback on cooldown (${player.buybackCooldown - context.tick} ticks remaining)`
+      }
+      const cost = buybackCostFor(player)
+      if (player.gold < cost) {
+        return `Not enough gold for buyback (need ${cost - player.gold}g more)`
+      }
+      return null
+    }
+    case 'surrender': {
+      if (context.tick !== undefined && context.tick < SURRENDER_MIN_TICK) {
+        return `Too early to surrender (available at tick ${SURRENDER_MIN_TICK})`
+      }
+      return null
+    }
     case 'move': {
       const zone = ZONE_MAP[player.zone]
       if (!zone) return null
@@ -120,6 +165,12 @@ export function validateCommand(command: Command, context: GameContext): string 
       }
       if (t.kind === 'tower' && t.zone !== player.zone) {
         return 'Must be in the tower’s zone to attack it'
+      }
+      if (t.kind === 'ancient') {
+        const enemyBase = player.team === 'radiant' ? 'dire-base' : 'radiant-base'
+        if (player.zone !== enemyBase) {
+          return `Must be in the enemy base (${enemyBase}) to attack their Mainframe`
+        }
       }
       return null
     }
@@ -231,13 +282,13 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:axe, attack creep:0, attack tower:mid-t1-rad)',
+              'Usage: attack <target>  (e.g. attack hero:axe, attack creep:0, attack tower:mid-t1-rad, attack ancient)',
           }
         const target = parseTarget(targetStr)
         if (!target)
           return {
             command: null,
-            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, tower:<zone>, or self`,
+            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, tower:<zone>, ancient, or self`,
           }
         return { command: { type: 'attack', target }, error: null }
       }
@@ -312,10 +363,29 @@ export function useCommands() {
       case 'glyph':
         return { command: { type: 'glyph' }, error: null }
 
+      case 'buyback':
+        return { command: { type: 'buyback' }, error: null }
+
+      case 'surrender': {
+        // Confirm step so a match isn't thrown by a fat-fingered command
+        const arg = tokens[1]
+        if (arg === 'confirm' || arg === 'yes') {
+          return { command: { type: 'surrender', vote: 'yes' }, error: null }
+        }
+        if (arg === 'cancel' || arg === 'no') {
+          return { command: { type: 'surrender', vote: 'no' }, error: null }
+        }
+        return {
+          command: null,
+          error:
+            "Surrender requires confirmation — type 'surrender confirm' to vote yes, or 'surrender cancel' to retract your vote",
+        }
+      }
+
       default:
         return {
           command: null,
-          error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph`,
+          error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph, buyback, surrender`,
         }
     }
   }
@@ -344,12 +414,21 @@ export function useCommands() {
         'chat',
         'ping',
         'glyph',
+        'buyback',
+        'surrender',
       ]
       const shortcuts = Object.keys(SHORTCUTS)
       const all = [...cmds, ...shortcuts]
+      const descriptions: Record<string, string> = {
+        buyback: 'Pay gold to respawn instantly (while dead)',
+        surrender: "Vote to forfeit — requires 'surrender confirm'",
+      }
       return all
         .filter((c) => c.startsWith(parts[0]!))
-        .map((c) => ({ text: c, description: SHORTCUTS[c] ? `→ ${SHORTCUTS[c]}` : undefined }))
+        .map((c) => ({
+          text: c,
+          description: SHORTCUTS[c] ? `→ ${SHORTCUTS[c]}` : descriptions[c],
+        }))
     }
 
     const expanded = SHORTCUTS[parts[0]!] ?? parts[0]!
@@ -407,6 +486,14 @@ export function useCommands() {
 
     if (baseCmd === 'ping') {
       return _suggestZones(parts.slice(1).join(' '), context)
+    }
+
+    if (baseCmd === 'surrender' && parts.length === 2) {
+      const partial = parts[1]!
+      return [
+        { text: 'surrender confirm', description: 'Vote yes to forfeit the game' },
+        { text: 'surrender cancel', description: 'Retract your surrender vote' },
+      ].filter((s) => s.text.split(' ')[1]!.startsWith(partial))
     }
 
     return []
@@ -514,6 +601,12 @@ export function useCommands() {
       if (ref.includes(partial)) {
         suggestions.push({ text: ref, description: 'Tower' })
       }
+    }
+
+    // Suggest the enemy Mainframe when standing in the enemy base
+    const enemyBase = context.player.team === 'radiant' ? 'dire-base' : 'radiant-base'
+    if (context.player.zone === enemyBase && 'ancient'.includes(partial)) {
+      suggestions.push({ text: 'ancient', description: 'Enemy Mainframe (win the game!)' })
     }
 
     // Suggest self

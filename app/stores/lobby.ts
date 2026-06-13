@@ -28,15 +28,30 @@ export const useLobbyStore = defineStore('lobby', () => {
   // running their own drifting timers.
   const currentPicker = ref<{ playerId: string; username: string } | null>(null)
   const pickDeadline = ref<number | null>(null)
+  // Last user-facing error (failed queue join, server-rejected pick, WS errors).
+  // Rendered inline by the lobby UI instead of dying in the console.
+  const lastError = ref<string | null>(null)
+  // Optimistic hero pick awaiting server confirmation (hero_pick broadcast).
+  // Rolled back via rollbackPendingPick() when the server rejects it.
+  const pendingPick = ref<{ playerId: string; heroId: string } | null>(null)
 
   function setPickTurn(playerId: string, username: string, timeRemainingMs: number) {
     currentPicker.value = { playerId, username }
     pickDeadline.value = Date.now() + timeRemainingMs
   }
 
+  function setError(message: string) {
+    lastError.value = message
+  }
+
+  function clearError() {
+    lastError.value = null
+  }
+
   let queueTimer: ReturnType<typeof setInterval> | null = null
 
   async function joinQueue(mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5') {
+    clearError()
     try {
       const res = await $fetch<{ success: boolean; queueSize: number }>('/api/queue/join', {
         method: 'POST',
@@ -48,8 +63,22 @@ export const useLobbyStore = defineStore('lobby', () => {
       _startQueueTimer()
     } catch (err) {
       lobbyLog.error('Failed to join queue', err)
+      lastError.value = `could not join queue — ${_errorReason(err)}`
       throw err
     }
+  }
+
+  /** Extract a human-readable reason from a $fetch/network error. */
+  function _errorReason(err: unknown): string {
+    if (err && typeof err === 'object') {
+      const e = err as {
+        data?: { message?: string; statusMessage?: string }
+        statusMessage?: string
+        message?: string
+      }
+      return e.data?.message ?? e.data?.statusMessage ?? e.statusMessage ?? e.message ?? 'unknown error'
+    }
+    return String(err ?? 'unknown error')
   }
 
   async function leaveQueue() {
@@ -142,6 +171,30 @@ export const useLobbyStore = defineStore('lobby', () => {
     pickedHeroes.value = { ...pickedHeroes.value, [playerId]: heroId }
     // Update roster
     teamRoster.value = teamRoster.value.map((m) => (m.playerId === playerId ? { ...m, heroId } : m))
+    // A server hero_pick broadcast for the pending player confirms the optimistic pick
+    if (pendingPick.value?.playerId === playerId) {
+      pendingPick.value = null
+    }
+  }
+
+  /** Apply a pick locally before the server confirms it (snappy UI). */
+  function optimisticPick(playerId: string, heroId: string) {
+    clearError()
+    heroPicked(playerId, heroId)
+    pendingPick.value = { playerId, heroId }
+  }
+
+  /** Undo an optimistic pick the server rejected. No-op once confirmed. */
+  function rollbackPendingPick() {
+    if (!pendingPick.value) return
+    const { playerId } = pendingPick.value
+    pickedHeroes.value = Object.fromEntries(
+      Object.entries(pickedHeroes.value).filter(([pid]) => pid !== playerId),
+    )
+    teamRoster.value = teamRoster.value.map((m) =>
+      m.playerId === playerId ? { ...m, heroId: null } : m,
+    )
+    pendingPick.value = null
   }
 
   function allPicksComplete() {
@@ -209,6 +262,8 @@ export const useLobbyStore = defineStore('lobby', () => {
     countdown.value = 0
     currentPicker.value = null
     pickDeadline.value = null
+    lastError.value = null
+    pendingPick.value = null
   }
 
   function $dispose() {
@@ -237,16 +292,22 @@ export const useLobbyStore = defineStore('lobby', () => {
     countdown,
     currentPicker,
     pickDeadline,
+    lastError,
+    pendingPick,
     // Actions
     joinQueue,
     leaveQueue,
     recoverState,
     matchFound,
     heroPicked,
+    optimisticPick,
+    rollbackPendingPick,
     allPicksComplete,
     setTeamInfo,
     startCountdown,
     setPickTurn,
+    setError,
+    clearError,
     $dispose,
   }
 })

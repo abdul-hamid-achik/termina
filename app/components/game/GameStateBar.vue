@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '~~/shared/constants/balance'
+import { computed } from 'vue'
+import {
+  DAY_DURATION_TICKS,
+  NIGHT_DURATION_TICKS,
+  TICK_DURATION_MS,
+} from '~~/shared/constants/balance'
 
-defineProps<{
+const props = defineProps<{
   tick: number
   gameTime: string
   gold: number
@@ -14,7 +19,20 @@ defineProps<{
   latency?: number
   timeOfDay?: 'day' | 'night'
   dayNightTick?: number
+  /** Milliseconds until the next tick resolves (live countdown). */
+  nextTickIn?: number
 }>()
+
+// ── Tick countdown bar ─────────────────────────────────────────
+const TICK_BAR_WIDTH = 8
+
+const tickBar = computed(() => {
+  const remaining = Math.max(0, Math.min(TICK_DURATION_MS, props.nextTickIn ?? 0))
+  const filled = Math.round((remaining / TICK_DURATION_MS) * TICK_BAR_WIDTH)
+  return '█'.repeat(filled) + '░'.repeat(TICK_BAR_WIDTH - filled)
+})
+
+const tickSeconds = computed(() => ((props.nextTickIn ?? 0) / 1000).toFixed(1))
 
 function formatGold(n: number): string {
   return n.toLocaleString()
@@ -41,6 +59,16 @@ function formatTimeRemaining(tick: number, timeOfDay: string): string {
       <span class="text-text-primary">{{ tick }}</span>
     </span>
     <span class="text-border">|</span>
+    <span
+      v-if="nextTickIn !== undefined"
+      class="inline-flex items-center gap-1"
+      data-testid="tick-countdown"
+    >
+      <span class="t-caption">next tick</span>
+      <span class="text-ability tracking-[-0.05em]" aria-hidden="true">{{ tickBar }}</span>
+      <span class="text-text-primary">{{ tickSeconds }}s</span>
+    </span>
+    <span v-if="nextTickIn !== undefined" class="text-border">|</span>
     <span class="inline-flex gap-1">
       <span class="text-text-primary text-glow-sm">{{ gameTime }}</span>
     </span>

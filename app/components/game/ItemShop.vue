@@ -79,7 +79,7 @@ function formatStats(def: ItemDef): string[] {
       <button
         v-for="tab in TABS"
         :key="tab.key"
-        class="border px-2 py-0.5 font-mono text-[0.7rem] transition-[border-color,color] duration-100"
+        class="touch-target border px-2 py-0.5 font-mono text-[0.7rem] transition-[border-color,color] duration-100"
         :class="[
           activeTab === tab.key
             ? 'border-gold text-gold'
@@ -103,10 +103,13 @@ function formatStats(def: ItemDef): string[] {
     </div>
 
     <!-- Item grid -->
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-1 overflow-y-auto max-h-[300px] p-1">
+    <div
+      class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-1 overflow-y-auto max-h-[300px] p-1"
+    >
       <div
         v-for="item in filtered"
         :key="item.id"
+        :data-testid="`shop-item-${item.id}`"
         class="flex flex-col gap-0.5 border p-1.5 text-xs transition-[border-color] duration-150"
         :class="[
           isOwned(item.id)
@@ -128,14 +131,17 @@ function formatStats(def: ItemDef): string[] {
             v-for="(stat, si) in formatStats(item.def)"
             :key="si"
             class="text-[0.65rem] text-radiant"
-          >{{ stat }}</span>
+            >{{ stat }}</span
+          >
         </div>
 
         <!-- Active -->
         <div v-if="item.def.active" class="text-[0.65rem]">
           <span class="text-ability">Active:</span>
           <span class="text-text-dim"> {{ item.def.active.description }}</span>
-          <span v-if="item.def.active.cooldownTicks" class="text-text-dim"> ({{ item.def.active.cooldownTicks }}t CD)</span>
+          <span v-if="item.def.active.cooldownTicks" class="text-text-dim">
+            ({{ item.def.active.cooldownTicks }}t CD)</span
+          >
         </div>
 
         <!-- Passive -->
@@ -147,15 +153,25 @@ function formatStats(def: ItemDef): string[] {
         <!-- Footer -->
         <div class="mt-0.5 flex items-center justify-between">
           <span class="text-gold">{{ item.cost }}g</span>
-          <div class="flex items-center gap-1">
+          <!-- touch-gap keeps the destructive [PINNED] (unpin) tap away from [BUY]
+               when both are sized up to 44px on coarse pointers -->
+          <div class="touch-gap flex items-center gap-1">
             <button
-              class="text-[0.65rem] transition-colors duration-100"
+              class="touch-target text-[0.65rem] transition-colors duration-100"
               :class="isPinned(item.id) ? 'text-gold' : 'text-text-dim hover:text-gold'"
+              :data-testid="`shop-pin-${item.id}`"
               @click.stop="togglePin(item.id)"
             >
               {{ isPinned(item.id) ? '[PINNED]' : '[PIN]' }}
             </button>
-            <span v-if="item.cost <= gold && !isOwned(item.id)" class="text-[0.65rem] text-radiant">[BUY]</span>
+            <button
+              v-if="item.cost <= gold && !isOwned(item.id)"
+              class="touch-target text-[0.65rem] text-radiant hover:underline"
+              :data-testid="`shop-buy-${item.id}`"
+              @click.stop="emit('buy', item.id)"
+            >
+              [BUY]
+            </button>
           </div>
         </div>
       </div>

@@ -6,6 +6,13 @@ import { socketLog } from '~/utils/logger'
 const MAX_RECONNECT_DELAY = 30_000
 const MAX_RECONNECT_ATTEMPTS = 20
 const HEARTBEAT_INTERVAL = 10_000
+// Heartbeats that may go unacked before the connection is declared dead.
+// The dev WS proxy chain can drop the server side of a socket without the
+// browser ever seeing a close frame — a half-open socket looks "connected"
+// forever and silently receives nothing. Two missed acks (~20s) forces a
+// close + reconnect, which the server's `reconnect` path recovers via
+// full_state.
+const MAX_MISSED_HEARTBEATS = 2
 
 export function useGameSocket() {
   const connected = ref(false)
@@ -20,6 +27,8 @@ export function useGameSocket() {
   let currentGameId: string | null = null
   let currentPlayerId: string | null = null
   let lastPingTime = 0
+  let awaitingAck = false
+  let missedHeartbeats = 0
   const handlers: Array<(msg: ServerMessage) => void> = []
 
   const gameStore = useGameStore()
@@ -100,9 +109,16 @@ export function useGameSocket() {
       }
       console.log('[WS] message received:', msg.type)
 
-      // Measure latency from heartbeat round-trip
-      if (lastPingTime && msg.type === 'announcement') {
-        latency.value = Date.now() - lastPingTime
+      // Any message proves the link is alive
+      missedHeartbeats = 0
+
+      // Measure latency from the heartbeat round-trip
+      if (msg.type === 'heartbeat_ack') {
+        if (lastPingTime) {
+          latency.value = Date.now() - lastPingTime
+        }
+        awaitingAck = false
+        return
       }
 
       socketLog.trace(`Received: ${msg.type}`, {
@@ -203,8 +219,38 @@ export function useGameSocket() {
 
   function _startHeartbeat() {
     _stopHeartbeat()
+    awaitingAck = false
+    missedHeartbeats = 0
     heartbeatTimer = setInterval(() => {
+      // Previous ping never got acked (and no other message arrived to clear
+      // the counter) — the socket may be half-open: the dev proxy chain can
+      // drop the server side without delivering a close frame to the browser.
+      if (awaitingAck) {
+        missedHeartbeats++
+        if (missedHeartbeats >= MAX_MISSED_HEARTBEATS) {
+          socketLog.warn('Heartbeat acks missing — forcing reconnect', {
+            missed: missedHeartbeats,
+          })
+          missedHeartbeats = 0
+          awaitingAck = false
+          // Close without handlers (they'd double-schedule) and reconnect.
+          if (ws) {
+            ws.onclose = null
+            try {
+              ws.close()
+            } catch {
+              /* already closed */
+            }
+            ws = null
+          }
+          connected.value = false
+          _stopHeartbeat()
+          _scheduleReconnect()
+          return
+        }
+      }
       lastPingTime = Date.now()
+      awaitingAck = true
       send({ type: 'heartbeat' })
     }, HEARTBEAT_INTERVAL)
   }

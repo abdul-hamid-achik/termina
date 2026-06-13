@@ -1,3 +1,10 @@
+<script setup lang="ts">
+import { HERO_IDS } from '~~/shared/constants/heroes'
+
+// Live hero count from the registry so the landing page can't drift.
+const heroCount = HERO_IDS.length
+</script>
+
 <template>
   <div
     class="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center gap-8 p-8 text-center max-sm:p-4"
@@ -31,12 +38,13 @@
       <div class="flex items-baseline gap-3 text-[0.85rem]">
         <span class="shrink-0 text-ability">[03]</span>
         <span class="text-text-dim"
-          >6 unique heroes — carries, supports, assassins, tanks, mages</span
+          >{{ heroCount }} unique heroes — carries, supports, assassins, tanks, mages,
+          offlaners</span
         >
       </div>
       <div class="flex items-baseline gap-3 text-[0.85rem]">
         <span class="shrink-0 text-ability">[04]</span>
-        <span class="text-text-dim">Fog of war — use wards and scan to reveal the unseen</span>
+        <span class="text-text-dim">Fog of war — place wards to reveal the unseen</span>
       </div>
     </div>
 

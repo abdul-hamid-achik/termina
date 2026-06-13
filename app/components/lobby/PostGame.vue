@@ -122,7 +122,9 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
             <span class="t-caption uppercase">MMR</span>
             <span
               class="t-h1 t-mono-num"
-              :class="mmrChange >= 0 ? 'text-radiant text-glow-radiant' : 'text-dire text-glow-dire'"
+              :class="
+                mmrChange >= 0 ? 'text-radiant text-glow-radiant' : 'text-dire text-glow-dire'
+              "
             >
               {{ mmrChange >= 0 ? '+' : '' }}{{ mmrChange }}
             </span>
@@ -134,143 +136,194 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
     <div>
       <TerminalPanel title="Scoreboard">
         <div class="t-h3 pb-1 pt-1.5 text-radiant text-glow-radiant">RADIANT</div>
-        <table class="mb-3 w-full border-collapse text-xs">
-          <thead>
-            <tr>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Hero
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Player
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                K
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                D
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                A
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                DMG
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Gold
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Items
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="p in radiantPlayers"
-              :key="p.id"
-              class="anim-fade-in-up"
-              :class="{ 'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]': p.isCurrentPlayer }"
-            >
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
-                {{ HEROES[p.heroId]?.name ?? p.heroId }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
-                {{ p.name }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
-                {{ p.kills }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-dire">
-                {{ p.deaths }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                {{ p.assists }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
-                {{ p.heroDamage.toLocaleString() }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
-                {{ p.gold.toLocaleString() }}
-              </td>
-              <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
-                <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
-                  {{ (item ? ITEMS[item]?.name ?? item : '-') }}{{ i < 5 ? ' ' : '' }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="mb-3 overflow-x-auto">
+          <table class="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Hero
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Player
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  K
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  D
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  A
+                </th>
+                <th
+                  class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
+                >
+                  DMG
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Gold
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Items
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="p in radiantPlayers"
+                :key="p.id"
+                class="anim-fade-in-up"
+                :class="{
+                  'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]':
+                    p.isCurrentPlayer,
+                }"
+              >
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
+                  {{ HEROES[p.heroId]?.name ?? p.heroId }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
+                  {{ p.name }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
+                  {{ p.kills }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-dire">
+                  {{ p.deaths }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
+                  {{ p.assists }}
+                </td>
+                <td
+                  class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"
+                >
+                  {{ p.heroDamage.toLocaleString() }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
+                  {{ p.gold.toLocaleString() }}
+                </td>
+                <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
+                  <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
+                    {{ item ? (ITEMS[item]?.name ?? item) : '-' }}{{ i < 5 ? ' ' : '' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div class="t-h3 pb-1 pt-1.5 text-dire text-glow-dire">DIRE</div>
-        <table class="w-full border-collapse text-xs">
-          <thead>
-            <tr>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Hero
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Player
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                K
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                D
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                A
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                DMG
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Gold
-              </th>
-              <th class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim">
-                Items
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="p in direPlayers"
-              :key="p.id"
-              class="anim-fade-in-up"
-              :class="{ 'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]': p.isCurrentPlayer }"
-            >
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
-                {{ HEROES[p.heroId]?.name ?? p.heroId }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
-                {{ p.name }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
-                {{ p.kills }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-dire">
-                {{ p.deaths }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                {{ p.assists }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
-                {{ p.heroDamage.toLocaleString() }}
-              </td>
-              <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
-                {{ p.gold.toLocaleString() }}
-              </td>
-              <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
-                <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
-                  {{ (item ? ITEMS[item]?.name ?? item : '-') }}{{ i < 5 ? ' ' : '' }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Hero
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Player
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  K
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  D
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  A
+                </th>
+                <th
+                  class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
+                >
+                  DMG
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Gold
+                </th>
+                <th
+                  class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
+                >
+                  Items
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="p in direPlayers"
+                :key="p.id"
+                class="anim-fade-in-up"
+                :class="{
+                  'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]':
+                    p.isCurrentPlayer,
+                }"
+              >
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
+                  {{ HEROES[p.heroId]?.name ?? p.heroId }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
+                  {{ p.name }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
+                  {{ p.kills }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-dire">
+                  {{ p.deaths }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
+                  {{ p.assists }}
+                </td>
+                <td
+                  class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"
+                >
+                  {{ p.heroDamage.toLocaleString() }}
+                </td>
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-gold">
+                  {{ p.gold.toLocaleString() }}
+                </td>
+                <td class="border-b border-border/50 px-1.5 py-0.5 text-[0.65rem] text-text-dim">
+                  <span v-for="(item, i) in p.items.slice(0, 6)" :key="i">
+                    {{ item ? (ITEMS[item]?.name ?? item) : '-' }}{{ i < 5 ? ' ' : '' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </TerminalPanel>
     </div>
 
     <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
-      <AsciiButton label="PLAY AGAIN" variant="primary" data-testid="play-again-btn" @click="emit('playAgain')" />
+      <AsciiButton
+        label="PLAY AGAIN"
+        variant="primary"
+        data-testid="play-again-btn"
+        @click="emit('playAgain')"
+      />
       <NuxtLink
         v-if="gameId"
         :to="`/replay/${gameId}`"
@@ -278,7 +331,12 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
       >
         [WATCH REPLAY]
       </NuxtLink>
-      <AsciiButton label="MAIN MENU" variant="ghost" data-testid="return-to-menu-btn" @click="emit('returnToMenu')" />
+      <AsciiButton
+        label="MAIN MENU"
+        variant="ghost"
+        data-testid="return-to-menu-btn"
+        @click="emit('returnToMenu')"
+      />
     </div>
   </div>
 </template>

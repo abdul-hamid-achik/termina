@@ -13,7 +13,7 @@ onMounted(() => {
 
 <template>
   <GameScreen v-if="gameStore.gameId && gameStore.playerId" />
-  <div v-else class="flex h-screen items-center justify-center bg-bg-primary">
+  <div v-else class="flex h-screen h-dvh items-center justify-center bg-bg-primary">
     <p class="font-mono text-text-dim">&gt;_ connecting to game server...</p>
   </div>
 </template>

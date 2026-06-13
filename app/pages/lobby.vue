@@ -37,6 +37,10 @@ function handleServerMessage(msg: ServerMessage) {
       break
     case 'error':
       lobbyLog.warn('Server error during lobby', { code: msg.code, message: msg.message })
+      // Surface the error inline instead of dying in the console, and undo
+      // any optimistic hero pick the server just rejected.
+      lobbyStore.rollbackPendingPick()
+      lobbyStore.setError(msg.message || msg.code)
       break
     case 'hero_pick':
       lobbyLog.debug('Hero pick received', { playerId: msg.playerId, heroId: msg.heroId })
@@ -87,6 +91,9 @@ async function handleJoinQueue() {
   lobbyLog.info('Joining queue')
   try {
     await lobbyStore.joinQueue()
+  } catch (err) {
+    // Store already set lastError for the inline panel — just log here
+    lobbyLog.error('Join queue failed', err)
   } finally {
     joining = false
   }
@@ -100,9 +107,9 @@ async function handleLeaveQueue() {
 async function handleHeroPick(heroId: string) {
   if (!lobbyStore.lobbyId) return
 
-  // Optimistically update local state
+  // Optimistically update local state (rolled back if the server rejects)
   if (authStore.user?.id) {
-    lobbyStore.heroPicked(authStore.user.id, heroId)
+    lobbyStore.optimisticPick(authStore.user.id, heroId)
   }
 
   if (connected.value) {
@@ -116,6 +123,8 @@ async function handleHeroPick(heroId: string) {
       })
     } catch (err) {
       lobbyLog.error('HTTP hero pick failed', err)
+      lobbyStore.rollbackPendingPick()
+      lobbyStore.setError('hero pick failed — try again')
     }
   }
 }
@@ -234,16 +243,25 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-1 flex-col">
-    <!-- PICKING: Hero selection (full-width layout) -->
-    <HeroPicker
+    <!-- PICKING: Hero selection (full-width layout).
+         The wrapper caps the picker at the visible viewport height (dvh) on
+         phones so the hero grid scrolls internally and the sticky confirm
+         bar stays pinned on-screen. -->
+    <div
       v-if="lobbyStore.queueStatus === 'picking'"
-      :team="lobbyStore.team ?? 'radiant'"
-      :picked-heroes="lobbyStore.pickedHeroes"
-      :team-roster="lobbyStore.teamRoster"
-      :current-picker="lobbyStore.currentPicker"
-      :pick-deadline="lobbyStore.pickDeadline"
-      @pick="handleHeroPick"
-    />
+      class="flex min-h-0 flex-1 flex-col max-sm:max-h-[calc(100dvh-7.5rem)]"
+    >
+      <HeroPicker
+        :team="lobbyStore.team ?? 'radiant'"
+        :picked-heroes="lobbyStore.pickedHeroes"
+        :team-roster="lobbyStore.teamRoster"
+        :current-picker="lobbyStore.currentPicker"
+        :pick-deadline="lobbyStore.pickDeadline"
+        :my-player-id="authStore.user?.id ?? null"
+        :error-message="lobbyStore.lastError"
+        @pick="handleHeroPick"
+      />
+    </div>
 
     <!-- All other states: centered narrow layout -->
     <div
@@ -256,6 +274,13 @@ onUnmounted(() => {
           <div class="flex flex-col items-center gap-4 p-6">
             <p class="text-base text-text-primary">&gt;_ ready to queue</p>
             <p class="text-[0.8rem] text-text-dim">Find a match (5v5 — Radiant vs Dire)</p>
+            <div
+              v-if="lobbyStore.lastError"
+              data-testid="queue-error"
+              class="w-full border border-dire bg-dire/10 px-3 py-2 text-center text-[0.8rem] text-dire"
+            >
+              [ERR] {{ lobbyStore.lastError }} — retry
+            </div>
             <AsciiButton label="FIND MATCH" variant="primary" @click="handleJoinQueue" />
           </div>
         </TerminalPanel>

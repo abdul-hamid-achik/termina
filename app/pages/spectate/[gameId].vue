@@ -150,7 +150,10 @@ function gameTime(tick: number): string {
       <template v-if="visibleState">
         <!-- Score banner -->
         <div class="grid grid-cols-3 items-stretch border border-border bg-bg-panel">
-          <div class="border-r border-border p-3 text-center bloom-radiant">
+          <div
+            class="border-r border-border p-3 text-center bloom-radiant"
+            data-testid="spectator-score-radiant"
+          >
             <div class="t-h3 text-radiant text-glow-radiant">RADIANT</div>
             <div class="t-display t-mono-num text-radiant text-glow-radiant">
               {{ visibleState.teams.radiant.kills }}
@@ -159,10 +162,15 @@ function gameTime(tick: number): string {
           </div>
           <div class="flex flex-col items-center justify-center p-3">
             <div class="t-caption">tick · {{ visibleState.timeOfDay }}</div>
-            <div class="t-h1 t-mono-num text-glow-sm">{{ lastTick }}</div>
+            <div class="t-h1 t-mono-num text-glow-sm" data-testid="spectator-tick">
+              {{ lastTick }}
+            </div>
             <div class="t-caption mt-1">{{ gameTime(lastTick) }}</div>
           </div>
-          <div class="border-l border-border p-3 text-center bloom-dire">
+          <div
+            class="border-l border-border p-3 text-center bloom-dire"
+            data-testid="spectator-score-dire"
+          >
             <div class="t-h3 text-dire text-glow-dire">DIRE</div>
             <div class="t-display t-mono-num text-dire text-glow-dire">
               {{ visibleState.teams.dire.kills }}

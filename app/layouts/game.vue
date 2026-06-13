@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen w-screen overflow-hidden bg-bg-primary">
+  <div class="h-screen h-dvh w-full overflow-hidden bg-bg-primary">
     <slot />
   </div>
 </template>

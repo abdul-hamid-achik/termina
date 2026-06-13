@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { TeamState, TeamId } from '~~/shared/types/game'
 import type { ScoreboardEntry } from '~/stores/game'
+import { ITEMS } from '~~/server/game/items/registry'
+import { usePointerCoarse } from '~/composables/useTapInspect'
 
 const props = defineProps<{
   players: ScoreboardEntry[]
@@ -10,12 +12,29 @@ const props = defineProps<{
   currentPlayerId: string
 }>()
 
-const radiantPlayers = computed(() =>
-  props.players.filter((p) => p.team === 'radiant'),
-)
-const direPlayers = computed(() =>
-  props.players.filter((p) => p.team === 'dire'),
-)
+const isCoarsePointer = usePointerCoarse()
+
+const radiantPlayers = computed(() => props.players.filter((p) => p.team === 'radiant'))
+const direPlayers = computed(() => props.players.filter((p) => p.team === 'dire'))
+
+const teamBlocks = computed((): { team: TeamId; players: ScoreboardEntry[] }[] => [
+  { team: 'radiant', players: radiantPlayers.value },
+  { team: 'dire', players: direPlayers.value },
+])
+
+// Tap/click a row to expand its items as readable text (replaces the old
+// title-attribute tooltips, which are invisible on touch devices).
+const expandedPlayerId = ref<string | null>(null)
+
+function toggleRow(playerId: string) {
+  expandedPlayerId.value = expandedPlayerId.value === playerId ? null : playerId
+}
+
+function expandedItemNames(player: ScoreboardEntry): string {
+  if (player.fogged) return 'Unknown (fogged)'
+  const names = player.items.filter((id): id is string => !!id).map((id) => ITEMS[id]?.name ?? id)
+  return names.length ? names.join(', ') : 'No items'
+}
 
 function respawnCountdown(player: ScoreboardEntry): string {
   if (player.alive || !player.respawnTick) return ''
@@ -57,9 +76,7 @@ const gameTimeFormatted = computed(() => {
   <div class="scoreboard" data-testid="scoreboard">
     <!-- Header -->
     <div class="scoreboard__header">
-      <div class="scoreboard__team-label scoreboard__team-label--radiant">
-        RADIANT
-      </div>
+      <div class="scoreboard__team-label scoreboard__team-label--radiant">RADIANT</div>
       <div class="scoreboard__match-info">
         <div class="scoreboard__time">{{ gameTimeFormatted }}</div>
         <div class="scoreboard__kills-summary">
@@ -68,157 +85,117 @@ const gameTimeFormatted = computed(() => {
           <span class="text-dire">{{ teams.dire.kills }}</span>
         </div>
         <div class="scoreboard__tower-summary">
-          <span class="text-radiant" :title="`Radiant towers destroyed`">{{ teams.radiant.towerKills }}T</span>
+          <span class="text-radiant" :title="`Radiant towers destroyed`"
+            >{{ teams.radiant.towerKills }}T</span
+          >
           <span class="scoreboard__separator">/</span>
-          <span class="text-dire" :title="`Dire towers destroyed`">{{ teams.dire.towerKills }}T</span>
+          <span class="text-dire" :title="`Dire towers destroyed`"
+            >{{ teams.dire.towerKills }}T</span
+          >
         </div>
       </div>
-      <div class="scoreboard__team-label scoreboard__team-label--dire">
-        DIRE
-      </div>
+      <div class="scoreboard__team-label scoreboard__team-label--dire">DIRE</div>
     </div>
 
-    <!-- Column headers -->
-    <div class="scoreboard__col-headers">
-      <div class="scoreboard__side">
-        <span class="scoreboard__col scoreboard__col--hero"/>
-        <span class="scoreboard__col scoreboard__col--name">Player</span>
-        <span class="scoreboard__col scoreboard__col--kda">K/D/A</span>
-        <span class="scoreboard__col scoreboard__col--lv">Lv</span>
-        <span class="scoreboard__col scoreboard__col--gold">Gold</span>
-        <span class="scoreboard__col scoreboard__col--items">Items</span>
-        <span class="scoreboard__col scoreboard__col--status">ST</span>
-      </div>
-      <div class="scoreboard__divider-col"/>
-      <div class="scoreboard__side">
-        <span class="scoreboard__col scoreboard__col--hero"/>
-        <span class="scoreboard__col scoreboard__col--name">Player</span>
-        <span class="scoreboard__col scoreboard__col--kda">K/D/A</span>
-        <span class="scoreboard__col scoreboard__col--lv">Lv</span>
-        <span class="scoreboard__col scoreboard__col--gold">Gold</span>
-        <span class="scoreboard__col scoreboard__col--items">Items</span>
-        <span class="scoreboard__col scoreboard__col--status">ST</span>
-      </div>
-    </div>
-
-    <!-- Player rows -->
+    <!-- Team tables: side-by-side on desktop, stacked on narrow screens -->
     <div class="scoreboard__body">
-      <div
-        v-for="(_, idx) in Math.max(radiantPlayers.length, direPlayers.length)"
-        :key="idx"
-        class="scoreboard__row-pair"
-      >
-        <!-- Radiant player -->
-        <div
-          v-if="radiantPlayers[idx]"
-          class="scoreboard__player-row"
-          :class="{
-            'scoreboard__player-row--dead': !radiantPlayers[idx]!.alive,
-            'scoreboard__player-row--self': radiantPlayers[idx]!.id === currentPlayerId,
-          }"
-        >
-          <div class="scoreboard__col scoreboard__col--hero">
-            <HeroAvatar
-              v-if="radiantPlayers[idx]!.heroId"
-              :hero-id="radiantPlayers[idx]!.heroId"
-              :size="32"
-            />
-            <div v-else class="scoreboard__no-avatar">?</div>
-          </div>
-          <div class="scoreboard__col scoreboard__col--name" :title="radiantPlayers[idx]!.name">
-            {{ radiantPlayers[idx]!.name }}
-          </div>
-          <div class="scoreboard__col scoreboard__col--kda">
-            <span class="text-radiant">{{ radiantPlayers[idx]!.kills }}</span>/<span class="text-dire">{{ radiantPlayers[idx]!.deaths }}</span>/<span class="text-text-dim">{{ radiantPlayers[idx]!.assists }}</span>
-          </div>
-          <div class="scoreboard__col scoreboard__col--lv">
-            {{ radiantPlayers[idx]!.level }}
-          </div>
-          <div class="scoreboard__col scoreboard__col--gold text-gold">
-            {{ radiantPlayers[idx]!.fogged ? '???' : formatGold(radiantPlayers[idx]!.gold) }}
-          </div>
-          <div class="scoreboard__col scoreboard__col--items">
-            <template v-if="radiantPlayers[idx]!.fogged">
-              <span v-for="s in 6" :key="s" class="scoreboard__item-slot scoreboard__item-slot--fogged">-</span>
-            </template>
-            <template v-else>
-              <span
-                v-for="s in 6"
-                :key="s"
-                class="scoreboard__item-slot"
-                :class="{ 'scoreboard__item-slot--filled': radiantPlayers[idx]!.items[s - 1] }"
-                :title="radiantPlayers[idx]!.items[s - 1] ?? ''"
-              >{{ itemAbbrev(radiantPlayers[idx]!.items[s - 1]) || '.' }}</span>
-            </template>
-          </div>
-          <div class="scoreboard__col scoreboard__col--status">
-            <template v-if="radiantPlayers[idx]!.alive">
-              <span class="scoreboard__alive-dot scoreboard__alive-dot--radiant"/>
-            </template>
-            <template v-else>
-              <span class="scoreboard__dead-label">{{ respawnCountdown(radiantPlayers[idx]!) || 'DEAD' }}</span>
-            </template>
-          </div>
-        </div>
-        <div v-else class="scoreboard__player-row scoreboard__player-row--empty"/>
+      <template v-for="(block, blockIdx) in teamBlocks" :key="block.team">
+        <div v-if="blockIdx > 0" class="scoreboard__divider-col" />
 
-        <!-- Center divider -->
-        <div class="scoreboard__divider-col"/>
-
-        <!-- Dire player -->
-        <div
-          v-if="direPlayers[idx]"
-          class="scoreboard__player-row"
-          :class="{
-            'scoreboard__player-row--dead': !direPlayers[idx]!.alive,
-            'scoreboard__player-row--self': direPlayers[idx]!.id === currentPlayerId,
-          }"
+        <section
+          class="scoreboard__team-block"
+          :class="`scoreboard__team-block--${block.team}`"
+          :data-testid="`scoreboard-team-${block.team}`"
         >
-          <div class="scoreboard__col scoreboard__col--hero">
-            <HeroAvatar
-              v-if="direPlayers[idx]!.heroId"
-              :hero-id="direPlayers[idx]!.heroId"
-              :size="32"
-            />
-            <div v-else class="scoreboard__no-avatar">?</div>
+          <!-- Column headers -->
+          <div class="scoreboard__col-headers">
+            <span class="scoreboard__col scoreboard__col--hero" />
+            <span class="scoreboard__col scoreboard__col--name">Player</span>
+            <span class="scoreboard__col scoreboard__col--kda">K/D/A</span>
+            <span class="scoreboard__col scoreboard__col--lv">Lv</span>
+            <span class="scoreboard__col scoreboard__col--gold">Gold</span>
+            <span class="scoreboard__col scoreboard__col--items">Items</span>
+            <span class="scoreboard__col scoreboard__col--status">ST</span>
           </div>
-          <div class="scoreboard__col scoreboard__col--name" :title="direPlayers[idx]!.name">
-            {{ direPlayers[idx]!.name }}
+
+          <!-- Player rows -->
+          <div v-for="player in block.players" :key="player.id" class="scoreboard__player-cell">
+            <div
+              class="scoreboard__player-row"
+              :class="{
+                'scoreboard__player-row--dead': !player.alive,
+                'scoreboard__player-row--self': player.id === currentPlayerId,
+              }"
+              :data-testid="`scoreboard-row-${player.id}`"
+              role="button"
+              tabindex="0"
+              @click="toggleRow(player.id)"
+              @keydown.enter="toggleRow(player.id)"
+            >
+              <div class="scoreboard__col scoreboard__col--hero">
+                <HeroAvatar v-if="player.heroId" :hero-id="player.heroId" :size="32" />
+                <div v-else class="scoreboard__no-avatar">?</div>
+              </div>
+              <div class="scoreboard__col scoreboard__col--name" :title="player.name">
+                {{ player.name }}
+              </div>
+              <div class="scoreboard__col scoreboard__col--kda">
+                <span class="text-radiant">{{ player.kills }}</span
+                >/<span class="text-dire">{{ player.deaths }}</span
+                >/<span class="text-text-dim">{{ player.assists }}</span>
+              </div>
+              <div class="scoreboard__col scoreboard__col--lv">
+                {{ player.level }}
+              </div>
+              <div class="scoreboard__col scoreboard__col--gold text-gold">
+                {{ player.fogged ? '???' : formatGold(player.gold) }}
+              </div>
+              <div class="scoreboard__col scoreboard__col--items">
+                <template v-if="player.fogged">
+                  <span
+                    v-for="s in 6"
+                    :key="s"
+                    class="scoreboard__item-slot scoreboard__item-slot--fogged"
+                    >-</span
+                  >
+                </template>
+                <template v-else>
+                  <span
+                    v-for="s in 6"
+                    :key="s"
+                    class="scoreboard__item-slot"
+                    :class="{ 'scoreboard__item-slot--filled': player.items[s - 1] }"
+                    >{{ itemAbbrev(player.items[s - 1]) || '.' }}</span
+                  >
+                </template>
+              </div>
+              <div class="scoreboard__col scoreboard__col--status">
+                <template v-if="player.alive">
+                  <span
+                    class="scoreboard__alive-dot"
+                    :class="`scoreboard__alive-dot--${block.team}`"
+                  />
+                </template>
+                <template v-else>
+                  <span class="scoreboard__dead-label">{{
+                    respawnCountdown(player) || 'DEAD'
+                  }}</span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Expanded item names (tap/click row to toggle) -->
+            <div
+              v-if="expandedPlayerId === player.id"
+              class="scoreboard__items-expanded"
+              :data-testid="`scoreboard-items-${player.id}`"
+            >
+              <span class="scoreboard__items-expanded-label">ITEMS:</span>
+              {{ expandedItemNames(player) }}
+            </div>
           </div>
-          <div class="scoreboard__col scoreboard__col--kda">
-            <span class="text-radiant">{{ direPlayers[idx]!.kills }}</span>/<span class="text-dire">{{ direPlayers[idx]!.deaths }}</span>/<span class="text-text-dim">{{ direPlayers[idx]!.assists }}</span>
-          </div>
-          <div class="scoreboard__col scoreboard__col--lv">
-            {{ direPlayers[idx]!.level }}
-          </div>
-          <div class="scoreboard__col scoreboard__col--gold text-gold">
-            {{ direPlayers[idx]!.fogged ? '???' : formatGold(direPlayers[idx]!.gold) }}
-          </div>
-          <div class="scoreboard__col scoreboard__col--items">
-            <template v-if="direPlayers[idx]!.fogged">
-              <span v-for="s in 6" :key="s" class="scoreboard__item-slot scoreboard__item-slot--fogged">-</span>
-            </template>
-            <template v-else>
-              <span
-                v-for="s in 6"
-                :key="s"
-                class="scoreboard__item-slot"
-                :class="{ 'scoreboard__item-slot--filled': direPlayers[idx]!.items[s - 1] }"
-                :title="direPlayers[idx]!.items[s - 1] ?? ''"
-              >{{ itemAbbrev(direPlayers[idx]!.items[s - 1]) || '.' }}</span>
-            </template>
-          </div>
-          <div class="scoreboard__col scoreboard__col--status">
-            <template v-if="direPlayers[idx]!.alive">
-              <span class="scoreboard__alive-dot scoreboard__alive-dot--dire"/>
-            </template>
-            <template v-else>
-              <span class="scoreboard__dead-label">{{ respawnCountdown(direPlayers[idx]!) || 'DEAD' }}</span>
-            </template>
-          </div>
-        </div>
-        <div v-else class="scoreboard__player-row scoreboard__player-row--empty"/>
-      </div>
+        </section>
+      </template>
     </div>
 
     <!-- Team totals footer -->
@@ -230,7 +207,9 @@ const gameTimeFormatted = computed(() => {
         <span class="text-text-dim">{{ teams.radiant.towerKills }}T</span>
       </div>
       <div class="scoreboard__footer-center">
-        <span class="text-text-dim text-[0.65rem]">Hold TAB</span>
+        <span class="text-text-dim text-[0.65rem]" data-testid="scoreboard-hint">{{
+          isCoarsePointer ? 'tap outside to close' : 'Hold TAB'
+        }}</span>
       </div>
       <div class="scoreboard__team-total scoreboard__team-total--dire">
         <span class="scoreboard__total-label">TOTAL</span>
@@ -332,19 +311,26 @@ const gameTimeFormatted = computed(() => {
   color: rgb(var(--border-color));
 }
 
-/* ── Column Headers ──────────────────────────────────────── */
-.scoreboard__col-headers {
+/* ── Body: two team blocks ───────────────────────────────── */
+.scoreboard__body {
   display: flex;
-  border-bottom: 1px solid rgb(var(--border-color));
-  background: rgba(var(--bg-secondary), 0.5);
 }
 
-.scoreboard__col-headers .scoreboard__side {
+.scoreboard__team-block {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Column Headers ──────────────────────────────────────── */
+.scoreboard__col-headers {
   display: flex;
   align-items: center;
   padding: 4px 6px;
   gap: 4px;
+  border-bottom: 1px solid rgb(var(--border-color));
+  background: rgba(var(--bg-secondary), 0.5);
 }
 
 .scoreboard__col-headers .scoreboard__col {
@@ -415,23 +401,17 @@ const gameTimeFormatted = computed(() => {
 }
 
 /* ── Player rows ─────────────────────────────────────────── */
-.scoreboard__body {
-  display: flex;
-  flex-direction: column;
-}
-
-.scoreboard__row-pair {
-  display: flex;
+.scoreboard__player-cell {
   border-bottom: 1px solid rgba(var(--border-color), 0.5);
 }
 
 .scoreboard__player-row {
-  flex: 1;
   display: flex;
   align-items: center;
   padding: 4px 6px;
   gap: 4px;
   min-height: 40px;
+  cursor: pointer;
   transition: background-color 0.15s;
 }
 
@@ -454,9 +434,17 @@ const gameTimeFormatted = computed(() => {
   opacity: 0.6;
 }
 
-.scoreboard__player-row--empty {
-  flex: 1;
-  min-height: 40px;
+/* ── Expanded item names ─────────────────────────────────── */
+.scoreboard__items-expanded {
+  padding: 2px 8px 6px 42px;
+  font-size: 0.65rem;
+  color: rgb(var(--color-ability));
+  word-break: break-word;
+}
+
+.scoreboard__items-expanded-label {
+  color: rgb(var(--text-dim));
+  letter-spacing: 0.05em;
 }
 
 /* ── Item slots ──────────────────────────────────────────── */
@@ -566,5 +554,52 @@ const gameTimeFormatted = computed(() => {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+}
+
+/* ── Narrow screens: stack teams vertically, compact columns ── */
+@media (max-width: 767px) {
+  .scoreboard__body {
+    flex-direction: column;
+  }
+
+  .scoreboard__body .scoreboard__divider-col {
+    display: none;
+  }
+
+  /* Team caption per stacked block (pseudo-element so it doesn't add
+     another RADIANT/DIRE text node to the DOM) */
+  .scoreboard__team-block::before {
+    display: block;
+    padding: 4px 8px 0;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+  }
+
+  .scoreboard__team-block--radiant::before {
+    content: 'RADIANT';
+    color: rgb(var(--color-radiant));
+  }
+
+  .scoreboard__team-block--dire::before {
+    content: 'DIRE';
+    color: rgb(var(--color-dire));
+    border-top: 1px solid rgb(var(--border-color));
+  }
+
+  /* Item abbreviations don't fit on phones — items are available via
+     tap-to-expand on each row instead */
+  .scoreboard__col--items {
+    display: none;
+  }
+
+  .scoreboard__col--name {
+    min-width: 0;
+  }
+
+  /* Comfortable touch target per row */
+  .scoreboard__player-row {
+    min-height: 44px;
+  }
 }
 </style>

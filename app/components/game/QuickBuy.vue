@@ -40,25 +40,30 @@ const entries = computed<PinnedEntry[]>(() => {
       <div
         v-for="entry in entries"
         :key="entry.id"
-        class="flex items-center gap-1 border px-1.5 py-0.5 text-[0.65rem]"
+        class="touch-gap flex items-center gap-1 border px-1.5 py-0.5 text-[0.65rem]"
         :class="[
           entry.affordable && canBuy
             ? 'border-gold cursor-pointer text-text-primary hover:bg-gold/10'
             : 'border-border text-text-dim',
         ]"
+        :data-testid="`quickbuy-${entry.id}`"
       >
         <span class="font-bold">{{ entry.def.name }}</span>
         <span v-if="entry.affordable" class="text-gold">{{ entry.def.cost }}g</span>
         <span v-else class="text-dire">-{{ entry.goldNeeded }}g</span>
         <button
           v-if="entry.affordable && canBuy"
-          class="text-radiant hover:underline"
+          class="touch-target text-radiant hover:underline"
+          :data-testid="`quickbuy-buy-${entry.id}`"
           @click="emit('buy', entry.id)"
         >
           [BUY]
         </button>
+        <!-- Destructive unpin sits behind the coarse-pointer touch gap so a
+             missed [BUY] tap can't land on it -->
         <button
-          class="text-text-dim hover:text-dire"
+          class="touch-target text-text-dim hover:text-dire"
+          :data-testid="`quickbuy-unpin-${entry.id}`"
           @click="emit('unpin', entry.id)"
         >
           x

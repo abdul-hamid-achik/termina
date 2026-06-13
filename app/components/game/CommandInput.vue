@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useCommands, validateCommand } from '~/composables/useCommands'
+import { useCommands, validateCommand, buybackCostFor } from '~/composables/useCommands'
 import type { GameContext, Suggestion } from '~/composables/useCommands'
 import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
@@ -18,6 +18,10 @@ const props = withDefaults(
     canAct?: boolean
     /** The command queued for the next tick (shown while waiting). */
     pendingCommand?: string | null
+    /** Command typed while waiting — buffered client-side, sent next tick. */
+    bufferedCommand?: string | null
+    /** Current game tick, for cooldown-aware validation (buyback etc.). */
+    tick?: number
   }>(),
   {
     placeholder: 'Enter command...',
@@ -28,6 +32,8 @@ const props = withDefaults(
     items: () => ({}),
     canAct: true,
     pendingCommand: null,
+    bufferedCommand: null,
+    tick: undefined,
   },
 )
 
@@ -50,7 +56,18 @@ const gameContext = computed<GameContext>(() => ({
   visibleZones: props.visibleZones,
   allPlayers: props.allPlayers,
   items: props.items,
+  tick: props.tick,
 }))
+
+/**
+ * Touch devices get no automatic focus — popping the soft keyboard over
+ * the game on every tick is worse than requiring an explicit tap.
+ */
+function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false
+  if (window.matchMedia?.('(pointer: coarse)')?.matches) return true
+  return (navigator.maxTouchPoints ?? 0) > 0
+}
 
 // Contextual suggestions from useCommands
 const suggestions = computed<Suggestion[]>(() => {
@@ -73,6 +90,8 @@ const suggestions = computed<Suggestion[]>(() => {
             { text: 'map', description: 'Show map overview' },
             { text: 'chat', description: 'Send chat message' },
             { text: 'ping', description: 'Ping a zone' },
+            { text: 'buyback', description: 'Pay gold to respawn instantly' },
+            { text: 'surrender', description: 'Vote to forfeit (needs confirm)' },
           ]
     }
     return []
@@ -102,6 +121,8 @@ const preview = computed(() => {
     'map',
     'chat',
     'ping',
+    'buyback',
+    'surrender',
   ]
   if (parts.length === 1 && commands.some((c) => c.startsWith(cmd!)) && !commands.includes(cmd!)) {
     return { type: 'dim' as const, text: `-- typing: ${cmd}...` }
@@ -119,6 +140,7 @@ const preview = computed(() => {
       ward: '-- ward: specify a zone',
       chat: '-- chat: specify channel (team/all)',
       ping: '-- ping: specify a zone',
+      surrender: "-- surrender: type 'surrender confirm' to vote yes",
     }
     if (hints[cmd!]) return { type: 'dim' as const, text: hints[cmd!] }
   }
@@ -179,6 +201,18 @@ const preview = computed(() => {
     return { type: 'valid' as const, text: `>> Place ward in ${command.zone}` }
   }
 
+  if (command.type === 'buyback') {
+    const cost = props.player ? buybackCostFor(props.player) : null
+    return { type: 'valid' as const, text: `>> Buyback${cost != null ? ` (-${cost}g)` : ''}` }
+  }
+
+  if (command.type === 'surrender') {
+    return {
+      type: 'valid' as const,
+      text: command.vote === 'yes' ? '>> Vote YES to surrender' : '>> Retract surrender vote',
+    }
+  }
+
   // Simple commands
   const labels: Record<string, string> = {
     scan: '>> Scan nearby zone',
@@ -194,11 +228,6 @@ function handleSubmit() {
   const cmd = input.value.trim()
   if (!cmd) return
 
-  // If can't act, show message and return
-  if (!props.canAct) {
-    return
-  }
-
   // If dropdown open and item selected, accept it instead
   if (open.value && suggestions.value.length > 0) {
     acceptSuggestion(suggestions.value[selectedIndex.value]!)
@@ -212,6 +241,9 @@ function handleSubmit() {
     return
   }
 
+  // Note: submission is NOT gated on canAct — while waiting for the next
+  // tick the parent buffers the command and auto-sends it when the tick
+  // arrives (shown via the bufferedCommand prop).
   emit('submit', cmd)
   addToHistory(cmd)
   history.value.unshift(cmd)
@@ -219,6 +251,10 @@ function handleSubmit() {
   historyIndex.value = -1
   input.value = ''
   open.value = false
+  // Keep the prompt hot on desktop so players can pre-type the next command
+  if (!isTouchDevice()) {
+    nextTick(() => inputEl.value?.focus())
+  }
 }
 
 function acceptSuggestion(suggestion: Suggestion) {
@@ -373,7 +409,10 @@ function highlightParts(text: string): Array<{ text: string; highlight: boolean 
 }
 
 onMounted(() => {
-  focusInput()
+  // Don't auto-pop the soft keyboard over the game on touch devices
+  if (!isTouchDevice()) {
+    focusInput()
+  }
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -432,10 +471,20 @@ onUnmounted(() => {
       {{ preview.text }}
     </div>
 
-    <!-- Input row -->
+    <!-- Buffered command notice — typed while waiting, sends next tick -->
+    <div
+      v-if="bufferedCommand"
+      data-testid="buffered-command"
+      aria-live="polite"
+      class="border-t border-border/50 px-3 py-0.5 font-mono text-[0.7rem] text-gold"
+    >
+      [QUEUED] {{ bufferedCommand }} — sends next tick
+    </div>
+
+    <!-- Input row: never disabled, players can pre-type during the wait -->
     <div
       class="flex items-center gap-2 border-t border-border bg-bg-primary px-3 py-2"
-      :class="{ 'opacity-50': disabled || !canAct }"
+      :class="{ 'opacity-50': disabled }"
     >
       <span class="shrink-0 font-bold text-radiant select-none">&gt;_</span>
       <input
@@ -444,12 +493,11 @@ onUnmounted(() => {
         data-testid="command-input-field"
         aria-label="Command input"
         class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
-        :disabled="disabled || !canAct"
         :placeholder="
           !canAct
             ? pendingCommand
               ? `Queued: ${pendingCommand} — resolves next tick`
-              : 'Action sent - wait for next tick'
+              : 'Action sent — pre-type your next command'
             : placeholder
         "
         spellcheck="false"

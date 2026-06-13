@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
-import { useCommands, validateCommand } from '~/composables/useCommands'
+import { useCommands, validateCommand, buybackCostFor } from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -98,6 +98,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   gameSocket.disconnect()
+  gameStore.stopTickCountdown()
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
 })
@@ -226,11 +227,16 @@ function triggerShake(level: 'light' | 'strong') {
   })
 }
 
-// Play 'tick' sound on each new tick
+// On each new tick: play the tick sound and flush any command the player
+// pre-typed while waiting (buffered client-side, sent now that they can act).
 watch(
   () => gameStore.tick,
   () => {
     playSound('tick')
+    const buffered = gameStore.consumeBufferedCommand()
+    if (buffered) {
+      handleCommand(buffered)
+    }
   },
 )
 
@@ -305,7 +311,7 @@ const heroData = computed(() => {
   const p = gameStore.player
   if (!p) return null
   return {
-    name: p.heroId ?? p.name,
+    name: (p.heroId && HEROES[p.heroId]?.name) || p.name,
     level: p.level,
     zone: p.zone,
     hp: p.hp,
@@ -320,6 +326,38 @@ const heroData = computed(() => {
   }
 })
 
+// Resolve raw entity IDs (github_*, bot_*, creep_3, tower_mid-t1-rad…) to
+// readable names: hero name for players ("You" for self), short labels for units.
+const abilityNameById: Record<string, string> = {}
+for (const hero of Object.values(HEROES)) {
+  for (const ability of Object.values(hero.abilities)) {
+    abilityNameById[ability.id] = ability.name
+  }
+  abilityNameById[hero.passive.id] = hero.passive.name
+}
+
+function entityLabel(id: unknown): string {
+  if (typeof id !== 'string' || !id) return '?'
+  if (id === gameStore.playerId) return 'You'
+  const p = gameStore.allPlayers[id]
+  if (p) return (p.heroId && HEROES[p.heroId]?.name) || p.name || id
+  if (id.startsWith('creep')) return 'a creep'
+  if (id.startsWith('neutral')) return 'a neutral creep'
+  if (id.startsWith('tower')) {
+    const zone = id.slice('tower_'.length)
+    return `tower (${zone})`
+  }
+  if (id === 'roshan') return 'Roshan'
+  if (id === 'buyback') return 'buyback'
+  if (id === 'fountain') return 'the fountain'
+  return id
+}
+
+function abilityLabel(id: unknown): string {
+  if (typeof id !== 'string') return '?'
+  return abilityNameById[id] ?? id
+}
+
 // Map game events to CombatLog format
 const combatEvents = computed(() => {
   const mapped = gameStore.events.map((e) => {
@@ -330,16 +368,16 @@ const combatEvents = computed(() => {
 
     switch (e.type) {
       case 'damage':
-        text = `${e.payload.sourceId} dealt ${e.payload.amount} ${e.payload.damageType ?? ''} damage to ${e.payload.targetId}`
+        text = `${entityLabel(e.payload.sourceId)} dealt ${e.payload.amount} ${e.payload.damageType ?? ''} damage to ${entityLabel(e.payload.targetId)}`
         type = 'damage'
         break
       case 'heal':
-        text = `${e.payload.sourceId} healed ${e.payload.targetId} for ${e.payload.amount}`
+        text = `${entityLabel(e.payload.sourceId)} healed ${entityLabel(e.payload.targetId)} for ${e.payload.amount}`
         type = 'healing'
         break
       case 'kill': {
         const goldPart = e.payload.goldAwarded ? ` (+${e.payload.goldAwarded}g)` : ''
-        text = `[KILL] ${e.payload.killerId} eliminated ${e.payload.victimId}!${goldPart}`
+        text = `[KILL] ${entityLabel(e.payload.killerId)} eliminated ${entityLabel(e.payload.victimId)}!${goldPart}`
         type = 'kill'
         killerHeroId = e.payload.killerId
           ? (gameStore.allPlayers[e.payload.killerId as string]?.heroId ?? undefined)
@@ -353,20 +391,20 @@ const combatEvents = computed(() => {
         const respawnTick = e.payload.respawnTick as number | undefined
         const respawnText =
           respawnTick != null ? ` (respawn in ${respawnTick - gameStore.tick} ticks)` : ''
-        text = `[DEATH] ${e.payload.playerId} was terminated${respawnText}`
+        text = `[DEATH] ${entityLabel(e.payload.playerId)} was terminated${respawnText}`
         type = 'damage'
         break
       }
       case 'gold_change':
-        text = `${e.payload.playerId} ${(e.payload.amount as number) >= 0 ? 'earned' : 'lost'} ${Math.abs(e.payload.amount as number)}g (${e.payload.reason})`
+        text = `${entityLabel(e.payload.playerId)} ${(e.payload.amount as number) >= 0 ? 'earned' : 'lost'} ${Math.abs(e.payload.amount as number)}g (${e.payload.reason})`
         type = 'gold'
         break
       case 'level_up':
-        text = `[LEVEL UP] ${e.payload.playerId} reached level ${e.payload.newLevel}!`
+        text = `[LEVEL UP] ${entityLabel(e.payload.playerId)} reached level ${e.payload.newLevel}!`
         type = 'system'
         break
       case 'ability_used':
-        text = `${e.payload.playerId} used ${e.payload.abilityId}${e.payload.targetId ? ` on ${e.payload.targetId}` : ''}`
+        text = `${entityLabel(e.payload.playerId)} used ${abilityLabel(e.payload.abilityId)}${e.payload.targetId ? ` on ${entityLabel(e.payload.targetId)}` : ''}`
         type = 'ability'
         break
       case 'tower_kill':
@@ -374,11 +412,11 @@ const combatEvents = computed(() => {
         type = 'kill'
         break
       case 'creep_lasthit':
-        text = `${e.payload.playerId} last-hit ${e.payload.creepType} creep (+${e.payload.goldAwarded}g)`
+        text = `${entityLabel(e.payload.playerId)} last-hit ${e.payload.creepType} creep (+${e.payload.goldAwarded}g)`
         type = 'gold'
         break
       case 'item_purchased':
-        text = `${e.payload.playerId} purchased ${e.payload.itemId} (-${e.payload.cost}g)`
+        text = `${entityLabel(e.payload.playerId)} purchased ${ITEMS[e.payload.itemId as string]?.name ?? e.payload.itemId} (-${e.payload.cost}g)`
         type = 'gold'
         break
       default:
@@ -392,10 +430,8 @@ const combatEvents = computed(() => {
   return [...mapped, ...localEvents.value].sort((a, b) => a.tick - b.tick)
 })
 
-// Build tower lookup: zoneId → TowerState (from the tick_state)
-// The game store doesn't directly store towers, but they come via the tick state.
-// We'll track them via onMessage.
-const towers = ref<TowerState[]>([])
+// Ancients (team cores) live in the game store — shown on the base zones of the map.
+const ancients = computed(() => gameStore.ancients)
 
 let firstTickLogged = false
 gameSocket.onMessage((msg) => {
@@ -408,10 +444,6 @@ gameSocket.onMessage((msg) => {
         text: '>_ Connected to game server. Stream active.',
         type: 'system',
       })
-    }
-    const state = msg.state as unknown as { towers?: TowerState[] }
-    if (state.towers) {
-      towers.value = state.towers
     }
   } else if (msg.type === 'announcement') {
     localEvents.value.push({
@@ -441,9 +473,10 @@ gameSocket.onMessage((msg) => {
   }
 })
 
+// Tower lookup: zoneId → TowerState (the store tracks towers from tick_state)
 const towersByZone = computed(() => {
   const map = new Map<string, TowerState>()
-  for (const t of towers.value) {
+  for (const t of gameStore.towers) {
     map.set(t.zone, t)
   }
   return map
@@ -486,7 +519,13 @@ const mapZones = computed(() => {
     // Tower info
     const tower = towersByZone.value.get(zone.id)
     const towerDisplay = tower
-      ? { team: tower.team, alive: tower.alive, tier: getTowerTier(zone.id) }
+      ? {
+          team: tower.team,
+          alive: tower.alive,
+          tier: getTowerTier(zone.id),
+          hp: tower.hp,
+          maxHp: tower.maxHp,
+        }
       : undefined
 
     return {
@@ -505,6 +544,43 @@ const mapZones = computed(() => {
 })
 
 const playerZone = computed(() => gameStore.player?.zone ?? '')
+
+// ── Zone panel data (who's in my zone) ────────────────────────
+const currentZoneName = computed(() => gameStore.currentZone?.name ?? playerZone.value)
+
+// Creeps in the player's zone, tagged with their zone-local index (Nth creep
+// in this zone) — the convention the server resolves `attack creep:<index>`
+// against. Index after filtering: global-array indices are vision-filtered
+// and don't survive the trip to the server.
+const zoneCreeps = computed(() =>
+  gameStore.creeps
+    .filter((c) => c.zone === playerZone.value)
+    .map((c, index) => ({ ...c, index })),
+)
+
+const zoneNeutrals = computed(() =>
+  gameStore.neutrals.filter((n) => n.zone === playerZone.value && n.alive),
+)
+
+const zoneTower = computed(() => towersByZone.value.get(playerZone.value) ?? null)
+
+// ── Buyback (death overlay) ───────────────────────────────────
+const buybackInfo = computed(() => {
+  const p = gameStore.player
+  if (!p || p.alive) return null
+  const cost = buybackCostFor(p)
+  const cooldownTicks =
+    p.buybackCooldown && gameStore.tick < p.buybackCooldown
+      ? p.buybackCooldown - gameStore.tick
+      : 0
+  const shortfall = Math.max(0, cost - p.gold)
+  return {
+    cost,
+    cooldownTicks,
+    shortfall,
+    canBuyback: cooldownTicks === 0 && shortfall === 0,
+  }
+})
 
 function getTowerTier(zoneId: string): number {
   if (zoneId.includes('t1')) return 1
@@ -529,6 +605,19 @@ function handleCommand(cmd: string) {
       gameSocket.send({ type: 'ping_map', zone: command.zone })
       return
     }
+    // Already acted this tick: buffer the command client-side and auto-send
+    // it when the next tick arrives (buyback/surrender are special actions
+    // the server handles out-of-band, so they always go through directly).
+    const isSpecial = command.type === 'buyback' || command.type === 'surrender'
+    if (!isSpecial && gameStore.isAlive && !gameStore.canAct) {
+      gameStore.bufferCommand(cmd)
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: `[QUEUED] ${cmd} — will send next tick`,
+        type: 'system',
+      })
+      return
+    }
     // Pre-flight validation mirroring server rules — don't waste the one
     // action this tick on a command the server will reject.
     const validationError = validateCommand(command, {
@@ -536,6 +625,7 @@ function handleCommand(cmd: string) {
       visibleZones: gameStore.visibleZones,
       allPlayers: gameStore.allPlayers,
       items: ITEMS,
+      tick: gameStore.tick,
     })
     if (validationError) {
       localEvents.value.push({
@@ -713,7 +803,7 @@ const killerName = computed(() => {
   const killerId = death.payload.killerId as string | undefined
   if (!killerId) return null
   const killer = gameStore.allPlayers[killerId]
-  return killer?.heroId ?? killer?.name ?? killerId
+  return (killer?.heroId && HEROES[killer.heroId]?.name) || killer?.name || killerId
 })
 
 const postGamePlayers = computed(() => {
@@ -781,7 +871,29 @@ function handleReturnToMenu() {
           }}</span>
           ticks...
         </p>
-        <p class="mt-6 t-caption">Wait for respawn or buyback to return instantly</p>
+        <div v-if="buybackInfo" class="mt-6 flex flex-col items-center gap-2">
+          <button
+            data-testid="buyback-button"
+            class="border px-4 py-2 font-mono text-sm transition-all"
+            :class="
+              buybackInfo.canBuyback
+                ? 'border-gold text-gold hover:bg-gold/10 active:scale-95'
+                : 'cursor-not-allowed border-border text-text-dim opacity-60'
+            "
+            :disabled="!buybackInfo.canBuyback"
+            @click="handleCommand('buyback')"
+          >
+            [BUYBACK — {{ buybackInfo.cost }}g]
+          </button>
+          <p v-if="buybackInfo.cooldownTicks > 0" class="t-caption text-dire">
+            Buyback on cooldown ({{ buybackInfo.cooldownTicks }} ticks remaining)
+          </p>
+          <p v-else-if="buybackInfo.shortfall > 0" class="t-caption text-text-dim">
+            Need {{ buybackInfo.shortfall }}g more ({{ gameStore.player.gold }}g /
+            {{ buybackInfo.cost }}g)
+          </p>
+        </div>
+        <p class="mt-4 t-caption">Wait for respawn or buy back to return instantly</p>
       </div>
     </div>
     <!-- Connection lost: all reconnect attempts exhausted -->
@@ -817,11 +929,17 @@ function handleReturnToMenu() {
       :latency="latency"
       :time-of-day="gameStore.timeOfDay"
       :day-night-tick="gameStore.dayNightTick"
+      :next-tick-in="gameStore.nextTickIn"
     />
 
     <TerminalPanel title="Map" class="game-grid__map min-h-0">
       <div class="flex h-full items-center justify-center">
-        <AsciiMap :zones="mapZones" :player-zone="playerZone" @zone-click="handleZoneClick" />
+        <AsciiMap
+          :zones="mapZones"
+          :player-zone="playerZone"
+          :ancients="ancients"
+          @zone-click="handleZoneClick"
+        />
       </div>
     </TerminalPanel>
 
@@ -837,6 +955,19 @@ function handleReturnToMenu() {
         @cast-ability="handleQuickAction"
       />
       <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
+    </TerminalPanel>
+
+    <TerminalPanel :title="`Zone: ${currentZoneName}`" class="game-grid__zone min-h-0">
+      <ZonePanel
+        :zone-name="currentZoneName"
+        :player-team="gameStore.player?.team ?? 'radiant'"
+        :enemies="gameStore.nearbyEnemies"
+        :allies="gameStore.nearbyAllies"
+        :creeps="zoneCreeps"
+        :neutrals="zoneNeutrals"
+        :tower="zoneTower"
+        @command="handleCommand"
+      />
     </TerminalPanel>
 
     <!-- Scoreboard overlay (Tab hold on desktop, SCORE button on mobile) -->
@@ -948,6 +1079,8 @@ function handleReturnToMenu() {
         :items="ITEMS"
         :can-act="gameStore.canAct"
         :pending-command="gameStore.pendingCommand"
+        :buffered-command="gameStore.bufferedCommand"
+        :tick="gameStore.tick"
         @submit="handleCommand"
       />
     </div>
@@ -958,16 +1091,18 @@ function handleReturnToMenu() {
 .game-grid {
   display: grid;
   grid-template-columns: 7fr 3fr;
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: auto 1fr auto auto auto;
   gap: 2px;
+  /* dvh tracks the real visible height on mobile (URL bar collapse); vh is the fallback */
   height: 100vh;
+  height: 100dvh;
 }
 
 .game-grid__bar {
   grid-column: 1 / -1;
 }
 .game-grid__map {
-  grid-row: 2 / 5;
+  grid-row: 2 / 6;
   grid-column: 1;
 }
 .game-grid__log {
@@ -978,8 +1113,12 @@ function handleReturnToMenu() {
   grid-row: 3;
   grid-column: 2;
 }
-.game-grid__cmd {
+.game-grid__zone {
   grid-row: 4;
+  grid-column: 2;
+}
+.game-grid__cmd {
+  grid-row: 5;
   grid-column: 2;
 }
 
@@ -995,9 +1134,11 @@ function handleReturnToMenu() {
 
 @media (max-width: 1024px) {
   .game-grid {
-    /* Map gets more vertical real estate than log/hero on tablet */
+    /* Map gets more vertical real estate than log/hero on tablet.
+       The compact zone-card map needs a guaranteed minimum to stay usable.
+       Hero status and zone panel share a row side-by-side. */
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto 2fr 1fr 1fr auto;
+    grid-template-rows: auto minmax(240px, 2fr) 1fr 1fr auto;
   }
   .game-grid__map {
     grid-column: 1 / -1;
@@ -1008,7 +1149,11 @@ function handleReturnToMenu() {
     grid-row: 3;
   }
   .game-grid__hero {
-    grid-column: 1 / -1;
+    grid-column: 1;
+    grid-row: 4;
+  }
+  .game-grid__zone {
+    grid-column: 2;
     grid-row: 4;
   }
   .game-grid__cmd {
@@ -1019,26 +1164,35 @@ function handleReturnToMenu() {
 
 @media (max-width: 640px) {
   .game-grid {
-    /* On phones, prioritize map + hero status. Log gets the smallest slice. */
+    /* On phones, prioritize map + hero + zone (touch targeting).
+       The compact map (current zone + tappable adjacent cards) scrolls
+       internally, so 200px keeps it usable without starving the zone
+       panel below it. The log gets the smallest slice. */
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(220px, 2.5fr) minmax(80px, 1fr) minmax(120px, 1.4fr) auto;
+    grid-template-rows:
+      auto minmax(200px, 2fr) minmax(96px, 1fr) minmax(120px, 1.3fr)
+      minmax(64px, 0.8fr) auto;
     gap: 1px;
   }
   .game-grid__map {
     grid-column: 1;
     grid-row: 2;
   }
-  .game-grid__log {
+  .game-grid__hero {
     grid-column: 1;
     grid-row: 3;
   }
-  .game-grid__hero {
+  .game-grid__zone {
     grid-column: 1;
     grid-row: 4;
   }
-  .game-grid__cmd {
+  .game-grid__log {
     grid-column: 1;
     grid-row: 5;
+  }
+  .game-grid__cmd {
+    grid-column: 1;
+    grid-row: 6;
   }
 }
 </style>
