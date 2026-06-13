@@ -16,7 +16,11 @@ export const test = base.extend<GameFixtures>({
 
       // Wait for hero picker to appear naturally via WS lobby_state.
       // DO NOT reload the page — that disconnects WS and cancels the lobby.
-      await page.getByTestId('hero-picker').waitFor({ timeout: 45_000 })
+      // Generous timeout: bot-fill + lobby transition is normally ~10-15s, but
+      // late in a long suite the single dev server is loaded and matchmaking
+      // can crawl — 45s was too tight and flaked. (Faster, load-independent
+      // path = a test-only direct start-game hook; documented follow-up.)
+      await page.getByTestId('hero-picker').waitFor({ timeout: 90_000 })
 
       // Try to pick a hero before bots take them all.
       // If the confirm fails (race with auto-pick), that's fine — the game
@@ -67,7 +71,9 @@ export const test = base.extend<GameFixtures>({
           .catch(() => {})
       }
     },
-    { timeout: 180_000 },
+    // Total fixture budget: matchmaking (up to ~90s under load) + load into
+    // game + first-tick wait (up to 60s) need headroom beyond the old 180s.
+    { timeout: 300_000 },
   ],
 })
 
