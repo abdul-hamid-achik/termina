@@ -4,6 +4,7 @@ import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '../map/zones'
 import { initializeRoshan } from '../map/spawner'
+import { initializeAncients } from './AncientSystem'
 
 // ── Error types ────────────────────────────────────────────────
 
@@ -120,6 +121,7 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
     creeps: [],
     neutrals: [],
     towers: initializeTowers(),
+    ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),
     aegis: null,

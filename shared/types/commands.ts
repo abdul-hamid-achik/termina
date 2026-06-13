@@ -4,6 +4,7 @@ export type TargetRef =
   | { kind: 'neutral'; index: number }
   | { kind: 'tower'; zone: string }
   | { kind: 'roshan' }
+  | { kind: 'ancient' }
   | { kind: 'zone'; zone: string }
   | { kind: 'self' }
 

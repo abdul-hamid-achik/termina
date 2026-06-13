@@ -4,6 +4,9 @@ import type { TargetRef } from '~~/shared/types/commands'
 import type { DamageType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { calculateEffectiveDamage } from '../engine/DamageCalculator'
+import { getEffectiveDefense, getEffectiveMagicResist } from '../engine/EffectiveStats'
+import { TALENT_TREES } from './talent-trees'
+import type { GameEngineEvent } from '../protocol/events'
 
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */
@@ -204,31 +207,53 @@ export function getAllEnemyPlayers(state: GameState, player: PlayerState): Playe
 
 // ── Damage Application ────────────────────────────────────────────
 
+/**
+ * Run damage through a buff list's 'shield' buff (if any).
+ * Returns the post-absorption buff list and the damage remaining.
+ * Shared by ability damage (dealDamage) and the basic-attack path.
+ */
+export function absorbShield(
+  buffs: BuffState[],
+  damage: number,
+): { buffs: BuffState[]; remaining: number } {
+  const shield = buffs.find((b) => b.id === 'shield')
+  if (!shield || shield.stacks <= 0) return { buffs, remaining: damage }
+  if (shield.stacks >= damage) {
+    // Shield absorbs all damage
+    return {
+      buffs: buffs.map((b) => (b.id === 'shield' ? { ...b, stacks: b.stacks - damage } : b)),
+      remaining: 0,
+    }
+  }
+  return {
+    buffs: buffs.filter((b) => b.id !== 'shield'),
+    remaining: damage - shield.stacks,
+  }
+}
+
 export function dealDamage(
   target: PlayerState,
   rawDamage: number,
   damageType: DamageType,
 ): PlayerState {
-  const stats = getPlayerCombatStats(target)
-  const effective = calculateEffectiveDamage(rawDamage, damageType, stats)
+  // Effective stats include items, talents, and engine-consumed buffs
+  const effective = calculateEffectiveDamage(rawDamage, damageType, {
+    defense: getEffectiveDefense(target),
+    magicResist: getEffectiveMagicResist(target),
+  })
   // Check for Kernel passive (hardened: 10% reduction)
   const hardenedReduction = hasBuff(target, 'hardened') ? 0.9 : 1
-  // Check for shield buff
-  const shield = target.buffs.find((b) => b.id === 'shield')
   let remaining = Math.round(effective * hardenedReduction)
 
+  // Check for shield buff
+  const shield = target.buffs.find((b) => b.id === 'shield')
   if (shield && shield.stacks > 0) {
-    if (shield.stacks >= remaining) {
-      // Shield absorbs all damage
-      const updatedBuffs = target.buffs.map((b) =>
-        b.id === 'shield' ? { ...b, stacks: b.stacks - remaining } : b,
-      )
-      return { ...target, buffs: updatedBuffs }
-    } else {
-      remaining -= shield.stacks
-      const updatedBuffs = target.buffs.filter((b) => b.id !== 'shield')
-      target = { ...target, buffs: updatedBuffs }
+    const absorbed = absorbShield(target.buffs, remaining)
+    if (absorbed.remaining === 0) {
+      return { ...target, buffs: absorbed.buffs }
     }
+    remaining = absorbed.remaining
+    target = { ...target, buffs: absorbed.buffs }
   }
 
   // Check Phase Shift (Echo W) — dodge attack
@@ -294,8 +319,9 @@ export function levelUpHero(player: PlayerState): PlayerState {
 
 // ── DoT & Buff Tick Helpers ───────────────────────────────────────
 
-export function processDoTs(state: GameState): GameState {
+export function processDoTs(state: GameState): { state: GameState; events: GameEngineEvent[] } {
   let updated = state
+  const events: GameEngineEvent[] = []
   for (const [_pid, player] of Object.entries(updated.players)) {
     if (!player.alive) continue
     const dotBuffs = player.buffs.filter((b) => b.id.includes('dot'))
@@ -304,15 +330,24 @@ export function processDoTs(state: GameState): GameState {
     for (const dot of dotBuffs) {
       const damageType: DamageType = dot.id.includes('phys') ? 'physical' : 'magical'
       const effectiveDamage = calculateEffectiveDamage(dot.stacks, damageType, {
-        defense: target.defense,
-        magicResist: target.magicResist,
+        defense: getEffectiveDefense(target),
+        magicResist: getEffectiveMagicResist(target),
       })
       const newHp = Math.max(0, target.hp - effectiveDamage)
       target = { ...target, hp: newHp, alive: newHp > 0 }
+      // Emitting per-dot damage events feeds kill/assist credit and inCombat
+      events.push({
+        _tag: 'damage',
+        tick: state.tick,
+        sourceId: dot.source,
+        targetId: player.id,
+        amount: effectiveDamage,
+        damageType,
+      })
     }
     updated = updatePlayer(updated, target)
   }
-  return updated
+  return { state: updated, events }
 }
 
 export function tickAllBuffs(state: GameState): GameState {
@@ -407,6 +442,88 @@ export function resolveAbility(
       )
     }
 
-    return yield* resolver.ability(state, player, ability, abilityLevel, target)
+    const result = yield* resolver.ability(state, player, ability, abilityLevel, target)
+    return applyAbilityTalents(state, result, player, ability)
   })
+}
+
+/**
+ * Generic ability-talent application — runs after the hero resolver succeeds,
+ * gated on talent.abilityId === cast slot. Never edits hero files:
+ * - cooldownReduction: subtract ticks from the resolver-set cooldown (floor 1)
+ * - manaCostReduction: refund a % of the mana the resolver actually spent
+ * - damageBoost: amplify the cast by an extra % of each enemy's HP lost
+ *   (post-mitigation approximation, clamped at 0 with alive recomputed)
+ * Talents of type 'special'/'ability_boost' carrying only specialEffect
+ * strings (e.g. double_cast_chance_25, global_ultimate) are explicit no-ops —
+ * implementing them requires per-hero work and is out of scope.
+ */
+function applyAbilityTalents(
+  preState: GameState,
+  result: AbilityResult,
+  caster: PlayerState,
+  slot: AbilitySlot,
+): AbilityResult {
+  if (!caster.heroId) return result
+  const tree = TALENT_TREES[caster.heroId]
+  if (!tree) return result
+  const chosen = [
+    caster.talents?.tier10,
+    caster.talents?.tier15,
+    caster.talents?.tier20,
+    caster.talents?.tier25,
+  ].filter((id): id is string => id !== null && id !== undefined)
+  if (chosen.length === 0) return result
+
+  const selected = Object.values(tree.tiers)
+    .flat()
+    .filter((t) => chosen.includes(t.id) && t.abilityId === slot)
+  if (selected.length === 0) return result
+
+  let players = result.state.players
+  const postCaster = players[caster.id]
+  if (!postCaster) return result
+
+  for (const talent of selected) {
+    if (talent.cooldownReduction !== undefined && talent.cooldownReduction > 0) {
+      const current = players[caster.id]!
+      const cd = current.cooldowns[slot]
+      if (cd > 0) {
+        players = {
+          ...players,
+          [caster.id]: {
+            ...current,
+            cooldowns: { ...current.cooldowns, [slot]: Math.max(1, cd - talent.cooldownReduction) },
+          },
+        }
+      }
+    }
+    if (talent.manaCostReduction !== undefined && talent.manaCostReduction > 0) {
+      const current = players[caster.id]!
+      const manaSpent = Math.max(0, caster.mp - current.mp)
+      const refund = Math.round((manaSpent * talent.manaCostReduction) / 100)
+      if (refund > 0) {
+        players = {
+          ...players,
+          [caster.id]: { ...current, mp: Math.min(current.maxMp, current.mp + refund) },
+        }
+      }
+    }
+    if (talent.damageBoost !== undefined && talent.damageBoost > 0) {
+      for (const [pid, post] of Object.entries(players)) {
+        if (pid === caster.id) continue
+        const pre = preState.players[pid]
+        if (!pre) continue
+        const hpLost = pre.hp - post.hp
+        if (hpLost <= 0) continue
+        const extra = Math.round((hpLost * talent.damageBoost) / 100)
+        if (extra <= 0) continue
+        const newHp = Math.max(0, post.hp - extra)
+        players = { ...players, [pid]: { ...post, hp: newHp, alive: newHp > 0 } }
+      }
+    }
+    // 'special' / 'ability_boost' specialEffect-only talents: intentional no-op
+  }
+
+  return { ...result, state: { ...result.state, players } }
 }

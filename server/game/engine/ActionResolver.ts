@@ -1,16 +1,26 @@
-import { Effect } from 'effect'
-import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
+import { Effect, Either } from 'effect'
+import type { CreepState, GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
+import { resolveAbility, getAbilityLevel, absorbShield, type AbilitySlot } from '../heroes'
+import {
+  getEffectiveAttack,
+  getEffectiveDefense,
+  getEffectiveMagicResist,
+  getAttackMultiplier,
+  getTalentStatBonus,
+  getItemStatBonuses,
+} from './EffectiveStats'
 import { areAdjacent } from '../map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalculator'
 import { placeWard, canAttackTower } from '../map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '../protocol/events'
-import { buyItem, sellItem } from '../items/shop'
+import { buyItem, sellItem, useItem } from '../items/shop'
 import { awardLastHit, awardTowerKill } from './GoldDistributor'
 import { pickupAegis } from './RoshanAI'
 import { pickupRune } from './RuneAI'
+import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
 import { ITEMS } from '../items/registry'
 import {
   CREEP_XP,
@@ -82,50 +92,30 @@ function applyPlayerUpdates(
 
 // ── Item Stat Bonuses ─────────────────────────────────────────
 
-/** Sum up all stat bonuses from a player's equipped items. */
-export function getItemStatBonuses(items: (string | null)[]): ItemStats {
-  const totals: Required<ItemStats> = {
-    hp: 0,
-    mp: 0,
-    attack: 0,
-    defense: 0,
-    magicResist: 0,
-    moveSpeed: 0,
+// Implementation moved to EffectiveStats (single authority for combat stats);
+// re-exported here for backward compatibility.
+export { getItemStatBonuses } from './EffectiveStats'
+
+/**
+ * Resolve a zone-local creep index to the creep and its global array index.
+ * Clients (zone panel, autocomplete) count creeps within the player's zone —
+ * the global creeps array is vision-filtered before broadcast, so global
+ * indices mean different things on each side. Filtering preserves order, so
+ * "Nth creep in this zone" is identical for client and server.
+ */
+function creepInZoneByIndex(
+  creeps: CreepState[],
+  zone: string,
+  index: number,
+): { creep: CreepState; globalIdx: number } | null {
+  let seen = 0
+  for (let i = 0; i < creeps.length; i++) {
+    const c = creeps[i]!
+    if (c.zone !== zone) continue
+    if (seen === index) return { creep: c, globalIdx: i }
+    seen++
   }
-  for (const itemId of items) {
-    if (!itemId) continue
-    const item = ITEMS[itemId]
-    if (!item) continue
-    totals.hp += item.stats.hp ?? 0
-    totals.mp += item.stats.mp ?? 0
-    totals.attack += item.stats.attack ?? 0
-    totals.defense += item.stats.defense ?? 0
-    totals.magicResist += item.stats.magicResist ?? 0
-    totals.moveSpeed += item.stats.moveSpeed ?? 0
-  }
-  return totals
-}
-
-/** Get effective attack damage for a player (base hero stat + item bonuses). */
-function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): number {
-  const hero = player.heroId ? HEROES[player.heroId] : null
-  const baseAttack = hero
-    ? hero.baseStats.attack + (hero.growthPerLevel.attack ?? 0) * (player.level - 1)
-    : 50
-  const itemBonus = itemStats?.attack ?? getItemStatBonuses(player.items).attack ?? 0
-  return baseAttack + itemBonus
-}
-
-/** Get effective defense for a player (base stat + item bonuses). */
-function getEffectiveDefense(player: PlayerState, itemStats?: ItemStats): number {
-  const itemBonus = itemStats?.defense ?? getItemStatBonuses(player.items).defense ?? 0
-  return player.defense + itemBonus
-}
-
-/** Get effective magic resist for a player (base stat + item bonuses). */
-function getEffectiveMagicResist(player: PlayerState, itemStats?: ItemStats): number {
-  const itemBonus = itemStats?.magicResist ?? getItemStatBonuses(player.items).magicResist ?? 0
-  return player.magicResist + itemBonus
+  return null
 }
 
 // ── Validation ─────────────────────────────────────────────────
@@ -143,19 +133,23 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (!areAdjacent(player.zone, cmd.zone) && player.zone !== cmd.zone) {
         return 'Cannot move to non-adjacent zone'
       }
-      // Check for root/stun
+      // Check for root/stun (taunt forces attacking — no fleeing)
       if (hasDebuff(player, 'root') || hasDebuff(player, 'stun')) {
         return 'Cannot move while rooted or stunned'
       }
+      if (hasDebuff(player, 'taunt')) return 'Cannot move while taunted'
       return null
     }
     case 'attack': {
       if (hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
+      if (hasDebuff(player, 'feared')) return 'Cannot attack while feared'
       return null
     }
     case 'cast': {
       if (hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
       if (hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
+      if (hasDebuff(player, 'feared')) return 'Cannot cast while feared'
+      if (hasDebuff(player, 'taunt')) return 'Cannot cast while taunted'
       if (!player.heroId) return 'No hero selected'
 
       const hero = HEROES[player.heroId]
@@ -163,8 +157,14 @@ export function validateAction(state: GameState, action: PlayerAction): string |
 
       const ability = hero.abilities[cmd.ability]
       if (!ability) return 'Unknown ability'
+      // Auto-leveling gate: Q/W/E unlock at level 1, R at level 6 (_base.getAbilityLevel)
+      if (getAbilityLevel(player.level, cmd.ability) < 1) {
+        return cmd.ability === 'r' ? 'Ultimate unlocks at level 6' : 'Ability not yet learned'
+      }
       if (player.cooldowns[cmd.ability] > 0) return 'Ability on cooldown'
-      if (player.mp < ability.manaCost) return 'Not enough mana'
+      // No mana check here — per-hero scaled costs live in the resolver files;
+      // the resolver's InsufficientManaError is authoritative and surfaced
+      // through resolveActions' rejected channel.
       return null
     }
     case 'buy': {
@@ -250,6 +250,8 @@ export function resolveActions(
   state: GameState
   events: GameEngineEvent[]
   heroAttackers: Map<string, string>
+  /** Actions that failed inside resolution (mana, bad target, slow-cancel). */
+  rejected: Array<{ playerId: string; reason: string }>
 }> {
   return Effect.sync(() => {
     // Run anti-cheat validation on all actions
@@ -290,7 +292,9 @@ export function resolveActions(
     let players = { ...state.players }
     const events: GameEngineEvent[] = []
     const heroAttackers = new Map<string, string>()
-    const zones = { ...state.zones }
+    const rejected: Array<{ playerId: string; reason: string }> = []
+    let zones = { ...state.zones }
+    let ancients = state.ancients
     const creeps = [...state.creeps]
     let neutrals = [...(state.neutrals ?? [])]
     let towers = [...state.towers]
@@ -335,8 +339,21 @@ export function resolveActions(
         ),
     )
     for (const action of instantCasts) {
-      const result = resolveInstantAbility(state, players, action, events, heroAttackers)
+      const result = resolveHeroCast(
+        state,
+        players,
+        zones,
+        creeps,
+        towers,
+        ancients,
+        action,
+        events,
+        heroAttackers,
+        rejected,
+        damageTracker,
+      )
       players = result.players
+      zones = result.zones
     }
 
     // Phase 2: Movement — all moves resolve simultaneously
@@ -347,6 +364,20 @@ export function resolveActions(
       const cmd = action.command as { type: 'move'; zone: string }
       const player = players[action.playerId]
       if (player && player.alive) {
+        // Slow semantics: total slow stacks = % chance the move fails this
+        // tick (capped at 80%). Root/stun/taunt are hard-blocked upstream in
+        // validateAction.
+        const totalSlow = Math.min(
+          80,
+          player.buffs
+            .filter((b) => b.id === 'slow' || b.id === 'broadcast_slow')
+            .reduce((sum, b) => sum + b.stacks, 0),
+        )
+        if (totalSlow > 0 && Math.random() * 100 < totalSlow) {
+          rejected.push({ playerId: action.playerId, reason: 'Slowed — failed to move' })
+          continue
+        }
+
         const updates: Partial<PlayerState> = { zone: cmd.zone }
 
         if (player.buffs.some((b) => b.id === 'tp_channeling')) {
@@ -387,10 +418,10 @@ export function resolveActions(
       const denier = players[action.playerId]
       if (!denier || !denier.alive) continue
 
-      const creepIdx = cmd.target.index
-      const creep = creeps[creepIdx]
-      if (!creep || creep.hp <= 0) continue
-      if (creep.zone !== denier.zone) continue
+      const resolved = creepInZoneByIndex(creeps, denier.zone, cmd.target.index)
+      if (!resolved) continue
+      const { creep, globalIdx: creepIdx } = resolved
+      if (creep.hp <= 0) continue
 
       if (creep.team !== denier.team) continue
       const creepMaxHp =
@@ -444,7 +475,11 @@ export function resolveActions(
         const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
         const targetItemStats = getCachedItemStats(targetId, target.items)
 
-        let attackDamage = getEffectiveAttack(attacker, attackerItemStats)
+        // Multiplicative stack buffs (resonance/hopCount/fullTrace) apply to
+        // basic attacks on heroes only — never to ability damage.
+        let attackDamage = Math.round(
+          getEffectiveAttack(attacker, attackerItemStats) * getAttackMultiplier(attacker),
+        )
 
         let critMultiplier = 1
 
@@ -526,7 +561,10 @@ export function resolveActions(
 
         let totalDamage = damage
         if (bonusMagicDamage > 0) {
-          const magicDmg = calculateMagicalDamage(bonusMagicDamage, target.magicResist)
+          const magicDmg = calculateMagicalDamage(
+            bonusMagicDamage,
+            getEffectiveMagicResist(target, targetItemStats),
+          )
           totalDamage += magicDmg
           events.push({
             _tag: 'damage',
@@ -538,8 +576,29 @@ export function resolveActions(
           })
         }
 
-        const newHp = Math.max(0, targetPendingHp - totalDamage)
+        // Kernel passive 'hardened' — same 10% reduction constant as
+        // _base.dealDamage, applied before shield absorption.
+        if (targetPendingBuffs.some((b) => b.id === 'hardened')) {
+          totalDamage = Math.round(totalDamage * 0.9)
+        }
+
+        // Phase shift (Echo W) dodges the hit entirely; otherwise 'shield'
+        // buff stacks absorb HP loss. The emitted damage event below keeps
+        // the pre-shield mitigated amount on purpose — absorbed hits still
+        // grant assist credit (ability damage events are post-shield; see
+        // resolveHeroCast).
         let newBuffs = [...targetPendingBuffs]
+        let hpLoss = totalDamage
+        if (targetPendingBuffs.some((b) => b.id === 'phaseShift')) {
+          hpLoss = 0
+          newBuffs = newBuffs.filter((b) => b.id !== 'phaseShift')
+        } else {
+          const absorbed = absorbShield(newBuffs, totalDamage)
+          newBuffs = [...absorbed.buffs]
+          hpLoss = absorbed.remaining
+        }
+
+        const newHp = Math.max(0, targetPendingHp - hpLoss)
 
         if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
           newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id })
@@ -597,10 +656,10 @@ export function resolveActions(
           damageType: 'physical',
         })
       } else if (cmd.target.kind === 'creep') {
-        const creepIdx = cmd.target.index
-        const creep = creeps[creepIdx]
-        if (!creep || creep.hp <= 0) continue
-        if (creep.zone !== attacker.zone) continue
+        const resolved = creepInZoneByIndex(creeps, attacker.zone, cmd.target.index)
+        if (!resolved) continue
+        const { creep, globalIdx: creepIdx } = resolved
+        if (creep.hp <= 0) continue
 
         const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
         const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
@@ -616,7 +675,7 @@ export function resolveActions(
           _tag: 'damage',
           tick: state.tick,
           sourceId: action.playerId,
-          targetId: `creep_${creepIdx}`,
+          targetId: creep.id,
           amount: attackDamage,
           damageType: 'physical',
         })
@@ -701,6 +760,34 @@ export function resolveActions(
           amount: attackDamage,
           damageType: 'physical',
         })
+      } else if (cmd.target.kind === 'ancient') {
+        const enemyTeam: TeamId = attacker.team === 'radiant' ? 'dire' : 'radiant'
+        // Heroes must stand in the enemy base to hit the Ancient
+        if (attacker.zone !== ANCIENT_ZONES[enemyTeam]) continue
+
+        const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
+        const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
+
+        // Vulnerability (T3 down) and alive checks live in AncientSystem
+        const result = resolveAncientAttack(
+          { ...state, players, creeps, towers, ancients },
+          action.playerId,
+          attackDamage,
+        )
+        if (result.rejected) {
+          wsLog.debug('Ancient attack rejected', {
+            playerId: action.playerId,
+            reason: result.rejected,
+          })
+          continue
+        }
+
+        ancients = result.state.ancients
+        events.push(...result.events)
+
+        const adt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+        adt.tower += attackDamage
+        damageTracker.set(action.playerId, adt)
       }
     }
 
@@ -709,8 +796,21 @@ export function resolveActions(
 
     // Resolve targeted casts
     for (const action of targetedCasts) {
-      const result = resolveTargetedAbility(state, players, action, events, heroAttackers)
+      const result = resolveHeroCast(
+        state,
+        players,
+        zones,
+        creeps,
+        towers,
+        ancients,
+        action,
+        events,
+        heroAttackers,
+        rejected,
+        damageTracker,
+      )
       players = result.players
+      zones = result.zones
     }
 
     // Phase 4: Passive effects, cooldown ticks, item passives
@@ -727,6 +827,12 @@ export function resolveActions(
 
       let hp = player.hp
       let mp = player.mp
+
+      // Healing Salve regen (buff applied by useItem; ticked down in GameLoop)
+      const salveRegen = player.buffs.find((b) => b.id === 'healing_salve_regen')
+      if (salveRegen) {
+        hp = Math.min(player.maxHp, hp + salveRegen.stacks)
+      }
 
       if (player.items.includes('ring_of_health')) {
         hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * RING_OF_HEALTH_REGEN_PERCENT))
@@ -805,6 +911,41 @@ export function resolveActions(
       }
     }
 
+    // Phase 5b: Use item actives (blink, BKB, salves, TP scrolls, ...)
+    const uses = validActions.filter((a) => a.command.type === 'use')
+    for (const action of uses) {
+      const cmd = action.command as { type: 'use'; item: string; target?: TargetRef | string }
+      const tempState: GameState = { ...state, players, zones, creeps, towers, ancients }
+      const result = Effect.runSync(
+        useItem(tempState, action.playerId, cmd.item, cmd.target).pipe(
+          Effect.match({
+            // Rejection feedback mirrors the validation-failure logging above;
+            // validateAction already surfaced ownership/cooldown errors to the
+            // player via GameLoop's rejectedActions.
+            onFailure: (error) => {
+              wsLog.debug('Item use rejected', {
+                playerId: action.playerId,
+                item: cmd.item,
+                reason: error._tag,
+              })
+              return null
+            },
+            onSuccess: (updated): GameState | null => updated,
+          }),
+        ),
+      )
+      if (result) {
+        players = { ...result.players }
+        zones = { ...result.zones }
+        events.push({
+          _tag: 'ability_used',
+          tick: state.tick,
+          playerId: action.playerId,
+          abilityId: ITEMS[cmd.item]?.active?.id ?? cmd.item,
+        })
+      }
+    }
+
     // Handle glyph commands
     let teams = { ...state.teams }
     const glyphActions = validActions.filter((a) => a.command.type === 'glyph')
@@ -876,15 +1017,15 @@ export function resolveActions(
       players = { ...result.players }
     }
 
-    // Recalculate maxHp/maxMp based on items
+    // Recalculate maxHp/maxMp based on items + talents
     for (const [pid, player] of Object.entries(players)) {
       const hero = player.heroId ? HEROES[player.heroId] : null
       if (!hero) continue
       const baseMaxHp = hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * (player.level - 1)
       const baseMaxMp = hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * (player.level - 1)
-      const itemBonuses = getItemStatBonuses(player.items)
-      const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0)
-      const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0)
+      const itemBonuses = getCachedItemStats(pid, player.items)
+      const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp')
+      const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp')
       if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
         // Preserve HP/MP percentage when max changes to avoid losing HP on item sell
         const hpPercent = player.maxHp > 0 ? player.hp / player.maxHp : 1
@@ -1010,9 +1151,10 @@ export function resolveActions(
       neutrals,
       towers,
       teams,
+      ancients,
     }
 
-    return { state: updatedState, events, heroAttackers }
+    return { state: updatedState, events, heroAttackers, rejected }
   })
 }
 
@@ -1033,295 +1175,128 @@ function isInstantAbility(
   return ability.effects.some((e) => e.type === 'stun' || e.type === 'silence')
 }
 
-function resolveInstantAbility(
+/**
+ * The cast bridge — runs the per-hero registry resolver (`resolveAbility`)
+ * against a temp GameState assembled from the in-flight resolution buffers,
+ * then synthesizes backward-compatible damage/heal events by diffing
+ * pre/post HP. Resolver failures (mana, target, cooldown) are surfaced via
+ * the `rejected` channel instead of being silently dropped.
+ *
+ * The bridge must NOT deduct mana or set cooldowns itself — the hero
+ * resolvers own scaled per-level costs and cooldowns.
+ */
+function resolveHeroCast(
   state: GameState,
   players: Record<string, PlayerState>,
+  zones: GameState['zones'],
+  creeps: CreepState[],
+  towers: GameState['towers'],
+  ancients: GameState['ancients'],
   action: PlayerAction,
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
-): { players: Record<string, PlayerState> } {
-  const cmd = action.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r'; target?: TargetRef }
+  rejected: Array<{ playerId: string; reason: string }>,
+  damageTracker: Map<string, { hero: number; tower: number }>,
+): { players: Record<string, PlayerState>; zones: GameState['zones'] } {
+  const cmd = action.command as { type: 'cast'; ability: AbilitySlot; target?: TargetRef }
   const caster = players[action.playerId]
-  if (!caster?.heroId) return { players }
+  if (!caster?.heroId) return { players, zones }
 
-  const hero = HEROES[caster.heroId]
-  if (!hero) return { players }
+  const tempState: GameState = { ...state, players, zones, creeps, towers, ancients }
+  // Effect.either keeps AbilityError failures as values — an uncaught defect
+  // here would abort the entire tick (GameLoop recovers but loses actions).
+  const result = Effect.runSync(
+    Effect.either(resolveAbility(tempState, action.playerId, cmd.ability, cmd.target)),
+  )
 
-  const ability = hero.abilities[cmd.ability]
-  if (!ability) return { players }
-
-  // Deduct mana, set cooldown
-  let updatedPlayers = {
-    ...players,
-    [action.playerId]: {
-      ...caster,
-      mp: caster.mp - ability.manaCost,
-      cooldowns: { ...caster.cooldowns, [cmd.ability]: ability.cooldownTicks },
-    },
+  if (Either.isLeft(result)) {
+    const err = result.left
+    const reason =
+      err._tag === 'InsufficientManaError'
+        ? `Not enough mana (need ${err.required})`
+        : err._tag === 'CooldownError'
+          ? 'Ability on cooldown'
+          : err.reason
+    rejected.push({ playerId: action.playerId, reason })
+    return { players, zones }
   }
 
-  const cooldownTicks = ability.cooldownTicks
+  const newState = result.right.state
+  const newPlayers = newState.players
+  const abilityDef = HEROES[caster.heroId]?.abilities[cmd.ability]
+  const damageType = abilityDef?.damageType ?? 'magical'
+
+  // Synthesize legacy-shape damage/heal events from the HP diff. Amounts are
+  // post-mitigation AND post-shield: a fully shield-absorbed ability hit
+  // emits no damage event (and grants no assist credit). Basic attacks keep
+  // pre-shield amounts — see the attack phase. Don't "fix" one to match the
+  // other without revisiting both.
+  for (const [pid, post] of Object.entries(newPlayers)) {
+    const pre = players[pid]
+    if (!pre) continue
+    const delta = pre.hp - post.hp
+    if (delta > 0) {
+      events.push({
+        _tag: 'damage',
+        tick: state.tick,
+        sourceId: action.playerId,
+        targetId: pid,
+        amount: delta,
+        damageType,
+      })
+      if (post.team !== caster.team) {
+        heroAttackers.set(action.playerId, pid)
+        const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+        dt.hero += delta
+        damageTracker.set(action.playerId, dt)
+      }
+    } else if (delta < 0) {
+      events.push({
+        _tag: 'heal',
+        tick: state.tick,
+        sourceId: action.playerId,
+        targetId: pid,
+        amount: -delta,
+      })
+    }
+  }
+
+  // result.right.events are wire-format 'ability_cast' events the client
+  // doesn't understand — discard them; ability_used/cooldown_used below
+  // carry the resolver-set cooldown (the authoritative value).
+  const actualCd = newPlayers[action.playerId]?.cooldowns[cmd.ability] ?? 0
+
+  let targetId: string | undefined
+  if (cmd.target?.kind === 'hero') {
+    const needle = cmd.target.name.toLowerCase()
+    for (const [id, p] of Object.entries(newPlayers)) {
+      if (
+        p.id.toLowerCase() === needle ||
+        p.name.toLowerCase() === needle ||
+        p.heroId?.toLowerCase() === needle
+      ) {
+        targetId = id
+        break
+      }
+    }
+  }
+
   events.push({
     _tag: 'ability_used',
     tick: state.tick,
     playerId: action.playerId,
-    abilityId: ability.id,
-    cooldown: cooldownTicks,
+    abilityId: abilityDef?.id ?? cmd.ability,
+    targetId,
+    cooldown: actualCd,
   })
-
-  // Also emit detailed cooldown event for UI tracking
   events.push({
     _tag: 'cooldown_used',
     tick: state.tick,
     playerId: action.playerId,
     abilityId: cmd.ability,
-    cooldownTicks,
-    readyAtTick: state.tick + cooldownTicks,
+    cooldownTicks: actualCd,
+    readyAtTick: state.tick + actualCd,
   })
 
-  // Apply effects
-  for (const effect of ability.effects) {
-    if (effect.type === 'stun' || effect.type === 'silence' || effect.type === 'root') {
-      // Apply to target or all enemies in zone
-      if (cmd.target?.kind === 'hero') {
-        const targetId = findHeroByName(updatedPlayers, cmd.target.name)
-        if (targetId) {
-          const ccTarget = updatedPlayers[targetId]
-          if (ccTarget && ccTarget.zone === caster.zone) {
-            updatedPlayers = applyBuffToPlayer(
-              updatedPlayers,
-              targetId,
-              effect.type,
-              effect.duration ?? 1,
-              caster.id,
-            )
-          }
-        }
-      } else {
-        // AoE: apply to all enemies in zone
-        for (const [pid, p] of Object.entries(updatedPlayers)) {
-          if (p.zone === caster.zone && p.team !== caster.team && p.alive) {
-            updatedPlayers = applyBuffToPlayer(
-              updatedPlayers,
-              pid,
-              effect.type,
-              effect.duration ?? 1,
-              caster.id,
-            )
-          }
-        }
-      }
-    }
-    if (effect.type === 'damage') {
-      const dmgType = effect.damageType ?? 'magical'
-      if (cmd.target?.kind === 'hero') {
-        const targetId = findHeroByName(updatedPlayers, cmd.target.name)
-        if (targetId && updatedPlayers[targetId]) {
-          const target = updatedPlayers[targetId]!
-          if (target.zone === caster.zone && target.alive) {
-            const dmg =
-              dmgType === 'physical'
-                ? calculatePhysicalDamage(effect.value, getEffectiveDefense(target))
-                : calculateMagicalDamage(effect.value, getEffectiveMagicResist(target))
-            const newHp = Math.max(0, target.hp - dmg)
-            updatedPlayers = {
-              ...updatedPlayers,
-              [targetId]: { ...target, hp: newHp, alive: newHp > 0 },
-            }
-            heroAttackers.set(action.playerId, targetId)
-            events.push({
-              _tag: 'damage',
-              tick: state.tick,
-              sourceId: action.playerId,
-              targetId,
-              amount: dmg,
-              damageType: dmgType,
-            })
-          }
-        }
-      }
-    }
-  }
-
-  return { players: updatedPlayers }
-}
-
-function resolveTargetedAbility(
-  state: GameState,
-  players: Record<string, PlayerState>,
-  action: PlayerAction,
-  events: GameEngineEvent[],
-  heroAttackers: Map<string, string>,
-): { players: Record<string, PlayerState> } {
-  const cmd = action.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r'; target?: TargetRef }
-  const caster = players[action.playerId]
-  if (!caster?.heroId) return { players }
-
-  const hero = HEROES[caster.heroId]
-  if (!hero) return { players }
-
-  const ability = hero.abilities[cmd.ability]
-  if (!ability) return { players }
-
-  // Deduct mana, set cooldown
-  let updatedPlayers = {
-    ...players,
-    [action.playerId]: {
-      ...caster,
-      mp: caster.mp - ability.manaCost,
-      cooldowns: { ...caster.cooldowns, [cmd.ability]: ability.cooldownTicks },
-    },
-  }
-
-  const cooldownTicks = ability.cooldownTicks
-  events.push({
-    _tag: 'ability_used',
-    tick: state.tick,
-    playerId: action.playerId,
-    abilityId: ability.id,
-    cooldown: cooldownTicks,
-  })
-
-  // Also emit detailed cooldown event for UI tracking
-  events.push({
-    _tag: 'cooldown_used',
-    tick: state.tick,
-    playerId: action.playerId,
-    abilityId: cmd.ability,
-    cooldownTicks,
-    readyAtTick: state.tick + cooldownTicks,
-  })
-
-  // Apply damage effects
-  for (const effect of ability.effects) {
-    if (effect.type === 'damage') {
-      const dmgType = effect.damageType ?? 'magical'
-      if (cmd.target?.kind === 'hero') {
-        const targetId = findHeroByName(updatedPlayers, cmd.target.name)
-        if (targetId && updatedPlayers[targetId]) {
-          const target = updatedPlayers[targetId]!
-          if (target.zone === caster.zone && target.alive) {
-            const dmg =
-              dmgType === 'physical'
-                ? calculatePhysicalDamage(effect.value, getEffectiveDefense(target))
-                : calculateMagicalDamage(effect.value, getEffectiveMagicResist(target))
-            const newHp = Math.max(0, target.hp - dmg)
-            updatedPlayers = {
-              ...updatedPlayers,
-              [targetId]: { ...target, hp: newHp, alive: newHp > 0 },
-            }
-            heroAttackers.set(action.playerId, targetId)
-            events.push({
-              _tag: 'damage',
-              tick: state.tick,
-              sourceId: action.playerId,
-              targetId,
-              amount: dmg,
-              damageType: dmgType,
-            })
-          }
-        }
-      } else if (ability.targetType === 'none') {
-        // AoE damage to all enemies in zone
-        for (const [pid, p] of Object.entries(updatedPlayers)) {
-          if (
-            p.zone === caster.zone &&
-            p.team !== caster.team &&
-            p.alive &&
-            pid !== action.playerId
-          ) {
-            const dmg =
-              dmgType === 'physical'
-                ? calculatePhysicalDamage(effect.value, getEffectiveDefense(p))
-                : calculateMagicalDamage(effect.value, getEffectiveMagicResist(p))
-            const newHp = Math.max(0, p.hp - dmg)
-            updatedPlayers = {
-              ...updatedPlayers,
-              [pid]: { ...p, hp: newHp, alive: newHp > 0 },
-            }
-            heroAttackers.set(action.playerId, pid)
-            events.push({
-              _tag: 'damage',
-              tick: state.tick,
-              sourceId: action.playerId,
-              targetId: pid,
-              amount: dmg,
-              damageType: dmgType,
-            })
-          }
-        }
-      }
-    }
-    if (effect.type === 'heal' && cmd.target?.kind === 'hero') {
-      const targetId = findHeroByName(updatedPlayers, cmd.target.name)
-      if (targetId && updatedPlayers[targetId]) {
-        const target = updatedPlayers[targetId]!
-        if (target.team !== caster.team) continue
-        const newHp = Math.min(target.maxHp, target.hp + effect.value)
-        updatedPlayers = {
-          ...updatedPlayers,
-          [targetId]: { ...target, hp: newHp },
-        }
-        events.push({
-          _tag: 'heal',
-          tick: state.tick,
-          sourceId: action.playerId,
-          targetId,
-          amount: effect.value,
-        })
-      }
-    }
-    if (effect.type === 'shield' || effect.type === 'buff') {
-      if (cmd.target?.kind === 'hero') {
-        const targetId = findHeroByName(updatedPlayers, cmd.target.name)
-        if (targetId) {
-          updatedPlayers = applyBuffToPlayer(
-            updatedPlayers,
-            targetId,
-            effect.type,
-            effect.duration ?? 1,
-            caster.id,
-          )
-        }
-      } else if (cmd.target?.kind === 'self' || ability.targetType === 'self') {
-        updatedPlayers = applyBuffToPlayer(
-          updatedPlayers,
-          action.playerId,
-          effect.type,
-          effect.duration ?? 1,
-          caster.id,
-        )
-      }
-    }
-  }
-
-  return { players: updatedPlayers }
-}
-
-// ── Helpers ────────────────────────────────────────────────────
-
-function findHeroByName(players: Record<string, PlayerState>, name: string): string | null {
-  for (const [id, p] of Object.entries(players)) {
-    if (p.name === name || p.id === name || p.heroId === name) return id
-  }
-  return null
-}
-
-function applyBuffToPlayer(
-  players: Record<string, PlayerState>,
-  playerId: string,
-  type: string,
-  duration: number,
-  sourceId: string,
-): Record<string, PlayerState> {
-  const player = players[playerId]
-  if (!player) return players
-
-  return {
-    ...players,
-    [playerId]: {
-      ...player,
-      buffs: [...player.buffs, { id: type, stacks: 1, ticksRemaining: duration, source: sourceId }],
-    },
-  }
+  return { players: newPlayers, zones: newState.zones }
 }

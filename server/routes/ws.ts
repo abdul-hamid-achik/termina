@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime, getReconnectPayload } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
-import { pickHero, banHero, getPlayerLobby, getLobby, cancelLobby } from '../game/matchmaking/lobby'
+import { pickHero, getPlayerLobby, getLobby, cancelLobby } from '../game/matchmaking/lobby'
 import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../services/PeerRegistry'
 import { addSpectator, removeSpectator } from '../services/SpectatorRegistry'
 import { wsLog } from '../utils/log'
@@ -358,49 +358,6 @@ export default defineWebSocketHandler({
               type: 'error',
               code: 'PICK_FAILED',
               message: result.error ?? 'Hero pick failed',
-            }),
-          )
-        }
-        break
-      }
-
-      case 'hero_ban': {
-        wsLog.debug('hero_ban received', {
-          playerId: ctx.playerId,
-          lobbyId: parsed.lobbyId,
-          heroId: parsed.heroId,
-        })
-        if (!checkScopedRateLimit('lobby', ctx.playerId)) {
-          peer.send(
-            JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Slow down' }),
-          )
-          break
-        }
-        const runtime = getGameRuntime()
-        if (!runtime) {
-          peer.send(
-            JSON.stringify({
-              type: 'error',
-              code: 'NO_GAME_SERVER',
-              message: 'Game server not ready',
-            }),
-          )
-          break
-        }
-        const result = banHero(
-          parsed.lobbyId,
-          ctx.playerId,
-          parsed.heroId,
-          runtime.wsService,
-          runtime.redisService,
-          runtime.dbService,
-        )
-        if (!result.success) {
-          peer.send(
-            JSON.stringify({
-              type: 'error',
-              code: 'BAN_FAILED',
-              message: result.error ?? 'Hero ban failed',
             }),
           )
         }

@@ -28,12 +28,10 @@ export interface Lobby {
   id: string
   players: LobbyPlayer[]
   pickedHeroes: Set<string>
-  bannedHeroes: Set<string> // Track banned heroes
   pickOrder: number[]
   currentPickIndex: number
   pickTimer: ReturnType<typeof setTimeout> | null
-  phase: 'banning' | 'picking' | 'ready_check' | 'starting' | 'cancelled'
-  currentBanIndex: number // Track ban phase progress
+  phase: 'picking' | 'ready_check' | 'starting' | 'cancelled'
 }
 
 const activeLobbies = new Map<string, Lobby>()
@@ -79,12 +77,10 @@ export function createLobby(
     id: lobbyId,
     players,
     pickedHeroes: new Set(),
-    bannedHeroes: new Set(),
     pickOrder: PICK_SEQUENCE_10.slice(0, players.length),
     currentPickIndex: 0,
-    currentBanIndex: 0, // Radiant bans first (index 0), Dire bans second (index 1)
     pickTimer: null,
-    phase: 'banning', // Start with ban phase
+    phase: 'picking', // Draft starts immediately — no ban phase
   }
 
   activeLobbies.set(lobbyId, lobby)
@@ -109,13 +105,11 @@ export function createLobby(
       lobbyId,
       team: p.team,
       players: allPlayers,
-      phase: 'banning',
-      bannedHeroes: [],
-      currentBanIndex: 0,
+      phase: 'picking',
     })
   }
 
-  startBanTimer(lobby, ws, redis, db)
+  startPickTimer(lobby, ws, redis, db)
 
   return lobby
 }
@@ -180,116 +174,6 @@ function startPickTimer(
 
     const randomHero = pickRandomHero(lobby)
     confirmPick(lobby, player.playerId, randomHero, ws, redis, db)
-  }, PICK_TIME_MS)
-}
-
-/** Ban a hero during the ban phase (1 ban per team) */
-export function banHero(
-  lobbyId: string,
-  playerId: string,
-  heroId: string,
-  ws: WebSocketServiceApi,
-  redis: RedisServiceApi,
-  db: DatabaseServiceApi,
-): { success: boolean; error?: string } {
-  const lobby = activeLobbies.get(lobbyId)
-  if (!lobby) return { success: false, error: 'Lobby not found' }
-  if (lobby.phase !== 'banning') return { success: false, error: 'Not in ban phase' }
-
-  // Check it's this player's turn to ban
-  // Ban order: Radiant captain (index 0) bans first, Dire captain (index 5) bans second
-  const currentBanPlayerIndex = lobby.currentBanIndex === 0 ? 0 : 5
-  const currentBanPlayer = lobby.players[currentBanPlayerIndex]
-  
-  if (!currentBanPlayer || currentBanPlayer.playerId !== playerId) {
-    return { success: false, error: 'Not your turn to ban' }
-  }
-
-  if (!AVAILABLE_HEROES.includes(heroId)) {
-    return { success: false, error: 'Invalid hero' }
-  }
-
-  if (lobby.bannedHeroes.has(heroId)) {
-    return { success: false, error: 'Hero already banned' }
-  }
-
-  // Confirm ban
-  lobby.bannedHeroes.add(heroId)
-  lobby.currentBanIndex++
-
-  // Broadcast ban to all players
-  for (const p of lobby.players) {
-    if (isBot(p.playerId)) continue
-    sendToPeer(p.playerId, {
-      type: 'hero_ban',
-      playerId,
-      heroId,
-    })
-  }
-
-  lobbyLog.debug('Hero banned', { lobbyId, playerId, heroId })
-
-  // Check if both bans are done
-  if (lobby.currentBanIndex >= 2) {
-    if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
-    // Brief delay then transition to pick phase
-    setTimeout(() => {
-      lobby.phase = 'picking'
-      lobby.currentPickIndex = 0
-      startPickTimer(lobby, ws, redis, db)
-    }, 1000)
-    return { success: true }
-  }
-
-  // Start timer for next ban (Dire's ban)
-  if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
-  lobby.pickTimer = setTimeout(() => {
-    // Auto-ban random hero on timeout
-    const available = AVAILABLE_HEROES.filter((h) => !lobby.bannedHeroes.has(h))
-    if (available.length > 0) {
-      const randomBan = available[Math.floor(Math.random() * available.length)]!
-      banHero(lobbyId, lobby.players[5]!.playerId, randomBan, ws, redis, db)
-    }
-  }, PICK_TIME_MS)
-
-  return { success: true }
-}
-
-/** Start ban timer for current team's captain */
-function startBanTimer(
-  lobby: Lobby,
-  ws: WebSocketServiceApi,
-  redis: RedisServiceApi,
-  db: DatabaseServiceApi,
-): void {
-  if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
-
-  // Determine which captain should ban
-  const currentBanPlayerIndex = lobby.currentBanIndex === 0 ? 0 : 5
-  const currentBanPlayer = lobby.players[currentBanPlayerIndex]
-  
-  if (!currentBanPlayer) return
-
-  // If captain is a bot, auto-ban after delay
-  if (isBot(currentBanPlayer.playerId)) {
-    const available = AVAILABLE_HEROES.filter((h) => !lobby.bannedHeroes.has(h))
-    const randomBan = available[Math.floor(Math.random() * available.length)]!
-    lobby.pickTimer = setTimeout(
-      () => banHero(lobby.id, currentBanPlayer.playerId, randomBan, ws, redis, db),
-      BOT_PICK_DELAY_MS,
-    )
-    return
-  }
-
-  // Human captain - wait for ban input
-  lobby.pickTimer = setTimeout(() => {
-    // Auto-ban random hero on timeout
-    const available = AVAILABLE_HEROES.filter((h) => !lobby.bannedHeroes.has(h))
-    if (available.length > 0 && lobby.currentBanIndex < 2) {
-      const randomBan = available[Math.floor(Math.random() * available.length)]!
-      const banPlayerIndex = lobby.currentBanIndex === 0 ? 0 : 5
-      banHero(lobby.id, lobby.players[banPlayerIndex]!.playerId, randomBan, ws, redis, db)
-    }
   }, PICK_TIME_MS)
 }
 

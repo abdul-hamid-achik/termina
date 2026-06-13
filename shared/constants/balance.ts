@@ -161,6 +161,29 @@ export const TOWER_HP_T3 = 2500
 export const TOWER_ATTACK = 120
 export const TOWER_DEFENSE = 20
 
+// ── Ancients (core structures) ───────────────────────────────────
+
+/**
+ * The Ancient ("Mainframe") — each team's win-condition structure in its
+ * base zone. Invulnerable until at least one of the owning team's T3
+ * towers is destroyed; the game ends when an Ancient falls.
+ */
+export const ANCIENT_HP = 6000
+
+/**
+ * Creeps stuck in a base zone with nothing to attack (Ancient still
+ * invulnerable) are despawned ("garbage collected") after this many idle
+ * ticks — prevents unbounded creep pileups in base.
+ */
+export const CREEP_BASE_IDLE_DESPAWN_TICKS = 3
+
+/**
+ * Defensive cap on lane creeps per team per zone. When exceeded the
+ * oldest creeps are despawned first. Guards against route bugs causing
+ * unbounded stacking.
+ */
+export const MAX_CREEPS_PER_ZONE_PER_TEAM = 12
+
 // ── Fountain ─────────────────────────────────────────────────────
 
 export const FOUNTAIN_HEAL_PER_TICK_PERCENT = 15

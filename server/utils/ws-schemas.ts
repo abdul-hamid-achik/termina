@@ -14,6 +14,7 @@ const targetRefSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('neutral'), index: z.number().int().min(0).max(10_000) }),
   z.object({ kind: z.literal('tower'), zone: zoneId }),
   z.object({ kind: z.literal('roshan') }),
+  z.object({ kind: z.literal('ancient') }),
   z.object({ kind: z.literal('zone'), zone: zoneId }),
   z.object({ kind: z.literal('self') }),
 ])
@@ -77,7 +78,6 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('join_game'), gameId: shortId }),
   z.object({ type: z.literal('hero_pick'), lobbyId: shortId, heroId: shortId }),
-  z.object({ type: z.literal('hero_ban'), lobbyId: shortId, heroId: shortId }),
   z.object({ type: z.literal('request_state') }),
   z.object({ type: z.literal('spectate'), gameId: shortId }),
   z.object({ type: z.literal('unspectate') }),

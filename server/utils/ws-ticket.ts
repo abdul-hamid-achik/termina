@@ -25,10 +25,18 @@ export function verifyWsTicket(ticket: string, secret: string): string | null {
   const sig = ticket.slice(dotIdx + 1)
 
   const expectedSig = createHmac('sha256', secret).update(encoded).digest('base64url')
-  if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null
+  const sigBuf = Buffer.from(sig)
+  const expectedBuf = Buffer.from(expectedSig)
+  // timingSafeEqual THROWS on length mismatch — a crafted short ticket must
+  // be an auth failure, not an exception in the WS open hook.
+  if (sigBuf.byteLength !== expectedBuf.byteLength) return null
+  if (!timingSafeEqual(sigBuf, expectedBuf)) return null
 
   try {
     const payload: TicketPayload = JSON.parse(Buffer.from(encoded, 'base64url').toString())
+    // exp must be a real number — a signed payload missing exp must not
+    // become a ticket that never expires.
+    if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) return null
     if (payload.exp < Date.now()) return null
     return payload.playerId || null
   } catch {

@@ -8,9 +8,12 @@ import type {
   RuneState,
 } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
-import type { AbilityDef, TargetType } from '~~/shared/types/hero'
+import type { AbilityDef } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { findPath, getDistance } from '../map/topology'
+import { ANCIENT_ZONES } from '../engine/AncientSystem'
+import { fastGameFactor } from '../engine/fastGame'
+import { getAbilityLevel } from '../heroes/_base'
 import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
 
 const LANE_ROUTES: Record<string, Record<TeamId, string[]>> = {
@@ -98,8 +101,10 @@ const LANE_ROUTES: Record<string, Record<TeamId, string[]>> = {
   },
 }
 
+// Core build: every entry grants stats the engine actually consumes
+// (attack/defense/hp/mp) — no dead moveSpeed-only items like boots_of_speed.
 const BOT_BUILD_ORDER = [
-  'boots_of_speed',
+  'blades_of_attack',
   'null_pointer',
   'garbage_collector',
   'blink_module',
@@ -108,13 +113,24 @@ const BOT_BUILD_ORDER = [
 ]
 
 const ITEM_COSTS: Record<string, number> = {
-  boots_of_speed: 500,
+  blades_of_attack: 430,
   null_pointer: 1400,
   garbage_collector: 1800,
   blink_module: 2150,
   stack_overflow: 3200,
   segfault_blade: 5500,
 }
+
+// Defensive consumables bots keep stocked (one of each)
+const BOT_CONSUMABLES: Array<{ item: string; cost: number }> = [
+  { item: 'healing_salve', cost: 150 },
+  { item: 'town_portal_scroll', cost: 50 },
+]
+
+/** Pop a salve when below this HP% (out of combat). */
+const SALVE_HP_PERCENT = 60
+/** TP home instead of walking when the fountain is further than this. */
+const TP_RETREAT_MIN_DISTANCE = 2
 
 const RUNE_ZONES = ['rune-top', 'rune-bot']
 const JUNGLE_ZONES = ['jungle-rad-top', 'jungle-rad-bot', 'jungle-dire-top', 'jungle-dire-bot']
@@ -167,6 +183,12 @@ const HERO_COMBOS: Record<string, HeroCombo[]> = {
 function getEnemyHeroesInZone(state: GameState, bot: PlayerState): PlayerState[] {
   return Object.values(state.players).filter(
     (p) => p.zone === bot.zone && p.team !== bot.team && p.alive,
+  )
+}
+
+function getAlliedHeroesInZone(state: GameState, bot: PlayerState): PlayerState[] {
+  return Object.values(state.players).filter(
+    (p) => p.zone === bot.zone && p.team === bot.team && p.alive && p.id !== bot.id,
   )
 }
 
@@ -261,7 +283,16 @@ function getClosestJungleZoneWithNeutrals(bot: PlayerState, state: GameState): s
 type AbilitySlot = 'q' | 'w' | 'e' | 'r'
 
 function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot): boolean {
-  return bot.cooldowns[slot] === 0 && bot.mp >= ability.manaCost
+  // Mirror the ActionResolver gates — most critically the auto-level unlock
+  // (R locks until level 6). Without it, a level-1 bot facing an enemy hero
+  // burns its one action per tick on a cast the resolver always rejects:
+  // it never attacks, never earns XP, never levels — and a whole game of
+  // bots in that state deadlocks the match forever.
+  return (
+    getAbilityLevel(bot.level, slot) >= 1 &&
+    bot.cooldowns[slot] === 0 &&
+    bot.mp >= ability.manaCost
+  )
 }
 
 function calculateThreatScore(enemy: PlayerState, _bot: PlayerState, _state: GameState): number {
@@ -319,11 +350,12 @@ function tryGetAbilityCommand(
 ): Command | null {
   const hero = bot.heroId ? HEROES[bot.heroId] : null
   if (!hero) return null
+  const alliesInZone = getAlliedHeroesInZone(state, bot)
   const slots: AbilitySlot[] = ['r', 'q', 'w', 'e']
   for (const slot of slots) {
     const ability = hero.abilities[slot]
     if (!canCastAbility(bot, ability, slot)) continue
-    const target = getAbilityTarget(ability.targetType, bot, enemiesInZone)
+    const target = getAbilityTarget(ability, bot, enemiesInZone, alliesInZone)
     if (target === undefined) continue
     if (target === null) {
       return { type: 'cast', ability: slot }
@@ -333,18 +365,49 @@ function tryGetAbilityCommand(
   return null
 }
 
+const SUPPORTIVE_EFFECTS = new Set(['heal', 'shield', 'buff'])
+const OFFENSIVE_EFFECTS = new Set([
+  'damage',
+  'stun',
+  'silence',
+  'root',
+  'slow',
+  'dot',
+  'debuff',
+  'fear',
+  'taunt',
+  'execute',
+])
+
+/** Heal/shield/buff abilities with no offensive component go to allies, not enemies. */
+function isSupportiveAbility(ability: AbilityDef): boolean {
+  return (
+    ability.effects.some((e) => SUPPORTIVE_EFFECTS.has(e.type)) &&
+    !ability.effects.some((e) => OFFENSIVE_EFFECTS.has(e.type))
+  )
+}
+
 function getAbilityTarget(
-  targetType: TargetType,
+  ability: AbilityDef,
   bot: PlayerState,
   enemiesInZone: PlayerState[],
+  alliesInZone: PlayerState[],
 ): TargetRef | null | undefined {
-  switch (targetType) {
+  switch (ability.targetType) {
     case 'none':
       return enemiesInZone.length > 0 ? null : undefined
     case 'self':
       return enemiesInZone.length > 0 || getHpPercent(bot) < 50 ? null : undefined
     case 'hero':
     case 'unit': {
+      if (isSupportiveAbility(ability)) {
+        // Heals/shields target the most-hurt ally (or the bot itself)
+        const candidates = [...alliesInZone, bot]
+        const target = candidates.reduce((a, b) => (getHpPercent(a) <= getHpPercent(b) ? a : b))
+        // Don't waste mana topping off a healthy team
+        if (getHpPercent(target) >= 90) return undefined
+        return { kind: 'hero', name: target.id }
+      }
       if (enemiesInZone.length === 0) return undefined
       const target = enemiesInZone.reduce((a, b) => (a.hp < b.hp ? a : b))
       return { kind: 'hero', name: target.id }
@@ -369,6 +432,7 @@ function tryCombo(
   if (!heroId) return null
   const combos = HERO_COMBOS[heroId]
   if (!combos || combos.length === 0) return null
+  const alliesInZone = getAlliedHeroesInZone(state, bot)
   const comboState = comboStates.get(bot.id)
   if (comboState && comboState.currentCombo) {
     const comboDef = combos.find((c) => c.name === comboState.currentCombo![0])
@@ -385,9 +449,10 @@ function tryCombo(
         }
         comboStates.set(bot.id, newComboState)
         const target = getAbilityTarget(
-          HEROES[heroId]!.abilities[nextAbility.ability].targetType,
+          HEROES[heroId]!.abilities[nextAbility.ability],
           bot,
           enemiesInZone,
+          alliesInZone,
         )
         if (target === undefined) {
           comboStates.delete(bot.id)
@@ -425,9 +490,10 @@ function tryCombo(
         lastComboTick: state.tick,
       })
       const target = getAbilityTarget(
-        HEROES[heroId]!.abilities[firstAbility.ability].targetType,
+        HEROES[heroId]!.abilities[firstAbility.ability],
         bot,
         enemiesInZone,
+        alliesInZone,
       )
       if (target === undefined) {
         comboStates.delete(bot.id)
@@ -443,6 +509,12 @@ function tryCombo(
 
 function tryBuyItem(bot: PlayerState): Command | null {
   if (getItemCount(bot) >= 6) return null
+  // Keep one of each defensive consumable stocked before core items
+  for (const consumable of BOT_CONSUMABLES) {
+    if (!bot.items.includes(consumable.item) && bot.gold >= consumable.cost) {
+      return { type: 'buy', item: consumable.item }
+    }
+  }
   for (const itemId of BOT_BUILD_ORDER) {
     if (bot.items.includes(itemId)) continue
     const cost = ITEM_COSTS[itemId]
@@ -462,7 +534,7 @@ function tryPickupRune(
   if (!config.runeAwareness) return null
   const runesInZone = getRunesInZone(state, bot.zone)
   if (runesInZone.length > 0) {
-    return { type: 'cast', ability: 'q' }
+    return { type: 'rune' }
   }
   const closestRuneZone = getClosestRuneZone(bot, state)
   if (closestRuneZone && getDistance(bot.zone, closestRuneZone) <= 2) {
@@ -496,6 +568,16 @@ function tryFarmJungle(
   return null
 }
 
+/** Attack the enemy Ancient when in the enemy base and it is vulnerable. */
+function tryAttackAncient(state: GameState, bot: PlayerState): Command | null {
+  const enemyTeam: TeamId = bot.team === 'radiant' ? 'dire' : 'radiant'
+  if (bot.zone !== ANCIENT_ZONES[enemyTeam]) return null
+  // Optional chaining guards old snapshots/fixtures created before Ancients existed
+  const ancient = state.ancients?.[enemyTeam]
+  if (!ancient || !ancient.alive || !ancient.vulnerable) return null
+  return { type: 'attack', target: { kind: 'ancient' } }
+}
+
 export function decideBotAction(
   state: GameState,
   bot: PlayerState,
@@ -521,15 +603,36 @@ export function decideBotAction(
     }
     return null
   }
+  // Stand still while channeling TP — moving would cancel it
+  if (bot.buffs.some((b) => b.id === 'tp_channeling')) {
+    return null
+  }
+  const enemyHeroes = getEnemyHeroesInZone(state, bot)
+  // Pop a healing salve when hurt and out of combat
+  if (
+    enemyHeroes.length === 0 &&
+    getHpPercent(bot) < SALVE_HP_PERCENT &&
+    bot.items.includes('healing_salve') &&
+    !bot.buffs.some((b) => b.id === 'healing_salve_regen')
+  ) {
+    return { type: 'use', item: 'healing_salve' }
+  }
   if (shouldRetreatFromThreat(state, bot, config)) {
     const fountain = getFountainZone(bot.team)
+    // TP home instead of walking when retreating from deep positions
+    if (
+      enemyHeroes.length === 0 &&
+      bot.items.includes('town_portal_scroll') &&
+      getDistance(bot.zone, fountain) > TP_RETREAT_MIN_DISTANCE
+    ) {
+      return { type: 'use', item: 'town_portal_scroll' }
+    }
     const path = findPath(bot.zone, fountain)
     if (path.length > 1) {
       return { type: 'move', zone: path[1]! }
     }
     return null
   }
-  const enemyHeroes = getEnemyHeroesInZone(state, bot)
   const enemyCreeps = getEnemyCreepsInZone(state, bot)
   if (enemyHeroes.length > 0) {
     const comboCmd = tryCombo(state, bot, enemyHeroes, config)
@@ -539,9 +642,44 @@ export function decideBotAction(
     const target = enemyHeroes.reduce((a, b) => (a.hp < b.hp ? a : b))
     return { type: 'attack', target: { kind: 'hero', name: target.id } }
   }
+  // Win condition: hit the enemy Ancient when standing in their base and it's exposed
+  const ancientCmd = tryAttackAncient(state, bot)
+  if (ancientCmd) return ancientCmd
+
+  // In fast-game/test mode the loop is sped up to make matches end in minutes,
+  // so bots push and siege DECISIVELY rather than last-hitting creeps forever
+  // and never advancing — which otherwise stalls the game at 9 standing towers
+  // when a slot is AFK. Production keeps the cautious "push only with creeps"
+  // behaviour below; tuning real-play bot pushing is a separate balance task.
+  const aggressivePush = fastGameFactor() > 1
+
+  // Close out a won game: if the enemy Ancient is exposed, march straight to
+  // their base to finish it. The retreat-from-threat check already ran above,
+  // so a low-HP bot still backs off rather than feeding into base defenses.
+  const enemyTeamForClose: TeamId = bot.team === 'radiant' ? 'dire' : 'radiant'
+  const exposedAncient = state.ancients?.[enemyTeamForClose]
+  if (exposedAncient?.alive && exposedAncient.vulnerable) {
+    const baseZone = ANCIENT_ZONES[enemyTeamForClose]
+    if (bot.zone !== baseZone) {
+      const path = findPath(bot.zone, baseZone)
+      if (path.length > 1) return { type: 'move', zone: path[1]! }
+    }
+  }
+
+  // Aggressive siege (test mode): topple the enemy tower in this zone, else
+  // march toward the enemy base. This sits ABOVE creep farming so bots commit
+  // to pushing instead of holding the lane — the key to games actually ending.
+  if (aggressivePush) {
+    const towerHere = getEnemyTowerInZone(state, bot)
+    if (towerHere) return { type: 'attack', target: { kind: 'tower', zone: towerHere.zone } }
+    const advanceZone = getNextLaneZone(bot, assignedLane)
+    if (advanceZone) return { type: 'move', zone: advanceZone }
+  }
+
   if (enemyCreeps.length > 0) {
     const lowestCreep = enemyCreeps.reduce((a, b) => (a.hp < b.hp ? a : b))
-    const creepIdx = state.creeps.indexOf(lowestCreep)
+    // Creep targets use zone-local indices (Nth creep in the attacker's zone)
+    const creepIdx = state.creeps.filter((c) => c.zone === bot.zone).indexOf(lowestCreep)
     if (Math.random() < config.lastHitAccuracy || lowestCreep.hp <= 50) {
       return { type: 'attack', target: { kind: 'creep', index: creepIdx } }
     }
@@ -562,8 +700,13 @@ export function decideBotAction(
   const nextZone = getNextLaneZone(bot, assignedLane)
   if (nextZone) {
     // Push into enemy territory only with creep support — a solo level-1
-    // hero walking to the enemy base just feeds.
-    if (!isOwnSide(nextZone, bot.team) && getAlliedCreepsInZone(state, bot).length === 0) {
+    // hero walking to the enemy base just feeds. (Test mode pushes anyway so
+    // games converge quickly.)
+    if (
+      !aggressivePush &&
+      !isOwnSide(nextZone, bot.team) &&
+      getAlliedCreepsInZone(state, bot).length === 0
+    ) {
       return null
     }
     return { type: 'move', zone: nextZone }

@@ -1,10 +1,20 @@
-import type { CreepState, GameState, TowerState, PlayerState } from '~~/shared/types/game'
+import type { CreepState, GameState, TeamId, TowerState, PlayerState } from '~~/shared/types/game'
 import {
   MELEE_CREEP_ATTACK,
   RANGED_CREEP_ATTACK,
   SIEGE_CREEP_ATTACK,
+  CREEP_BASE_IDLE_DESPAWN_TICKS,
+  MAX_CREEPS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { calculatePhysicalDamage } from './DamageCalculator'
+import { resolveAncientAttack } from './AncientSystem'
+import type { GameEngineEvent } from '../protocol/events'
+
+/** The enemy base zone for a creep team — the end of every lane route. */
+const ENEMY_BASE: Record<TeamId, string> = {
+  radiant: 'dire-base',
+  dire: 'radiant-base',
+}
 
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
 const LANE_ROUTES: Record<string, { radiant: string[]; dire: string[] }> = {
@@ -136,7 +146,14 @@ function getEnemyTowerInZone(
 
 export interface CreepAction {
   creepId: string
-  action: 'move' | 'attack_creep' | 'attack_hero' | 'attack_tower'
+  action:
+    | 'move'
+    | 'attack_creep'
+    | 'attack_hero'
+    | 'attack_tower'
+    | 'attack_ancient'
+    | 'wait_in_base'
+    | 'despawn'
   targetId?: string
   targetZone?: string
   damage?: number
@@ -146,9 +163,16 @@ export interface CreepAction {
  * Run creep AI for all creeps. Returns a list of actions to apply.
  *
  * Creep behavior:
- * - If enemy creeps/heroes in same zone: attack (target closest)
+ * - If enemy creeps in same zone: attack
+ * - In the enemy base with a vulnerable Ancient: siege the Ancient
+ *   (above heroes — the wave commits to the objective, which also keeps
+ *   base creeps from grinding down every respawning hero)
+ * - If enemy heroes in same zone: attack
  * - If enemy tower in zone: attack tower
  * - Otherwise: move toward enemy base along lane (1 zone per tick)
+ * - Stuck in the enemy base with an invulnerable Ancient and nothing to
+ *   attack: idle, then get garbage collected after
+ *   CREEP_BASE_IDLE_DESPAWN_TICKS idle ticks
  */
 export function runCreepAI(state: GameState): CreepAction[] {
   const actions: CreepAction[] = []
@@ -157,6 +181,9 @@ export function runCreepAI(state: GameState): CreepAction[] {
     if (creep.hp <= 0) continue
 
     const damage = getCreepAttack(creep.type)
+    const inEnemyBase = creep.zone === ENEMY_BASE[creep.team]
+    const enemyAncient =
+      creep.team === 'radiant' ? state.ancients?.dire : state.ancients?.radiant
 
     // Priority 1: attack enemy creeps in same zone
     const enemyCreeps = getEnemyCreepsInZone(state.creeps, creep)
@@ -170,7 +197,17 @@ export function runCreepAI(state: GameState): CreepAction[] {
       continue
     }
 
-    // Priority 2: attack enemy heroes in same zone
+    // Priority 2 (enemy base only): siege the Ancient when it's vulnerable
+    if (inEnemyBase && enemyAncient && enemyAncient.alive && enemyAncient.vulnerable) {
+      actions.push({
+        creepId: creep.id,
+        action: 'attack_ancient',
+        damage,
+      })
+      continue
+    }
+
+    // Priority 3: attack enemy heroes in same zone
     const enemyHeroes = getEnemyHeroesInZone(state.players, creep.zone, creep.team)
     if (enemyHeroes.length > 0) {
       actions.push({
@@ -182,7 +219,7 @@ export function runCreepAI(state: GameState): CreepAction[] {
       continue
     }
 
-    // Priority 3: attack enemy tower in same zone
+    // Priority 4: attack enemy tower in same zone
     const enemyTower = getEnemyTowerInZone(state.towers, creep.zone, creep.team)
     if (enemyTower) {
       actions.push({
@@ -194,7 +231,7 @@ export function runCreepAI(state: GameState): CreepAction[] {
       continue
     }
 
-    // Priority 4: move forward along lane
+    // Priority 5: move forward along lane
     const nextZone = getNextZone(creep)
     if (nextZone) {
       actions.push({
@@ -202,19 +239,41 @@ export function runCreepAI(state: GameState): CreepAction[] {
         action: 'move',
         targetZone: nextZone,
       })
+      continue
+    }
+
+    // No move possible — creep is parked in a base zone with nothing to do.
+    // Idle for a few ticks, then despawn ("garbage collected") so creeps
+    // never pile up unboundedly in base.
+    if (creep.zone === ENEMY_BASE[creep.team] || creep.zone === ENEMY_BASE[enemyTeam(creep.team)]) {
+      if ((creep.baseIdleTicks ?? 0) + 1 >= CREEP_BASE_IDLE_DESPAWN_TICKS) {
+        actions.push({ creepId: creep.id, action: 'despawn' })
+      } else {
+        actions.push({ creepId: creep.id, action: 'wait_in_base' })
+      }
     }
   }
 
   return actions
 }
 
+function enemyTeam(team: TeamId): TeamId {
+  return team === 'radiant' ? 'dire' : 'radiant'
+}
+
 /**
- * Apply creep actions to the game state. Returns updated state.
+ * Apply creep actions to the game state. Returns updated state plus any
+ * events to emit (Ancient damage / destruction).
  */
-export function applyCreepActions(state: GameState, actions: CreepAction[]): GameState {
+export function applyCreepActions(
+  state: GameState,
+  actions: CreepAction[],
+): { state: GameState; events: GameEngineEvent[] } {
   let creeps = [...state.creeps.map((c) => ({ ...c }))]
   let towers = [...state.towers.map((t) => ({ ...t }))]
   let players = { ...state.players }
+  let ancients = state.ancients
+  const events: GameEngineEvent[] = []
 
   for (const action of actions) {
     const creep = creeps.find((c) => c.id === action.creepId)
@@ -267,11 +326,73 @@ export function applyCreepActions(state: GameState, actions: CreepAction[]): Gam
         }
         break
       }
+      case 'attack_ancient': {
+        // Route through the shared helper so creep and hero attacks follow
+        // identical vulnerability/destruction rules.
+        const result = resolveAncientAttack(
+          { ...state, creeps, ancients },
+          action.creepId,
+          action.damage ?? 0,
+        )
+        ancients = result.state.ancients
+        events.push(...result.events)
+        break
+      }
+      case 'wait_in_base': {
+        creeps = creeps.map((c) =>
+          c.id === action.creepId ? { ...c, baseIdleTicks: (c.baseIdleTicks ?? 0) + 1 } : c,
+        )
+        break
+      }
+      case 'despawn': {
+        creeps = creeps.filter((c) => c.id !== action.creepId)
+        break
+      }
     }
   }
 
   // Remove dead creeps
   creeps = creeps.filter((c) => c.hp > 0)
 
-  return { ...state, creeps, towers, players }
+  return { state: { ...state, creeps, towers, players, ancients }, events }
+}
+
+/**
+ * Defensive guard: cap lane creeps at MAX_CREEPS_PER_ZONE_PER_TEAM per team
+ * per zone, despawning the oldest first (creeps are appended in spawn order,
+ * so earliest in the array = oldest). Returns the same object when no zone
+ * is over the cap.
+ */
+export function enforceCreepZoneCap(state: GameState): GameState {
+  const counts = new Map<string, number>()
+  for (const creep of state.creeps) {
+    const key = `${creep.team}:${creep.zone}`
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+
+  let overCap = false
+  for (const count of counts.values()) {
+    if (count > MAX_CREEPS_PER_ZONE_PER_TEAM) {
+      overCap = true
+      break
+    }
+  }
+  if (!overCap) return state
+
+  // Walk newest → oldest keeping up to the cap per team+zone, then restore
+  // original (spawn) order.
+  const kept: CreepState[] = []
+  const keptCounts = new Map<string, number>()
+  for (let i = state.creeps.length - 1; i >= 0; i--) {
+    const creep = state.creeps[i]!
+    const key = `${creep.team}:${creep.zone}`
+    const keptSoFar = keptCounts.get(key) ?? 0
+    if (keptSoFar < MAX_CREEPS_PER_ZONE_PER_TEAM) {
+      kept.push(creep)
+      keptCounts.set(key, keptSoFar + 1)
+    }
+  }
+  kept.reverse()
+
+  return { ...state, creeps: kept }
 }

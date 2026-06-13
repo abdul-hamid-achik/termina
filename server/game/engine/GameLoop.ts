@@ -1,6 +1,6 @@
 import type { ManagedRuntime } from 'effect'
 import { Effect, Schedule, Fiber } from 'effect'
-import type { GameState, TeamId } from '~~/shared/types/game'
+import type { GameEvent, GameState, TeamId } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
 import {
   TICK_DURATION_MS,
@@ -18,9 +18,11 @@ import {
   GLYPH_DURATION_TICKS,
 } from '~~/shared/constants/balance'
 import type { StateManagerApi } from './StateManager'
+import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
 import { distributePassiveGold, awardKill } from './GoldDistributor'
-import { runCreepAI, applyCreepActions } from './CreepAI'
+import { runCreepAI, applyCreepActions, enforceCreepZoneCap } from './CreepAI'
+import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
 import { runTowerAI, applyTowerActions } from './TowerAI'
 import { runRoshanAI, processRoshanDamage } from './RoshanAI'
 import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
@@ -28,14 +30,15 @@ import { spawnCreepWaves, spawnRunes } from '../map/spawner'
 import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '../map/zones'
 import { filterStateForPlayer } from './VisionCalculator'
-import { levelUpHero, processDoTs, tickAllBuffs } from '../heroes/_base'
+// Importing from '../heroes' (not '../heroes/_base') guarantees every hero's
+// registerHero() side effect has run before the first tick resolves a cast.
+import { levelUpHero, processDoTs, tickAllBuffs, resolvePassive, TALENT_TREES } from '../heroes'
 import { toGameEvent, type GameEngineEvent } from '../protocol/events'
 import { getBotPlayerIds, getBotLane } from '../ai/BotManager'
 import { decideBotAction } from '../ai/BotAI'
 import { engineLog } from '../../utils/log'
 import { calculateBuybackCost, buyback } from './BuybackSystem'
 import { voteSurrender, removeSurrenderVote } from './SurrenderSystem'
-import { TALENT_TREES } from '../heroes/talent-trees'
 import {
   markPlayerActiveSafe,
   detectAFKPlayers,
@@ -138,9 +141,19 @@ export function processTick(
   actions: PlayerAction[]
 }> {
   return Effect.gen(function* () {
-    let currentState: GameState = { ...state, tick: state.tick + 1, events: [] }
+    // ensureAncients backfills `ancients` on states created before the
+    // Ancient existed (resumed snapshots, older fixtures).
+    let currentState: GameState = ensureAncients({ ...state, tick: state.tick + 1, events: [] })
     const allEvents: GameEngineEvent[] = []
     const rejectedActions: Array<{ playerId: string; reason: string }> = []
+
+    // Zone snapshot for the passive hook's synthesized 'move' events (step
+    // 11.5) — diffing covers normal moves AND resolver teleports, and
+    // correctly excludes slow-cancelled moves.
+    const preTickZones = new Map<string, string>()
+    for (const [pid, p] of Object.entries(currentState.players)) {
+      preTickZones.set(pid, p.zone)
+    }
 
     // 0. Run bot AI — inject bot actions before draining
     const botPlayerIds = getBotPlayerIds(gameId)
@@ -197,6 +210,10 @@ export function processTick(
     const resolved = yield* resolveActions(currentState, validActions)
     currentState = resolved.state
     allEvents.push(...resolved.events)
+    // Casts/moves that failed inside resolution (mana, bad target, slow)
+    // reach onActionRejected player feedback through the same channel as
+    // validation failures.
+    rejectedActions.push(...resolved.rejected)
 
     // 3.5. Track tower kills and update team stats
     currentState = trackTowerKills(currentState, preTowers, allEvents)
@@ -220,6 +237,10 @@ export function processTick(
     currentState = npcResult.state
     allEvents.push(...npcResult.events)
 
+    // 5.7. Recompute Ancient vulnerability after all tower damage this tick
+    // (hero attacks in resolveActions + creep attacks in NPC AI).
+    currentState = updateAncientVulnerability(currentState)
+
     // 6–7. Spawn waves / neutrals / runes; expire runes + wards
     currentState = runSpawning(currentState)
 
@@ -232,8 +253,11 @@ export function processTick(
     // 10. Fountain healing
     currentState = applyFountainHealing(currentState)
 
-    // 10.5. Process DoT damage
-    currentState = processDoTs(currentState)
+    // 10.5. Process DoT damage — emitted damage events feed kill/assist
+    // credit (trackHeroDamage below) and the passive hook's damage_taken.
+    const dotResult = processDoTs(currentState)
+    currentState = dotResult.state
+    allEvents.push(...dotResult.events)
 
     // 10.6. Tick all buffs (decrement durations, remove expired)
     currentState = tickAllBuffs(currentState)
@@ -242,6 +266,14 @@ export function processTick(
     // Damage dealt this tick (attacks, abilities, DoTs) feeds assist credit.
     trackHeroDamage(gameId, currentState, allEvents)
     currentState = handleDeaths(gameId, currentState, allEvents, resolved.heroAttackers)
+
+    // 11.5. Hero passives — after handleDeaths (so kill events exist for
+    // null_ref's Void Drain), before level ups. Actions rejected during
+    // resolution don't trigger action-based passives.
+    const succeededActions = validActions.filter(
+      (a) => !resolved.rejected.some((r) => r.playerId === a.playerId),
+    )
+    currentState = runHeroPassives(currentState, succeededActions, allEvents, preTickZones)
 
     // 12. Check level ups
     currentState = checkLevelUps(currentState, allEvents)
@@ -263,15 +295,35 @@ export function processTick(
       yield* Effect.logInfo('Win condition met').pipe(Effect.annotateLogs({ gameId, winner }))
     }
 
+    // 13.1. Test-mode progress monitor. Only when the fast-game hook is active
+    // (dev/test, never production) and every 25 ticks, log how the game is
+    // converging toward an Ancient kill — towers standing per team and Ancient
+    // HP/vulnerability — so a watcher can see whether games end on time.
+    if (fastGameFactor() > 1 && currentState.tick % 25 === 0) {
+      const towersUp = (team: string) =>
+        currentState.towers.filter((t) => t.team === team && t.alive).length
+      const anc = currentState.ancients
+      engineLog.info('📊 Game progress', {
+        gameId,
+        tick: currentState.tick,
+        towers: `R${towersUp('radiant')}:D${towersUp('dire')}`,
+        radiantAncient: `${anc?.radiant.hp ?? '?'}${anc?.radiant.vulnerable ? '!' : ''}`,
+        direAncient: `${anc?.dire.hp ?? '?'}${anc?.dire.vulnerable ? '!' : ''}`,
+        winner: winner ?? 'none',
+      })
+    }
+
     // 13.5. Progress day/night cycle
     const dayNight = progressDayNight(currentState)
     currentState = dayNight.state
     allEvents.push(...dayNight.events)
 
-    // 14. Store events on state
+    // 14. Store events on state — merge instead of overwrite so wire-format
+    // events pushed directly onto state during the tick (e.g. tickAllBuffs'
+    // teleport_complete) aren't dropped.
     currentState = {
       ...currentState,
-      events: allEvents.map(toGameEvent),
+      events: [...currentState.events, ...allEvents.map(toGameEvent)],
     }
 
     yield* Effect.logDebug('Tick processed').pipe(
@@ -415,10 +467,13 @@ function buildGameLoop(
     }),
   )
 
+  // scaledTickIntervalMs is a no-op (returns TICK_DURATION_MS) unless the
+  // dev/test-only TERMINA_TEST_FAST_GAME accelerator is active — fastGame.ts.
+  const tickIntervalMs = scaledTickIntervalMs(TICK_DURATION_MS)
   return Effect.gen(function* () {
     yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
-    engineLog.info('Game loop starting', { gameId })
-    yield* Effect.repeat(tickLoop, Schedule.fixed(`${TICK_DURATION_MS} millis`))
+    engineLog.info('Game loop starting', { gameId, tickIntervalMs })
+    yield* Effect.repeat(tickLoop, Schedule.fixed(`${tickIntervalMs} millis`))
   }).pipe(
     Effect.catchAll((error) => {
       engineLog.error('Game loop fatal error', { gameId, error: String(error) })
@@ -611,6 +666,128 @@ export function processSpecialActions(
 }
 
 /**
+ * Hero passive hook (processTick step 11.5). Synthesizes the wire-format
+ * GameEvent stream the 18 hero passives were written against and folds
+ * `resolvePassive` over every alive hero player for each event.
+ *
+ * Full trigger vocabulary used across the hero files:
+ *   attack (cipher/echo/ping/thread/socket), ability_cast (lambda/regex/
+ *   daemon), item_used (daemon), damage_taken (cache/firewall),
+ *   move (mutex/traceroute), kill (null_ref), tick_end (cron/mutex/daemon).
+ *
+ * Keep the synthesized list lean (no per-creep events) — the fold is
+ * O(players x events) immutable state copies per tick.
+ */
+export function runHeroPassives(
+  state: GameState,
+  validActions: PlayerAction[],
+  allEvents: GameEngineEvent[],
+  preTickZones: Map<string, string>,
+): GameState {
+  const synthesized: GameEvent[] = []
+
+  const resolveHeroTarget = (name: string): string | undefined => {
+    const needle = name.toLowerCase()
+    for (const [id, p] of Object.entries(state.players)) {
+      if (
+        p.id.toLowerCase() === needle ||
+        p.name.toLowerCase() === needle ||
+        p.heroId?.toLowerCase() === needle
+      ) {
+        return id
+      }
+    }
+    return undefined
+  }
+
+  for (const action of validActions) {
+    const cmd = action.command
+    if (cmd.type === 'attack') {
+      const targetId = cmd.target.kind === 'hero' ? resolveHeroTarget(cmd.target.name) : undefined
+      const dmgEvent = targetId
+        ? allEvents.find(
+            (e) => e._tag === 'damage' && e.sourceId === action.playerId && e.targetId === targetId,
+          )
+        : undefined
+      synthesized.push({
+        tick: state.tick,
+        type: 'attack',
+        payload: {
+          attackerId: action.playerId,
+          ...(targetId ? { targetId } : {}),
+          ...(dmgEvent?._tag === 'damage' ? { damage: dmgEvent.amount } : {}),
+        },
+      })
+    } else if (cmd.type === 'cast') {
+      const targetId = cmd.target?.kind === 'hero' ? resolveHeroTarget(cmd.target.name) : undefined
+      const dmgEvent = targetId
+        ? allEvents.find(
+            (e) => e._tag === 'damage' && e.sourceId === action.playerId && e.targetId === targetId,
+          )
+        : undefined
+      synthesized.push({
+        tick: state.tick,
+        type: 'ability_cast',
+        payload: {
+          playerId: action.playerId,
+          ability: cmd.ability,
+          ...(targetId ? { targetId } : {}),
+          ...(dmgEvent?._tag === 'damage' ? { damage: dmgEvent.amount } : {}),
+        },
+      })
+    } else if (cmd.type === 'use') {
+      synthesized.push({
+        tick: state.tick,
+        type: 'item_used',
+        payload: { playerId: action.playerId },
+      })
+    }
+  }
+
+  // Zone diff: covers normal moves and resolver/item teleports; excludes
+  // slow-cancelled moves (their zone never changed).
+  for (const [pid, zone] of preTickZones) {
+    const player = state.players[pid]
+    if (player && player.zone !== zone) {
+      synthesized.push({ tick: state.tick, type: 'move', payload: { playerId: pid } })
+    }
+  }
+
+  for (const e of allEvents) {
+    if (e._tag === 'damage' && state.players[e.targetId]) {
+      synthesized.push({
+        tick: state.tick,
+        type: 'damage_taken',
+        payload: {
+          targetId: e.targetId,
+          attackerId: e.sourceId,
+          sourceId: e.sourceId,
+          damage: e.amount,
+          amount: e.amount,
+        },
+      })
+    } else if (e._tag === 'kill') {
+      synthesized.push({
+        tick: state.tick,
+        type: 'kill',
+        payload: { killerId: e.killerId, victimId: e.victimId },
+      })
+    }
+  }
+
+  synthesized.push({ tick: state.tick, type: 'tick_end', payload: {} })
+
+  let updated = state
+  for (const event of synthesized) {
+    for (const pid of Object.keys(updated.players)) {
+      // resolvePassive no-ops for dead/heroless/unregistered players
+      updated = resolvePassive(updated, pid, event)
+    }
+  }
+  return updated
+}
+
+/**
  * Run all NPC AIs (creeps, neutrals, towers, Roshan) and apply their actions.
  *
  * Tower AI needs `heroAttackers` from the prior `resolveActions` step so it
@@ -624,14 +801,16 @@ export function runNPCAI(
   let s = state
   const events: GameEngineEvent[] = []
 
-  // Creeps
-  s = applyCreepActions(s, runCreepAI(s))
+  // Creeps (may damage/destroy the enemy Ancient — events carry that)
+  const creepResult = applyCreepActions(s, runCreepAI(s))
+  s = creepResult.state
+  events.push(...creepResult.events)
 
   // Neutrals
   s = applyNeutralActions(s, runNeutralAI(s))
 
-  // Towers
-  s = applyTowerActions(s, runTowerAI(s, ctx.heroAttackers))
+  // Towers — priorEvents lets towers aggro heroes that attacked them this tick
+  s = applyTowerActions(s, runTowerAI(s, ctx.heroAttackers, ctx.priorEvents))
 
   // Roshan attacks
   for (const action of runRoshanAI(s)) {
@@ -684,6 +863,9 @@ export function runSpawning(state: GameState): GameState {
   if (newCreeps.length > 0) {
     s = { ...s, creeps: [...s.creeps, ...newCreeps] }
   }
+
+  // Defensive cap: never let creeps stack unboundedly in a zone
+  s = enforceCreepZoneCap(s)
 
   const newNeutrals = spawnNeutralCreeps(s.tick)
   if (newNeutrals.length > 0) {
@@ -842,7 +1024,11 @@ function handleDeaths(
 
       const alreadyCounted = events.some((e) => e._tag === 'death' && e.playerId === pid)
       const scaledLevels = Math.max(0, player.level - RESPAWN_FREE_LEVELS)
-      const respawnTicks = RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * scaledLevels
+      // scaledRespawnTicks keeps wall-clock respawn time at production pace
+      // when the TERMINA_TEST_FAST_GAME accelerator is active (no-op otherwise).
+      const respawnTicks = scaledRespawnTicks(
+        RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * scaledLevels,
+      )
       const buybackCost = calculateBuybackCost(player)
 
       players[pid] = {
@@ -1068,17 +1254,12 @@ function trackTowerKills(
 }
 
 /**
- * Check if either team's base is destroyed (all 3 T3 towers + base under attack).
- * Simplified: a team wins when all 9 enemy towers are destroyed.
+ * A team wins by destroying the enemy Ancient ("the Mainframe"). The
+ * Ancient becomes attackable once any of its team's T3 towers is down —
+ * see AncientSystem for the vulnerability/attack rules.
  */
 function checkWinCondition(state: GameState): TeamId | null {
-  const radiantTowersAlive = state.towers.filter((t) => t.team === 'radiant' && t.alive).length
-  const direTowersAlive = state.towers.filter((t) => t.team === 'dire' && t.alive).length
-
-  if (radiantTowersAlive === 0) return 'dire'
-  if (direTowersAlive === 0) return 'radiant'
-
-  return null
+  return checkAncientWin(state)
 }
 
 /**

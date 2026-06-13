@@ -1,6 +1,7 @@
 import type { GameState, TowerState } from '~~/shared/types/game'
 import { TOWER_ATTACK } from '~~/shared/constants/balance'
 import { calculatePhysicalDamage } from './DamageCalculator'
+import type { GameEngineEvent } from '../protocol/events'
 
 export interface TowerAction {
   towerZone: string
@@ -10,23 +11,30 @@ export interface TowerAction {
 }
 
 /**
- * Tower targeting priority each tick:
- * 1. Enemy hero attacking an allied hero in tower zone
- * 2. Closest enemy hero in zone
- * 3. Closest enemy creep in zone
+ * Tower targeting priority each tick (MOBA convention — creeps tank towers,
+ * heroes draw aggro only by acting aggressively):
+ * 1. Enemy hero that attacked an allied hero in the tower zone, or attacked
+ *    the tower itself, this tick
+ * 2. Enemy creeps in zone
+ * 3. Enemy hero presence (only when there are no creeps to shoot)
  *
  * Tower damage: TOWER_ATTACK per tick.
+ *
+ * `priorEvents` (this tick's damage events from action resolution) is used
+ * to detect heroes attacking the tower — hero→tower damage is emitted with
+ * targetId `tower_${zone}`.
  */
 export function runTowerAI(
   state: GameState,
   heroAttackers?: Map<string, string>, // attackerId -> victimId mapping from this tick's actions
+  priorEvents?: readonly GameEngineEvent[],
 ): TowerAction[] {
   const actions: TowerAction[] = []
 
   for (const tower of state.towers) {
     if (!tower.alive) continue
 
-    const target = selectTowerTarget(state, tower, heroAttackers)
+    const target = selectTowerTarget(state, tower, heroAttackers, priorEvents)
     if (target) {
       actions.push({
         towerZone: tower.zone,
@@ -49,6 +57,7 @@ function selectTowerTarget(
   state: GameState,
   tower: TowerState,
   heroAttackers?: Map<string, string>,
+  priorEvents?: readonly GameEngineEvent[],
 ): TowerTarget | null {
   const zone = tower.zone
   const towerTeam = tower.team
@@ -63,29 +72,43 @@ function selectTowerTarget(
     (c) => c.zone === zone && c.team !== towerTeam && c.hp > 0,
   )
 
-  // Priority 1: Enemy hero attacking an allied hero in tower zone
-  if (heroAttackers && enemyHeroes.length > 0) {
+  // Priority 1: Enemy hero that drew aggro this tick — attacked an allied
+  // hero in the tower zone, or attacked the tower itself.
+  if (enemyHeroes.length > 0) {
     const alliedHeroesInZone = Object.values(state.players).filter(
       (p) => p.zone === zone && p.team === towerTeam && p.alive,
     )
     const alliedIds = new Set(alliedHeroesInZone.map((p) => p.id))
 
+    const towerTargetId = `tower_${zone}`
+    const towerAttackerIds = new Set<string>()
+    if (priorEvents) {
+      for (const event of priorEvents) {
+        if (event._tag === 'damage' && event.targetId === towerTargetId) {
+          towerAttackerIds.add(event.sourceId)
+        }
+      }
+    }
+
     for (const hero of enemyHeroes) {
-      const victimId = heroAttackers.get(hero.id)
+      const victimId = heroAttackers?.get(hero.id)
       if (victimId && alliedIds.has(victimId)) {
+        return { type: 'hero', id: hero.id }
+      }
+      if (towerAttackerIds.has(hero.id)) {
         return { type: 'hero', id: hero.id }
       }
     }
   }
 
-  // Priority 2: Closest enemy hero in zone
-  if (enemyHeroes.length > 0) {
-    return { type: 'hero', id: enemyHeroes[0]!.id }
-  }
-
-  // Priority 3: Closest enemy creep in zone
+  // Priority 2: Enemy creeps in zone — creeps tank the tower
   if (enemyCreeps.length > 0) {
     return { type: 'creep', id: enemyCreeps[0]!.id }
+  }
+
+  // Priority 3: Enemy hero presence, only when no creeps remain
+  if (enemyHeroes.length > 0) {
+    return { type: 'hero', id: enemyHeroes[0]!.id }
   }
 
   return null

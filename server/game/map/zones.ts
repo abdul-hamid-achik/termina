@@ -8,6 +8,7 @@ import {
   SENTRY_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
+import { scaledTowerHp } from '../engine/fastGame'
 
 /** Determine tower tier from zone ID. Returns 0 if no tower. */
 function getTowerTier(zoneId: string): number {
@@ -19,13 +20,15 @@ function getTowerTier(zoneId: string): number {
 
 /** Get tower max HP by tier. */
 function getTowerMaxHp(tier: number): number {
+  // scaledTowerHp is a no-op unless the dev/test-only TERMINA_TEST_FAST_GAME
+  // accelerator is active — see ../engine/fastGame.ts.
   switch (tier) {
     case 1:
-      return TOWER_HP_T1
+      return scaledTowerHp(TOWER_HP_T1)
     case 2:
-      return TOWER_HP_T2
+      return scaledTowerHp(TOWER_HP_T2)
     case 3:
-      return TOWER_HP_T3
+      return scaledTowerHp(TOWER_HP_T3)
     default:
       return 0
   }

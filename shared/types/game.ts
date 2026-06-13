@@ -53,6 +53,25 @@ export interface CreepState {
   zone: string
   hp: number
   type: 'melee' | 'ranged' | 'siege'
+  /**
+   * Ticks spent idle in a base zone (no target, invulnerable Ancient).
+   * Once it reaches CREEP_BASE_IDLE_DESPAWN_TICKS the creep is garbage
+   * collected. Optional so spawners/tests don't have to set it.
+   */
+  baseIdleTicks?: number
+}
+
+/**
+ * A team's core structure — themed as "the Mainframe" in the terminal UI.
+ * Lives in the team's base zone. Invulnerable until at least one of the
+ * team's own T3 towers has fallen; destroying it wins the game.
+ */
+export interface AncientState {
+  team: TeamId
+  hp: number
+  maxHp: number
+  alive: boolean
+  vulnerable: boolean
 }
 
 export interface NeutralCreepState {
@@ -109,11 +128,12 @@ export interface GameState {
   creeps: CreepState[]
   neutrals: NeutralCreepState[]
   towers: TowerState[]
+  ancients: { radiant: AncientState; dire: AncientState }
   runes: RuneState[]
   roshan: RoshanState
   aegis: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
-  winner?: TeamId | null // set when the game ends (towers destroyed or surrender)
+  winner?: TeamId | null // set when the game ends (Ancient destroyed or surrender)
   surrenderVotes: { radiant: Set<string>; dire: Set<string> }
   lastSeen: Record<string, { zone: string; tick: number }> // Track last seen position for each player
   timeOfDay: 'day' | 'night'
@@ -152,6 +172,7 @@ export interface PlayerVisibleState {
   creeps: CreepState[]
   neutrals: NeutralCreepState[]
   towers: TowerState[]
+  ancients: { radiant: AncientState; dire: AncientState }
   runes: RuneState[]
   roshan: RoshanState
   aegis: { zone: string; tick: number; holderId: string | null } | null

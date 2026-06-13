@@ -32,9 +32,13 @@ function teamStats(state: GameState, team: TeamId) {
   const players = Object.values(state.players).filter((p) => p.team === team)
   return {
     kills: state.teams[team].kills,
+    deaths: players.reduce((sum, p) => sum + p.deaths, 0),
     netWorth: players.reduce((sum, p) => sum + playerNetWorth(p), 0),
     avgLevel: players.reduce((sum, p) => sum + p.level, 0) / players.length,
     towersAlive: state.towers.filter((t) => t.team === team && t.alive).length,
+    creeps: state.creeps.filter((c) => c.team === team).length,
+    ancientHp: state.ancients?.[team]?.hp ?? -1,
+    ancientAlive: state.ancients?.[team]?.alive ?? true,
   }
 }
 
@@ -66,7 +70,11 @@ async function simulateOne(matchIdx: number): Promise<void> {
     ),
   )
   state = { ...state, phase: 'playing' }
-  registerBots(gameId, players)
+  // SIM_IDLE_RADIANT=1 leaves the first radiant slot as an idle (non-bot)
+  // player who never submits actions — mirrors the e2e composition of one
+  // AFK human + nine bots.
+  const idleRadiant = process.env.SIM_IDLE_RADIANT === '1'
+  registerBots(gameId, idleRadiant ? players.filter((p) => p.playerId !== 'bot_r0') : players)
 
   console.log(`\n=== Match ${matchIdx + 1}: ${radiantHeroes.join(',')} vs ${direHeroes.join(',')}`)
 
@@ -78,6 +86,21 @@ async function simulateOne(matchIdx: number): Promise<void> {
     state = result.state
     totalKills = state.teams.radiant.kills + state.teams.dire.kills
 
+    if (process.env.SIM_DUMP_ZONES === '1' && state.tick % 50 === 0) {
+      console.log(
+        `      t${state.tick} actions: ${result.actions
+          .map((a) => `${a.playerId}:${JSON.stringify(a.command)}`)
+          .join(' | ')}`,
+      )
+      if (result.rejectedActions.length > 0) {
+        console.log(
+          `      t${state.tick} rejected: ${result.rejectedActions
+            .map((r) => `${r.playerId}:${r.reason}`)
+            .join(' | ')}`,
+        )
+      }
+    }
+
     if (checkpoints.includes(state.tick)) {
       const rad = teamStats(state, 'radiant')
       const dire = teamStats(state, 'dire')
@@ -85,24 +108,41 @@ async function simulateOne(matchIdx: number): Promise<void> {
         `  [${fmtMin(state.tick)}] kills ${rad.kills}:${dire.kills} | ` +
           `networth ${rad.netWorth}:${dire.netWorth} | ` +
           `lvl ${rad.avgLevel.toFixed(1)}:${dire.avgLevel.toFixed(1)} | ` +
-          `towers ${rad.towersAlive}:${dire.towersAlive}`,
+          `towers ${rad.towersAlive}:${dire.towersAlive} | ` +
+          `creeps ${rad.creeps}:${dire.creeps} | ` +
+          `ancient ${rad.ancientHp}:${dire.ancientHp}`,
       )
+      if (process.env.SIM_DUMP_ZONES === '1') {
+        for (const p of Object.values(state.players)) {
+          console.log(
+            `      ${p.id} (${p.team}) zone=${p.zone} hp=${p.hp}/${p.maxHp} mp=${p.mp}/${p.maxMp} ` +
+              `gold=${p.gold} alive=${p.alive} buffs=[${p.buffs.map((b) => b.id).join(',')}]`,
+          )
+        }
+        const creepZones = new Map<string, number>()
+        for (const c of state.creeps) {
+          creepZones.set(`${c.team}:${c.zone}`, (creepZones.get(`${c.team}:${c.zone}`) ?? 0) + 1)
+        }
+        console.log(`      creeps: ${[...creepZones.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`)
+      }
     }
   }
 
   const rad = teamStats(state, 'radiant')
   const dire = teamStats(state, 'dire')
   const winner =
-    state.winner ?? (rad.towersAlive === 0 ? 'dire' : dire.towersAlive === 0 ? 'radiant' : null)
+    state.winner ?? (!rad.ancientAlive ? 'dire' : !dire.ancientAlive ? 'radiant' : null)
 
   console.log(
     winner
-      ? `  RESULT: ${winner} wins at ${fmtMin(state.tick)} (tick ${state.tick})`
+      ? `  RESULT: ${winner} wins at ${fmtMin(state.tick)} (tick ${state.tick}) — ancient destroyed: ${!rad.ancientAlive ? 'radiant' : !dire.ancientAlive ? 'dire' : 'none (surrender?)'}`
       : `  RESULT: NO WINNER after ${fmtMin(state.tick)} — game stalled`,
   )
   console.log(
     `  final: kills ${rad.kills}:${dire.kills} (${totalKills} total) | ` +
-      `networth ${rad.netWorth}:${dire.netWorth} | towers ${rad.towersAlive}:${dire.towersAlive}`,
+      `deaths ${rad.deaths + dire.deaths} total | ` +
+      `networth ${rad.netWorth}:${dire.netWorth} | towers ${rad.towersAlive}:${dire.towersAlive} | ` +
+      `creeps ${rad.creeps}:${dire.creeps} | ancient ${rad.ancientHp}:${dire.ancientHp}`,
   )
 
   // K/D/A spread per player

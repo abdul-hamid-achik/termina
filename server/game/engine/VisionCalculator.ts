@@ -186,7 +186,19 @@ function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
 }
 
 function isInvisible(player: PlayerState): boolean {
-  return player.buffs.some((b) => b.id.includes('invisible') || b.id === 'invis')
+  return player.buffs.some(
+    (b) => b.id.includes('invisible') || b.id === 'invis' || b.id === 'stealth',
+  )
+}
+
+/**
+ * True when the player carries a 'revealed' buff applied by a member of the
+ * viewing team. A reveal pierces fog AND invisibility/stealth for that team.
+ */
+function isRevealedToTeam(player: PlayerState, state: GameState, team: TeamId): boolean {
+  return player.buffs.some(
+    (b) => b.id === 'revealed' && state.players[b.source]?.team === team,
+  )
 }
 
 /**
@@ -205,6 +217,7 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
     creeps: state.creeps,
     neutrals: state.neutrals ?? [],
     towers: state.towers,
+    ancients: state.ancients,
     runes: state.runes ?? [],
     roshan: state.roshan,
     aegis: state.aegis,
@@ -220,7 +233,7 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
  * NEVER leaks information about fogged zones.
  */
 export function filterStateForPlayer(state: GameState, playerId: string): PlayerVisibleState {
-  const visible = calculateVision(state, playerId)
+  let visible = calculateVision(state, playerId)
   const player = state.players[playerId]
   if (!player) {
     return {
@@ -232,6 +245,7 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
       creeps: [],
       neutrals: [],
       towers: state.towers,
+      ancients: state.ancients,
       runes: state.runes ?? [],
       roshan: state.roshan,
       aegis: state.aegis,
@@ -245,12 +259,27 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
   const team = player.team
   const trueSightZones = getZonesWithTrueSight(state, team)
 
+  // Enemies revealed by the viewer's team are rendered unfogged and their
+  // zones added to the visible set. Copy before mutating — the vision set is
+  // shared via cache and must not be poisoned with transient reveal zones.
+  const revealedEnemies = new Set<string>()
+  for (const [pid, p] of Object.entries(state.players)) {
+    if (p.team !== team && p.alive && isRevealedToTeam(p, state, team)) {
+      revealedEnemies.add(pid)
+      if (!visible.has(p.zone)) {
+        visible = new Set(visible)
+        visible.add(p.zone)
+      }
+    }
+  }
+
   const filteredPlayers: Record<string, PlayerState | FoggedPlayer> = {}
   for (const [pid, p] of Object.entries(state.players)) {
     if (p.team === team) {
       filteredPlayers[pid] = p
     } else if (visible.has(p.zone) && p.alive) {
-      if (isInvisible(p) && !trueSightZones.has(p.zone)) {
+      // 'revealed' overrides invisibility/stealth
+      if (isInvisible(p) && !trueSightZones.has(p.zone) && !revealedEnemies.has(pid)) {
         filteredPlayers[pid] = {
           id: p.id,
           name: p.name,
@@ -314,6 +343,7 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
     creeps: filteredCreeps,
     neutrals: state.neutrals ?? [], // Neutrals are visible in their zones (public info)
     towers: state.towers, // Towers are always visible (global info)
+    ancients: state.ancients, // Ancients are always visible (global info)
     runes: state.runes ?? [],
     roshan: state.roshan,
     aegis: state.aegis,
