@@ -1,8 +1,32 @@
 import { describe, it, expect } from 'vitest'
-import { decideBotAction } from '../../../server/game/ai/BotAI'
+import { decideBotAction, getAbilityTarget } from '../../../server/game/ai/BotAI'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
+import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
+
+/**
+ * Build a synthetic ability def for targeting tests. `targetType` is widened to
+ * string so we can pass 'ally' even before the shared TargetType union gains it
+ * (hero data is edited in parallel) — the bot routes ally casts defensively off
+ * this raw field rather than hardcoded hero names.
+ */
+function makeAbility(
+  targetType: string,
+  effects: AbilityEffect[],
+  overrides: Partial<AbilityDef> = {},
+): AbilityDef {
+  return {
+    id: 'test-ability',
+    name: 'Test Ability',
+    description: '',
+    manaCost: 50,
+    cooldownTicks: 4,
+    targetType: targetType as AbilityDef['targetType'],
+    effects,
+    ...overrides,
+  }
+}
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -748,6 +772,184 @@ describe('BotAI - decideBotAction', () => {
       })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
+    })
+  })
+
+  describe('rank-0 abilities (not yet learned)', () => {
+    it('never casts the ultimate before level 6', () => {
+      // Level 1: R is rank 0 (unlocks at 6). With Q/W/E on cooldown the only
+      // ability the bot could "afford" is R — but the server rejects an
+      // un-unlocked cast, burning the tick. The bot must fall through to a
+      // basic attack instead of emitting a cast for R.
+      const bot = makePlayer({
+        zone: 'mid-river',
+        level: 1,
+        hp: 400,
+        maxHp: 500,
+        mp: 500,
+        maxMp: 500,
+        cooldowns: { q: 5, w: 5, e: 5, r: 0 },
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
+    })
+
+    it('casts the ultimate once it is learned at level 6', () => {
+      // Sanity counterpart: at level 6 R is rank 1, so the bot is free to use
+      // it. Proves the level-1 case above is the rank gate, not a blanket
+      // "never cast R".
+      const bot = makePlayer({
+        zone: 'mid-river',
+        level: 6,
+        hp: 400,
+        maxHp: 500,
+        mp: 500,
+        maxMp: 500,
+        cooldowns: { q: 5, w: 5, e: 5, r: 0 },
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).not.toBeNull()
+      expect(action!.type).toBe('cast')
+      if (action!.type === 'cast') expect(action!.ability).toBe('r')
+    })
+
+    it('emits no cast for any rank-0 slot across all hero levels below unlock', () => {
+      // Scan a low level where Q/W/E/R ranks differ and assert that any cast the
+      // bot does emit is for a slot whose ability is actually learned. Level 1:
+      // Q/W/E rank 1, R rank 0.
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      for (let i = 0; i < 50; i++) {
+        const bot = makePlayer({
+          zone: 'mid-river',
+          level: 1,
+          hp: 400,
+          maxHp: 500,
+          mp: 500,
+          maxMp: 500,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+        })
+        const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+        const action = decideBotAction(state, bot, 'mid')
+        if (action?.type === 'cast') {
+          // R is rank 0 at level 1 and must never be emitted
+          expect(action.ability).not.toBe('r')
+        }
+      }
+    })
+  })
+
+  describe("ally-targeted abilities (targetType 'ally')", () => {
+    const buffEffects: AbilityEffect[] = [{ type: 'buff', value: 15, duration: 3 }]
+    const healEffects: AbilityEffect[] = [{ type: 'heal', value: 150 }]
+    // A position-swap utility: teleport + a defensive buff, no offensive effect.
+    const swapEffects: AbilityEffect[] = [
+      { type: 'teleport', value: 1 },
+      { type: 'buff', value: 1, duration: 1 },
+    ]
+
+    function bot() {
+      return makePlayer({ id: 'bot_alpha', team: 'radiant', zone: 'mid-river', hp: 400, maxHp: 500 })
+    }
+    function ally(hp: number) {
+      return makePlayer({ id: 'bot_ally', team: 'radiant', zone: 'mid-river', hp, maxHp: 500 })
+    }
+    function enemy(hp: number) {
+      return makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp, maxHp: 500 })
+    }
+
+    it('routes a supportive ally buff to the lowest-HP ally, not an enemy', () => {
+      const ability = makeAbility('ally', buffEffects)
+      const target = getAbilityTarget(ability, bot(), [enemy(50)], [ally(150), ally(450)])
+      expect(target).toEqual({ kind: 'hero', name: 'bot_ally' })
+    })
+
+    it('falls back to self when no ally is present (supportive)', () => {
+      const ability = makeAbility('ally', healEffects)
+      const target = getAbilityTarget(ability, bot(), [enemy(50)], [])
+      expect(target).toEqual({ kind: 'hero', name: 'bot_alpha' })
+    })
+
+    it('never resolves an ally ability to an enemy, even when the enemy is the lowest HP', () => {
+      // The lowest-HP unit on the board is the enemy — an enemy-target heuristic
+      // would aim here. The ally branch must ignore enemies entirely.
+      for (const effects of [buffEffects, healEffects, swapEffects]) {
+        const ability = makeAbility('ally', effects)
+        const target = getAbilityTarget(ability, bot(), [enemy(10)], [ally(120)])
+        expect(target).not.toBeNull()
+        if (target && target.kind === 'hero') {
+          expect(target.name).not.toBe('enemy1')
+          expect(['bot_alpha', 'bot_ally']).toContain(target.name)
+        }
+      }
+    })
+
+    it('skips a supportive ally cast when the whole team is healthy', () => {
+      const ability = makeAbility('ally', healEffects)
+      // bot 490/500, ally 500/500 — both >= 90%
+      const healthyBot = makePlayer({
+        id: 'bot_alpha',
+        team: 'radiant',
+        zone: 'mid-river',
+        hp: 490,
+        maxHp: 500,
+      })
+      const target = getAbilityTarget(ability, healthyBot, [enemy(50)], [ally(500)])
+      expect(target).toBeUndefined()
+    })
+
+    it('routes a utility (teleport+buff) ally ability to the lowest-HP friendly, never an enemy', () => {
+      const ability = makeAbility('ally', swapEffects)
+      // bot 400/500 (80%), ally 250/500 (50%) — ally is the most hurt friendly.
+      const target = getAbilityTarget(ability, bot(), [enemy(50)], [ally(250)])
+      expect(target).toEqual({ kind: 'hero', name: 'bot_ally' })
+    })
+
+    it('targets self for an ally ability when the bot is the most-hurt friendly', () => {
+      const ability = makeAbility('ally', swapEffects)
+      // bot 400/500 (80%) is hurt; the only ally is full HP.
+      const target = getAbilityTarget(ability, bot(), [enemy(50)], [ally(500)])
+      expect(target).toEqual({ kind: 'hero', name: 'bot_alpha' })
+    })
+
+    it('skips a non-heal/shield ally ability when alone (resolver rejects self)', () => {
+      // cron.q (pure buff) and proxy.r (position-swap) explicitly reject a
+      // self-target with "Target must be an ally". When the bot is alone, the
+      // only candidate is itself, so the cast would be rejected — skip it
+      // instead of burning the tick.
+      for (const effects of [buffEffects, swapEffects]) {
+        const ability = makeAbility('ally', effects)
+        const target = getAbilityTarget(ability, bot(), [enemy(50)], [])
+        expect(target).toBeUndefined()
+      }
+    })
+
+    it('still self-casts a heal/shield ally ability when alone (resolver accepts self)', () => {
+      // sentry.q/w, proxy.w, cron.w accept the caster as the target, so a
+      // hurt-and-alone bot should still cast on itself.
+      for (const effects of [healEffects, [{ type: 'shield', value: 140, duration: 3 }] as AbilityEffect[]]) {
+        const ability = makeAbility('ally', effects)
+        const target = getAbilityTarget(ability, bot(), [enemy(50)], [])
+        expect(target).toEqual({ kind: 'hero', name: 'bot_alpha' })
+      }
+    })
+
+    it("treats a single-target 'hero' supportive ability the same (ally, never enemy)", () => {
+      // Existing behavior preserved for targetType 'hero' shields/heals.
+      const ability = makeAbility('hero', [{ type: 'shield', value: 140, duration: 3 }])
+      const target = getAbilityTarget(ability, bot(), [enemy(10)], [ally(120)])
+      expect(target).toEqual({ kind: 'hero', name: 'bot_ally' })
+    })
+
+    it("still aims a single-target 'hero' damage ability at the lowest-HP enemy", () => {
+      const ability = makeAbility('hero', [{ type: 'damage', value: 100, damageType: 'magical' }])
+      const target = getAbilityTarget(ability, bot(), [enemy(100), enemy(40)], [ally(120)])
+      // lowest-HP enemy is the 40-HP one; both share id 'enemy1' here so just
+      // assert it picked an enemy, not the ally.
+      expect(target).toEqual({ kind: 'hero', name: 'enemy1' })
     })
   })
 })

@@ -387,12 +387,57 @@ function isSupportiveAbility(ability: AbilityDef): boolean {
   )
 }
 
-function getAbilityTarget(
+const SELF_VIABLE_EFFECTS = new Set(['heal', 'shield'])
+
+/** A heal/shield can usefully land on the caster; a pure ally buff/utility cannot. */
+function isSelfCastViable(ability: AbilityDef): boolean {
+  return ability.effects.some((e) => SELF_VIABLE_EFFECTS.has(e.type))
+}
+
+/**
+ * Pick the friendly target for an ally-only / supportive cast: the lowest-HP
+ * ally in the zone, or the bot itself — NEVER an enemy. The per-hero resolvers
+ * for these abilities (e.g. cron.q buff, proxy.r position swap, sentry heal)
+ * reject any target whose team differs from the caster's, so a bot that aimed
+ * one at an enemy would simply burn its one action for the tick.
+ *
+ * `skipIfHealthy` is set for heal/shield/buff abilities so we don't waste mana
+ * topping off a full-HP team; otherwise the cast always lands on a friendly
+ * unit as long as one exists.
+ *
+ * When the bot is alone (no allies in zone) the only candidate is itself. Some
+ * ally resolvers (cron.q buff, proxy.r position-swap) explicitly reject a
+ * self-target with "Target must be an ally", so emitting a self-cast there
+ * would burn the tick. We only fall back to self when the ability is a heal or
+ * shield — exactly the cases the resolvers accept on the caster (sentry.q/w,
+ * proxy.w, cron.w) — and skip the cast otherwise.
+ */
+function pickAllyTarget(
+  ability: AbilityDef,
+  bot: PlayerState,
+  alliesInZone: PlayerState[],
+  skipIfHealthy: boolean,
+): TargetRef | undefined {
+  if (alliesInZone.length === 0 && !isSelfCastViable(ability)) return undefined
+  const candidates = [...alliesInZone, bot]
+  const target = candidates.reduce((a, b) => (getHpPercent(a) <= getHpPercent(b) ? a : b))
+  if (skipIfHealthy && getHpPercent(target) >= 90) return undefined
+  return { kind: 'hero', name: target.id }
+}
+
+export function getAbilityTarget(
   ability: AbilityDef,
   bot: PlayerState,
   enemiesInZone: PlayerState[],
   alliesInZone: PlayerState[],
 ): TargetRef | null | undefined {
+  // Compare on the raw string so this stays correct whether or not the shared
+  // TargetType union has gained an explicit 'ally' member yet (hero data is
+  // edited in parallel). An 'ally' ability must resolve to a friendly target.
+  const targetType = ability.targetType as string
+  if (targetType === 'ally') {
+    return pickAllyTarget(ability, bot, alliesInZone, isSupportiveAbility(ability))
+  }
   switch (ability.targetType) {
     case 'none':
       return enemiesInZone.length > 0 ? null : undefined
@@ -400,13 +445,10 @@ function getAbilityTarget(
       return enemiesInZone.length > 0 || getHpPercent(bot) < 50 ? null : undefined
     case 'hero':
     case 'unit': {
+      // Heal/shield/buff-only single-target casts go to the most-hurt ally
+      // (or the bot itself), never an enemy.
       if (isSupportiveAbility(ability)) {
-        // Heals/shields target the most-hurt ally (or the bot itself)
-        const candidates = [...alliesInZone, bot]
-        const target = candidates.reduce((a, b) => (getHpPercent(a) <= getHpPercent(b) ? a : b))
-        // Don't waste mana topping off a healthy team
-        if (getHpPercent(target) >= 90) return undefined
-        return { kind: 'hero', name: target.id }
+        return pickAllyTarget(ability, bot, alliesInZone, true)
       }
       if (enemiesInZone.length === 0) return undefined
       const target = enemiesInZone.reduce((a, b) => (a.hp < b.hp ? a : b))

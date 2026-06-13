@@ -1,6 +1,6 @@
 export type DamageType = 'physical' | 'magical' | 'pure'
 
-export type TargetType = 'none' | 'hero' | 'unit' | 'zone' | 'self'
+export type TargetType = 'none' | 'hero' | 'unit' | 'zone' | 'self' | 'ally'
 
 export type AbilityEffectType =
   | 'damage'
