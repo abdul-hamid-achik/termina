@@ -38,6 +38,12 @@ export async function installWsInterceptor(page: Page): Promise<void> {
     // Preserve prototype chain
     ;(window.WebSocket as unknown as { prototype: WebSocket }).prototype =
       OriginalWebSocket.prototype
+    // Preserve static readyState constants — app code gates sends on
+    // `ws.readyState === WebSocket.OPEN`; a bare function override loses the
+    // statics, making WebSocket.OPEN undefined and silently dropping sends.
+    for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'] as const) {
+      ;(window.WebSocket as unknown as Record<string, number>)[k] = OriginalWebSocket[k]
+    }
     ;(window as unknown as Record<string, unknown>).__e2eWsMessages = messages
   })
 }

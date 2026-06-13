@@ -8,6 +8,7 @@ import {
   processSpecialActions,
 } from '../../../server/game/engine/GameLoop'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 import {
   GLYPH_DURATION_TICKS,
   DAY_DURATION_TICKS,
@@ -28,6 +29,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     creeps: [],
     neutrals: [],
     towers: initializeTowers(),
+    ancients: initializeAncients(),
     runes: [],
     roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
     aegis: null,

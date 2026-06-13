@@ -4,20 +4,29 @@ test.describe('ASCII Map', () => {
   test('map renders zone grid', async ({ gamePage }) => {
     const map = gamePage.getByTestId('ascii-map')
     await expect(map).toBeVisible()
-    // Should show RADIANT and DIRE headers
-    await expect(map.getByText('RADIANT')).toBeVisible()
+    // Team headers (exact — 'RADIANT JUNGLE'/'DIRE JUNGLE' column headers
+    // would otherwise also match)
+    await expect(map.getByText('RADIANT', { exact: true })).toBeVisible()
     await expect(map.getByText('DIRE', { exact: true })).toBeVisible()
-    // Should show column headers
-    await expect(map.getByText('TOP')).toBeVisible()
-    await expect(map.getByText('MID')).toBeVisible()
-    await expect(map.getByText('BOT')).toBeVisible()
+    // Full 5-column desktop grid headers
+    await expect(map.getByText('TOP LANE', { exact: true })).toBeVisible()
+    await expect(map.getByText('MID LANE', { exact: true })).toBeVisible()
+    await expect(map.getByText('BOT LANE', { exact: true })).toBeVisible()
+    await expect(map.getByText('RADIANT JUNGLE', { exact: true })).toBeVisible()
+    await expect(map.getByText('DIRE JUNGLE', { exact: true })).toBeVisible()
+    // Both Ancients (◈ core HP readout) are global info shown on the base
+    // zones of the desktop grid — visible even through fog at game start.
+    await expect(map.getByText(/◈\s*\d+%/)).toHaveCount(2)
   })
 
   test("player's current zone is highlighted", async ({ gamePage }) => {
     const map = gamePage.getByTestId('ascii-map')
     await expect(map).toBeVisible()
-    // Player's zone shows ">>YOU" indicator
-    await expect(map.getByText('>>YOU')).toBeVisible({ timeout: 10_000 })
+    // Exactly one grid cell carries the "►YOU" indicator (the legend also
+    // mentions ►YOU, so scope to gridcells)
+    await expect(map.locator('[role="gridcell"]').filter({ hasText: '►YOU' })).toBeVisible({
+      timeout: 10_000,
+    })
   })
 
   test('ally/enemy indicators visible in vision range', async ({ gamePage }) => {

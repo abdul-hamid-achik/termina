@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user (creates an authenticated session)
+# @name setupWsTicketUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "wstkt_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+wsTicketUsername from body.user.username
+<<<
+
+### Get ws-ticket: authenticated session returns a signed ticket
+# @name getWsTicketAuthed
+# @depends setupWsTicketUser
+GET {{baseUrl}}/api/auth/ws-ticket
+
+>>>
+expect status 200
+expect body.ticket exists
+expect body.ticket contains "."
+<<<
+
+### Logout (clear session)
+# @name logoutWsTicketUser
+# @depends getWsTicketAuthed
+POST {{baseUrl}}/api/auth/logout
+Content-Type: application/json
+
+>>>
+expect status 200
+<<<
+
+### Get ws-ticket: unauthenticated request is rejected
+# @name getWsTicketUnauthed
+# @depends logoutWsTicketUser
+GET {{baseUrl}}/api/auth/ws-ticket
+
+>>>
+expect status 401
+expect body.message contains "Authentication required"
+<<<

@@ -45,6 +45,13 @@ export const test = base.extend<GameFixtures>({
       // Wait for game screen to render
       await page.getByTestId('game-screen').waitFor({ timeout: 30_000 })
 
+      // Wait for the first tick_state to land (hero-status renders only once
+      // player data exists in the store). This proves the game WS stream is
+      // actually live — the dev proxy chain can drop the server side of a
+      // fresh socket, and the client needs a heartbeat-watchdog reconnect
+      // cycle (~30s) to recover from that.
+      await page.getByTestId('hero-status').waitFor({ timeout: 60_000 })
+
       await use(page)
     },
     { timeout: 180_000 },

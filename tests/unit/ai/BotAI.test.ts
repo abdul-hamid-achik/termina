@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { decideBotAction } from '../../../server/game/ai/BotAI'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -49,6 +50,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     creeps: [],
     neutrals: [],
     towers: initializeTowers(),
+    ancients: initializeAncients(),
     runes: [],
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,
@@ -75,7 +77,8 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'radiant-fountain', gold: 600 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'buy', item: 'boots_of_speed' })
+      // Defensive consumables are stocked first
+      expect(action).toEqual({ type: 'buy', item: 'healing_salve' })
     })
 
     it('stays at fountain to heal when HP is low', () => {
@@ -347,18 +350,55 @@ describe('BotAI - decideBotAction', () => {
   })
 
   describe('shopping', () => {
-    it('buys first item in build order', () => {
+    it('stocks defensive consumables before core items', () => {
       const bot = makePlayer({ zone: 'radiant-fountain', gold: 600 })
       const state = makeGameState({ players: { [bot.id]: bot } })
+      expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'buy', item: 'healing_salve' })
+
+      const withSalve = makePlayer({
+        zone: 'radiant-fountain',
+        gold: 450,
+        items: ['healing_salve', null, null, null, null, null],
+      })
+      const state2 = makeGameState({ players: { [withSalve.id]: withSalve } })
+      expect(decideBotAction(state2, withSalve, 'mid')).toEqual({
+        type: 'buy',
+        item: 'town_portal_scroll',
+      })
+    })
+
+    it('buys first item in build order once consumables are stocked', () => {
+      const bot = makePlayer({
+        zone: 'radiant-fountain',
+        gold: 600,
+        items: ['healing_salve', 'town_portal_scroll', null, null, null, null],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'buy', item: 'boots_of_speed' })
+      // blades_of_attack: +12 attack — a stat the engine actually consumes
+      expect(action).toEqual({ type: 'buy', item: 'blades_of_attack' })
+    })
+
+    it('does not buy dead moveSpeed-only items (boots_of_speed)', () => {
+      const bot = makePlayer({
+        zone: 'radiant-fountain',
+        gold: 99999,
+        items: ['healing_salve', 'town_portal_scroll', null, null, null, null],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).not.toBeNull()
+      expect(action!.type).toBe('buy')
+      if (action!.type === 'buy') {
+        expect(action!.item).not.toBe('boots_of_speed')
+      }
     })
 
     it('skips items already owned', () => {
       const bot = makePlayer({
         zone: 'radiant-fountain',
         gold: 1500,
-        items: ['boots_of_speed', null, null, null, null, null],
+        items: ['healing_salve', 'town_portal_scroll', 'blades_of_attack', null, null, null],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -385,10 +425,10 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('does not buy when gold is insufficient', () => {
-      const bot = makePlayer({ zone: 'radiant-fountain', gold: 100 })
+      const bot = makePlayer({ zone: 'radiant-fountain', gold: 20 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      // Can't afford anything, hp is full so should move to lane
+      // Can't afford anything (cheapest consumable is 50g), hp is full so should move to lane
       expect(action).toEqual({ type: 'move', zone: 'radiant-base' })
     })
   })
@@ -441,6 +481,270 @@ describe('BotAI - decideBotAction', () => {
       const state = makeGameState({
         players: { [bot.id]: bot, enemy1: enemy },
         creeps,
+      })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
+    })
+  })
+
+  describe('rune pickup', () => {
+    it('issues a rune command when standing on a rune (not a wasted Q cast)', () => {
+      const bot = makePlayer({
+        zone: 'rune-top',
+        hp: 500,
+        maxHp: 500,
+        mp: 300,
+        cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+      })
+      const state = makeGameState({
+        players: { [bot.id]: bot },
+        runes: [{ zone: 'rune-top', type: 'haste', tick: 5 }],
+      })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'rune' })
+    })
+  })
+
+  describe('support ability targeting', () => {
+    it('heals the most-hurt ally instead of the lowest-HP enemy', () => {
+      const bot = makePlayer({
+        id: 'bot_alpha',
+        heroId: 'sentry',
+        zone: 'mid-river',
+        hp: 600,
+        maxHp: 600,
+        mp: 100,
+        maxMp: 350,
+        cooldowns: { q: 0, w: 5, e: 5, r: 5 },
+      })
+      const ally = makePlayer({
+        id: 'bot_ally',
+        team: 'radiant',
+        zone: 'mid-river',
+        hp: 150,
+        maxHp: 600,
+      })
+      const enemy = makePlayer({
+        id: 'enemy1',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 100, // lowest HP overall — the old code would heal-target this enemy
+        maxHp: 500,
+      })
+      const state = makeGameState({
+        players: { [bot.id]: bot, bot_ally: ally, enemy1: enemy },
+      })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({
+        type: 'cast',
+        ability: 'q',
+        target: { kind: 'hero', name: 'bot_ally' },
+      })
+    })
+
+    it('heals itself when hurt and no ally needs it more', () => {
+      const bot = makePlayer({
+        id: 'bot_alpha',
+        heroId: 'sentry',
+        zone: 'mid-river',
+        hp: 300,
+        maxHp: 600,
+        mp: 100,
+        maxMp: 350,
+        cooldowns: { q: 0, w: 5, e: 5, r: 5 },
+      })
+      const enemy = makePlayer({
+        id: 'enemy1',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 100,
+        maxHp: 500,
+      })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({
+        type: 'cast',
+        ability: 'q',
+        target: { kind: 'hero', name: 'bot_alpha' },
+      })
+    })
+
+    it('does not waste heals when the team is healthy — attacks instead', () => {
+      const bot = makePlayer({
+        id: 'bot_alpha',
+        heroId: 'sentry',
+        zone: 'mid-river',
+        hp: 600,
+        maxHp: 600,
+        mp: 100,
+        maxMp: 350,
+        cooldowns: { q: 0, w: 5, e: 5, r: 5 },
+      })
+      const enemy = makePlayer({
+        id: 'enemy1',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 100,
+        maxHp: 500,
+      })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
+    })
+
+    it('still targets the lowest-HP enemy with damage abilities', () => {
+      const bot = makePlayer({
+        heroId: 'echo',
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 300,
+        cooldowns: { q: 0, w: 5, e: 5, r: 5 },
+      })
+      const ally = makePlayer({
+        id: 'bot_ally',
+        team: 'radiant',
+        zone: 'mid-river',
+        hp: 50,
+        maxHp: 500,
+      })
+      const enemy1 = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy2 = makePlayer({ id: 'enemy2', team: 'dire', zone: 'mid-river', hp: 100 })
+      const state = makeGameState({
+        players: { [bot.id]: bot, bot_ally: ally, enemy1, enemy2 },
+      })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({
+        type: 'cast',
+        ability: 'q',
+        target: { kind: 'hero', name: 'enemy2' },
+      })
+    })
+  })
+
+  describe('defensive consumables', () => {
+    it('pops a healing salve when hurt and out of combat', () => {
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        hp: 250,
+        maxHp: 500,
+        items: ['healing_salve', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'use', item: 'healing_salve' })
+    })
+
+    it('does not re-pop a salve while regen is already active', () => {
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        hp: 250,
+        maxHp: 500,
+        items: ['healing_salve', null, null, null, null, null],
+        buffs: [
+          { id: 'healing_salve_regen', stacks: 50, ticksRemaining: 3, source: 'healing_salve' },
+        ],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action?.type).not.toBe('use')
+    })
+
+    it('does not pop a salve while enemies are in the zone', () => {
+      const bot = makePlayer({
+        zone: 'mid-river',
+        hp: 250,
+        maxHp: 500,
+        items: ['healing_salve', null, null, null, null, null],
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 400 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action?.type).not.toBe('use')
+    })
+
+    it('teleports home when retreating from deep map positions', () => {
+      const bot = makePlayer({
+        zone: 'mid-t1-dire',
+        hp: 100,
+        maxHp: 500,
+        items: ['town_portal_scroll', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'use', item: 'town_portal_scroll' })
+    })
+
+    it('walks home instead of TPing when already near the fountain', () => {
+      const bot = makePlayer({
+        zone: 'mid-t3-rad',
+        hp: 100,
+        maxHp: 500,
+        items: ['town_portal_scroll', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'move', zone: 'radiant-base' })
+    })
+
+    it('stands still while channeling a teleport', () => {
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        hp: 100,
+        maxHp: 500,
+        buffs: [
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
+        ],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      expect(decideBotAction(state, bot, 'mid')).toBeNull()
+    })
+  })
+
+  describe('ancient push', () => {
+    it('attacks the enemy ancient when in the enemy base and it is vulnerable', () => {
+      const bot = makePlayer({
+        zone: 'dire-base',
+        hp: 400,
+        maxHp: 500,
+        mp: 0,
+        cooldowns: { q: 1, w: 1, e: 1, r: 1 },
+      })
+      const ancients = initializeAncients()
+      const state = makeGameState({
+        players: { [bot.id]: bot },
+        ancients: { ...ancients, dire: { ...ancients.dire, vulnerable: true } },
+      })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'attack', target: { kind: 'ancient' } })
+    })
+
+    it('does not attack the ancient while it is invulnerable', () => {
+      const bot = makePlayer({
+        zone: 'dire-base',
+        hp: 400,
+        maxHp: 500,
+        mp: 0,
+        cooldowns: { q: 1, w: 1, e: 1, r: 1 },
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).not.toEqual({ type: 'attack', target: { kind: 'ancient' } })
+    })
+
+    it('fights defending heroes before the ancient', () => {
+      const bot = makePlayer({
+        zone: 'dire-base',
+        hp: 400,
+        maxHp: 500,
+        mp: 0,
+        cooldowns: { q: 1, w: 1, e: 1, r: 1 },
+      })
+      const defender = makePlayer({ id: 'enemy1', team: 'dire', zone: 'dire-base', hp: 300 })
+      const ancients = initializeAncients()
+      const state = makeGameState({
+        players: { [bot.id]: bot, enemy1: defender },
+        ancients: { ...ancients, dire: { ...ancients.dire, vulnerable: true } },
       })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })

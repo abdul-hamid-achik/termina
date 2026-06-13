@@ -6,6 +6,23 @@ export default async function globalSetup(config: FullConfig) {
     process.env.NUXT_DATABASE_URL ??
     'postgresql://termina:termina@localhost:5432/termina_test'
 
+  // Flush the test Redis DB first. The server persists each game as a
+  // `gamesnap:`/`gamelog:` snapshot and resumes unfinished ones on boot —
+  // across runs these accumulate into dozens of zombie game loops that starve
+  // the CPU and make real-time tick delivery (and thus the whole suite) crawl.
+  // A clean Redis per run keeps games ending on time.
+  const redisUrl = process.env.NUXT_REDIS_URL ?? 'redis://localhost:6379/1'
+  try {
+    const { default: Redis } = await import('ioredis')
+    const redis = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 })
+    await redis.connect()
+    await redis.flushdb()
+    await redis.quit()
+    console.log(`[e2e] Flushed test Redis (${redisUrl.replace(/:[^@/]+@/, ':***@')})`)
+  } catch (err) {
+    console.warn('[e2e] Could not flush test Redis (zombie games may persist):', err)
+  }
+
   console.log('[e2e] Global setup — ensuring test database exists')
   console.log(`[e2e] Database URL: ${dbUrl.replace(/:[^@]+@/, ':***@')}`)
 

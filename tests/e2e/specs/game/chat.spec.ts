@@ -1,21 +1,28 @@
 import { test, expect } from '../../fixtures/game'
 
+// Chat assertions scope to log entries (data-testid="log-event") — the
+// combat log also mirrors the latest event into an aria-live sr-only region,
+// which would otherwise make bare text matches ambiguous (strict mode).
 test.describe('Chat', () => {
   test('chat team <message> sends team chat', async ({ gamePage }) => {
     const input = gamePage.getByTestId('command-input-field')
     await input.fill('chat team hello from e2e')
     await input.press('Enter')
-    // Message should appear in combat log
+    // Message round-trips through the server and lands in the combat log
+    // tagged with the channel
     const log = gamePage.getByTestId('combat-log')
-    await expect(log.getByText(/hello from e2e/)).toBeVisible({ timeout: 10_000 })
+    const entry = log.getByTestId('log-event').filter({ hasText: 'hello from e2e' })
+    await expect(entry).toBeVisible({ timeout: 10_000 })
+    await expect(entry).toContainText('[TEAM]')
   })
 
   test('chat all <message> sends all chat', async ({ gamePage }) => {
     const input = gamePage.getByTestId('command-input-field')
     await input.fill('chat all global e2e message')
     await input.press('Enter')
-    // Message should appear in combat log
     const log = gamePage.getByTestId('combat-log')
-    await expect(log.getByText(/global e2e message/)).toBeVisible({ timeout: 10_000 })
+    const entry = log.getByTestId('log-event').filter({ hasText: 'global e2e message' })
+    await expect(entry).toBeVisible({ timeout: 10_000 })
+    await expect(entry).toContainText('[ALL]')
   })
 })

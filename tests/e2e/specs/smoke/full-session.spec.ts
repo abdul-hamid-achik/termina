@@ -5,7 +5,10 @@ test.describe('Smoke Test', () => {
   test('full game session: home -> register -> lobby -> game -> game over -> profile -> logout', async ({
     page,
   }) => {
-    test.setTimeout(300_000) // 5 minute timeout for full game
+    // Full game under TERMINA_TEST_FAST_GAME ends via Ancient destruction.
+    // With one idle human + 9 bots the slow tail reaches ~8 min of real time,
+    // so budget generously for the in-game wait plus registration/lobby/nav.
+    test.setTimeout(720_000)
 
     // 1. Home page loads
     await page.goto('/')
@@ -22,7 +25,10 @@ test.describe('Smoke Test', () => {
     await page.getByPlaceholder('enter_username').fill(username)
     await page.locator('input[type="password"]').first().fill(password)
     await page.locator('input[type="password"]').nth(1).fill(password)
-    await page.locator('button').filter({ hasText: 'REGISTER' }).click()
+    // Scope to the form: a bare button+hasText 'REGISTER' also matches the
+    // "> register" tab switcher (case-insensitive substring), which is a
+    // strict-mode violation. The submit button is the only button inside <form>.
+    await page.locator('form').locator('button').filter({ hasText: 'REGISTER' }).click()
     await page.waitForURL('/', { timeout: 10_000 })
 
     // 4. Navigate to lobby and find match
@@ -32,7 +38,9 @@ test.describe('Smoke Test', () => {
     // 5. Wait for hero picker (bots auto-fill after ~10s)
     await page.getByTestId('hero-picker').waitFor({ timeout: 45_000 })
 
-    // 6. Pick first available hero
+    // 6. Pick first available hero. CONFIRM is turn-gated — only click it if
+    // it's enabled (it's our turn and a hero is selected). If the turn race
+    // is lost, the server auto-picks and the game starts anyway.
     const heroCards = page.locator('[data-testid^="hero-card-"]')
     const cardCount = await heroCards.count()
     for (let i = 0; i < cardCount; i++) {
@@ -44,7 +52,10 @@ test.describe('Smoke Test', () => {
       }
     }
     await page.waitForTimeout(200)
-    await page.getByText('CONFIRM').click()
+    const confirmBtn = page.getByText('CONFIRM')
+    if (await confirmBtn.isEnabled().catch(() => false)) {
+      await confirmBtn.click()
+    }
 
     // 7. Wait for game start
     await page.waitForURL('**/play', { timeout: 60_000 })
@@ -57,7 +68,9 @@ test.describe('Smoke Test', () => {
     await expect(page.getByTestId('hero-status')).toBeVisible()
     await expect(page.getByTestId('command-input')).toBeVisible()
 
-    // 9. Open scoreboard
+    // 9. Open scoreboard. Tab is autocomplete while the command input is
+    // focused (it autofocuses) — blur it first, like clicking away.
+    await page.getByTestId('command-input-field').blur()
     await page.keyboard.down('Tab')
     await expect(page.getByTestId('scoreboard')).toBeVisible({ timeout: 2_000 })
     await page.keyboard.up('Tab')
@@ -71,9 +84,9 @@ test.describe('Smoke Test', () => {
     await cmdInput.fill('chat team hello from e2e test')
     await cmdInput.press('Enter')
 
-    // 12. Wait for game to end (up to 5 min)
-    // Note: Bot games typically end within 2-3 minutes
-    await page.getByTestId('post-game').waitFor({ timeout: 300_000 })
+    // 12. Wait for game to end via Ancient destruction. Bot games vary widely
+    // (fast ~1 min, slow tail ~8 min at fast-game factor 8), so wait generously.
+    await page.getByTestId('post-game').waitFor({ timeout: 540_000 })
 
     // 13. Verify game over screen
     const victoryText = page.getByText(/RADIANT VICTORY|DIRE VICTORY/)

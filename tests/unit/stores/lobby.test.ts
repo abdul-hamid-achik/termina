@@ -83,6 +83,42 @@ describe('Lobby Store', () => {
       await expect(store.joinQueue()).rejects.toThrow('Network error')
     })
 
+    it('sets lastError with the failure reason and stays idle', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'))
+      const store = useLobbyStore()
+
+      await expect(store.joinQueue()).rejects.toThrow()
+
+      expect(store.lastError).toBe('could not join queue — Network error')
+      expect(store.queueStatus).toBe('idle')
+    })
+
+    it('extracts the server message from $fetch error data', async () => {
+      mockFetch.mockRejectedValue(
+        Object.assign(new Error('500 Internal'), {
+          data: { message: 'Already in queue' },
+        }),
+      )
+      const store = useLobbyStore()
+
+      await expect(store.joinQueue()).rejects.toThrow()
+
+      expect(store.lastError).toBe('could not join queue — Already in queue')
+    })
+
+    it('clears lastError when retrying', async () => {
+      const store = useLobbyStore()
+      mockFetch.mockRejectedValue(new Error('boom'))
+      await expect(store.joinQueue()).rejects.toThrow()
+      expect(store.lastError).not.toBeNull()
+
+      mockFetch.mockResolvedValue({ success: true, queueSize: 1 })
+      await store.joinQueue()
+
+      expect(store.lastError).toBeNull()
+      expect(store.queueStatus).toBe('searching')
+    })
+
     it('starts queue timer that increments queueTime', async () => {
       mockFetch.mockResolvedValue({ success: true, queueSize: 1 })
       const store = useLobbyStore()
@@ -177,6 +213,92 @@ describe('Lobby Store', () => {
       store.heroPicked('p2', 'kernel')
 
       expect(store.pickedHeroes).toEqual({ p1: 'echo', p2: 'kernel' })
+    })
+  })
+
+  describe('optimisticPick / rollbackPendingPick', () => {
+    it('applies the pick locally and tracks it as pending', () => {
+      const store = useLobbyStore()
+      store.setTeamInfo('radiant', [
+        { playerId: 'me', name: 'Me', heroId: null, team: 'radiant' },
+      ])
+
+      store.optimisticPick('me', 'echo')
+
+      expect(store.pickedHeroes).toEqual({ me: 'echo' })
+      expect(store.teamRoster[0]!.heroId).toBe('echo')
+      expect(store.pendingPick).toEqual({ playerId: 'me', heroId: 'echo' })
+    })
+
+    it('rolls back a rejected optimistic pick', () => {
+      const store = useLobbyStore()
+      store.setTeamInfo('radiant', [
+        { playerId: 'me', name: 'Me', heroId: null, team: 'radiant' },
+      ])
+      store.heroPicked('p2', 'kernel')
+      store.optimisticPick('me', 'echo')
+
+      store.rollbackPendingPick()
+
+      expect(store.pickedHeroes).toEqual({ p2: 'kernel' }) // others untouched
+      expect(store.teamRoster[0]!.heroId).toBeNull()
+      expect(store.pendingPick).toBeNull()
+    })
+
+    it('server hero_pick broadcast confirms the pending pick', () => {
+      const store = useLobbyStore()
+      store.optimisticPick('me', 'echo')
+
+      // Server echoes the pick back → no longer pending
+      store.heroPicked('me', 'echo')
+      expect(store.pendingPick).toBeNull()
+
+      // A later unrelated error must NOT undo the confirmed pick
+      store.rollbackPendingPick()
+      expect(store.pickedHeroes).toEqual({ me: 'echo' })
+    })
+
+    it('rollback is a no-op when nothing is pending', () => {
+      const store = useLobbyStore()
+      store.heroPicked('p1', 'echo')
+
+      store.rollbackPendingPick()
+
+      expect(store.pickedHeroes).toEqual({ p1: 'echo' })
+    })
+
+    it('clears lastError when making a new pick attempt', () => {
+      const store = useLobbyStore()
+      store.setError('Not your turn to pick')
+
+      store.optimisticPick('me', 'echo')
+
+      expect(store.lastError).toBeNull()
+    })
+  })
+
+  describe('setError / clearError', () => {
+    it('stores and clears the error message', () => {
+      const store = useLobbyStore()
+      expect(store.lastError).toBeNull()
+
+      store.setError('Hero already picked')
+      expect(store.lastError).toBe('Hero already picked')
+
+      store.clearError()
+      expect(store.lastError).toBeNull()
+    })
+
+    it('is reset on leaveQueue', async () => {
+      const store = useLobbyStore()
+      store.setError('boom')
+      store.optimisticPick('me', 'echo')
+
+      mockFetch.mockResolvedValue({})
+      await store.leaveQueue()
+
+      expect(store.lastError).toBeNull()
+      expect(store.pendingPick).toBeNull()
     })
   })
 

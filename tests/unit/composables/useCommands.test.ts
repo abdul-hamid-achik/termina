@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { useCommands, validateCommand, type GameContext } from '../../../app/composables/useCommands'
+import {
+  useCommands,
+  validateCommand,
+  buybackCostFor,
+  type GameContext,
+} from '../../../app/composables/useCommands'
 import type { PlayerState } from '../../../shared/types/game'
 import type { ItemDef } from '../../../shared/types/items'
 
@@ -32,6 +37,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     damageDealt: 0,
     towerDamageDealt: 0,
     killStreak: 0,
+    buybackCost: 0,
+    talents: { tier10: null, tier15: null, tier20: null, tier25: null },
     ...overrides,
   }
 }
@@ -374,6 +381,66 @@ describe('useCommands', () => {
       })
     })
 
+    describe('buyback command', () => {
+      it('parses buyback', () => {
+        const { parse } = useCommands()
+        const result = parse('buyback')
+
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'buyback' })
+      })
+    })
+
+    describe('surrender command', () => {
+      it('requires confirmation when bare', () => {
+        const { parse } = useCommands()
+        const result = parse('surrender')
+
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('surrender confirm')
+      })
+
+      it('parses surrender confirm as a yes vote', () => {
+        const { parse } = useCommands()
+        const result = parse('surrender confirm')
+
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'surrender', vote: 'yes' })
+      })
+
+      it('parses surrender yes as a yes vote', () => {
+        const { parse } = useCommands()
+        const result = parse('surrender yes')
+
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'surrender', vote: 'yes' })
+      })
+
+      it('parses surrender cancel as a no vote', () => {
+        const { parse } = useCommands()
+        const result = parse('surrender cancel')
+
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'surrender', vote: 'no' })
+      })
+
+      it('parses surrender no as a no vote', () => {
+        const { parse } = useCommands()
+        const result = parse('surrender no')
+
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'surrender', vote: 'no' })
+      })
+
+      it('rejects unknown surrender argument', () => {
+        const { parse } = useCommands()
+        const result = parse('surrender maybe')
+
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('surrender confirm')
+      })
+    })
+
     describe('unknown command', () => {
       it('returns error for unknown command', () => {
         const { parse } = useCommands()
@@ -599,6 +666,48 @@ describe('useCommands', () => {
 
         const mv = suggestions.find(s => s.text === 'mv')
         expect(mv?.description).toBe('→ move')
+      })
+
+      it('suggests buyback for "buy" prefix', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggestions = autocomplete('buy', context)
+
+        const texts = suggestions.map(s => s.text)
+        expect(texts).toContain('buy')
+        expect(texts).toContain('buyback')
+      })
+
+      it('suggests surrender with description', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggestions = autocomplete('surr', context)
+
+        const surrender = suggestions.find(s => s.text === 'surrender')
+        expect(surrender).toBeDefined()
+        expect(surrender!.description).toContain('confirm')
+      })
+    })
+
+    describe('surrender confirmation completion', () => {
+      it('suggests confirm and cancel', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggestions = autocomplete('surrender c', context)
+
+        const texts = suggestions.map(s => s.text)
+        expect(texts).toContain('surrender confirm')
+        expect(texts).toContain('surrender cancel')
+      })
+
+      it('filters by partial argument', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggestions = autocomplete('surrender co', context)
+
+        const texts = suggestions.map(s => s.text)
+        expect(texts).toContain('surrender confirm')
+        expect(texts).not.toContain('surrender cancel')
       })
     })
 
@@ -939,9 +1048,85 @@ describe('useCommands', () => {
 // ── validateCommand Tests ─────────────────────────────────────────
 
 describe('validateCommand', () => {
-  it('rejects all actions while dead', () => {
+  it('rejects normal actions while dead', () => {
     const ctx = makeContext({ player: makePlayer({ alive: false }) })
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/dead/i)
+    expect(
+      validateCommand({ type: 'attack', target: { kind: 'self' } }, ctx),
+    ).toMatch(/dead/i)
+  })
+
+  describe('buyback', () => {
+    it('allows buyback while dead with enough gold', () => {
+      const ctx = makeContext({
+        player: makePlayer({ alive: false, gold: 1000, buybackCost: 300 }),
+      })
+      expect(validateCommand({ type: 'buyback' }, ctx)).toBeNull()
+    })
+
+    it('rejects buyback while alive', () => {
+      const ctx = makeContext({ player: makePlayer({ alive: true }) })
+      expect(validateCommand({ type: 'buyback' }, ctx)).toMatch(/only available while dead/i)
+    })
+
+    it('rejects buyback with insufficient gold and shows shortfall', () => {
+      const ctx = makeContext({
+        player: makePlayer({ alive: false, gold: 100, buybackCost: 300 }),
+      })
+      const err = validateCommand({ type: 'buyback' }, ctx)
+      expect(err).toMatch(/gold/i)
+      expect(err).toContain('200')
+    })
+
+    it('rejects buyback on cooldown when tick is known', () => {
+      const ctx = makeContext({
+        player: makePlayer({ alive: false, gold: 9999, buybackCost: 300, buybackCooldown: 50 }),
+        tick: 40,
+      })
+      const err = validateCommand({ type: 'buyback' }, ctx)
+      expect(err).toMatch(/cooldown/i)
+      expect(err).toContain('10')
+    })
+
+    it('allows buyback once the cooldown has expired', () => {
+      const ctx = makeContext({
+        player: makePlayer({ alive: false, gold: 9999, buybackCost: 300, buybackCooldown: 50 }),
+        tick: 60,
+      })
+      expect(validateCommand({ type: 'buyback' }, ctx)).toBeNull()
+    })
+
+    it('falls back to the mirrored cost formula when buybackCost is unset', () => {
+      // base 100 + level 3 * 25 + deaths 1 * 10 = 185
+      const player = makePlayer({ alive: false, gold: 100, buybackCost: 0, level: 3, deaths: 1 })
+      expect(buybackCostFor(player)).toBe(185)
+
+      const err = validateCommand({ type: 'buyback' }, makeContext({ player }))
+      expect(err).toContain('85')
+    })
+  })
+
+  describe('surrender', () => {
+    it('is exempt from the dead-player gate', () => {
+      const ctx = makeContext({ player: makePlayer({ alive: false }), tick: 300 })
+      expect(validateCommand({ type: 'surrender', vote: 'yes' }, ctx)).toBeNull()
+    })
+
+    it('rejects surrender before the minimum tick', () => {
+      const ctx = makeContext({ tick: 100 })
+      const err = validateCommand({ type: 'surrender', vote: 'yes' }, ctx)
+      expect(err).toMatch(/too early/i)
+      expect(err).toContain('225')
+    })
+
+    it('allows surrender after the minimum tick', () => {
+      const ctx = makeContext({ tick: 225 })
+      expect(validateCommand({ type: 'surrender', vote: 'yes' }, ctx)).toBeNull()
+    })
+
+    it('skips the timing check when tick is unknown', () => {
+      expect(validateCommand({ type: 'surrender', vote: 'yes' }, makeContext())).toBeNull()
+    })
   })
 
   it('passes a valid adjacent move', () => {

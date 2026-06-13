@@ -47,13 +47,53 @@ describe('CommandInput', () => {
       expect(input.attributes('placeholder')).toBe('Enter command...')
     })
 
-    it('should be disabled when canAct is false', () => {
+    it('stays editable when canAct is false (pre-typing during the wait)', () => {
       const wrapper = mount(CommandInput, {
         props: { canAct: false },
       })
 
       const input = wrapper.find('input')
-      expect(input.attributes('disabled')).toBeDefined()
+      expect(input.attributes('disabled')).toBeUndefined()
+    })
+
+    it('emits submit while canAct is false so the parent can buffer it', async () => {
+      const wrapper = mount(CommandInput, {
+        props: { canAct: false },
+      })
+
+      const vm = wrapper.vm as { input: string; open: boolean }
+      const input = wrapper.find('input')
+
+      vm.input = 'move mid'
+      await wrapper.vm.$nextTick()
+      vm.open = false
+      await wrapper.vm.$nextTick()
+
+      await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('submit')).toBeTruthy()
+      expect(wrapper.emitted('submit')![0]).toEqual(['move mid'])
+    })
+
+    it('shows the buffered command notice', () => {
+      const wrapper = mount(CommandInput, {
+        props: { canAct: false, bufferedCommand: 'cast q' },
+      })
+
+      const notice = wrapper.find('[data-testid="buffered-command"]')
+      expect(notice.exists()).toBe(true)
+      expect(notice.text()).toContain('cast q')
+      expect(notice.text()).toContain('next tick')
+    })
+
+    it('shows the pending command in the placeholder while waiting', () => {
+      const wrapper = mount(CommandInput, {
+        props: { canAct: false, pendingCommand: 'move mid-river' },
+      })
+
+      const input = wrapper.find('input')
+      expect(input.attributes('placeholder')).toContain('move mid-river')
     })
 
     it('should emit submit on Enter', async () => {

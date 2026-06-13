@@ -4,6 +4,7 @@ import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
+import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 import {
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
@@ -11,6 +12,7 @@ import {
   RESPAWN_BASE_TICKS,
   RESPAWN_PER_LEVEL_TICKS,
   RESPAWN_FREE_LEVELS,
+  MAX_CREEPS_PER_ZONE_PER_TEAM,
 } from '../../../shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -62,6 +64,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     creeps: [],
     neutrals: [],
     towers: initializeTowers(),
+    ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),
     aegis: null,
@@ -182,7 +185,25 @@ describe('GameLoop', () => {
       expect(p1.zone).toBe('radiant-fountain')
     })
 
-    it('should detect win when all enemy towers destroyed', () => {
+    it('should detect radiant win when the dire Ancient is destroyed', () => {
+      const ancients = initializeAncients()
+      const state = makeGameState({
+        ancients: {
+          radiant: ancients.radiant,
+          dire: { ...ancients.dire, hp: 0, alive: false, vulnerable: true },
+        },
+        players: {
+          p1: makePlayer({ id: 'p1' }),
+          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+
+      const result = Effect.runSync(processTick('game6', state))
+      expect(result.state.phase).toBe('ended')
+      expect(result.state.winner).toBe('radiant')
+    })
+
+    it('should NOT end the game when all enemy towers are destroyed but the Ancient stands', () => {
       const towers = initializeTowers().map((t) =>
         t.team === 'dire' ? { ...t, hp: 0, alive: false } : t,
       )
@@ -195,8 +216,32 @@ describe('GameLoop', () => {
         },
       })
 
-      const result = Effect.runSync(processTick('game6', state))
-      expect(result.state.phase).toBe('ended')
+      const result = Effect.runSync(processTick('game6b', state))
+      expect(result.state.phase).toBe('playing')
+      // But the dire Ancient must now be vulnerable (its T3s are down)
+      expect(result.state.ancients.dire.vulnerable).toBe(true)
+    })
+
+    it('should mark an Ancient vulnerable when one of its T3 towers falls', () => {
+      const towers = initializeTowers().map((t) =>
+        t.zone === 'mid-t3-dire' ? { ...t, hp: 0, alive: false } : t,
+      )
+
+      const state = makeGameState({ towers })
+      const result = Effect.runSync(processTick('game6c', state))
+      expect(result.state.ancients.dire.vulnerable).toBe(true)
+      expect(result.state.ancients.radiant.vulnerable).toBe(false)
+    })
+
+    it('should keep Ancients invulnerable while only T1/T2 towers are down', () => {
+      const towers = initializeTowers().map((t) =>
+        t.zone === 'mid-t1-dire' || t.zone === 'mid-t2-dire' ? { ...t, hp: 0, alive: false } : t,
+      )
+
+      const state = makeGameState({ towers })
+      const result = Effect.runSync(processTick('game6d', state))
+      expect(result.state.ancients.dire.vulnerable).toBe(false)
+      expect(result.state.ancients.radiant.vulnerable).toBe(false)
     })
 
     it('should handle only one action per player per tick', () => {
@@ -337,11 +382,12 @@ describe('GameLoop', () => {
     })
 
     it('should not process actions when game is ended', () => {
-      const towers = initializeTowers().map((t) =>
-        t.team === 'dire' ? { ...t, hp: 0, alive: false } : t,
-      )
+      const ancients = initializeAncients()
       const state = makeGameState({
-        towers,
+        ancients: {
+          radiant: ancients.radiant,
+          dire: { ...ancients.dire, hp: 0, alive: false, vulnerable: true },
+        },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
@@ -352,13 +398,13 @@ describe('GameLoop', () => {
       expect(result.state.phase).toBe('ended')
     })
 
-    it('should detect dire wins when all radiant towers destroyed', () => {
-      const towers = initializeTowers().map((t) =>
-        t.team === 'radiant' ? { ...t, hp: 0, alive: false } : t,
-      )
-
+    it('should detect dire win when the radiant Ancient is destroyed', () => {
+      const ancients = initializeAncients()
       const state = makeGameState({
-        towers,
+        ancients: {
+          radiant: { ...ancients.radiant, hp: 0, alive: false, vulnerable: true },
+          dire: ancients.dire,
+        },
         players: {
           p1: makePlayer({ id: 'p1' }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
@@ -367,9 +413,10 @@ describe('GameLoop', () => {
 
       const result = Effect.runSync(processTick('game-dire-win', state))
       expect(result.state.phase).toBe('ended')
+      expect(result.state.winner).toBe('dire')
     })
 
-    it('should not end game when both teams have towers alive', () => {
+    it('should not end game when both Ancients are alive', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1' }),
@@ -523,6 +570,101 @@ describe('GameLoop', () => {
       const result = Effect.runSync(processTick('game-dn-6', state))
       expect(result.state.timeOfDay).toBe('day')
       expect(result.state.dayNightTick).toBe(DAY_DURATION_TICKS - 1)
+    })
+  })
+
+  describe('Ancient siege and creep cleanup', () => {
+    it('creeps in the enemy base damage a vulnerable Ancient via processTick', () => {
+      const ancients = initializeAncients()
+      const state = makeGameState({
+        ancients: {
+          radiant: ancients.radiant,
+          dire: { ...ancients.dire, vulnerable: true },
+        },
+        // Keep dire T3 mid dead so vulnerability stays true after recompute
+        towers: initializeTowers().map((t) =>
+          t.zone === 'mid-t3-dire' ? { ...t, hp: 0, alive: false } : t,
+        ),
+        creeps: [
+          { id: 'c1', team: 'radiant', zone: 'dire-base', hp: 400, type: 'melee' },
+          { id: 'c2', team: 'radiant', zone: 'dire-base', hp: 250, type: 'ranged' },
+        ],
+      })
+
+      const result = Effect.runSync(processTick('game-ancient-siege', state))
+      const dire = result.state.ancients.dire
+      expect(dire.hp).toBeLessThan(dire.maxHp)
+      // Damage events against the ancient should be emitted
+      const ancientDamage = result.events.filter(
+        (e) => e._tag === 'damage' && e.targetId === 'ancient_dire',
+      )
+      expect(ancientDamage.length).toBe(2)
+    })
+
+    it('game ends via Ancient destruction by creeps', () => {
+      const ancients = initializeAncients()
+      const state = makeGameState({
+        ancients: {
+          radiant: ancients.radiant,
+          dire: { ...ancients.dire, hp: 10, vulnerable: true },
+        },
+        towers: initializeTowers().map((t) =>
+          t.zone === 'mid-t3-dire' ? { ...t, hp: 0, alive: false } : t,
+        ),
+        creeps: [{ id: 'c1', team: 'radiant', zone: 'dire-base', hp: 400, type: 'melee' }],
+      })
+
+      const result = Effect.runSync(processTick('game-ancient-end', state))
+      expect(result.state.ancients.dire.alive).toBe(false)
+      expect(result.state.phase).toBe('ended')
+      expect(result.state.winner).toBe('radiant')
+    })
+
+    it('creeps idling in base with an invulnerable Ancient are garbage collected', () => {
+      let state = makeGameState({
+        creeps: [{ id: 'c1', team: 'radiant', zone: 'dire-base', hp: 400, type: 'melee' }],
+      })
+
+      // Ancient is invulnerable (all towers alive), no heroes in base.
+      // Creep should idle and despawn after CREEP_BASE_IDLE_DESPAWN_TICKS.
+      for (let i = 0; i < 3; i++) {
+        state = Effect.runSync(processTick('game-creep-gc', state)).state
+      }
+      expect(state.creeps.find((c) => c.id === 'c1')).toBeUndefined()
+    })
+
+    it('per-zone creep cap is enforced during processTick', () => {
+      const creeps = Array.from({ length: 30 }, (_, i) => ({
+        id: `stack_${i}`,
+        team: 'radiant' as const,
+        zone: 'mid-t2-rad',
+        hp: 400,
+        type: 'melee' as const,
+      }))
+      const state = makeGameState({ creeps })
+
+      const result = Effect.runSync(processTick('game-creep-cap', state))
+      // All 30 move together to the next zone; the cap trims them to 12
+      const counts = new Map<string, number>()
+      for (const c of result.state.creeps) {
+        const key = `${c.team}:${c.zone}`
+        counts.set(key, (counts.get(key) ?? 0) + 1)
+      }
+      for (const count of counts.values()) {
+        expect(count).toBeLessThanOrEqual(MAX_CREEPS_PER_ZONE_PER_TEAM)
+      }
+    })
+
+    it('ensureAncients backfills states without ancients (old snapshots)', () => {
+      const state = makeGameState()
+      // Simulate a pre-Ancient snapshot
+      const legacy = { ...state } as Partial<GameState>
+      delete legacy.ancients
+
+      const result = Effect.runSync(processTick('game-legacy', legacy as GameState))
+      expect(result.state.ancients).toBeDefined()
+      expect(result.state.ancients.radiant.alive).toBe(true)
+      expect(result.state.ancients.dire.alive).toBe(true)
     })
   })
 })

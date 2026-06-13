@@ -53,17 +53,19 @@ test.describe('Live spectator', () => {
     await expect(specPage.locator('text=[CONNECTED]')).toBeVisible({ timeout: 30_000 })
 
     // Once a tick lands the score banner replaces the "waiting" text. Ticks
-    // arrive every 4s; allow up to ~3 ticks of slack for slow CI.
-    await expect(specPage.getByText('RADIANT', { exact: true })).toBeVisible({
+    // arrive every 4s (faster under TERMINA_TEST_FAST_GAME); allow a few
+    // ticks of slack for slow CI.
+    await expect(specPage.getByTestId('spectator-score-radiant')).toBeVisible({
       timeout: 20_000,
     })
-    await expect(specPage.getByText('DIRE', { exact: true })).toBeVisible()
+    await expect(specPage.getByTestId('spectator-score-radiant')).toContainText('RADIANT')
+    await expect(specPage.getByTestId('spectator-score-dire')).toContainText('DIRE')
 
     // A real spectator_tick was processed: the tick counter in the centre
-    // panel should show a number > 0. The header has '00:00' in time-of-day
-    // so we anchor on the centre `tick · day|night` row.
-    const tickReadout = specPage.locator('div:has-text("tick · day"), div:has-text("tick · night")')
-    await expect(tickReadout.first()).toBeVisible({ timeout: 20_000 })
+    // panel shows a number > 0.
+    await expect(specPage.getByTestId('spectator-tick')).toHaveText(/^[1-9]\d*$/, {
+      timeout: 20_000,
+    })
 
     await specCtx.close()
   })

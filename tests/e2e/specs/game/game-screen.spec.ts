@@ -13,18 +13,25 @@ test.describe('Game Screen', () => {
     await expect(gamePage.getByTestId('game-state-bar')).toBeVisible()
   })
 
-  test('GameStateBar shows tick number, game time, gold, K/D/A', async ({ gamePage }) => {
+  test('GameStateBar shows tick number, countdown, game time, gold, K/D/A', async ({
+    gamePage,
+  }) => {
     const bar = gamePage.getByTestId('game-state-bar')
     await expect(bar).toBeVisible()
-    await expect(bar.getByText(/Tick:/)).toBeVisible()
-    await expect(bar.getByText(/\d{2}:\d{2}/)).toBeVisible()
-    await expect(bar.getByText(/Gold:/)).toBeVisible()
-    await expect(bar.getByText(/KDA:/)).toBeVisible()
+    await expect(bar.getByText('Tick', { exact: true })).toBeVisible()
+    // Live tick countdown (new): bar + seconds readout
+    await expect(bar.getByTestId('tick-countdown')).toBeVisible()
+    await expect(bar.getByTestId('tick-countdown').getByText(/\d+\.\ds/)).toBeVisible()
+    // Anchored: the day/night remaining readout "(20:00)" would otherwise
+    // also match a bare \d{2}:\d{2} pattern
+    await expect(bar.getByText(/^\d{2}:\d{2}$/)).toBeVisible()
+    await expect(bar.getByText('Gold', { exact: true })).toBeVisible()
+    await expect(bar.getByText('KDA', { exact: true })).toBeVisible()
   })
 
-  test('connection indicator shows connected', async ({ gamePage }) => {
+  test('connection indicator shows online with latency', async ({ gamePage }) => {
     const bar = gamePage.getByTestId('game-state-bar')
-    await expect(bar.getByText('[CONNECTED')).toBeVisible({ timeout: 10_000 })
+    await expect(bar.getByText(/\[ONLINE \d+ms\]/)).toBeVisible({ timeout: 10_000 })
   })
 })
 

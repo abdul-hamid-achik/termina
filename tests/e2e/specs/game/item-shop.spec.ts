@@ -1,8 +1,12 @@
+import type { Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/game'
 
-// Helper: open the shop via the SHOP quick-action button (force-click since it's mobile-only)
-async function openShop(gamePage: import('@playwright/test').Page) {
-  await gamePage.getByRole('button', { name: 'SHOP' }).click({ force: true })
+// Open the shop via the quick-action SHOP button. Two shop buttons render in
+// the command area ("[SHOP]" in the inventory bar and "SHOP" in the
+// quick-action row) — `exact: true` targets the quick-action one. Both render
+// on desktop and mobile, so this is a real click/tap with no force needed.
+async function openShop(gamePage: Page) {
+  await gamePage.getByRole('button', { name: 'SHOP', exact: true }).click()
   await expect(gamePage.getByText('ITEM SHOP')).toBeVisible({ timeout: 2_000 })
 }
 
@@ -25,7 +29,7 @@ test.describe('Item Shop', () => {
     // Click STARTER tab to filter
     await shop.getByText('STARTER').click()
     // Items should still be visible (filtered set)
-    const items = shop.locator('[class*="border p-1.5"]')
+    const items = shop.locator('[data-testid^="shop-item-"]')
     const count = await items.count()
     expect(count).toBeGreaterThan(0)
   })
@@ -34,14 +38,20 @@ test.describe('Item Shop', () => {
     await openShop(gamePage)
     const shop = gamePage.getByTestId('item-shop')
 
-    // Get initial item count
-    const allItems = shop.locator('[class*="border p-1.5"]')
+    const allItems = shop.locator('[data-testid^="shop-item-"]')
     const initialCount = await allItems.count()
+    expect(initialCount).toBeGreaterThan(1)
 
-    // Search for a specific term
-    await shop.getByPlaceholder('search items...').fill('boots')
-    const filteredCount = await allItems.count()
-    expect(filteredCount).toBeLessThanOrEqual(initialCount)
+    // Search for a known item — only Iron Branch matches "iron branch"
+    await shop.getByPlaceholder('search items...').fill('iron branch')
+
+    await expect(shop.getByTestId('shop-item-iron_branch')).toBeVisible()
+    await expect(allItems).toHaveCount(1)
+
+    // A non-matching query empties the grid entirely
+    await shop.getByPlaceholder('search items...').fill('zz_no_such_item')
+    await expect(allItems).toHaveCount(0)
+    await expect(shop.getByText('No items found.')).toBeVisible()
   })
 
   test('affordable items have glow; too expensive items are dimmed', async ({ gamePage }) => {
@@ -49,7 +59,7 @@ test.describe('Item Shop', () => {
     const shop = gamePage.getByTestId('item-shop')
 
     // Check that item cards exist
-    const items = shop.locator('[class*="border p-1.5"]')
+    const items = shop.locator('[data-testid^="shop-item-"]')
     const count = await items.count()
     expect(count).toBeGreaterThan(0)
 
@@ -62,18 +72,21 @@ test.describe('Item Shop', () => {
     expect(affordableCount + expensiveCount).toBeGreaterThan(0)
   })
 
-  test('clicking affordable item triggers buy command', async ({ gamePage }) => {
+  test('clicking [BUY] purchases the item — card flips to [OWNED]', async ({ gamePage }) => {
     await openShop(gamePage)
     const shop = gamePage.getByTestId('item-shop')
 
-    // Click on an affordable item (has [BUY] label)
-    const buyLabel = shop.getByText('[BUY]').first()
-    const hasBuyable = await buyLabel.isVisible().catch(() => false)
-    if (hasBuyable) {
-      // Get the parent item card and click it
-      const itemCard = buyLabel.locator('xpath=ancestor::div[contains(@class, "border p-1.5")]')
-      await itemCard.click()
-    }
+    // Iron Branch is a cheap starter item — always affordable with the
+    // starting gold, and the player starts in the fountain (a shop zone).
+    const card = shop.getByTestId('shop-item-iron_branch')
+    await expect(card).toBeVisible()
+    await expect(card.getByText('[OWNED]')).not.toBeVisible()
+
+    await shop.getByTestId('shop-buy-iron_branch').click()
+
+    // The buy command resolves on the next 4s game tick; once the server
+    // confirms, the item lands in the inventory and the card shows [OWNED].
+    await expect(card.getByText('[OWNED]')).toBeVisible({ timeout: 15_000 })
   })
 
   test('shop closes via [CLOSE]', async ({ gamePage }) => {

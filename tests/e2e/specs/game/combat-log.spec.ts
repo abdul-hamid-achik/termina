@@ -4,7 +4,11 @@ test.describe('Combat Log', () => {
   test('after first tick, "Connected to game server" message appears', async ({ gamePage }) => {
     const log = gamePage.getByTestId('combat-log')
     await expect(log).toBeVisible()
-    await expect(log.getByText('Connected to game server')).toBeVisible({ timeout: 15_000 })
+    // Scope to log entries — the aria-live sr-only mirror of the latest
+    // event would otherwise make a bare text match ambiguous (strict mode)
+    await expect(
+      log.getByTestId('log-event').filter({ hasText: 'Connected to game server' }),
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('events are color-coded by type', async ({ gamePage }) => {
@@ -31,8 +35,10 @@ test.describe('Combat Log', () => {
       await input.press('Enter')
     }
 
-    // Wait for messages to render
-    await expect(log.getByText(/line 19/)).toBeVisible({ timeout: 10_000 })
+    // Wait for messages to render (scoped to entries — see note above)
+    await expect(log.getByTestId('log-event').filter({ hasText: 'line 19' })).toBeVisible({
+      timeout: 10_000,
+    })
 
     // Scroll to top manually
     const scrollContainer = log.locator('[class*="overflow-y-auto"]')

@@ -10,6 +10,7 @@ import {
 } from '../../../server/game/matchmaking/lobby'
 import type { QueueEntry } from '../../../server/game/matchmaking/queue'
 import { HERO_IDS } from '../../../shared/constants/heroes'
+import { sendToPeer } from '../../../server/services/PeerRegistry'
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ describe('Lobby', () => {
     redis = mockRedis()
     db = mockDb()
     createdLobbyId = null
+    vi.mocked(sendToPeer).mockClear()
   })
 
   afterEach(() => {
@@ -95,9 +97,7 @@ describe('Lobby', () => {
       createdLobbyId = lobby.id
 
       expect(lobby.players).toHaveLength(10)
-      expect(lobby.phase).toBe('banning') // Starts with ban phase
-      expect(lobby.bannedHeroes.size).toBe(0)
-      expect(lobby.currentBanIndex).toBe(0)
+      expect(lobby.phase).toBe('picking') // Draft starts immediately — no ban phase
     })
 
     it('assigns teams in alternating fashion by MMR', () => {
@@ -151,13 +151,6 @@ describe('Lobby', () => {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
-
-      // Simulate ban phase completion (1 ban per team)
-      lobby.bannedHeroes.add('cipher') // Radiant ban
-      lobby.bannedHeroes.add('regex') // Dire ban
-      lobby.currentBanIndex = 2
-      lobby.phase = 'picking'
-
       return lobby
     }
 
@@ -339,17 +332,108 @@ describe('Lobby', () => {
   })
 
   describe('pick phases and transitions', () => {
-    it('transitions to starting after all heroes are picked', () => {
-      vi.useFakeTimers()
+    it('starts directly in picking phase and notifies the first picker', () => {
       const entries = makeQueueEntries(10)
-      createLobby(entries, ws as never, redis as never, db as never)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
 
-      // After grace period (30s), lobby should be cancelled
-      vi.advanceTimersByTime(30000)
+      expect(lobby.phase).toBe('picking')
 
-      // The implementation should cancel the lobby after grace period
-      vi.useRealTimers()
-      createdLobbyId = null
+      const firstPicker = lobby.players[lobby.pickOrder[0]!]!
+      expect(vi.mocked(sendToPeer)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ type: 'pick_turn', playerId: firstPicker.playerId }),
+      )
+    })
+
+    it('sends lobby_state with phase picking and no ban fields', () => {
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+
+      const lobbyStateCalls = vi
+        .mocked(sendToPeer)
+        .mock.calls.filter(
+          ([, msg]) => (msg as { type: string }).type === 'lobby_state',
+        )
+      expect(lobbyStateCalls.length).toBe(10)
+      for (const [, msg] of lobbyStateCalls) {
+        expect(msg).toMatchObject({ type: 'lobby_state', phase: 'picking' })
+        expect(msg).not.toHaveProperty('bannedHeroes')
+        expect(msg).not.toHaveProperty('currentBanIndex')
+      }
+    })
+
+    it('never sends hero_ban messages', () => {
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+
+      vi.advanceTimersByTime(60000)
+
+      const banCalls = vi
+        .mocked(sendToPeer)
+        .mock.calls.filter(([, msg]) => (msg as { type: string }).type === 'hero_ban')
+      expect(banCalls).toHaveLength(0)
+    })
+
+    it('auto-picks for the current player when the pick timer expires', () => {
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+
+      const firstPicker = lobby.players[lobby.pickOrder[0]!]!
+      expect(firstPicker.heroId).toBeNull()
+
+      vi.advanceTimersByTime(15000)
+
+      expect(firstPicker.heroId).not.toBeNull()
+      expect(lobby.currentPickIndex).toBe(1)
+    })
+
+    it('auto-picks for bots after a short delay', () => {
+      const entries = makeQueueEntries(10)
+      // Highest MMR entry becomes players[0], which is first in the pick order
+      entries[9] = { ...entries[9]!, playerId: 'bot_alpha', username: 'Bot Alpha' }
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+
+      const firstPicker = lobby.players[lobby.pickOrder[0]!]!
+      expect(firstPicker.playerId).toBe('bot_alpha')
+
+      vi.advanceTimersByTime(1500)
+      expect(firstPicker.heroId).not.toBeNull()
+    })
+
+    it('rejects picks when the lobby is not in picking phase', () => {
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+
+      lobby.phase = 'ready_check'
+      const firstPicker = lobby.players[lobby.pickOrder[0]!]!
+      const result = pickHero(
+        lobby.id,
+        firstPicker.playerId,
+        'echo',
+        ws as never,
+        redis as never,
+        db as never,
+      )
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Not in picking phase')
+    })
+
+    it('transitions to starting after all heroes are picked', () => {
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+
+      // Let every pick time out (10 × 15s) plus the ready-check delay
+      vi.advanceTimersByTime(10 * 15000 + 1500)
+
+      expect(lobby.players.every((p) => p.heroId !== null)).toBe(true)
+      expect(lobby.phase).toBe('starting')
     })
   })
 

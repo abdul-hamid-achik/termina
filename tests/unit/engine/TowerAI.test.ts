@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { runTowerAI, applyTowerActions, type TowerAction } from '../../../server/game/engine/TowerAI'
+import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
+import type { GameEngineEvent } from '../../../server/game/protocol/events'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { TOWER_ATTACK } from '../../../shared/constants/balance'
 import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
@@ -59,6 +61,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones: initializeZoneStates(),
     creeps: [],
     towers: initializeTowers(),
+    ancients: initializeAncients(),
     events: [],
     ...overrides,
   }
@@ -120,7 +123,7 @@ describe('TowerAI', () => {
       expect(midT1Action!.targetId).toBe('c1')
     })
 
-    it('should prioritize heroes over creeps (when no hero attacker context)', () => {
+    it('should prioritize creeps over a passive hero (MOBA aggro convention)', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-t1-rad' }),
@@ -132,8 +135,83 @@ describe('TowerAI', () => {
 
       const actions = runTowerAI(state)
       const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      expect(midT1Action!.targetType).toBe('creep')
+      expect(midT1Action!.targetId).toBe('c1')
+    })
+
+    it('should prioritize a hero attacking an allied hero above creeps', () => {
+      const state = makeGameState({
+        players: {
+          ally: makePlayer({ id: 'ally', team: 'radiant', zone: 'mid-t1-rad' }),
+          attacker: makePlayer({ id: 'attacker', team: 'dire', zone: 'mid-t1-rad', name: 'Attacker' }),
+        },
+        creeps: [
+          makeCreep({ id: 'c1', team: 'dire', zone: 'mid-t1-rad' }),
+        ],
+      })
+
+      const heroAttackers = new Map<string, string>()
+      heroAttackers.set('attacker', 'ally')
+
+      const actions = runTowerAI(state, heroAttackers)
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
       expect(midT1Action!.targetType).toBe('hero')
-      expect(midT1Action!.targetId).toBe('p1')
+      expect(midT1Action!.targetId).toBe('attacker')
+    })
+
+    it('should prioritize a hero attacking the tower itself above creeps', () => {
+      const state = makeGameState({
+        players: {
+          attacker: makePlayer({ id: 'attacker', team: 'dire', zone: 'mid-t1-rad', name: 'Attacker' }),
+        },
+        creeps: [
+          makeCreep({ id: 'c1', team: 'dire', zone: 'mid-t1-rad' }),
+        ],
+      })
+
+      // Hero→tower damage events carry targetId `tower_${zone}`
+      const priorEvents: GameEngineEvent[] = [
+        {
+          _tag: 'damage',
+          tick: 1,
+          sourceId: 'attacker',
+          targetId: 'tower_mid-t1-rad',
+          amount: 60,
+          damageType: 'physical',
+        },
+      ]
+
+      const actions = runTowerAI(state, undefined, priorEvents)
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      expect(midT1Action!.targetType).toBe('hero')
+      expect(midT1Action!.targetId).toBe('attacker')
+    })
+
+    it('should not aggro a hero who attacked a different tower', () => {
+      const state = makeGameState({
+        players: {
+          attacker: makePlayer({ id: 'attacker', team: 'dire', zone: 'mid-t1-rad', name: 'Attacker' }),
+        },
+        creeps: [
+          makeCreep({ id: 'c1', team: 'dire', zone: 'mid-t1-rad' }),
+        ],
+      })
+
+      const priorEvents: GameEngineEvent[] = [
+        {
+          _tag: 'damage',
+          tick: 1,
+          sourceId: 'attacker',
+          targetId: 'tower_top-t1-rad',
+          amount: 60,
+          damageType: 'physical',
+        },
+      ]
+
+      const actions = runTowerAI(state, undefined, priorEvents)
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      // Different tower attacked — creeps still tank this one
+      expect(midT1Action!.targetType).toBe('creep')
     })
 
     it('should prioritize hero attacking allied hero in tower zone (priority 1)', () => {

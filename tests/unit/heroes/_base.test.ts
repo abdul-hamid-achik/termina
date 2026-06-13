@@ -104,7 +104,11 @@ describe('_base hero utilities', () => {
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.players['p1']!.hp).toBeLessThan(500)
+      expect(result.state.players['p1']!.hp).toBeLessThan(500)
+      const dmgEvents = result.events.filter((e) => e._tag === 'damage')
+      expect(dmgEvents).toHaveLength(1)
+      expect(dmgEvents[0]!.targetId).toBe('p1')
+      expect(dmgEvents[0]!.sourceId).toBe('test')
     })
 
     it('should apply multiple DoT buffs', () => {
@@ -118,7 +122,8 @@ describe('_base hero utilities', () => {
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.players['p1']!.hp).toBeLessThan(500)
+      expect(result.state.players['p1']!.hp).toBeLessThan(500)
+      expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(2)
     })
 
     it('should not affect players without DoT buffs', () => {
@@ -126,7 +131,8 @@ describe('_base hero utilities', () => {
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.players['p1']!.hp).toBe(500)
+      expect(result.state.players['p1']!.hp).toBe(500)
+      expect(result.events).toHaveLength(0)
     })
 
     it('should not affect dead players', () => {
@@ -138,7 +144,7 @@ describe('_base hero utilities', () => {
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.players['p1']!.hp).toBe(0)
+      expect(result.state.players['p1']!.hp).toBe(0)
     })
 
     it('should kill player if DoT damage exceeds HP', () => {
@@ -149,8 +155,8 @@ describe('_base hero utilities', () => {
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.players['p1']!.hp).toBe(0)
-      expect(result.players['p1']!.alive).toBe(false)
+      expect(result.state.players['p1']!.hp).toBe(0)
+      expect(result.state.players['p1']!.alive).toBe(false)
     })
   })
 

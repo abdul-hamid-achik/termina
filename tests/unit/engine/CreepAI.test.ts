@@ -1,11 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { runCreepAI, applyCreepActions, type CreepAction } from '../../../server/game/engine/CreepAI'
+import {
+  runCreepAI,
+  applyCreepActions,
+  enforceCreepZoneCap,
+  type CreepAction,
+} from '../../../server/game/engine/CreepAI'
+import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import {
   MELEE_CREEP_ATTACK,
   RANGED_CREEP_ATTACK,
   SIEGE_CREEP_ATTACK,
+  CREEP_BASE_IDLE_DESPAWN_TICKS,
+  MAX_CREEPS_PER_ZONE_PER_TEAM,
 } from '../../../shared/constants/balance'
 import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
 
@@ -63,9 +71,16 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones: initializeZoneStates(),
     creeps: [],
     towers: initializeTowers(),
+    ancients: initializeAncients(),
     events: [],
     ...overrides,
   }
+}
+
+/** Ancients with the dire one vulnerable (a dire T3 is presumed down). */
+function vulnerableDireAncients() {
+  const ancients = initializeAncients()
+  return { radiant: ancients.radiant, dire: { ...ancients.dire, vulnerable: true } }
 }
 
 describe('CreepAI', () => {
@@ -242,7 +257,7 @@ describe('CreepAI', () => {
       expect(actions).toHaveLength(0)
     })
 
-    it('should not generate actions for creeps in base zones', () => {
+    it('should idle (wait_in_base) for creeps stuck in base zones', () => {
       const state = makeGameState({
         creeps: [
           makeCreep({ id: 'c1', team: 'radiant', zone: 'radiant-base' }),
@@ -250,8 +265,9 @@ describe('CreepAI', () => {
       })
 
       const actions = runCreepAI(state)
-      // Creep is at the end of route or in base, no further movement
-      expect(actions).toHaveLength(0)
+      // Creep is at the end of route in a base — it idles toward despawn
+      expect(actions).toHaveLength(1)
+      expect(actions[0]!.action).toBe('wait_in_base')
     })
 
     it('should handle creeps on all three lanes', () => {
@@ -313,7 +329,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'move', targetZone: 'mid-t2-rad' },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       expect(result.creeps[0]!.zone).toBe('mid-t2-rad')
     })
 
@@ -329,7 +345,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_creep', targetId: 'c2', damage: MELEE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       const c2 = result.creeps.find((c) => c.id === 'c2')
       expect(c2!.hp).toBe(400 - MELEE_CREEP_ATTACK)
     })
@@ -346,7 +362,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_creep', targetId: 'c2', damage: MELEE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       expect(result.creeps.find((c) => c.id === 'c2')).toBeUndefined()
     })
 
@@ -362,7 +378,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_hero', targetId: 'p1', damage: MELEE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       const expectedDamage = calculatePhysicalDamage(MELEE_CREEP_ATTACK, 3)
       expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
@@ -380,7 +396,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_hero', targetId: 'p1', damage: MELEE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       expect(result.players['p1']!.hp).toBe(0)
       expect(result.players['p1']!.alive).toBe(false)
     })
@@ -397,7 +413,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_tower', targetZone: 'mid-t1-dire', damage: MELEE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       const updatedTower = result.towers.find((t) => t.zone === 'mid-t1-dire')!
       expect(updatedTower.hp).toBe(initialHp - MELEE_CREEP_ATTACK)
     })
@@ -416,7 +432,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_tower', targetZone: 'mid-t1-dire', damage: MELEE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       const updatedTower = result.towers.find((t) => t.zone === 'mid-t1-dire')!
       expect(updatedTower.hp).toBe(0)
       expect(updatedTower.alive).toBe(false)
@@ -434,7 +450,7 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_creep', targetId: 'c2', damage: MELEE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       // c1 is dead, so c2 should not take damage (c1 also removed)
       const c2 = result.creeps.find((c) => c.id === 'c2')
       expect(c2!.hp).toBe(400)
@@ -452,9 +468,252 @@ describe('CreepAI', () => {
         { creepId: 'c1', action: 'attack_creep', targetId: 'c2', damage: SIEGE_CREEP_ATTACK },
       ]
 
-      const result = applyCreepActions(state, actions)
+      const result = applyCreepActions(state, actions).state
       // c2 should be removed (hp <= 0)
       expect(result.creeps.find((c) => c.id === 'c2')).toBeUndefined()
+    })
+  })
+
+  describe('Ancient siege behavior', () => {
+    it('attacks a vulnerable enemy Ancient from the enemy base', () => {
+      const state = makeGameState({
+        ancients: vulnerableDireAncients(),
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+      })
+
+      const actions = runCreepAI(state)
+      expect(actions).toHaveLength(1)
+      expect(actions[0]!.action).toBe('attack_ancient')
+      expect(actions[0]!.damage).toBe(MELEE_CREEP_ATTACK)
+    })
+
+    it('prefers the vulnerable Ancient over enemy heroes in base', () => {
+      const state = makeGameState({
+        ancients: vulnerableDireAncients(),
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'dire-base' }),
+        },
+      })
+
+      const actions = runCreepAI(state)
+      expect(actions[0]!.action).toBe('attack_ancient')
+    })
+
+    it('still fights enemy creeps before the Ancient', () => {
+      const state = makeGameState({
+        ancients: vulnerableDireAncients(),
+        creeps: [
+          makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' }),
+          makeCreep({ id: 'c2', team: 'dire', zone: 'dire-base' }),
+        ],
+      })
+
+      const actions = runCreepAI(state)
+      const c1Action = actions.find((a) => a.creepId === 'c1')
+      expect(c1Action!.action).toBe('attack_creep')
+    })
+
+    it('does not attack an invulnerable Ancient — attacks heroes instead', () => {
+      const state = makeGameState({
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'dire-base' }),
+        },
+      })
+
+      const actions = runCreepAI(state)
+      expect(actions[0]!.action).toBe('attack_hero')
+      expect(actions[0]!.targetId).toBe('p1')
+    })
+
+    it('does not attack a dead Ancient', () => {
+      const ancients = initializeAncients()
+      const state = makeGameState({
+        ancients: {
+          radiant: ancients.radiant,
+          dire: { ...ancients.dire, hp: 0, alive: false, vulnerable: true },
+        },
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+      })
+
+      const actions = runCreepAI(state)
+      expect(actions[0]!.action).not.toBe('attack_ancient')
+    })
+
+    it('applies Ancient damage and emits events via applyCreepActions', () => {
+      const state = makeGameState({
+        ancients: vulnerableDireAncients(),
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+      })
+
+      const actions: CreepAction[] = [
+        { creepId: 'c1', action: 'attack_ancient', damage: MELEE_CREEP_ATTACK },
+      ]
+
+      const result = applyCreepActions(state, actions)
+      expect(result.state.ancients.dire.hp).toBe(
+        result.state.ancients.dire.maxHp - MELEE_CREEP_ATTACK,
+      )
+      expect(result.events).toHaveLength(1)
+      expect(result.events[0]!._tag).toBe('damage')
+    })
+
+    it('destroys the Ancient and emits a structure-kill event', () => {
+      const ancients = initializeAncients()
+      const state = makeGameState({
+        ancients: {
+          radiant: ancients.radiant,
+          dire: { ...ancients.dire, hp: 5, vulnerable: true },
+        },
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+      })
+
+      const actions: CreepAction[] = [
+        { creepId: 'c1', action: 'attack_ancient', damage: MELEE_CREEP_ATTACK },
+      ]
+
+      const result = applyCreepActions(state, actions)
+      expect(result.state.ancients.dire.alive).toBe(false)
+      expect(result.state.ancients.dire.hp).toBe(0)
+      const killEvent = result.events.find((e) => e._tag === 'tower_kill')
+      expect(killEvent).toBeDefined()
+    })
+
+    it('does not damage an invulnerable Ancient even if an action sneaks through', () => {
+      const state = makeGameState({
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+      })
+
+      const actions: CreepAction[] = [
+        { creepId: 'c1', action: 'attack_ancient', damage: MELEE_CREEP_ATTACK },
+      ]
+
+      const result = applyCreepActions(state, actions)
+      expect(result.state.ancients.dire.hp).toBe(result.state.ancients.dire.maxHp)
+      expect(result.events).toHaveLength(0)
+    })
+  })
+
+  describe('base idle despawn (garbage collection)', () => {
+    it('waits in base while under the idle threshold', () => {
+      const state = makeGameState({
+        creeps: [
+          makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base', baseIdleTicks: 0 }),
+        ],
+      })
+
+      const actions = runCreepAI(state)
+      expect(actions[0]!.action).toBe('wait_in_base')
+    })
+
+    it('despawns once idle ticks reach the threshold', () => {
+      const state = makeGameState({
+        creeps: [
+          makeCreep({
+            id: 'c1',
+            team: 'radiant',
+            zone: 'dire-base',
+            baseIdleTicks: CREEP_BASE_IDLE_DESPAWN_TICKS - 1,
+          }),
+        ],
+      })
+
+      const actions = runCreepAI(state)
+      expect(actions[0]!.action).toBe('despawn')
+    })
+
+    it('wait_in_base increments the idle counter', () => {
+      const state = makeGameState({
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' })],
+      })
+
+      const result = applyCreepActions(state, [{ creepId: 'c1', action: 'wait_in_base' }])
+      expect(result.state.creeps[0]!.baseIdleTicks).toBe(1)
+    })
+
+    it('despawn removes the creep from state', () => {
+      const state = makeGameState({
+        creeps: [
+          makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base' }),
+          makeCreep({ id: 'c2', team: 'radiant', zone: 'mid-river' }),
+        ],
+      })
+
+      const result = applyCreepActions(state, [{ creepId: 'c1', action: 'despawn' }])
+      expect(result.state.creeps.find((c) => c.id === 'c1')).toBeUndefined()
+      expect(result.state.creeps.find((c) => c.id === 'c2')).toBeDefined()
+    })
+
+    it('does not idle-despawn while the vulnerable Ancient is attackable', () => {
+      const state = makeGameState({
+        ancients: vulnerableDireAncients(),
+        creeps: [
+          makeCreep({
+            id: 'c1',
+            team: 'radiant',
+            zone: 'dire-base',
+            baseIdleTicks: CREEP_BASE_IDLE_DESPAWN_TICKS,
+          }),
+        ],
+      })
+
+      const actions = runCreepAI(state)
+      expect(actions[0]!.action).toBe('attack_ancient')
+    })
+  })
+
+  describe('enforceCreepZoneCap', () => {
+    it('returns the same state object when under the cap', () => {
+      const state = makeGameState({
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
+      })
+      expect(enforceCreepZoneCap(state)).toBe(state)
+    })
+
+    it('despawns the oldest creeps first when over the cap', () => {
+      const creeps = Array.from({ length: MAX_CREEPS_PER_ZONE_PER_TEAM + 5 }, (_, i) =>
+        makeCreep({ id: `c${i}`, team: 'radiant', zone: 'mid-river' }),
+      )
+      const state = makeGameState({ creeps })
+
+      const result = enforceCreepZoneCap(state)
+      expect(result.creeps).toHaveLength(MAX_CREEPS_PER_ZONE_PER_TEAM)
+      // Oldest (lowest index) should be gone, newest kept
+      expect(result.creeps.find((c) => c.id === 'c0')).toBeUndefined()
+      expect(result.creeps.find((c) => c.id === 'c4')).toBeUndefined()
+      expect(result.creeps.find((c) => c.id === 'c5')).toBeDefined()
+      expect(
+        result.creeps.find((c) => c.id === `c${MAX_CREEPS_PER_ZONE_PER_TEAM + 4}`),
+      ).toBeDefined()
+    })
+
+    it('caps per team per zone independently', () => {
+      const radiant = Array.from({ length: MAX_CREEPS_PER_ZONE_PER_TEAM + 2 }, (_, i) =>
+        makeCreep({ id: `r${i}`, team: 'radiant', zone: 'mid-river' }),
+      )
+      const dire = Array.from({ length: 3 }, (_, i) =>
+        makeCreep({ id: `d${i}`, team: 'dire', zone: 'top-river' }),
+      )
+      const state = makeGameState({ creeps: [...radiant, ...dire] })
+
+      const result = enforceCreepZoneCap(state)
+      expect(result.creeps.filter((c) => c.team === 'radiant')).toHaveLength(
+        MAX_CREEPS_PER_ZONE_PER_TEAM,
+      )
+      expect(result.creeps.filter((c) => c.team === 'dire')).toHaveLength(3)
+    })
+
+    it('preserves spawn order of the survivors', () => {
+      const creeps = Array.from({ length: MAX_CREEPS_PER_ZONE_PER_TEAM + 1 }, (_, i) =>
+        makeCreep({ id: `c${i}`, team: 'radiant', zone: 'mid-river' }),
+      )
+      const state = makeGameState({ creeps })
+
+      const result = enforceCreepZoneCap(state)
+      const ids = result.creeps.map((c) => Number(c.id.slice(1)))
+      const sorted = [...ids].sort((a, b) => a - b)
+      expect(ids).toEqual(sorted)
     })
   })
 })
