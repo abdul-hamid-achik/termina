@@ -52,7 +52,20 @@ export const test = base.extend<GameFixtures>({
       // cycle (~30s) to recover from that.
       await page.getByTestId('hero-status').waitFor({ timeout: 60_000 })
 
+      // Capture the live gameId so teardown can stop the server-side game loop.
+      const gameId = await page.getByTestId('game-screen').getAttribute('data-game-id')
+
       await use(page)
+
+      // Teardown: end this spec's game via the test-only force-end hook so its
+      // loop stops ticking. Otherwise every game-fixture spec leaves a game
+      // running server-side for the rest of the suite; they accumulate, starve
+      // CPU, and slow later specs' matchmaking into flaky timeouts. Best-effort.
+      if (gameId) {
+        await page
+          .request.post('/api/test/force-end', { data: { gameId, winner: 'radiant' } })
+          .catch(() => {})
+      }
     },
     { timeout: 180_000 },
   ],
