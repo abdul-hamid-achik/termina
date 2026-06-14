@@ -74,7 +74,7 @@ steps:
   - id: open_origin_for_relogin
     open:
       path: /
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: login_as_spectator
     request:
       method: POST
@@ -87,7 +87,7 @@ steps:
   - id: open_spectate
     open:
       path: /spectate/${requests.game.body.gameId}
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_header
     wait:
       text: ${requests.game.body.gameId}

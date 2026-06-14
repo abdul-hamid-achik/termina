@@ -53,7 +53,7 @@ steps:
   - id: enter_game
     open:
       path: ${requests.game.body.url}
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_live
     wait:
       text: AWAITING ORDERS

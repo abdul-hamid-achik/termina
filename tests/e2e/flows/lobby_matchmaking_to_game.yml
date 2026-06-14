@@ -62,7 +62,7 @@ steps:
   - id: enter_lobby
     open:
       path: /lobby
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_my_turn
     wait:
       text: YOUR TURN TO PICK

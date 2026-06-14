@@ -43,7 +43,7 @@ steps:
   - id: open_home
     open:
       path: /
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: await_tagline
     wait:
       text: where every command is a kill

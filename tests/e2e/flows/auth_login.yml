@@ -50,7 +50,7 @@ steps:
   - id: open_login
     open:
       path: /login
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: await_form
     wait:
       text: authenticate to continue

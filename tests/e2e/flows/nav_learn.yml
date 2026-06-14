@@ -63,7 +63,7 @@ steps:
   - id: open_learn
     open:
       path: /learn
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_for_command_reference
     wait:
       text: COMMAND REFERENCE

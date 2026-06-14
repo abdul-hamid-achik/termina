@@ -19,7 +19,7 @@ steps:
   # v1.8 (B2): baseUrl is joined AFTER ${requests…} substitution, so the
   # hook's returned absolute path ("/play?…") no longer double-slashes.
   - id: enter_game
-    open: { path: "${requests.game.body.url}", waitUntil: load }
+    open: { path: "${requests.game.body.url}", waitUntil: domcontentloaded }
   - id: wait_live
     wait: { text: "AWAITING ORDERS", timeoutMs: 20000 } # the Tick Theater header
 

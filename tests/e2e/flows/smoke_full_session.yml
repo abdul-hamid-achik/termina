@@ -67,7 +67,7 @@ steps:
   - id: open_home
     open:
       path: /
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_home_logo
     wait:
       text: where every command is a kill
@@ -127,7 +127,7 @@ steps:
   - id: open_profile
     open:
       path: /profile/me
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_profile_whois
     wait:
       text: whois cairn_
@@ -139,7 +139,7 @@ steps:
   - id: open_home_for_logout
     open:
       path: /
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: click_logout
     click:
       by: role

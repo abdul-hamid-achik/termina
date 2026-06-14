@@ -33,7 +33,7 @@ steps:
   - id: open_home
     open:
       path: /
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: click_logout
     click:
       by: role
@@ -46,7 +46,7 @@ steps:
   - id: visit_protected_lobby
     open:
       path: /lobby
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: await_protected_redirect
     wait:
       text: "[LOGIN]"

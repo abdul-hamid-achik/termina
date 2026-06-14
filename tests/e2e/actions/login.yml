@@ -9,7 +9,7 @@ steps:
   # a credentialed POST from about:blank fails "Failed to fetch". So the correct
   # authoring pattern remains: establish the origin, then request.
   - id: open_app
-    open: { path: /, waitUntil: load }
+    open: { path: /, waitUntil: domcontentloaded }
   - id: login_as_dev
     request:
       method: POST

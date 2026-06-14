@@ -14,7 +14,12 @@ environments:
   # README.md). The hooks are the whole point — they let specs seed an
   # exact game state instead of playing a real match over the flaky lobby WS.
   local:
-    baseUrl: "http://localhost:3000"
+    # 127.0.0.1, NOT localhost: the Nuxt dev server binds IPv6 (::1) by default,
+    # and on a Linux CI runner `localhost` can resolve to IPv4 first — so a Bun
+    # `fetch` (cairn's request transport) hits a dead address and hangs. We force
+    # the dev server to bind IPv4 (HOST=127.0.0.1 in scripts/e2e.mjs) and address
+    # it as 127.0.0.1 end-to-end so browser nav + request steps all stay on IPv4.
+    baseUrl: "http://127.0.0.1:3000"
     viewport: { width: 1280, height: 800 }
     vars:
       # Dev identity minted by the /api/test/login-as hook (idempotent, no OAuth).

@@ -48,7 +48,7 @@ steps:
   - id: open_settings
     open:
       path: /profile/settings
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_for_connected_accounts
     wait:
       text: CONNECTED ACCOUNTS

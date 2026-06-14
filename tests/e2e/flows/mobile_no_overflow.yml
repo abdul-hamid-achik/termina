@@ -95,7 +95,7 @@ steps:
   - id: open_login
     open:
       path: /login
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: await_login
     wait:
       text: authenticate to continue
@@ -103,7 +103,7 @@ steps:
   - id: open_learn
     open:
       path: /learn
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: await_learn
     wait:
       text: COMMAND REFERENCE
@@ -111,7 +111,7 @@ steps:
   - id: open_leaderboard
     open:
       path: /leaderboard
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: await_leaderboard
     wait:
       text: top players by rating
@@ -119,7 +119,7 @@ steps:
   - id: open_home_last
     open:
       path: /
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: await_home
     wait:
       text: where every command is a kill

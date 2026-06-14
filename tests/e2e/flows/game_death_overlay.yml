@@ -77,7 +77,7 @@ steps:
   - id: enter_game
     open:
       path: ${requests.game.body.url}
-      waitUntil: load
+      waitUntil: domcontentloaded
   - id: wait_overlay
     wait:
       text: PROCESS TERMINATED

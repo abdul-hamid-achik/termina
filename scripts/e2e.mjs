@@ -23,7 +23,10 @@ import { spawn } from 'node:child_process'
 import { openSync, readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const BASE = 'http://localhost:3000'
+// IPv4, not localhost — the dev server is forced to bind 127.0.0.1 (HOST below)
+// so cairn's request transport (a Bun fetch) and our health checks stay on IPv4.
+// A `localhost` that resolves to IPv6 (::1) on a Linux runner is what hung CI.
+const BASE = 'http://127.0.0.1:3000'
 const DEV_LOG = resolve(process.cwd(), 'e2e-dev-server.log')
 const CAIRN_BUDGET_MS = Number(process.env.CAIRN_BUDGET_MS ?? 12 * 60 * 1000)
 const JUNIT_PATH = 'tests/e2e/junit.xml'
@@ -166,6 +169,10 @@ if (!alreadyUp) {
     detached: true,
     env: {
       ...process.env,
+      // Bind IPv4 explicitly — Nuxt/listhen defaults to IPv6 (::1), which makes
+      // a Bun `fetch` to 127.0.0.1 (or an IPv4-resolved localhost) hit a dead
+      // address and hang on the CI runner. Keep the whole chain on 127.0.0.1.
+      HOST: '127.0.0.1',
       TERMINA_TEST_HOOKS: '1',
       TERMINA_TEST_FAST_GAME: process.env.TERMINA_TEST_FAST_GAME ?? '8',
     },
