@@ -16,7 +16,7 @@
  * unset, so production pacing is untouched.
  *
  * Used by: any dev/test server started for e2e runs (set TERMINA_TEST_FAST_GAME
- * in the server env alongside TERMINA_TEST_HOOKS=1 — see tests/e2e/README.md).
+ * in the server env alongside TERMINA_TEST_HOOKS=1 — see README.md (Testing)).
  */
 
 const MAX_FACTOR = 16

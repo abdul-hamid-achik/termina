@@ -8,7 +8,7 @@ import type { TeamId } from '~~/shared/types/game'
  *
  * Double-gated: only mounted-effective when NOT production AND the explicit
  * TERMINA_TEST_HOOKS=1 opt-in is set (the e2e test server runs with it — see
- * tests/e2e/README.md). Any other environment returns 404 so the route is invisible.
+ * README.md (Testing)). Any other environment returns 404 so the route is invisible.
  *
  * Body: { gameId: string, winner: 'radiant' | 'dire' }
  * Response: { ended: boolean } — false if the game isn't live on this instance.

@@ -213,17 +213,79 @@ Level 25: Ultimate AOE +50% OR Double Echo (25% chance)
 
 ## 🧪 Testing
 
+### Unit / integration / component (Vitest 4)
+
 ```bash
 bun run test:unit          # unit (node env)
 bun run test:integration   # integration (node env)
 bun run test:components    # component (happy-dom)
-bun run test:e2e           # Cairntrace browser E2E (needs a dev server up — see tests/e2e/README.md)
 bun run typecheck          # nuxt typecheck
 ```
 
-### Coverage
-- **~2,800 Vitest tests** across engine, all 18 heroes, items, matchmaking, services, stores, and composables.
-- **29 Cairntrace E2E flows** (browser) covering all behaviours of the former Playwright suite. Each flow seeds an exact game/draft state via dev-only, double-gated `server/api/test/*` hooks instead of playing a real match — fast and deterministic. See [`tests/e2e/README.md`](tests/e2e/README.md).
+~2,800 Vitest tests across the engine, all 18 heroes, items, matchmaking,
+services, stores, and composables. Projects live in `test.projects` in
+`vitest.config.ts`; single file: `npx vitest run tests/unit/engine/GameLoop.test.ts`.
+
+### End-to-end (Cairntrace + dev seed hooks)
+
+Browser E2E uses [Cairntrace](https://github.com/abdul-hamid-achik/cairntrace)
+YAML flows paired with **dev-only seed hooks** so a spec lands in an exact game
+or draft state instead of playing a flaky bot match. **29 flows** cover every
+behaviour of the former Playwright suite (`cairn run tests/e2e/flows
+--cold-start` → 29/29, ~7m). Cairntrace does NOT start the app — bring up a dev
+server with the hooks on first, then point `cairn` at it:
+
+```bash
+# 1. dev server with the test hooks enabled
+TERMINA_TEST_HOOKS=1 bun run dev
+
+# 2. whole suite (= `bun run test:e2e`; add --junit --stamp-if-green for CI = test:e2e:ci)
+cairn run tests/e2e/flows --config tests/e2e/cairntrace.config.yml --cold-start
+
+# one flow · lint+stamp a contract · heal selectors after a UI rename
+cairn run        tests/e2e/flows/game_screen_renders.yml --config tests/e2e/cairntrace.config.yml --cold-start
+cairn spec verify tests/e2e/flows/game_screen_renders.yml --config tests/e2e/cairntrace.config.yml --stamp
+cairn spec heal   tests/e2e/flows/game_screen_renders.yml
+```
+
+`tests/e2e/` holds `flows/` (one behaviour per file, self-documenting headers),
+reusable `actions/` (`login`, `new_game`), `cairntrace.config.yml`, and a
+gitignored `runs/` artifact root. Two flows are `partial`:
+`game_websocket_connection` (connect-on-mount only — the `join_game` frame needs
+a WS-frame verifier cairntrace lacks) and `lobby_queue` (the live queue→match
+transition isn't seeded; the draft→game path is covered by
+`lobby_matchmaking_to_game`).
+
+#### Dev seed hooks (`server/api/test/*`)
+
+The point: **stop having to play the game to test it.** These build a *real*
+`GameState` through the same `createGame`/`startGameLoop` path the lobby uses —
+only **matchmaking** is bypassed. Every hook is **double-gated**
+(`NODE_ENV !== 'production' && TERMINA_TEST_HOOKS === '1'`): in production every
+route 404s and the helpers hard-return.
+
+| Route | Body | Returns | Purpose |
+| --- | --- | --- | --- |
+| `login-as` | `{ username }` | `{ playerId }` | Mint a session for a dev user (create if missing). Username `\w{3,40}`. |
+| `new-game` | `{ scenario?, heroSelf?, seed?, manualTick? }` | `{ gameId, playerId, url }` | Build a real 5v5 (user + 9 bots), apply the scenario, return the `/play` URL. Skips matchmaking. |
+| `new-draft` | `{ prepick? }` | `{ lobbyId, playerId, team, url }` | Seed a hero draft frozen at the user's pick turn (`prepick` slots pre-picked by bots). The pick runs the real `pickHero`→`game_ready` pipeline. `prepick:5`=mid-draft, `prepick:9`=final pick→game. Skips the live matchmaker. |
+| `advance` | `{ gameId, ticks }` | `{ tick }` | Step a `manualTick` game N ticks immediately (deterministic). |
+| `state` (GET) | `?gameId=` | `GameState` | Engine-truth snapshot for `httpJson`/`script` verifiers (cross-check the DOM against engine state). |
+| `force-end` | `{ gameId, winner }` | `{ ended }` | End a live game → the post-game screen renders. |
+
+**Scenarios** (`applyScenario` in `server/game/dev/scenarios.ts`, pure
+`(state, opts) => GameState` transforms): `fresh`/`laning`, `roshan_dead`,
+`core_vulnerable`, `night`, `self_dead` (kills the human → death overlay; seed
+with `manualTick: true`). Add more as specs need them. Engine-side seeding lives
+in `server/plugins/game-server.ts` (`createDevGame`/`advanceDevGame`),
+`server/game/matchmaking/lobby.ts` (`seedDraftLobby`), and `GameLoop.ts`
+(`runOneTick`).
+
+**Determinism & isolation:** specs seed state (never play); tick-progression
+specs use `manualTick: true` + `advance`; `testUser` is `cairn_${run.token}`
+(per-run identity — Termina broadcasts state per user-id, so a shared user would
+clobber another spec's seeded game). Flush the test Redis between sessions:
+`redis-cli -n 1 FLUSHDB`.
 
 ---
 

@@ -110,7 +110,7 @@ Expert in writing and maintaining Vitest (unit/integration/component) and Cairnt
 - `tests/unit/matchmaking/` — queue, lobby (+ `seed-draft-lobby`)
 - `tests/unit/stores/` — game store, lobby store
 - `tests/unit/composables/` — useGameSocket, useCommands, useAudio
-- `tests/e2e/` — **Cairntrace** YAML flows (29). Seed exact game/draft state via the dev hooks below; `flows/`, reusable `actions/`, `cairntrace.config.yml`. See `tests/e2e/README.md`.
+- `tests/e2e/` — **Cairntrace** YAML flows (29). Seed exact game/draft state via the dev hooks below; `flows/`, reusable `actions/`, `cairntrace.config.yml`. See the **End-to-end** section of the root `README.md`.
 - `server/api/test/*` — dev-only, double-gated (`NODE_ENV!=production && TERMINA_TEST_HOOKS=1`) seed hooks: `login-as`, `new-game`, `new-draft`, `advance`, `state`, `force-end` (+ `applyScenario` scenarios in `server/game/dev/scenarios.ts`).
 
 **Patterns**: Vitest 4 — projects are in `test.projects` in `vitest.config.ts`. `vi.fn()` mocks; `vi.mock()` for modules (PeerRegistry, BotManager); `vi.useFakeTimers()`; `Effect.runSync` for Effect code. NOTE vitest 4: `new (vi.fn(() => obj))()` returns the empty `this` — stub constructors with a plain `function(){ return mock }`. Clean up peers/lobbies in `afterEach`. E2E: each flow must pass `cairn run --cold-start` green and be stamped; `testUser` is `cairn_${run.token}` (per-run identity).

@@ -94,7 +94,7 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 - **Unused vars**: Prefix with `_` (e.g., `_details`)
 - **Type imports**: oxlint enforces `import type { ... }` (`typescript/consistent-type-imports`)
 - **Imports**: server code uses the `~~/server/...` root alias, not `../../` (`~~` → repo root, `~`/`@` → `app/`); resolves in Nitro, vitest, and tsc
-- **Testing**: Vitest 4 for unit tests — projects live in `test.projects` in `vitest.config.ts` (`bun run test:unit|components|integration`), `vi.fn()` mocks, `describe/it`; hitspec for API tests (`.http` in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that seed an exact game via the `server/api/test/*` dev hooks instead of playing a match — see `tests/e2e/README.md`)
+- **Testing**: Vitest 4 for unit tests — projects live in `test.projects` in `vitest.config.ts` (`bun run test:unit|components|integration`), `vi.fn()` mocks, `describe/it`; hitspec for API tests (`.http` in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that seed an exact game via the `server/api/test/*` dev hooks instead of playing a match — see the **End-to-end** section of `README.md`)
 - **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind 4 utilities extend them (e.g., `text-radiant`, `bg-bg-primary`, `text-dire`). Tailwind 4 is wired via `@tailwindcss/vite` + an `@config` directive in terminal.css that keeps the v3-style `tailwind.config.ts` theme
 
 ## Important Gotchas

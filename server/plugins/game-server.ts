@@ -209,7 +209,7 @@ export function forceEndGame(gameId: string, winner: TeamId): boolean {
   }
 }
 
-// ── Dev-only seed hooks (A1; see tests/e2e/README.md) ──────
+// ── Dev-only seed hooks (see README.md, Testing section) ──────
 // Build a REAL game directly, bypassing matchmaking, so BDD/e2e specs can land
 // in a known state instead of playing a bot match. The implementation is wired
 // from inside the plugin (it shares the same services + buildCallbacks as the
