@@ -548,7 +548,7 @@ export async function runOneTick(
   callbacks: GameCallbacks,
   runtime: ManagedRuntime.ManagedRuntime<never, never>,
 ): Promise<void> {
-  if (process.env.NODE_ENV === 'production') return
+  if (process.env.NODE_ENV === 'production' && process.env.TERMINA_TEST_HOOKS !== '1') return
   await runtime.runPromiseExit(
     Effect.gen(function* () {
       const current = yield* stateManager.getState(gameId)

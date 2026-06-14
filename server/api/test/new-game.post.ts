@@ -1,4 +1,5 @@
 import { createDevGame } from '~~/server/plugins/game-server'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 
 /**
  * Dev/test-only: create a real game directly (no matchmaking) with the session
@@ -8,7 +9,7 @@ import { createDevGame } from '~~/server/plugins/game-server'
  * Body: { scenario?, heroSelf?, seed? }  →  { gameId, playerId, url }
  */
 export default defineEventHandler(async (event) => {
-  if (process.env.NODE_ENV === 'production' || process.env.TERMINA_TEST_HOOKS !== '1') {
+  if (!testHooksEnabled()) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 

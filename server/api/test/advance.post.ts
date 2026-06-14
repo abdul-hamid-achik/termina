@@ -1,4 +1,5 @@
 import { advanceDevGame, getDevRawState } from '~~/server/plugins/game-server'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 
 /**
  * Dev/test-only: advance a manual-tick dev game by N ticks deterministically
@@ -8,7 +9,7 @@ import { advanceDevGame, getDevRawState } from '~~/server/plugins/game-server'
  * Body: { gameId, ticks }  →  { advanced, tick }
  */
 export default defineEventHandler(async (event) => {
-  if (process.env.NODE_ENV === 'production' || process.env.TERMINA_TEST_HOOKS !== '1') {
+  if (!testHooksEnabled()) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 

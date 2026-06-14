@@ -1,4 +1,5 @@
 import { Effect } from 'effect'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 import { getGameRuntime } from '~~/server/plugins/game-server'
 
 /**
@@ -9,7 +10,7 @@ import { getGameRuntime } from '~~/server/plugins/game-server'
  * Body: { username }  →  { playerId }
  */
 export default defineEventHandler(async (event) => {
-  if (process.env.NODE_ENV === 'production' || process.env.TERMINA_TEST_HOOKS !== '1') {
+  if (!testHooksEnabled()) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 

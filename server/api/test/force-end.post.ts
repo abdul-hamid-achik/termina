@@ -1,4 +1,5 @@
 import { forceEndGame } from '~~/server/plugins/game-server'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 import type { TeamId } from '~~/shared/types/game'
 
 /**
@@ -14,8 +15,7 @@ import type { TeamId } from '~~/shared/types/game'
  * Response: { ended: boolean } — false if the game isn't live on this instance.
  */
 export default defineEventHandler(async (event) => {
-  const hooksEnabled =
-    process.env.NODE_ENV !== 'production' && process.env.TERMINA_TEST_HOOKS === '1'
+  const hooksEnabled = testHooksEnabled()
   if (!hooksEnabled) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }

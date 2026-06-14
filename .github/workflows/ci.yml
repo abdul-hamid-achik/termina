@@ -324,7 +324,10 @@ jobs:
       - name: Push schema into the test DB
         run: bunx drizzle-kit push --force
 
-      - name: Run the e2e suite (starts the dev server with hooks, then cairn)
+      - name: Build the app (e2e runs against the production preview server)
+        run: bun run build
+
+      - name: Run the e2e suite (starts the preview server with hooks, then cairn)
         run: bun run test:e2e:ci
 
       - name: Upload Cairntrace run artifacts

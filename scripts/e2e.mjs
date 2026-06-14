@@ -1,14 +1,18 @@
 #!/usr/bin/env bun
 /**
- * Run the Cairntrace e2e suite, managing the dev server lifecycle.
+ * Run the Cairntrace e2e suite, managing the app server lifecycle.
  *
  * Cairntrace does not start the app, so this script:
  *  - reuses an already-running server on :3000 if there is one, otherwise
- *  - starts `bun run dev` with TERMINA_TEST_HOOKS=1 (inheriting any DB/Redis env),
- *    waits for it, runs the suite, then tears down the server it started.
+ *  - builds the app if needed and starts the PRODUCTION PREVIEW server
+ *    (`node .output/server`) with TERMINA_TEST_HOOKS=1 (inheriting any DB/Redis
+ *    env), waits for it, runs the suite, then tears down the server it started.
+ *    The prod preview (not `nuxt dev`) avoids the dev server's Vite-proxy /
+ *    cold-compile / IPv6 flakiness; the hooks gate on TERMINA_TEST_HOOKS=1 so
+ *    they work in the prod build. Set E2E_REBUILD=1 to force a rebuild.
  *
  * Diagnostics & safety (so CI failures are debuggable and never hang):
- *  - the dev server's stdout/stderr are captured to `e2e-dev-server.log` (CI
+ *  - the server's stdout/stderr are captured to `e2e-dev-server.log` (CI
  *    uploads it as an artifact) instead of being discarded — that log is the
  *    only place that explains a server-side rejection (e.g. a 400 from a hook).
  *  - the `cairn run` is wrapped in a watchdog (CAIRN_BUDGET_MS, default 12m): if
@@ -27,6 +31,11 @@ import { resolve } from 'node:path'
 // so cairn's request transport (a Bun fetch) and our health checks stay on IPv4.
 // A `localhost` that resolves to IPv6 (::1) on a Linux runner is what hung CI.
 const BASE = 'http://127.0.0.1:3000'
+// The e2e server is a PRODUCTION PREVIEW build (node .output/server), not the
+// dev server: bundled assets, native WS, IPv4 bind — none of the dev server's
+// Vite-proxy / cold-compile / IPv6 flakiness. The test hooks gate on the
+// explicit TERMINA_TEST_HOOKS=1 opt-in, so they work in the prod build too.
+const OUTPUT_SERVER = resolve(process.cwd(), '.output/server/index.mjs')
 const DEV_LOG = resolve(process.cwd(), 'e2e-dev-server.log')
 const CAIRN_BUDGET_MS = Number(process.env.CAIRN_BUDGET_MS ?? 12 * 60 * 1000)
 const JUNIT_PATH = 'tests/e2e/junit.xml'
@@ -154,38 +163,60 @@ if (!alreadyUp) {
   // the local server as clean as CI's. (Reuse path: don't touch a server we
   // didn't start — its in-memory games would survive a flush anyway.)
   await sh('sh', ['-c', 'redis-cli -n 1 FLUSHDB >/dev/null 2>&1 || true'])
-  console.log(`[e2e] starting dev server (TERMINA_TEST_HOOKS=1); logging to ${DEV_LOG} …`)
-  // Write the child's stdout/stderr straight to a file descriptor — same shape
-  // as stdio:'ignore' (which exited cleanly), just to a file instead of
-  // /dev/null. Avoid JS-side stream piping (.pipe()), which keeps handles open
-  // and made process.exit() get SIGKILL'd even on success.
+
+  // Ensure a production build exists; build if missing (or E2E_REBUILD=1 forces it).
+  if (process.env.E2E_REBUILD === '1' || !existsSync(OUTPUT_SERVER)) {
+    console.log('[e2e] building the app for the preview server (bun run build) …')
+    const buildCode = await sh('bun', ['run', 'build'])
+    if (buildCode !== 0 || !existsSync(OUTPUT_SERVER)) {
+      console.error('[e2e] build failed — cannot start preview server')
+      process.exit(1)
+    }
+  }
+
+  console.log(
+    `[e2e] starting preview server (node .output/server, TERMINA_TEST_HOOKS=1); logging to ${DEV_LOG} …`,
+  )
+  // Write the child's stdout/stderr straight to a file descriptor (no .pipe(),
+  // which keeps handles open and made process.exit() get SIGKILL'd). detached +
+  // unref so teardown can kill the whole group and the live child never pins our
+  // event loop.
   const logFd = openSync(DEV_LOG, 'w')
-  // detached → its own process group, so teardown can kill the whole tree
-  // (bun → nitro worker). unref() so this live child never pins our event loop
-  // and force process.exit() to be SIGKILL'd (the cause of a spurious 137 even
-  // on a passing run).
-  devChild = spawn('bun', ['run', 'dev'], {
+  devChild = spawn('node', [OUTPUT_SERVER], {
     stdio: ['ignore', logFd, logFd],
     detached: true,
     env: {
       ...process.env,
-      // Bind IPv4 explicitly — Nuxt/listhen defaults to IPv6 (::1), which makes
-      // a Bun `fetch` to 127.0.0.1 (or an IPv4-resolved localhost) hit a dead
-      // address and hang on the CI runner. Keep the whole chain on 127.0.0.1.
+      // Bind IPv4 explicitly (the Nitro node server honors HOST) so the whole
+      // chain stays on 127.0.0.1 — a localhost that resolves to IPv6 (::1) is
+      // what hung CI.
       HOST: '127.0.0.1',
+      PORT: '3000',
       TERMINA_TEST_HOOKS: '1',
       TERMINA_TEST_FAST_GAME: process.env.TERMINA_TEST_FAST_GAME ?? '8',
+      // The prod build sets the session cookie `secure: true` (NODE_ENV=production),
+      // which the client won't send over plain HTTP (127.0.0.1) — so the login-as
+      // session wouldn't carry to the next hook and seeding 401s. Override the
+      // runtimeConfig flag off for the HTTP preview (test-only).
+      NUXT_SESSION_COOKIE_SECURE: 'false',
+      // The prod build requires these at runtime (no dev auto-defaults). CI sets
+      // them; locally fall back to the test DB/redis + a throwaway session key.
+      NUXT_SESSION_PASSWORD:
+        process.env.NUXT_SESSION_PASSWORD ?? 'e2e_session_password_at_least_32_chars_long',
+      NUXT_DATABASE_URL:
+        process.env.NUXT_DATABASE_URL ?? 'postgresql://termina:termina@localhost:5432/termina',
+      NUXT_REDIS_URL: process.env.NUXT_REDIS_URL ?? 'redis://localhost:6379/1',
     },
   })
   devChild.unref()
   startedServer = true
-  const deadline = Date.now() + 90_000
+  const deadline = Date.now() + 60_000
   while (Date.now() < deadline) {
     if (await isUp()) break
-    await sleep(2000)
+    await sleep(1000)
   }
   if (!(await isUp())) {
-    console.error('[e2e] dev server did not come up on :3000')
+    console.error('[e2e] preview server did not come up on :3000')
     dumpDevLog('startup failure')
     await teardownDevServer()
     process.exit(1)

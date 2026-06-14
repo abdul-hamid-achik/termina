@@ -1,4 +1,5 @@
 import { getDevRawState } from '~~/server/plugins/game-server'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 
 /**
  * Dev/test-only: raw GameState snapshot for spec assertions (engine-truth
@@ -7,7 +8,7 @@ import { getDevRawState } from '~~/server/plugins/game-server'
  * Query: ?gameId=<id>  →  GameState JSON
  */
 export default defineEventHandler((event) => {
-  if (process.env.NODE_ENV === 'production' || process.env.TERMINA_TEST_HOOKS !== '1') {
+  if (!testHooksEnabled()) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 

@@ -1,4 +1,5 @@
 import { Effect, Layer, ManagedRuntime } from 'effect'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 import {
   RedisService,
   makeRedisServiceLive,
@@ -186,7 +187,7 @@ export function getGameRuntime(): GameRuntime | null {
  * production guard lives here too so no caller can ever reach it in prod.
  */
 export function forceEndGame(gameId: string, winner: TeamId): boolean {
-  if (process.env.NODE_ENV === 'production') return false
+  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return false
 
   const entry = liveGames.get(gameId)
   if (!entry) return false
@@ -232,13 +233,13 @@ let _createDevGame: ((opts: DevGameOpts) => Promise<{ gameId: string } | null>) 
 
 /** Dev/test-only: create a real game with no matchmaking. Null in prod / pre-boot. */
 export async function createDevGame(opts: DevGameOpts): Promise<{ gameId: string } | null> {
-  if (process.env.NODE_ENV === 'production') return null
+  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return null
   return _createDevGame ? _createDevGame(opts) : null
 }
 
 /** Dev/test-only: raw GameState snapshot for spec assertions (engine-truth checks). */
 export function getDevRawState(gameId: string): GameState | null {
-  if (process.env.NODE_ENV === 'production') return null
+  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return null
   const entry = liveGames.get(gameId)
   if (!entry) return null
   try {
@@ -258,11 +259,22 @@ let _advanceDevGame: ((gameId: string, ticks: number) => Promise<number>) | null
 
 /** Dev/test-only: advance a manual-tick dev game by N ticks. 0 in prod / unknown game. */
 export async function advanceDevGame(gameId: string, ticks: number): Promise<number> {
-  if (process.env.NODE_ENV === 'production') return 0
+  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return 0
   return _advanceDevGame ? _advanceDevGame(gameId, ticks) : 0
 }
 
 export default defineNitroPlugin(async (nitroApp) => {
+  // Loud, unmissable warning if the dev/e2e test hooks are enabled. Their gate is
+  // now the explicit TERMINA_TEST_HOOKS=1 opt-in alone (the prod e2e runs against a
+  // production build, so NODE_ENV can't gate them) — they bypass auth (login-as
+  // mints a session for ANY username) and must NEVER be set in a real deployment.
+  if (testHooksEnabled()) {
+    console.warn(
+      '\n⚠️  TERMINA_TEST_HOOKS=1 — test endpoints (server/api/test/*) are ENABLED.\n' +
+        '   They bypass auth and seed/teardown games. NEVER set this in production.\n',
+    )
+  }
+
   const config = useRuntimeConfig()
   const redisUrl = (config.redis as { url: string }).url
 

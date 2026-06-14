@@ -22,7 +22,7 @@
 const MAX_FACTOR = 16
 
 export function fastGameFactor(): number {
-  if (process.env.NODE_ENV === 'production') return 1
+  if (process.env.NODE_ENV === 'production' && process.env.TERMINA_TEST_HOOKS !== '1') return 1
   const raw = process.env.TERMINA_TEST_FAST_GAME
   if (!raw) return 1
   const factor = Number.parseFloat(raw)

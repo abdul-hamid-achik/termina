@@ -1,4 +1,5 @@
 import { seedDraftLobby } from '~~/server/game/matchmaking/lobby'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 
 /**
  * Dev/test-only: seed a hero-draft lobby directly (no live matchmaking), frozen
@@ -11,7 +12,7 @@ import { seedDraftLobby } from '~~/server/game/matchmaking/lobby'
  * (/lobby); the client recovers the draft on connect and shows the hero picker.
  */
 export default defineEventHandler(async (event) => {
-  if (process.env.NODE_ENV === 'production' || process.env.TERMINA_TEST_HOOKS !== '1') {
+  if (!testHooksEnabled()) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 
