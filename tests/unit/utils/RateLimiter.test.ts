@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   checkRateLimit,
   getRateLimitStats,
@@ -37,17 +37,25 @@ describe('RateLimiter', () => {
       expect(checkRateLimit(testPlayerId)).toBe(false)
     })
 
-    it('should refill tokens over time', async () => {
-      // Exhaust burst
-      for (let i = 0; i < 10; i++) {
-        checkRateLimit(testPlayerId)
+    it('should refill tokens over time', () => {
+      // Fake timers make this deterministic. The refill rate is exactly 1 token
+      // per 200ms (5/sec), so a real `setTimeout(200)` sat *on* the boundary and
+      // flaked on CI when the timer fired a hair under 200ms (0.995 < 1 token).
+      vi.useFakeTimers()
+      try {
+        // Exhaust burst
+        for (let i = 0; i < 10; i++) {
+          checkRateLimit(testPlayerId)
+        }
+        expect(checkRateLimit(testPlayerId)).toBe(false) // bucket empty
+
+        // Advance comfortably past one refill interval (250ms → 1.25 tokens).
+        vi.advanceTimersByTime(250)
+
+        expect(checkRateLimit(testPlayerId)).toBe(true)
+      } finally {
+        vi.useRealTimers()
       }
-
-      // Wait 200ms (should refill 1 token at 5/sec rate)
-      await new Promise((resolve) => setTimeout(resolve, 200))
-
-      // Should have at least 1 token
-      expect(checkRateLimit(testPlayerId)).toBe(true)
     })
 
     it('should track violations', () => {
