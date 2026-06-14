@@ -144,16 +144,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # OPTIONAL Docker Hub auth — only fires if you've added the secrets. Lifts the
-      # anonymous pull rate-limit so the manual `docker pull` below counts against your
-      # account. Forks / repos without the secret skip this and still work (the retry
-      # loop is the primary, secret-free resilience mechanism).
-      - name: Log in to Docker Hub (optional, if secret present)
-        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # Resilience to a transient "Docker pull failed" is handled by the retry loop
+      # below (secret-free). If you ever hit SUSTAINED anonymous Docker Hub rate limits,
+      # add auth: create DOCKERHUB_USERNAME/DOCKERHUB_TOKEN repo secrets, add them to
+      # this job's `env:` (job-level env MAY reference secrets), then a
+      # docker/login-action@v3 step gated on `if: ${{ env.DOCKERHUB_USERNAME != '' }}`.
+      # (secrets can't be referenced in a step `if:` directly — hence the env hoist.)
 
       # Start PG + Redis ourselves (NOT `services:`) so the image pull lives inside a
       # step we control and can RETRY. `services:` has no pull-retry, so a transient
@@ -257,13 +253,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Log in to Docker Hub (optional, if secret present)
-        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
+      # (Optional Docker Hub auth: see the note in the integration-tests job.)
       # Same resilient self-managed PG+Redis as integration-tests (retryable pulls).
       - name: Start Postgres + Redis (with pull retry)
         run: |
