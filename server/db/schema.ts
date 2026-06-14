@@ -127,7 +127,10 @@ export const heroStats = pgTable(
     totalAssists: integer('total_assists').notNull().default(0),
   },
   (table) => [
-    index('hero_stats_player_id_idx').on(table.playerId),
+    // One row per (player, hero) — the target for updateHeroStats' upsert.
+    // Without this unique index the ON CONFLICT (player_id, hero_id) has nothing
+    // to match and game-over stat persistence fails.
+    uniqueIndex('hero_stats_player_hero_unique').on(table.playerId, table.heroId),
     index('hero_stats_hero_id_idx').on(table.heroId),
   ],
 )

@@ -176,12 +176,15 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
         })
         .onConflictDoUpdate({
           target: [heroStats.playerId, heroStats.heroId],
+          // Qualify each column to the target table. In ON CONFLICT DO UPDATE the
+          // SET expressions see both hero_stats and the `excluded` pseudo-row, so a
+          // bare `games_played`/`wins` is ambiguous (Postgres errors out).
           set: {
-            gamesPlayed: sql`games_played + 1`,
-            wins: sql`wins + ${stats.won ? 1 : 0}`,
-            totalKills: sql`total_kills + ${stats.kills}`,
-            totalDeaths: sql`total_deaths + ${stats.deaths}`,
-            totalAssists: sql`total_assists + ${stats.assists}`,
+            gamesPlayed: sql`${heroStats.gamesPlayed} + 1`,
+            wins: sql`${heroStats.wins} + ${stats.won ? 1 : 0}`,
+            totalKills: sql`${heroStats.totalKills} + ${stats.kills}`,
+            totalDeaths: sql`${heroStats.totalDeaths} + ${stats.deaths}`,
+            totalAssists: sql`${heroStats.totalAssists} + ${stats.assists}`,
           },
         })
     }),
