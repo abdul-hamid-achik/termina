@@ -293,16 +293,29 @@ clobber another spec's seeded game). Flush the test Redis between sessions:
 
 ### Continuous integration (GitHub Actions)
 
-`.github/workflows/ci.yml` runs on every **push and pull request**, with
-Postgres + Redis service containers:
+`.github/workflows/ci.yml` runs on every **push and pull request** as a set of
+small, parallel, properly-named jobs:
 
-- **`checks`** — `bun install` → push schema into the test DB → `lint` (oxlint) →
-  `typecheck` → `knip` → unit + integration + component tests → `build`.
+- **Tier 1 (parallel, no services)** — `lint` (oxlint), `format` (oxfmt
+  `--check`), `typecheck` (vue-tsc), `knip` (dead-code), `unit-tests`,
+  `component-tests`. Each gives an independent red/green signal.
+- **Tier 2** — `integration-tests` (vitest + Postgres) and `build` (nuxt build),
+  gated on the cheap checks via `needs`.
 - **`e2e`** — installs the `cairn` CLI from the public
   [cairntrace](https://github.com/abdul-hamid-achik/cairntrace) repo (it's not on
   npm) + Chromium, starts the dev server with the test hooks, runs the suite on
-  the Playwright backend, and **uploads the Cairntrace `runs/` artifacts + JUnit
-  report** (downloadable from the Actions run, kept 14 days).
+  the Playwright backend, and **uploads the Cairntrace `runs/` artifacts, the
+  dev-server log, and the JUnit report** (downloadable from the Actions run, kept
+  14 days). It is currently **advisory** — it reports its own status but is not
+  part of the merge gate while it's being stabilized.
+- **`ci-success`** — an aggregate job that fails if any required job did; make
+  **this** the single required status check in branch protection.
+
+**Resilience:** Postgres + Redis are started with `docker run` behind a
+pull-retry loop rather than `services:` containers — `services:` image pulls run
+before any step and can't be retried, so a transient Docker Hub pull failure
+would hard-fail the job. Bun is pinned, the install + Playwright browser caches
+are keyed on the lockfile, and each job has a `timeout-minutes` backstop.
 
 ---
 

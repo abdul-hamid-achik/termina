@@ -31,14 +31,26 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'username must be 3-40 chars [A-Za-z0-9_]' })
   }
 
+  // TEMP CI DIAGNOSTIC (dev-only; this hook 404s in prod): the e2e `login_as_dev`
+  // step (an in-page POST to this route) hangs ONLY in CI and is not reproducible
+  // locally. These brackets pinpoint whether the request reaches the server and, if
+  // so, which await stalls (DB query vs hash vs session). Remove once root-caused.
+  const t0 = Date.now()
+  const mark = (m: string) => console.warn(`[test/login-as] ${m} (+${Date.now() - t0}ms)`)
+  mark(`entry username=${username}`)
+
   const runtime = getGameRuntime()
   if (!runtime) throw createError({ statusCode: 503, message: 'Game server not ready' })
+  mark('runtime ok → getPlayerByUsername')
 
   let player = await Effect.runPromise(runtime.dbService.getPlayerByUsername(username))
+  mark(`getPlayerByUsername → ${player ? 'found' : 'null'}`)
   if (!player) {
     // hashPassword auto-imported from nuxt-auth-utils
     const passwordHash = await hashPassword(`dev_${username}_pw`)
+    mark('hashPassword done → createLocalPlayer')
     player = await Effect.runPromise(runtime.dbService.createLocalPlayer(username, passwordHash))
+    mark('createLocalPlayer done')
   }
 
   await setUserSession(event, {
@@ -51,6 +63,7 @@ export default defineEventHandler(async (event) => {
       hasPassword: true,
     },
   })
+  mark('setUserSession done → return')
 
   return { playerId: player.id }
 })

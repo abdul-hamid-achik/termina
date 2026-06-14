@@ -23,8 +23,12 @@ bun run test:api          # API tests (hitspec, requires running server)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
 cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
 
-# CI: .github/workflows/ci.yml runs checks (lint/typecheck/knip/tests/build) + e2e
-# (installs cairn from github, uploads run artifacts) on push/PR, with PG+Redis services.
+# CI: .github/workflows/ci.yml runs on push/PR as parallel named jobs — lint, format,
+# typecheck, knip, unit-tests, component-tests, integration-tests, build, e2e — gated by
+# a `ci-success` aggregate (the single required check). e2e is advisory (runs + uploads
+# run artifacts + dev-server log, but NOT in the ci-success gate yet). Postgres+Redis are
+# started via `docker run` behind a pull-retry loop (NOT `services:`, which can't retry a
+# transient Docker Hub pull failure). cairn is installed from github.
 
 # Lint, format, typecheck, dead-code (oxc tooling — NOT eslint/prettier)
 bun run lint              # oxlint
