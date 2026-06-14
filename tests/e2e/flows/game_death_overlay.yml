@@ -72,6 +72,7 @@ steps:
         seed: 1337
         manualTick: true
       expectStatus: 200
+      timeoutMs: 15000
       assign: game
   - id: enter_game
     open:

@@ -57,6 +57,7 @@ steps:
       body:
         prepick: 9
       expectStatus: 200
+      timeoutMs: 15000
       assign: draft
   - id: enter_lobby
     open:

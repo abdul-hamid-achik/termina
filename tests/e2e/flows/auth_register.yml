@@ -59,6 +59,7 @@ steps:
         username: r_${run.token}
         password: password123
       expectStatus: 200
+      timeoutMs: 15000
       assign: register
   - id: reopen_login
     open:

@@ -63,12 +63,14 @@ steps:
         seed: 1337
         manualTick: ${vars.manualTick}
       expectStatus: 200
+      timeoutMs: 15000
       assign: game
   - id: engine_alive
     request:
       method: GET
       url: /api/test/state?gameId=${requests.game.body.gameId}
       expectStatus: 200
+      timeoutMs: 15000
   - id: open_origin_for_relogin
     open:
       path: /
@@ -80,6 +82,7 @@ steps:
       body:
         username: spec_${run.token}
       expectStatus: 200
+      timeoutMs: 15000
       assign: spectator
   - id: open_spectate
     open:

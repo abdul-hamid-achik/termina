@@ -17,3 +17,7 @@ steps:
       body: { username: "${vars.testUser}" }
       expectStatus: 200
       assign: session
+      # Bound the in-page fetch: cairn only arms an AbortSignal when timeoutMs is
+      # set, so without it a stalled response (seen in CI's dev server) hangs the
+      # whole suite until the job watchdog. 15s is ample for a ~100ms hook.
+      timeoutMs: 15000
