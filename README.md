@@ -216,15 +216,19 @@ Level 25: Ultimate AOE +50% OR Double Echo (25% chance)
 ### Unit / integration / component (Vitest 4)
 
 ```bash
+bun run test               # everything: all Vitest projects + the e2e suite
+bun run test:watch         # Vitest watch mode (fast iteration)
 bun run test:unit          # unit (node env)
-bun run test:integration   # integration (node env)
+bun run test:integration   # integration (node env) — needs Postgres (docker compose up -d)
 bun run test:components    # component (happy-dom)
 bun run typecheck          # nuxt typecheck
 ```
 
-~2,800 Vitest tests across the engine, all 18 heroes, items, matchmaking,
+~2,860 Vitest tests across the engine, all 18 heroes, items, matchmaking,
 services, stores, and composables. Projects live in `test.projects` in
 `vitest.config.ts`; single file: `npx vitest run tests/unit/engine/GameLoop.test.ts`.
+The **integration** project includes real-Postgres `DatabaseService` tests
+(against a disposable `termina_test` DB), so it needs the docker services up.
 
 ### End-to-end (Cairntrace + dev seed hooks)
 
@@ -286,6 +290,19 @@ specs use `manualTick: true` + `advance`; `testUser` is `cairn_${run.token}`
 (per-run identity — Termina broadcasts state per user-id, so a shared user would
 clobber another spec's seeded game). Flush the test Redis between sessions:
 `redis-cli -n 1 FLUSHDB`.
+
+### Continuous integration (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every **push and pull request**, with
+Postgres + Redis service containers:
+
+- **`checks`** — `bun install` → push schema into the test DB → `lint` (oxlint) →
+  `typecheck` → `knip` → unit + integration + component tests → `build`.
+- **`e2e`** — installs the `cairn` CLI from the public
+  [cairntrace](https://github.com/abdul-hamid-achik/cairntrace) repo (it's not on
+  npm) + Chromium, starts the dev server with the test hooks, runs the suite on
+  the Playwright backend, and **uploads the Cairntrace `runs/` artifacts + JUnit
+  report** (downloadable from the Actions run, kept 14 days).
 
 ---
 

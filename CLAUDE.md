@@ -13,14 +13,18 @@ Termina is a text-based multiplayer MOBA (5v5) played through a terminal-inspire
 bun run dev
 
 # Tests
-bun run test              # Watch mode (all projects)
-bun run test:unit         # Unit tests only (node env)
-bun run test:integration  # Integration tests (node env)
-bun run test:e2e          # E2E tests (Cairntrace BDD, browser — needs a dev server up)
+bun run test              # EVERYTHING: all Vitest projects (run mode) + the e2e suite
+bun run test:watch        # Vitest watch mode (fast iteration)
+bun run test:unit         # Unit tests (node env)
+bun run test:integration  # Integration tests (node env) — needs Postgres (docker compose up -d)
+bun run test:e2e          # Cairntrace browser e2e — scripts/e2e.mjs auto-starts a dev
+                          #   server with TERMINA_TEST_HOOKS=1 if none is on :3000, else reuses it
 bun run test:api          # API tests (hitspec, requires running server)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
-hitspec run collections/auth-register.http         # Single hitspec collection
 cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
+
+# CI: .github/workflows/ci.yml runs checks (lint/typecheck/knip/tests/build) + e2e
+# (installs cairn from github, uploads run artifacts) on push/PR, with PG+Redis services.
 
 # Lint, format, typecheck, dead-code (oxc tooling — NOT eslint/prettier)
 bun run lint              # oxlint

@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Test DB/cache point at the CI service containers.
+  TEST_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
+  DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
+
+jobs:
+  # ── Fast, reliable gates: lint, types, dead-code, unit/integration/component, build ──
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: termina
+          POSTGRES_PASSWORD: termina
+          POSTGRES_DB: termina_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U termina"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Push schema into the test DB
+        run: bunx drizzle-kit push --force
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run knip
+      - run: bun run test:unit
+      - run: bun run test:integration
+      - run: bun run test:components
+      - run: bun run build
+
+  # ── Browser e2e (Cairntrace). Needs the cairn CLI (not on npm → install from the
+  #    public GitHub repo) + a Chromium for the playwright backend. Uploads run
+  #    artifacts. Separate job so a flaky browser/install doesn't mask the core gates.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: checks
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: termina
+          POSTGRES_PASSWORD: termina
+          POSTGRES_DB: termina_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U termina"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # The dev server (started by scripts/e2e.mjs) reads these via Nuxt runtimeConfig.
+      NUXT_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
+      NUXT_REDIS_URL: redis://localhost:6379/1
+      NUXT_SESSION_PASSWORD: ci_session_password_at_least_32_chars_long
+      TERMINA_TEST_HOOKS: '1'
+      TERMINA_TEST_FAST_GAME: '8'
+      CAIRN_BACKEND: playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Install the cairn CLI (Cairntrace is not published to npm)
+        run: bun add --global github:abdul-hamid-achik/cairntrace
+      - name: Install Chromium for the playwright backend
+        run: bunx playwright install --with-deps chromium
+      - name: Push schema into the test DB
+        run: bunx drizzle-kit push --force
+      - name: Run the e2e suite (starts the dev server with hooks, then cairn)
+        run: bun run test:e2e:ci
+      - name: Upload Cairntrace run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-runs
+          path: tests/e2e/runs/**
+          retention-days: 14
+          if-no-files-found: ignore
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-junit
+          path: '**/junit*.xml'
+          retention-days: 14
+          if-no-files-found: ignore

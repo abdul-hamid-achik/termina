@@ -334,7 +334,7 @@ describe('RuneAI', () => {
       expect(result.runes).toHaveLength(0)
     })
 
-    it.skip('should handle undefined runes array', () => {
+    it('should handle undefined runes array', () => {
       const state = makeGameState({
         runes: undefined as unknown as RuneState[],
       })

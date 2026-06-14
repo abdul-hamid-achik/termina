@@ -97,7 +97,8 @@ export function removeExpiredRunes(state: GameState): GameState {
     return currentTick - rune.tick < RUNE_DURATION_TICKS
   })
 
-  if (activeRunes.length !== runes.length) {
+  // Also normalize when runes was undefined, so the result always has a runes array.
+  if (state.runes === undefined || activeRunes.length !== runes.length) {
     return { ...state, runes: activeRunes }
   }
 
