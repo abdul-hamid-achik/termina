@@ -41,7 +41,7 @@ steps:
   - id: open_leaderboard
     open:
       path: /leaderboard
-      waitUntil: networkidle
+      waitUntil: load
   - id: await_table
     wait:
       text: Rating

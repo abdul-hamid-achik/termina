@@ -45,7 +45,7 @@ steps:
   - id: open_play_protected
     open:
       path: /play
-      waitUntil: networkidle
+      waitUntil: load
   - id: play_redirects_to_login
     wait:
       text: authenticate to continue
@@ -53,7 +53,7 @@ steps:
   - id: open_settings_protected
     open:
       path: /profile/settings
-      waitUntil: networkidle
+      waitUntil: load
   - id: settings_redirects_to_login
     wait:
       text: authenticate to continue
@@ -61,7 +61,7 @@ steps:
   - id: open_learn_public
     open:
       path: /learn
-      waitUntil: networkidle
+      waitUntil: load
   - id: learn_renders_no_redirect
     wait:
       text: COMMAND REFERENCE
@@ -69,11 +69,11 @@ steps:
   - id: open_leaderboard_public
     open:
       path: /leaderboard
-      waitUntil: networkidle
+      waitUntil: load
   - id: open_lobby_protected_last
     open:
       path: /lobby
-      waitUntil: networkidle
+      waitUntil: load
   - id: lobby_redirects_to_login
     wait:
       text: authenticate to continue

@@ -41,7 +41,7 @@ steps:
   - id: open_own_profile
     open:
       path: /profile/me
-      waitUntil: networkidle
+      waitUntil: load
   - id: wait_for_whois
     wait:
       text: whois cairn_

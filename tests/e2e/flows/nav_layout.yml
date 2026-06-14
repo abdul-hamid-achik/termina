@@ -44,7 +44,7 @@ steps:
   - id: open_home_anon
     open:
       path: /
-      waitUntil: networkidle
+      waitUntil: load
   - id: anon_shows_play
     wait:
       text: "[PLAY]"
@@ -69,7 +69,7 @@ steps:
   - id: reload_home_auth
     open:
       path: /
-      waitUntil: networkidle
+      waitUntil: load
   - id: wait_auth_nav
     wait:
       text: "[LOGOUT]"

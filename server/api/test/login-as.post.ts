@@ -21,6 +21,13 @@ export default defineEventHandler(async (event) => {
   // `cairn_${run.token}` (cairntrace v1.9 runtime placeholder, ~21 chars) fit.
   // Prod auth is unaffected — this hook 404s outside the double-gate above.
   if (!username || !/^\w{3,40}$/.test(username)) {
+    // Dev-only diagnostic (this hook 404s in production): surface exactly what
+    // the client sent so a CI-only rejection is debuggable from the server log
+    // — e.g. an unresolved `${run.token}` placeholder leaking through literally.
+    console.warn(
+      `[test/login-as] 400 — username=${JSON.stringify(body?.username)} ` +
+        `(type=${typeof body?.username}, bodyKeys=[${Object.keys(body ?? {}).join(',')}])`,
+    )
     throw createError({ statusCode: 400, message: 'username must be 3-40 chars [A-Za-z0-9_]' })
   }
 
