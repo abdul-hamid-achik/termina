@@ -126,8 +126,9 @@ describe('ws-ticket', () => {
     // — timingSafeEqual throws on length mismatch, so verifyWsTicket guards
     // lengths first (a crafted ?ticket=x.short must not crash the WS open hook).
     it('returns null on a signature of a different length', () => {
-      const encoded = Buffer.from(JSON.stringify({ playerId: 'p1', exp: Date.now() + 60_000 }))
-        .toString('base64url')
+      const encoded = Buffer.from(
+        JSON.stringify({ playerId: 'p1', exp: Date.now() + 60_000 }),
+      ).toString('base64url')
       expect(verifyWsTicket(`${encoded}.short`, SECRET)).toBeNull()
     })
 

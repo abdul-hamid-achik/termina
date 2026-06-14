@@ -99,7 +99,7 @@ function formatStats(def: ItemDef): string[] {
         class="flex-1 border-none bg-transparent font-mono text-[0.8rem] text-text-primary outline-none placeholder:text-text-dim placeholder:opacity-50"
         placeholder="search items..."
         spellcheck="false"
-      >
+      />
     </div>
 
     <!-- Item grid -->

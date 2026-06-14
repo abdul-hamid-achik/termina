@@ -93,9 +93,7 @@ describe('Kernel Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'stun')).toBe(true)
@@ -108,9 +106,7 @@ describe('Kernel Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(250 - 80) // Level 1 Q costs 80
@@ -122,9 +118,7 @@ describe('Kernel Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(250 - 110) // Level 4 Q costs 110

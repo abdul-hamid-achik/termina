@@ -432,7 +432,9 @@ describe('Shop', () => {
     it('fails when item is on cooldown', async () => {
       const player = makePlayer({
         items: ['stack_overflow', null, null, null, null, null],
-        buffs: [{ id: 'item_cd_stack_overflow', stacks: 1, ticksRemaining: 5, source: 'stack_overflow' }],
+        buffs: [
+          { id: 'item_cd_stack_overflow', stacks: 1, ticksRemaining: 5, source: 'stack_overflow' },
+        ],
       })
       const state = makeGameState({ players: { player_1: player } })
 

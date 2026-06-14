@@ -123,7 +123,9 @@ async function simulateOne(matchIdx: number): Promise<void> {
         for (const c of state.creeps) {
           creepZones.set(`${c.team}:${c.zone}`, (creepZones.get(`${c.team}:${c.zone}`) ?? 0) + 1)
         }
-        console.log(`      creeps: ${[...creepZones.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`)
+        console.log(
+          `      creeps: ${[...creepZones.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`,
+        )
       }
     }
   }

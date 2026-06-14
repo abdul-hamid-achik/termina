@@ -8,7 +8,7 @@
  * `addSpectator` for the same id moves them between games.
  */
 
-import { peerLog } from '../utils/log'
+import { peerLog } from '~~/server/utils/log'
 
 type Peer = { send: (data: string) => void }
 

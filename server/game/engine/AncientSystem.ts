@@ -13,7 +13,7 @@
  */
 import type { AncientState, GameState, TeamId } from '~~/shared/types/game'
 import { ANCIENT_HP } from '~~/shared/constants/balance'
-import type { GameEngineEvent } from '../protocol/events'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { scaledAncientHp } from './fastGame'
 
 /** The zone each team's Ancient occupies. */

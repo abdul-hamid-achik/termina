@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
-import {
-  resolveAbility,
-  resolvePassive,
-  hasBuff,
-} from '../../../server/game/heroes/_base'
+import { resolveAbility, resolvePassive, hasBuff } from '../../../server/game/heroes/_base'
 // Register thread hero
 import '../../../server/game/heroes/thread'
 
@@ -91,9 +87,7 @@ describe('Thread Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
@@ -106,9 +100,7 @@ describe('Thread Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(hasBuff(updated, 'forkAtk')).toBe(true)
@@ -122,9 +114,7 @@ describe('Thread Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(270 - 55) // Level 1 Q costs 55
@@ -157,9 +147,7 @@ describe('Thread Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(270 - 100) // Level 4 Q costs 100
@@ -277,9 +265,7 @@ describe('Thread Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'yield')).toBe(true)
@@ -293,9 +279,7 @@ describe('Thread Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(270 - 60) // Level 1 E costs 60
@@ -307,9 +291,7 @@ describe('Thread Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(270 - 105) // Level 4 E costs 105

@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
-import {
-  resolveAbility,
-  resolvePassive,
-  hasBuff,
-} from '../../../server/game/heroes/_base'
+import { resolveAbility, resolvePassive, hasBuff } from '../../../server/game/heroes/_base'
 // Register null_ref hero (side-effect import)
 import '../../../server/game/heroes/null_ref'
 
@@ -91,9 +87,7 @@ describe('Null (null_ref) Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
@@ -106,9 +100,7 @@ describe('Null (null_ref) Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'mrShred')).toBe(true)
@@ -122,9 +114,7 @@ describe('Null (null_ref) Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(420 - 55) // Level 1 Q costs 55 mana
@@ -200,9 +190,7 @@ describe('Null (null_ref) Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'silence')).toBe(true)
@@ -215,9 +203,7 @@ describe('Null (null_ref) Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(420 - 80) // Level 1 W costs 80
@@ -229,9 +215,7 @@ describe('Null (null_ref) Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(420 - 125) // Level 4 W costs 125

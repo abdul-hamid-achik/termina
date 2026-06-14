@@ -28,10 +28,7 @@ const playerStates = new Map<string, PlayerRateLimitState>()
 // rate checks always pass. Unit tests don't set it, so they still exercise the
 // real token-bucket behaviour.
 function rateLimitDisabled(): boolean {
-  return (
-    process.env.NODE_ENV !== 'production' &&
-    process.env.TERMINA_DISABLE_RATE_LIMIT === '1'
-  )
+  return process.env.NODE_ENV !== 'production' && process.env.TERMINA_DISABLE_RATE_LIMIT === '1'
 }
 
 // Bound the tracked-key map: when it grows past the cap, evict entries that
@@ -54,7 +51,10 @@ function evictStaleStates(now: number): void {
  * @param config - Rate limit configuration (optional, uses defaults if not provided)
  * @returns true if action is allowed, false if rate limited
  */
-export function checkRateLimit(playerId: string, config: RateLimitConfig = DEFAULT_CONFIG): boolean {
+export function checkRateLimit(
+  playerId: string,
+  config: RateLimitConfig = DEFAULT_CONFIG,
+): boolean {
   if (rateLimitDisabled()) return true
   const now = Date.now()
   evictStaleStates(now)
@@ -146,7 +146,9 @@ export function checkScopedRateLimit(scope: keyof typeof SCOPE_CONFIGS, key: str
  * Get players with excessive violations (potential cheaters).
  * @param threshold - Number of violations to flag as suspicious
  */
-export function getSuspiciousPlayers(threshold = 10): Array<{ playerId: string; violations: number }> {
+export function getSuspiciousPlayers(
+  threshold = 10,
+): Array<{ playerId: string; violations: number }> {
   const suspicious: Array<{ playerId: string; violations: number }> = []
 
   for (const [playerId, state] of playerStates.entries()) {

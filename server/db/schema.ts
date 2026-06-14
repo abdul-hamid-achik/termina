@@ -37,20 +37,24 @@ export const playersRelations = relations(players, ({ many }) => ({
 
 // ── Player Providers ─────────────────────────────────────────────
 
-export const playerProviders = pgTable('player_providers', {
-  id: serial('id').primaryKey(),
-  playerId: text('player_id')
-    .notNull()
-    .references(() => players.id),
-  provider: text('provider').notNull(),
-  providerId: text('provider_id').notNull(),
-  providerUsername: text('provider_username'),
-  providerAvatarUrl: text('provider_avatar_url'),
-  linkedAt: timestamp('linked_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [
-  uniqueIndex('player_providers_provider_provider_id_idx').on(table.provider, table.providerId),
-  index('player_providers_player_id_idx').on(table.playerId),
-])
+export const playerProviders = pgTable(
+  'player_providers',
+  {
+    id: serial('id').primaryKey(),
+    playerId: text('player_id')
+      .notNull()
+      .references(() => players.id),
+    provider: text('provider').notNull(),
+    providerId: text('provider_id').notNull(),
+    providerUsername: text('provider_username'),
+    providerAvatarUrl: text('provider_avatar_url'),
+    linkedAt: timestamp('linked_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('player_providers_provider_provider_id_idx').on(table.provider, table.providerId),
+    index('player_providers_player_id_idx').on(table.playerId),
+  ],
+)
 
 export const playerProvidersRelations = relations(playerProviders, ({ one }) => ({
   player: one(players, { fields: [playerProviders.playerId], references: [players.id] }),
@@ -73,29 +77,33 @@ export const matchesRelations = relations(matches, ({ many }) => ({
 
 // ── Match Players ─────────────────────────────────────────────────
 
-export const matchPlayers = pgTable('match_players', {
-  id: serial('id').primaryKey(),
-  matchId: text('match_id')
-    .notNull()
-    .references(() => matches.id),
-  playerId: text('player_id')
-    .notNull()
-    .references(() => players.id),
-  team: text('team', { enum: ['radiant', 'dire'] }).notNull(),
-  heroId: text('hero_id').notNull(),
-  kills: integer('kills').notNull().default(0),
-  deaths: integer('deaths').notNull().default(0),
-  assists: integer('assists').notNull().default(0),
-  goldEarned: integer('gold_earned').notNull().default(0),
-  damageDealt: integer('damage_dealt').notNull().default(0),
-  healingDone: integer('healing_done').notNull().default(0),
-  finalItems: jsonb('final_items').$type<string[]>().default([]),
-  finalLevel: integer('final_level').notNull().default(1),
-  mmrChange: integer('mmr_change').notNull().default(0),
-}, (table) => [
-  index('match_players_match_id_idx').on(table.matchId),
-  index('match_players_player_id_idx').on(table.playerId),
-])
+export const matchPlayers = pgTable(
+  'match_players',
+  {
+    id: serial('id').primaryKey(),
+    matchId: text('match_id')
+      .notNull()
+      .references(() => matches.id),
+    playerId: text('player_id')
+      .notNull()
+      .references(() => players.id),
+    team: text('team', { enum: ['radiant', 'dire'] }).notNull(),
+    heroId: text('hero_id').notNull(),
+    kills: integer('kills').notNull().default(0),
+    deaths: integer('deaths').notNull().default(0),
+    assists: integer('assists').notNull().default(0),
+    goldEarned: integer('gold_earned').notNull().default(0),
+    damageDealt: integer('damage_dealt').notNull().default(0),
+    healingDone: integer('healing_done').notNull().default(0),
+    finalItems: jsonb('final_items').$type<string[]>().default([]),
+    finalLevel: integer('final_level').notNull().default(1),
+    mmrChange: integer('mmr_change').notNull().default(0),
+  },
+  (table) => [
+    index('match_players_match_id_idx').on(table.matchId),
+    index('match_players_player_id_idx').on(table.playerId),
+  ],
+)
 
 export const matchPlayersRelations = relations(matchPlayers, ({ one }) => ({
   match: one(matches, { fields: [matchPlayers.matchId], references: [matches.id] }),
@@ -104,21 +112,25 @@ export const matchPlayersRelations = relations(matchPlayers, ({ one }) => ({
 
 // ── Hero Stats ────────────────────────────────────────────────────
 
-export const heroStats = pgTable('hero_stats', {
-  id: serial('id').primaryKey(),
-  playerId: text('player_id')
-    .notNull()
-    .references(() => players.id),
-  heroId: text('hero_id').notNull(),
-  gamesPlayed: integer('games_played').notNull().default(0),
-  wins: integer('wins').notNull().default(0),
-  totalKills: integer('total_kills').notNull().default(0),
-  totalDeaths: integer('total_deaths').notNull().default(0),
-  totalAssists: integer('total_assists').notNull().default(0),
-}, (table) => [
-  index('hero_stats_player_id_idx').on(table.playerId),
-  index('hero_stats_hero_id_idx').on(table.heroId),
-])
+export const heroStats = pgTable(
+  'hero_stats',
+  {
+    id: serial('id').primaryKey(),
+    playerId: text('player_id')
+      .notNull()
+      .references(() => players.id),
+    heroId: text('hero_id').notNull(),
+    gamesPlayed: integer('games_played').notNull().default(0),
+    wins: integer('wins').notNull().default(0),
+    totalKills: integer('total_kills').notNull().default(0),
+    totalDeaths: integer('total_deaths').notNull().default(0),
+    totalAssists: integer('total_assists').notNull().default(0),
+  },
+  (table) => [
+    index('hero_stats_player_id_idx').on(table.playerId),
+    index('hero_stats_hero_id_idx').on(table.heroId),
+  ],
+)
 
 export const heroStatsRelations = relations(heroStats, ({ one }) => ({
   player: one(players, { fields: [heroStats.playerId], references: [players.id] }),

@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
-import {
-  resolveAbility,
-  resolvePassive,
-  hasBuff,
-} from '../../../server/game/heroes/_base'
+import { resolveAbility, resolvePassive, hasBuff } from '../../../server/game/heroes/_base'
 // Register socket hero
 import '../../../server/game/heroes/socket'
 
@@ -96,9 +92,7 @@ describe('Socket Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'root')).toBe(true)
@@ -111,9 +105,7 @@ describe('Socket Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(300 - 80) // Level 1 Q costs 80
@@ -192,9 +184,7 @@ describe('Socket Hero', () => {
       const enemy = makeEnemy({ zone: 'mid-t1-dire' })
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       // Enemy should have moved closer to player's zone
       const updatedEnemy = result.state.players['e1']!
@@ -217,9 +207,7 @@ describe('Socket Hero', () => {
       const enemy = makeEnemy({ zone: 'mid-t1-dire' })
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(300 - 100) // Level 1 E costs 100
@@ -294,9 +282,7 @@ describe('Socket Hero', () => {
       })
 
       expect(hasBuff(updated.players['p1']!, 'handshake_vision_e1')).toBe(true)
-      const visionBuff = updated.players['p1']!.buffs.find(
-        (b) => b.id === 'handshake_vision_e1',
-      )
+      const visionBuff = updated.players['p1']!.buffs.find((b) => b.id === 'handshake_vision_e1')
       expect(visionBuff!.ticksRemaining).toBe(5)
     })
 

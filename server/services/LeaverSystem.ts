@@ -6,9 +6,9 @@
 
 import { Effect, Layer } from 'effect'
 import type { GameState } from '~~/shared/types/game'
-import { RedisService } from './RedisService'
-import { engineLog } from '../utils/log'
-import { isBot } from '../game/ai/BotManager'
+import { RedisService, type RedisServiceApi } from './RedisService'
+import { engineLog } from '~~/server/utils/log'
+import { isBot } from '~~/server/game/ai/BotManager'
 
 const _mockRedisService = Layer.succeed(RedisService, {
   get: () => Effect.succeed(null),
@@ -92,7 +92,7 @@ export function recordLeaverSafe(
   gameId: string,
   state: GameState,
   reason: 'afk' | 'disconnect' | 'feed' | 'grief' = 'afk',
-  redis?: import('./RedisService').RedisServiceApi,
+  redis?: RedisServiceApi,
 ): void {
   engineLog.warn('Leaver detected', { playerId, gameId, reason })
   if (!redis) return
@@ -159,7 +159,9 @@ export function recordLeaver(
 /**
  * Get player's current penalty status
  */
-export function getPlayerPenalty(playerId: string): Effect.Effect<PlayerPenalty, never, RedisService> {
+export function getPlayerPenalty(
+  playerId: string,
+): Effect.Effect<PlayerPenalty, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     const scoreData = yield* redis.get(`leaver:score:${playerId}`)
@@ -193,7 +195,9 @@ export function isLowPriority(playerId: string): Effect.Effect<boolean, never, R
 /**
  * Decrement low-priority games remaining after completing a game
  */
-export function completeLowPriorityGame(playerId: string): Effect.Effect<void, never, RedisService> {
+export function completeLowPriorityGame(
+  playerId: string,
+): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     const penalty = yield* getPlayerPenalty(playerId)
@@ -259,7 +263,10 @@ export function getPlayerLeaverHistory(
  * Integration: Track player actions to detect AFK
  * Call this whenever a player takes an action
  */
-export function markPlayerActive(gameId: string, playerId: string): Effect.Effect<void, never, RedisService> {
+export function markPlayerActive(
+  gameId: string,
+  playerId: string,
+): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
     // Store last action tick in Redis for persistence

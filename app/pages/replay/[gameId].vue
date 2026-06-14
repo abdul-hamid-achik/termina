@@ -73,9 +73,7 @@ interface FramesPayload {
 }
 
 const { data, error, pending } = await useFetch<ReplayPayload>(`/api/replay/${gameId.value}`)
-const { data: framesData } = await useFetch<FramesPayload>(
-  `/api/replay/${gameId.value}/frames`,
-)
+const { data: framesData } = await useFetch<FramesPayload>(`/api/replay/${gameId.value}/frames`)
 
 const scrubTick = ref(0)
 const maxTick = computed(() => {
@@ -240,7 +238,8 @@ watchEffect(() => {
             <div class="t-caption">tick</div>
             <div class="t-h1 t-mono-num text-glow-sm">{{ scrubTick }}</div>
             <div class="t-caption mt-1">
-              {{ currentFrame?.timeOfDay ?? data.state.timeOfDay }} · saved {{ fmtSavedAt(data.savedAt) }}
+              {{ currentFrame?.timeOfDay ?? data.state.timeOfDay }} · saved
+              {{ fmtSavedAt(data.savedAt) }}
             </div>
           </div>
           <div class="border-l border-border p-3 text-center bloom-dire">
@@ -255,7 +254,9 @@ watchEffect(() => {
         <!-- Per-player breakdown -->
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="border border-radiant/40 bg-bg-panel">
-            <div class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-radiant text-glow-radiant">
+            <div
+              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-radiant text-glow-radiant"
+            >
               RADIANT
             </div>
             <table class="w-full t-mono-num text-xs">
@@ -299,7 +300,9 @@ watchEffect(() => {
           </div>
 
           <div class="border border-dire/40 bg-bg-panel">
-            <div class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-dire text-glow-dire">
+            <div
+              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-dire text-glow-dire"
+            >
               DIRE
             </div>
             <table class="w-full t-mono-num text-xs">
@@ -365,7 +368,7 @@ watchEffect(() => {
               :max="maxTick"
               step="1"
               class="w-full accent-ability"
-            >
+            />
           </div>
 
           <div class="max-h-[420px] overflow-y-auto px-2 py-1 text-xs t-mono-num">

@@ -21,7 +21,14 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null, glyphCooldown: 0 },
+      radiant: {
+        id: 'radiant',
+        kills: 0,
+        towerKills: 0,
+        gold: 0,
+        glyphUsedTick: null,
+        glyphCooldown: 0,
+      },
       dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null, glyphCooldown: 0 },
     },
     players: {},
@@ -52,10 +59,26 @@ describe('expireGlyph', () => {
     const state = makeState({
       tick: 3,
       teams: {
-        radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 1, glyphCooldown: 0 },
-        dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null, glyphCooldown: 0 },
+        radiant: {
+          id: 'radiant',
+          kills: 0,
+          towerKills: 0,
+          gold: 0,
+          glyphUsedTick: 1,
+          glyphCooldown: 0,
+        },
+        dire: {
+          id: 'dire',
+          kills: 0,
+          towerKills: 0,
+          gold: 0,
+          glyphUsedTick: null,
+          glyphCooldown: 0,
+        },
       },
-      towers: initializeTowers().map((t) => (t.team === 'radiant' ? { ...t, invulnerable: true } : t)),
+      towers: initializeTowers().map((t) =>
+        t.team === 'radiant' ? { ...t, invulnerable: true } : t,
+      ),
     })
     const result = expireGlyph(state)
     // tick=3, used=1, GLYPH_DURATION_TICKS=5 → 2 < 5, still invulnerable
@@ -66,8 +89,22 @@ describe('expireGlyph', () => {
     const state = makeState({
       tick: GLYPH_DURATION_TICKS + 5,
       teams: {
-        radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 5, glyphCooldown: 0 },
-        dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null, glyphCooldown: 0 },
+        radiant: {
+          id: 'radiant',
+          kills: 0,
+          towerKills: 0,
+          gold: 0,
+          glyphUsedTick: 5,
+          glyphCooldown: 0,
+        },
+        dire: {
+          id: 'dire',
+          kills: 0,
+          towerKills: 0,
+          gold: 0,
+          glyphUsedTick: null,
+          glyphCooldown: 0,
+        },
       },
       towers: initializeTowers().map((t) =>
         t.team === 'radiant' ? { ...t, invulnerable: true } : t,
@@ -83,7 +120,14 @@ describe('expireGlyph', () => {
     const state = makeState({
       tick: GLYPH_DURATION_TICKS + 1,
       teams: {
-        radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 1, glyphCooldown: 0 },
+        radiant: {
+          id: 'radiant',
+          kills: 0,
+          towerKills: 0,
+          gold: 0,
+          glyphUsedTick: 1,
+          glyphCooldown: 0,
+        },
         dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 1, glyphCooldown: 0 },
       },
       towers: initializeTowers().map((t) => ({ ...t, invulnerable: true })),
@@ -137,9 +181,7 @@ describe('processSpecialActions', () => {
       },
     })
 
-    const result = processSpecialActions(state, [
-      { playerId: 'p1', command: { type: 'buyback' } },
-    ])
+    const result = processSpecialActions(state, [{ playerId: 'p1', command: { type: 'buyback' } }])
 
     expect(result.rejectedActions).toHaveLength(1)
     expect(result.rejectedActions[0]!.playerId).toBe('p1')

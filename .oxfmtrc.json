@@ -1,0 +1,9 @@
+{
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "sortPackageJson": false,
+  "ignorePatterns": ["tests/e2e/**", "server/db/migrations/**", "**/*.md", "**/*.yml", "**/*.yaml"]
+}

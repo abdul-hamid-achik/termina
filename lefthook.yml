@@ -1,9 +1,15 @@
+# Jobs run sequentially (no `parallel: true`) so lint --fix and format --write
+# don't race on the same staged files.
 pre-commit:
-  parallel: true
   jobs:
     - name: lint
-      glob: "*.{ts,vue}"
-      run: bunx eslint {staged_files} --fix
+      glob: "*.{ts,tsx,vue,mjs,cjs,mts,cts}"
+      run: bunx oxlint --fix {staged_files}
+      stage_fixed: true
+
+    - name: format
+      glob: "*.{ts,tsx,vue,mjs,cjs,mts,cts,js,json}"
+      run: bunx oxfmt --write {staged_files}
       stage_fixed: true
 
     - name: knip

@@ -115,7 +115,9 @@ function corePct(a: AncientState | undefined): number {
         </span>
       </span>
       <span class="text-border">|</span>
-      <span v-if="reconnecting" class="text-dire text-glow-dire animate-pulse">[RECONNECTING...]</span>
+      <span v-if="reconnecting" class="text-dire text-glow-dire animate-pulse"
+        >[RECONNECTING...]</span
+      >
       <span v-else-if="connected" class="text-radiant text-glow-sm">[ONLINE {{ latency }}ms]</span>
       <span v-else class="text-text-muted">[OFFLINE]</span>
     </div>
@@ -128,9 +130,13 @@ function corePct(a: AncientState | undefined): number {
     >
       <!-- Team kill score -->
       <span class="inline-flex items-center gap-1.5">
-        <span class="font-bold tracking-widest text-radiant text-glow-radiant">{{ teams.radiant.kills }}</span>
+        <span class="font-bold tracking-widest text-radiant text-glow-radiant">{{
+          teams.radiant.kills
+        }}</span>
         <span class="text-[0.6rem] text-text-dim">RAD&nbsp;·&nbsp;DIRE</span>
-        <span class="font-bold tracking-widest text-dire text-glow-dire">{{ teams.dire.kills }}</span>
+        <span class="font-bold tracking-widest text-dire text-glow-dire">{{
+          teams.dire.kills
+        }}</span>
       </span>
       <span class="text-border">|</span>
       <!-- Net worth lead -->
@@ -140,7 +146,9 @@ function corePct(a: AncientState | undefined): number {
           v-if="lead.leader"
           :class="lead.leader === 'radiant' ? 'text-radiant' : 'text-dire'"
           class="font-bold"
-          >{{ lead.leader === 'radiant' ? 'RAD' : 'DIRE' }} +{{ formatGoldShort(lead.amount) }}</span
+          >{{ lead.leader === 'radiant' ? 'RAD' : 'DIRE' }} +{{
+            formatGoldShort(lead.amount)
+          }}</span
         >
         <span v-else class="text-text-dim">even</span>
       </span>
@@ -158,7 +166,9 @@ function corePct(a: AncientState | undefined): number {
         <span class="inline-flex items-center gap-1">
           <span class="t-caption">CORE</span>
           <span
-            :class="ancients.radiant.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-radiant'"
+            :class="
+              ancients.radiant.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-radiant'
+            "
             >R {{ corePct(ancients.radiant) }}%</span
           >
           <span class="text-text-muted">/</span>

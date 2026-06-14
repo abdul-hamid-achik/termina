@@ -150,11 +150,11 @@ describe('Game Flow Integration', () => {
       // Hero damage was routed to the Ancient and its destruction was
       // announced via the dedicated ancient_destroyed event (not a reused
       // tower_kill, which would render a misleading "tower in <base>" line).
+      expect(allEvents.some((e) => e._tag === 'damage' && e.targetId === 'ancient_dire')).toBe(true)
       expect(
-        allEvents.some((e) => e._tag === 'damage' && e.targetId === 'ancient_dire'),
-      ).toBe(true)
-      expect(
-        allEvents.some((e) => e._tag === 'ancient_destroyed' && e.team === 'dire' && e.killerTeam === 'radiant'),
+        allEvents.some(
+          (e) => e._tag === 'ancient_destroyed' && e.team === 'dire' && e.killerTeam === 'radiant',
+        ),
       ).toBe(true)
     })
 
@@ -267,7 +267,9 @@ describe('Game Flow Integration', () => {
       const r1 = await runTick(sm, gameId)
       expect(r1.state.players['mk_d0']!.alive).toBe(false)
       expect(
-        r1.events.some((e) => e._tag === 'kill' && e.killerId === 'mk_r0' && e.victimId === 'mk_d0'),
+        r1.events.some(
+          (e) => e._tag === 'kill' && e.killerId === 'mk_r0' && e.victimId === 'mk_d0',
+        ),
       ).toBe(true)
       const delta1 = r1.state.players['mk_r0']!.gold - before1.players['mk_r0']!.gold
       expect(delta1 - PASSIVE_GOLD_PER_TICK).toBeGreaterThanOrEqual(minBounty)
@@ -280,7 +282,9 @@ describe('Game Flow Integration', () => {
       const r2 = await runTick(sm, gameId)
       expect(r2.state.players['mk_d1']!.alive).toBe(false)
       expect(
-        r2.events.some((e) => e._tag === 'kill' && e.killerId === 'mk_r0' && e.victimId === 'mk_d1'),
+        r2.events.some(
+          (e) => e._tag === 'kill' && e.killerId === 'mk_r0' && e.victimId === 'mk_d1',
+        ),
       ).toBe(true)
       const delta2 = r2.state.players['mk_r0']!.gold - before2.players['mk_r0']!.gold
       expect(delta2 - PASSIVE_GOLD_PER_TICK).toBeGreaterThanOrEqual(minBounty)
@@ -428,7 +432,13 @@ describe('Game Flow Integration', () => {
         ...s,
         creeps: [
           ...s.creeps,
-          { id: 'creep_fog_probe', team: 'dire' as const, zone: 'dire-base', hp: 550, type: 'melee' as const },
+          {
+            id: 'creep_fog_probe',
+            team: 'dire' as const,
+            zone: 'dire-base',
+            hp: 550,
+            type: 'melee' as const,
+          },
         ],
       }))
 
@@ -480,9 +490,9 @@ describe('Game Flow Integration', () => {
       submitAction(gameId, 'ward_r0', { type: 'ward', zone: 'mid-t2-dire' })
       const result = await runTick(sm, gameId)
 
-      expect(
-        result.events.some((e) => e._tag === 'ward_placed' && e.zone === 'mid-t2-dire'),
-      ).toBe(true)
+      expect(result.events.some((e) => e._tag === 'ward_placed' && e.zone === 'mid-t2-dire')).toBe(
+        true,
+      )
       const wards = result.state.zones['mid-t2-dire']!.wards
       expect(wards).toHaveLength(1)
       expect(wards[0]).toMatchObject({ team: 'radiant', type: 'observer' })

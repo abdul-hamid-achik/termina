@@ -1,13 +1,13 @@
 import { Effect, Duration } from 'effect'
-import type { RedisServiceApi } from '../../services/RedisService'
-import type { WebSocketServiceApi } from '../../services/WebSocketService'
-import type { DatabaseServiceApi } from '../../services/DatabaseService'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
+import type { WebSocketServiceApi } from '~~/server/services/WebSocketService'
+import type { DatabaseServiceApi } from '~~/server/services/DatabaseService'
 import type { TeamId } from '~~/shared/types/game'
 import type { QueueEntry } from './queue'
 import { HERO_IDS } from '~~/shared/constants/heroes'
-import { isBot } from '../ai/BotManager'
-import { sendToPeer } from '../../services/PeerRegistry'
-import { lobbyLog } from '../../utils/log'
+import { isBot } from '~~/server/game/ai/BotManager'
+import { sendToPeer } from '~~/server/services/PeerRegistry'
+import { lobbyLog } from '~~/server/utils/log'
 
 const PICK_TIME_SECONDS = 15
 const PICK_TIME_MS = PICK_TIME_SECONDS * 1000
@@ -370,7 +370,14 @@ export function seedDraftLobby(opts: {
   const players: LobbyPlayer[] = Array.from({ length: 10 }, (_, i) => {
     const team: TeamId = snakeOrder[i] === 0 ? 'radiant' : 'dire'
     if (i === humanIndex) {
-      return { playerId: opts.humanId, username: opts.humanUsername, mmr: 5000, team, heroId: null, ready: false }
+      return {
+        playerId: opts.humanId,
+        username: opts.humanUsername,
+        mmr: 5000,
+        team,
+        heroId: null,
+        ready: false,
+      }
     }
     botCount += 1
     return {

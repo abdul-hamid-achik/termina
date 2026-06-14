@@ -31,9 +31,8 @@ interface ProviderInfo {
   linkedAt: string
 }
 
-const { data: providersData, refresh: refreshProviders } = await useFetch<ProviderInfo[]>(
-  '/api/player/providers',
-)
+const { data: providersData, refresh: refreshProviders } =
+  await useFetch<ProviderInfo[]>('/api/player/providers')
 const providers = computed(() => providersData.value ?? [])
 const disconnecting = ref<string | null>(null)
 const providerMsg = ref<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -113,7 +112,10 @@ async function saveUsername() {
     usernameMsg.value = { type: 'ok', text: 'Username updated' }
   } catch (err: unknown) {
     const fetchErr = err as { data?: { message?: string } }
-    usernameMsg.value = { type: 'err', text: fetchErr?.data?.message || 'Failed to update username' }
+    usernameMsg.value = {
+      type: 'err',
+      text: fetchErr?.data?.message || 'Failed to update username',
+    }
   } finally {
     savingUsername.value = false
   }
@@ -135,10 +137,16 @@ async function savePassword() {
     currentPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
-    passwordMsg.value = { type: 'ok', text: hasPassword.value ? 'Password changed' : 'Password set' }
+    passwordMsg.value = {
+      type: 'ok',
+      text: hasPassword.value ? 'Password changed' : 'Password set',
+    }
   } catch (err: unknown) {
     const fetchErr = err as { data?: { message?: string } }
-    passwordMsg.value = { type: 'err', text: fetchErr?.data?.message || 'Failed to update password' }
+    passwordMsg.value = {
+      type: 'err',
+      text: fetchErr?.data?.message || 'Failed to update password',
+    }
   } finally {
     savingPassword.value = false
   }
@@ -259,7 +267,7 @@ async function disconnectProvider(provider: string) {
             spellcheck="false"
             placeholder="enter_username"
             class="terminal-input"
-          >
+          />
           <div v-if="usernameInput && usernameError" class="text-[0.7rem]">
             <span class="text-dire">! {{ usernameError }}</span>
           </div>
@@ -269,7 +277,9 @@ async function disconnectProvider(provider: string) {
           <AsciiButton
             :label="savingUsername ? 'SAVING...' : 'SAVE USERNAME'"
             variant="primary"
-            :disabled="!usernameValid || savingUsername || usernameInput === authStore.user?.username"
+            :disabled="
+              !usernameValid || savingUsername || usernameInput === authStore.user?.username
+            "
             @click="saveUsername"
           />
           <span
@@ -301,7 +311,7 @@ async function disconnectProvider(provider: string) {
             autocomplete="current-password"
             placeholder="••••••••"
             class="terminal-input"
-          >
+          />
         </div>
 
         <!-- New password -->
@@ -315,7 +325,7 @@ async function disconnectProvider(provider: string) {
             autocomplete="new-password"
             placeholder="••••••••"
             class="terminal-input"
-          >
+          />
           <div v-if="newPassword && passwordError" class="text-[0.7rem]">
             <span class="text-dire">! {{ passwordError }}</span>
           </div>
@@ -332,7 +342,7 @@ async function disconnectProvider(provider: string) {
             autocomplete="new-password"
             placeholder="••••••••"
             class="terminal-input"
-          >
+          />
           <div v-if="confirmPassword && confirmError" class="text-[0.7rem]">
             <span class="text-dire">! {{ confirmError }}</span>
           </div>

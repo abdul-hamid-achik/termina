@@ -20,27 +20,25 @@ export interface SurrenderResult {
  */
 export function canSurrender(state: GameState, team: TeamId): { can: boolean; reason?: string } {
   if (state.tick < SURRENDER_MIN_TICK) {
-    return { 
-      can: false, 
-      reason: `Too early to surrender (wait until tick ${SURRENDER_MIN_TICK})` 
+    return {
+      can: false,
+      reason: `Too early to surrender (wait until tick ${SURRENDER_MIN_TICK})`,
     }
   }
-  
+
   // Check if team already has enough votes to surrender
   const teamVotes = state.surrenderVotes[team]
   if (!teamVotes) {
     return { can: false, reason: 'Invalid team' }
   }
-  
+
   // Count alive players on team
-  const alivePlayers = Object.values(state.players).filter(
-    p => p.team === team && p.alive
-  )
-  
+  const alivePlayers = Object.values(state.players).filter((p) => p.team === team && p.alive)
+
   if (alivePlayers.length === 0) {
     return { can: false, reason: 'No alive players to vote' }
   }
-  
+
   return { can: true }
 }
 
@@ -71,9 +69,7 @@ export function voteSurrender(state: GameState, playerId: string): SurrenderResu
   const updatedState: GameState = { ...state, surrenderVotes: updatedVotes }
 
   // Count votes
-  const alivePlayers = Object.values(state.players).filter(
-    p => p.team === player.team && p.alive
-  )
+  const alivePlayers = Object.values(state.players).filter((p) => p.team === player.team && p.alive)
 
   const totalAlive = alivePlayers.length
   const votesFor = teamVotes.size
@@ -98,12 +94,12 @@ export function voteSurrender(state: GameState, playerId: string): SurrenderResu
 export function removeSurrenderVote(state: GameState, playerId: string): GameState {
   const player = state.players[playerId]
   if (!player) return state
-  
+
   const updatedVotes = { ...state.surrenderVotes }
   const teamVotes = new Set(updatedVotes[player.team])
   teamVotes.delete(playerId)
   updatedVotes[player.team] = teamVotes
-  
+
   return {
     ...state,
     surrenderVotes: updatedVotes,
@@ -113,7 +109,10 @@ export function removeSurrenderVote(state: GameState, playerId: string): GameSta
 /**
  * Get surrender vote status for a team
  */
-export function getSurrenderStatus(state: GameState, team: TeamId): {
+export function getSurrenderStatus(
+  state: GameState,
+  team: TeamId,
+): {
   votesFor: number
   votesAgainst: number
   totalAlive: number
@@ -121,16 +120,14 @@ export function getSurrenderStatus(state: GameState, team: TeamId): {
   percentage: number
 } {
   const teamVotes = state.surrenderVotes[team]
-  const alivePlayers = Object.values(state.players).filter(
-    p => p.team === team && p.alive
-  )
-  
+  const alivePlayers = Object.values(state.players).filter((p) => p.team === team && p.alive)
+
   const totalAlive = alivePlayers.length
   const votesFor = teamVotes?.size || 0
   const votesAgainst = totalAlive - votesFor
   const votesNeeded = Math.ceil(totalAlive * SURRENDER_VOTE_THRESHOLD)
   const percentage = totalAlive > 0 ? (votesFor / totalAlive) * 100 : 0
-  
+
   return {
     votesFor,
     votesAgainst,

@@ -39,11 +39,7 @@ function statsAtLevel(heroId: string, level: number) {
 
 /** Player whose hp/mp pools match the hero's stats so the per-tick
  * maxHp/maxMp recalculation doesn't shift values mid-test. */
-function makeHero(
-  heroId: string,
-  overrides: Partial<PlayerState> = {},
-  level = 1,
-): PlayerState {
+function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 1): PlayerState {
   const s = statsAtLevel(heroId, level)
   return {
     id: 'p1',
@@ -122,7 +118,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const preHp = state.players['p2']!.hp
 
     const result = run(state, [
-      { playerId: 'p1', command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } } },
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+      },
     ])
 
     expect(result.rejected).toHaveLength(0)
@@ -173,7 +172,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       })
       const pre = state.players['p2']!.hp
       const result = run(state, [
-        { playerId: 'p1', command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } } },
+        {
+          playerId: 'p1',
+          command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+        },
       ])
       return pre - result.state.players['p2']!.hp
     }
@@ -237,7 +239,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       },
     })
     const result = run(state, [
-      { playerId: 'p1', command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } } },
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+      },
     ])
     expect(result.rejected).toHaveLength(0)
     const dot = result.state.players['p2']!.buffs.find((b) => b.id === 'inject_dot')
@@ -259,7 +264,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       players: { p1: makeHero('daemon', { id: 'p1', zone: 'mid-river' }, 6) },
     })
     const result = run(state, [
-      { playerId: 'p1', command: { type: 'cast', ability: 'r', target: { kind: 'zone', zone: 'dire-base' } } },
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'r', target: { kind: 'zone', zone: 'dire-base' } },
+      },
     ])
     expect(result.rejected).toHaveLength(0)
     expect(result.state.players['p1']!.zone).toBe('dire-base')
@@ -272,11 +280,19 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const lowHp = makeGameState({
       players: {
         p1: makeHero('daemon', { id: 'p1' }),
-        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire', hp: Math.floor(echo.maxHp * 0.2) }),
+        p2: makeHero('echo', {
+          id: 'p2',
+          name: 'Enemy',
+          team: 'dire',
+          hp: Math.floor(echo.maxHp * 0.2),
+        }),
       },
     })
     const killed = run(lowHp, [
-      { playerId: 'p1', command: { type: 'cast', ability: 'e', target: { kind: 'hero', name: 'p2' } } },
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'e', target: { kind: 'hero', name: 'p2' } },
+      },
     ])
     expect(killed.state.players['p2']!.hp).toBe(0)
     expect(killed.state.players['p2']!.alive).toBe(false)
@@ -286,11 +302,19 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const highHp = makeGameState({
       players: {
         p1: makeHero('daemon', { id: 'p1' }),
-        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire', hp: Math.floor(echo.maxHp * 0.9) }),
+        p2: makeHero('echo', {
+          id: 'p2',
+          name: 'Enemy',
+          team: 'dire',
+          hp: Math.floor(echo.maxHp * 0.9),
+        }),
       },
     })
     const refused = run(highHp, [
-      { playerId: 'p1', command: { type: 'cast', ability: 'e', target: { kind: 'hero', name: 'p2' } } },
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'e', target: { kind: 'hero', name: 'p2' } },
+      },
     ])
     expect(refused.state.players['p2']!.alive).toBe(true)
     expect(refused.state.players['p2']!.hp).toBe(Math.floor(echo.maxHp * 0.9))
@@ -585,7 +609,10 @@ describe('talents', () => {
       })
       const pre = state.players['p2']!.hp
       const result = run(state, [
-        { playerId: 'p1', command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } } },
+        {
+          playerId: 'p1',
+          command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+        },
       ])
       return pre - result.state.players['p2']!.hp
     }

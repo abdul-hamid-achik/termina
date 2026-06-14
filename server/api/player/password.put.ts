@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
+import { getGameRuntime } from '~~/server/plugins/game-server'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -45,9 +45,7 @@ export default defineEventHandler(async (event) => {
 
   // Hash and save new password (hashPassword auto-imported from nuxt-auth-utils)
   const passwordHash = await hashPassword(newPassword)
-  await Effect.runPromise(
-    runtime.dbService.updatePlayerPassword(playerId, passwordHash),
-  )
+  await Effect.runPromise(runtime.dbService.updatePlayerPassword(playerId, passwordHash))
 
   // Update session to reflect that user now has a password
   await setUserSession(event, {

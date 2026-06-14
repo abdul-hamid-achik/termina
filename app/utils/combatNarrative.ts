@@ -110,7 +110,8 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     }
 
     case 'death': {
-      const respawn = p.respawnTick != null ? ` — respawn ${Math.max(0, num(p.respawnTick) - tick)}t` : ''
+      const respawn =
+        p.respawnTick != null ? ` — respawn ${Math.max(0, num(p.respawnTick) - tick)}t` : ''
       return {
         tick,
         text: `${label(p.playerId)} was terminated${respawn}`,
@@ -352,10 +353,7 @@ export function buildCombatLines(
     const line = eventToLine(e, ctx)
     if (line) mapped.push(line)
   }
-  return collapse(
-    mapped,
-    ({ baseText, count, total }) => `${baseText} ×${count} (${total} total)`,
-  )
+  return collapse(mapped, ({ baseText, count, total }) => `${baseText} ×${count} (${total} total)`)
 }
 
 // ── Kill feed ───────────────────────────────────────────────────────
@@ -437,7 +435,8 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
       streaks.set(victimId, 0)
 
       const lt = lastKillTick.get(killerId)
-      const multi = lt != null && e.tick - lt <= MULTI_KILL_WINDOW ? (multiCount.get(killerId) ?? 1) + 1 : 1
+      const multi =
+        lt != null && e.tick - lt <= MULTI_KILL_WINDOW ? (multiCount.get(killerId) ?? 1) + 1 : 1
       multiCount.set(killerId, multi)
       lastKillTick.set(killerId, e.tick)
 
@@ -496,7 +495,14 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
 }
 
 function killHeadlineText(
-  info: { killerId: string; victimId: string; firstBlood: boolean; shutdown: boolean; multi: number; streak: number },
+  info: {
+    killerId: string
+    victimId: string
+    firstBlood: boolean
+    shutdown: boolean
+    multi: number
+    streak: number
+  },
   ctx: NarrativeContext,
 ): string {
   const killer = ctx.entityLabel(info.killerId)
@@ -506,7 +512,8 @@ function killHeadlineText(
   if (info.multi >= 2 && MULTI_LABEL[info.multi]) tags.push(MULTI_LABEL[info.multi]!)
   if (info.multi > 5) tags.push('RAMPAGE')
   if (info.shutdown) tags.push('SHUTDOWN')
-  if (!info.firstBlood && info.multi < 2 && STREAK_LABEL[info.streak]) tags.push(STREAK_LABEL[info.streak]!)
+  if (!info.firstBlood && info.multi < 2 && STREAK_LABEL[info.streak])
+    tags.push(STREAK_LABEL[info.streak]!)
   const tag = tags.length ? `${tags.join(' · ')}  ` : ''
   return `${tag}${killer} SIGKILL'd ${victim}`
 }

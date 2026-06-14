@@ -244,9 +244,7 @@ function eventAriaLabel(line: CombatLine): string {
           <span class="text-border">──</span>
           <span class="font-bold">TICK {{ beat.tick }}</span>
           <span class="text-text-dim">· {{ clock(beat.tick) }}</span>
-          <span class="flex-1 truncate text-right text-border">{{
-            '─'.repeat(40)
-          }}</span>
+          <span class="flex-1 truncate text-right text-border">{{ '─'.repeat(40) }}</span>
         </div>
 
         <div
@@ -258,15 +256,17 @@ function eventAriaLabel(line: CombatLine): string {
           :class="[borderColors[event.type], ...salienceClasses(event.salience, event.type)]"
           :style="{ animationDelay: `${Math.min(i, 8) * 35}ms` }"
         >
-          <span
-            v-if="event.salience === 'mine-in'"
-            class="mr-1 text-[0.6rem] font-bold text-dire"
+          <span v-if="event.salience === 'mine-in'" class="mr-1 text-[0.6rem] font-bold text-dire"
             >&#9656;YOU</span
           >
           <span
             class="mr-1 text-[0.65rem] font-bold"
             :class="
-              event.type === 'kill' ? 'text-glow-dire' : event.type === 'gold' ? 'text-glow-gold' : ''
+              event.type === 'kill'
+                ? 'text-glow-dire'
+                : event.type === 'gold'
+                  ? 'text-glow-gold'
+                  : ''
             "
             :style="{ color: typeColor(event.type) }"
             >{{ typePrefix(event.type) }}</span
@@ -278,7 +278,9 @@ function eventAriaLabel(line: CombatLine): string {
             class="mr-1 inline-flex align-middle"
           />
           <span
-            :class="event.type === 'kill' || event.type === 'victory' ? 'font-bold text-glow-sm' : ''"
+            :class="
+              event.type === 'kill' || event.type === 'victory' ? 'font-bold text-glow-sm' : ''
+            "
             :style="{ color: typeColor(event.type) }"
             >{{ event.text }}</span
           >
@@ -294,10 +296,7 @@ function eventAriaLabel(line: CombatLine): string {
       <div v-if="!events.length" class="p-2 text-[0.8rem] text-text-dim">
         &gt;_ awaiting events...
       </div>
-      <div
-        v-else-if="!beats.length"
-        class="p-2 text-[0.75rem] text-text-dim"
-      >
+      <div v-else-if="!beats.length" class="p-2 text-[0.75rem] text-text-dim">
         &gt;_ no events match this filter
       </div>
     </div>

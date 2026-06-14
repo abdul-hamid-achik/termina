@@ -1,4 +1,4 @@
-import { createDevGame } from '../../plugins/game-server'
+import { createDevGame } from '~~/server/plugins/game-server'
 
 /**
  * Dev/test-only: create a real game directly (no matchmaking) with the session

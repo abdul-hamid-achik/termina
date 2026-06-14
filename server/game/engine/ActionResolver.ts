@@ -1,7 +1,12 @@
 import { Effect, Either } from 'effect'
 import type { CreepState, GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
-import { resolveAbility, getAbilityLevel, absorbShield, type AbilitySlot } from '../heroes'
+import {
+  resolveAbility,
+  getAbilityLevel,
+  absorbShield,
+  type AbilitySlot,
+} from '~~/server/game/heroes'
 import {
   getEffectiveAttack,
   getEffectiveDefense,
@@ -10,13 +15,13 @@ import {
   getTalentStatBonus,
   getItemStatBonuses,
 } from './EffectiveStats'
-import { areAdjacent } from '../map/topology'
+import { areAdjacent } from '~~/server/game/map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalculator'
-import { placeWard, canAttackTower } from '../map/zones'
+import { placeWard, canAttackTower } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
-import type { GameEngineEvent } from '../protocol/events'
-import { buyItem, sellItem, useItem } from '../items/shop'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
+import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
 import { awardLastHit, awardTowerKill } from './GoldDistributor'
 import { pickupAegis } from './RoshanAI'
 import { pickupRune } from './RuneAI'
@@ -51,8 +56,8 @@ import {
   // IN_COMBAT_BUFF_DURATION,
 } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
-import { runAntiCheatChecks, type CheatDetection } from '../../utils/AntiCheat'
-import { wsLog } from '../../utils/log'
+import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
+import { wsLog } from '~~/server/utils/log'
 
 // ── Types ──────────────────────────────────────────────────────
 

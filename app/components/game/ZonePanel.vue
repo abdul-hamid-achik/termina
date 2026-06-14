@@ -92,7 +92,10 @@ const isEmpty = computed(
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 overflow-y-auto p-2 font-mono text-[0.75rem]" data-testid="zone-panel">
+  <div
+    class="flex flex-col gap-1 overflow-y-auto p-2 font-mono text-[0.75rem]"
+    data-testid="zone-panel"
+  >
     <div v-if="isEmpty" class="text-text-dim" data-testid="zone-panel-empty">
       &gt;_ no other units in {{ zoneName }}
     </div>
@@ -179,9 +182,12 @@ const isEmpty = computed(
       title="Attack the lowest-HP enemy creep"
       @click="attackLowestCreep"
     >
-      <span class="text-dire">{{ enemyCreeps.length }}× enemy creep{{ enemyCreeps.length === 1 ? '' : 's' }}</span>
+      <span class="text-dire"
+        >{{ enemyCreeps.length }}× enemy creep{{ enemyCreeps.length === 1 ? '' : 's' }}</span
+      >
       <span v-if="lowestEnemyCreep" class="text-text-dim">
-        · lowest {{ lowestEnemyCreep.hp }}hp</span>
+        · lowest {{ lowestEnemyCreep.hp }}hp</span
+      >
       <span class="t-caption"> · [last-hit]</span>
     </button>
 
@@ -191,9 +197,12 @@ const isEmpty = computed(
       class="border border-border/40 px-2 py-1"
       data-testid="zone-creeps-ally"
     >
-      <span class="text-radiant">{{ alliedCreeps.length }}× allied creep{{ alliedCreeps.length === 1 ? '' : 's' }}</span>
+      <span class="text-radiant"
+        >{{ alliedCreeps.length }}× allied creep{{ alliedCreeps.length === 1 ? '' : 's' }}</span
+      >
       <span v-if="lowestAlliedCreep" class="text-text-dim">
-        · lowest {{ lowestAlliedCreep.hp }}hp</span>
+        · lowest {{ lowestAlliedCreep.hp }}hp</span
+      >
     </div>
 
     <!-- Neutral creeps -->
@@ -202,9 +211,12 @@ const isEmpty = computed(
       class="border border-border/40 px-2 py-1"
       data-testid="zone-neutrals"
     >
-      <span class="text-gold">{{ aliveNeutrals.length }}× neutral{{ aliveNeutrals.length === 1 ? '' : 's' }}</span>
+      <span class="text-gold"
+        >{{ aliveNeutrals.length }}× neutral{{ aliveNeutrals.length === 1 ? '' : 's' }}</span
+      >
       <span class="text-text-dim">
-        · lowest {{ Math.min(...aliveNeutrals.map((n) => n.hp)) }}hp</span>
+        · lowest {{ Math.min(...aliveNeutrals.map((n) => n.hp)) }}hp</span
+      >
     </div>
   </div>
 </template>

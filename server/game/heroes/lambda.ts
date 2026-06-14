@@ -99,9 +99,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const baseDamage = scaleValue(Q_DAMAGE, level)
-    const damage = closureActive
-      ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE))
-      : baseDamage
+    const damage = closureActive ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE)) : baseDamage
 
     // Consume closureActive after use
     if (closureActive) {
@@ -200,9 +198,7 @@ function resolveE(
 
     const enemies = getEnemiesInZone(state, player)
     const baseDamage = scaleValue(E_DAMAGE, level)
-    const damage = closureActive
-      ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE))
-      : baseDamage
+    const damage = closureActive ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE)) : baseDamage
 
     // Consume closureActive after use
     if (closureActive) {
@@ -275,9 +271,7 @@ function resolveR(
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     const baseDamage = scaleValue(R_DAMAGE, level)
-    const damage = closureActive
-      ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE))
-      : baseDamage
+    const damage = closureActive ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE)) : baseDamage
 
     let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
 

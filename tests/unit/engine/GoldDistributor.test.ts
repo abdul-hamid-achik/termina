@@ -47,7 +47,6 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     damageDealt: 0,
     towerDamageDealt: 0,
     killStreak: 0,
-    killStreak: 0,
     ...overrides,
   }
 }

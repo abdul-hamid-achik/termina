@@ -281,9 +281,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const damage = event.payload['damage'] as number
   if (!damage || damage <= 0) return state
 
-  const enemies = getEnemiesInZone(state, player).filter(
-    (e) => e.id !== targetId && e.alive,
-  )
+  const enemies = getEnemiesInZone(state, player).filter((e) => e.id !== targetId && e.alive)
   if (enemies.length === 0) return state
 
   const splashDamage = Math.round(damage * SPLASH_RATIO)

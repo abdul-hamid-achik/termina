@@ -16,7 +16,7 @@ import type { PlayerState } from '~~/shared/types/game'
 import type { ItemStats } from '~~/shared/types/items'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
-import { TALENT_TREES, type Talent } from '../heroes/talent-trees'
+import { TALENT_TREES, type Talent } from '~~/server/game/heroes/talent-trees'
 
 // Mirrors mutex.ts DEADLOCK_* constants
 const DEADLOCK_ATTACK_PER_STACK = 3

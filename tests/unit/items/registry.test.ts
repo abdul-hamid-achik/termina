@@ -407,7 +407,16 @@ describe('Item Registry', () => {
     })
 
     it('legendary items cost over 4500 gold', () => {
-      const legendaryItems = ['divine_rapier', 'daedalus', 'scythe_of_vyse', 'heart_of_tarrasque', 'assault_cuirass', 'shivas_guard', 'silver_edge', 'segfault_blade']
+      const legendaryItems = [
+        'divine_rapier',
+        'daedalus',
+        'scythe_of_vyse',
+        'heart_of_tarrasque',
+        'assault_cuirass',
+        'shivas_guard',
+        'silver_edge',
+        'segfault_blade',
+      ]
       for (const id of legendaryItems) {
         const item = getItem(id)!
         expect(item.cost).toBeGreaterThanOrEqual(4500)

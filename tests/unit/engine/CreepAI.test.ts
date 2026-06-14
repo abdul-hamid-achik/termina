@@ -87,9 +87,7 @@ describe('CreepAI', () => {
   describe('runCreepAI', () => {
     it('should move creeps forward along lane when no enemies present', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t3-rad' }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t3-rad' })],
       })
 
       const actions = runCreepAI(state)
@@ -101,9 +99,7 @@ describe('CreepAI', () => {
 
     it('should move dire creeps forward along their lane', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'dire', zone: 'mid-t3-dire' }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'dire', zone: 'mid-t3-dire' })],
       })
 
       const actions = runCreepAI(state)
@@ -172,9 +168,7 @@ describe('CreepAI', () => {
 
     it('should attack enemy heroes when no enemy creeps in zone (priority 2)', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
         players: {
           p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river' }),
         },
@@ -188,9 +182,7 @@ describe('CreepAI', () => {
 
     it('should not attack dead heroes', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
         players: {
           p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', alive: false, hp: 0 }),
         },
@@ -204,9 +196,7 @@ describe('CreepAI', () => {
     it('should attack enemy tower in zone when no enemy creeps or heroes (priority 3)', () => {
       // Place a radiant creep in a dire tower zone
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t1-dire' }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t1-dire' })],
       })
 
       const actions = runCreepAI(state)
@@ -248,9 +238,7 @@ describe('CreepAI', () => {
 
     it('should skip dead creeps', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river', hp: 0 }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river', hp: 0 })],
       })
 
       const actions = runCreepAI(state)
@@ -259,9 +247,7 @@ describe('CreepAI', () => {
 
     it('should idle (wait_in_base) for creeps stuck in base zones', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'radiant-base' }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'radiant-base' })],
       })
 
       const actions = runCreepAI(state)
@@ -306,9 +292,7 @@ describe('CreepAI', () => {
       )
 
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t1-dire' }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t1-dire' })],
         towers,
       })
 
@@ -325,9 +309,7 @@ describe('CreepAI', () => {
         creeps: [makeCreep({ id: 'c1', zone: 'mid-t3-rad' })],
       })
 
-      const actions: CreepAction[] = [
-        { creepId: 'c1', action: 'move', targetZone: 'mid-t2-rad' },
-      ]
+      const actions: CreepAction[] = [{ creepId: 'c1', action: 'move', targetZone: 'mid-t2-rad' }]
 
       const result = applyCreepActions(state, actions).state
       expect(result.creeps[0]!.zone).toBe('mid-t2-rad')
@@ -410,7 +392,12 @@ describe('CreepAI', () => {
       const initialHp = tower.hp
 
       const actions: CreepAction[] = [
-        { creepId: 'c1', action: 'attack_tower', targetZone: 'mid-t1-dire', damage: MELEE_CREEP_ATTACK },
+        {
+          creepId: 'c1',
+          action: 'attack_tower',
+          targetZone: 'mid-t1-dire',
+          damage: MELEE_CREEP_ATTACK,
+        },
       ]
 
       const result = applyCreepActions(state, actions).state
@@ -429,7 +416,12 @@ describe('CreepAI', () => {
       })
 
       const actions: CreepAction[] = [
-        { creepId: 'c1', action: 'attack_tower', targetZone: 'mid-t1-dire', damage: MELEE_CREEP_ATTACK },
+        {
+          creepId: 'c1',
+          action: 'attack_tower',
+          targetZone: 'mid-t1-dire',
+          damage: MELEE_CREEP_ATTACK,
+        },
       ]
 
       const result = applyCreepActions(state, actions).state
@@ -600,9 +592,7 @@ describe('CreepAI', () => {
   describe('base idle despawn (garbage collection)', () => {
     it('waits in base while under the idle threshold', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base', baseIdleTicks: 0 }),
-        ],
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'dire-base', baseIdleTicks: 0 })],
       })
 
       const actions = runCreepAI(state)

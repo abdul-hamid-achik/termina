@@ -1,8 +1,8 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
-import { getQueueSize, isPlayerInQueue } from '../../game/matchmaking/queue'
-import { getPlayerLobby, getLobby } from '../../game/matchmaking/lobby'
-import { getPlayerGame } from '../../services/PeerRegistry'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { getQueueSize, isPlayerInQueue } from '~~/server/game/matchmaking/queue'
+import { getPlayerLobby, getLobby } from '~~/server/game/matchmaking/lobby'
+import { getPlayerGame } from '~~/server/services/PeerRegistry'
 
 export default defineEventHandler(async (event) => {
   const runtime = getGameRuntime()

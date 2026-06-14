@@ -15,8 +15,8 @@
 
 import { Effect } from 'effect'
 import type { Command } from '~~/shared/types/commands'
-import type { RedisServiceApi } from '../../services/RedisService'
-import { engineLog } from '../../utils/log'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
+import { engineLog } from '~~/server/utils/log'
 
 const KEY_PREFIX = 'gamelog:'
 const TTL_SECONDS = 60 * 60 * 8
@@ -65,10 +65,7 @@ export function appendActions(
 }
 
 /** Read all logged actions for a game (in tick order). */
-export function readActions(
-  redis: RedisServiceApi,
-  gameId: string,
-): Effect.Effect<LoggedAction[]> {
+export function readActions(redis: RedisServiceApi, gameId: string): Effect.Effect<LoggedAction[]> {
   return Effect.gen(function* () {
     const raw = yield* redis.lrange(logKey(gameId), 0, -1)
     const actions: LoggedAction[] = []

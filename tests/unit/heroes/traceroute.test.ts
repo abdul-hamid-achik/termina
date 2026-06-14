@@ -106,9 +106,7 @@ describe('Traceroute Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
     })
@@ -119,9 +117,7 @@ describe('Traceroute Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const event = result.events[0]!
       expect(event.payload['isolated']).toBe(true)
@@ -135,9 +131,7 @@ describe('Traceroute Hero', () => {
       const enemyAlly = makeEnemy({ id: 'e2', name: 'EnemyAlly' })
       const state = makeState([player, enemy, enemyAlly])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const event = result.events[0]!
       expect(event.payload['isolated']).toBe(false)
@@ -173,9 +167,7 @@ describe('Traceroute Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(290 - 50) // Level 1 costs 50
@@ -219,9 +211,7 @@ describe('Traceroute Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'root')).toBe(true)
@@ -234,9 +224,7 @@ describe('Traceroute Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(290 - 70) // Level 1 costs 70
@@ -248,9 +236,7 @@ describe('Traceroute Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(290 - 115) // Level 4 costs 115

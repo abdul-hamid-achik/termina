@@ -76,7 +76,9 @@ export const useLobbyStore = defineStore('lobby', () => {
         statusMessage?: string
         message?: string
       }
-      return e.data?.message ?? e.data?.statusMessage ?? e.statusMessage ?? e.message ?? 'unknown error'
+      return (
+        e.data?.message ?? e.data?.statusMessage ?? e.statusMessage ?? e.message ?? 'unknown error'
+      )
     }
     return String(err ?? 'unknown error')
   }

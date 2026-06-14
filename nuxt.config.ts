@@ -7,7 +7,7 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', '@nuxt/eslint', 'nuxt-auth-utils'],
+  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', 'nuxt-auth-utils'],
 
   app: {
     head: {

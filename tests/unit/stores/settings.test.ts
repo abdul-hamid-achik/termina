@@ -38,10 +38,7 @@ describe('Settings Store', () => {
       const store = useSettingsStore()
       store.save()
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'termina:settings',
-        expect.any(String),
-      )
+      expect(localStorage.setItem).toHaveBeenCalledWith('termina:settings', expect.any(String))
 
       const saved = JSON.parse(mockStorage.get('termina:settings')!)
       expect(saved).toEqual({
@@ -75,13 +72,16 @@ describe('Settings Store', () => {
 
   describe('load', () => {
     it('reads from localStorage and applies values', () => {
-      mockStorage.set('termina:settings', JSON.stringify({
-        audioEnabled: false,
-        audioVolume: 0.3,
-        quickCastEnabled: true,
-        theme: 'amber',
-        fontSize: 'small',
-      }))
+      mockStorage.set(
+        'termina:settings',
+        JSON.stringify({
+          audioEnabled: false,
+          audioVolume: 0.3,
+          quickCastEnabled: true,
+          theme: 'amber',
+          fontSize: 'small',
+        }),
+      )
 
       const store = useSettingsStore()
       store.load()
@@ -115,10 +115,13 @@ describe('Settings Store', () => {
     })
 
     it('loads partial settings (only some fields present)', () => {
-      mockStorage.set('termina:settings', JSON.stringify({
-        audioVolume: 0.9,
-        theme: 'green',
-      }))
+      mockStorage.set(
+        'termina:settings',
+        JSON.stringify({
+          audioVolume: 0.9,
+          theme: 'green',
+        }),
+      )
 
       const store = useSettingsStore()
       store.load()
@@ -131,10 +134,13 @@ describe('Settings Store', () => {
     })
 
     it('ignores wrong types for boolean fields', () => {
-      mockStorage.set('termina:settings', JSON.stringify({
-        audioEnabled: 'yes',
-        quickCastEnabled: 1,
-      }))
+      mockStorage.set(
+        'termina:settings',
+        JSON.stringify({
+          audioEnabled: 'yes',
+          quickCastEnabled: 1,
+        }),
+      )
 
       const store = useSettingsStore()
       store.load()
@@ -144,9 +150,12 @@ describe('Settings Store', () => {
     })
 
     it('ignores wrong types for number fields', () => {
-      mockStorage.set('termina:settings', JSON.stringify({
-        audioVolume: 'loud',
-      }))
+      mockStorage.set(
+        'termina:settings',
+        JSON.stringify({
+          audioVolume: 'loud',
+        }),
+      )
 
       const store = useSettingsStore()
       store.load()
@@ -155,10 +164,13 @@ describe('Settings Store', () => {
     })
 
     it('accepts theme and fontSize as strings (truthy check)', () => {
-      mockStorage.set('termina:settings', JSON.stringify({
-        theme: 'amber',
-        fontSize: 'large',
-      }))
+      mockStorage.set(
+        'termina:settings',
+        JSON.stringify({
+          theme: 'amber',
+          fontSize: 'large',
+        }),
+      )
 
       const store = useSettingsStore()
       store.load()

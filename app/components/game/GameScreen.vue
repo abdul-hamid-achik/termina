@@ -234,9 +234,12 @@ function triggerShake(level: 'light' | 'strong') {
   screenShake.value = 'none'
   requestAnimationFrame(() => {
     screenShake.value = level
-    shakeTimer = setTimeout(() => {
-      screenShake.value = 'none'
-    }, level === 'strong' ? 600 : 400)
+    shakeTimer = setTimeout(
+      () => {
+        screenShake.value = 'none'
+      },
+      level === 'strong' ? 600 : 400,
+    )
   })
 }
 
@@ -561,9 +564,7 @@ const currentZoneName = computed(() => gameStore.currentZone?.name ?? playerZone
 // against. Index after filtering: global-array indices are vision-filtered
 // and don't survive the trip to the server.
 const zoneCreeps = computed(() =>
-  gameStore.creeps
-    .filter((c) => c.zone === playerZone.value)
-    .map((c, index) => ({ ...c, index })),
+  gameStore.creeps.filter((c) => c.zone === playerZone.value).map((c, index) => ({ ...c, index })),
 )
 
 const zoneNeutrals = computed(() =>
@@ -578,9 +579,7 @@ const buybackInfo = computed(() => {
   if (!p || p.alive) return null
   const cost = buybackCostFor(p)
   const cooldownTicks =
-    p.buybackCooldown && gameStore.tick < p.buybackCooldown
-      ? p.buybackCooldown - gameStore.tick
-      : 0
+    p.buybackCooldown && gameStore.tick < p.buybackCooldown ? p.buybackCooldown - gameStore.tick : 0
   const shortfall = Math.max(0, cost - p.gold)
   return {
     cost,
@@ -855,7 +854,10 @@ function handleReturnToMenu() {
   <div
     v-else
     class="game-grid relative bg-bg-primary"
-    :class="{ 'anim-shake': screenShake === 'light', 'anim-shake-strong': screenShake === 'strong' }"
+    :class="{
+      'anim-shake': screenShake === 'light',
+      'anim-shake-strong': screenShake === 'strong',
+    }"
     data-testid="game-screen"
     :data-game-id="gameStore.gameId ?? ''"
   >
@@ -924,11 +926,7 @@ function handleReturnToMenu() {
     </div>
 
     <!-- Kill feed: cinematic headline plays overlaid near the top -->
-    <KillFeed
-      class="game-grid__killfeed"
-      :entries="killFeed"
-      :current-tick="currentTick"
-    />
+    <KillFeed class="game-grid__killfeed" :entries="killFeed" :current-tick="currentTick" />
 
     <!-- Critical-HP red vignette pulse over the whole screen -->
     <div
@@ -1003,7 +1001,11 @@ function handleReturnToMenu() {
 
     <!-- Right rail: hero / current-zone fight / compact map -->
     <div class="game-grid__rail flex min-h-0 flex-col gap-1 overflow-y-auto">
-      <TerminalPanel title="Hero Status" :variant="heroDanger ? 'danger' : 'default'" class="shrink-0">
+      <TerminalPanel
+        title="Hero Status"
+        :variant="heroDanger ? 'danger' : 'default'"
+        class="shrink-0"
+      >
         <div class="relative">
           <!-- Damage flash: a stateless keyed overlay so HeroStatus (and its
                canvas avatar + open tooltips) is NOT remounted on every hit. -->

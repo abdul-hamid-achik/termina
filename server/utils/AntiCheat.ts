@@ -60,7 +60,11 @@ export function validateVision(
     // Players can only move to adjacent zones or stay in current zone
     // This is already validated in ActionResolver, but we double-check here for cheating
     if (!areAdjacent(player.zone, targetZone) && player.zone !== targetZone) {
-      return createViolation(playerId, 'INVALID_MOVE', `Attempted move from ${player.zone} to ${targetZone}`)
+      return createViolation(
+        playerId,
+        'INVALID_MOVE',
+        `Attempted move from ${player.zone} to ${targetZone}`,
+      )
     }
   }
 
@@ -68,7 +72,11 @@ export function validateVision(
   if (command.type === 'ward') {
     const wardZone = command.zone
     if (!areAdjacent(player.zone, wardZone) && player.zone !== wardZone) {
-      return createViolation(playerId, 'VISION_BYPASS', `Attempted ward placement in invisible zone ${wardZone}`)
+      return createViolation(
+        playerId,
+        'VISION_BYPASS',
+        `Attempted ward placement in invisible zone ${wardZone}`,
+      )
     }
   }
 
@@ -79,7 +87,11 @@ export function validateVision(
     if (targetPlayer) {
       const target = state.players[targetPlayer]
       if (target && target.zone !== player.zone) {
-        return createViolation(playerId, 'VISION_BYPASS', `Attempted attack on invisible hero ${targetName}`)
+        return createViolation(
+          playerId,
+          'VISION_BYPASS',
+          `Attempted attack on invisible hero ${targetName}`,
+        )
       }
     }
   }

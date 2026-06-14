@@ -1,4 +1,4 @@
-import { seedDraftLobby } from '../../game/matchmaking/lobby'
+import { seedDraftLobby } from '~~/server/game/matchmaking/lobby'
 
 /**
  * Dev/test-only: seed a hero-draft lobby directly (no live matchmaking), frozen

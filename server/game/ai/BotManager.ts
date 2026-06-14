@@ -1,5 +1,5 @@
 import type { TeamId } from '~~/shared/types/game'
-import type { QueueEntry } from '../matchmaking/queue'
+import type { QueueEntry } from '~~/server/game/matchmaking/queue'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { HeroRole } from '~~/shared/types/hero'
 

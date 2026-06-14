@@ -25,8 +25,16 @@ const filledBotNames = ref<string[]>([])
 const botTypingActive = ref(false)
 
 const BOT_DISPLAY_NAMES = [
-  'Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon',
-  'Bot Zeta', 'Bot Eta', 'Bot Theta', 'Bot Iota', 'Bot Kappa',
+  'Bot Alpha',
+  'Bot Beta',
+  'Bot Gamma',
+  'Bot Delta',
+  'Bot Epsilon',
+  'Bot Zeta',
+  'Bot Eta',
+  'Bot Theta',
+  'Bot Iota',
+  'Bot Kappa',
 ]
 
 // Elapsed timer
@@ -67,10 +75,13 @@ watch(
         // Animate this slot
         typingSlot.value = i
         if (typeTimer) clearInterval(typeTimer)
-        typeTimer = setTimeout(() => {
-          typedSlots.value = new Set([...typedSlots.value, i])
-          typingSlot.value = null
-        }, 400 + Math.random() * 200) as unknown as ReturnType<typeof setInterval>
+        typeTimer = setTimeout(
+          () => {
+            typedSlots.value = new Set([...typedSlots.value, i])
+            typingSlot.value = null
+          },
+          400 + Math.random() * 200,
+        ) as unknown as ReturnType<typeof setInterval>
       }
     }
   },
@@ -89,7 +100,10 @@ watch(
       const total = props.botsCount
       botFillTimer = setInterval(() => {
         if (idx < total) {
-          filledBotNames.value = [...filledBotNames.value, BOT_DISPLAY_NAMES[idx] ?? `Bot ${idx + 1}`]
+          filledBotNames.value = [
+            ...filledBotNames.value,
+            BOT_DISPLAY_NAMES[idx] ?? `Bot ${idx + 1}`,
+          ]
           idx++
         } else {
           botTypingActive.value = false
@@ -233,7 +247,9 @@ const filledCount = computed(() => {
 
             <template v-else>
               <span class="flex-1 text-xs text-text-dim">
-                <span v-if="cursorVisible && slot.index === filledCount" class="text-border-glow">_</span>
+                <span v-if="cursorVisible && slot.index === filledCount" class="text-border-glow"
+                  >_</span
+                >
                 <span v-else>· · ·</span>
               </span>
             </template>

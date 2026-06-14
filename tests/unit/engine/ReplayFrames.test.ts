@@ -23,9 +23,7 @@ describe('replay frames reconstruction', () => {
       { id: 'p2', name: 'p2', team: 'dire' as const, heroId: 'daemon' },
     ]
     await Effect.runPromise(sm.createGame(gameId, setup))
-    await Effect.runPromise(
-      sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })),
-    )
+    await Effect.runPromise(sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })))
 
     const initial = await Effect.runPromise(sm.getState(gameId))
     const startGold = initial.players.p1!.gold
@@ -64,9 +62,7 @@ describe('replay frames reconstruction', () => {
       { id: 'bot_x', name: 'bot_x', team: 'dire' as const, heroId: 'daemon' },
     ]
     await Effect.runPromise(sm.createGame(gameId, setup))
-    await Effect.runPromise(
-      sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })),
-    )
+    await Effect.runPromise(sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })))
     const initial = await Effect.runPromise(sm.getState(gameId))
 
     const result = await Effect.runPromise(processTick(gameId, initial))

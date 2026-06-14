@@ -751,7 +751,15 @@ describe('Game Store', () => {
 describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objectives / rosters)', () => {
   // A FoggedPlayer arrives without zone/hp/cooldowns; cast at the call site.
   const fogged = (id: string, team: 'radiant' | 'dire', alive = true) =>
-    ({ id, name: id, team, heroId: 'null_ref', level: 3, alive, fogged: true }) as unknown as PlayerState
+    ({
+      id,
+      name: id,
+      team,
+      heroId: 'null_ref',
+      level: 3,
+      alive,
+      fogged: true,
+    }) as unknown as PlayerState
 
   it('records last-seen only for un-fogged players, never overwriting from fog', () => {
     const store = useGameStore()

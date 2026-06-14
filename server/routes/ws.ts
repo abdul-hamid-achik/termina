@@ -1,20 +1,25 @@
 import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
-import { getGameRuntime, getReconnectPayload } from '../plugins/game-server'
-import { submitAction } from '../game/engine/GameLoop'
+import { getGameRuntime, getReconnectPayload } from '~~/server/plugins/game-server'
+import { submitAction } from '~~/server/game/engine/GameLoop'
 import {
   pickHero,
   getPlayerLobby,
   getLobby,
   cancelLobby,
   currentPickTurn,
-} from '../game/matchmaking/lobby'
-import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../services/PeerRegistry'
-import { addSpectator, removeSpectator } from '../services/SpectatorRegistry'
-import { wsLog } from '../utils/log'
-import { verifyWsTicket } from '../utils/ws-ticket'
-import { checkRateLimit, checkScopedRateLimit, resetRateLimit } from '../utils/RateLimiter'
-import { clientMessageSchema } from '../utils/ws-schemas'
+} from '~~/server/game/matchmaking/lobby'
+import {
+  registerPeer,
+  unregisterPeer,
+  getPlayerGame,
+  sendToPeer,
+} from '~~/server/services/PeerRegistry'
+import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
+import { wsLog } from '~~/server/utils/log'
+import { verifyWsTicket } from '~~/server/utils/ws-ticket'
+import { checkRateLimit, checkScopedRateLimit, resetRateLimit } from '~~/server/utils/RateLimiter'
+import { clientMessageSchema } from '~~/server/utils/ws-schemas'
 
 interface PeerContext {
   playerId: string | null
@@ -261,9 +266,7 @@ export default defineWebSocketHandler({
             }),
           )
         } else {
-          peer.send(
-            JSON.stringify({ type: 'game_not_found', gameId: ctx.gameId }),
-          )
+          peer.send(JSON.stringify({ type: 'game_not_found', gameId: ctx.gameId }))
         }
         break
       }
@@ -351,9 +354,7 @@ export default defineWebSocketHandler({
           heroId: parsed.heroId,
         })
         if (!checkScopedRateLimit('lobby', ctx.playerId)) {
-          peer.send(
-            JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Slow down' }),
-          )
+          peer.send(JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Slow down' }))
           break
         }
         const runtime = getGameRuntime()

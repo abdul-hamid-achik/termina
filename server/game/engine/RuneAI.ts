@@ -1,16 +1,16 @@
 import type { GameState, RuneState } from '~~/shared/types/game'
-import type { GameEngineEvent, RunePickedEvent } from '../protocol/events'
-import {
-  RUNE_BUFF_TICKS,
-  RUNE_DURATION_TICKS,
-} from '~~/shared/constants/balance'
+import type { GameEngineEvent, RunePickedEvent } from '~~/server/game/protocol/events'
+import { RUNE_BUFF_TICKS, RUNE_DURATION_TICKS } from '~~/shared/constants/balance'
 
 /**
  * Get the buff effect for a rune type.
  */
-export function getRuneBuff(
-  type: RuneState['type'],
-): { id: string; stacks: number; ticksRemaining: number; source: string } {
+export function getRuneBuff(type: RuneState['type']): {
+  id: string
+  stacks: number
+  ticksRemaining: number
+  source: string
+} {
   const duration = RUNE_BUFF_TICKS[type] ?? 15
 
   switch (type) {
@@ -52,11 +52,7 @@ function applyRuneBuff(
 /**
  * Pick up a rune - player must be in the same zone as the rune.
  */
-export function pickupRune(
-  state: GameState,
-  playerId: string,
-  zone: string,
-): GameState {
+export function pickupRune(state: GameState, playerId: string, zone: string): GameState {
   const player = state.players[playerId]
   if (!player || !player.alive) return state
   if (player.zone !== zone) return state
@@ -75,13 +71,16 @@ export function pickupRune(
   const newRunes = runes.filter((_, i) => i !== runeIndex)
 
   // Add event
-  const events = [...state.events.map(e => e as unknown as GameEngineEvent), {
-    _tag: 'rune_picked',
-    tick: state.tick,
-    playerId,
-    zone,
-    runeType: rune.type,
-  } satisfies RunePickedEvent]
+  const events = [
+    ...state.events.map((e) => e as unknown as GameEngineEvent),
+    {
+      _tag: 'rune_picked',
+      tick: state.tick,
+      playerId,
+      zone,
+      runeType: rune.type,
+    } satisfies RunePickedEvent,
+  ]
 
   return { ...state, players, runes: newRunes, events: events as unknown as typeof state.events }
 }

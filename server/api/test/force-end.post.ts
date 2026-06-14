@@ -1,4 +1,4 @@
-import { forceEndGame } from '../../plugins/game-server'
+import { forceEndGame } from '~~/server/plugins/game-server'
 import type { TeamId } from '~~/shared/types/game'
 
 /**

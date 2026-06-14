@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-console": "warn",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "caughtErrors": "none"
+      }
+    ],
+    "typescript/consistent-type-imports": "error",
+    "no-underscore-dangle": "off"
+  },
+  "ignorePatterns": ["dist", ".output", ".nuxt", ".data", "node_modules", "tests/e2e/runs"]
+}

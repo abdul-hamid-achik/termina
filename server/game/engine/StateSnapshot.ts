@@ -13,8 +13,8 @@
 
 import { Effect } from 'effect'
 import type { GameState, TeamId } from '~~/shared/types/game'
-import type { RedisServiceApi } from '../../services/RedisService'
-import { engineLog } from '../../utils/log'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
+import { engineLog } from '~~/server/utils/log'
 
 /** Take a snapshot every Nth tick. 15 ticks = 60s at 4s/tick. */
 export const SNAPSHOT_EVERY_N_TICKS = 15

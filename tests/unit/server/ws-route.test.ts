@@ -26,11 +26,7 @@ import {
   sendToPeer,
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
-import {
-  checkRateLimit,
-  checkScopedRateLimit,
-  resetRateLimit,
-} from '~~/server/utils/RateLimiter'
+import { checkRateLimit, checkScopedRateLimit, resetRateLimit } from '~~/server/utils/RateLimiter'
 
 vi.mock('~~/server/plugins/game-server', () => ({
   getGameRuntime: vi.fn(),
@@ -381,9 +377,7 @@ describe('ws route — reconnect', () => {
     expect(msgs).toContainEqual(
       expect.objectContaining({ type: 'announcement', message: 'Reconnected to game' }),
     )
-    expect(msgs).toContainEqual(
-      expect.objectContaining({ type: 'full_state', tick: 42 }),
-    )
+    expect(msgs).toContainEqual(expect.objectContaining({ type: 'full_state', tick: 42 }))
     expect(msgs).toContainEqual(
       expect.objectContaining({ type: 'events', tick: 42, events: [{ type: 'kill', tick: 41 }] }),
     )
@@ -425,7 +419,11 @@ describe('ws route — request_state', () => {
 
   it('returns full_state for the joined game', () => {
     const { peer } = openPeerInGame('p_rs1', 'game_5')
-    vi.mocked(getReconnectPayload).mockReturnValue({ tick: 9, state: { tick: 9 }, events: [] } as never)
+    vi.mocked(getReconnectPayload).mockReturnValue({
+      tick: 9,
+      state: { tick: 9 },
+      events: [],
+    } as never)
     sendMsg(peer, { type: 'request_state' })
     expect(getReconnectPayload).toHaveBeenCalledWith('game_5', 'p_rs1')
     expect(lastMessage(peer)).toMatchObject({ type: 'full_state', tick: 9 })

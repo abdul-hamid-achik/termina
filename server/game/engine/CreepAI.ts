@@ -8,7 +8,7 @@ import {
 } from '~~/shared/constants/balance'
 import { calculatePhysicalDamage } from './DamageCalculator'
 import { resolveAncientAttack } from './AncientSystem'
-import type { GameEngineEvent } from '../protocol/events'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /** The enemy base zone for a creep team — the end of every lane route. */
 const ENEMY_BASE: Record<TeamId, string> = {
@@ -182,8 +182,7 @@ export function runCreepAI(state: GameState): CreepAction[] {
 
     const damage = getCreepAttack(creep.type)
     const inEnemyBase = creep.zone === ENEMY_BASE[creep.team]
-    const enemyAncient =
-      creep.team === 'radiant' ? state.ancients?.dire : state.ancients?.radiant
+    const enemyAncient = creep.team === 'radiant' ? state.ancients?.dire : state.ancients?.radiant
 
     // Priority 1: attack enemy creeps in same zone
     const enemyCreeps = getEnemyCreepsInZone(state.creeps, creep)
@@ -269,8 +268,8 @@ export function applyCreepActions(
   state: GameState,
   actions: CreepAction[],
 ): { state: GameState; events: GameEngineEvent[] } {
-  let creeps = [...state.creeps.map((c) => ({ ...c }))]
-  let towers = [...state.towers.map((t) => ({ ...t }))]
+  let creeps = state.creeps.map((c) => ({ ...c }))
+  let towers = state.towers.map((t) => ({ ...t }))
   let players = { ...state.players }
   let ancients = state.ancients
   const events: GameEngineEvent[] = []
@@ -292,9 +291,7 @@ export function applyCreepActions(
         const target = creeps.find((c) => c.id === action.targetId)
         if (target && target.hp > 0) {
           const newHp = Math.max(0, target.hp - (action.damage ?? 0))
-          creeps = creeps.map((c) =>
-            c.id === action.targetId ? { ...c, hp: newHp } : c,
-          )
+          creeps = creeps.map((c) => (c.id === action.targetId ? { ...c, hp: newHp } : c))
         }
         break
       }

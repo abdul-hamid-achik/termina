@@ -27,20 +27,11 @@ const config: KnipConfig = {
   //  - server/db/** — DB layer wired via Nitro runtime config / migrations.
   //  - scripts/** — standalone simulation harness.
   //  - tests/** — test suites.
-  entry: [
-    'app/components/**/*.vue',
-    'server/db/**/*.ts',
-    'scripts/**/*.ts',
-    'tests/**/*.ts',
-  ],
-  project: [
-    'app/**/*.{ts,vue}',
-    'server/**/*.ts',
-    'shared/**/*.ts',
-    'tests/**/*.ts',
-  ],
-  ignore: ['eslint.config.mjs'],
-  ignoreBinaries: ['hitspec'],
+  entry: ['app/components/**/*.vue', 'server/db/**/*.ts', 'scripts/**/*.ts', 'tests/**/*.ts'],
+  project: ['app/**/*.{ts,vue}', 'server/**/*.ts', 'shared/**/*.ts', 'tests/**/*.ts'],
+  // cairntrace's `cairn` CLI is a global dev tool (test:e2e scripts), not a dep;
+  // hitspec likewise (test:api).
+  ignoreBinaries: ['hitspec', 'cairn'],
   ignoreDependencies: [
     // Fonts loaded via CSS
     '@fontsource/jetbrains-mono',

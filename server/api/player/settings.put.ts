@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
+import { getGameRuntime } from '~~/server/plugins/game-server'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 
 export default defineEventHandler(async (event) => {
@@ -26,21 +26,20 @@ export default defineEventHandler(async (event) => {
     }
 
     if (!/^\w+$/.test(username)) {
-      throw createError({ statusCode: 400, message: 'Username can only contain letters, numbers, and underscores' })
+      throw createError({
+        statusCode: 400,
+        message: 'Username can only contain letters, numbers, and underscores',
+      })
     }
 
     // Check uniqueness
-    const existing = await Effect.runPromise(
-      runtime.dbService.getPlayerByUsername(username),
-    )
+    const existing = await Effect.runPromise(runtime.dbService.getPlayerByUsername(username))
 
     if (existing && existing.id !== playerId) {
       throw createError({ statusCode: 409, message: 'Username already taken' })
     }
 
-    await Effect.runPromise(
-      runtime.dbService.updatePlayerUsername(playerId, username),
-    )
+    await Effect.runPromise(runtime.dbService.updatePlayerUsername(playerId, username))
 
     // Update session with new username
     await setUserSession(event, {
@@ -57,9 +56,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Invalid avatar selection' })
     }
 
-    await Effect.runPromise(
-      runtime.dbService.updatePlayerAvatar(playerId, body.selectedAvatar),
-    )
+    await Effect.runPromise(runtime.dbService.updatePlayerAvatar(playerId, body.selectedAvatar))
   }
 
   // Fetch updated player and refresh session

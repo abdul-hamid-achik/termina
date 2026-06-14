@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
-import { authLog } from '../../utils/log'
-import { checkScopedRateLimit } from '../../utils/RateLimiter'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { authLog } from '~~/server/utils/log'
+import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 
 export default defineEventHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
@@ -24,7 +24,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!/^\w+$/.test(username)) {
-    throw createError({ statusCode: 400, message: 'Username can only contain letters, numbers, and underscores' })
+    throw createError({
+      statusCode: 400,
+      message: 'Username can only contain letters, numbers, and underscores',
+    })
   }
 
   if (password.length < 8) {
@@ -38,9 +41,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     // Check if username is taken
-    const existing = await Effect.runPromise(
-      runtime.dbService.getPlayerByUsername(username),
-    )
+    const existing = await Effect.runPromise(runtime.dbService.getPlayerByUsername(username))
 
     if (existing) {
       throw createError({ statusCode: 409, message: 'Username already taken' })

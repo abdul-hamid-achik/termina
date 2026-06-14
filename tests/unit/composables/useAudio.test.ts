@@ -67,7 +67,10 @@ const mockAudioCtx = {
   resume: vi.fn(),
 }
 
-vi.stubGlobal('AudioContext', vi.fn(() => mockAudioCtx))
+vi.stubGlobal(
+  'AudioContext',
+  vi.fn(() => mockAudioCtx),
+)
 
 vi.mock('~/stores/settings', () => ({
   useSettingsStore: vi.fn(() => ({

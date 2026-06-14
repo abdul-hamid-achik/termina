@@ -200,8 +200,7 @@ watch(
     }
     // Poll when WS is not connected and we're in an active queue state
     const needsPoll =
-      (!wsConnected && status !== 'idle') ||
-      (status === 'starting' && lobbyStore.countdown <= 0)
+      (!wsConnected && status !== 'idle') || (status === 'starting' && lobbyStore.countdown <= 0)
     if (needsPoll) {
       _startRecoveryPoll()
     } else if (wsConnected && status !== 'starting') {
@@ -213,7 +212,10 @@ watch(
 
 function _startRecoveryPoll() {
   if (recoveryPollTimer) return
-  lobbyLog.info('Starting recovery poll', { connected: connected.value, status: lobbyStore.queueStatus })
+  lobbyLog.info('Starting recovery poll', {
+    connected: connected.value,
+    status: lobbyStore.queueStatus,
+  })
   recoveryPollTimer = setInterval(async () => {
     if (gameStore.gameId) {
       _stopRecoveryPoll()
@@ -264,10 +266,7 @@ onUnmounted(() => {
     </div>
 
     <!-- All other states: centered narrow layout -->
-    <div
-      v-else
-      class="mx-auto flex flex-1 max-w-[500px] flex-col items-center justify-center"
-    >
+    <div v-else class="mx-auto flex flex-1 max-w-[500px] flex-col items-center justify-center">
       <!-- IDLE: Find Match -->
       <template v-if="lobbyStore.queueStatus === 'idle'">
         <TerminalPanel title="Matchmaking">

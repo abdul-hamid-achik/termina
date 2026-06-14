@@ -359,7 +359,9 @@ function miniCellClasses(zoneId: string): string[] {
           <span class="text-self">► you</span>
           <span class="text-dire">! enemies</span>
           <span>☠ core down</span>
-          <span><span class="text-radiant">rad</span>/<span class="text-dire">dire</span> ground</span>
+          <span
+            ><span class="text-radiant">rad</span>/<span class="text-dire">dire</span> ground</span
+          >
         </div>
       </div>
     </div>

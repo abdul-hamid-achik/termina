@@ -51,8 +51,7 @@ describe('Spawner', () => {
       const siegeWaveTick = CREEP_WAVE_INTERVAL_TICKS * SIEGE_CREEP_WAVE_INTERVAL
       const creeps = spawnCreepWaves(siegeWaveTick)
       // 3 lanes * 2 teams * (3 melee + 1 ranged + 1 siege) = 30
-      const expectedWithSiege =
-        3 * 2 * (MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE + 1)
+      const expectedWithSiege = 3 * 2 * (MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE + 1)
       expect(creeps.length).toBe(expectedWithSiege)
     })
 

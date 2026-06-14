@@ -1,4 +1,4 @@
-import { advanceDevGame, getDevRawState } from '../../plugins/game-server'
+import { advanceDevGame, getDevRawState } from '~~/server/plugins/game-server'
 
 /**
  * Dev/test-only: advance a manual-tick dev game by N ticks deterministically

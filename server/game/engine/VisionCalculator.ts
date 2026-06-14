@@ -196,9 +196,7 @@ function isInvisible(player: PlayerState): boolean {
  * viewing team. A reveal pierces fog AND invisibility/stealth for that team.
  */
 function isRevealedToTeam(player: PlayerState, state: GameState, team: TeamId): boolean {
-  return player.buffs.some(
-    (b) => b.id === 'revealed' && state.players[b.source]?.team === team,
-  )
+  return player.buffs.some((b) => b.id === 'revealed' && state.players[b.source]?.team === team)
 }
 
 /**

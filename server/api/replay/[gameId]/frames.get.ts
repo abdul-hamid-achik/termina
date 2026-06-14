@@ -1,9 +1,9 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../../plugins/game-server'
-import { readSnapshot } from '../../../game/engine/StateSnapshot'
-import { readActions } from '../../../game/engine/ActionLog'
-import { createInMemoryStateManager } from '../../../game/engine/StateManager'
-import { processTick, submitAction } from '../../../game/engine/GameLoop'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { readSnapshot } from '~~/server/game/engine/StateSnapshot'
+import { readActions } from '~~/server/game/engine/ActionLog'
+import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
+import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameState } from '~~/shared/types/game'
 
 /**

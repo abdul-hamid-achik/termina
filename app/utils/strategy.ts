@@ -34,7 +34,10 @@ export function playerNetWorth(p: NetWorthInput): number {
 }
 
 /** Sum of net worth across a team's players (fogged players contribute 0). */
-export function teamNetWorth(players: Array<NetWorthInput & { team: TeamId | string }>, team: TeamId): number {
+export function teamNetWorth(
+  players: Array<NetWorthInput & { team: TeamId | string }>,
+  team: TeamId,
+): number {
   return players.filter((p) => p.team === team).reduce((sum, p) => sum + playerNetWorth(p), 0)
 }
 
@@ -77,14 +80,19 @@ export interface RoshanReadout {
   hpPct: number | null
 }
 
-export function formatRoshan(roshan: RoshanState | null | undefined, currentTick: number): RoshanReadout {
+export function formatRoshan(
+  roshan: RoshanState | null | undefined,
+  currentTick: number,
+): RoshanReadout {
   if (!roshan) return { status: 'unknown', respawnIn: 0, label: 'ROSHAN ?', hpPct: null }
   if (roshan.alive) {
     const hpPct = roshan.maxHp > 0 ? Math.round((roshan.hp / roshan.maxHp) * 100) : 100
     return { status: 'up', respawnIn: 0, label: 'ROSHAN up', hpPct }
   }
   const respawnIn =
-    roshan.deathTick != null ? Math.max(0, roshan.deathTick + ROSHAN_RESPAWN_TICKS - currentTick) : 0
+    roshan.deathTick != null
+      ? Math.max(0, roshan.deathTick + ROSHAN_RESPAWN_TICKS - currentTick)
+      : 0
   return {
     status: 'dead',
     respawnIn,

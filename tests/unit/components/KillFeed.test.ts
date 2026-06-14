@@ -10,7 +10,7 @@ function entry(overrides: Partial<KillFeedEntry> = {}): KillFeedEntry {
     killerId: 'me',
     victimId: 'enemy1',
     assisters: [],
-    text: 'FIRST BLOOD  You SIGKILL\'d enemy1',
+    text: "FIRST BLOOD  You SIGKILL'd enemy1",
     ...overrides,
   }
 }
@@ -23,7 +23,9 @@ describe('KillFeed', () => {
   })
 
   it('ages out plays older than the window', () => {
-    const w = mount(KillFeed, { props: { entries: [entry({ tick: 1 })], currentTick: 20, window: 2 } })
+    const w = mount(KillFeed, {
+      props: { entries: [entry({ tick: 1 })], currentTick: 20, window: 2 },
+    })
     expect(w.find('[data-testid="kill-feed"]').exists()).toBe(false)
   })
 

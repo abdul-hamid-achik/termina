@@ -22,7 +22,9 @@ const props = withDefaults(
 
 const recent = computed(() => {
   const cutoff = props.currentTick - props.window
-  return props.entries.filter((e) => e.tick >= cutoff && e.tick <= props.currentTick).slice(-props.max)
+  return props.entries
+    .filter((e) => e.tick >= cutoff && e.tick <= props.currentTick)
+    .slice(-props.max)
 })
 
 const categoryClass: Record<KillCategory, string> = {

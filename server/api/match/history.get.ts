@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
+import { getGameRuntime } from '~~/server/plugins/game-server'
 
 export default defineEventHandler(async (event) => {
   const runtime = getGameRuntime()

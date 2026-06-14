@@ -192,8 +192,7 @@ function resolveW(
       source: player.id,
     })
 
-    const players =
-      targetPlayer.id === player.id ? [updatedTarget] : [caster, updatedTarget]
+    const players = targetPlayer.id === player.id ? [updatedTarget] : [caster, updatedTarget]
 
     return {
       state: updatePlayers(state, players),
@@ -340,9 +339,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   if (allies.length === 0) return state
 
   // Find the lowest HP ally
-  const lowestAlly = allies.reduce((lowest, ally) =>
-    ally.hp < lowest.hp ? ally : lowest,
-  )
+  const lowestAlly = allies.reduce((lowest, ally) => (ally.hp < lowest.hp ? ally : lowest))
 
   const healed = healPlayer(lowestAlly, PASSIVE_HEAL)
   return updatePlayer(state, healed)

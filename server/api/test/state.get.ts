@@ -1,4 +1,4 @@
-import { getDevRawState } from '../../plugins/game-server'
+import { getDevRawState } from '~~/server/plugins/game-server'
 
 /**
  * Dev/test-only: raw GameState snapshot for spec assertions (engine-truth

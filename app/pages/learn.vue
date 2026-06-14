@@ -428,36 +428,34 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       <!-- The command table has whitespace-nowrap cells; let it scroll inside
            the panel on narrow phones instead of widening the page. -->
       <div class="overflow-x-auto">
-      <table class="w-full table-fixed border-collapse break-words text-xs">
-        <thead>
-          <tr>
-            <th
-              class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              Command
-            </th>
-            <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
-              Description
-            </th>
-            <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
-              Example
-            </th>
-            <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
-              Shortcuts
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="c in commands" :key="c.cmd">
-            <td class="border-b border-border/50 px-1.5 py-1 text-ability">
-              {{ c.cmd }}
-            </td>
-            <td class="border-b border-border/50 px-1.5 py-1">{{ c.desc }}</td>
-            <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ c.example }}</td>
-            <td class="border-b border-border/50 px-1.5 py-1 text-gold">{{ c.shortcuts }}</td>
-          </tr>
-        </tbody>
-      </table>
+        <table class="w-full table-fixed border-collapse break-words text-xs">
+          <thead>
+            <tr>
+              <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
+                Command
+              </th>
+              <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
+                Description
+              </th>
+              <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
+                Example
+              </th>
+              <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
+                Shortcuts
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in commands" :key="c.cmd">
+              <td class="border-b border-border/50 px-1.5 py-1 text-ability">
+                {{ c.cmd }}
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1">{{ c.desc }}</td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ c.example }}</td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-gold">{{ c.shortcuts }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </TerminalPanel>
 
@@ -467,32 +465,30 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
         <span class="text-[0.8rem] text-text-dim">&gt;_ man targeting</span>
       </div>
       <div class="overflow-x-auto">
-      <table class="w-full table-fixed border-collapse break-words text-xs">
-        <thead>
-          <tr>
-            <th
-              class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
-            >
-              Format
-            </th>
-            <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
-              Description
-            </th>
-            <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
-              Example
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in targeting" :key="t.format">
-            <td class="border-b border-border/50 px-1.5 py-1 text-ability">
-              {{ t.format }}
-            </td>
-            <td class="border-b border-border/50 px-1.5 py-1">{{ t.desc }}</td>
-            <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ t.example }}</td>
-          </tr>
-        </tbody>
-      </table>
+        <table class="w-full table-fixed border-collapse break-words text-xs">
+          <thead>
+            <tr>
+              <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
+                Format
+              </th>
+              <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
+                Description
+              </th>
+              <th class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim">
+                Example
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in targeting" :key="t.format">
+              <td class="border-b border-border/50 px-1.5 py-1 text-ability">
+                {{ t.format }}
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1">{{ t.desc }}</td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ t.example }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </TerminalPanel>
 

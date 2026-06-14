@@ -67,7 +67,11 @@ const rows = computed<ThreatRow[]>(() =>
       </div>
 
       <!-- Dead -->
-      <div v-if="!r.alive" class="text-[0.62rem] text-text-dim" :data-testid="`threat-dead-${r.id}`">
+      <div
+        v-if="!r.alive"
+        class="text-[0.62rem] text-text-dim"
+        :data-testid="`threat-dead-${r.id}`"
+      >
         DEAD<template v-if="r.respawnIn >= 0"> · respawn {{ r.respawnIn }}t</template>
       </div>
 

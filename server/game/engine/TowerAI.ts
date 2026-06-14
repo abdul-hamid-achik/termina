@@ -1,7 +1,7 @@
 import type { GameState, TowerState } from '~~/shared/types/game'
 import { TOWER_ATTACK } from '~~/shared/constants/balance'
 import { calculatePhysicalDamage } from './DamageCalculator'
-import type { GameEngineEvent } from '../protocol/events'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 export interface TowerAction {
   towerZone: string
@@ -118,7 +118,7 @@ function selectTowerTarget(
  * Apply tower actions to the game state.
  */
 export function applyTowerActions(state: GameState, actions: TowerAction[]): GameState {
-  let creeps = [...state.creeps.map((c) => ({ ...c }))]
+  let creeps = state.creeps.map((c) => ({ ...c }))
   let players = { ...state.players }
 
   for (const action of actions) {
@@ -141,9 +141,7 @@ export function applyTowerActions(state: GameState, actions: TowerAction[]): Gam
       const target = creeps.find((c) => c.id === targetId)
       if (target && target.hp > 0) {
         const newHp = Math.max(0, target.hp - action.damage)
-        creeps = creeps.map((c) =>
-          c.id === targetId ? { ...c, hp: newHp } : c,
-        )
+        creeps = creeps.map((c) => (c.id === targetId ? { ...c, hp: newHp } : c))
       }
     }
   }

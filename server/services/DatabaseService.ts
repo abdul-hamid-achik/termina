@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from 'effect'
 import { eq, desc, and, sql } from 'drizzle-orm'
-import { useDb } from '../db'
+import { useDb } from '~~/server/db'
 import {
   players,
   matches,
@@ -15,7 +15,7 @@ import {
   type HeroStat,
   type MatchPlayer,
   type PlayerProvider,
-} from '../db/schema'
+} from '~~/server/db/schema'
 
 export interface MatchWithPlayers extends Match {
   players: (MatchPlayer & { player: Player })[]

@@ -8,12 +8,5 @@
   // Overrides the generated exclude (extends replaces, not merges). Keeps the
   // generated entries and additionally drops tests/scripts from the build
   // typecheck — vitest owns those.
-  "exclude": [
-    "dist",
-    ".data",
-    ".output",
-    "node_modules",
-    "tests/**",
-    "scripts/**"
-  ]
+  "exclude": ["dist", ".data", ".output", "node_modules", "tests/**", "scripts/**"]
 }

@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
-import {
-  resolveAbility,
-  resolvePassive,
-  hasBuff,
-} from '../../../server/game/heroes/_base'
+import { resolveAbility, resolvePassive, hasBuff } from '../../../server/game/heroes/_base'
 // Register cron hero
 import '../../../server/game/heroes/cron'
 
@@ -104,9 +100,7 @@ describe('Cron Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }))
 
       const updatedAlly = result.state.players['a1']!
       expect(hasBuff(updatedAlly, 'uptimeAtk')).toBe(true)
@@ -124,9 +118,7 @@ describe('Cron Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(380 - 65) // Level 1 costs 65
@@ -138,9 +130,7 @@ describe('Cron Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(380 - 110) // Level 4 costs 110
@@ -210,9 +200,7 @@ describe('Cron Hero', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updatedAlly = result.state.players['a1']!
       expect(hasBuff(updatedAlly, 'stun')).toBe(false)
@@ -236,9 +224,7 @@ describe('Cron Hero', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updatedAlly = result.state.players['a1']!
       expect(hasBuff(updatedAlly, 'root')).toBe(false)
@@ -250,9 +236,7 @@ describe('Cron Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const shield = result.state.players['a1']!.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(250) // Level 4 shield
@@ -265,9 +249,7 @@ describe('Cron Hero', () => {
       })
       const state = makeState([player])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'self' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'self' }))
 
       const updated = result.state.players['p1']!
       expect(hasBuff(updated, 'slow')).toBe(false)
@@ -279,9 +261,7 @@ describe('Cron Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(380 - 90) // Level 1 W costs 90
@@ -306,9 +286,7 @@ describe('Cron Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
@@ -343,9 +321,7 @@ describe('Cron Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(380 - 55) // Level 1 E costs 55

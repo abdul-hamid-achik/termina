@@ -3,10 +3,10 @@ import type { GameState, PlayerState, BuffState, GameEvent } from '~~/shared/typ
 import type { TargetRef } from '~~/shared/types/commands'
 import type { DamageType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
-import { calculateEffectiveDamage } from '../engine/DamageCalculator'
-import { getEffectiveDefense, getEffectiveMagicResist } from '../engine/EffectiveStats'
+import { calculateEffectiveDamage } from '~~/server/game/engine/DamageCalculator'
+import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
 import { TALENT_TREES } from './talent-trees'
-import type { GameEngineEvent } from '../protocol/events'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */

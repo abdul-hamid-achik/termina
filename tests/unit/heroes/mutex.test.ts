@@ -9,10 +9,7 @@ import {
   getBuffStacks,
 } from '../../../server/game/heroes/_base'
 // Register mutex hero and import helpers
-import {
-  getDeadlockDefenseBonus,
-  getDeadlockAttackBonus,
-} from '../../../server/game/heroes/mutex'
+import { getDeadlockDefenseBonus, getDeadlockAttackBonus } from '../../../server/game/heroes/mutex'
 
 // ── Test Helpers ──────────────────────────────────────────────────
 
@@ -96,9 +93,7 @@ describe('Mutex Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
@@ -112,9 +107,7 @@ describe('Mutex Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(260 - 60) // Level 1 Q costs 60
@@ -126,9 +119,7 @@ describe('Mutex Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(260 - 105) // Level 4 Q costs 105

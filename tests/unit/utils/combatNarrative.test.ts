@@ -1,9 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { eventToLine, buildCombatLines, deriveKillFeed, type NarrativeContext } from '../../../app/utils/combatNarrative'
+import {
+  eventToLine,
+  buildCombatLines,
+  deriveKillFeed,
+  type NarrativeContext,
+} from '../../../app/utils/combatNarrative'
 import { collapseStructureDamage } from '../../../app/utils/combatLog'
 import type { GameEvent } from '../../../shared/types/game'
 
-const teams: Record<string, string> = { me: 'radiant', ally1: 'radiant', enemy1: 'dire', enemy2: 'dire' }
+const teams: Record<string, string> = {
+  me: 'radiant',
+  ally1: 'radiant',
+  enemy1: 'dire',
+  enemy2: 'dire',
+}
 const heroes: Record<string, string> = { me: 'thread', enemy1: 'null_ref', enemy2: 'regex' }
 
 const ctx: NarrativeContext = {
@@ -22,28 +32,48 @@ function ev(type: string, payload: Record<string, unknown>, tick = 1): GameEvent
 
 describe('eventToLine: salience', () => {
   it('marks incoming damage to me as mine-in', () => {
-    const line = eventToLine(ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 80, damageType: 'physical' }), ctx)!
+    const line = eventToLine(
+      ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 80, damageType: 'physical' }),
+      ctx,
+    )!
     expect(line.salience).toBe('mine-in')
     expect(line.text).toContain('You')
     expect(line.text).toContain('80')
   })
   it('marks my outgoing damage as mine-out', () => {
-    const line = eventToLine(ev('damage', { sourceId: 'me', targetId: 'enemy1', amount: 40, damageType: 'magical' }), ctx)!
+    const line = eventToLine(
+      ev('damage', { sourceId: 'me', targetId: 'enemy1', amount: 40, damageType: 'magical' }),
+      ctx,
+    )!
     expect(line.salience).toBe('mine-out')
   })
   it('marks teammate-involved as ally', () => {
-    const line = eventToLine(ev('damage', { sourceId: 'enemy1', targetId: 'ally1', amount: 20, damageType: 'physical' }), ctx)!
+    const line = eventToLine(
+      ev('damage', { sourceId: 'enemy1', targetId: 'ally1', amount: 20, damageType: 'physical' }),
+      ctx,
+    )!
     expect(line.salience).toBe('ally')
   })
   it('marks pure bystander chip as world', () => {
-    const line = eventToLine(ev('damage', { sourceId: 'enemy1', targetId: 'enemy2', amount: 20, damageType: 'physical' }), ctx)!
+    const line = eventToLine(
+      ev('damage', { sourceId: 'enemy1', targetId: 'enemy2', amount: 20, damageType: 'physical' }),
+      ctx,
+    )!
     expect(line.salience).toBe('world')
   })
 })
 
 describe('eventToLine: structure damage collapses', () => {
   it('tags tower/core damage with a dedupKey + amount', () => {
-    const line = eventToLine(ev('damage', { sourceId: 'me', targetId: 'tower_mid-t1-dire', amount: 70, damageType: 'physical' }), ctx)!
+    const line = eventToLine(
+      ev('damage', {
+        sourceId: 'me',
+        targetId: 'tower_mid-t1-dire',
+        amount: 70,
+        damageType: 'physical',
+      }),
+      ctx,
+    )!
     expect(line.dedupKey).toBe('dmg:me->tower_mid-t1-dire')
     expect(line.dmgAmount).toBe(70)
   })
@@ -51,7 +81,10 @@ describe('eventToLine: structure damage collapses', () => {
 
 describe('eventToLine: kills', () => {
   it('includes assisters and hero ids', () => {
-    const line = eventToLine(ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: ['ally1'] }), ctx)!
+    const line = eventToLine(
+      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: ['ally1'] }),
+      ctx,
+    )!
     expect(line.type).toBe('kill')
     expect(line.text).toContain('terminated')
     expect(line.text).toContain('assist')
@@ -62,18 +95,32 @@ describe('eventToLine: kills', () => {
 
 describe('eventToLine: gold noise suppression', () => {
   it('drops redundant last-hit gold lines', () => {
-    expect(eventToLine(ev('gold_change', { playerId: 'me', amount: 40, reason: 'creep last hit' }), ctx)).toBeNull()
-    expect(eventToLine(ev('gold_change', { playerId: 'me', amount: 4, reason: 'passive' }), ctx)).toBeNull()
+    expect(
+      eventToLine(ev('gold_change', { playerId: 'me', amount: 40, reason: 'creep last hit' }), ctx),
+    ).toBeNull()
+    expect(
+      eventToLine(ev('gold_change', { playerId: 'me', amount: 4, reason: 'passive' }), ctx),
+    ).toBeNull()
   })
   it('keeps meaningful gold lines', () => {
-    const line = eventToLine(ev('gold_change', { playerId: 'me', amount: -150, reason: 'buyback' }), ctx)!
+    const line = eventToLine(
+      ev('gold_change', { playerId: 'me', amount: -150, reason: 'buyback' }),
+      ctx,
+    )!
     expect(line.text).toContain('lost 150g')
   })
 })
 
 describe('eventToLine: previously-orphaned events get real text', () => {
   it('surfaces the power-spike message verbatim', () => {
-    const line = eventToLine(ev('power_spike', { playerId: 'me', spikeType: 'level_6', message: 'You spiked at level 6!' }), ctx)!
+    const line = eventToLine(
+      ev('power_spike', {
+        playerId: 'me',
+        spikeType: 'level_6',
+        message: 'You spiked at level 6!',
+      }),
+      ctx,
+    )!
     expect(line.text).toBe('You spiked at level 6!')
     expect(line.type).toBe('objective')
   })
@@ -82,10 +129,25 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(eventToLine(ev('day_breaks', {}), ctx)!.text).toContain('DAY')
   })
   it('narrates roshan, runes, aegis, wards', () => {
-    expect(eventToLine(ev('roshan_killed', { killerTeam: 'radiant', goldAwarded: 600 }), ctx)!.text).toContain('Roshan')
-    expect(eventToLine(ev('rune_picked', { playerId: 'me', zone: 'rune-top', runeType: 'haste' }), ctx)!.text).toContain('rune')
+    expect(
+      eventToLine(ev('roshan_killed', { killerTeam: 'radiant', goldAwarded: 600 }), ctx)!.text,
+    ).toContain('Roshan')
+    expect(
+      eventToLine(ev('rune_picked', { playerId: 'me', zone: 'rune-top', runeType: 'haste' }), ctx)!
+        .text,
+    ).toContain('rune')
     expect(eventToLine(ev('aegis_picked', { playerId: 'me' }), ctx)!.text).toContain('Aegis')
-    expect(eventToLine(ev('ward_placed', { playerId: 'me', zone: 'mid-river', team: 'radiant', wardType: 'observer' }), ctx)!.text).toContain('ward')
+    expect(
+      eventToLine(
+        ev('ward_placed', {
+          playerId: 'me',
+          zone: 'mid-river',
+          team: 'radiant',
+          wardType: 'observer',
+        }),
+        ctx,
+      )!.text,
+    ).toContain('ward')
   })
   it('keeps the exact victory phrasing for the core', () => {
     const line = eventToLine(ev('ancient_destroyed', { team: 'dire', killerTeam: 'radiant' }), ctx)!
@@ -103,8 +165,16 @@ describe('eventToLine: previously-orphaned events get real text', () => {
 describe('buildCombatLines', () => {
   it('maps, suppresses, and collapses structure chip', () => {
     const events: GameEvent[] = [
-      ev('damage', { sourceId: 'me', targetId: 'tower_mid-t1-dire', amount: 70, damageType: 'physical' }, 1),
-      ev('damage', { sourceId: 'me', targetId: 'tower_mid-t1-dire', amount: 70, damageType: 'physical' }, 2),
+      ev(
+        'damage',
+        { sourceId: 'me', targetId: 'tower_mid-t1-dire', amount: 70, damageType: 'physical' },
+        1,
+      ),
+      ev(
+        'damage',
+        { sourceId: 'me', targetId: 'tower_mid-t1-dire', amount: 70, damageType: 'physical' },
+        2,
+      ),
       ev('gold_change', { playerId: 'me', amount: 40, reason: 'creep last hit' }, 2),
       ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }, 3),
     ]
@@ -120,7 +190,10 @@ describe('buildCombatLines', () => {
 
 describe('deriveKillFeed', () => {
   it('flags first blood on the first kill', () => {
-    const feed = deriveKillFeed([ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }, 5)], ctx)
+    const feed = deriveKillFeed(
+      [ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }, 5)],
+      ctx,
+    )
     expect(feed[0]!.firstBlood).toBe(true)
     expect(feed[0]!.text).toContain('FIRST BLOOD')
   })
@@ -218,8 +291,14 @@ describe('eventToLine: more orphaned events', () => {
 
 describe('actorSalience for single-actor events', () => {
   it('is ally for a teammate, world for an enemy, mine-out for me', () => {
-    expect(eventToLine(ev('level_up', { playerId: 'ally1', newLevel: 6 }), ctx)!.salience).toBe('ally')
-    expect(eventToLine(ev('level_up', { playerId: 'enemy1', newLevel: 6 }), ctx)!.salience).toBe('world')
-    expect(eventToLine(ev('level_up', { playerId: 'me', newLevel: 6 }), ctx)!.salience).toBe('mine-out')
+    expect(eventToLine(ev('level_up', { playerId: 'ally1', newLevel: 6 }), ctx)!.salience).toBe(
+      'ally',
+    )
+    expect(eventToLine(ev('level_up', { playerId: 'enemy1', newLevel: 6 }), ctx)!.salience).toBe(
+      'world',
+    )
+    expect(eventToLine(ev('level_up', { playerId: 'me', newLevel: 6 }), ctx)!.salience).toBe(
+      'mine-out',
+    )
   })
 })

@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
-import { authLog } from '../../utils/log'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { authLog } from '~~/server/utils/log'
 
 export default defineOAuthGitHubEventHandler({
   config: {

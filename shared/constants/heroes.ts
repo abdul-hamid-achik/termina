@@ -502,7 +502,9 @@ export const HEROES: Record<string, HeroDef> = {
         manaCost: 200,
         cooldownTicks: 55,
         targetType: 'none',
-        effects: [{ type: 'slow', value: 1, duration: 3, description: 'Global move speed reduction' }],
+        effects: [
+          { type: 'slow', value: 1, duration: 3, description: 'Global move speed reduction' },
+        ],
       },
     },
   },

@@ -2,8 +2,8 @@ import { Context, Effect, Layer } from 'effect'
 import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
-import { initializeZoneStates, initializeTowers } from '../map/zones'
-import { initializeRoshan } from '../map/spawner'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from './AncientSystem'
 
 // ── Error types ────────────────────────────────────────────────

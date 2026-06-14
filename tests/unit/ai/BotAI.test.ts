@@ -147,7 +147,13 @@ describe('BotAI - decideBotAction', () => {
 
     it('does not retreat when HP is above retreat threshold', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 180, maxHp: 500 }) // 36% HP
-      const allyCreep = { id: 'c1', team: 'radiant' as const, zone: 'mid-t1-rad', hp: 300, type: 'melee' as const }
+      const allyCreep = {
+        id: 'c1',
+        team: 'radiant' as const,
+        zone: 'mid-t1-rad',
+        hp: 300,
+        type: 'melee' as const,
+      }
       const state = makeGameState({ players: { [bot.id]: bot }, creeps: [allyCreep] })
       const action = decideBotAction(state, bot, 'mid')
       // 180/500 = 36% => above 30% retreat threshold, advances with creep support
@@ -350,7 +356,13 @@ describe('BotAI - decideBotAction', () => {
   describe('movement - lane pathing', () => {
     it('moves forward along assigned lane with creep support', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
-      const allyCreep = { id: 'c1', team: 'radiant' as const, zone: 'mid-t1-rad', hp: 300, type: 'melee' as const }
+      const allyCreep = {
+        id: 'c1',
+        team: 'radiant' as const,
+        zone: 'mid-t1-rad',
+        hp: 300,
+        type: 'melee' as const,
+      }
       const state = makeGameState({ players: { [bot.id]: bot }, creeps: [allyCreep] })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'move', zone: 'mid-river' })
@@ -852,7 +864,13 @@ describe('BotAI - decideBotAction', () => {
     ]
 
     function bot() {
-      return makePlayer({ id: 'bot_alpha', team: 'radiant', zone: 'mid-river', hp: 400, maxHp: 500 })
+      return makePlayer({
+        id: 'bot_alpha',
+        team: 'radiant',
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+      })
     }
     function ally(hp: number) {
       return makePlayer({ id: 'bot_ally', team: 'radiant', zone: 'mid-river', hp, maxHp: 500 })
@@ -930,7 +948,10 @@ describe('BotAI - decideBotAction', () => {
     it('still self-casts a heal/shield ally ability when alone (resolver accepts self)', () => {
       // sentry.q/w, proxy.w, cron.w accept the caster as the target, so a
       // hurt-and-alone bot should still cast on itself.
-      for (const effects of [healEffects, [{ type: 'shield', value: 140, duration: 3 }] as AbilityEffect[]]) {
+      for (const effects of [
+        healEffects,
+        [{ type: 'shield', value: 140, duration: 3 }] as AbilityEffect[],
+      ]) {
         const ability = makeAbility('ally', effects)
         const target = getAbilityTarget(ability, bot(), [enemy(50)], [])
         expect(target).toEqual({ kind: 'hero', name: 'bot_alpha' })

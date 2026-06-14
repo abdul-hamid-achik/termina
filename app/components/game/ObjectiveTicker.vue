@@ -31,7 +31,9 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
               : 'text-text-dim'
         "
       >
-        <template v-if="rosh.status === 'up'">UP{{ rosh.hpPct != null ? ` ${rosh.hpPct}%` : '' }}</template>
+        <template v-if="rosh.status === 'up'"
+          >UP{{ rosh.hpPct != null ? ` ${rosh.hpPct}%` : '' }}</template
+        >
         <template v-else-if="rosh.status === 'dead'">dead · {{ rosh.respawnIn }}t</template>
         <template v-else>?</template>
       </span>
@@ -39,8 +41,12 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
     <!-- Rune -->
     <div class="flex items-center justify-between gap-2">
       <span class="text-text-dim">RUNE</span>
-      <span :class="rune.live.length ? 'text-ability text-glow-ability font-bold' : 'text-text-dim'">
-        <template v-if="rune.live.length">{{ rune.live[0]!.type }} · {{ rune.live[0]!.expiresIn }}t</template>
+      <span
+        :class="rune.live.length ? 'text-ability text-glow-ability font-bold' : 'text-text-dim'"
+      >
+        <template v-if="rune.live.length"
+          >{{ rune.live[0]!.type }} · {{ rune.live[0]!.expiresIn }}t</template
+        >
         <template v-else>next {{ rune.nextIn }}t</template>
       </span>
     </div>

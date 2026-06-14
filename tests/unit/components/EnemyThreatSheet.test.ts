@@ -46,7 +46,15 @@ describe('EnemyThreatSheet', () => {
   })
 
   it('shows last-seen intel for a fogged enemy', () => {
-    const fogged = { id: 'e2', name: 'enemy_two', team: 'dire', heroId: 'regex', level: 6, alive: true, fogged: true }
+    const fogged = {
+      id: 'e2',
+      name: 'enemy_two',
+      team: 'dire',
+      heroId: 'regex',
+      level: 6,
+      alive: true,
+      fogged: true,
+    }
     const w = mount(EnemyThreatSheet, {
       props: { enemies: [fogged], lastSeen: { e2: { zone: 'top-river', tick: 6 } }, tick: 10 },
     })
@@ -62,14 +70,30 @@ describe('EnemyThreatSheet', () => {
   })
 
   it('never renders HP/MP/cooldowns for a fogged enemy (fog-safe)', () => {
-    const fogged = { id: 'e3', name: 'enemy_three', team: 'dire', heroId: 'cache', level: 5, alive: true, fogged: true }
+    const fogged = {
+      id: 'e3',
+      name: 'enemy_three',
+      team: 'dire',
+      heroId: 'cache',
+      level: 5,
+      alive: true,
+      fogged: true,
+    }
     const w = mount(EnemyThreatSheet, { props: { enemies: [fogged], lastSeen: {}, tick: 0 } })
     expect(w.find('[data-testid="threat-cooldowns-e3"]').exists()).toBe(false)
     expect(w.find('[data-testid="threat-fogged-e3"]').exists()).toBe(true)
   })
 
   it('does not show a misleading "respawn 0t" for a fogged-dead enemy', () => {
-    const foggedDead = { id: 'e4', name: 'enemy_four', team: 'dire', heroId: 'regex', level: 5, alive: false, fogged: true }
+    const foggedDead = {
+      id: 'e4',
+      name: 'enemy_four',
+      team: 'dire',
+      heroId: 'regex',
+      level: 5,
+      alive: false,
+      fogged: true,
+    }
     const w = mount(EnemyThreatSheet, { props: { enemies: [foggedDead], lastSeen: {}, tick: 10 } })
     const el = w.get('[data-testid="threat-dead-e4"]')
     expect(el.text()).toContain('DEAD')

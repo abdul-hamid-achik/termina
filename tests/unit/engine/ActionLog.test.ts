@@ -1,11 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { RedisServiceApi } from '../../../server/services/RedisService'
-import {
-  appendActions,
-  readActions,
-  deleteActionLog,
-} from '../../../server/game/engine/ActionLog'
+import { appendActions, readActions, deleteActionLog } from '../../../server/game/engine/ActionLog'
 
 function makeMockRedis(): RedisServiceApi & { _list: Map<string, string[]> } {
   const lists = new Map<string, string[]>()
@@ -64,7 +60,11 @@ describe('ActionLog', () => {
     await Effect.runPromise(
       appendActions(redis, 'g1', [
         { tick: 1, playerId: 'p1', command: { type: 'move', zone: 'mid-river' } },
-        { tick: 1, playerId: 'p2', command: { type: 'attack', target: { kind: 'hero', id: 'p1' } } },
+        {
+          tick: 1,
+          playerId: 'p2',
+          command: { type: 'attack', target: { kind: 'hero', id: 'p1' } },
+        },
       ]),
     )
 

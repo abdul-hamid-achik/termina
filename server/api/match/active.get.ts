@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
-import { listSnapshotGameIds, readSnapshot } from '../../game/engine/StateSnapshot'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { listSnapshotGameIds, readSnapshot } from '~~/server/game/engine/StateSnapshot'
 import { HEROES } from '~~/shared/constants/heroes'
 
 /**

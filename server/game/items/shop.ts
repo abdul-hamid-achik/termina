@@ -14,9 +14,9 @@ import {
   getAlliesInZone,
   updatePlayers,
   findTargetPlayer,
-} from '../heroes/_base'
-import { areAdjacent } from '../map/topology'
-import { calculateMagicalDamage } from '../engine/DamageCalculator'
+} from '~~/server/game/heroes/_base'
+import { areAdjacent } from '~~/server/game/map/topology'
+import { calculateMagicalDamage } from '~~/server/game/engine/DamageCalculator'
 
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */

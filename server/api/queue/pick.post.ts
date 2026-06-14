@@ -1,5 +1,5 @@
-import { getGameRuntime } from '../../plugins/game-server'
-import { pickHero } from '../../game/matchmaking/lobby'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { pickHero } from '~~/server/game/matchmaking/lobby'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)

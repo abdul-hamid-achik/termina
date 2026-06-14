@@ -66,11 +66,17 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
     <!-- Net worth lead + trend -->
     <section class="shrink-0">
       <div class="mb-0.5 flex items-center justify-between">
-        <span class="text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">Net Worth</span>
+        <span class="text-[0.6rem] font-bold tracking-wider text-text-dim uppercase"
+          >Net Worth</span
+        >
         <Sparkline :values="leadSeries" :color-var="leadColorVar" class="text-[0.7rem]" />
       </div>
       <div class="flex items-baseline gap-1 font-mono">
-        <span v-if="lead.leader" :class="lead.leader === 'radiant' ? 'text-radiant' : 'text-dire'" class="font-bold">
+        <span
+          v-if="lead.leader"
+          :class="lead.leader === 'radiant' ? 'text-radiant' : 'text-dire'"
+          class="font-bold"
+        >
           {{ lead.leader === 'radiant' ? 'RAD' : 'DIRE' }} +{{ formatGoldShort(lead.amount) }}
         </span>
         <span v-else class="text-text-dim">even</span>
@@ -79,7 +85,9 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
 
     <!-- Objectives -->
     <section class="shrink-0 border-t border-border/50 pt-1.5">
-      <div class="mb-0.5 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">Objectives</div>
+      <div class="mb-0.5 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
+        Objectives
+      </div>
       <ObjectiveTicker
         :roshan="store.roshan"
         :runes="store.runes"
@@ -92,19 +100,28 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
     <!-- Day/night + vision -->
     <section class="shrink-0 border-t border-border/50 pt-1.5 font-mono">
       <div class="flex items-center justify-between">
-        <span :class="dayNight.isNight ? 'text-self' : 'text-gold'" class="font-bold">{{ dayNight.label }}</span>
+        <span :class="dayNight.isNight ? 'text-self' : 'text-gold'" class="font-bold">{{
+          dayNight.label
+        }}</span>
         <span class="text-[0.62rem] text-text-dim">{{ dayNight.meaning }}</span>
       </div>
       <div class="mt-0.5 flex items-center justify-between text-[0.62rem] text-text-dim">
         <span>vision {{ vision.visible }}/{{ vision.total }} ({{ vision.pct }}%)</span>
-        <span v-if="vision.wardsActive">wards {{ vision.wardsActive }}<template v-if="vision.nextWardExpiry != null"> · {{ vision.nextWardExpiry }}t</template></span>
+        <span v-if="vision.wardsActive"
+          >wards {{ vision.wardsActive
+          }}<template v-if="vision.nextWardExpiry != null">
+            · {{ vision.nextWardExpiry }}t</template
+          ></span
+        >
         <span v-else>no wards</span>
       </div>
     </section>
 
     <!-- Enemy threat sheet (the only part that scrolls; readouts above stay pinned) -->
     <section class="min-h-0 flex-1 overflow-y-auto border-t border-border/50 pt-1.5">
-      <div class="mb-1 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">Enemy Threat</div>
+      <div class="mb-1 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
+        Enemy Threat
+      </div>
       <EnemyThreatSheet :enemies="store.enemyPlayers" :last-seen="store.lastSeen" :tick="tick" />
     </section>
   </div>

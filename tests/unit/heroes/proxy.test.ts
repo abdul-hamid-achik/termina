@@ -105,9 +105,7 @@ describe('Proxy Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
       expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
@@ -122,9 +120,7 @@ describe('Proxy Hero', () => {
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(380 - 70) // Level 1 Q costs 70
@@ -189,9 +185,7 @@ describe('Proxy Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updatedAlly = result.state.players['a1']!
       expect(hasBuff(updatedAlly, 'shield')).toBe(true)
@@ -205,9 +199,7 @@ describe('Proxy Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const shield = result.state.players['a1']!.buffs.find((b) => b.id === 'shield')
       expect(shield!.stacks).toBe(320) // Level 4 shield
@@ -217,9 +209,7 @@ describe('Proxy Hero', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'self' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'self' }))
 
       expect(hasBuff(result.state.players['p1']!, 'shield')).toBe(true)
     })
@@ -229,9 +219,7 @@ describe('Proxy Hero', () => {
       const ally = makeAlly()
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(380 - 90) // Level 1 W costs 90
@@ -331,9 +319,7 @@ describe('Proxy Hero', () => {
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
 
       expect(result.state.players['p1']!.zone).toBe('top-river')
       expect(result.state.players['a1']!.zone).toBe('mid-river')
@@ -344,9 +330,7 @@ describe('Proxy Hero', () => {
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
 
       expect(hasBuff(result.state.players['p1']!, 'invulnerable')).toBe(true)
       expect(hasBuff(result.state.players['a1']!, 'invulnerable')).toBe(true)
@@ -359,9 +343,7 @@ describe('Proxy Hero', () => {
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
 
-      const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }),
-      )
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
       expect(updated.mp).toBe(500 - 200) // R1 costs 200

@@ -151,17 +151,12 @@ function initialOf(name: string | undefined | null): string {
 </script>
 
 <template>
-  <div
-    class="flex min-h-0 flex-1 flex-col bg-bg-primary p-2 sm:p-3"
-    data-testid="hero-picker"
-  >
+  <div class="flex min-h-0 flex-1 flex-col bg-bg-primary p-2 sm:p-3" data-testid="hero-picker">
     <!-- TOP (desktop): full team panels side-by-side with VS + countdown -->
     <div class="mb-2 hidden gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr]">
       <!-- Radiant panel -->
       <div class="border border-border bg-bg-panel p-2 shadow-glow-radiant">
-        <div class="t-h3 mb-1 text-center text-radiant text-glow-radiant">
-          RADIANT
-        </div>
+        <div class="t-h3 mb-1 text-center text-radiant text-glow-radiant">RADIANT</div>
         <div class="flex flex-col gap-0.5">
           <div
             v-for="(slot, i) in 5"
@@ -174,7 +169,11 @@ function initialOf(name: string | undefined | null): string {
             "
           >
             <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
-            <HeroAvatar v-if="radiantRoster[i]?.heroId" :hero-id="radiantRoster[i]!.heroId!" :size="20" />
+            <HeroAvatar
+              v-if="radiantRoster[i]?.heroId"
+              :hero-id="radiantRoster[i]!.heroId!"
+              :size="20"
+            />
             <span class="min-w-0 flex-1 truncate font-mono">
               {{ radiantRoster[i]?.name ?? '---' }}
             </span>
@@ -228,10 +227,7 @@ function initialOf(name: string | undefined | null): string {
     </div>
 
     <!-- TOP (mobile): compact one-line roster strip — initials/avatars + pick state -->
-    <div
-      class="mb-2 flex items-center justify-center gap-1 sm:hidden"
-      data-testid="roster-strip"
-    >
+    <div class="mb-2 flex items-center justify-center gap-1 sm:hidden" data-testid="roster-strip">
       <div
         v-for="(slot, i) in 5"
         :key="'strip-rad-' + i"
@@ -244,7 +240,11 @@ function initialOf(name: string | undefined | null): string {
         ]"
         :title="radiantRoster[i]?.name"
       >
-        <HeroAvatar v-if="radiantRoster[i]?.heroId" :hero-id="radiantRoster[i]!.heroId!" :size="22" />
+        <HeroAvatar
+          v-if="radiantRoster[i]?.heroId"
+          :hero-id="radiantRoster[i]!.heroId!"
+          :size="22"
+        />
         <span v-else>{{ initialOf(radiantRoster[i]?.name) }}</span>
       </div>
       <span class="shrink-0 px-1 text-[0.6rem] text-text-muted">vs</span>
@@ -302,7 +302,8 @@ function initialOf(name: string | undefined | null): string {
             'border-ability bloom-ability scale-[1.02]': selectedHero === hero.id && !lockedIn,
             'border-radiant bloom-radiant': lockedIn && selectedHero === hero.id,
             'cursor-not-allowed opacity-30': hero.picked,
-            'hover:border-border-glow hover:scale-[1.02] hover:shadow-glow-highlight': !hero.picked && selectedHero !== hero.id,
+            'hover:border-border-glow hover:scale-[1.02] hover:shadow-glow-highlight':
+              !hero.picked && selectedHero !== hero.id,
           }"
           @click="selectHero(hero.id)"
         >
@@ -356,8 +357,16 @@ function initialOf(name: string | undefined | null): string {
               }}</span>
             </div>
             <div class="t-caption flex gap-2 t-mono-num">
-              <span>MP <span class="text-mana">{{ selectedHeroDef.abilities[slot].manaCost }}</span></span>
-              <span>CD <span class="text-text-primary">{{ selectedHeroDef.abilities[slot].cooldownTicks }}t</span></span>
+              <span
+                >MP
+                <span class="text-mana">{{ selectedHeroDef.abilities[slot].manaCost }}</span></span
+              >
+              <span
+                >CD
+                <span class="text-text-primary"
+                  >{{ selectedHeroDef.abilities[slot].cooldownTicks }}t</span
+                ></span
+              >
             </div>
           </div>
         </div>
@@ -365,7 +374,11 @@ function initialOf(name: string | undefined | null): string {
       <div v-else class="min-w-0 flex-1 t-caption">&gt;_ select a hero to deploy...</div>
       <div class="flex items-center justify-between gap-3 sm:justify-end">
         <!-- Mobile countdown (the desktop one lives in the VS column) -->
-        <span class="t-h2 tabular-nums sm:hidden" :class="countdownClass" data-testid="mobile-countdown">
+        <span
+          class="t-h2 tabular-nums sm:hidden"
+          :class="countdownClass"
+          data-testid="mobile-countdown"
+        >
           {{ countdown }}<span class="t-h3 ml-0.5 text-text-muted">s</span>
         </span>
         <AsciiButton

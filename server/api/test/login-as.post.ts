@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
+import { getGameRuntime } from '~~/server/plugins/game-server'
 
 /**
  * Dev/test-only: mint a session for a (find-or-create) local user — the
@@ -13,7 +13,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 
-  const body = await readBody<{ username?: string }>(event).catch(() => ({}) as { username?: string })
+  const body = await readBody<{ username?: string }>(event).catch(
+    () => ({}) as { username?: string },
+  )
   const username = body?.username?.trim()
   // Dev-only: allow up to 40 chars so per-run identities like
   // `cairn_${run.token}` (cairntrace v1.9 runtime placeholder, ~21 chars) fit.

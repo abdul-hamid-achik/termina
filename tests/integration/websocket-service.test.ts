@@ -8,10 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
 import { createServer, type Server } from 'node:http'
 import { WebSocketServer, WebSocket as NodeWebSocket } from 'ws'
-import {
-  WebSocketService,
-  WebSocketServiceLive,
-} from '../../server/services/WebSocketService'
+import { WebSocketService, WebSocketServiceLive } from '../../server/services/WebSocketService'
 import type { ServerMessage } from '../../shared/types/protocol'
 
 interface Harness {
@@ -73,9 +70,7 @@ function nextMessage(ws: NodeWebSocket): Promise<string> {
   })
 }
 
-function runWithService<A>(
-  fn: (svc: WebSocketService) => Effect.Effect<A>,
-): Promise<A> {
+function runWithService<A>(fn: (svc: WebSocketService) => Effect.Effect<A>): Promise<A> {
   return Effect.runPromise(
     Effect.gen(function* () {
       const svc = yield* WebSocketService
@@ -213,43 +208,40 @@ describe('WebSocketService — real socket integration', () => {
       c2.close()
     })
 
-    it(
-      'removeConnection unconditionally drops the player — coordination is the caller’s job',
-      async () => {
-        // This documents the current contract: WebSocketService trusts the
-        // caller to guard against the "old close fires after new connect"
-        // race. The fix (a 60s grace timer) lives one layer up in the WS
-        // route. If anyone changes WebSocketService to add peer identity,
-        // delete this test and add the equivalent at the route layer.
-        const c1 = await connectClient(harness.port)
-        const c2 = await connectClient(harness.port)
-        while (harness.serverSockets.length < 2) {
-          await new Promise((r) => setTimeout(r, 5))
-        }
+    it('removeConnection unconditionally drops the player — coordination is the caller’s job', async () => {
+      // This documents the current contract: WebSocketService trusts the
+      // caller to guard against the "old close fires after new connect"
+      // race. The fix (a 60s grace timer) lives one layer up in the WS
+      // route. If anyone changes WebSocketService to add peer identity,
+      // delete this test and add the equivalent at the route layer.
+      const c1 = await connectClient(harness.port)
+      const c2 = await connectClient(harness.port)
+      while (harness.serverSockets.length < 2) {
+        await new Promise((r) => setTimeout(r, 5))
+      }
 
-        await runWithService((svc) =>
-          Effect.gen(function* () {
-            yield* svc.addConnection('grace', 'p1', harness.serverSockets[0]! as unknown as WebSocket)
-            // Player reconnects — newer socket replaces the old one.
-            yield* svc.addConnection('grace', 'p1', harness.serverSockets[1]! as unknown as WebSocket)
-            // The old close handler fires *after* the reconnect — without a
-            // grace timer this nukes the new connection too.
-            yield* svc.removeConnection('p1')
-            yield* svc.sendToPlayer('p1', { type: 'announcement', message: 'lost', level: 'info' })
-          }),
-        )
+      await runWithService((svc) =>
+        Effect.gen(function* () {
+          yield* svc.addConnection('grace', 'p1', harness.serverSockets[0]! as unknown as WebSocket)
+          // Player reconnects — newer socket replaces the old one.
+          yield* svc.addConnection('grace', 'p1', harness.serverSockets[1]! as unknown as WebSocket)
+          // The old close handler fires *after* the reconnect — without a
+          // grace timer this nukes the new connection too.
+          yield* svc.removeConnection('p1')
+          yield* svc.sendToPlayer('p1', { type: 'announcement', message: 'lost', level: 'info' })
+        }),
+      )
 
-        const got = await Promise.race([
-          nextMessage(c1).then(() => 'old' as const),
-          nextMessage(c2).then(() => 'new' as const),
-          new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 100)),
-        ])
-        expect(got).toBe('timeout')
+      const got = await Promise.race([
+        nextMessage(c1).then(() => 'old' as const),
+        nextMessage(c2).then(() => 'new' as const),
+        new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 100)),
+      ])
+      expect(got).toBe('timeout')
 
-        c1.close()
-        c2.close()
-      },
-    )
+      c1.close()
+      c2.close()
+    })
 
     it('reconnecting after removeConnection re-enables sends', async () => {
       const c1 = await connectClient(harness.port)
@@ -317,7 +309,11 @@ describe('WebSocketService — real socket integration', () => {
         const idx = i
         await runWithService((svc) =>
           Effect.gen(function* () {
-            yield* svc.addConnection('gflip', 'p1', harness.serverSockets[idx]! as unknown as WebSocket)
+            yield* svc.addConnection(
+              'gflip',
+              'p1',
+              harness.serverSockets[idx]! as unknown as WebSocket,
+            )
             yield* svc.sendToPlayer('p1', {
               type: 'announcement',
               message: `gen${idx}`,

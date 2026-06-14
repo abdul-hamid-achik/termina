@@ -8,7 +8,7 @@ import {
   SENTRY_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
-import { scaledTowerHp } from '../engine/fastGame'
+import { scaledTowerHp } from '~~/server/game/engine/fastGame'
 
 /** Determine tower tier from zone ID. Returns 0 if no tower. */
 function getTowerTier(zoneId: string): number {

@@ -1,4 +1,4 @@
-import { peerLog } from '../utils/log'
+import { peerLog } from '~~/server/utils/log'
 
 type CrosswsPeer = { send: (data: string) => void }
 type RawWs = { send: (data: string | ArrayBuffer | Uint8Array) => number | undefined }

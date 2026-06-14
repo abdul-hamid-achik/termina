@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from 'effect'
 import type { ServerMessage } from '~~/shared/types/protocol'
-import { wsLog } from '../utils/log'
+import { wsLog } from '~~/server/utils/log'
 
 export interface WebSocketServiceApi {
   readonly addConnection: (gameId: string, playerId: string, ws: WebSocket) => Effect.Effect<void>

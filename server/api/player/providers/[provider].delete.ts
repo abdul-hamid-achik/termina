@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../../plugins/game-server'
+import { getGameRuntime } from '~~/server/plugins/game-server'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -39,9 +39,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await Effect.runPromise(
-    runtime.dbService.unlinkProvider(playerId, provider),
-  )
+  await Effect.runPromise(runtime.dbService.unlinkProvider(playerId, provider))
 
   return { success: true }
 })

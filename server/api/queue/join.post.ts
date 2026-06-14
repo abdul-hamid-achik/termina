@@ -1,9 +1,9 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
-import { joinQueue, getQueueSize, isPlayerInQueue } from '../../game/matchmaking/queue'
-import { getPlayerGame } from '../../services/PeerRegistry'
-import { getPlayerLobby } from '../../game/matchmaking/lobby'
-import { checkScopedRateLimit } from '../../utils/RateLimiter'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { joinQueue, getQueueSize, isPlayerInQueue } from '~~/server/game/matchmaking/queue'
+import { getPlayerGame } from '~~/server/services/PeerRegistry'
+import { getPlayerLobby } from '~~/server/game/matchmaking/lobby'
+import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)

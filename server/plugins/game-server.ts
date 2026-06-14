@@ -1,35 +1,43 @@
 import { Effect, Layer, ManagedRuntime } from 'effect'
-import { RedisService, makeRedisServiceLive, type RedisServiceApi } from '../services/RedisService'
+import {
+  RedisService,
+  makeRedisServiceLive,
+  type RedisServiceApi,
+} from '~~/server/services/RedisService'
 import {
   DatabaseService,
   DatabaseServiceLive,
   type DatabaseServiceApi,
-} from '../services/DatabaseService'
+} from '~~/server/services/DatabaseService'
 import {
   WebSocketService,
   WebSocketServiceLive,
   type WebSocketServiceApi,
-} from '../services/WebSocketService'
-import { gameLoggerLive } from '../utils/logger'
-import { gameLog } from '../utils/log'
-import { createInMemoryStateManager } from '../game/engine/StateManager'
-import { startGameLoop, runOneTick, type GameCallbacks } from '../game/engine/GameLoop'
-import { deleteSnapshot, readSnapshot, listSnapshotGameIds } from '../game/engine/StateSnapshot'
-import { toGameEvent, type GameEngineEvent } from '../game/protocol/events'
+} from '~~/server/services/WebSocketService'
+import { gameLoggerLive } from '~~/server/utils/logger'
+import { gameLog } from '~~/server/utils/log'
+import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
+import { startGameLoop, runOneTick, type GameCallbacks } from '~~/server/game/engine/GameLoop'
+import {
+  deleteSnapshot,
+  readSnapshot,
+  listSnapshotGameIds,
+} from '~~/server/game/engine/StateSnapshot'
+import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   calculateVision,
   filterStateForPlayer,
   filterStateForSpectator,
-} from '../game/engine/VisionCalculator'
-import { getSpectatorsOfGame, clearGameSpectators } from '../services/SpectatorRegistry'
+} from '~~/server/game/engine/VisionCalculator'
+import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
 import type { TeamId, GameState } from '~~/shared/types/game'
-import type { NewMatch, NewMatchPlayer } from '../db/schema'
-import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
-import { sendToPeer, setPlayerGame, clearPlayerGame } from '../services/PeerRegistry'
-import { cleanupLobby } from '../game/matchmaking/lobby'
-import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '../game/matchmaking/elo'
+import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
+import { isBot, registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
+import { sendToPeer, setPlayerGame, clearPlayerGame } from '~~/server/services/PeerRegistry'
+import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
+import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
-import { applyScenario } from '../game/dev/scenarios'
+import { applyScenario } from '~~/server/game/dev/scenarios'
 
 /** Check if a game event is visible to a specific player based on vision. */
 function isEventVisibleToPlayer(
@@ -279,7 +287,7 @@ export default defineNitroPlugin(async (nitroApp) => {
   )
 
   // Start matchmaking loop
-  const { startMatchmakingLoop } = await import('../game/matchmaking/queue')
+  const { startMatchmakingLoop } = await import('~~/server/game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
 
   // Build the callbacks for a single game. Captured separately from the
@@ -598,7 +606,12 @@ export default defineNitroPlugin(async (nitroApp) => {
       { playerId: opts.humanId, team: 'radiant', heroId: humanHero, mmr: 1000 },
     ]
     for (let i = 0; i < 4; i++)
-      players.push({ playerId: `bot_r${i}_${gameId}`, team: 'radiant', heroId: nextHero(), mmr: 1000 })
+      players.push({
+        playerId: `bot_r${i}_${gameId}`,
+        team: 'radiant',
+        heroId: nextHero(),
+        mmr: 1000,
+      })
     for (let i = 0; i < 5; i++)
       players.push({ playerId: `bot_d${i}_${gameId}`, team: 'dire', heroId: nextHero(), mmr: 1000 })
 

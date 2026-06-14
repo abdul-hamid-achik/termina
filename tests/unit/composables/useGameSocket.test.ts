@@ -64,6 +64,7 @@ vi.mock('vue', async () => {
 // ── Tests ─────────────────────────────────────────────────────────
 
 describe('useGameSocket', () => {
+  // oxlint-disable-next-line typescript/consistent-type-imports -- the module is dynamically re-imported per test (vi.resetModules); typeof import() is the idiomatic way to type it
   let useGameSocket: typeof import('../../../app/composables/useGameSocket').useGameSocket
 
   beforeEach(async () => {

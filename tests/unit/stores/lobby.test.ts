@@ -198,11 +198,11 @@ describe('Lobby Store', () => {
 
       store.heroPicked('player-1', 'daemon')
 
-      const p1 = store.teamRoster.find(m => m.playerId === 'player-1')
+      const p1 = store.teamRoster.find((m) => m.playerId === 'player-1')
       expect(p1!.heroId).toBe('daemon')
 
       // Other players unchanged
-      const p2 = store.teamRoster.find(m => m.playerId === 'player-2')
+      const p2 = store.teamRoster.find((m) => m.playerId === 'player-2')
       expect(p2!.heroId).toBeNull()
     })
 
@@ -219,9 +219,7 @@ describe('Lobby Store', () => {
   describe('optimisticPick / rollbackPendingPick', () => {
     it('applies the pick locally and tracks it as pending', () => {
       const store = useLobbyStore()
-      store.setTeamInfo('radiant', [
-        { playerId: 'me', name: 'Me', heroId: null, team: 'radiant' },
-      ])
+      store.setTeamInfo('radiant', [{ playerId: 'me', name: 'Me', heroId: null, team: 'radiant' }])
 
       store.optimisticPick('me', 'echo')
 
@@ -232,9 +230,7 @@ describe('Lobby Store', () => {
 
     it('rolls back a rejected optimistic pick', () => {
       const store = useLobbyStore()
-      store.setTeamInfo('radiant', [
-        { playerId: 'me', name: 'Me', heroId: null, team: 'radiant' },
-      ])
+      store.setTeamInfo('radiant', [{ playerId: 'me', name: 'Me', heroId: null, team: 'radiant' }])
       store.heroPicked('p2', 'kernel')
       store.optimisticPick('me', 'echo')
 
@@ -395,9 +391,7 @@ describe('Lobby Store', () => {
         status: 'lobby',
         lobbyId: 'lobby-abc',
         team: 'dire',
-        players: [
-          { playerId: 'p1', team: 'dire', heroId: null },
-        ],
+        players: [{ playerId: 'p1', team: 'dire', heroId: null }],
         phase: 'picking',
       })
 
@@ -548,9 +542,7 @@ describe('Lobby Store', () => {
       expect(store.queueStatus).toBe('picking')
 
       // Set team info
-      store.setTeamInfo('radiant', [
-        { playerId: 'p1', name: 'P1', heroId: null, team: 'radiant' },
-      ])
+      store.setTeamInfo('radiant', [{ playerId: 'p1', name: 'P1', heroId: null, team: 'radiant' }])
       expect(store.team).toBe('radiant')
 
       // Hero picked

@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
-import { readSnapshot } from '../../game/engine/StateSnapshot'
-import { readActions } from '../../game/engine/ActionLog'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { readSnapshot } from '~~/server/game/engine/StateSnapshot'
+import { readActions } from '~~/server/game/engine/ActionLog'
 
 /**
  * Return the snapshot + persisted action log for a game so a client-side

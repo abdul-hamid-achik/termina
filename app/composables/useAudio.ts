@@ -76,7 +76,15 @@ const SOUNDS: Record<SoundName, SoundDef> = {
   kill: {
     oscs: [
       { type: 'square', freqStart: 520, freqEnd: 980, duration: 0.18, gain: 0.22, attack: 0.002 },
-      { type: 'sine', freqStart: 1040, freqEnd: 1960, duration: 0.18, gain: 0.16, attack: 0.002, detune: 4 },
+      {
+        type: 'sine',
+        freqStart: 1040,
+        freqEnd: 1960,
+        duration: 0.18,
+        gain: 0.16,
+        attack: 0.002,
+        detune: 4,
+      },
       { type: 'triangle', freqStart: 260, freqEnd: 490, duration: 0.22, gain: 0.18, attack: 0.003 },
     ],
     noise: { duration: 0.05, gain: 0.16, cutoff: 5000 },

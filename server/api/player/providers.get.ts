@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
+import { getGameRuntime } from '~~/server/plugins/game-server'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -14,9 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const playerId = session.user.id as string
 
-  const providers = await Effect.runPromise(
-    runtime.dbService.getPlayerProviders(playerId),
-  )
+  const providers = await Effect.runPromise(runtime.dbService.getPlayerProviders(playerId))
 
   return providers.map((p) => ({
     provider: p.provider,

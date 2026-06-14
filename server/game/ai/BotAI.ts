@@ -10,10 +10,10 @@ import type {
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
-import { findPath, getDistance } from '../map/topology'
-import { ANCIENT_ZONES } from '../engine/AncientSystem'
-import { fastGameFactor } from '../engine/fastGame'
-import { getAbilityLevel } from '../heroes/_base'
+import { findPath, getDistance } from '~~/server/game/map/topology'
+import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
+import { fastGameFactor } from '~~/server/game/engine/fastGame'
+import { getAbilityLevel } from '~~/server/game/heroes/_base'
 import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
 
 const LANE_ROUTES: Record<string, Record<TeamId, string[]>> = {
@@ -289,9 +289,7 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
   // it never attacks, never earns XP, never levels — and a whole game of
   // bots in that state deadlocks the match forever.
   return (
-    getAbilityLevel(bot.level, slot) >= 1 &&
-    bot.cooldowns[slot] === 0 &&
-    bot.mp >= ability.manaCost
+    getAbilityLevel(bot.level, slot) >= 1 && bot.cooldowns[slot] === 0 && bot.mp >= ability.manaCost
   )
 }
 

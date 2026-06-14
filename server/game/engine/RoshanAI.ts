@@ -1,10 +1,13 @@
 import type { GameState } from '~~/shared/types/game'
-import type { GameEngineEvent, RoshanDamageEvent, RoshanRespawnEvent, RoshanKilledInternalEvent, AegisPickedEvent } from '../protocol/events'
-import {
-  ROSHAN_ATTACK,
-  ROSHAN_AEGIS_TICKS,
-} from '~~/shared/constants/balance'
-import { shouldRoshanRespawn, respawnRoshan } from '../map/spawner'
+import type {
+  GameEngineEvent,
+  RoshanDamageEvent,
+  RoshanRespawnEvent,
+  RoshanKilledInternalEvent,
+  AegisPickedEvent,
+} from '~~/server/game/protocol/events'
+import { ROSHAN_ATTACK, ROSHAN_AEGIS_TICKS } from '~~/shared/constants/balance'
+import { shouldRoshanRespawn, respawnRoshan } from '~~/server/game/map/spawner'
 
 export interface RoshanAction {
   targetId: string
@@ -28,9 +31,7 @@ export function runRoshanAI(state: GameState): RoshanAction[] {
 
   // Attack the lowest HP enemy hero in range
   if (enemyHeroes.length > 0) {
-    const target = enemyHeroes.reduce((lowest, hero) =>
-      hero.hp < lowest.hp ? hero : lowest,
-    )
+    const target = enemyHeroes.reduce((lowest, hero) => (hero.hp < lowest.hp ? hero : lowest))
     actions.push({
       targetId: target.id,
       damage: ROSHAN_ATTACK,
@@ -90,7 +91,7 @@ export function processRoshanDamage(
   damageDealt: Map<string, number>, // playerId -> damage
 ): { state: GameState; roshanKilled: boolean; aegisDropped: boolean; events: GameEngineEvent[] } {
   let roshan = { ...state.roshan }
-  const events: GameEngineEvent[] = state.events.map(e => e as unknown as GameEngineEvent)
+  const events: GameEngineEvent[] = state.events.map((e) => e as unknown as GameEngineEvent)
   let roshanKilled = false
   let aegisDropped = false
 
@@ -106,7 +107,12 @@ export function processRoshanDamage(
         maxHp: roshan.maxHp,
       } satisfies RoshanRespawnEvent)
     }
-    return { state: { ...state, roshan, events: [...events] as unknown as GameEvent[] }, roshanKilled: false, aegisDropped: false, events }
+    return {
+      state: { ...state, roshan, events: [...events] as unknown as GameEvent[] },
+      roshanKilled: false,
+      aegisDropped: false,
+      events,
+    }
   }
 
   // Calculate total damage to Roshan this tick
@@ -194,7 +200,12 @@ export function processRoshanDamage(
     }
   }
 
-  return { state: { ...state, roshan, events: events as unknown as GameEvent[] }, roshanKilled, aegisDropped, events }
+  return {
+    state: { ...state, roshan, events: events as unknown as GameEvent[] },
+    roshanKilled,
+    aegisDropped,
+    events,
+  }
 }
 
 /**
@@ -229,11 +240,14 @@ export function pickupAegis(state: GameState, playerId: string): GameState {
   // Remove aegis from the ground
   const newAegis = null
 
-  const events = [...state.events.map(e => e as unknown as GameEngineEvent), {
-    _tag: 'aegis_picked',
-    tick: state.tick,
-    playerId,
-  } satisfies AegisPickedEvent]
+  const events = [
+    ...state.events.map((e) => e as unknown as GameEngineEvent),
+    {
+      _tag: 'aegis_picked',
+      tick: state.tick,
+      playerId,
+    } satisfies AegisPickedEvent,
+  ]
 
   return { ...state, players, aegis: newAegis, events: events as unknown as typeof state.events }
 }

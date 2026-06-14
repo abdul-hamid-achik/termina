@@ -15,8 +15,7 @@ const loading = ref(false)
 const usernameValid = computed(() => /^\w{3,20}$/.test(username.value))
 const usernameError = computed(() => {
   if (!username.value) return ''
-  if (username.value.length < 3 || username.value.length > 20)
-    return 'must be 3-20 characters'
+  if (username.value.length < 3 || username.value.length > 20) return 'must be 3-20 characters'
   if (!/^\w+$/.test(username.value)) return 'letters, numbers, and underscores only'
   return ''
 })
@@ -73,7 +72,9 @@ function switchMode(newMode: 'login' | 'register') {
 
 // Check URL for OAuth errors
 if (route.query.error) {
-  const raw = String(route.query.error).replace(/<[^>]*>/g, '').slice(0, 100)
+  const raw = String(route.query.error)
+    .replace(/<[^>]*>/g, '')
+    .slice(0, 100)
   error.value = `OAuth login failed (${raw})`
 }
 </script>
@@ -82,16 +83,12 @@ if (route.query.error) {
   <div class="flex min-h-[calc(100vh-120px)] items-center justify-center p-8 max-sm:p-4">
     <div class="w-full max-w-[420px]">
       <!-- ASCII Art Header -->
-      <pre
-        class="m-0 mb-4 text-center text-[0.6rem] leading-tight text-radiant select-none"
-      >
+      <pre class="m-0 mb-4 text-center text-[0.6rem] leading-tight text-radiant select-none">
 ╔╦╗╔═╗╦═╗╔╦╗╦╔╗╔╔═╗
  ║ ║╣ ╠╦╝║║║║║║║╠═╣
  ╩ ╚═╝╩╚═╩ ╩╩╝╚╝╩ ╩</pre
       >
-      <p class="mb-4 text-center text-[0.85rem] text-text-dim">
-        &gt;_ authenticate to continue
-      </p>
+      <p class="mb-4 text-center text-[0.85rem] text-text-dim">&gt;_ authenticate to continue</p>
 
       <TerminalPanel :title="mode === 'login' ? 'authentication' : 'registration'">
         <!-- Tab Switcher -->
@@ -121,10 +118,7 @@ if (route.query.error) {
         </div>
 
         <!-- Error Display -->
-        <div
-          v-if="error"
-          class="mb-3 border border-dire/30 bg-dire/5 px-3 py-2 text-xs text-dire"
-        >
+        <div v-if="error" class="mb-3 border border-dire/30 bg-dire/5 px-3 py-2 text-xs text-dire">
           <span class="text-dire/60">[ERR]</span> {{ error }}
         </div>
 
@@ -142,7 +136,7 @@ if (route.query.error) {
               spellcheck="false"
               placeholder="enter_username"
               class="terminal-input"
-            >
+            />
             <div v-if="mode === 'register' && username" class="text-[0.7rem]">
               <span v-if="usernameError" class="text-dire">! {{ usernameError }}</span>
               <span v-else-if="usernameValid" class="text-radiant">ok</span>
@@ -160,7 +154,7 @@ if (route.query.error) {
               :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
               placeholder="••••••••"
               class="terminal-input"
-            >
+            />
             <div v-if="mode === 'register' && password" class="text-[0.7rem]">
               <span v-if="passwordError" class="text-dire">! {{ passwordError }}</span>
               <span v-else class="text-radiant">ok</span>
@@ -178,7 +172,7 @@ if (route.query.error) {
               autocomplete="new-password"
               placeholder="••••••••"
               class="terminal-input"
-            >
+            />
             <div v-if="confirmPassword" class="text-[0.7rem]">
               <span v-if="confirmError" class="text-dire">! {{ confirmError }}</span>
               <span v-else-if="passwordsMatch" class="text-radiant">ok</span>
@@ -187,9 +181,7 @@ if (route.query.error) {
 
           <!-- Submit Button -->
           <AsciiButton
-            :label="
-              loading ? 'PROCESSING...' : mode === 'login' ? 'LOGIN' : 'REGISTER'
-            "
+            :label="loading ? 'PROCESSING...' : mode === 'login' ? 'LOGIN' : 'REGISTER'"
             variant="primary"
             :disabled="!canSubmit || loading"
             class="mt-1 w-full justify-center"
@@ -205,17 +197,9 @@ if (route.query.error) {
         </div>
 
         <!-- OAuth Buttons -->
-        <div
-          class="flex flex-col gap-2 [&_button]:w-full [&_button]:justify-center"
-        >
-          <AsciiButton
-            label="CONTINUE WITH GITHUB"
-            @click="authStore.loginOAuth('github')"
-          />
-          <AsciiButton
-            label="CONTINUE WITH DISCORD"
-            @click="authStore.loginOAuth('discord')"
-          />
+        <div class="flex flex-col gap-2 [&_button]:w-full [&_button]:justify-center">
+          <AsciiButton label="CONTINUE WITH GITHUB" @click="authStore.loginOAuth('github')" />
+          <AsciiButton label="CONTINUE WITH DISCORD" @click="authStore.loginOAuth('discord')" />
         </div>
       </TerminalPanel>
     </div>

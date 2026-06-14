@@ -26,27 +26,33 @@ import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './A
 import { runTowerAI, applyTowerActions } from './TowerAI'
 import { runRoshanAI, processRoshanDamage } from './RoshanAI'
 import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
-import { spawnCreepWaves, spawnRunes } from '../map/spawner'
+import { spawnCreepWaves, spawnRunes } from '~~/server/game/map/spawner'
 import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
-import { removeExpiredWards } from '../map/zones'
+import { removeExpiredWards } from '~~/server/game/map/zones'
 import { filterStateForPlayer } from './VisionCalculator'
-// Importing from '../heroes' (not '../heroes/_base') guarantees every hero's
+// Importing from '~~/server/game/heroes' (not '../heroes/_base') guarantees every hero's
 // registerHero() side effect has run before the first tick resolves a cast.
-import { levelUpHero, processDoTs, tickAllBuffs, resolvePassive, TALENT_TREES } from '../heroes'
-import { toGameEvent, type GameEngineEvent } from '../protocol/events'
-import { getBotPlayerIds, getBotLane } from '../ai/BotManager'
-import { decideBotAction } from '../ai/BotAI'
-import { engineLog } from '../../utils/log'
+import {
+  levelUpHero,
+  processDoTs,
+  tickAllBuffs,
+  resolvePassive,
+  TALENT_TREES,
+} from '~~/server/game/heroes'
+import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
+import { getBotPlayerIds, getBotLane } from '~~/server/game/ai/BotManager'
+import { decideBotAction } from '~~/server/game/ai/BotAI'
+import { engineLog } from '~~/server/utils/log'
 import { calculateBuybackCost, buyback } from './BuybackSystem'
 import { voteSurrender, removeSurrenderVote } from './SurrenderSystem'
 import {
   markPlayerActiveSafe,
   detectAFKPlayers,
   recordLeaverSafe,
-} from '../../services/LeaverSystem'
+} from '~~/server/services/LeaverSystem'
 import { writeSnapshot, SNAPSHOT_EVERY_N_TICKS, type SnapshotMeta } from './StateSnapshot'
 import { appendActions } from './ActionLog'
-import type { RedisServiceApi } from '../../services/RedisService'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
 
 // ── Action queue per game ──────────────────────────────────────
 

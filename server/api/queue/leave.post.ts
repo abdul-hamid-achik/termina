@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
-import { getGameRuntime } from '../../plugins/game-server'
-import { leaveQueue } from '../../game/matchmaking/queue'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+import { leaveQueue } from '~~/server/game/matchmaking/queue'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)

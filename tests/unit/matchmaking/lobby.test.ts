@@ -353,9 +353,7 @@ describe('Lobby', () => {
 
       const lobbyStateCalls = vi
         .mocked(sendToPeer)
-        .mock.calls.filter(
-          ([, msg]) => (msg as { type: string }).type === 'lobby_state',
-        )
+        .mock.calls.filter(([, msg]) => (msg as { type: string }).type === 'lobby_state')
       expect(lobbyStateCalls.length).toBe(10)
       for (const [, msg] of lobbyStateCalls) {
         expect(msg).toMatchObject({ type: 'lobby_state', phase: 'picking' })

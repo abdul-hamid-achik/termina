@@ -24,7 +24,11 @@ import { HEROES } from '../../../shared/constants/heroes'
 const ZONE = 'mid-river'
 const ADJ = 'mid-t1-rad'
 
-function mkPlayer(id: string, team: 'radiant' | 'dire', over: Partial<PlayerState> = {}): PlayerState {
+function mkPlayer(
+  id: string,
+  team: 'radiant' | 'dire',
+  over: Partial<PlayerState> = {},
+): PlayerState {
   return {
     id,
     name: id,
@@ -113,8 +117,14 @@ function hasObservableEffect(
     if (!preP) continue
     if (postP.hp !== preP.hp) return true
     if (postP.zone !== preP.zone) return true
-    const preBuffs = preP.buffs.map((b) => `${b.id}:${b.stacks}`).sort().join(',')
-    const postBuffs = postP.buffs.map((b) => `${b.id}:${b.stacks}`).sort().join(',')
+    const preBuffs = preP.buffs
+      .map((b) => `${b.id}:${b.stacks}`)
+      .sort()
+      .join(',')
+    const postBuffs = postP.buffs
+      .map((b) => `${b.id}:${b.stacks}`)
+      .sort()
+      .join(',')
     if (preBuffs !== postBuffs) return true
     if (pid !== 'caster' && postP.mp !== preP.mp) return true
   }
@@ -158,7 +168,9 @@ describe('Ability census — every hero ability produces an observable effect', 
             break
           }
         }
-        expect(observed, `${heroId}.${slot} produced no observable effect for any target`).toBe(true)
+        expect(observed, `${heroId}.${slot} produced no observable effect for any target`).toBe(
+          true,
+        )
       })
     }
   }

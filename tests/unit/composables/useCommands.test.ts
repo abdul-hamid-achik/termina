@@ -635,7 +635,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('m', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('move')
         expect(texts).toContain('map')
         expect(texts).toContain('mv')
@@ -646,7 +646,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('a', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('attack')
         expect(texts).toContain('atk')
       })
@@ -664,7 +664,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('mv', context)
 
-        const mv = suggestions.find(s => s.text === 'mv')
+        const mv = suggestions.find((s) => s.text === 'mv')
         expect(mv?.description).toBe('→ move')
       })
 
@@ -673,7 +673,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('buy', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('buy')
         expect(texts).toContain('buyback')
       })
@@ -683,7 +683,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('surr', context)
 
-        const surrender = suggestions.find(s => s.text === 'surrender')
+        const surrender = suggestions.find((s) => s.text === 'surrender')
         expect(surrender).toBeDefined()
         expect(surrender!.description).toContain('confirm')
       })
@@ -695,7 +695,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('surrender c', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('surrender confirm')
         expect(texts).toContain('surrender cancel')
       })
@@ -705,7 +705,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('surrender co', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('surrender confirm')
         expect(texts).not.toContain('surrender cancel')
       })
@@ -717,8 +717,8 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('move mid', context)
 
-        const texts = suggestions.map(s => s.text)
-        expect(texts.some(t => t.includes('mid'))).toBe(true)
+        const texts = suggestions.map((s) => s.text)
+        expect(texts.some((t) => t.includes('mid'))).toBe(true)
       })
 
       it('suggests visible zones when available', () => {
@@ -731,7 +731,7 @@ describe('useCommands', () => {
         })
 
         const suggestions = autocomplete('move mid', context)
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
 
         expect(texts).toContain('mid-t1-rad')
         expect(texts).toContain('mid-river')
@@ -744,8 +744,8 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('attack hero', context)
 
-        const texts = suggestions.map(s => s.text)
-        expect(texts.some(t => t.includes('daemon'))).toBe(true)
+        const texts = suggestions.map((s) => s.text)
+        expect(texts.some((t) => t.includes('daemon'))).toBe(true)
       })
 
       it('suggests creep targets', () => {
@@ -753,7 +753,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('attack creep', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('creep:0')
         expect(texts).toContain('creep:1')
       })
@@ -763,7 +763,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('attack s', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('self')
       })
 
@@ -784,7 +784,7 @@ describe('useCommands', () => {
         // so it suggests ability slots starting with 'q'
         const suggestions = autocomplete('cast q', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('cast q')
       })
 
@@ -793,7 +793,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('cast r', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('cast r')
         expect(texts).not.toContain('cast q')
       })
@@ -805,7 +805,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('chat t', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('chat team')
       })
 
@@ -814,7 +814,7 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('chat a', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('chat all')
         expect(texts).not.toContain('chat team')
       })
@@ -826,23 +826,46 @@ describe('useCommands', () => {
         const context = makeContext()
         const suggestions = autocomplete('ping mid', context)
 
-        const texts = suggestions.map(s => s.text)
-        expect(texts.some(t => t.includes('mid'))).toBe(true)
+        const texts = suggestions.map((s) => s.text)
+        expect(texts.some((t) => t.includes('mid'))).toBe(true)
       })
     })
 
     describe('buy item completion', () => {
       const sampleItems: Record<string, ItemDef> = {
         healing_salve: {
-          id: 'healing_salve', name: 'Healing Salve', cost: 150, stats: {}, consumable: true, maxStacks: 3,
-          active: { id: 'healing_salve_active', name: 'Heal', description: 'Restore HP', cooldownTicks: 0 },
+          id: 'healing_salve',
+          name: 'Healing Salve',
+          cost: 150,
+          stats: {},
+          consumable: true,
+          maxStacks: 3,
+          active: {
+            id: 'healing_salve_active',
+            name: 'Heal',
+            description: 'Restore HP',
+            cooldownTicks: 0,
+          },
         },
         boots_of_speed: {
-          id: 'boots_of_speed', name: 'Boots of Speed', cost: 500, stats: { moveSpeed: 1 }, consumable: false,
+          id: 'boots_of_speed',
+          name: 'Boots of Speed',
+          cost: 500,
+          stats: { moveSpeed: 1 },
+          consumable: false,
         },
         blink_module: {
-          id: 'blink_module', name: 'Blink Module', cost: 2150, stats: { attack: 10 }, consumable: false,
-          active: { id: 'blink_active', name: 'Blink', description: 'Teleport to adjacent zone', cooldownTicks: 12 },
+          id: 'blink_module',
+          name: 'Blink Module',
+          cost: 2150,
+          stats: { attack: 10 },
+          consumable: false,
+          active: {
+            id: 'blink_active',
+            name: 'Blink',
+            description: 'Teleport to adjacent zone',
+            cooldownTicks: 12,
+          },
         },
       }
 
@@ -852,7 +875,7 @@ describe('useCommands', () => {
         const suggestions = autocomplete('buy heal', context)
 
         expect(suggestions.length).toBeGreaterThan(0)
-        const salve = suggestions.find(s => s.text === 'healing_salve')
+        const salve = suggestions.find((s) => s.text === 'healing_salve')
         expect(salve).toBeDefined()
         expect(salve!.description).toContain('150g')
       })
@@ -864,7 +887,7 @@ describe('useCommands', () => {
           items: sampleItems,
         })
         const suggestions = autocomplete('buy heal', context)
-        const salve = suggestions.find(s => s.text === 'healing_salve')
+        const salve = suggestions.find((s) => s.text === 'healing_salve')
 
         expect(salve).toBeDefined()
         expect(salve!.description).toContain('[affordable]')
@@ -877,7 +900,7 @@ describe('useCommands', () => {
           items: sampleItems,
         })
         const suggestions = autocomplete('buy boots', context)
-        const boots = suggestions.find(s => s.text === 'boots_of_speed')
+        const boots = suggestions.find((s) => s.text === 'boots_of_speed')
 
         expect(boots).toBeDefined()
         expect(boots!.description).toContain('[need 400g]')
@@ -895,14 +918,32 @@ describe('useCommands', () => {
     describe('sell item completion', () => {
       const sampleItems: Record<string, ItemDef> = {
         boots_of_speed: {
-          id: 'boots_of_speed', name: 'Boots of Speed', cost: 500, stats: { moveSpeed: 1 }, consumable: false,
+          id: 'boots_of_speed',
+          name: 'Boots of Speed',
+          cost: 500,
+          stats: { moveSpeed: 1 },
+          consumable: false,
         },
         healing_salve: {
-          id: 'healing_salve', name: 'Healing Salve', cost: 150, stats: {}, consumable: true, maxStacks: 3,
-          active: { id: 'healing_salve_active', name: 'Heal', description: 'Restore HP', cooldownTicks: 0 },
+          id: 'healing_salve',
+          name: 'Healing Salve',
+          cost: 150,
+          stats: {},
+          consumable: true,
+          maxStacks: 3,
+          active: {
+            id: 'healing_salve_active',
+            name: 'Heal',
+            description: 'Restore HP',
+            cooldownTicks: 0,
+          },
         },
         blink_module: {
-          id: 'blink_module', name: 'Blink Module', cost: 2150, stats: { attack: 10 }, consumable: false,
+          id: 'blink_module',
+          name: 'Blink Module',
+          cost: 2150,
+          stats: { attack: 10 },
+          consumable: false,
           active: { id: 'blink_active', name: 'Blink', description: 'Teleport', cooldownTicks: 12 },
         },
       }
@@ -910,11 +951,13 @@ describe('useCommands', () => {
       it('suggests only owned items matching partial', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ items: ['boots_of_speed', 'healing_salve', null, null, null, null] }),
+          player: makePlayer({
+            items: ['boots_of_speed', 'healing_salve', null, null, null, null],
+          }),
           items: sampleItems,
         })
         const suggestions = autocomplete('sell boots', context)
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
 
         expect(texts).toContain('boots_of_speed')
         expect(texts).not.toContain('blink_module')
@@ -927,7 +970,7 @@ describe('useCommands', () => {
           items: sampleItems,
         })
         const suggestions = autocomplete('sell boots', context)
-        const boots = suggestions.find(s => s.text === 'boots_of_speed')
+        const boots = suggestions.find((s) => s.text === 'boots_of_speed')
 
         expect(boots).toBeDefined()
         expect(boots!.description).toContain('sell: 250g')
@@ -945,11 +988,24 @@ describe('useCommands', () => {
     describe('use item completion', () => {
       const sampleItems: Record<string, ItemDef> = {
         boots_of_speed: {
-          id: 'boots_of_speed', name: 'Boots of Speed', cost: 500, stats: { moveSpeed: 1 }, consumable: false,
+          id: 'boots_of_speed',
+          name: 'Boots of Speed',
+          cost: 500,
+          stats: { moveSpeed: 1 },
+          consumable: false,
         },
         blink_module: {
-          id: 'blink_module', name: 'Blink Module', cost: 2150, stats: { attack: 10 }, consumable: false,
-          active: { id: 'blink_active', name: 'Blink', description: 'Teleport to adjacent zone', cooldownTicks: 12 },
+          id: 'blink_module',
+          name: 'Blink Module',
+          cost: 2150,
+          stats: { attack: 10 },
+          consumable: false,
+          active: {
+            id: 'blink_active',
+            name: 'Blink',
+            description: 'Teleport to adjacent zone',
+            cooldownTicks: 12,
+          },
         },
       }
 
@@ -961,7 +1017,7 @@ describe('useCommands', () => {
         })
         // Use a partial that matches both items' shared substring
         const suggestions = autocomplete('use b', context)
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
 
         expect(texts).toContain('blink_module')
         expect(texts).not.toContain('boots_of_speed')
@@ -974,7 +1030,7 @@ describe('useCommands', () => {
           items: sampleItems,
         })
         const suggestions = autocomplete('use blink', context)
-        const blink = suggestions.find(s => s.text === 'blink_module')
+        const blink = suggestions.find((s) => s.text === 'blink_module')
 
         expect(blink).toBeDefined()
         expect(blink!.description).toContain('Teleport to adjacent zone')
@@ -997,9 +1053,9 @@ describe('useCommands', () => {
         })
         const suggestions = autocomplete('ward mid', context)
 
-        const texts = suggestions.map(s => s.text)
+        const texts = suggestions.map((s) => s.text)
         // mid-t1-rad is adjacent to mid-t2-rad and mid-river
-        expect(texts.some(t => t.includes('mid'))).toBe(true)
+        expect(texts.some((t) => t.includes('mid'))).toBe(true)
       })
 
       it('falls back to all zones when no player', () => {
@@ -1051,9 +1107,7 @@ describe('validateCommand', () => {
   it('rejects normal actions while dead', () => {
     const ctx = makeContext({ player: makePlayer({ alive: false }) })
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/dead/i)
-    expect(
-      validateCommand({ type: 'attack', target: { kind: 'self' } }, ctx),
-    ).toMatch(/dead/i)
+    expect(validateCommand({ type: 'attack', target: { kind: 'self' } }, ctx)).toMatch(/dead/i)
   })
 
   describe('buyback', () => {
@@ -1193,7 +1247,11 @@ describe('validateCommand', () => {
       boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
     }
     const ctx = makeContext({
-      player: makePlayer({ zone: 'radiant-fountain', gold: 100, items: [null, null, null, null, null, null] }),
+      player: makePlayer({
+        zone: 'radiant-fountain',
+        gold: 100,
+        items: [null, null, null, null, null, null],
+      }),
       items,
     })
     const err = validateCommand({ type: 'buy', item: 'boots' }, ctx)
@@ -1231,12 +1289,18 @@ describe('validateCommand', () => {
     const ctx = makeContext({
       allPlayers: {
         p1: makePlayer(),
-        e1: makePlayer({ id: 'e1', name: 'Enemy', heroId: 'daemon', team: 'dire', zone: 'mid-river' }),
+        e1: makePlayer({
+          id: 'e1',
+          name: 'Enemy',
+          heroId: 'daemon',
+          team: 'dire',
+          zone: 'mid-river',
+        }),
       },
     })
-    expect(validateCommand({ type: 'attack', target: { kind: 'hero', name: 'daemon' } }, ctx)).toMatch(
-      /not in your zone/,
-    )
+    expect(
+      validateCommand({ type: 'attack', target: { kind: 'hero', name: 'daemon' } }, ctx),
+    ).toMatch(/not in your zone/)
   })
 
   it('allows attacking a hero in your zone', () => {
@@ -1260,6 +1324,8 @@ describe('validateCommand', () => {
         active: { id: 'tp-active', name: 'Teleport', description: 'Teleport', cooldownTicks: 10 },
       },
     }
-    expect(validateCommand({ type: 'use', item: 'tp' }, makeContext({ items }))).toMatch(/not owned/i)
+    expect(validateCommand({ type: 'use', item: 'tp' }, makeContext({ items }))).toMatch(
+      /not owned/i,
+    )
   })
 })

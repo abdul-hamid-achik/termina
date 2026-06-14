@@ -149,9 +149,7 @@ describe('HeroPicker', () => {
       // …then the server rejects it and the parent rolls it back
       await wrapper.setProps({ pickedHeroes: {} })
 
-      expect(
-        wrapper.find('[data-testid="ascii-button"]').attributes('disabled'),
-      ).toBeUndefined()
+      expect(wrapper.find('[data-testid="ascii-button"]').attributes('disabled')).toBeUndefined()
 
       await wrapper.find('[data-testid="ascii-button"]').trigger('click')
       expect(wrapper.emitted('pick')).toHaveLength(2)
@@ -170,9 +168,7 @@ describe('HeroPicker', () => {
       // Then it is my turn again
       await wrapper.setProps({ currentPicker: { playerId: 'me', username: 'Me' } })
 
-      expect(
-        wrapper.find('[data-testid="ascii-button"]').attributes('disabled'),
-      ).toBeUndefined()
+      expect(wrapper.find('[data-testid="ascii-button"]').attributes('disabled')).toBeUndefined()
     })
   })
 
