@@ -67,11 +67,6 @@ const mockAudioCtx = {
   resume: vi.fn(),
 }
 
-vi.stubGlobal(
-  'AudioContext',
-  vi.fn(() => mockAudioCtx),
-)
-
 vi.mock('~/stores/settings', () => ({
   useSettingsStore: vi.fn(() => ({
     audioEnabled: true,
@@ -83,6 +78,12 @@ describe('useAudio', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    // Vitest 4 restores stubGlobal between tests, so re-apply the AudioContext
+    // stub each test. Use a plain constructor function, NOT vi.fn(() => ...):
+    // in vitest 4 `new (vi.fn(() => obj))()` returns the empty `this`, not obj.
+    vi.stubGlobal('AudioContext', function MockAudioContext() {
+      return mockAudioCtx
+    })
     mockAudioCtx.state = 'running'
     mockAudioCtx.currentTime = 0
   })

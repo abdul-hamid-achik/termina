@@ -16,6 +16,7 @@
     "test:e2e": "cairn run tests/e2e/flows --config tests/e2e/cairntrace.config.yml --cold-start",
     "test:e2e:ci": "cairn run tests/e2e/flows --config tests/e2e/cairntrace.config.yml --cold-start --junit --stamp-if-green",
     "test:api": "npx hitspec run collections/",
+    "typecheck": "nuxt typecheck",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt --write",
@@ -28,14 +29,14 @@
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.1.0",
-    "@pinia/nuxt": "^0.9.0",
+    "@pinia/nuxt": "^0.11.0",
     "consola": "^3.4.2",
     "drizzle-orm": "^0.45.0",
     "effect": "^3.12.0",
     "ioredis": "^5.4.0",
-    "nuxt": "^3.21.8",
+    "nuxt": "^4.4.0",
     "nuxt-auth-utils": "^0.5.0",
-    "pinia": "^2.3.0",
+    "pinia": "^3.0.0",
     "postgres": "^3.4.0",
     "reka-ui": "^2.1.0",
     "vue": "^3.5.0",
@@ -53,13 +54,9 @@
     "oxlint": "^1.69.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^6.0.0",
-    "vitest": "^2.1.0",
-    "@vitejs/plugin-vue": "^5.2.0",
+    "vitest": "^4.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
     "vue-tsc": "^3.2.5",
     "ws": "^8.19.0"
-  },
-  "overrides": {
-    "@nuxt/kit": "3.21.8",
-    "@nuxt/schema": "3.21.8"
   }
 }
