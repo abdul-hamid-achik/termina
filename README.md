@@ -6,9 +6,9 @@ A text-based multiplayer online battle arena (MOBA) where strategy matters more 
 
 ### Core Gameplay
 - **5v5 Strategic Battles** - Turn-based combat with 4-second ticks
-- **16 Unique Heroes** - Programming-themed champions with distinct abilities
+- **18 Unique Heroes** - Programming-themed champions with distinct abilities
 - **40+ Items** - Complete item system with passives and actives
-- **Draft Phase** - 1 ban per team + alternating hero picks
+- **Draft Phase** - Alternating hero picks (snake draft)
 - **Talent Trees** - Binary choices at levels 10/15/20/25 for build diversity
 
 ### Strategic Mechanics
@@ -58,18 +58,19 @@ termina/
 │   │   ├── GameStatePersistence.ts
 │   │   └── LeaverSystem.ts
 │   └── routes/             # WebSocket handler
-├── shared/                 # Shared types & constants
-└── tests/                  # Vitest + Playwright tests
+├── shared/                 # Shared types & constants (+ shared/types/*.d.ts augmentations)
+└── tests/                  # Vitest (unit/integration/component) + Cairntrace (E2E)
 ```
 
 ### Technology Stack
-- **Frontend**: Nuxt 3, Vue 3, Pinia, TailwindCSS
+- **Frontend**: Nuxt 4, Vue 3, Pinia 3, Tailwind 4
 - **Backend**: Nitro (Nuxt server), Effect-TS
 - **Database**: PostgreSQL + Drizzle ORM
 - **Cache**: Redis (pub/sub, persistence)
 - **Real-time**: WebSocket (crossws)
 - **Runtime**: Bun
-- **Testing**: Vitest (unit), Playwright (E2E)
+- **Tooling**: oxlint (lint) · oxfmt (format) · knip (dead-code) · lefthook (git hooks)
+- **Testing**: Vitest (unit/integration/component) · Cairntrace (browser E2E, seeded via dev hooks)
 
 ---
 
@@ -160,7 +161,7 @@ chat team <message>  # Send to team only
 ### Game Flow
 
 1. **Queue** - Join ranked_5v5, quick_3v3, or 1v1
-2. **Draft** - 1 ban per team, alternating picks
+2. **Draft** - Alternating hero picks (snake draft)
 3. **Laning** - Last-hit creeps, deny, harass
 4. **Mid Game** - Team fights, objectives, towers
 5. **Late Game** - Roshan, mega creeps, base race
@@ -213,25 +214,16 @@ Level 25: Ultimate AOE +50% OR Double Echo (25% chance)
 ## 🧪 Testing
 
 ```bash
-# Unit tests
-bun test
-
-# Integration tests
-bun test tests/integration/
-
-# E2E tests
-bun run test:e2e
-
-# Coverage
-bun test --coverage
+bun run test:unit          # unit (node env)
+bun run test:integration   # integration (node env)
+bun run test:components    # component (happy-dom)
+bun run test:e2e           # Cairntrace browser E2E (needs a dev server up — see tests/e2e/README.md)
+bun run typecheck          # nuxt typecheck
 ```
 
-### Test Coverage
-- **Engine**: 164 tests (ActionResolver, GameLoop, etc.)
-- **Heroes**: 50+ tests (all 16 heroes)
-- **Items**: 20+ tests (shop, actives, passives)
-- **Matchmaking**: 33 tests (lobby, queue, draft)
-- **Services**: 31 tests (Redis, WebSocket, Leaver)
+### Coverage
+- **~2,800 Vitest tests** across engine, all 18 heroes, items, matchmaking, services, stores, and composables.
+- **29 Cairntrace E2E flows** (browser) covering all behaviours of the former Playwright suite. Each flow seeds an exact game/draft state via dev-only, double-gated `server/api/test/*` hooks instead of playing a real match — fast and deterministic. See [`tests/e2e/README.md`](tests/e2e/README.md).
 
 ---
 
@@ -307,14 +299,14 @@ MIT License - See LICENSE file for details
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests: `bun test`
-5. Submit a pull request
+4. Run checks: `bun run lint && bun run typecheck && bun run test:unit`
+5. Submit a pull request (lefthook runs oxlint + oxfmt + knip on commit, tests on push)
 
 ### Code Style
-- TypeScript strict mode
-- Effect-TS for error handling
-- Functional programming patterns
-- Comprehensive test coverage
+- TypeScript strict mode; type-only imports enforced by oxlint
+- Effect-TS for error handling; functional, immutable patterns
+- Formatted by oxfmt; cross-dir imports use the `~~/server` / `~~/shared` aliases
+- Comprehensive test coverage (Vitest + Cairntrace)
 
 ---
 
@@ -335,4 +327,4 @@ MIT License - See LICENSE file for details
 ---
 
 **Version**: 1.0.0  
-**Last Updated**: March 2026
+**Last Updated**: June 2026

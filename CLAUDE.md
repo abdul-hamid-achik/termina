@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Termina is a text-based multiplayer MOBA (5v5) played through a terminal-inspired browser UI. Frontend is Nuxt 3 + Vue 3 + Pinia. Backend is Nitro with Effect-TS for the game engine. The game runs on 4-second ticks with deterministic action resolution.
+Termina is a text-based multiplayer MOBA (5v5) played through a terminal-inspired browser UI. Frontend is Nuxt 4 + Vue 3 + Pinia 3 (Tailwind 4). Backend is Nitro with Effect-TS for the game engine, PostgreSQL via Drizzle, and Redis. The game runs on 4-second ticks with deterministic action resolution. Tooling is oxc-based: **oxlint** (lint), **oxfmt** (format), **knip** (dead-code), with lefthook git hooks. Runtime is Bun.
 
 ## Commands
 
@@ -22,14 +22,17 @@ npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
 hitspec run collections/auth-register.http         # Single hitspec collection
 cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
 
-# Lint & format
-bun run lint
-bun run format
+# Lint, format, typecheck, dead-code (oxc tooling — NOT eslint/prettier)
+bun run lint              # oxlint
+bun run format            # oxfmt --write   (format:check for CI)
+bun run typecheck         # nuxt typecheck  (vue-tsc over the split Nuxt 4 tsconfigs)
+bun run knip              # unused files/deps/exports
 
-# Database (requires PostgreSQL via docker-compose)
+# Database (requires PostgreSQL via docker-compose).
+# NOTE: the DB is `drizzle-kit push`-managed — schema.ts is the source of truth.
+# The file-migration history is vestigial/broken; do NOT rely on db:generate/migrate.
+# Apply a schema change with `drizzle-kit push` (or direct SQL for index/dedupe).
 docker compose up -d      # Start PostgreSQL + Redis
-bun run db:generate       # Generate Drizzle migrations
-bun run db:migrate        # Apply migrations
 bun run db:studio         # Drizzle Studio GUI
 
 # Build
@@ -89,15 +92,21 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 - **Effect.gen for async pipelines**: Server-side async uses Effect generators, not raw promises
 - **Discriminated unions**: Protocol messages use `{ type: '...' }` discriminator
 - **Unused vars**: Prefix with `_` (e.g., `_details`)
-- **Type imports**: ESLint enforces `import type { ... }` for type-only imports
-- **Testing**: Vitest for unit tests (`vi.fn()` mocks, `describe/it` blocks); hitspec for API tests (`.http` files in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that seed an exact game via the `server/api/test/*` dev hooks instead of playing a match — see `tests/e2e/README.md`)
-- **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind extends them (e.g., `text-radiant`, `bg-bg-primary`, `text-dire`)
+- **Type imports**: oxlint enforces `import type { ... }` (`typescript/consistent-type-imports`)
+- **Imports**: server code uses the `~~/server/...` root alias, not `../../` (`~~` → repo root, `~`/`@` → `app/`); resolves in Nitro, vitest, and tsc
+- **Testing**: Vitest 4 for unit tests — projects live in `test.projects` in `vitest.config.ts` (`bun run test:unit|components|integration`), `vi.fn()` mocks, `describe/it`; hitspec for API tests (`.http` in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that seed an exact game via the `server/api/test/*` dev hooks instead of playing a match — see `tests/e2e/README.md`)
+- **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind 4 utilities extend them (e.g., `text-radiant`, `bg-bg-primary`, `text-dire`). Tailwind 4 is wired via `@tailwindcss/vite` + an `@config` directive in terminal.css that keeps the v3-style `tailwind.config.ts` theme
 
 ## Important Gotchas
 
 - **Never use `bun --bun nuxt dev`** — Bun's native HTTP breaks the WebSocket proxy chain in dev mode
 - **Font imports** go in `app/assets/css/terminal.css` via `@import`, not in `nuxt.config.ts` `css` array (prevents SSR 404s)
-- **`<ClientOnly>`** is needed around auth-conditional UI in layouts (Nuxt 4 compat loads layouts async, causing hydration mismatches)
+- **`<ClientOnly>`** is needed around auth-conditional UI in layouts (Nuxt 4 loads layouts async, causing hydration mismatches)
 - **`processTick` validates actions twice** — once in GameLoop (line 88) and once inside `resolveActions`. The GameLoop validation catches rejections for player feedback; the ActionResolver validation is a safety net
 - **Bot IDs** start with `bot_` prefix — checked via `isBot()` from BotManager
 - **Lobby cleanup** happens in `game-server.ts` after game creation, not in lobby.ts — prevents race condition where poll returns 'searching' between lobby end and game start
+- **knip config is `knip.config.ts`, NOT `knip.json`** — knip resolves `knip.json` first, so adding one shadows the tuned config and explodes findings. Unused exports/types are advisory `warn`; unused files/deps fail the gate
+- **oxfmt formats everything by default** — its `.oxfmtrc.json` `ignorePatterns` MUST exclude `tests/e2e/**` (stamped cairntrace YAML — reformatting breaks the contractHash), `server/db/migrations/**`, and `**/*.{md,yml,yaml}`
+- **Type augmentations go in `shared/types/*.d.ts`** (e.g. the `#auth-utils` `User` augmentation) — Nuxt 4's split tsconfigs don't load `server/types/*.d.ts` as global augmentations, but `shared/**/*.d.ts` is in both the app and server include
+- **`players` and `hero_stats` both have `games_played` + `wins`** — bare column refs in a join/upsert are ambiguous in Postgres; qualify them (e.g. `hero_stats.games_played` in `ON CONFLICT DO UPDATE`)
+- **vue-router stays at 4** (Nuxt 4 ships/uses it); a harmless `vue-router/volar/sfc-route-blocks` warning from vue-tsc is non-fatal

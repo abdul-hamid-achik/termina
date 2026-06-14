@@ -41,7 +41,7 @@ Expert in hero definitions, abilities, and game balance.
 
 - `shared/constants/heroes.ts` — `HEROES` registry, `HERO_IDS` list
 - `server/game/heroes/_base.ts` — `levelUpHero`, `processDoTs`, `tickAllBuffs`
-- `server/game/heroes/<name>.ts` — individual hero definitions (20 heroes)
+- `server/game/heroes/<name>.ts` — individual hero definitions (18 heroes)
 
 **Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6, magicResist 2–5. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/root/slow/shield/dot/buff types.
 
@@ -63,7 +63,7 @@ Expert in the Vue 3 game UI, stores, and WebSocket integration.
 - `components/game/AsciiMap.vue` — zone grid with player/ally/enemy markers
 - `pages/lobby.vue` — matchmaking + hero picker + polling fallback
 
-**Conventions**: Terminal-themed UI. CSS vars in `assets/css/terminal.css`. Tailwind utility classes using custom colors (`text-radiant`, `text-dire`, `text-self`, `bg-bg-primary`). `<ClientOnly>` required around auth-conditional rendering.
+**Conventions**: Terminal-themed UI. CSS vars in `assets/css/terminal.css`. Tailwind 4 (wired via `@tailwindcss/vite` + an `@config` directive that keeps the v3-style `tailwind.config.ts` theme) utility classes using custom colors (`text-radiant`, `text-dire`, `text-self`, `bg-bg-primary`). `<ClientOnly>` required around auth-conditional rendering.
 
 ## matchmaking
 
@@ -74,10 +74,10 @@ Expert in the queue, lobby, and hero pick systems.
 **Key files**:
 
 - `queue.ts` — `joinQueue`, `leaveQueue`, `startMatchmakingLoop` (Redis sorted set by MMR)
-- `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck` (alternating pick order)
+- `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck`, `currentPickTurn` (snake pick order); `seedDraftLobby` (dev/test-only: freeze a draft at the human's pick turn, used by the `/api/test/new-draft` hook)
 - `server/api/queue/join.post.ts`, `status.get.ts`, `pick.post.ts` — HTTP endpoints
 
-**Flow**: Queue → match found → lobby created → alternating hero picks (15s per pick, auto-random on timeout) → 1.5s delay → 3s countdown → `game_ready` published to Redis → game-server.ts creates game.
+**Flow**: Queue → match found → lobby created → snake hero picks (15s per pick, auto-random on timeout) → 1.5s delay → 3s countdown → `game_ready` published to Redis → game-server.ts creates game. (No ban phase.) On lobby reconnect, `ws.ts` re-sends both `lobby_state` AND `pick_turn` so a refreshing/seeded client recovers whose turn it is.
 
 ## services
 
@@ -90,7 +90,7 @@ Expert in Effect-TS services, WebSocket infrastructure, and the plugin lifecycle
 - `PeerRegistry.ts` — `registerPeer`, `unregisterPeer`, `sendToPeer` (crosswsPeer primary, rawWs fallback)
 - `WebSocketService.ts` — per-game connection tracking via Effect Layer
 - `RedisService.ts` — pub/sub with `ioredis`, Effect-wrapped
-- `DatabaseService.ts` — Drizzle ORM queries (players, matches, hero stats)
+- `DatabaseService.ts` — Drizzle ORM queries (players, matches, hero stats). DB is `drizzle-kit push`-managed — `schema.ts` is the source of truth; the file-migration history is vestigial (don't `db:generate`/`migrate`). `players` and `hero_stats` both have `games_played`/`wins`, so qualify those columns in joins/upserts
 - `ws.ts` — WebSocket handler: auth, message dispatch, reconnect with 60s grace window
 - `game-server.ts` — `ManagedRuntime` composition, Redis subscription for `game_ready`, game loop callbacks
 
@@ -98,7 +98,7 @@ Expert in Effect-TS services, WebSocket infrastructure, and the plugin lifecycle
 
 ## tester
 
-Expert in writing and maintaining Vitest tests.
+Expert in writing and maintaining Vitest (unit/integration/component) and Cairntrace (browser E2E) tests.
 
 **Owns**: `tests/`
 
@@ -107,13 +107,15 @@ Expert in writing and maintaining Vitest tests.
 - `tests/unit/engine/` — GameLoop, ActionResolver, StateManager, VisionCalculator, DamageCalculator
 - `tests/unit/heroes/` — per-hero stat and ability validation
 - `tests/unit/services/` — PeerRegistry, WebSocketService, protocol
-- `tests/unit/matchmaking/` — queue, lobby
+- `tests/unit/matchmaking/` — queue, lobby (+ `seed-draft-lobby`)
 - `tests/unit/stores/` — game store, lobby store
-- `tests/unit/composables/` — useGameSocket, useCommands
+- `tests/unit/composables/` — useGameSocket, useCommands, useAudio
+- `tests/e2e/` — **Cairntrace** YAML flows (29). Seed exact game/draft state via the dev hooks below; `flows/`, reusable `actions/`, `cairntrace.config.yml`. See `tests/e2e/README.md`.
+- `server/api/test/*` — dev-only, double-gated (`NODE_ENV!=production && TERMINA_TEST_HOOKS=1`) seed hooks: `login-as`, `new-game`, `new-draft`, `advance`, `state`, `force-end` (+ `applyScenario` scenarios in `server/game/dev/scenarios.ts`).
 
-**Patterns**: `vi.fn()` for mocks. `vi.mock()` for module-level mocking (PeerRegistry, BotManager). `vi.useFakeTimers()` for time-dependent tests. `Effect.runSync` for testing Effect-wrapped code. Property-based validation for hero stat ranges. Always clean up registered peers/lobbies in `afterEach`.
+**Patterns**: Vitest 4 — projects are in `test.projects` in `vitest.config.ts`. `vi.fn()` mocks; `vi.mock()` for modules (PeerRegistry, BotManager); `vi.useFakeTimers()`; `Effect.runSync` for Effect code. NOTE vitest 4: `new (vi.fn(() => obj))()` returns the empty `this` — stub constructors with a plain `function(){ return mock }`. Clean up peers/lobbies in `afterEach`. E2E: each flow must pass `cairn run --cold-start` green and be stamped; `testUser` is `cairn_${run.token}` (per-run identity).
 
-**Commands**: `bun run test:unit` for all, `npx vitest run tests/unit/engine/GameLoop.test.ts` for single file.
+**Commands**: `bun run test:unit | test:integration | test:components`; `npx vitest run <file>` for one; `bun run test:e2e` (needs a dev server with `TERMINA_TEST_HOOKS=1`); `bun run typecheck`, `bun run lint` (oxlint), `bun run format` (oxfmt), `bun run knip`.
 
 ## bot-ai
 
