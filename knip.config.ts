@@ -33,8 +33,6 @@ const config: KnipConfig = {
   // hitspec likewise (test:api).
   ignoreBinaries: ['hitspec', 'cairn'],
   ignoreDependencies: [
-    // Fonts loaded via CSS
-    '@fontsource/jetbrains-mono',
     // Provided by Nuxt, not directly imported
     'vue-router',
     // CLI type-checker — run via `npx vue-tsc` and Nuxt's typeCheck:true
