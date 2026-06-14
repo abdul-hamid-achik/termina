@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import tailwindcss from '@tailwindcss/vite'
+
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
@@ -7,7 +9,13 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', 'nuxt-auth-utils'],
+  // Tailwind v4 is wired via its Vite plugin (the @nuxtjs/tailwindcss module is
+  // v3-only). The stylesheet is imported directly via `css` below.
+  modules: ['@pinia/nuxt', 'nuxt-auth-utils'],
+  css: ['~/assets/css/terminal.css'],
+  vite: {
+    plugins: [tailwindcss()],
+  },
 
   app: {
     head: {
@@ -42,10 +50,6 @@ export default defineNuxtConfig({
     experimental: {
       websocket: true,
     },
-  },
-
-  tailwindcss: {
-    cssPath: '~/assets/css/terminal.css',
   },
 
   components: [{ path: '~/components', pathPrefix: false }],

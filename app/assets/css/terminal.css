@@ -1,9 +1,10 @@
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/700.css';
+@import 'tailwindcss';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4: keep the v3-style JS theme (colors via CSS vars, glow shadows,
+   keyframes, the .text-glow plugin) through the back-compat @config directive. */
+@config '../../../tailwind.config.ts';
 
 /* ── Terminal Theme ─────────────────────────────────────────────── */
 
