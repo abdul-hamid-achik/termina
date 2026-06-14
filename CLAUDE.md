@@ -17,8 +17,10 @@ bun run test              # EVERYTHING: all Vitest projects (run mode) + the e2e
 bun run test:watch        # Vitest watch mode (fast iteration)
 bun run test:unit         # Unit tests (node env)
 bun run test:integration  # Integration tests (node env) — needs Postgres (docker compose up -d)
-bun run test:e2e          # Cairntrace browser e2e — scripts/e2e.mjs auto-starts a dev
-                          #   server with TERMINA_TEST_HOOKS=1 if none is on :3000, else reuses it
+bun run test:e2e          # Cairntrace browser e2e — scripts/e2e.mjs builds + runs a
+                          #   PRODUCTION PREVIEW server (node .output/server, IPv4, native WS,
+                          #   TERMINA_TEST_HOOKS=1) if none is on :3000, else reuses it. The prod
+                          #   preview avoids nuxt dev's Vite-proxy/cold-compile/IPv6 flakiness.
 bun run test:api          # API tests (hitspec, requires running server)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
 cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow

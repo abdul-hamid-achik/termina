@@ -236,12 +236,17 @@ Browser E2E uses [Cairntrace](https://github.com/abdul-hamid-achik/cairntrace)
 YAML flows paired with **dev-only seed hooks** so a spec lands in an exact game
 or draft state instead of playing a flaky bot match. **29 flows** cover every
 behaviour of the former Playwright suite (`cairn run tests/e2e/flows
---cold-start` → 29/29, ~7m). Cairntrace does NOT start the app — bring up a dev
-server with the hooks on first, then point `cairn` at it:
+--cold-start` → ~7m). The easy path is `bun run test:e2e` — `scripts/e2e.mjs`
+builds the app and runs a **production preview server** (`node .output/server`,
+IPv4, `TERMINA_TEST_HOOKS=1`), runs the suite, and tears it down. The prod preview
+avoids `nuxt dev`'s Vite-proxy / cold-compile / IPv6 flakiness. To drive `cairn`
+by hand instead, bring up any server on `:3000` with the hooks and point at it:
 
 ```bash
-# 1. dev server with the test hooks enabled
-TERMINA_TEST_HOOKS=1 bun run dev
+# 1. a server with the test hooks (preview = robust; dev = faster to iterate)
+TERMINA_TEST_HOOKS=1 bun run build && \
+  HOST=127.0.0.1 NUXT_SESSION_COOKIE_SECURE=false TERMINA_TEST_HOOKS=1 node .output/server/index.mjs
+#    …or, for quick local iteration: TERMINA_TEST_HOOKS=1 bun run dev
 
 # 2. whole suite (= `bun run test:e2e`; add --junit --stamp-if-green for CI = test:e2e:ci)
 cairn run tests/e2e/flows --config tests/e2e/cairntrace.config.yml --cold-start
@@ -264,9 +269,12 @@ transition isn't seeded; the draft→game path is covered by
 
 The point: **stop having to play the game to test it.** These build a *real*
 `GameState` through the same `createGame`/`startGameLoop` path the lobby uses —
-only **matchmaking** is bypassed. Every hook is **double-gated**
-(`NODE_ENV !== 'production' && TERMINA_TEST_HOOKS === '1'`): in production every
-route 404s and the helpers hard-return.
+only **matchmaking** is bypassed. Every hook is gated on the explicit
+**`TERMINA_TEST_HOOKS=1`** opt-in (`server/utils/testHooks.ts`): off by default,
+404 + hard-return unless set, with a loud startup warning when enabled. (It used
+to *also* require `NODE_ENV !== 'production'`, but e2e now runs against a
+**production preview build**, so the env var is the sole gate — a real
+deployment must never set it, since `login-as` mints a session for any username.)
 
 | Route | Body | Returns | Purpose |
 | --- | --- | --- | --- |
@@ -303,8 +311,9 @@ small, parallel, properly-named jobs:
   gated on the cheap checks via `needs`.
 - **`e2e`** — installs the `cairn` CLI from the public
   [cairntrace](https://github.com/abdul-hamid-achik/cairntrace) repo (it's not on
-  npm) + Chromium, starts the dev server with the test hooks, runs the suite on
-  the Playwright backend, and **uploads the Cairntrace `runs/` artifacts, the
+  npm) + Chromium, builds the app and starts the production preview server with
+  the test hooks, runs the suite on the Playwright backend, and **uploads the
+  Cairntrace `runs/` artifacts, the
   dev-server log, and the JUnit report** (downloadable from the Actions run, kept
   14 days). It is currently **advisory** — it reports its own status but is not
   part of the merge gate while it's being stabilized.
