@@ -1,6 +1,6 @@
 # Reusable cold-start action: mint a dev session via the login-as hook.
 # Imported by flows and invoked with `use: login`. Requires the dev test hooks
-# (TERMINA_TEST_HOOKS=1) — see ../DEV-HARNESS.md.
+# (TERMINA_TEST_HOOKS=1) — see ../README.md.
 version: 1
 name: login
 steps:

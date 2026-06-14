@@ -11,7 +11,7 @@ retention:
 
 environments:
   # Local dev: a `bun run dev` server with the dev test-hooks enabled (see
-  # DEV-HARNESS.md). The hooks are the whole point — they let specs seed an
+  # README.md). The hooks are the whole point — they let specs seed an
   # exact game state instead of playing a real match over the flaky lobby WS.
   local:
     baseUrl: "http://localhost:3000"
@@ -26,7 +26,7 @@ environments:
       testUser: cairn_${run.token}
       # Heroes the seeded game assigns (order = radiant then dire); see new_game action.
       heroSelf: echo
-      # A scenario the dev harness knows how to seed (see DEV-HARNESS.md scenarios).
+      # A scenario the dev harness knows how to seed (see README.md "Named scenarios").
       scenario: laning
       # Default to the live auto-loop; state-assertion specs override to "true".
       manualTick: "false"
