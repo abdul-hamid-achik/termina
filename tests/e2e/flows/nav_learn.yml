@@ -1,0 +1,71 @@
+version: 1
+name: nav_learn
+intent: The public /learn guide renders its core sections (Quick Start Guide, Command Reference,
+  Game Concepts), the command reference lists the key player commands, and the closing CTA buttons
+  link to /lobby and /leaderboard.
+mode: normal
+metadata:
+  feature: navigation
+  tags:
+    - learn
+    - public
+    - navigation
+outcomes:
+  - id: quick_start_section_renders
+    description: the Quick Start Guide panel renders
+    verify:
+      text:
+        contains: QUICK START GUIDE
+  - id: command_reference_section_renders
+    description: the Command Reference panel renders
+    verify:
+      text:
+        contains: COMMAND REFERENCE
+  - id: game_concepts_section_renders
+    description: the Game Concepts panel renders
+    verify:
+      text:
+        contains: GAME CONCEPTS
+  - id: command_reference_lists_commands
+    description: the command reference lists the core commands move/attack/cast/buy
+    verify:
+      script:
+        run: >
+          const want = ['move <zone>', 'attack <target>', 'cast <q|w|e|r> [target]', 'buy <item>'];
+
+          const cells = Array.from(document.querySelectorAll('td')).map(td =>
+          td.textContent.trim());
+
+          const missing = want.filter(t => !cells.includes(t));
+
+          return { ok: missing.length === 0, evidence: missing.length ? 'missing: ' +
+          missing.join(', ') : 'all present: ' + want.join(', ') };
+  - id: cta_links_lobby_and_leaderboard
+    description: the closing CTA buttons link to /lobby (ENTER THE TERMINAL) and /leaderboard (VIEW LEADERBOARD)
+    verify:
+      script:
+        run: >
+          const links = Array.from(document.querySelectorAll('a'));
+
+          const enter = links.find(a => /ENTER THE TERMINAL/i.test(a.textContent));
+
+          const board = links.find(a => /VIEW LEADERBOARD/i.test(a.textContent));
+
+          const enterHref = enter && enter.getAttribute('href');
+
+          const boardHref = board && board.getAttribute('href');
+
+          return {
+            ok: enterHref === '/lobby' && boardHref === '/leaderboard',
+            evidence: 'ENTER THE TERMINAL -> ' + JSON.stringify(enterHref) + ' | VIEW LEADERBOARD -> ' + JSON.stringify(boardHref),
+          };
+steps:
+  - id: open_learn
+    open:
+      path: /learn
+      waitUntil: networkidle
+  - id: wait_for_command_reference
+    wait:
+      text: COMMAND REFERENCE
+      timeoutMs: 10000
+contractHash: sha256:2f9d095b6646ad47760996db024ff00f55df38016949c4dd692e6531674800a3

@@ -425,11 +425,14 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ help --all</span>
       </div>
-      <table class="w-full border-collapse text-xs">
+      <!-- The command table has whitespace-nowrap cells; let it scroll inside
+           the panel on narrow phones instead of widening the page. -->
+      <div class="overflow-x-auto">
+      <table class="w-full table-fixed border-collapse break-words text-xs">
         <thead>
           <tr>
             <th
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               Command
             </th>
@@ -446,7 +449,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
         </thead>
         <tbody>
           <tr v-for="c in commands" :key="c.cmd">
-            <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-1 text-ability">
+            <td class="border-b border-border/50 px-1.5 py-1 text-ability">
               {{ c.cmd }}
             </td>
             <td class="border-b border-border/50 px-1.5 py-1">{{ c.desc }}</td>
@@ -455,6 +458,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
           </tr>
         </tbody>
       </table>
+      </div>
     </TerminalPanel>
 
     <!-- Targeting -->
@@ -462,11 +466,12 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ man targeting</span>
       </div>
-      <table class="w-full border-collapse text-xs">
+      <div class="overflow-x-auto">
+      <table class="w-full table-fixed border-collapse break-words text-xs">
         <thead>
           <tr>
             <th
-              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              class="border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               Format
             </th>
@@ -480,7 +485,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
         </thead>
         <tbody>
           <tr v-for="t in targeting" :key="t.format">
-            <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-1 text-ability">
+            <td class="border-b border-border/50 px-1.5 py-1 text-ability">
               {{ t.format }}
             </td>
             <td class="border-b border-border/50 px-1.5 py-1">{{ t.desc }}</td>
@@ -488,6 +493,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
           </tr>
         </tbody>
       </table>
+      </div>
     </TerminalPanel>
 
     <!-- Keyboard Shortcuts -->

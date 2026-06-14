@@ -22,11 +22,11 @@ interface PlayerRateLimitState {
 
 const playerStates = new Map<string, PlayerRateLimitState>()
 
-// Test escape hatch: the e2e suite registers ~50 users from one IP in quick
+// Test escape hatch: an e2e run can mint many dev users from one IP in quick
 // succession, which the per-IP auth limit (5 burst, 0.5/s) would 429. When
-// TERMINA_DISABLE_RATE_LIMIT is set (playwright webServer env only — never
-// production), rate checks always pass. Unit tests don't set it, so they still
-// exercise the real token-bucket behaviour.
+// TERMINA_DISABLE_RATE_LIMIT is set (test server env only — never production),
+// rate checks always pass. Unit tests don't set it, so they still exercise the
+// real token-bucket behaviour.
 function rateLimitDisabled(): boolean {
   return (
     process.env.NODE_ENV !== 'production' &&

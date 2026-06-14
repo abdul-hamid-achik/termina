@@ -1,0 +1,81 @@
+version: 1
+name: nav_layout
+intent: >
+  The default layout's header nav adapts to auth state. While unauthenticated on /, the nav shows
+  the public links PLAY / LEARN / LEADERBOARD plus LOGIN, and hides the auth-only entries PROFILE /
+  SETTINGS / LOGOUT (gated by the anon-phase wait steps). After a dev session is minted and / is
+  reloaded, the nav swaps LOGIN for the authenticated set: it now also shows PROFILE, SETTINGS and
+  LOGOUT alongside PLAY.
+mode: normal
+metadata:
+  feature: navigation
+  tags:
+    - nav
+    - layout
+    - auth
+    - header
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: public_links_always_present
+    description: the header nav shows the public links PLAY, LEARN and LEADERBOARD
+    verify:
+      script:
+        run: >
+          const nav = document.querySelector('nav'); const t = nav ? nav.innerText : ''; const
+          missing = ['[PLAY]','[LEARN]','[LEADERBOARD]'].filter(l => !t.includes(l)); return { ok:
+          missing.length === 0, evidence: 'missing=' + JSON.stringify(missing) + ' nav=' +
+          JSON.stringify(t) };
+  - id: auth_nav_adds_profile_settings_logout
+    description: after login, the nav adds PROFILE, SETTINGS and LOGOUT and no longer shows LOGIN
+    verify:
+      script:
+        run: >
+          const nav = document.querySelector('nav'); const t = nav ? nav.innerText : ''; const
+          present = ['[PLAY]','[PROFILE]','[SETTINGS]','[LOGOUT]'].every(l => t.includes(l)); const
+          loginGone = !t.includes('[LOGIN]'); return { ok: present && loginGone, evidence:
+          'present=' + present + ' loginGone=' + loginGone + ' nav=' + JSON.stringify(t) };
+  - id: no_console_errors
+    description: navigating the layout in both auth states produces no console errors
+    verify:
+      console:
+        errorsMax: 0
+steps:
+  - id: open_home_anon
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: anon_shows_play
+    wait:
+      text: "[PLAY]"
+      timeoutMs: 10000
+  - id: anon_shows_login
+    wait:
+      text: "[LOGIN]"
+      timeoutMs: 10000
+  - id: anon_hides_profile
+    wait:
+      notText: "[PROFILE]"
+      timeoutMs: 10000
+  - id: anon_hides_logout
+    wait:
+      notText: "[LOGOUT]"
+      timeoutMs: 10000
+  - id: snapshot_anon
+    snapshot:
+      interactive: true
+      label: Anonymous nav on home
+  - use: login
+  - id: reload_home_auth
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: wait_auth_nav
+    wait:
+      text: "[LOGOUT]"
+      timeoutMs: 10000
+  - id: snapshot_auth
+    snapshot:
+      interactive: true
+      label: Authenticated nav on home
+contractHash: sha256:4ef91a0b6a9cc2880fb80c30aae58bb9ea2b899d909f6e954b0c6bc0e0bd77d8

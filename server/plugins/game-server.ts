@@ -13,7 +13,7 @@ import {
 import { gameLoggerLive } from '../utils/logger'
 import { gameLog } from '../utils/log'
 import { createInMemoryStateManager } from '../game/engine/StateManager'
-import { startGameLoop, type GameCallbacks } from '../game/engine/GameLoop'
+import { startGameLoop, runOneTick, type GameCallbacks } from '../game/engine/GameLoop'
 import { deleteSnapshot, readSnapshot, listSnapshotGameIds } from '../game/engine/StateSnapshot'
 import { toGameEvent, type GameEngineEvent } from '../game/protocol/events'
 import {
@@ -28,6 +28,8 @@ import { isBot, registerBots, cleanupGame } from '../game/ai/BotManager'
 import { sendToPeer, setPlayerGame, clearPlayerGame } from '../services/PeerRegistry'
 import { cleanupLobby } from '../game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '../game/matchmaking/elo'
+import { HEROES } from '~~/shared/constants/heroes'
+import { applyScenario } from '../game/dev/scenarios'
 
 /** Check if a game event is visible to a specific player based on vision. */
 function isEventVisibleToPlayer(
@@ -197,6 +199,59 @@ export function forceEndGame(gameId: string, winner: TeamId): boolean {
     gameLog.error('forceEndGame failed', { gameId, error: String(err) })
     return false
   }
+}
+
+// ── Dev-only seed hooks (A1; see tests/bdd/DEV-HARNESS.md) ──────
+// Build a REAL game directly, bypassing matchmaking, so BDD/e2e specs can land
+// in a known state instead of playing a bot match. The implementation is wired
+// from inside the plugin (it shares the same services + buildCallbacks as the
+// matchmaking path); these top-level shims forward to it and HARD no-op in
+// production. Routes (server/api/test/*) gate again on TERMINA_TEST_HOOKS.
+
+export interface DevGameOpts {
+  /** The authenticated session user — becomes the human player. */
+  humanId: string
+  humanHeroId?: string
+  /** Reproducible game id; also reserved for the Phase-B seeded RNG. */
+  seed?: number
+  /** Named scenario to shape the fresh game into. */
+  scenario?: string
+  /** Manual-tick mode: no auto-schedule; ticks are driven by advanceDevGame (A3). */
+  manualTick?: boolean
+}
+
+let _createDevGame: ((opts: DevGameOpts) => Promise<{ gameId: string } | null>) | null = null
+
+/** Dev/test-only: create a real game with no matchmaking. Null in prod / pre-boot. */
+export async function createDevGame(opts: DevGameOpts): Promise<{ gameId: string } | null> {
+  if (process.env.NODE_ENV === 'production') return null
+  return _createDevGame ? _createDevGame(opts) : null
+}
+
+/** Dev/test-only: raw GameState snapshot for spec assertions (engine-truth checks). */
+export function getDevRawState(gameId: string): GameState | null {
+  if (process.env.NODE_ENV === 'production') return null
+  const entry = liveGames.get(gameId)
+  if (!entry) return null
+  try {
+    return Effect.runSync(entry.stateManager.getState(gameId))
+  } catch {
+    return null
+  }
+}
+
+// Manual-tick dev games (created with manualTick: true) — driven by advanceDevGame
+// instead of the fixed-interval loop, so a spec controls time deterministically.
+const _devGameLoops = new Map<
+  string,
+  { stateManager: ReturnType<typeof createInMemoryStateManager>; callbacks: GameCallbacks }
+>()
+let _advanceDevGame: ((gameId: string, ticks: number) => Promise<number>) | null = null
+
+/** Dev/test-only: advance a manual-tick dev game by N ticks. 0 in prod / unknown game. */
+export async function advanceDevGame(gameId: string, ticks: number): Promise<number> {
+  if (process.env.NODE_ENV === 'production') return 0
+  return _advanceDevGame ? _advanceDevGame(gameId, ticks) : 0
 }
 
 export default defineNitroPlugin(async (nitroApp) => {
@@ -523,6 +578,83 @@ export default defineNitroPlugin(async (nitroApp) => {
     matchmakingInterval,
   }
 
+  // Dev-only direct game creation. Defined here so it shares the same services
+  // + buildCallbacks the matchmaking handler uses; the game_ready path is left
+  // untouched. Gated by createDevGame() above + the route layer (no-op in prod).
+  _createDevGame = async (opts) => {
+    const seed = opts.seed ?? Date.now()
+    const gameId = `dev_${seed}_${Math.random().toString(36).slice(2, 6)}`
+
+    // Roster: the human (radiant) + 4 radiant bots + 5 dire bots, distinct heroes.
+    const heroIds = Object.keys(HEROES)
+    const humanHero = opts.humanHeroId && HEROES[opts.humanHeroId] ? opts.humanHeroId : heroIds[0]!
+    const used = new Set<string>([humanHero])
+    const nextHero = () => {
+      const h = heroIds.find((x) => !used.has(x)) ?? heroIds[0]!
+      used.add(h)
+      return h
+    }
+    const players: StartPlayer[] = [
+      { playerId: opts.humanId, team: 'radiant', heroId: humanHero, mmr: 1000 },
+    ]
+    for (let i = 0; i < 4; i++)
+      players.push({ playerId: `bot_r${i}_${gameId}`, team: 'radiant', heroId: nextHero(), mmr: 1000 })
+    for (let i = 0; i < 5; i++)
+      players.push({ playerId: `bot_d${i}_${gameId}`, team: 'dire', heroId: nextHero(), mmr: 1000 })
+
+    const stateManager = createInMemoryStateManager()
+    registerLiveGame(gameId, stateManager)
+    const playerSetups = players.map((p) => ({
+      id: p.playerId,
+      name: p.playerId,
+      team: p.team,
+      heroId: p.heroId,
+    }))
+    await managedRuntime.runPromise(
+      Effect.gen(function* () {
+        yield* stateManager.createGame(gameId, playerSetups)
+        yield* stateManager.updateState(gameId, (s) => {
+          const playing = { ...s, phase: 'playing' as const }
+          return opts.scenario
+            ? applyScenario(playing, opts.scenario, { seed, humanId: opts.humanId })
+            : playing
+        })
+      }),
+    )
+    registerBots(
+      gameId,
+      players
+        .filter((p) => isBot(p.playerId))
+        .map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
+    )
+    setPlayerGame(opts.humanId, gameId)
+    const callbacks = buildCallbacks(players, stateManager)
+    if (opts.manualTick) {
+      // Manual mode: no auto-schedule — ticks are driven by /api/test/advance,
+      // so a spec controls time deterministically (never races the 4s loop).
+      _devGameLoops.set(gameId, { stateManager, callbacks })
+    } else {
+      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, { players })
+    }
+    gameLog.info('Dev game created', {
+      gameId,
+      humanId: opts.humanId,
+      scenario: opts.scenario ?? 'fresh',
+      manualTick: !!opts.manualTick,
+    })
+    return { gameId }
+  }
+
+  _advanceDevGame = async (gameId, ticks) => {
+    const g = _devGameLoops.get(gameId)
+    if (!g) return 0
+    const n = Math.max(0, Math.min(200, Math.floor(ticks)))
+    for (let i = 0; i < n; i++) {
+      await runOneTick(gameId, g.stateManager, g.callbacks, managedRuntime)
+    }
+    return n
+  }
+
   // Resume any in-progress games whose snapshots survived a restart.
   // Best-effort: failures are logged and the game is dropped.
   try {
@@ -592,6 +724,9 @@ export default defineNitroPlugin(async (nitroApp) => {
     await managedRuntime.runPromise(redis.shutdown())
     await managedRuntime.dispose()
     _runtime = null
+    _createDevGame = null
+    _advanceDevGame = null
+    _devGameLoops.clear()
     gameLog.info('Game server shut down')
   })
 })

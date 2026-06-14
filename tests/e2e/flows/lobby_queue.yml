@@ -1,0 +1,82 @@
+version: 1
+name: lobby_queue
+intent: >
+  The /lobby Matchmaking panel shows a FIND MATCH control while idle. Clicking it POSTs to
+  /api/queue/join and enters the searching state, rendering the MatchQueue (data-testid match-queue)
+  with an "N/10 Players Found" header and a CANCEL control. Clicking CANCEL POSTs to
+  /api/queue/leave and returns the lobby to idle with FIND MATCH visible again. This covers the idle
+  to searching to cancel journey for a solo-queued dev user. Match completion (hero-pick draft and
+  match-to-game handoff) is driven by the matchmaker over WebSocket and is NOT exercised here, as
+  there is no dev hook to seed a draft state.
+mode: normal
+vars:
+  testUser: cairn_${run.token}
+metadata:
+  feature: lobby
+  tags:
+    - lobby
+    - queue
+    - matchmaking
+    - partial
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: find_match_visible_after_cancel
+    description: after cancelling the queue the lobby returns to idle with the FIND MATCH control visible
+    verify:
+      text:
+        contains: FIND MATCH
+  - id: queue_join_accepted
+    description: clicking FIND MATCH POSTed to /api/queue/join and was accepted (searching state entered)
+    verify:
+      network:
+        method: POST
+        urlContains: /api/queue/join
+        status:
+          equals: 200
+  - id: queue_leave_accepted
+    description: clicking CANCEL POSTed to /api/queue/leave and was accepted (returned to idle)
+    verify:
+      network:
+        method: POST
+        urlContains: /api/queue/leave
+        status:
+          equals: 200
+  - id: match_queue_gone
+    description: the MatchQueue searching panel is no longer present after cancelling
+    verify:
+      count:
+        selector: '[data-testid="match-queue"]'
+        equals: 0
+steps:
+  - id: auth
+    use: login
+  - id: open_lobby
+    open:
+      path: /lobby
+      waitUntil: networkidle
+  - id: await_find_match
+    wait:
+      text: FIND MATCH
+      timeoutMs: 10000
+  - id: click_find_match
+    click:
+      by: role
+      role: button
+      name: "[ FIND MATCH ]"
+      exact: true
+  - id: await_searching
+    wait:
+      text: Players Found
+      timeoutMs: 10000
+  - id: click_cancel
+    click:
+      by: role
+      role: button
+      name: "[ CANCEL ]"
+      exact: true
+  - id: await_idle
+    wait:
+      text: FIND MATCH
+      timeoutMs: 10000
+contractHash: sha256:0420683eb8a4814b936c92f65e49660c56813d152632dab1c10ecaeb6d67e95e

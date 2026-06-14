@@ -1,0 +1,88 @@
+# Ports tests/e2e/specs/game/item-shop.spec.ts — the in-game Item Shop modal.
+# Seeds a real dev game (laning, live loop), opens the shop via the quick-action
+# SHOP button, and asserts the shop modal, its category tabs, its item grid, and
+# the client-side name search (which narrows to a single item).
+#
+# The four outcomes are all evaluated against the FINAL page state, which is the
+# shop open WITH the "iron branch" search applied: the category tabs sit ABOVE
+# the search box so they stay rendered, and the grid filters down to exactly the
+# one matching item (Iron Branch -> data-testid shop-item-iron_branch). The
+# transient "grid full before search" state is gated by a `wait` step instead.
+#   cairn run tests/e2e/flows/game_item_shop.yml --config tests/e2e/cairntrace.config.yml --cold-start
+version: 1
+name: game_item_shop
+intent: A seeded game opens the Item Shop, renders its category tabs and item grid, and the name
+  search narrows the grid to one item.
+mode: normal
+metadata:
+  feature: in-game-screen
+  tags:
+    - game-screen
+    - item-shop
+imports:
+  - ../actions/login.yml
+  - ../actions/new_game.yml
+outcomes:
+  - id: shop_modal_present
+    description: the Item Shop modal is visible after opening the shop
+    verify:
+      count:
+        selector: '[data-testid="item-shop"]'
+        equals: 1
+  - id: category_tabs_render
+    description: the ALL / STARTER / CORE / CONSUMABLE category tab buttons render
+    verify:
+      text:
+        contains: STARTER
+        region: '[data-testid="item-shop"]'
+  - id: search_narrows_to_one
+    description: searching "iron branch" narrows the item grid to exactly the Iron Branch card
+    verify:
+      count:
+        selector: '[data-testid="shop-item-iron_branch"]'
+        equals: 1
+  - id: only_one_item_after_search
+    description: only one shop-item card remains in the grid once the search is applied
+    verify:
+      count:
+        selector: '[data-testid^="shop-item-"]'
+        equals: 1
+steps:
+  - use: login
+  - use: new_game
+  - id: open_shop
+    click:
+      by: role
+      role: button
+      name: SHOP
+      exact: true
+  - id: wait_shop_open
+    wait:
+      text: ITEM SHOP
+      timeoutMs: 5000
+  - id: wait_tab_all
+    wait:
+      text: ALL
+      timeoutMs: 3000
+  - id: wait_tab_core
+    wait:
+      text: CORE
+      timeoutMs: 3000
+  - id: wait_tab_consumable
+    wait:
+      text: CONSUMABLE
+      timeoutMs: 3000
+  - id: wait_iron_branch_in_full_grid
+    wait:
+      text: Iron Branch
+      timeoutMs: 3000
+  - id: search_iron_branch
+    fill:
+      by: selector
+      selector: '[data-testid="item-shop"] input[placeholder="search items..."]'
+      value: iron branch
+  - id: capture_filtered_shop
+    snapshot:
+      interactive: true
+      label: item shop filtered to iron branch
+contractHash: sha256:7ea9dba3321fd4678e6c2a38bfd92c1a39f324f118c208646ec5594b5b99dbb9

@@ -1,0 +1,56 @@
+version: 1
+name: profile_settings
+intent: >
+  An authenticated player opening /profile/settings sees the account settings page: an avatar
+  section, a username editor input, the password section with at least two password fields (new +
+  confirm, plus current when one is set), and a Connected Accounts panel listing the GitHub and
+  Discord OAuth providers.
+mode: normal
+metadata:
+  feature: profile
+  tags:
+    - profile
+    - settings
+    - account
+    - providers
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: avatar_section_renders
+    description: the Avatar settings panel is visible
+    verify:
+      text:
+        contains: AVATAR
+  - id: username_editor_present
+    description: a username editor input is present
+    verify:
+      count:
+        selector: input[autocomplete="username"]
+        equals: 1
+  - id: password_fields_present
+    description: the password section exposes at least two password inputs
+    verify:
+      count:
+        selector: input[type="password"]
+        atLeast: 2
+  - id: connected_accounts_show_github
+    description: the Connected Accounts panel lists GitHub
+    verify:
+      text:
+        contains: GITHUB
+  - id: connected_accounts_show_discord
+    description: the Connected Accounts panel lists Discord
+    verify:
+      text:
+        contains: DISCORD
+steps:
+  - use: login
+  - id: open_settings
+    open:
+      path: /profile/settings
+      waitUntil: networkidle
+  - id: wait_for_connected_accounts
+    wait:
+      text: CONNECTED ACCOUNTS
+      timeoutMs: 10000
+contractHash: sha256:15a75e5a4733174db36e47108ece33e08560f5299a7d8a784c6707f1ebd6b898

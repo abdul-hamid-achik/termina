@@ -2,7 +2,13 @@ import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime, getReconnectPayload } from '../plugins/game-server'
 import { submitAction } from '../game/engine/GameLoop'
-import { pickHero, getPlayerLobby, getLobby, cancelLobby } from '../game/matchmaking/lobby'
+import {
+  pickHero,
+  getPlayerLobby,
+  getLobby,
+  cancelLobby,
+  currentPickTurn,
+} from '../game/matchmaking/lobby'
 import { registerPeer, unregisterPeer, getPlayerGame, sendToPeer } from '../services/PeerRegistry'
 import { addSpectator, removeSpectator } from '../services/SpectatorRegistry'
 import { wsLog } from '../utils/log'
@@ -131,6 +137,14 @@ export default defineWebSocketHandler({
             }),
           )
           wsLog.info('Re-sent lobby_state on reconnect', { playerId, lobbyId: existingLobbyId })
+          // Also re-send whose-turn-it-is — lobby_state alone doesn't carry the
+          // current picker, so without this a client that (re)connects mid-draft
+          // (a refresh, or a seeded draft) never learns it's their turn.
+          const turn = currentPickTurn(lobby)
+          if (turn) {
+            peer.send(JSON.stringify(turn))
+            wsLog.info('Re-sent pick_turn on reconnect', { playerId, picker: turn.playerId })
+          }
         }
       }
     }
@@ -311,6 +325,15 @@ export default defineWebSocketHandler({
             ),
           )
           peer.send(JSON.stringify({ type: 'announcement', message: 'Joined game', level: 'info' }))
+          // Send current state immediately so the client renders without waiting
+          // for the next tick broadcast — required for manual-tick dev games (no
+          // auto-loop), and a faster first paint for normal games too.
+          const joinState = getReconnectPayload(parsed.gameId, ctx.playerId)
+          if (joinState) {
+            peer.send(
+              JSON.stringify({ type: 'full_state', tick: joinState.tick, state: joinState.state }),
+            )
+          }
         } catch (err) {
           wsLog.error('join_game addConnection failed', {
             playerId: ctx.playerId,

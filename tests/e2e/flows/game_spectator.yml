@@ -1,0 +1,104 @@
+# Live spectator smoke. The original Playwright spec dropped a first user into
+# a real game and had a SECOND browser context (a different user) open
+# /spectate/<gameId>, then asserted the page connected, received a tick, and
+# rendered the scoreboard. We reproduce that MEANING with the dev hooks: seed a
+# LIVE game as user A (A becomes the human player), then re-login as a distinct
+# user B in the same session and spectate A's game. The second user is REQUIRED
+# — the WS `spectate` handler returns SPECTATE_FORBIDDEN if the peer's playerId
+# is the same id that is currently playing the game (the fogless stream would be
+# a maphack for a participant). A live game (manualTick "false") keeps the engine
+# loop firing onSpectatorTick every tick, so once B subscribes the score banner
+# + tick counter render without any advance/subscribe race.
+#
+# gameId is "dev_<seed>_<rand>", never "game_…" — we assert the exact returned id.
+version: 1
+name: game_spectator
+intent: A second user can spectate an in-progress game and sees the live scoreboard and tick counter.
+mode: normal
+vars:
+  scenario: laning
+  manualTick: "false"
+metadata:
+  feature: spectator
+  tags:
+    - spectator
+    - websocket
+    - seeded
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: header_shows_game_id
+    description: the spectator header prints the exact seeded gameId (a dev_1337_… id, not game_…)
+    verify:
+      text:
+        matches: ^dev_1337_[a-z0-9]+$
+        region: h1
+  - id: radiant_panel_present
+    description: the score banner's RADIANT cell rendered (a real spectator_tick was received)
+    verify:
+      text:
+        contains: RADIANT
+        region: '[data-testid="spectator-score-radiant"]'
+  - id: dire_panel_present
+    description: the score banner's DIRE cell rendered
+    verify:
+      text:
+        contains: DIRE
+        region: '[data-testid="spectator-score-dire"]'
+  - id: tick_counter_advanced
+    description: the centre tick counter shows a positive integer (a tick streamed over the WS)
+    verify:
+      text:
+        matches: ^[1-9][0-9]*$
+        region: '[data-testid="spectator-tick"]'
+steps:
+  - use: login
+  - id: seed_live_game
+    request:
+      method: POST
+      url: /api/test/new-game
+      body:
+        scenario: ${vars.scenario}
+        heroSelf: ${vars.heroSelf}
+        seed: 1337
+        manualTick: ${vars.manualTick}
+      expectStatus: 200
+      assign: game
+  - id: engine_alive
+    request:
+      method: GET
+      url: /api/test/state?gameId=${requests.game.body.gameId}
+      expectStatus: 200
+  - id: open_origin_for_relogin
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: login_as_spectator
+    request:
+      method: POST
+      url: /api/test/login-as
+      body:
+        username: spec_${run.token}
+      expectStatus: 200
+      assign: spectator
+  - id: open_spectate
+    open:
+      path: /spectate/${requests.game.body.gameId}
+      waitUntil: networkidle
+  - id: wait_header
+    wait:
+      text: ${requests.game.body.gameId}
+      timeoutMs: 15000
+  - id: wait_connected
+    wait:
+      text: "[CONNECTED]"
+      timeoutMs: 30000
+  - id: wait_score_banner
+    wait:
+      text: RADIANT
+      timeoutMs: 30000
+  - id: capture_spectator
+    snapshot:
+      interactive: true
+      label: spectator view receiving live ticks
+contractHash: sha256:6f2dd807ad0f2eb050535269681290db82d3a9bb2c4f6e9826d8459ed65c0dca

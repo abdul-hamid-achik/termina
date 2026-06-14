@@ -1,0 +1,51 @@
+version: 1
+name: nav_home
+intent: The public home page renders the ASCII TERMINA logo and tagline, and offers two nav links —
+  "ENTER THE TERMINAL" pointing at /lobby and "LEARN COMMANDS" pointing at /learn. No login is
+  required.
+mode: normal
+metadata:
+  feature: navigation
+  tags:
+    - home
+    - navigation
+    - public
+outcomes:
+  - id: logo_renders
+    description: the ASCII TERMINA logo (glowing <pre> block) is visible
+    verify:
+      count:
+        selector: pre.text-glow
+        atLeast: 1
+  - id: tagline_renders
+    description: the home tagline is visible
+    verify:
+      text:
+        contains: where every command is a kill
+  - id: enter_terminal_links_to_lobby
+    description: the "ENTER THE TERMINAL" call-to-action renders a link to /lobby
+    verify:
+      count:
+        selector: a[href="/lobby"]
+        atLeast: 1
+  - id: learn_commands_links_to_learn
+    description: the "LEARN COMMANDS" call-to-action renders a link to /learn
+    verify:
+      count:
+        selector: a[href="/learn"]
+        atLeast: 1
+  - id: cta_labels_present
+    description: both CTA button labels are rendered
+    verify:
+      text:
+        contains: ENTER THE TERMINAL
+steps:
+  - id: open_home
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: await_tagline
+    wait:
+      text: where every command is a kill
+      timeoutMs: 10000
+contractHash: sha256:97f95f1d7329280c4914d2f4fafb8dcd6eb0c65d877af193d5199665c79bc6de

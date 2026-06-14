@@ -15,8 +15,8 @@
  * in production builds (NODE_ENV === 'production') and when the var is
  * unset, so production pacing is untouched.
  *
- * Used by: tests/e2e (playwright.config.ts webServer env), and any local
- * dev server started for e2e runs.
+ * Used by: any dev/test server started for e2e runs (set TERMINA_TEST_FAST_GAME
+ * in the server env alongside TERMINA_TEST_HOOKS=1 — see tests/e2e/README.md).
  */
 
 const MAX_FACTOR = 16

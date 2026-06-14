@@ -1,0 +1,54 @@
+version: 1
+name: auth_logout
+intent: Clicking [LOGOUT] in the header clears the session and redirects to /login. Once logged out,
+  visiting a protected route (/lobby) bounces back to /login.
+mode: normal
+metadata:
+  feature: auth
+  tags:
+    - auth
+    - logout
+    - session
+    - protected-route
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: logout_redirects_to_login
+    description: clicking [LOGOUT] clears the session and lands on /login
+    verify:
+      url:
+        matches: /login
+  - id: login_control_visible_after_logout
+    description: the header shows the [LOGIN] control (not [LOGOUT]) once the session is cleared
+    verify:
+      text:
+        contains: "[LOGIN]"
+  - id: protected_lobby_redirects_to_login
+    description: visiting /lobby while logged out redirects to /login
+    verify:
+      url:
+        matches: /login
+steps:
+  - use: login
+  - id: open_home
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: click_logout
+    click:
+      by: role
+      role: button
+      name: "[LOGOUT]"
+  - id: await_login_redirect
+    wait:
+      text: "[LOGIN]"
+      timeoutMs: 10000
+  - id: visit_protected_lobby
+    open:
+      path: /lobby
+      waitUntil: networkidle
+  - id: await_protected_redirect
+    wait:
+      text: "[LOGIN]"
+      timeoutMs: 10000
+contractHash: sha256:9e73074640073b80928a6245155af4265ba5a2c4eedbd9638f8e0ac710e2ea57

@@ -1,0 +1,52 @@
+version: 1
+project: termina-bdd
+defaultEnvironment: local
+
+# Run artifacts live under the project (gitignored). Each run writes a
+# self-contained pack: run.{json,yaml,md}, agent_context.md, snapshots/,
+# screenshots/, console/, network/, requests/, diagnostics/.
+artifactRoot: tests/e2e/runs
+retention:
+  keepRuns: 20 # newest N per spec, pruned after every run
+
+environments:
+  # Local dev: a `bun run dev` server with the dev test-hooks enabled (see
+  # DEV-HARNESS.md). The hooks are the whole point — they let specs seed an
+  # exact game state instead of playing a real match over the flaky lobby WS.
+  local:
+    baseUrl: "http://localhost:3000"
+    viewport: { width: 1280, height: 800 }
+    vars:
+      # Dev identity minted by the /api/test/login-as hook (idempotent, no OAuth).
+      # `${run.token}` is a cairntrace v1.9 runtime placeholder: a unique token
+      # per run, so every spec (and every parallel worker) gets its own user.
+      # Termina broadcasts state per user-id over WS, so a shared user lets one
+      # game loop clobber another spec's seeded state — per-run identity removes
+      # that race without hand-assigning a username to each flow.
+      testUser: cairn_${run.token}
+      # Heroes the seeded game assigns (order = radiant then dire); see new_game action.
+      heroSelf: echo
+      # A scenario the dev harness knows how to seed (see DEV-HARNESS.md scenarios).
+      scenario: laning
+      # Default to the live auto-loop; state-assertion specs override to "true".
+      manualTick: "false"
+
+  # CI / dynamic-port runners. The app is started by the runner with the
+  # test env (termina_test DB, redis db1, fast-game,
+  # TERMINA_TEST_HOOKS=1). ${env.X} substitutes in config TEXT, so a dynamic
+  # port needs no per-run YAML edits.
+  ci:
+    baseUrl: "http://localhost:${env.APP_PORT}"
+    viewport: { width: 1280, height: 800 }
+    vars:
+      testUser: cairn_${run.token}
+      heroSelf: echo
+      scenario: laning
+
+# Capture policy is set per-spec under `artifacts: { capture: ... }` (see the
+# graphite samples). Defaults: screenshots on-failure, trace on-failure.
+
+# Termina dev auth is username-based via the login-as hook, so no external
+# secrets are required for the local/ci paths. For a real OAuth environment,
+# capture a session once with `cairn login termina --url <oauth-start>` and use
+# `session: { resume: termina }` instead of the login action.

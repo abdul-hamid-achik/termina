@@ -1,0 +1,87 @@
+# Ports the deleted Playwright spec specs/game/command-input.spec.ts into one
+# Cairntrace flow. Seeds a frozen (manualTick) laning game via the dev hooks so
+# the CommandInput renders over a stable, alive game, then exercises the command
+# prompt: the field accepts text, clears on Enter, and typing a partial "move"
+# command surfaces the zone autocomplete dropdown.
+#
+# Cairntrace outcomes are evaluated against the FINAL page state only — and
+# "field empty after Enter" contradicts "suggestions visible while typing", so
+# the clear-on-Enter behaviour is asserted with hard `wait` STEP gates (a failed
+# wait fails the run) on the inline command-preview line, while the stable
+# end-state (field accepts text + zone autocomplete dropdown shown) lands in the
+# script/count outcomes.
+version: 1
+name: game_command_input
+intent: The in-game command prompt accepts typed text, clears it on Enter, and surfaces zone
+  autocomplete suggestions while typing a move command.
+mode: normal
+vars:
+  scenario: laning
+  manualTick: "true"
+metadata:
+  feature: command-input
+  tags:
+    - command-input
+    - autocomplete
+    - seeded
+imports:
+  - ../actions/login.yml
+  - ../actions/new_game.yml
+outcomes:
+  - id: command_input_present
+    description: the command input wrapper renders
+    verify:
+      count:
+        selector: '[data-testid="command-input"]'
+        equals: 1
+  - id: command_field_present
+    description: the command input field renders
+    verify:
+      count:
+        selector: '[data-testid="command-input-field"]'
+        equals: 1
+  - id: field_holds_typed_text
+    description: the input field holds the typed "move m" partial command (field accepts text)
+    verify:
+      script:
+        run: >
+          const el = document.querySelector('[data-testid="command-input-field"]'); const v = el ?
+          el.value : null; return { ok: v === 'move m', evidence: 'command-input-field value=' +
+          JSON.stringify(v) };
+  - id: zone_autocomplete_visible
+    description: typing a partial move command surfaces the zone autocomplete dropdown
+    verify:
+      count:
+        selector: .cmd-input-wrapper .bg-bg-panel
+        atLeast: 1
+steps:
+  - use: login
+  - use: new_game
+  - id: type_and_submit_status
+    batch:
+      - fill:
+          by: selector
+          selector: '[data-testid="command-input-field"]'
+          value: status
+      - wait:
+          text: ">> Show hero status"
+          timeoutMs: 5000
+      - press: Enter
+  - id: preview_cleared_after_enter
+    wait:
+      notText: ">> Show hero status"
+      timeoutMs: 5000
+  - id: type_move_partial
+    fill:
+      by: selector
+      selector: '[data-testid="command-input-field"]'
+      value: move m
+  - id: wait_suggestions
+    wait:
+      text: mid
+      timeoutMs: 5000
+  - id: capture_prompt
+    snapshot:
+      interactive: true
+      label: command prompt with zone autocomplete open
+contractHash: sha256:c4775507fb249b5309f8f0009f2f5089ff4d3d317061eab30b9546404632b3af

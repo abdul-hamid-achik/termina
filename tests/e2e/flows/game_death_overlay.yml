@@ -1,0 +1,88 @@
+# Ports the deleted Playwright spec specs/game/death-overlay.spec.ts into one
+# Cairntrace flow. The original walked mid lane and fed itself to the dire T1
+# tower to provoke a real death; here we seed that end-state directly with the
+# new `self_dead` scenario (human alive:false, hp:0, respawnTick = tick+30),
+# frozen via manualTick so the respawn handler never revives them and the
+# overlay stays put for assertion. GameScreen renders the death overlay under
+# v-if="!gameStore.isAlive && gameStore.player", so "AWAITING ORDERS" never
+# appears — we do NOT use the new_game action; we inline the seed + open + a
+# wait gate on the overlay copy instead.
+#
+# Outcomes capture the spec's MEANING: the death overlay is present, it shows
+# "PROCESS TERMINATED", it shows the "Respawning in ... ticks" countdown, and
+# engine truth agrees the human player is dead (alive === false). The dynamic
+# bracket key players[humanId] is awkward for jsonPath, so the engine check is a
+# script verifier that fetches /api/test/state and reads the seed's playerId.
+version: 1
+name: game_death_overlay
+intent: A dead human player sees the death overlay with PROCESS TERMINATED and a respawn countdown,
+  and engine state confirms the player is dead.
+mode: normal
+vars:
+  scenario: self_dead
+  manualTick: "true"
+  heroSelf: echo
+metadata:
+  feature: death-overlay
+  tags:
+    - death-overlay
+    - respawn
+    - seeded
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: death_overlay_present
+    description: the death overlay renders for the dead human player
+    verify:
+      count:
+        selector: '[data-testid="death-overlay"]'
+        equals: 1
+  - id: process_terminated_visible
+    description: the overlay shows the "PROCESS TERMINATED" headline
+    verify:
+      text:
+        contains: PROCESS TERMINATED
+      region: '[data-testid="death-overlay"]'
+  - id: respawn_countdown_visible
+    description: the overlay shows the "Respawning in ... ticks" countdown
+    verify:
+      text:
+        matches: Respawning in
+      region: '[data-testid="death-overlay"]'
+  - id: engine_confirms_dead
+    description: engine state confirms the human player is dead (players[humanId].alive === false)
+    verify:
+      script:
+        run: >
+          const params = new URLSearchParams(window.location.search); const gameId =
+          params.get('gameId'); const playerId = params.get('playerId'); return
+          fetch('/api/test/state?gameId=' + encodeURIComponent(gameId), { credentials: 'include'
+          }).then((r) => r.json()).then((s) => { const p = s.players && s.players[playerId]; const
+          alive = p ? p.alive : null; return { ok: alive === false, evidence: 'gameId=' + gameId + '
+          playerId=' + playerId + ' players[human].alive=' + JSON.stringify(alive) }; });
+steps:
+  - use: login
+  - id: seed_self_dead
+    request:
+      method: POST
+      url: /api/test/new-game
+      body:
+        scenario: self_dead
+        heroSelf: ${vars.heroSelf}
+        seed: 1337
+        manualTick: true
+      expectStatus: 200
+      assign: game
+  - id: enter_game
+    open:
+      path: ${requests.game.body.url}
+      waitUntil: networkidle
+  - id: wait_overlay
+    wait:
+      text: PROCESS TERMINATED
+      timeoutMs: 15000
+  - id: capture_overlay
+    snapshot:
+      interactive: true
+      label: death overlay with PROCESS TERMINATED and respawn countdown
+contractHash: sha256:cdadb22719f87902972a106dbd65916690f9663058db02fb34ef5247654f10ab

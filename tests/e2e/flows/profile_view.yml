@@ -1,0 +1,53 @@
+version: 1
+name: profile_view
+intent: A logged-in dev user viewing /profile/me sees their own profile (the whois line for their
+  username), the own-profile [EDIT] link pointing at /profile/settings, and the empty "No matches
+  played yet." state for a fresh account.
+mode: normal
+metadata:
+  feature: profile
+  tags:
+    - profile
+    - own-profile
+    - edit-link
+    - empty-matches
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: own_profile_whois_visible
+    description: the profile page renders the whois line identifying the current user
+    verify:
+      text:
+        contains: whois cairn_
+  - id: edit_link_points_to_settings
+    description: the own-profile [EDIT] link is rendered exactly once and targets /profile/settings
+    verify:
+      count:
+        selector: a.text-ability[href="/profile/settings"]
+        equals: 1
+  - id: edit_link_label_visible
+    description: the own-profile settings link is labelled [EDIT]
+    verify:
+      text:
+        contains: "[EDIT]"
+        region: a.text-ability[href="/profile/settings"]
+  - id: empty_matches_message
+    description: a fresh dev user sees the empty recent-matches message
+    verify:
+      text:
+        contains: No matches played yet.
+steps:
+  - use: login
+  - id: open_own_profile
+    open:
+      path: /profile/me
+      waitUntil: networkidle
+  - id: wait_for_whois
+    wait:
+      text: whois cairn_
+      timeoutMs: 5000
+  - id: wait_for_empty_matches
+    wait:
+      text: No matches played yet.
+      timeoutMs: 5000
+contractHash: sha256:ba7f3257e1339edcd956cf41c25226d4e348dd059edccf306c8f6138d9fe53c2

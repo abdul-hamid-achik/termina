@@ -40,5 +40,8 @@ dump.rdb
 playwright-report/
 test-results/
 
+# Cairntrace BDD run artifacts (specs + config are committed; runs are local)
+tests/e2e/runs/
+
 # Claude
 .claude/worktrees/

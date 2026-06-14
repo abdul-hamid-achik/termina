@@ -1,0 +1,51 @@
+# Seeds Roshan dead and cross-checks the rendered War Room objective ticker
+# (DOM) against engine truth — now using v1.8: a per-spec `vars` (F-B) to drive
+# the shared new_game action's scenario, and the typed `httpJson` verifier (F-D)
+# instead of a node script. VERIFIED GREEN against a dev server with the A2
+# scenario hook (roshan_dead).
+version: 1
+name: objectives_seeded
+intent: With Roshan seeded dead, the War Room objective ticker shows the respawn countdown, and
+  engine state agrees.
+mode: normal
+# testUser inherited as cairn_${run.token} (v1.9 per-run identity).
+vars:
+  scenario: roshan_dead
+  manualTick: "true"
+metadata:
+  feature: war-room
+  tags:
+    - objectives
+    - roshan
+    - seeded
+imports:
+  - ../actions/login.yml
+  - ../actions/new_game.yml
+outcomes:
+  - id: objective_ticker_present
+    description: the War Room objective ticker is visible
+    verify:
+      count:
+        selector: '[data-testid="objective-ticker"]'
+        equals: 1
+  - id: roshan_reads_dead
+    description: the objective ticker shows Roshan dead (the dead branch renders "dead · Nt", not "UP")
+    verify:
+      text:
+        contains: dead
+      region: '[data-testid="objective-ticker"]'
+  - id: engine_agrees
+    description: engine state confirms Roshan is dead (DOM ↔ truth, no script verifier)
+    verify:
+      httpJson:
+        url: /api/test/state?gameId=${requests.game.body.gameId}
+        jsonPath: $.roshan.alive
+        equals: false
+steps:
+  - use: login
+  - use: new_game
+  - id: capture_war_room
+    snapshot:
+      interactive: true
+      label: War Room with Roshan dead
+contractHash: sha256:7983dfb9f113a280b0c92ea6035fa8a09eed91fee05ebebb0e84fed07e6e06ff

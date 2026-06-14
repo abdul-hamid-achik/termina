@@ -1,0 +1,94 @@
+version: 1
+name: mobile_smoke
+intent: >
+  On a phone viewport (390x844) the core unauthenticated entry path renders. The landing page shows
+  the ASCII TERMINA hero logo, the tagline, and both call-to-action buttons — "ENTER THE TERMINAL"
+  (linking to /lobby) and "LEARN COMMANDS" (linking to /learn). The /login page renders the
+  credentials form (username + password inputs), the login/register tab switcher, and the GitHub
+  OAuth button. The authenticated-lobby leg of the original spec is covered separately and is
+  intentionally not exercised here. No login required.
+mode: normal
+viewport:
+  width: 390
+  height: 844
+metadata:
+  feature: mobile
+  tags:
+    - mobile
+    - smoke
+    - landing
+    - login
+    - public
+outcomes:
+  - id: landing_renders_on_mobile
+    description: >
+      the mobile landing page serves the ASCII hero logo (text-glow <pre>), the tagline, and both
+      CTAs linking to /lobby and /learn
+    verify:
+      script:
+        run: >
+          return fetch('/').then(function (res) { return res.text(); }).then(function (html) {
+            const heroLogo = html.indexOf('text-glow') !== -1;
+            const tagline = html.indexOf('where every command is a kill') !== -1;
+            const enterTerminal = html.indexOf('ENTER THE TERMINAL') !== -1;
+            const learnCommands = html.indexOf('LEARN COMMANDS') !== -1;
+            const lobbyLink = html.indexOf('/lobby') !== -1;
+            const learnLink = html.indexOf('/learn') !== -1;
+            const evidence = { heroLogo, tagline, enterTerminal, learnCommands, lobbyLink, learnLink };
+            const ok = heroLogo && tagline && enterTerminal && learnCommands && lobbyLink && learnLink;
+            return { ok, evidence };
+          });
+  - id: login_form_renders
+    description: the /login page shows a username input and a password input on the phone viewport
+    verify:
+      count:
+        selector: input[autocomplete="username"], form input[type="password"]
+        equals: 2
+  - id: login_tabs_render
+    description: the login/register tab switcher is rendered on the phone viewport
+    verify:
+      text:
+        contains: "> REGISTER"
+  - id: login_oauth_renders
+    description: the GitHub OAuth button is rendered on the phone viewport
+    verify:
+      text:
+        contains: CONTINUE WITH GITHUB
+steps:
+  - id: open_landing
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: await_tagline
+    wait:
+      text: where every command is a kill
+      timeoutMs: 10000
+  - id: assert_enter_terminal_label
+    wait:
+      text: ENTER THE TERMINAL
+      timeoutMs: 10000
+  - id: assert_learn_commands_label
+    wait:
+      text: LEARN COMMANDS
+      timeoutMs: 10000
+  - id: open_login
+    open:
+      path: /login
+      waitUntil: networkidle
+  - id: await_login
+    wait:
+      text: authenticate to continue
+      timeoutMs: 10000
+  - id: await_login_tab
+    wait:
+      text: "> LOGIN"
+      timeoutMs: 10000
+  - id: await_register_tab
+    wait:
+      text: "> REGISTER"
+      timeoutMs: 10000
+  - id: await_github_oauth
+    wait:
+      text: CONTINUE WITH GITHUB
+      timeoutMs: 10000
+contractHash: sha256:8cb76e2883ae6070a3e33f242a6683a8fe951ad6aa538b70560dce402df99e88

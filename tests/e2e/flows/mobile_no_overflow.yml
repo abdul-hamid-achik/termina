@@ -1,0 +1,127 @@
+version: 1
+name: mobile_no_overflow
+intent: >
+  On a phone-sized viewport (390x844, a Pixel-7-class window) the terminal layout must never force
+  sideways panning: a public page must fit the viewport width with no horizontal overflow. A page
+  that overflows horizontally (documentElement.scrollWidth > innerWidth) makes the terminal UI pan
+  sideways on phones, which it must never do. Each page is rendered into a 390px-wide frame so the
+  mobile breakpoints fire exactly as on a phone, and its rendered width is measured directly. Covers
+  every public page: home (/), login (/login), learn (/learn) and leaderboard (/leaderboard) all fit
+  at phone width. (/learn previously overflowed at ~468px — its wide command/targeting tables now
+  scroll inside their panels and TerminalPanel carries min-w-0, so the page itself fits the phone.)
+mode: normal
+viewport:
+  width: 390
+  height: 844
+metadata:
+  feature: mobile
+  tags:
+    - mobile
+    - layout
+    - overflow
+    - responsive
+    - public
+outcomes:
+  - id: public_pages_no_horizontal_overflow
+    description: >
+      The home (/), login (/login), learn (/learn) and leaderboard (/leaderboard) pages each
+      rendered at a 390px phone viewport have no horizontal overflow (documentElement.scrollWidth <=
+      innerWidth + 1px) and genuinely render at phone width.
+    verify:
+      script:
+        run: >
+          return (async () => {
+            const PHONE_WIDTH = 390;
+            const routes = ['/', '/login', '/learn', '/leaderboard'];
+            const results = {};
+            const fails = [];
+            const frame = document.createElement('iframe');
+            frame.style.cssText = 'position:fixed;left:0;top:0;border:0;width:' + PHONE_WIDTH + 'px;height:844px';
+            document.body.appendChild(frame);
+            const loadRoute = (path) => new Promise((resolve) => {
+              const onLoad = () => { frame.removeEventListener('load', onLoad); resolve(); };
+              frame.addEventListener('load', onLoad);
+              frame.contentWindow.location.href = path;
+            });
+            const settle = () => new Promise((r) => setTimeout(r, 800));
+            for (const path of routes) {
+              await loadRoute(path);
+              await settle();
+              const win = frame.contentWindow;
+              const scrollWidth = win.document.documentElement.scrollWidth;
+              const innerWidth = win.innerWidth;
+              results[path] = { scrollWidth, innerWidth };
+              if (innerWidth !== PHONE_WIDTH) {
+                fails.push(path + ' did not render at phone width (innerWidth ' + innerWidth + 'px != ' + PHONE_WIDTH + 'px)');
+              }
+              if (scrollWidth > innerWidth + 1) {
+                fails.push(path + ' overflows (scrollWidth ' + scrollWidth + 'px > innerWidth ' + innerWidth + 'px)');
+              }
+            }
+            frame.remove();
+            return {
+              ok: fails.length === 0,
+              evidence: 'phoneWidth=' + PHONE_WIDTH + ' | ' + JSON.stringify(results) + (fails.length ? ' | FAILS: ' + fails.join('; ') : ' | all pages fit at phone width'),
+            };
+          })();
+  - id: home_page_no_overflow_at_phone_width
+    description: >
+      The home page (/) — the landing page with the wide ASCII logo — specifically fits a 390px
+      phone viewport with no horizontal overflow, confirming the measurement ran at true phone width
+      (innerWidth === 390).
+    verify:
+      script:
+        run: >
+          return (async () => {
+            const PHONE_WIDTH = 390;
+            const frame = document.createElement('iframe');
+            frame.style.cssText = 'position:fixed;left:0;top:0;border:0;width:' + PHONE_WIDTH + 'px;height:844px';
+            document.body.appendChild(frame);
+            await new Promise((resolve) => {
+              frame.addEventListener('load', () => resolve(), { once: true });
+              frame.contentWindow.location.href = '/';
+            });
+            await new Promise((r) => setTimeout(r, 800));
+            const win = frame.contentWindow;
+            const scrollWidth = win.document.documentElement.scrollWidth;
+            const innerWidth = win.innerWidth;
+            frame.remove();
+            return {
+              ok: innerWidth === PHONE_WIDTH && scrollWidth <= innerWidth + 1,
+              evidence: 'home / at phone width: scrollWidth=' + scrollWidth + ' innerWidth=' + innerWidth,
+            };
+          })();
+steps:
+  - id: open_login
+    open:
+      path: /login
+      waitUntil: networkidle
+  - id: await_login
+    wait:
+      text: authenticate to continue
+      timeoutMs: 10000
+  - id: open_learn
+    open:
+      path: /learn
+      waitUntil: networkidle
+  - id: await_learn
+    wait:
+      text: COMMAND REFERENCE
+      timeoutMs: 10000
+  - id: open_leaderboard
+    open:
+      path: /leaderboard
+      waitUntil: networkidle
+  - id: await_leaderboard
+    wait:
+      text: top players by rating
+      timeoutMs: 10000
+  - id: open_home_last
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: await_home
+    wait:
+      text: where every command is a kill
+      timeoutMs: 10000
+contractHash: sha256:7197380b763c19479330f2d366229ff97840a7216e89c51ee416f221f3d55765

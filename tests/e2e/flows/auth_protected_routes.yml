@@ -1,0 +1,81 @@
+version: 1
+name: auth_protected_routes
+intent: >
+  Without a session, the auth middleware guards the app: opening /play, /profile/settings, and
+  /lobby each redirects to the /login page, while the public pages /, /learn, and /leaderboard
+  render without redirecting. No login step runs in this flow.
+mode: normal
+metadata:
+  feature: auth
+  tags:
+    - auth
+    - middleware
+    - protected-routes
+    - public-routes
+outcomes:
+  - id: protected_lobby_redirects_to_login
+    description: opening /lobby while unauthenticated lands on the /login page
+    verify:
+      url:
+        matches: /login
+  - id: login_page_rendered
+    description: the redirect destination is the real login page (authenticate to continue)
+    verify:
+      text:
+        contains: authenticate to continue
+  - id: public_routes_do_not_redirect
+    description: the public routes /, /learn, /leaderboard respond without redirecting to /login
+    verify:
+      script:
+        run: >
+          return (async () => {
+            const routes = ['/', '/learn', '/leaderboard'];
+            const fails = [];
+            const landings = {};
+            for (const route of routes) {
+              const res = await fetch(route, { redirect: 'follow', headers: { accept: 'text/html' } });
+              const finalPath = new URL(res.url, window.location.origin).pathname;
+              landings[route] = { status: res.status, finalPath };
+              if (res.status !== 200) fails.push(route + ' returned status ' + res.status);
+              if (/\/login/.test(finalPath)) fails.push(route + ' redirected to ' + finalPath);
+            }
+            return { ok: fails.length === 0, evidence: { landings, fails } };
+          })();
+steps:
+  - id: open_play_protected
+    open:
+      path: /play
+      waitUntil: networkidle
+  - id: play_redirects_to_login
+    wait:
+      text: authenticate to continue
+      timeoutMs: 10000
+  - id: open_settings_protected
+    open:
+      path: /profile/settings
+      waitUntil: networkidle
+  - id: settings_redirects_to_login
+    wait:
+      text: authenticate to continue
+      timeoutMs: 10000
+  - id: open_learn_public
+    open:
+      path: /learn
+      waitUntil: networkidle
+  - id: learn_renders_no_redirect
+    wait:
+      text: COMMAND REFERENCE
+      timeoutMs: 10000
+  - id: open_leaderboard_public
+    open:
+      path: /leaderboard
+      waitUntil: networkidle
+  - id: open_lobby_protected_last
+    open:
+      path: /lobby
+      waitUntil: networkidle
+  - id: lobby_redirects_to_login
+    wait:
+      text: authenticate to continue
+      timeoutMs: 10000
+contractHash: sha256:61f07f480f2d0e9b43b90b535ed6cbcc12afafdcc0116b44b3dc277db72ba4a5

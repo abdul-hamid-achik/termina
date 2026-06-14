@@ -30,8 +30,8 @@ import { HERO_IDS } from '~~/shared/constants/heroes'
  * because that module's default export is a `defineNitroPlugin(...)` call,
  * which is only resolvable inside the Nitro runtime — vitest can't load it.
  * Cross-cutting flows that need the plugin (matchmaking → game_ready → game
- * start) live in tests/e2e under Playwright instead. This file covers what
- * can be tested with the bare engine + state manager.
+ * start) live in tests/e2e as Cairntrace BDD flows instead. This file covers
+ * what can be tested with the bare engine + state manager.
  *
  * Flows that do NOT exist at this layer (and where they ARE tested):
  * - Player disconnect/reconnect: handled at the WS boundary

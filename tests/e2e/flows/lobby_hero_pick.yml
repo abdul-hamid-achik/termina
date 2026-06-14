@@ -1,0 +1,93 @@
+# Seeds a hero-draft lobby frozen at the player's pick turn (via the v1.9
+# /api/test/new-draft hook, prepick: 5 → 5 bots already picked, human picks 6th),
+# then asserts the HeroPicker: the grid, the player's turn banner, the already-
+# picked overlays, both team rosters, and that selecting a hero enables CONFIRM.
+# No live matchmaking — the draft is reconstructed on connect (ws.ts re-sends
+# lobby_state + pick_turn). Does NOT confirm, so the final state stays the draft.
+version: 1
+name: lobby_hero_pick
+intent: A seeded hero draft shows the hero grid, the player's pick turn, heroes already picked by
+  others, both team rosters, and enables CONFIRM once the player selects an available hero.
+mode: normal
+metadata:
+  feature: lobby-draft
+  tags:
+    - lobby
+    - hero-pick
+    - draft
+    - seeded
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: hero_picker_present
+    description: the hero picker is shown (draft phase)
+    verify:
+      count:
+        selector: '[data-testid="hero-picker"]'
+        equals: 1
+  - id: hero_grid_renders
+    description: the hero grid shows all heroes (at least 6 cards)
+    verify:
+      count:
+        selector: '[data-testid^="hero-card-"]'
+        atLeast: 6
+  - id: my_turn_banner
+    description: the turn banner shows it is the player's turn to pick
+    verify:
+      text:
+        contains: YOUR TURN TO PICK
+        region: '[data-testid="turn-banner"]'
+  - id: already_picked_overlays
+    description: heroes picked by others before the player's turn show a PICKED overlay
+    verify:
+      text:
+        contains: PICKED
+        region: '[data-testid="hero-picker"]'
+  - id: rosters_show_dire
+    description: the draft renders the DIRE roster header (RADIANT/DIRE rosters present)
+    verify:
+      text:
+        contains: DIRE
+        region: '[data-testid="hero-picker"]'
+  - id: confirm_enabled_after_select
+    description: selecting an available hero enables the CONFIRM button
+    verify:
+      script:
+        run: >
+          const btns = [...document.querySelectorAll('button')];
+
+          const c = btns.find((b) => /CONFIRM/.test(b.textContent || ''));
+
+          return { ok: !!c && !c.disabled, evidence: c ? ('CONFIRM button disabled=' + c.disabled) :
+          'no CONFIRM button found' };
+steps:
+  - use: login
+  - id: seed_draft
+    request:
+      method: POST
+      url: /api/test/new-draft
+      body:
+        prepick: 5
+      expectStatus: 200
+      assign: draft
+  - id: enter_lobby
+    open:
+      path: /lobby
+      waitUntil: networkidle
+  - id: wait_my_turn
+    wait:
+      text: YOUR TURN TO PICK
+      timeoutMs: 15000
+  - id: select_hero
+    click:
+      by: selector
+      selector: '[data-testid="hero-card-cache"]'
+  - id: settle
+    wait:
+      text: CONFIRM
+      timeoutMs: 5000
+  - id: capture
+    snapshot:
+      interactive: true
+      label: hero draft — player's turn, hero selected, 5 already picked
+contractHash: sha256:dea4621f55b733fd7fbc6c299eff3e93e53d0fab9fca4405577b4a4938ac7b75

@@ -1,0 +1,70 @@
+# Seeds a real dev game (default laning, live) and asserts the AsciiMap rail
+# widget. The overhaul demotes the map to a compact rail widget (force-mode
+# =compact): a "►YOU" current-zone card + a [SHOW MAP OVERVIEW] toggle that
+# expands the full 5x10 topology. Ports tests/e2e/specs/game/ascii-map.spec.ts.
+#   cairn run tests/e2e/flows/game_ascii_map.yml --config tests/e2e/cairntrace.config.yml --cold-start
+version: 1
+name: game_ascii_map
+intent: A seeded dev game renders the compact AsciiMap rail widget with RADIANT/DIRE headers, a
+  current-zone YOU card, and an expandable full-topology overview.
+mode: normal
+metadata:
+  feature: ascii-map
+  tags:
+    - ascii-map
+    - game-screen
+    - overhaul
+imports:
+  - ../actions/login.yml
+  - ../actions/new_game.yml
+outcomes:
+  - id: map_present
+    description: the AsciiMap rail widget is present
+    verify:
+      count:
+        selector: '[data-testid="ascii-map"]'
+        equals: 1
+  - id: team_headers
+    description: the map shows the RADIANT and DIRE team headers
+    verify:
+      text:
+        contains: RADIANT
+        region: '[data-testid="ascii-map"]'
+  - id: dire_header
+    description: the map shows the DIRE team header
+    verify:
+      text:
+        contains: DIRE
+        region: '[data-testid="ascii-map"]'
+  - id: current_zone_you
+    description: the compact current-zone card marks the player with ►YOU
+    verify:
+      text:
+        contains: YOU
+        region: '[data-testid="compact-current-zone"]'
+  - id: overview_expanded
+    description: tapping the overview toggle expands the full-topology mini overview grid
+    verify:
+      count:
+        selector: '[data-testid="mini-overview"]'
+        equals: 1
+steps:
+  - use: login
+  - use: new_game
+  - id: wait_current_zone
+    wait:
+      text: YOU
+      timeoutMs: 10000
+  - id: expand_overview
+    click:
+      by: selector
+      selector: '[data-testid="overview-toggle"]'
+  - id: wait_overview
+    wait:
+      text: core down
+      timeoutMs: 10000
+  - id: capture_map
+    snapshot:
+      interactive: true
+      label: ascii map rail with overview expanded
+contractHash: sha256:f3645c36d79f029b2313ccce56677030d1ef438af34a594b5267936c4e6f2d31

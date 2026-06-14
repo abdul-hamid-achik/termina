@@ -1,0 +1,67 @@
+# Ports specs/game/websocket-connection.spec.ts (PARTIAL).
+#
+# Original spec had two tests:
+#   1. "WebSocket connects on GameScreen mount" — the state bar shows
+#      [ONLINE <latency>ms] once the socket is up. PORTED below.
+#   2. "join_game message sent when connecting" — drove REAL matchmaking and
+#      sniffed sent WS frames for a join_game/reconnect handshake. BLOCKED: the
+#      dev harness has no matchmaking hook (it seeds games directly), and
+#      cairntrace v1.9 has no WS-frame interceptor verifier. The seeded game
+#      proves connect-on-mount, but not the literal outbound frame, so that
+#      assertion cannot be reproduced deterministically here.
+#
+# This live-loop seed lands on /play; GameScreen mounts useGameSocket, which
+# connects the WS and surfaces "[ONLINE {latency}ms]" in GameStateBar.vue
+# (line ~119, shown only when `connected` is true). We assert the bar is
+# present, that it reports ONLINE, that no connection-lost overlay is shown,
+# and that the console is clean.
+version: 1
+name: game_websocket_connection
+intent: A seeded live game mounts GameScreen, connects its WebSocket, and the state bar reports
+  ONLINE with no connection-lost overlay.
+mode: normal
+metadata:
+  feature: game-websocket
+  tags:
+    - game-websocket
+    - connection
+    - smoke
+imports:
+  - ../actions/login.yml
+  - ../actions/new_game.yml
+outcomes:
+  - id: state_bar_present
+    description: the in-game state bar is rendered
+    verify:
+      count:
+        selector: '[data-testid="game-state-bar"]'
+        equals: 1
+  - id: socket_online
+    description: the state bar reports the WebSocket as ONLINE (connect-on-mount succeeded)
+    verify:
+      text:
+        contains: "[ONLINE"
+        region: '[data-testid="game-state-bar"]'
+  - id: no_connection_lost
+    description: no connection-lost overlay is shown (reconnect attempts were not exhausted)
+    verify:
+      count:
+        selector: '[data-testid="connection-lost-overlay"]'
+        equals: 0
+  - id: clean_console
+    description: the game screen loads and connects with no console errors
+    verify:
+      console:
+        errorsMax: 0
+steps:
+  - use: login
+  - use: new_game
+  - id: await_online
+    wait:
+      text: "[ONLINE"
+      timeoutMs: 15000
+  - id: capture_screen
+    snapshot:
+      interactive: true
+      label: in-game screen with WebSocket online
+contractHash: sha256:2a7fe6285206ff8b67a4e369e5e86835243fe8dfbeca8d7bb554d2b658094e07

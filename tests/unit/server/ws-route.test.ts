@@ -12,7 +12,13 @@ import { Effect } from 'effect'
 import { createWsTicket } from '~~/server/utils/ws-ticket'
 import { getGameRuntime, getReconnectPayload } from '~~/server/plugins/game-server'
 import { submitAction } from '~~/server/game/engine/GameLoop'
-import { pickHero, getPlayerLobby, getLobby, cancelLobby } from '~~/server/game/matchmaking/lobby'
+import {
+  pickHero,
+  getPlayerLobby,
+  getLobby,
+  cancelLobby,
+  currentPickTurn,
+} from '~~/server/game/matchmaking/lobby'
 import {
   registerPeer,
   unregisterPeer,
@@ -38,6 +44,7 @@ vi.mock('~~/server/game/matchmaking/lobby', () => ({
   getPlayerLobby: vi.fn(),
   getLobby: vi.fn(),
   cancelLobby: vi.fn(),
+  currentPickTurn: vi.fn(() => null),
 }))
 vi.mock('~~/server/services/PeerRegistry', () => ({
   registerPeer: vi.fn(),
@@ -215,6 +222,23 @@ describe('ws route — open()', () => {
     const lobbyMsg = sentMessages(peer).find((m) => m.type === 'lobby_state')
     expect(lobbyMsg).toMatchObject({ lobbyId: 'lobby_9', team: 'dire' })
     expect((lobbyMsg as { players: unknown[] }).players).toHaveLength(2)
+  })
+
+  it('also re-sends pick_turn on reconnect so the client learns whose turn it is', () => {
+    vi.mocked(getPlayerLobby).mockReturnValue('lobby_9')
+    vi.mocked(getLobby).mockReturnValue({
+      players: [{ playerId: 'p_lobby', username: 'abdul', team: 'dire', heroId: null }],
+    } as never)
+    vi.mocked(currentPickTurn).mockReturnValue({
+      type: 'pick_turn',
+      playerId: 'p_lobby',
+      username: 'abdul',
+      timeRemainingMs: 15000,
+    })
+    const peer = createPeer({ sessionPlayerId: 'p_lobby' })
+    handler.open(peer)
+    const turnMsg = sentMessages(peer).find((m) => m.type === 'pick_turn')
+    expect(turnMsg).toMatchObject({ playerId: 'p_lobby', username: 'abdul' })
   })
 })
 

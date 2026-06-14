@@ -1,0 +1,151 @@
+# Ports the deleted smoke/full-session.spec.ts as a SEEDED happy-path smoke.
+# The original drove the full live journey: home -> register -> lobby
+# matchmaking -> hero pick -> in-game -> force-end game over -> main menu ->
+# leaderboard -> logout. Live matchmaking + hero draft is NOT seedable through
+# the dev hooks (there is no queue/draft hook), so the matchmaking ENTRY is
+# replaced by the standard seed path (login-as + new-game live), which is the
+# documented substitute. Everything downstream of "in a running game" is
+# reproduced faithfully: the in-game panels render, force-end yields the
+# post-game RADIANT VICTORY screen, MAIN MENU returns home, /profile/me shows
+# the own-profile whois + [EDIT] link, and [LOGOUT] clears the session back to
+# /login.
+#
+# Cairntrace outcomes only see the FINAL page (which here is /login after the
+# logout). So every intermediate milestone of the journey (the home logo, all
+# five in-game panels, the post-game victory screen, the profile whois/[EDIT],
+# the post-logout home) is asserted with hard-fail `wait` STEP gates — a missed
+# wait fails the whole run — while the stable, contradiction-free final-state
+# assertions live in `outcomes` against /login.
+version: 1
+name: smoke_full_session
+intent: A seeded happy-path smoke walks home then a live game (all in-game panels render) then a
+  force-ended radiant post-game then MAIN MENU home then the own profile then LOGOUT, ending logged
+  out on /login.
+mode: normal
+vars:
+  scenario: laning
+  manualTick: "false"
+  heroSelf: echo
+metadata:
+  feature: smoke
+  tags:
+    - smoke
+    - full-session
+    - seeded
+    - journey
+imports:
+  - ../actions/login.yml
+  - ../actions/new_game.yml
+outcomes:
+  - id: ended_on_login
+    description: the journey ends logged out on the /login route
+    verify:
+      url:
+        matches: /login
+  - id: login_prompt_visible
+    description: the login screen authenticate prompt is rendered after logout
+    verify:
+      text:
+        contains: authenticate to continue
+  - id: login_control_after_logout
+    description: the header shows the [LOGIN] control once the session is cleared
+    verify:
+      text:
+        contains: "[LOGIN]"
+  - id: no_post_game_leak
+    description: the post-game victory banner is not present on the final logged-out page
+    verify:
+      notText:
+        contains: RADIANT VICTORY
+  - id: no_in_game_screen_leak
+    description: the in-game screen is fully unmounted on the final logged-out page
+    verify:
+      count:
+        selector: '[data-testid="game-screen"]'
+        equals: 0
+steps:
+  - id: open_home
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: wait_home_logo
+    wait:
+      text: where every command is a kill
+      timeoutMs: 10000
+  - id: assert_home_logo_present
+    snapshot:
+      interactive: false
+      label: home page logo banner
+  - use: login
+  - use: new_game
+  - id: wait_game_state_bar
+    wait:
+      text: KDA
+      timeoutMs: 15000
+  - id: wait_combat_log_panel
+    wait:
+      text: COMBAT LOG
+      timeoutMs: 10000
+  - id: wait_war_room_panel
+    wait:
+      text: WAR ROOM
+      timeoutMs: 10000
+  - id: wait_hero_status_panel
+    wait:
+      text: HERO STATUS
+      timeoutMs: 10000
+  - id: capture_in_game
+    snapshot:
+      interactive: true
+      label: in-game screen with all panels
+  - id: force_end
+    request:
+      method: POST
+      url: /api/test/force-end
+      body:
+        gameId: ${requests.game.body.gameId}
+        winner: radiant
+      expectStatus: 200
+      assign: ended
+  - id: wait_post_game
+    wait:
+      text: RADIANT VICTORY
+      timeoutMs: 30000
+  - id: capture_post_game
+    snapshot:
+      interactive: true
+      label: post-game radiant victory screen
+  - id: return_to_menu
+    click:
+      by: selector
+      selector: '[data-testid="return-to-menu-btn"]'
+  - id: wait_home_again
+    wait:
+      text: where every command is a kill
+      timeoutMs: 10000
+  - id: open_profile
+    open:
+      path: /profile/me
+      waitUntil: networkidle
+  - id: wait_profile_whois
+    wait:
+      text: whois cairn_
+      timeoutMs: 10000
+  - id: wait_profile_edit
+    wait:
+      text: "[EDIT]"
+      timeoutMs: 10000
+  - id: open_home_for_logout
+    open:
+      path: /
+      waitUntil: networkidle
+  - id: click_logout
+    click:
+      by: role
+      role: button
+      name: "[LOGOUT]"
+  - id: wait_login_redirect
+    wait:
+      text: authenticate to continue
+      timeoutMs: 10000
+contractHash: sha256:4513ff51d5392275db47b527ae261e2bcf2db843a1498ed17c572e772c49fb17

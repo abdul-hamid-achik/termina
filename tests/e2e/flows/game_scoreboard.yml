@@ -1,0 +1,82 @@
+# Ports tests/e2e/specs/game/scoreboard.spec.ts — the in-game Scoreboard overlay.
+# Seeds a real dev game (laning, live loop) and opens the scoreboard. The
+# original spec toggled the overlay by HOLDING Tab; cairntrace cannot hold a
+# key, so this flow opens it deterministically by clicking the SCORE quick-action
+# button (GameScreen.vue:1133 — handleQuickAction('SCORE') flips showScoreboard).
+# Typing "score" into the command input is NOT a valid path: there is no "score"
+# command in the parser (app/composables/useCommands.ts) so CommandInput blocks
+# the submission as an error.
+#
+# All outcomes are evaluated against the FINAL page state, which is the
+# scoreboard overlay OPEN. The Tab-release "hides" case from the original spec is
+# a transient/contradictory end-state and is dropped (the overlay-open assertions
+# capture the meaning of the toggle). Rows: human radiant + 4 radiant bots + 5
+# dire bots = 10 player rows ([data-testid^="scoreboard-row-"]).
+#   cairn run tests/e2e/flows/game_scoreboard.yml --config tests/e2e/cairntrace.config.yml --cold-start
+version: 1
+name: game_scoreboard
+intent: A seeded game opens the Scoreboard overlay, showing both RADIANT and DIRE team blocks with
+  all ten player rows.
+mode: normal
+metadata:
+  feature: in-game-screen
+  tags:
+    - game-screen
+    - scoreboard
+    - seeded
+imports:
+  - ../actions/login.yml
+  - ../actions/new_game.yml
+outcomes:
+  - id: scoreboard_overlay_present
+    description: the scoreboard overlay is visible after opening it
+    verify:
+      count:
+        selector: '[data-testid="scoreboard-overlay"]'
+        equals: 1
+  - id: shows_both_team_labels
+    description: the open scoreboard shows both the RADIANT and DIRE team labels
+    verify:
+      text:
+        contains: RADIANT
+        region: '[data-testid="scoreboard-overlay"]'
+  - id: radiant_team_block_present
+    description: the radiant team block renders inside the scoreboard
+    verify:
+      count:
+        selector: '[data-testid="scoreboard-team-radiant"]'
+        equals: 1
+  - id: dire_team_block_present
+    description: the dire team block renders inside the scoreboard
+    verify:
+      count:
+        selector: '[data-testid="scoreboard-team-dire"]'
+        equals: 1
+  - id: ten_player_rows
+    description: the scoreboard renders exactly ten player rows (5 radiant + 5 dire)
+    verify:
+      count:
+        selector: '[data-testid^="scoreboard-row-"]'
+        equals: 10
+steps:
+  - use: login
+  - use: new_game
+  - id: open_scoreboard
+    click:
+      by: role
+      role: button
+      name: SCORE
+      exact: true
+  - id: wait_overlay_open
+    wait:
+      text: DIRE
+      timeoutMs: 5000
+  - id: wait_radiant_block
+    wait:
+      text: RADIANT
+      timeoutMs: 3000
+  - id: capture_scoreboard
+    snapshot:
+      interactive: true
+      label: scoreboard overlay open with both teams
+contractHash: sha256:7a4fb308e4ce440773c2f2de41f923d569f16ab46bde40767ef8d1bfb1ad434f

@@ -1,0 +1,49 @@
+version: 1
+name: nav_leaderboard
+intent: The public /leaderboard page renders the top-players table with its
+mode: normal
+metadata:
+  feature: navigation
+  tags:
+    - leaderboard
+    - navigation
+    - public
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: on_leaderboard_route
+    description: the browser is on the public /leaderboard route
+    verify:
+      url:
+        matches: /leaderboard
+  - id: leaderboard_panel_renders
+    description: the Leaderboard panel renders its "top players by rating" subtitle
+    verify:
+      text:
+        contains: top players by rating
+  - id: rank_column_header
+    description: the rank (#) column header renders
+    verify:
+      text:
+        contains: "#"
+  - id: player_column_header
+    description: the Player column header renders
+    verify:
+      text:
+        contains: Player
+  - id: rating_column_header
+    description: the Rating column header renders
+    verify:
+      text:
+        contains: Rating
+steps:
+  - use: login
+  - id: open_leaderboard
+    open:
+      path: /leaderboard
+      waitUntil: networkidle
+  - id: await_table
+    wait:
+      text: Rating
+      timeoutMs: 10000
+contractHash: sha256:7c03fd46e375fb57dc3816fa20c1852c4a122516448ac85e6e9b7c4fb8a75ac8

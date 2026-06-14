@@ -1,0 +1,99 @@
+version: 1
+name: auth_register
+intent: >
+  The /login Register tab reveals a confirm-password field and drives inline validation: a too-short
+  username warns "must be 3-20 characters", a too-short password shows the "/8 chars required" hint,
+  and a mismatched confirmation shows "passwords do not match". A valid unique POST
+  /api/auth/register succeeds (200) and returns the new local player, proving registration works end
+  to end.
+mode: normal
+metadata:
+  feature: auth
+  tags:
+    - auth
+    - register
+    - validation
+    - login-page
+outcomes:
+  - id: confirm_password_revealed
+    description: switching to the Register tab reveals a confirm-password field (a second password input)
+    verify:
+      count:
+        selector: form input[type="password"]
+        equals: 2
+  - id: username_too_short_hint
+    description: a 2-char username triggers the "must be 3-20 characters" inline hint
+    verify:
+      text:
+        contains: must be 3-20 characters
+  - id: password_too_short_hint
+    description: a 5-char password shows the "/8 chars required" inline hint
+    verify:
+      text:
+        contains: /8 chars required
+  - id: confirm_mismatch_hint
+    description: a confirm value that differs from the password shows "passwords do not match"
+    verify:
+      text:
+        contains: passwords do not match
+  - id: registration_succeeds
+    description: a valid unique POST /api/auth/register returns 200
+    verify:
+      network:
+        method: POST
+        urlContains: /api/auth/register
+        status:
+          in:
+            - 200
+            - 201
+steps:
+  - id: open_login
+    open:
+      path: /login
+      waitUntil: networkidle
+  - id: register_api
+    request:
+      method: POST
+      url: /api/auth/register
+      body:
+        username: r_${run.token}
+        password: password123
+      expectStatus: 200
+      assign: register
+  - id: reopen_login
+    open:
+      path: /login
+      waitUntil: networkidle
+  - id: switch_to_register
+    click:
+      by: role
+      role: button
+      name: "> REGISTER"
+  - id: type_short_username
+    fill:
+      by: selector
+      selector: input[autocomplete="username"]
+      value: ab
+  - id: see_username_hint
+    wait:
+      text: must be 3-20 characters
+      timeoutMs: 5000
+  - id: type_short_password
+    fill:
+      by: selector
+      selector: form > div:nth-child(2) input
+      value: short
+  - id: see_password_hint
+    wait:
+      text: /8 chars required
+      timeoutMs: 5000
+  - id: type_mismatch_confirm
+    fill:
+      by: selector
+      selector: form > div:nth-child(3) input
+      value: different
+  - id: see_mismatch_hint
+    wait:
+      text: passwords do not match
+      timeoutMs: 5000
+contractHash: sha256:458b298eb4b3e123d5f8e6811b379685bbb640607d4c34217135ff56008ebd49

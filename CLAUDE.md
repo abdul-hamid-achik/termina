@@ -16,10 +16,11 @@ bun run dev
 bun run test              # Watch mode (all projects)
 bun run test:unit         # Unit tests only (node env)
 bun run test:integration  # Integration tests (node env)
-bun run test:e2e          # E2E tests (Playwright, browser)
+bun run test:e2e          # E2E tests (Cairntrace BDD, browser — needs a dev server up)
 bun run test:api          # API tests (hitspec, requires running server)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
 hitspec run collections/auth-register.http         # Single hitspec collection
+cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
 
 # Lint & format
 bun run lint
@@ -89,7 +90,7 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 - **Discriminated unions**: Protocol messages use `{ type: '...' }` discriminator
 - **Unused vars**: Prefix with `_` (e.g., `_details`)
 - **Type imports**: ESLint enforces `import type { ... }` for type-only imports
-- **Testing**: Vitest for unit tests (`vi.fn()` mocks, `describe/it` blocks); hitspec for API tests (`.http` files in `collections/`); Playwright for E2E browser tests (`tests/e2e/`)
+- **Testing**: Vitest for unit tests (`vi.fn()` mocks, `describe/it` blocks); hitspec for API tests (`.http` files in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that seed an exact game via the `server/api/test/*` dev hooks instead of playing a match — see `tests/e2e/README.md`)
 - **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind extends them (e.g., `text-radiant`, `bg-bg-primary`, `text-dire`)
 
 ## Important Gotchas

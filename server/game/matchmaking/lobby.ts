@@ -322,6 +322,94 @@ export function getLobby(lobbyId: string): Lobby | undefined {
   return activeLobbies.get(lobbyId)
 }
 
+/**
+ * The `pick_turn` payload for a lobby's current picker, or null if it isn't in
+ * the picking phase. Used to re-send whose-turn-it-is on (re)connect — without
+ * this, a client that connects AFTER the pick_turn push (a refresh, or a seeded
+ * draft) never learns it's their turn and CONFIRM stays disabled.
+ */
+export function currentPickTurn(
+  lobby: Lobby,
+): { type: 'pick_turn'; playerId: string; username: string; timeRemainingMs: number } | null {
+  if (lobby.phase !== 'picking') return null
+  const idx = lobby.pickOrder[lobby.currentPickIndex]
+  const player = idx !== undefined ? lobby.players[idx] : undefined
+  if (!player) return null
+  return {
+    type: 'pick_turn',
+    playerId: player.playerId,
+    username: player.username,
+    timeRemainingMs: isBot(player.playerId) ? BOT_PICK_DELAY_MS : PICK_TIME_MS,
+  }
+}
+
+/**
+ * Dev/test-only: build a draft lobby frozen at the human's pick turn, with the
+ * bots ahead of them in the snake order already picked. No auto-pick timer — the
+ * human's pick (via the normal `pickHero` path) RESUMES the real draft: the
+ * remaining bots auto-pick and the lobby publishes `matchmaking:game_ready`
+ * exactly as a live match would. This is the pre-game/draft analogue of
+ * `createDevGame` (which seeds an in-progress game). Inert unless called — only
+ * the double-gated /api/test/new-draft hook invokes it.
+ *
+ * `prepick` = how many snake-order slots are filled (by bots) before the human.
+ * 9 ⇒ the human makes the FINAL pick, so a single confirm completes the draft
+ * and starts the game; a smaller value leaves the human mid-draft.
+ */
+export function seedDraftLobby(opts: {
+  humanId: string
+  humanUsername: string
+  prepick?: number
+}): Lobby {
+  const prepick = Math.max(0, Math.min(PICK_SEQUENCE_10.length - 1, opts.prepick ?? 9))
+  const lobbyId = generateId()
+  const snakeOrder = [0, 1, 1, 0, 0, 1, 1, 0, 0, 1]
+  const humanIndex = PICK_SEQUENCE_10[prepick]!
+
+  let botCount = 0
+  const players: LobbyPlayer[] = Array.from({ length: 10 }, (_, i) => {
+    const team: TeamId = snakeOrder[i] === 0 ? 'radiant' : 'dire'
+    if (i === humanIndex) {
+      return { playerId: opts.humanId, username: opts.humanUsername, mmr: 5000, team, heroId: null, ready: false }
+    }
+    botCount += 1
+    return {
+      playerId: `bot_draft${botCount}_${lobbyId}`,
+      username: `Bot ${botCount}`,
+      mmr: 1000,
+      team,
+      heroId: null,
+      ready: false,
+    }
+  })
+
+  const lobby: Lobby = {
+    id: lobbyId,
+    players,
+    pickedHeroes: new Set(),
+    pickOrder: [...PICK_SEQUENCE_10],
+    currentPickIndex: prepick,
+    pickTimer: null,
+    phase: 'picking',
+  }
+
+  // Pre-pick distinct heroes for the bots occupying the snake slots before the
+  // human; leaves the rest (incl. the human's eventual pick) available.
+  for (let k = 0; k < prepick; k++) {
+    const slot = PICK_SEQUENCE_10[k]!
+    const p = players[slot]!
+    const hero = AVAILABLE_HEROES[k % AVAILABLE_HEROES.length]!
+    p.heroId = hero
+    lobby.pickedHeroes.add(hero)
+  }
+
+  activeLobbies.set(lobbyId, lobby)
+  for (const p of players) playerToLobby.set(p.playerId, lobbyId)
+
+  lobbyLog.info('Seeded draft lobby', { lobbyId, prepick, humanIndex, humanId: opts.humanId })
+  return lobby
+}
+
 export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   const lobby = activeLobbies.get(lobbyId)
   if (!lobby) return

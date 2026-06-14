@@ -1,0 +1,86 @@
+version: 1
+name: auth_login
+intent: >
+  The /login Login tab renders the credentials form (a username input, a password input, and a LOGIN
+  button). With both fields empty the LOGIN button is disabled. Submitting bogus credentials is
+  rejected by /api/auth/login (401) and surfaces an [ERR] error message instead of logging in. A
+  real successful credential login is covered by the login-as dev hook elsewhere and is
+  intentionally not exercised here.
+mode: normal
+metadata:
+  feature: auth
+  tags:
+    - auth
+    - login
+    - login-page
+    - validation
+outcomes:
+  - id: form_renders
+    description: the login form shows a username input and a password input
+    verify:
+      count:
+        selector: input[autocomplete="username"], form input[type="password"]
+        equals: 2
+  - id: login_button_visible
+    description: the primary submit button is labelled LOGIN
+    verify:
+      text:
+        contains: LOGIN
+        region: form
+  - id: invalid_credentials_rejected
+    description: the bogus credential POST to /api/auth/login is rejected with a 401
+    verify:
+      network:
+        method: POST
+        urlContains: /api/auth/login
+        status:
+          equals: 401
+  - id: invalid_credentials_show_error
+    description: the rejected login renders an [ERR] error message
+    verify:
+      text:
+        contains: "[ERR]"
+  - id: empty_fields_disable_submit
+    description: with both fields cleared the LOGIN submit button is disabled
+    verify:
+      count:
+        selector: form button[disabled]
+        equals: 1
+steps:
+  - id: open_login
+    open:
+      path: /login
+      waitUntil: networkidle
+  - id: await_form
+    wait:
+      text: authenticate to continue
+      timeoutMs: 10000
+  - id: type_bad_username
+    fill:
+      by: selector
+      selector: input[autocomplete="username"]
+      value: nonexistent_user_xyz
+  - id: type_bad_password
+    fill:
+      by: selector
+      selector: form input[type="password"]
+      value: wrongpassword
+  - id: submit_login
+    click:
+      by: selector
+      selector: form button
+  - id: see_error
+    wait:
+      text: "[ERR]"
+      timeoutMs: 10000
+  - id: clear_username
+    fill:
+      by: selector
+      selector: input[autocomplete="username"]
+      value: ""
+  - id: clear_password
+    fill:
+      by: selector
+      selector: form input[type="password"]
+      value: ""
+contractHash: sha256:88ae2255fd39a45da6f9778444d93e2137f919f151b67ba2c293ea4a53bfdfc7
