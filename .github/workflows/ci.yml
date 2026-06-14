@@ -4,79 +4,248 @@ on:
   push:
   pull_request:
 
+# Cancel superseded runs on the same ref (safe for CI; never for ordered deploys).
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege floor. read-packages lets the optional GHCR mirror path (and
+# any future GITHUB_TOKEN-authenticated pulls) work; widen per-job if ever needed.
+permissions:
+  contents: read
+  packages: read
+
 env:
-  # Test DB/cache point at the CI service containers.
+  # Integration tests (tests/helpers/test-db.ts) read TEST_DATABASE_URL; drizzle-kit
+  # reads DATABASE_URL. Both point at the CI Postgres published on localhost:5432.
   TEST_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
   DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
+  # Single source of truth for the runtime + image tags used across jobs.
+  BUN_VERSION: '1.3.13'
+  POSTGRES_IMAGE: postgres:17-alpine
+  REDIS_IMAGE: redis:8-alpine
 
 jobs:
-  # ── Fast, reliable gates: lint, types, dead-code, unit/integration/component, build ──
-  checks:
+  # ─────────────────────────── tier 1: cheap static checks (parallel, no services) ───
+  lint:
+    name: lint (oxlint)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: termina
-          POSTGRES_PASSWORD: termina
-          POSTGRES_DB: termina_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U termina"
-          --health-interval 5s --health-timeout 5s --health-retries 20
-      redis:
-        image: redis:8-alpine
-        ports: ['6379:6379']
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 5s --health-retries 20
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
+      - name: Lint (oxlint)
+        run: bun run lint
+
+  format:
+    name: format (oxfmt --check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Format check (oxfmt --check)
+        run: bun run format:check
+
+  typecheck:
+    name: typecheck (vue-tsc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Typecheck (nuxt typecheck / vue-tsc)
+        run: bun run typecheck
+
+  knip:
+    name: knip (dead-code)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Dead-code check (knip)
+        run: bun run knip
+
+  unit-tests:
+    name: unit tests (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Unit tests (vitest, node env)
+        run: bun run test:unit
+
+  component-tests:
+    name: component tests (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Component tests (vitest, happy-dom)
+        run: bun run test:components
+
+  # ─────────────────────────── tier 2: needs Postgres+Redis (resilient pulls) ────────
+  integration-tests:
+    name: integration tests (vitest + postgres)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit-tests]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      # OPTIONAL Docker Hub auth — only fires if you've added the secrets. Lifts the
+      # anonymous pull rate-limit so the manual `docker pull` below counts against your
+      # account. Forks / repos without the secret skip this and still work (the retry
+      # loop is the primary, secret-free resilience mechanism).
+      - name: Log in to Docker Hub (optional, if secret present)
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Start PG + Redis ourselves (NOT `services:`) so the image pull lives inside a
+      # step we control and can RETRY. `services:` has no pull-retry, so a transient
+      # "Docker pull failed" / 429 hard-fails the job before any step runs — exactly the
+      # flake that broke e2e. Ports are published to the runner host, so tests connect
+      # via localhost:5432 / 6379 just like the old `services:` setup.
+      - name: Start Postgres + Redis (with pull retry)
+        run: |
+          set -euo pipefail
+          pull_retry() {
+            for i in 1 2 3 4 5; do
+              if docker pull "$1"; then return 0; fi
+              echo "::warning::docker pull $1 failed (attempt $i), backing off..."
+              sleep $((i * 10))
+            done
+            echo "::error::docker pull $1 failed after 5 attempts"; return 1
+          }
+          pull_retry "$POSTGRES_IMAGE"
+          pull_retry "$REDIS_IMAGE"
+          docker run -d --name postgres \
+            -e POSTGRES_USER=termina -e POSTGRES_PASSWORD=termina -e POSTGRES_DB=termina_test \
+            -p 5432:5432 \
+            --health-cmd "pg_isready -U termina" \
+            --health-interval 5s --health-timeout 5s --health-retries 20 \
+            "$POSTGRES_IMAGE"
+          docker run -d --name redis \
+            -p 6379:6379 \
+            --health-cmd "redis-cli ping" \
+            --health-interval 5s --health-timeout 5s --health-retries 20 \
+            "$REDIS_IMAGE"
+
+      - name: Wait for Postgres + Redis to be healthy
+        run: |
+          set -euo pipefail
+          for svc in postgres redis; do
+            echo "waiting for $svc..."
+            for _ in $(seq 1 30); do
+              status="$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null || echo starting)"
+              if [ "$status" = healthy ]; then echo "$svc healthy"; break; fi
+              sleep 2
+            done
+            if [ "$(docker inspect -f '{{.State.Health.Status}}' "$svc")" != healthy ]; then
+              echo "::error::$svc did not become healthy"; docker logs "$svc" || true; exit 1
+            fi
+          done
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+
       - name: Push schema into the test DB
         run: bunx drizzle-kit push --force
-      - run: bun run lint
-      - run: bun run typecheck
-      - run: bun run knip
-      - run: bun run test:unit
-      - run: bun run test:integration
-      - run: bun run test:components
-      - run: bun run build
+      - name: Integration tests (vitest)
+        run: bun run test:integration
 
-  # ── Browser e2e (Cairntrace). Needs the cairn CLI (not on npm → install from the
-  #    public GitHub repo) + a Chromium for the playwright backend. Uploads run
-  #    artifacts. Separate job so a flaky browser/install doesn't mask the core gates.
-  e2e:
+  # ─────────────────────────── tier 2: build (parallel with integration) ─────────────
+  build:
+    name: build (nuxt)
     runs-on: ubuntu-latest
-    needs: checks
+    needs: [lint, typecheck, unit-tests]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Build (nuxt build)
+        run: bun run build
+
+  # ─────────────────────────── tier 3: browser e2e (Cairntrace) ──────────────────────
+  # Needs cairn (not on npm → install from the public GitHub repo) + Chromium for the
+  # playwright backend. Gated on the cheap checks so a flaky browser/install can't mask
+  # core failures. Uploads run artifacts on every outcome for headless debugging.
+  e2e:
+    name: e2e (cairntrace, chromium)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit-tests, build]
     # Hard backstop: scripts/e2e.mjs has its own per-run watchdog (CAIRN_BUDGET_MS),
     # but this guarantees the job can never sit hung for the full 6h GitHub limit.
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: termina
-          POSTGRES_PASSWORD: termina
-          POSTGRES_DB: termina_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U termina"
-          --health-interval 5s --health-timeout 5s --health-retries 20
-      redis:
-        image: redis:8-alpine
-        ports: ['6379:6379']
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 5s --health-retries 20
+    timeout-minutes: 20
     env:
       # The dev server (started by scripts/e2e.mjs) reads these via Nuxt runtimeConfig.
       NUXT_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
@@ -86,22 +255,91 @@ jobs:
       TERMINA_TEST_FAST_GAME: '8'
       CAIRN_BACKEND: playwright
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Log in to Docker Hub (optional, if secret present)
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Same resilient self-managed PG+Redis as integration-tests (retryable pulls).
+      - name: Start Postgres + Redis (with pull retry)
+        run: |
+          set -euo pipefail
+          pull_retry() {
+            for i in 1 2 3 4 5; do
+              if docker pull "$1"; then return 0; fi
+              echo "::warning::docker pull $1 failed (attempt $i), backing off..."
+              sleep $((i * 10))
+            done
+            echo "::error::docker pull $1 failed after 5 attempts"; return 1
+          }
+          pull_retry "$POSTGRES_IMAGE"
+          pull_retry "$REDIS_IMAGE"
+          docker run -d --name postgres \
+            -e POSTGRES_USER=termina -e POSTGRES_PASSWORD=termina -e POSTGRES_DB=termina_test \
+            -p 5432:5432 \
+            --health-cmd "pg_isready -U termina" \
+            --health-interval 5s --health-timeout 5s --health-retries 20 \
+            "$POSTGRES_IMAGE"
+          docker run -d --name redis \
+            -p 6379:6379 \
+            --health-cmd "redis-cli ping" \
+            --health-interval 5s --health-timeout 5s --health-retries 20 \
+            "$REDIS_IMAGE"
+
+      - name: Wait for Postgres + Redis to be healthy
+        run: |
+          set -euo pipefail
+          for svc in postgres redis; do
+            echo "waiting for $svc..."
+            for _ in $(seq 1 30); do
+              status="$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null || echo starting)"
+              if [ "$status" = healthy ]; then echo "$svc healthy"; break; fi
+              sleep 2
+            done
+            if [ "$(docker inspect -f '{{.State.Health.Status}}' "$svc")" != healthy ]; then
+              echo "::error::$svc did not become healthy"; docker logs "$svc" || true; exit 1
+            fi
+          done
+
+      # Flush the test Redis (DB 1) so a previous run's zombie games don't leak in.
+      - name: Flush test Redis (DB 1)
+        run: docker exec redis redis-cli -n 1 flushdb
+
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
+
       - name: Install the cairn CLI (Cairntrace is not published to npm)
         run: bun add --global github:abdul-hamid-achik/cairntrace
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium
+          restore-keys: ${{ runner.os }}-playwright-
       - name: Install Chromium for the playwright backend
         run: bunx playwright install --with-deps chromium
+
       - name: Push schema into the test DB
         run: bunx drizzle-kit push --force
+
       - name: Run the e2e suite (starts the dev server with hooks, then cairn)
         run: bun run test:e2e:ci
+
       - name: Upload Cairntrace run artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: e2e-runs
           path: tests/e2e/runs/**
@@ -109,7 +347,7 @@ jobs:
           if-no-files-found: ignore
       - name: Upload dev-server log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: e2e-dev-server-log
           path: e2e-dev-server.log
@@ -117,9 +355,41 @@ jobs:
           if-no-files-found: ignore
       - name: Upload JUnit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: e2e-junit
           path: '**/junit*.xml'
           retention-days: 14
           if-no-files-found: ignore
+
+  # ─────────────────────────── aggregate: one stable required check ──────────────────
+  # Make THIS the single required status check in branch protection. It lets you evolve
+  # the internal job graph without editing protection rules. Fails if any needed job
+  # failed OR was cancelled (a skipped dependency would otherwise let `success()` pass).
+  #
+  # NOTE: `e2e` is intentionally NOT in this list — the browser e2e path is still being
+  # stabilized in CI, so it runs and reports its own red/green (and uploads artifacts)
+  # but does NOT block the merge gate yet. Once it's consistently green, add `- e2e`
+  # below to promote it to a required gate.
+  ci-success:
+    name: ci-success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - lint
+      - format
+      - typecheck
+      - knip
+      - unit-tests
+      - component-tests
+      - integration-tests
+      - build
+    steps:
+      - name: Verify all required jobs succeeded
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "::error::one or more CI jobs failed or were cancelled"
+            exit 1
+          fi
+          echo "all CI jobs succeeded"
+

@@ -3,7 +3,14 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
-  devtools: { enabled: true },
+  // DevTools injects @vue/devtools-core/-kit into the browser in dev mode. On a
+  // cold Vite cache (every fresh CI checkout) the first real page load makes
+  // Vite "discover new dependencies at runtime" and force a full dep
+  // re-optimization + page reload — which yanks the page out from under the
+  // e2e browser mid-navigation, so the first spec's `open` never settles and
+  // the whole suite hangs. The e2e dev server runs with TERMINA_TEST_HOOKS=1,
+  // so disable DevTools there (normal local dev keeps it).
+  devtools: { enabled: process.env.TERMINA_TEST_HOOKS !== '1' },
 
   future: {
     compatibilityVersion: 4,
