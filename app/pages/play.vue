@@ -8,10 +8,14 @@ const gameStore = useGameStore()
 const route = useRoute()
 
 onMounted(() => {
-  // Dev-only entry: the BDD/e2e harness seeds a game via /api/test/new-game and
-  // opens /play?gameId=…&playerId=…&dev=1 (no lobby). `import.meta.dev` is false
-  // in a production build, so this block is dead code in prod.
-  if (import.meta.dev && typeof route.query.gameId === 'string') {
+  // Harness entry: the BDD/e2e harness seeds a game via /api/test/new-game and
+  // opens /play?gameId=…&playerId=…&dev=1 (no lobby). Gate on the explicit `dev=1`
+  // marker, NOT `import.meta.dev` — e2e now runs against a PRODUCTION preview build
+  // where `import.meta.dev` is false, which left this block dead and forced /play
+  // to depend on the async WS-join populating the store before the redirect check
+  // (a race that redirected to /lobby under load). Reading the query is safe: the
+  // WS `join_game` still validates server-side that this player belongs to the game.
+  if (route.query.dev === '1' && typeof route.query.gameId === 'string') {
     gameStore.gameId = route.query.gameId
     if (typeof route.query.playerId === 'string') gameStore.playerId = route.query.playerId
   }

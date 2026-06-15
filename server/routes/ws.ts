@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
-import { getGameRuntime, getReconnectPayload } from '~~/server/plugins/game-server'
+import { getGameRuntime, getReconnectPayload, stopDevGame } from '~~/server/plugins/game-server'
 import { submitAction } from '~~/server/game/engine/GameLoop'
 import {
   pickHero,
@@ -31,6 +31,11 @@ const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const lobbyDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 const RECONNECT_WINDOW_MS = 60_000
+// Dev/e2e (`dev_*`) games get a much shorter window: the e2e browser disconnects
+// permanently at spec end and (almost) never reconnects, so a 60s window lets
+// every seeded game keep ticking through the whole suite (which runs in ~30s) and
+// pile up. 3s still tolerates an in-spec WS blip but stops the loop promptly after.
+const DEV_GAME_RECONNECT_MS = 3_000
 const _LOBBY_DISCONNECT_GRACE_MS = 30_000
 
 export default defineWebSocketHandler({
@@ -498,28 +503,36 @@ export default defineWebSocketHandler({
     }
 
     if (gameId) {
-      const timer = setTimeout(() => {
-        disconnectTimers.delete(playerId)
+      const timer = setTimeout(
+        () => {
+          disconnectTimers.delete(playerId)
 
-        resetRateLimit(playerId)
+          resetRateLimit(playerId)
 
-        const runtime = getGameRuntime()
-        if (runtime) {
-          Effect.runPromise(
-            Effect.gen(function* () {
-              yield* runtime.wsService.removeConnection(playerId)
-              yield* runtime.redisService.publish(
-                `game:${gameId}:events`,
-                JSON.stringify({ type: 'player_disconnect', playerId }),
-              )
-            }),
-          ).catch((err) => {
-            wsLog.warn('Disconnect cleanup failed', { playerId, error: String(err) })
-          })
-        }
+          const runtime = getGameRuntime()
+          if (runtime) {
+            Effect.runPromise(
+              Effect.gen(function* () {
+                yield* runtime.wsService.removeConnection(playerId)
+                yield* runtime.redisService.publish(
+                  `game:${gameId}:events`,
+                  JSON.stringify({ type: 'player_disconnect', playerId }),
+                )
+              }),
+            ).catch((err) => {
+              wsLog.warn('Disconnect cleanup failed', { playerId, error: String(err) })
+            })
+          }
 
-        peerState.delete(peer)
-      }, RECONNECT_WINDOW_MS)
+          // Dev/e2e games: the player is gone for good (grace expired with no
+          // reconnect) — stop the seeded game's loop so dev games don't pile up and
+          // tick forever across an e2e suite. No-op for real (matchmaking) games.
+          stopDevGame(gameId)
+
+          peerState.delete(peer)
+        },
+        gameId.startsWith('dev_') ? DEV_GAME_RECONNECT_MS : RECONNECT_WINDOW_MS,
+      )
 
       disconnectTimers.set(playerId, timer)
     } else {

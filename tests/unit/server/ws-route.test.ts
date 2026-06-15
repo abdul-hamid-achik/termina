@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { Effect } from 'effect'
 import { createWsTicket } from '~~/server/utils/ws-ticket'
-import { getGameRuntime, getReconnectPayload } from '~~/server/plugins/game-server'
+import { getGameRuntime, getReconnectPayload, stopDevGame } from '~~/server/plugins/game-server'
 import { submitAction } from '~~/server/game/engine/GameLoop'
 import {
   pickHero,
@@ -31,6 +31,7 @@ import { checkRateLimit, checkScopedRateLimit, resetRateLimit } from '~~/server/
 vi.mock('~~/server/plugins/game-server', () => ({
   getGameRuntime: vi.fn(),
   getReconnectPayload: vi.fn(),
+  stopDevGame: vi.fn(),
 }))
 vi.mock('~~/server/game/engine/GameLoop', () => ({
   submitAction: vi.fn(),
@@ -596,6 +597,23 @@ describe('ws route — close()', () => {
       'game:game_1:events',
       JSON.stringify({ type: 'player_disconnect', playerId: 'p_cl1' }),
     )
+  })
+
+  it('uses a short window for dev_ games and stops the seeded loop', async () => {
+    vi.useFakeTimers()
+    const { peer, runtime } = openPeerInGame('p_dev1', 'dev_1337_abcd')
+    handler.close(peer, {})
+
+    // Still inside the 3s dev window: nothing torn down, loop still running.
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(runtime.wsService.removeConnection).not.toHaveBeenCalled()
+    expect(stopDevGame).not.toHaveBeenCalled()
+
+    // Past the 3s dev window (well before the 60s real-game window): cleanup runs
+    // and the seeded game's loop is stopped so dev games don't pile up.
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(runtime.wsService.removeConnection).toHaveBeenCalledWith('p_dev1')
+    expect(stopDevGame).toHaveBeenCalledWith('dev_1337_abcd')
   })
 
   it('cancels the in-game cleanup when the player reconnects within the window', async () => {

@@ -18,7 +18,12 @@ import {
 import { gameLoggerLive } from '~~/server/utils/logger'
 import { gameLog } from '~~/server/utils/log'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
-import { startGameLoop, runOneTick, type GameCallbacks } from '~~/server/game/engine/GameLoop'
+import {
+  startGameLoop,
+  stopGameLoop,
+  runOneTick,
+  type GameCallbacks,
+} from '~~/server/game/engine/GameLoop'
 import {
   deleteSnapshot,
   readSnapshot,
@@ -261,6 +266,24 @@ let _advanceDevGame: ((gameId: string, ticks: number) => Promise<number>) | null
 export async function advanceDevGame(gameId: string, ticks: number): Promise<number> {
   if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return 0
   return _advanceDevGame ? _advanceDevGame(gameId, ticks) : 0
+}
+
+/**
+ * Dev/test-only: stop + drop a seeded game so it stops ticking. Called from the WS
+ * close handler when a dev game's player disconnects with no reconnect (the e2e
+ * spec is done). Without this, every non-manual seeded game's loop runs FOREVER —
+ * across a suite they pile up and load the single server process until navigations
+ * time out. Only touches `dev_` games (which exist only under TERMINA_TEST_HOOKS).
+ */
+export function stopDevGame(gameId: string): void {
+  if (!gameId.startsWith('dev_')) return
+  const runtime = _runtime
+  if (!runtime) return
+  liveGames.delete(gameId)
+  _devGameLoops.delete(gameId)
+  cleanupGame(gameId)
+  // Interrupt the running loop fiber (no-op for manual games / already-stopped).
+  void runtime.managedRuntime.runPromise(stopGameLoop(gameId)).catch(() => {})
 }
 
 export default defineNitroPlugin(async (nitroApp) => {
