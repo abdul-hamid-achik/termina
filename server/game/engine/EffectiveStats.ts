@@ -84,7 +84,9 @@ function getBuffStacks(player: PlayerState, buffId: string): number {
 
 /**
  * Effective attack: hero base + growth, plus item attack, plus talent attack,
- * plus additive attack buffs (mutex Deadlock, thread Fork, cron Uptime).
+ * plus additive attack buffs (mutex Deadlock, thread Fork, cron Uptime, malloc
+ * Heap Growth — the gold-scaling passive that was created but never read here, so
+ * Malloc's signature passive was giving +0 attack).
  */
 export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
@@ -96,7 +98,8 @@ export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): 
   const buffBonus =
     getBuffStacks(player, 'deadlock') * DEADLOCK_ATTACK_PER_STACK +
     getBuffStacks(player, 'forkAtk') +
-    getBuffStacks(player, 'uptimeAtk')
+    getBuffStacks(player, 'uptimeAtk') +
+    getBuffStacks(player, 'heapGrowth')
   return baseAttack + itemBonus + talentBonus + buffBonus
 }
 

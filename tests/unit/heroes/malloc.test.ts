@@ -10,6 +10,7 @@ import {
 } from '../../../server/game/heroes/_base'
 // Register malloc hero and import helpers
 import { getHeapGrowthBonus } from '../../../server/game/heroes/malloc'
+import { getEffectiveAttack } from '../../../server/game/engine/EffectiveStats'
 
 // ── Test Helpers ──────────────────────────────────────────────────
 
@@ -381,6 +382,18 @@ describe('Malloc Hero', () => {
       })
 
       expect(getHeapGrowthBonus(updated.players['p1']!)).toBe(7)
+    })
+
+    it('feeds heapGrowth stacks into effective attack (was ignored — the dead-passive bug)', () => {
+      const base = makePlayer({ gold: 0 })
+      const withHeap = applyBuff(makePlayer({ gold: 0 }), {
+        id: 'heapGrowth',
+        stacks: 12,
+        ticksRemaining: 9999,
+        source: 'p1',
+      })
+      // Before the fix, getEffectiveAttack ignored heapGrowth → delta was 0.
+      expect(getEffectiveAttack(withHeap) - getEffectiveAttack(base)).toBe(12)
     })
   })
 
