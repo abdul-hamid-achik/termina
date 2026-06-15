@@ -200,6 +200,10 @@ export function validateCommand(command: Command, context: GameContext): string 
   ) {
     return 'Cannot act while dead'
   }
+  // Eul's Cyclone fully disables the target (mirrors the server validateAction).
+  if (player.buffs.some((b) => b.id.includes('cyclone')) && command.type !== 'select_talent') {
+    return 'Cannot act while cycloned'
+  }
 
   switch (command.type) {
     case 'buyback': {

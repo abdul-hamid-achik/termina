@@ -110,6 +110,26 @@ describe('ActionResolver', () => {
       expect(error).toBe('Player is dead')
     })
 
+    it("should reject all actions while cycloned (Eul's)", () => {
+      const cyclonedState = makeGameState({
+        players: {
+          p1: makePlayer({
+            zone: 'mid-t1-rad',
+            buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 2, source: 'euls_scepter' }],
+          }),
+        },
+      })
+      for (const command of [
+        { type: 'move', zone: 'mid-t2-rad' },
+        { type: 'attack', target: { kind: 'hero', name: 'x' } },
+        { type: 'cast', ability: 'q' },
+      ] as const) {
+        expect(validateAction(cyclonedState, { playerId: 'p1', command })).toBe(
+          'Cannot act while cycloned',
+        )
+      }
+    })
+
     it('should reject casting on cooldown', () => {
       const state = makeGameState({
         players: {

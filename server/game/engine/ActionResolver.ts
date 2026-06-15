@@ -135,6 +135,9 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   const player = state.players[action.playerId]
   if (!player) return 'Player not found'
   if (!player.alive) return 'Player is dead'
+  // Eul's Cyclone lifts the target into a tornado — fully disabled (and
+  // invulnerable, enforced in the damage paths) until it expires.
+  if (hasDebuff(player, 'cyclone')) return 'Cannot act while cycloned'
 
   const cmd = action.command
 
