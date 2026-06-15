@@ -4,6 +4,7 @@ import {
   NEUTRAL_CREEPS_INTERVAL_TICKS,
   type NeutralCreepType,
 } from '~~/shared/constants/balance'
+import { isDamageImmune } from './DamageCalculator'
 
 let neutralIdCounter = 0
 let gameInstanceSuffix = ''
@@ -120,6 +121,8 @@ export function applyNeutralActions(state: GameState, actions: NeutralAction[]):
 
     const target = players[action.targetId]
     if (!target || !target.alive) continue
+    // Physical immunity (Ghost/Ethereal/invulnerable) ignores neutral attacks.
+    if (isDamageImmune(target, 'physical')) continue
 
     const newHp = Math.max(0, target.hp - action.damage)
     players[action.targetId] = {

@@ -21,6 +21,8 @@ import { TALENT_TREES, type Talent } from '~~/shared/constants/talents'
 // Mirrors mutex.ts DEADLOCK_* constants
 const DEADLOCK_ATTACK_PER_STACK = 3
 const DEADLOCK_DEFENSE_PER_STACK = 1
+// Mirrors cipher.ts ENCRYPTION_KEY_DEFENSE_REDUCTION (armor shred per stack)
+const ENCRYPTION_KEY_DEFENSE_REDUCTION = 2
 // Mirrors traceroute.ts HOP_COUNT_DAMAGE_PER_STACK
 const HOP_COUNT_DAMAGE_PER_STACK = 0.2
 // Mirrors echo.ts RESONANCE_BONUS_PER_STACK
@@ -85,8 +87,8 @@ function getBuffStacks(player: PlayerState, buffId: string): number {
 /**
  * Effective attack: hero base + growth, plus item attack, plus talent attack,
  * plus additive attack buffs (mutex Deadlock, thread Fork, cron Uptime, malloc
- * Heap Growth — the gold-scaling passive that was created but never read here, so
- * Malloc's signature passive was giving +0 attack).
+ * Heap Growth + Allocate — both malloc attack buffs were created but never read
+ * here, so Malloc's gold-scaling passive and Q were each giving +0 attack).
  */
 export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
@@ -99,8 +101,12 @@ export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): 
     getBuffStacks(player, 'deadlock') * DEADLOCK_ATTACK_PER_STACK +
     getBuffStacks(player, 'forkAtk') +
     getBuffStacks(player, 'uptimeAtk') +
-    getBuffStacks(player, 'heapGrowth')
-  return baseAttack + itemBonus + talentBonus + buffBonus
+    getBuffStacks(player, 'heapGrowth') +
+    getBuffStacks(player, 'allocate')
+  const attack = baseAttack + itemBonus + talentBonus + buffBonus
+  // ping Timeout (attackReduction) is a % reduction stored in the buff stacks.
+  const reductionPct = Math.min(100, getBuffStacks(player, 'attackReduction'))
+  return Math.round(attack * (1 - reductionPct / 100))
 }
 
 /**
@@ -117,8 +123,9 @@ export function getAttackMultiplier(player: PlayerState): number {
 
 /**
  * Effective defense: hero base + growth, plus item defense, plus talent
- * defense, plus defensive buffs (sentry Fortify, mutex Critical Section /
- * Deadlock, cron Uptime).
+ * defense, plus defensive buffs (sentry Fortify + Overwatch aura, mutex Critical
+ * Section / Deadlock, cron Uptime), minus cipher Encryption Key armor shred
+ * (floored at 0).
  */
 export function getEffectiveDefense(player: PlayerState, itemStats?: ItemStats): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
@@ -131,8 +138,11 @@ export function getEffectiveDefense(player: PlayerState, itemStats?: ItemStats):
     getBuffStacks(player, 'defenseBuff') +
     getBuffStacks(player, 'criticalSectionDefense') +
     getBuffStacks(player, 'deadlock') * DEADLOCK_DEFENSE_PER_STACK +
-    getBuffStacks(player, 'uptimeDef')
-  return base + itemBonus + talentBonus + buffBonus
+    getBuffStacks(player, 'uptimeDef') +
+    getBuffStacks(player, 'overwatch') // sentry Overwatch ally-defense aura
+  // cipher Encryption Key shreds armor (per-stack), floored at 0.
+  const shred = getBuffStacks(player, 'encryptionKey') * ENCRYPTION_KEY_DEFENSE_REDUCTION
+  return Math.max(0, base + itemBonus + talentBonus + buffBonus - shred)
 }
 
 /**

@@ -45,6 +45,39 @@ export function calculateEffectiveDamage(
   }
 }
 
+// Target-side damage amplifiers. Each stores its percent in `stacks` and they
+// stack ADDITIVELY (the MOBA amplification convention). magic-vuln debuffs only
+// amplify MAGICAL damage (regex Q +15%, Veil of Discord +25%, Ethereal Blade
+// +40%); thread Yield amplifies ALL damage types (+25%). Shared so every hero
+// damage path (dealDamage, DoTs, basic attacks) honors them consistently.
+const MAGIC_VULN_BUFF_IDS = ['magicVulnerability', 'veil_discord', 'magic_vuln_40']
+const ALL_DAMAGE_VULN_BUFF_IDS = ['yield']
+
+/** Multiplier (>= 1) for incoming damage of `damageType` from the target's vuln debuffs. */
+export function getIncomingDamageMultiplier(target: PlayerState, damageType: DamageType): number {
+  let pct = 0
+  for (const b of target.buffs) {
+    if (ALL_DAMAGE_VULN_BUFF_IDS.includes(b.id)) pct += b.stacks
+    else if (damageType === 'magical' && MAGIC_VULN_BUFF_IDS.includes(b.id)) pct += b.stacks
+  }
+  return 1 + pct / 100
+}
+
+/**
+ * True when `target` ignores an incoming hit of `damageType` outright — used as
+ * an early-skip so no HP is lost. invulnerable (Proxy R / Eul's Cyclone) blocks
+ * everything; Black King Bar's magic_immune blocks magical; ethereal (Ethereal
+ * Blade) and ghost_form (Ghost Scepter) block physical.
+ */
+export function isDamageImmune(target: PlayerState, damageType: DamageType): boolean {
+  const buffs = target.buffs
+  if (buffs.some((b) => b.id === 'invulnerable')) return true
+  if (damageType === 'magical' && buffs.some((b) => b.id === 'magic_immune')) return true
+  if (damageType === 'physical' && buffs.some((b) => b.id === 'ethereal' || b.id === 'ghost_form'))
+    return true
+  return false
+}
+
 /**
  * Apply damage to a player state. HP cannot go below 0.
  * If HP reaches 0, the player is marked as dead.

@@ -102,6 +102,18 @@ describe('Malloc Hero', () => {
       expect(buff!.ticksRemaining).toBe(3)
     })
 
+    it('feeds the allocate buff into effective attack (was ignored — +0 attack)', () => {
+      const base = makePlayer({ gold: 0 })
+      const withAllocate = applyBuff(makePlayer({ gold: 0 }), {
+        id: 'allocate',
+        stacks: 25,
+        ticksRemaining: 3,
+        source: 'p1',
+      })
+      // Before the fix, getEffectiveAttack omitted 'allocate' → delta was 0.
+      expect(getEffectiveAttack(withAllocate) - getEffectiveAttack(base)).toBe(25)
+    })
+
     it('deducts mana and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])

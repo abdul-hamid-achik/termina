@@ -10,6 +10,8 @@ import { initializeZoneStates, initializeTowers } from '../../../server/game/map
 import { initializeRoshan } from '../../../server/game/map/spawner'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 import { tickAllBuffs } from '../../../server/game/heroes/_base'
+// Register echo so its Q resolver runs (the spell-block tests cast a real spell).
+import '../../../server/game/heroes/echo'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -108,6 +110,26 @@ describe('ActionResolver', () => {
         command: { type: 'move', zone: 'mid-t2-rad' },
       })
       expect(error).toBe('Player is dead')
+    })
+
+    it("should reject all actions while cycloned (Eul's)", () => {
+      const cyclonedState = makeGameState({
+        players: {
+          p1: makePlayer({
+            zone: 'mid-t1-rad',
+            buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 2, source: 'euls_scepter' }],
+          }),
+        },
+      })
+      for (const command of [
+        { type: 'move', zone: 'mid-t2-rad' },
+        { type: 'attack', target: { kind: 'hero', name: 'x' } },
+        { type: 'cast', ability: 'q' },
+      ] as const) {
+        expect(validateAction(cyclonedState, { playerId: 'p1', command })).toBe(
+          'Cannot act while cycloned',
+        )
+      }
     })
 
     it('should reject casting on cooldown', () => {
@@ -978,6 +1000,135 @@ describe('ActionResolver', () => {
 
       expect(result.state.ancients.dire.hp).toBe(state.ancients.dire.hp)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
+    })
+  })
+
+  describe('spell block (Linken / Firewall)', () => {
+    // echo Q is a single-target (targetType 'hero') damage spell. hp/maxHp/mp are
+    // set to echo's exact base (550/280) so the maxHp-sync phase is a no-op and
+    // the spell's HP change isn't recomputed away.
+    const castQ = (state: GameState) =>
+      Effect.runSync(
+        resolveActions(state, [
+          {
+            playerId: 'p1',
+            command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+          },
+        ]),
+      )
+    const echoStats = { heroId: 'echo', hp: 550, maxHp: 550, mp: 280, maxMp: 280 } as const
+    const enemy = (buffs: PlayerState['buffs']) =>
+      makePlayer({ id: 'p2', name: 'Enemy', team: 'dire', zone: 'mid-river', ...echoStats, buffs })
+    const caster = () => makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', ...echoStats })
+
+    it('control: the spell lands on an unbuffed target', () => {
+      const state = makeGameState({ players: { p1: caster(), p2: enemy([]) } })
+      expect(castQ(state).state.players['p2']!.hp).toBeLessThan(550)
+    })
+
+    it("Linken's Sphere blocks the spell, spares the target, and spends the charge", () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([
+            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' },
+          ]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBe(550) // unharmed
+      expect(result.state.players['p2']!.buffs.find((b) => b.id === 'spellblock')!.stacks).toBe(0)
+      expect(result.state.players['p1']!.mp).toBeLessThan(280) // caster still paid
+      expect(result.state.players['p1']!.cooldowns.q).toBeGreaterThan(0)
+      expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(true)
+    })
+
+    it('Firewall item block is a one-shot (removed on use)', () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([
+            { id: 'firewall_block', stacks: 1, ticksRemaining: 30, source: 'firewall_item' },
+          ]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBe(550)
+      expect(result.state.players['p2']!.buffs.some((b) => b.id === 'firewall_block')).toBe(false)
+    })
+
+    it('a spent (stacks 0) spellblock does NOT block', () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([{ id: 'spellblock', stacks: 0, ticksRemaining: 8, source: 'linkens_sphere' }]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBeLessThan(550) // spell lands
+      expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(false)
+    })
+
+    it('Lotus Orb negates the spell on the holder and bounces its damage to the caster', () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([{ id: 'lotus_orb', stacks: 1, ticksRemaining: 5, source: 'lotus_orb' }]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBe(550) // holder unharmed (negated)
+      expect(result.state.players['p2']!.buffs.some((b) => b.id === 'lotus_orb')).toBe(false) // spent
+      expect(result.state.players['p1']!.hp).toBeLessThan(550) // caster took the reflected damage
+      const ev = result.events.find((e) => e._tag === 'spell_blocked')
+      expect(ev && ev._tag === 'spell_blocked' ? ev.source : null).toBe('lotus_orb')
+    })
+  })
+
+  describe('Stack Overflow (Overclock 2x)', () => {
+    const echoStats = { heroId: 'echo', hp: 550, maxHp: 550, mp: 280, maxMp: 280 } as const
+    const castQ = (state: GameState) =>
+      Effect.runSync(
+        resolveActions(state, [
+          {
+            playerId: 'p1',
+            command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+          },
+        ]),
+      )
+    const build = (casterBuffs: PlayerState['buffs']) =>
+      makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            ...echoStats,
+            buffs: casterBuffs,
+          }),
+          p2: makePlayer({
+            id: 'p2',
+            name: 'Enemy',
+            team: 'dire',
+            zone: 'mid-river',
+            ...echoStats,
+          }),
+        },
+      })
+
+    it('doubles the next ability damage and consumes the charge', () => {
+      const baseDmg = 550 - castQ(build([])).state.players['p2']!.hp
+      expect(baseDmg).toBeGreaterThan(0)
+
+      const r = castQ(
+        build([
+          { id: 'stack_overflow_buff', stacks: 1, ticksRemaining: 10, source: 'stack_overflow' },
+        ]),
+      )
+      const ocDmg = 550 - r.state.players['p2']!.hp
+      expect(ocDmg).toBe(baseDmg * 2)
+      // charge spent
+      expect(r.state.players['p1']!.buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
     })
   })
 })

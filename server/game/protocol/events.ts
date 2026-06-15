@@ -165,6 +165,16 @@ export interface TrapTriggeredEvent {
   readonly damage: number
 }
 
+export interface SpellBlockedEvent {
+  readonly _tag: 'spell_blocked'
+  readonly tick: number
+  readonly casterId: string
+  readonly targetId: string
+  readonly source: 'linkens_sphere' | 'firewall_item' | 'lotus_orb'
+  /** For Lotus Orb: the damage bounced back to the caster (omitted for a pure block). */
+  readonly reflected?: number
+}
+
 export interface RoshanKilledEvent {
   readonly _tag: 'roshan_killed'
   readonly tick: number
@@ -301,6 +311,7 @@ export type GameEngineEvent =
   | WardPlacedEvent
   | RunePickedEvent
   | TrapTriggeredEvent
+  | SpellBlockedEvent
   | RoshanKilledEvent
   | NeutralKilledEvent
   | RoshanDamageEvent

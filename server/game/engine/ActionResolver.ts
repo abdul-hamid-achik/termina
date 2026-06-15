@@ -17,7 +17,12 @@ import {
 } from './EffectiveStats'
 import { areAdjacent } from '~~/server/game/map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalculator'
+import {
+  calculatePhysicalDamage,
+  calculateMagicalDamage,
+  getIncomingDamageMultiplier,
+  isDamageImmune,
+} from './DamageCalculator'
 import { placeWard, canAttackTower } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -58,6 +63,9 @@ import {
 import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
 import { wsLog } from '~~/server/utils/log'
+
+/** Ticks before Linken's Sphere recharges its spell-block after spending one. */
+const LINKENS_RECHARGE_TICKS = 12
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -130,6 +138,9 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   const player = state.players[action.playerId]
   if (!player) return 'Player not found'
   if (!player.alive) return 'Player is dead'
+  // Eul's Cyclone lifts the target into a tornado — fully disabled (and
+  // invulnerable, enforced in the damage paths) until it expires.
+  if (hasDebuff(player, 'cyclone')) return 'Cannot act while cycloned'
 
   const cmd = action.command
 
@@ -510,23 +521,32 @@ export function resolveActions(
           )
           if (chainTargets.length > 0) {
             const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
-            const chainDamage = calculateMagicalDamage(60, chainTarget.magicResist)
-            const chainPendingHp =
-              (playerUpdates[chainTarget.id]?.hp as number | undefined) ?? chainTarget.hp
-            const chainNewHp = Math.max(0, chainPendingHp - chainDamage)
-            playerUpdates[chainTarget.id] = {
-              ...playerUpdates[chainTarget.id],
-              hp: chainNewHp,
-              alive: chainNewHp > 0,
+            // Maelstrom's chain is magical: blocked by magic immunity, amped by
+            // the chain target's magic-vuln / Yield.
+            const chainDamage = isDamageImmune(chainTarget, 'magical')
+              ? 0
+              : Math.round(
+                  calculateMagicalDamage(60, chainTarget.magicResist) *
+                    getIncomingDamageMultiplier(chainTarget, 'magical'),
+                )
+            if (chainDamage > 0) {
+              const chainPendingHp =
+                (playerUpdates[chainTarget.id]?.hp as number | undefined) ?? chainTarget.hp
+              const chainNewHp = Math.max(0, chainPendingHp - chainDamage)
+              playerUpdates[chainTarget.id] = {
+                ...playerUpdates[chainTarget.id],
+                hp: chainNewHp,
+                alive: chainNewHp > 0,
+              }
+              events.push({
+                _tag: 'damage',
+                tick: state.tick,
+                sourceId: action.playerId,
+                targetId: chainTarget.id,
+                amount: chainDamage,
+                damageType: 'magical',
+              })
             }
-            events.push({
-              _tag: 'damage',
-              tick: state.tick,
-              sourceId: action.playerId,
-              targetId: chainTarget.id,
-              amount: chainDamage,
-              damageType: 'magical',
-            })
           }
         }
 
@@ -560,16 +580,23 @@ export function resolveActions(
         let damage = calculatePhysicalDamage(attackDamage, defense)
         damage = Math.max(0, damage - blockedDamage)
 
-        if (target.buffs.some((b) => b.id === 'ghost_form')) {
+        // Physical immunity (Ghost/Ethereal/invulnerable) zeroes the attack;
+        // otherwise target-side amps (thread Yield) raise it.
+        if (isDamageImmune(target, 'physical')) {
           damage = 0
+        } else {
+          damage = Math.round(damage * getIncomingDamageMultiplier(target, 'physical'))
         }
 
         let totalDamage = damage
-        if (bonusMagicDamage > 0) {
-          const magicDmg = calculateMagicalDamage(
+        // On-hit magic (MKB etc.) is blocked by magic immunity (BKB/invulnerable)
+        // and amplified by magic-vuln / Yield.
+        if (bonusMagicDamage > 0 && !isDamageImmune(target, 'magical')) {
+          const rawMagic = calculateMagicalDamage(
             bonusMagicDamage,
             getEffectiveMagicResist(target, targetItemStats),
           )
+          const magicDmg = Math.round(rawMagic * getIncomingDamageMultiplier(target, 'magical'))
           totalDamage += magicDmg
           events.push({
             _tag: 'damage',
@@ -874,11 +901,18 @@ export function resolveActions(
 
       let buffs = player.buffs
       if (player.items.includes('linkens_sphere')) {
+        // Re-arm only when no spellblock buff remains. A SPENT charge lingers as
+        // stacks 0 for LINKENS_RECHARGE_TICKS (set on block), gating re-arm.
         const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
         if (!linkenBuff) {
           buffs = [
             ...player.buffs,
-            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' },
+            {
+              id: 'spellblock',
+              stacks: 1,
+              ticksRemaining: LINKENS_RECHARGE_TICKS,
+              source: 'linkens_sphere',
+            },
           ]
         }
       }
@@ -1227,19 +1261,114 @@ function resolveHeroCast(
   }
 
   const newState = result.right.state
-  const newPlayers = newState.players
+  let newPlayers = newState.players
   const abilityDef = HEROES[caster.heroId]?.abilities[cmd.ability]
   const damageType = abilityDef?.damageType ?? 'magical'
+
+  // Resolve the targeted hero id (used by the block check + ability_used event).
+  let targetId: string | undefined
+  if (cmd.target?.kind === 'hero') {
+    const needle = cmd.target.name.toLowerCase()
+    for (const [id, p] of Object.entries(newPlayers)) {
+      if (
+        p.id.toLowerCase() === needle ||
+        p.name.toLowerCase() === needle ||
+        p.heroId?.toLowerCase() === needle
+      ) {
+        targetId = id
+        break
+      }
+    }
+  }
+
+  // Linken's Sphere / Firewall item: a single-target ability on a hero holding a
+  // block charge fizzles — the caster still pays mana + cooldown (already
+  // deducted by the resolver), but the target's effect is reverted to its
+  // pre-cast state and one block charge is consumed.
+  if (targetId && abilityDef?.targetType === 'hero') {
+    const pre = players[targetId]
+    const post = newPlayers[targetId]
+    // Only an ARMED charge (stacks >= 1) blocks — a spent Linken's is stacks 0.
+    const blockId = pre?.buffs.find(
+      (b) => (b.id === 'spellblock' || b.id === 'firewall_block') && b.stacks >= 1,
+    )?.id
+    if (pre && blockId) {
+      const buffs = pre.buffs.flatMap((b) => {
+        if (b.id !== blockId) return [b]
+        // firewall_block is a one-shot from an item active → remove it.
+        // spellblock auto-recharges (every tick it's absent), so instead spend
+        // it to stacks 0 with a fresh 12-tick window to gate the next block.
+        return b.id === 'spellblock'
+          ? [{ ...b, stacks: 0, ticksRemaining: LINKENS_RECHARGE_TICKS }]
+          : []
+      })
+      newPlayers = { ...newPlayers, [targetId]: { ...pre, buffs } }
+      events.push({
+        _tag: 'spell_blocked',
+        tick: state.tick,
+        casterId: action.playerId,
+        targetId,
+        source: blockId === 'spellblock' ? 'linkens_sphere' : 'firewall_item',
+      })
+    } else if (pre && post && pre.buffs.some((b) => b.id === 'lotus_orb')) {
+      // Lotus Orb: negate the spell on the holder and bounce the damage it would
+      // have taken back to the caster (gated by the caster's own immunity).
+      const reflected = pre.hp - post.hp
+      let removed = false
+      const buffs = pre.buffs.filter((b) => {
+        if (!removed && b.id === 'lotus_orb') {
+          removed = true
+          return false
+        }
+        return true
+      })
+      newPlayers = { ...newPlayers, [targetId]: { ...pre, buffs } } // negate on holder
+      const casterPost = newPlayers[action.playerId]
+      if (reflected > 0 && casterPost && !isDamageImmune(casterPost, damageType)) {
+        const newHp = Math.max(0, casterPost.hp - reflected)
+        newPlayers = {
+          ...newPlayers,
+          [action.playerId]: { ...casterPost, hp: newHp, alive: newHp > 0 },
+        }
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          sourceId: targetId,
+          targetId: action.playerId,
+          amount: reflected,
+          damageType,
+        })
+      }
+      events.push({
+        _tag: 'spell_blocked',
+        tick: state.tick,
+        casterId: action.playerId,
+        targetId,
+        source: 'lotus_orb',
+        reflected: reflected > 0 ? reflected : 0,
+      })
+    }
+  }
 
   // Synthesize legacy-shape damage/heal events from the HP diff. Amounts are
   // post-mitigation AND post-shield: a fully shield-absorbed ability hit
   // emits no damage event (and grants no assist credit). Basic attacks keep
   // pre-shield amounts — see the attack phase. Don't "fix" one to match the
   // other without revisiting both.
+  // Stack Overflow (Overclock): the caster's next ability deals 2x damage —
+  // double the HP lost by each enemy hit, then spend the charge after the loop.
+  const hasOverclock = !!newPlayers[action.playerId]?.buffs.some(
+    (b) => b.id === 'stack_overflow_buff',
+  )
   for (const [pid, post] of Object.entries(newPlayers)) {
     const pre = players[pid]
     if (!pre) continue
-    const delta = pre.hp - post.hp
+    let delta = pre.hp - post.hp
+    if (delta > 0 && hasOverclock && post.team !== caster.team) {
+      const doubledHp = Math.max(0, post.hp - delta)
+      newPlayers = { ...newPlayers, [pid]: { ...post, hp: doubledHp, alive: doubledHp > 0 } }
+      delta *= 2
+    }
     if (delta > 0) {
       events.push({
         _tag: 'damage',
@@ -1265,26 +1394,20 @@ function resolveHeroCast(
       })
     }
   }
+  if (hasOverclock) {
+    const c = newPlayers[action.playerId]
+    if (c) {
+      newPlayers = {
+        ...newPlayers,
+        [action.playerId]: { ...c, buffs: c.buffs.filter((b) => b.id !== 'stack_overflow_buff') },
+      }
+    }
+  }
 
   // result.right.events are wire-format 'ability_cast' events the client
   // doesn't understand — discard them; ability_used/cooldown_used below
   // carry the resolver-set cooldown (the authoritative value).
   const actualCd = newPlayers[action.playerId]?.cooldowns[cmd.ability] ?? 0
-
-  let targetId: string | undefined
-  if (cmd.target?.kind === 'hero') {
-    const needle = cmd.target.name.toLowerCase()
-    for (const [id, p] of Object.entries(newPlayers)) {
-      if (
-        p.id.toLowerCase() === needle ||
-        p.name.toLowerCase() === needle ||
-        p.heroId?.toLowerCase() === needle
-      ) {
-        targetId = id
-        break
-      }
-    }
-  }
 
   events.push({
     _tag: 'ability_used',

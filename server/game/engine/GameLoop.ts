@@ -27,6 +27,7 @@ import { runTowerAI, applyTowerActions } from './TowerAI'
 import { runRoshanAI, processRoshanDamage } from './RoshanAI'
 import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
 import { processTraps } from './TrapSystem'
+import { isDamageImmune } from './DamageCalculator'
 import { spawnCreepWaves, spawnRunes } from '~~/server/game/map/spawner'
 import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
@@ -899,7 +900,8 @@ export function runNPCAI(
   // Roshan attacks
   for (const action of runRoshanAI(s)) {
     const target = s.players[action.targetId]
-    if (target && target.alive) {
+    // Physical immunity (Ghost/Ethereal/invulnerable) ignores Roshan's hit.
+    if (target && target.alive && !isDamageImmune(target, 'physical')) {
       const newHp = Math.max(0, target.hp - action.damage)
       s = {
         ...s,

@@ -12,11 +12,16 @@ import {
   applyBuff,
   updatePlayer,
   getAlliesInZone,
+  getEnemiesInZone,
   updatePlayers,
   findTargetPlayer,
 } from '~~/server/game/heroes/_base'
 import { areAdjacent } from '~~/server/game/map/topology'
-import { calculateMagicalDamage } from '~~/server/game/engine/DamageCalculator'
+import {
+  calculateMagicalDamage,
+  getIncomingDamageMultiplier,
+  isDamageImmune,
+} from '~~/server/game/engine/DamageCalculator'
 
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */
@@ -591,8 +596,12 @@ function useDagon(
       return yield* Effect.fail(new InvalidTargetError({ reason: 'Target out of range' }))
     }
 
-    // Deal 300 magical damage
-    const damage = calculateMagicalDamage(300, targetPlayer.magicResist)
+    // Deal 300 magical damage — blocked by magic immunity (BKB/invulnerable),
+    // amplified by magic-vuln / Yield on the target.
+    const baseDamage = isDamageImmune(targetPlayer, 'magical')
+      ? 0
+      : calculateMagicalDamage(300, targetPlayer.magicResist)
+    const damage = Math.round(baseDamage * getIncomingDamageMultiplier(targetPlayer, 'magical'))
     const newHp = Math.max(0, targetPlayer.hp - damage)
 
     const updatedCaster = applyBuff(player, {
@@ -897,19 +906,26 @@ function useScytheOfVyse(
 }
 
 function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
-  let updated = applyBuff(player, {
-    id: 'veil_discord',
-    stacks: 25, // 25% magic vuln
-    ticksRemaining: 4,
-    source: 'veil_of_discord',
-  })
-  updated = applyBuff(updated, {
+  // "Enemies in zone take 25% more magical damage." The debuff belongs on the
+  // enemies in the caster's zone — it was previously (wrongly) applied to the
+  // caster. The magic-vuln amp is consumed by dealDamage's incoming-magic
+  // multiplier.
+  const enemies = getEnemiesInZone(state, player).map((e) =>
+    applyBuff(e, {
+      id: 'veil_discord',
+      stacks: 25, // +25% magical damage taken
+      ticksRemaining: 4,
+      source: 'veil_of_discord',
+    }),
+  )
+  // Only the cooldown marker stays on the caster.
+  const caster = applyBuff(player, {
     id: 'item_cd_veil_of_discord',
     stacks: 1,
     ticksRemaining: 15,
     source: 'veil_of_discord',
   })
-  return updatePlayer(state, updated)
+  return updatePlayers(state, [caster, ...enemies])
 }
 
 function useShivasGuard(state: GameState, player: PlayerState): GameState {

@@ -1,6 +1,6 @@
 import type { GameState, TowerState } from '~~/shared/types/game'
 import { TOWER_ATTACK } from '~~/shared/constants/balance'
-import { calculatePhysicalDamage } from './DamageCalculator'
+import { calculatePhysicalDamage, isDamageImmune } from './DamageCalculator'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 export interface TowerAction {
@@ -124,7 +124,8 @@ export function applyTowerActions(state: GameState, actions: TowerAction[]): Gam
   for (const action of actions) {
     if (action.targetType === 'hero') {
       const target = players[action.targetId]
-      if (target && target.alive) {
+      // Physical immunity (Ghost/Ethereal/invulnerable) ignores tower fire.
+      if (target && target.alive && !isDamageImmune(target, 'physical')) {
         const damage = calculatePhysicalDamage(action.damage, target.defense)
         const newHp = Math.max(0, target.hp - damage)
         players = {

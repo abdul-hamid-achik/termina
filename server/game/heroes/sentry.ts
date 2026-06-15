@@ -301,23 +301,27 @@ function resolveR(
 }
 
 // ── Passive: Overwatch ────────────────────────────────────────────
-// Grants vision of adjacent zones. Allied heroes in same zone gain 5 bonus defense.
+// Vision of adjacent zones is provided by the Sentry ward (VisionCalculator).
+// The defensive half is an aura: the Sentry and allied heroes in its zone gain
+// OVERWATCH_DEFENSE_BONUS defense (read by getEffectiveDefense). Refreshed each
+// tick (via tick_end) with a short duration so it decays when an ally leaves.
+// Previously the +5 was applied only as a no-op marker on the Sentry himself.
+const OVERWATCH_DEFENSE_BONUS = 5
 
-function resolveHeroPassive(state: GameState, playerId: string, _event: GameEvent): GameState {
-  const player = state.players[playerId]
-  if (!player) return state
+function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
+  if (event.type !== 'tick_end') return state
+  const sentry = state.players[playerId]
+  if (!sentry || !sentry.alive) return state
 
-  if (!player.buffs.some((b) => b.id === 'overwatch')) {
-    const updated = applyBuff(player, {
+  const beneficiaries = [sentry, ...getAlliesInZone(state, sentry)].map((p) =>
+    applyBuff(p, {
       id: 'overwatch',
-      stacks: 1,
-      ticksRemaining: 9999,
-      source: playerId,
-    })
-    return updatePlayer(state, updated)
-  }
-
-  return state
+      stacks: OVERWATCH_DEFENSE_BONUS,
+      ticksRemaining: 2,
+      source: 'sentry_overwatch',
+    }),
+  )
+  return updatePlayers(state, beneficiaries)
 }
 
 registerHero('sentry', resolveHeroAbility, resolveHeroPassive)
