@@ -453,6 +453,8 @@ const hpPct = computed(() => {
 })
 /** Hero panel turns to the danger variant under 30% HP. */
 const heroDanger = computed(() => gameStore.isAlive && hpPct.value <= 30)
+// Flag the Zone panel red when an enemy hero shares the player's zone.
+const zoneDanger = computed(() => gameStore.nearbyEnemies.length > 0)
 /** A red vignette pulses over the whole screen under 15% HP. */
 const heroCritical = computed(() => gameStore.isAlive && hpPct.value <= 15)
 
@@ -1059,9 +1061,14 @@ function handleReturnToMenu() {
         </div>
       </TerminalPanel>
 
-      <TerminalPanel :title="`Zone: ${currentZoneName}`" class="min-h-0 flex-1">
+      <TerminalPanel
+        :title="`Zone: ${currentZoneName}`"
+        :variant="zoneDanger ? 'danger' : 'default'"
+        class="min-h-0 flex-1"
+      >
         <ZonePanel
           :zone-name="currentZoneName"
+          :zone-id="playerZone"
           :player-team="gameStore.player?.team ?? 'radiant'"
           :enemies="gameStore.nearbyEnemies"
           :allies="gameStore.nearbyAllies"

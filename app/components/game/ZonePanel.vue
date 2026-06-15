@@ -8,6 +8,7 @@ import type {
   TeamId,
 } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 
 /** A visible creep plus its index in the client's creeps array (for `attack creep:<i>`). */
@@ -16,6 +17,8 @@ type IndexedCreep = CreepState & { index: number }
 const props = withDefaults(
   defineProps<{
     zoneName: string
+    /** Zone id (for ZONE_MAP lookup: type, owning team, shop). */
+    zoneId?: string
     playerTeam: TeamId
     enemies?: PlayerState[]
     allies?: PlayerState[]
@@ -24,6 +27,7 @@ const props = withDefaults(
     tower?: TowerState | null
   }>(),
   {
+    zoneId: '',
     enemies: () => [],
     allies: () => [],
     creeps: () => [],
@@ -80,6 +84,70 @@ function attackTower() {
 
 const aliveNeutrals = computed(() => props.neutrals.filter((n) => n.alive))
 
+// ── At-a-glance status header ──────────────────────────────────
+// Zone identity, a color-coded threat verdict, and a zone-local objective so
+// "what is this place / am I safe here / what do I do" is answerable without
+// parsing the unit list below.
+const zoneMeta = computed(() => (props.zoneId ? ZONE_MAP[props.zoneId] : undefined))
+
+const identityTag = computed(() => {
+  const m = zoneMeta.value
+  if (!m) return 'ZONE'
+  const owner = m.team === 'neutral' ? '' : ` · ${m.team === props.playerTeam ? 'ours' : 'enemy'}`
+  return `${m.type}${owner}`
+})
+
+const identityClass = computed(() => {
+  const m = zoneMeta.value
+  if (!m || m.team === 'neutral') return 'text-text-dim'
+  return m.team === props.playerTeam ? 'text-radiant' : 'text-dire'
+})
+
+/** Allied hero headcount including the local player (always present in-zone). */
+const allyHeadcount = computed(() => props.allies.length + 1)
+
+const threat = computed<{ label: string; tone: 'safe' | 'warn' | 'danger' }>(() => {
+  const enemyHeroes = props.enemies.length
+  if (enemyHeroes === 0) {
+    if (towerHere.value && towerIsEnemy.value) return { label: 'TOWER', tone: 'warn' }
+    return { label: 'CLEAR', tone: 'safe' }
+  }
+  if (enemyHeroes > allyHeadcount.value) return { label: 'DANGER', tone: 'danger' }
+  if (enemyHeroes === allyHeadcount.value) return { label: 'CONTESTED', tone: 'warn' }
+  return { label: 'FAVORED', tone: 'safe' }
+})
+
+const threatClass = computed(() => {
+  switch (threat.value.tone) {
+    case 'danger':
+      return 'text-dire'
+    case 'warn':
+      return 'text-gold'
+    default:
+      return 'text-radiant'
+  }
+})
+
+const objective = computed<string | null>(() => {
+  const m = zoneMeta.value
+  if (towerHere.value && towerIsEnemy.value) return 'Destroy the enemy tower'
+  if (!m) return null
+  switch (m.type) {
+    case 'fountain':
+      return 'Heal & buy items'
+    case 'base':
+      return m.team === props.playerTeam ? 'Defend the base' : 'Break into the base'
+    case 'river':
+      return 'Contest runes & river'
+    case 'jungle':
+      return 'Farm neutral camps'
+    case 'lane':
+      return alliedCreeps.value.length > 0 ? 'Push with your creeps' : 'Hold for your wave'
+    default:
+      return null
+  }
+})
+
 const isEmpty = computed(
   () =>
     props.enemies.length === 0 &&
@@ -96,6 +164,30 @@ const isEmpty = computed(
     class="flex flex-col gap-1 overflow-y-auto p-2 font-mono text-[0.75rem]"
     data-testid="zone-panel"
   >
+    <!-- Status header: identity · threat verdict · objective -->
+    <div class="mb-0.5 border-b border-border/40 pb-1" data-testid="zone-status">
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="t-caption uppercase tracking-wider" :class="identityClass">{{
+          identityTag
+        }}</span>
+        <span class="font-bold" :class="threatClass" data-testid="zone-threat">{{
+          threat.label
+        }}</span>
+      </div>
+      <div class="flex items-baseline justify-between gap-2">
+        <span>
+          <span class="text-radiant">{{ allyHeadcount }} allied</span>
+          <span class="text-text-dim"> · </span>
+          <span :class="enemies.length > 0 ? 'text-dire' : 'text-text-dim'"
+            >{{ enemies.length }} hostile</span
+          >
+        </span>
+        <span v-if="objective" class="truncate text-text-dim" data-testid="zone-objective"
+          >▸ {{ objective }}</span
+        >
+      </div>
+    </div>
+
     <div v-if="isEmpty" class="text-text-dim" data-testid="zone-panel-empty">
       &gt;_ no other units in {{ zoneName }}
     </div>

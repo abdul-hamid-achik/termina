@@ -223,6 +223,54 @@ describe('ZonePanel', () => {
     })
   })
 
+  describe('status header', () => {
+    it('reports CLEAR with no enemies present', () => {
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, zoneId: 'mid-river' } })
+      expect(wrapper.find('[data-testid="zone-threat"]').text()).toBe('CLEAR')
+    })
+
+    it('reports CONTESTED when enemies match the allied headcount (incl. self)', () => {
+      const enemy = makePlayer({ id: 'e1', team: 'dire' })
+      const wrapper = mount(ZonePanel, {
+        props: { ...baseProps, zoneId: 'mid-river', enemies: [enemy] },
+      })
+      expect(wrapper.find('[data-testid="zone-threat"]').text()).toBe('CONTESTED')
+    })
+
+    it('reports DANGER when enemies outnumber allies', () => {
+      const enemies = [
+        makePlayer({ id: 'e1', team: 'dire' }),
+        makePlayer({ id: 'e2', team: 'dire' }),
+      ]
+      const wrapper = mount(ZonePanel, {
+        props: { ...baseProps, zoneId: 'mid-river', enemies },
+      })
+      expect(wrapper.find('[data-testid="zone-threat"]').text()).toBe('DANGER')
+    })
+
+    it('shows a zone-local objective for a river zone', () => {
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, zoneId: 'mid-river' } })
+      expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('Contest runes')
+    })
+
+    it('prioritises destroying an enemy tower as the objective', () => {
+      const wrapper = mount(ZonePanel, {
+        props: { ...baseProps, zoneId: 'mid-t1-dire', tower: makeTower({ team: 'dire' }) },
+      })
+      expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('enemy tower')
+    })
+
+    it('tells a laner to push when they have creep support', () => {
+      const creeps = [makeCreep({ id: 'c1', team: 'radiant', hp: 200, index: 0 })]
+      const wrapper = mount(ZonePanel, {
+        props: { ...baseProps, zoneId: 'mid-t1-rad', creeps },
+      })
+      expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain(
+        'Push with your creeps',
+      )
+    })
+  })
+
   describe('neutrals', () => {
     it('shows alive neutral count with lowest HP', () => {
       const neutrals = [
