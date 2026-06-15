@@ -515,23 +515,32 @@ export function resolveActions(
           )
           if (chainTargets.length > 0) {
             const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
-            const chainDamage = calculateMagicalDamage(60, chainTarget.magicResist)
-            const chainPendingHp =
-              (playerUpdates[chainTarget.id]?.hp as number | undefined) ?? chainTarget.hp
-            const chainNewHp = Math.max(0, chainPendingHp - chainDamage)
-            playerUpdates[chainTarget.id] = {
-              ...playerUpdates[chainTarget.id],
-              hp: chainNewHp,
-              alive: chainNewHp > 0,
+            // Maelstrom's chain is magical: blocked by magic immunity, amped by
+            // the chain target's magic-vuln / Yield.
+            const chainDamage = isDamageImmune(chainTarget, 'magical')
+              ? 0
+              : Math.round(
+                  calculateMagicalDamage(60, chainTarget.magicResist) *
+                    getIncomingDamageMultiplier(chainTarget, 'magical'),
+                )
+            if (chainDamage > 0) {
+              const chainPendingHp =
+                (playerUpdates[chainTarget.id]?.hp as number | undefined) ?? chainTarget.hp
+              const chainNewHp = Math.max(0, chainPendingHp - chainDamage)
+              playerUpdates[chainTarget.id] = {
+                ...playerUpdates[chainTarget.id],
+                hp: chainNewHp,
+                alive: chainNewHp > 0,
+              }
+              events.push({
+                _tag: 'damage',
+                tick: state.tick,
+                sourceId: action.playerId,
+                targetId: chainTarget.id,
+                amount: chainDamage,
+                damageType: 'magical',
+              })
             }
-            events.push({
-              _tag: 'damage',
-              tick: state.tick,
-              sourceId: action.playerId,
-              targetId: chainTarget.id,
-              amount: chainDamage,
-              damageType: 'magical',
-            })
           }
         }
 
