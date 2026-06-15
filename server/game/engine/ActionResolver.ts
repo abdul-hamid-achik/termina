@@ -1287,6 +1287,7 @@ function resolveHeroCast(
   // pre-cast state and one block charge is consumed.
   if (targetId && abilityDef?.targetType === 'hero') {
     const pre = players[targetId]
+    const post = newPlayers[targetId]
     // Only an ARMED charge (stacks >= 1) blocks — a spent Linken's is stacks 0.
     const blockId = pre?.buffs.find(
       (b) => (b.id === 'spellblock' || b.id === 'firewall_block') && b.stacks >= 1,
@@ -1308,6 +1309,43 @@ function resolveHeroCast(
         casterId: action.playerId,
         targetId,
         source: blockId === 'spellblock' ? 'linkens_sphere' : 'firewall_item',
+      })
+    } else if (pre && post && pre.buffs.some((b) => b.id === 'lotus_orb')) {
+      // Lotus Orb: negate the spell on the holder and bounce the damage it would
+      // have taken back to the caster (gated by the caster's own immunity).
+      const reflected = pre.hp - post.hp
+      let removed = false
+      const buffs = pre.buffs.filter((b) => {
+        if (!removed && b.id === 'lotus_orb') {
+          removed = true
+          return false
+        }
+        return true
+      })
+      newPlayers = { ...newPlayers, [targetId]: { ...pre, buffs } } // negate on holder
+      const casterPost = newPlayers[action.playerId]
+      if (reflected > 0 && casterPost && !isDamageImmune(casterPost, damageType)) {
+        const newHp = Math.max(0, casterPost.hp - reflected)
+        newPlayers = {
+          ...newPlayers,
+          [action.playerId]: { ...casterPost, hp: newHp, alive: newHp > 0 },
+        }
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          sourceId: targetId,
+          targetId: action.playerId,
+          amount: reflected,
+          damageType,
+        })
+      }
+      events.push({
+        _tag: 'spell_blocked',
+        tick: state.tick,
+        casterId: action.playerId,
+        targetId,
+        source: 'lotus_orb',
+        reflected: reflected > 0 ? reflected : 0,
       })
     }
   }

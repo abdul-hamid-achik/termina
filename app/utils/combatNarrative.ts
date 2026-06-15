@@ -299,10 +299,13 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
 
     case 'spell_blocked': {
-      const item = p.source === 'linkens_sphere' ? "Linken's Sphere" : 'Firewall'
+      const text =
+        p.source === 'lotus_orb'
+          ? `${label(p.targetId)}'s Lotus Orb reflected ${label(p.casterId)}'s spell${p.reflected ? ` (-${num(p.reflected)})` : ''}`
+          : `${label(p.targetId)}'s ${p.source === 'linkens_sphere' ? "Linken's Sphere" : 'Firewall'} blocked ${label(p.casterId)}'s spell`
       return {
         tick,
-        text: `${label(p.targetId)}'s ${item} blocked ${label(p.casterId)}'s spell`,
+        text,
         type: 'system',
         salience: salience(p.casterId, p.targetId, ctx),
       }

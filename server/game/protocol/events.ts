@@ -170,7 +170,9 @@ export interface SpellBlockedEvent {
   readonly tick: number
   readonly casterId: string
   readonly targetId: string
-  readonly source: 'linkens_sphere' | 'firewall_item'
+  readonly source: 'linkens_sphere' | 'firewall_item' | 'lotus_orb'
+  /** For Lotus Orb: the damage bounced back to the caster (omitted for a pure block). */
+  readonly reflected?: number
 }
 
 export interface RoshanKilledEvent {

@@ -1068,6 +1068,21 @@ describe('ActionResolver', () => {
       expect(result.state.players['p2']!.hp).toBeLessThan(550) // spell lands
       expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(false)
     })
+
+    it('Lotus Orb negates the spell on the holder and bounces its damage to the caster', () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([{ id: 'lotus_orb', stacks: 1, ticksRemaining: 5, source: 'lotus_orb' }]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBe(550) // holder unharmed (negated)
+      expect(result.state.players['p2']!.buffs.some((b) => b.id === 'lotus_orb')).toBe(false) // spent
+      expect(result.state.players['p1']!.hp).toBeLessThan(550) // caster took the reflected damage
+      const ev = result.events.find((e) => e._tag === 'spell_blocked')
+      expect(ev && ev._tag === 'spell_blocked' ? ev.source : null).toBe('lotus_orb')
+    })
   })
 
   describe('Stack Overflow (Overclock 2x)', () => {
