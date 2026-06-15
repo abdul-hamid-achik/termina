@@ -12,6 +12,7 @@ import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 import type { TowerState } from '~~/shared/types/game'
 import type { DamageFloatEntry } from '~/components/game/DamageFloat.vue'
 import { uiLog } from '~/utils/logger'
@@ -340,6 +341,13 @@ watch(
         case 'level_up':
           if (e.payload.playerId === pid) {
             playSound('ready')
+            if ([10, 15, 20, 25].includes(e.payload.newLevel as number)) {
+              localEvents.value.push({
+                tick: e.tick,
+                text: `★ Talent unlocked — choose your level ${e.payload.newLevel} talent below`,
+                type: 'system',
+              })
+            }
           }
           break
         case 'kill':
@@ -676,6 +684,24 @@ function handleCommand(cmd: string) {
         }
       }
     }
+    // Resolve a `talent <tier> left|right` choice to the hero's actual talentId
+    // (parse can't — it has no hero context). A full talentId passes through.
+    if (
+      command.type === 'select_talent' &&
+      (command.talentId === 'left' || command.talentId === 'right')
+    ) {
+      const heroId = gameStore.player?.heroId
+      const opts = heroId ? TALENT_TREES[heroId]?.tiers[command.tier] : undefined
+      if (!opts) {
+        localEvents.value.push({
+          tick: gameStore.tick,
+          text: 'No talents available for your hero',
+          type: 'system',
+        })
+        return
+      }
+      command.talentId = command.talentId === 'left' ? opts[0].id : opts[1].id
+    }
     // Chat and ping are top-level WS messages, not game actions
     if (command.type === 'chat') {
       uiLog.debug('Chat sent', { channel: command.channel })
@@ -690,7 +716,8 @@ function handleCommand(cmd: string) {
     // Already acted this tick: buffer the command client-side and auto-send
     // it when the next tick arrives (buyback/surrender are special actions
     // the server handles out-of-band, so they always go through directly).
-    const isSpecial = command.type === 'buyback' || command.type === 'surrender'
+    const isSpecial =
+      command.type === 'buyback' || command.type === 'surrender' || command.type === 'select_talent'
     if (!isSpecial && gameStore.isAlive && !gameStore.canAct) {
       gameStore.bufferCommand(cmd)
       localEvents.value.push({
@@ -1252,6 +1279,10 @@ function handleReturnToMenu() {
           {{ ['Q', 'W', 'E', 'R'].includes(cmd) ? abilityButtonState[cmd]?.label : cmd }}
         </button>
       </div>
+      <TalentPicker
+        :player="gameStore.player"
+        @pick="(tier, side) => handleCommand(`talent ${tier} ${side}`)"
+      />
       <CommandInput
         placeholder="Enter command (Tab for autocomplete)..."
         :tick-countdown="gameStore.nextTickIn"

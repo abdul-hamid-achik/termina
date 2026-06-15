@@ -5,6 +5,7 @@ import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
@@ -191,7 +192,12 @@ export function validateCommand(command: Command, context: GameContext): string 
   if (!player) return null
   // Buyback and surrender are exactly the commands a dead player needs —
   // they bypass the dead-player gate (server handles them as special actions).
-  if (!player.alive && command.type !== 'buyback' && command.type !== 'surrender') {
+  if (
+    !player.alive &&
+    command.type !== 'buyback' &&
+    command.type !== 'surrender' &&
+    command.type !== 'select_talent'
+  ) {
     return 'Cannot act while dead'
   }
 
@@ -308,6 +314,15 @@ export function validateCommand(command: Command, context: GameContext): string 
       }
       return null
     }
+    case 'select_talent': {
+      if (!player.heroId) return 'No hero selected'
+      if (player.level < command.tier) {
+        return `Reach level ${command.tier} to choose this talent (you are level ${player.level})`
+      }
+      const key = `tier${command.tier}` as const
+      if (player.talents[key]) return `You already chose your level ${command.tier} talent`
+      return null
+    }
     default:
       return null
   }
@@ -405,6 +420,23 @@ export function useCommands() {
         return { command: { type: 'ward', zone: resolvedZone }, error: null }
       }
 
+      case 'talent': {
+        const tier = Number.parseInt(tokens[1] ?? '', 10)
+        if (![10, 15, 20, 25].includes(tier)) {
+          return { command: null, error: 'Usage: talent <10|15|20|25> <left|right>' }
+        }
+        const choice = tokens[2]
+        if (!choice) {
+          return { command: null, error: 'Usage: talent <10|15|20|25> <left|right>' }
+        }
+        // `left`/`right` are resolved against the hero's tree in GameScreen
+        // (needs hero context); a full talentId may also be passed directly.
+        return {
+          command: { type: 'select_talent', tier: tier as 10 | 15 | 20 | 25, talentId: choice },
+          error: null,
+        }
+      }
+
       case 'scan':
         return { command: { type: 'scan' }, error: null }
 
@@ -461,7 +493,7 @@ export function useCommands() {
       default:
         return {
           command: null,
-          error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph, buyback, surrender`,
+          error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph, talent, buyback, surrender`,
         }
     }
   }
@@ -490,6 +522,7 @@ export function useCommands() {
         'chat',
         'ping',
         'glyph',
+        'talent',
         'buyback',
         'surrender',
       ]
@@ -498,6 +531,7 @@ export function useCommands() {
       const descriptions: Record<string, string> = {
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
+        talent: 'Choose a talent (levels 10/15/20/25)',
       }
       return all
         .filter((c) => c.startsWith(parts[0]!))
@@ -562,6 +596,39 @@ export function useCommands() {
 
     if (baseCmd === 'ping') {
       return _suggestZones(parts.slice(1).join(' '), context)
+    }
+
+    if (baseCmd === 'talent') {
+      const heroId = context.player?.heroId
+      const tree = heroId ? TALENT_TREES[heroId] : undefined
+      // "talent <tier>" — offer reached, unchosen tiers
+      if (parts.length === 2) {
+        const partial = parts[1]!
+        const tiers = [10, 15, 20, 25] as const
+        return tiers
+          .filter((t) => String(t).startsWith(partial))
+          .filter((t) => {
+            const p = context.player
+            if (!p) return true
+            return p.level >= t && !p.talents[`tier${t}` as const]
+          })
+          .map((t) => ({ text: `talent ${t}`, description: `Choose your level ${t} talent` }))
+      }
+      // "talent <tier> <left|right>" — name the two options
+      if (parts.length === 3 && tree) {
+        const tier = Number.parseInt(parts[1]!, 10) as 10 | 15 | 20 | 25
+        const tierTalents = [10, 15, 20, 25].includes(tier) ? tree.tiers[tier] : undefined
+        if (tierTalents) {
+          const partial = parts[2]!
+          return (['left', 'right'] as const)
+            .filter((side) => side.startsWith(partial))
+            .map((side) => ({
+              text: `talent ${tier} ${side}`,
+              description: tierTalents[side === 'left' ? 0 : 1]?.name,
+            }))
+        }
+      }
+      return []
     }
 
     if (baseCmd === 'surrender' && parts.length === 2) {

@@ -393,6 +393,50 @@ describe('useCommands', () => {
       })
     })
 
+    describe('talent command', () => {
+      it('parses a tier + side into a select_talent command', () => {
+        const { parse } = useCommands()
+        const result = parse('talent 10 left')
+
+        expect(result.error).toBeNull()
+        // left/right are resolved to the hero's talentId later (GameScreen);
+        // parse keeps the side keyword since it has no hero context.
+        expect(result.command).toEqual({ type: 'select_talent', tier: 10, talentId: 'left' })
+      })
+
+      it('accepts every valid tier', () => {
+        const { parse } = useCommands()
+        for (const tier of [10, 15, 20, 25] as const) {
+          const result = parse(`talent ${tier} right`)
+          expect(result.command).toEqual({ type: 'select_talent', tier, talentId: 'right' })
+        }
+      })
+
+      it('passes a full talentId through unchanged', () => {
+        const { parse } = useCommands()
+        const result = parse('talent 15 echo_15_left')
+        expect(result.command).toEqual({
+          type: 'select_talent',
+          tier: 15,
+          talentId: 'echo_15_left',
+        })
+      })
+
+      it('rejects an invalid tier', () => {
+        const { parse } = useCommands()
+        const result = parse('talent 12 left')
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('10|15|20|25')
+      })
+
+      it('requires a choice', () => {
+        const { parse } = useCommands()
+        const result = parse('talent 10')
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('left|right')
+      })
+    })
+
     describe('surrender command', () => {
       it('requires confirmation when bare', () => {
         const { parse } = useCommands()
@@ -1182,6 +1226,35 @@ describe('validateCommand', () => {
 
     it('skips the timing check when tick is unknown', () => {
       expect(validateCommand({ type: 'surrender', vote: 'yes' }, makeContext())).toBeNull()
+    })
+  })
+
+  describe('select_talent', () => {
+    it('allows a reached, unchosen tier', () => {
+      const ctx = makeContext({ player: makePlayer({ level: 10 }) })
+      expect(validateCommand({ type: 'select_talent', tier: 10, talentId: 'x' }, ctx)).toBeNull()
+    })
+
+    it('rejects a tier above the current level', () => {
+      const ctx = makeContext({ player: makePlayer({ level: 9 }) })
+      const err = validateCommand({ type: 'select_talent', tier: 10, talentId: 'x' }, ctx)
+      expect(err).toMatch(/reach level 10/i)
+    })
+
+    it('rejects a tier already chosen', () => {
+      const ctx = makeContext({
+        player: makePlayer({
+          level: 16,
+          talents: { tier10: 'echo_10_left', tier15: null, tier20: null, tier25: null },
+        }),
+      })
+      const err = validateCommand({ type: 'select_talent', tier: 10, talentId: 'y' }, ctx)
+      expect(err).toMatch(/already chose/i)
+    })
+
+    it('is exempt from the dead-player gate (can pick while dead)', () => {
+      const ctx = makeContext({ player: makePlayer({ alive: false, level: 10 }) })
+      expect(validateCommand({ type: 'select_talent', tier: 10, talentId: 'x' }, ctx)).toBeNull()
     })
   })
 
