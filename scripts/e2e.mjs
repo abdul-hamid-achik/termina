@@ -37,7 +37,10 @@ const BASE = 'http://127.0.0.1:3000'
 // explicit TERMINA_TEST_HOOKS=1 opt-in, so they work in the prod build too.
 const OUTPUT_SERVER = resolve(process.cwd(), '.output/server/index.mjs')
 const DEV_LOG = resolve(process.cwd(), 'e2e-dev-server.log')
-const CAIRN_BUDGET_MS = Number(process.env.CAIRN_BUDGET_MS ?? 12 * 60 * 1000)
+// 15 min default: 4-way parallel runs the full suite in ~11-12 min; the extra
+// margin absorbs the heaviest spec (smoke_full_session, ~2.5 min) and cold-start
+// browser spin-up. Still a hard ceiling so a genuine hang can't run forever.
+const CAIRN_BUDGET_MS = Number(process.env.CAIRN_BUDGET_MS ?? 15 * 60 * 1000)
 const JUNIT_PATH = 'tests/e2e/junit.xml'
 
 // Parse passthrough args into the positional spec target + the flags to forward
@@ -76,6 +79,19 @@ for (let i = 0; i < passthrough.length; i++) {
   }
 }
 const target = positionals[0] ?? 'tests/e2e/flows'
+
+// Run specs concurrently by default so the full suite finishes within the
+// watchdog budget. Sequential cold-start is ~65s/spec → ~31 min for ~32 flows,
+// which always tripped the 12-min watchdog mid-suite and read as a "hang at
+// game_scoreboard" (the run simply never REACHED scoreboard). 4-way parallel
+// finishes the whole suite — all 32 flows green — in ~11-12 min. cairntrace v1.9
+// per-run identity (testUser: cairn_${run.token}) keeps concurrent specs
+// isolated, so they don't clobber each other's seeded games. Override with
+// E2E_PARALLEL=<n> (set 1 to force sequential), or pass an explicit --parallel.
+const E2E_PARALLEL = process.env.E2E_PARALLEL ?? '4'
+if (!flags.includes('--parallel') && E2E_PARALLEL !== '1') {
+  flags.push('--parallel', E2E_PARALLEL)
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
