@@ -43,6 +43,7 @@ import { sendToPeer, setPlayerGame, clearPlayerGame } from '~~/server/services/P
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
+import { registerAllHeroes } from '~~/server/game/heroes'
 import { applyScenario } from '~~/server/game/dev/scenarios'
 
 /** Check if a game event is visible to a specific player based on vision. */
@@ -287,6 +288,13 @@ export function stopDevGame(gameId: string): void {
 }
 
 export default defineNitroPlugin(async (nitroApp) => {
+  // Populate the hero ability/passive registry up front. Each hero module also
+  // self-registers on import, but the production bundle tree-shook those
+  // side-effect-only imports (see server/game/heroes/index.ts) — leaving an empty
+  // registry so every cast failed with "No resolver registered". Calling this
+  // from the plugin entry point pins the whole hero chain into the build.
+  registerAllHeroes()
+
   // Loud, unmissable warning if the dev/e2e test hooks are enabled. Their gate is
   // now the explicit TERMINA_TEST_HOOKS=1 opt-in alone (the prod e2e runs against a
   // production build, so NODE_ENV can't gate them) — they bypass auth (login-as

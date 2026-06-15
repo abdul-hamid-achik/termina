@@ -1,0 +1,85 @@
+# A HUMAN buy action changes engine state across a tick. Seeds a manual-tick
+# game (human spawns in the fountain — a shop zone), queues a real `buy` via the
+# /api/test/action hook (which bypasses the client canAct/buffer race for
+# determinism), advances one tick, then a script verifier reads /api/test/state
+# and confirms the item landed in the human's inventory. Engine truth for the
+# same path lives in tests/unit/engine/PlayerActionResolution.test.ts.
+version: 1
+name: game_buy_resolves
+intent: Buying an item via a human action resolves through a tick — the item appears in the player's
+  inventory in engine state.
+mode: normal
+vars:
+  scenario: laning
+  manualTick: "true"
+  heroSelf: echo
+metadata:
+  feature: shop
+  tags:
+    - shop
+    - buy
+    - seeded
+    - action-hook
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: item_in_inventory
+    description: engine state shows iron_branch in the human player's inventory after the buy + tick
+    verify:
+      script:
+        run: >
+          const params = new URLSearchParams(window.location.search); const gameId =
+          params.get('gameId'); const playerId = params.get('playerId'); return
+          fetch('/api/test/state?gameId=' + encodeURIComponent(gameId), { credentials: 'include'
+          }).then((r) => r.json()).then((s) => { const p = s.players && s.players[playerId]; const
+          items = p && Array.isArray(p.items) ? p.items : []; return { ok:
+          items.includes('iron_branch'), evidence: 'gold=' + (p && p.gold) + ' items=' +
+          JSON.stringify(items) }; });
+steps:
+  - use: login
+  - id: seed_manual
+    request:
+      method: POST
+      url: /api/test/new-game
+      body:
+        scenario: laning
+        heroSelf: ${vars.heroSelf}
+        seed: 1337
+        manualTick: true
+      timeoutMs: 15000
+      expectStatus: 200
+      assign: game
+  - id: enter_game
+    open:
+      path: ${requests.game.body.url}
+      waitUntil: domcontentloaded
+  - id: wait_live
+    wait:
+      text: AWAITING ORDERS
+      timeoutMs: 15000
+  - id: buy_item
+    request:
+      method: POST
+      url: /api/test/action
+      body:
+        gameId: ${requests.game.body.gameId}
+        playerId: ${requests.game.body.playerId}
+        command:
+          type: buy
+          item: iron_branch
+      timeoutMs: 15000
+      expectStatus: 200
+  - id: advance_one
+    request:
+      method: POST
+      url: /api/test/advance
+      body:
+        gameId: ${requests.game.body.gameId}
+        ticks: 1
+      timeoutMs: 15000
+      expectStatus: 200
+  - id: capture
+    snapshot:
+      interactive: true
+      label: inventory after buying iron_branch
+contractHash: sha256:4209c15329414d85e9740cd391fba9711242e2cfc65e9b2a1513b50c85c51140
