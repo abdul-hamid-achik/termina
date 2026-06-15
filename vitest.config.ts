@@ -14,9 +14,11 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     globals: true,
-    // Coverage (v8). Baseline-capture only for now — NO enforced thresholds yet;
-    // they're added (at the achieved baseline) once the UI gaps are closed so CI
-    // can't be broken by a number we haven't earned. `bun run test:coverage`.
+    // Coverage (v8). `bun run test:coverage` runs all projects and ENFORCES the
+    // thresholds below — set just under the achieved actuals (lines 74.4 /
+    // branches 66 / functions 73.9 / statements 73.2 as of the UI-gap close) so a
+    // real regression trips the gate but normal churn doesn't. Raise them as
+    // coverage climbs; never set them above what's earned.
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html', 'json-summary'],
@@ -31,6 +33,12 @@ export default defineConfig({
         '.nuxt/**',
         '.output/**',
       ],
+      thresholds: {
+        lines: 70,
+        branches: 60,
+        functions: 68,
+        statements: 70,
+      },
     },
     projects: [
       {

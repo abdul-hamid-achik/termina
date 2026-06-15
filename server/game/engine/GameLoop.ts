@@ -519,6 +519,17 @@ function buildGameLoop(
  * The runtime provides all layers (logger, services) to the fiber,
  * ensuring Effect.logInfo/logDebug use the proper game logger.
  * Falls back to Effect.runFork if no runtime is provided.
+ *
+ * EFFECT POSTURE (why we keep Effect-TS — see the modernization audit): this
+ * loop is the ONE load-bearing use of Effect. Each game is a supervised,
+ * cancellable fiber — Schedule.fixed + Effect.repeat drive the fixed-interval
+ * tick, runFork/forkDaemon spawn it, ManagedRuntime owns the service layers, and
+ * Effect.interrupt (via stopGameLoop) cleanly tears a game down. Replacing this
+ * with raw setInterval + manual cancellation/lifecycle would be a real
+ * regression in correctness. The other ~50 server files use Effect only as a
+ * thin Promise wrapper for typed errors; that's stylistic, not essential — but
+ * rewriting them buys nothing and loses the typed-error ergonomics, so we keep
+ * Effect on 3.x project-wide. (v4 is beta-only; do not adopt.)
  */
 export function startGameLoop(
   gameId: string,
