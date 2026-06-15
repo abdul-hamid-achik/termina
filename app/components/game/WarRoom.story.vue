@@ -1,0 +1,71 @@
+<script setup lang="ts">
+import { reactive } from 'vue'
+import type { PlayerState } from '~~/shared/types/game'
+import { useGameStore } from '~/stores/game'
+import WarRoom from './WarRoom.vue'
+
+// Validates the Histoire Pinia plumbing (histoire.setup.ts installs Pinia, so
+// useGameStore() resolves) AND serves as the WarRoom story. Store-coupled
+// components seed state by assigning the store's returned refs directly; richer
+// fixtures can be layered on the same pattern.
+function player(overrides: Partial<PlayerState> = {}): PlayerState {
+  return {
+    id: 'p1',
+    name: 'Player',
+    team: 'radiant',
+    heroId: 'echo',
+    zone: 'mid-river',
+    hp: 520,
+    maxHp: 620,
+    mp: 180,
+    maxMp: 300,
+    level: 9,
+    xp: 0,
+    gold: 1400,
+    items: ['blades_of_attack', null, null, null, null, null],
+    cooldowns: { q: 0, w: 2, e: 0, r: 8 },
+    buffs: [],
+    alive: true,
+    respawnTick: null,
+    defense: 5,
+    magicResist: 15,
+    kills: 4,
+    deaths: 1,
+    assists: 6,
+    damageDealt: 0,
+    towerDamageDealt: 0,
+    killStreak: 0,
+    buybackCost: 0,
+    talents: { tier10: null, tier15: null, tier20: null, tier25: null },
+    ...overrides,
+  }
+}
+
+function seed() {
+  const store = useGameStore()
+  store.playerId = 'p1'
+  store.tick = 240
+  store.timeOfDay = 'day'
+  store.dayNightTick = 12
+  store.allPlayers = {
+    p1: player(),
+    p2: player({ id: 'p2', name: 'Ally', heroId: 'kernel', zone: 'top-river' }),
+    e1: player({ id: 'e1', name: 'Enemy', team: 'dire', heroId: 'daemon', zone: 'mid-river' }),
+  }
+  store.netWorthHistory = reactive({
+    radiant: [3200, 3400, 3800, 4200, 4600, 5100],
+    dire: [3100, 3300, 3500, 3700, 3900, 4150],
+  })
+  store.roshan = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
+}
+</script>
+
+<template>
+  <Story title="Game/WarRoom" :setup-app="seed">
+    <Variant title="radiant ahead">
+      <div class="bg-bg-primary p-2" style="width: 320px">
+        <WarRoom />
+      </div>
+    </Variant>
+  </Story>
+</template>
