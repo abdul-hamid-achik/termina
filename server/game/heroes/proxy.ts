@@ -12,7 +12,7 @@ import {
   findTargetPlayer,
   getAlliesInZone,
   healPlayer,
-  dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -92,7 +92,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'slow',
       stacks: 25,

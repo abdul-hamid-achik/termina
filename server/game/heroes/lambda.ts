@@ -11,7 +11,7 @@ import {
   scaleValue,
   findTargetPlayer,
   getEnemiesInZone,
-  dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -107,7 +107,7 @@ function resolveQ(
       caster = removeBuff(caster, 'closureCasts')
     }
 
-    const updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    const updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -207,7 +207,7 @@ function resolveE(
     }
 
     const updatedEnemies = enemies.map((e) => {
-      let updated = dealDamage(e, damage, 'magical')
+      let updated = dealAbilityDamage(caster, e, damage, 'magical')
       updated = applyBuff(updated, {
         id: 'slow',
         stacks: E_SLOW_PERCENT,
@@ -273,7 +273,7 @@ function resolveR(
     const baseDamage = scaleValue(R_DAMAGE, level)
     const damage = closureActive ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE)) : baseDamage
 
-    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
 
     // Stun for 1 tick if closureActive
     if (closureActive) {

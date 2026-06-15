@@ -11,7 +11,7 @@ import {
   scaleValue,
   findTargetPlayer,
   getEnemiesInZone,
-  dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -89,7 +89,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
-    const updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    const updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),

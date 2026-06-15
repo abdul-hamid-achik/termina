@@ -12,6 +12,7 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -296,7 +297,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     const reflectDamage = Math.round(damage * PACKET_INSPECTION_REFLECT)
     if (reflectDamage <= 0) return state
 
-    const updatedAttacker = dealDamage(attacker, reflectDamage, 'magical')
+    const updatedAttacker = dealAbilityDamage(player, attacker, reflectDamage, 'magical')
     return updatePlayer(state, updatedAttacker)
   }
 

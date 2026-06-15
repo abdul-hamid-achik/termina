@@ -11,7 +11,7 @@ import {
   scaleValue,
   findTargetPlayer,
   getEnemiesInZone,
-  dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -95,7 +95,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
     // Apply MR shred debuff
     updatedTarget = applyBuff(updatedTarget, {
       id: 'mrShred',
@@ -263,7 +263,7 @@ function resolveR(
         hpPercent < R_EXECUTE_THRESHOLD
           ? Math.round(baseDamage * (1 + R_EXECUTE_BONUS))
           : baseDamage
-      return dealDamage(e, damage, 'magical')
+      return dealAbilityDamage(caster, e, damage, 'magical')
     })
 
     return {

@@ -271,6 +271,31 @@ export function dealDamage(
   return { ...target, hp: newHp, alive: newHp > 0 }
 }
 
+/** Mystical Staff (Arcane Power): +15% to all magical damage the owner deals. */
+const MYSTICAL_STAFF_MAGIC_AMP = 0.15
+
+/** Caster-side outgoing magical-damage multiplier from equipped items. */
+export function getMagicAmp(caster: PlayerState): number {
+  return caster.items.includes('mystical_staff') ? 1 + MYSTICAL_STAFF_MAGIC_AMP : 1
+}
+
+/**
+ * Deal ability damage crediting the casting hero, so caster-side amplifiers
+ * (currently Mystical Staff's +15% magical) are applied before the target's
+ * mitigation in dealDamage. Non-magical damage passes through unchanged. Hero
+ * ability/passive damage should route through here; `dealDamage` remains the
+ * lower-level target-only primitive.
+ */
+export function dealAbilityDamage(
+  caster: PlayerState,
+  target: PlayerState,
+  rawDamage: number,
+  damageType: DamageType,
+): PlayerState {
+  const amped = damageType === 'magical' ? Math.round(rawDamage * getMagicAmp(caster)) : rawDamage
+  return dealDamage(target, amped, damageType)
+}
+
 export function healPlayer(target: PlayerState, amount: number): PlayerState {
   return { ...target, hp: Math.min(target.maxHp, target.hp + amount) }
 }

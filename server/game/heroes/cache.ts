@@ -12,6 +12,7 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -199,7 +200,7 @@ function resolveE(
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'antiHeal',
       stacks: 50, // 50% reduced healing

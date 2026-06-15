@@ -11,6 +11,7 @@ import {
   scaleValue,
   findTargetPlayer,
   dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -98,7 +99,7 @@ function resolveQ(
 
     const magicDamage = scaleValue(Q_MAGIC_DAMAGE, level)
     const physDamage = scaleValue(Q_PHYS_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, magicDamage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, magicDamage, 'magical')
     updatedTarget = dealDamage(updatedTarget, physDamage, 'physical')
 
     return {
@@ -256,7 +257,7 @@ function resolveR(
     const damagePerHit = scaleValue(R_DAMAGE_PER_HIT, level)
     let updatedTarget = targetPlayer
     for (let i = 0; i < R_HITS; i++) {
-      updatedTarget = dealDamage(updatedTarget, damagePerHit, 'magical')
+      updatedTarget = dealAbilityDamage(caster, updatedTarget, damagePerHit, 'magical')
     }
 
     // Apply Encryption Key stacks (max 4)

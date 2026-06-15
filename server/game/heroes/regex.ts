@@ -10,7 +10,7 @@ import {
   registerHero,
   scaleValue,
   findTargetPlayer,
-  dealDamage,
+  dealAbilityDamage,
   deductMana,
   setCooldown,
   applyBuff,
@@ -92,7 +92,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'magicVulnerability',
       stacks: Q_VULNERABILITY,
@@ -283,7 +283,7 @@ function resolveR(
     const damagePerMana = scaleValue(R_DAMAGE_PER_MANA, level)
     const damage = Math.floor((missingMana / 100) * damagePerMana)
 
-    let updatedTarget = dealDamage(targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'silence',
       stacks: 1,
@@ -334,7 +334,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     const bonusDamage = Math.round(damage * PATTERN_MATCH_BONUS)
     const targetPlayer = state.players[targetId]
     if (targetPlayer && targetPlayer.alive) {
-      const updatedTarget = dealDamage(targetPlayer, bonusDamage, 'magical')
+      const updatedTarget = dealAbilityDamage(player, targetPlayer, bonusDamage, 'magical')
       return updatePlayer(state, updatedTarget)
     }
   }
