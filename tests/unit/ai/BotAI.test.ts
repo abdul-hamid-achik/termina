@@ -496,6 +496,42 @@ describe('BotAI - decideBotAction', () => {
     })
   })
 
+  describe('talent selection', () => {
+    it('banks an unlocked talent during a lull (no enemy hero in zone)', () => {
+      // mid-t1-rad lane, level 10, no talents, full HP, no enemies → pick tier 10.
+      const bot = makePlayer({ zone: 'mid-t1-rad', level: 10 })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'select_talent', tier: 10, talentId: 'echo_10_left' })
+    })
+
+    it('does not pick a talent before reaching the tier', () => {
+      const bot = makePlayer({ zone: 'mid-t1-rad', level: 9 })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action?.type).not.toBe('select_talent')
+    })
+
+    it('advances to the next unchosen tier', () => {
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        level: 16,
+        talents: { tier10: 'echo_10_left', tier15: null, tier20: null, tier25: null },
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toMatchObject({ type: 'select_talent', tier: 15 })
+    })
+
+    it('fights instead of picking a talent when an enemy hero is in zone', () => {
+      const bot = makePlayer({ zone: 'mid-river', level: 10, hp: 500, maxHp: 500, mp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action?.type).not.toBe('select_talent')
+    })
+  })
+
   describe('priority ordering', () => {
     it('prioritizes retreat over combat when HP < 25%', () => {
       const bot = makePlayer({ zone: 'mid-river', hp: 50, maxHp: 500, mp: 300 })

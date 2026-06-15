@@ -10,6 +10,7 @@ import type {
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 import { findPath, getDistance } from '~~/server/game/map/topology'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
@@ -618,6 +619,28 @@ function tryAttackAncient(state: GameState, bot: PlayerState): Command | null {
   return { type: 'attack', target: { kind: 'ancient' } }
 }
 
+/**
+ * Pick a talent when the bot has reached a tier but not chosen yet. Deterministic
+ * (no RNG, for replayable sims): prefer a concrete power talent (stat / damage
+ * boost) over a situational one, else take the first option. select_talent is an
+ * out-of-band special action, but decideBotAction returns one command per tick,
+ * so we only offer this when the bot has nothing more urgent to do (see caller).
+ */
+function tryPickTalent(bot: PlayerState): Command | null {
+  if (!bot.heroId) return null
+  const tree = TALENT_TREES[bot.heroId]
+  if (!tree) return null
+  for (const tier of [10, 15, 20, 25] as const) {
+    if (bot.level >= tier && !bot.talents[`tier${tier}` as const]) {
+      const opts = tree.tiers[tier]
+      const preferred =
+        opts.find((t) => t.type === 'stat_bonus' || t.type === 'damage_boost') ?? opts[0]!
+      return { type: 'select_talent', tier, talentId: preferred.id }
+    }
+  }
+  return null
+}
+
 export function decideBotAction(
   state: GameState,
   bot: PlayerState,
@@ -672,6 +695,12 @@ export function decideBotAction(
       return { type: 'move', zone: path[1]! }
     }
     return null
+  }
+  // Spend a calm tick (no enemy hero in zone) banking an unlocked talent so bots
+  // aren't permanently down 1–4 talents on human players.
+  if (enemyHeroes.length === 0) {
+    const talentCmd = tryPickTalent(bot)
+    if (talentCmd) return talentCmd
   }
   const enemyCreeps = getEnemyCreepsInZone(state, bot)
   if (enemyHeroes.length > 0) {
