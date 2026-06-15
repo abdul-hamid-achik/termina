@@ -275,12 +275,6 @@ export function dealDamage(
     return removeBuff(target, 'phaseShift')
   }
 
-  // Check firewall damage reduction
-  const firewallBuff = target.buffs.find((b) => b.id === 'firewallDefense')
-  if (firewallBuff) {
-    remaining = Math.round(remaining * 0.7) // 30% reduction
-  }
-
   const newHp = Math.max(0, target.hp - remaining)
   return { ...target, hp: newHp, alive: newHp > 0 }
 }
@@ -311,7 +305,10 @@ export function dealAbilityDamage(
 }
 
 export function healPlayer(target: PlayerState, amount: number): PlayerState {
-  return { ...target, hp: Math.min(target.maxHp, target.hp + amount) }
+  // cache Invalidate (antiHeal) reduces incoming healing by its % (stored in stacks).
+  const antiHealPct = Math.min(100, getBuffStacks(target, 'antiHeal'))
+  const effective = Math.round(amount * (1 - antiHealPct / 100))
+  return { ...target, hp: Math.min(target.maxHp, target.hp + effective) }
 }
 
 // ── Mana & Cooldown ───────────────────────────────────────────────

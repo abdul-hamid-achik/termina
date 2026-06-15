@@ -297,14 +297,23 @@ describe('_base hero utilities', () => {
       const result = dealDamage(player, 100, 'pure')
       expect(result.hp).toBe(410)
     })
+  })
 
-    it('should apply firewall damage reduction', () => {
+  describe('healPlayer', () => {
+    it('heals up to maxHp', () => {
+      const player = makePlayer({ hp: 300, maxHp: 500 })
+      expect(healPlayer(player, 100).hp).toBe(400)
+      expect(healPlayer(player, 1000).hp).toBe(500)
+    })
+
+    it('reduces healing by the cache Invalidate antiHeal % (stored in stacks)', () => {
       const player = makePlayer({
-        hp: 500,
-        buffs: [{ id: 'firewallDefense', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        hp: 300,
+        maxHp: 500,
+        buffs: [{ id: 'antiHeal', stacks: 50, ticksRemaining: 3, source: 'cache' }],
       })
-      const result = dealDamage(player, 100, 'pure')
-      expect(result.hp).toBe(430)
+      // 100 heal at 50% antiHeal → 50 effective.
+      expect(healPlayer(player, 100).hp).toBe(350)
     })
   })
 
