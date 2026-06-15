@@ -75,6 +75,28 @@ export function applyScenario(
       return { ...state, players }
     }
 
+    case 'talent_ready': {
+      // The human is level 10 with no talents chosen → the TalentPicker prompt
+      // appears so the talent-selection spec can pick one. manualTick keeps the
+      // level stable (no XP drift) while the spec drives it.
+      const humanId = opts?.humanId
+      const human = humanId ? state.players[humanId] : undefined
+      if (!humanId || !human) return state
+      return {
+        ...state,
+        players: {
+          ...state.players,
+          [humanId]: {
+            ...human,
+            level: 10,
+            mp: human.maxMp,
+            hp: human.maxHp,
+            talents: { tier10: null, tier15: null, tier20: null, tier25: null },
+          },
+        },
+      }
+    }
+
     case 'fresh':
     case 'laning':
     default:
@@ -92,4 +114,5 @@ export const KNOWN_SCENARIOS = [
   'core_vulnerable',
   'night',
   'self_dead',
+  'talent_ready',
 ] as const

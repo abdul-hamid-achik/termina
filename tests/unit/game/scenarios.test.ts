@@ -110,6 +110,34 @@ describe('applyScenario (dev seed scenarios)', () => {
     expect(applyScenario(base, 'laning_combat')).toEqual(base)
   })
 
+  it('talent_ready puts the human at level 10 with no talents chosen', () => {
+    const base = {
+      ...baseState(),
+      players: {
+        human1: {
+          id: 'human1',
+          team: 'radiant',
+          alive: true,
+          hp: 300,
+          maxHp: 600,
+          mp: 100,
+          maxMp: 300,
+          level: 1,
+          talents: { tier10: 'stale', tier15: null, tier20: null, tier25: null },
+        },
+      },
+    } as unknown as GameState
+    const s = applyScenario(base, 'talent_ready', { humanId: 'human1' })
+    expect(s.players.human1!.level).toBe(10)
+    expect(s.players.human1!.talents.tier10).toBeNull()
+    expect(s.players.human1!.hp).toBe(s.players.human1!.maxHp)
+  })
+
+  it('talent_ready is a no-op without a matching humanId', () => {
+    const base = baseState()
+    expect(applyScenario(base, 'talent_ready')).toEqual(base)
+  })
+
   it('fresh / unknown scenarios are a no-op', () => {
     const base = baseState()
     expect(applyScenario(base, 'fresh')).toEqual(base)

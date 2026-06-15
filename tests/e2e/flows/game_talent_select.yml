@@ -1,0 +1,81 @@
+# The talent picker, end-to-end. Seeds the talent_ready scenario (human at level
+# 10 with no talents chosen) so the TalentPicker prompt appears, asserts it
+# renders, clicks the left option (which sends select_talent over the live
+# socket), advances one tick, then a script verifier reads /api/test/state and
+# confirms players[playerId].talents.tier10 is now set (proof the pick resolved).
+# Engine truth for select_talent lives in the GameLoop/EffectiveStats unit tests;
+# the picker + command path are covered by TalentPicker/useCommands unit tests.
+version: 1
+name: game_talent_select
+intent: Reaching a talent tier shows the talent picker, and choosing an option writes the talent
+  into engine state.
+mode: normal
+vars:
+  scenario: talent_ready
+  manualTick: "true"
+  heroSelf: echo
+metadata:
+  feature: talents
+  tags:
+    - talents
+    - progression
+    - seeded
+    - action-hook
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: talent_recorded
+    description: engine state shows the human's tier10 talent set after picking it in the UI
+    verify:
+      script:
+        run: >
+          const params = new URLSearchParams(window.location.search); const gameId =
+          params.get('gameId'); const playerId = params.get('playerId'); return
+          fetch('/api/test/state?gameId=' + encodeURIComponent(gameId), { credentials: 'include'
+          }).then((r) => r.json()).then((s) => { const p = s.players && s.players[playerId]; const t
+          = p && p.talents ? p.talents.tier10 : null; return { ok: !!t, evidence: 'talents=' +
+          JSON.stringify(p && p.talents) }; });
+steps:
+  - use: login
+  - id: seed_manual
+    request:
+      method: POST
+      url: /api/test/new-game
+      body:
+        scenario: talent_ready
+        heroSelf: ${vars.heroSelf}
+        seed: 1337
+        manualTick: true
+      timeoutMs: 15000
+      expectStatus: 200
+      assign: game
+  - id: enter_game
+    open:
+      path: ${requests.game.body.url}
+      waitUntil: domcontentloaded
+  - id: wait_live
+    wait:
+      text: AWAITING ORDERS
+      timeoutMs: 15000
+  - id: wait_picker
+    wait:
+      text: LEVEL 10 TALENT
+      timeoutMs: 15000
+  - id: pick_left
+    click:
+      by: selector
+      selector: '[data-testid="talent-pick-left"]'
+  - id: advance_one
+    request:
+      method: POST
+      url: /api/test/advance
+      body:
+        gameId: ${requests.game.body.gameId}
+        ticks: 1
+      timeoutMs: 15000
+      expectStatus: 200
+  - id: capture
+    snapshot:
+      interactive: true
+      label: talent picker after choosing the left option
+contractHash: sha256:79ad29566d8f2a57b63d6e46397a4d3d5564f28b56a6108e49b07e814fd386c0
