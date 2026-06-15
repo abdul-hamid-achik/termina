@@ -1069,4 +1069,51 @@ describe('ActionResolver', () => {
       expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(false)
     })
   })
+
+  describe('Stack Overflow (Overclock 2x)', () => {
+    const echoStats = { heroId: 'echo', hp: 550, maxHp: 550, mp: 280, maxMp: 280 } as const
+    const castQ = (state: GameState) =>
+      Effect.runSync(
+        resolveActions(state, [
+          {
+            playerId: 'p1',
+            command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+          },
+        ]),
+      )
+    const build = (casterBuffs: PlayerState['buffs']) =>
+      makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            ...echoStats,
+            buffs: casterBuffs,
+          }),
+          p2: makePlayer({
+            id: 'p2',
+            name: 'Enemy',
+            team: 'dire',
+            zone: 'mid-river',
+            ...echoStats,
+          }),
+        },
+      })
+
+    it('doubles the next ability damage and consumes the charge', () => {
+      const baseDmg = 550 - castQ(build([])).state.players['p2']!.hp
+      expect(baseDmg).toBeGreaterThan(0)
+
+      const r = castQ(
+        build([
+          { id: 'stack_overflow_buff', stacks: 1, ticksRemaining: 10, source: 'stack_overflow' },
+        ]),
+      )
+      const ocDmg = 550 - r.state.players['p2']!.hp
+      expect(ocDmg).toBe(baseDmg * 2)
+      // charge spent
+      expect(r.state.players['p1']!.buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
+    })
+  })
 })

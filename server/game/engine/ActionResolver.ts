@@ -1317,10 +1317,20 @@ function resolveHeroCast(
   // emits no damage event (and grants no assist credit). Basic attacks keep
   // pre-shield amounts — see the attack phase. Don't "fix" one to match the
   // other without revisiting both.
+  // Stack Overflow (Overclock): the caster's next ability deals 2x damage —
+  // double the HP lost by each enemy hit, then spend the charge after the loop.
+  const hasOverclock = !!newPlayers[action.playerId]?.buffs.some(
+    (b) => b.id === 'stack_overflow_buff',
+  )
   for (const [pid, post] of Object.entries(newPlayers)) {
     const pre = players[pid]
     if (!pre) continue
-    const delta = pre.hp - post.hp
+    let delta = pre.hp - post.hp
+    if (delta > 0 && hasOverclock && post.team !== caster.team) {
+      const doubledHp = Math.max(0, post.hp - delta)
+      newPlayers = { ...newPlayers, [pid]: { ...post, hp: doubledHp, alive: doubledHp > 0 } }
+      delta *= 2
+    }
     if (delta > 0) {
       events.push({
         _tag: 'damage',
@@ -1344,6 +1354,15 @@ function resolveHeroCast(
         targetId: pid,
         amount: -delta,
       })
+    }
+  }
+  if (hasOverclock) {
+    const c = newPlayers[action.playerId]
+    if (c) {
+      newPlayers = {
+        ...newPlayers,
+        [action.playerId]: { ...c, buffs: c.buffs.filter((b) => b.id !== 'stack_overflow_buff') },
+      }
     }
   }
 
