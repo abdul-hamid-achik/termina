@@ -27,7 +27,19 @@ const config: KnipConfig = {
   //  - server/db/** — DB layer wired via Nitro runtime config / migrations.
   //  - scripts/** — standalone simulation harness.
   //  - tests/** — test suites.
-  entry: ['app/components/**/*.vue', 'server/db/**/*.ts', 'scripts/**/*.ts', 'tests/**/*.ts'],
+  entry: [
+    'app/components/**/*.vue',
+    'server/db/**/*.ts',
+    'scripts/**/*.ts',
+    'tests/**/*.ts',
+    // Histoire config + setup live at repo root (outside `project` globs) and are
+    // loaded by the `histoire` CLI, so mark them as entries — otherwise their
+    // imports (@histoire/plugin-vue, @vitejs/plugin-vue, @tailwindcss/vite) read
+    // as unused deps. Story files are discovered by Histoire's glob, not imported.
+    'histoire.config.ts',
+    'histoire.setup.ts',
+    'app/**/*.story.vue',
+  ],
   project: ['app/**/*.{ts,vue}', 'server/**/*.ts', 'shared/**/*.ts', 'tests/**/*.ts'],
   // hitspec is a global dev CLI invoked by test:api (not a dep). (cairn is now
   // spawned from scripts/e2e.mjs, so knip no longer sees it as a script binary.)

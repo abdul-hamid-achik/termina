@@ -48,3 +48,10 @@ tests/e2e/junit.xml
 
 # vitest coverage reports
 /coverage
+
+# histoire build cache + output
+/.histoire
+
+# MCP playwright browser artifacts
+/.playwright-mcp
+histoire-*.png
