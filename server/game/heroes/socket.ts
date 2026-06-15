@@ -27,6 +27,8 @@ const Q_COOLDOWN = 12
 const W_DAMAGE = [80, 120, 160, 200] as const
 const W_MANA = [60, 80, 100, 120] as const
 const W_COOLDOWN = 16
+const W_TRAP_LIFETIME = 30 // ticks the armed trap persists before expiring
+const W_TRAP_REVEAL = 2 // ticks the triggering enemy is revealed
 
 const E_MANA = [100, 130, 160, 190] as const
 const E_COOLDOWN = 20
@@ -132,9 +134,26 @@ function resolveW(
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const damage = scaleValue(W_DAMAGE, level)
+    const expiryTick = state.tick + W_TRAP_LIFETIME
+    const revealDuration = W_TRAP_REVEAL
+
+    // Arm an invisible trap in the caster's zone. TrapSystem.processTraps
+    // detonates it on the first enemy hero to occupy the zone (damage + reveal).
+    const zoneId = player.zone
+    const zones = { ...state.zones }
+    const zoneState = zones[zoneId]
+    if (zoneState) {
+      zones[zoneId] = {
+        ...zoneState,
+        traps: [
+          ...(zoneState.traps ?? []),
+          { owner: player.id, team: player.team, damage, revealDuration, expiryTick },
+        ],
+      }
+    }
 
     return {
-      state: updatePlayer(state, caster),
+      state: { ...updatePlayer(state, caster), zones },
       events: [
         {
           tick: state.tick,
@@ -154,8 +173,8 @@ function resolveW(
             team: player.team,
             zone: player.zone,
             damage,
-            revealDuration: 2,
-            expiryTick: state.tick + 30,
+            revealDuration,
+            expiryTick,
           },
         },
       ],

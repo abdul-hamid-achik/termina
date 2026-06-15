@@ -306,14 +306,18 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
   // Filter zones: only include visible zone states
   const filteredZones: Record<string, ZoneRuntimeState> = {}
   for (const [zoneId, zs] of Object.entries(state.zones)) {
+    // Traps are invisible to the enemy even in a fully-visible zone — only the
+    // owning team ever sees its own armed traps.
+    const ownTraps = zs.traps?.filter((t) => t.team === team)
     if (visible.has(zoneId)) {
-      filteredZones[zoneId] = zs
+      filteredZones[zoneId] = zs.traps ? { ...zs, traps: ownTraps } : zs
     } else {
       // Show zone exists but strip wards and creep details for enemy info
       filteredZones[zoneId] = {
         id: zs.id,
         wards: zs.wards.filter((w) => w.team === team), // Only show own wards
         creeps: [], // Don't reveal enemy creep positions in fog
+        ...(zs.traps ? { traps: ownTraps } : {}),
       }
     }
   }

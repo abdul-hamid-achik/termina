@@ -157,6 +157,20 @@ describe('Socket Hero', () => {
       expect(trapEvent!.payload['expiryTick']).toBe(40) // tick 10 + 30
     })
 
+    it('arms a trap in the current zone state', () => {
+      const player = makePlayer({ level: 1, zone: 'mid-river' })
+      const state = makeState([player])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
+
+      const traps = result.state.zones['mid-river']!.traps
+      expect(traps).toHaveLength(1)
+      expect(traps![0]!.owner).toBe('p1')
+      expect(traps![0]!.team).toBe('radiant')
+      expect(traps![0]!.damage).toBe(80) // W_DAMAGE level 1
+      expect(traps![0]!.expiryTick).toBe(40)
+    })
+
     it('deducts mana and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])

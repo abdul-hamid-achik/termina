@@ -144,6 +144,9 @@ export interface ZoneRuntimeState {
   id: string
   wards: WardState[]
   creeps: string[]
+  // Socket's Listen traps armed in this zone. Optional so existing zone-init
+  // sites don't need updating; invisible to enemies (stripped in vision filter).
+  traps?: TrapState[]
 }
 
 export interface WardState {
@@ -151,6 +154,14 @@ export interface WardState {
   placedTick: number
   expiryTick: number
   type: 'observer' | 'sentry'
+}
+
+export interface TrapState {
+  owner: string
+  team: TeamId
+  damage: number
+  revealDuration: number
+  expiryTick: number
 }
 
 export interface FoggedPlayer {

@@ -290,6 +290,14 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
+    case 'trap_triggered':
+      return {
+        tick,
+        text: `${label(p.owner)}'s trap caught ${label(p.targetId)} in ${str(p.zone)} (-${num(p.damage)})`,
+        type: 'damage',
+        salience: salience(p.owner, p.targetId, ctx),
+      }
+
     case 'teleport_cancelled':
       return {
         tick,

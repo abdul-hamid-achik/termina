@@ -26,6 +26,7 @@ import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './A
 import { runTowerAI, applyTowerActions } from './TowerAI'
 import { runRoshanAI, processRoshanDamage } from './RoshanAI'
 import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
+import { processTraps } from './TrapSystem'
 import { spawnCreepWaves, spawnRunes } from '~~/server/game/map/spawner'
 import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
@@ -226,6 +227,12 @@ export function processTick(
 
     // 3.6. Apply inCombat buffs based on damage events
     currentState = applyInCombatBuffs(currentState, resolved.events)
+
+    // 3.65. Detonate Socket traps on enemies now standing in trapped zones
+    // (after movement resolved). Damage events feed kill/assist credit below.
+    const trapResult = processTraps(currentState)
+    currentState = trapResult.state
+    allEvents.push(...trapResult.events)
 
     // 3.7. Track last seen positions and detect missing enemies
     const lastSeenUpdate = trackLastSeenAndMissing(currentState, allEvents)

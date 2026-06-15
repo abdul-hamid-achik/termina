@@ -155,6 +155,16 @@ export interface RunePickedEvent {
   readonly runeType: string
 }
 
+export interface TrapTriggeredEvent {
+  readonly _tag: 'trap_triggered'
+  readonly tick: number
+  readonly owner: string
+  readonly team: TeamId
+  readonly zone: string
+  readonly targetId: string
+  readonly damage: number
+}
+
 export interface RoshanKilledEvent {
   readonly _tag: 'roshan_killed'
   readonly tick: number
@@ -290,6 +300,7 @@ export type GameEngineEvent =
   | ItemPurchasedEvent
   | WardPlacedEvent
   | RunePickedEvent
+  | TrapTriggeredEvent
   | RoshanKilledEvent
   | NeutralKilledEvent
   | RoshanDamageEvent
