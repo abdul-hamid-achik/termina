@@ -68,6 +68,48 @@ describe('applyScenario (dev seed scenarios)', () => {
     expect(applyScenario(base, 'self_dead', { humanId: 'nobody' })).toEqual(base)
   })
 
+  it('laning_combat co-locates the human and one enemy mid-lane', () => {
+    const base = {
+      ...baseState(),
+      players: {
+        human1: {
+          id: 'human1',
+          team: 'radiant',
+          alive: true,
+          hp: 300,
+          maxHp: 600,
+          mp: 100,
+          maxMp: 300,
+          level: 1,
+          zone: 'radiant-fountain',
+        },
+        enemy1: {
+          id: 'enemy1',
+          team: 'dire',
+          alive: true,
+          hp: 200,
+          maxHp: 500,
+          mp: 50,
+          maxMp: 250,
+          level: 1,
+          zone: 'dire-fountain',
+        },
+      },
+    } as unknown as GameState
+    const s = applyScenario(base, 'laning_combat', { humanId: 'human1' })
+    expect(s.players.human1!.zone).toBe('mid-river')
+    expect(s.players.enemy1!.zone).toBe('mid-river')
+    // levelled + topped off so abilities are unlocked and castable
+    expect(s.players.human1!.level).toBe(6)
+    expect(s.players.human1!.mp).toBe(s.players.human1!.maxMp)
+    expect(s.players.enemy1!.hp).toBe(s.players.enemy1!.maxHp)
+  })
+
+  it('laning_combat is a no-op without a matching humanId', () => {
+    const base = baseState()
+    expect(applyScenario(base, 'laning_combat')).toEqual(base)
+  })
+
   it('fresh / unknown scenarios are a no-op', () => {
     const base = baseState()
     expect(applyScenario(base, 'fresh')).toEqual(base)
@@ -83,5 +125,6 @@ describe('applyScenario (dev seed scenarios)', () => {
   it('KNOWN_SCENARIOS lists the shapeable scenarios', () => {
     expect(KNOWN_SCENARIOS).toContain('roshan_dead')
     expect(KNOWN_SCENARIOS).toContain('core_vulnerable')
+    expect(KNOWN_SCENARIOS).toContain('laning_combat')
   })
 })

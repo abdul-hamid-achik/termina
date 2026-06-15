@@ -55,6 +55,26 @@ export function applyScenario(
     case 'night':
       return { ...state, timeOfDay: 'night' }
 
+    case 'laning_combat': {
+      // Co-locate the human and one enemy hero mid-lane so attack / offensive
+      // cast specs have a legal target in-zone. Both are levelled up and topped
+      // off so abilities are unlocked and castable. Pair with manualTick so the
+      // spec drives resolution deterministically.
+      const humanId = opts?.humanId
+      const human = humanId ? state.players[humanId] : undefined
+      if (!humanId || !human) return state
+      const enemy = Object.values(state.players).find((p) => p.team !== human.team)
+      const laneZone = 'mid-river'
+      const players = {
+        ...state.players,
+        [humanId]: { ...human, zone: laneZone, level: 6, mp: human.maxMp, hp: human.maxHp },
+      }
+      if (enemy) {
+        players[enemy.id] = { ...enemy, zone: laneZone, level: 6, hp: enemy.maxHp, mp: enemy.maxMp }
+      }
+      return { ...state, players }
+    }
+
     case 'fresh':
     case 'laning':
     default:
@@ -67,6 +87,7 @@ export function applyScenario(
 export const KNOWN_SCENARIOS = [
   'fresh',
   'laning',
+  'laning_combat',
   'roshan_dead',
   'core_vulnerable',
   'night',
