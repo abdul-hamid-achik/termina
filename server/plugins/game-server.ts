@@ -39,7 +39,12 @@ import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/Spe
 import type { TeamId, GameState } from '~~/shared/types/game'
 import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
 import { isBot, registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
-import { sendToPeer, setPlayerGame, clearPlayerGame } from '~~/server/services/PeerRegistry'
+import {
+  sendToPeer,
+  setPlayerGame,
+  clearPlayerGame,
+  hasPeer,
+} from '~~/server/services/PeerRegistry'
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -287,6 +292,55 @@ export function stopDevGame(gameId: string): void {
   void runtime.managedRuntime.runPromise(stopGameLoop(gameId)).catch(() => {})
 }
 
+// ── Zombie dev-game reaper ──────────────────────────────────────
+// A seeded LIVE (non-manualTick) game auto-starts its loop at /api/test/new-game
+// and keeps running the full processTick pipeline + broadcasting every tick even
+// when NO browser peer is connected — e.g. the e2e browser failed to connect under
+// CI load, or a spec ended without a clean WS close (so the close-handler teardown
+// never fired). Those zombies run to natural game-end (~325 ticks at fast-game),
+// spamming "No peer found" and burning CPU; under the parallel e2e suite they
+// saturate CI cores and blow the watchdog budget. stopDevGame only fires on a WS
+// CLOSE, which never comes if the peer never opened — so this reaper catches the
+// never-connected case by polling for dev games with no connected human peer.
+//
+// Grace must exceed the browser's connect time (seed -> cold-start /play nav ->
+// WS join can take ~30s in CI), so we reap only after a sustained peerless window.
+// Test-hooks-only: dev_ games exist only under TERMINA_TEST_HOOKS=1, so there is
+// zero production overhead and real games are never touched.
+const DEV_PEERLESS_REAP_MS = 60_000
+const _devPeerlessSince = new Map<string, number>()
+let _reaperTimer: ReturnType<typeof setInterval> | null = null
+
+function reapPeerlessDevGames(): void {
+  const now = Date.now()
+  for (const gameId of liveGames.keys()) {
+    if (!gameId.startsWith('dev_')) continue
+    const state = getDevRawState(gameId)
+    if (!state || state.phase === 'ended') {
+      _devPeerlessSince.delete(gameId)
+      continue
+    }
+    const humanConnected = Object.values(state.players).some((p) => !isBot(p.id) && hasPeer(p.id))
+    if (humanConnected) {
+      _devPeerlessSince.delete(gameId)
+      continue
+    }
+    let since = _devPeerlessSince.get(gameId)
+    if (since === undefined) {
+      since = now
+      _devPeerlessSince.set(gameId, now)
+    }
+    if (now - since >= DEV_PEERLESS_REAP_MS) {
+      _devPeerlessSince.delete(gameId)
+      gameLog.warn('Reaping peerless dev game (no connected human peer)', {
+        gameId,
+        peerlessMs: now - since,
+      })
+      stopDevGame(gameId)
+    }
+  }
+}
+
 export default defineNitroPlugin(async (nitroApp) => {
   // Populate the hero ability/passive registry up front. Each hero module also
   // self-registers on import, but the production bundle tree-shook those
@@ -304,6 +358,12 @@ export default defineNitroPlugin(async (nitroApp) => {
       '\n⚠️  TERMINA_TEST_HOOKS=1 — test endpoints (server/api/test/*) are ENABLED.\n' +
         '   They bypass auth and seed/teardown games. NEVER set this in production.\n',
     )
+    // Reap peerless seeded games so zombie loops can't pile up across an e2e run.
+    if (!_reaperTimer) {
+      _reaperTimer = setInterval(reapPeerlessDevGames, 15_000)
+      // Don't keep the process alive just for the reaper.
+      ;(_reaperTimer as { unref?: () => void }).unref?.()
+    }
   }
 
   const config = useRuntimeConfig()

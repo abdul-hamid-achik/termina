@@ -25,6 +25,11 @@ export function unregisterPeer(playerId: string, peer: CrosswsPeer) {
   }
 }
 
+/** Whether a player currently has a live WS peer connected. */
+export function hasPeer(playerId: string): boolean {
+  return peers.has(playerId)
+}
+
 const playerGames = new Map<string, string>()
 
 export function setPlayerGame(playerId: string, gameId: string) {
