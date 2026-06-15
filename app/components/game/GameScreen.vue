@@ -13,6 +13,7 @@ import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import type { TowerState } from '~~/shared/types/game'
+import type { DamageFloatEntry } from '~/components/game/DamageFloat.vue'
 import { uiLog } from '~/utils/logger'
 import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
 import {
@@ -230,6 +231,20 @@ function onKeyUp(e: KeyboardEvent) {
 const heroFlashKey = ref(0) // I took damage → red flash on the hero panel
 const kdaPopKey = ref(0) // I got a kill → KDA pop
 const tickPulseKey = ref(0) // each tick → reveal flash in the Tick Theater
+const deathVignetteKey = ref(0) // I died → instant red vignette pulse (on the event)
+
+// Floating combat numbers for damage involving the local player. Each entry
+// rises + fades once (DamageFloat.vue) and is pruned after the animation.
+const damageFloats = ref<DamageFloatEntry[]>([])
+let _floatId = 0
+function pushDamageFloat(amount: number, kind: 'taken' | 'dealt') {
+  if (!amount || amount <= 0) return
+  const id = ++_floatId
+  damageFloats.value = [...damageFloats.value, { id, amount: Math.round(amount), kind }].slice(-8)
+  setTimeout(() => {
+    damageFloats.value = damageFloats.value.filter((f) => f.id !== id)
+  }, 750)
+}
 
 const screenShake = ref<'none' | 'light' | 'strong'>('none')
 let shakeTimer: ReturnType<typeof setTimeout> | null = null
@@ -281,14 +296,20 @@ watch(
             playSound('damage')
             triggerShake('light')
             heroFlashKey.value++
+            pushDamageFloat(Number(e.payload.amount), 'taken')
           } else if (e.payload.sourceId === pid) {
             playSound('damage')
+            pushDamageFloat(Number(e.payload.amount), 'dealt')
           }
           break
         case 'death':
           if (e.payload.playerId === pid) {
             playSound('death')
             triggerShake('strong')
+            // Instant red vignette on the EVENT — the "PROCESS TERMINATED" overlay
+            // is tied to authoritative isAlive state (a tick_state away), which can
+            // lag the event under latency; the vignette confirms death immediately.
+            deathVignetteKey.value++
           }
           break
         case 'gold_change':
@@ -314,11 +335,9 @@ watch(
           if (e.payload.killerId === pid) triggerShake('light')
           break
         case 'ability_used':
-          // Confirmed cast feedback: the caster hears the cast cue; a target
-          // hit by an enemy ability gets a light shake + hero flash.
-          if (e.payload.playerId === pid) {
-            playSound('cast')
-          } else if (e.payload.targetId === pid) {
+          // The caster's cast cue now fires immediately on send (handleCommand),
+          // so here we only react when WE are the target of an enemy ability.
+          if (e.payload.targetId === pid && e.payload.playerId !== pid) {
             triggerShake('light')
             heroFlashKey.value++
           }
@@ -681,6 +700,11 @@ function handleCommand(cmd: string) {
     uiLog.debug('Command sent', { type: command.type })
     gameSocket.send({ type: 'action', command })
     gameStore.markActionSent(cmd)
+    // Immediate positive confirmation so the action feels registered NOW, not
+    // only when the tick resolves ~4s later. Pre-flight validation already gated
+    // out rejects above, so this fires only on actions that will resolve; the
+    // landing cues (damage floats, target shake) still come from the tick events.
+    if (command.type === 'cast' || command.type === 'attack') playSound('cast')
   } else if (error) {
     localEvents.value.push({
       tick: gameStore.tick,
@@ -898,6 +922,18 @@ function handleReturnToMenu() {
     data-testid="game-screen"
     :data-game-id="gameStore.gameId ?? ''"
   >
+    <!-- Floating combat numbers (rise + fade on damage involving you) -->
+    <DamageFloat :floats="damageFloats" />
+
+    <!-- Instant death vignette pulse, fired on the death EVENT (the overlay below
+         waits for authoritative isAlive state, which can lag under latency) -->
+    <div
+      v-if="deathVignetteKey > 0"
+      :key="deathVignetteKey"
+      class="anim-death-vignette pointer-events-none absolute inset-0 z-40"
+      aria-hidden="true"
+    />
+
     <div
       v-if="!gameStore.isAlive && gameStore.player"
       class="death-overlay"
