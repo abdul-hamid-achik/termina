@@ -4,7 +4,8 @@ import {
   calculateMagicalDamage,
   calculatePureDamage,
   calculateEffectiveDamage,
-  getIncomingMagicMultiplier,
+  getIncomingDamageMultiplier,
+  isDamageImmune,
   applyRawDamage,
   applyHeal,
   getHeroStatsAtLevel,
@@ -181,7 +182,7 @@ describe('DamageCalculator', () => {
     })
   })
 
-  describe('getIncomingMagicMultiplier', () => {
+  describe('getIncomingDamageMultiplier', () => {
     const vuln = (id: string, stacks: number): BuffState => ({
       id,
       stacks,
@@ -190,31 +191,73 @@ describe('DamageCalculator', () => {
     })
 
     it('is 1.0 with no vuln debuffs', () => {
-      expect(getIncomingMagicMultiplier(makePlayer())).toBe(1)
+      expect(getIncomingDamageMultiplier(makePlayer(), 'magical')).toBe(1)
     })
 
-    it('reads regex magicVulnerability (+15%)', () => {
+    it('magic-vuln debuffs amplify MAGICAL only (regex +15%, Veil +25%, Ethereal +40%)', () => {
       expect(
-        getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('magicVulnerability', 15)] })),
+        getIncomingDamageMultiplier(
+          makePlayer({ buffs: [vuln('magicVulnerability', 15)] }),
+          'magical',
+        ),
       ).toBeCloseTo(1.15)
+      expect(
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('veil_discord', 25)] }), 'magical'),
+      ).toBeCloseTo(1.25)
+      // ...but NOT physical/pure
+      expect(
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('magic_vuln_40', 40)] }), 'physical'),
+      ).toBe(1)
     })
 
-    it('reads veil_discord (+25%) and Ethereal magic_vuln_40 (+40%)', () => {
+    it('thread Yield amplifies ALL damage types (+25%)', () => {
       expect(
-        getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('veil_discord', 25)] })),
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'magical'),
       ).toBeCloseTo(1.25)
       expect(
-        getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('magic_vuln_40', 40)] })),
-      ).toBeCloseTo(1.4)
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'physical'),
+      ).toBeCloseTo(1.25)
+      expect(
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'pure'),
+      ).toBeCloseTo(1.25)
     })
 
-    it('stacks the vuln debuffs additively', () => {
-      const p = makePlayer({ buffs: [vuln('magicVulnerability', 15), vuln('veil_discord', 25)] })
-      expect(getIncomingMagicMultiplier(p)).toBeCloseTo(1.4) // 1 + (15+25)/100
+    it('stacks magic-vuln + Yield additively for magical damage', () => {
+      const p = makePlayer({ buffs: [vuln('veil_discord', 25), vuln('yield', 25)] })
+      expect(getIncomingDamageMultiplier(p, 'magical')).toBeCloseTo(1.5) // 1 + (25+25)/100
     })
 
     it('ignores unrelated buffs', () => {
-      expect(getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('shield', 100)] }))).toBe(1)
+      expect(
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('shield', 100)] }), 'magical'),
+      ).toBe(1)
+    })
+  })
+
+  describe('isDamageImmune', () => {
+    const buff = (id: string): BuffState => ({ id, stacks: 1, ticksRemaining: 2, source: 'x' })
+
+    it('invulnerable blocks every damage type', () => {
+      const p = makePlayer({ buffs: [buff('invulnerable')] })
+      expect(isDamageImmune(p, 'physical')).toBe(true)
+      expect(isDamageImmune(p, 'magical')).toBe(true)
+      expect(isDamageImmune(p, 'pure')).toBe(true)
+    })
+
+    it('magic_immune (BKB) blocks magical only', () => {
+      const p = makePlayer({ buffs: [buff('magic_immune')] })
+      expect(isDamageImmune(p, 'magical')).toBe(true)
+      expect(isDamageImmune(p, 'physical')).toBe(false)
+    })
+
+    it('ethereal / ghost_form block physical only', () => {
+      expect(isDamageImmune(makePlayer({ buffs: [buff('ethereal')] }), 'physical')).toBe(true)
+      expect(isDamageImmune(makePlayer({ buffs: [buff('ghost_form')] }), 'physical')).toBe(true)
+      expect(isDamageImmune(makePlayer({ buffs: [buff('ethereal')] }), 'magical')).toBe(false)
+    })
+
+    it('is false with no immunity buffs', () => {
+      expect(isDamageImmune(makePlayer(), 'physical')).toBe(false)
     })
   })
 })

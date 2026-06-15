@@ -5,7 +5,8 @@ import type { DamageType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import {
   calculateEffectiveDamage,
-  getIncomingMagicMultiplier,
+  getIncomingDamageMultiplier,
+  isDamageImmune,
 } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
 import { TALENT_TREES } from '~~/shared/constants/talents'
@@ -239,6 +240,11 @@ export function dealDamage(
   rawDamage: number,
   damageType: DamageType,
 ): PlayerState {
+  // Immunity (Proxy R / Eul's invulnerable; BKB magic_immune; Ethereal/Ghost
+  // physical) ignores the hit entirely — no HP lost, buff left for tickBuffs to
+  // expire (NOT consumed like phaseShift).
+  if (isDamageImmune(target, damageType)) return target
+
   // Effective stats include items, talents, and engine-consumed buffs
   const effective = calculateEffectiveDamage(rawDamage, damageType, {
     defense: getEffectiveDefense(target),
@@ -248,12 +254,10 @@ export function dealDamage(
   const hardenedReduction = hasBuff(target, 'hardened') ? 0.9 : 1
   let remaining = Math.round(effective * hardenedReduction)
 
-  // Target-side magic-vuln debuffs (regex Q, Veil of Discord, Ethereal Blade)
-  // amplify incoming magical damage. Applied before shield so the shield soaks
-  // the amplified amount ("takes more magical damage").
-  if (damageType === 'magical') {
-    remaining = Math.round(remaining * getIncomingMagicMultiplier(target))
-  }
+  // Target-side vuln debuffs amplify incoming damage (magic-vuln for magical:
+  // regex Q / Veil / Ethereal Blade; thread Yield for all types). Applied before
+  // shield so the shield soaks the amplified amount ("takes more damage").
+  remaining = Math.round(remaining * getIncomingDamageMultiplier(target, damageType))
 
   // Check for shield buff
   const shield = target.buffs.find((b) => b.id === 'shield')
@@ -364,10 +368,16 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
     let target = player
     for (const dot of dotBuffs) {
       const damageType: DamageType = dot.id.includes('phys') ? 'physical' : 'magical'
-      const effectiveDamage = calculateEffectiveDamage(dot.stacks, damageType, {
+      // Immunity skips the tick (e.g. BKB magic_immune ignores a magical DoT).
+      if (isDamageImmune(target, damageType)) continue
+      const mitigated = calculateEffectiveDamage(dot.stacks, damageType, {
         defense: getEffectiveDefense(target),
         magicResist: getEffectiveMagicResist(target),
       })
+      // Target-side vuln amps (magic-vuln / Yield) raise DoT damage too.
+      const effectiveDamage = Math.round(
+        mitigated * getIncomingDamageMultiplier(target, damageType),
+      )
       const newHp = Math.max(0, target.hp - effectiveDamage)
       target = { ...target, hp: newHp, alive: newHp > 0 }
       // Emitting per-dot damage events feeds kill/assist credit and inCombat

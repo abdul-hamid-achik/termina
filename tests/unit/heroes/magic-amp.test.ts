@@ -169,4 +169,49 @@ describe('dealDamage: target-side magic vulnerability', () => {
       expect(lost).toBe(plainLost)
     }
   })
+
+  it('thread Yield amplifies ALL damage types (+25%)', () => {
+    for (const type of ['physical', 'magical', 'pure'] as const) {
+      const plainLost = plainTarget().hp - dealDamage(plainTarget(), 100, type).hp
+      const yielded = vulnTarget('yield', 25)
+      const lost = yielded.hp - dealDamage(yielded, 100, type).hp
+      expect(lost / plainLost).toBeCloseTo(1.25, 1)
+    }
+  })
+})
+
+describe('dealDamage: immunity', () => {
+  const immune = (id: string) =>
+    makePlayer({
+      id: 't',
+      heroId: null,
+      magicResist: 0,
+      defense: 0,
+      buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
+    })
+
+  it('invulnerable takes no damage of any type and keeps the buff', () => {
+    for (const type of ['physical', 'magical', 'pure'] as const) {
+      const t = immune('invulnerable')
+      const after = dealDamage(t, 500, type)
+      expect(after.hp).toBe(t.hp) // no HP lost
+      expect(after.buffs.some((b) => b.id === 'invulnerable')).toBe(true) // not consumed
+    }
+  })
+
+  it('magic_immune (BKB) blocks magical but not physical', () => {
+    const t1 = immune('magic_immune')
+    expect(dealDamage(t1, 200, 'magical').hp).toBe(t1.hp)
+    const t2 = immune('magic_immune')
+    expect(dealDamage(t2, 200, 'physical').hp).toBeLessThan(t2.hp)
+  })
+
+  it('ethereal / ghost_form block physical ability damage but not magical', () => {
+    for (const id of ['ethereal', 'ghost_form']) {
+      const t1 = immune(id)
+      expect(dealDamage(t1, 200, 'physical').hp).toBe(t1.hp)
+      const t2 = immune(id)
+      expect(dealDamage(t2, 200, 'magical').hp).toBeLessThan(t2.hp)
+    }
+  })
 })
