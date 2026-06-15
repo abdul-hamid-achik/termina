@@ -1192,7 +1192,7 @@ describe('validateCommand', () => {
 
   it('rejects a non-adjacent move and lists reachable zones', () => {
     const err = validateCommand({ type: 'move', zone: 'dire-fountain' }, makeContext())
-    expect(err).toMatch(/Not adjacent/)
+    expect(err).toMatch(/one zone per tick/i)
     expect(err).toContain('mid-river')
   })
 

@@ -77,7 +77,7 @@ describe('CommandInput preview line', () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const preview = await previewFor(wrapper, 'move dire-base')
     expect(preview.text()).toContain('!!')
-    expect(preview.text().toLowerCase()).toContain('not adjacent')
+    expect(preview.text().toLowerCase()).toContain('one zone per tick')
     expect(preview.classes()).toContain('text-dire')
     wrapper.unmount()
   })

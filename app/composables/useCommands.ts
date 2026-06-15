@@ -221,7 +221,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       const zone = ZONE_MAP[player.zone]
       if (!zone) return null
       if (command.zone !== player.zone && !zone.adjacentTo.includes(command.zone)) {
-        return `Not adjacent — from ${player.zone} you can reach: ${zone.adjacentTo.join(', ')}`
+        return `Too far — you move one zone per tick. From ${player.zone} you can reach: ${zone.adjacentTo.join(', ')}`
       }
       if (hasDebuff(player, 'root') || hasDebuff(player, 'stun')) {
         return 'Cannot move while rooted or stunned'

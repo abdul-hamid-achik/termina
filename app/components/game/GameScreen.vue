@@ -105,6 +105,26 @@ onMounted(() => {
     })
   }
 
+  // First-time onboarding: a one-shot first-steps nudge in the event log (the
+  // review's top retention lever). Gated on a localStorage flag so it shows once
+  // for a new player and never nags veterans; clear `termina_intro_seen` to replay.
+  try {
+    if (typeof localStorage !== 'undefined' && !localStorage.getItem('termina_intro_seen')) {
+      localStorage.setItem('termina_intro_seen', '1')
+      const intro = [
+        'Welcome to Termina — the game runs on 4s ticks; you queue ONE action per tick.',
+        'You start in the fountain. Move to a lane: type or tap  move mid-river',
+        'Last-hit enemy creeps (≈<50% HP) for gold — tap the creep group in the Zone panel.',
+        'In the fountain/base press [S] (SHOP) to buy items; Q/W/E/R cast your abilities.',
+        'Destroy the enemy Mainframe (their Ancient) to win. Good luck!',
+      ]
+      for (const text of intro)
+        localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+    }
+  } catch {
+    // localStorage unavailable (private mode / SSR) — skip the intro silently.
+  }
+
   // Keyboard listener for Tab (scoreboard toggle)
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
@@ -786,9 +806,15 @@ function handleQuickAction(cmd: string) {
       const targetRef = `hero:${target.heroId ?? target.name}`
       handleCommand(`attack ${targetRef}`)
     } else {
+      // Don't fail silently — guide the player. From the fountain/base there's
+      // nothing to fight; everywhere else, point at creeps + the explicit syntax.
+      const zoneType = ZONE_MAP[p.zone]?.type
+      const inBase = zoneType === 'fountain' || zoneType === 'base'
       localEvents.value.push({
         tick: gameStore.tick,
-        text: 'No enemies in your zone. Usage: attack <target>',
+        text: inBase
+          ? 'No targets here — move to a lane to fight (e.g.  move mid-river ).'
+          : 'No enemies in this zone — last-hit creeps in the Zone panel, or  attack <target> .',
         type: 'system',
       })
     }
