@@ -3,8 +3,21 @@
  * Allows teams to vote to forfeit the game
  */
 
-import type { GameState, TeamId } from '~~/shared/types/game'
+import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { SURRENDER_MIN_TICK, SURRENDER_VOTE_THRESHOLD } from '~~/shared/constants/balance'
+import { isBot } from '~~/server/game/ai/BotManager'
+
+/**
+ * Alive HUMAN players on a team — the surrender electorate. Bots never cast a
+ * vote, so counting them in the denominator made surrender impossible in
+ * solo-vs-bots play (1 human + 4 bots needed ceil(5 * 0.6) = 3 votes but only
+ * one human could ever vote). Restricting the tally to humans means a lone
+ * human's single vote concedes, while a full 5-human team still needs a 60%
+ * majority.
+ */
+function aliveHumansOnTeam(state: GameState, team: TeamId): PlayerState[] {
+  return Object.values(state.players).filter((p) => p.team === team && p.alive && !isBot(p.id))
+}
 
 export interface SurrenderResult {
   success: boolean
@@ -32,10 +45,10 @@ export function canSurrender(state: GameState, team: TeamId): { can: boolean; re
     return { can: false, reason: 'Invalid team' }
   }
 
-  // Count alive players on team
-  const alivePlayers = Object.values(state.players).filter((p) => p.team === team && p.alive)
+  // Count alive HUMAN players on team — bots don't vote
+  const aliveHumans = aliveHumansOnTeam(state, team)
 
-  if (alivePlayers.length === 0) {
+  if (aliveHumans.length === 0) {
     return { can: false, reason: 'No alive players to vote' }
   }
 
@@ -68,11 +81,12 @@ export function voteSurrender(state: GameState, playerId: string): SurrenderResu
   updatedVotes[player.team] = teamVotes
   const updatedState: GameState = { ...state, surrenderVotes: updatedVotes }
 
-  // Count votes
-  const alivePlayers = Object.values(state.players).filter((p) => p.team === player.team && p.alive)
+  // Count votes against the alive HUMAN electorate (bots don't vote)
+  const aliveHumans = aliveHumansOnTeam(state, player.team)
 
-  const totalAlive = alivePlayers.length
-  const votesFor = teamVotes.size
+  const totalAlive = aliveHumans.length
+  // Only count votes from players still in the electorate (alive humans).
+  const votesFor = [...teamVotes].filter((id) => aliveHumans.some((p) => p.id === id)).length
   const votesNeeded = Math.ceil(totalAlive * SURRENDER_VOTE_THRESHOLD)
 
   return {
@@ -120,10 +134,12 @@ export function getSurrenderStatus(
   percentage: number
 } {
   const teamVotes = state.surrenderVotes[team]
-  const alivePlayers = Object.values(state.players).filter((p) => p.team === team && p.alive)
+  const aliveHumans = aliveHumansOnTeam(state, team)
 
-  const totalAlive = alivePlayers.length
-  const votesFor = teamVotes?.size || 0
+  const totalAlive = aliveHumans.length
+  const votesFor = teamVotes
+    ? [...teamVotes].filter((id) => aliveHumans.some((p) => p.id === id)).length
+    : 0
   const votesAgainst = totalAlive - votesFor
   const votesNeeded = Math.ceil(totalAlive * SURRENDER_VOTE_THRESHOLD)
   const percentage = totalAlive > 0 ? (votesFor / totalAlive) * 100 : 0

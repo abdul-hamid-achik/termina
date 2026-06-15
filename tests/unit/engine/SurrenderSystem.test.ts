@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Effect } from 'effect'
 import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
-import { voteSurrender, removeSurrenderVote } from '../../../server/game/engine/SurrenderSystem'
+import {
+  voteSurrender,
+  removeSurrenderVote,
+  getSurrenderStatus,
+} from '../../../server/game/engine/SurrenderSystem'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
@@ -103,6 +107,44 @@ describe('SurrenderSystem', () => {
       const voted = voteSurrender(state, 'r1').state
       const retracted = removeSurrenderVote(voted, 'r1')
       expect(retracted.surrenderVotes.radiant.size).toBe(0)
+    })
+  })
+
+  describe('solo-vs-bots electorate', () => {
+    // A lone human alongside bot teammates must be able to concede — bots never
+    // vote, so they're excluded from the denominator (the "surrender is useless
+    // when playing alone with bots" report).
+    function soloWithBots(): GameState {
+      return makeGameState({
+        tick: SURRENDER_MIN_TICK,
+        players: {
+          human: makePlayer({ id: 'human', name: 'Human', team: 'radiant' }),
+          bot_alpha: makePlayer({ id: 'bot_alpha', name: 'bot_alpha', team: 'radiant' }),
+          bot_beta: makePlayer({ id: 'bot_beta', name: 'bot_beta', team: 'radiant' }),
+          d1: makePlayer({ id: 'd1', name: 'D1', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+    }
+
+    it('a lone human concedes with a single vote when teammates are bots', () => {
+      const result = voteSurrender(soloWithBots(), 'human')
+      expect(result.success).toBe(true)
+      expect(result.surrendered).toBe(true)
+      expect(result.votes).toEqual({ for: 1, against: 0, total: 1, needed: 1 })
+    })
+
+    it('excludes bots from the surrender status electorate', () => {
+      const status = getSurrenderStatus(soloWithBots(), 'radiant')
+      expect(status.totalAlive).toBe(1) // only the human, not the two bots
+      expect(status.votesNeeded).toBe(1)
+    })
+
+    it('ends the game when the lone human concedes via processTick', () => {
+      submitAction('surr-solo', 'human', { type: 'surrender', vote: 'yes' })
+      const result = Effect.runSync(processTick('surr-solo', soloWithBots()))
+      expect(result.state.phase).toBe('ended')
+      expect(result.state.winner).toBe('dire')
+      expect(result.events.some((e) => e._tag === 'surrendered')).toBe(true)
     })
   })
 
