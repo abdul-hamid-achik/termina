@@ -343,7 +343,7 @@ jobs:
     needs: [lint, typecheck, unit-tests, build]
     # Hard backstop: scripts/e2e.mjs has its own per-run watchdog (CAIRN_BUDGET_MS),
     # but this guarantees the job can never sit hung for the full 6h GitHub limit.
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       # The dev server (started by scripts/e2e.mjs) reads these via Nuxt runtimeConfig.
       NUXT_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
@@ -352,6 +352,14 @@ jobs:
       TERMINA_TEST_HOOKS: '1'
       TERMINA_TEST_FAST_GAME: '8'
       CAIRN_BACKEND: playwright
+      # CI tuning (advisory job). Locally --parallel 4 runs the suite in ~11 min on
+      # 8+ cores, but CI runners are ~4-core with the heavier Playwright backend, so
+      # the 15-min default watchdog tripped (exit 124). Use --parallel 3 (leave a
+      # core for the preview server) and a 25-min budget under the 30-min job cap.
+      # Best-effort — confirm/retune from a real CI run before promoting e2e into
+      # the ci-success gate.
+      E2E_PARALLEL: '3'
+      CAIRN_BUDGET_MS: '1500000'
     steps:
       - uses: actions/checkout@v5
 
