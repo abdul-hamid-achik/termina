@@ -4,11 +4,12 @@ import {
   calculateMagicalDamage,
   calculatePureDamage,
   calculateEffectiveDamage,
+  getIncomingMagicMultiplier,
   applyRawDamage,
   applyHeal,
   getHeroStatsAtLevel,
 } from '../../../server/game/engine/DamageCalculator'
-import type { PlayerState } from '../../../shared/types/game'
+import type { BuffState, PlayerState } from '../../../shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -177,6 +178,43 @@ describe('DamageCalculator', () => {
       expect(result.attack).toBe(70)
       expect(result.defense).toBe(7)
       expect(result.magicResist).toBe(15) // no MR growth
+    })
+  })
+
+  describe('getIncomingMagicMultiplier', () => {
+    const vuln = (id: string, stacks: number): BuffState => ({
+      id,
+      stacks,
+      ticksRemaining: 3,
+      source: 'x',
+    })
+
+    it('is 1.0 with no vuln debuffs', () => {
+      expect(getIncomingMagicMultiplier(makePlayer())).toBe(1)
+    })
+
+    it('reads regex magicVulnerability (+15%)', () => {
+      expect(
+        getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('magicVulnerability', 15)] })),
+      ).toBeCloseTo(1.15)
+    })
+
+    it('reads veil_discord (+25%) and Ethereal magic_vuln_40 (+40%)', () => {
+      expect(
+        getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('veil_discord', 25)] })),
+      ).toBeCloseTo(1.25)
+      expect(
+        getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('magic_vuln_40', 40)] })),
+      ).toBeCloseTo(1.4)
+    })
+
+    it('stacks the vuln debuffs additively', () => {
+      const p = makePlayer({ buffs: [vuln('magicVulnerability', 15), vuln('veil_discord', 25)] })
+      expect(getIncomingMagicMultiplier(p)).toBeCloseTo(1.4) // 1 + (15+25)/100
+    })
+
+    it('ignores unrelated buffs', () => {
+      expect(getIncomingMagicMultiplier(makePlayer({ buffs: [vuln('shield', 100)] }))).toBe(1)
     })
   })
 })

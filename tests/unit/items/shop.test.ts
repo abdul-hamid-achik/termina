@@ -453,6 +453,33 @@ describe('Shop', () => {
 
       expect(Exit.isFailure(exit)).toBe(true)
     })
+
+    it('Veil of Discord debuffs enemies in zone, not the caster', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['veil_of_discord', null, null, null, null, null],
+      })
+      const enemyInZone = makePlayer({ id: 'enemy_1', team: 'dire', zone: 'mid-river' })
+      const enemyElsewhere = makePlayer({ id: 'enemy_2', team: 'dire', zone: 'mid-t1-dire' })
+      const state = makeGameState({
+        players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
+      })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'veil_of_discord'))
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        const s = exit.value
+        const has = (id: string, buff: string) => s.players[id]!.buffs.some((b) => b.id === buff)
+        // Debuff lands on the in-zone enemy only.
+        expect(has('enemy_1', 'veil_discord')).toBe(true)
+        expect(has('enemy_2', 'veil_discord')).toBe(false) // out of zone
+        // Caster no longer self-debuffs; it just holds the cooldown marker.
+        expect(has('player_1', 'veil_discord')).toBe(false)
+        expect(has('player_1', 'item_cd_veil_of_discord')).toBe(true)
+      }
+    })
   })
 
   describe('error types', () => {

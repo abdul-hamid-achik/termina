@@ -12,6 +12,7 @@ import {
   applyBuff,
   updatePlayer,
   getAlliesInZone,
+  getEnemiesInZone,
   updatePlayers,
   findTargetPlayer,
 } from '~~/server/game/heroes/_base'
@@ -897,19 +898,26 @@ function useScytheOfVyse(
 }
 
 function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
-  let updated = applyBuff(player, {
-    id: 'veil_discord',
-    stacks: 25, // 25% magic vuln
-    ticksRemaining: 4,
-    source: 'veil_of_discord',
-  })
-  updated = applyBuff(updated, {
+  // "Enemies in zone take 25% more magical damage." The debuff belongs on the
+  // enemies in the caster's zone — it was previously (wrongly) applied to the
+  // caster. The magic-vuln amp is consumed by dealDamage's incoming-magic
+  // multiplier.
+  const enemies = getEnemiesInZone(state, player).map((e) =>
+    applyBuff(e, {
+      id: 'veil_discord',
+      stacks: 25, // +25% magical damage taken
+      ticksRemaining: 4,
+      source: 'veil_of_discord',
+    }),
+  )
+  // Only the cooldown marker stays on the caster.
+  const caster = applyBuff(player, {
     id: 'item_cd_veil_of_discord',
     stacks: 1,
     ticksRemaining: 15,
     source: 'veil_of_discord',
   })
-  return updatePlayer(state, updated)
+  return updatePlayers(state, [caster, ...enemies])
 }
 
 function useShivasGuard(state: GameState, player: PlayerState): GameState {

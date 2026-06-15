@@ -3,7 +3,10 @@ import type { GameState, PlayerState, BuffState, GameEvent } from '~~/shared/typ
 import type { TargetRef } from '~~/shared/types/commands'
 import type { DamageType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
-import { calculateEffectiveDamage } from '~~/server/game/engine/DamageCalculator'
+import {
+  calculateEffectiveDamage,
+  getIncomingMagicMultiplier,
+} from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -244,6 +247,13 @@ export function dealDamage(
   // Check for Kernel passive (hardened: 10% reduction)
   const hardenedReduction = hasBuff(target, 'hardened') ? 0.9 : 1
   let remaining = Math.round(effective * hardenedReduction)
+
+  // Target-side magic-vuln debuffs (regex Q, Veil of Discord, Ethereal Blade)
+  // amplify incoming magical damage. Applied before shield so the shield soaks
+  // the amplified amount ("takes more magical damage").
+  if (damageType === 'magical') {
+    remaining = Math.round(remaining * getIncomingMagicMultiplier(target))
+  }
 
   // Check for shield buff
   const shield = target.buffs.find((b) => b.id === 'shield')

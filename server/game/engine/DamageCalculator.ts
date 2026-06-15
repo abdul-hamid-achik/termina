@@ -45,6 +45,22 @@ export function calculateEffectiveDamage(
   }
 }
 
+// Target-side magical-damage amplifiers. Each stores its percent in `stacks`
+// (regex Q +15%, Veil of Discord +25%, Ethereal Blade +40%). They stack
+// ADDITIVELY (the MOBA amplification convention) and apply to magical damage
+// only. Shared so every magical-damage path (dealDamage today; DoTs/attacks
+// later) can honor them consistently.
+const MAGIC_VULN_BUFF_IDS = ['magicVulnerability', 'veil_discord', 'magic_vuln_40']
+
+/** Multiplier (>= 1) for incoming MAGICAL damage from the target's vuln debuffs. */
+export function getIncomingMagicMultiplier(target: PlayerState): number {
+  let pct = 0
+  for (const b of target.buffs) {
+    if (MAGIC_VULN_BUFF_IDS.includes(b.id)) pct += b.stacks
+  }
+  return 1 + pct / 100
+}
+
 /**
  * Apply damage to a player state. HP cannot go below 0.
  * If HP reaches 0, the player is marked as dead.
