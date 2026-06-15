@@ -186,7 +186,10 @@ function resolveW(
   })
 }
 
-// E: Next Hop — Apply self buff marking return point for 2 ticks
+// E: Next Hop — Drop a return shadow at the current zone. After E_SHADOW_DURATION
+// ticks the shadow expires and snaps the caster back to where it was dropped (the
+// teleport-back is resolved in _base.ts tickAllBuffs, keyed off the buff's
+// `destination`). Lets Traceroute dive a lane, do damage, then bounce to safety.
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -207,6 +210,8 @@ function resolveE(
       stacks: 1,
       ticksRemaining: E_SHADOW_DURATION,
       source: player.id,
+      // The zone to snap back to when the shadow expires.
+      destination: player.zone,
     })
 
     return {
@@ -220,6 +225,7 @@ function resolveE(
             ability: 'e',
             buff: 'nextHopShadow',
             duration: E_SHADOW_DURATION,
+            returnZone: player.zone,
           },
         },
       ],

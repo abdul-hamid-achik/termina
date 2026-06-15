@@ -7,6 +7,7 @@ import {
   applyBuff,
   hasBuff,
   getBuffStacks,
+  tickAllBuffs,
 } from '../../../server/game/heroes/_base'
 // Register traceroute hero
 import '../../../server/game/heroes/traceroute'
@@ -313,6 +314,59 @@ describe('Traceroute Hero', () => {
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
       expect(result._tag).toBe('Failure')
+    })
+
+    it('marks the current zone as the return point on cast', () => {
+      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      const state = makeState([player])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
+
+      const shadow = result.state.players['p1']!.buffs.find((b) => b.id === 'nextHopShadow')
+      expect(shadow!.destination).toBe('mid-river')
+    })
+
+    it('snaps the caster back to the marked zone when the shadow expires', () => {
+      // Cast E in mid-river → drops a return shadow marking mid-river.
+      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      const state = makeState([player])
+      const cast = Effect.runSync(resolveAbility(state, 'p1', 'e'))
+
+      // Player roams to top-river while the shadow is up.
+      let s: GameState = {
+        ...cast.state,
+        players: {
+          ...cast.state.players,
+          p1: { ...cast.state.players['p1']!, zone: 'top-river' },
+        },
+      }
+
+      // Tick 1: shadow still pending (ticksRemaining 2 → 1), no return yet.
+      s = tickAllBuffs(s)
+      expect(s.players['p1']!.zone).toBe('top-river')
+      expect(hasBuff(s.players['p1']!, 'nextHopShadow')).toBe(true)
+
+      // Tick 2: shadow expires → snap back to mid-river.
+      s = tickAllBuffs(s)
+      expect(s.players['p1']!.zone).toBe('mid-river')
+      expect(hasBuff(s.players['p1']!, 'nextHopShadow')).toBe(false)
+
+      const ev = s.events.find((e) => e.type === 'teleport_complete')
+      expect(ev).toBeDefined()
+      expect(ev!.payload['destination']).toBe('mid-river')
+      expect(ev!.payload['source']).toBe('next_hop')
+    })
+
+    it('does not fire a teleport if the caster never left the marked zone', () => {
+      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      const state = makeState([player])
+      let s = Effect.runSync(resolveAbility(state, 'p1', 'e')).state
+
+      s = tickAllBuffs(s) // ticksRemaining 2 → 1
+      s = tickAllBuffs(s) // expires; destination === zone, so no teleport
+
+      expect(s.players['p1']!.zone).toBe('mid-river')
+      expect(s.events.find((e) => e.type === 'teleport_complete')).toBeUndefined()
     })
   })
 

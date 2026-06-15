@@ -282,7 +282,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'teleport_complete':
       return {
         tick,
-        text: `${label(p.playerId)} teleported to ${str(p.destination)}`,
+        text:
+          p.source === 'next_hop'
+            ? `${label(p.playerId)}'s return shadow snapped them back to ${str(p.destination)}`
+            : `${label(p.playerId)} teleported to ${str(p.destination)}`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
       }
