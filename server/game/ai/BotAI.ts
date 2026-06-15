@@ -462,6 +462,17 @@ export function getAbilityTarget(
   }
 }
 
+/**
+ * Total mana to cast a sequence of ability slots for a hero. Mana regen between
+ * casts is ignored on purpose — a conservative "can I finish this combo?" check
+ * so a bot never burns its opener on a combo it can't complete.
+ */
+export function sequenceManaCost(heroId: string, slots: Array<'q' | 'w' | 'e' | 'r'>): number {
+  const abilities = HEROES[heroId]?.abilities
+  if (!abilities) return 0
+  return slots.reduce((sum, slot) => sum + (abilities[slot]?.manaCost ?? 0), 0)
+}
+
 function tryCombo(
   state: GameState,
   bot: PlayerState,
@@ -520,6 +531,16 @@ function tryCombo(
       }
     })
     if (!conditionsMet) continue
+    // Don't open a combo we can't afford to finish — a half-combo wastes the
+    // opener's mana and leaves the bot mid-rotation with nothing.
+    if (
+      bot.mp <
+      sequenceManaCost(
+        heroId,
+        combo.sequence.map((s) => s.ability),
+      )
+    )
+      continue
     const firstAbility = combo.sequence[0]
     if (
       firstAbility &&

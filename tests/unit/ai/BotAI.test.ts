@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { decideBotAction, getAbilityTarget } from '../../../server/game/ai/BotAI'
+import { decideBotAction, getAbilityTarget, sequenceManaCost } from '../../../server/game/ai/BotAI'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
+import { HEROES } from '../../../shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 
@@ -1035,5 +1036,23 @@ describe('BotAI - decideBotAction', () => {
       // assert it picked an enemy, not the ally.
       expect(target).toEqual({ kind: 'hero', name: 'enemy1' })
     })
+  })
+})
+
+describe('sequenceManaCost (combo affordability)', () => {
+  it('sums the mana cost of every ability in the sequence', () => {
+    const echo = HEROES.echo!.abilities
+    expect(sequenceManaCost('echo', ['e', 'q'])).toBe(echo.e.manaCost + echo.q.manaCost)
+    expect(sequenceManaCost('echo', ['q', 'w', 'r'])).toBe(
+      echo.q.manaCost + echo.w.manaCost + echo.r.manaCost,
+    )
+  })
+
+  it('returns 0 for an unknown hero', () => {
+    expect(sequenceManaCost('not_a_hero', ['q', 'w'])).toBe(0)
+  })
+
+  it('is 0 for an empty sequence', () => {
+    expect(sequenceManaCost('echo', [])).toBe(0)
   })
 })
