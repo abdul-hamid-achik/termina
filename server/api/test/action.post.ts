@@ -11,7 +11,12 @@ import type { Command } from '~~/shared/types/commands'
  * advance, exactly like a real action. Double-gated like the other hooks.
  *
  * Body: { gameId, playerId?, command }  →  { queued, tick }
- *   - playerId defaults to the session user (the seeded human).
+ *   - playerId defaults to the session user (the seeded human). An explicit
+ *     playerId override is an intentional dev affordance — it lets a spec script
+ *     an action for ANY player in the dev game (e.g. an enemy bot). It is NOT an
+ *     ownership escalation: this whole hook 404s in production, and in a test
+ *     environment login-as already mints a session for any username, so the
+ *     override grants nothing beyond what the test gate already allows.
  *   - command is a structured Command, e.g. { type: 'buy', item: 'iron_branch' }
  *     or { type: 'cast', ability: 'w' } or
  *     { type: 'attack', target: { kind: 'hero', name: '<id>' } }.
@@ -34,7 +39,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // playerId defaults to the seeded human (the session user) like new-game does.
+  // playerId defaults to the seeded human (the session user); an explicit
+  // override is allowed as a dev affordance (see the doc comment) — safe because
+  // the hook is test-gated (404 in prod).
   let playerId = body?.playerId
   if (!playerId) {
     const session = await getUserSession(event)
