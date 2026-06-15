@@ -10,6 +10,8 @@ import { initializeZoneStates, initializeTowers } from '../../../server/game/map
 import { initializeRoshan } from '../../../server/game/map/spawner'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 import { tickAllBuffs } from '../../../server/game/heroes/_base'
+// Register echo so its Q resolver runs (the spell-block tests cast a real spell).
+import '../../../server/game/heroes/echo'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -998,6 +1000,73 @@ describe('ActionResolver', () => {
 
       expect(result.state.ancients.dire.hp).toBe(state.ancients.dire.hp)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
+    })
+  })
+
+  describe('spell block (Linken / Firewall)', () => {
+    // echo Q is a single-target (targetType 'hero') damage spell. hp/maxHp/mp are
+    // set to echo's exact base (550/280) so the maxHp-sync phase is a no-op and
+    // the spell's HP change isn't recomputed away.
+    const castQ = (state: GameState) =>
+      Effect.runSync(
+        resolveActions(state, [
+          {
+            playerId: 'p1',
+            command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+          },
+        ]),
+      )
+    const echoStats = { heroId: 'echo', hp: 550, maxHp: 550, mp: 280, maxMp: 280 } as const
+    const enemy = (buffs: PlayerState['buffs']) =>
+      makePlayer({ id: 'p2', name: 'Enemy', team: 'dire', zone: 'mid-river', ...echoStats, buffs })
+    const caster = () => makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', ...echoStats })
+
+    it('control: the spell lands on an unbuffed target', () => {
+      const state = makeGameState({ players: { p1: caster(), p2: enemy([]) } })
+      expect(castQ(state).state.players['p2']!.hp).toBeLessThan(550)
+    })
+
+    it("Linken's Sphere blocks the spell, spares the target, and spends the charge", () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([
+            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' },
+          ]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBe(550) // unharmed
+      expect(result.state.players['p2']!.buffs.find((b) => b.id === 'spellblock')!.stacks).toBe(0)
+      expect(result.state.players['p1']!.mp).toBeLessThan(280) // caster still paid
+      expect(result.state.players['p1']!.cooldowns.q).toBeGreaterThan(0)
+      expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(true)
+    })
+
+    it('Firewall item block is a one-shot (removed on use)', () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([
+            { id: 'firewall_block', stacks: 1, ticksRemaining: 30, source: 'firewall_item' },
+          ]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBe(550)
+      expect(result.state.players['p2']!.buffs.some((b) => b.id === 'firewall_block')).toBe(false)
+    })
+
+    it('a spent (stacks 0) spellblock does NOT block', () => {
+      const state = makeGameState({
+        players: {
+          p1: caster(),
+          p2: enemy([{ id: 'spellblock', stacks: 0, ticksRemaining: 8, source: 'linkens_sphere' }]),
+        },
+      })
+      const result = castQ(state)
+      expect(result.state.players['p2']!.hp).toBeLessThan(550) // spell lands
+      expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(false)
     })
   })
 })

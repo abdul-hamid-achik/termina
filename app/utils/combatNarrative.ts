@@ -298,6 +298,16 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: salience(p.owner, p.targetId, ctx),
       }
 
+    case 'spell_blocked': {
+      const item = p.source === 'linkens_sphere' ? "Linken's Sphere" : 'Firewall'
+      return {
+        tick,
+        text: `${label(p.targetId)}'s ${item} blocked ${label(p.casterId)}'s spell`,
+        type: 'system',
+        salience: salience(p.casterId, p.targetId, ctx),
+      }
+    }
+
     case 'teleport_cancelled':
       return {
         tick,

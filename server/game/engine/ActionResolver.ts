@@ -64,6 +64,9 @@ import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
 import { wsLog } from '~~/server/utils/log'
 
+/** Ticks before Linken's Sphere recharges its spell-block after spending one. */
+const LINKENS_RECHARGE_TICKS = 12
+
 // ── Types ──────────────────────────────────────────────────────
 
 export interface PlayerAction {
@@ -898,11 +901,18 @@ export function resolveActions(
 
       let buffs = player.buffs
       if (player.items.includes('linkens_sphere')) {
+        // Re-arm only when no spellblock buff remains. A SPENT charge lingers as
+        // stacks 0 for LINKENS_RECHARGE_TICKS (set on block), gating re-arm.
         const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
         if (!linkenBuff) {
           buffs = [
             ...player.buffs,
-            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' },
+            {
+              id: 'spellblock',
+              stacks: 1,
+              ticksRemaining: LINKENS_RECHARGE_TICKS,
+              source: 'linkens_sphere',
+            },
           ]
         }
       }
@@ -1251,9 +1261,56 @@ function resolveHeroCast(
   }
 
   const newState = result.right.state
-  const newPlayers = newState.players
+  let newPlayers = newState.players
   const abilityDef = HEROES[caster.heroId]?.abilities[cmd.ability]
   const damageType = abilityDef?.damageType ?? 'magical'
+
+  // Resolve the targeted hero id (used by the block check + ability_used event).
+  let targetId: string | undefined
+  if (cmd.target?.kind === 'hero') {
+    const needle = cmd.target.name.toLowerCase()
+    for (const [id, p] of Object.entries(newPlayers)) {
+      if (
+        p.id.toLowerCase() === needle ||
+        p.name.toLowerCase() === needle ||
+        p.heroId?.toLowerCase() === needle
+      ) {
+        targetId = id
+        break
+      }
+    }
+  }
+
+  // Linken's Sphere / Firewall item: a single-target ability on a hero holding a
+  // block charge fizzles — the caster still pays mana + cooldown (already
+  // deducted by the resolver), but the target's effect is reverted to its
+  // pre-cast state and one block charge is consumed.
+  if (targetId && abilityDef?.targetType === 'hero') {
+    const pre = players[targetId]
+    // Only an ARMED charge (stacks >= 1) blocks — a spent Linken's is stacks 0.
+    const blockId = pre?.buffs.find(
+      (b) => (b.id === 'spellblock' || b.id === 'firewall_block') && b.stacks >= 1,
+    )?.id
+    if (pre && blockId) {
+      const buffs = pre.buffs.flatMap((b) => {
+        if (b.id !== blockId) return [b]
+        // firewall_block is a one-shot from an item active → remove it.
+        // spellblock auto-recharges (every tick it's absent), so instead spend
+        // it to stacks 0 with a fresh 12-tick window to gate the next block.
+        return b.id === 'spellblock'
+          ? [{ ...b, stacks: 0, ticksRemaining: LINKENS_RECHARGE_TICKS }]
+          : []
+      })
+      newPlayers = { ...newPlayers, [targetId]: { ...pre, buffs } }
+      events.push({
+        _tag: 'spell_blocked',
+        tick: state.tick,
+        casterId: action.playerId,
+        targetId,
+        source: blockId === 'spellblock' ? 'linkens_sphere' : 'firewall_item',
+      })
+    }
+  }
 
   // Synthesize legacy-shape damage/heal events from the HP diff. Amounts are
   // post-mitigation AND post-shield: a fully shield-absorbed ability hit
@@ -1294,21 +1351,6 @@ function resolveHeroCast(
   // doesn't understand — discard them; ability_used/cooldown_used below
   // carry the resolver-set cooldown (the authoritative value).
   const actualCd = newPlayers[action.playerId]?.cooldowns[cmd.ability] ?? 0
-
-  let targetId: string | undefined
-  if (cmd.target?.kind === 'hero') {
-    const needle = cmd.target.name.toLowerCase()
-    for (const [id, p] of Object.entries(newPlayers)) {
-      if (
-        p.id.toLowerCase() === needle ||
-        p.name.toLowerCase() === needle ||
-        p.heroId?.toLowerCase() === needle
-      ) {
-        targetId = id
-        break
-      }
-    }
-  }
 
   events.push({
     _tag: 'ability_used',
