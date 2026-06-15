@@ -5,7 +5,7 @@ import type { DamageType } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { calculateEffectiveDamage } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
-import { TALENT_TREES } from './talent-trees'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 // ── Typed Errors ──────────────────────────────────────────────────

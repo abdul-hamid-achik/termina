@@ -86,4 +86,4 @@ export function registerAllHeroes(): void {
 registerAllHeroes()
 
 export * from './_base'
-export { TALENT_TREES } from './talent-trees'
+export { TALENT_TREES } from '~~/shared/constants/talents'
