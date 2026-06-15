@@ -324,6 +324,19 @@ describe('BotAI - decideBotAction', () => {
       // No enemies, should move forward
       expect(action!.type).toBe('move')
     })
+
+    it('attacks the wave even when it cannot secure the last hit', () => {
+      // A high-HP enemy creep (no guaranteed last hit) must still draw an
+      // attack — the old code returned null on a failed last-hit roll, leaving
+      // bots idling in lane instead of pushing the wave.
+      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const creeps: CreepState[] = [
+        { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+      ]
+      const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'attack', target: { kind: 'creep', index: 0 } })
+    })
   })
 
   describe('tower targeting', () => {
@@ -373,6 +386,20 @@ describe('BotAI - decideBotAction', () => {
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'move', zone: 'mid-t2-rad' })
+    })
+
+    it('advances across the frontier to join a wave waiting one zone ahead', () => {
+      // Frontier bot (own t1) with an allied wave in the NEXT zone (the river)
+      // but none co-located. The old standstill only checked the bot's CURRENT
+      // zone for creep support, so it froze here; forward progress now follows
+      // the wave ahead so the bot pushes out of its own half.
+      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const creeps: CreepState[] = [
+        { id: 'wave-1', team: 'radiant', zone: 'mid-river', hp: 300, type: 'melee' },
+      ]
+      const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'move', zone: 'mid-river' })
     })
 
     it('moves toward lane start when off-lane', () => {

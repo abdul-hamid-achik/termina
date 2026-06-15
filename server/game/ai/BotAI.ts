@@ -687,10 +687,10 @@ export function decideBotAction(
   if (ancientCmd) return ancientCmd
 
   // In fast-game/test mode the loop is sped up to make matches end in minutes,
-  // so bots push and siege DECISIVELY rather than last-hitting creeps forever
-  // and never advancing — which otherwise stalls the game at 9 standing towers
-  // when a slot is AFK. Production keeps the cautious "push only with creeps"
-  // behaviour below; tuning real-play bot pushing is a separate balance task.
+  // so bots push and siege DECISIVELY rather than last-hitting creeps forever —
+  // which keeps the play-to-the-end specs (game-over, smoke) fast. This is an
+  // ADDITIONAL accelerator layered on top of the production pushing below; the
+  // real game no longer depends on it for forward progress.
   const aggressivePush = fastGameFactor() > 1
 
   // Close out a won game: if the enemy Ancient is exposed, march straight to
@@ -706,9 +706,9 @@ export function decideBotAction(
     }
   }
 
-  // Aggressive siege (test mode): topple the enemy tower in this zone, else
-  // march toward the enemy base. This sits ABOVE creep farming so bots commit
-  // to pushing instead of holding the lane — the key to games actually ending.
+  // Aggressive siege (test mode only): topple the enemy tower in this zone, else
+  // march toward the enemy base. Sits ABOVE creep farming so test games converge
+  // quickly; production bots fall through to the game-state-driven push below.
   if (aggressivePush) {
     const towerHere = getEnemyTowerInZone(state, bot)
     if (towerHere) return { type: 'attack', target: { kind: 'tower', zone: towerHere.zone } }
@@ -716,16 +716,16 @@ export function decideBotAction(
     if (advanceZone) return { type: 'move', zone: advanceZone }
   }
 
+  // Clear the creep wave: always attack the lowest-HP enemy creep in the zone.
+  // A failed last-hit roll used to return null here, which left production bots
+  // idling in lane instead of pushing — one half of the "bots look stuck"
+  // report. Gold for the kill is awarded engine-side to whoever lands the blow,
+  // so attacking unconditionally only changes whether the bot acts, not balance.
   if (enemyCreeps.length > 0) {
     const lowestCreep = enemyCreeps.reduce((a, b) => (a.hp < b.hp ? a : b))
     // Creep targets use zone-local indices (Nth creep in the attacker's zone)
     const creepIdx = state.creeps.filter((c) => c.zone === bot.zone).indexOf(lowestCreep)
-    if (Math.random() < config.lastHitAccuracy || lowestCreep.hp <= 50) {
-      return { type: 'attack', target: { kind: 'creep', index: creepIdx } }
-    }
-    // Failed the last-hit roll — hold position in lane with the wave rather
-    // than marching forward mid-fight.
-    return null
+    return { type: 'attack', target: { kind: 'creep', index: creepIdx } }
   }
   const enemyTower = getEnemyTowerInZone(state, bot)
   if (enemyTower && getAlliedCreepsInZone(state, bot).length > 0) {
@@ -737,19 +737,29 @@ export function decideBotAction(
     const jungleCmd = tryFarmJungle(state, bot, config)
     if (jungleCmd) return jungleCmd
   }
+
+  // Forward progress (production) is driven by GAME STATE, not the test
+  // accelerator. A bot advances freely on its own half of the map; it pushes
+  // into enemy territory only with lane support — allied creeps in this zone or
+  // the next, or an ally hero alongside — so a lone level-1 hero never marches
+  // into the enemy base and feeds. Creep waves spawn continuously, so a bot
+  // holding at the frontier advances as soon as the next wave reaches it, and
+  // the retreat-from-threat check above still pulls hurt/outnumbered bots back.
+  // (The old code returned null here whenever the next zone was enemy-side with
+  // no co-located creeps, hard-freezing every production bot at the frontier so
+  // it never pushed, attacked, or — since buying only happens in the fountain —
+  // bought again.)
   const nextZone = getNextLaneZone(bot, assignedLane)
   if (nextZone) {
-    // Push into enemy territory only with creep support — a solo level-1
-    // hero walking to the enemy base just feeds. (Test mode pushes anyway so
-    // games converge quickly.)
-    if (
-      !aggressivePush &&
-      !isOwnSide(nextZone, bot.team) &&
-      getAlliedCreepsInZone(state, bot).length === 0
-    ) {
-      return null
+    const advancingIntoEnemy = !isOwnSide(nextZone, bot.team)
+    const hasLaneSupport =
+      getAlliedCreepsInZone(state, bot).length > 0 ||
+      state.creeps.some((c) => c.zone === nextZone && c.team === bot.team && c.hp > 0) ||
+      getAlliedHeroesInZone(state, bot).length > 0
+    if (!advancingIntoEnemy || hasLaneSupport) {
+      return { type: 'move', zone: nextZone }
     }
-    return { type: 'move', zone: nextZone }
+    return null
   }
   return null
 }
