@@ -48,6 +48,22 @@ outcomes:
       count:
         selector: '[data-testid="connection-lost-overlay"]'
         equals: 0
+  - id: client_received_tick
+    description: an inbound tick_state frame round-trips (the live game is ticking on the server AND the
+      client state bar is ONLINE) — stronger than connect-on-mount alone. NOTE the original spec's
+      outbound join_game-frame assertion stays out of scope (cairntrace v1.9 has no WS-frame
+      interceptor); this asserts the inbound/applied side instead.
+    verify:
+      script:
+        run: >
+          const params = new URLSearchParams(window.location.search); const gameId =
+          params.get('gameId'); const bar =
+          document.querySelector('[data-testid="game-state-bar"]'); const barText = bar ?
+          bar.textContent : ''; return fetch('/api/test/state?gameId=' + encodeURIComponent(gameId),
+          { credentials: 'include' }).then((r) => r.json()).then((s) => { const serverTick = s.tick
+          ?? 0; const online = /\[ONLINE/.test(barText); return { ok: online && serverTick > 0,
+          evidence: 'serverTick=' + serverTick + ' online=' + online + ' bar=' +
+          barText.replace(/\s+/g, ' ').trim().slice(0, 120) }; });
   - id: clean_console
     description: the game screen loads and connects with no console errors
     verify:
@@ -64,4 +80,4 @@ steps:
     snapshot:
       interactive: true
       label: in-game screen with WebSocket online
-contractHash: sha256:2a7fe6285206ff8b67a4e369e5e86835243fe8dfbeca8d7bb554d2b658094e07
+contractHash: sha256:97e964a31c7d930be8bae6669ba855aa69bd3b4cfaf86a3a00e15350bbbc71c3
