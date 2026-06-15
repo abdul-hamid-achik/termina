@@ -17,7 +17,11 @@ import {
   findTargetPlayer,
 } from '~~/server/game/heroes/_base'
 import { areAdjacent } from '~~/server/game/map/topology'
-import { calculateMagicalDamage } from '~~/server/game/engine/DamageCalculator'
+import {
+  calculateMagicalDamage,
+  getIncomingDamageMultiplier,
+  isDamageImmune,
+} from '~~/server/game/engine/DamageCalculator'
 
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */
@@ -592,8 +596,12 @@ function useDagon(
       return yield* Effect.fail(new InvalidTargetError({ reason: 'Target out of range' }))
     }
 
-    // Deal 300 magical damage
-    const damage = calculateMagicalDamage(300, targetPlayer.magicResist)
+    // Deal 300 magical damage — blocked by magic immunity (BKB/invulnerable),
+    // amplified by magic-vuln / Yield on the target.
+    const baseDamage = isDamageImmune(targetPlayer, 'magical')
+      ? 0
+      : calculateMagicalDamage(300, targetPlayer.magicResist)
+    const damage = Math.round(baseDamage * getIncomingDamageMultiplier(targetPlayer, 'magical'))
     const newHp = Math.max(0, targetPlayer.hp - damage)
 
     const updatedCaster = applyBuff(player, {

@@ -480,6 +480,35 @@ describe('Shop', () => {
         expect(has('player_1', 'item_cd_veil_of_discord')).toBe(true)
       }
     })
+
+    it('Dagon deals no damage to a magic-immune (BKB) target', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['dagon', null, null, null, null, null],
+      })
+      const target = makePlayer({
+        id: 'enemy_1',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 800,
+        buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'bkb' }],
+      })
+      const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'dagon', { kind: 'hero', name: 'enemy_1' }),
+      )
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        // Magic immunity zeroes the 300 magical nuke; cooldown still applies.
+        expect(exit.value.players['enemy_1']!.hp).toBe(800)
+        expect(exit.value.players['player_1']!.buffs.some((b) => b.id === 'item_cd_dagon')).toBe(
+          true,
+        )
+      }
+    })
   })
 
   describe('error types', () => {

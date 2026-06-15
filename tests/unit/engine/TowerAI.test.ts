@@ -332,6 +332,27 @@ describe('TowerAI', () => {
       expect(result.players['p1']!.alive).toBe(true)
     })
 
+    it('does no damage to a physically-immune hero (Ghost/Ethereal/invulnerable)', () => {
+      for (const id of ['ghost_form', 'ethereal', 'invulnerable']) {
+        const state = makeGameState({
+          players: {
+            p1: makePlayer({
+              id: 'p1',
+              team: 'dire',
+              zone: 'mid-t1-rad',
+              hp: 500,
+              buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
+            }),
+          },
+        })
+        const actions: TowerAction[] = [
+          { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+        ]
+        const result = applyTowerActions(state, actions)
+        expect(result.players['p1']!.hp).toBe(500) // unscathed
+      }
+    })
+
     it('should kill heroes when HP drops to 0', () => {
       const state = makeGameState({
         players: {

@@ -17,7 +17,12 @@ import {
 } from './EffectiveStats'
 import { areAdjacent } from '~~/server/game/map/topology'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { calculatePhysicalDamage, calculateMagicalDamage } from './DamageCalculator'
+import {
+  calculatePhysicalDamage,
+  calculateMagicalDamage,
+  getIncomingDamageMultiplier,
+  isDamageImmune,
+} from './DamageCalculator'
 import { placeWard, canAttackTower } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -560,16 +565,23 @@ export function resolveActions(
         let damage = calculatePhysicalDamage(attackDamage, defense)
         damage = Math.max(0, damage - blockedDamage)
 
-        if (target.buffs.some((b) => b.id === 'ghost_form')) {
+        // Physical immunity (Ghost/Ethereal/invulnerable) zeroes the attack;
+        // otherwise target-side amps (thread Yield) raise it.
+        if (isDamageImmune(target, 'physical')) {
           damage = 0
+        } else {
+          damage = Math.round(damage * getIncomingDamageMultiplier(target, 'physical'))
         }
 
         let totalDamage = damage
-        if (bonusMagicDamage > 0) {
-          const magicDmg = calculateMagicalDamage(
+        // On-hit magic (MKB etc.) is blocked by magic immunity (BKB/invulnerable)
+        // and amplified by magic-vuln / Yield.
+        if (bonusMagicDamage > 0 && !isDamageImmune(target, 'magical')) {
+          const rawMagic = calculateMagicalDamage(
             bonusMagicDamage,
             getEffectiveMagicResist(target, targetItemStats),
           )
+          const magicDmg = Math.round(rawMagic * getIncomingDamageMultiplier(target, 'magical'))
           totalDamage += magicDmg
           events.push({
             _tag: 'damage',

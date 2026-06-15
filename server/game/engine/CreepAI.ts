@@ -6,7 +6,7 @@ import {
   CREEP_BASE_IDLE_DESPAWN_TICKS,
   MAX_CREEPS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
-import { calculatePhysicalDamage } from './DamageCalculator'
+import { calculatePhysicalDamage, isDamageImmune } from './DamageCalculator'
 import { resolveAncientAttack } from './AncientSystem'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -296,7 +296,11 @@ export function applyCreepActions(
         break
       }
       case 'attack_hero': {
-        if (action.targetId && players[action.targetId]) {
+        if (
+          action.targetId &&
+          players[action.targetId] &&
+          !isDamageImmune(players[action.targetId]!, 'physical')
+        ) {
           const target = players[action.targetId]!
           const rawDamage = action.damage ?? 0
           const damage = calculatePhysicalDamage(rawDamage, target.defense)
