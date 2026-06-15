@@ -14,6 +14,24 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     globals: true,
+    // Coverage (v8). Baseline-capture only for now — NO enforced thresholds yet;
+    // they're added (at the achieved baseline) once the UI gaps are closed so CI
+    // can't be broken by a number we haven't earned. `bun run test:coverage`.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'html', 'json-summary'],
+      reportsDirectory: './coverage',
+      include: ['app/**/*.{ts,vue}', 'server/**/*.ts', 'shared/**/*.ts'],
+      exclude: [
+        '**/*.d.ts',
+        '**/*.config.*',
+        'app/**/*.story.vue',
+        'server/db/migrations/**',
+        'scripts/**',
+        '.nuxt/**',
+        '.output/**',
+      ],
+    },
     projects: [
       {
         extends: true,
