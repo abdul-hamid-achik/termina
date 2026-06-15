@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
-import { resolveAbility } from '../../../server/game/heroes/_base'
+import { resolveAbility, resolvePassive, getBuffStacks } from '../../../server/game/heroes/_base'
 import '../../../server/game/heroes/sentry'
+
+const tickEnd = { tick: 10, type: 'tick_end' as const, payload: {} }
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -449,6 +451,31 @@ describe('Sentry Hero', () => {
       )
 
       expect(result._tag).toBe('Failure')
+    })
+  })
+
+  describe('Passive: Overwatch aura', () => {
+    it('grants +5 defense to the Sentry and allies in its zone (read by EffectiveStats)', () => {
+      const sentry = makePlayer({ id: 'p1', zone: 'mid-river' })
+      const allyInZone = makeAlly({ id: 'a1', zone: 'mid-river' })
+      const allyElsewhere = makeAlly({ id: 'a2', zone: 'top-river' })
+      const state = makeState([sentry, allyInZone, allyElsewhere])
+
+      const updated = resolvePassive(state, 'p1', tickEnd)
+
+      expect(getBuffStacks(updated.players['p1']!, 'overwatch')).toBe(5) // the sentry itself
+      expect(getBuffStacks(updated.players['a1']!, 'overwatch')).toBe(5) // ally in zone
+      expect(getBuffStacks(updated.players['a2']!, 'overwatch')).toBe(0) // out of zone
+    })
+
+    it('does not buff enemies in the zone', () => {
+      const sentry = makePlayer({ id: 'p1', zone: 'mid-river' })
+      const enemy = makeAlly({ id: 'e1', team: 'dire', zone: 'mid-river' })
+      const state = makeState([sentry, enemy])
+
+      const updated = resolvePassive(state, 'p1', tickEnd)
+
+      expect(getBuffStacks(updated.players['e1']!, 'overwatch')).toBe(0)
     })
   })
 })
