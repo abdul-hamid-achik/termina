@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
+import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
 import {
@@ -33,6 +34,80 @@ export interface GameContext {
 export function buybackCostFor(player: PlayerState): number {
   if (player.buybackCost && player.buybackCost > 0) return player.buybackCost
   return BUYBACK_BASE_COST + player.level * BUYBACK_COST_PER_LEVEL + player.deaths * 10
+}
+
+const SUPPORTIVE_EFFECTS = new Set(['heal', 'shield', 'buff'])
+const OFFENSIVE_EFFECTS = new Set([
+  'damage',
+  'stun',
+  'silence',
+  'root',
+  'slow',
+  'dot',
+  'debuff',
+  'fear',
+  'taunt',
+  'execute',
+])
+
+/** Heal/shield/buff abilities with no offensive component go to allies, not enemies. */
+function isSupportiveAbility(ability: AbilityDef): boolean {
+  return (
+    ability.effects.some((e) => SUPPORTIVE_EFFECTS.has(e.type)) &&
+    !ability.effects.some((e) => OFFENSIVE_EFFECTS.has(e.type))
+  )
+}
+
+function hpPct(p: PlayerState): number {
+  return p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 0
+}
+
+/**
+ * Pick a sensible target string for a quick-cast / shortcut so a targeted
+ * ability doesn't silently reject server-side when fired with no target (the
+ * "I click Q and nothing happens" report). Mirrors the bot's getAbilityTarget:
+ *
+ *  - none/self           → no target (cast as-is)
+ *  - ally / supportive   → lowest-HP ally in zone (or self for heal/shield)
+ *  - hero/unit offensive → lowest-HP enemy in zone
+ *  - zone                → the caster's current zone
+ *
+ * Returns `{ target: null }` to cast with no target, `{ target: 'hero:…' }`
+ * with a resolved target string, or `{ error }` when there's no valid target
+ * so the caller can surface a hint instead of burning the tick.
+ */
+export function pickAbilityTargetString(
+  ability: AbilityDef,
+  player: PlayerState,
+  allPlayers: Record<string, PlayerState>,
+): { target: string | null } | { error: string } {
+  const targetType = ability.targetType as string
+  if (targetType === 'none' || targetType === 'self') return { target: null }
+
+  const inZone = Object.values(allPlayers).filter((p) => p.zone === player.zone && p.alive)
+  const enemies = inZone.filter((p) => p.team !== player.team)
+  const allies = inZone.filter((p) => p.team === player.team && p.id !== player.id)
+
+  if (
+    targetType === 'ally' ||
+    ((targetType === 'hero' || targetType === 'unit') && isSupportiveAbility(ability))
+  ) {
+    const selfViable = ability.effects.some((e) => e.type === 'heal' || e.type === 'shield')
+    const candidates = selfViable ? [...allies, player] : allies
+    if (candidates.length === 0) return { error: `No ally in your zone for ${ability.name}` }
+    const target = candidates.reduce((a, b) => (hpPct(a) <= hpPct(b) ? a : b))
+    return { target: `hero:${target.id}` }
+  }
+
+  if (targetType === 'hero' || targetType === 'unit') {
+    if (enemies.length === 0) return { error: `No enemy in your zone for ${ability.name}` }
+    const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
+    return { target: `hero:${target.id}` }
+  }
+
+  if (targetType === 'zone') return { target: `zone:${player.zone}` }
+
+  return { target: null }
 }
 
 const SHORTCUTS: Record<string, string> = {
@@ -90,6 +165,7 @@ function parseTarget(raw: string): TargetRef | null {
     if (!Number.isNaN(idx)) return { kind: 'creep', index: idx }
   }
   if (raw.startsWith('tower:')) return { kind: 'tower', zone: raw.slice(6) }
+  if (raw.startsWith('zone:')) return { kind: 'zone', zone: raw.slice(5) }
   // If it looks like a hero name without prefix, try hero
   if (HERO_IDS.includes(raw)) return { kind: 'hero', name: raw }
   return null

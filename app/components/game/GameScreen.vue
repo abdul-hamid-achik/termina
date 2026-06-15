@@ -2,7 +2,12 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
-import { useCommands, validateCommand, buybackCostFor } from '~/composables/useCommands'
+import {
+  useCommands,
+  validateCommand,
+  buybackCostFor,
+  pickAbilityTargetString,
+} from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -308,6 +313,16 @@ watch(
           playSound('tower_fall')
           if (e.payload.killerId === pid) triggerShake('light')
           break
+        case 'ability_used':
+          // Confirmed cast feedback: the caster hears the cast cue; a target
+          // hit by an enemy ability gets a light shake + hero flash.
+          if (e.payload.playerId === pid) {
+            playSound('cast')
+          } else if (e.payload.targetId === pid) {
+            triggerShake('light')
+            heroFlashKey.value++
+          }
+          break
       }
     }
   },
@@ -601,6 +616,25 @@ function getTowerTier(zoneId: string): number {
 function handleCommand(cmd: string) {
   const { command, error } = commands.parse(cmd)
   if (command) {
+    // Auto-resolve a missing target for a targeted ability so clicking Q (or the
+    // `q` shortcut, or chat `cast q`) doesn't silently reject server-side. We
+    // mirror the bot's target selection: lowest-HP enemy in zone for offensive
+    // casts, lowest-HP ally/self for supportive, the current zone for AoE.
+    if (command.type === 'cast' && !command.target) {
+      const caster = gameStore.player
+      const ability = caster?.heroId ? HEROES[caster.heroId]?.abilities[command.ability] : undefined
+      if (caster && ability) {
+        const picked = pickAbilityTargetString(ability, caster, gameStore.allPlayers)
+        if ('error' in picked) {
+          localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+          return
+        }
+        if (picked.target) {
+          const resolved = commands.parse(`cast ${command.ability} ${picked.target}`).command
+          if (resolved?.type === 'cast') command.target = resolved.target
+        }
+      }
+    }
     // Chat and ping are top-level WS messages, not game actions
     if (command.type === 'chat') {
       uiLog.debug('Chat sent', { channel: command.channel })
@@ -735,9 +769,10 @@ function handleQuickAction(cmd: string) {
     return
   }
 
-  // Q/W/E/R — cast ability (accept both upper and lowercase)
+  // Q/W/E/R — cast ability (accept both upper and lowercase). handleCommand
+  // auto-resolves the target; the cast sound fires on the confirmed
+  // ability_used event (see the audio watcher) rather than optimistically.
   if (['Q', 'W', 'E', 'R', 'q', 'w', 'e', 'r'].includes(cmd)) {
-    playSound('cast')
     handleCommand(`cast ${cmd.toLowerCase()}`)
     return
   }

@@ -3,10 +3,12 @@ import {
   useCommands,
   validateCommand,
   buybackCostFor,
+  pickAbilityTargetString,
   type GameContext,
 } from '../../../app/composables/useCommands'
 import type { PlayerState } from '../../../shared/types/game'
 import type { ItemDef } from '../../../shared/types/items'
+import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -1327,5 +1329,89 @@ describe('validateCommand', () => {
     expect(validateCommand({ type: 'use', item: 'tp' }, makeContext({ items }))).toMatch(
       /not owned/i,
     )
+  })
+})
+
+// ── pickAbilityTargetString ───────────────────────────────────────
+describe('pickAbilityTargetString', () => {
+  function makeAbility(
+    targetType: string,
+    effects: AbilityEffect[],
+    overrides: Partial<AbilityDef> = {},
+  ): AbilityDef {
+    return {
+      id: 'test-ability',
+      name: 'Test Ability',
+      description: '',
+      manaCost: 50,
+      cooldownTicks: 4,
+      targetType: targetType as AbilityDef['targetType'],
+      effects,
+      ...overrides,
+    }
+  }
+
+  const dmg: AbilityEffect[] = [{ type: 'damage', value: 100 }]
+  const heal: AbilityEffect[] = [{ type: 'heal', value: 100 }]
+  const buff: AbilityEffect[] = [{ type: 'buff', value: 0 }]
+
+  it('returns no target for none/self abilities', () => {
+    const caster = makePlayer()
+    expect(pickAbilityTargetString(makeAbility('none', dmg), caster, { p1: caster })).toEqual({
+      target: null,
+    })
+    expect(pickAbilityTargetString(makeAbility('self', heal), caster, { p1: caster })).toEqual({
+      target: null,
+    })
+  })
+
+  it('targets the lowest-HP enemy in zone for an offensive hero/unit ability', () => {
+    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const e1 = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', hp: 120 })
+    const offZone = makePlayer({ id: 'e3', team: 'dire', zone: 'mid-t1-dire', hp: 10 })
+    const all = { p1: caster, e1, e2, e3: offZone }
+    expect(pickAbilityTargetString(makeAbility('hero', dmg), caster, all)).toEqual({
+      target: 'hero:e2',
+    })
+    expect(pickAbilityTargetString(makeAbility('unit', dmg), caster, all)).toEqual({
+      target: 'hero:e2',
+    })
+  })
+
+  it('errors (no silent reject) when an offensive ability has no enemy in zone', () => {
+    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const result = pickAbilityTargetString(makeAbility('hero', dmg), caster, { p1: caster })
+    expect(result).toHaveProperty('error')
+  })
+
+  it('targets the lowest-HP ally for a supportive hero ability', () => {
+    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', hp: 500, maxHp: 500 })
+    const a1 = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river', hp: 100, maxHp: 500 })
+    const all = { p1: caster, a1 }
+    // Heal targetType 'hero' but supportive effects -> ally, not enemy
+    expect(pickAbilityTargetString(makeAbility('hero', heal), caster, all)).toEqual({
+      target: 'hero:a1',
+    })
+  })
+
+  it('falls back to self for a heal/shield ally ability when alone', () => {
+    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    expect(pickAbilityTargetString(makeAbility('ally', heal), caster, { p1: caster })).toEqual({
+      target: 'hero:p1',
+    })
+  })
+
+  it('errors for a pure-buff ally ability when no ally is present', () => {
+    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const result = pickAbilityTargetString(makeAbility('ally', buff), caster, { p1: caster })
+    expect(result).toHaveProperty('error')
+  })
+
+  it('targets the current zone for an AoE zone ability', () => {
+    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    expect(pickAbilityTargetString(makeAbility('zone', dmg), caster, { p1: caster })).toEqual({
+      target: 'zone:mid-river',
+    })
   })
 })
