@@ -41,6 +41,46 @@ describe('combat', () => {
     expect((await game.me()).cooldowns).toEqual({ q: 0, w: 0, e: 0, r: 0 })
   })
 
+  it('killing an enemy hero pays the killer its bounty — gold, XP, a kill credit, and a kill event', async () => {
+    // The hero-kill bounty is the snowball engine of the whole match, but the
+    // other kill tests only assert item side-effects (Segfault/Rapier). This
+    // locks the reward itself: a clean kill (no kill-reward items) advances the
+    // killer's economy and is correctly attributed.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
+        [ENEMY]: { ...s.players[ENEMY]!, hp: 1 },
+      },
+    }))
+
+    const before = await game.me()
+    const victimBefore = await game.player(ENEMY)
+
+    game.attackHero(ENEMY) // lethal — enemy is at 1 HP
+    await game.tick()
+
+    expect((await game.player(ENEMY)).alive).toBe(false)
+
+    const me = await game.me()
+    // Kill is attributed to the killer: kill count up and a kill event naming both.
+    expect(me.kills).toBe(before.kills + 1)
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'kill' && e.killerId === HUMAN && e.victimId === ENEMY,
+      ),
+    ).toBe(true)
+    // The bounty advances the killer's economy (kill gold + kill XP). Passive
+    // income only ever adds, so a strict increase isolates "rewarded, not idle".
+    expect(me.gold).toBeGreaterThan(before.gold)
+    expect(me.xp).toBeGreaterThan(before.xp)
+
+    // The victim takes the death on its own ledger.
+    expect((await game.player(ENEMY)).deaths).toBe(victimBefore.deaths + 1)
+  })
+
   it('Divine Rapier drops from the victim and is claimed by the killer on a hero kill', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
