@@ -15,6 +15,7 @@ import {
   SIEGE_CREEP_HP,
   DENY_HP_THRESHOLD,
 } from '~~/shared/constants/balance'
+import { computeThreat, threatToneClass } from '~/utils/tactics'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 
 /** A visible creep plus its index in the client's creeps array (for `attack creep:<i>`). */
@@ -135,27 +136,15 @@ const identityClass = computed(() => {
 /** Allied hero headcount including the local player (always present in-zone). */
 const allyHeadcount = computed(() => props.allies.length + 1)
 
-const threat = computed<{ label: string; tone: 'safe' | 'warn' | 'danger' }>(() => {
-  const enemyHeroes = props.enemies.length
-  if (enemyHeroes === 0) {
-    if (towerHere.value && towerIsEnemy.value) return { label: 'TOWER', tone: 'warn' }
-    return { label: 'CLEAR', tone: 'safe' }
-  }
-  if (enemyHeroes > allyHeadcount.value) return { label: 'DANGER', tone: 'danger' }
-  if (enemyHeroes === allyHeadcount.value) return { label: 'CONTESTED', tone: 'warn' }
-  return { label: 'FAVORED', tone: 'safe' }
-})
+const threat = computed(() =>
+  computeThreat(
+    props.enemies.length,
+    allyHeadcount.value,
+    towerHere.value !== null && towerIsEnemy.value,
+  ),
+)
 
-const threatClass = computed(() => {
-  switch (threat.value.tone) {
-    case 'danger':
-      return 'text-dire'
-    case 'warn':
-      return 'text-gold'
-    default:
-      return 'text-radiant'
-  }
-})
+const threatClass = computed(() => threatToneClass(threat.value.tone))
 
 const objective = computed<string | null>(() => {
   const m = zoneMeta.value
