@@ -7,6 +7,7 @@ import {
   applyBuff,
   hasBuff,
   getBuffStacks,
+  tickAllBuffs,
 } from '../../../server/game/heroes/_base'
 // Register lambda hero (side-effect import)
 import '../../../server/game/heroes/lambda'
@@ -235,7 +236,7 @@ describe('Lambda Hero', () => {
       expect(hasBuff(updated, 'returnMark')).toBe(true)
     })
 
-    it('records current zone in returnMark buff', () => {
+    it('records the current zone in the returnMark buff destination', () => {
       const player = makePlayer({ zone: 'mid-river' })
       const state = makeState([player])
 
@@ -244,7 +245,37 @@ describe('Lambda Hero', () => {
       const updated = result.state.players['p1']!
       const mark = updated.buffs.find((b) => b.id === 'returnMark')
       expect(mark).toBeDefined()
-      expect(mark!.source).toBe('mid-river') // Zone stored in source
+      expect(mark!.destination).toBe('mid-river') // origin zone to snap back to
+    })
+
+    it('snaps the caster back to the marked zone when Return expires (formerly dead)', () => {
+      const player = makePlayer({ zone: 'mid-river', level: 1 })
+      const state = makeState([player])
+      const cast = Effect.runSync(resolveAbility(state, 'p1', 'w'))
+
+      // Roam to top-river while the mark (ticksRemaining 6) is up.
+      let s: GameState = {
+        ...cast.state,
+        players: {
+          ...cast.state.players,
+          p1: { ...cast.state.players['p1']!, zone: 'top-river' },
+        },
+      }
+
+      // Tick down to 1 — still away, mark still up.
+      for (let i = 0; i < 5; i++) s = tickAllBuffs(s)
+      expect(s.players['p1']!.zone).toBe('top-river')
+      expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(true)
+
+      // Next tick expires it → snap back to mid-river.
+      s = tickAllBuffs(s)
+      expect(s.players['p1']!.zone).toBe('mid-river')
+      expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(false)
+
+      const ev = s.events.find((e) => e.type === 'teleport_complete')
+      expect(ev).toBeDefined()
+      expect(ev!.payload['destination']).toBe('mid-river')
+      expect(ev!.payload['source']).toBe('return')
     })
 
     it('deducts mana and sets cooldown', () => {

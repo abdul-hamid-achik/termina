@@ -401,9 +401,10 @@ export function tickAllBuffs(state: GameState): GameState {
 
     const tpChannelingBuff = player.buffs.find((b) => b.id === 'tp_channeling')
     const tpDestBuff = player.buffs.find((b) => b.id === 'tp_destination')
-    // Traceroute's Next Hop return shadow: when it expires (last tick) it snaps
-    // the caster back to the zone where it was dropped (buff.destination).
-    const nextHopBuff = player.buffs.find((b) => b.id === 'nextHopShadow')
+    // Return shadows: a buff that records a zone and snaps the caster back when
+    // it expires (last tick) — Traceroute's Next Hop (nextHopShadow) and Lambda's
+    // Return (returnMark). Both stash the origin zone in buff.destination.
+    const returnShadow = player.buffs.find((b) => b.id === 'nextHopShadow' || b.id === 'returnMark')
 
     if (tpChannelingBuff && tpChannelingBuff.ticksRemaining === 1 && tpDestBuff?.destination) {
       const tpDestination = tpDestBuff.destination
@@ -424,12 +425,12 @@ export function tickAllBuffs(state: GameState): GameState {
         },
       })
     } else if (
-      nextHopBuff &&
-      nextHopBuff.ticksRemaining === 1 &&
-      nextHopBuff.destination &&
-      nextHopBuff.destination !== player.zone
+      returnShadow &&
+      returnShadow.ticksRemaining === 1 &&
+      returnShadow.destination &&
+      returnShadow.destination !== player.zone
     ) {
-      const returnZone = nextHopBuff.destination
+      const returnZone = returnShadow.destination
       // tickBuffs decrements + drops the expiring shadow; then snap the zone.
       const ticked = tickBuffs(player)
       const teleported: PlayerState = { ...ticked, zone: returnZone }
@@ -441,7 +442,7 @@ export function tickAllBuffs(state: GameState): GameState {
         payload: {
           playerId: player.id,
           destination: returnZone,
-          source: 'next_hop',
+          source: returnShadow.id === 'returnMark' ? 'return' : 'next_hop',
         },
       })
     } else {

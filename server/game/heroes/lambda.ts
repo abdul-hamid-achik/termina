@@ -157,7 +157,8 @@ function resolveW(
       id: 'returnMark',
       stacks: 1,
       ticksRemaining: 6,
-      source: player.zone, // Store the zone in source for retrieval
+      source: player.id,
+      destination: player.zone, // snap the caster back here when the mark expires
     })
 
     return {
