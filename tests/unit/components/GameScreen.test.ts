@@ -189,6 +189,41 @@ describe('GameScreen', () => {
       })
     })
 
+    describe('HUD density & vitals (setting C)', () => {
+      it('defaults to comfortable density and vitals off', () => {
+        localStorage.clear()
+        seedActiveGame()
+        const wrapper = mountGameScreen()
+
+        const root = wrapper.find('[data-testid="game-screen"]')
+        expect(root.attributes('data-density')).toBe('comfortable')
+        expect(root.attributes('data-vitals')).toBe('off')
+        wrapper.unmount()
+      })
+
+      it('reflects compact density on the grid root', () => {
+        localStorage.clear()
+        useSettingsStore().setHud('density', 'compact')
+        seedActiveGame()
+        const wrapper = mountGameScreen()
+
+        expect(wrapper.find('[data-testid="game-screen"]').attributes('data-density')).toBe(
+          'compact',
+        )
+        wrapper.unmount()
+      })
+
+      it('reflects emphasize-vitals as data-vitals=on', () => {
+        localStorage.clear()
+        useSettingsStore().setHud('emphasizeVitals', true)
+        seedActiveGame()
+        const wrapper = mountGameScreen()
+
+        expect(wrapper.find('[data-testid="game-screen"]').attributes('data-vitals')).toBe('on')
+        wrapper.unmount()
+      })
+    })
+
     it('does not render the death overlay while the player is alive', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()

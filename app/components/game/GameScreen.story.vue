@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useGameStore } from '~/stores/game'
+import { useSettingsStore } from '~/stores/settings'
 import {
   makeTickMessage,
   makeRoster,
@@ -9,6 +10,7 @@ import {
   SAMPLE_EVENTS,
   SAMPLE_INVENTORY,
 } from '~/stories/fixtures'
+import type { HudPreset } from '~/stores/settings'
 import GameScreen from './GameScreen.vue'
 
 // STORE-COUPLED + socket-aware. GameScreen calls BOTH useGameStore() and
@@ -25,13 +27,22 @@ import GameScreen from './GameScreen.vue'
 // net-worth history and the live tick countdown. We add a few combat events so
 // the Tick Theater / combat log has content.
 
-function seedActive() {
-  const store = useGameStore()
-  store.reset()
-  store.playerId = 'p1'
-  store.updateFromTick(makeTickMessage({ tick: 240 }))
-  store.addEvents(SAMPLE_EVENTS)
+// Seed an active game, applying a HUD preset so each variant shows a different
+// layout. Explicit per-variant so a prior selection can't leak via localStorage.
+function seedActiveWith(preset: Exclude<HudPreset, 'custom'>) {
+  return () => {
+    useSettingsStore().applyHudPreset(preset)
+    const store = useGameStore()
+    store.reset()
+    store.playerId = 'p1'
+    store.updateFromTick(makeTickMessage({ tick: 240 }))
+    store.addEvents(SAMPLE_EVENTS)
+  }
 }
+
+const seedActive = seedActiveWith('standard')
+const seedTactical = seedActiveWith('tactical')
+const seedFocus = seedActiveWith('focus')
 
 // Same as above, but the local player is dead — exercises the PROCESS TERMINATED
 // death overlay + buyback panel.
@@ -83,6 +94,16 @@ function seedGameOver() {
     <!-- Full active-game layout: War Room (left), Tick Theater / combat log
          (center), hero+zone+map rail (right), command bar (bottom). -->
     <Variant title="active game" :setup-app="seedActive">
+      <GameScreen />
+    </Variant>
+
+    <!-- HUD preset: Tactical = map-centric layout + compact density + banner. -->
+    <Variant title="tactical (map-centric)" :setup-app="seedTactical">
+      <GameScreen />
+    </Variant>
+
+    <!-- HUD preset: Focus = action banner + emphasized vitals (recede War Room). -->
+    <Variant title="focus (banner + vitals)" :setup-app="seedFocus">
       <GameScreen />
     </Variant>
 
