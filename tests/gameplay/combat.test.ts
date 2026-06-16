@@ -64,4 +64,36 @@ describe('combat', () => {
     expect((await game.player(ENEMY)).items).not.toContain('divine_rapier')
     expect((await game.me()).items).toContain('divine_rapier')
   })
+
+  it('a damage-over-time debuff deals damage each tick and stops on expiry', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    // A 2-tick DoT on the enemy, sourced to the human. processDoTs treats any
+    // buff whose id contains 'dot' as a DoT dealing `stacks` damage/tick.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'test_dot', stacks: 120, ticksRemaining: 2, source: HUMAN }],
+        },
+      },
+    }))
+
+    // The DoT is the only source of human→enemy damage (no action is queued), so
+    // a matching damage event is the regen-independent "the tick dealt damage" signal.
+    const dotTicked = () =>
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )
+
+    await game.tick()
+    expect(dotTicked()).toBe(true) // tick 1
+
+    await game.tick()
+    expect(dotTicked()).toBe(true) // tick 2 (last active tick)
+
+    await game.tick()
+    expect(dotTicked()).toBe(false) // expired — no more DoT damage
+  })
 })
