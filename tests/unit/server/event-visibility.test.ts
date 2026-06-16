@@ -19,6 +19,7 @@ const state = {
     me: { id: 'me', team: 'radiant', zone: 'mid-river' },
     ally: { id: 'ally', team: 'radiant', zone: 'top-river' },
     enemy: { id: 'enemy', team: 'dire', zone: 'bot-river' },
+    enemy2: { id: 'enemy2', team: 'dire', zone: 'bot-river' },
   },
 } as unknown as GameState
 
@@ -123,5 +124,113 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
     expect(isEventVisibleToPlayer(talentSelected('ally'), 'me', 'radiant', new Set(), state)).toBe(
       true,
     )
+  })
+})
+
+// ── Lock the PRE-EXISTING gating too (was a private fn before — untested) ──
+
+const ev = (tag: string, extra: Record<string, unknown>): GameEngineEvent =>
+  ({ _tag: tag, tick: 1, ...extra }) as GameEngineEvent
+const vis = (e: GameEngineEvent, zones: string[] = []) =>
+  isEventVisibleToPlayer(e, 'me', 'radiant', new Set(zones), state)
+
+describe('isEventVisibleToPlayer — global events', () => {
+  it('always shows map-wide events regardless of vision', () => {
+    for (const tag of ['kill', 'death', 'tower_kill', 'roshan_killed', 'level_up']) {
+      expect(vis(ev(tag, {}))).toBe(true)
+    }
+  })
+})
+
+describe('isEventVisibleToPlayer — damage/heal', () => {
+  it('shows a hit you are involved in (source or target)', () => {
+    expect(
+      vis(ev('damage', { sourceId: 'enemy', targetId: 'me', amount: 50, damageType: 'physical' })),
+    ).toBe(true)
+    expect(
+      vis(ev('damage', { sourceId: 'me', targetId: 'enemy', amount: 50, damageType: 'physical' })),
+    ).toBe(true)
+  })
+  it('shows a hit involving a teammate', () => {
+    expect(
+      vis(
+        ev('damage', { sourceId: 'ally', targetId: 'enemy', amount: 50, damageType: 'physical' }),
+      ),
+    ).toBe(true)
+  })
+  it('hides an enemy-vs-enemy hit in fog, reveals it when their zone is visible', () => {
+    const e = ev('damage', {
+      sourceId: 'enemy',
+      targetId: 'enemy2',
+      amount: 50,
+      damageType: 'physical',
+    })
+    expect(vis(e, ['mid-river'])).toBe(false)
+    expect(vis(e, ['bot-river'])).toBe(true)
+  })
+})
+
+describe('isEventVisibleToPlayer — economy is team-private', () => {
+  it('shows your own and allied gold/last-hit/item events, hides the enemy', () => {
+    for (const tag of ['creep_lasthit', 'gold_change', 'item_purchased', 'item_sold']) {
+      expect(vis(ev(tag, { playerId: 'me' }))).toBe(true)
+      expect(vis(ev(tag, { playerId: 'ally' }))).toBe(true)
+      expect(vis(ev(tag, { playerId: 'enemy' }))).toBe(false) // even with vision — economy is private
+      expect(vis(ev(tag, { playerId: 'enemy' }), ['bot-river'])).toBe(false)
+    }
+  })
+})
+
+describe('isEventVisibleToPlayer — ability / ward / rune', () => {
+  it('ability_used: own/ally always, enemy only when their zone is visible', () => {
+    expect(vis(ev('ability_used', { playerId: 'me', abilityId: 'q', cooldown: 5 }))).toBe(true)
+    expect(vis(ev('ability_used', { playerId: 'ally', abilityId: 'q', cooldown: 5 }))).toBe(true)
+    expect(
+      vis(ev('ability_used', { playerId: 'enemy', abilityId: 'q', cooldown: 5 }), ['mid-river']),
+    ).toBe(false)
+    expect(
+      vis(ev('ability_used', { playerId: 'enemy', abilityId: 'q', cooldown: 5 }), ['bot-river']),
+    ).toBe(true)
+  })
+  it('ward_placed: own/allied-team always, enemy only when the ward zone is visible', () => {
+    expect(
+      vis(
+        ev('ward_placed', {
+          playerId: 'ally',
+          zone: 'rune-top',
+          team: 'radiant',
+          wardType: 'observer',
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      vis(
+        ev('ward_placed', {
+          playerId: 'enemy',
+          zone: 'rune-bot',
+          team: 'dire',
+          wardType: 'observer',
+        }),
+        ['rune-top'],
+      ),
+    ).toBe(false)
+    expect(
+      vis(
+        ev('ward_placed', {
+          playerId: 'enemy',
+          zone: 'rune-bot',
+          team: 'dire',
+          wardType: 'observer',
+        }),
+        ['rune-bot'],
+      ),
+    ).toBe(true)
+  })
+  it('rune_picked: own always, otherwise only when the rune zone is visible', () => {
+    expect(vis(ev('rune_picked', { playerId: 'me', zone: 'rune-top' }))).toBe(true)
+    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'rune-bot' }), ['rune-top'])).toBe(
+      false,
+    )
+    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'rune-bot' }), ['rune-bot'])).toBe(true)
   })
 })
