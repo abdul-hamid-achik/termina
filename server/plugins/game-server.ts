@@ -37,6 +37,7 @@ import {
 } from '~~/server/game/engine/VisionCalculator'
 import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
 import type { TeamId, GameState } from '~~/shared/types/game'
+import type { PlayerEndStats } from '~~/shared/types/protocol'
 import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
 import { isBot, registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
 import {
@@ -493,18 +494,10 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Build the end-of-game stats (no DB needed) and broadcast game_over
         // FIRST. Players must reach the post-game screen even if DB persistence
         // fails — a database hiccup must never strand everyone in a dead game.
-        const endStats: Record<
-          string,
-          {
-            kills: number
-            deaths: number
-            assists: number
-            gold: number
-            items: (string | null)[]
-            heroDamage: number
-            towerDamage: number
-          }
-        > = {}
+        // Use the shared client-facing type so TS enforces the server's
+        // game_over payload matches exactly what the post-game screen reads —
+        // no silent server/client drift.
+        const endStats: Record<string, PlayerEndStats> = {}
         for (const p of players) {
           const ps = finalState.players[p.playerId]
           endStats[p.playerId] = {
