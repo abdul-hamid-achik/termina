@@ -790,5 +790,95 @@ describe('Shop', () => {
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('radiant-base')
     })
+
+    it('Blink Module teleports the caster to an adjacent zone', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        zone: 'radiant-fountain', // adjacent: radiant-base
+        items: ['blink_module', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'blink_module', 'radiant-base'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('radiant-base')
+    })
+
+    it('Ethereal Blade etherealizes a co-located enemy (physical-immune + magic vuln)', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['ethereal_blade', null, null, null, null, null],
+      })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'dire', zone: 'mid-river' })
+      const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'ethereal_blade', { kind: 'hero', name: 'enemy_1' }),
+      )
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        expect(hasBuff(exit.value, 'enemy_1', 'ethereal')).toBe(true)
+        expect(hasBuff(exit.value, 'enemy_1', 'magic_vuln_40')).toBe(true)
+      }
+    })
+
+    it('Hurricane Pike pushes the caster to a zone away from the target', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'radiant-fountain', // adjacent radiant-base; enemy elsewhere → push to base
+        items: ['hurricane_pike', null, null, null, null, null],
+      })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'dire', zone: 'mid-river' })
+      const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'hurricane_pike', { kind: 'hero', name: 'enemy_1' }),
+      )
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('radiant-base')
+    })
+
+    it('Town Portal Scroll starts a channel toward the home fountain', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['town_portal_scroll', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'town_portal_scroll'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        expect(hasBuff(exit.value, 'player_1', 'tp_channeling')).toBe(true)
+        const dest = exit.value.players['player_1']!.buffs.find((b) => b.id === 'tp_destination')
+        expect(dest?.destination).toBe('radiant-fountain')
+      }
+    })
+
+    it('Observer Ward places a vision ward in the target zone', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        items: ['observer_ward', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'observer_ward', 'mid-river'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        const wards = exit.value.zones['mid-river']!.wards
+        expect(wards).toHaveLength(1)
+        expect(wards[0]!.type).toBe('observer')
+      }
+    })
   })
 })
