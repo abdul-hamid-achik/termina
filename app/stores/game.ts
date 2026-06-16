@@ -78,6 +78,10 @@ export const useGameStore = defineStore('game', () => {
   const eventSeq = ref(0)
   const latestEvents = ref<GameEvent[]>([])
   const announcements = ref<string[]>([])
+  // Monotonic counter so transient consumers (the warning toast) retrigger on
+  // every announcement — `announcements.length` pins at 50 once capped below,
+  // same trap as eventSeq above.
+  const announcementSeq = ref(0)
   const nextTickIn = ref(0)
   const lastTickAt = ref<number | null>(null)
   const scoreboard = ref<ScoreboardEntry[]>([])
@@ -331,6 +335,7 @@ export const useGameStore = defineStore('game', () => {
     if (announcements.value.length > 50) {
       announcements.value = announcements.value.slice(-50)
     }
+    announcementSeq.value++
   }
 
   function setPhase(newPhase: GamePhase) {
@@ -370,6 +375,7 @@ export const useGameStore = defineStore('game', () => {
     eventSeq.value = 0
     latestEvents.value = []
     announcements.value = []
+    announcementSeq.value = 0
     stopTickCountdown()
     scoreboard.value = []
     gameOverStats.value = null
@@ -405,6 +411,7 @@ export const useGameStore = defineStore('game', () => {
     eventSeq,
     latestEvents,
     announcements,
+    announcementSeq,
     nextTickIn,
     lastTickAt,
     pendingCommand,
