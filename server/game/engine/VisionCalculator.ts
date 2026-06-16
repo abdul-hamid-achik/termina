@@ -279,6 +279,9 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
           team: p.team,
           heroId: p.heroId,
           level: p.level,
+          kills: p.kills,
+          deaths: p.deaths,
+          assists: p.assists,
           alive: p.alive,
           fogged: true,
         }
@@ -292,6 +295,9 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
         team: p.team,
         heroId: p.heroId,
         level: p.level,
+        kills: p.kills,
+        deaths: p.deaths,
+        assists: p.assists,
         alive: p.alive,
         fogged: true,
       }

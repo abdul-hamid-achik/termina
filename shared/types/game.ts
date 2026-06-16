@@ -170,6 +170,12 @@ export interface FoggedPlayer {
   team: string
   heroId: string | null
   level: number
+  // KDA is public information (the scoreboard shows it for every player even in
+  // fog) — only gold/items/position are hidden. Without these the scoreboard
+  // renders a fogged enemy as 0/0/0.
+  kills: number
+  deaths: number
+  assists: number
   alive: boolean
   fogged: true
 }

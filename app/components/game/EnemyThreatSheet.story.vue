@@ -41,6 +41,9 @@ const fogged: FoggedPlayer = {
   team: 'dire',
   heroId: SAMPLE_HEROES.cache,
   level: 7,
+  kills: 1,
+  deaths: 5,
+  assists: 9,
   alive: true,
   fogged: true,
 }

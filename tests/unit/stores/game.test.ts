@@ -504,6 +504,13 @@ describe('Game Store', () => {
         expect(store.scoreboard).toHaveLength(1)
         expect(store.scoreboard[0]!.gold).toBe(0)
         expect(store.scoreboard[0]!.items).toEqual([])
+        // ...but KDA + level stay public — the scoreboard shows an enemy's record
+        // even in fog (the real FoggedPlayer now carries these; it didn't before,
+        // so fogged enemies rendered 0/0/0).
+        expect(store.scoreboard[0]!.kills).toBe(2)
+        expect(store.scoreboard[0]!.deaths).toBe(0)
+        expect(store.scoreboard[0]!.assists).toBe(1)
+        expect(store.scoreboard[0]!.level).toBe(5)
       })
 
       it('scoreboard entries include alive and respawnTick fields', () => {
