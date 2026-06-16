@@ -241,3 +241,32 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
     expect(r1.state.players['p1']!.mp - r2.state.players['p1']!.mp).toBe(REFUND)
   })
 })
+
+describe('Arcane rune refunds mana on cast (buff was applied but consumed nowhere)', () => {
+  const Q_MANA = 60
+  const ARCANE_REFUND = Math.round(Q_MANA * 0.4) // 24
+
+  const cast = (casterOverrides = {}) => {
+    const caster = makePlayer({ mp: 400, ...casterOverrides })
+    const enemy = makePlayer({
+      id: 'e1',
+      name: 'Enemy',
+      team: 'dire',
+      heroId: 'echo',
+      zone: 'mid-t1-rad',
+    })
+    const state = makeGameState({ players: { p1: caster, e1: enemy } })
+    return Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+  }
+
+  it('refunds 40% of the mana spent on a cast', () => {
+    const result = cast({
+      buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 9999, source: 'rune_arcane' }],
+    })
+    expect(result.state.players['p1']!.mp).toBe(400 - Q_MANA + ARCANE_REFUND)
+  })
+
+  it('no refund without the arcane buff (baseline)', () => {
+    expect(cast().state.players['p1']!.mp).toBe(400 - Q_MANA)
+  })
+})

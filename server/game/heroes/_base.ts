@@ -509,7 +509,8 @@ export function resolveAbility(
     }
 
     const result = yield* resolver.ability(state, player, ability, abilityLevel, target)
-    return applyAbilityTalents(state, result, player, ability)
+    const withTalents = applyAbilityTalents(state, result, player, ability)
+    return applyArcaneRefund(withTalents, player)
   })
 }
 
@@ -592,4 +593,27 @@ function applyAbilityTalents(
   }
 
   return { ...result, state: { ...result.state, players } }
+}
+
+/**
+ * Arcane rune: refund 40% of the mana a cast spent. Runs in the cast pipeline
+ * (NOT applyAbilityTalents, which short-circuits when no talents are chosen).
+ */
+function applyArcaneRefund(result: AbilityResult, caster: PlayerState): AbilityResult {
+  if (!caster.buffs.some((b) => b.id === 'arcane')) return result
+  const current = result.state.players[caster.id]
+  if (!current) return result
+  const manaSpent = Math.max(0, caster.mp - current.mp)
+  const refund = Math.round(manaSpent * 0.4)
+  if (refund <= 0) return result
+  return {
+    ...result,
+    state: {
+      ...result.state,
+      players: {
+        ...result.state.players,
+        [caster.id]: { ...current, mp: Math.min(current.maxMp, current.mp + refund) },
+      },
+    },
+  }
 }
