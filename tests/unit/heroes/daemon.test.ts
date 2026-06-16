@@ -8,6 +8,8 @@ import {
   hasBuff,
   getBuffStacks,
 } from '../../../server/game/heroes/_base'
+import { getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 // Register daemon hero
 import '../../../server/game/heroes/daemon'
 
@@ -351,6 +353,69 @@ describe('Daemon Hero', () => {
       )
 
       expect(hasBuff(result.state.players['p1']!, 'stealth')).toBe(false)
+    })
+  })
+
+  describe('Talents (engine-applied — formerly dead specialEffect no-ops)', () => {
+    it('daemon_25_left reduces Root Access cooldown by 10 (was the dead invis_duration no-op)', () => {
+      const player = makePlayer({
+        level: 6,
+        mp: 500,
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'daemon_25_left' },
+      })
+      const state = makeState([player])
+
+      const result = Effect.runSync(
+        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'rune-top' }),
+      )
+
+      // R_COOLDOWN (60) − 10
+      expect(result.state.players['p1']!.cooldowns.r).toBe(50)
+    })
+
+    it('daemon_20_left reduces Sudo cooldown by 3 (was the dead slow_plus_40 no-op)', () => {
+      const player = makePlayer({
+        level: 6,
+        mp: 500,
+        talents: { tier10: null, tier15: null, tier20: 'daemon_20_left', tier25: null },
+      })
+      const enemy = makeEnemy({ hp: 100, maxHp: 550 }) // below 30% — Sudo executes
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
+
+      // E_COOLDOWN (20) − 3
+      expect(result.state.players['p1']!.cooldowns.e).toBe(17)
+    })
+
+    it('daemon_15_left refunds 35% of Inject mana cost (was damage_boost on a DoT — a silent no-op)', () => {
+      const player = makePlayer({
+        level: 1,
+        mp: 300,
+        talents: { tier10: null, tier15: 'daemon_15_left', tier20: null, tier25: null },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+
+      // 50 spent, then round(50 * 35%) = 18 refunded → 300 − 50 + 18
+      expect(result.state.players['p1']!.mp).toBe(268)
+    })
+
+    it('daemon_25_right grants +50 attack via getTalentStatBonus (was the dead execute no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'daemon_25_right' },
+      })
+      expect(getTalentStatBonus(player, 'attack')).toBe(50)
+    })
+
+    it('no daemon talent is a dead specialEffect no-op anymore', () => {
+      for (const t of Object.values(TALENT_TREES.daemon.tiers).flat()) {
+        expect(t.type).not.toBe('special')
+        expect(t.type).not.toBe('ability_boost')
+        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+      }
     })
   })
 })
