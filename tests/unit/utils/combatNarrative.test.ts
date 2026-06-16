@@ -372,11 +372,16 @@ describe('eventToLine: narration coverage for every event type', () => {
       ctx,
     )
     expect(lotus!.text).toContain('Lotus Orb')
+    expect(lotus!.text).toContain('reflected')
+    expect(lotus!.text).toContain('50') // the reflected damage is shown (-50)
+
     const linkens = eventToLine(
       ev('spell_blocked', { source: 'linkens_sphere', targetId: 'enemy1', casterId: 'me' }),
       ctx,
     )
     expect(linkens!.text).toContain("Linken's Sphere")
+    expect(linkens!.text).toContain('blocked')
+    expect(linkens!.text).not.toContain('reflected') // a block isn't a reflect
   })
 
   it('produces no line for internal / non-narrative events', () => {
