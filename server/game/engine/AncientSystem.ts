@@ -93,14 +93,11 @@ export function updateAncientVulnerability(state: GameState): GameState {
  * optional `rejected` reason when the attack was invalid — callers can
  * surface it as player feedback.
  *
- * Wiring status:
- * - Creep attacks: wired via CreepAI (`attack_ancient` action).
- * - Hero attacks: TODO(items/bots agent) — wire the `attack` command with an
- *   ancient target into ActionResolver.ts by importing this helper and
- *   calling `resolveAncientAttack(state, action.playerId, attackDamage)`,
- *   merging the returned state + events into the resolution pipeline.
- *   ActionResolver is owned by the items/bots agent and is intentionally
- *   not modified here.
+ * Wiring status (both live):
+ * - Creep attacks: via CreepAI (`attack_ancient` action).
+ * - Hero attacks: the `attack` command with an ancient target calls this from
+ *   ActionResolver.ts (imported at the top, invoked in the attack-resolution
+ *   pipeline), so a hero standing in the enemy base can destroy the Ancient.
  */
 export function resolveAncientAttack(
   state: GameState,
