@@ -489,3 +489,39 @@ describe('Power Treads toggle (was cosmetic — the mode buffs were read nowhere
     expect(r.state.players['p1']!.maxMp).toBe(ECHO_BASE_MP + 100)
   })
 })
+
+describe('Aegis pickup through resolveActions (was dropping ground-removal + event)', () => {
+  const aegisGround = { zone: 'roshan-pit', tick: 100, holderId: null }
+
+  it('picking up aegis in roshan-pit nulls state.aegis, emits aegis_picked, applies the buff', () => {
+    const state = makeGameState({
+      tick: 120,
+      aegis: aegisGround,
+      players: { p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }) },
+    })
+    const r = run(state, [{ playerId: 'p1', command: { type: 'aegis' } }])
+    expect(r.state.aegis).toBeNull()
+    expect(r.events.some((e) => e._tag === 'aegis_picked' && e.playerId === 'p1')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'aegis')).toBe(true)
+  })
+
+  it('two pickups the same tick cannot double-dip — only one player gets aegis', () => {
+    const state = makeGameState({
+      tick: 120,
+      aegis: aegisGround,
+      players: {
+        p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }),
+        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'roshan-pit' }),
+      },
+    })
+    const r = run(state, [
+      { playerId: 'p1', command: { type: 'aegis' } },
+      { playerId: 'p2', command: { type: 'aegis' } },
+    ])
+    expect(r.state.aegis).toBeNull()
+    const withAegis = ['p1', 'p2'].filter((id) =>
+      r.state.players[id]!.buffs.some((b) => b.id === 'aegis'),
+    )
+    expect(withAegis).toHaveLength(1)
+  })
+})

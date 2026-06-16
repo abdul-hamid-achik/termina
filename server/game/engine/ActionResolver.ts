@@ -1028,6 +1028,7 @@ export function resolveActions(
     }
 
     // Handle aegis pickup
+    let aegisGround = state.aegis
     const aegisPickups = validActions.filter((a) => a.command.type === 'aegis')
     for (const action of aegisPickups) {
       const tempState: GameState = {
@@ -1037,10 +1038,16 @@ export function resolveActions(
         towers,
         runes: state.runes ?? [],
         roshan: state.roshan,
-        aegis: state.aegis,
+        aegis: aegisGround,
       }
       const result = pickupAegis(tempState, action.playerId)
       players = { ...result.players }
+      // On a successful pickup pickupAegis nulls the ground aegis — thread that
+      // through (so it can't be picked up twice) and surface the event.
+      if (result.aegis !== tempState.aegis) {
+        aegisGround = result.aegis
+        events.push({ _tag: 'aegis_picked', tick: state.tick, playerId: action.playerId })
+      }
     }
 
     // Handle rune pickup
@@ -1202,6 +1209,7 @@ export function resolveActions(
       towers,
       teams,
       ancients,
+      aegis: aegisGround,
     }
 
     return { state: updatedState, events, heroAttackers, rejected }
