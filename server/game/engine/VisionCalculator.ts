@@ -60,14 +60,6 @@ function buildTeammateKey(state: GameState, team: TeamId, excludePlayerId: strin
     .join(',')
 }
 
-export function invalidateVisionCache(playerId?: string): void {
-  if (playerId) {
-    visionCache.delete(playerId)
-  } else {
-    visionCache.clear()
-  }
-}
-
 export function calculateVision(state: GameState, playerId: string): Set<string> {
   const player = state.players[playerId]
   if (!player) return new Set()
