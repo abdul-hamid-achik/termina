@@ -175,6 +175,32 @@ describe('GoldDistributor', () => {
       expect(result.players['killer']!.gold).toBe(100 + KILL_BOUNTY_BASE)
     })
 
+    it('applies the comeback BONUS to the bounty for a team far behind', () => {
+      const state = makeGameState({
+        players: {
+          killer: makePlayer({ id: 'killer', team: 'radiant', gold: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'dire', gold: 10_000 }),
+        },
+      })
+      const mult = comebackMultiplier(state, 'radiant') // far behind → 1.5
+      expect(mult).toBeCloseTo(1.5, 5)
+      const result = awardKill(state, 'killer', 'victim', [])
+      expect(result.players['killer']!.gold).toBe(Math.round(KILL_BOUNTY_BASE * mult))
+    })
+
+    it('applies the comeback PENALTY to the bounty for a team far ahead', () => {
+      const state = makeGameState({
+        players: {
+          killer: makePlayer({ id: 'killer', team: 'radiant', gold: 10_000 }),
+          victim: makePlayer({ id: 'victim', team: 'dire', gold: 0 }),
+        },
+      })
+      const mult = comebackMultiplier(state, 'radiant') // far ahead → 0.7
+      expect(mult).toBeCloseTo(0.7, 5)
+      const result = awardKill(state, 'killer', 'victim', [])
+      expect(result.players['killer']!.gold).toBe(10_000 + Math.round(KILL_BOUNTY_BASE * mult))
+    })
+
     it('should award shutdown bonus based on the victim kill streak', () => {
       const state = makeGameState({
         players: {
