@@ -200,4 +200,60 @@ describe('combat', () => {
     // No 15% fountain heal — at most slow base regen, well under a 10% jump.
     expect(after.hp).toBeLessThan(before + Math.floor(after.maxHp * 0.1))
   })
+
+  it('a hero standing in the enemy base destroys a vulnerable Ancient and wins', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => {
+      const me = s.players[HUMAN]!
+      const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+      const enemyBase = enemyTeam === 'radiant' ? 'radiant-base' : 'dire-base'
+      return {
+        ...s,
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
+        ancients: {
+          ...s.ancients,
+          // Vulnerable (a T3 has fallen) and at 1 HP — any hit finishes it.
+          [enemyTeam]: { ...s.ancients[enemyTeam], hp: 1, alive: true, vulnerable: true },
+        },
+      }
+    })
+
+    game.submit({ type: 'attack', target: { kind: 'ancient' } })
+    await game.tick()
+
+    const me = await game.me()
+    const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+    const state = await game.state()
+    expect(state.ancients[enemyTeam].alive).toBe(false)
+    expect(state.winner).toBe(me.team)
+    expect(game.lastEvents.some((e) => e._tag === 'ancient_destroyed')).toBe(true)
+  })
+
+  it('the Ancient is firewalled until a T3 falls — attacks bounce off while invulnerable', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => {
+      const me = s.players[HUMAN]!
+      const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+      const enemyBase = enemyTeam === 'radiant' ? 'radiant-base' : 'dire-base'
+      return {
+        ...s,
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
+        ancients: {
+          ...s.ancients,
+          [enemyTeam]: { ...s.ancients[enemyTeam], hp: 500, alive: true, vulnerable: false },
+        },
+      }
+    })
+
+    game.submit({ type: 'attack', target: { kind: 'ancient' } })
+    await game.tick()
+
+    const me = await game.me()
+    const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+    const ancient = (await game.state()).ancients[enemyTeam]
+    // Firewalled: the attack is rejected, so the Ancient takes no damage and lives.
+    expect(ancient.alive).toBe(true)
+    expect(ancient.hp).toBe(500)
+    expect((await game.state()).winner).toBeFalsy()
+  })
 })
