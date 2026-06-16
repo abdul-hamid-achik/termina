@@ -276,4 +276,57 @@ describe('combat', () => {
 
     expect((await game.state()).ancients[enemyTeam].vulnerable).toBe(true)
   })
+
+  it('a dead player with gold buys back — instantly alive at the fountain, gold spent', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const startTick = (await game.state()).tick
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          alive: false,
+          hp: 0,
+          respawnTick: startTick + 30, // genuinely dead, far from a natural respawn
+          gold: 10_000, // plenty for the buyback cost
+        },
+      },
+    }))
+
+    const goldBefore = (await game.me()).gold
+    game.submit({ type: 'buyback' })
+    await game.tick()
+
+    const me = await game.me()
+    expect(me.alive).toBe(true)
+    expect(me.respawnTick).toBeNull()
+    expect(me.gold).toBeLessThan(goldBefore) // paid the buyback cost
+    expect(me.zone).toBe(me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain')
+  })
+
+  it('buyback is refused with insufficient gold — the hero stays dead and keeps its gold', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const startTick = (await game.state()).tick
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          alive: false,
+          hp: 0,
+          respawnTick: startTick + 30,
+          gold: 0,
+        },
+      },
+    }))
+
+    game.submit({ type: 'buyback' })
+    await game.tick()
+
+    const me = await game.me()
+    expect(me.alive).toBe(false)
+    expect(me.gold).toBe(0)
+  })
 })
