@@ -9,7 +9,6 @@ import {
 } from '../../../server/game/engine/BuybackSystem'
 import { processSpecialActions, type PlayerAction } from '../../../server/game/engine/GameLoop'
 import { getEffectiveAttack, getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
-import { handleNeutralDeaths } from '../../../server/game/engine/NeutralAI'
 import { pickupAegis, processRoshanDamage } from '../../../server/game/engine/RoshanAI'
 import {
   calculateVision,
@@ -181,41 +180,6 @@ describe('systems-gaps: TALENT stat-bonus effect', () => {
     expect(getTalentStatBonus(withTalent, 'hp')).toBe(200)
     // and that selecting the hp talent does NOT spill into attack
     expect(getTalentStatBonus(withTalent, 'attack')).toBe(0)
-  })
-})
-
-describe('systems-gaps: NEUTRAL death rewards', () => {
-  it('handleNeutralDeaths removes the dead neutral and returns its gold/xp bounty', () => {
-    const state = makeGameState({
-      neutrals: [
-        { id: 'n1', zone: 'jungle-rad-top', hp: 250, maxHp: 250, type: 'kobold', alive: true },
-      ],
-    })
-    const tracker = new Map<string, number>()
-    tracker.set('n1', 300) // > 250 hp => dies
-
-    const result = handleNeutralDeaths(state, tracker)
-
-    expect(result.state.neutrals.find((n) => n.id === 'n1')).toBeUndefined()
-    expect(result.rewards).toHaveLength(1)
-    // kobold bounty per NEUTRAL_CREEPS
-    expect(result.rewards[0]!.gold).toBe(20)
-    expect(result.rewards[0]!.xp).toBe(25)
-  })
-
-  it('handleNeutralDeaths decrements HP (no reward) for a surviving neutral', () => {
-    const state = makeGameState({
-      neutrals: [
-        { id: 'n2', zone: 'jungle-rad-top', hp: 900, maxHp: 900, type: 'centaur', alive: true },
-      ],
-    })
-    const tracker = new Map<string, number>()
-    tracker.set('n2', 200) // < 900
-
-    const result = handleNeutralDeaths(state, tracker)
-    const survivor = result.state.neutrals.find((n) => n.id === 'n2')!
-    expect(survivor.hp).toBe(700)
-    expect(result.rewards).toHaveLength(0)
   })
 })
 

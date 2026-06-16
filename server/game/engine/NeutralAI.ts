@@ -138,48 +138,6 @@ export function applyNeutralActions(state: GameState, actions: NeutralAction[]):
 /**
  * Handle neutral creep deaths from hero attacks
  */
-export function handleNeutralDeaths(
-  state: GameState,
-  damageTracker: Map<string, number>, // neutralId -> damage
-): {
-  state: GameState
-  events: GameState['events']
-  rewards: Array<{ playerId: string; gold: number; xp: number }>
-} {
-  const events = [...state.events]
-  const rewards: Array<{ playerId: string; gold: number; xp: number }> = []
-
-  let neutrals = [...state.neutrals]
-
-  for (const [neutralId, damage] of damageTracker) {
-    const neutralIdx = neutrals.findIndex((n) => n.id === neutralId)
-    if (neutralIdx === -1) continue
-
-    const neutral = neutrals[neutralIdx]!
-    const stats = NEUTRAL_CREEPS[neutral.type as NeutralCreepType]
-    if (!stats) continue
-
-    // Check if neutral died
-    if (neutral.hp <= damage) {
-      // Neutral died - award gold and XP to damaging player
-      // Find the player who dealt the most damage
-      const _killerDamage = damage // Simplified - full damage dealt to killer
-
-      // Award to all players who damaged (simplified: just one reward for now)
-      // In a full impl, distribute by damage share
-      rewards.push({
-        playerId: '', // Will be determined by caller
-        gold: stats.gold,
-        xp: stats.xp,
-      })
-
-      // Remove neutral
-      neutrals = neutrals.filter((_, i) => i !== neutralIdx)
-    } else {
-      // Update HP
-      neutrals[neutralIdx] = { ...neutral, hp: neutral.hp - damage }
-    }
-  }
-
-  return { state: { ...state, neutrals }, events, rewards }
-}
+// (Removed `handleNeutralDeaths` — it was never called: it hardcoded an empty
+// playerId and the real neutral-kill bounty is awarded inline in
+// ActionResolver's neutral-attack path.)

@@ -79,11 +79,8 @@ export function awardLastHit(
   return updatePlayerGold(state, playerId, gold)
 }
 
-/** Award gold for denying a creep. 50% of the gold goes to the denier. */
-export function awardDeny(state: GameState, playerId: string): GameState {
-  const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * 0.5)
-  return updatePlayerGold(state, playerId, denyGold)
-}
+// (Removed `awardDeny` — dead duplicate: resolveActions computes deny gold
+// inline and never called this.)
 
 /**
  * Award gold for a hero kill.

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   distributePassiveGold,
   awardLastHit,
-  awardDeny,
   awardKill,
   awardTowerKill,
   comebackMultiplier,
@@ -160,27 +159,6 @@ describe('GoldDistributor', () => {
       }
       // All siege creep gold should be exactly SIEGE_CREEP_GOLD
       expect(results.every((g) => g === SIEGE_CREEP_GOLD)).toBe(true)
-    })
-  })
-
-  describe('awardDeny', () => {
-    it('should award 50% of average creep gold for a deny', () => {
-      const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
-      })
-
-      const expectedDenyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * 0.5)
-      const result = awardDeny(state, 'p1')
-      expect(result.players['p1']!.gold).toBe(100 + expectedDenyGold)
-    })
-
-    it('should return state unchanged for unknown player', () => {
-      const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
-      })
-
-      const result = awardDeny(state, 'unknown')
-      expect(result).toEqual(state)
     })
   })
 
