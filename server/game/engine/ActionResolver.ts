@@ -938,6 +938,15 @@ export function resolveActions(
       )
       if (result) {
         players = { ...result.players }
+        // Confirm the purchase in the combat log (the item_purchased path is
+        // fully wired client-side; the buyer always sees their own purchase).
+        events.push({
+          _tag: 'item_purchased',
+          tick: state.tick,
+          playerId: action.playerId,
+          itemId: cmd.item,
+          cost: ITEMS[cmd.item]?.cost ?? 0,
+        })
       }
     }
 
