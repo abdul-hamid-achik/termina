@@ -50,4 +50,47 @@ describe('shop', () => {
     // The event carries the refund for the "(+Ng)" confirmation line.
     expect((sale as { refund: number }).refund).toBeGreaterThan(0)
   })
+
+  it('using Blink Module teleports the hero to an adjacent zone', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          items: ['blink_module', null, null, null, null, null],
+          buffs: [], // no item cooldown
+        },
+      },
+    }))
+
+    // mid-river is adjacent to mid-t1-rad; blink takes a zone-id string target.
+    game.submit({ type: 'use', item: 'blink_module', target: 'mid-t1-rad' })
+    await game.tick()
+
+    expect((await game.me()).zone).toBe('mid-t1-rad')
+  })
+
+  it('using Black King Bar grants magic immunity', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: ['black_king_bar', null, null, null, null, null],
+          buffs: [],
+        },
+      },
+    }))
+
+    game.submit({ type: 'use', item: 'black_king_bar' })
+    await game.tick()
+
+    // BKB applies a multi-tick magic_immune buff (still present after this tick).
+    expect((await game.me()).buffs.some((b) => b.id === 'magic_immune')).toBe(true)
+  })
 })
