@@ -425,10 +425,29 @@ export default defineWebSocketHandler({
           break
         }
         const outMsg = { playerId: ctx.playerId, ...parsed }
+        // Team chat and map pings are team-scoped: fanning them to the whole game
+        // leaks your strategy and where you're looking to the enemy. 'all' chat
+        // still reaches everyone.
+        const teamScoped =
+          parsed.type === 'ping_map' || (parsed.type === 'chat' && parsed.channel === 'team')
+        const gid = ctx.gameId
+        const senderId = ctx.playerId
         Effect.runPromise(
           Effect.gen(function* () {
-            const connections = yield* runtime.wsService.getConnections(ctx.gameId!)
+            const connections = yield* runtime.wsService.getConnections(gid)
+            const teamOf: Record<string, string> = {}
+            if (teamScoped) {
+              // The sender's filtered state carries a team for every player
+              // (teammates full, enemies fogged-but-team-present).
+              const payload = getReconnectPayload(gid, senderId)
+              if (payload) {
+                for (const p of Object.values(payload.state.players)) teamOf[p.id] = p.team
+              }
+            }
+            const senderTeam = teamOf[senderId]
             for (const [pid] of connections) {
+              // Only filter when teams are known; otherwise fall back to fan-out.
+              if (teamScoped && senderTeam !== undefined && teamOf[pid] !== senderTeam) continue
               sendToPeer(pid, outMsg)
             }
           }),

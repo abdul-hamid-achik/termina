@@ -559,6 +559,59 @@ describe('ws route — chat / ping_map fan-out', () => {
       expect.objectContaining({ playerId: 'victim_player' }),
     )
   })
+
+  // Three connections across two teams; the sender's filtered state names every
+  // player's team (teammates full, enemies fogged-but-team-present).
+  function openTeamGame(senderId: string) {
+    const { peer, runtime } = openPeerInGame(senderId, 'game_tt')
+    runtime.wsService.getConnections = vi.fn(() =>
+      Effect.succeed(
+        new Map<string, object>([
+          [senderId, {}],
+          ['mate', {}],
+          ['enemy', {}],
+        ]),
+      ),
+    )
+    vi.mocked(getReconnectPayload).mockReturnValue({
+      tick: 1,
+      state: {
+        players: {
+          [senderId]: { id: senderId, team: 'radiant' },
+          mate: { id: 'mate', team: 'radiant' },
+          enemy: { id: 'enemy', team: 'dire' },
+        },
+      },
+      events: [],
+    } as never)
+    return peer
+  }
+
+  it('keeps team chat to the sender team — the enemy never receives it', async () => {
+    const peer = openTeamGame('s_team')
+    sendMsg(peer, { type: 'chat', channel: 'team', message: 'gank mid' })
+    await vi.waitFor(() => {
+      expect(sendToPeer).toHaveBeenCalledWith('mate', expect.objectContaining({ channel: 'team' }))
+    })
+    expect(sendToPeer).not.toHaveBeenCalledWith('enemy', expect.anything())
+  })
+
+  it('keeps map pings team-only — the enemy never sees where you looked', async () => {
+    const peer = openTeamGame('s_ping')
+    sendMsg(peer, { type: 'ping_map', zone: 'roshan-pit' })
+    await vi.waitFor(() => {
+      expect(sendToPeer).toHaveBeenCalledWith('mate', expect.objectContaining({ type: 'ping_map' }))
+    })
+    expect(sendToPeer).not.toHaveBeenCalledWith('enemy', expect.anything())
+  })
+
+  it('still fans ALL chat to everyone, enemies included', async () => {
+    const peer = openTeamGame('s_all')
+    sendMsg(peer, { type: 'chat', channel: 'all', message: 'gg' })
+    await vi.waitFor(() => {
+      expect(sendToPeer).toHaveBeenCalledWith('enemy', expect.objectContaining({ channel: 'all' }))
+    })
+  })
 })
 
 describe('ws route — spectator gating', () => {
