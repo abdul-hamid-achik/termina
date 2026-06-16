@@ -149,4 +149,55 @@ describe('combat', () => {
     expect(shield).toBeDefined()
     expect(shield!.stacks).toBeLessThan(400)
   })
+
+  it('a hero sitting in its own fountain heals rapidly to full HP and mana', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => {
+      const me = s.players[HUMAN]!
+      const fountain = me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+      return {
+        ...s,
+        players: { ...s.players, [HUMAN]: { ...me, zone: fountain, hp: 50, mp: 0, buffs: [] } },
+      }
+    })
+
+    const before = (await game.me()).hp
+    await game.tick()
+    const afterOne = await game.me()
+    // Fountain heals ~15% of maxHp per tick — far more than base regen alone.
+    expect(afterOne.hp).toBeGreaterThan(before + Math.floor(afterOne.maxHp * 0.1))
+
+    // A handful of ticks tops the hero back off to full.
+    await game.tick(8)
+    const full = await game.me()
+    expect(full.hp).toBe(full.maxHp)
+    expect(full.mp).toBe(full.maxMp)
+  })
+
+  it('an in-combat hero gets NO fountain healing (the inCombat guard holds)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => {
+      const me = s.players[HUMAN]!
+      const fountain = me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+      return {
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: {
+            ...me,
+            zone: fountain,
+            hp: 50,
+            // The soft combat flag the engine checks before fountain healing.
+            buffs: [{ id: 'inCombat', stacks: 1, ticksRemaining: 5, source: HUMAN }],
+          },
+        },
+      }
+    })
+
+    const before = (await game.me()).hp
+    await game.tick()
+    const after = await game.me()
+    // No 15% fountain heal — at most slow base regen, well under a 10% jump.
+    expect(after.hp).toBeLessThan(before + Math.floor(after.maxHp * 0.1))
+  })
 })
