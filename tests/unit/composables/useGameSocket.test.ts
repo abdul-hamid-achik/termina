@@ -237,18 +237,23 @@ describe('useGameSocket', () => {
       expect(spy).toHaveBeenCalledWith([{ _tag: 'kill' }])
     })
 
-    it('routes announcement to addAnnouncement', async () => {
+    it('routes announcement to addAnnouncement, forwarding the server level', async () => {
       const store = await connectWithStore()
       const spy = vi.spyOn(store, 'addAnnouncement')
-      MockWebSocket.last!._receive({ type: 'announcement', message: 'Roshan is up' })
-      expect(spy).toHaveBeenCalledWith('Roshan is up')
+      MockWebSocket.last!._receive({
+        type: 'announcement',
+        message: 'Roshan is up',
+        level: 'objective',
+      })
+      // The level must be forwarded so the toast can colour it (not assumed amber).
+      expect(spy).toHaveBeenCalledWith('Roshan is up', 'objective')
     })
 
-    it('routes error to an [ERROR] announcement', async () => {
+    it('routes error to an [ERROR] announcement at error level', async () => {
       const store = await connectWithStore()
       const spy = vi.spyOn(store, 'addAnnouncement')
       MockWebSocket.last!._receive({ type: 'error', code: 'BAD', message: 'boom' })
-      expect(spy).toHaveBeenCalledWith('[ERROR] boom')
+      expect(spy).toHaveBeenCalledWith('[ERROR] boom', 'error')
     })
 
     it('routes game_over to setGameOver', async () => {
