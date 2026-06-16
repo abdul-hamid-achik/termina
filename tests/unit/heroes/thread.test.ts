@@ -490,6 +490,49 @@ describe('Thread Hero', () => {
     })
   })
 
+  describe('R: Thread Pool (overclock cleave — formerly a dead buff)', () => {
+    const tpBuff = [{ id: 'threadPool', stacks: 1, ticksRemaining: 4, source: 'p1' }]
+
+    it('makes basic attacks cleave EVERY enemy in the zone (not just 1-2)', () => {
+      const player = makePlayer({ level: 5, buffs: tpBuff }) // base passive would hit only 1
+      const enemy1 = makeEnemy()
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
+      const enemy3 = makeEnemy({ id: 'e3', name: 'Enemy3' })
+      const state = makeState([player, enemy1, enemy2, enemy3])
+
+      const updated = resolvePassive(state, 'p1', {
+        tick: 10,
+        type: 'attack',
+        payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
+      })
+
+      expect(updated.players['e2']!.hp).toBeLessThan(enemy2.hp)
+      expect(updated.players['e3']!.hp).toBeLessThan(enemy3.hp)
+    })
+
+    it('cleaves for full attack damage, not the 40% Multithread splash', () => {
+      const cleave = (overclocked: boolean) =>
+        resolvePassive(
+          makeState([
+            makePlayer({ level: 5, buffs: overclocked ? tpBuff : [] }),
+            makeEnemy({ id: 'e1', name: 'Enemy1' }),
+            makeEnemy({ id: 'e2', name: 'Enemy2', hp: 1000, maxHp: 1000 }),
+          ]),
+          'p1',
+          {
+            tick: 10,
+            type: 'attack',
+            payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
+          },
+        )
+
+      const dmgOverclocked = 1000 - cleave(true).players['e2']!.hp
+      const dmgBase = 1000 - cleave(false).players['e2']!.hp
+      expect(dmgBase).toBeGreaterThan(0)
+      expect(dmgOverclocked).toBeGreaterThan(dmgBase) // full vs 40%
+    })
+  })
+
   describe('Stun/Silence blocking', () => {
     it('prevents casting when stunned', () => {
       const player = makePlayer({

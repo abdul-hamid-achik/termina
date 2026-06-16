@@ -16,6 +16,7 @@ import {
   deductMana,
   setCooldown,
   applyBuff,
+  hasBuff,
   updatePlayer,
   updatePlayers,
 } from './_base'
@@ -284,9 +285,13 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const enemies = getEnemiesInZone(state, player).filter((e) => e.id !== targetId && e.alive)
   if (enemies.length === 0) return state
 
-  const splashDamage = Math.round(damage * SPLASH_RATIO)
-  const maxTargets = player.level >= 10 ? 2 : 1
-  const splashTargets = enemies.slice(0, maxTargets)
+  // R: Thread Pool — while the threadPool buff is up, basic attacks hit EVERY
+  // enemy in the zone for full damage (the ultimate was previously a no-op: the
+  // buff was applied but nothing read it). Otherwise the base Multithread passive
+  // splashes 40% to 1 enemy (2 at level 10+).
+  const overclocked = hasBuff(player, 'threadPool')
+  const splashDamage = overclocked ? damage : Math.round(damage * SPLASH_RATIO)
+  const splashTargets = overclocked ? enemies : enemies.slice(0, player.level >= 10 ? 2 : 1)
 
   const updatedTargets = splashTargets.map((e) => dealDamage(e, splashDamage, 'physical'))
 
