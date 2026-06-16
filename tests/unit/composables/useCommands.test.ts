@@ -161,6 +161,35 @@ describe('useCommands', () => {
       })
     })
 
+    describe('deny command', () => {
+      it('parses deny creep target', () => {
+        const { parse } = useCommands()
+        const result = parse('deny creep:3')
+
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({
+          type: 'deny',
+          target: { kind: 'creep', index: 3 },
+        })
+      })
+
+      it('rejects denying a non-creep target (only creeps can be denied)', () => {
+        const { parse } = useCommands()
+        const result = parse('deny hero:daemon')
+
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('Can only deny allied creeps')
+      })
+
+      it('returns usage error without a target', () => {
+        const { parse } = useCommands()
+        const result = parse('deny')
+
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('Usage: deny')
+      })
+    })
+
     describe('cast command', () => {
       it('parses cast with ability slot', () => {
         const { parse } = useCommands()

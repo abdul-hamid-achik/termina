@@ -388,6 +388,23 @@ export function useCommands() {
         return { command: { type: 'attack', target }, error: null }
       }
 
+      case 'deny': {
+        const targetStr = tokens[1]
+        if (!targetStr)
+          return {
+            command: null,
+            error:
+              'Usage: deny <creep:index>  (deny an allied creep below 50% HP to starve the enemy of gold/XP)',
+          }
+        const target = parseTarget(targetStr)
+        if (!target || target.kind !== 'creep')
+          return {
+            command: null,
+            error: `Can only deny allied creeps. Use creep:<index> (e.g. deny creep:0)`,
+          }
+        return { command: { type: 'deny', target }, error: null }
+      }
+
       case 'cast': {
         const ability = tokens[1] as 'q' | 'w' | 'e' | 'r'
         if (!['q', 'w', 'e', 'r'].includes(ability))
@@ -497,7 +514,7 @@ export function useCommands() {
       default:
         return {
           command: null,
-          error: `Unknown command: ${cmd}. Try: move, attack, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph, talent, buyback, surrender`,
+          error: `Unknown command: ${cmd}. Try: move, attack, deny, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph, talent, buyback, surrender`,
         }
     }
   }
@@ -513,6 +530,7 @@ export function useCommands() {
       const cmds = [
         'move',
         'attack',
+        'deny',
         'cast',
         'use',
         'buy',
@@ -536,6 +554,7 @@ export function useCommands() {
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (levels 10/15/20/25)',
+        deny: 'Last-hit your own creep below 50% HP to deny the enemy',
       }
       return all
         .filter((c) => c.startsWith(parts[0]!))
@@ -557,6 +576,21 @@ export function useCommands() {
 
     if (baseCmd === 'attack') {
       return _suggestTargets(parts.slice(1).join(' '), context)
+    }
+
+    if (baseCmd === 'deny') {
+      // Deny only targets allied creeps in the current zone; the server enforces
+      // the <50% HP rule, so here we just surface the creep:index forms.
+      const partial = parts.slice(1).join(' ')
+      const zoneData = context.player ? context.visibleZones[context.player.zone] : undefined
+      const out: Suggestion[] = []
+      if (zoneData) {
+        for (let i = 0; i < zoneData.creeps.length; i++) {
+          const ref = `creep:${i}`
+          if (ref.includes(partial)) out.push({ text: ref, description: `Creep #${i}` })
+        }
+      }
+      return out.slice(0, 10)
     }
 
     if (baseCmd === 'cast') {
