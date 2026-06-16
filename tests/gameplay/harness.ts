@@ -96,6 +96,9 @@ export class Run {
   lastEvents: GameEngineEvent[] = []
   /** Every event emitted across the run, in order. */
   readonly allEvents: GameEngineEvent[] = []
+  /** Player-action rejections from the most recent `tick()` (the feedback the
+   *  real game pushes via onActionRejected). */
+  lastRejected: Array<{ playerId: string; reason: string }> = []
 
   constructor(
     private readonly sm: StateManagerApi,
@@ -134,6 +137,7 @@ export class Run {
       await Effect.runPromise(this.sm.updateState(this.gameId, () => result.state))
       this.lastEvents = result.events
       this.allEvents.push(...result.events)
+      this.lastRejected = result.rejectedActions
     }
     return this
   }
