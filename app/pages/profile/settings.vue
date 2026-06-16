@@ -181,6 +181,18 @@ async function disconnectProvider(provider: string) {
       </NuxtLink>
     </div>
 
+    <!-- ═══ HUD & DISPLAY ═══ -->
+    <TerminalPanel title="HUD & Display">
+      <div class="flex flex-col gap-2">
+        <p class="text-[0.75rem] text-text-dim">
+          Tune the in-game HUD for a text MOBA. Stored on this device; takes effect next match.
+        </p>
+        <ClientOnly>
+          <HudSettings />
+        </ClientOnly>
+      </div>
+    </TerminalPanel>
+
     <!-- ═══ AVATAR ═══ -->
     <TerminalPanel title="Avatar">
       <div class="flex flex-col gap-3">
