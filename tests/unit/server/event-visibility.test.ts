@@ -125,6 +125,24 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
       true,
     )
   })
+
+  it('hides enemy power spikes (decision A: team-private), shows your own and allies', () => {
+    const spike = (playerId: string): GameEngineEvent =>
+      ({
+        _tag: 'power_spike',
+        tick: 1,
+        playerId,
+        spikeType: 'level_6',
+        message: 'spike',
+      }) as GameEngineEvent
+    // Even with vision of the enemy's zone — a spike is build/level info, not a
+    // sighting; it leaks only through scouting, never a broadcast.
+    expect(
+      isEventVisibleToPlayer(spike('enemy'), 'me', 'radiant', new Set(['bot-river']), state),
+    ).toBe(false)
+    expect(isEventVisibleToPlayer(spike('me'), 'me', 'radiant', new Set(), state)).toBe(true)
+    expect(isEventVisibleToPlayer(spike('ally'), 'me', 'radiant', new Set(), state)).toBe(true)
+  })
 })
 
 // ── Lock the PRE-EXISTING gating too (was a private fn before — untested) ──
