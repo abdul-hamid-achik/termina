@@ -15,12 +15,12 @@ export default defineConfig({
   test: {
     globals: true,
     // Coverage (v8). `bun run test:coverage` runs all projects and ENFORCES the
-    // thresholds below — set just under the achieved actuals (lines 77.8 /
-    // branches 69.0 / functions 75.9 / statements 76.4 after the buyback +
-    // surrender + WS-routing + map-model coverage passes) so a real regression
-    // trips the gate but normal churn doesn't. lines/branches/functions sit just
-    // under their next integer (78/69/76) and v8 has minor run-to-run variance,
-    // so they hold. Raise as coverage climbs; never above earned.
+    // thresholds below — set just under the achieved actuals (lines 78.2 /
+    // branches 69.2 / functions 76.6 / statements 76.7 after the Roshan + echo +
+    // lobby coverage passes and the dead-code removals) so a real regression trips
+    // the gate but normal churn doesn't. lines (78.2), branches (69.2), and
+    // statements (76.7) sit only ~0.2 above their next integer — too thin for
+    // churn tolerance — so they hold. Raise as coverage climbs; never above earned.
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html', 'json-summary'],
@@ -38,7 +38,7 @@ export default defineConfig({
       thresholds: {
         lines: 77,
         branches: 68,
-        functions: 75,
+        functions: 76,
         statements: 76,
       },
     },
