@@ -17,6 +17,8 @@ import {
   SIEGE_CREEP_HP,
   ROSHAN_RESPAWN_TICKS,
   ROSHAN_BASE_HP,
+  RUNE_INTERVAL_TICKS,
+  RUNE_DURATION_TICKS,
 } from '../../../shared/constants/balance'
 
 describe('Spawner', () => {
@@ -141,6 +143,16 @@ describe('Spawner', () => {
       for (const r of runes) {
         expect(validTypes).toContain(r.type)
       }
+    })
+
+    it('a rune always expires before the next spawn (no stacking at a zone)', () => {
+      // spawnRunes is purely tick-based and never checks whether a zone is
+      // already occupied, so the no-stacking guarantee rests entirely on this
+      // relationship: an unclaimed rune (lifetime RUNE_DURATION_TICKS) must be
+      // gone before the next spawn (RUNE_INTERVAL_TICKS). If a future balance
+      // change lifts the duration past the interval, runes would pile up at a
+      // zone — this test trips first.
+      expect(RUNE_DURATION_TICKS).toBeLessThan(RUNE_INTERVAL_TICKS)
     })
 
     it('runes record the spawn tick', () => {
