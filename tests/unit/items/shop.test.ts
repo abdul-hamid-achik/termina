@@ -703,5 +703,92 @@ describe('Shop', () => {
         expect(hasBuff(exit.value, 'enemy_1', 'silence')).toBe(true)
       }
     })
+
+    it('Blade Mail puts the damage-return buff on the caster', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        items: ['blade_mail', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'blade_mail'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'blade_mail')).toBe(true)
+    })
+
+    it('Silver Edge grants invisibility to the caster', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        items: ['silver_edge', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'silver_edge'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit))
+        expect(hasBuff(exit.value, 'player_1', 'silver_edge_invis')).toBe(true)
+    })
+
+    it('Power Treads (first toggle) sets attack mode on the caster', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        items: ['power_treads', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'power_treads'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit))
+        expect(hasBuff(exit.value, 'player_1', 'power_treads_attack')).toBe(true)
+    })
+
+    it('Dust of Appearance applies the reveal buff to the caster', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        items: ['dust_of_appearance', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'dust_of_appearance'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'dust_reveal')).toBe(true)
+    })
+
+    it('Smoke of Deceit smokes the caster and in-zone allies', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['smoke_of_deceit', null, null, null, null, null],
+      })
+      const ally = makePlayer({ id: 'ally_1', team: 'radiant', zone: 'mid-river' })
+      const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'smoke_of_deceit'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        expect(hasBuff(exit.value, 'player_1', 'smoke')).toBe(true)
+        expect(hasBuff(exit.value, 'ally_1', 'smoke')).toBe(true)
+      }
+    })
+
+    it('Force Staff pushes the caster to an adjacent zone (fountain → base)', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        zone: 'radiant-fountain', // only adjacent is radiant-base → deterministic push
+        items: ['force_staff', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'force_staff'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('radiant-base')
+    })
   })
 })
