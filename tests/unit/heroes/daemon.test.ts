@@ -282,6 +282,22 @@ describe('Daemon Hero', () => {
       expect(updated.mp).toBe(300 - 100)
       expect(updated.cooldowns.w).toBe(18)
     })
+
+    it('places a scouting observer ward in the target zone (the real vision effect)', () => {
+      // The "decoy" has no entity, but Fork Bomb DOES give scouting vision — a
+      // temporary observer ward in the target zone for the caster's team.
+      const player = makePlayer()
+      const state = makeState([player])
+
+      const result = Effect.runSync(
+        resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'top-river' }),
+      )
+
+      const wards = result.state.zones['top-river']!.wards
+      expect(wards).toHaveLength(1)
+      expect(wards[0]!.type).toBe('observer')
+      expect(wards[0]!.team).toBe(player.team)
+    })
   })
 
   describe('R: Root Access (Teleport)', () => {
