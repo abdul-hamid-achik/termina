@@ -34,10 +34,14 @@ describe('abilities', () => {
       },
     }))
 
-    // While stunned, the queued Q is rejected — it stays off cooldown.
+    // While stunned, the queued Q is rejected — it stays off cooldown AND the
+    // player is told why (not a silent drop).
     game.cast('q', { kind: 'hero', name: ENEMY })
     await game.tick()
     expect((await game.me()).cooldowns.q).toBe(0)
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('stunned')),
+    ).toBe(true)
 
     // The stun has now ticked away; the same cast resolves and sets the cooldown.
     game.cast('q', { kind: 'hero', name: ENEMY })
@@ -60,10 +64,14 @@ describe('abilities', () => {
       },
     }))
 
-    // Rooted: a move to an adjacent zone is dropped — the hero stays put.
+    // Rooted: a move to an adjacent zone is dropped — the hero stays put, and
+    // the rejection reason reaches the player.
     game.submit({ type: 'move', zone: 'mid-t1-rad' })
     await game.tick()
     expect((await game.me()).zone).toBe('mid-river')
+    expect(game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('rooted'))).toBe(
+      true,
+    )
 
     // But casting is unaffected by root — the self-buff W resolves and goes on cooldown.
     game.cast('w')
