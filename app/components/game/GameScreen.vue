@@ -256,6 +256,10 @@ const kdaPopKey = ref(0) // I got a kill → KDA pop
 const tickPulseKey = ref(0) // each tick → reveal flash in the Tick Theater
 const deathVignetteKey = ref(0) // I died → instant red vignette pulse (on the event)
 
+// The most recent server announcement (rejected-action feedback), shown by the
+// transient AnnouncementToast and retriggered via gameStore.announcementSeq.
+const latestAnnouncement = computed(() => gameStore.announcements.at(-1) ?? '')
+
 // Floating combat numbers for damage involving the local player. Each entry
 // rises + fades once (DamageFloat.vue) and is pruned after the animation.
 const damageFloats = ref<DamageFloatEntry[]>([])
@@ -988,6 +992,11 @@ function handleReturnToMenu() {
   >
     <!-- Floating combat numbers (rise + fade on damage involving you) -->
     <DamageFloat :floats="damageFloats" />
+
+    <!-- Transient action-feedback toast: surfaces server rejections (out of
+         range, juked target, firewalled Ancient, not enough mana, …) that would
+         otherwise die silently in the store -->
+    <AnnouncementToast :text="latestAnnouncement" :seq="gameStore.announcementSeq" />
 
     <!-- Instant death vignette pulse, fired on the death EVENT (the overlay below
          waits for authoritative isAlive state, which can lag under latency) -->
