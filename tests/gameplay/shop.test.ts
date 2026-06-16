@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seedGame, HUMAN } from './harness'
+import { seedGame, HUMAN, ENEMY } from './harness'
 
 /**
  * Replaces tests/e2e/flows/game_buy_resolves.yml — a buy action lands the item
@@ -92,5 +92,44 @@ describe('shop', () => {
 
     // BKB applies a multi-tick magic_immune buff (still present after this tick).
     expect((await game.me()).buffs.some((b) => b.id === 'magic_immune')).toBe(true)
+  })
+
+  it('an attack-stat item raises basic-attack damage (item stats apply in combat)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+
+    const lastHitDamage = () =>
+      game.lastEvents.find(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )?.amount ?? 0
+
+    // Baseline basic-attack damage with an empty inventory.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
+      },
+    }))
+    game.attackHero(ENEMY)
+    await game.tick()
+    const before = lastHitDamage()
+    expect(before).toBeGreaterThan(0)
+
+    // Give Blades of Attack (+12 attack), then swing again — getEffectiveAttack
+    // folds in the item's stat bonus, so the same hit lands for more.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: ['blades_of_attack', null, null, null, null, null],
+        },
+      },
+    }))
+    game.attackHero(ENEMY)
+    await game.tick()
+
+    expect(lastHitDamage()).toBeGreaterThan(before)
   })
 })
