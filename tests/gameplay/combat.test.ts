@@ -449,18 +449,31 @@ describe('combat', () => {
   // BEFORE validateAction (which only gates stun/fear) — so it deals no damage
   // AND surfaces no rejection reason. If a future change adds whiffed-attack
   // feedback, this test should be updated to assert the new reason.
-  it('an attack on a target outside your zone is silently dropped (known no-feedback gap)', async () => {
+  it('an attack whiffs WITH feedback when the target jukes out of the zone mid-tick', async () => {
+    // The legitimate "silent drop" case: the target is co-located at tick start
+    // (so anti-cheat's VISION_BYPASS lets the swing through) but steps away during
+    // the movement phase, which resolves before attacks. Previously the swing
+    // vanished with no explanation; now the player is told it hit empty air.
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-rad' } },
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river' }, // co-located at tick start
+      },
     }))
 
+    // Both act at once: the enemy juke-steps to an adjacent zone while the human
+    // swings. By the attack phase the target has left.
+    game.submit({ type: 'move', zone: 'mid-t1-rad' }, ENEMY)
     game.attackHero(ENEMY)
     await game.tick()
 
-    expect((await game.me()).damageDealt).toBe(0) // whiffed — no damage
-    expect(game.lastRejected).toEqual([]) // and no feedback (the gap)
+    expect((await game.me()).damageDealt).toBe(0) // juked — no damage
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('not in your zone')),
+    ).toBe(true)
   })
 
   it('armor from an item reduces incoming basic-attack damage (defense applies)', async () => {
