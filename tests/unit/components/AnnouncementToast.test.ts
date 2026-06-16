@@ -47,20 +47,36 @@ describe('AnnouncementToast', () => {
     expect(wrapper.find('.announcement-toast').exists()).toBe(true)
   })
 
-  it('styles a warning amber and an [ERROR] dire, stripping the prefix', async () => {
+  it('colours each severity from the level prop (info is NOT an amber warning)', async () => {
     const wrapper = mount(AnnouncementToast, {
-      props: { text: 'Roshan can only be attacked from the pit', seq: 1 },
+      props: { text: 'Roshan can only be attacked from the pit', seq: 1, level: 'warning' },
     })
-    // (seq started at 1, so bump to trigger)
     await wrapper.setProps({ seq: 2 })
     let box = wrapper.find('.announcement-toast > div')
     expect(box.classes()).toContain('text-warn')
-    expect(box.classes()).not.toContain('text-dire')
 
-    await wrapper.setProps({ text: '[ERROR] Connection lost', seq: 3 })
+    // An info message ("Reconnected", "Joined game") must read neutral, not amber.
+    await wrapper.setProps({ text: 'Reconnected to game', level: 'info', seq: 3 })
+    box = wrapper.find('.announcement-toast > div')
+    expect(box.classes()).toContain('text-self')
+    expect(box.classes()).not.toContain('text-warn')
+
+    // Errors read dire, with the synthetic [ERROR] prefix stripped from display.
+    await wrapper.setProps({ text: '[ERROR] Connection lost', level: 'error', seq: 4 })
     box = wrapper.find('.announcement-toast > div')
     expect(box.classes()).toContain('text-dire')
     expect(wrapper.text()).toContain('Connection lost')
-    expect(wrapper.text()).not.toContain('[ERROR]') // prefix stripped from display
+    expect(wrapper.text()).not.toContain('[ERROR]')
+  })
+
+  it('keeps the on-screen toast colour even if the level prop changes before the next seq', async () => {
+    const wrapper = mount(AnnouncementToast, {
+      props: { text: 'Not enough mana', seq: 1, level: 'warning' },
+    })
+    await wrapper.setProps({ seq: 2 }) // shows the warning
+    // The parent updates level for the NEXT (not-yet-fired) announcement.
+    await wrapper.setProps({ level: 'info' })
+    // The visible toast is still the amber warning — its level was snapshotted.
+    expect(wrapper.find('.announcement-toast > div').classes()).toContain('text-warn')
   })
 })

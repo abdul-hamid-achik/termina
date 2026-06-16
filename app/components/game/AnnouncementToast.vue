@@ -12,20 +12,27 @@ import { computed, ref, watch, onUnmounted } from 'vue'
  * identical message still re-shows the toast. Kept pure/props-only so it is
  * trivially storyable and testable with fake timers.
  */
+type ToastLevel = 'info' | 'warning' | 'kill' | 'objective' | 'error'
+
 const props = withDefaults(
   defineProps<{
     /** The message to show (the most recent announcement). */
     text: string
     /** Monotonic announcement counter — bumps each time a new one arrives. */
     seq: number
+    /** Severity, drives the colour. Defaults to a warning. */
+    level?: ToastLevel
     /** How long the toast stays up, in ms. */
     durationMs?: number
   }>(),
-  { durationMs: 3200 },
+  { level: 'warning', durationMs: 3200 },
 )
 
 const visible = ref(false)
 const shown = ref('')
+// Snapshot the level alongside the text when the toast fires, so a later prop
+// change for the NEXT announcement can't recolour the one on screen.
+const shownLevel = ref<ToastLevel>('warning')
 let timer: ReturnType<typeof setTimeout> | null = null
 
 watch(
@@ -33,6 +40,7 @@ watch(
   (seq) => {
     if (seq <= 0 || !props.text) return
     shown.value = props.text
+    shownLevel.value = props.level
     visible.value = true
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => {
@@ -45,9 +53,35 @@ onUnmounted(() => {
   if (timer) clearTimeout(timer)
 })
 
-// Errors ([ERROR] …, e.g. a dropped connection) read as dire; ordinary action
-// rejections are amber warnings.
-const isError = computed(() => shown.value.startsWith('[ERROR]'))
+// error/kill read as dire, objective as gold, info as a neutral blue, and
+// ordinary rejections as amber warnings.
+const toneClass = computed(() => {
+  switch (shownLevel.value) {
+    case 'error':
+    case 'kill':
+      return 'border-dire text-dire'
+    case 'objective':
+      return 'border-gold text-gold'
+    case 'info':
+      return 'border-self text-self'
+    default:
+      return 'border-warn text-warn'
+  }
+})
+const icon = computed(() => {
+  switch (shownLevel.value) {
+    case 'error':
+    case 'kill':
+      return '✕'
+    case 'info':
+      return 'i'
+    case 'objective':
+      return '★'
+    default:
+      return '!'
+  }
+})
+// Strip the synthetic [ERROR] prefix — the colour already conveys severity.
 const display = computed(() => shown.value.replace(/^\[ERROR\]\s*/, ''))
 </script>
 
@@ -61,9 +95,9 @@ const display = computed(() => shown.value.replace(/^\[ERROR\]\s*/, ''))
     >
       <div
         class="t-mono flex items-center gap-2 rounded border bg-bg-panel/95 px-3 py-1.5 text-sm shadow-lg backdrop-blur-sm"
-        :class="isError ? 'border-dire text-dire' : 'border-warn text-warn'"
+        :class="toneClass"
       >
-        <span aria-hidden="true" class="font-bold">{{ isError ? '✕' : '!' }}</span>
+        <span aria-hidden="true" class="font-bold">{{ icon }}</span>
         <span>{{ display }}</span>
       </div>
     </div>

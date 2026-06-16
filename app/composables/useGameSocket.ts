@@ -133,11 +133,11 @@ export function useGameSocket() {
           gameStore.addEvents(msg.events)
           break
         case 'announcement':
-          gameStore.addAnnouncement(msg.message)
+          gameStore.addAnnouncement(msg.message, msg.level)
           break
         case 'error':
           socketLog.warn('Server error', { code: msg.code, message: msg.message })
-          gameStore.addAnnouncement(`[ERROR] ${msg.message}`)
+          gameStore.addAnnouncement(`[ERROR] ${msg.message}`, 'error')
           break
         case 'game_over':
           gameStore.setGameOver(msg.winner, msg.stats)
@@ -153,7 +153,7 @@ export function useGameSocket() {
           break
         case 'game_not_found':
           socketLog.warn('Game not found', { gameId: msg.gameId })
-          gameStore.addAnnouncement('[ERROR] Game not found. Redirecting to lobby...')
+          gameStore.addAnnouncement('[ERROR] Game not found. Redirecting to lobby...', 'error')
           disconnect()
           setTimeout(() => {
             window.location.href = '/lobby'
