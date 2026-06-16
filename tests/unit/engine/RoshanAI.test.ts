@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import { resolveActions, type PlayerAction } from '../../../server/game/engine/ActionResolver'
-import { processRoshanDamage, runRoshanAI } from '../../../server/game/engine/RoshanAI'
+import {
+  processRoshanDamage,
+  runRoshanAI,
+  applyRoshanActions,
+} from '../../../server/game/engine/RoshanAI'
 import type { GameState, PlayerState, RoshanState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeRoshan } from '../../../server/game/map/spawner'
@@ -228,6 +232,43 @@ describe('RoshanAI', () => {
       if (damageEvents.length > 0 && 'amount' in damageEvents[0]!) {
         expect((damageEvents[0] as { amount: number }).amount).toBeGreaterThan(0)
       }
+    })
+  })
+
+  describe('applyRoshanActions', () => {
+    it('applies Roshan attack damage to a targeted hero', () => {
+      const target = makePlayer({ id: 'p1', hp: 500, alive: true })
+      const state = makeGameState({ players: { p1: target } })
+
+      const result = applyRoshanActions(state, [{ targetId: 'p1', damage: 120 }])
+
+      expect(result.state.players['p1']!.hp).toBe(380)
+      expect(result.state.players['p1']!.alive).toBe(true)
+      expect(result.roshanKilled).toBe(false)
+      expect(result.aegisDropped).toBe(false)
+    })
+
+    it('kills a low-HP target (hp floored at 0, marked dead)', () => {
+      const target = makePlayer({ id: 'p1', hp: 50, alive: true })
+      const state = makeGameState({ players: { p1: target } })
+
+      const result = applyRoshanActions(state, [{ targetId: 'p1', damage: 200 }])
+
+      expect(result.state.players['p1']!.hp).toBe(0)
+      expect(result.state.players['p1']!.alive).toBe(false)
+    })
+
+    it('skips already-dead and unknown targets', () => {
+      const dead = makePlayer({ id: 'p1', hp: 0, alive: false })
+      const state = makeGameState({ players: { p1: dead } })
+
+      const result = applyRoshanActions(state, [
+        { targetId: 'p1', damage: 100 }, // dead → skipped
+        { targetId: 'ghost', damage: 100 }, // unknown → skipped
+      ])
+
+      expect(result.state.players['p1']!.hp).toBe(0)
+      expect(result.state.players['p1']!.alive).toBe(false)
     })
   })
 })
