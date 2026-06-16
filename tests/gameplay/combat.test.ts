@@ -96,4 +96,32 @@ describe('combat', () => {
     await game.tick()
     expect(dotTicked()).toBe(false) // expired — no more DoT damage
   })
+
+  it('a dead hero respawns at full HP in the fountain once the respawn tick passes', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const startTick = (await game.state()).tick
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          alive: false,
+          hp: 0,
+          mp: 0,
+          respawnTick: startTick + 5,
+        },
+      },
+    }))
+
+    await game.tick()
+    expect((await game.me()).alive).toBe(false) // well before the respawn tick
+
+    await game.tick(6) // now past the respawn tick
+    const me = await game.me()
+    expect(me.alive).toBe(true)
+    expect(me.hp).toBe(me.maxHp)
+    expect(me.respawnTick).toBeNull()
+    expect(me.zone).toBe(me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain')
+  })
 })
