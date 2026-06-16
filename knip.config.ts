@@ -41,9 +41,10 @@ const config: KnipConfig = {
     'app/**/*.story.vue',
   ],
   project: ['app/**/*.{ts,vue}', 'server/**/*.ts', 'shared/**/*.ts', 'tests/**/*.ts'],
-  // hitspec is a global dev CLI invoked by test:api (not a dep). (cairn is now
-  // spawned from scripts/e2e.mjs, so knip no longer sees it as a script binary.)
-  ignoreBinaries: ['hitspec'],
+  // hitspec and cairn are global dev CLIs invoked by the test:api / test:e2e
+  // scripts (not npm deps). cairn is now called directly in package.json (it
+  // used to be spawned from scripts/e2e.mjs), so it must be ignored explicitly.
+  ignoreBinaries: ['hitspec', 'cairn'],
   ignoreDependencies: [
     // Provided by Nuxt, not directly imported
     'vue-router',

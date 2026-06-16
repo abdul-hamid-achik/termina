@@ -2,10 +2,10 @@ version: 1
 name: auth_login
 intent: >
   The /login Login tab renders the credentials form (a username input, a password input, and a LOGIN
-  button). With both fields empty the LOGIN button is disabled. Submitting bogus credentials is
-  rejected by /api/auth/login (401) and surfaces an [ERR] error message instead of logging in. A
-  real successful credential login is covered by the login-as dev hook elsewhere and is
-  intentionally not exercised here.
+  button). With both fields empty the LOGIN button is disabled. Submitting bogus credentials
+  surfaces an [ERR] error message instead of logging in. (The /api/auth/login 401 status contract is
+  covered by the hitspec API suite; a real successful credential login is covered by the login-as
+  dev hook elsewhere and is intentionally not exercised here.)
 mode: normal
 metadata:
   feature: auth
@@ -27,14 +27,6 @@ outcomes:
       text:
         contains: LOGIN
         region: form
-  - id: invalid_credentials_rejected
-    description: the bogus credential POST to /api/auth/login is rejected with a 401
-    verify:
-      network:
-        method: POST
-        urlContains: /api/auth/login
-        status:
-          equals: 401
   - id: invalid_credentials_show_error
     description: the rejected login renders an [ERR] error message
     verify:
@@ -83,4 +75,4 @@ steps:
       by: selector
       selector: form input[type="password"]
       value: ""
-contractHash: sha256:88ae2255fd39a45da6f9778444d93e2137f919f151b67ba2c293ea4a53bfdfc7
+contractHash: sha256:c1aa1f63b157641f08c3c53a45e78955e4011943475b228d6266d0276c5e1e25

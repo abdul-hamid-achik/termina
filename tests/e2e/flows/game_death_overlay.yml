@@ -8,15 +8,14 @@
 # appears — we do NOT use the new_game action; we inline the seed + open + a
 # wait gate on the overlay copy instead.
 #
-# Outcomes capture the spec's MEANING: the death overlay is present, it shows
-# "PROCESS TERMINATED", it shows the "Respawning in ... ticks" countdown, and
-# engine truth agrees the human player is dead (alive === false). The dynamic
-# bracket key players[humanId] is awkward for jsonPath, so the engine check is a
-# script verifier that fetches /api/test/state and reads the seed's playerId.
+# Outcomes capture the spec's MEANING in the browser: the death overlay is
+# present, it shows "PROCESS TERMINATED", and it shows the "Respawning in ...
+# ticks" countdown. (Engine truth that the player is dead — alive === false for
+# the self_dead scenario — is covered by the unit scenarios test + the gameplay
+# harness, so this flow stays purely about the rendered overlay.)
 version: 1
 name: game_death_overlay
-intent: A dead human player sees the death overlay with PROCESS TERMINATED and a respawn countdown,
-  and engine state confirms the player is dead.
+intent: A dead human player sees the death overlay with PROCESS TERMINATED and a respawn countdown.
 mode: normal
 vars:
   scenario: self_dead
@@ -49,17 +48,6 @@ outcomes:
       text:
         matches: Respawning in
       region: '[data-testid="death-overlay"]'
-  - id: engine_confirms_dead
-    description: engine state confirms the human player is dead (players[humanId].alive === false)
-    verify:
-      script:
-        run: >
-          const params = new URLSearchParams(window.location.search); const gameId =
-          params.get('gameId'); const playerId = params.get('playerId'); return
-          fetch('/api/test/state?gameId=' + encodeURIComponent(gameId), { credentials: 'include'
-          }).then((r) => r.json()).then((s) => { const p = s.players && s.players[playerId]; const
-          alive = p ? p.alive : null; return { ok: alive === false, evidence: 'gameId=' + gameId + '
-          playerId=' + playerId + ' players[human].alive=' + JSON.stringify(alive) }; });
 steps:
   - use: login
   - id: seed_self_dead
@@ -71,8 +59,8 @@ steps:
         heroSelf: ${vars.heroSelf}
         seed: 1337
         manualTick: true
-      expectStatus: 200
       timeoutMs: 15000
+      expectStatus: 200
       assign: game
   - id: enter_game
     open:
@@ -86,4 +74,4 @@ steps:
     snapshot:
       interactive: true
       label: death overlay with PROCESS TERMINATED and respawn countdown
-contractHash: sha256:cdadb22719f87902972a106dbd65916690f9663058db02fb34ef5247654f10ab
+contractHash: sha256:649e11942d2cdb87a94106538bb505b41b9f23629559338f8cf9a45b4da2af39

@@ -3,9 +3,8 @@ name: auth_register
 intent: >
   The /login Register tab reveals a confirm-password field and drives inline validation: a too-short
   username warns "must be 3-20 characters", a too-short password shows the "/8 chars required" hint,
-  and a mismatched confirmation shows "passwords do not match". A valid unique POST
-  /api/auth/register succeeds (200) and returns the new local player, proving registration works end
-  to end.
+  and a mismatched confirmation shows "passwords do not match". (The /api/auth/register success +
+  validation status contracts are covered by the hitspec API suite.)
 mode: normal
 metadata:
   feature: auth
@@ -36,32 +35,8 @@ outcomes:
     verify:
       text:
         contains: passwords do not match
-  - id: registration_succeeds
-    description: a valid unique POST /api/auth/register returns 200
-    verify:
-      network:
-        method: POST
-        urlContains: /api/auth/register
-        status:
-          in:
-            - 200
-            - 201
 steps:
   - id: open_login
-    open:
-      path: /login
-      waitUntil: domcontentloaded
-  - id: register_api
-    request:
-      method: POST
-      url: /api/auth/register
-      body:
-        username: r_${run.token}
-        password: password123
-      expectStatus: 200
-      timeoutMs: 15000
-      assign: register
-  - id: reopen_login
     open:
       path: /login
       waitUntil: domcontentloaded
@@ -97,4 +72,4 @@ steps:
     wait:
       text: passwords do not match
       timeoutMs: 5000
-contractHash: sha256:458b298eb4b3e123d5f8e6811b379685bbb640607d4c34217135ff56008ebd49
+contractHash: sha256:b3d27e59c09df4de19d25edea73434d08b96af28f0c927495b6a06b013379928

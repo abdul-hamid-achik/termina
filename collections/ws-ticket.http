@@ -16,12 +16,14 @@ expect status 200
 
 >>>capture
 wsTicketUsername from body.user.username
+wsTicketCookie from header Set-Cookie
 <<<
 
 ### Get ws-ticket: authenticated session returns a signed ticket
 # @name getWsTicketAuthed
 # @depends setupWsTicketUser
 GET {{baseUrl}}/api/auth/ws-ticket
+Cookie: {{wsTicketCookie}}
 
 >>>
 expect status 200
@@ -34,6 +36,7 @@ expect body.ticket contains "."
 # @depends getWsTicketAuthed
 POST {{baseUrl}}/api/auth/logout
 Content-Type: application/json
+Cookie: {{wsTicketCookie}}
 
 >>>
 expect status 200

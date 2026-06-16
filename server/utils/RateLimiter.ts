@@ -22,13 +22,17 @@ interface PlayerRateLimitState {
 
 const playerStates = new Map<string, PlayerRateLimitState>()
 
-// Test escape hatch: an e2e run can mint many dev users from one IP in quick
+// Test escape hatch: an e2e/hitspec run can mint many users from one IP in quick
 // succession, which the per-IP auth limit (5 burst, 0.5/s) would 429. When
-// TERMINA_DISABLE_RATE_LIMIT is set (test server env only — never production),
-// rate checks always pass. Unit tests don't set it, so they still exercise the
-// real token-bucket behaviour.
+// TERMINA_DISABLE_RATE_LIMIT=1 is set, rate checks always pass — but ONLY on a
+// non-production server OR a test-hooks server. The prod PREVIEW used for e2e
+// runs with NODE_ENV=production, so it qualifies via TERMINA_TEST_HOOKS=1; REAL
+// production never sets TERMINA_TEST_HOOKS (it gates the dev /api/test/* hooks),
+// so this can never weaken brute-force protection in production. Unit tests set
+// neither flag, so they still exercise the real token-bucket behaviour.
 function rateLimitDisabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.TERMINA_DISABLE_RATE_LIMIT === '1'
+  if (process.env.TERMINA_DISABLE_RATE_LIMIT !== '1') return false
+  return process.env.NODE_ENV !== 'production' || process.env.TERMINA_TEST_HOOKS === '1'
 }
 
 // Bound the tracked-key map: when it grows past the cap, evict entries that

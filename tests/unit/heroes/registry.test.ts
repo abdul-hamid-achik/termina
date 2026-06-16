@@ -15,8 +15,11 @@ import { HEROES } from '../../../shared/constants/heroes'
  * not tree-shake, so it cannot reproduce the original production bug. The real
  * build-path guard is the explicit named imports in heroes/index.ts +
  * registerAllHeroes() being called from the game-server plugin, exercised
- * end-to-end by the game_cast_self_buff / game_attack_lands e2e flows against a
- * production build.
+ * end-to-end by the seeded Cairntrace e2e flows (e.g. game_talent_select,
+ * smoke_full_session) against a production build. The in-process gameplay
+ * harness (tests/gameplay/) covers the same ability resolution far faster but
+ * does NOT reproduce the bundler/tree-shake path, so the prod-build e2e guard
+ * stays.
  */
 describe('hero ability registry', () => {
   it('registers an ability + passive resolver for every hero', () => {

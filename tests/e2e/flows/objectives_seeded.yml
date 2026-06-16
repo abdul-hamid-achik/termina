@@ -5,10 +5,9 @@
 # scenario hook (roshan_dead).
 version: 1
 name: objectives_seeded
-intent: With Roshan seeded dead, the War Room objective ticker shows the respawn countdown, and
-  engine state agrees.
+intent: With Roshan seeded dead, the War Room objective ticker renders the dead state with the
+  respawn countdown.
 mode: normal
-# testUser inherited as cairn_${run.token} (v1.9 per-run identity).
 vars:
   scenario: roshan_dead
   manualTick: "true"
@@ -34,13 +33,6 @@ outcomes:
       text:
         contains: dead
       region: '[data-testid="objective-ticker"]'
-  - id: engine_agrees
-    description: engine state confirms Roshan is dead (DOM ↔ truth, no script verifier)
-    verify:
-      httpJson:
-        url: /api/test/state?gameId=${requests.game.body.gameId}
-        jsonPath: $.roshan.alive
-        equals: false
 steps:
   - use: login
   - use: new_game
@@ -48,4 +40,4 @@ steps:
     snapshot:
       interactive: true
       label: War Room with Roshan dead
-contractHash: sha256:7983dfb9f113a280b0c92ea6035fa8a09eed91fee05ebebb0e84fed07e6e06ff
+contractHash: sha256:c7c746ba2c851bde7505bc636832f3e95090f5eac9e8746279b534ddcc661a23

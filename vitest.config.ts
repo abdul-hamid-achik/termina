@@ -66,6 +66,16 @@ export default defineConfig({
           environment: 'node',
         },
       },
+      {
+        // In-process gameplay harness — drives the real engine (no browser, no
+        // server, no DB). Owns "does this game situation resolve correctly".
+        extends: true,
+        test: {
+          name: 'gameplay',
+          include: ['tests/gameplay/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
     ],
   },
 })

@@ -234,13 +234,16 @@ The **integration** project includes real-Postgres `DatabaseService` tests
 
 Browser E2E uses [Cairntrace](https://github.com/abdul-hamid-achik/cairntrace)
 YAML flows paired with **dev-only seed hooks** so a spec lands in an exact game
-or draft state instead of playing a flaky bot match. **29 flows** cover every
-behaviour of the former Playwright suite (`cairn run tests/e2e/flows
---cold-start` → ~7m). The easy path is `bun run test:e2e` — `scripts/e2e.mjs`
-builds the app and runs a **production preview server** (`node .output/server`,
-IPv4, `TERMINA_TEST_HOOKS=1`), runs the suite, and tears it down. The prod preview
-avoids `nuxt dev`'s Vite-proxy / cold-compile / IPv6 flakiness. To drive `cairn`
-by hand instead, bring up any server on `:3000` with the hooks and point at it:
+or draft state instead of playing a flaky bot match. The flows cover the **UI**
+(auth, nav, lobby, in-game screens); gameplay/engine truth moved to the
+in-process `bun run test:gameplay` harness. The easy path is `bun run test:e2e`,
+which is just `cairn run tests/e2e/flows --config … --cold-start`: cairn's
+`webServer:` config block (cairntrace ≥1.11.0) builds the app and boots a
+**production preview server** (`node .output/server`, IPv4, `TERMINA_TEST_HOOKS=1`),
+runs the suite, and tears it down — replacing the old `scripts/e2e.mjs`. The prod
+preview avoids `nuxt dev`'s Vite-proxy / cold-compile / IPv6 flakiness. To drive
+`cairn` by hand against a server you already have on `:3000`, drop `--cold-start`
+(it reuses a running server) or point at it:
 
 ```bash
 # 1. a server with the test hooks (preview = robust; dev = faster to iterate)

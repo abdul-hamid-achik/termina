@@ -16,11 +16,15 @@ bun run dev
 bun run test              # EVERYTHING: all Vitest projects (run mode) + the e2e suite
 bun run test:watch        # Vitest watch mode (fast iteration)
 bun run test:unit         # Unit tests (node env)
+bun run test:gameplay     # In-process gameplay harness (node env) — seed scenario → act →
+                          #   advance ticks → assert engine truth. NO browser/server/DB. Owns
+                          #   "does this game situation resolve correctly" (tests/gameplay/).
 bun run test:integration  # Integration tests (node env) — needs Postgres (docker compose up -d)
-bun run test:e2e          # Cairntrace browser e2e — scripts/e2e.mjs builds + runs a
-                          #   PRODUCTION PREVIEW server (node .output/server, IPv4, native WS,
-                          #   TERMINA_TEST_HOOKS=1) if none is on :3000, else reuses it. The prod
-                          #   preview avoids nuxt dev's Vite-proxy/cold-compile/IPv6 flakiness.
+bun run test:e2e          # Cairntrace browser e2e (UI only). cairn's `webServer:`
+                          #   config block (cairntrace >=1.11.0) builds + boots a PRODUCTION
+                          #   PREVIEW server (node .output/server, IPv4, TERMINA_TEST_HOOKS=1)
+                          #   on --cold-start, else reuses one on :3000. Replaces the old
+                          #   scripts/e2e.mjs. Gameplay/engine truth now lives in test:gameplay.
 bun run test:api          # API tests (hitspec, requires running server)
 bun run test:coverage     # All vitest projects with v8 coverage; ENFORCES the thresholds
                           #   in vitest.config.ts (lines 70 / branches 60 / funcs 68 / stmts 70)

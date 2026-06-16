@@ -42,8 +42,7 @@ tests/e2e/runs/
 # Claude
 .claude/worktrees/
 
-# e2e dev-server capture (scripts/e2e.mjs)
-e2e-dev-server.log
+# Cairntrace JUnit report (written by test:e2e:ci)
 tests/e2e/junit.xml
 
 # vitest coverage reports

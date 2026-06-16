@@ -4,10 +4,8 @@
 # groups events under per-tick beat headers. No wall-clock waiting, no flake.
 version: 1
 name: combat_log_beats
-intent: Advancing a seeded game's ticks deterministically drives the engine and populates per-tick
-  combat-log beats.
+intent: Advancing a seeded game's ticks populates the combat log with per-tick beat headers in the browser.
 mode: normal
-# testUser inherited as cairn_${run.token} (v1.9 per-run identity).
 metadata:
   feature: combat-log
   tags:
@@ -23,13 +21,6 @@ outcomes:
       count:
         selector: '[data-testid="combat-log"]'
         equals: 1
-  - id: engine_advanced
-    description: the engine advanced ≥8 ticks deterministically (via the advance hook)
-    verify:
-      httpJson:
-        url: /api/test/state?gameId=${requests.game.body.gameId}
-        jsonPath: $.tick
-        atLeast: 8
   - id: beats_grouped
     description: events render under per-tick "TICK N" beat headers
     verify:
@@ -47,8 +38,8 @@ steps:
         heroSelf: ${vars.heroSelf}
         seed: 1337
         manualTick: true
-      expectStatus: 200
       timeoutMs: 15000
+      expectStatus: 200
       assign: game
   - id: enter_game
     open:
@@ -65,8 +56,8 @@ steps:
       body:
         gameId: ${requests.game.body.gameId}
         ticks: 10
-      expectStatus: 200
       timeoutMs: 15000
+      expectStatus: 200
   - id: let_client_render_beats
     wait:
       text: TICK
@@ -75,4 +66,4 @@ steps:
     snapshot:
       interactive: true
       label: combat log after 10 advanced ticks
-contractHash: sha256:e9af402cbcf2fceac13879dac0d4b957adc7f4e8ecc5cbf96bf133bc347cb897
+contractHash: sha256:7ebf7dca8b0fb6e338f037099a0d9e8386687db20f4e5d074ada659d226500c1
