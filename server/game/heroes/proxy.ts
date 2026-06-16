@@ -317,22 +317,47 @@ function resolveR(
 // Redirect 12% of damage dealt to nearest ally to Proxy instead.
 // Implemented as a buff on Proxy that DamageCalculator can check.
 
-function resolveHeroPassive(state: GameState, playerId: string, _event: GameEvent): GameState {
+function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   const player = state.players[playerId]
   if (!player) return state
 
-  // Ensure middleman buff is always present
+  // Ensure the middleman buff is always present (UI marker for the redirect %).
+  let working = state
   if (!player.buffs.some((b) => b.id === 'middleman')) {
-    const updated = applyBuff(player, {
-      id: 'middleman',
-      stacks: Math.round(MIDDLEMAN_REDIRECT * 100),
-      ticksRemaining: 9999,
-      source: playerId,
-    })
-    return updatePlayer(state, updated)
+    working = updatePlayer(
+      state,
+      applyBuff(player, {
+        id: 'middleman',
+        stacks: Math.round(MIDDLEMAN_REDIRECT * 100),
+        ticksRemaining: 9999,
+        source: playerId,
+      }),
+    )
   }
 
-  return state
+  // Middleman redirect: when an allied hero in Proxy's zone takes damage, Proxy
+  // soaks 12% of it — the ally is healed that much back and Proxy loses it.
+  // Mirrors Firewall's reflect by reacting to the synthesized damage_taken event.
+  // Previously only the marker buff existed and the redirect did nothing.
+  if (event.type === 'damage_taken') {
+    const proxy = working.players[playerId]
+    if (!proxy || !proxy.alive) return working
+    const victimId = event.payload['targetId'] as string
+    if (victimId === playerId) return working
+    const victim = working.players[victimId]
+    if (!victim || !victim.alive || victim.team !== proxy.team || victim.zone !== proxy.zone) {
+      return working
+    }
+    const damage = (event.payload['damage'] as number) ?? 0
+    const redirect = Math.round(damage * MIDDLEMAN_REDIRECT)
+    if (redirect <= 0) return working
+    // Proxy soaks but never self-kills from the passive (floored at 1 HP).
+    const soaked = { ...proxy, hp: Math.max(1, proxy.hp - redirect) }
+    const healed = { ...victim, hp: Math.min(victim.maxHp, victim.hp + redirect) }
+    return updatePlayers(working, [soaked, healed])
+  }
+
+  return working
 }
 
 registerHero('proxy', resolveHeroAbility, resolveHeroPassive)

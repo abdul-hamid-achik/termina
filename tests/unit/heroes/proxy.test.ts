@@ -479,4 +479,67 @@ describe('Proxy Hero', () => {
       }
     })
   })
+
+  describe('Passive: Middleman (damage redirect — formerly a dead marker)', () => {
+    it('soaks 12% of an in-zone ally’s damage: ally healed back, Proxy loses it', () => {
+      const proxy = makePlayer({
+        id: 'p1',
+        team: 'radiant',
+        zone: 'mid-river',
+        hp: 500,
+        maxHp: 580,
+      })
+      const ally = makeAlly({ id: 'a1', zone: 'mid-river', hp: 400, maxHp: 600 }) // just took a hit
+      const state = makeState([proxy, ally])
+
+      const updated = resolvePassive(state, 'p1', {
+        tick: 10,
+        type: 'damage_taken',
+        payload: { targetId: 'a1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
+      })
+
+      expect(updated.players['a1']!.hp).toBe(412) // 400 + round(100 * 0.12) = 12
+      expect(updated.players['p1']!.hp).toBe(488) // 500 − 12 soaked
+    })
+
+    it('does not redirect Proxy’s own damage', () => {
+      const proxy = makePlayer({
+        id: 'p1',
+        team: 'radiant',
+        zone: 'mid-river',
+        hp: 500,
+        maxHp: 580,
+      })
+      const state = makeState([proxy])
+
+      const updated = resolvePassive(state, 'p1', {
+        tick: 10,
+        type: 'damage_taken',
+        payload: { targetId: 'p1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
+      })
+
+      expect(updated.players['p1']!.hp).toBe(500) // unchanged
+    })
+
+    it('does not redirect an ally in a different zone', () => {
+      const proxy = makePlayer({
+        id: 'p1',
+        team: 'radiant',
+        zone: 'mid-river',
+        hp: 500,
+        maxHp: 580,
+      })
+      const ally = makeAlly({ id: 'a1', zone: 'top-river', hp: 400, maxHp: 600 })
+      const state = makeState([proxy, ally])
+
+      const updated = resolvePassive(state, 'p1', {
+        tick: 10,
+        type: 'damage_taken',
+        payload: { targetId: 'a1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
+      })
+
+      expect(updated.players['a1']!.hp).toBe(400) // unchanged
+      expect(updated.players['p1']!.hp).toBe(500) // Proxy didn't soak
+    })
+  })
 })
