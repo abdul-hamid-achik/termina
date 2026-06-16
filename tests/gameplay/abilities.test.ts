@@ -97,6 +97,30 @@ describe('abilities', () => {
     expect((await game.me()).zone).toBe('mid-t1-rad')
   })
 
+  it('a rejected action surfaces a reason to the player (not a silent drop)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+
+    // The cast is rejected with a player-readable reason via the same channel
+    // the live game forwards through onActionRejected — not silently swallowed.
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('silenced')),
+    ).toBe(true)
+  })
+
   it('casting a damage ability on a co-located enemy deals damage (echo Q — Resonance)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
