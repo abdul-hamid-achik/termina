@@ -169,6 +169,18 @@ describe('asciiMapModel', () => {
       const zone = makeZone({ playerHere: true, enemyCount: 2, creepCount: 3 })
       expect(cellText(zone)).toBe('▲ RAD T1 ►YOU !2E c3')
     })
+
+    it('shows the dead-tower glyph, ally count, and neutral-camp count', () => {
+      const zone = makeZone({
+        tower: { team: 'radiant', alive: false, tier: 1, hp: 0, maxHp: 600 },
+        allies: ['a1', 'a2'],
+        neutralCount: 3,
+      })
+      const text = cellText(zone)
+      expect(text).toContain('✗') // razed tower
+      expect(text).toContain('+2A') // two allies in zone
+      expect(text).toContain('☘ 3') // three neutral creeps
+    })
   })
 
   describe('zoneAriaLabel', () => {
@@ -184,6 +196,15 @@ describe('asciiMapModel', () => {
       expect(zoneAriaLabel(zone, makeAncient({ team: 'dire', alive: false }))).toContain(
         'ancient destroyed',
       )
+    })
+
+    it('describes presence, allies, enemies, and fog for a non-ancient zone', () => {
+      const zone = makeZone({ playerHere: true, allies: ['a1'], enemyCount: 2, fogged: true })
+      const label = zoneAriaLabel(zone)
+      expect(label).toContain('you are here')
+      expect(label).toContain('1 allies')
+      expect(label).toContain('2 enemies')
+      expect(label).toContain('fogged')
     })
   })
 
