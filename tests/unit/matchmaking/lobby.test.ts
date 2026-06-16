@@ -7,7 +7,9 @@ import {
   getPlayerLobby,
   cleanupLobby,
   cancelLobby,
+  currentPickTurn,
 } from '../../../server/game/matchmaking/lobby'
+import type { Lobby } from '../../../server/game/matchmaking/lobby'
 import type { QueueEntry } from '../../../server/game/matchmaking/queue'
 import { HERO_IDS } from '../../../shared/constants/heroes'
 import { sendToPeer } from '../../../server/services/PeerRegistry'
@@ -472,6 +474,39 @@ describe('Lobby', () => {
       expect(getLobby(lobbyId)).toBeUndefined()
       vi.useRealTimers()
       createdLobbyId = null
+    })
+  })
+
+  describe('currentPickTurn', () => {
+    const pickingLobby = (playerId: string, username: string): Lobby =>
+      ({
+        phase: 'picking',
+        pickOrder: [0],
+        currentPickIndex: 0,
+        players: [{ playerId, username }],
+      }) as unknown as Lobby
+
+    it('returns the current picker with the human pick timer', () => {
+      const turn = currentPickTurn(pickingLobby('human_1', 'Alice'))
+      expect(turn).not.toBeNull()
+      expect(turn!.playerId).toBe('human_1')
+      expect(turn!.username).toBe('Alice')
+      expect(turn!.timeRemainingMs).toBeGreaterThan(1500) // humans get more than the bot delay
+    })
+
+    it('uses the shorter bot delay when the picker is a bot', () => {
+      const turn = currentPickTurn(pickingLobby('bot_alpha', 'Bot Alpha'))
+      expect(turn!.timeRemainingMs).toBe(1500) // BOT_PICK_DELAY_MS
+    })
+
+    it('returns null when the lobby is not in the picking phase', () => {
+      const lobby = { ...pickingLobby('human_1', 'Alice'), phase: 'forming' } as unknown as Lobby
+      expect(currentPickTurn(lobby)).toBeNull()
+    })
+
+    it('returns null when the pick index points past the roster', () => {
+      const lobby = { ...pickingLobby('human_1', 'Alice'), currentPickIndex: 9 } as unknown as Lobby
+      expect(currentPickTurn(lobby)).toBeNull()
     })
   })
 })
