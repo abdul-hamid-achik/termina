@@ -126,6 +126,18 @@ describe('Traceroute Hero', () => {
       expect(event.payload['damage']).toBe(135) // 100 * 1.35 rounded
     })
 
+    it('Hop Count stacks amplify Probe damage (+20% per hop — formerly a dead multiplier)', () => {
+      let player = makePlayer({ level: 1 })
+      player = applyBuff(player, { id: 'hopCount', stacks: 3, ticksRemaining: 2, source: 'p1' })
+      const enemy = makeEnemy() // isolated → 1.35 bonus too
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+
+      // base 100 × 1.35 (isolated) = 135, × (1 + 3×0.2 = 1.6) = 216
+      expect(result.events[0]!.payload['damage']).toBe(216)
+    })
+
     it('does not apply isolation bonus when target has allies', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()

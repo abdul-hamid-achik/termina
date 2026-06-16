@@ -107,6 +107,10 @@ function resolveQ(
       damage = Math.round(damage * (1 + Q_ISOLATION_BONUS))
     }
 
+    // Hop Count passive: each accumulated hop (move) adds +20% Probe damage
+    // (max 3 stacks = +60%). Previously the stacks built up but nothing read them.
+    damage = Math.round(damage * getHopCountMultiplier(player))
+
     const updatedTarget = dealDamage(targetPlayer, damage, 'physical')
 
     return {
