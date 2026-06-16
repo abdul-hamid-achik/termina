@@ -1207,6 +1207,24 @@ function handleDeaths(
           }
         }
 
+        // Divine Rapier passive: "Drops on death." The victim's Rapier(s) are
+        // claimed by the killer (its defining high-risk drawback — feeding a hero
+        // hands them +100 attack). No ground-pickup system: if the killer has no
+        // free slot the Rapier is destroyed, but the victim loses it either way.
+        const rapierVictim = players[pid]!
+        if (rapierVictim.items.includes('divine_rapier')) {
+          const victimItems = [...rapierVictim.items]
+          const killerItems = [...players[killerId]!.items]
+          for (let i = 0; i < victimItems.length; i++) {
+            if (victimItems[i] !== 'divine_rapier') continue
+            victimItems[i] = null
+            const freeSlot = killerItems.indexOf(null)
+            if (freeSlot !== -1) killerItems[freeSlot] = 'divine_rapier'
+          }
+          players[pid] = { ...rapierVictim, items: victimItems }
+          players[killerId] = { ...players[killerId]!, items: killerItems }
+        }
+
         // Increment team kill counter
         const killerTeam = players[killerId]!.team
         const teamState = teams[killerTeam]

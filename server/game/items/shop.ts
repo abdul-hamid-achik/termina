@@ -57,6 +57,10 @@ export class MaxStacksError extends Data.TaggedError('MaxStacksError')<{
   readonly itemId: string
   readonly maxStacks: number
 }> {}
+
+export class ItemNotSellableError extends Data.TaggedError('ItemNotSellableError')<{
+  readonly itemId: string
+}> {}
 /* eslint-enable unicorn/throw-new-error */
 
 export type ShopError =
@@ -65,6 +69,7 @@ export type ShopError =
   | InventoryFullError
   | ItemNotFoundError
   | MaxStacksError
+  | ItemNotSellableError
 
 export type ItemError = ItemNotFoundError | ItemOnCooldownError | InvalidTargetError
 
@@ -157,6 +162,12 @@ export function sellItem(
     const item = getItem(itemId)
     if (!item) {
       return yield* Effect.fail(new ItemNotFoundError({ itemId }))
+    }
+
+    // Divine Rapier cannot be sold — its defining drawback (you can only get rid
+    // of it by dying, which hands it to your killer; see handleDeaths).
+    if (itemId === 'divine_rapier') {
+      return yield* Effect.fail(new ItemNotSellableError({ itemId }))
     }
 
     // 50% gold refund

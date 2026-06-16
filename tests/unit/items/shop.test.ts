@@ -262,6 +262,23 @@ describe('Shop', () => {
       }
     })
 
+    it('cannot sell Divine Rapier (its defining drawback)', async () => {
+      const player = makePlayer({
+        items: ['divine_rapier', null, null, null, null, null],
+        gold: 500,
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(sellItem(state, 'player_1', 0))
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isFailure(exit)) {
+        expect(exit.cause.toString()).toContain('ItemNotSellableError')
+      }
+      // unchanged: still holds the Rapier, no gold gained
+      expect(state.players['player_1']!.items[0]).toBe('divine_rapier')
+    })
+
     it('fails when not in shop zone', async () => {
       const player = makePlayer({
         zone: 'mid-river',
