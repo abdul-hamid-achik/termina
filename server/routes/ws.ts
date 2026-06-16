@@ -95,6 +95,9 @@ export default defineWebSocketHandler({
     wsLog.info('Peer connected', { playerId })
 
     const timer = disconnectTimers.get(playerId)
+    // A pending in-game disconnect timer means this open is a genuine reconnect
+    // (the player dropped and came back inside the window), not a first connect.
+    const wasReconnecting = !!timer
     if (timer) {
       clearTimeout(timer)
       disconnectTimers.delete(playerId)
@@ -125,6 +128,21 @@ export default defineWebSocketHandler({
         }),
       )
       wsLog.info('Re-sent game_starting on reconnect', { playerId, gameId: existingGameId })
+      // Tell the rest of the game the player is back (mirrors player_disconnect).
+      // Gated on wasReconnecting so a first connect doesn't falsely announce it.
+      if (wasReconnecting) {
+        const runtime = getGameRuntime()
+        if (runtime) {
+          Effect.runPromise(
+            runtime.wsService.broadcastToGame(existingGameId, {
+              type: 'player_reconnect',
+              playerId,
+            }),
+          ).catch((err) => {
+            wsLog.warn('Reconnect broadcast failed', { playerId, error: String(err) })
+          })
+        }
+      }
     } else {
       // Re-send lobby_state if this player is already in a lobby (reconnect recovery)
       const existingLobbyId = getPlayerLobby(playerId)

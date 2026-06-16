@@ -149,6 +149,14 @@ export function useGameSocket() {
           gameStore.addAnnouncement(`${who} disconnected`, 'warning')
           break
         }
+        case 'player_reconnect': {
+          // The flip side of player_disconnect — but never announce yourself.
+          if (msg.playerId !== gameStore.playerId) {
+            const who = gameStore.allPlayers[msg.playerId]?.name ?? 'A player'
+            gameStore.addAnnouncement(`${who} reconnected`, 'info')
+          }
+          break
+        }
         case 'game_starting':
           if (!gameStore.gameId) {
             socketLog.info('game_starting received — setting gameId', { gameId: msg.gameId })
