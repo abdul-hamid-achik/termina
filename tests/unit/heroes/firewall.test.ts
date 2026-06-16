@@ -7,6 +7,8 @@ import {
   applyBuff,
   hasBuff,
 } from '../../../server/game/heroes/_base'
+import { getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 // Register firewall hero
 import '../../../server/game/heroes/firewall'
 
@@ -426,6 +428,80 @@ describe('Firewall Hero', () => {
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
       expect(result._tag).toBe('Failure')
+    })
+  })
+
+  describe('Talents (engine-applied — formerly dead specialEffect no-ops)', () => {
+    it('firewall_25_left reduces Deep Packet Inspection cooldown by 12 (was the dead wall_width no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'firewall_25_left' },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+
+      // R_COOLDOWN (55) − 12
+      expect(result.state.players['p1']!.cooldowns.r).toBe(43)
+    })
+
+    it('firewall_20_left boosts Port Block damage by 35%', () => {
+      const enemyOpts = { hp: 1000, maxHp: 1000 }
+
+      const boosted = Effect.runSync(
+        resolveAbility(
+          makeState([
+            makePlayer({
+              talents: { tier10: null, tier15: null, tier20: 'firewall_20_left', tier25: null },
+            }),
+            makeEnemy(enemyOpts),
+          ]),
+          'p1',
+          'q',
+          { kind: 'hero', name: 'e1' },
+        ),
+      )
+      const plain = Effect.runSync(
+        resolveAbility(makeState([makePlayer(), makeEnemy(enemyOpts)]), 'p1', 'q', {
+          kind: 'hero',
+          name: 'e1',
+        }),
+      )
+
+      const dmgBoosted = 1000 - boosted.state.players['e1']!.hp
+      const dmgPlain = 1000 - plain.state.players['e1']!.hp
+      expect(dmgPlain).toBeGreaterThan(0)
+      expect(dmgBoosted).toBeGreaterThan(dmgPlain)
+    })
+
+    it('firewall_15_left refunds 30% of Port Block mana cost (was the dead burn_plus_1 no-op)', () => {
+      const player = makePlayer({
+        level: 1,
+        mp: 270,
+        talents: { tier10: null, tier15: 'firewall_15_left', tier20: null, tier25: null },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+
+      // Q_MANA[0] = 70 spent, then round(70 * 30%) = 21 refunded → 270 − 70 + 21
+      expect(result.state.players['p1']!.mp).toBe(221)
+    })
+
+    it('firewall_25_right grants +25 magic resistance via getTalentStatBonus (was the dead true_damage_burn no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'firewall_25_right' },
+      })
+      expect(getTalentStatBonus(player, 'magicResist')).toBe(25)
+    })
+
+    it('no firewall talent is a dead specialEffect no-op anymore', () => {
+      for (const t of Object.values(TALENT_TREES.firewall.tiers).flat()) {
+        expect(t.type).not.toBe('special')
+        expect(t.type).not.toBe('ability_boost')
+        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+      }
     })
   })
 })
