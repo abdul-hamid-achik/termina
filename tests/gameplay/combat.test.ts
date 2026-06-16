@@ -329,4 +329,50 @@ describe('combat', () => {
     expect(me.alive).toBe(false)
     expect(me.gold).toBe(0)
   })
+
+  it('a tower fires on a lone enemy hero diving it (no creeps to tank)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    // Tick once up front so the level-6 maxHp recompute is already settled —
+    // otherwise the first-tick HP inflation masks the tower hit.
+    await game.tick()
+    await game.patch((s) => {
+      const me = s.players[HUMAN]!
+      const enemyTowerZone = me.team === 'radiant' ? 'mid-t1-dire' : 'mid-t1-rad'
+      return {
+        ...s,
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },
+        creeps: [], // nothing to soak the tower
+      }
+    })
+
+    const before = (await game.me()).hp
+    await game.tick()
+    // TOWER_ATTACK (120, minus defense) far exceeds per-tick regen, so the
+    // exposed hero visibly loses HP.
+    expect((await game.me()).hp).toBeLessThan(before)
+  })
+
+  it('creeps tank the tower — a hero behind its own creep takes no tower fire', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.tick() // settle the maxHp recompute first
+    await game.patch((s) => {
+      const me = s.players[HUMAN]!
+      const enemyTowerZone = me.team === 'radiant' ? 'mid-t1-dire' : 'mid-t1-rad'
+      return {
+        ...s,
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },
+        // An allied creep (same team as the hero) soaks the tower instead.
+        creeps: [{ id: 'shield0', team: me.team, zone: enemyTowerZone, hp: 300, type: 'melee' }],
+      }
+    })
+
+    const before = (await game.me()).hp
+    await game.tick()
+
+    // The hero is shielded — the tower shot the creep, not the hero (HP only
+    // moves up via regen, never down).
+    expect((await game.me()).hp).toBeGreaterThanOrEqual(before)
+    const creep = (await game.state()).creeps.find((c) => c.id === 'shield0')
+    expect(creep && creep.hp < 300).toBe(true)
+  })
 })
