@@ -387,14 +387,16 @@ export function resolveActions(
       if (player && player.alive) {
         // Slow semantics: total slow stacks = % chance the move fails this
         // tick (capped at 80%). Root/stun/taunt are hard-blocked upstream in
-        // validateAction.
+        // validateAction. The Haste rune ('haste' buff) makes movement
+        // unstoppable — it ignores slow entirely.
+        const hasted = player.buffs.some((b) => b.id === 'haste')
         const totalSlow = Math.min(
           80,
           player.buffs
             .filter((b) => b.id === 'slow' || b.id === 'broadcast_slow')
             .reduce((sum, b) => sum + b.stacks, 0),
         )
-        if (totalSlow > 0 && Math.random() * 100 < totalSlow) {
+        if (!hasted && totalSlow > 0 && Math.random() * 100 < totalSlow) {
           rejected.push({ playerId: action.playerId, reason: 'Slowed — failed to move' })
           continue
         }

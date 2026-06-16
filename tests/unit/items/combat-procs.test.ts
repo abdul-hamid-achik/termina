@@ -567,3 +567,61 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
     expect(r.state.players['far']!.hp).toBe(farHp)
   })
 })
+
+describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
+  const moveDire = { playerId: 'p1', command: { type: 'move' as const, zone: 'mid-t1-dire' } }
+
+  it('Double Damage rune (dd) doubles basic-attack damage', () => {
+    const state = makeGameState({
+      players: {
+        p1: makePlayer({
+          id: 'p1',
+          team: 'radiant',
+          buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 9999, source: 'rune_dd' }],
+        }),
+        p2: makePlayer({ id: 'p2', team: 'dire', name: 'E' }),
+      },
+    })
+    const ddDmg = state.players['p2']!.hp - run(state, [attack('p1', 'E')]).state.players['p2']!.hp
+    // matches the production formula with a 2x attack multiplier, and exceeds a normal hit
+    expect(ddDmg).toBe(expectedPhysical([], [], 2))
+    expect(ddDmg).toBeGreaterThan(expectedPhysical([], []))
+  })
+
+  it('Haste rune makes movement immune to slow (an 80% slow never fails the move)', () => {
+    const state = makeGameState({
+      players: {
+        p1: makePlayer({
+          id: 'p1',
+          team: 'radiant',
+          zone: 'mid-river',
+          buffs: [
+            { id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' },
+            { id: 'haste', stacks: 1, ticksRemaining: 9999, source: 'rune_haste' },
+          ],
+        }),
+      },
+    })
+    for (let i = 0; i < 20; i++) {
+      expect(run(state, [moveDire]).state.players['p1']!.zone).toBe('mid-t1-dire')
+    }
+  })
+
+  it('control: WITHOUT haste, an 80% slow fails the move at least once over 20 tries', () => {
+    const state = makeGameState({
+      players: {
+        p1: makePlayer({
+          id: 'p1',
+          team: 'radiant',
+          zone: 'mid-river',
+          buffs: [{ id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' }],
+        }),
+      },
+    })
+    let failedAtLeastOnce = false
+    for (let i = 0; i < 20; i++) {
+      if (run(state, [moveDire]).state.players['p1']!.zone === 'mid-river') failedAtLeastOnce = true
+    }
+    expect(failedAtLeastOnce).toBe(true)
+  })
+})
