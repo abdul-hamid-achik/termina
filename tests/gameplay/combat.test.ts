@@ -124,4 +124,29 @@ describe('combat', () => {
     expect(me.respawnTick).toBeNull()
     expect(me.zone).toBe(me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain')
   })
+
+  it('a shield buff absorbs an incoming attack before HP', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          hp: s.players[HUMAN]!.maxHp,
+          buffs: [{ id: 'shield', stacks: 400, ticksRemaining: 5, source: HUMAN }],
+        },
+      },
+    }))
+
+    game.attackHero(HUMAN, ENEMY) // the co-located enemy swings at the shielded human
+    await game.tick()
+
+    // The basic-attack path ran absorbShield: the shield ate the hit, so its
+    // stacks dropped. (Raw HP is confounded by the level-6 maxHp recompute on the
+    // first tick, so the shield-stack delta is the clean "it absorbed" signal.)
+    const shield = (await game.me()).buffs.find((b) => b.id === 'shield')
+    expect(shield).toBeDefined()
+    expect(shield!.stacks).toBeLessThan(400)
+  })
 })
