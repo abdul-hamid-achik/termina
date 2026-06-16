@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGameStore } from '~/stores/game'
+import { useSettingsStore } from '~/stores/settings'
 import { useGameSocket } from '~/composables/useGameSocket'
 import {
   useCommands,
@@ -26,6 +27,7 @@ import {
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 
 const gameStore = useGameStore()
+const settings = useSettingsStore()
 const gameSocket = useGameSocket()
 const commands = useCommands()
 const { playSound } = useAudio()
@@ -1062,27 +1064,31 @@ function handleReturnToMenu() {
       aria-hidden="true"
     />
 
-    <GameStateBar
-      class="game-grid__bar"
-      :tick="currentTick"
-      :game-time="gameTime"
-      :gold="playerGold"
-      :kills="playerKills"
-      :deaths="playerDeaths"
-      :assists="playerAssists"
-      :hero-id="gameStore.player?.heroId ?? undefined"
-      :connected="connected"
-      :reconnecting="reconnecting"
-      :latency="latency"
-      :time-of-day="gameStore.timeOfDay"
-      :day-night-tick="gameStore.dayNightTick"
-      :next-tick-in="gameStore.nextTickIn"
-      :teams="gameStore.teams"
-      :ancients="ancients"
-      :net-worth-radiant="gameStore.netWorth.radiant"
-      :net-worth-dire="gameStore.netWorth.dire"
-      :kda-pop-key="kdaPopKey"
-    />
+    <div class="game-grid__bar">
+      <GameStateBar
+        :tick="currentTick"
+        :game-time="gameTime"
+        :gold="playerGold"
+        :kills="playerKills"
+        :deaths="playerDeaths"
+        :assists="playerAssists"
+        :hero-id="gameStore.player?.heroId ?? undefined"
+        :connected="connected"
+        :reconnecting="reconnecting"
+        :latency="latency"
+        :time-of-day="gameStore.timeOfDay"
+        :day-night-tick="gameStore.dayNightTick"
+        :next-tick-in="gameStore.nextTickIn"
+        :teams="gameStore.teams"
+        :ancients="ancients"
+        :net-worth-radiant="gameStore.netWorth.radiant"
+        :net-worth-dire="gameStore.netWorth.dire"
+        :kda-pop-key="kdaPopKey"
+      />
+
+      <!-- Action-focus banner (HUD setting B): at-a-glance threat + what to do -->
+      <FocusBanner v-if="settings.hud.focusBanner" />
+    </div>
 
     <!-- War Room: strategic dashboard (left) -->
     <TerminalPanel title="War Room" class="game-grid__war min-h-0">
