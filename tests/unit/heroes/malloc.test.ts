@@ -10,7 +10,8 @@ import {
 } from '../../../server/game/heroes/_base'
 // Register malloc hero and import helpers
 import { getHeapGrowthBonus } from '../../../server/game/heroes/malloc'
-import { getEffectiveAttack } from '../../../server/game/engine/EffectiveStats'
+import { getEffectiveAttack, getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 
 // ── Test Helpers ──────────────────────────────────────────────────
 
@@ -418,6 +419,54 @@ describe('Malloc Hero', () => {
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'q'))
       expect(result._tag).toBe('Failure')
+    })
+  })
+
+  // The generic talent tree (createGenericTalents) is shared by 11 heroes; its
+  // two tier-25 talents used to be dead specialEffect no-ops. malloc is a generic
+  // hero, so it exercises the now-working conversions through a real cast.
+  describe('Generic talents (engine-applied — formerly dead tier-25 no-ops)', () => {
+    it('malloc_25_left reduces ultimate cooldown by 10 (was the dead ultimate_plus_50 no-op)', () => {
+      const player = makePlayer({
+        level: 6,
+        mp: 500,
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'malloc_25_left' },
+      })
+      const state = makeState([player])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+
+      // R_COOLDOWN (50) − 10
+      expect(result.state.players['p1']!.cooldowns.r).toBe(40)
+    })
+
+    it('malloc_25_right grants +20 magic resistance (was the dead double_cast_20 no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'malloc_25_right' },
+      })
+      expect(getTalentStatBonus(player, 'magicResist')).toBe(20)
+    })
+
+    it('no generic-talent hero has a dead specialEffect no-op anymore', () => {
+      const genericHeroes = [
+        'malloc',
+        'cipher',
+        'sentry',
+        'socket',
+        'mutex',
+        'thread',
+        'lambda',
+        'cron',
+        'traceroute',
+        'null_ref',
+        'ping',
+      ] as const
+      for (const hero of genericHeroes) {
+        for (const t of Object.values(TALENT_TREES[hero].tiers).flat()) {
+          expect(t.type).not.toBe('special')
+          expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+        }
+      }
     })
   })
 })
