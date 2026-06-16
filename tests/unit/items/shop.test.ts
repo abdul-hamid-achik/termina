@@ -10,6 +10,7 @@ import {
   ItemNotFoundError,
   ItemOnCooldownError,
 } from '../../../server/game/items/shop'
+import { filterStateForPlayer } from '../../../server/game/engine/VisionCalculator'
 import type { GameState, PlayerState, ZoneRuntimeState } from '../../../shared/types/game'
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -542,6 +543,59 @@ describe('Shop', () => {
       expect(error._tag).toBe('ItemOnCooldownError')
       expect(error.itemId).toBe('blink_module')
       expect(error.ticksRemaining).toBe(5)
+    })
+  })
+
+  describe('Sentry Ward (true-sight)', () => {
+    it('places a type:"sentry" ward in the target zone (active was previously unhandled)', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        items: ['sentry_ward', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        const wards = exit.value.zones['mid-river']!.wards
+        expect(wards).toHaveLength(1)
+        expect(wards[0]!.type).toBe('sentry')
+        expect(wards[0]!.team).toBe('radiant')
+        // the ward was consumed from the inventory
+        expect(exit.value.players['player_1']!.items[0]).toBeNull()
+      }
+    })
+
+    it('reveals an invisible enemy in the warded zone (true-sight — previously unreachable)', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['sentry_ward', null, null, null, null, null],
+      })
+      const invisEnemy = makePlayer({
+        id: 'enemy_1',
+        team: 'dire',
+        zone: 'mid-river',
+        buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'enemy_1' }],
+      })
+      const state = makeGameState({
+        players: { player_1: player, enemy_1: invisEnemy },
+      })
+
+      // Before the sentry: the invisible enemy is fogged even though co-located.
+      const before = filterStateForPlayer(state, 'player_1')
+      expect('fogged' in before.players['enemy_1']!).toBe(true)
+
+      const exit = await runEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        // After the sentry: true-sight in the zone reveals the enemy.
+        const after = filterStateForPlayer(exit.value, 'player_1')
+        expect('fogged' in after.players['enemy_1']!).toBe(false)
+      }
     })
   })
 })

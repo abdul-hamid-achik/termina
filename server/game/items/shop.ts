@@ -5,6 +5,7 @@ import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   MAX_ITEMS,
   OBSERVER_WARD_DURATION_TICKS,
+  SENTRY_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { getItem } from '~~/shared/constants/items'
@@ -217,7 +218,10 @@ export function useItem(
         updatedState = useManaVial(state, player, slotIdx)
         break
       case 'observer_ward':
-        updatedState = yield* useObserverWard(state, player, slotIdx, target)
+        updatedState = yield* usePlaceWard(state, player, slotIdx, target, 'observer')
+        break
+      case 'sentry_ward':
+        updatedState = yield* usePlaceWard(state, player, slotIdx, target, 'sentry')
         break
       case 'smoke_of_deceit':
         updatedState = useSmokeOfDeceit(state, player, slotIdx)
@@ -323,17 +327,23 @@ function useManaVial(state: GameState, player: PlayerState, slot: number): GameS
   return updatePlayer(state, updated)
 }
 
-function useObserverWard(
+// Handles both Observer (vision) and Sentry (vision + true-sight) wards. A sentry
+// ward's `type: 'sentry'` is what VisionCalculator reads to build its true-sight
+// zones — the only path that reveals invisible enemies. Previously sentry_ward
+// had no handler at all, so true-sight was unreachable.
+function usePlaceWard(
   state: GameState,
   player: PlayerState,
   slot: number,
-  target?: TargetRef | string,
+  target: TargetRef | string | undefined,
+  wardType: 'observer' | 'sentry',
 ): Effect.Effect<GameState, ItemError> {
   return Effect.gen(function* () {
+    const itemId = `${wardType}_ward`
     const zoneId =
       typeof target === 'string' ? target : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId || !state.zones[zoneId]) {
-      return yield* Effect.fail(new ItemNotFoundError({ itemId: 'observer_ward' }))
+      return yield* Effect.fail(new ItemNotFoundError({ itemId }))
     }
 
     // Check team ward limit
@@ -343,9 +353,11 @@ function useObserverWard(
       0,
     )
     if (teamWardCount >= WARD_LIMIT_PER_TEAM) {
-      return yield* Effect.fail(new ItemNotFoundError({ itemId: 'observer_ward' }))
+      return yield* Effect.fail(new ItemNotFoundError({ itemId }))
     }
 
+    const duration =
+      wardType === 'observer' ? OBSERVER_WARD_DURATION_TICKS : SENTRY_WARD_DURATION_TICKS
     const updated = consumeItem(player, slot)
     const updatedZones = {
       ...state.zones,
@@ -356,8 +368,8 @@ function useObserverWard(
           {
             team: player.team,
             placedTick: state.tick,
-            expiryTick: state.tick + OBSERVER_WARD_DURATION_TICKS,
-            type: 'observer' as const,
+            expiryTick: state.tick + duration,
+            type: wardType,
           },
         ],
       },
