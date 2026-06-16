@@ -476,6 +476,48 @@ describe('combat', () => {
     expect(me.gold).toBe(0)
   })
 
+  it('buyback goes on cooldown — a second buyback right after is refused with feedback', async () => {
+    // The anti-abuse rule the death overlay surfaces: you can't chain buybacks.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          alive: false,
+          hp: 0,
+          respawnTick: s.tick + 50,
+          gold: 10_000,
+          buybackCooldown: null, // no prior buyback
+        },
+      },
+    }))
+
+    // First buyback lands — instantly alive — and arms the buyback cooldown.
+    game.submit({ type: 'buyback' })
+    await game.tick()
+    expect((await game.me()).alive).toBe(true)
+    expect((await game.me()).buybackCooldown ?? 0).toBeGreaterThan((await game.state()).tick)
+
+    // Die again while that cooldown is still ticking (the patch keeps it set).
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, alive: false, hp: 0, respawnTick: s.tick + 50 },
+      },
+    }))
+
+    // The second buyback is refused — the hero stays dead and is told why.
+    game.submit({ type: 'buyback' })
+    await game.tick()
+    expect((await game.me()).alive).toBe(false)
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('cooldown')),
+    ).toBe(true)
+  })
+
   it('a tower fires on a lone enemy hero diving it (no creeps to tank)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     // Tick once up front so the level-6 maxHp recompute is already settled —
