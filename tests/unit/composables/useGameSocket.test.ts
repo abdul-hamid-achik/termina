@@ -264,6 +264,21 @@ describe('useGameSocket', () => {
       expect(spy).toHaveBeenCalledWith('A player disconnected', 'warning')
     })
 
+    it('routes player_reconnect to an info announcement, but never announces yourself', async () => {
+      const store = await connectWithStore()
+      store.playerId = 'player-1' // this is "me" (connectWithStore connects as player-1)
+      const spy = vi.spyOn(store, 'addAnnouncement')
+
+      // A teammate returning → surfaced as info.
+      MockWebSocket.last!._receive({ type: 'player_reconnect', playerId: 'p2' })
+      expect(spy).toHaveBeenCalledWith('A player reconnected', 'info')
+
+      // Your own reconnect → no self-announcement.
+      spy.mockClear()
+      MockWebSocket.last!._receive({ type: 'player_reconnect', playerId: 'player-1' })
+      expect(spy).not.toHaveBeenCalled()
+    })
+
     it('routes game_over to setGameOver', async () => {
       const store = await connectWithStore()
       const spy = vi.spyOn(store, 'setGameOver')

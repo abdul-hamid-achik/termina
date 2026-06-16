@@ -157,6 +157,12 @@ export interface PlayerDisconnectMessage {
   playerId: string
 }
 
+/** Broadcast to the game when a previously-dropped player reconnects in time. */
+export interface PlayerReconnectMessage {
+  type: 'player_reconnect'
+  playerId: string
+}
+
 export type ServerMessage =
   | TickStateMessage
   | EventsMessage
@@ -179,3 +185,4 @@ export type ServerMessage =
   | SpectatorTickMessage
   | SpectatorAckMessage
   | PlayerDisconnectMessage
+  | PlayerReconnectMessage

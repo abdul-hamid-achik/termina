@@ -207,6 +207,29 @@ describe('ws route — open()', () => {
     expect(sentMessages(peer)).toContainEqual({ type: 'game_starting', gameId: 'game_77' })
   })
 
+  it('broadcasts player_reconnect when a dropped player returns within the window', () => {
+    vi.useFakeTimers()
+    const { peer, runtime } = openPeerInGame('p_rc', 'game_rc')
+    handler.close(peer, {}) // in-game disconnect → schedules the reconnect-window timer
+
+    // The same player reconnects before the window expires → a genuine reconnect.
+    vi.mocked(getPlayerGame).mockReturnValue('game_rc')
+    openAuthedPeer('p_rc')
+
+    expect(runtime.wsService.broadcastToGame).toHaveBeenCalledWith('game_rc', {
+      type: 'player_reconnect',
+      playerId: 'p_rc',
+    })
+  })
+
+  it('does NOT announce a reconnect on a first connect (existingGame, no prior disconnect)', () => {
+    const runtime = mockRuntime()
+    vi.mocked(getGameRuntime).mockReturnValue(runtime as never)
+    vi.mocked(getPlayerGame).mockReturnValue('game_x')
+    openAuthedPeer('p_first') // no pending disconnect timer → wasReconnecting is false
+    expect(runtime.wsService.broadcastToGame).not.toHaveBeenCalled()
+  })
+
   it('re-sends lobby_state when the player is in a lobby but not a game', () => {
     vi.mocked(getPlayerLobby).mockReturnValue('lobby_9')
     vi.mocked(getLobby).mockReturnValue({
