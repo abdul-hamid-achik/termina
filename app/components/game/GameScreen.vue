@@ -983,6 +983,8 @@ function handleReturnToMenu() {
     data-testid="game-screen"
     :data-game-id="gameStore.gameId ?? ''"
     :data-layout="layout"
+    :data-density="settings.hud.density"
+    :data-vitals="settings.hud.emphasizeVitals ? 'on' : 'off'"
   >
     <!-- Floating combat numbers (rise + fade on damage involving you) -->
     <DamageFloat :floats="damageFloats" />
@@ -1285,7 +1287,7 @@ function handleReturnToMenu() {
         <button
           v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP', 'SCORE']"
           :key="cmd"
-          class="min-h-[40px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono text-[0.75rem] font-bold text-text-primary transition-all active:bg-border active:scale-95"
+          class="hud-action-btn min-h-[40px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono text-[0.75rem] font-bold text-text-primary transition-all active:bg-border active:scale-95"
           :class="{
             'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy,
             'border-ability text-ability shadow-glow-ability':
@@ -1353,6 +1355,35 @@ function handleReturnToMenu() {
 .game-grid__cmd {
   grid-column: 1 / -1;
   grid-row: 3;
+}
+
+/* ── HUD setting C: density + emphasize-vitals ────────────────────────────
+   Both default to off (comfortable / vitals='off'), reproducing today's look.
+   Compact tightens the gaps so more fits on screen (safe at every breakpoint).
+   Emphasize-vitals dims the strategic War Room and enlarges the action bar so
+   the eye lands on HP / abilities; the column-widening only applies on desktop
+   (min-width:1025px) so it never fights the responsive mobile templates. */
+.game-grid[data-density='compact'] {
+  gap: 0;
+}
+
+.game-grid[data-vitals='on'] .game-grid__war {
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.game-grid[data-vitals='on'] .game-grid__war:hover {
+  opacity: 1;
+}
+.game-grid[data-vitals='on'] .hud-action-btn {
+  min-height: 52px;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 1025px) {
+  /* Give the hero/ability rail more room, taken from the War Room column. */
+  .game-grid[data-vitals='on'] {
+    grid-template-columns: minmax(150px, 1.7fr) minmax(0, 4.6fr) minmax(290px, 3.8fr);
+  }
 }
 
 /* Kill feed floats over the top-center, below the bar. */
