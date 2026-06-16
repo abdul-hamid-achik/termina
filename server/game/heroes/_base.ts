@@ -510,7 +510,8 @@ export function resolveAbility(
 
     const result = yield* resolver.ability(state, player, ability, abilityLevel, target)
     const withTalents = applyAbilityTalents(state, result, player, ability)
-    return applyArcaneRefund(withTalents, player)
+    const withLatency = applyLatencyPenalty(withTalents, player, ability)
+    return applyArcaneRefund(withLatency, player)
   })
 }
 
@@ -593,6 +594,39 @@ function applyAbilityTalents(
   }
 
   return { ...result, state: { ...result.state, players } }
+}
+
+/**
+ * Ping's Latency passive: a 'latency' debuff on the caster adds +1 tick to the
+ * cooldown of their NEXT ability and is consumed on that cast. Runs in the cast
+ * pipeline. Previously the debuff was applied on Ping's attacks but nothing read
+ * it, so it did nothing. Only delays a cast that actually set a cooldown (a cast
+ * that fizzled or refunded keeps the debuff to spend on the next real cast).
+ */
+function applyLatencyPenalty(
+  result: AbilityResult,
+  caster: PlayerState,
+  slot: AbilitySlot,
+): AbilityResult {
+  if (!caster.buffs.some((b) => b.id === 'latency')) return result
+  const current = result.state.players[caster.id]
+  if (!current) return result
+  const cd = current.cooldowns[slot]
+  if (cd <= 0) return result
+  return {
+    ...result,
+    state: {
+      ...result.state,
+      players: {
+        ...result.state.players,
+        [caster.id]: {
+          ...current,
+          cooldowns: { ...current.cooldowns, [slot]: cd + 1 },
+          buffs: current.buffs.filter((b) => b.id !== 'latency'),
+        },
+      },
+    },
+  }
 }
 
 /**

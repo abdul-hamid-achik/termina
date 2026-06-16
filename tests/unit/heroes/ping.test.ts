@@ -436,6 +436,20 @@ describe('Ping Hero', () => {
 
       expect(hasBuff(updated.players['e1']!, 'latency')).toBe(false)
     })
+
+    it('adds +1 tick to the victim’s next ability cooldown and is consumed (the formerly-dead effect)', () => {
+      const player = makePlayer({
+        buffs: [{ id: 'latency', stacks: 1, ticksRemaining: 1, source: 'enemy' }],
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+
+      const caster = result.state.players['p1']!
+      expect(caster.cooldowns.q).toBe(6) // Q_COOLDOWN (5) + 1
+      expect(hasBuff(caster, 'latency')).toBe(false) // spent on the cast
+    })
   })
 
   describe('Stun/Silence blocking', () => {
