@@ -321,4 +321,26 @@ describe('VisionCalculator', () => {
       expect(filtered.visibleZones).toContain('mid-river')
     })
   })
+
+  describe('night vision (NIGHT_VISION_PENALTY)', () => {
+    it("keeps the hero's own zone visible at night (regression: own zone went blind)", () => {
+      const state = makeGameState({
+        timeOfDay: 'night',
+        players: { p1: makePlayer({ zone: 'mid-river' }) },
+      })
+      // The own zone is always visible, even at night.
+      expect(calculateVision(state, 'p1').has('mid-river')).toBe(true)
+    })
+
+    it('reveals strictly fewer zones at night than by day (vision is reduced)', () => {
+      const players = { p1: makePlayer({ zone: 'mid-river' }) }
+      const day = calculateVision(makeGameState({ timeOfDay: 'day', players }), 'p1')
+      const night = calculateVision(makeGameState({ timeOfDay: 'night', players }), 'p1')
+
+      // Night only ever trims adjacency, never adds — so night vision is a
+      // strict subset of day vision, and strictly smaller.
+      for (const z of night) expect(day.has(z)).toBe(true)
+      expect(night.size).toBeLessThan(day.size)
+    })
+  })
 })
