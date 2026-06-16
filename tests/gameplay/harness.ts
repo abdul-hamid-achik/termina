@@ -28,6 +28,22 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
  * Determinism note: the engine has no injectable RNG (bot AI uses Math.random),
  * so the harness never registers bots — only the human + a single enemy exist,
  * and nothing acts unless you `submit` it.
+ *
+ * Assertion gotchas (hard-won — read before writing HP / cast / buff checks):
+ *  - First-tick maxHp recompute. Heroes seed at level 6 and their maxHp is
+ *    recomputed on the FIRST tick, INFLATING hp. A raw `hp` delta across that
+ *    first tick is therefore confounded — either `tick()` ONCE up front to settle
+ *    it, or assert on a regen/recompute-independent signal (a `damage` event, a
+ *    buff's `stacks`, a cooldown, or the maxHp cap) instead of raw hp.
+ *  - Never set `mp` above `maxMp` to "guarantee" a cast — it silently breaks the
+ *    cast (no resolution, no events, no cooldown). The seed already carries enough
+ *    mana; just zero the cooldowns (`cooldowns: { q:0,w:0,e:0,r:0 }`) and cast.
+ *  - A 1-tick disable (most stuns are duration 1) is gone by the time you assert:
+ *    it's applied during cast resolution, then `tickAllBuffs` decrements + reaps
+ *    it later in the SAME tick. To observe an applied debuff use a multi-tick one
+ *    (a DoT, a longer slow) or assert its enforcement effect, not buff presence.
+ *  - Per-tick regen is small but nonzero. For "took damage" prefer the damage
+ *    event; for "was safe/healed" assert `hp >= before` (regen only ever adds).
  */
 
 export type KnownScenario = (typeof KNOWN_SCENARIOS)[number]
