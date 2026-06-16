@@ -73,8 +73,7 @@ export function useGameSocket() {
     ws = new WebSocket(url)
 
     ws.onopen = () => {
-      console.log('[WS] onopen — connected', { gameId: currentGameId, readyState: ws?.readyState })
-      socketLog.info('Connected', { gameId: currentGameId })
+      socketLog.info('Connected', { gameId: currentGameId, readyState: ws?.readyState })
       connected.value = true
       reconnecting.value = false
       connectionLost.value = false
@@ -104,10 +103,9 @@ export function useGameSocket() {
       try {
         msg = JSON.parse(event.data)
       } catch {
-        console.warn('[WS] Failed to parse message', event.data)
+        socketLog.warn('Failed to parse message', { data: event.data })
         return
       }
-      console.log('[WS] message received:', msg.type)
 
       // Any message proves the link is alive
       missedHeartbeats = 0
@@ -170,15 +168,18 @@ export function useGameSocket() {
     }
 
     ws.onclose = (event) => {
-      console.log('[WS] onclose', { code: event.code, reason: event.reason, gameId: currentGameId })
-      socketLog.warn('Disconnected', { gameId: currentGameId })
+      socketLog.warn('Disconnected', {
+        gameId: currentGameId,
+        code: event.code,
+        reason: event.reason,
+      })
       connected.value = false
       _stopHeartbeat()
       _scheduleReconnect()
     }
 
     ws.onerror = (event) => {
-      console.error('[WS] onerror', event)
+      socketLog.error('Socket error', { event })
     }
   }
 
