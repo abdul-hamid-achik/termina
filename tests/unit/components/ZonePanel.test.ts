@@ -162,9 +162,11 @@ describe('ZonePanel', () => {
       expect(wrapper.emitted('command')).toEqual([['attack creep:2']])
     })
 
-    it('separates allied creeps into a non-attackable group', () => {
+    it('separates allied creeps into a group; a healthy one is informational only', () => {
+      // 300hp melee (max 400) is above the 50% deny threshold → not denyable,
+      // so the group stays a plain informational DIV.
       const creeps = [
-        makeCreep({ id: 'c1', team: 'radiant', hp: 90, index: 0 }),
+        makeCreep({ id: 'c1', team: 'radiant', hp: 300, index: 0 }),
         makeCreep({ id: 'c2', team: 'dire', hp: 300, index: 1 }),
       ]
       const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
@@ -172,9 +174,46 @@ describe('ZonePanel', () => {
       const allyGroup = wrapper.find('[data-testid="zone-creeps-ally"]')
       expect(allyGroup.exists()).toBe(true)
       expect(allyGroup.text()).toContain('1× allied creep')
-      expect(allyGroup.text()).toContain('lowest 90hp')
-      // Allied group is informational, not a button
+      expect(allyGroup.text()).toContain('lowest 300hp')
+      // Above the deny threshold → informational, not a button
       expect(allyGroup.element.tagName).toBe('DIV')
+      expect(allyGroup.text()).not.toContain('[deny]')
+    })
+
+    it('offers a deny on an allied creep once it drops below 50% HP', async () => {
+      // 150hp melee (max 400) is below the 200hp deny threshold → denyable.
+      const creeps = [makeCreep({ id: 'c1', team: 'radiant', hp: 150, index: 4 })]
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+
+      const allyGroup = wrapper.find('[data-testid="zone-creeps-ally"]')
+      expect(allyGroup.element.tagName).toBe('BUTTON')
+      expect(allyGroup.text()).toContain('[deny]')
+
+      await allyGroup.trigger('click')
+      expect(wrapper.emitted('command')).toEqual([['deny creep:4']])
+    })
+
+    it('denies the lowest-HP eligible allied creep by its visible index', async () => {
+      // Two denyable allied creeps; the lower-HP one (index 7) is the target.
+      const creeps = [
+        makeCreep({ id: 'c1', team: 'radiant', hp: 180, index: 3 }),
+        makeCreep({ id: 'c2', team: 'radiant', hp: 60, index: 7 }),
+      ]
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+
+      await wrapper.find('[data-testid="zone-creeps-ally"]').trigger('click')
+      expect(wrapper.emitted('command')).toEqual([['deny creep:7']])
+    })
+
+    it('respects per-type max HP for the deny threshold (ranged creep)', async () => {
+      // Ranged max is 250 → threshold 125. A 130hp ranged creep is NOT denyable;
+      // a 200hp melee (max 400, threshold 200) IS. Only the melee should arm.
+      const creeps = [makeCreep({ id: 'c1', team: 'radiant', hp: 130, type: 'ranged', index: 0 })]
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+
+      const allyGroup = wrapper.find('[data-testid="zone-creeps-ally"]')
+      expect(allyGroup.element.tagName).toBe('DIV')
+      expect(allyGroup.text()).not.toContain('[deny]')
     })
 
     it('ignores dead creeps', () => {
