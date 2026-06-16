@@ -44,4 +44,30 @@ describe('abilities', () => {
     await game.tick()
     expect((await game.me()).cooldowns.q).toBeGreaterThan(0)
   })
+
+  it('root blocks movement but — unlike stun — still allows casting', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [{ id: 'root', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+
+    // Rooted: a move to an adjacent zone is dropped — the hero stays put.
+    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    await game.tick()
+    expect((await game.me()).zone).toBe('mid-river')
+
+    // But casting is unaffected by root — the self-buff W resolves and goes on cooldown.
+    game.cast('w')
+    await game.tick()
+    expect((await game.me()).cooldowns.w).toBeGreaterThan(0)
+  })
 })
