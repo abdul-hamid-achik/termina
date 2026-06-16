@@ -9,6 +9,7 @@ import {
 } from '../../../server/game/engine/BuybackSystem'
 import { processSpecialActions, type PlayerAction } from '../../../server/game/engine/GameLoop'
 import { getEffectiveAttack, getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 import { pickupAegis, processRoshanDamage } from '../../../server/game/engine/RoshanAI'
 import {
   calculateVision,
@@ -345,5 +346,22 @@ describe('systems-gaps: VISION gaps', () => {
     // neighbor is adjacent to mid-river (sentry radius 1) AND to the viewer => unfogged
     expect('fogged' in enemy).toBe(false)
     expect((enemy as PlayerState).hp).toBe(277)
+  })
+})
+
+describe('systems-gaps: echo talents — dead specialEffect no-ops swapped for working effects', () => {
+  it('echo_25_right now grants +250 HP (was the dead "Double Echo" specialEffect)', () => {
+    const player = makePlayer({
+      heroId: 'echo',
+      talents: { tier10: null, tier15: null, tier20: null, tier25: 'echo_25_right' },
+    })
+    expect(getTalentStatBonus(player, 'hp')).toBe(250)
+  })
+
+  it('no echo talent is a dead specialEffect no-op anymore', () => {
+    for (const t of Object.values(TALENT_TREES.echo.tiers).flat()) {
+      expect(t.type).not.toBe('special')
+      expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+    }
   })
 })
