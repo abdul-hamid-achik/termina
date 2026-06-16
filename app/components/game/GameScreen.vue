@@ -496,6 +496,12 @@ const theaterStatus = computed(() => {
   return gameStore.canAct ? 'AWAITING ORDERS' : 'RESOLVING'
 })
 
+// HUD setting A: 'classic' keeps the combat log in the center stage and the
+// map a compact rail widget; 'map-centric' promotes the map to center and
+// demotes the log into the rail. The big center grid column is unchanged —
+// only its CONTENTS swap — so no grid-template surgery is needed.
+const layout = computed(() => settings.hud.layoutMode)
+
 const hpPct = computed(() => {
   const p = gameStore.player
   return p && p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 100
@@ -976,6 +982,7 @@ function handleReturnToMenu() {
     }"
     data-testid="game-screen"
     :data-game-id="gameStore.gameId ?? ''"
+    :data-layout="layout"
   >
     <!-- Floating combat numbers (rise + fade on damage involving you) -->
     <DamageFloat :floats="damageFloats" />
@@ -1095,43 +1102,36 @@ function handleReturnToMenu() {
       <WarRoom />
     </TerminalPanel>
 
-    <!-- Tick Theater: the combat narrative is the centerpiece -->
-    <TerminalPanel title="Combat Log" class="game-grid__log min-h-0">
-      <div class="flex h-full min-h-0 flex-col">
-        <!-- Tick heartbeat header — drains over the 4s tick, flashes on reveal -->
-        <div
-          :key="tickPulseKey"
-          class="anim-tick-pulse flex shrink-0 items-center gap-2 border-b border-border bg-bg-secondary/70 px-2 py-1 font-mono text-[0.72rem]"
-          data-testid="theater-header"
-        >
-          <span
-            class="font-bold tracking-wider"
-            :class="
-              !gameStore.isAlive
-                ? 'text-dire'
-                : gameStore.canAct
-                  ? tickImminent
-                    ? 'text-warn anim-glow-pulse'
-                    : 'text-ability'
-                  : 'text-gold anim-glow-pulse'
-            "
-            >&gt;&gt; {{ theaterStatus }}</span
-          >
-          <span
-            class="flex-1 truncate tracking-[-0.05em]"
-            :class="tickImminent ? 'text-warn' : 'text-ability'"
-            aria-hidden="true"
-            >{{ theaterBar }}</span
-          >
-          <span class="shrink-0 text-text-dim"
-            >T-{{ (gameStore.nextTickIn / 1000).toFixed(1) }}s</span
-          >
-        </div>
-        <CombatLog class="min-h-0 flex-1" :events="combatEvents" />
+    <!-- Center stage. Classic: the combat narrative is the centerpiece.
+         Map-centric: the tactical map takes the center, full-size. -->
+    <TerminalPanel
+      :title="layout === 'map-centric' ? 'Tactical Map' : 'Combat Log'"
+      class="game-grid__log min-h-0"
+    >
+      <TickTheater
+        v-if="layout === 'classic'"
+        :events="combatEvents"
+        :status="theaterStatus"
+        :bar="theaterBar"
+        :tick-imminent="tickImminent"
+        :next-tick-in="gameStore.nextTickIn"
+        :is-alive="gameStore.isAlive"
+        :can-act="gameStore.canAct"
+        :pulse-key="tickPulseKey"
+      />
+      <div v-else class="h-full min-h-0 overflow-auto" data-testid="center-map">
+        <AsciiMap
+          :zones="mapZones"
+          :player-zone="playerZone"
+          :ancients="ancients"
+          force-mode="full"
+          @zone-click="handleZoneClick"
+        />
       </div>
     </TerminalPanel>
 
-    <!-- Right rail: hero / current-zone fight / compact map -->
+    <!-- Right rail: hero / current-zone fight / compact map (classic) or the
+         demoted combat-log ticker (map-centric). -->
     <div class="game-grid__rail flex min-h-0 flex-col gap-1 overflow-y-auto">
       <TerminalPanel
         title="Hero Status"
@@ -1174,13 +1174,27 @@ function handleReturnToMenu() {
         />
       </TerminalPanel>
 
-      <TerminalPanel title="Map" class="shrink-0">
+      <!-- Classic: compact map in the rail. Map-centric: the map is in the
+           center, so the rail carries the demoted combat-log ticker. -->
+      <TerminalPanel v-if="layout === 'classic'" title="Map" class="shrink-0">
         <AsciiMap
           :zones="mapZones"
           :player-zone="playerZone"
           :ancients="ancients"
           force-mode="compact"
           @zone-click="handleZoneClick"
+        />
+      </TerminalPanel>
+      <TerminalPanel v-else title="Combat Log" class="min-h-0 flex-1" data-testid="rail-log">
+        <TickTheater
+          :events="combatEvents"
+          :status="theaterStatus"
+          :bar="theaterBar"
+          :tick-imminent="tickImminent"
+          :next-tick-in="gameStore.nextTickIn"
+          :is-alive="gameStore.isAlive"
+          :can-act="gameStore.canAct"
+          :pulse-key="tickPulseKey"
         />
       </TerminalPanel>
     </div>

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGameStore } from '../../../app/stores/game'
+import { useSettingsStore } from '../../../app/stores/settings'
 import {
   makeTickMessage,
   makeRoster,
@@ -59,6 +60,22 @@ const stubs = {
   GameStateBar: true,
   WarRoom: true,
   CombatLog: true,
+  // TickTheater (extracted) owns the theater-header now; surface its `status`
+  // prop so the header-text assertions still hold under shallow stubbing.
+  TickTheater: {
+    name: 'TickTheater',
+    props: [
+      'events',
+      'status',
+      'bar',
+      'tickImminent',
+      'nextTickIn',
+      'isAlive',
+      'canAct',
+      'pulseKey',
+    ],
+    template: '<div data-testid="theater-header">{{ status }}</div>',
+  },
   KillFeed: true,
   HeroStatus: true,
   ZonePanel: true,
@@ -138,6 +155,38 @@ describe('GameScreen', () => {
       expect(header.text()).toContain('RESOLVING')
       expect(header.text()).not.toContain('AWAITING ORDERS')
       wrapper.unmount()
+    })
+
+    describe('HUD layout (setting A)', () => {
+      it('defaults to classic: combat log in the center, map a rail widget', () => {
+        localStorage.clear()
+        seedActiveGame()
+        const wrapper = mountGameScreen()
+
+        expect(wrapper.find('[data-testid="game-screen"]').attributes('data-layout')).toBe(
+          'classic',
+        )
+        expect(wrapper.find('[data-testid="theater-header"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="center-map"]').exists()).toBe(false)
+        expect(wrapper.find('[data-testid="rail-log"]').exists()).toBe(false)
+        wrapper.unmount()
+      })
+
+      it('map-centric: map takes the center, the combat log demotes to the rail', () => {
+        localStorage.clear()
+        useSettingsStore().setHud('layoutMode', 'map-centric')
+        seedActiveGame()
+        const wrapper = mountGameScreen()
+
+        expect(wrapper.find('[data-testid="game-screen"]').attributes('data-layout')).toBe(
+          'map-centric',
+        )
+        expect(wrapper.find('[data-testid="center-map"]').exists()).toBe(true)
+        // The combat log still renders — now in the rail.
+        expect(wrapper.find('[data-testid="rail-log"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="theater-header"]').exists()).toBe(true)
+        wrapper.unmount()
+      })
     })
 
     it('does not render the death overlay while the player is alive', () => {
