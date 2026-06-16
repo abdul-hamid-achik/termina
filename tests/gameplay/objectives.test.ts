@@ -102,3 +102,48 @@ describe('objectives: runes', () => {
     expect((await game.me()).buffs.filter((b) => b.id === 'dd')).toHaveLength(1)
   })
 })
+
+describe('objectives: jungle neutrals', () => {
+  it('a hero in the camp last-hits a neutral — it dies, awards its bounty, emits neutral_killed', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'jungle-rad-top' } },
+      // A kobold at 1 HP — one basic attack finishes it (bounty 20g / 25xp).
+      neutrals: [
+        { id: 'camp0', zone: 'jungle-rad-top', hp: 1, maxHp: 250, type: 'kobold', alive: true },
+      ],
+    }))
+
+    const goldBefore = (await game.me()).gold
+    game.submit({ type: 'attack', target: { kind: 'neutral', index: 0 } })
+    await game.tick()
+
+    const me = await game.me()
+    // Bounty (20) dwarfs the 4/tick passive, so this isolates the camp gold.
+    expect(me.gold).toBeGreaterThanOrEqual(goldBefore + 20)
+    const state = await game.state()
+    expect(state.neutrals.some((n) => n.id === 'camp0')).toBe(false) // removed on death
+    expect(game.lastEvents.some((e) => e._tag === 'neutral_killed' && e.playerId === HUMAN)).toBe(
+      true,
+    )
+  })
+
+  it('a neutral cannot be hit from outside its camp zone', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      neutrals: [
+        { id: 'camp0', zone: 'jungle-rad-top', hp: 100, maxHp: 250, type: 'kobold', alive: true },
+      ],
+    }))
+
+    game.submit({ type: 'attack', target: { kind: 'neutral', index: 0 } })
+    await game.tick()
+
+    const n = (await game.state()).neutrals.find((x) => x.id === 'camp0')
+    expect(n?.alive).toBe(true)
+    expect(n?.hp).toBe(100) // untouched from a different zone
+  })
+})
