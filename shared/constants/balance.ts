@@ -15,6 +15,8 @@ export const ASSIST_GOLD = 100
 export const TOWER_GOLD = 500
 export const ROSHAN_GOLD = 600
 export const STARTING_GOLD = 600
+/** Fraction of an item's cost refunded when sold. */
+export const SELL_REFUND_RATIO = 0.5
 
 /**
  * Comeback bounty: kill gold is multiplied by a factor based on the
