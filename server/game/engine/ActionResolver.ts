@@ -1071,22 +1071,38 @@ export function resolveActions(
       }
     }
 
-    // Handle rune pickup
+    // Handle rune pickup. Mirror the aegis path: thread the rune removal back
+    // (so a picked rune leaves the ground and can't be re-claimed for repeat
+    // buffs) AND surface the rune_picked event for the combat log.
+    let runesGround = state.runes ?? []
     const runePickups = validActions.filter((a) => a.command.type === 'rune')
     for (const action of runePickups) {
       const player = players[action.playerId]
       if (!player) continue
+      const runeHere = runesGround.find((r) => r.zone === player.zone)
       const tempState: GameState = {
         ...state,
         players,
         creeps,
         towers,
-        runes: state.runes ?? [],
+        runes: runesGround,
         roshan: state.roshan,
         aegis: state.aegis,
       }
       const result = pickupRune(tempState, action.playerId, player.zone)
       players = { ...result.players }
+      if (result.runes.length !== runesGround.length) {
+        runesGround = result.runes
+        if (runeHere) {
+          events.push({
+            _tag: 'rune_picked',
+            tick: state.tick,
+            playerId: action.playerId,
+            zone: player.zone,
+            runeType: runeHere.type,
+          })
+        }
+      }
     }
 
     // Recalculate maxHp/maxMp based on items + talents
@@ -1231,6 +1247,7 @@ export function resolveActions(
       teams,
       ancients,
       aegis: aegisGround,
+      runes: runesGround,
     }
 
     return { state: updatedState, events, heroAttackers, rejected }
