@@ -264,6 +264,46 @@ describe('useGameSocket', () => {
       MockWebSocket.last!._receive({ type: 'full_state', tick: 3, state: {} })
       expect(spy).toHaveBeenCalled()
     })
+
+    it('routes game_starting to set the store gameId when none is set yet', async () => {
+      const { useGameStore } = await import('../../../app/stores/game')
+      const store = useGameStore()
+      const { connect } = useGameSocket()
+      // A lobby connection deliberately leaves gameStore.gameId unset.
+      connect('lobby', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+      expect(store.gameId).toBeFalsy()
+
+      MockWebSocket.last!._receive({ type: 'game_starting', gameId: 'game-xyz' })
+      expect(store.gameId).toBe('game-xyz')
+    })
+  })
+
+  describe('heartbeat', () => {
+    it('measures latency from the heartbeat round-trip on heartbeat_ack', async () => {
+      const { connect, latency } = useGameSocket()
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1) // onopen → start the heartbeat interval
+      await vi.advanceTimersByTimeAsync(10_000) // HEARTBEAT_INTERVAL → a ping is sent (lastPingTime set)
+      await vi.advanceTimersByTimeAsync(50) // simulate 50ms of round-trip
+      expect(latency.value).toBe(0) // no ack yet
+
+      MockWebSocket.last!._receive({ type: 'heartbeat_ack' })
+      // Round-trip measured: at least the 50ms we advanced (a tick of timer
+      // setup offset makes the exact value brittle, so assert the lower bound).
+      expect(latency.value).toBeGreaterThanOrEqual(50)
+    })
+
+    it('sends a heartbeat frame on the interval', async () => {
+      const { connect } = useGameSocket()
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+      const socket = MockWebSocket.last!
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      const sentHeartbeat = socket.send.mock.calls.some((c) => String(c[0]).includes('"heartbeat"'))
+      expect(sentHeartbeat).toBe(true)
+    })
   })
 
   describe('reconnect', () => {
