@@ -30,4 +30,24 @@ describe('shop', () => {
     // The event carries the price for the "(-Ng)" confirmation line.
     expect((purchase as { cost: number }).cost).toBeGreaterThan(0)
   })
+
+  it('selling emits an item_sold event confirming the refund', async () => {
+    const game = await seedGame('laning', { heroSelf: 'echo' })
+
+    // Buy then sell the same item (the player stays in the shop zone).
+    game.buy('iron_branch')
+    await game.tick()
+    game.submit({ type: 'sell', item: 'iron_branch' })
+    await game.tick()
+
+    const me = await game.me()
+    expect(me.items).not.toContain('iron_branch')
+
+    const sale = game.lastEvents.find(
+      (e) => e._tag === 'item_sold' && e.playerId === HUMAN && e.itemId === 'iron_branch',
+    )
+    expect(sale).toBeDefined()
+    // The event carries the refund for the "(+Ng)" confirmation line.
+    expect((sale as { refund: number }).refund).toBeGreaterThan(0)
+  })
 })

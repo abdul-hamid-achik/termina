@@ -207,6 +207,14 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
+    case 'item_sold':
+      return {
+        tick,
+        text: `${label(p.playerId)} sold ${ctx.itemName(str(p.itemId))} (+${num(p.refund)}g)`,
+        type: 'gold',
+        salience: actorSalience(p.playerId, ctx),
+      }
+
     case 'ward_placed':
       return {
         tick,

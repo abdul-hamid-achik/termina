@@ -58,6 +58,7 @@ import {
   RING_OF_HEALTH_REGEN_PERCENT,
   SOBI_MASK_REGEN_PERCENT,
   HEART_REGEN_PERCENT,
+  SELL_REFUND_RATIO,
   // IN_COMBAT_BUFF_DURATION,
 } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
@@ -963,6 +964,15 @@ export function resolveActions(
       )
       if (result) {
         players = { ...result.players }
+        // Confirm the sale in the combat log, mirroring the buy path. Refund
+        // matches sellItem's (cost * SELL_REFUND_RATIO, floored).
+        events.push({
+          _tag: 'item_sold',
+          tick: state.tick,
+          playerId: action.playerId,
+          itemId: cmd.item,
+          refund: Math.floor((ITEMS[cmd.item]?.cost ?? 0) * SELL_REFUND_RATIO),
+        })
       }
     }
 

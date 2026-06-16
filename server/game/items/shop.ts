@@ -6,6 +6,7 @@ import {
   MAX_ITEMS,
   OBSERVER_WARD_DURATION_TICKS,
   SENTRY_WARD_DURATION_TICKS,
+  SELL_REFUND_RATIO,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { getItem } from '~~/shared/constants/items'
@@ -170,8 +171,7 @@ export function sellItem(
       return yield* Effect.fail(new ItemNotSellableError({ itemId }))
     }
 
-    // 50% gold refund
-    const refund = Math.floor(item.cost * 0.5)
+    const refund = Math.floor(item.cost * SELL_REFUND_RATIO)
     const items = [...player.items]
     items[itemSlot] = null
 

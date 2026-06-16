@@ -138,6 +138,14 @@ export interface ItemPurchasedEvent {
   readonly cost: number
 }
 
+export interface ItemSoldEvent {
+  readonly _tag: 'item_sold'
+  readonly tick: number
+  readonly playerId: string
+  readonly itemId: string
+  readonly refund: number
+}
+
 export interface WardPlacedEvent {
   readonly _tag: 'ward_placed'
   readonly tick: number
@@ -308,6 +316,7 @@ export type GameEngineEvent =
   | EnemyMissingEvent
   | ContestLasthitEvent
   | ItemPurchasedEvent
+  | ItemSoldEvent
   | WardPlacedEvent
   | RunePickedEvent
   | TrapTriggeredEvent

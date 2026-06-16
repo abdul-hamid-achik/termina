@@ -149,6 +149,25 @@ describe('eventToLine: previously-orphaned events get real text', () => {
       )!.text,
     ).toContain('ward')
   })
+  it('confirms item buys and sells with the gold delta', () => {
+    const buy = eventToLine(
+      ev('item_purchased', { playerId: 'me', itemId: 'blink_module', cost: 500 }),
+      ctx,
+    )!
+    expect(buy.type).toBe('gold')
+    expect(buy.text).toContain('acquired')
+    expect(buy.text).toContain('Item(blink_module)')
+    expect(buy.text).toContain('-500')
+
+    const sell = eventToLine(
+      ev('item_sold', { playerId: 'me', itemId: 'iron_branch', refund: 25 }),
+      ctx,
+    )!
+    expect(sell.type).toBe('gold')
+    expect(sell.text).toContain('sold')
+    expect(sell.text).toContain('Item(iron_branch)')
+    expect(sell.text).toContain('+25')
+  })
   it('keeps the exact victory phrasing for the core', () => {
     const line = eventToLine(ev('ancient_destroyed', { team: 'dire', killerTeam: 'radiant' }), ctx)!
     expect(line.type).toBe('victory')

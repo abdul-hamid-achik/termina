@@ -82,6 +82,7 @@ function isEventVisibleToPlayer(
     case 'creep_lasthit':
     case 'gold_change':
     case 'item_purchased':
+    case 'item_sold':
       if (event.playerId === playerId) return true
       return state.players[event.playerId]?.team === playerTeam
     case 'ability_used': {
