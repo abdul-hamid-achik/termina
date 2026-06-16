@@ -210,4 +210,33 @@ describe('abilities', () => {
     await game.tick()
     expect(magicHit()).toBe(false)
   })
+
+  it('a cycloned hero is fully disabled — no move AND no cast, with feedback (Eul’s)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+
+    // Move is blocked — the hero stays put — and the reason reaches the player.
+    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    await game.tick()
+    expect((await game.me()).zone).toBe('mid-river')
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('cycloned')),
+    ).toBe(true)
+
+    // Unlike root/silence (which block one axis), the cyclone also blocks casting.
+    game.cast('w')
+    await game.tick()
+    expect((await game.me()).cooldowns.w).toBe(0)
+  })
 })
