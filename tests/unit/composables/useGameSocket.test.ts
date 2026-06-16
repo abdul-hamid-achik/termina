@@ -256,6 +256,14 @@ describe('useGameSocket', () => {
       expect(spy).toHaveBeenCalledWith('[ERROR] boom', 'error')
     })
 
+    it('routes player_disconnect to a warning announcement (named, or a fallback)', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'addAnnouncement')
+      // No player roster loaded yet → generic name; the message must still surface.
+      MockWebSocket.last!._receive({ type: 'player_disconnect', playerId: 'p2' })
+      expect(spy).toHaveBeenCalledWith('A player disconnected', 'warning')
+    })
+
     it('routes game_over to setGameOver', async () => {
       const store = await connectWithStore()
       const spy = vi.spyOn(store, 'setGameOver')

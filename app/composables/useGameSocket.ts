@@ -142,6 +142,13 @@ export function useGameSocket() {
         case 'game_over':
           gameStore.setGameOver(msg.winner, msg.stats)
           break
+        case 'player_disconnect': {
+          // Surface the drop so the team knows they're a player down (was sent by
+          // the server but silently dropped — no case handled it).
+          const who = gameStore.allPlayers[msg.playerId]?.name ?? 'A player'
+          gameStore.addAnnouncement(`${who} disconnected`, 'warning')
+          break
+        }
         case 'game_starting':
           if (!gameStore.gameId) {
             socketLog.info('game_starting received — setting gameId', { gameId: msg.gameId })

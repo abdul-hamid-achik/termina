@@ -514,10 +514,14 @@ export default defineWebSocketHandler({
             Effect.runPromise(
               Effect.gen(function* () {
                 yield* runtime.wsService.removeConnection(playerId)
-                yield* runtime.redisService.publish(
-                  `game:${gameId}:events`,
-                  JSON.stringify({ type: 'player_disconnect', playerId }),
-                )
+                // Notify the surviving players. removeConnection ran first, so the
+                // dropped player is already out of the connection set. (The old
+                // code published to a Redis channel nobody subscribed to, so the
+                // disconnect notice never actually reached anyone.)
+                yield* runtime.wsService.broadcastToGame(gameId, {
+                  type: 'player_disconnect',
+                  playerId,
+                })
               }),
             ).catch((err) => {
               wsLog.warn('Disconnect cleanup failed', { playerId, error: String(err) })

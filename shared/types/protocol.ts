@@ -151,6 +151,12 @@ export interface SpectatorAckMessage {
   gameId: string
 }
 
+/** Broadcast to the surviving players when someone drops their connection. */
+export interface PlayerDisconnectMessage {
+  type: 'player_disconnect'
+  playerId: string
+}
+
 export type ServerMessage =
   | TickStateMessage
   | EventsMessage
@@ -172,3 +178,4 @@ export type ServerMessage =
   | GameNotFoundMessage
   | SpectatorTickMessage
   | SpectatorAckMessage
+  | PlayerDisconnectMessage

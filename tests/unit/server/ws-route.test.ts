@@ -123,6 +123,7 @@ function mockRuntime() {
       addConnection: vi.fn(() => Effect.succeed(undefined)),
       getConnections: vi.fn(() => Effect.succeed(new Map([['other_player', {}]]))),
       removeConnection: vi.fn(() => Effect.succeed(undefined)),
+      broadcastToGame: vi.fn(() => Effect.succeed(undefined)),
     },
     redisService: { publish: vi.fn(() => Effect.succeed(undefined)) },
     dbService: { tag: 'db' },
@@ -580,7 +581,7 @@ describe('ws route — close()', () => {
     expect(resetRateLimit).toHaveBeenCalledWith('p_cl0')
   })
 
-  it('defers in-game cleanup for the 60s reconnect window, then publishes the disconnect', async () => {
+  it('defers in-game cleanup for the 60s reconnect window, then broadcasts the disconnect', async () => {
     vi.useFakeTimers()
     const { peer, runtime } = openPeerInGame('p_cl1', 'game_1')
     handler.close(peer, {})
@@ -593,10 +594,12 @@ describe('ws route — close()', () => {
 
     expect(resetRateLimit).toHaveBeenCalledWith('p_cl1')
     expect(runtime.wsService.removeConnection).toHaveBeenCalledWith('p_cl1')
-    expect(runtime.redisService.publish).toHaveBeenCalledWith(
-      'game:game_1:events',
-      JSON.stringify({ type: 'player_disconnect', playerId: 'p_cl1' }),
-    )
+    // Delivered to the surviving players via the real in-memory broadcast — NOT
+    // the old Redis publish, which went to a channel with no subscriber.
+    expect(runtime.wsService.broadcastToGame).toHaveBeenCalledWith('game_1', {
+      type: 'player_disconnect',
+      playerId: 'p_cl1',
+    })
   })
 
   it('uses a short window for dev_ games and stops the seeded loop', async () => {
