@@ -119,7 +119,12 @@ export function isEventVisibleToPlayer(
       // otherwise it leaks where they are.
       return visibleZones.has(event.zone)
     case 'talent_selected':
-      // Enemy talent / build choices are hidden information.
+    case 'power_spike':
+      // Enemy build/power-spike info is team-private — you learn an enemy spiked
+      // by scouting them, not from a broadcast (publicly warning about a spike
+      // you have no vision on is a fog leak in disguise). Own + allied spikes
+      // stay visible (clarity carve-out); genuinely global events (Aegis) are
+      // handled by their own always-visible cases.
       if (event.playerId === playerId) return true
       return state.players[event.playerId]?.team === playerTeam
     default:
