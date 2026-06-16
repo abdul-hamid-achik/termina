@@ -625,3 +625,21 @@ describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
     expect(failedAtLeastOnce).toBe(true)
   })
 })
+
+describe('Refresher Orb active resets all ability cooldowns', () => {
+  it('use refresher_orb zeroes q/w/e/r and goes on its own cooldown', () => {
+    const state = makeGameState({
+      players: {
+        p1: makePlayer({
+          id: 'p1',
+          team: 'radiant',
+          items: ['refresher_orb', null, null, null, null, null],
+          cooldowns: { q: 5, w: 3, e: 8, r: 20 },
+        }),
+      },
+    })
+    const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'refresher_orb' } }])
+    expect(r.state.players['p1']!.cooldowns).toEqual({ q: 0, w: 0, e: 0, r: 0 })
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_refresher_orb')).toBe(true)
+  })
+})
