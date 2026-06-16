@@ -44,6 +44,10 @@ describe('objectives: Roshan & aegis', () => {
     expect(state.roshan.alive).toBe(true)
     expect(state.roshan.hp).toBe(100) // untouched from the wrong zone
     expect(state.aegis).toBeNull()
+    // ...and the player is told why, rather than the attack vanishing silently.
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('from the pit')),
+    ).toBe(true)
   })
 
   it('a hero in the pit claims a grounded aegis and gains the aegis buff', async () => {
@@ -145,5 +149,9 @@ describe('objectives: jungle neutrals', () => {
     const n = (await game.state()).neutrals.find((x) => x.id === 'camp0')
     expect(n?.alive).toBe(true)
     expect(n?.hp).toBe(100) // untouched from a different zone
+    // ...with feedback instead of a silent drop.
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('not in your zone')),
+    ).toBe(true)
   })
 })

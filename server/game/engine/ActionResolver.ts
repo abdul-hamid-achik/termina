@@ -730,7 +730,10 @@ export function resolveActions(
         const targetZone = cmd.target.zone
         const tower = towers.find((t) => t.zone === targetZone && t.alive)
         if (!tower) continue
-        if (tower.zone !== attacker.zone) continue
+        if (tower.zone !== attacker.zone) {
+          rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
+          continue
+        }
         if (tower.invulnerable) {
           events.push({
             _tag: 'tower_invulnerable',
@@ -739,7 +742,13 @@ export function resolveActions(
           })
           continue
         }
-        if (!canAttackTower(towers, targetZone)) continue
+        if (!canAttackTower(towers, targetZone)) {
+          rejected.push({
+            playerId: action.playerId,
+            reason: 'That tower is protected — destroy the one in front of it first',
+          })
+          continue
+        }
 
         const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
         const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
@@ -770,7 +779,13 @@ export function resolveActions(
       } else if (cmd.target.kind === 'roshan') {
         const roshan = state.roshan
         if (!roshan.alive) continue
-        if (attacker.zone !== 'roshan-pit') continue
+        if (attacker.zone !== 'roshan-pit') {
+          rejected.push({
+            playerId: action.playerId,
+            reason: 'Roshan can only be attacked from the pit',
+          })
+          continue
+        }
 
         const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
         const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
@@ -787,7 +802,10 @@ export function resolveActions(
         const neutralIdx = cmd.target.index
         const neutral = neutrals[neutralIdx]
         if (!neutral || !neutral.alive) continue
-        if (neutral.zone !== attacker.zone) continue
+        if (neutral.zone !== attacker.zone) {
+          rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
+          continue
+        }
 
         const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
         const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
@@ -810,7 +828,13 @@ export function resolveActions(
       } else if (cmd.target.kind === 'ancient') {
         const enemyTeam: TeamId = attacker.team === 'radiant' ? 'dire' : 'radiant'
         // Heroes must stand in the enemy base to hit the Ancient
-        if (attacker.zone !== ANCIENT_ZONES[enemyTeam]) continue
+        if (attacker.zone !== ANCIENT_ZONES[enemyTeam]) {
+          rejected.push({
+            playerId: action.playerId,
+            reason: 'You must be in the enemy base to attack the Ancient',
+          })
+          continue
+        }
 
         const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
         const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
@@ -826,6 +850,9 @@ export function resolveActions(
             playerId: action.playerId,
             reason: result.rejected,
           })
+          // Forward the firewall reason to the player — endgame clarity for
+          // "why won't the Ancient take damage?" (was server-logged only).
+          rejected.push({ playerId: action.playerId, reason: result.rejected })
           continue
         }
 

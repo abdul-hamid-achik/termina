@@ -295,6 +295,56 @@ describe('combat', () => {
     expect(ancient.alive).toBe(true)
     expect(ancient.hp).toBe(500)
     expect((await game.state()).winner).toBeFalsy()
+    // The firewall reason now reaches the player (previously server-logged only),
+    // so the endgame "why won't it take damage?" moment isn't a mystery.
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('firewall')),
+    ).toBe(true)
+  })
+
+  it('attacking a tower from a different zone is rejected with feedback', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me = await game.me()
+    const enemySuffix = me.team === 'radiant' ? 'dire' : 'rad'
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+    }))
+
+    // The enemy mid-T1 stands in mid-t1-<suffix>, not mid-river — out of reach.
+    game.submit({ type: 'attack', target: { kind: 'tower', zone: `mid-t1-${enemySuffix}` } })
+    await game.tick()
+
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('not in your zone')),
+    ).toBe(true)
+  })
+
+  it('a backdoor-protected tower (its front tower still up) tells the player it is protected', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me = await game.me()
+    const enemySuffix = me.team === 'radiant' ? 'dire' : 'rad'
+    const t2Zone = `mid-t2-${enemySuffix}`
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: t2Zone } },
+      // Standing at the T2 (attackable-shaped) while the T1 in front still stands,
+      // so backdoor protection holds and the attack should bounce — with a reason.
+      towers: s.towers.map((t) =>
+        t.zone === t2Zone
+          ? { ...t, alive: true, invulnerable: false }
+          : t.zone === `mid-t1-${enemySuffix}`
+            ? { ...t, alive: true }
+            : t,
+      ),
+    }))
+
+    game.submit({ type: 'attack', target: { kind: 'tower', zone: t2Zone } })
+    await game.tick()
+
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('protected')),
+    ).toBe(true)
   })
 
   it('destroying a T3 tower lifts the enemy Ancient firewall (vulnerable flips true)', async () => {
