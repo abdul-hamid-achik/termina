@@ -171,4 +171,43 @@ describe('abilities', () => {
     // same tick — so a DoT is the observable "the debuff landed" signal).
     expect((await game.player(ENEMY)).buffs.some((b) => b.id.includes('dot'))).toBe(true)
   })
+
+  it('magic immunity (BKB) fully blocks a magic ability — no damage to the target', async () => {
+    // regex Q (Match) is 70 magical damage on a hero target.
+    const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
+
+    const magicHit = () =>
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )
+
+    // Sanity: without immunity the magic Q lands.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [] },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    expect(magicHit()).toBe(true)
+
+    // Now grant the target magic immunity and cast again — fully absorbed.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    expect(magicHit()).toBe(false)
+  })
 })
