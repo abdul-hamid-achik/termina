@@ -375,4 +375,31 @@ describe('combat', () => {
     const creep = (await game.state()).creeps.find((c) => c.id === 'shield0')
     expect(creep && creep.hp < 300).toBe(true)
   })
+
+  it('using Glyph turns all of the team’s towers invulnerable', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me = await game.me()
+
+    game.submit({ type: 'glyph' })
+    await game.tick()
+
+    const myTowers = (await game.state()).towers.filter((t) => t.team === me.team)
+    expect(myTowers.length).toBeGreaterThan(0)
+    expect(myTowers.every((t) => t.invulnerable)).toBe(true)
+    expect(game.lastEvents.some((e) => e._tag === 'glyph_used')).toBe(true)
+  })
+
+  it('Glyph cannot be reused while on cooldown', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+
+    // First glyph: sets the team's glyph cooldown.
+    game.submit({ type: 'glyph' })
+    await game.tick()
+    expect(game.lastEvents.some((e) => e._tag === 'glyph_used')).toBe(true)
+
+    // Second glyph one tick later: still on cooldown, so it's rejected.
+    game.submit({ type: 'glyph' })
+    await game.tick()
+    expect(game.lastEvents.some((e) => e._tag === 'glyph_on_cooldown')).toBe(true)
+  })
 })
