@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { decideBotAction, getAbilityTarget, sequenceManaCost } from '../../../server/game/ai/BotAI'
+import {
+  decideBotAction,
+  getAbilityTarget,
+  sequenceManaCost,
+  buildOrderForRole,
+} from '../../../server/game/ai/BotAI'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 import { HEROES } from '../../../shared/constants/heroes'
@@ -144,6 +149,61 @@ describe('BotAI - decideBotAction', () => {
       expect(
         decideBotAction(makeGameState({ players: { [poor.id]: poor } }), poor, 'mid'),
       ).not.toEqual({ type: 'buy', item: 'blades_of_attack' })
+    })
+
+    describe('role-aware itemisation', () => {
+      it('each role build leads with a stat that fits the role', () => {
+        const stat = (id: string, k: string) =>
+          (getItem(id)!.stats as Record<string, number>)[k] ?? 0
+        expect(stat(buildOrderForRole('carry')[0]!, 'attack')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('assassin')[0]!, 'attack')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('tank')[0]!, 'hp')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('offlaner')[0]!, 'hp')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('mage')[0]!, 'mp')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('support')[0]!, 'mp')).toBeGreaterThan(0)
+      })
+
+      it('falls back to the shared core build for an unknown role', () => {
+        expect(buildOrderForRole(undefined)[0]).toBe('blades_of_attack')
+      })
+
+      it('every role-build item exists and grants an engine-consumed stat', () => {
+        const STAT_KEYS = ['hp', 'mp', 'attack', 'defense', 'magicResist']
+        const roles = ['carry', 'assassin', 'tank', 'offlaner', 'mage', 'support'] as const
+        for (const role of roles) {
+          for (const id of buildOrderForRole(role)) {
+            const item = getItem(id)
+            expect(item, `${role} build item ${id} should exist`).toBeDefined()
+            const s = item!.stats as Record<string, number>
+            expect(
+              STAT_KEYS.some((k) => (s[k] ?? 0) > 0),
+              `${id} should grant a real stat`,
+            ).toBe(true)
+          }
+        }
+      })
+
+      it('a tank bot itemises toward HP (ring_of_health, not blades_of_attack)', () => {
+        const stocked: (string | null)[] = [
+          'healing_salve',
+          'town_portal_scroll',
+          null,
+          null,
+          null,
+          null,
+        ]
+        const tank = makePlayer({
+          heroId: 'kernel', // role: tank
+          zone: 'radiant-fountain',
+          hp: 500,
+          maxHp: 500,
+          gold: getItem('ring_of_health')!.cost,
+          items: [...stocked] as PlayerState['items'],
+        })
+        expect(
+          decideBotAction(makeGameState({ players: { [tank.id]: tank } }), tank, 'mid'),
+        ).toEqual({ type: 'buy', item: 'ring_of_health' })
+      })
     })
 
     it('stays at fountain to heal when HP is low', () => {
