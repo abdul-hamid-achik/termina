@@ -142,6 +142,11 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   // invulnerable, enforced in the damage paths) until it expires.
   if (hasDebuff(player, 'cyclone')) return 'Cannot act while cycloned'
 
+  // Scythe of Vyse Hex is a hard disable — no move, attack, OR cast. (The
+  // co-applied 'silence' only gates casting, so without this a hexed hero could
+  // still basic-attack.)
+  if (hasDebuff(player, 'hex')) return 'Cannot act while hexed'
+
   const cmd = action.command
 
   switch (cmd.type) {

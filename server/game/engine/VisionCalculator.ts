@@ -150,16 +150,18 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
 }
 
 function addZoneWithAdjacent(visible: Set<string>, zoneId: string, isNight: boolean = false): void {
+  // Own zone is ALWAYS visible, even at night. (ADJACENT_CACHE stores
+  // [...adjacentTo, zoneId] with zoneId last, so the old night `slice` lopped
+  // the own zone off — a hero would go blind in its own zone at night.)
+  visible.add(zoneId)
   const adjacent = ADJACENT_CACHE.get(zoneId)
-  if (adjacent) {
-    const zonesToAdd = isNight
-      ? adjacent.slice(0, Math.max(1, adjacent.length - NIGHT_VISION_PENALTY))
-      : adjacent
-    for (const zone of zonesToAdd) {
-      visible.add(zone)
-    }
-  } else {
-    visible.add(zoneId)
+  if (!adjacent) return
+  const neighbors = adjacent.filter((z) => z !== zoneId)
+  const zonesToAdd = isNight
+    ? neighbors.slice(0, Math.max(0, neighbors.length - NIGHT_VISION_PENALTY))
+    : neighbors
+  for (const zone of zonesToAdd) {
+    visible.add(zone)
   }
 }
 
@@ -186,9 +188,10 @@ function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
 }
 
 function isInvisible(player: PlayerState): boolean {
-  return player.buffs.some(
-    (b) => b.id.includes('invisible') || b.id === 'invis' || b.id === 'stealth',
-  )
+  // `includes('invis')` covers invisible / invis / silver_edge_invis (Silver
+  // Edge previously granted no stealth because its id matched none of the
+  // exact checks); smoke = Smoke of Deceit.
+  return player.buffs.some((b) => b.id.includes('invis') || b.id === 'stealth' || b.id === 'smoke')
 }
 
 /**
