@@ -245,6 +245,9 @@ export interface TeleportCompleteEvent {
   readonly tick: number
   readonly playerId: string
   readonly destination: string
+  /** Return-shadow variants (Traceroute Next Hop / Lambda Return) so the feed
+   *  can narrate the snap-back distinctly from a plain town-portal teleport. */
+  readonly source?: 'return' | 'next_hop'
 }
 
 export interface TeleportCancelledEvent {
