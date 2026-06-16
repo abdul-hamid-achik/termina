@@ -615,4 +615,93 @@ describe('Shop', () => {
       }
     })
   })
+
+  describe('Item actives — behavioral effects', () => {
+    const hasBuff = (s: GameState, pid: string, id: string) =>
+      s.players[pid]!.buffs.some((b) => b.id === id)
+
+    it('Black King Bar grants magic immunity to the caster', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        items: ['black_king_bar', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'black_king_bar'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'magic_immune')).toBe(true)
+    })
+
+    it('Ghost Scepter puts the caster into ghost form', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        items: ['ghost_scepter', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'ghost_scepter'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'ghost_form')).toBe(true)
+    })
+
+    it('Refresher Orb resets the caster ability cooldowns', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        items: ['refresher_orb', null, null, null, null, null],
+        cooldowns: { q: 5, w: 5, e: 5, r: 5 },
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'refresher_orb'))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        expect(exit.value.players['player_1']!.cooldowns).toEqual({ q: 0, w: 0, e: 0, r: 0 })
+      }
+    })
+
+    it("Eul's Scepter cyclones a co-located enemy (invulnerable + disabled)", async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['euls_scepter', null, null, null, null, null],
+      })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'dire', zone: 'mid-river' })
+      const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'euls_scepter', { kind: 'hero', name: 'enemy_1' }),
+      )
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        expect(hasBuff(exit.value, 'enemy_1', 'cyclone')).toBe(true)
+        expect(hasBuff(exit.value, 'enemy_1', 'invulnerable')).toBe(true)
+      }
+    })
+
+    it('Scythe of Vyse hexes a co-located enemy (hex + silence)', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['scythe_of_vyse', null, null, null, null, null],
+      })
+      const enemy = makePlayer({ id: 'enemy_1', team: 'dire', zone: 'mid-river' })
+      const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'scythe_of_vyse', { kind: 'hero', name: 'enemy_1' }),
+      )
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        expect(hasBuff(exit.value, 'enemy_1', 'hex')).toBe(true)
+        expect(hasBuff(exit.value, 'enemy_1', 'silence')).toBe(true)
+      }
+    })
+  })
 })
