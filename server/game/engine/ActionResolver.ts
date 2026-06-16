@@ -487,7 +487,14 @@ export function resolveActions(
         const target = players[targetId]
         if (!target || !target.alive) continue
 
-        if (target.zone !== attacker.zone) continue
+        // The target was co-located at tick start (anti-cheat's VISION_BYPASS
+        // already drops attacks on heroes in another zone) but juked away during
+        // this tick's movement phase, which resolves before attacks. Tell the
+        // player their swing hit empty air instead of dropping it silently.
+        if (target.zone !== attacker.zone) {
+          rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
+          continue
+        }
         if (target.team === attacker.team) continue
 
         // Damage from earlier attackers this phase must stack — read pending
