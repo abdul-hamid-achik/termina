@@ -81,6 +81,62 @@ describe('combat', () => {
     expect((await game.player(ENEMY)).deaths).toBe(victimBefore.deaths + 1)
   })
 
+  it('a teammate who chipped the victim earns an assist (credit + gold) on the kill', async () => {
+    // The complement of the kill bounty: assists are how a support that never
+    // lands the last hit still earns off a kill. A third ally chips the enemy,
+    // then the human finishes it a tick later — within the 5-tick assist window —
+    // so the ally is a windowed contributor while the human is the sole killer.
+    const ALLY = 'ally'
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    const myKills = (await game.me()).kills
+    await game.patch((s) => {
+      const h = s.players[HUMAN]!
+      const e = s.players[ENEMY]!
+      return {
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: { ...h, zone: 'mid-river' },
+          [ENEMY]: { ...e, zone: 'mid-river', hp: e.maxHp }, // healthy — survives the chip
+          // A second radiant hero co-located with the enemy (distinct id/name so
+          // attribution can't confuse it with the human).
+          [ALLY]: {
+            ...h,
+            id: ALLY,
+            name: 'Ally',
+            zone: 'mid-river',
+            kills: 0,
+            deaths: 0,
+            assists: 0,
+          },
+        },
+      }
+    })
+
+    // Tick 1: the ally chips the enemy — registering as a recent damage contributor.
+    game.attackHero(ENEMY, ALLY)
+    await game.tick()
+    expect((await game.player(ENEMY)).alive).toBe(true) // not lethal, just a chip
+
+    // Tick 2 (within the window): drop the enemy to 1 HP and let the HUMAN finish it.
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, hp: 1 } },
+    }))
+    const allyBefore = await game.player(ALLY)
+    game.attackHero(ENEMY, HUMAN)
+    await game.tick()
+
+    expect((await game.player(ENEMY)).alive).toBe(false)
+    // The human owns the kill; the ally owns the assist (not a kill).
+    expect((await game.me()).kills).toBe(myKills + 1)
+    const ally = await game.player(ALLY)
+    expect(ally.assists).toBe(allyBefore.assists + 1)
+    expect(ally.kills).toBe(0)
+    // Assist gold is paid out (a flat split; passive income only adds on top).
+    expect(ally.gold).toBeGreaterThan(allyBefore.gold)
+  })
+
   it('Divine Rapier drops from the victim and is claimed by the killer on a hero kill', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
