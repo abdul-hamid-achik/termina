@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { resolveAbility } from '../../../server/game/heroes/_base'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 import '../../../server/game/heroes/regex'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -457,6 +458,78 @@ describe('Regex Hero', () => {
       )
 
       expect(result._tag).toBe('Failure')
+    })
+  })
+
+  describe('Talents (engine-applied — formerly dead specialEffect no-ops)', () => {
+    it('regex_20_left reduces Capture Group cooldown by 2 (was the dead slow_plus_50 no-op)', () => {
+      const player = makePlayer({
+        level: 1,
+        talents: { tier10: null, tier15: null, tier20: 'regex_20_left', tier25: null },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
+
+      // W_COOLDOWN[0] (10) − 2
+      expect(result.state.players['p1']!.cooldowns.w).toBe(8)
+    })
+
+    it('regex_25_right reduces Backtracking cooldown by 12 (was the dead triple_cast no-op)', () => {
+      const player = makePlayer({
+        level: 6,
+        mp: 500,
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'regex_25_right' },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
+
+      // R_COOLDOWN (60) − 12
+      expect(result.state.players['p1']!.cooldowns.r).toBe(48)
+    })
+
+    it('regex_25_left boosts Backtracking damage (was the dead global_ultimate no-op)', () => {
+      const enemyOpts = { mp: 100, maxMp: 280, hp: 1000, maxHp: 1000 }
+
+      const boosted = Effect.runSync(
+        resolveAbility(
+          makeState([
+            makePlayer({
+              level: 6,
+              mp: 500,
+              talents: { tier10: null, tier15: null, tier20: null, tier25: 'regex_25_left' },
+            }),
+            makeEnemy(enemyOpts),
+          ]),
+          'p1',
+          'r',
+          { kind: 'hero', name: 'e1' },
+        ),
+      )
+      const plain = Effect.runSync(
+        resolveAbility(
+          makeState([makePlayer({ level: 6, mp: 500 }), makeEnemy(enemyOpts)]),
+          'p1',
+          'r',
+          { kind: 'hero', name: 'e1' },
+        ),
+      )
+
+      const dmgBoosted = 1000 - boosted.state.players['e1']!.hp
+      const dmgPlain = 1000 - plain.state.players['e1']!.hp
+      expect(dmgPlain).toBeGreaterThan(0)
+      expect(dmgBoosted).toBeGreaterThan(dmgPlain)
+    })
+
+    it('no regex talent is a dead specialEffect no-op anymore', () => {
+      for (const t of Object.values(TALENT_TREES.regex.tiers).flat()) {
+        expect(t.type).not.toBe('special')
+        expect(t.type).not.toBe('ability_boost')
+        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+      }
     })
   })
 })

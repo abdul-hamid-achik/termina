@@ -322,8 +322,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       15: [
         {
           id: 'regex_15_left',
-          name: '+40 Pattern Damage',
-          description: 'Pattern +40 damage',
+          name: '+40% Match Damage',
+          description: 'Match deals 40% more damage',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'q',
@@ -331,8 +331,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'regex_15_right',
-          name: '-15% Mana Cost',
-          description: '-15% ability mana',
+          name: 'Match Costs 15% Less Mana',
+          description: 'Reduces Match mana cost by 15%',
           type: 'mana_cost_reduce',
           tier: 15,
           abilityId: 'q',
@@ -342,12 +342,12 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       20: [
         {
           id: 'regex_20_left',
-          name: '+50% Match Slow',
-          description: 'Match slow +50%',
-          type: 'ability_boost',
+          name: '-2s Capture Group CD',
+          description: 'Capture Group (root) cooldown reduced by 2 seconds',
+          type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'w',
-          specialEffect: 'slow_plus_50',
+          cooldownReduction: 2,
         },
         {
           id: 'regex_20_right',
@@ -361,21 +361,21 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'regex_25_left',
-          name: 'Global Match',
-          description: 'Ultimate affects all enemies',
-          type: 'special',
+          name: '+30% Backtracking Damage',
+          description: 'Catastrophic Backtracking deals 30% more damage',
+          type: 'damage_boost',
           tier: 25,
           abilityId: 'r',
-          specialEffect: 'global_ultimate',
+          damageBoost: 30,
         },
         {
           id: 'regex_25_right',
-          name: 'Triple Cast',
-          description: '20% chance to cast 3x',
-          type: 'special',
+          name: '-12s Backtracking CD',
+          description: 'Catastrophic Backtracking cooldown reduced by 12 seconds',
+          type: 'cooldown_reduce',
           tier: 25,
           abilityId: 'r',
-          specialEffect: 'triple_cast_chance_20',
+          cooldownReduction: 12,
         },
       ],
     },
