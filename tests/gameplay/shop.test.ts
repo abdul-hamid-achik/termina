@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seedGame } from './harness'
+import { seedGame, HUMAN } from './harness'
 
 /**
  * Replaces tests/e2e/flows/game_buy_resolves.yml — a buy action lands the item
@@ -15,5 +15,19 @@ describe('shop', () => {
 
     const me = await game.me()
     expect(me.items).toContain('iron_branch')
+  })
+
+  it('buying emits an item_purchased event so the buy is confirmed in the log', async () => {
+    const game = await seedGame('laning', { heroSelf: 'echo' })
+
+    game.buy('iron_branch')
+    await game.tick()
+
+    const purchase = game.lastEvents.find(
+      (e) => e._tag === 'item_purchased' && e.playerId === HUMAN && e.itemId === 'iron_branch',
+    )
+    expect(purchase).toBeDefined()
+    // The event carries the price for the "(-Ng)" confirmation line.
+    expect((purchase as { cost: number }).cost).toBeGreaterThan(0)
   })
 })
