@@ -47,6 +47,12 @@ describe('Settings Store', () => {
         quickCastEnabled: false,
         theme: 'default',
         fontSize: 'medium',
+        hud: {
+          layoutMode: 'classic',
+          focusBanner: false,
+          density: 'comfortable',
+          emphasizeVitals: false,
+        },
       })
     })
 
@@ -66,6 +72,12 @@ describe('Settings Store', () => {
         quickCastEnabled: true,
         theme: 'green',
         fontSize: 'large',
+        hud: {
+          layoutMode: 'classic',
+          focusBanner: false,
+          density: 'comfortable',
+          emphasizeVitals: false,
+        },
       })
     })
   })
@@ -177,6 +189,112 @@ describe('Settings Store', () => {
 
       expect(store.theme).toBe('amber')
       expect(store.fontSize).toBe('large')
+    })
+  })
+
+  describe('HUD settings', () => {
+    it('defaults to the standard preset (today’s classic layout)', () => {
+      const store = useSettingsStore()
+
+      expect(store.hudPreset).toBe('standard')
+      expect(store.hud).toEqual({
+        layoutMode: 'classic',
+        focusBanner: false,
+        density: 'comfortable',
+        emphasizeVitals: false,
+      })
+    })
+
+    it('applyHudPreset swaps every field and records the preset', () => {
+      const store = useSettingsStore()
+
+      store.applyHudPreset('tactical')
+      expect(store.hudPreset).toBe('tactical')
+      expect(store.hud).toEqual({
+        layoutMode: 'map-centric',
+        focusBanner: true,
+        density: 'compact',
+        emphasizeVitals: false,
+      })
+
+      store.applyHudPreset('focus')
+      expect(store.hudPreset).toBe('focus')
+      expect(store.hud.emphasizeVitals).toBe(true)
+      expect(store.hud.focusBanner).toBe(true)
+    })
+
+    it('setHud toggles one field and re-derives the preset label', () => {
+      const store = useSettingsStore()
+
+      // Off a named preset → 'custom'.
+      store.setHud('emphasizeVitals', true)
+      expect(store.hud.emphasizeVitals).toBe(true)
+      expect(store.hudPreset).toBe('custom')
+
+      // Toggling back to a combination that matches 'standard' re-detects it.
+      store.setHud('emphasizeVitals', false)
+      expect(store.hudPreset).toBe('standard')
+    })
+
+    it('detects the focus preset when fields are set individually', () => {
+      const store = useSettingsStore()
+      store.setHud('focusBanner', true)
+      expect(store.hudPreset).toBe('custom')
+      store.setHud('emphasizeVitals', true)
+      // classic + banner + comfortable + vitals === the focus preset
+      expect(store.hudPreset).toBe('focus')
+    })
+
+    it('persists and reloads HUD settings round-trip', () => {
+      const store = useSettingsStore()
+      store.applyHudPreset('tactical')
+      store.save()
+
+      setActivePinia(createPinia())
+      const reloaded = useSettingsStore()
+      reloaded.load()
+
+      expect(reloaded.hud).toEqual({
+        layoutMode: 'map-centric',
+        focusBanner: true,
+        density: 'compact',
+        emphasizeVitals: false,
+      })
+      expect(reloaded.hudPreset).toBe('tactical')
+    })
+
+    it('keeps HUD defaults when an old payload has no hud key', () => {
+      mockStorage.set('termina:settings', JSON.stringify({ audioEnabled: false, theme: 'green' }))
+
+      const store = useSettingsStore()
+      store.load()
+
+      expect(store.audioEnabled).toBe(false)
+      expect(store.hud.layoutMode).toBe('classic')
+      expect(store.hudPreset).toBe('standard')
+    })
+
+    it('loads a partial/typo-corrupt hud blob field-by-field', () => {
+      mockStorage.set(
+        'termina:settings',
+        JSON.stringify({
+          hud: {
+            layoutMode: 'map-centric', // valid → applied
+            focusBanner: 'yes', // wrong type → ignored (stays false)
+            density: 'ultra', // invalid enum → ignored (stays comfortable)
+            emphasizeVitals: true, // valid → applied
+          },
+        }),
+      )
+
+      const store = useSettingsStore()
+      store.load()
+
+      expect(store.hud.layoutMode).toBe('map-centric')
+      expect(store.hud.focusBanner).toBe(false)
+      expect(store.hud.density).toBe('comfortable')
+      expect(store.hud.emphasizeVitals).toBe(true)
+      expect(store.hudPreset).toBe('custom')
     })
   })
 })
