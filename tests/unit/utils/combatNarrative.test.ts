@@ -302,3 +302,68 @@ describe('actorSalience for single-actor events', () => {
     )
   })
 })
+
+describe('eventToLine: narration coverage for every event type', () => {
+  const cases: Array<[string, Record<string, unknown>, string]> = [
+    ['death', { playerId: 'enemy1', respawnTick: 5 }, 'terminated'],
+    ['heal', { sourceId: 'me', targetId: 'ally1', amount: 50 }, 'restored 50'],
+    ['creep_lasthit', { playerId: 'me', creepType: 'melee', goldAwarded: 40 }, 'last-hit'],
+    ['creep_deny', { playerId: 'me', creepType: 'melee' }, 'denied'],
+    ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
+    ['enemy_missing', { playerId: 'enemy1', lastSeenZone: 'mid-river' }, 'MISSING'],
+    ['item_purchased', { playerId: 'me', itemId: 'dagon', cost: 2700 }, 'acquired'],
+    ['neutral_killed', { playerId: 'me', neutralType: 'kobold' }, 'kobold camp'],
+    ['aegis_used', { playerId: 'me' }, 'reincarnated'],
+    ['talent_selected', { playerId: 'me', talentName: '+250 HP' }, 'learned +250 HP'],
+    ['teleport_complete', { playerId: 'me', destination: 'mid-river' }, 'teleported to mid-river'],
+    ['trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 100 }, 'trap'],
+    ['teleport_cancelled', { playerId: 'me', reason: 'stunned' }, 'cancelled'],
+    ['glyph_used', { team: 'radiant' }, 'Glyph'],
+    ['surrender_vote', { team: 'radiant', votesFor: 2, votesNeeded: 3 }, '2/3'],
+    ['surrendered', { team: 'dire', winner: 'radiant' }, 'surrendered'],
+    ['roshan_respawn', {}, 'respawned'],
+  ]
+
+  it.each(cases)('narrates %s with a matching line', (type, payload, expected) => {
+    const line = eventToLine(ev(type, payload), ctx)
+    expect(line).not.toBeNull()
+    expect(line!.text).toContain(expected)
+  })
+
+  it('narrates the next_hop return-shadow teleport variant', () => {
+    const line = eventToLine(
+      ev('teleport_complete', { playerId: 'me', destination: 'mid-river', source: 'next_hop' }),
+      ctx,
+    )
+    expect(line!.text).toContain('return shadow')
+  })
+
+  it('narrates both spell_blocked sources distinctly', () => {
+    const lotus = eventToLine(
+      ev('spell_blocked', {
+        source: 'lotus_orb',
+        targetId: 'enemy1',
+        casterId: 'me',
+        reflected: 50,
+      }),
+      ctx,
+    )
+    expect(lotus!.text).toContain('Lotus Orb')
+    const linkens = eventToLine(
+      ev('spell_blocked', { source: 'linkens_sphere', targetId: 'enemy1', casterId: 'me' }),
+      ctx,
+    )
+    expect(linkens!.text).toContain("Linken's Sphere")
+  })
+
+  it('produces no line for internal / non-narrative events', () => {
+    for (const t of [
+      'contest_lasthit',
+      'glyph_on_cooldown',
+      'tower_invulnerable',
+      'cooldown_used',
+    ]) {
+      expect(eventToLine(ev(t, {}), ctx)).toBeNull()
+    }
+  })
+})
