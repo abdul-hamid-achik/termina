@@ -63,3 +63,65 @@ describe('isEventVisibleToPlayer — teleport vision gating', () => {
     expect(isEventVisibleToPlayer(tpCancelled('me'), 'me', 'radiant', new Set(), state)).toBe(true)
   })
 })
+
+const neutralKilled = (playerId: string, zone: string): GameEngineEvent =>
+  ({
+    _tag: 'neutral_killed',
+    tick: 1,
+    playerId,
+    neutralId: 'n0',
+    neutralType: 'kobold',
+    zone,
+  }) as GameEngineEvent
+const talentSelected = (playerId: string): GameEngineEvent =>
+  ({
+    _tag: 'talent_selected',
+    tick: 1,
+    playerId,
+    talentId: 't',
+    tier: 10,
+    talentName: '+15 Attack',
+  }) as GameEngineEvent
+
+describe('isEventVisibleToPlayer — enemy-info leaks', () => {
+  it('hides an enemy jungle kill unless you can see the camp', () => {
+    const ev = neutralKilled('enemy', 'jungle-dire-bot')
+    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['mid-river']), state)).toBe(false)
+    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['jungle-dire-bot']), state)).toBe(
+      true,
+    )
+  })
+
+  it('always shows your own / allied jungle kills (own gold/xp + shared vision)', () => {
+    expect(
+      isEventVisibleToPlayer(
+        neutralKilled('me', 'jungle-rad-top'),
+        'me',
+        'radiant',
+        new Set(),
+        state,
+      ),
+    ).toBe(true)
+    expect(
+      isEventVisibleToPlayer(
+        neutralKilled('ally', 'jungle-rad-bot'),
+        'me',
+        'radiant',
+        new Set(),
+        state,
+      ),
+    ).toBe(true)
+  })
+
+  it('hides enemy talent picks (build is private), shows your own and allies', () => {
+    expect(isEventVisibleToPlayer(talentSelected('enemy'), 'me', 'radiant', new Set(), state)).toBe(
+      false,
+    )
+    expect(isEventVisibleToPlayer(talentSelected('me'), 'me', 'radiant', new Set(), state)).toBe(
+      true,
+    )
+    expect(isEventVisibleToPlayer(talentSelected('ally'), 'me', 'radiant', new Set(), state)).toBe(
+      true,
+    )
+  })
+})

@@ -112,6 +112,16 @@ export function isEventVisibleToPlayer(
       const z = state.players[event.playerId]?.zone
       return !!(z && visibleZones.has(z))
     }
+    case 'neutral_killed':
+      if (event.playerId === playerId) return true
+      if (state.players[event.playerId]?.team === playerTeam) return true
+      // An enemy farming the jungle only shows if you can see that camp —
+      // otherwise it leaks where they are.
+      return visibleZones.has(event.zone)
+    case 'talent_selected':
+      // Enemy talent / build choices are hidden information.
+      if (event.playerId === playerId) return true
+      return state.players[event.playerId]?.team === playerTeam
     default:
       return true
   }
