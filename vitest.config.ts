@@ -15,10 +15,10 @@ export default defineConfig({
   test: {
     globals: true,
     // Coverage (v8). `bun run test:coverage` runs all projects and ENFORCES the
-    // thresholds below — set just under the achieved actuals (lines 74.4 /
-    // branches 66 / functions 73.9 / statements 73.2 as of the UI-gap close) so a
-    // real regression trips the gate but normal churn doesn't. Raise them as
-    // coverage climbs; never set them above what's earned.
+    // thresholds below — set just under the achieved actuals (lines 75.9 /
+    // branches 67.4 / functions 74.6 / statements 74.6 after the gameplay
+    // effect-assertion pass) so a real regression trips the gate but normal
+    // churn doesn't. Raise them as coverage climbs; never set them above earned.
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html', 'json-summary'],
@@ -34,10 +34,10 @@ export default defineConfig({
         '.output/**',
       ],
       thresholds: {
-        lines: 70,
-        branches: 60,
-        functions: 68,
-        statements: 70,
+        lines: 75,
+        branches: 66,
+        functions: 73,
+        statements: 73,
       },
     },
     projects: [
