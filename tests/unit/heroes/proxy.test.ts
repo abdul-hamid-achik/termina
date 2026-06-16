@@ -7,6 +7,8 @@ import {
   applyBuff,
   hasBuff,
 } from '../../../server/game/heroes/_base'
+import { getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 // Register proxy hero
 import '../../../server/game/heroes/proxy'
 
@@ -432,6 +434,49 @@ describe('Proxy Hero', () => {
         resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
       )
       expect(result._tag).toBe('Failure')
+    })
+  })
+
+  describe('Talents (engine-applied — formerly dead "Illusion" specialEffect no-ops)', () => {
+    it('proxy_15_left reduces Packet Redirect cooldown by 2 (was the dead illusion_plus_2 no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: 'proxy_15_left', tier20: null, tier25: null },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+
+      // Q_COOLDOWN (8) − 2
+      expect(result.state.players['p1']!.cooldowns.q).toBe(6)
+    })
+
+    it('proxy_25_left reduces Reverse Proxy cooldown by 12 (was the dead triple_illusion no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'proxy_25_left' },
+      })
+      const ally = makeAlly()
+      const state = makeState([player, ally])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
+
+      // R_COOLDOWN (50) − 12
+      expect(result.state.players['p1']!.cooldowns.r).toBe(38)
+    })
+
+    it('proxy_25_right grants +250 max MP via getTalentStatBonus (was the dead invisible_illusions no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'proxy_25_right' },
+      })
+      expect(getTalentStatBonus(player, 'mp')).toBe(250)
+    })
+
+    it('no proxy talent is a dead specialEffect no-op anymore', () => {
+      for (const t of Object.values(TALENT_TREES.proxy.tiers).flat()) {
+        expect(t.type).not.toBe('special')
+        expect(t.type).not.toBe('ability_boost')
+        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+      }
     })
   })
 })
