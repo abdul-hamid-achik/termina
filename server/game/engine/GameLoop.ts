@@ -274,7 +274,23 @@ export function processTick(
     allEvents.push(...dotResult.events)
 
     // 10.6. Tick all buffs (decrement durations, remove expired)
+    const eventsBeforeBuffTick = currentState.events.length
     currentState = tickAllBuffs(currentState)
+    // tickAllBuffs authors teleport_complete as a wire-format event on
+    // state.events, which the client never reads (updateFromTick ignores it).
+    // Bridge those into the _tag/allEvents channel so a completed teleport
+    // actually reaches the combat log — mirroring teleport_cancelled, which is
+    // already authored as a _tag event in the resolver.
+    for (const e of currentState.events.slice(eventsBeforeBuffTick)) {
+      if (e.type !== 'teleport_complete') continue
+      allEvents.push({
+        _tag: 'teleport_complete',
+        tick: e.tick,
+        playerId: e.payload.playerId as string,
+        destination: e.payload.destination as string,
+        ...(e.payload.source ? { source: e.payload.source as 'return' | 'next_hop' } : {}),
+      })
+    }
 
     // 11. Handle deaths — check for newly dead players, attribute kills.
     // Damage dealt this tick (attacks, abilities, DoTs) feeds assist credit.

@@ -39,6 +39,38 @@ describe('teleport (town portal scroll)', () => {
     expect((await game.me()).zone).toBe(fountain)
   })
 
+  it('a completed teleport emits a teleport_complete event on the client-bound channel', async () => {
+    // The completion must reach the SAME _tag event channel the client reads
+    // (allEvents → onEvents), so the combat log can narrate "teleported to …".
+    // tickAllBuffs authors it as a wire-format event on state.events, which the
+    // client never reads — processTick bridges it into the _tag channel.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me0 = await game.me()
+    const fountain = me0.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          items: ['town_portal_scroll', null, null, null, null, null],
+          buffs: [],
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'dire-base' },
+      },
+      creeps: [],
+    }))
+
+    game.submit({ type: 'use', item: 'town_portal_scroll' })
+    await game.tick(5)
+
+    expect((await game.me()).zone).toBe(fountain) // teleport landed
+    expect(game.allEvents.some((e) => e._tag === 'teleport_complete' && e.playerId === HUMAN)).toBe(
+      true,
+    )
+  })
+
   it('taking damage during the channel cancels the teleport — the hero stays put', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
