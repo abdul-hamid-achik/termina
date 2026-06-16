@@ -99,6 +99,18 @@ const laneSiege = {
   ] as IndexedCreep[],
 }
 
+// A deny window: an allied creep has dropped below 50% HP, so it can be
+// denied (the allied-creep group becomes a tappable [deny] action).
+const denyWindow = {
+  zoneName: 'Mid Lane (Radiant)',
+  zoneId: 'mid-t1-rad',
+  creeps: [
+    creep({ id: 'rc1', team: 'radiant', hp: 140, index: 0 }), // melee, denyable (<200)
+    creep({ id: 'rc2', team: 'radiant', hp: 300, type: 'ranged', index: 1 }),
+    creep({ id: 'dc1', team: 'dire', hp: 110, index: 2 }),
+  ] as IndexedCreep[],
+}
+
 // A neutral jungle camp.
 const jungle = {
   zoneName: 'Radiant Jungle (Top)',
@@ -146,6 +158,12 @@ const jungle = {
     <Variant title="lane siege (tower + creeps)">
       <div class="bg-bg-primary p-2" style="width: 300px">
         <ZonePanel v-bind="laneSiege" player-team="radiant" />
+      </div>
+    </Variant>
+
+    <Variant title="deny window (allied creep <50%)">
+      <div class="bg-bg-primary p-2" style="width: 300px">
+        <ZonePanel v-bind="denyWindow" player-team="radiant" />
       </div>
     </Variant>
 

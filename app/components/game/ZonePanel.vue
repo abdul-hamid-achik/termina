@@ -9,6 +9,12 @@ import type {
 } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import {
+  MELEE_CREEP_HP,
+  RANGED_CREEP_HP,
+  SIEGE_CREEP_HP,
+  DENY_HP_THRESHOLD,
+} from '~~/shared/constants/balance'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 
 /** A visible creep plus its index in the client's creeps array (for `attack creep:<i>`). */
@@ -68,6 +74,29 @@ const lowestAlliedCreep = computed(() => lowestHpCreep(alliedCreeps.value))
 function attackLowestCreep() {
   const target = lowestEnemyCreep.value
   if (target) emit('command', `attack creep:${target.index}`)
+}
+
+// ── Deny ───────────────────────────────────────────────────────
+// An allied creep can only be denied once it drops below the deny HP
+// threshold (mirrors the server's DENY_HP_THRESHOLD check). Surface the
+// affordance only when a denyable creep exists so the tap can't no-op.
+function creepMaxHp(c: IndexedCreep): number {
+  return c.type === 'siege'
+    ? SIEGE_CREEP_HP
+    : c.type === 'ranged'
+      ? RANGED_CREEP_HP
+      : MELEE_CREEP_HP
+}
+
+const denyableAlliedCreep = computed<IndexedCreep | null>(() => {
+  const eligible = alliedCreeps.value.filter((c) => c.hp <= creepMaxHp(c) * DENY_HP_THRESHOLD)
+  return lowestHpCreep(eligible)
+})
+
+/** Deny helper: deny the lowest-HP eligible allied creep in the zone. */
+function denyLowestCreep() {
+  const target = denyableAlliedCreep.value
+  if (target) emit('command', `deny creep:${target.index}`)
 }
 
 // ── Tower ──────────────────────────────────────────────────────
@@ -283,11 +312,20 @@ const isEmpty = computed(
       <span class="t-caption"> · [last-hit]</span>
     </button>
 
-    <!-- Allied creep group -->
-    <div
+    <!-- Allied creep group: tap to deny the lowest-HP creep once it's below
+         the deny threshold (no-op affordance is hidden until then). -->
+    <component
+      :is="denyableAlliedCreep ? 'button' : 'div'"
       v-if="alliedCreeps.length > 0"
-      class="border border-border/40 px-2 py-1"
+      class="block w-full border px-2 py-1 text-left"
+      :class="
+        denyableAlliedCreep
+          ? 'border-gold/40 transition-all hover:bg-gold/10 active:scale-[0.99]'
+          : 'border-border/40'
+      "
       data-testid="zone-creeps-ally"
+      :title="denyableAlliedCreep ? 'Deny the lowest-HP allied creep (below 50% HP)' : undefined"
+      @click="denyLowestCreep"
     >
       <span class="text-radiant"
         >{{ alliedCreeps.length }}× allied creep{{ alliedCreeps.length === 1 ? '' : 's' }}</span
@@ -295,7 +333,8 @@ const isEmpty = computed(
       <span v-if="lowestAlliedCreep" class="text-text-dim">
         · lowest {{ lowestAlliedCreep.hp }}hp</span
       >
-    </div>
+      <span v-if="denyableAlliedCreep" class="t-caption text-gold"> · [deny]</span>
+    </component>
 
     <!-- Neutral creeps -->
     <div
