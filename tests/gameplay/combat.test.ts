@@ -256,4 +256,24 @@ describe('combat', () => {
     expect(ancient.hp).toBe(500)
     expect((await game.state()).winner).toBeFalsy()
   })
+
+  it('destroying a T3 tower lifts the enemy Ancient firewall (vulnerable flips true)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me = await game.me()
+    const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+
+    // Precondition: with every T3 standing, the enemy Ancient is firewalled.
+    expect((await game.state()).ancients[enemyTeam].vulnerable).toBe(false)
+
+    // Drop one of the enemy's T3 towers; the next tick recomputes vulnerability.
+    await game.patch((s) => ({
+      ...s,
+      towers: s.towers.map((t) =>
+        t.team === enemyTeam && t.zone.includes('-t3-') ? { ...t, alive: false, hp: 0 } : t,
+      ),
+    }))
+    await game.tick()
+
+    expect((await game.state()).ancients[enemyTeam].vulnerable).toBe(true)
+  })
 })
