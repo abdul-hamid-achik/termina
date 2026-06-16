@@ -996,7 +996,11 @@ function handleReturnToMenu() {
     <!-- Transient action-feedback toast: surfaces server rejections (out of
          range, juked target, firewalled Ancient, not enough mana, …) that would
          otherwise die silently in the store -->
-    <AnnouncementToast :text="latestAnnouncement" :seq="gameStore.announcementSeq" />
+    <AnnouncementToast
+      :text="latestAnnouncement"
+      :seq="gameStore.announcementSeq"
+      :level="gameStore.lastAnnouncementLevel"
+    />
 
     <!-- Instant death vignette pulse, fired on the death EVENT (the overlay below
          waits for authoritative isAlive state, which can lag under latency) -->

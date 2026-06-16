@@ -14,7 +14,15 @@ import type {
   RoshanState,
   RuneState,
 } from '~~/shared/types/game'
-import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
+import type {
+  TickStateMessage,
+  PlayerEndStats,
+  AnnouncementMessage,
+} from '~~/shared/types/protocol'
+
+// Server announcement severities plus a client-only 'error' (synthesised for
+// connection/[ERROR] messages) — drives the AnnouncementToast colour.
+export type AnnouncementLevel = AnnouncementMessage['level'] | 'error'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 import { gameLog } from '~/utils/logger'
@@ -82,6 +90,9 @@ export const useGameStore = defineStore('game', () => {
   // every announcement — `announcements.length` pins at 50 once capped below,
   // same trap as eventSeq above.
   const announcementSeq = ref(0)
+  // Severity of the latest announcement, so the toast can colour it correctly
+  // (info messages like "Reconnected" must NOT read as amber warnings).
+  const lastAnnouncementLevel = ref<AnnouncementLevel>('warning')
   const nextTickIn = ref(0)
   const lastTickAt = ref<number | null>(null)
   const scoreboard = ref<ScoreboardEntry[]>([])
@@ -330,11 +341,13 @@ export const useGameStore = defineStore('game', () => {
     eventSeq.value += newEvents.length
   }
 
-  function addAnnouncement(text: string) {
+  function addAnnouncement(text: string, level?: AnnouncementLevel) {
     announcements.value.push(text)
     if (announcements.value.length > 50) {
       announcements.value = announcements.value.slice(-50)
     }
+    // Fall back to the text prefix when no level is given (client [ERROR] lines).
+    lastAnnouncementLevel.value = level ?? (text.startsWith('[ERROR]') ? 'error' : 'warning')
     announcementSeq.value++
   }
 
@@ -376,6 +389,7 @@ export const useGameStore = defineStore('game', () => {
     latestEvents.value = []
     announcements.value = []
     announcementSeq.value = 0
+    lastAnnouncementLevel.value = 'warning'
     stopTickCountdown()
     scoreboard.value = []
     gameOverStats.value = null
@@ -412,6 +426,7 @@ export const useGameStore = defineStore('game', () => {
     latestEvents,
     announcements,
     announcementSeq,
+    lastAnnouncementLevel,
     nextTickIn,
     lastTickAt,
     pendingCommand,
