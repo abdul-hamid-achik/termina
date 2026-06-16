@@ -71,6 +71,43 @@ describe('teleport (town portal scroll)', () => {
     )
   })
 
+  it('a return-shadow teleport (Next Hop) is delivered tagged with its source', async () => {
+    // The return-shadow variant (Traceroute Next Hop / Lambda Return) snaps the
+    // hero back when the shadow buff expires. The bridge must preserve `source`
+    // so the feed narrates "return shadow snapped them back", not a plain TP.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          // Shadow expires this tick (ticksRemaining 1) and its zone differs from
+          // the current one, so tickAllBuffs snaps the hero to it.
+          buffs: [
+            {
+              id: 'nextHopShadow',
+              stacks: 1,
+              ticksRemaining: 1,
+              source: HUMAN,
+              destination: 'mid-t1-rad',
+            },
+          ],
+        },
+      },
+    }))
+
+    await game.tick()
+
+    expect((await game.me()).zone).toBe('mid-t1-rad') // snapped back
+    expect(
+      game.allEvents.some(
+        (e) => e._tag === 'teleport_complete' && e.playerId === HUMAN && e.source === 'next_hop',
+      ),
+    ).toBe(true)
+  })
+
   it('taking damage during the channel cancels the teleport — the hero stays put', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
