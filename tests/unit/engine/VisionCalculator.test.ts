@@ -190,6 +190,37 @@ describe('VisionCalculator', () => {
       expect('items' in enemy).toBe(false)
     })
 
+    it('keeps a fogged enemy KDA + level public (scoreboard shows it even in fog)', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'radiant-fountain' }),
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'dire-fountain',
+            name: 'Enemy',
+            kills: 7,
+            deaths: 2,
+            assists: 4,
+            level: 11,
+            gold: 3000,
+          }),
+        },
+      })
+
+      const enemy = filterStateForPlayer(state, 'p1').players['e1'] as FoggedPlayer
+      expect(enemy.fogged).toBe(true)
+      // KDA + level are public — preserved through the fog (was zeroed before).
+      expect(enemy.kills).toBe(7)
+      expect(enemy.deaths).toBe(2)
+      expect(enemy.assists).toBe(4)
+      expect(enemy.level).toBe(11)
+      // ...but economy/position stay hidden.
+      expect('gold' in enemy).toBe(false)
+      expect('items' in enemy).toBe(false)
+      expect('zone' in enemy).toBe(false)
+    })
+
     it('should show full info for enemies in visible zones', () => {
       const state = makeGameState({
         players: {
