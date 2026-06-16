@@ -267,26 +267,21 @@ describe('useGameSocket', () => {
   })
 
   describe('reconnect', () => {
-    it('schedules reconnect for lobby connections on disconnect', async () => {
+    it('flags reconnecting and reopens a fresh socket after a network drop', async () => {
       const { connect, connected, reconnecting } = useGameSocket()
 
-      connect('lobby', 'player-1')
+      connect('game-1', 'player-1')
       await vi.advanceTimersByTimeAsync(1)
       expect(connected.value).toBe(true)
+      const firstWs = MockWebSocket.last
 
-      // Simulate network drop (not intentional disconnect)
-      // We need to trigger the onclose handler that _open sets up
-      // MockWebSocket auto-connects, so we simulate a close event
-      // by using _disconnect which triggers onclose
-      // But first we need access to the WS instance.
-      // Since MockWebSocket sets readyState to OPEN and triggers onopen,
-      // we can use the close callback via the reconnect path.
+      // Simulate an unintentional network drop → onclose → schedule reconnect.
+      firstWs!._disconnect()
+      expect(reconnecting.value).toBe(true)
 
-      // Instead, test that reconnecting kicks in after connection drop
-      // by checking that reconnecting becomes true
-      // We can do this by calling connect, letting it open, then
-      // simulating the close event.
-      expect(reconnecting.value).toBe(false)
+      // After the first backoff (1s), a brand-new socket is opened.
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(MockWebSocket.last).not.toBe(firstWs)
     })
 
     it('does not reconnect after intentional disconnect', async () => {
