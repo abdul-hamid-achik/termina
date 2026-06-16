@@ -24,8 +24,12 @@ class MockWebSocket {
   send = vi.fn()
   close = vi.fn()
 
+  // The most recently constructed socket, so tests can drive its onmessage.
+  static last: MockWebSocket | null = null
+
   constructor(url: string) {
     this.url = url
+    MockWebSocket.last = this
     // Auto-connect after construction
     setTimeout(() => {
       if (this.onopen) this.onopen(new Event('open'))
@@ -208,20 +212,57 @@ describe('useGameSocket', () => {
   })
 
   describe('message routing to game store', () => {
-    it('routes tick_state to gameStore.updateFromTick', async () => {
+    async function connectWithStore() {
       const { useGameStore } = await import('../../../app/stores/game')
-      const gameStore = useGameStore()
-      const updateSpy = vi.spyOn(gameStore, 'updateFromTick')
-
+      const store = useGameStore()
       const { connect } = useGameSocket()
       connect('game-1', 'player-1')
-      await vi.advanceTimersByTimeAsync(1)
+      await vi.advanceTimersByTimeAsync(1) // fire onopen + register onmessage
+      return store
+    }
 
-      // Simulate a message — need to find the active ws instance
-      // Since connect opens a WS, the last constructed MockWebSocket
-      // should have the onmessage set. We'll dispatch through onMessage handler.
-      // Unfortunately the WS is internal. Let's just verify the handler is hooked up.
-      expect(typeof updateSpy).toBe('function')
+    it('routes tick_state to updateFromTick', async () => {
+      const store = await connectWithStore()
+      // Stub the body — this test only asserts the message is ROUTED there
+      // (updateFromTick's own behaviour is covered in the store tests).
+      const spy = vi.spyOn(store, 'updateFromTick').mockImplementation(() => {})
+      MockWebSocket.last!._receive({ type: 'tick_state', tick: 5, state: {} })
+      expect(spy).toHaveBeenCalled()
+    })
+
+    it('routes events to addEvents', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'addEvents')
+      MockWebSocket.last!._receive({ type: 'events', events: [{ _tag: 'kill' }] })
+      expect(spy).toHaveBeenCalledWith([{ _tag: 'kill' }])
+    })
+
+    it('routes announcement to addAnnouncement', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'addAnnouncement')
+      MockWebSocket.last!._receive({ type: 'announcement', message: 'Roshan is up' })
+      expect(spy).toHaveBeenCalledWith('Roshan is up')
+    })
+
+    it('routes error to an [ERROR] announcement', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'addAnnouncement')
+      MockWebSocket.last!._receive({ type: 'error', code: 'BAD', message: 'boom' })
+      expect(spy).toHaveBeenCalledWith('[ERROR] boom')
+    })
+
+    it('routes game_over to setGameOver', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'setGameOver')
+      MockWebSocket.last!._receive({ type: 'game_over', winner: 'radiant', stats: { foo: 1 } })
+      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 })
+    })
+
+    it('routes full_state through updateFromTick', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'updateFromTick').mockImplementation(() => {})
+      MockWebSocket.last!._receive({ type: 'full_state', tick: 3, state: {} })
+      expect(spy).toHaveBeenCalled()
     })
   })
 
