@@ -53,7 +53,7 @@ import { registerAllHeroes } from '~~/server/game/heroes'
 import { applyScenario } from '~~/server/game/dev/scenarios'
 
 /** Check if a game event is visible to a specific player based on vision. */
-function isEventVisibleToPlayer(
+export function isEventVisibleToPlayer(
   event: GameEngineEvent,
   playerId: string,
   playerTeam: TeamId | undefined,
@@ -98,6 +98,20 @@ function isEventVisibleToPlayer(
     case 'rune_picked':
       if (event.playerId === playerId) return true
       return visibleZones.has(event.zone)
+    case 'teleport_complete': {
+      if (event.playerId === playerId) return true
+      if (state.players[event.playerId]?.team === playerTeam) return true
+      // An enemy teleport is revealed only if you can see where they arrive —
+      // otherwise their rotation/gank stays hidden (it leaked to everyone before).
+      return visibleZones.has(event.destination)
+    }
+    case 'teleport_cancelled': {
+      if (event.playerId === playerId) return true
+      if (state.players[event.playerId]?.team === playerTeam) return true
+      // An enemy's interrupted TP only shows if you can actually see them.
+      const z = state.players[event.playerId]?.zone
+      return !!(z && visibleZones.has(z))
+    }
     default:
       return true
   }
