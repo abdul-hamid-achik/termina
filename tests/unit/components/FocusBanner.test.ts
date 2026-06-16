@@ -110,10 +110,18 @@ describe('FocusBanner', () => {
     expect(wrapper.find('[data-testid="focus-ready-r"]').exists()).toBe(false)
   })
 
-  it('shows an empty ready indicator when every ability is on cooldown', () => {
+  it('shows the soonest ability + its cooldown when every ability is on cooldown', () => {
     seed({ me: { cooldowns: { q: 2, w: 3, e: 1, r: 8 } } })
     const wrapper = mount(FocusBanner)
-    expect(wrapper.find('[data-testid="focus-ready-none"]').exists()).toBe(true)
+
+    const next = wrapper.find('[data-testid="focus-ready-next"]')
+    expect(next.exists()).toBe(true)
+    // The soonest is E at 1 tick.
+    expect(next.text()).toContain('E')
+    expect(next.text()).toContain('1t')
+    // No ready chips, and not the bare "—" placeholder.
+    expect(wrapper.find('[data-testid="focus-ready-q"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="focus-ready-none"]').exists()).toBe(false)
   })
 
   it('renders the prettified zone name', () => {
