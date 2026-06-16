@@ -15,12 +15,12 @@ export default defineConfig({
   test: {
     globals: true,
     // Coverage (v8). `bun run test:coverage` runs all projects and ENFORCES the
-    // thresholds below — set just under the achieved actuals (lines 77.4 /
-    // branches 68.7 / functions 75.6 / statements 76.0 after the combat-narration
-    // + tower-attack + item-active coverage passes; combatNarrative.ts climbed
-    // 81→97.5%) so a real regression trips the gate but normal churn doesn't.
-    // functions/statements sit just under 76 (v8 has minor run-to-run variance),
-    // so they stay at 75. Raise as coverage climbs; never above earned.
+    // thresholds below — set just under the achieved actuals (lines 77.8 /
+    // branches 69.0 / functions 75.9 / statements 76.4 after the buyback +
+    // surrender + WS-routing + map-model coverage passes) so a real regression
+    // trips the gate but normal churn doesn't. lines/branches/functions sit just
+    // under their next integer (78/69/76) and v8 has minor run-to-run variance,
+    // so they hold. Raise as coverage climbs; never above earned.
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html', 'json-summary'],
@@ -39,7 +39,7 @@ export default defineConfig({
         lines: 77,
         branches: 68,
         functions: 75,
-        statements: 75,
+        statements: 76,
       },
     },
     projects: [
