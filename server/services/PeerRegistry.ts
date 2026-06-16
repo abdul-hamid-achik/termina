@@ -1,3 +1,4 @@
+import type { ServerMessage } from '~~/shared/types/protocol'
 import { peerLog } from '~~/server/utils/log'
 
 type CrosswsPeer = { send: (data: string) => void }
@@ -44,12 +45,12 @@ export function clearPlayerGame(playerId: string) {
   playerGames.delete(playerId)
 }
 
-export function sendToPeer(playerId: string, message: unknown): boolean {
+export function sendToPeer(playerId: string, message: ServerMessage): boolean {
   const entry = peers.get(playerId)
   if (!entry) {
     peerLog.warn('No peer found — message dropped', {
       playerId,
-      type: (message as { type?: string }).type,
+      type: message.type,
     })
     return false
   }
