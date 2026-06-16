@@ -929,25 +929,34 @@ function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
 }
 
 function useShivasGuard(state: GameState, player: PlayerState): GameState {
-  let updated = applyBuff(player, {
-    id: 'shivas_blast',
-    stacks: 100, // 100 damage
-    ticksRemaining: 1,
-    source: 'shivas_guard',
-  })
-  updated = applyBuff(updated, {
-    id: 'shivas_slow',
-    stacks: 1,
-    ticksRemaining: 2,
-    source: 'shivas_guard',
-  })
-  updated = applyBuff(updated, {
+  // Arctic Blast: a magical nova that DAMAGES and SLOWS every enemy in the
+  // caster's zone. (Previously applied shivas_blast/shivas_slow buffs to the
+  // caster that nothing consumed — the active did nothing.)
+  const BLAST_DAMAGE = 100
+  const players = { ...state.players }
+  for (const enemy of Object.values(state.players)) {
+    if (enemy.team === player.team || !enemy.alive || enemy.zone !== player.zone) continue
+    const base = isDamageImmune(enemy, 'magical')
+      ? 0
+      : calculateMagicalDamage(BLAST_DAMAGE, enemy.magicResist)
+    const dmg = Math.round(base * getIncomingDamageMultiplier(enemy, 'magical'))
+    // 'slow' (not the dead 'shivas_slow') is the id ActionResolver consumes:
+    // total stacks = % chance a move fails this tick.
+    const slowed = applyBuff(enemy, {
+      id: 'slow',
+      stacks: 40,
+      ticksRemaining: 2,
+      source: 'shivas_guard',
+    })
+    players[enemy.id] = { ...slowed, hp: Math.max(0, slowed.hp - dmg) }
+  }
+  players[player.id] = applyBuff(player, {
     id: 'item_cd_shivas_guard',
     stacks: 1,
     ticksRemaining: 20,
     source: 'shivas_guard',
   })
-  return updatePlayer(state, updated)
+  return { ...state, players }
 }
 
 function usePowerTreads(state: GameState, player: PlayerState): GameState {

@@ -525,3 +525,45 @@ describe('Aegis pickup through resolveActions (was dropping ground-removal + eve
     expect(withAegis).toHaveLength(1)
   })
 })
+
+describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", () => {
+  const shiva = (overrides = {}) =>
+    makePlayer({
+      id: 'p1',
+      team: 'radiant',
+      items: ['shivas_guard', null, null, null, null, null],
+      ...overrides,
+    })
+  const useShiva = { playerId: 'p1', command: { type: 'use' as const, item: 'shivas_guard' } }
+
+  it('Arctic Blast damages AND slows every in-zone enemy', () => {
+    const state = makeGameState({
+      players: {
+        p1: shiva(),
+        p2: makePlayer({ id: 'p2', team: 'dire', name: 'E1', zone: 'mid-river' }),
+        p3: makePlayer({ id: 'p3', team: 'dire', name: 'E2', zone: 'mid-river' }),
+      },
+    })
+    const [s2, s3] = [state.players['p2']!.hp, state.players['p3']!.hp]
+    const r = run(state, [useShiva])
+    expect(r.state.players['p2']!.hp).toBeLessThan(s2)
+    expect(r.state.players['p3']!.hp).toBeLessThan(s3)
+    expect(r.state.players['p2']!.buffs.some((b) => b.id === 'slow')).toBe(true)
+    expect(r.state.players['p3']!.buffs.some((b) => b.id === 'slow')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_shivas_guard')).toBe(true)
+  })
+
+  it('spares allies and out-of-zone enemies', () => {
+    const state = makeGameState({
+      players: {
+        p1: shiva(),
+        ally: makePlayer({ id: 'ally', team: 'radiant', zone: 'mid-river' }),
+        far: makePlayer({ id: 'far', team: 'dire', zone: 'dire-base' }),
+      },
+    })
+    const [allyHp, farHp] = [state.players['ally']!.hp, state.players['far']!.hp]
+    const r = run(state, [useShiva])
+    expect(r.state.players['ally']!.hp).toBe(allyHp)
+    expect(r.state.players['far']!.hp).toBe(farHp)
+  })
+})
