@@ -1068,8 +1068,14 @@ export function resolveActions(
       const baseMaxHp = hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * (player.level - 1)
       const baseMaxMp = hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * (player.level - 1)
       const itemBonuses = getCachedItemStats(pid, player.items)
-      const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp')
-      const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp')
+      // Power Treads toggle: the active mode rides as a buff (power_treads_hp/mp);
+      // fold it into maxHp/maxMp so the toggle actually does something.
+      const treadsHp = player.buffs.find((b) => b.id === 'power_treads_hp')?.stacks ?? 0
+      const treadsMp = player.buffs.find((b) => b.id === 'power_treads_mp')?.stacks ?? 0
+      const newMaxHp =
+        baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp') + treadsHp
+      const newMaxMp =
+        baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
       if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
         // Preserve HP/MP percentage when max changes to avoid losing HP on item sell
         const hpPercent = player.maxHp > 0 ? player.hp / player.maxHp : 1

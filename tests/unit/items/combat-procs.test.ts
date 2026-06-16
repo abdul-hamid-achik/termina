@@ -458,3 +458,34 @@ describe('Item actives — forced movement', () => {
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_hurricane_pike')).toBe(true)
   })
 })
+
+describe('Power Treads toggle (was cosmetic — the mode buffs were read nowhere)', () => {
+  const ptBuff = (id: string, stacks: number) => ({
+    id,
+    stacks,
+    ticksRemaining: 9999,
+    source: 'item',
+  })
+
+  it('attack mode (power_treads_attack) raises effective attack by the buff stacks', () => {
+    const base = getEffectiveAttack(makePlayer())
+    const treaded = getEffectiveAttack(makePlayer({ buffs: [ptBuff('power_treads_attack', 15)] }))
+    expect(treaded - base).toBe(15)
+  })
+
+  it('hp mode (power_treads_hp) raises maxHp through the resolveActions recalc', () => {
+    const state = makeGameState({
+      players: { p1: makePlayer({ buffs: [ptBuff('power_treads_hp', 150)] }) },
+    })
+    const r = run(state, [])
+    expect(r.state.players['p1']!.maxHp).toBe(ECHO_BASE_HP + 150)
+  })
+
+  it('mp mode (power_treads_mp) raises maxMp through the resolveActions recalc', () => {
+    const state = makeGameState({
+      players: { p1: makePlayer({ buffs: [ptBuff('power_treads_mp', 100)] }) },
+    })
+    const r = run(state, [])
+    expect(r.state.players['p1']!.maxMp).toBe(ECHO_BASE_MP + 100)
+  })
+})
