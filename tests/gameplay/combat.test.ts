@@ -422,4 +422,41 @@ describe('combat', () => {
     expect((await game.me()).damageDealt).toBe(0) // whiffed — no damage
     expect(game.lastRejected).toEqual([]) // and no feedback (the gap)
   })
+
+  it('armor from an item reduces incoming basic-attack damage (defense applies)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+
+    const dmgToHuman = () =>
+      game.lastEvents.find(
+        (e) => e._tag === 'damage' && e.sourceId === ENEMY && e.targetId === HUMAN,
+      )?.amount ?? 0
+
+    // Baseline: both inventories empty (clearing the enemy's removes crit
+    // variance), the co-located enemy swings at the human.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
+        [ENEMY]: { ...s.players[ENEMY]!, items: [null, null, null, null, null, null] },
+      },
+    }))
+    game.attackHero(HUMAN, ENEMY) // ENEMY swings at HUMAN
+    await game.tick()
+    const before = dmgToHuman()
+    expect(before).toBeGreaterThan(0)
+
+    // Chainmail (+5 defense) raises getEffectiveDefense, so the same swing hurts less.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, items: ['chainmail', null, null, null, null, null] },
+      },
+    }))
+    game.attackHero(HUMAN, ENEMY)
+    await game.tick()
+
+    expect(dmgToHuman()).toBeLessThan(before)
+  })
 })
