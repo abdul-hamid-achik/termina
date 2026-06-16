@@ -70,4 +70,30 @@ describe('abilities', () => {
     await game.tick()
     expect((await game.me()).cooldowns.w).toBeGreaterThan(0)
   })
+
+  it('silence blocks casting but — unlike stun — still allows moving', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [{ id: 'silence', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+
+    // Silenced: the self-buff W is dropped — it stays off cooldown.
+    game.cast('w')
+    await game.tick()
+    expect((await game.me()).cooldowns.w).toBe(0)
+
+    // But moving is unaffected by silence — the hero relocates to the adjacent zone.
+    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    await game.tick()
+    expect((await game.me()).zone).toBe('mid-t1-rad')
+  })
 })
