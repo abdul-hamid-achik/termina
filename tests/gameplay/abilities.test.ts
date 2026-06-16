@@ -96,4 +96,47 @@ describe('abilities', () => {
     await game.tick()
     expect((await game.me()).zone).toBe('mid-t1-rad')
   })
+
+  it('casting a damage ability on a co-located enemy deals damage (echo Q — Resonance)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+
+    // A caster→enemy damage event is the regen-independent "the spell landed"
+    // signal (raw enemy HP is confounded by regen + the level-6 maxHp recompute).
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      ),
+    ).toBe(true)
+    expect((await game.me()).cooldowns.q).toBeGreaterThan(0)
+  })
+
+  it('casting a DoT ability leaves a lasting debuff on the target (daemon Q — Inject)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [] },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+
+    // Inject applies a multi-tick damage-over-time debuff on the target (a 1-tick
+    // disable like a stun would already be gone by now — tickAllBuffs runs this
+    // same tick — so a DoT is the observable "the debuff landed" signal).
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id.includes('dot'))).toBe(true)
+  })
 })
