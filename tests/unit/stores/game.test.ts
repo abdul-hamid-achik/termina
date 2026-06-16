@@ -757,6 +757,9 @@ describe('Game Store', () => {
 
 describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objectives / rosters)', () => {
   // A FoggedPlayer arrives without zone/hp/cooldowns; cast at the call site.
+  // Mirrors the real FoggedPlayer shape (VisionCalculator) — KDA + level are
+  // public even in fog. Keep these in sync so a fixture can't mask a regression
+  // (a too-thin fogged fixture once hid fogged enemies rendering 0/0/0 KDA).
   const fogged = (id: string, team: 'radiant' | 'dire', alive = true) =>
     ({
       id,
@@ -764,9 +767,19 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
       team,
       heroId: 'null_ref',
       level: 3,
+      kills: 0,
+      deaths: 0,
+      assists: 0,
       alive,
       fogged: true,
     }) as unknown as PlayerState
+
+  // This is a top-level describe (sibling of 'Game Store'), so it needs its own
+  // Pinia setup — previously its tests only passed by leaking an active Pinia
+  // from the prior block, which broke as soon as a test was added/reordered.
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
 
   it('records last-seen only for un-fogged players, never overwriting from fog', () => {
     const store = useGameStore()
@@ -792,6 +805,16 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
 
     store.updateFromTick(makeTickMessage({ tick: 14, players: { me, e1: fogged('e1', 'dire') } }))
     expect(store.netWorth.dire).toBe(direBefore) // carried forward, not 0
+  })
+
+  it('an enemy never seen contributes 0 to team net worth (no phantom worth)', () => {
+    const store = useGameStore()
+    store.playerId = 'me'
+    const me = makePlayer({ id: 'me', team: 'radiant' })
+    // The dire enemy is fogged from the very first tick — never observed, so it
+    // has no last-known worth to carry. It must read 0, not crash or guess.
+    store.updateFromTick(makeTickMessage({ tick: 1, players: { me, e1: fogged('e1', 'dire') } }))
+    expect(store.netWorth.dire).toBe(0)
   })
 
   it('caps net-worth history at 40 samples', () => {
