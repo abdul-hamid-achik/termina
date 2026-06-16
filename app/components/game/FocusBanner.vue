@@ -47,6 +47,19 @@ const readyAbilities = computed(() => {
   return (['q', 'w', 'e', 'r'] as const).filter((k) => (p.cooldowns?.[k] ?? 0) <= 0)
 })
 
+// When nothing is ready, surface the soonest ability + its remaining cooldown
+// ("next Q 2t") so the banner answers "when can I act?", not just "nothing now".
+const nextAbility = computed<{ key: string; cd: number } | null>(() => {
+  const p = player.value
+  if (!p) return null
+  let best: { key: string; cd: number } | null = null
+  for (const k of ['q', 'w', 'e', 'r'] as const) {
+    const cd = p.cooldowns?.[k] ?? 0
+    if (cd > 0 && (best === null || cd < best.cd)) best = { key: k, cd }
+  }
+  return best
+})
+
 const recommendation = computed(() =>
   recommendAction({
     alive: store.isAlive,
@@ -90,6 +103,14 @@ const recommendation = computed(() =>
           >{{ k.toUpperCase() }}</span
         >
       </template>
+      <span
+        v-else-if="nextAbility"
+        class="text-[0.7rem] text-text-dim"
+        data-testid="focus-ready-next"
+      >
+        next <span class="font-bold text-warn">{{ nextAbility.key.toUpperCase() }}</span>
+        {{ nextAbility.cd }}t
+      </span>
       <span v-else class="text-[0.7rem] text-text-dim" data-testid="focus-ready-none">—</span>
     </span>
   </div>

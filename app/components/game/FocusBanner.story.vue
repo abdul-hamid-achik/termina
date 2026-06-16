@@ -40,6 +40,8 @@ const seedContested = () => seed({ enemies: 1, cooldowns: { q: 0, w: 4, e: 0, r:
 const seedDanger = () => seed({ enemies: 2 })
 const seedLowHp = () => seed({ hp: 120, enemies: 1 })
 const seedDead = () => seed({ alive: false, hp: 0, enemies: 1 })
+// Nothing off cooldown — the banner surfaces the soonest one ("next E 2t").
+const seedOnCooldown = () => seed({ enemies: 1, cooldowns: { q: 3, w: 5, e: 2, r: 9 } })
 </script>
 
 <template>
@@ -54,6 +56,10 @@ const seedDead = () => seed({ alive: false, hp: 0, enemies: 1 })
       <div class="bg-bg-primary" style="width: 560px"><FocusBanner /></div>
     </Variant>
     <Variant title="low HP" :setup-app="seedLowHp">
+      <div class="bg-bg-primary" style="width: 560px"><FocusBanner /></div>
+    </Variant>
+
+    <Variant title="abilities on cooldown (next)" :setup-app="seedOnCooldown">
       <div class="bg-bg-primary" style="width: 560px"><FocusBanner /></div>
     </Variant>
     <Variant title="dead" :setup-app="seedDead">
