@@ -5,6 +5,8 @@ import {
   voteSurrender,
   removeSurrenderVote,
   getSurrenderStatus,
+  canSurrender,
+  clearSurrenderVotes,
 } from '../../../server/game/engine/SurrenderSystem'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
@@ -194,6 +196,45 @@ describe('SurrenderSystem', () => {
       const result = Effect.runSync(processTick('surr-5', state))
       expect(result.state.surrenderVotes.radiant.size).toBe(0)
       expect(result.rejectedActions.some((r) => r.playerId === 'r1')).toBe(true)
+    })
+  })
+
+  describe('canSurrender', () => {
+    it('is too early before SURRENDER_MIN_TICK', () => {
+      const res = canSurrender(makeGameState({ tick: 0 }), 'radiant')
+      expect(res.can).toBe(false)
+      expect(res.reason).toMatch(/too early/i)
+    })
+
+    it('rejects when the team has no alive humans to vote', () => {
+      const state = makeGameState({
+        tick: SURRENDER_MIN_TICK,
+        players: {
+          r1: makePlayer({ id: 'r1', team: 'radiant', alive: false }),
+          r2: makePlayer({ id: 'r2', team: 'radiant', alive: false }),
+          r3: makePlayer({ id: 'r3', team: 'radiant', alive: false }),
+          d1: makePlayer({ id: 'd1', team: 'dire' }),
+        },
+      })
+      const res = canSurrender(state, 'radiant')
+      expect(res.can).toBe(false)
+      expect(res.reason).toMatch(/no alive/i)
+    })
+
+    it('allows a team with alive humans past the minimum tick', () => {
+      expect(canSurrender(makeGameState({ tick: SURRENDER_MIN_TICK }), 'radiant').can).toBe(true)
+    })
+  })
+
+  describe('clearSurrenderVotes', () => {
+    it('empties both teams’ vote sets', () => {
+      const state = makeGameState({
+        tick: SURRENDER_MIN_TICK,
+        surrenderVotes: { radiant: new Set(['r1', 'r2']), dire: new Set(['d1']) },
+      })
+      const cleared = clearSurrenderVotes(state)
+      expect(cleared.surrenderVotes.radiant.size).toBe(0)
+      expect(cleared.surrenderVotes.dire.size).toBe(0)
     })
   })
 })
