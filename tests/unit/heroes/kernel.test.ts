@@ -7,6 +7,8 @@ import {
   applyBuff,
   hasBuff,
 } from '../../../server/game/heroes/_base'
+import { getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 // Register kernel hero
 import '../../../server/game/heroes/kernel'
 
@@ -307,6 +309,66 @@ describe('Kernel Hero', () => {
 
       const hardenedBuffs = updated.players['p1']!.buffs.filter((b) => b.id === 'hardened')
       expect(hardenedBuffs.length).toBe(1)
+    })
+  })
+
+  describe('Talents (engine-applied — formerly dead specialEffect / damage-on-a-stun no-ops)', () => {
+    it('kernel_25_left reduces Panic cooldown by 10 (was the dead immunity_plus_2 no-op)', () => {
+      const player = makePlayer({
+        level: 7,
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'kernel_25_left' },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+
+      // R_COOLDOWN (50) − 10
+      expect(result.state.players['p1']!.cooldowns.r).toBe(40)
+    })
+
+    it('kernel_20_left reduces Core Dump cooldown by 3 (was damage_boost on a no-damage stun — a silent no-op)', () => {
+      const player = makePlayer({
+        level: 7,
+        talents: { tier10: null, tier15: null, tier20: 'kernel_20_left', tier25: null },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
+
+      // E_COOLDOWN (18) − 3
+      expect(result.state.players['p1']!.cooldowns.e).toBe(15)
+    })
+
+    it('kernel_15_left refunds 40% of Interrupt mana cost (was the dead root_duration_plus_1 no-op)', () => {
+      const player = makePlayer({
+        level: 1,
+        mp: 250,
+        talents: { tier10: null, tier15: 'kernel_15_left', tier20: null, tier25: null },
+      })
+      const enemy = makeEnemy()
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+
+      // Q_MANA[0] = 80 spent, then round(80 * 40%) = 32 refunded → 250 − 80 + 32
+      expect(result.state.players['p1']!.mp).toBe(202)
+    })
+
+    it('kernel_25_right grants +20 magic resistance via getTalentStatBonus (was the dead double_root no-op)', () => {
+      const player = makePlayer({
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'kernel_25_right' },
+      })
+      expect(getTalentStatBonus(player, 'magicResist')).toBe(20)
+    })
+
+    it('no kernel talent is a dead specialEffect no-op anymore', () => {
+      for (const t of Object.values(TALENT_TREES.kernel.tiers).flat()) {
+        expect(t.type).not.toBe('special')
+        expect(t.type).not.toBe('ability_boost')
+        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+      }
     })
   })
 })
