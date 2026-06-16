@@ -700,6 +700,44 @@ describe('ActionResolver', () => {
       expect(invulnEvents[0]!.zone).toBe('mid-t1-dire')
     })
 
+    it('damages a vulnerable enemy tower on a basic attack and tracks tower damage', () => {
+      const state = makeGameState({
+        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-dire', team: 'radiant' }) },
+      })
+      const actions: PlayerAction[] = [
+        {
+          playerId: 'p1',
+          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-dire' } },
+        },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-dire')!
+      expect(tower.hp).toBeLessThan(tower.maxHp)
+      expect(result.state.players['p1']!.towerDamageDealt).toBeGreaterThan(0)
+    })
+
+    it('destroys a low-HP enemy tower and awards the tower-kill bounty', () => {
+      const state = makeGameState({
+        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-dire', team: 'radiant', gold: 600 }) },
+        towers: initializeTowers().map((t) => (t.zone === 'mid-t1-dire' ? { ...t, hp: 1 } : t)),
+      })
+      const actions: PlayerAction[] = [
+        {
+          playerId: 'p1',
+          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-dire' } },
+        },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-dire')!
+      expect(tower.alive).toBe(false)
+      // awardTowerKill pays the in-zone attacker (tower_kill event itself is emitted by GameLoop)
+      expect(result.state.players['p1']!.gold).toBeGreaterThan(600)
+    })
+
     it('should reject glyph when on cooldown', () => {
       const state = makeGameState({
         tick: 100,
