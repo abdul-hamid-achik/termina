@@ -459,4 +459,41 @@ describe('combat', () => {
 
     expect(dmgToHuman()).toBeLessThan(before)
   })
+
+  it('physical immunity (Ghost) zeroes an incoming basic attack', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+
+    const physDmg = () =>
+      game.lastEvents.find(
+        (e) => e._tag === 'damage' && e.sourceId === ENEMY && e.targetId === HUMAN,
+      )?.amount ?? 0
+
+    // Without immunity (and no enemy on-hit items), the basic attack lands.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, buffs: [] },
+        [ENEMY]: { ...s.players[ENEMY]!, items: [null, null, null, null, null, null] },
+      },
+    }))
+    game.attackHero(HUMAN, ENEMY) // ENEMY swings at HUMAN
+    await game.tick()
+    expect(physDmg()).toBeGreaterThan(0)
+
+    // With ghost_form the physical hit is zeroed (isDamageImmune → damage = 0).
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          buffs: [{ id: 'ghost_form', stacks: 1, ticksRemaining: 5, source: HUMAN }],
+        },
+      },
+    }))
+    game.attackHero(HUMAN, ENEMY)
+    await game.tick()
+    expect(physDmg()).toBe(0)
+  })
 })
