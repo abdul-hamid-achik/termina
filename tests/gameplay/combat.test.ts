@@ -402,4 +402,24 @@ describe('combat', () => {
     await game.tick()
     expect(game.lastEvents.some((e) => e._tag === 'glyph_on_cooldown')).toBe(true)
   })
+
+  // Characterization test (documents current behaviour + a known gap). The
+  // client UI only ever offers in-zone targets, but a raw/stale command can
+  // still name an out-of-zone hero. Today the engine drops such an attack
+  // BEFORE validateAction (which only gates stun/fear) — so it deals no damage
+  // AND surfaces no rejection reason. If a future change adds whiffed-attack
+  // feedback, this test should be updated to assert the new reason.
+  it('an attack on a target outside your zone is silently dropped (known no-feedback gap)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-rad' } },
+    }))
+
+    game.attackHero(ENEMY)
+    await game.tick()
+
+    expect((await game.me()).damageDealt).toBe(0) // whiffed — no damage
+    expect(game.lastRejected).toEqual([]) // and no feedback (the gap)
+  })
 })
