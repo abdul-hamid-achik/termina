@@ -265,6 +265,39 @@ describe('Echo Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
+    it('fails when stacks exist but no hero target is given', () => {
+      let player = makePlayer()
+      player = applyBuff(player, {
+        id: 'feedbackLoop',
+        stacks: 50,
+        ticksRemaining: 999,
+        source: 'p1',
+      })
+      const state = makeState([player])
+
+      const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
+
+      expect(result._tag).toBe('Failure')
+    })
+
+    it('fails when stacks exist but the target is in a different zone', () => {
+      let player = makePlayer()
+      player = applyBuff(player, {
+        id: 'feedbackLoop',
+        stacks: 50,
+        ticksRemaining: 999,
+        source: 'p1',
+      })
+      const enemy = makeEnemy({ zone: 'top-river' })
+      const state = makeState([player, enemy])
+
+      const result = Effect.runSyncExit(
+        resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }),
+      )
+
+      expect(result._tag).toBe('Failure')
+    })
+
     it('consumes stacks and deals burst damage', () => {
       let player = makePlayer()
       player = applyBuff(player, {
