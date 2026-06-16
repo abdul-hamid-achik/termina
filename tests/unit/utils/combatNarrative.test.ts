@@ -177,6 +177,10 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   it('suppresses internal/non-narrative events', () => {
     expect(eventToLine(ev('cooldown_used', { playerId: 'me', abilityId: 'q' }), ctx)).toBeNull()
     expect(eventToLine(ev('tower_invulnerable', { zone: 'mid-t1-rad' }), ctx)).toBeNull()
+    // glyph_on_cooldown is deliberately silent — a private "your glyph isn't
+    // ready" signal, not lane-wide news. Lock the suppression so it isn't
+    // accidentally promoted into the feed.
+    expect(eventToLine(ev('glyph_on_cooldown', { team: 'radiant' }), ctx)).toBeNull()
     expect(eventToLine(ev('totally_unknown_event', {}), ctx)).toBeNull()
   })
 })
