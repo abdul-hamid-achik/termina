@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from 'effect'
+import { Effect } from 'effect'
 import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -52,12 +52,6 @@ export interface StateManagerApi {
 
   readonly listGames: () => Effect.Effect<string[]>
 }
-
-export class StateManager extends Context.Tag('StateManager')<StateManager, StateManagerApi>() {}
-
-// ── In-memory implementation ───────────────────────────────────
-
-const games = new Map<string, GameState>()
 
 /** Create initial player state from setup. */
 function createPlayerState(setup: PlayerSetup): PlayerState {
@@ -133,55 +127,7 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
   }
 }
 
-export const StateManagerLive = Layer.succeed(StateManager, {
-  createGame: (gameId, players) =>
-    Effect.gen(function* () {
-      if (games.has(gameId)) {
-        return yield* Effect.fail(new GameAlreadyExistsError(gameId))
-      }
-      const state = createInitialGameState(gameId, players)
-      games.set(gameId, state)
-      return state
-    }),
-
-  loadGame: (gameId, state) =>
-    Effect.sync(() => {
-      games.set(gameId, state)
-      return state
-    }),
-
-  getState: (gameId) =>
-    Effect.gen(function* () {
-      const state = games.get(gameId)
-      if (!state) {
-        return yield* Effect.fail(new GameNotFoundError(gameId))
-      }
-      return state
-    }),
-
-  updateState: (gameId, fn) =>
-    Effect.gen(function* () {
-      const current = games.get(gameId)
-      if (!current) {
-        return yield* Effect.fail(new GameNotFoundError(gameId))
-      }
-      const updated = fn(current)
-      games.set(gameId, updated)
-      return updated
-    }),
-
-  deleteGame: (gameId) =>
-    Effect.sync(() => {
-      games.delete(gameId)
-    }),
-
-  listGames: () =>
-    Effect.sync(() => {
-      return [...games.keys()]
-    }),
-})
-
-/** Create a standalone in-memory StateManager (no Effect Layer needed). */
+/** Create a standalone in-memory StateManager. */
 export function createInMemoryStateManager(): StateManagerApi {
   const localGames = new Map<string, GameState>()
 
@@ -232,9 +178,4 @@ export function createInMemoryStateManager(): StateManagerApi {
         return [...localGames.keys()]
       }),
   }
-}
-
-/** Clear all games. Useful for tests. */
-export function clearAllGames(): void {
-  games.clear()
 }
