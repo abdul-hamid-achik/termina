@@ -6,6 +6,7 @@ import {
   type PlayerAction,
 } from '../../../server/game/engine/ActionResolver'
 import type { GameState, PlayerState } from '../../../shared/types/game'
+import { NEUTRAL_CREEPS } from '../../../shared/constants/balance'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeRoshan } from '../../../server/game/map/spawner'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
@@ -308,6 +309,38 @@ describe('ActionResolver', () => {
       expect(dmgEvents.length).toBeGreaterThan(0)
       expect(dmgEvents[0]!.sourceId).toBe('p1')
       expect(dmgEvents[0]!.targetId).toBe('p2')
+    })
+
+    it('awards the neutral bounty (gold + xp) and emits neutral_killed on a jungle kill', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'mid-river',
+            team: 'radiant',
+            heroId: 'echo',
+            gold: 600,
+            xp: 0,
+          }),
+        },
+        neutrals: [{ id: 'n1', zone: 'mid-river', type: 'kobold', hp: 1, maxHp: 250, alive: true }],
+      })
+
+      const actions: PlayerAction[] = [
+        { playerId: 'p1', command: { type: 'attack', target: { kind: 'neutral', index: 0 } } },
+      ]
+
+      const result = Effect.runSync(resolveActions(state, actions))
+
+      const killer = result.state.players['p1']!
+      expect(killer.gold).toBe(600 + NEUTRAL_CREEPS.kobold.gold) // 600 + 20
+      expect(killer.xp).toBe(NEUTRAL_CREEPS.kobold.xp) // 25
+      // dead neutral is pruned from the array (or left flagged not-alive)
+      const n1 = result.state.neutrals?.find((n) => n.id === 'n1')
+      expect(n1?.alive ?? false).toBe(false)
+      expect(result.events.some((e) => e._tag === 'neutral_killed' && e.playerId === 'p1')).toBe(
+        true,
+      )
     })
 
     it('should tick down cooldowns each tick', () => {
