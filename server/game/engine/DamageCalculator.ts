@@ -1,4 +1,3 @@
-import { Effect } from 'effect'
 import type { PlayerState } from '~~/shared/types/game'
 import type { DamageType } from '~~/shared/types/hero'
 
@@ -76,25 +75,6 @@ export function isDamageImmune(target: PlayerState, damageType: DamageType): boo
   if (damageType === 'physical' && buffs.some((b) => b.id === 'ethereal' || b.id === 'ghost_form'))
     return true
   return false
-}
-
-/**
- * Apply damage to a player state. HP cannot go below 0.
- * If HP reaches 0, the player is marked as dead.
- * Returns the updated PlayerState as an Effect.
- */
-export function applyDamage(
-  target: PlayerState,
-  damage: number,
-  damageType: DamageType,
-): Effect.Effect<PlayerState> {
-  return Effect.sync(() => {
-    const effectiveDamage = calculateEffectiveDamage(damage, damageType, {
-      defense: target.defense ?? 0,
-      magicResist: target.magicResist ?? 0,
-    })
-    return applyRawDamage(target, effectiveDamage)
-  })
 }
 
 /**
