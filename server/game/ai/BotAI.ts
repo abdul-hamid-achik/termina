@@ -10,6 +10,7 @@ import type {
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
+import { getItem } from '~~/shared/constants/items'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 import { findPath, getDistance } from '~~/server/game/map/topology'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
@@ -113,20 +114,13 @@ const BOT_BUILD_ORDER = [
   'segfault_blade',
 ]
 
-const ITEM_COSTS: Record<string, number> = {
-  blades_of_attack: 430,
-  null_pointer: 1400,
-  garbage_collector: 1800,
-  blink_module: 2150,
-  stack_overflow: 3200,
-  segfault_blade: 5500,
-}
-
 // Defensive consumables bots keep stocked (one of each)
-const BOT_CONSUMABLES: Array<{ item: string; cost: number }> = [
-  { item: 'healing_salve', cost: 150 },
-  { item: 'town_portal_scroll', cost: 50 },
-]
+const BOT_CONSUMABLES = ['healing_salve', 'town_portal_scroll']
+
+/** Canonical shop cost; an unknown item is treated as unaffordable (never bought). */
+function itemCost(id: string): number {
+  return getItem(id)?.cost ?? Number.POSITIVE_INFINITY
+}
 
 /** Pop a salve when below this HP% (out of combat). */
 const SALVE_HP_PERCENT = 60
@@ -572,15 +566,14 @@ function tryCombo(
 function tryBuyItem(bot: PlayerState): Command | null {
   if (getItemCount(bot) >= 6) return null
   // Keep one of each defensive consumable stocked before core items
-  for (const consumable of BOT_CONSUMABLES) {
-    if (!bot.items.includes(consumable.item) && bot.gold >= consumable.cost) {
-      return { type: 'buy', item: consumable.item }
+  for (const item of BOT_CONSUMABLES) {
+    if (!bot.items.includes(item) && bot.gold >= itemCost(item)) {
+      return { type: 'buy', item }
     }
   }
   for (const itemId of BOT_BUILD_ORDER) {
     if (bot.items.includes(itemId)) continue
-    const cost = ITEM_COSTS[itemId]
-    if (cost !== undefined && bot.gold >= cost) {
+    if (bot.gold >= itemCost(itemId)) {
       return { type: 'buy', item: itemId }
     }
     break

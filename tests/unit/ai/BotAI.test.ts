@@ -3,6 +3,7 @@ import { decideBotAction, getAbilityTarget, sequenceManaCost } from '../../../se
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 import { HEROES } from '../../../shared/constants/heroes'
+import { getItem } from '../../../shared/constants/items'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 
@@ -104,6 +105,45 @@ describe('BotAI - decideBotAction', () => {
       const action = decideBotAction(state, bot, 'mid')
       // Defensive consumables are stocked first
       expect(action).toEqual({ type: 'buy', item: 'healing_salve' })
+    })
+
+    it('sources build-item affordability from the canonical shop cost (no hardcoded map)', () => {
+      const bladesCost = getItem('blades_of_attack')!.cost
+      const stocked: (string | null)[] = [
+        'healing_salve',
+        'town_portal_scroll',
+        null,
+        null,
+        null,
+        null,
+      ]
+
+      // Exactly the real cost → buys the first build item.
+      const rich = makePlayer({
+        zone: 'radiant-fountain',
+        hp: 500,
+        maxHp: 500,
+        gold: bladesCost,
+        items: [...stocked] as PlayerState['items'],
+      })
+      expect(decideBotAction(makeGameState({ players: { [rich.id]: rich } }), rich, 'mid')).toEqual(
+        {
+          type: 'buy',
+          item: 'blades_of_attack',
+        },
+      )
+
+      // One gold short → does not buy it (the build order stops, not skips).
+      const poor = makePlayer({
+        zone: 'radiant-fountain',
+        hp: 500,
+        maxHp: 500,
+        gold: bladesCost - 1,
+        items: [...stocked] as PlayerState['items'],
+      })
+      expect(
+        decideBotAction(makeGameState({ players: { [poor.id]: poor } }), poor, 'mid'),
+      ).not.toEqual({ type: 'buy', item: 'blades_of_attack' })
     })
 
     it('stays at fountain to heal when HP is low', () => {
