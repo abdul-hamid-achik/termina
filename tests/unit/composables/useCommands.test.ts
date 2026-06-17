@@ -15,6 +15,7 @@ import type { PlayerState, ZoneRuntimeState, CreepState } from '../../../shared/
 import type { ItemDef } from '../../../shared/types/items'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 import { ZONE_IDS } from '../../../shared/constants/zones'
+import { calculateBuybackCost } from '../../../server/game/engine/BuybackSystem'
 
 /** The full game zone set, as the client actually receives it (state.zones). */
 function allZones(): Record<string, ZoneRuntimeState> {
@@ -1317,6 +1318,18 @@ describe('validateCommand', () => {
 
       const err = validateCommand({ type: 'buyback' }, makeContext({ player }))
       expect(err).toContain('85')
+    })
+
+    it('the client fallback formula stays in parity with the server (no preview drift)', () => {
+      // buybackCostFor mirrors the server's calculateBuybackCost; if either
+      // formula drifts the preview would lie about the cost. Lock them together
+      // across a range of levels/deaths (buybackCost unset ⇒ the fallback runs).
+      for (const level of [1, 6, 12, 18, 25]) {
+        for (const deaths of [0, 1, 5, 12]) {
+          const player = makePlayer({ buybackCost: 0, level, deaths })
+          expect(buybackCostFor(player)).toBe(calculateBuybackCost(player))
+        }
+      }
     })
   })
 
