@@ -972,6 +972,7 @@ function handleReturnToMenu() {
     :players="postGamePlayers"
     :current-player-id="gameStore.playerId ?? ''"
     :game-id="gameStore.gameId ?? null"
+    :mode="gameStore.mode"
     @play-again="handlePlayAgain"
     @return-to-menu="handleReturnToMenu"
   />

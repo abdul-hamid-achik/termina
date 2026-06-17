@@ -86,5 +86,19 @@ const DIRE: TeamId = 'dire'
         @return-to-menu="() => {}"
       />
     </Variant>
+
+    <!-- Tutorial wrap-up: 'tutorial complete' caption + a 'FIND A REAL MATCH' CTA. -->
+    <Variant title="tutorial complete">
+      <PostGame
+        :winner="RADIANT"
+        :stats="STATS"
+        :players="PLAYERS"
+        current-player-id="p1"
+        :game-id="null"
+        mode="tutorial"
+        @play-again="() => {}"
+        @return-to-menu="() => {}"
+      />
+    </Variant>
   </Story>
 </template>

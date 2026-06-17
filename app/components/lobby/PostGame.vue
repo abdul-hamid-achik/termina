@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { TeamId } from '~~/shared/types/game'
+import type { TeamId, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
@@ -17,7 +17,13 @@ const props = defineProps<{
   currentPlayerId: string
   mmrChange?: number
   gameId?: string | null
+  /** Mode of the concluded game; 'tutorial' swaps in a learn-the-ropes wrap-up. */
+  mode?: GameMode
 }>()
+
+// After a tutorial we nudge the player toward a real match rather than framing
+// it as a ranked result — and 'PLAY AGAIN' (→ lobby) becomes 'FIND A REAL MATCH'.
+const isTutorial = computed(() => props.mode === 'tutorial')
 
 const emit = defineEmits<{
   playAgain: []
@@ -78,13 +84,18 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
       class="anim-fade-in-up border-2 p-6 text-center"
       :class="winner === 'radiant' ? 'border-radiant bloom-radiant' : 'border-dire bloom-dire'"
     >
-      <div class="t-caption mb-2 text-text-muted">// match concluded</div>
+      <div class="t-caption mb-2 text-text-muted">
+        {{ isTutorial ? '// tutorial complete' : '// match concluded' }}
+      </div>
       <span
         class="t-display tracking-[0.2em] anim-glow-pulse"
         :class="winner === 'radiant' ? 'text-radiant' : 'text-dire'"
       >
         {{ winner === 'radiant' ? 'RADIANT VICTORY' : 'DIRE VICTORY' }}
       </span>
+      <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
+        You've got the basics — move, last-hit, cast, and buy. Ready for a real match?
+      </p>
     </div>
 
     <div v-if="myStats">
@@ -319,7 +330,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
 
     <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
       <AsciiButton
-        label="PLAY AGAIN"
+        :label="isTutorial ? 'FIND A REAL MATCH' : 'PLAY AGAIN'"
         variant="primary"
         data-testid="play-again-btn"
         @click="emit('playAgain')"

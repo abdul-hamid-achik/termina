@@ -802,9 +802,14 @@ export default defineNitroPlugin(async (nitroApp) => {
       players
         .filter((p) => isBot(p.playerId))
         .map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
-      // On a subset map the role lanes (top/bot/jungle) don't exist; pin bots to
-      // mid so their global-graph pathing can't walk them off the map.
-      { forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined },
+      {
+        // On a subset map the role lanes (top/bot/jungle) don't exist; pin bots to
+        // mid so their global-graph pathing can't walk them off the map.
+        forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined,
+        // Tutorial bots play gently (slower reactions, weaker last-hits) so a new
+        // player isn't punished while learning the verbs.
+        difficulty: opts.mode === 'tutorial' ? 'easy' : undefined,
+      },
     )
     setPlayerGame(opts.humanId, gameId)
     const callbacks = buildCallbacks(players, stateManager)
