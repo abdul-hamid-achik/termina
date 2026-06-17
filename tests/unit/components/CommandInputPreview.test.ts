@@ -161,6 +161,17 @@ describe('CommandInput preview line', () => {
     wrapper.unmount()
   })
 
+  it('makes help discoverable: typing hint, then a valid preview (not "unknown")', async () => {
+    const wrapper = mountInput()
+    // partial name → "typing" hint (proves help is in the known-command list)
+    expect((await previewFor(wrapper, 'hel')).text()).toContain('typing: hel')
+    // complete → a valid preview, never an unknown-command error
+    const full = (await previewFor(wrapper, 'help')).text()
+    expect(full).toContain('>> List all commands')
+    expect(full.toLowerCase()).not.toContain('unknown')
+    wrapper.unmount()
+  })
+
   it('shows an error preview for an unknown command', async () => {
     const wrapper = mountInput()
     const preview = await previewFor(wrapper, 'frobnicate now')
