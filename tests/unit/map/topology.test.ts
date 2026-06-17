@@ -9,6 +9,8 @@ import {
   getTeamZones,
 } from '../../../server/game/map/topology'
 import { ZONES, ZONE_MAP, ZONE_IDS } from '../../../shared/constants/zones'
+import { zonesForMap } from '../../../shared/constants/maps'
+import type { Zone } from '../../../shared/types/map'
 
 describe('Topology', () => {
   describe('getZone', () => {
@@ -282,6 +284,61 @@ describe('Topology', () => {
         const dist = getDistance('radiant-fountain', zone.id)
         expect(dist).toBeGreaterThanOrEqual(0)
       }
+    })
+  })
+
+  // The one-lane map is a pruned subgraph of the full graph (see maps.ts). These
+  // guard its promised "strict, SELF-CONTAINED subgraph" invariant — a regression
+  // (an escaping edge or a broken chain) would let players/bots walk off the map
+  // or strand them, and the global ZONE_MAP still carries the full edges.
+  describe('one-lane subgraph (zonesForMap "one_lane")', () => {
+    const oneLane: readonly Zone[] = zonesForMap('one_lane')
+    const ids = new Set(oneLane.map((z) => z.id))
+    const byId = new Map<string, Zone>(oneLane.map((z) => [z.id, z]))
+
+    it('is exactly the 11 mid-lane zones (no side lanes, jungle, or runes)', () => {
+      expect(oneLane).toHaveLength(11)
+      for (const id of ['radiant-fountain', 'mid-river', 'dire-fountain']) {
+        expect(ids.has(id), `expected ${id} in the one-lane map`).toBe(true)
+      }
+      for (const id of ['top-river', 'bot-river', 'rune-top', 'jungle-rad-top']) {
+        expect(ids.has(id), `${id} must NOT be in the one-lane map`).toBe(false)
+      }
+    })
+
+    it('is self-contained — no zone links outside the 11-zone subgraph', () => {
+      for (const zone of oneLane) {
+        for (const neighborId of zone.adjacentTo) {
+          expect(
+            ids.has(neighborId),
+            `${zone.id} → ${neighborId} escapes the one-lane subgraph`,
+          ).toBe(true)
+        }
+      }
+    })
+
+    it('keeps adjacency bidirectional within the subgraph', () => {
+      for (const zone of oneLane) {
+        for (const neighborId of zone.adjacentTo) {
+          expect(byId.get(neighborId)!.adjacentTo).toContain(zone.id)
+        }
+      }
+    })
+
+    it('forms one connected chain — every zone reachable from radiant-fountain', () => {
+      const seen = new Set<string>(['radiant-fountain'])
+      const queue: string[] = ['radiant-fountain']
+      while (queue.length > 0) {
+        const cur = queue.shift()!
+        for (const n of byId.get(cur)!.adjacentTo) {
+          if (!seen.has(n)) {
+            seen.add(n)
+            queue.push(n)
+          }
+        }
+      }
+      expect(seen.has('dire-fountain')).toBe(true)
+      expect(seen.size).toBe(11)
     })
   })
 })
