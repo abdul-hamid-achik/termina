@@ -26,6 +26,10 @@ export interface KillEvent {
   readonly killerId: string
   readonly victimId: string
   readonly assisters: string[]
+  /** The victim's kill streak BEFORE dying — drives the SHUTDOWN callout. */
+  readonly victimStreak?: number
+  /** The killer's kill streak AFTER this kill — drives the spree callout. */
+  readonly killerStreak?: number
 }
 
 export interface DeathEvent {

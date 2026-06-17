@@ -91,6 +91,53 @@ describe('eventToLine: kills', () => {
     expect(line.killerHeroId).toBe('thread')
     expect(line.victimHeroId).toBe('null_ref')
   })
+
+  it('calls out a SHUTDOWN when the victim was on a streak', () => {
+    const line = eventToLine(
+      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [], victimStreak: 4 }),
+      ctx,
+    )!
+    expect(line.text).toContain('SHUTDOWN')
+    expect(line.text).toContain('4-kill streak')
+  })
+
+  it('names the killer’s spree at 3+ when the victim was not fed', () => {
+    const spree = eventToLine(
+      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [], killerStreak: 3 }),
+      ctx,
+    )!
+    expect(spree.text).toContain('KILLING SPREE')
+
+    const godlike = eventToLine(
+      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [], killerStreak: 9 }),
+      ctx,
+    )!
+    expect(godlike.text).toContain('BEYOND GODLIKE')
+  })
+
+  it('a SHUTDOWN takes precedence over the killer spree', () => {
+    const line = eventToLine(
+      ev('kill', {
+        killerId: 'me',
+        victimId: 'enemy1',
+        assisters: [],
+        victimStreak: 5,
+        killerStreak: 4,
+      }),
+      ctx,
+    )!
+    expect(line.text).toContain('SHUTDOWN')
+    expect(line.text).not.toContain('DOMINATING')
+  })
+
+  it('an ordinary kill (no streaks) has no flair', () => {
+    const line = eventToLine(
+      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }),
+      ctx,
+    )!
+    expect(line.text).not.toContain('SHUTDOWN')
+    expect(line.text).not.toContain('>>')
+  })
 })
 
 describe('eventToLine: gold noise suppression', () => {
