@@ -27,7 +27,10 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     teaches: 'attack',
     hint: '🎓 Last-hit a creep — type `attack creep:0` when its HP is low, for gold.',
   },
-  { teaches: 'cast', hint: '🎓 Use an ability — type `cast q` to hit an enemy with your Q.' },
+  {
+    teaches: 'cast',
+    hint: '🎓 Use an ability — type `cast q` to fire your Q (it auto-picks a target).',
+  },
   { teaches: 'buy', hint: '🎓 Spend your gold — back at base, type `buy <item>` to power up.' },
 ]
 
