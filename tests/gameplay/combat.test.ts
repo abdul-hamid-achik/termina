@@ -20,6 +20,21 @@ describe('combat', () => {
     expect(me.damageDealt).toBeGreaterThan(0)
   })
 
+  it('dealing hero damage marks BOTH combatants inCombat (the no-heal trigger)', async () => {
+    // The gating ("no fountain heal while inCombat") is tested elsewhere with a
+    // hand-placed buff; this covers the other half — applyInCombatBuffs actually
+    // flagging the attacker AND the target off the damage event.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+
+    game.attackHero(ENEMY)
+    await game.tick()
+
+    const me = await game.me()
+    const enemy = await game.player(ENEMY)
+    expect(me.buffs.some((b) => b.id === 'inCombat')).toBe(true)
+    expect(enemy.buffs.some((b) => b.id === 'inCombat')).toBe(true)
+  })
+
   it('stored buyback cost reflects the death just taken (matches what buyback charges)', async () => {
     // Regression: the death handler computed buybackCost from the PRE-increment
     // death count, but buyback() recharges from the post-death count — so the
