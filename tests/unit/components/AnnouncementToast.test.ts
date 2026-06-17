@@ -69,6 +69,28 @@ describe('AnnouncementToast', () => {
     expect(wrapper.text()).not.toContain('[ERROR]')
   })
 
+  it('renders the objective severity as gold with a ★ icon', async () => {
+    const wrapper = mount(AnnouncementToast, {
+      props: { text: 'Roshan has been slain!', seq: 1, level: 'objective' },
+    })
+    await wrapper.setProps({ seq: 2 })
+    const box = wrapper.find('.announcement-toast > div')
+    expect(box.classes()).toContain('text-gold')
+    expect(box.classes()).toContain('border-gold')
+    expect(wrapper.text()).toContain('★')
+    expect(wrapper.text()).toContain('Roshan has been slain!')
+  })
+
+  it('renders the kill severity as dire with a ✕ icon', async () => {
+    const wrapper = mount(AnnouncementToast, {
+      props: { text: 'First Blood!', seq: 1, level: 'kill' },
+    })
+    await wrapper.setProps({ seq: 2 })
+    const box = wrapper.find('.announcement-toast > div')
+    expect(box.classes()).toContain('text-dire')
+    expect(wrapper.text()).toContain('✕')
+  })
+
   it('keeps the on-screen toast colour even if the level prop changes before the next seq', async () => {
     const wrapper = mount(AnnouncementToast, {
       props: { text: 'Not enough mana', seq: 1, level: 'warning' },
