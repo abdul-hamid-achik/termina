@@ -218,6 +218,8 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
     visibleZones: Object.keys(state.zones),
     timeOfDay: state.timeOfDay,
     dayNightTick: state.dayNightTick,
+    mapId: state.mapId,
+    mode: state.mode,
   }
 }
 
@@ -246,6 +248,8 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
       visibleZones: [],
       timeOfDay: state.timeOfDay,
       dayNightTick: state.dayNightTick,
+      mapId: state.mapId,
+      mode: state.mode,
     }
   }
 
@@ -354,5 +358,7 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
     visibleZones: [...visible],
     timeOfDay: state.timeOfDay,
     dayNightTick: state.dayNightTick,
+    mapId: state.mapId,
+    mode: state.mode,
   }
 }

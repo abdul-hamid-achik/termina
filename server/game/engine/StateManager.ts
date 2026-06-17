@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
+import type { GameState, GameMode, PlayerState, TeamId } from '~~/shared/types/game'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
@@ -30,11 +30,18 @@ export interface PlayerSetup {
 
 // ── Service interface ──────────────────────────────────────────
 
+/** Creation-time options for a game (map + mode). Both default sensibly:
+ *  full 5v5 map, normal mode. */
+export interface GameOptions {
+  mapId?: string
+  mode?: GameMode
+}
+
 export interface StateManagerApi {
   readonly createGame: (
     gameId: string,
     players: PlayerSetup[],
-    mapId?: string,
+    options?: GameOptions,
   ) => Effect.Effect<GameState, GameAlreadyExistsError>
 
   /**
@@ -103,6 +110,7 @@ function createInitialGameState(
   gameId: string,
   players: PlayerSetup[],
   mapId: string = DEFAULT_MAP_ID,
+  mode: GameMode = 'normal',
 ): GameState {
   const playerStates: Record<string, PlayerState> = {}
   for (const setup of players) {
@@ -135,6 +143,7 @@ function createInitialGameState(
     timeOfDay: 'day',
     dayNightTick: 0,
     mapId,
+    mode,
   }
 }
 
@@ -143,12 +152,12 @@ export function createInMemoryStateManager(): StateManagerApi {
   const localGames = new Map<string, GameState>()
 
   return {
-    createGame: (gameId, players, mapId) =>
+    createGame: (gameId, players, options) =>
       Effect.gen(function* () {
         if (localGames.has(gameId)) {
           return yield* Effect.fail(new GameAlreadyExistsError(gameId))
         }
-        const state = createInitialGameState(gameId, players, mapId)
+        const state = createInitialGameState(gameId, players, options?.mapId, options?.mode)
         localGames.set(gameId, state)
         return state
       }),

@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '~~/shared/types/game'
+import type { GameMode, GameState, PlayerState } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { HeroId } from '~~/shared/types/hero'
 import type { TalentTier } from '~~/shared/constants/talents'
@@ -63,6 +63,8 @@ export interface SeedOptions {
   players?: PlayerSetup[]
   /** Which map to seed (see shared/constants/maps). Default = full 5v5. */
   mapId?: string
+  /** Game mode to seed. Default = 'normal'; 'tutorial' for the guided flow. */
+  mode?: GameMode
 }
 
 // Unique gameId per scenario so module-level engine state keyed by gameId
@@ -80,7 +82,7 @@ export async function seedGame(scenario: KnownScenario, opts: SeedOptions = {}):
   ]
   const gameId = `gp_${scenario}_${seq++}`
   const sm = createInMemoryStateManager()
-  await Effect.runPromise(sm.createGame(gameId, setup, opts.mapId))
+  await Effect.runPromise(sm.createGame(gameId, setup, { mapId: opts.mapId, mode: opts.mode }))
   await Effect.runPromise(
     sm.updateState(gameId, (s) =>
       applyScenario({ ...s, phase: 'playing' as const }, scenario, {

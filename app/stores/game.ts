@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
   GamePhase,
+  GameMode,
   PlayerState,
   GameEvent,
   ZoneRuntimeState,
@@ -101,6 +102,8 @@ export const useGameStore = defineStore('game', () => {
   const timeOfDay = ref<'day' | 'night'>('day')
   /** Which map this game runs on (undefined = full 5v5); drives the ASCII layout. */
   const mapId = ref<string | undefined>(undefined)
+  /** Game mode (undefined/'normal' = regular match; 'tutorial' = guided flow). */
+  const mode = ref<GameMode | undefined>(undefined)
   const dayNightTick = ref(0)
 
   // Track if player has acted this tick (resets each tick)
@@ -239,6 +242,7 @@ export const useGameStore = defineStore('game', () => {
       timeOfDay?: 'day' | 'night'
       dayNightTick?: number
       mapId?: string
+      mode?: GameMode
     }
 
     gameLog.trace('tick_state', {
@@ -306,6 +310,7 @@ export const useGameStore = defineStore('game', () => {
     if (state.timeOfDay) timeOfDay.value = state.timeOfDay
     if (state.dayNightTick !== undefined) dayNightTick.value = state.dayNightTick
     if (state.mapId) mapId.value = state.mapId
+    if (state.mode) mode.value = state.mode
 
     if (playerId.value && state.players[playerId.value]) {
       player.value = state.players[playerId.value] ?? null
@@ -404,6 +409,7 @@ export const useGameStore = defineStore('game', () => {
     timeOfDay.value = 'day'
     dayNightTick.value = 0
     mapId.value = undefined
+    mode.value = undefined
   }
 
   return {
@@ -443,6 +449,7 @@ export const useGameStore = defineStore('game', () => {
     timeOfDay,
     dayNightTick,
     mapId,
+    mode,
     // Getters
     currentZone,
     isAlive,
