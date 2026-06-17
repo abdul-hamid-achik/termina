@@ -25,13 +25,12 @@ const config: KnipConfig = {
   //    (components: [{ path: '~/components', pathPrefix: false }]), so they are
   //    reachable from templates without an explicit import; treat them as roots.
   //  - server/db/** — DB layer wired via Nitro runtime config / migrations.
-  //  - server/game/dev/simulate-game.ts — standalone manual balance tool, run
-  //    directly (never imported), so it needs to be an explicit entry root.
+  //    (The balance simulator server/game/dev/simulate-game.ts is reached via the
+  //    `sim` package.json script, so knip already treats it as an entry.)
   //  - tests/** — test suites.
   entry: [
     'app/components/**/*.vue',
     'server/db/**/*.ts',
-    'server/game/dev/simulate-game.ts',
     'tests/**/*.ts',
     // Histoire config + setup live at repo root (outside `project` globs) and are
     // loaded by the `histoire` CLI, so mark them as entries — otherwise their

@@ -8,6 +8,7 @@
     "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview",
+    "sim": "bun server/game/dev/simulate-game.ts",
     "postinstall": "nuxt prepare",
     "test": "vitest run && bun run test:e2e",
     "test:watch": "vitest",
