@@ -244,10 +244,7 @@ export function processTick(
     currentState = trapResult.state
     allEvents.push(...trapResult.events)
 
-    // 3.7. Track last-seen positions (fog-safe "missing" display is client-side)
-    currentState = trackLastSeen(currentState)
-
-    // 3.8. Expire glyph invulnerability
+    // 3.7. Expire glyph invulnerability
     currentState = expireGlyph(currentState)
 
     // 4–5.6. NPC AI (creeps, neutrals, towers, Roshan)
@@ -1406,24 +1403,9 @@ function checkWinCondition(state: GameState): TeamId | null {
   return checkAncientWin(state)
 }
 
-/**
- * Track each alive player's last-seen zone/tick.
- *
- * NOTE: the old version of this also auto-emitted `enemy_missing` events, but
- * that path was dead-and-wrong — it updated lastSeen for ALL alive players from
- * the full (un-fogged) state every tick, so `ticksSinceSeen` was always ≤1 and a
- * truly-missing enemy never triggered. It COULD only fire for a *respawned*
- * enemy (dead players aren't updated), surfacing a misleading "MISSING" the tick
- * an enemy came back. "Last seen" is inherently per-viewer/fog-aware, which the
- * CLIENT already does correctly (store.lastSeen); a global server field can't
- * model it. Manual enemy-missing calls go through the `missing` command instead.
- */
-function trackLastSeen(state: GameState): GameState {
-  const updatedLastSeen = { ...state.lastSeen }
-  for (const [pid, player] of Object.entries(state.players)) {
-    if (player.alive) {
-      updatedLastSeen[pid] = { zone: player.zone, tick: state.tick }
-    }
-  }
-  return { ...state, lastSeen: updatedLastSeen }
-}
+// NOTE: the server used to maintain a global `state.lastSeen` here (and auto-emit
+// `enemy_missing`), but that was dead-and-wrong — a single un-fogged global field
+// can't model the per-viewer/fog-aware "last seen" concept, which the CLIENT does
+// correctly in store.lastSeen. The per-tick writer was removed; `state.lastSeen`
+// is now vestigial (initialized but unread server-side), removable in a focused
+// pass that also touches the GameState type + the makeGameState test fixtures.
