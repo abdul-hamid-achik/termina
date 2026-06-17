@@ -510,4 +510,25 @@ describe('abilities', () => {
       game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('cycloned')),
     ).toBe(true)
   })
+
+  it("Firewall's DMZ shield explodes for magical damage to nearby enemies when it ends", async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'firewall', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+      },
+    }))
+
+    // Cast DMZ (W) — applies the self-shield + the dmz marker (both 3 ticks).
+    game.cast('w')
+    await game.tick()
+    const enemyBefore = (await game.player(ENEMY)).hp
+
+    // Advance until the DMZ marker expires → it explodes on the co-located enemy.
+    await game.tick(3)
+    expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
+  })
 })
