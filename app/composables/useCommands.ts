@@ -136,6 +136,35 @@ export function pickAttackTargetString(
   return { target: `hero:${target.id}` }
 }
 
+/**
+ * Pick a default target for a bare `use <item>` whose active declares a
+ * targetType — so clicking an offensive item (Dagon, Hex, …) nukes the obvious
+ * enemy instead of rejecting server-side. Mirrors pickAbilityTargetString:
+ * enemy → lowest-HP enemy in zone, ally → lowest-HP ally (or self), self/zone →
+ * the player / their zone. Returns `{ error }` when there's no valid target.
+ */
+export function pickItemTargetString(
+  targetType: 'enemy' | 'ally' | 'self' | 'zone',
+  player: PlayerState,
+  allPlayers: Record<string, PlayerState>,
+): { target: string } | { error: string } {
+  if (targetType === 'self') return { target: 'self' }
+  if (targetType === 'zone') return { target: `zone:${player.zone}` }
+
+  const inZone = Object.values(allPlayers).filter((p) => p.zone === player.zone && p.alive)
+  if (targetType === 'ally') {
+    const allies = inZone.filter((p) => p.team === player.team && p.id !== player.id)
+    const candidates = [...allies, player] // self is a valid ally target
+    const target = candidates.reduce((a, b) => (hpPct(a) <= hpPct(b) ? a : b))
+    return { target: `hero:${target.id}` }
+  }
+  // enemy
+  const enemies = inZone.filter((p) => p.team !== player.team)
+  if (enemies.length === 0) return { error: 'No enemy hero in your zone for that item' }
+  const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
+  return { target: `hero:${target.id}` }
+}
+
 /** Max HP for a creep type — mirrors the server's deny eligibility check. */
 function creepMaxHp(type: CreepState['type']): number {
   return type === 'siege' ? SIEGE_CREEP_HP : type === 'ranged' ? RANGED_CREEP_HP : MELEE_CREEP_HP

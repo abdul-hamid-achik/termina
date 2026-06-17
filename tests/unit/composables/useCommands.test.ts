@@ -6,6 +6,7 @@ import {
   pickAbilityTargetString,
   pickAttackTargetString,
   pickDenyTargetString,
+  pickItemTargetString,
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
@@ -1779,5 +1780,49 @@ describe('pickDenyTargetString', () => {
       allied({ id: 'melee', type: 'melee', hp: 130 }),
     ]
     expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:1' })
+  })
+})
+
+// ── pickItemTargetString (bare `use <item>` auto-target) ──────────
+describe('pickItemTargetString', () => {
+  const me = () => makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', hp: 200 })
+
+  it('enemy → lowest-HP enemy hero in the zone', () => {
+    const e1 = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 500 })
+    const e2 = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', hp: 120 })
+    expect(pickItemTargetString('enemy', me(), { p1: me(), e1, e2 })).toEqual({ target: 'hero:e2' })
+  })
+
+  it('enemy → error (no silent reject) when no enemy is in the zone', () => {
+    const result = pickItemTargetString('enemy', me(), { p1: me() })
+    expect('error' in result && result.error).toMatch(/no enemy hero/i)
+  })
+
+  it('ally → lowest-HP ally, falling back to self', () => {
+    const ally = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river', hp: 60 })
+    expect(pickItemTargetString('ally', me(), { p1: me(), a1: ally })).toEqual({
+      target: 'hero:a1',
+    })
+    // No other ally in zone → the player themself is the target.
+    expect(pickItemTargetString('ally', me(), { p1: me() })).toEqual({ target: 'hero:p1' })
+  })
+
+  it('self / zone resolve without needing other players', () => {
+    expect(pickItemTargetString('self', me(), {})).toEqual({ target: 'self' })
+    expect(pickItemTargetString('zone', me(), {})).toEqual({ target: 'zone:mid-river' })
+  })
+})
+
+// ── item targetType data integrity ────────────────────────────────
+describe('item active targetType annotations', () => {
+  it('only the unambiguous enemy-target actives are annotated', async () => {
+    const { ITEMS } = await import('../../../shared/constants/items')
+    const enemyTargeted = Object.values(ITEMS)
+      .filter((i) => i.active?.targetType === 'enemy')
+      .map((i) => i.id)
+      .sort()
+    // dagon / scythe / hurricane are enemy-only on the server; dual-use items
+    // (ethereal, eul's, force, lotus) are deliberately left unset.
+    expect(enemyTargeted).toEqual(['dagon', 'hurricane_pike', 'scythe_of_vyse'])
   })
 })

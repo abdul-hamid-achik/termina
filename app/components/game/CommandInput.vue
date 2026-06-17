@@ -138,7 +138,7 @@ const preview = computed(() => {
       cast: '-- cast: specify ability (q/w/e/r)',
       buy: '-- buy: specify an item',
       sell: '-- sell: specify an item',
-      use: '-- use: specify an active item',
+      use: '-- use: an active item (offensive ones auto-hit the nearest enemy)',
       ward: '-- ward: specify a zone',
       chat: '-- chat: specify channel (team/all)',
       ping: '-- ping: specify a zone',

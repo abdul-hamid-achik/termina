@@ -284,6 +284,7 @@ const dagon: ItemDef = {
     name: 'Energy Burst',
     description: 'Deal 300 magical damage to target hero in same or adjacent zone.',
     cooldownTicks: 18,
+    targetType: 'enemy',
   },
 }
 
@@ -425,6 +426,7 @@ const hurricanePike: ItemDef = {
     name: 'Hurricane Thrust',
     description: 'Push self 2 zones away from target enemy. Can attack during push.',
     cooldownTicks: 14,
+    targetType: 'enemy',
   },
 }
 
@@ -439,6 +441,7 @@ const scytheOfVyse: ItemDef = {
     name: 'Hex',
     description: 'Transform target hero into a critter for 2 ticks (cannot attack or cast).',
     cooldownTicks: 20,
+    targetType: 'enemy',
   },
 }
 
