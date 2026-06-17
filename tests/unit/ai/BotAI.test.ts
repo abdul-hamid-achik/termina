@@ -400,7 +400,13 @@ describe('BotAI - decideBotAction', () => {
   })
 
   describe('combat - creep targeting', () => {
-    it('attacks enemy creeps when no heroes in zone', () => {
+    it('attacks the lowest-HP enemy creep (deterministic — never a probabilistic miss)', () => {
+      // Targeting MUST stay deterministic-lowest. Gating creep targeting on a
+      // lastHitAccuracy roll (mis-targeting the tanky creep on a miss) slows
+      // wave-clear enough that bots stop out-clearing incoming waves and never
+      // reach the enemy tower — it breaks BotForwardProgress. Bot difficulty
+      // differentiates via the consumed config fields (combo rate, retreat HP,
+      // rune/jungle/threat awareness), NOT last-hitting.
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
         { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
