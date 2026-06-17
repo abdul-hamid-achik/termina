@@ -1080,5 +1080,43 @@ describe('Shop', () => {
       expect(Exit.isFailure(exit)).toBe(true)
       expect(state.zones['mid-river']!.wards).toHaveLength(0)
     })
+
+    it('Veil + Ethereal magic-vuln stack additively through the real resolvers (+65%)', async () => {
+      // Composition test: each amp is unit-tested in isolation, but this drives
+      // the real veil -> ethereal -> dagon resolver CHAIN to prove the two
+      // magic-vuln debuffs (veil_discord +25%, magic_vuln_40 +40%) co-exist on
+      // the target and that Dagon's nuke reads BOTH (additive, the MOBA
+      // convention) — a regression to multiplicative or last-wins would break it.
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['veil_of_discord', 'ethereal_blade', 'dagon', null, null, null],
+      })
+      const target = makePlayer({
+        id: 'enemy_1',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 800,
+        maxHp: 800,
+        magicResist: 0,
+      })
+      const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
+      const enemyRef = { kind: 'hero', name: 'enemy_1' } as const
+
+      // Veil debuffs every enemy in the caster's zone; Ethereal adds its own
+      // magic-vuln on the target; Dagon then nukes the doubly-amped target.
+      const afterVeil = await Effect.runPromise(useItem(state, 'player_1', 'veil_of_discord'))
+      const afterEth = await Effect.runPromise(
+        useItem(afterVeil, 'player_1', 'ethereal_blade', enemyRef),
+      )
+      const enemyMidCombo = afterEth.players['enemy_1']!
+      expect(enemyMidCombo.buffs.some((b) => b.id === 'veil_discord')).toBe(true)
+      expect(enemyMidCombo.buffs.some((b) => b.id === 'magic_vuln_40')).toBe(true)
+
+      const afterDagon = await Effect.runPromise(useItem(afterEth, 'player_1', 'dagon', enemyRef))
+      // 300 base magical (0 resist) × (1 + (25 + 40)/100) = 495 → 800 - 495 = 305.
+      expect(afterDagon.players['enemy_1']!.hp).toBe(305)
+    })
   })
 })
