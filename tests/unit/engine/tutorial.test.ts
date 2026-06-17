@@ -127,6 +127,14 @@ describe('tutorial flow', () => {
       expect(tutorialHint(2)).toContain('cast q')
       expect(tutorialHint(2)!.toLowerCase()).not.toContain('enemy')
     })
+
+    it('the first move hint suggests a move reachable from the spawn fountain', () => {
+      // The player spawns in radiant-fountain (adjacent ONLY to radiant-base), so
+      // the first move must go there — any farther zone is a non-adjacent reject
+      // that would stall the tutorial on step one.
+      const suggested = /move ([a-z-]+)/.exec(tutorialHint(0) ?? '')?.[1]
+      expect(['base', 'radiant-base']).toContain(suggested)
+    })
   })
 
   describe('advanceTutorialAfterTick', () => {
