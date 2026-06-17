@@ -201,4 +201,30 @@ describe('HeroPicker', () => {
       expect(btn.attributes('disabled')).toBeDefined()
     })
   })
+
+  describe('hero detail panel (draft info)', () => {
+    it('shows the selected hero passive + ability descriptions for informed drafting', async () => {
+      const wrapper = mountPicker()
+      await wrapper.find('[data-testid="hero-card-echo"]').trigger('click')
+
+      // Passive: name + what it actually does (echo's Resonance)
+      const passive = wrapper.find('[data-testid="picker-passive"]')
+      expect(passive.exists()).toBe(true)
+      expect(passive.text()).toContain('Resonance')
+      expect(passive.text().toLowerCase()).toContain('consecutive')
+
+      // Every ability shows a description, not just its name/MP/CD
+      for (const slot of ['q', 'w', 'e', 'r'] as const) {
+        const desc = wrapper.find(`[data-testid="picker-ability-desc-${slot}"]`)
+        expect(desc.exists()).toBe(true)
+        expect(desc.text().length).toBeGreaterThan(3)
+      }
+    })
+
+    it('shows the select prompt and no passive panel before a hero is chosen', () => {
+      const wrapper = mountPicker()
+      expect(wrapper.find('[data-testid="picker-passive"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('select a hero')
+    })
+  })
 })

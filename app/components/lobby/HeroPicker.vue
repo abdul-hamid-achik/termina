@@ -344,6 +344,14 @@ function initialOf(name: string | undefined | null): string {
         <div class="t-h2 mb-1 text-ability text-glow-ability">
           {{ selectedHeroDef.name }}
         </div>
+        <div
+          v-if="selectedHeroDef.passive"
+          class="mb-2 border-l-2 border-gold/40 pl-2 text-[0.66rem] leading-snug"
+          data-testid="picker-passive"
+        >
+          <span class="font-bold text-gold">⟡ {{ selectedHeroDef.passive.name }}</span
+          ><span class="text-text-dim"> — {{ selectedHeroDef.passive.description }}</span>
+        </div>
         <div class="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
           <div
             v-for="slot in ['q', 'w', 'e', 'r'] as const"
@@ -367,6 +375,12 @@ function initialOf(name: string | undefined | null): string {
                   >{{ selectedHeroDef.abilities[slot].cooldownTicks }}t</span
                 ></span
               >
+            </div>
+            <div
+              class="mt-0.5 text-[0.62rem] leading-snug text-text-dim"
+              :data-testid="`picker-ability-desc-${slot}`"
+            >
+              {{ selectedHeroDef.abilities[slot].description }}
             </div>
           </div>
         </div>
