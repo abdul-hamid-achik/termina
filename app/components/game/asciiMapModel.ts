@@ -23,6 +23,8 @@ export interface ZoneDisplay {
   enemyNames?: string[]
   /** Own-team wards giving vision in this zone (spatial vision-coverage cue). */
   wardCount?: number
+  /** Type of a currently-live rune in this zone (e.g. 'haste'), if any. */
+  runeType?: string
 }
 
 export interface AncientsDisplay {
@@ -194,6 +196,10 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     indicators.push('◉')
   }
 
+  if (zone.runeType) {
+    indicators.push(`✦${zone.runeType}`)
+  }
+
   return indicators.length > 0 ? `${name} ${indicators.join(' ')}` : name
 }
 
@@ -205,6 +211,7 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
   if (zone.allies.length > 0) parts.push(`${zone.allies.length} allies`)
   if (zone.enemyCount > 0) parts.push(`${zone.enemyCount} enemies`)
   if (zone.wardCount && zone.wardCount > 0) parts.push('warded')
+  if (zone.runeType) parts.push(`${zone.runeType} rune available`)
   if (ancient) {
     parts.push(ancient.alive ? `ancient at ${ancientLabel(ancient)}` : 'ancient destroyed')
   }
@@ -285,6 +292,10 @@ export function compactIndicators(
       text: zone.wardCount === 1 ? '◉ warded' : `◉ ${zone.wardCount} wards`,
       cls: 'text-ability',
     })
+  }
+
+  if (zone.runeType) {
+    out.push({ text: `✦ ${zone.runeType} rune`, cls: 'text-gold' })
   }
 
   if (out.length === 0) {
