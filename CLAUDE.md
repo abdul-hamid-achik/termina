@@ -32,7 +32,7 @@ bun run test:e2e          # Cairntrace browser e2e (UI only). cairn's `webServer
                           #   scripts/e2e.mjs. Gameplay/engine truth now lives in test:gameplay.
 bun run test:api          # API tests (hitspec, requires running server)
 bun run test:coverage     # All vitest projects with v8 coverage; ENFORCES the thresholds
-                          #   in vitest.config.ts (lines 70 / branches 60 / funcs 68 / stmts 70)
+                          #   in vitest.config.ts (lines 78 / branches 69 / funcs 76 / stmts 76)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
 cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
 
@@ -137,4 +137,4 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 - **`players` and `hero_stats` both have `games_played` + `wins`** — bare column refs in a join/upsert are ambiguous in Postgres; qualify them (e.g. `hero_stats.games_played` in `ON CONFLICT DO UPDATE`)
 - **vue-router stays at 4** (Nuxt 4 ships/uses it); a harmless `vue-router/volar/sfc-route-blocks` warning from vue-tsc is non-fatal
 - **Histoire is PINNED to `1.0.0-beta.1`** (`histoire` + `@histoire/plugin-vue`) — the only line that supports Vite 7 (what Nuxt 4 ships); the default "latest stable" 0.17.x does NOT. Do not switch to a `^` range. It renders components in a standalone (non-Nuxt) Vite runtime, so `histoire.setup.ts` installs Pinia + stubs `<NuxtLink>`/global `navigateTo`, and `histoire.config.ts` adds `@vitejs/plugin-vue` + `@tailwindcss/vite` + the `~`/`~~`/`@` aliases and imports `terminal.css`. Story files are `app/**/*.story.vue`; shared mock factories live in `app/stories/fixtures.ts`; store-coupled stories seed via the store's refs/`updateFromTick`. Histoire's builtin `tailwind-tokens` plugin logs a HARMLESS non-fatal `[Plugin:builtin:tailwind-tokens]` error (it calls Tailwind v3's `resolveConfig`, gone in v4) — ignore it; the build still exits 0. `app/**/*.story.vue` + `histoire.config.ts`/`histoire.setup.ts` are knip entries; `.histoire/` is gitignored
-- **Coverage thresholds are ENFORCED** by `bun run test:coverage` (v8) at lines 70 / branches 60 / functions 68 / statements 70 in `vitest.config.ts` — set just under the achieved actuals; raise as coverage climbs, never above what's earned
+- **Coverage thresholds are ENFORCED** by `bun run test:coverage` (v8) at lines 78 / branches 69 / functions 76 / statements 76 in `vitest.config.ts` — set just under the achieved actuals (lines ~79 / branches ~70.5 / funcs ~77.4 / stmts ~77.6); raise as coverage climbs, never above what's earned
