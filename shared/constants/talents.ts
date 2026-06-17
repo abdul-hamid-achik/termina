@@ -550,8 +550,91 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
     },
   },
 
-  // Add placeholder talents for remaining heroes
-  malloc: { heroId: 'malloc', tiers: createGenericTalents('malloc') },
+  // Hero-tailored trees (replacing the bland generic menu, one hero at a time).
+  // Malloc — a melee carry built around its Free() execute, Pointer Dereference
+  // gap-close, and Stack Overflow AoE ult. (Q Allocate is a self-buff with no
+  // instant damage, so it carries NO damage_boost talent — that would be a no-op.)
+  malloc: {
+    heroId: 'malloc',
+    tiers: {
+      10: [
+        {
+          id: 'malloc_10_left',
+          name: '+15 Attack Damage',
+          description: '+15 Attack — feeds the Heap Growth carry pattern',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'attack', value: 15 },
+        },
+        {
+          id: 'malloc_10_right',
+          name: '+250 HP',
+          description: '+250 HP for the melee dive',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 250 },
+        },
+      ],
+      15: [
+        {
+          id: 'malloc_15_left',
+          name: '+30% Free() Damage',
+          description: 'Free() (W) deals 30% more — a bigger execute',
+          type: 'damage_boost',
+          tier: 15,
+          abilityId: 'w',
+          damageBoost: 30,
+        },
+        {
+          id: 'malloc_15_right',
+          name: '-2s Pointer Dereference CD',
+          description: 'Pointer Dereference (E) cooldown reduced — dash + stun more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'e',
+          cooldownReduction: 2,
+        },
+      ],
+      20: [
+        {
+          id: 'malloc_20_left',
+          name: '+40% Stack Overflow Damage',
+          description: 'Stack Overflow (R) AoE deals 40% more',
+          type: 'damage_boost',
+          tier: 20,
+          abilityId: 'r',
+          damageBoost: 40,
+        },
+        {
+          id: 'malloc_20_right',
+          name: '+350 HP',
+          description: '+350 HP',
+          type: 'stat_bonus',
+          tier: 20,
+          statBonus: { stat: 'hp', value: 350 },
+        },
+      ],
+      25: [
+        {
+          id: 'malloc_25_left',
+          name: '-10s Stack Overflow CD',
+          description: 'Stack Overflow (R) ultimate cooldown reduced',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 10,
+        },
+        {
+          id: 'malloc_25_right',
+          name: '+20 Magic Resistance',
+          description: '+20 Magic Resistance — survive enemy nukes',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 20 },
+        },
+      ],
+    },
+  },
   cipher: { heroId: 'cipher', tiers: createGenericTalents('cipher') },
   sentry: { heroId: 'sentry', tiers: createGenericTalents('sentry') },
   socket: { heroId: 'socket', tiers: createGenericTalents('socket') },
