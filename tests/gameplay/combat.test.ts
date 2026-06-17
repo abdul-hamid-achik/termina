@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, ENEMY, HUMAN } from './harness'
+import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
 
 /**
  * Replaces tests/e2e/flows/game_attack_lands.yml — a human basic attack on a
@@ -17,6 +18,31 @@ describe('combat', () => {
 
     const me = await game.me()
     expect(me.damageDealt).toBeGreaterThan(0)
+  })
+
+  it('stored buyback cost reflects the death just taken (matches what buyback charges)', async () => {
+    // Regression: the death handler computed buybackCost from the PRE-increment
+    // death count, but buyback() recharges from the post-death count — so the
+    // cost shown to the player was 10g (deaths*10) cheaper than what they'd be
+    // charged, and a player with exactly the displayed gold got rejected.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
+        [ENEMY]: { ...s.players[ENEMY]!, hp: 1, deaths: 3 },
+      },
+    }))
+
+    game.attackHero(ENEMY)
+    await game.tick()
+
+    const victim = await game.player(ENEMY)
+    expect(victim.alive).toBe(false)
+    expect(victim.deaths).toBe(4)
+    // The displayed cost must equal what buyback() will actually charge.
+    expect(victim.buybackCost).toBe(calculateBuybackCost(victim))
   })
 
   it('Segfault Blade resets the killer cooldowns on a hero kill', async () => {
