@@ -238,6 +238,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'scan':
     case 'status':
     case 'map':
+    case 'help':
     case 'chat':
     case 'ping':
     case 'aegis':

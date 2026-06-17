@@ -14,6 +14,7 @@ import {
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
+  formatHelpReadout,
 } from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
@@ -781,6 +782,14 @@ function handleCommand(cmd: string) {
     if (command.type === 'ping') {
       uiLog.debug('Ping sent', { zone: command.zone })
       gameSocket.send({ type: 'ping_map', zone: command.zone })
+      return
+    }
+    // help: print the command reference locally (one log line per group) and
+    // return without sending — purely informational, never a game action.
+    if (command.type === 'help') {
+      for (const line of formatHelpReadout()) {
+        localEvents.value.push({ tick: gameStore.tick, text: line, type: 'system' })
+      }
       return
     }
     // status/map/scan are informational: print a readout to the local log and

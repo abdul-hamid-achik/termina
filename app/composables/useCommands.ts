@@ -237,6 +237,23 @@ export function formatScanReadout(
   return `SCAN · ${visible.length} enemy hero${visible.length === 1 ? '' : 'es'} visible: ${list}`
 }
 
+/**
+ * The command reference for the `help` (or `?`) command — one log line per
+ * group so it stays scannable. Pure/static so it can be unit-tested and reused.
+ */
+export function formatHelpReadout(): string[] {
+  return [
+    'HELP · type a verb, e.g. `move mid` or `cast q` (most auto-pick a target):',
+    '  Fight:   move <zone> · attack <target> · deny · cast <q|w|e|r>',
+    '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
+    '  Info:    status · map · scan · missing <enemy>',
+    '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
+    '  Special: rune · aegis · glyph · buyback · talent <tier> <left|right>',
+    '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ? = help',
+    'Goal: push a lane, raze the enemy towers, then destroy their Mainframe.',
+  ]
+}
+
 const SHORTCUTS: Record<string, string> = {
   mv: 'move',
   atk: 'attack',
@@ -605,6 +622,10 @@ export function useCommands() {
       case 'map':
         return { command: { type: 'map' }, error: null }
 
+      case 'help':
+      case '?':
+        return { command: { type: 'help' }, error: null }
+
       case 'aegis':
         return { command: { type: 'aegis' }, error: null }
 
@@ -652,7 +673,7 @@ export function useCommands() {
       default:
         return {
           command: null,
-          error: `Unknown command: ${cmd}. Try: move, attack, deny, cast, buy, sell, ward, aegis, rune, scan, status, map, chat, ping, glyph, talent, buyback, surrender`,
+          error: `Unknown command: ${cmd}. Type \`help\` (or \`?\`) for the full command list.`,
         }
     }
   }
@@ -679,6 +700,7 @@ export function useCommands() {
         'scan',
         'status',
         'map',
+        'help',
         'chat',
         'ping',
         'glyph',
@@ -689,6 +711,7 @@ export function useCommands() {
       const shortcuts = Object.keys(SHORTCUTS)
       const all = [...cmds, ...shortcuts]
       const descriptions: Record<string, string> = {
+        help: 'List every command (and the goal of the game)',
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (levels 10/15/20/25)',
