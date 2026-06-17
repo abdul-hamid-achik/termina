@@ -183,7 +183,11 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (getAbilityLevel(player.level, cmd.ability) < 1) {
         return cmd.ability === 'r' ? 'Ultimate unlocks at level 6' : 'Ability not yet learned'
       }
-      if (player.cooldowns[cmd.ability] > 0) return 'Ability on cooldown'
+      if (player.cooldowns[cmd.ability] > 0) {
+        // Concrete rejection (design brief, quick win #1): name + ticks + ready tick.
+        const cd = player.cooldowns[cmd.ability]
+        return `${ability.name} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
+      }
       // No mana check here — per-hero scaled costs live in the resolver files;
       // the resolver's InsufficientManaError is authoritative and surfaced
       // through resolveActions' rejected channel.
@@ -1341,12 +1345,20 @@ function resolveHeroCast(
 
   if (Either.isLeft(result)) {
     const err = result.left
-    const reason =
-      err._tag === 'InsufficientManaError'
-        ? `Not enough mana (need ${err.required})`
-        : err._tag === 'CooldownError'
-          ? 'Ability on cooldown'
-          : err.reason
+    // Concrete, actionable rejection text (design brief, quick win #1): name the
+    // ability and the exact numbers so the player knows WHY and WHEN, not just
+    // "that failed".
+    const abilityName =
+      HEROES[caster.heroId]?.abilities[cmd.ability]?.name ?? cmd.ability.toUpperCase()
+    let reason: string
+    if (err._tag === 'InsufficientManaError') {
+      reason = `Not enough mana for ${abilityName}: need ${err.required}, have ${Math.floor(caster.mp)}`
+    } else if (err._tag === 'CooldownError') {
+      const cd = caster.cooldowns[cmd.ability] ?? 0
+      reason = `${abilityName} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
+    } else {
+      reason = err.reason
+    }
     rejected.push({ playerId: action.playerId, reason })
     return { players, zones }
   }

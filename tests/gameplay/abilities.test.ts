@@ -239,4 +239,44 @@ describe('abilities', () => {
     await game.tick()
     expect((await game.me()).cooldowns.w).toBe(0)
   })
+
+  it('a cast on cooldown is rejected with the ability name, ticks left, and ready tick', async () => {
+    // Design-brief quick win #1: rejections must say WHY and WHEN, concretely.
+    const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 5, w: 0, e: 0, r: 0 }, buffs: [] },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+
+    const r = game.lastRejected.find((x) => x.playerId === HUMAN)
+    expect(r?.reason).toContain('Inject') // the ability's NAME, not "ability"
+    expect(r?.reason).toContain('cooldown')
+    expect(r?.reason).toMatch(/5 ticks left/)
+    expect(r?.reason).toMatch(/ready T\d+/)
+  })
+
+  it('a cast with too little mana is rejected with need-vs-have', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, mp: 1, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY }) // Inject costs 50 mana
+    await game.tick()
+
+    const r = game.lastRejected.find((x) => x.playerId === HUMAN)
+    expect(r?.reason).toContain('Not enough mana for Inject')
+    expect(r?.reason).toMatch(/need \d+/) // the exact cost is hero/level-scaled
+    expect(r?.reason).toContain('have 1')
+  })
 })
