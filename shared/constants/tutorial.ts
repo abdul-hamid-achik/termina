@@ -21,7 +21,10 @@ export interface TutorialStep {
 export const TUTORIAL_FLOW: readonly TutorialStep[] = [
   {
     teaches: 'move',
-    hint: '🎓 Walk down the lane — type `move mid-t3-rad` to advance toward mid.',
+    // The player spawns in the fountain, which is only adjacent to its base — so
+    // the first move MUST be `move base` (any farther zone is rejected as
+    // non-adjacent, which would stall the tutorial on step one).
+    hint: '🎓 Walk down the lane — type `move base` to leave the fountain, then push to mid.',
   },
   {
     teaches: 'attack',
