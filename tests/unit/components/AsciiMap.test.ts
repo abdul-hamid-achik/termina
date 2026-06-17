@@ -289,4 +289,46 @@ describe('AsciiMap', () => {
       expect(wrapper.find('[data-testid="compact-current-zone"]').text()).toContain('◈ CORE 50%')
     })
   })
+
+  describe('full-grid interaction', () => {
+    function mountFull(props: Record<string, unknown> = {}) {
+      return mount(AsciiMap, {
+        props: {
+          zones: [
+            makeZone({ id: 'mid-t1-rad', name: 'Radiant Mid T1' }),
+            makeZone({ id: 'mid-river', name: 'Mid River' }),
+            makeZone({ id: 'dire-base', name: 'Dire Base' }),
+          ],
+          playerZone: 'mid-t1-rad',
+          forceMode: 'full' as const,
+          ...props,
+        },
+      })
+    }
+
+    it('marks an adjacent zone clickable and emits zoneClick on click', async () => {
+      const wrapper = mountFull()
+      const cell = wrapper.find('[title^="mid-river"]')
+      expect(cell.exists()).toBe(true)
+      expect(cell.attributes('title')).toContain('click to move')
+      await cell.trigger('click')
+      expect(wrapper.emitted('zoneClick')).toEqual([['mid-river']])
+    })
+
+    it('does not emit when a non-adjacent zone is clicked', async () => {
+      const wrapper = mountFull()
+      const cell = wrapper.find('[title^="dire-base"]')
+      expect(cell.exists()).toBe(true)
+      expect(cell.attributes('title')).toContain('not adjacent')
+      await cell.trigger('click')
+      expect(wrapper.emitted('zoneClick')).toBeUndefined()
+    })
+
+    it('makes nothing clickable when the player has no zone', async () => {
+      const wrapper = mountFull({ playerZone: '' })
+      const cell = wrapper.find('[title^="mid-river"]')
+      await cell.trigger('click')
+      expect(wrapper.emitted('zoneClick')).toBeUndefined()
+    })
+  })
 })
