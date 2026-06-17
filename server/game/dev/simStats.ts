@@ -29,6 +29,12 @@ export interface SimSummary {
   wins: { radiant: number; dire: number; none: number }
   /** Percent of DECIDED games (excludes stalls/no-winner). */
   winRate: { radiant: number; dire: number }
+  /**
+   * True only when the side win-rate clears ~2 std devs of a fair coin for the
+   * decided sample — i.e. the imbalance is unlikely to be noise. A small batch
+   * (e.g. 10/16) reads as NOT significant, so it isn't mistaken for a real bias.
+   */
+  sideBiasSignificant: boolean
   length: { minTicks: number; maxTicks: number; avgTicks: number; medianTicks: number }
   /** Per-hero win-rate, highest first (heroes that appeared at least once). */
   heroWinRates: HeroWinRate[]
@@ -58,6 +64,11 @@ export function summarizeSimResults(results: SimResult[]): SimSummary {
   }
 
   const decided = wins.radiant + wins.dire
+  // 2σ test against a fair coin: only flag a side bias unlikely to be noise.
+  const radiantShare = decided > 0 ? wins.radiant / decided : 0.5
+  const twoSigma = decided > 0 ? 2 * Math.sqrt(0.25 / decided) : Infinity
+  const sideBiasSignificant = decided > 0 && Math.abs(radiantShare - 0.5) > twoSigma
+
   const sorted = [...lengths].sort((a, b) => a - b)
   const total = lengths.reduce((s, t) => s + t, 0)
 
@@ -75,6 +86,7 @@ export function summarizeSimResults(results: SimResult[]): SimSummary {
       radiant: decided > 0 ? (wins.radiant / decided) * 100 : 0,
       dire: decided > 0 ? (wins.dire / decided) * 100 : 0,
     },
+    sideBiasSignificant,
     length: {
       minTicks: sorted[0] ?? 0,
       maxTicks: sorted[sorted.length - 1] ?? 0,

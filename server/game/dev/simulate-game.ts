@@ -178,7 +178,8 @@ if (matches > 1) {
   console.log(`\n══ BALANCE SUMMARY (${s.matches} matches) ══`)
   console.log(
     `  side win-rate: radiant ${s.winRate.radiant.toFixed(0)}% / dire ${s.winRate.dire.toFixed(0)}%` +
-      `  (R ${s.wins.radiant} · D ${s.wins.dire} · stalled ${s.wins.none})`,
+      `  (R ${s.wins.radiant} · D ${s.wins.dire} · stalled ${s.wins.none})` +
+      `  ${s.sideBiasSignificant ? '← SIGNIFICANT (likely real)' : '(within normal variance — run more)'}`,
   )
   console.log(
     `  length: ${fmtMin(s.length.minTicks)}–${fmtMin(s.length.maxTicks)} ` +
