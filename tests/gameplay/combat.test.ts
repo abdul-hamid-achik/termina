@@ -88,6 +88,29 @@ describe('combat', () => {
     expect(shutdownKill).toBeGreaterThan(cleanKill)
   })
 
+  it('a kill ends the victim’s streak and grows the killer’s', async () => {
+    // State side of the streak machine (the bounty side is covered above): the
+    // fed victim's run is broken, and the killer's own snowball ticks up.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, killStreak: 2 },
+        [ENEMY]: { ...s.players[ENEMY]!, hp: 1, killStreak: 5 },
+      },
+    }))
+
+    game.attackHero(ENEMY)
+    await game.tick()
+
+    const killer = await game.me()
+    const victim = await game.player(ENEMY)
+    expect(victim.alive).toBe(false)
+    expect(victim.killStreak).toBe(0) // streak broken (anti-snowball)
+    expect(killer.killStreak).toBe(3) // killer's own streak grew 2 → 3
+  })
+
   it('Segfault Blade resets the killer cooldowns on a hero kill', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
