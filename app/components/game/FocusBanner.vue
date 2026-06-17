@@ -41,6 +41,19 @@ const hpFraction = computed(() => {
   return p.hp / p.maxHp
 })
 
+// The banner drives the fight/flee call, so it must SHOW the number behind it.
+// Reddens + pulses below 25% while alive — mirroring the HP-bar danger threshold.
+const hpReadout = computed(() => {
+  const p = player.value
+  if (!p) return null
+  return {
+    hp: p.hp,
+    maxHp: p.maxHp,
+    pct: Math.round(hpFraction.value * 100),
+    danger: store.isAlive && hpFraction.value <= 0.25,
+  }
+})
+
 const readyAbilities = computed(() => {
   const p = player.value
   if (!p) return []
@@ -85,6 +98,15 @@ const recommendation = computed(() =>
     >
 
     <span class="shrink-0 text-text-dim">@ {{ zoneName }}</span>
+
+    <!-- HP readout (the number behind the fight/flee verdict) -->
+    <span
+      v-if="hpReadout"
+      class="shrink-0 t-mono-num"
+      :class="hpReadout.danger ? 'animate-pulse font-bold text-dire text-glow-sm' : 'text-radiant'"
+      data-testid="focus-hp"
+      >HP {{ hpReadout.hp }}/{{ hpReadout.maxHp }} ({{ hpReadout.pct }}%)</span
+    >
 
     <!-- Recommendation -->
     <span class="min-w-0 flex-1 truncate text-text-primary" data-testid="focus-recommendation"
