@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import type { Command, TargetRef } from '~~/shared/types/commands'
-import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
+import type { PlayerState, ZoneRuntimeState, TeamId } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
@@ -332,10 +332,17 @@ export function validateCommand(command: Command, context: GameContext): string 
   }
 }
 
-/** Resolve a zone alias to the actual zone ID, or return the input if it's already a valid zone. */
-function resolveZoneAlias(zoneInput: string): string {
+/**
+ * Resolve a zone alias to the actual zone ID, or return the input if it's
+ * already a valid zone. `base`/`fountain` are resolved relative to the player's
+ * team — so a dire player typing `move base` heads to dire-base, not the enemy's.
+ */
+function resolveZoneAlias(zoneInput: string, team: TeamId = 'radiant'): string {
   // Check if it's already a valid zone ID
   if (ZONE_IDS.includes(zoneInput)) return zoneInput
+  // Team-relative "home" shortcuts resolve to YOUR side of the map.
+  if (zoneInput === 'base') return `${team}-base`
+  if (zoneInput === 'fountain') return `${team}-fountain`
   // Check if it's an alias
   if (ZONE_ALIASES[zoneInput]) return ZONE_ALIASES[zoneInput]
   // Check if it matches a zone ID prefix (e.g., "mid" -> "mid-river" if unambiguous)
@@ -349,7 +356,7 @@ export function useCommands() {
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
 
-  function parse(input: string): ParseResult {
+  function parse(input: string, team: TeamId = 'radiant'): ParseResult {
     let trimmed = input.trim().toLowerCase()
     if (!trimmed) return { command: null, error: null }
 
@@ -367,7 +374,7 @@ export function useCommands() {
       case 'move': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: move <zone>' }
-        const resolvedZone = resolveZoneAlias(zone)
+        const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'move', zone: resolvedZone }, error: null }
       }
 
@@ -437,7 +444,7 @@ export function useCommands() {
       case 'ward': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: ward <zone>' }
-        const resolvedZone = resolveZoneAlias(zone)
+        const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'ward', zone: resolvedZone }, error: null }
       }
 
@@ -485,7 +492,7 @@ export function useCommands() {
       case 'ping': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: ping <zone>' }
-        const resolvedZone = resolveZoneAlias(zone)
+        const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'ping', zone: resolvedZone }, error: null }
       }
 
