@@ -138,6 +138,12 @@ const commands = [
     shortcuts: 'atk',
   },
   {
+    cmd: 'deny [creep:N]',
+    desc: 'Last-hit your OWN low-HP creep to deny the enemy its gold. Bare deny auto-picks one',
+    example: 'deny creep:0',
+    shortcuts: '—',
+  },
+  {
     cmd: 'cast <q|w|e|r> [target]',
     desc: 'Use an ability, optionally on a target',
     example: 'cast q hero:regex',
