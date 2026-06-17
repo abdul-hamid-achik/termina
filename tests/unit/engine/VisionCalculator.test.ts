@@ -379,15 +379,17 @@ describe('VisionCalculator', () => {
     // Regression: the client picks its ASCII layout + tutorial UI off these
     // labels, so filterStateForPlayer MUST carry them through (they were
     // dropped originally, leaving the one-lane layout dead in the browser).
-    it('carries mapId + mode for an alive player', () => {
+    it('carries mapId + mode + tutorialStep for an alive player', () => {
       const state = makeGameState({
         players: { p1: makePlayer() },
         mapId: 'one_lane',
         mode: 'tutorial',
+        tutorialStep: 2,
       })
       const view = filterStateForPlayer(state, 'p1')
       expect(view.mapId).toBe('one_lane')
       expect(view.mode).toBe('tutorial')
+      expect(view.tutorialStep).toBe(2)
     })
 
     it('carries mapId + mode even when the viewer is not in the game (dead/absent)', () => {

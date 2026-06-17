@@ -144,6 +144,8 @@ function createInitialGameState(
     dayNightTick: 0,
     mapId,
     mode,
+    // The tutorial starts at step 0 (gating + first hint); normal games omit it.
+    tutorialStep: mode === 'tutorial' ? 0 : undefined,
   }
 }
 

@@ -145,6 +145,9 @@ export interface GameState {
   /** Game mode. Absent/'normal' = a regular match; 'tutorial' = the guided
    *  practice flow (staggered command unlocks + just-in-time hints). */
   mode?: GameMode
+  /** Tutorial progress: which step of the flow the player is on (0-based).
+   *  Only meaningful when mode === 'tutorial'; drives command-gating + hints. */
+  tutorialStep?: number
 }
 
 /** A game's mode. 'normal' is a standard match; 'tutorial' is the guided
@@ -212,4 +215,6 @@ export interface PlayerVisibleState {
    *  right layout and show tutorial UI. Absent = full 5v5 / normal match. */
   mapId?: string
   mode?: GameMode
+  /** Tutorial step, mirrored so the client can show progress + the current hint. */
+  tutorialStep?: number
 }

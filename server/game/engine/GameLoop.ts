@@ -20,6 +20,7 @@ import {
 import type { StateManagerApi } from './StateManager'
 import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
+import { advanceTutorialAfterTick } from '~~/server/game/modes/tutorial'
 import { distributePassiveGold, awardKill } from './GoldDistributor'
 import { runCreepAI, applyCreepActions, enforceCreepZoneCap } from './CreepAI'
 import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
@@ -222,6 +223,11 @@ export function processTick(
     // reach onActionRejected player feedback through the same channel as
     // validation failures.
     rejectedActions.push(...resolved.rejected)
+
+    // 3.4. Advance the tutorial if the human performed the verb this step
+    // teaches (no-op in normal games). Uses validation-accepted actions minus
+    // any the resolver then rejected, so a failed cast doesn't count.
+    currentState = advanceTutorialAfterTick(currentState, validActions, resolved.rejected)
 
     // 3.5. Track tower kills and update team stats
     currentState = trackTowerKills(currentState, preTowers, allEvents)
