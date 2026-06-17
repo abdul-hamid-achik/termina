@@ -382,6 +382,22 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
   )
 }
 
+// Cache's Eviction (R) deals pure damage EQUAL to stored energy, and Flush (W)
+// converts that energy to a shield — both are near-worthless at low energy (R
+// becomes a lone slow burning a 50-tick cooldown; W a ~0 shield). The generic
+// ['r','q','w','e'] priority would otherwise fire R at the very START of a fight,
+// before Cache has taken any damage to store, wasting its signature burst. Hold
+// these until the stored energy is worth spending so the bot actually plays
+// Cache's build-then-burst pattern (this is why Cache trailed in bot sims).
+const CACHE_MIN_ENERGY_TO_EVICT = 60
+const CACHE_MIN_ENERGY_TO_FLUSH = 30
+
+function wastesStoredEnergy(bot: PlayerState, slot: AbilitySlot): boolean {
+  if (bot.heroId !== 'cache' || (slot !== 'r' && slot !== 'w')) return false
+  const energy = bot.buffs.find((b) => b.id === 'cachedEnergy')?.stacks ?? 0
+  return energy < (slot === 'r' ? CACHE_MIN_ENERGY_TO_EVICT : CACHE_MIN_ENERGY_TO_FLUSH)
+}
+
 function calculateThreatScore(enemy: PlayerState, _bot: PlayerState, _state: GameState): number {
   let score = 0
   const hero = enemy.heroId ? HEROES[enemy.heroId] : null
@@ -442,6 +458,7 @@ function tryGetAbilityCommand(
   for (const slot of slots) {
     const ability = hero.abilities[slot]
     if (!canCastAbility(bot, ability, slot)) continue
+    if (wastesStoredEnergy(bot, slot)) continue
     const target = getAbilityTarget(ability, bot, enemiesInZone, alliesInZone)
     if (target === undefined) continue
     if (target === null) {
