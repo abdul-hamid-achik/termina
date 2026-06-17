@@ -254,8 +254,8 @@ describe('Ping Hero', () => {
     })
   })
 
-  describe('E: Tracepath (Self Vision + Speed Buff)', () => {
-    it('applies vision and speed buffs to self', () => {
+  describe('E: Tracepath (Self Vision)', () => {
+    it('applies the vision buff (and not a dead speed buff)', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -263,13 +263,11 @@ describe('Ping Hero', () => {
 
       const updated = result.state.players['p1']!
       expect(hasBuff(updated, 'tracepath_vision')).toBe(true)
-      expect(hasBuff(updated, 'tracepath_speed')).toBe(true)
+      // tracepath_speed was a dead moveSpeed buff (inert) — removed.
+      expect(hasBuff(updated, 'tracepath_speed')).toBe(false)
 
       const vision = updated.buffs.find((b) => b.id === 'tracepath_vision')
       expect(vision!.ticksRemaining).toBe(3)
-
-      const speed = updated.buffs.find((b) => b.id === 'tracepath_speed')
-      expect(speed!.ticksRemaining).toBe(2)
     })
 
     it('deducts mana and sets cooldown', () => {

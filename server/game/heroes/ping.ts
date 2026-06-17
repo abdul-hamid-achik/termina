@@ -198,12 +198,8 @@ function resolveE(
       ticksRemaining: 3,
       source: player.id,
     })
-    caster = applyBuff(caster, {
-      id: 'tracepath_speed',
-      stacks: 1,
-      ticksRemaining: 2,
-      source: player.id,
-    })
+    // (Removed a dead 'tracepath_speed' buff: moveSpeed is inert in the fixed
+    // 1-zone/tick model, so it did nothing. Tracepath is now a vision tool.)
 
     return {
       state: updatePlayer(state, caster),

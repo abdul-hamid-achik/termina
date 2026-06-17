@@ -25,6 +25,7 @@ interface VisionCacheEntry {
   wardKey: string
   towerKey: string
   teammateKey: string
+  tracepathKey: string
 }
 
 const visionCache = new Map<string, VisionCacheEntry>()
@@ -60,6 +61,18 @@ function buildTeammateKey(state: GameState, team: TeamId, excludePlayerId: strin
     .join(',')
 }
 
+/** Team members whose Tracepath is active (id + zone) — their extended sight
+ *  changes the team's vision, so it must be part of the cache key. */
+function buildTracepathKey(state: GameState, team: TeamId): string {
+  return Object.entries(state.players)
+    .filter(
+      ([, p]) => p.team === team && p.alive && p.buffs.some((b) => b.id === 'tracepath_vision'),
+    )
+    .map(([id, p]) => `${id}:${p.zone}`)
+    .sort()
+    .join(',')
+}
+
 export function calculateVision(state: GameState, playerId: string): Set<string> {
   const player = state.players[playerId]
   if (!player) return new Set()
@@ -68,6 +81,7 @@ export function calculateVision(state: GameState, playerId: string): Set<string>
   const wardKey = buildWardKey(state, team)
   const towerKey = buildTowerKey(state, team)
   const teammateKey = buildTeammateKey(state, team, playerId)
+  const tracepathKey = buildTracepathKey(state, team)
   const timeOfDay = state.timeOfDay
 
   const cached = visionCache.get(playerId)
@@ -78,7 +92,8 @@ export function calculateVision(state: GameState, playerId: string): Set<string>
     cached.timeOfDay === timeOfDay &&
     cached.wardKey === wardKey &&
     cached.towerKey === towerKey &&
-    cached.teammateKey === teammateKey
+    cached.teammateKey === teammateKey &&
+    cached.tracepathKey === tracepathKey
   ) {
     return cached.vision
   }
@@ -100,6 +115,7 @@ export function calculateVision(state: GameState, playerId: string): Set<string>
     wardKey,
     towerKey,
     teammateKey,
+    tracepathKey,
   })
 
   return vision
@@ -135,6 +151,16 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
   for (const p of Object.values(state.players)) {
     if (p.team === team && p.alive && p.id !== player.id) {
       addZoneWithAdjacent(visible, p.zone, isNight)
+    }
+  }
+
+  // Ping's Tracepath: while active, that hero's sight reaches one hop further —
+  // reveal each of its zone's neighbours along with THEIR neighbours (2 hops).
+  for (const p of Object.values(state.players)) {
+    if (p.team === team && p.alive && p.buffs.some((b) => b.id === 'tracepath_vision')) {
+      for (const neighbor of ADJACENT_CACHE.get(p.zone) ?? []) {
+        addZoneWithAdjacent(visible, neighbor, isNight)
+      }
     }
   }
 

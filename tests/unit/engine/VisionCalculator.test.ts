@@ -373,6 +373,27 @@ describe('VisionCalculator', () => {
       for (const z of night) expect(day.has(z)).toBe(true)
       expect(night.size).toBeLessThan(day.size)
     })
+
+    it('Tracepath (tracepath_vision buff) extends vision one hop further', () => {
+      const tracepath = {
+        id: 'tracepath_vision',
+        stacks: 1,
+        ticksRemaining: 3,
+        source: 'p1',
+      }
+      const base = calculateVision(
+        makeGameState({ players: { p1: makePlayer({ zone: 'mid-river' }) } }),
+        'p1',
+      )
+      const traced = calculateVision(
+        makeGameState({ players: { p1: makePlayer({ zone: 'mid-river', buffs: [tracepath] }) } }),
+        'p1',
+      )
+
+      // The buff reveals 2-hop zones — a strict superset of normal sight.
+      for (const z of base) expect(traced.has(z)).toBe(true)
+      expect(traced.size).toBeGreaterThan(base.size)
+    })
   })
 
   describe('map/mode labels reach the client', () => {
