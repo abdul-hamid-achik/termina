@@ -395,6 +395,10 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
 export function tickAllBuffs(state: GameState): GameState {
   let updated = state
   const events: GameEvent[] = []
+  // DMZ explosions are collected here and applied AFTER the per-player tick loop:
+  // the loop writes each player's own ticked state back from a snapshot, which
+  // would clobber cross-player (enemy) damage applied mid-loop.
+  const explosions: { casterId: string; zone: string; damage: number }[] = []
 
   for (const [_pid, player] of Object.entries(updated.players)) {
     if (!player.alive) continue
@@ -405,6 +409,9 @@ export function tickAllBuffs(state: GameState): GameState {
     // it expires (last tick) — Traceroute's Next Hop (nextHopShadow) and Lambda's
     // Return (returnMark). Both stash the origin zone in buff.destination.
     const returnShadow = player.buffs.find((b) => b.id === 'nextHopShadow' || b.id === 'returnMark')
+    // Firewall DMZ: a marker riding alongside the W shield; when it ends it
+    // explodes for magical damage to enemies in the caster's zone.
+    const dmzExpiring = player.buffs.find((b) => b.id === 'dmz' && b.ticksRemaining === 1)
 
     if (tpChannelingBuff && tpChannelingBuff.ticksRemaining === 1 && tpDestBuff?.destination) {
       const tpDestination = tpDestBuff.destination
@@ -445,11 +452,39 @@ export function tickAllBuffs(state: GameState): GameState {
           source: returnShadow.id === 'returnMark' ? 'return' : 'next_hop',
         },
       })
+    } else if (dmzExpiring) {
+      // Drop the expiring dmz (+ shield) now; queue the blast for after the loop.
+      updated = updatePlayer(updated, tickBuffs(player))
+      explosions.push({ casterId: player.id, zone: player.zone, damage: dmzExpiring.stacks })
     } else {
       const ticked = tickBuffs(player)
       if (ticked !== player) {
         updated = updatePlayer(updated, ticked)
       }
+    }
+  }
+
+  // Apply DMZ explosions after every player has ticked (so enemy HP loss sticks).
+  for (const ex of explosions) {
+    const caster = updated.players[ex.casterId]
+    if (!caster) continue
+    let hitAny = false
+    for (const enemy of Object.values(updated.players)) {
+      if (enemy.team === caster.team || !enemy.alive || enemy.zone !== ex.zone) continue
+      updated = updatePlayer(updated, dealAbilityDamage(caster, enemy, ex.damage, 'magical'))
+      hitAny = true
+    }
+    if (hitAny) {
+      events.push({
+        tick: state.tick,
+        type: 'ability_used',
+        payload: {
+          playerId: ex.casterId,
+          ability: 'w',
+          effect: 'dmz_explosion',
+          damage: ex.damage,
+        },
+      })
     }
   }
 

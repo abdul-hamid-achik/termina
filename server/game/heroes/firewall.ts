@@ -30,6 +30,7 @@ const Q_COOLDOWN = 8
 const W_SHIELD = [200, 300, 400, 500] as const
 const W_MANA = [80, 100, 120, 140] as const
 const W_COOLDOWN = 14
+const W_EXPLOSION_DAMAGE = 80 // DMZ explodes for this magical damage when it ends
 
 const E_MANA = [60, 80, 100, 120] as const
 const E_COOLDOWN = 16
@@ -143,6 +144,15 @@ function resolveW(
     caster = applyBuff(caster, {
       id: 'shield',
       stacks: shieldAmount,
+      ticksRemaining: 3,
+      source: player.id,
+    })
+    // DMZ marker (rides alongside the shield): when it ends — whether the shield
+    // expired or was broken — it explodes for W_EXPLOSION_DAMAGE magical to
+    // enemies in the zone. The blast is processed in tickAllBuffs on its expiry.
+    caster = applyBuff(caster, {
+      id: 'dmz',
+      stacks: W_EXPLOSION_DAMAGE,
       ticksRemaining: 3,
       source: player.id,
     })
