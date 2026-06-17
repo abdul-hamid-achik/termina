@@ -6,6 +6,7 @@ import {
   buildOrderForRole,
   tryUseCombatItem,
   tryPanicDefensiveItem,
+  tryPlaceWard,
 } from '../../../server/game/ai/BotAI'
 import type { BotDifficultyConfig } from '../../../server/game/ai/BotManager'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
@@ -1418,5 +1419,89 @@ describe('BotAI - panic survival items (retreat branch)', () => {
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     const action = decideBotAction(state, bot, 'mid')
     expect(action?.type).toBe('move')
+  })
+})
+
+describe('BotAI - warding', () => {
+  const aWard = {
+    team: 'radiant' as const,
+    placedTick: 0,
+    expiryTick: 100,
+    type: 'observer' as const,
+  }
+  const zonesWith = (zoneId: string, count: number) => {
+    const zones = initializeZoneStates()
+    const base = zones[zoneId]!
+    zones[zoneId] = { ...base, wards: Array.from({ length: count }, () => ({ ...aWard })) }
+    return zones
+  }
+
+  it('returns null without an Observer Ward in inventory', () => {
+    const bot = makePlayer({ zone: 'rune-top', items: inv() })
+    expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toBeNull()
+  })
+
+  it('wards the strategic zone the bot is standing in', () => {
+    const bot = makePlayer({ zone: 'rune-top', items: inv('observer_ward') })
+    expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
+      type: 'ward',
+      zone: 'rune-top',
+    })
+  })
+
+  it('wards an adjacent strategic zone (top-river → rune-top)', () => {
+    const bot = makePlayer({ zone: 'top-river', items: inv('observer_ward') })
+    expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
+      type: 'ward',
+      zone: 'rune-top',
+    })
+  })
+
+  it('does not re-ward a strategic zone the team already covers', () => {
+    const bot = makePlayer({ zone: 'rune-top', items: inv('observer_ward') })
+    const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('rune-top', 1) })
+    expect(tryPlaceWard(state, bot)).toBeNull()
+  })
+
+  it('holds the ward when the team is already at the ward limit', () => {
+    const bot = makePlayer({ zone: 'rune-top', items: inv('observer_ward') })
+    // 3 radiant wards parked elsewhere → at WARD_LIMIT_PER_TEAM.
+    const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('rune-bot', 3) })
+    expect(tryPlaceWard(state, bot)).toBeNull()
+  })
+
+  it('returns null when not in or next to a strategic zone', () => {
+    const bot = makePlayer({ zone: 'radiant-fountain', items: inv('observer_ward') })
+    expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toBeNull()
+  })
+
+  it('a support bot buys an Observer Ward at the fountain', () => {
+    const bot = makePlayer({
+      heroId: 'sentry', // role: support
+      zone: 'radiant-fountain',
+      gold: 600,
+      items: inv('healing_salve', 'town_portal_scroll'),
+    })
+    expect(decideBotAction(makeGameState({ players: { [bot.id]: bot } }), bot, 'mid')).toEqual({
+      type: 'buy',
+      item: 'observer_ward',
+    })
+  })
+
+  it('a non-support bot does not buy wards', () => {
+    const bot = makePlayer({
+      heroId: 'echo', // not support
+      zone: 'radiant-fountain',
+      gold: 600,
+      items: inv('healing_salve', 'town_portal_scroll'),
+    })
+    const action = decideBotAction(makeGameState({ players: { [bot.id]: bot } }), bot, 'mid')
+    expect(action).not.toEqual({ type: 'buy', item: 'observer_ward' })
+  })
+
+  it('decideBotAction wires warding into a calm tick', () => {
+    const bot = makePlayer({ heroId: 'sentry', zone: 'rune-top', items: inv('observer_ward') })
+    const state = makeGameState({ players: { [bot.id]: bot } })
+    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'ward', zone: 'rune-top' })
   })
 })

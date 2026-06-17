@@ -12,7 +12,8 @@ import type { AbilityDef, HeroRole } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getItem } from '~~/shared/constants/items'
 import { TALENT_TREES } from '~~/shared/constants/talents'
-import { findPath, getDistance } from '~~/server/game/map/topology'
+import { findPath, getDistance, areAdjacent } from '~~/server/game/map/topology'
+import { WARD_LIMIT_PER_TEAM } from '~~/shared/constants/balance'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
@@ -664,13 +665,58 @@ function tryBuyItem(bot: PlayerState): Command | null {
       return { type: 'buy', item }
     }
   }
-  const buildOrder = buildOrderForRole(bot.heroId ? HEROES[bot.heroId]?.role : undefined)
+  // Support bots keep an Observer Ward on hand for team vision (placed by
+  // tryPlaceWard). Cheap, so bought before saving for the next core item.
+  const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
+  if (
+    role === 'support' &&
+    !bot.items.includes('observer_ward') &&
+    bot.gold >= itemCost('observer_ward')
+  ) {
+    return { type: 'buy', item: 'observer_ward' }
+  }
+  const buildOrder = buildOrderForRole(role)
   for (const itemId of buildOrder) {
     if (bot.items.includes(itemId)) continue
     if (bot.gold >= itemCost(itemId)) {
       return { type: 'buy', item: itemId }
     }
     break
+  }
+  return null
+}
+
+// Strategic ward spots — the rune/river control points worth team vision.
+const STRATEGIC_WARD_ZONES = RUNE_ZONES
+
+function teamWardCount(state: GameState, team: TeamId): number {
+  let count = 0
+  for (const zone of Object.values(state.zones)) {
+    for (const ward of zone.wards) {
+      if (ward.team === team) count++
+    }
+  }
+  return count
+}
+
+function teamHasWardInZone(state: GameState, zoneId: string, team: TeamId): boolean {
+  return (state.zones[zoneId]?.wards ?? []).some((w) => w.team === team)
+}
+
+/**
+ * A ward-carrying bot (only supports buy Observer Wards) drops one on a
+ * strategic rune/river zone it's standing in or next to — giving its team
+ * (including any human ally) map vision where it matters. Mirrors placeWard's
+ * gates (team under WARD_LIMIT, zone not already team-warded) and validateAction's
+ * current-or-adjacent rule, so the `ward` lands instead of wasting the tick.
+ */
+export function tryPlaceWard(state: GameState, bot: PlayerState): Command | null {
+  if (!bot.items.includes('observer_ward')) return null
+  if (teamWardCount(state, bot.team) >= WARD_LIMIT_PER_TEAM) return null
+  for (const zone of STRATEGIC_WARD_ZONES) {
+    if (zone !== bot.zone && !areAdjacent(bot.zone, zone)) continue
+    if (teamHasWardInZone(state, zone, bot.team)) continue
+    return { type: 'ward', zone }
   }
   return null
 }
@@ -903,10 +949,13 @@ export function decideBotAction(
     return null
   }
   // Spend a calm tick (no enemy hero in zone) banking an unlocked talent so bots
-  // aren't permanently down 1–4 talents on human players.
+  // aren't permanently down 1–4 talents on human players, then dropping a ward
+  // on a strategic spot for team vision.
   if (enemyHeroes.length === 0) {
     const talentCmd = tryPickTalent(bot)
     if (talentCmd) return talentCmd
+    const wardCmd = tryPlaceWard(state, bot)
+    if (wardCmd) return wardCmd
   }
   const enemyCreeps = getEnemyCreepsInZone(state, bot)
   if (enemyHeroes.length > 0) {
