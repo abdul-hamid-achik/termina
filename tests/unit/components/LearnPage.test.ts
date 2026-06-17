@@ -81,10 +81,11 @@ describe('learn page', () => {
 
   it('documents the full live command verb set from useCommands', () => {
     const text = mountLearn().text()
-    // Original 7
+    // Original 7 + deny
     for (const cmd of [
       'move <zone>',
       'attack [target]',
+      'deny [creep:N]',
       'cast <q|w|e|r> [target]',
       'use <item>',
       'buy <item>',
