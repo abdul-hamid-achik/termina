@@ -120,6 +120,13 @@ describe('tutorial flow', () => {
       expect(tutorialHint(1)).toContain('creep:')
       expect(tutorialHint(1)).not.toMatch(/type `attack` on/)
     })
+
+    it('the cast hint is hero-agnostic (some heroes have a supportive Q)', () => {
+      // `cast q` auto-targets per the ability — an ally/self for a supportive Q —
+      // so the hint must not promise it "hits an enemy".
+      expect(tutorialHint(2)).toContain('cast q')
+      expect(tutorialHint(2)!.toLowerCase()).not.toContain('enemy')
+    })
   })
 
   describe('advanceTutorialAfterTick', () => {
