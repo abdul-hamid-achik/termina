@@ -975,7 +975,91 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
-  thread: { heroId: 'thread', tiers: createGenericTalents('thread') },
+  // Thread — a splash right-click carry (Multithread). Its damage is mostly basic
+  // attacks (+ the Thread Pool ult making them AoE), so the tree leans on +attack;
+  // only Fork (Q) deals instant ability damage (W Sync Barrier + R Thread Pool are
+  // self-buffs, E Yield a vuln debuff), so damage_boost sits on Q alone.
+  thread: {
+    heroId: 'thread',
+    tiers: {
+      10: [
+        {
+          id: 'thread_10_left',
+          name: '+15 Attack Damage',
+          description: '+15 Attack — more right-click + Multithread splash',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'attack', value: 15 },
+        },
+        {
+          id: 'thread_10_right',
+          name: '+200 HP',
+          description: '+200 HP for the fragile carry',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 200 },
+        },
+      ],
+      15: [
+        {
+          id: 'thread_15_left',
+          name: '+30% Fork Damage',
+          description: 'Fork (Q) deals 30% more burst',
+          type: 'damage_boost',
+          tier: 15,
+          abilityId: 'q',
+          damageBoost: 30,
+        },
+        {
+          id: 'thread_15_right',
+          name: '-2s Sync Barrier CD',
+          description: 'Sync Barrier (W) shield cooldown reduced',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'w',
+          cooldownReduction: 2,
+        },
+      ],
+      20: [
+        {
+          id: 'thread_20_left',
+          name: '+20 Attack Damage',
+          description: '+20 Attack — scales the splash carry into the late game',
+          type: 'stat_bonus',
+          tier: 20,
+          statBonus: { stat: 'attack', value: 20 },
+        },
+        {
+          id: 'thread_20_right',
+          name: '-2s Yield CD',
+          description: 'Yield (E) mark cooldown reduced — keep targets vulnerable',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'e',
+          cooldownReduction: 2,
+        },
+      ],
+      25: [
+        {
+          id: 'thread_25_left',
+          name: '-12s Thread Pool CD',
+          description: 'Thread Pool (R) AoE-attack ultimate cooldown reduced',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'thread_25_right',
+          name: '+18 Magic Resistance',
+          description: '+18 Magic Resistance',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 18 },
+        },
+      ],
+    },
+  },
   lambda: { heroId: 'lambda', tiers: createGenericTalents('lambda') },
   cron: { heroId: 'cron', tiers: createGenericTalents('cron') },
   traceroute: { heroId: 'traceroute', tiers: createGenericTalents('traceroute') },
