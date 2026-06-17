@@ -25,6 +25,8 @@ export interface ZoneDisplay {
   wardCount?: number
   /** Type of a currently-live rune in this zone (e.g. 'haste'), if any. */
   runeType?: string
+  /** Roshan state, set only on the pit zone: up (killable) or dead + respawn. */
+  roshan?: { alive: boolean; respawnIn: number }
 }
 
 export interface AncientsDisplay {
@@ -200,6 +202,10 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     indicators.push(`✦${zone.runeType}`)
   }
 
+  if (zone.roshan) {
+    indicators.push(zone.roshan.alive ? 'UP' : `↻${zone.roshan.respawnIn}t`)
+  }
+
   return indicators.length > 0 ? `${name} ${indicators.join(' ')}` : name
 }
 
@@ -212,6 +218,9 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
   if (zone.enemyCount > 0) parts.push(`${zone.enemyCount} enemies`)
   if (zone.wardCount && zone.wardCount > 0) parts.push('warded')
   if (zone.runeType) parts.push(`${zone.runeType} rune available`)
+  if (zone.roshan) {
+    parts.push(zone.roshan.alive ? 'Roshan alive' : `Roshan respawns in ${zone.roshan.respawnIn}t`)
+  }
   if (ancient) {
     parts.push(ancient.alive ? `ancient at ${ancientLabel(ancient)}` : 'ancient destroyed')
   }
@@ -296,6 +305,14 @@ export function compactIndicators(
 
   if (zone.runeType) {
     out.push({ text: `✦ ${zone.runeType} rune`, cls: 'text-gold' })
+  }
+
+  if (zone.roshan) {
+    out.push(
+      zone.roshan.alive
+        ? { text: '☠ Roshan UP', cls: 'text-warn' }
+        : { text: `☠ Roshan ↻ ${zone.roshan.respawnIn}t`, cls: 'text-text-dim' },
+    )
   }
 
   if (out.length === 0) {

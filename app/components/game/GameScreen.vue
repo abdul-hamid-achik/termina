@@ -32,6 +32,7 @@ import {
   type KillFeedEntry,
 } from '~/utils/combatNarrative'
 import { TICK_DURATION_MS, RUNE_DURATION_TICKS } from '~~/shared/constants/balance'
+import { formatRoshan } from '~/utils/strategy'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
@@ -587,6 +588,9 @@ const mapZones = computed(() => {
     if (r.tick + RUNE_DURATION_TICKS > gameStore.tick) liveRuneByZone.set(r.zone, r.type)
   }
 
+  // Roshan state for the pit (reuses the War Room's tested respawn readout).
+  const roshanReadout = gameStore.roshan ? formatRoshan(gameStore.roshan, gameStore.tick) : null
+
   return ZONES.map((zone) => {
     const fogged = !visibleZoneIds.has(zone.id)
 
@@ -649,6 +653,10 @@ const mapZones = computed(() => {
       wardCount,
       // Vision-gated: a live rune only shows where the player can see it.
       runeType: fogged ? undefined : liveRuneByZone.get(zone.id),
+      roshan:
+        zone.id === 'roshan-pit' && !fogged && roshanReadout && roshanReadout.status !== 'unknown'
+          ? { alive: roshanReadout.status === 'up', respawnIn: roshanReadout.respawnIn }
+          : undefined,
     }
   })
 })

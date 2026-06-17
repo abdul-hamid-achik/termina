@@ -16,7 +16,7 @@ const zones: ZoneDisplay[] = [
   zone('top-river', 'Top River', { enemyCount: 2, enemyNames: ['daemon_carry', 'regex_mid'] }),
   zone('bot-river', 'Bot River', { creepCount: 4, creepTypes: ['melee', 'ranged'] }),
   zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
-  zone('roshan-pit', 'Roshan Pit', { neutralCount: 1 }),
+  zone('roshan-pit', 'Roshan Pit', { neutralCount: 1, roshan: { alive: false, respawnIn: 48 } }),
   zone('mid-t1-dire', 'Dire Mid T1', {
     tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
   }),
