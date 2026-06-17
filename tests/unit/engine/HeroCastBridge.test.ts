@@ -617,8 +617,8 @@ describe('talents', () => {
     }
 
     const noTalent = castQ({ tier10: null, tier15: null, tier20: null, tier25: null })
-    // mutex_20_left: +30% q damage
-    const boosted = castQ({ tier10: null, tier15: null, tier20: 'mutex_20_left', tier25: null })
+    // mutex_15_left: +30% Lock (Q) damage (mutex's tailored tree)
+    const boosted = castQ({ tier10: null, tier15: 'mutex_15_left', tier20: null, tier25: null })
     expect(boosted).toBe(noTalent + Math.round(noTalent * 0.3))
   })
 })

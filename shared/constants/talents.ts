@@ -890,7 +890,91 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
-  mutex: { heroId: 'mutex', tiers: createGenericTalents('mutex') },
+  // Mutex — a tanky offlaner that snowballs by holding ground (Deadlock passive).
+  // Instant-damage abilities: Lock (Q nuke+root), Spinlock (E 3-hit AoE), Priority
+  // Inversion (R AoE fear). W (Critical Section) is a self-shield, no damage. Tree
+  // boosts Q/R damage, speeds Spinlock + the ult, and stacks tank stats.
+  mutex: {
+    heroId: 'mutex',
+    tiers: {
+      10: [
+        {
+          id: 'mutex_10_left',
+          name: '+300 HP',
+          description: '+300 HP — hold the line longer',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 300 },
+        },
+        {
+          id: 'mutex_10_right',
+          name: '+12 Attack Damage',
+          description: '+12 Attack — compounds with Deadlock stacks',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'attack', value: 12 },
+        },
+      ],
+      15: [
+        {
+          id: 'mutex_15_left',
+          name: '+30% Lock Damage',
+          description: 'Lock (Q) deals 30% more on the nuke+root',
+          type: 'damage_boost',
+          tier: 15,
+          abilityId: 'q',
+          damageBoost: 30,
+        },
+        {
+          id: 'mutex_15_right',
+          name: '-2s Spinlock CD',
+          description: 'Spinlock (E) cooldown reduced — more AoE strikes + slows',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'e',
+          cooldownReduction: 2,
+        },
+      ],
+      20: [
+        {
+          id: 'mutex_20_left',
+          name: '+40% Priority Inversion Damage',
+          description: 'Priority Inversion (R) AoE deals 40% more',
+          type: 'damage_boost',
+          tier: 20,
+          abilityId: 'r',
+          damageBoost: 40,
+        },
+        {
+          id: 'mutex_20_right',
+          name: '+12 Defense',
+          description: '+12 Defense — synergises with the Deadlock tank stacks',
+          type: 'stat_bonus',
+          tier: 20,
+          statBonus: { stat: 'defense', value: 12 },
+        },
+      ],
+      25: [
+        {
+          id: 'mutex_25_left',
+          name: '-12s Priority Inversion CD',
+          description: 'Priority Inversion (R) fear ultimate cooldown reduced',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'mutex_25_right',
+          name: '+20 Magic Resistance',
+          description: '+20 Magic Resistance',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 20 },
+        },
+      ],
+    },
+  },
   thread: { heroId: 'thread', tiers: createGenericTalents('thread') },
   lambda: { heroId: 'lambda', tiers: createGenericTalents('lambda') },
   cron: { heroId: 'cron', tiers: createGenericTalents('cron') },
