@@ -15,14 +15,15 @@ export default defineConfig({
   test: {
     globals: true,
     // Coverage (v8). `bun run test:coverage` runs all projects and ENFORCES the
-    // thresholds below — set just under the achieved actuals (lines 78.35 /
-    // branches 69.56 / functions 77.04 / statements 76.91 after the HUD-settings
-    // feature + deny-command + ws-log test additions) so a real regression trips
-    // the gate but normal churn doesn't. lines (→78) and branches (→69) clear
-    // their next integer with a comfortable buffer, so they're raised. functions
-    // (77.04, only ~0.04 over 77) and statements (76.91, still under 77) sit too
-    // thin above the next integer, so they HOLD at 76. Raise as coverage climbs;
-    // never above earned.
+    // thresholds below — set just under the achieved actuals (lines 79.29 /
+    // branches 71.01 / functions 78.06 / statements 78.00 after the loop's test
+    // additions: combatLog / RateLimiter / queue / lobby / useGameSocket /
+    // day-night / glyph-expiry / respawn-scaling / kill-streak / aegis / etc.) so
+    // a real regression trips the gate but normal churn doesn't. Each clears its
+    // next integer with a comfortable buffer, so all four are raised: branches
+    // (+1.01), functions (+1.06), statements (+1.00), and lines (+0.29 over 79 —
+    // the established ~0.35 line tightness). Raise as coverage climbs; never
+    // above earned.
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html', 'json-summary'],
@@ -38,10 +39,10 @@ export default defineConfig({
         '.output/**',
       ],
       thresholds: {
-        lines: 78,
-        branches: 69,
-        functions: 76,
-        statements: 76,
+        lines: 79,
+        branches: 70,
+        functions: 77,
+        statements: 77,
       },
     },
     projects: [
