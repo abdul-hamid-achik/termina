@@ -1108,6 +1108,9 @@ function handleReturnToMenu() {
         :kda-pop-key="kdaPopKey"
       />
 
+      <!-- Tutorial banner: current step's hint + the staggered-unlock checklist -->
+      <TutorialHint v-if="gameStore.mode === 'tutorial'" :step="gameStore.tutorialStep ?? 0" />
+
       <!-- Action-focus banner (HUD setting B): at-a-glance threat + what to do -->
       <FocusBanner v-if="settings.hud.focusBanner" />
     </div>

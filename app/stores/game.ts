@@ -104,6 +104,8 @@ export const useGameStore = defineStore('game', () => {
   const mapId = ref<string | undefined>(undefined)
   /** Game mode (undefined/'normal' = regular match; 'tutorial' = guided flow). */
   const mode = ref<GameMode | undefined>(undefined)
+  /** Tutorial progress (0-based step); drives the in-game tutorial banner. */
+  const tutorialStep = ref<number | undefined>(undefined)
   const dayNightTick = ref(0)
 
   // Track if player has acted this tick (resets each tick)
@@ -243,6 +245,7 @@ export const useGameStore = defineStore('game', () => {
       dayNightTick?: number
       mapId?: string
       mode?: GameMode
+      tutorialStep?: number
     }
 
     gameLog.trace('tick_state', {
@@ -311,6 +314,7 @@ export const useGameStore = defineStore('game', () => {
     if (state.dayNightTick !== undefined) dayNightTick.value = state.dayNightTick
     if (state.mapId) mapId.value = state.mapId
     if (state.mode) mode.value = state.mode
+    if (state.tutorialStep !== undefined) tutorialStep.value = state.tutorialStep
 
     if (playerId.value && state.players[playerId.value]) {
       player.value = state.players[playerId.value] ?? null
@@ -410,6 +414,7 @@ export const useGameStore = defineStore('game', () => {
     dayNightTick.value = 0
     mapId.value = undefined
     mode.value = undefined
+    tutorialStep.value = undefined
   }
 
   return {
@@ -450,6 +455,7 @@ export const useGameStore = defineStore('game', () => {
     dayNightTick,
     mapId,
     mode,
+    tutorialStep,
     // Getters
     currentZone,
     isAlive,

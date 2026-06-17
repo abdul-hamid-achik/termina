@@ -1,24 +1,26 @@
 import type { Command } from '~~/shared/types/commands'
 import type { GameState } from '~~/shared/types/game'
+import { TUTORIAL_FLOW, TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
 
 /**
- * Tutorial flow — staggered command unlocks.
+ * Tutorial mode — staggered command unlocks (server side).
  *
  * In tutorial mode the player learns one verb at a time: only the commands
  * unlocked by the current step (plus always-allowed informational commands)
  * pass validation. Performing the command a step teaches advances the flow,
  * unlocking the next verb. Past the last step everything is unlocked (free
- * play). This module is the single source of truth for both the gate
- * (ActionResolver.validateAction) and advancement (GameLoop).
+ * play). The flow DATA (steps + hints) lives in shared/constants/tutorial so
+ * the client can render it; this module owns the gate + advancement logic.
  */
 
-/** A single tutorial step: the command it teaches + the hint shown while active. */
-export interface TutorialStep {
-  /** The command type this step teaches — performing it advances the tutorial. */
-  teaches: Command['type']
-  /** One-line hint surfaced to the player while this step is active. */
-  hint: string
-}
+// Re-export the shared flow so existing server-side imports keep one source.
+export {
+  TUTORIAL_FLOW,
+  TUTORIAL_STEP_COUNT,
+  tutorialHint,
+  isTutorialComplete,
+  type TutorialStep,
+} from '~~/shared/constants/tutorial'
 
 /**
  * Informational / harmless commands that are always available in tutorial mode,
@@ -35,20 +37,6 @@ const TUTORIAL_ALWAYS_ALLOWED: ReadonlySet<Command['type']> = new Set([
   'surrender',
 ])
 
-/** Ordered tutorial flow: each step unlocks exactly one new command type. */
-export const TUTORIAL_FLOW: readonly TutorialStep[] = [
-  {
-    teaches: 'move',
-    hint: '🎓 Walk down the lane — type `move mid-t3-rad` to advance toward mid.',
-  },
-  { teaches: 'attack', hint: '🎓 Last-hit a creep — type `attack` on a low-HP creep for gold.' },
-  { teaches: 'cast', hint: '🎓 Use an ability — type `cast q` to hit an enemy with your Q.' },
-  { teaches: 'buy', hint: '🎓 Spend your gold — back at base, type `buy <item>` to power up.' },
-]
-
-/** The number of scripted steps in the tutorial. */
-export const TUTORIAL_STEP_COUNT = TUTORIAL_FLOW.length
-
 /**
  * Commands unlocked at a given step (cumulative): every step's `teaches` up to
  * and including the current step, plus the always-allowed informational set.
@@ -64,7 +52,7 @@ export function tutorialUnlockedCommands(step: number): ReadonlySet<Command['typ
 /** Whether a command type is allowed at the current tutorial step. */
 export function isCommandAllowedInTutorial(commandType: Command['type'], step: number): boolean {
   // Past the last scripted step the player is in free play — nothing is gated.
-  if (step >= TUTORIAL_FLOW.length) return true
+  if (step >= TUTORIAL_STEP_COUNT) return true
   return tutorialUnlockedCommands(step).has(commandType)
 }
 
@@ -72,11 +60,6 @@ export function isCommandAllowedInTutorial(commandType: Command['type'], step: n
 export function tutorialLockMessage(step: number): string {
   const current = TUTORIAL_FLOW[Math.min(step, TUTORIAL_FLOW.length - 1)]
   return current ? current.hint : '🎓 Tutorial: follow the current step first.'
-}
-
-/** The hint for the current step (null once the tutorial is complete). */
-export function tutorialHint(step: number): string | null {
-  return TUTORIAL_FLOW[step]?.hint ?? null
 }
 
 /**
