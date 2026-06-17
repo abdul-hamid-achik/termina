@@ -23,7 +23,10 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     teaches: 'move',
     hint: '🎓 Walk down the lane — type `move mid-t3-rad` to advance toward mid.',
   },
-  { teaches: 'attack', hint: '🎓 Last-hit a creep — type `attack` on a low-HP creep for gold.' },
+  {
+    teaches: 'attack',
+    hint: '🎓 Last-hit a creep — type `attack creep:0` when its HP is low, for gold.',
+  },
   { teaches: 'cast', hint: '🎓 Use an ability — type `cast q` to hit an enemy with your Q.' },
   { teaches: 'buy', hint: '🎓 Spend your gold — back at base, type `buy <item>` to power up.' },
 ]
