@@ -194,4 +194,48 @@ describe('shop', () => {
 
     expect(lastHitDamage()).toBeGreaterThan(before)
   })
+
+  it('Stack Overflow (Overclock) doubles the caster’s next ability damage, then spends the charge', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+
+    const dmgToEnemy = () =>
+      game.lastEvents.find(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )?.amount ?? 0
+
+    // Baseline cast: no Overclock, caster buffs cleared (no stray amp), enemy
+    // topped up so the hit is never HP-capped.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
+        [ENEMY]: { ...s.players[ENEMY]!, hp: s.players[ENEMY]!.maxHp },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    const baseline = dmgToEnemy()
+    expect(baseline).toBeGreaterThan(0)
+
+    // Same cast under Overclock (same starting amp + full enemy HP) → exactly 2x.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [{ id: 'stack_overflow_buff', stacks: 1, ticksRemaining: 10, source: HUMAN }],
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, hp: s.players[ENEMY]!.maxHp },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    expect(dmgToEnemy()).toBe(baseline * 2)
+    // The one-shot charge is consumed by that cast.
+    expect((await game.me()).buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
+  })
 })
