@@ -6,7 +6,7 @@ import {
   TICK_DURATION_MS,
 } from '~~/shared/constants/balance'
 import type { TeamState, AncientState } from '~~/shared/types/game'
-import { goldLead, formatGoldShort } from '~/utils/strategy'
+import { goldLead, formatGoldShort, dayNightReadout } from '~/utils/strategy'
 
 const props = defineProps<{
   tick: number
@@ -46,6 +46,16 @@ const tickSeconds = computed(() => ((props.nextTickIn ?? 0) / 1000).toFixed(1))
 function formatGold(n: number): string {
   return n.toLocaleString()
 }
+
+// Surface WHY night matters on the always-visible bar (the transient combat-log
+// "vision reduced" line scrolls away). Helps new players connect the chip to the
+// vision change. Reuses dayNightReadout so the isNight semantics stay canonical.
+const dayNightTitle = computed(() => {
+  if (!props.timeOfDay) return undefined
+  return dayNightReadout(props.timeOfDay).isNight
+    ? 'Night — your vision is reduced to fewer adjacent zones'
+    : 'Day — full vision range'
+})
 
 function formatTimeRemaining(tick: number, timeOfDay: string): string {
   const totalTicks = timeOfDay === 'day' ? DAY_DURATION_TICKS : NIGHT_DURATION_TICKS
@@ -91,7 +101,7 @@ function corePct(a: AncientState | undefined): number {
         <span class="text-text-primary text-glow-sm">{{ gameTime }}</span>
       </span>
       <span class="text-border">|</span>
-      <span class="inline-flex items-center gap-1">
+      <span class="inline-flex items-center gap-1" :title="dayNightTitle">
         <span v-if="timeOfDay === 'day'" class="text-gold text-glow-gold">Day</span>
         <span v-else class="text-self text-glow-sm">Night</span>
         <span v-if="dayNightTick !== undefined && timeOfDay" class="t-caption">
