@@ -19,7 +19,7 @@ import {
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
-import { ITEMS } from '~~/shared/constants/items'
+import { ITEMS, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 import type { TowerState } from '~~/shared/types/game'
 import type { DamageFloatEntry } from '~/components/game/DamageFloat.vue'
@@ -53,8 +53,10 @@ const localEvents = ref<
 const showShop = ref(false)
 const showScoreboard = ref(false)
 
-// Quick buy pinned items (persisted in localStorage)
-const pinnedItems = ref<string[]>([])
+// Quick buy pinned items (persisted in localStorage). A player who has never
+// customized them gets a curated starter set so the bar isn't empty — a new
+// player otherwise has no shopping guidance until they discover pinning.
+const pinnedItems = ref<string[]>([...DEFAULT_QUICKBUY_ITEMS])
 if (import.meta.client) {
   try {
     const raw = localStorage.getItem('termina:quickbuy')
