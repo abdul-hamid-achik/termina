@@ -906,6 +906,33 @@ describe('combat', () => {
     expect(physDmg()).toBe(0)
   })
 
+  it('Ghost form prevents the holder from attacking (the Ghost Scepter downside)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          buffs: [{ id: 'ghost_form', stacks: 1, ticksRemaining: 5, source: HUMAN }],
+        },
+      },
+    }))
+
+    game.attackHero(ENEMY) // HUMAN (ghost-formed) tries to swing
+    await game.tick()
+
+    // Rejected with feedback, and no damage lands on the enemy.
+    expect(game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('ghost'))).toBe(
+      true,
+    )
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      ),
+    ).toBe(false)
+  })
+
   it('Blade Mail reflects a basic attack back at the attacker as pure damage', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     // Settle the first-tick maxHp recompute, then strip the attacker's on-hit

@@ -179,6 +179,10 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'attack': {
       if (hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
       if (hasDebuff(player, 'feared')) return 'Cannot attack while feared'
+      // Ghost Scepter: phased out — immune to physical damage, but cannot attack.
+      if (player.buffs.some((b) => b.id === 'ghost_form')) {
+        return 'Cannot attack while in ghost form'
+      }
       return null
     }
     case 'cast': {
