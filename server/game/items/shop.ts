@@ -179,6 +179,10 @@ export function sellItem(
       ...player,
       gold: player.gold + refund,
       items,
+      // Drop any effect the item was granting (e.g. Power Treads' near-permanent
+      // mode buff, an item cooldown). Otherwise you could toggle Treads to +15
+      // attack, sell it, and keep the stat forever — plus the refund.
+      buffs: player.buffs.filter((b) => b.source !== itemId),
     }
 
     return updatePlayer(state, updatedPlayer)
