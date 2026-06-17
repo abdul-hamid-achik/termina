@@ -19,6 +19,21 @@ const allChosen = makePlayer({
   },
 })
 const tooLow = makePlayer({ heroId: SAMPLE_HEROES.echo, level: 8 })
+
+// Hero-tailored trees: every hero now has its OWN talents (the bland shared
+// generic menu is gone). At tier 15 the picker surfaces each hero's flavorful,
+// ability-named options — a damage carry (Cipher: XOR Strike / Encrypt) vs a
+// utility disruptor (Socket: Bind / Listen).
+const cipherTree = makePlayer({
+  heroId: SAMPLE_HEROES.cipher,
+  level: 16,
+  talents: { tier10: 'cipher_10_left', tier15: null, tier20: null, tier25: null },
+})
+const socketTree = makePlayer({
+  heroId: SAMPLE_HEROES.socket,
+  level: 16,
+  talents: { tier10: 'socket_10_left', tier15: null, tier20: null, tier25: null },
+})
 </script>
 
 <template>
@@ -43,6 +58,18 @@ const tooLow = makePlayer({ heroId: SAMPLE_HEROES.echo, level: 8 })
       <div class="bg-bg-primary p-3" style="width: 420px">
         <TalentPicker :player="allChosen" />
         <p class="text-text-dim text-xs">(nothing renders once all tiers are picked)</p>
+      </div>
+    </Variant>
+    <Variant title="hero-tailored: Cipher (damage carry)">
+      <div class="bg-bg-primary p-3" style="width: 420px">
+        <TalentPicker :player="cipherTree" />
+        <p class="text-text-dim text-xs">tier 15 — +30% XOR Strike vs -2s Encrypt CD</p>
+      </div>
+    </Variant>
+    <Variant title="hero-tailored: Socket (utility disruptor)">
+      <div class="bg-bg-primary p-3" style="width: 420px">
+        <TalentPicker :player="socketTree" />
+        <p class="text-text-dim text-xs">tier 15 — -3s Bind CD vs -4s Listen CD (no dmg talents)</p>
       </div>
     </Variant>
   </Story>
