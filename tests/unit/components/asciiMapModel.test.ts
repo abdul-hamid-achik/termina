@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   MAP_ROWS,
+  ONE_LANE_MAP_ROWS,
+  mapRowsFor,
+  colHeadersFor,
   ancientForZone,
   ancientLabel,
   buildAdjacentZones,
@@ -258,6 +261,34 @@ describe('asciiMapModel', () => {
     it('reports clear when there is nothing to show', () => {
       const inds = compactIndicators(makeZone())
       expect(inds).toEqual([{ text: 'clear', cls: 'text-text-dim' }])
+    })
+  })
+
+  describe('map layout selection (mapRowsFor / colHeadersFor)', () => {
+    it('defaults to the full 5v5 grid', () => {
+      expect(mapRowsFor(undefined)).toBe(MAP_ROWS)
+      expect(mapRowsFor('default_5v5')).toBe(MAP_ROWS)
+      expect(colHeadersFor(undefined)).toEqual([
+        'TOP LANE',
+        'RADIANT JUNGLE',
+        'MID LANE',
+        'DIRE JUNGLE',
+        'BOT LANE',
+      ])
+    })
+
+    it('renders the one-lane map as a single mid-lane column of the 11 zones', () => {
+      const rows = mapRowsFor('one_lane')
+      expect(rows).toBe(ONE_LANE_MAP_ROWS)
+      expect(rows).toHaveLength(11)
+      expect(rows.every((r) => r.length === 1)).toBe(true) // single column
+      const zones = rows.flat()
+      expect(zones[0]).toBe('radiant-fountain')
+      expect(zones[zones.length - 1]).toBe('dire-fountain')
+      expect(zones).toContain('mid-river')
+      // No off-lane zones leak into the layout.
+      expect(zones.some((z) => z?.startsWith('top-') || z?.startsWith('bot-'))).toBe(false)
+      expect(colHeadersFor('one_lane')).toEqual(['MID LANE'])
     })
   })
 })

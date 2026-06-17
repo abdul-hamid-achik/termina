@@ -2,8 +2,8 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
-  COL_HEADERS,
-  MAP_ROWS,
+  mapRowsFor,
+  colHeadersFor,
   ancientForZone,
   buildAdjacentZones,
   cellText,
@@ -20,7 +20,13 @@ const props = defineProps<{
   ancients?: AncientsDisplay | null
   /** Force a layout (used in tests); defaults to viewport-width detection. */
   forceMode?: 'full' | 'compact'
+  /** Which map's grid to render (see shared/constants/maps). Default = full 5v5. */
+  mapId?: string
 }>()
+
+// The grid layout + column headers for the active map.
+const MAP_ROWS = computed(() => mapRowsFor(props.mapId))
+const COL_HEADERS = computed(() => colHeadersFor(props.mapId))
 
 const emit = defineEmits<{
   zoneClick: [zoneId: string]

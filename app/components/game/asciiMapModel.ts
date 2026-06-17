@@ -50,6 +50,31 @@ export const MAP_ROWS: (string | null)[][] = [
 
 export const COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE', 'BOT LANE']
 
+/** One-lane map layout — a single mid-lane column (radiant fountain at top, dire
+ *  at the bottom). Mirrors shared/constants/maps `ONE_LANE_ZONES`. */
+export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
+  ['radiant-fountain'],
+  ['radiant-base'],
+  ['mid-t3-rad'],
+  ['mid-t2-rad'],
+  ['mid-t1-rad'],
+  ['mid-river'],
+  ['mid-t1-dire'],
+  ['mid-t2-dire'],
+  ['mid-t3-dire'],
+  ['dire-base'],
+  ['dire-fountain'],
+]
+export const ONE_LANE_COL_HEADERS = ['MID LANE']
+
+/** Pick the grid layout + column headers for a game's map (full 5v5 by default). */
+export function mapRowsFor(mapId?: string): (string | null)[][] {
+  return mapId === 'one_lane' ? ONE_LANE_MAP_ROWS : MAP_ROWS
+}
+export function colHeadersFor(mapId?: string): string[] {
+  return mapId === 'one_lane' ? ONE_LANE_COL_HEADERS : COL_HEADERS
+}
+
 /** Territory owner of a zone (drives color-coding in the mini overview). */
 export function zoneTeam(zoneId: string): 'radiant' | 'dire' | 'neutral' {
   return ZONE_MAP[zoneId]?.team ?? 'neutral'

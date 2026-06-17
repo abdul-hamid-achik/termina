@@ -99,6 +99,8 @@ export const useGameStore = defineStore('game', () => {
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
   const winner = ref<TeamId | null>(null)
   const timeOfDay = ref<'day' | 'night'>('day')
+  /** Which map this game runs on (undefined = full 5v5); drives the ASCII layout. */
+  const mapId = ref<string | undefined>(undefined)
   const dayNightTick = ref(0)
 
   // Track if player has acted this tick (resets each tick)
@@ -236,6 +238,7 @@ export const useGameStore = defineStore('game', () => {
       aegis?: { zone: string; tick: number; holderId: string | null } | null
       timeOfDay?: 'day' | 'night'
       dayNightTick?: number
+      mapId?: string
     }
 
     gameLog.trace('tick_state', {
@@ -302,6 +305,7 @@ export const useGameStore = defineStore('game', () => {
     }
     if (state.timeOfDay) timeOfDay.value = state.timeOfDay
     if (state.dayNightTick !== undefined) dayNightTick.value = state.dayNightTick
+    if (state.mapId) mapId.value = state.mapId
 
     if (playerId.value && state.players[playerId.value]) {
       player.value = state.players[playerId.value] ?? null
@@ -399,6 +403,7 @@ export const useGameStore = defineStore('game', () => {
     bufferedCommand.value = null
     timeOfDay.value = 'day'
     dayNightTick.value = 0
+    mapId.value = undefined
   }
 
   return {
@@ -437,6 +442,7 @@ export const useGameStore = defineStore('game', () => {
     lastActionTick,
     timeOfDay,
     dayNightTick,
+    mapId,
     // Getters
     currentZone,
     isAlive,
