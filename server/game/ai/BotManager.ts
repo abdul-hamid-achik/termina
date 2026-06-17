@@ -169,11 +169,26 @@ function getHeroRole(playerId: string, heroId: string | null): HeroRole {
   return hero?.role ?? 'offlaner'
 }
 
+export interface RegisterBotsOptions {
+  difficulty?: BotDifficulty
+  /**
+   * Pin every bot to this lane instead of role-based assignment. Used on subset
+   * maps (e.g. the one-lane tutorial map) where the role lanes (top/bot/jungle)
+   * don't exist — bot pathing uses the global zone graph, so an off-map lane
+   * target would send a bot stepping into a zone this game doesn't have.
+   */
+  forceLane?: string
+}
+
 export function registerBots(
   gameId: string,
   players: { playerId: string; team: TeamId; heroId: string | null }[],
-  difficulty: BotDifficulty = 'medium',
+  options: BotDifficulty | RegisterBotsOptions = 'medium',
 ): void {
+  // Back-compat: a bare difficulty string is still accepted as the 3rd arg.
+  const opts: RegisterBotsOptions = typeof options === 'string' ? { difficulty: options } : options
+  const difficulty = opts.difficulty ?? 'medium'
+
   const botIds = new Set<string>()
   const laneMap = new Map<string, string>()
   const difficultyMap = new Map<string, BotDifficulty>()
@@ -195,8 +210,12 @@ export function registerBots(
     }
   }
 
-  assignLanesByRole(radiantBots, laneMap, 'radiant')
-  assignLanesByRole(direBots, laneMap, 'dire')
+  if (opts.forceLane) {
+    for (const id of botIds) laneMap.set(id, opts.forceLane)
+  } else {
+    assignLanesByRole(radiantBots, laneMap, 'radiant')
+    assignLanesByRole(direBots, laneMap, 'dire')
+  }
 
   gameBots.set(gameId, botIds)
   gameBotLanes.set(gameId, laneMap)
