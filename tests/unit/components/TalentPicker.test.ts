@@ -73,4 +73,21 @@ describe('TalentPicker', () => {
     const w = mount(TalentPicker, { props: { player: null } })
     expect(w.find('[data-testid="talent-picker"]').exists()).toBe(false)
   })
+
+  it("renders the hero's OWN tailored tree (Cipher's tier-15 is its real abilities, not a generic menu)", () => {
+    const w = mount(TalentPicker, {
+      props: {
+        player: makePlayer({
+          heroId: 'cipher',
+          level: 16,
+          talents: { tier10: 'cipher_10_left', tier15: null, tier20: null, tier25: null },
+        }),
+      },
+    })
+    const cipher15 = TALENT_TREES.cipher.tiers[15]
+    expect(w.find('[data-testid="talent-pick-left"]').text()).toContain(cipher15[0].name)
+    // The flavorful, hero-specific talent — Cipher's real Q ability, not the old
+    // shared "+25 Damage" generic line.
+    expect(w.find('[data-testid="talent-pick-left"]').text()).toContain('XOR Strike')
+  })
 })
