@@ -21,6 +21,7 @@ export type Command =
   | { type: 'scan' }
   | { type: 'status' }
   | { type: 'map' }
+  | { type: 'help' }
   | { type: 'chat'; channel: 'team' | 'all'; message: string }
   | { type: 'ping'; zone: string }
   | { type: 'buyback' }

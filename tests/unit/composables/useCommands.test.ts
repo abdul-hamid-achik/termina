@@ -10,6 +10,7 @@ import {
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
+  formatHelpReadout,
   type GameContext,
 } from '../../../app/composables/useCommands'
 import type { PlayerState, ZoneRuntimeState, CreepState } from '../../../shared/types/game'
@@ -421,6 +422,29 @@ describe('useCommands', () => {
       })
     })
 
+    describe('help command', () => {
+      it('parses help', () => {
+        const { parse } = useCommands()
+        const result = parse('help')
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'help' })
+      })
+
+      it('parses the ? alias', () => {
+        const { parse } = useCommands()
+        const result = parse('?')
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'help' })
+      })
+
+      it('an unknown command points the player at help', () => {
+        const { parse } = useCommands()
+        const result = parse('flibbertigibbet')
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('help')
+      })
+    })
+
     describe('chat command', () => {
       it('parses team chat', () => {
         const { parse } = useCommands()
@@ -793,6 +817,14 @@ describe('useCommands', () => {
         const texts = suggestions.map((s) => s.text)
         expect(texts).toContain('attack')
         expect(texts).toContain('atk')
+      })
+
+      it('suggests help (with a description) for "he"', () => {
+        const { autocomplete } = useCommands()
+        const suggestions = autocomplete('he', makeContext())
+        const help = suggestions.find((s) => s.text === 'help')
+        expect(help).toBeDefined()
+        expect(help!.description).toMatch(/command/i)
       })
 
       it('returns empty for empty input', () => {
@@ -1728,6 +1760,19 @@ describe('informational readouts', () => {
   it('formatScanReadout reports an empty vision cleanly', () => {
     const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
     expect(formatScanReadout(me, { p1: me })).toMatch(/no enemy heroes/i)
+  })
+
+  it('formatHelpReadout lists the core verbs and the win condition', () => {
+    const lines = formatHelpReadout()
+    const all = lines.join('\n')
+    for (const verb of ['move', 'attack', 'cast', 'buy', 'ward', 'status']) {
+      expect(all, `help should mention "${verb}"`).toContain(verb)
+    }
+    // It explains the objective so a new player knows what to do after the verbs.
+    expect(all.toLowerCase()).toMatch(/mainframe|destroy/)
+    // One log line per group, each non-empty.
+    expect(lines.length).toBeGreaterThanOrEqual(6)
+    for (const line of lines) expect(line.trim().length).toBeGreaterThan(0)
   })
 })
 
