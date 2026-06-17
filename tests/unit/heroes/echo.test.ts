@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { resolveAbility, getAbilityLevel, applyBuff } from '../../../server/game/heroes/_base'
-import { getResonanceMultiplier } from '../../../server/game/heroes/echo'
+import { getResonanceMultiplier, resolveHeroPassive } from '../../../server/game/heroes/echo'
+import type { GameEvent } from '../../../shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -462,6 +463,72 @@ describe('Echo Hero', () => {
       })
 
       expect(getResonanceMultiplier(player)).toBeCloseTo(1.4)
+    })
+  })
+
+  describe('Passive: Resonance build-up (resolveHeroPassive)', () => {
+    const attackEvent = (attackerId: string, targetId: string): GameEvent => ({
+      tick: 10,
+      type: 'attack',
+      payload: { attackerId, targetId },
+    })
+    const resonance = (s: GameState, id = 'p1') =>
+      s.players[id]!.buffs.find((b) => b.id === 'resonance')?.stacks ?? 0
+    const feedback = (s: GameState, id = 'p1') =>
+      s.players[id]!.buffs.find((b) => b.id === 'feedbackLoop')?.stacks ?? 0
+
+    it('ignores non-attack events (state unchanged)', () => {
+      const state = makeState([makePlayer()])
+      expect(resolveHeroPassive(state, 'p1', { tick: 10, type: 'heal', payload: {} })).toBe(state)
+    })
+
+    it('returns state unchanged for an unknown player', () => {
+      const state = makeState([makePlayer()])
+      expect(resolveHeroPassive(state, 'ghost', attackEvent('ghost', 'e1'))).toBe(state)
+    })
+
+    it('starts resonance at 1 on a fresh target and records the target', () => {
+      const out = resolveHeroPassive(
+        makeState([makePlayer({ level: 1 })]),
+        'p1',
+        attackEvent('p1', 'e1'),
+      )
+      expect(resonance(out)).toBe(1)
+      expect(out.players['p1']!.buffs.find((b) => b.id === 'resonanceTarget')?.source).toBe('e1')
+    })
+
+    it('ramps resonance on consecutive attacks against the same target, capped at 5', () => {
+      let state = makeState([makePlayer({ level: 1 })])
+      for (let i = 0; i < 7; i++) state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e1'))
+      expect(resonance(state)).toBe(5)
+    })
+
+    it('resets resonance to 1 when the attacker switches targets', () => {
+      let state = makeState([makePlayer({ level: 1 })])
+      state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e1'))
+      state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e1'))
+      expect(resonance(state)).toBe(2)
+      state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e2'))
+      expect(resonance(state)).toBe(1)
+    })
+
+    it('builds Feedback Loop stacks on attack when E is learned', () => {
+      // Level 7 → E is level 4 → 25 stacks per attack (E_STACK_VALUE[3]).
+      const out = resolveHeroPassive(
+        makeState([makePlayer({ level: 7 })]),
+        'p1',
+        attackEvent('p1', 'e1'),
+      )
+      expect(feedback(out)).toBe(25)
+    })
+
+    it('builds no Feedback Loop stacks when E is unlearned (level 0)', () => {
+      const out = resolveHeroPassive(
+        makeState([makePlayer({ level: 0 })]),
+        'p1',
+        attackEvent('p1', 'e1'),
+      )
+      expect(feedback(out)).toBe(0)
     })
   })
 
