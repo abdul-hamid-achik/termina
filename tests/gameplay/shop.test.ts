@@ -73,6 +73,34 @@ describe('shop', () => {
     expect((await game.me()).zone).toBe('mid-t1-rad')
   })
 
+  it('using Dagon nukes a targeted enemy for magical damage (offensive item active)', async () => {
+    // The offensive-item path the auto-target resolves to: `use dagon hero:<id>`
+    // runs submitAction → resolveActions → useItem and applies 300 magical
+    // damage (reduced by magic resist) to a co-located enemy.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: ['dagon', null, null, null, null, null],
+          buffs: [],
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, hp: 1000, maxHp: 1000 },
+      },
+    }))
+
+    const before = (await game.player(ENEMY)).hp
+    game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: ENEMY } })
+    await game.tick()
+    const after = (await game.player(ENEMY)).hp
+
+    // 300 magical, reduced by magic resist (~15%) → ~255 — well above per-tick regen.
+    expect(after).toBeLessThan(before)
+    expect(before - after).toBeGreaterThan(200)
+  })
+
   it('using Black King Bar grants magic immunity', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
