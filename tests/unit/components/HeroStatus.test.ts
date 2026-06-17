@@ -208,4 +208,31 @@ describe('HeroStatus buff strip', () => {
     expect(wrapper.text()).not.toContain('Buffs')
     wrapper.unmount()
   })
+
+  it('colours a neutral buff with the ability colour and hides the countdown for permanent auras', () => {
+    const wrapper = mountHeroStatus(
+      makeHero({
+        buffs: [
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 3 }, // neutral → text-ability
+          { id: 'power_treads_attack', stacks: 15, ticksRemaining: 999 }, // permanent → no countdown
+        ],
+      }),
+    )
+    const neutral = wrapper.find('[data-testid="buff-tp_channeling"]')
+    expect(neutral.exists()).toBe(true)
+    expect(neutral.classes()).toContain('text-ability')
+
+    const treads = wrapper.find('[data-testid="buff-power_treads_attack"]')
+    expect(treads.exists()).toBe(true)
+    expect(treads.text()).not.toContain('999') // no misleading (999t) countdown
+    wrapper.unmount()
+  })
+})
+
+describe('HeroStatus dead state', () => {
+  it('marks a dead hero with a [DEAD] tag', () => {
+    const wrapper = mountHeroStatus(makeHero({ alive: false }))
+    expect(wrapper.text()).toContain('[DEAD]')
+    wrapper.unmount()
+  })
 })
