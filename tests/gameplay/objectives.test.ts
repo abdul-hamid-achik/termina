@@ -66,6 +66,35 @@ describe('objectives: Roshan & aegis', () => {
     // The ground aegis is consumed on pickup.
     expect((await game.state()).aegis).toBeNull()
   })
+
+  it('an aegis holder who dies is reborn at full HP, consuming the aegis (the payoff)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => {
+      const me = s.players[HUMAN]!
+      return {
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: {
+            ...me,
+            alive: false, // just died this tick…
+            respawnTick: null, // …and not yet sent to the respawn queue
+            hp: 0,
+            buffs: [{ id: 'aegis', stacks: 300, ticksRemaining: 300, source: 'roshan' }],
+          },
+        },
+      }
+    })
+
+    await game.tick()
+
+    const me = await game.me()
+    expect(me.alive).toBe(true) // reborn, not respawning
+    expect(me.respawnTick).toBeNull()
+    expect(me.hp).toBe(me.maxHp) // back at full HP
+    expect(me.buffs.some((b) => b.id === 'aegis')).toBe(false) // aegis consumed
+    expect(game.lastEvents.some((e) => e._tag === 'aegis_used' && e.playerId === HUMAN)).toBe(true)
+  })
 })
 
 describe('objectives: runes', () => {
