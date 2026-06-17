@@ -801,6 +801,39 @@ describe('combat', () => {
     expect(dmgToHuman()).toBeLessThan(before)
   })
 
+  it("the Kernel 'hardened' passive reduces incoming attack damage (keeps more HP)", async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+
+    // Take one ENEMY swing at the HUMAN from full HP with the given HUMAN buffs,
+    // and report the HUMAN's HP afterwards. (The hardened reduction lands on HP
+    // loss, not the damage event, so HP-retained is the clean signal.)
+    const hpAfterSwing = async (
+      humanBuffs: { id: string; stacks: number; ticksRemaining: number; source: string }[],
+    ) => {
+      await game.patch((s) => ({
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: { ...s.players[HUMAN]!, hp: s.players[HUMAN]!.maxHp, buffs: humanBuffs },
+          [ENEMY]: { ...s.players[ENEMY]!, items: [null, null, null, null, null, null] }, // no crit variance
+        },
+      }))
+      game.attackHero(HUMAN, ENEMY) // ENEMY swings at HUMAN
+      await game.tick()
+      return (await game.player(HUMAN)).hp
+    }
+
+    const hpNoHardened = await hpAfterSwing([])
+    const hpHardened = await hpAfterSwing([
+      { id: 'hardened', stacks: 1, ticksRemaining: 9999, source: HUMAN },
+    ])
+
+    // Both started at full HP and took the same regen; hardened absorbs 10% of
+    // the swing, so the hardened human ends with strictly more HP.
+    expect(hpHardened).toBeGreaterThan(hpNoHardened)
+  })
+
   it('physical immunity (Ghost) zeroes an incoming basic attack', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
 
