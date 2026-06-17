@@ -460,4 +460,54 @@ describe('abilities', () => {
     await game.tick()
     expect(dmgToEnemy()).toBe(0)
   })
+
+  it('Black King Bar grants debuff immunity — a BKB hero acts through a stun', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [
+            { id: 'stun', stacks: 1, ticksRemaining: 5, source: ENEMY },
+            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+          ],
+        },
+      },
+    }))
+
+    // Stunned but BKB up → the self-buff W resolves (sets cooldown) instead of
+    // being rejected, because magic immunity grants debuff immunity.
+    game.cast('w')
+    await game.tick()
+    expect((await game.me()).cooldowns.w).toBeGreaterThan(0)
+  })
+
+  it('BKB does NOT bypass Cyclone — it pierces magic immunity', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [
+            { id: 'cyclone', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+          ],
+        },
+      },
+    }))
+
+    // Cyclone is a hard disable that pierces BKB — the cast is still blocked.
+    game.cast('w')
+    await game.tick()
+    expect((await game.me()).cooldowns.w).toBe(0)
+    expect(
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('cycloned')),
+    ).toBe(true)
+  })
 })
