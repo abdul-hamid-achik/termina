@@ -837,4 +837,54 @@ describe('combat', () => {
     await game.tick()
     expect(physDmg()).toBe(0)
   })
+
+  it('Blade Mail reflects a basic attack back at the attacker as pure damage', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    // Settle the first-tick maxHp recompute, then strip the attacker's on-hit
+    // items so the only cross-hit is the reflect.
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [ENEMY]: { ...s.players[ENEMY]!, items: [null, null, null, null, null, null] },
+      },
+    }))
+
+    // The reflect rides a damage event from the Blade Mail holder (HUMAN) back at
+    // the attacker (ENEMY) — the only HUMAN→ENEMY damage in the tick.
+    const reflect = () =>
+      game.lastEvents.find(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )
+
+    // Baseline: no Blade Mail → the attacker takes nothing back.
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, buffs: [] } },
+    }))
+    game.attackHero(HUMAN, ENEMY) // ENEMY swings at HUMAN
+    await game.tick()
+    expect(reflect()).toBeUndefined()
+
+    // With a Blade Mail shell up, the attacker eats its own hit back as PURE
+    // damage (bypasses armor) and loses HP.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          buffs: [{ id: 'blade_mail', stacks: 100, ticksRemaining: 3, source: HUMAN }],
+        },
+      },
+    }))
+    const enemyBefore = (await game.player(ENEMY)).hp
+    game.attackHero(HUMAN, ENEMY)
+    await game.tick()
+    const ev = reflect()
+    expect(ev?.amount).toBeGreaterThan(0)
+    expect(ev?.damageType).toBe('pure')
+    expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
+  })
 })
