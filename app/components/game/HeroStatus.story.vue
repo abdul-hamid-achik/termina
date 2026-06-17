@@ -56,9 +56,19 @@ const fullBuild = heroFrom(
       SAMPLE_ITEMS.blink,
       SAMPLE_ITEMS.forceStaff,
     ],
+    // A realistic mix: a survival buff (green), a movement steroid (green), an
+    // enemy debuff on us (red), and an item-cooldown marker that the HUD hides.
     buffs: [
-      { id: 'bkb', stacks: 1, ticksRemaining: 6, source: 'item', destination: 'p1' },
+      { id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'item', destination: 'p1' },
       { id: 'haste', stacks: 1, ticksRemaining: 3, source: 'rune', destination: 'p1' },
+      { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'enemy', destination: 'p1' },
+      {
+        id: 'item_cd_black_king_bar',
+        stacks: 1,
+        ticksRemaining: 25,
+        source: 'item',
+        destination: 'p1',
+      },
     ],
   }),
 )

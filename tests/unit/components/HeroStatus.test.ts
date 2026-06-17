@@ -173,3 +173,39 @@ describe('HeroStatus ability chips', () => {
     })
   })
 })
+
+describe('HeroStatus buff strip', () => {
+  it('renders readable labels, hides item-cooldown markers, and colours debuffs', () => {
+    const wrapper = mountHeroStatus(
+      makeHero({
+        buffs: [
+          { id: 'magic_immune', stacks: 1, ticksRemaining: 4 },
+          { id: 'veil_discord', stacks: 25, ticksRemaining: 4 },
+          { id: 'item_cd_black_king_bar', stacks: 1, ticksRemaining: 25 },
+        ],
+      }),
+    )
+
+    // Friendly label instead of the raw id.
+    const bkb = wrapper.find('[data-testid="buff-magic_immune"]')
+    expect(bkb.exists()).toBe(true)
+    expect(bkb.text()).toContain('Magic Immune')
+    expect(wrapper.text()).not.toContain('magic_immune')
+
+    // The enemy debuff renders in the danger colour, not the generic buff colour.
+    const veil = wrapper.find('[data-testid="buff-veil_discord"]')
+    expect(veil.classes()).toContain('text-dire')
+
+    // The item-cooldown bookkeeping marker never reaches the strip.
+    expect(wrapper.find('[data-testid="buff-item_cd_black_king_bar"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('shows no Buffs section when every effect is an internal marker', () => {
+    const wrapper = mountHeroStatus(
+      makeHero({ buffs: [{ id: 'item_cd_dagon', stacks: 1, ticksRemaining: 18 }] }),
+    )
+    expect(wrapper.text()).not.toContain('Buffs')
+    wrapper.unmount()
+  })
+})

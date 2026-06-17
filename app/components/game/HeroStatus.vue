@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
+import { displayBuffs } from '~/utils/buffs'
 import { useTapInspect } from '~/composables/useTapInspect'
 
 interface HeroData {
@@ -42,6 +43,10 @@ const heroDef = computed(() => {
   if (!props.heroId) return null
   return HEROES[props.heroId] ?? null
 })
+
+// Readable, colour-coded buff chips with internal bookkeeping markers (item
+// cooldowns, tp destination) filtered out — see ~/utils/buffs.
+const shownBuffs = computed(() => displayBuffs(props.hero.buffs))
 
 function getAbilityDef(key: 'q' | 'w' | 'e' | 'r') {
   return heroDef.value?.abilities[key] ?? null
@@ -182,13 +187,23 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
       </div>
     </div>
 
-    <div v-if="hero.buffs.length" class="flex flex-col gap-1">
+    <div v-if="shownBuffs.length" class="flex flex-col gap-1">
       <span class="t-caption uppercase">Buffs</span>
       <div class="flex flex-wrap gap-2">
-        <span v-for="buff in hero.buffs" :key="buff.id" class="text-xs text-ability">
-          {{ buff.id
+        <span
+          v-for="buff in shownBuffs"
+          :key="buff.id"
+          class="text-xs"
+          :class="{
+            'text-radiant': buff.kind === 'positive',
+            'text-dire': buff.kind === 'negative',
+            'text-ability': buff.kind === 'neutral',
+          }"
+          :data-testid="`buff-${buff.id}`"
+        >
+          {{ buff.label
           }}<span v-if="buff.stacks > 1" class="ml-0.5 text-gold">x{{ buff.stacks }}</span>
-          <span class="ml-0.5 text-text-dim">({{ buff.ticksRemaining }}t)</span>
+          <span v-if="buff.ticks !== null" class="ml-0.5 text-text-dim">({{ buff.ticks }}t)</span>
         </span>
       </div>
     </div>
