@@ -995,11 +995,19 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
   // Cycle through modes: attack -> hp -> mp -> attack
   const currentMode = player.buffs.find((b) => b.id.startsWith('power_treads_'))?.id
 
+  // Modes SWITCH, they don't stack — the three mode buffs have distinct ids, so
+  // applyBuff wouldn't replace the old one. Strip any existing mode buff first,
+  // otherwise toggling leaves attack+hp both active and the cycle gets stuck.
+  const base: PlayerState = {
+    ...player,
+    buffs: player.buffs.filter((b) => !b.id.startsWith('power_treads_')),
+  }
+
   let updated: PlayerState
   switch (currentMode) {
     case 'power_treads_attack':
       // Switch to HP mode
-      updated = applyBuff(player, {
+      updated = applyBuff(base, {
         id: 'power_treads_hp',
         stacks: 150,
         ticksRemaining: 999,
@@ -1008,7 +1016,7 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
       break
     case 'power_treads_hp':
       // Switch to MP mode
-      updated = applyBuff(player, {
+      updated = applyBuff(base, {
         id: 'power_treads_mp',
         stacks: 100,
         ticksRemaining: 999,
@@ -1017,7 +1025,7 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
       break
     default:
       // Default to attack mode
-      updated = applyBuff(player, {
+      updated = applyBuff(base, {
         id: 'power_treads_attack',
         stacks: 15,
         ticksRemaining: 999,

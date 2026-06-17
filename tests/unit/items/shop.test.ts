@@ -745,6 +745,37 @@ describe('Shop', () => {
         expect(hasBuff(exit.value, 'player_1', 'power_treads_attack')).toBe(true)
     })
 
+    it('Power Treads cycles attack → hp → mp → attack with exactly one mode active', async () => {
+      let state = makeGameState({
+        players: {
+          player_1: makePlayer({
+            id: 'player_1',
+            items: ['power_treads', null, null, null, null, null],
+          }),
+        },
+      })
+
+      // Modes must SWITCH, not stack — toggling four times wraps back to attack,
+      // and only ever one power_treads_* buff is present at a time.
+      const order = [
+        'power_treads_attack',
+        'power_treads_hp',
+        'power_treads_mp',
+        'power_treads_attack',
+      ]
+      for (const expected of order) {
+        const exit = await runEffect(useItem(state, 'player_1', 'power_treads'))
+        expect(Exit.isSuccess(exit)).toBe(true)
+        if (!Exit.isSuccess(exit)) return
+        state = exit.value
+        const modeBuffs = state.players['player_1']!.buffs.filter((b) =>
+          b.id.startsWith('power_treads_'),
+        )
+        expect(modeBuffs).toHaveLength(1)
+        expect(modeBuffs[0]!.id).toBe(expected)
+      }
+    })
+
     it('Dust of Appearance applies the reveal buff to the caster', async () => {
       const player = makePlayer({
         id: 'player_1',
