@@ -249,7 +249,7 @@ export function formatHelpReadout(): string[] {
     '  Info:    status · map · scan · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
     '  Special: rune · aegis · glyph · buyback · talent <tier> <left|right>',
-    '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ? = help',
+    '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ss = missing · ? = help',
     'Goal: push a lane, raze the enemy towers, then destroy their Mainframe.',
   ]
 }

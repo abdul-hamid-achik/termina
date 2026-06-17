@@ -1792,6 +1792,8 @@ describe('informational readouts', () => {
     }
     // It explains the objective so a new player knows what to do after the verbs.
     expect(all.toLowerCase()).toMatch(/mainframe|destroy/)
+    // The `ss` reflex shortcut for the missing callout is discoverable here.
+    expect(all).toContain('ss = missing')
     // One log line per group, each non-empty.
     expect(lines.length).toBeGreaterThanOrEqual(6)
     for (const line of lines) expect(line.trim().length).toBeGreaterThan(0)
