@@ -456,6 +456,9 @@ describe('Item actives — forced movement', () => {
     // target stays put (push self away).
     expect(r.state.players['p2']!.zone).toBe('mid-river')
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_hurricane_pike')).toBe(true)
+    // post-thrust attack steroid (read in getEffectiveAttack)
+    const steroid = r.state.players['p1']!.buffs.find((b) => b.id === 'hurricane_pike_attacks')
+    expect(steroid?.stacks).toBe(30)
   })
 })
 

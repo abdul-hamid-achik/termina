@@ -424,7 +424,8 @@ const hurricanePike: ItemDef = {
   active: {
     id: 'hurricane_pike_active',
     name: 'Hurricane Thrust',
-    description: 'Push self 2 zones away from target enemy. Can attack during push.',
+    description:
+      'Push self to an adjacent zone away from a target enemy, gaining +30 attack for 2 ticks.',
     cooldownTicks: 14,
     targetType: 'enemy',
   },
