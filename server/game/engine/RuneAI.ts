@@ -1,6 +1,10 @@
 import type { GameState, RuneState } from '~~/shared/types/game'
 import type { GameEngineEvent, RunePickedEvent } from '~~/server/game/protocol/events'
-import { RUNE_BUFF_TICKS, RUNE_DURATION_TICKS } from '~~/shared/constants/balance'
+import {
+  RUNE_BUFF_TICKS,
+  RUNE_DURATION_TICKS,
+  REGEN_RUNE_HEAL_PERCENT,
+} from '~~/shared/constants/balance'
 
 /**
  * Get the buff effect for a rune type.
@@ -121,10 +125,10 @@ export function processRuneBuffs(state: GameState): GameState {
     // Check for active rune buffs
     const hasRegen = player.buffs.some((b) => b.id === 'regen')
 
-    // Regeneration rune: 5% HP/MP per tick
+    // Regeneration rune: REGEN_RUNE_HEAL_PERCENT of max HP/MP per tick
     if (hasRegen) {
-      hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.05))
-      mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * 0.05))
+      hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * REGEN_RUNE_HEAL_PERCENT))
+      mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * REGEN_RUNE_HEAL_PERCENT))
     }
 
     // Cron's Crontab (R): heal-over-time on self + allies; the per-tick heal
