@@ -314,6 +314,28 @@ describe('Socket Hero', () => {
       expect(visionBuff!.ticksRemaining).toBe(5)
     })
 
+    it('stacks a link on the target and slows at 3 stacks (Persistent Connection)', () => {
+      let state = makeState([makePlayer(), makeEnemy()])
+      const attack = {
+        tick: 10,
+        type: 'attack' as const,
+        payload: { attackerId: 'p1', targetId: 'e1' },
+      }
+
+      // First two attacks build link stacks — no slow yet.
+      state = resolvePassive(state, 'p1', attack)
+      state = resolvePassive(state, 'p1', attack)
+      expect(hasBuff(state.players['e1']!, 'slow')).toBe(false)
+      expect(state.players['e1']!.buffs.find((b) => b.id === 'socket_link')!.stacks).toBe(2)
+
+      // Third attack hits 3 stacks → slow 20% for 2 ticks, link resets.
+      state = resolvePassive(state, 'p1', attack)
+      const slow = state.players['e1']!.buffs.find((b) => b.id === 'slow')
+      expect(slow?.stacks).toBe(20)
+      expect(slow?.ticksRemaining).toBe(2)
+      expect(state.players['e1']!.buffs.find((b) => b.id === 'socket_link')!.stacks).toBe(0)
+    })
+
     it('does not trigger when another player attacks', () => {
       const player = makePlayer()
       const enemy = makeEnemy()

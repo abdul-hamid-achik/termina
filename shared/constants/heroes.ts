@@ -451,7 +451,7 @@ export const HEROES: Record<string, HeroDef> = {
       id: 'socket-passive',
       name: 'Persistent Connection',
       description:
-        'Basic attacks apply a link stack. At 3 stacks, the target is slowed by 20% for 2 ticks.',
+        'Basic attacks grant vision of the target and apply a link stack. At 3 stacks, the target is slowed by 20% for 2 ticks.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',

@@ -42,6 +42,13 @@ const R_SLOW_PERCENT = [20, 30, 40] as const
 
 const HANDSHAKE_VISION_TICKS = 5
 
+// Persistent Connection: basic attacks stack a 'link' on the target; at 3 stacks
+// it's slowed 20% for 2 ticks and the link resets. Stacks persist a short window.
+const LINK_STACKS_TO_SLOW = 3
+const LINK_SLOW_PERCENT = 20
+const LINK_SLOW_DURATION = 2
+const LINK_WINDOW_TICKS = 4
+
 // ── Ability Resolver ──────────────────────────────────────────────
 
 function resolveHeroAbility(
@@ -295,8 +302,9 @@ function resolveR(
   })
 }
 
-// ── Passive: Handshake ────────────────────────────────────────────
-// When you attack a hero, gain vision of them for 5 ticks.
+// ── Passive: Persistent Connection ────────────────────────────────
+// Attacking a hero grants vision of them (Handshake) AND stacks a link; at 3
+// stacks the target is slowed 20% for 2 ticks, then the link resets.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'attack' || event.payload['attackerId'] !== playerId) return state
@@ -308,7 +316,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const targetPlayer = state.players[targetId]
   if (!targetPlayer || targetPlayer.heroId === null) return state
 
-  // Grant vision buff tracking this target
+  // Vision of the attacked target (Handshake).
   const updated = applyBuff(player, {
     id: `handshake_vision_${targetId}`,
     stacks: 1,
@@ -316,7 +324,32 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     source: targetId,
   })
 
-  return updatePlayer(state, updated)
+  // Link stack on the target → slow at 3 stacks, then reset.
+  const linkStacks = (targetPlayer.buffs.find((b) => b.id === 'socket_link')?.stacks ?? 0) + 1
+  let updatedTarget: PlayerState
+  if (linkStacks >= LINK_STACKS_TO_SLOW) {
+    updatedTarget = applyBuff(targetPlayer, {
+      id: 'slow',
+      stacks: LINK_SLOW_PERCENT,
+      ticksRemaining: LINK_SLOW_DURATION,
+      source: playerId,
+    })
+    updatedTarget = applyBuff(updatedTarget, {
+      id: 'socket_link',
+      stacks: 0,
+      ticksRemaining: LINK_WINDOW_TICKS,
+      source: playerId,
+    })
+  } else {
+    updatedTarget = applyBuff(targetPlayer, {
+      id: 'socket_link',
+      stacks: linkStacks,
+      ticksRemaining: LINK_WINDOW_TICKS,
+      source: playerId,
+    })
+  }
+
+  return updatePlayers(state, [updated, updatedTarget])
 }
 
 registerHero('socket', resolveHeroAbility, resolveHeroPassive)
