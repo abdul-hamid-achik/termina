@@ -184,21 +184,26 @@ export function buildOrderForRole(role: HeroRole | undefined): string[] {
 // Defensive consumables bots keep stocked (one of each)
 const BOT_CONSUMABLES = ['healing_salve', 'town_portal_scroll']
 
-// Self-cast combat actives a bot pops mid-fight. Every entry's resolver takes no
-// target ((state, player) → GameState), applies its effect unconditionally, and
-// sets its own `item_cd_<id>` buff — so a `use` emitted for an owned,
-// off-cooldown item here ALWAYS resolves (validateAction passes on owned + not
-// on item_cd, useItem can't fail, nothing to target wrong). Only items that
-// appear in a build order are listed — a bot never owns the rest, so listing
-// them would be dead. Defensive = survive a fight; offensive = amplify burst.
+// Combat item actives a bot uses mid-fight. Every one mirrors validateAction's
+// `use` gates via itemOffCooldown (owned + not on item_cd) and resolves cleanly:
+// the self-cast ones take no target; the targeted ones (Dagon/Ethereal/Hex/
+// Cyclone) all require an alive enemy hero in the same zone, which the in-combat
+// caller already has. Only items that appear in a build order are listed — a bot
+// never owns the rest. Defensive = survive a fight; offensive = control + burst.
 const DEFENSIVE_COMBAT_ITEMS = ['black_king_bar', 'blade_mail']
-const OFFENSIVE_COMBAT_ITEMS = ['stack_overflow', 'veil_of_discord']
 
 /** Bot owns the item and its active is not on cooldown (mirrors validateAction). */
 function itemOffCooldown(bot: PlayerState, item: string): boolean {
   return (
     bot.items.includes(item) &&
     !bot.buffs.some((b) => b.id === `item_cd_${item}` && b.ticksRemaining > 0)
+  )
+}
+
+/** Magic-immune / invulnerable targets negate the pure magical-burst items (Dagon, Ethereal). */
+function isMagicImmuneTarget(p: PlayerState): boolean {
+  return p.buffs.some(
+    (b) => (b.id === 'magic_immune' || b.id === 'invulnerable') && b.ticksRemaining > 0,
   )
 }
 
@@ -743,20 +748,26 @@ function tryPickTalent(bot: PlayerState): Command | null {
 
 /**
  * Mid-fight item micro for tactically-aware bots. Returns a `use` for one owned,
- * off-cooldown self-cast combat active, or null. Called only when enemy heroes
- * share the bot's zone (the combat block), so it never fires out of a fight.
+ * off-cooldown combat active (self-cast or targeted), or null. Called only when
+ * enemy heroes share the bot's zone (the combat block), so it never fires out of
+ * a fight. One use per tick, naturally rate-limited by each item's cooldown.
  *
  * Gated on `threatAssessment` so naive (easy) bots stay naive while medium+ bots
  * stop sitting on their items — the most visible "bots ignore their inventory"
- * gap. Because the resolvers are unconditional self-buffs (see the item lists),
- * every `use` returned here resolves; there is no target to mis-aim.
+ * gap. Every `use` returned here resolves: self-cast actives have no target, and
+ * the targeted ones aim at an enemy already confirmed alive + in-zone.
  *
  *  - Defensive (BKB magic-immunity, Blade Mail reflect) only when actually under
- *    pressure — hurt or outnumbered — so a bot stops dying with its panic items
- *    unused, without burning them on a trivial skirmish.
- *  - Offensive (Stack Overflow double-next-ability, Veil enemy magic-vuln) to set
- *    up burst. Stack Overflow only when an ability is ready to consume the charge
- *    next tick, so it's never wasted on a pure right-click.
+ *    pressure — hurt or outnumbered — not burned on a trivial skirmish.
+ *  - Setup/control/burst on the kill target (lowest-HP enemy): Veil (zone magic-
+ *    vuln) → Ethereal (physical-immune + 40% magic-vuln) → Hex (hard disable,
+ *    still killable) → Dagon (300 magic nuke). Ethereal/Dagon are held if that
+ *    target is magic-immune (they'd fizzle).
+ *  - Cyclone (Eul's) is aimed at a SECONDARY enemy, never the kill target: it
+ *    makes its victim invulnerable, so it removes a second threat rather than
+ *    shielding the one we're trying to kill. Skipped in a 1v1.
+ *  - Stack Overflow (double next ability) only when an ability is ready to spend
+ *    the charge next tick, so it's never wasted on a pure right-click.
  */
 export function tryUseCombatItem(
   bot: PlayerState,
@@ -774,16 +785,38 @@ export function tryUseCombatItem(
     }
   }
 
-  // Offensive: amplify the upcoming burst.
+  // Offensive setup → control → burst, aimed at the kill target (lowest HP).
+  const killTarget = enemiesInZone.reduce((a, b) => (a.hp < b.hp ? a : b))
+  const killRef: TargetRef = { kind: 'hero', name: killTarget.id }
+  const killImmune = isMagicImmuneTarget(killTarget)
+
+  if (itemOffCooldown(bot, 'veil_of_discord')) {
+    return { type: 'use', item: 'veil_of_discord' }
+  }
+  if (!killImmune && itemOffCooldown(bot, 'ethereal_blade')) {
+    return { type: 'use', item: 'ethereal_blade', target: killRef }
+  }
+  if (itemOffCooldown(bot, 'scythe_of_vyse')) {
+    return { type: 'use', item: 'scythe_of_vyse', target: killRef }
+  }
+  // Cyclone a SECONDARY enemy (healthiest other threat) — never the kill target.
+  if (enemiesInZone.length >= 2 && itemOffCooldown(bot, 'euls_scepter')) {
+    const secondary = enemiesInZone
+      .filter((e) => e.id !== killTarget.id)
+      .reduce((a, b) => (a.hp > b.hp ? a : b))
+    return { type: 'use', item: 'euls_scepter', target: { kind: 'hero', name: secondary.id } }
+  }
+  if (!killImmune && itemOffCooldown(bot, 'dagon')) {
+    return { type: 'use', item: 'dagon', target: killRef }
+  }
+
+  // Stack Overflow: double the next ability — only with an ability to spend it.
   const hero = bot.heroId ? HEROES[bot.heroId] : null
   const hasAbilityReady =
     !!hero &&
     (['q', 'w', 'e', 'r'] as AbilitySlot[]).some((s) => canCastAbility(bot, hero.abilities[s], s))
-  if (hasAbilityReady && itemOffCooldown(bot, OFFENSIVE_COMBAT_ITEMS[0]!)) {
-    return { type: 'use', item: OFFENSIVE_COMBAT_ITEMS[0]! }
-  }
-  if (itemOffCooldown(bot, OFFENSIVE_COMBAT_ITEMS[1]!)) {
-    return { type: 'use', item: OFFENSIVE_COMBAT_ITEMS[1]! }
+  if (hasAbilityReady && itemOffCooldown(bot, 'stack_overflow')) {
+    return { type: 'use', item: 'stack_overflow' }
   }
   return null
 }
