@@ -215,4 +215,27 @@ describe('PostGame', () => {
       expect(wrapper.emitted('playAgain')).toHaveLength(1)
     })
   })
+
+  describe('match MVP', () => {
+    it('crowns the highest-impact performer', () => {
+      // p1 ("you"): 9k/2d/7a + 31.2k dmg dominates the default roster.
+      const mvp = mountPostGame().find('[data-testid="post-game-mvp"]')
+      expect(mvp.exists()).toBe(true)
+      expect(mvp.get('[data-testid="mvp-name"]').text()).toContain('you')
+    })
+
+    it('can crown a losing-team player who out-performed everyone', () => {
+      const stats = smallStats()
+      stats.e1 = makePlayerEndStats({
+        kills: 20,
+        deaths: 0,
+        assists: 10,
+        gold: 12_000,
+        heroDamage: 50_000,
+      })
+      const wrapper = mountPostGame({ stats, winner: 'radiant' })
+      // MVP is the absolute best individual game, even on the losing side.
+      expect(wrapper.get('[data-testid="mvp-name"]').text()).toContain('daemon_carry')
+    })
+  })
 })

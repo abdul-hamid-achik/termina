@@ -4,6 +4,7 @@ import type { TeamId, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
+import { computeMvp } from '~/utils/postgame'
 
 const props = defineProps<{
   winner: TeamId
@@ -59,6 +60,11 @@ const myStats = computed(() => {
   return s
 })
 
+// The single standout performer across both teams (the "who carried" beat).
+const mvp = computed(() =>
+  computeMvp([...radiantPlayers.value, ...direPlayers.value], props.winner),
+)
+
 function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): ScoreRow {
   const s = props.stats[p.id]
   return {
@@ -96,6 +102,30 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
       <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
         You've got the basics — move, last-hit, cast, and buy. Ready for a real match?
       </p>
+    </div>
+
+    <!-- Match MVP — the standout performer across both teams -->
+    <div
+      v-if="mvp"
+      class="anim-fade-in-up flex items-center justify-center gap-3 border p-3"
+      :class="mvp.team === 'radiant' ? 'border-radiant/60' : 'border-dire/60'"
+      data-testid="post-game-mvp"
+    >
+      <span class="t-h1 text-gold text-glow-gold" aria-hidden="true">★</span>
+      <div class="flex flex-col">
+        <span class="t-caption uppercase tracking-wider text-gold">Match MVP</span>
+        <span
+          class="t-h2"
+          :class="mvp.team === 'radiant' ? 'text-radiant' : 'text-dire'"
+          data-testid="mvp-name"
+          >{{ mvp.name }}
+          <span class="text-text-dim">({{ HEROES[mvp.heroId]?.name ?? mvp.heroId }})</span></span
+        >
+        <span class="t-caption t-mono-num text-text-dim">
+          {{ mvp.kills }}/{{ mvp.deaths }}/{{ mvp.assists }} ·
+          {{ mvp.heroDamage.toLocaleString() }} hero dmg
+        </span>
+      </div>
     </div>
 
     <div v-if="myStats">
