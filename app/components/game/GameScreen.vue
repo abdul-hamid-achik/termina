@@ -786,6 +786,14 @@ function handleCommand(cmd: string) {
       gameSocket.send({ type: 'ping_map', zone: command.zone })
       return
     }
+    // `missing X` is a quick team callout — there's no server enemy_missing
+    // emitter, so reuse the team chat channel: allies see the alert immediately.
+    if (command.type === 'missing') {
+      const enemy = gameStore.allPlayers?.[command.enemyId]
+      const name = enemy ? (HEROES[enemy.heroId ?? '']?.name ?? enemy.name) : command.enemyId
+      gameSocket.send({ type: 'chat', channel: 'team', message: `⚠ ${name} is MISSING (ss)!` })
+      return
+    }
     // help: print the command reference locally (one log line per group) and
     // return without sending — purely informational, never a game action.
     if (command.type === 'help') {

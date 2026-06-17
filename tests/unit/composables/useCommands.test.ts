@@ -445,6 +445,28 @@ describe('useCommands', () => {
       })
     })
 
+    describe('missing command (team callout advertised by help)', () => {
+      it('parses missing <enemy>', () => {
+        const { parse } = useCommands()
+        const result = parse('missing axe')
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({ type: 'missing', enemyId: 'axe' })
+      })
+
+      it('accepts the ss / miss aliases', () => {
+        const { parse } = useCommands()
+        expect(parse('ss daemon').command).toEqual({ type: 'missing', enemyId: 'daemon' })
+        expect(parse('miss daemon').command).toEqual({ type: 'missing', enemyId: 'daemon' })
+      })
+
+      it('errors with usage when no enemy is named', () => {
+        const { parse } = useCommands()
+        const result = parse('missing')
+        expect(result.command).toBeNull()
+        expect(result.error).toMatch(/usage/i)
+      })
+    })
+
     describe('chat command', () => {
       it('parses team chat', () => {
         const { parse } = useCommands()

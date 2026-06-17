@@ -626,6 +626,14 @@ export function useCommands() {
       case '?':
         return { command: { type: 'help' }, error: null }
 
+      case 'missing':
+      case 'miss':
+      case 'ss': {
+        const enemy = tokens.slice(1).join(' ')
+        if (!enemy) return { command: null, error: 'Usage: missing <enemy hero>' }
+        return { command: { type: 'missing', enemyId: enemy }, error: null }
+      }
+
       case 'aegis':
         return { command: { type: 'aegis' }, error: null }
 
@@ -701,6 +709,7 @@ export function useCommands() {
         'status',
         'map',
         'help',
+        'missing',
         'chat',
         'ping',
         'glyph',
@@ -712,6 +721,7 @@ export function useCommands() {
       const all = [...cmds, ...shortcuts]
       const descriptions: Record<string, string> = {
         help: 'List every command (and the goal of the game)',
+        missing: 'Alert your team an enemy is missing (alias: ss)',
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (levels 10/15/20/25)',
