@@ -153,4 +153,35 @@ describe('EnemyThreatSheet', () => {
       expect(w.find('[data-testid="threat-status-e9"]').exists()).toBe(false)
     })
   })
+
+  describe('ultimate-ready emphasis', () => {
+    it('highlights a ready enemy ultimate as a threat (not the calm ability colour)', () => {
+      const w = mount(EnemyThreatSheet, {
+        props: {
+          enemies: [visibleEnemy({ cooldowns: { q: 0, w: 3, e: 0, r: 0 } })],
+          lastSeen: {},
+          tick: 10,
+        },
+      })
+      expect(w.get('[data-testid="threat-cd-e1-r"]').classes()).toContain('text-warn')
+      // a ready basic ability stays the calm ability colour — only R is a threat
+      const q = w.get('[data-testid="threat-cd-e1-q"]')
+      expect(q.classes()).toContain('text-ability')
+      expect(q.classes()).not.toContain('text-warn')
+    })
+
+    it('does not highlight an ultimate still on cooldown (shows the countdown)', () => {
+      const w = mount(EnemyThreatSheet, {
+        props: {
+          enemies: [visibleEnemy({ cooldowns: { q: 0, w: 0, e: 0, r: 6 } })],
+          lastSeen: {},
+          tick: 10,
+        },
+      })
+      const r = w.get('[data-testid="threat-cd-e1-r"]')
+      expect(r.classes()).toContain('text-text-muted')
+      expect(r.classes()).not.toContain('text-warn')
+      expect(r.text()).toContain('R6')
+    })
+  })
 })
