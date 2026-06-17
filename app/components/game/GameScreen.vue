@@ -1139,6 +1139,7 @@ function handleReturnToMenu() {
           :zones="mapZones"
           :player-zone="playerZone"
           :ancients="ancients"
+          :map-id="gameStore.mapId"
           force-mode="full"
           @zone-click="handleZoneClick"
         />
@@ -1196,6 +1197,7 @@ function handleReturnToMenu() {
           :zones="mapZones"
           :player-zone="playerZone"
           :ancients="ancients"
+          :map-id="gameStore.mapId"
           force-mode="compact"
           @zone-click="handleZoneClick"
         />
