@@ -13,6 +13,7 @@ import {
   zoneTeam,
 } from './asciiMapModel'
 import type { AncientsDisplay, ZoneDisplay } from './asciiMapModel'
+import MapLegend from './MapLegend.vue'
 
 const props = defineProps<{
   zones: ZoneDisplay[]
@@ -186,6 +187,11 @@ function miniCellClasses(zoneId: string): string[] {
       <span class="text-lg font-bold tracking-[0.3em] text-radiant">RADIANT</span>
       <span class="text-xs text-text-dim">[MAP]</span>
       <span class="text-lg font-bold tracking-[0.3em] text-dire">DIRE</span>
+    </div>
+
+    <!-- Glyph key for new players (collapsed by default) -->
+    <div class="flex justify-center border-b border-border/40 py-0.5">
+      <MapLegend />
     </div>
 
     <!-- ── Full 5x10 grid (desktop ≥1024px) ─────────────────────── -->
