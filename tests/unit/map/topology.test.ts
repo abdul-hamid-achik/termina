@@ -341,4 +341,17 @@ describe('Topology', () => {
       expect(seen.size).toBe(11)
     })
   })
+
+  describe('zonesForMap fallbacks', () => {
+    it('defaults to the full 5v5 map when mapId is undefined', () => {
+      // undefined ?? DEFAULT_MAP_ID → the full map.
+      expect(zonesForMap(undefined)).toHaveLength(ZONES.length)
+      expect(zonesForMap(undefined)).toBe(zonesForMap('default_5v5'))
+    })
+
+    it('falls back to the full map for an unknown mapId rather than returning empty', () => {
+      const zones = zonesForMap('not_a_real_map')
+      expect(zones).toHaveLength(ZONES.length)
+    })
+  })
 })
