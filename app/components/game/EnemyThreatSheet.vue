@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
+import { displayBuffs, type DisplayBuff } from '~/utils/buffs'
 import type { PlayerState, FoggedPlayer } from '~~/shared/types/game'
 
 type Enemy = PlayerState | FoggedPlayer
@@ -23,6 +24,8 @@ interface ThreatRow {
   mp?: number
   maxMp?: number
   cooldowns?: { q: number; w: number; e: number; r: number }
+  /** Transient status effects on a visible enemy (BKB up, stunned, slowed…). */
+  status: DisplayBuff[]
   respawnIn: number
   lastSeen: string | null
 }
@@ -45,6 +48,10 @@ const rows = computed<ThreatRow[]>(() =>
       mp: fogged ? undefined : full.mp,
       maxMp: fogged ? undefined : full.maxMp,
       cooldowns: fogged ? undefined : full.cooldowns,
+      // Only TRANSIENT (timed) effects are threat intel — a ticking BKB, a stun,
+      // a slow. Near-permanent stat auras (Treads mode etc., ticks === null) are
+      // dropped so the sheet stays focused on the current engagement.
+      status: fogged ? [] : displayBuffs(full.buffs ?? []).filter((b) => b.ticks !== null),
       // -1 when we don't know the respawn (fogged death) so the UI can hide the
       // misleading "respawn 0t".
       respawnIn: full.respawnTick != null ? Math.max(0, full.respawnTick - props.tick) : -1,
@@ -108,6 +115,24 @@ const rows = computed<ThreatRow[]>(() =>
           >
             {{ k.toUpperCase() }}{{ (r.cooldowns?.[k] ?? 0) > 0 ? r.cooldowns![k] : '' }}
           </span>
+        </div>
+
+        <!-- Status intel, coloured from MY perspective (inverse of the bearer's):
+             a debuff on them is my opening (green); a buff they hold is a caution
+             (amber). The objective good/bad `kind` comes from ~/utils/buffs. -->
+        <div
+          v-if="r.status.length"
+          class="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5"
+          :data-testid="`threat-status-${r.id}`"
+        >
+          <span
+            v-for="b in r.status"
+            :key="b.id"
+            class="text-[0.58rem]"
+            :class="b.kind === 'negative' ? 'text-radiant' : 'text-warn'"
+            >{{ b.label
+            }}<span v-if="b.ticks !== null" class="opacity-70">·{{ b.ticks }}</span></span
+          >
         </div>
       </template>
     </div>
