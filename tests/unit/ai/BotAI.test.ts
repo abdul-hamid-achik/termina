@@ -1286,3 +1286,81 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
     expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
   })
 })
+
+describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
+  const lowFoe = makePlayer({ id: 'low', name: 'low', team: 'dire', hp: 100, maxHp: 600 })
+  const highFoe = makePlayer({ id: 'high', name: 'high', team: 'dire', hp: 600, maxHp: 600 })
+
+  it('hexes the kill target (lowest-HP enemy)', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('scythe_of_vyse') })
+    expect(tryUseCombatItem(bot, [highFoe, lowFoe], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'scythe_of_vyse',
+      target: { kind: 'hero', name: 'low' },
+    })
+  })
+
+  it('dagons the lowest-HP enemy', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon') })
+    expect(tryUseCombatItem(bot, [highFoe, lowFoe], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'dagon',
+      target: { kind: 'hero', name: 'low' },
+    })
+  })
+
+  it('ethereals the kill target before it would dagon', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon', 'ethereal_blade') })
+    expect(tryUseCombatItem(bot, [lowFoe], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'ethereal_blade',
+      target: { kind: 'hero', name: 'low' },
+    })
+  })
+
+  it('holds Dagon/Ethereal when the kill target is magic-immune (they would fizzle)', () => {
+    const immune = makePlayer({
+      id: 'bkb',
+      name: 'bkb',
+      team: 'dire',
+      hp: 100,
+      maxHp: 600,
+      buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'black_king_bar' }],
+    })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon', 'ethereal_blade') })
+    expect(tryUseCombatItem(bot, [immune], [], makeConfig())).toBeNull()
+  })
+
+  it('cyclones a SECONDARY enemy (healthiest other threat), never the kill target', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('euls_scepter') })
+    expect(tryUseCombatItem(bot, [lowFoe, highFoe], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'euls_scepter',
+      target: { kind: 'hero', name: 'high' },
+    })
+  })
+
+  it('does not cyclone in a 1v1 (no secondary enemy to remove)', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('euls_scepter') })
+    expect(tryUseCombatItem(bot, [lowFoe], [], makeConfig())).toBeNull()
+  })
+
+  it('prioritises Veil (zone amp) ahead of the targeted nukes', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon', 'veil_of_discord') })
+    expect(tryUseCombatItem(bot, [lowFoe], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'veil_of_discord',
+    })
+  })
+
+  it('decideBotAction wires targeted items in: a mage bot dagons the low enemy', () => {
+    const bot = makePlayer({ zone: 'mid-river', hp: 500, maxHp: 500, items: inv('dagon') })
+    const foe = makePlayer({ id: 'low', name: 'low', team: 'dire', zone: 'mid-river', hp: 100 })
+    const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
+    expect(decideBotAction(state, bot, 'mid')).toEqual({
+      type: 'use',
+      item: 'dagon',
+      target: { kind: 'hero', name: 'low' },
+    })
+  })
+})
