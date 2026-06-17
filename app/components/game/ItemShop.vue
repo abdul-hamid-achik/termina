@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { ItemDef } from '~~/shared/types/items'
 
 type Category = 'all' | 'starter' | 'core' | 'consumable'
+type Tab = Category | 'rec'
 
 interface ShopItem {
   id: string
@@ -17,6 +18,8 @@ const props = defineProps<{
   gold: number
   ownedItems: (string | null)[]
   pinnedItems: string[]
+  /** Item ids recommended for the local player's hero role, in priority order. */
+  recommendedItems?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -26,18 +29,31 @@ const emit = defineEmits<{
 }>()
 
 const search = ref('')
-const activeTab = ref<Category>('all')
+const activeTab = ref<Tab>('all')
 
-const TABS: { key: Category; label: string }[] = [
+const recommended = computed(() => props.recommendedItems ?? [])
+function isRecommended(itemId: string): boolean {
+  return recommended.value.includes(itemId)
+}
+
+// A "★ FOR YOU" tab leads with the role recommendations — only shown when we
+// actually have any (so spectators / role-less states fall back to plain tabs).
+const TABS = computed<{ key: Tab; label: string }[]>(() => [
+  ...(recommended.value.length ? [{ key: 'rec' as Tab, label: '★ FOR YOU' }] : []),
   { key: 'all', label: 'ALL' },
   { key: 'starter', label: 'STARTER' },
   { key: 'core', label: 'CORE' },
   { key: 'consumable', label: 'CONSUMABLE' },
-]
+])
 
 const filtered = computed(() => {
   let list = props.items
-  if (activeTab.value !== 'all') {
+  if (activeTab.value === 'rec') {
+    const order = recommended.value
+    list = list
+      .filter((i) => order.includes(i.id))
+      .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+  } else if (activeTab.value !== 'all') {
     list = list.filter((i) => i.category === activeTab.value)
   }
   const q = search.value.toLowerCase()
@@ -121,7 +137,16 @@ function formatStats(def: ItemDef): string[] {
         @click="item.cost <= gold && emit('buy', item.id)"
       >
         <div class="flex items-center justify-between">
-          <span class="font-bold text-text-primary">{{ item.name }}</span>
+          <span class="inline-flex items-center gap-1">
+            <span class="font-bold text-text-primary">{{ item.name }}</span>
+            <span
+              v-if="isRecommended(item.id)"
+              class="text-[0.6rem] text-gold"
+              :data-testid="`shop-rec-${item.id}`"
+              title="Recommended for your hero's role"
+              >★</span
+            >
+          </span>
           <span v-if="isOwned(item.id)" class="text-[0.6rem] text-radiant">[OWNED]</span>
         </div>
 

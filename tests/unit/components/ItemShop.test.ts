@@ -23,7 +23,12 @@ function shopItems() {
 }
 
 function mountShop(
-  overrides: Partial<{ gold: number; ownedItems: (string | null)[]; pinnedItems: string[] }> = {},
+  overrides: Partial<{
+    gold: number
+    ownedItems: (string | null)[]
+    pinnedItems: string[]
+    recommendedItems: string[]
+  }> = {},
 ) {
   return mount(ItemShop, {
     props: {
@@ -89,5 +94,31 @@ describe('ItemShop', () => {
     expect(buyBtn.classes()).toContain('touch-target')
     expect(pinBtn.classes()).toContain('touch-target')
     expect(buyBtn.element.parentElement?.classList.contains('touch-gap')).toBe(true)
+  })
+
+  describe('role recommendations (new-player funnel)', () => {
+    it('badges recommended items with a ★ and leaves others unbadged', () => {
+      const wrapper = mountShop({ recommendedItems: ['iron_branch'] })
+
+      expect(wrapper.find('[data-testid="shop-rec-iron_branch"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="shop-rec-healing_salve"]').exists()).toBe(false)
+    })
+
+    it('shows a "★ FOR YOU" tab that filters to the recommended items', async () => {
+      const wrapper = mountShop({ recommendedItems: ['iron_branch'] })
+      const forYou = wrapper.findAll('button').find((b) => b.text().includes('FOR YOU'))
+      expect(forYou).toBeTruthy()
+
+      await forYou!.trigger('click')
+      // Only the recommended item card remains under the tab.
+      expect(wrapper.find('[data-testid="shop-item-iron_branch"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="shop-item-healing_salve"]').exists()).toBe(false)
+    })
+
+    it('omits the "★ FOR YOU" tab when there are no recommendations (e.g. spectator)', () => {
+      const wrapper = mountShop()
+      const forYou = wrapper.findAll('button').find((b) => b.text().includes('FOR YOU'))
+      expect(forYou).toBeUndefined()
+    })
   })
 })
