@@ -187,8 +187,11 @@ if (matches > 1) {
   )
   const top = s.heroWinRates.slice(0, 5)
   const bottom = s.heroWinRates.slice(-5).reverse()
+  // A trailing * marks a win-rate that's beyond small-sample noise (2σ) — i.e. a
+  // hero actually worth tuning, vs one that just had a lucky/unlucky few games.
   const fmtHero = (h: (typeof s.heroWinRates)[number]) =>
-    `${h.heroId} ${h.winRate.toFixed(0)}% (${h.wins}/${h.appearances})`
+    `${h.heroId} ${h.winRate.toFixed(0)}% (${h.wins}/${h.appearances})${h.significant ? '*' : ''}`
   console.log(`  best heroes:  ${top.map(fmtHero).join(' · ')}`)
   console.log(`  worst heroes: ${bottom.map(fmtHero).join(' · ')}`)
+  console.log(`  (* = beyond small-sample noise; run more matches if nothing is starred)`)
 }

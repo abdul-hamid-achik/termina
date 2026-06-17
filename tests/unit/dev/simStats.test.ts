@@ -66,6 +66,31 @@ describe('summarizeSimResults', () => {
     expect(summarizeSimResults(results).sideBiasSignificant).toBe(true)
   })
 
+  it('flags a hero as significant only when its win-rate clears small-sample noise', () => {
+    // "star" appears 40× (always radiant) and wins 35 → 87.5%, well beyond 2σ.
+    // "filler" appears 40× (always dire) and wins 5 → 12.5%, also significant.
+    const results = [
+      ...Array.from({ length: 35 }, () => r('radiant', 100, ['star'], ['filler'])),
+      ...Array.from({ length: 5 }, () => r('dire', 100, ['star'], ['filler'])),
+    ]
+    const byHero = (id: string) =>
+      summarizeSimResults(results).heroWinRates.find((h) => h.heroId === id)!
+    expect(byHero('star')).toMatchObject({ appearances: 40, wins: 35, significant: true })
+    expect(byHero('filler')).toMatchObject({ appearances: 40, wins: 5, significant: true })
+  })
+
+  it('does NOT flag a hero off a handful of games', () => {
+    // "rare" appears 3× — far too few to clear 2σ regardless of its record.
+    const results = [
+      r('radiant', 100, ['rare'], ['x']),
+      r('radiant', 100, ['rare'], ['x']),
+      r('dire', 100, ['x'], ['rare']),
+    ]
+    expect(
+      summarizeSimResults(results).heroWinRates.find((h) => h.heroId === 'rare')!.significant,
+    ).toBe(false)
+  })
+
   it('handles an all-stall batch (no decided games → 0% rates)', () => {
     const s = summarizeSimResults([r(null, 500, ['a'], ['b']), r(null, 600, ['a'], ['b'])])
     expect(s.wins).toEqual({ radiant: 0, dire: 0, none: 2 })

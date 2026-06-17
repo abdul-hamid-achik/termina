@@ -22,6 +22,13 @@ interface HeroWinRate {
   wins: number
   /** Percent of this hero's games that its team won (0 when it never appeared). */
   winRate: number
+  /**
+   * True only when the win-rate clears ~2 std devs of 50% for this hero's
+   * appearance count — i.e. a real over/under-performer, not small-sample noise.
+   * With few appearances (the common case in a small batch) this stays false, so
+   * a hero isn't tuned off a handful of games.
+   */
+  significant: boolean
 }
 
 export interface SimSummary {
@@ -75,7 +82,9 @@ export function summarizeSimResults(results: SimResult[]): SimSummary {
   const heroWinRates: HeroWinRate[] = [...appearances.entries()]
     .map(([heroId, appears]) => {
       const won = heroWins.get(heroId) ?? 0
-      return { heroId, appearances: appears, wins: won, winRate: (won / appears) * 100 }
+      const share = won / appears
+      const significant = Math.abs(share - 0.5) > 2 * Math.sqrt(0.25 / appears)
+      return { heroId, appearances: appears, wins: won, winRate: share * 100, significant }
     })
     .sort((a, b) => b.winRate - a.winRate || b.appearances - a.appearances)
 
