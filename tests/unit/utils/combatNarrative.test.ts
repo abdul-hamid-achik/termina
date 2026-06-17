@@ -522,3 +522,81 @@ describe('collapseStructureDamage (direct)', () => {
     expect(out).toHaveLength(3) // the gap prevents collapsing across it
   })
 })
+
+describe('eventToLine: remaining event-type lines', () => {
+  const line = (type: string, payload: Record<string, unknown>) =>
+    eventToLine(ev(type, payload), ctx)
+
+  it('heal → restored line', () => {
+    expect(line('heal', { sourceId: 'me', targetId: 'ally1', amount: 50 })!.text).toContain(
+      'restored 50 to ally1',
+    )
+  })
+  it('creep_lasthit → last-hit with gold', () => {
+    expect(
+      line('creep_lasthit', { playerId: 'me', creepType: 'melee', goldAwarded: 40 })!.text,
+    ).toContain('last-hit a melee creep (+40g)')
+  })
+  it('creep_deny → deny line', () => {
+    expect(line('creep_deny', { playerId: 'me', creepType: 'ranged' })!.text).toContain(
+      'denied a ranged creep',
+    )
+  })
+  it('ability_used → cast line with and without a target', () => {
+    expect(
+      line('ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' })!.text,
+    ).toContain('cast ability:q on enemy1')
+    const noTarget = line('ability_used', { playerId: 'me', abilityId: 'w' })!.text
+    expect(noTarget).toContain('cast ability:w')
+    expect(noTarget).not.toContain(' on ')
+  })
+  it('enemy_missing → MISSING callout', () => {
+    expect(
+      line('enemy_missing', { playerId: 'enemy1', lastSeenZone: 'mid-river' })!.text,
+    ).toContain('[MISSING]')
+  })
+  it('neutral_killed → camp cleared', () => {
+    expect(line('neutral_killed', { playerId: 'me', neutralType: 'kobold' })!.text).toContain(
+      'cleared a kobold camp',
+    )
+  })
+  it('aegis_used → reincarnation', () => {
+    expect(line('aegis_used', { playerId: 'me' })!.text).toContain('reincarnated via the Aegis')
+  })
+  it('roshan_respawn → respawn line', () => {
+    expect(line('roshan_respawn', {})!.text).toContain('Roshan has respawned')
+  })
+  it('roshan_killed with no killer team → generic fallen line', () => {
+    expect(line('roshan_killed', {})!.text).toContain('Roshan has fallen')
+  })
+  it('talent_selected → learned line', () => {
+    expect(line('talent_selected', { playerId: 'me', talentName: 'Sharp Edge' })!.text).toContain(
+      'learned Sharp Edge',
+    )
+  })
+  it('trap_triggered → trap caught line', () => {
+    expect(
+      line('trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 80 })!
+        .text,
+    ).toContain('trap caught')
+  })
+  it('teleport_cancelled → cancelled with reason', () => {
+    expect(line('teleport_cancelled', { playerId: 'me', reason: 'took damage' })!.text).toContain(
+      'cancelled (took damage)',
+    )
+  })
+  it('glyph_used → glyph activated', () => {
+    expect(line('glyph_used', { team: 'radiant' })!.text).toContain('activated the Glyph')
+  })
+  it('surrender_vote → vote tally', () => {
+    expect(
+      line('surrender_vote', { team: 'radiant', votesFor: 2, votesNeeded: 3 })!.text,
+    ).toContain('surrender vote: 2/3')
+  })
+  it('surrendered → victory line', () => {
+    expect(line('surrendered', { team: 'dire', winner: 'radiant' })!.text).toContain('surrendered')
+  })
+  it('an internal event (contest_lasthit) produces no line', () => {
+    expect(line('contest_lasthit', { playerId: 'me' })).toBeNull()
+  })
+})
