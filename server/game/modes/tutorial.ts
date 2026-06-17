@@ -1,6 +1,7 @@
 import type { Command } from '~~/shared/types/commands'
-import type { GameState } from '~~/shared/types/game'
+import type { GameState, TeamId } from '~~/shared/types/game'
 import { TUTORIAL_FLOW, TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
+import { HERO_IDS } from '~~/shared/constants/heroes'
 
 /**
  * Tutorial mode — staggered command unlocks (server side).
@@ -60,6 +61,37 @@ export function isCommandAllowedInTutorial(commandType: Command['type'], step: n
 export function tutorialLockMessage(step: number): string {
   const current = TUTORIAL_FLOW[Math.min(step, TUTORIAL_FLOW.length - 1)]
   return current ? current.hint : '🎓 Tutorial: follow the current step first.'
+}
+
+export interface TutorialRosterPlayer {
+  playerId: string
+  team: TeamId
+  heroId: string
+}
+
+/**
+ * The roster for a tutorial game: a calm 2v2 on the one-lane map — the human
+ * plus one ally bot versus two enemy bots, all with distinct heroes. The caller
+ * pins the bots to mid via registerBots({ forceLane: 'mid' }). Pure so the shape
+ * is unit-tested without booting the game server.
+ */
+export function buildTutorialRoster(
+  humanId: string,
+  humanHeroId: string,
+  gameId: string,
+): TutorialRosterPlayer[] {
+  const used = new Set<string>([humanHeroId])
+  const nextHero = (): string => {
+    const h = HERO_IDS.find((x) => !used.has(x)) ?? HERO_IDS[0]!
+    used.add(h)
+    return h
+  }
+  return [
+    { playerId: humanId, team: 'radiant', heroId: humanHeroId },
+    { playerId: `bot_ally_${gameId}`, team: 'radiant', heroId: nextHero() },
+    { playerId: `bot_enemy0_${gameId}`, team: 'dire', heroId: nextHero() },
+    { playerId: `bot_enemy1_${gameId}`, team: 'dire', heroId: nextHero() },
+  ]
 }
 
 /**

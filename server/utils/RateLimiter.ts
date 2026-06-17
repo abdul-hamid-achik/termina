@@ -135,6 +135,8 @@ const SCOPE_CONFIGS: Record<string, RateLimitConfig> = {
   queue: { maxActionsPerSecond: 1, maxBurstSize: 5 },
   // Draft picks/bans per user
   lobby: { maxActionsPerSecond: 2, maxBurstSize: 6 },
+  // Tutorial game creation per user — cheap to ask for, but cap rapid spamming
+  tutorial: { maxActionsPerSecond: 0.5, maxBurstSize: 3 },
 }
 
 /**
