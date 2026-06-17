@@ -13,6 +13,9 @@ import {
   MAX_LEVEL,
   HERO_KILL_XP_BASE,
   HERO_KILL_XP_PER_LEVEL,
+  ASSIST_XP_RATIO,
+  POWER_SPIKE_LEVELS,
+  IN_COMBAT_BUFF_DURATION,
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
   GLYPH_DURATION_TICKS,
@@ -1220,8 +1223,8 @@ function handleDeaths(
         const killerForXp = players[killerId]!
         players[killerId] = { ...killerForXp, xp: killerForXp.xp + killXp }
 
-        // Award 50% XP to assisters
-        const assistXp = Math.floor(killXp * 0.5)
+        // Award assisters a fraction of the kill XP (ASSIST_XP_RATIO)
+        const assistXp = Math.floor(killXp * ASSIST_XP_RATIO)
         for (const assistId of assisters) {
           const assister = players[assistId]
           if (assister) {
@@ -1304,7 +1307,7 @@ function checkLevelUps(state: GameState, events: GameEngineEvent[]): GameState {
       })
 
       // Power spike notifications for key levels
-      if (newLevel === 6 || newLevel === 12 || newLevel === 18) {
+      if ((POWER_SPIKE_LEVELS as readonly number[]).includes(newLevel)) {
         events.push({
           _tag: 'power_spike',
           tick: state.tick,
@@ -1347,7 +1350,12 @@ function applyInCombatBuffs(state: GameState, events: GameEngineEvent[]): GameSt
     if (existing >= 0) {
       buffs[existing] = { ...buffs[existing]!, ticksRemaining: 3 }
     } else {
-      buffs.push({ id: 'inCombat', stacks: 1, ticksRemaining: 3, source: 'system' })
+      buffs.push({
+        id: 'inCombat',
+        stacks: 1,
+        ticksRemaining: IN_COMBAT_BUFF_DURATION,
+        source: 'system',
+      })
     }
     players = { ...players, [pid]: { ...player, buffs } }
   }

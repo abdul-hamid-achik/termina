@@ -100,7 +100,6 @@ export const ROSHAN_RESPAWN_TICKS = 90
 export const ROSHAN_BASE_HP = 5000
 export const ROSHAN_HP_PER_MINUTE = 100
 export const ROSHAN_ATTACK = 150
-export const ROSHAN_ATTACK_RANGE = 1 // adjacent zones
 export const ROSHAN_AEGIS_TICKS = 300 // 5 minutes at 4s/tick
 
 // ── Runes ───────────────────────────────────────────────────────────

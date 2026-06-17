@@ -61,7 +61,6 @@ import {
   SOBI_MASK_REGEN_PERCENT,
   HEART_REGEN_PERCENT,
   SELL_REFUND_RATIO,
-  // IN_COMBAT_BUFF_DURATION,
 } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'

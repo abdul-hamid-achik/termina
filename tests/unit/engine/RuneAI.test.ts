@@ -7,7 +7,11 @@ import {
 } from '../../../server/game/engine/RuneAI'
 import type { GameState, PlayerState, RuneState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { RUNE_BUFF_TICKS, RUNE_DURATION_TICKS } from '../../../shared/constants/balance'
+import {
+  RUNE_BUFF_TICKS,
+  RUNE_DURATION_TICKS,
+  REGEN_RUNE_HEAL_PERCENT,
+} from '../../../shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -383,9 +387,9 @@ describe('RuneAI', () => {
       expect(result.players['p1']!.hp).toBe(510)
     })
 
-    it('should heal 5% HP per tick with regen', () => {
+    it('should heal REGEN_RUNE_HEAL_PERCENT of max HP per tick with regen', () => {
       const maxHp = 500
-      const expectedHeal = Math.floor(maxHp * 0.05)
+      const expectedHeal = Math.floor(maxHp * REGEN_RUNE_HEAL_PERCENT)
       const state = makeGameState({
         tick: 60,
         players: {
@@ -402,9 +406,9 @@ describe('RuneAI', () => {
       expect(result.players['p1']!.hp).toBe(400 + expectedHeal)
     })
 
-    it('should heal 5% MP per tick with regen', () => {
+    it('should heal REGEN_RUNE_HEAL_PERCENT of max MP per tick with regen', () => {
       const maxMp = 200
-      const expectedHeal = Math.floor(maxMp * 0.05)
+      const expectedHeal = Math.floor(maxMp * REGEN_RUNE_HEAL_PERCENT)
       const state = makeGameState({
         tick: 60,
         players: {
