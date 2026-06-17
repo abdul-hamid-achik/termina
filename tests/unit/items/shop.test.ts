@@ -880,5 +880,25 @@ describe('Shop', () => {
         expect(wards[0]!.type).toBe('observer')
       }
     })
+
+    it('accepts a {kind:"zone"} target too (the bare-use auto-target form)', async () => {
+      // The client's `use observer_ward` auto-target resolves to a zone TargetRef
+      // (zone:<current>); usePlaceWard must read the zone from it, not just a string.
+      const player = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        items: ['observer_ward', null, null, null, null, null],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'observer_ward', { kind: 'zone', zone: 'mid-river' }),
+      )
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        expect(exit.value.zones['mid-river']!.wards).toHaveLength(1)
+      }
+    })
   })
 })
