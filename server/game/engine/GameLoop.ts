@@ -1406,6 +1406,5 @@ function checkWinCondition(state: GameState): TeamId | null {
 // NOTE: the server used to maintain a global `state.lastSeen` here (and auto-emit
 // `enemy_missing`), but that was dead-and-wrong — a single un-fogged global field
 // can't model the per-viewer/fog-aware "last seen" concept, which the CLIENT does
-// correctly in store.lastSeen. The per-tick writer was removed; `state.lastSeen`
-// is now vestigial (initialized but unread server-side), removable in a focused
-// pass that also touches the GameState type + the makeGameState test fixtures.
+// correctly in store.lastSeen. Both the writer and the GameState field are gone;
+// player-initiated enemy-missing callouts go through the `missing` command.

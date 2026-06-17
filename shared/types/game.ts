@@ -135,7 +135,6 @@ export interface GameState {
   events: GameEvent[]
   winner?: TeamId | null // set when the game ends (Ancient destroyed or surrender)
   surrenderVotes: { radiant: Set<string>; dire: Set<string> }
-  lastSeen: Record<string, { zone: string; tick: number }> // Track last seen position for each player
   timeOfDay: 'day' | 'night'
   dayNightTick: number
   /** Which map this game runs on (see shared/constants/maps). Absent = full 5v5.
