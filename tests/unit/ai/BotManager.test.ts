@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   createBotPlayers,
   isBot,
@@ -8,6 +8,7 @@ import {
   getBotDifficulty,
   cleanupGame,
 } from '../../../server/game/ai/BotManager'
+import * as BotAI from '../../../server/game/ai/BotAI'
 
 describe('BotManager', () => {
   describe('isBot', () => {
@@ -176,6 +177,20 @@ describe('BotManager', () => {
 
     it('does not crash when cleaning up unknown game', () => {
       expect(() => cleanupGame('nonexistent')).not.toThrow()
+    })
+
+    it("clears each bot's BotAI combo state (fixes a comboStates leak)", () => {
+      // comboStates (BotAI) is keyed by bot id and only pruned mid-combo, so it
+      // leaked an entry per bot. cleanupGame must now clear it for every bot.
+      const spy = vi.spyOn(BotAI, 'cleanupBotState')
+      registerBots('leak-game', [
+        { playerId: 'bot_a', team: 'radiant', heroId: 'echo' },
+        { playerId: 'bot_b', team: 'dire', heroId: 'cron' },
+      ])
+      cleanupGame('leak-game')
+      expect(spy).toHaveBeenCalledWith('bot_a')
+      expect(spy).toHaveBeenCalledWith('bot_b')
+      spy.mockRestore()
     })
   })
 

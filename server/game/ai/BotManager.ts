@@ -2,6 +2,10 @@ import type { TeamId } from '~~/shared/types/game'
 import type { QueueEntry } from '~~/server/game/matchmaking/queue'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { HeroRole } from '~~/shared/types/hero'
+// Value import (function, used only at runtime in cleanupGame) — BotAI imports
+// getBotDifficultyConfig back from here, but the cycle is benign: neither side
+// invokes the other during module evaluation.
+import { cleanupBotState } from './BotAI'
 
 const gameBots = new Map<string, Set<string>>()
 const gameBotLanes = new Map<string, Map<string, string>>()
@@ -290,6 +294,12 @@ export function setBotDifficulty(gameId: string, botId: string, difficulty: BotD
 }
 
 export function cleanupGame(gameId: string): void {
+  // Clear each bot's per-bot combo state (BotAI's comboStates) before dropping
+  // the roster. comboStates is keyed by bot id and is only pruned mid-combo, so
+  // a bot that ended the game mid-combo would otherwise leak its entry forever.
+  for (const botId of gameBots.get(gameId) ?? []) {
+    cleanupBotState(botId)
+  }
   gameBots.delete(gameId)
   gameBotLanes.delete(gameId)
   gameBotDifficulties.delete(gameId)
