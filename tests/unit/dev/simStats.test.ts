@@ -48,6 +48,24 @@ describe('summarizeSimResults', () => {
     expect(s.heroWinRates[0]!.heroId).toBe('winner_hero') // sorted by win rate desc
   })
 
+  it('does NOT flag a small-sample side wobble as significant (within noise)', () => {
+    // 6 radiant / 10 dire over 16 decided — inside ~2σ of a fair coin, so noise.
+    const results = [
+      ...Array.from({ length: 6 }, () => r('radiant', 100, ['a'], ['b'])),
+      ...Array.from({ length: 10 }, () => r('dire', 100, ['a'], ['b'])),
+    ]
+    expect(summarizeSimResults(results).sideBiasSignificant).toBe(false)
+  })
+
+  it('flags a clear, large-sample side bias as significant', () => {
+    // 45 radiant / 5 dire over 50 decided — far beyond 2σ, a real imbalance.
+    const results = [
+      ...Array.from({ length: 45 }, () => r('radiant', 100, ['a'], ['b'])),
+      ...Array.from({ length: 5 }, () => r('dire', 100, ['a'], ['b'])),
+    ]
+    expect(summarizeSimResults(results).sideBiasSignificant).toBe(true)
+  })
+
   it('handles an all-stall batch (no decided games → 0% rates)', () => {
     const s = summarizeSimResults([r(null, 500, ['a'], ['b']), r(null, 600, ['a'], ['b'])])
     expect(s.wins).toEqual({ radiant: 0, dire: 0, none: 2 })
