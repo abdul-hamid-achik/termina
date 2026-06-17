@@ -116,9 +116,19 @@ export function advanceTutorialAfterTick(
 
   const taught = TUTORIAL_FLOW[step]!.teaches
   const rejectedIds = new Set(rejected.map((r) => r.playerId))
-  const completed = validActions.some(
+  const actor = validActions.find(
     (a) =>
       !a.playerId.startsWith('bot_') && a.command.type === taught && !rejectedIds.has(a.playerId),
   )
-  return completed ? { ...state, tutorialStep: step + 1 } : state
+  if (!actor) return state
+
+  // The move step teaches "walk to the lane", not "take one step": from the
+  // fountain the first hop only reaches base, where the next steps (last-hit a
+  // creep, cast on an enemy) have no targets. Hold the step until the human has
+  // actually left their base/fountain into the field.
+  if (taught === 'move' && /fountain|base/.test(state.players[actor.playerId]?.zone ?? '')) {
+    return state
+  }
+
+  return { ...state, tutorialStep: step + 1 }
 }

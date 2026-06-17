@@ -56,14 +56,19 @@ describe('tutorial mode', () => {
       expect(lockedThisTick(game.lastRejected)).toBe(false)
     })
 
-    it('advances to the next step when the human performs the taught verb', async () => {
+    it('advances the move step only once the human reaches the lane', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
       expect((await game.state()).tutorialStep).toBe(0)
 
+      // From the fountain the first hop only reaches base (still "home") — the
+      // move step holds, since the attack/cast steps need lane targets.
       game.submit({ type: 'move', zone: 'radiant-base' })
       await game.tick()
+      expect((await game.state()).tutorialStep).toBe(0)
 
-      // A successful move teaches step 0 → the tutorial advances to step 1.
+      // Stepping into the lane completes the move step → advances to attack.
+      game.submit({ type: 'move', zone: 'mid-t3-rad' })
+      await game.tick()
       expect((await game.state()).tutorialStep).toBe(1)
     })
 

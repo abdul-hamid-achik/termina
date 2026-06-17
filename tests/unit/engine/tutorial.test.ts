@@ -12,9 +12,14 @@ import {
 } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
 
-/** Minimal tutorial-mode state for the pure advancement helper. */
-function tutorialState(step: number): GameState {
-  return { mode: 'tutorial', tutorialStep: step } as unknown as GameState
+/** Minimal tutorial-mode state for the pure advancement helper. The human's
+ *  zone matters for the move step (it holds until they leave base/fountain). */
+function tutorialState(step: number, humanZone = 'mid-river'): GameState {
+  return {
+    mode: 'tutorial',
+    tutorialStep: step,
+    players: { p1: { id: 'p1', zone: humanZone } },
+  } as unknown as GameState
 }
 
 describe('tutorial flow', () => {
@@ -138,13 +143,25 @@ describe('tutorial flow', () => {
   })
 
   describe('advanceTutorialAfterTick', () => {
-    it('advances when the human performs the taught verb (accepted)', () => {
+    it('advances the move step when the human reaches the lane', () => {
       const next = advanceTutorialAfterTick(
-        tutorialState(0),
+        tutorialState(0, 'mid-river'),
         [{ playerId: 'p1', command: { type: 'move', zone: 'mid-river' } }],
         [],
       )
       expect(next.tutorialStep).toBe(1)
+    })
+
+    it('holds the move step while the human is still in base/fountain', () => {
+      for (const zone of ['radiant-base', 'radiant-fountain']) {
+        const state = tutorialState(0, zone)
+        const next = advanceTutorialAfterTick(
+          state,
+          [{ playerId: 'p1', command: { type: 'move', zone } }],
+          [],
+        )
+        expect(next).toBe(state) // a hop within home doesn't complete the move step
+      }
     })
 
     it('does not advance on a different verb', () => {
