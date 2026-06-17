@@ -238,4 +238,52 @@ describe('shop', () => {
     // The one-shot charge is consumed by that cast.
     expect((await game.me()).buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
   })
+
+  it('Shiva’s Guard novas every co-located enemy — magic damage + a slow', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: ['shivas_guard', null, null, null, null, null],
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+      },
+    }))
+
+    game.submit({ type: 'use', item: 'shivas_guard' })
+    await game.tick()
+
+    const foe = await game.player(ENEMY)
+    // The nova both damages (HP cut below full) and slows the co-located enemy.
+    expect(foe.hp).toBeLessThan(foe.maxHp)
+    expect(foe.buffs.some((b) => b.id === 'slow')).toBe(true)
+  })
+
+  it('Veil of Discord debuffs co-located enemies with magic vulnerability', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: ['veil_of_discord', null, null, null, null, null],
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [] },
+      },
+    }))
+
+    game.submit({ type: 'use', item: 'veil_of_discord' })
+    await game.tick()
+
+    // The amp lands on the ENEMY (not the caster) — the magic-vuln debuff that
+    // getIncomingDamageMultiplier reads.
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'veil_discord')).toBe(true)
+    expect((await game.me()).buffs.some((b) => b.id === 'veil_discord')).toBe(false)
+  })
 })
