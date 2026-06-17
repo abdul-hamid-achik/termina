@@ -564,9 +564,12 @@ function useHurricanePike(
     const pushZone = safeZones[Math.floor(Math.random() * safeZones.length)]!
 
     let updated: PlayerState = { ...player, zone: pushZone }
+    // "Can attack during push": a brief attack steroid for the 2-tick thrust
+    // window. The flat bonus lives in `stacks` and is summed in getEffectiveAttack
+    // (mirrors power_treads_attack). Previously stacks:1 with no reader = dead.
     updated = applyBuff(updated, {
       id: 'hurricane_pike_attacks',
-      stacks: 1,
+      stacks: 30,
       ticksRemaining: 2,
       source: 'hurricane_pike',
     })

@@ -88,7 +88,8 @@ function getBuffStacks(player: PlayerState, buffId: string): number {
  * Effective attack: hero base + growth, plus item attack, plus talent attack,
  * plus additive attack buffs (mutex Deadlock, thread Fork, cron Uptime, malloc
  * Heap Growth + Allocate — both malloc attack buffs were created but never read
- * here, so Malloc's gold-scaling passive and Q were each giving +0 attack).
+ * here, so Malloc's gold-scaling passive and Q were each giving +0 attack — Power
+ * Treads attack mode, and Hurricane Pike's post-thrust attack steroid).
  */
 export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
@@ -103,7 +104,8 @@ export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): 
     getBuffStacks(player, 'uptimeAtk') +
     getBuffStacks(player, 'heapGrowth') +
     getBuffStacks(player, 'allocate') +
-    getBuffStacks(player, 'power_treads_attack')
+    getBuffStacks(player, 'power_treads_attack') +
+    getBuffStacks(player, 'hurricane_pike_attacks')
   const attack = baseAttack + itemBonus + talentBonus + buffBonus
   // ping Timeout (attackReduction) is a % reduction stored in the buff stacks.
   const reductionPct = Math.min(100, getBuffStacks(player, 'attackReduction'))
