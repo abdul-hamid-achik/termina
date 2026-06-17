@@ -5,7 +5,13 @@ import {
   deriveKillFeed,
   type NarrativeContext,
 } from '../../../app/utils/combatNarrative'
-import { collapseStructureDamage } from '../../../app/utils/combatLog'
+import {
+  collapseStructureDamage,
+  ancientLabel,
+  isStructureTarget,
+  teamLabel,
+  type CombatLine,
+} from '../../../app/utils/combatLog'
 import type { GameEvent } from '../../../shared/types/game'
 
 const teams: Record<string, string> = {
@@ -449,5 +455,70 @@ describe('eventToLine: narration coverage for every event type', () => {
     ]) {
       expect(eventToLine(ev(t, {}), ctx)).toBeNull()
     }
+  })
+})
+
+describe('combatLog label helpers', () => {
+  it('ancientLabel resolves the team Core, or null for non-ancient ids', () => {
+    expect(ancientLabel('ancient_radiant')).toBe('the Radiant Core')
+    expect(ancientLabel('ancient_dire')).toBe('the Dire Core')
+    // Unknown team falls back to a readable label rather than null/crash.
+    expect(ancientLabel('ancient_neutral')).toBe('the neutral Core')
+    expect(ancientLabel('tower_mid_t1_rad')).toBeNull()
+    expect(ancientLabel('hero_echo')).toBeNull()
+  })
+
+  it('isStructureTarget is true only for tower/ancient string ids', () => {
+    expect(isStructureTarget('tower_mid_t1_rad')).toBe(true)
+    expect(isStructureTarget('ancient_dire')).toBe(true)
+    expect(isStructureTarget('hero_echo')).toBe(false)
+    expect(isStructureTarget('creep_3')).toBe(false)
+    // Non-string ids (null/undefined/number) are not structures.
+    expect(isStructureTarget(null)).toBe(false)
+    expect(isStructureTarget(undefined)).toBe(false)
+    expect(isStructureTarget(42)).toBe(false)
+  })
+
+  it('teamLabel title-cases a team id', () => {
+    expect(teamLabel('radiant')).toBe('Radiant')
+    expect(teamLabel('dire')).toBe('Dire')
+  })
+})
+
+describe('collapseStructureDamage (direct)', () => {
+  const fmt = ({ baseText, count, total }: { baseText: string; count: number; total: number }) =>
+    `${baseText} ×${count} (${total})`
+
+  it('collapses consecutive same-key lines, accumulating count + total', () => {
+    const lines: CombatLine[] = [
+      { tick: 1, text: 'You hit the Core', type: 'damage', dedupKey: 'k', dmgAmount: 70 },
+      { tick: 2, text: 'You hit the Core', type: 'damage', dedupKey: 'k', dmgAmount: 50 },
+    ]
+    const out = collapseStructureDamage(lines, fmt)
+    expect(out).toHaveLength(1)
+    expect(out[0]!.count).toBe(2)
+    expect(out[0]!.tick).toBe(2) // keeps the latest tick
+    expect(out[0]!.text).toBe('You hit the Core ×2 (120)')
+    // internal bookkeeping fields are stripped from the result
+    expect('total' in out[0]!).toBe(false)
+    expect('baseText' in out[0]!).toBe(false)
+  })
+
+  it('treats a missing dmgAmount as 0 when accumulating', () => {
+    const lines: CombatLine[] = [
+      { tick: 1, text: 'hit', type: 'damage', dedupKey: 'k' },
+      { tick: 2, text: 'hit', type: 'damage', dedupKey: 'k' },
+    ]
+    expect(collapseStructureDamage(lines, fmt)[0]!.text).toBe('hit ×2 (0)')
+  })
+
+  it('passes non-dedup lines through and a gap resets the run', () => {
+    const lines: CombatLine[] = [
+      { tick: 1, text: 'A', type: 'damage', dedupKey: 'k', dmgAmount: 10 },
+      { tick: 2, text: 'kill', type: 'kill' }, // no dedupKey → passthrough + gap
+      { tick: 3, text: 'A', type: 'damage', dedupKey: 'k', dmgAmount: 10 },
+    ]
+    const out = collapseStructureDamage(lines, fmt)
+    expect(out).toHaveLength(3) // the gap prevents collapsing across it
   })
 })
