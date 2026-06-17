@@ -272,4 +272,37 @@ describe('CombatLog filters + density', () => {
     expect(wrapper.text()).toContain('a kill happened')
     expect(wrapper.text()).toContain('night falls')
   })
+
+  it('OBJ filter shows objectives and kills (plus system), hiding plain damage', async () => {
+    const wrapper = mount(CombatLog, { props: { events } })
+    await wrapper.get('[data-testid="log-filter-obj"]').trigger('click')
+    expect(wrapper.text()).toContain('night falls') // objective kept
+    expect(wrapper.text()).toContain('a kill happened') // kill kept
+    expect(wrapper.text()).toContain('sys chat line') // system never filtered away
+    expect(wrapper.text()).not.toContain('I hit them') // plain damage dropped
+    expect(wrapper.text()).not.toContain('bystander chip')
+  })
+
+  it('shows the "no events match" notice when a filter excludes everything', async () => {
+    // A lone world-salience damage line: dropped by ME, and no system line survives.
+    const wrapper = mount(CombatLog, {
+      props: { events: [{ tick: 1, text: 'far-away fight', type: 'damage', salience: 'world' }] },
+    })
+    await wrapper.get('[data-testid="log-filter-me"]').trigger('click')
+    expect(wrapper.text()).toContain('no events match')
+  })
+
+  it('terse density also hides bystander gold spam', async () => {
+    const wrapper = mount(CombatLog, {
+      props: {
+        events: [
+          { tick: 1, text: 'someone banked gold', type: 'gold', salience: 'world' },
+          { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+        ],
+      },
+    })
+    await wrapper.get('[data-testid="log-density-toggle"]').trigger('click')
+    expect(wrapper.text()).not.toContain('someone banked gold') // world gold hidden in terse
+    expect(wrapper.text()).toContain('a kill happened')
+  })
 })
