@@ -11,9 +11,14 @@ import {
   visionSummary,
   dayNightReadout,
   sparkline,
+  shortZone,
 } from '../../../app/utils/strategy'
 import { ITEMS } from '../../../shared/constants/items'
-import { ROSHAN_RESPAWN_TICKS, RUNE_DURATION_TICKS } from '../../../shared/constants/balance'
+import {
+  ROSHAN_RESPAWN_TICKS,
+  RUNE_DURATION_TICKS,
+  RUNE_INTERVAL_TICKS,
+} from '../../../shared/constants/balance'
 import { ZONES } from '../../../shared/constants/zones'
 
 const [sampleItemId, sampleItem] = Object.entries(ITEMS)[0]!
@@ -81,6 +86,17 @@ describe('strategy: roshan', () => {
   it('handles unknown roshan', () => {
     expect(formatRoshan(null, 5).status).toBe('unknown')
   })
+  it('falls back to 100% hp when maxHp is 0 (avoids divide-by-zero)', () => {
+    const r = formatRoshan({ alive: true, hp: 0, maxHp: 0, deathTick: null }, 5)
+    expect(r.status).toBe('up')
+    expect(r.hpPct).toBe(100)
+  })
+  it('shows "respawning" for a dead roshan with no known death tick', () => {
+    const r = formatRoshan({ alive: false, hp: 0, maxHp: 5000, deathTick: null }, 50)
+    expect(r.status).toBe('dead')
+    expect(r.respawnIn).toBe(0)
+    expect(r.label).toBe('ROSHAN respawning')
+  })
 })
 
 describe('strategy: runes', () => {
@@ -94,6 +110,11 @@ describe('strategy: runes', () => {
     expect(r.live).toHaveLength(0)
     expect(r.nextIn).toBe(5) // 55 % 60 -> next at 60
     expect(r.label).toContain('next')
+  })
+  it('reports a full interval until the next spawn at an exact multiple', () => {
+    // At an exact interval boundary the next window is a FULL interval away, not 0.
+    const r = formatRunes([], RUNE_INTERVAL_TICKS)
+    expect(r.nextIn).toBe(RUNE_INTERVAL_TICKS)
   })
 })
 
@@ -158,5 +179,19 @@ describe('strategy: sparkline', () => {
   })
   it('returns empty for empty input', () => {
     expect(sparkline([])).toBe('')
+  })
+  it('ignores non-finite values (NaN / Infinity)', () => {
+    // Only the two finite samples (1, 3) are plotted → a 2-char low→high ramp.
+    expect(sparkline([1, NaN, 3, Infinity])).toBe('▁█')
+  })
+})
+
+describe('strategy: shortZone', () => {
+  it('spaces out the id and upper-cases tower tiers', () => {
+    expect(shortZone('mid-t1-rad')).toBe('mid T1 rad')
+    expect(shortZone('top-t2-dire')).toBe('top T2 dire')
+  })
+  it('leaves a plain zone id readable', () => {
+    expect(shortZone('mid-river')).toBe('mid river')
   })
 })
