@@ -319,6 +319,16 @@ describe('Malloc Hero', () => {
       expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
     })
 
+    it('costs the caster 20% of current HP (self-sacrifice)', () => {
+      const player = makePlayer({ level: 6, mp: 500, hp: 1000, maxHp: 1000 })
+      const state = makeState([player, makeEnemy()])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+
+      // 20% of 1000 current HP = 200 burned → 800 left.
+      expect(result.state.players['p1']!.hp).toBe(800)
+    })
+
     it('deducts mana and sets cooldown', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const state = makeState([player])

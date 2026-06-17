@@ -665,7 +665,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'malloc-r',
         name: 'Stack Overflow',
         description:
-          'Overflow the stack with raw power, dealing massive physical damage to all enemies in the zone. Costs 20% of current HP and MP.',
+          'Overflow the stack with raw power, dealing massive physical damage to all enemies in the zone. Costs 20% of current HP.',
         manaCost: 150,
         cooldownTicks: 50,
         targetType: 'none',
