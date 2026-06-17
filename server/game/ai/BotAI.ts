@@ -190,7 +190,10 @@ const BOT_CONSUMABLES = ['healing_salve', 'town_portal_scroll']
 // Cyclone) all require an alive enemy hero in the same zone, which the in-combat
 // caller already has. Only items that appear in a build order are listed — a bot
 // never owns the rest. Defensive = survive a fight; offensive = control + burst.
-const DEFENSIVE_COMBAT_ITEMS = ['black_king_bar', 'blade_mail']
+// All three are self-cast (no target): BKB (magic immunity) and Blade Mail
+// (reflect) are carry/tank cores; Lotus Orb (spell-reflect shield) is the
+// support core — so under-pressure survival now fires across every role.
+const DEFENSIVE_COMBAT_ITEMS = ['black_king_bar', 'blade_mail', 'lotus_orb']
 
 /** Bot owns the item and its active is not on cooldown (mirrors validateAction). */
 function itemOffCooldown(bot: PlayerState, item: string): boolean {
