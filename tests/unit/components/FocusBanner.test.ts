@@ -94,6 +94,23 @@ describe('FocusBanner', () => {
     expect(wrapper.find('[data-testid="focus-recommendation"]').text()).toContain('Low HP')
   })
 
+  it('shows the local HP readout, reddened + pulsing when critically low', () => {
+    seed({ me: { hp: 90, maxHp: 600 }, enemies: 0 })
+    const hp = mount(FocusBanner).find('[data-testid="focus-hp"]')
+    expect(hp.exists()).toBe(true)
+    expect(hp.text()).toContain('90/600')
+    expect(hp.text()).toContain('15%')
+    expect(hp.classes()).toContain('text-dire')
+    expect(hp.classes()).toContain('animate-pulse')
+  })
+
+  it('shows the HP readout without danger styling when healthy', () => {
+    seed({ me: { hp: 540, maxHp: 600 }, enemies: 0 })
+    const hp = mount(FocusBanner).find('[data-testid="focus-hp"]')
+    expect(hp.text()).toContain('540/600')
+    expect(hp.classes()).not.toContain('text-dire')
+  })
+
   it('shows a dead recommendation when the hero is dead', () => {
     seed({ me: { alive: false, hp: 0 }, enemies: 1 })
     const wrapper = mount(FocusBanner)
