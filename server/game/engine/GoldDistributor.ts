@@ -92,6 +92,10 @@ export function awardKill(
   killerId: string,
   victimId: string,
   assisters: string[],
+  // The victim's kill streak BEFORE this death. Passed explicitly because the
+  // caller resets killStreak to 0 on death before this runs, so reading it off
+  // the (already-reset) state here would zero out every shutdown bounty.
+  victimStreak?: number,
 ): GameState {
   let updatedState = state
   const victim = state.players[victimId]
@@ -103,7 +107,7 @@ export function awardKill(
 
   // Shutdown bounty: the bonus scales with the VICTIM's kill streak, so
   // ending a fed player's run pays out — anti-snowball, not pro-snowball.
-  const streak = Math.min(victim.killStreak ?? 0, 10)
+  const streak = Math.min(victimStreak ?? victim.killStreak ?? 0, 10)
   const baseGold = KILL_BOUNTY_BASE + KILL_BOUNTY_PER_STREAK * streak
   const killerGold = Math.round(baseGold * comebackMultiplier(state, killer.team))
   updatedState = updatePlayerGold(updatedState, killerId, killerGold)

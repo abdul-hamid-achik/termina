@@ -1192,7 +1192,10 @@ function handleDeaths(
         // Award kill gold
         const assisters = [...contributors].filter((id) => id !== killerId && players[id])
         const tempState: GameState = { ...state, players }
-        const awarded = awardKill(tempState, killerId, pid, assisters)
+        // `player` is the loop's original victim — its killStreak still holds the
+        // pre-death value (players[pid] was reset to 0 above). Pass it so the
+        // shutdown bounty actually scales with how fed the victim was.
+        const awarded = awardKill(tempState, killerId, pid, assisters, player.killStreak)
         players = { ...awarded.players }
 
         // Increment kill count + streak
