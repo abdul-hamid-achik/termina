@@ -205,16 +205,15 @@ describe('Echo Hero', () => {
       expect(updated.buffs.some((b) => b.id === 'phaseShift')).toBe(true)
     })
 
-    it('applies move speed buff', () => {
+    it('does not apply a dead moveSpeed buff (movement is a fixed 1 zone/tick)', () => {
       const player = makePlayer()
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
-      const buff = result.state.players['p1']!.buffs.find((b) => b.id === 'moveSpeed')
-      expect(buff).toBeDefined()
-      expect(buff!.stacks).toBe(50)
-      expect(buff!.ticksRemaining).toBe(2)
+      // The moveSpeed stat is never consumed, so the W must not grant it — the
+      // dodge is the whole effect, and the description no longer promises speed.
+      expect(result.state.players['p1']!.buffs.some((b) => b.id === 'moveSpeed')).toBe(false)
     })
 
     it('phaseShift buff has 1 tick duration', () => {

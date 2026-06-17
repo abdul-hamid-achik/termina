@@ -96,10 +96,13 @@ describe('player action resolution (engine truth)', () => {
   })
 
   it('casting a self-buff resolves: cooldown set and a buff granted', () => {
-    const human = makePlayer({ level: 6 })
+    // firewall W is self-target and unconditionally grants a multi-tick shield —
+    // so the buff survives the tick and is observable. (echo W was used here
+    // before, but its only lasting buff was a dead moveSpeed one; its real
+    // phaseShift is a 1-tick dodge reaped in the cast tick, so nothing persisted.)
+    const human = makePlayer({ level: 6, heroId: 'firewall' })
     const state = makeGameState({ human })
 
-    // echo W (Phase Shift): self-target, 50 mana, 12-tick cooldown, grants buffs.
     // (Raw mp/maxMp can't be asserted exactly — the engine recomputes maxMp from
     // hero + level and applies regen each tick — so we assert the authoritative
     // resolution signals: the cooldown, the buff, and the ability_used event.)

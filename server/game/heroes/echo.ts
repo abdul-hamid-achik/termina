@@ -29,7 +29,6 @@ const Q_BOUNCE_MULTIPLIER = 0.5
 
 const W_MANA = [50, 60, 70, 80] as const
 const W_COOLDOWN = [12, 11, 10, 9] as const
-const W_SPEED_BONUS = 50
 
 const E_STACK_VALUE = [10, 15, 20, 25] as const
 const E_MANA = 0
@@ -163,12 +162,9 @@ function resolveW(
       ticksRemaining: 1,
       source: player.id,
     })
-    caster = applyBuff(caster, {
-      id: 'moveSpeed',
-      stacks: W_SPEED_BONUS,
-      ticksRemaining: 2,
-      source: player.id,
-    })
+    // (Removed a dead 'moveSpeed' buff here: movement is a fixed 1 zone/tick, so
+    // the moveSpeed stat is never consumed — the buff did nothing. The W is the
+    // dodge; the description no longer promises move speed.)
 
     return {
       state: updatePlayer(state, caster),
