@@ -1198,7 +1198,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'ping-e',
         name: 'Tracepath',
         description:
-          'Trace the network path, granting vision of the current and adjacent zones for 3 ticks and boosting move speed.',
+          'Trace the network path, extending your vision one zone further (two hops out) for 3 ticks.',
         manaCost: 60,
         cooldownTicks: 14,
         targetType: 'self',
