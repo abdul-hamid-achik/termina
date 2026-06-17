@@ -410,7 +410,7 @@ const forceStaff: ItemDef = {
   active: {
     id: 'force_staff_active',
     name: 'Force',
-    description: 'Push target hero to an adjacent zone of their current direction.',
+    description: 'Push yourself or an ally one zone toward your fountain — a quick disengage.',
     cooldownTicks: 12,
   },
 }
