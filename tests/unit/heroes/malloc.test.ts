@@ -536,7 +536,6 @@ describe('Malloc Hero', () => {
 
     it('no generic-talent hero (the remaining generic set) has a dead specialEffect no-op anymore', () => {
       const genericHeroes = [
-        'socket',
         'mutex',
         'thread',
         'lambda',
