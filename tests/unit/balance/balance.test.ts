@@ -45,6 +45,7 @@ import {
   SURRENDER_MIN_TICK,
 } from '../../../shared/constants/balance'
 import { HEROES } from '../../../shared/constants/heroes'
+import { TALENT_TREES } from '../../../shared/constants/talents'
 
 describe('Balance Constants', () => {
   describe('timing', () => {
@@ -319,5 +320,26 @@ describe('Balance Constants', () => {
         })
       })
     }
+  })
+
+  describe('talents — no dead stats', () => {
+    it('every stat_bonus talent targets a stat the engine consumes', () => {
+      // getTalentStatBonus is only summed for these stats. moveSpeed/attackSpeed
+      // are inert in the tick model, so a stat_bonus talent granting them would
+      // do nothing (the daemon +12 "Attack Speed" talent was exactly that).
+      const CONSUMED = new Set(['hp', 'mp', 'attack', 'defense', 'magicResist'])
+      for (const tree of Object.values(TALENT_TREES)) {
+        for (const tier of Object.values(tree.tiers)) {
+          for (const talent of tier) {
+            if (talent.statBonus) {
+              expect(
+                CONSUMED.has(talent.statBonus.stat),
+                `${talent.id} grants the inert stat "${talent.statBonus.stat}"`,
+              ).toBe(true)
+            }
+          }
+        }
+      }
+    })
   })
 })

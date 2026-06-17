@@ -138,12 +138,16 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
     tiers: {
       10: [
         {
+          // Was '+12 Attack Speed' — attackSpeed is never consumed (tick-based
+          // combat, like moveSpeed), so the talent did nothing. Retargeted to
+          // +12 Attack (a functional, engine-consumed stat) to keep this the
+          // offensive choice opposite the +8 Magic Resistance option.
           id: 'daemon_10_left',
-          name: '+12 Attack Speed',
-          description: 'Increases attack speed by 12',
+          name: '+12 Attack',
+          description: 'Increases attack damage by 12',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'attackSpeed', value: 12 },
+          statBonus: { stat: 'attack', value: 12 },
         },
         {
           id: 'daemon_10_right',
