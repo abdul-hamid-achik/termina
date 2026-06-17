@@ -1825,4 +1825,13 @@ describe('item active targetType annotations', () => {
     // (ethereal, eul's, force, lotus) are deliberately left unset.
     expect(enemyTargeted).toEqual(['dagon', 'hurricane_pike', 'scythe_of_vyse'])
   })
+
+  it('wards are zone-targeted so a bare use places one in your current zone', async () => {
+    const { ITEMS } = await import('../../../shared/constants/items')
+    const zoneTargeted = Object.values(ITEMS)
+      .filter((i) => i.active?.targetType === 'zone')
+      .map((i) => i.id)
+      .sort()
+    expect(zoneTargeted).toEqual(['observer_ward', 'sentry_ward'])
+  })
 })

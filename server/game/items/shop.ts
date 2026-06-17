@@ -352,7 +352,13 @@ function usePlaceWard(
   return Effect.gen(function* () {
     const itemId = `${wardType}_ward`
     const zoneId =
-      typeof target === 'string' ? target : target?.kind === 'hero' ? target.name : undefined
+      typeof target === 'string'
+        ? target
+        : target?.kind === 'zone'
+          ? target.zone
+          : target?.kind === 'hero'
+            ? target.name
+            : undefined
     if (!zoneId || !state.zones[zoneId]) {
       return yield* Effect.fail(new ItemNotFoundError({ itemId }))
     }

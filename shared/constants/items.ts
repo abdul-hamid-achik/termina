@@ -592,6 +592,7 @@ const observerWard: ItemDef = {
     name: 'Place Ward',
     description: 'Place in a zone for vision lasting 45 ticks. Max 3 active per team.',
     cooldownTicks: 0,
+    targetType: 'zone',
   },
 }
 
@@ -607,6 +608,7 @@ const sentryWard: ItemDef = {
     name: 'Place Sentry Ward',
     description: 'Reveals invisible units in the area. Lasts 30 ticks. Max 3 active per team.',
     cooldownTicks: 0,
+    targetType: 'zone',
   },
 }
 
