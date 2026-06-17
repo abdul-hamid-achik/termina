@@ -794,6 +794,24 @@ describe('useCommands', () => {
         expect(mv?.description).toBe('→ move')
       })
 
+      it('describes the base alias team-relatively (matches what it resolves to)', () => {
+        const { autocomplete } = useCommands()
+
+        const radiant = autocomplete(
+          'move base',
+          makeContext({ player: makePlayer({ team: 'radiant' }) }),
+        )
+        expect(radiant.find((s) => s.text === 'base')?.description).toBe('→ Radiant Base')
+
+        // A dire player's `base` suggestion must point at THEIR base, matching
+        // how it resolves — not the enemy's.
+        const dire = autocomplete(
+          'move base',
+          makeContext({ player: makePlayer({ team: 'dire' }) }),
+        )
+        expect(dire.find((s) => s.text === 'base')?.description).toBe('→ Dire Base')
+      })
+
       it('suggests buyback for "buy" prefix', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
