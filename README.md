@@ -112,11 +112,12 @@ GITHUB_CLIENT_SECRET=
 DISCORD_CLIENT_ID=
 DISCORD_CLIENT_SECRET=
 
-# Redis
-REDIS_URL=redis://localhost:6379
+# Redis (host port 6380 — see docker-compose.yml; off the default 6379)
+REDIS_URL=redis://localhost:6380
 
-# Database
-DATABASE_URL=postgresql://termina:termina@localhost:5432/termina
+# Database (host port 5433 — off the default 5432 so it can run alongside
+# another project's Postgres; override the host port via TERMINA_POSTGRES_PORT)
+DATABASE_URL=postgresql://termina:termina@localhost:5433/termina
 ```
 
 ---

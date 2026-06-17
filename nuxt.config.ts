@@ -49,8 +49,8 @@ export default defineNuxtConfig({
       github: { clientId: '', clientSecret: '' },
       discord: { clientId: '', clientSecret: '' },
     },
-    redis: { url: 'redis://localhost:6379' },
-    database: { url: 'postgresql://termina:termina@localhost:5432/termina' },
+    redis: { url: 'redis://localhost:6380' },
+    database: { url: 'postgresql://termina:termina@localhost:5433/termina' },
   },
 
   nitro: {

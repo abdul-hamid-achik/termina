@@ -7,7 +7,7 @@ import * as schema from '~~/server/db/schema'
 // it as a service + `drizzle-kit push`es the schema; locally: docker compose up +
 // `DATABASE_URL=…/termina_test npx drizzle-kit push --force`.
 const url =
-  process.env.TEST_DATABASE_URL ?? 'postgresql://termina:termina@localhost:5432/termina_test'
+  process.env.TEST_DATABASE_URL ?? 'postgresql://termina:termina@localhost:5433/termina_test'
 
 export const client = postgres(url, { max: 4, onnotice: () => {} })
 export const testDb = drizzle(client, { schema })

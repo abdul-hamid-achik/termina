@@ -5,6 +5,6 @@ export default defineConfig({
   out: './server/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://termina:termina@localhost:5432/termina',
+    url: process.env.DATABASE_URL || 'postgresql://termina:termina@localhost:5433/termina',
   },
 })
