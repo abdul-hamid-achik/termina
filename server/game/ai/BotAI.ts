@@ -821,6 +821,23 @@ export function tryUseCombatItem(
   return null
 }
 
+/**
+ * A defensive panic item (BKB / Blade Mail) for a chased, RETREATING bot. The
+ * retreat branch returns before the combat block, so without this a low-HP bot
+ * being chased flees to its death with its survival items unused. Gated on
+ * threatAssessment; mirrors validateAction's `use` gates so it always resolves.
+ */
+export function tryPanicDefensiveItem(
+  bot: PlayerState,
+  config: BotDifficultyConfig,
+): Command | null {
+  if (!config.threatAssessment) return null
+  for (const item of DEFENSIVE_COMBAT_ITEMS) {
+    if (itemOffCooldown(bot, item)) return { type: 'use', item }
+  }
+  return null
+}
+
 export function decideBotAction(
   state: GameState,
   bot: PlayerState,
@@ -869,6 +886,12 @@ export function decideBotAction(
       getDistance(bot.zone, fountain) > TP_RETREAT_MIN_DISTANCE
     ) {
       return { type: 'use', item: 'town_portal_scroll' }
+    }
+    // Being chased (can't TP through combat): pop a survival item so the bot
+    // doesn't flee to its death with BKB/Blade Mail unused.
+    if (enemyHeroes.length > 0) {
+      const panic = tryPanicDefensiveItem(bot, config)
+      if (panic) return panic
     }
     const path = findPath(bot.zone, fountain)
     if (path.length > 1) {

@@ -5,6 +5,7 @@ import {
   sequenceManaCost,
   buildOrderForRole,
   tryUseCombatItem,
+  tryPanicDefensiveItem,
 } from '../../../server/game/ai/BotAI'
 import type { BotDifficultyConfig } from '../../../server/game/ai/BotManager'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
@@ -1362,5 +1363,47 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
       item: 'dagon',
       target: { kind: 'hero', name: 'low' },
     })
+  })
+})
+
+describe('BotAI - panic survival items (retreat branch)', () => {
+  it('returns an owned, off-cooldown defensive item', () => {
+    const bot = makePlayer({ items: inv('blade_mail') })
+    expect(tryPanicDefensiveItem(bot, makeConfig())).toEqual({ type: 'use', item: 'blade_mail' })
+  })
+
+  it('is gated on threatAssessment (easy bots panic-walk instead)', () => {
+    const bot = makePlayer({ items: inv('black_king_bar') })
+    expect(tryPanicDefensiveItem(bot, makeConfig({ threatAssessment: false }))).toBeNull()
+  })
+
+  it('respects item cooldown', () => {
+    const bot = makePlayer({
+      items: inv('black_king_bar'),
+      buffs: [{ id: 'item_cd_black_king_bar', stacks: 1, ticksRemaining: 8, source: 'x' }],
+    })
+    expect(tryPanicDefensiveItem(bot, makeConfig())).toBeNull()
+  })
+
+  it('decideBotAction: a chased, low-HP bot pops BKB instead of fleeing to its death', () => {
+    // 20% HP (below the medium retreat threshold) with an enemy in zone → the
+    // retreat branch runs; it can't TP through combat, so it pops the panic item.
+    const bot = makePlayer({
+      zone: 'mid-t1-rad',
+      hp: 100,
+      maxHp: 500,
+      items: inv('black_king_bar'),
+    })
+    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'dire', zone: 'mid-t1-rad' })
+    const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
+    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
+  })
+
+  it('decideBotAction: a chased bot with no panic item still walks toward the fountain', () => {
+    const bot = makePlayer({ zone: 'mid-t1-rad', hp: 100, maxHp: 500, items: inv() })
+    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'dire', zone: 'mid-t1-rad' })
+    const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
+    const action = decideBotAction(state, bot, 'mid')
+    expect(action?.type).toBe('move')
   })
 })
