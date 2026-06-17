@@ -15,7 +15,13 @@ onMounted(() => {
   // to depend on the async WS-join populating the store before the redirect check
   // (a race that redirected to /lobby under load). Reading the query is safe: the
   // WS `join_game` still validates server-side that this player belongs to the game.
-  if (route.query.dev === '1' && typeof route.query.gameId === 'string') {
+  // `tutorial=1` is the production tutorial's equivalent of the harness `dev=1`
+  // marker: both seed a game outside the lobby and pass the ids via the query
+  // (the WS `join_game` still validates the player belongs to the game).
+  if (
+    (route.query.dev === '1' || route.query.tutorial === '1') &&
+    typeof route.query.gameId === 'string'
+  ) {
     gameStore.gameId = route.query.gameId
     if (typeof route.query.playerId === 'string') gameStore.playerId = route.query.playerId
   }

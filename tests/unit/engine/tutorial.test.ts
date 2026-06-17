@@ -8,7 +8,9 @@ import {
   tutorialLockMessage,
   tutorialHint,
   advanceTutorialAfterTick,
+  buildTutorialRoster,
 } from '~~/server/game/modes/tutorial'
+import { isBot } from '~~/server/game/ai/BotManager'
 
 /** Minimal tutorial-mode state for the pure advancement helper. */
 function tutorialState(step: number): GameState {
@@ -108,6 +110,35 @@ describe('tutorial flow', () => {
         [],
       )
       expect(next).toBe(normal)
+    })
+  })
+
+  describe('buildTutorialRoster', () => {
+    const roster = buildTutorialRoster('github_42', 'echo', 'game_abc')
+
+    it('is a calm 2v2: the human + 1 ally vs 2 enemy bots', () => {
+      expect(roster).toHaveLength(4)
+      const radiant = roster.filter((p) => p.team === 'radiant')
+      const dire = roster.filter((p) => p.team === 'dire')
+      expect(radiant).toHaveLength(2)
+      expect(dire).toHaveLength(2)
+    })
+
+    it('puts the human (only non-bot) on radiant with their chosen hero', () => {
+      const humans = roster.filter((p) => !isBot(p.playerId))
+      expect(humans).toHaveLength(1)
+      expect(humans[0]).toMatchObject({ playerId: 'github_42', team: 'radiant', heroId: 'echo' })
+    })
+
+    it('gives every bot a distinct hero (none clashing with the human)', () => {
+      const heroes = roster.map((p) => p.heroId)
+      expect(new Set(heroes).size).toBe(heroes.length)
+    })
+
+    it('names bots with the bot_ prefix so isBot() recognises them', () => {
+      for (const p of roster.filter((p) => p.playerId !== 'github_42')) {
+        expect(isBot(p.playerId)).toBe(true)
+      }
     })
   })
 })

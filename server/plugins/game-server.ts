@@ -36,10 +36,11 @@ import {
   filterStateForSpectator,
 } from '~~/server/game/engine/VisionCalculator'
 import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
-import type { TeamId, GameState } from '~~/shared/types/game'
+import type { TeamId, GameState, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
 import { isBot, registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
+import { buildTutorialRoster } from '~~/server/game/modes/tutorial'
 import {
   sendToPeer,
   setPlayerGame,
@@ -269,6 +270,10 @@ export interface DevGameOpts {
   scenario?: string
   /** Manual-tick mode: no auto-schedule; ticks are driven by advanceDevGame (A3). */
   manualTick?: boolean
+  /** Map to run on (default full 5v5). 'one_lane' forces bots to the mid lane. */
+  mapId?: string
+  /** Game mode (default 'normal'). 'tutorial' uses the small guided roster. */
+  mode?: GameMode
 }
 
 let _createDevGame: ((opts: DevGameOpts) => Promise<{ gameId: string } | null>) | null = null
@@ -277,6 +282,26 @@ let _createDevGame: ((opts: DevGameOpts) => Promise<{ gameId: string } | null>) 
 export async function createDevGame(opts: DevGameOpts): Promise<{ gameId: string } | null> {
   if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return null
   return _createDevGame ? _createDevGame(opts) : null
+}
+
+/**
+ * Production: create a single-player tutorial game — the human plus bots on the
+ * one-lane map, in tutorial mode. UNLIKE createDevGame this is a real player
+ * feature, so it is NOT gated by test hooks (only by being booted). Returns null
+ * before the game server has finished starting.
+ */
+export async function createTutorialGame(opts: {
+  humanId: string
+  humanHeroId?: string
+}): Promise<{ gameId: string } | null> {
+  return _createDevGame
+    ? _createDevGame({
+        humanId: opts.humanId,
+        humanHeroId: opts.humanHeroId,
+        mapId: 'one_lane',
+        mode: 'tutorial',
+      })
+    : null
 }
 
 /** Dev/test-only: raw GameState snapshot for spec assertions (engine-truth checks). */
@@ -719,27 +744,39 @@ export default defineNitroPlugin(async (nitroApp) => {
     const seed = opts.seed ?? Date.now()
     const gameId = `dev_${seed}_${Math.random().toString(36).slice(2, 6)}`
 
-    // Roster: the human (radiant) + 4 radiant bots + 5 dire bots, distinct heroes.
+    // Roster. Tutorial = a small guided 2v2 on the one-lane map; otherwise the
+    // human (radiant) + 4 radiant bots + 5 dire bots, all distinct heroes.
     const heroIds = Object.keys(HEROES)
     const humanHero = opts.humanHeroId && HEROES[opts.humanHeroId] ? opts.humanHeroId : heroIds[0]!
-    const used = new Set<string>([humanHero])
-    const nextHero = () => {
-      const h = heroIds.find((x) => !used.has(x)) ?? heroIds[0]!
-      used.add(h)
-      return h
-    }
-    const players: StartPlayer[] = [
-      { playerId: opts.humanId, team: 'radiant', heroId: humanHero, mmr: 1000 },
-    ]
-    for (let i = 0; i < 4; i++)
-      players.push({
-        playerId: `bot_r${i}_${gameId}`,
-        team: 'radiant',
-        heroId: nextHero(),
+    let players: StartPlayer[]
+    if (opts.mode === 'tutorial') {
+      players = buildTutorialRoster(opts.humanId, humanHero, gameId).map((p) => ({
+        ...p,
         mmr: 1000,
-      })
-    for (let i = 0; i < 5; i++)
-      players.push({ playerId: `bot_d${i}_${gameId}`, team: 'dire', heroId: nextHero(), mmr: 1000 })
+      }))
+    } else {
+      const used = new Set<string>([humanHero])
+      const nextHero = () => {
+        const h = heroIds.find((x) => !used.has(x)) ?? heroIds[0]!
+        used.add(h)
+        return h
+      }
+      players = [{ playerId: opts.humanId, team: 'radiant', heroId: humanHero, mmr: 1000 }]
+      for (let i = 0; i < 4; i++)
+        players.push({
+          playerId: `bot_r${i}_${gameId}`,
+          team: 'radiant',
+          heroId: nextHero(),
+          mmr: 1000,
+        })
+      for (let i = 0; i < 5; i++)
+        players.push({
+          playerId: `bot_d${i}_${gameId}`,
+          team: 'dire',
+          heroId: nextHero(),
+          mmr: 1000,
+        })
+    }
 
     const stateManager = createInMemoryStateManager()
     registerLiveGame(gameId, stateManager)
@@ -751,7 +788,7 @@ export default defineNitroPlugin(async (nitroApp) => {
     }))
     await managedRuntime.runPromise(
       Effect.gen(function* () {
-        yield* stateManager.createGame(gameId, playerSetups)
+        yield* stateManager.createGame(gameId, playerSetups, { mapId: opts.mapId, mode: opts.mode })
         yield* stateManager.updateState(gameId, (s) => {
           const playing = { ...s, phase: 'playing' as const }
           return opts.scenario
@@ -765,6 +802,9 @@ export default defineNitroPlugin(async (nitroApp) => {
       players
         .filter((p) => isBot(p.playerId))
         .map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
+      // On a subset map the role lanes (top/bot/jungle) don't exist; pin bots to
+      // mid so their global-graph pathing can't walk them off the map.
+      { forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined },
     )
     setPlayerGame(opts.humanId, gameId)
     const callbacks = buildCallbacks(players, stateManager)
@@ -780,6 +820,8 @@ export default defineNitroPlugin(async (nitroApp) => {
       humanId: opts.humanId,
       scenario: opts.scenario ?? 'fresh',
       manualTick: !!opts.manualTick,
+      mode: opts.mode ?? 'normal',
+      mapId: opts.mapId ?? 'default_5v5',
     })
     return { gameId }
   }
