@@ -61,6 +61,35 @@ const economy: CombatLine[] = [
   { tick: 248, text: 'you cleared a kobold camp', type: 'gold', salience: 'mine-out' },
   { tick: 248, text: 'daemon_carry sold Null Pointer (+700g)', type: 'gold', salience: 'world' },
 ]
+
+// Kill lines carry a SHUTDOWN / spree suffix from combatNarrative.killFlair —
+// text matched exactly so this previews how the streak callouts read in the log.
+const sprees: CombatLine[] = [
+  {
+    tick: 250,
+    text: 'you terminated cache_sup  >> KILLING SPREE (3)',
+    type: 'kill',
+    salience: 'mine-out',
+    killerHeroId: SAMPLE_HEROES.echo,
+    victimHeroId: SAMPLE_HEROES.cache,
+  },
+  {
+    tick: 252,
+    text: 'you terminated regex_mid  >> MEGA KILL (5)',
+    type: 'kill',
+    salience: 'mine-out',
+    killerHeroId: SAMPLE_HEROES.echo,
+    victimHeroId: SAMPLE_HEROES.regex,
+  },
+  {
+    tick: 255,
+    text: 'daemon_carry terminated you  >> SHUTDOWN! (ended a 5-kill streak)',
+    type: 'kill',
+    salience: 'mine-in',
+    killerHeroId: SAMPLE_HEROES.daemon,
+    victimHeroId: SAMPLE_HEROES.echo,
+  },
+]
 </script>
 
 <template>
@@ -80,6 +109,12 @@ const economy: CombatLine[] = [
     <Variant title="economy & pickups (buy / sell / rune / camp)">
       <div class="bg-bg-panel" style="width: 460px; height: 240px">
         <CombatLog :events="economy" />
+      </div>
+    </Variant>
+
+    <Variant title="sprees & shutdowns (kill-line flair)">
+      <div class="bg-bg-panel" style="width: 460px; height: 240px">
+        <CombatLog :events="sprees" />
       </div>
     </Variant>
 
