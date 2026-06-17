@@ -72,7 +72,7 @@ const quickStart = [
   {
     step: '3',
     title: 'Move Out of Fountain',
-    desc: 'You start in your fountain. Type move radiant-base (or dire-base) to leave, then move toward a lane.',
+    desc: 'You start in your fountain. Type move base (a shortcut that always means YOUR base) to leave, then move toward a lane.',
   },
   {
     step: '4',
@@ -118,7 +118,8 @@ const movementGuide = [
       `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per tick — retreat there to recover`,
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_TICKS} ticks plus ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
-      'Zone aliases save typing: move mid → mid-river, move rosh → roshan-pit; unambiguous prefixes work too',
+      'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
+      'More aliases save typing: move mid → mid-river, move rosh → roshan-pit; unambiguous prefixes work too',
     ],
   },
 ]

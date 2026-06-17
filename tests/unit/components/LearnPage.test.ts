@@ -148,4 +148,13 @@ describe('learn page', () => {
     expect(text).toContain('5 ticks (20 seconds)')
     expect(text).not.toContain('4 ticks to reach mid river')
   })
+
+  it('teaches the team-relative base/fountain shortcuts', () => {
+    const text = mountLearn().text()
+    // The convenient alias must be discoverable — and framed as "your own side"
+    // so a dire player knows `move base` won't send them to the enemy.
+    expect(text).toContain('move base')
+    expect(text).toContain('move fountain')
+    expect(text.toLowerCase()).toContain('your side')
+  })
 })
