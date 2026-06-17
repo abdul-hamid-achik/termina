@@ -804,7 +804,92 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
-  socket: { heroId: 'socket', tiers: createGenericTalents('socket') },
+  // Socket — an offlaner disruptor: Bind (root), Listen (trap), Accept (pull),
+  // Broadcast (global slow). No instant-cast damage (Listen's damage is dealt
+  // LATER by the trap when triggered, not during the W cast), so NO damage_boost;
+  // the tree is cooldown efficiency across its disable kit + tanky offlaner stats
+  // (and +attack to feed the link-stack passive).
+  socket: {
+    heroId: 'socket',
+    tiers: {
+      10: [
+        {
+          id: 'socket_10_left',
+          name: '+250 HP',
+          description: '+250 HP for the front-line offlaner',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 250 },
+        },
+        {
+          id: 'socket_10_right',
+          name: '+12 Attack Damage',
+          description: '+12 Attack — applies Persistent Connection link stacks faster',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'attack', value: 12 },
+        },
+      ],
+      15: [
+        {
+          id: 'socket_15_left',
+          name: '-3s Bind CD',
+          description: 'Bind (Q) root cooldown reduced — lock targets down more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'q',
+          cooldownReduction: 3,
+        },
+        {
+          id: 'socket_15_right',
+          name: '-4s Listen CD',
+          description: 'Listen (W) trap cooldown reduced — keep more traps armed',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'w',
+          cooldownReduction: 4,
+        },
+      ],
+      20: [
+        {
+          id: 'socket_20_left',
+          name: '-5s Accept CD',
+          description: 'Accept (E) pull cooldown reduced — drag enemies in more often',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'e',
+          cooldownReduction: 5,
+        },
+        {
+          id: 'socket_20_right',
+          name: '+10 Defense',
+          description: '+10 Defense — tankier initiator',
+          type: 'stat_bonus',
+          tier: 20,
+          statBonus: { stat: 'defense', value: 10 },
+        },
+      ],
+      25: [
+        {
+          id: 'socket_25_left',
+          name: '-12s Broadcast CD',
+          description: 'Broadcast (R) global-slow ultimate cooldown reduced',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'socket_25_right',
+          name: '+18 Magic Resistance',
+          description: '+18 Magic Resistance',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 18 },
+        },
+      ],
+    },
+  },
   mutex: { heroId: 'mutex', tiers: createGenericTalents('mutex') },
   thread: { heroId: 'thread', tiers: createGenericTalents('thread') },
   lambda: { heroId: 'lambda', tiers: createGenericTalents('lambda') },
