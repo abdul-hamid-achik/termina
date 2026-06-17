@@ -258,6 +258,20 @@ describe('Socket Hero', () => {
       expect(hasBuff(result.state.players['e2']!, 'broadcast_slow')).toBe(true)
       const slow = result.state.players['e1']!.buffs.find((b) => b.id === 'broadcast_slow')
       expect(slow!.ticksRemaining).toBe(3)
+      // A meaningful move-fail chance, not the old dead stacks:1 (=1%).
+      expect(slow!.stacks).toBe(20) // rank 1 (level 6)
+    })
+
+    it('scales the global slow chance per rank (was a dead 1% flat)', () => {
+      const slowStacksAtLevel = (level: number) => {
+        const result = Effect.runSync(
+          resolveAbility(makeState([makePlayer({ level, mp: 999 }), makeEnemy()]), 'p1', 'r'),
+        )
+        return result.state.players['e1']!.buffs.find((b) => b.id === 'broadcast_slow')!.stacks
+      }
+      expect(slowStacksAtLevel(6)).toBe(20) // rank 1
+      expect(slowStacksAtLevel(12)).toBe(30) // rank 2
+      expect(slowStacksAtLevel(18)).toBe(40) // rank 3
     })
 
     it('does not affect allies', () => {

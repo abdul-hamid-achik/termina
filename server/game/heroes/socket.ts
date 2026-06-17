@@ -35,6 +35,10 @@ const E_COOLDOWN = 20
 
 const R_MANA = [200, 300, 400] as const
 const R_COOLDOWN = 55
+// Global slow magnitude per rank: ActionResolver reads slow stacks as the
+// % chance an enemy's move fails each tick. (Was a flat stacks:1 = 1% — a
+// leftover from the old, inert "-1 move speed" model — making the ult dead.)
+const R_SLOW_PERCENT = [20, 30, 40] as const
 
 const HANDSHAKE_VISION_TICKS = 5
 
@@ -262,11 +266,12 @@ function resolveR(
     let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
+    const slowPercent = scaleValue(R_SLOW_PERCENT, level)
     const allEnemies = getAllEnemyPlayers(state, player)
     const slowed = allEnemies.map((e) =>
       applyBuff(e, {
         id: 'broadcast_slow',
-        stacks: 1, // -1 move speed
+        stacks: slowPercent, // % chance to fail each move (read by ActionResolver)
         ticksRemaining: 3,
         source: player.id,
       }),
