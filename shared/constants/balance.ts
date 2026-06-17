@@ -223,6 +223,9 @@ export const DAEDALUS_CRIT_MULTIPLIER = 2.4
 export const VANGUARD_BLOCK_CHANCE = 0.6
 export const VANGUARD_BLOCK_AMOUNT = 50
 export const DESOLATOR_ARMOR_REDUCTION = 5
+// Assault Cuirass aura: enemies in the holder's zone lose this much defense,
+// and allies (incl. self) gain it. Same magnitude as Desolator, distinct name.
+export const ASSAULT_CUIRASS_AURA_DEFENSE = 5
 export const MKB_BONUS_DAMAGE = 50
 
 // ── Regeneration ─────────────────────────────────────────────────

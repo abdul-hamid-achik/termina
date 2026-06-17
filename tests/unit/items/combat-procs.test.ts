@@ -20,6 +20,7 @@ import {
   CRYSTALYS_CRIT_MULTIPLIER,
   DAEDALUS_CRIT_MULTIPLIER,
   DESOLATOR_ARMOR_REDUCTION,
+  ASSAULT_CUIRASS_AURA_DEFENSE,
   VANGUARD_BLOCK_AMOUNT,
   MKB_BONUS_DAMAGE,
 } from '~~/shared/constants/balance'
@@ -332,11 +333,63 @@ describe('Item combat procs — on-hit effects', () => {
     const dmg = start - r.state.players['p2']!.hp
     // attacker carries assault_cuirass (+15 def, +200 hp on attacker — irrelevant
     // to its own outgoing) and the aura shreds the target's 3 base armor by 5 → 0.
-    const expected = expectedPhysical(['assault_cuirass'], [], 1, DESOLATOR_ARMOR_REDUCTION)
+    const expected = expectedPhysical(['assault_cuirass'], [], 1, ASSAULT_CUIRASS_AURA_DEFENSE)
     expect(dmg).toBe(expected)
     // Sanity: shred makes it strictly more than the same attacker vs un-shredded armor.
     const unshredded = expectedPhysical(['assault_cuirass'], [])
     expect(dmg).toBeGreaterThan(unshredded)
+  })
+
+  it('assault_cuirass aura grants an ALLY in the victim zone +5 defense (was dead)', () => {
+    // p1 (no items) attacks p2; p3, an ALLY of p2 sharing its zone, carries
+    // assault_cuirass — raising p2's defense by 5, so p2 takes LESS damage.
+    const withAllyAura = makeGameState({
+      players: {
+        p1: makePlayer({ id: 'p1', team: 'radiant', name: 'Attacker' }),
+        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Victim' }),
+        p3: makePlayer({
+          id: 'p3',
+          team: 'dire',
+          name: 'AuraAlly',
+          items: ['assault_cuirass', null, null, null, null, null],
+        }),
+      },
+    })
+    const start = withAllyAura.players['p2']!.hp
+    const r = run(withAllyAura, [attack('p1', 'Victim')])
+    const dmg = start - r.state.players['p2']!.hp
+    // negative shred = bonus armor on the target.
+    const expected = expectedPhysical([], [], 1, -ASSAULT_CUIRASS_AURA_DEFENSE)
+    expect(dmg).toBe(expected)
+    // Strictly less than the same attack with no aura present.
+    const noAura = expectedPhysical([], [])
+    expect(dmg).toBeLessThan(noAura)
+  })
+
+  it('assault_cuirass ally +5 and enemy -5 auras cancel to net zero', () => {
+    // Both an enemy holder (p1) and an ally holder (p3) share the victim's zone.
+    const bothAuras = makeGameState({
+      players: {
+        p1: makePlayer({
+          id: 'p1',
+          team: 'radiant',
+          name: 'Attacker',
+          items: ['assault_cuirass', null, null, null, null, null],
+        }),
+        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Victim' }),
+        p3: makePlayer({
+          id: 'p3',
+          team: 'dire',
+          name: 'AuraAlly',
+          items: ['assault_cuirass', null, null, null, null, null],
+        }),
+      },
+    })
+    const start = bothAuras.players['p2']!.hp
+    const r = run(bothAuras, [attack('p1', 'Victim')])
+    const dmg = start - r.state.players['p2']!.hp
+    // +5 (ally) and -5 (enemy) cancel → same as the attacker's cuirass with no shred.
+    expect(dmg).toBe(expectedPhysical(['assault_cuirass'], []))
   })
 })
 
