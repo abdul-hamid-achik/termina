@@ -143,7 +143,10 @@ describe('ActionResolver', () => {
         playerId: 'p1',
         command: { type: 'cast', ability: 'q' },
       })
-      expect(error).toBe('Ability on cooldown')
+      // Concrete rejection (brief quick win #1): ability name + ticks left + ready tick.
+      expect(error).toContain('on cooldown')
+      expect(error).toMatch(/3 ticks left/)
+      expect(error).toMatch(/ready T\d+/)
     })
 
     it('should reject casting without enough mana via the resolver rejected channel', () => {
