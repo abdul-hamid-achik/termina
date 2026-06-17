@@ -149,13 +149,6 @@ const ZONE_ALIASES: Record<string, string> = {
   rune: 'mid-river',
 }
 
-// Reverse lookup for aliases -> full zone IDs
-const ALIAS_TO_ZONE: Record<string, string[]> = {}
-for (const [alias, zoneId] of Object.entries(ZONE_ALIASES)) {
-  if (!ALIAS_TO_ZONE[zoneId]) ALIAS_TO_ZONE[zoneId] = []
-  ALIAS_TO_ZONE[zoneId].push(alias)
-}
-
 function parseTarget(raw: string): TargetRef | null {
   if (raw === 'self') return { kind: 'self' }
   // The enemy team's core structure ("the Mainframe")
@@ -707,13 +700,19 @@ export function useCommands() {
       suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
     }
 
-    // Also suggest aliases that match
-    const matchingAliases = Object.entries(ZONE_ALIASES).filter(
-      ([alias]) => alias.startsWith(partial) || alias.includes(partial),
+    // Also suggest aliases that match. base/fountain resolve to the player's
+    // OWN side, so describe them team-relatively to match what they'll do.
+    const team = context.player?.team ?? 'radiant'
+    const matchingAliases = Object.keys(ZONE_ALIASES).filter(
+      (alias) => alias.startsWith(partial) || alias.includes(partial),
     )
-    for (const [alias, zoneId] of matchingAliases) {
+    for (const alias of matchingAliases) {
       if (!suggestions.some((s) => s.text === alias)) {
-        suggestions.push({ text: alias, description: `→ ${ZONE_MAP[zoneId]?.name ?? zoneId}` })
+        const resolvedId = resolveZoneAlias(alias, team)
+        suggestions.push({
+          text: alias,
+          description: `→ ${ZONE_MAP[resolvedId]?.name ?? resolvedId}`,
+        })
       }
     }
 
