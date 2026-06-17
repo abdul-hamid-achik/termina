@@ -145,13 +145,13 @@ const commands = [
   },
   {
     cmd: 'cast <q|w|e|r> [target]',
-    desc: 'Use an ability, optionally on a target',
-    example: 'cast q hero:regex',
+    desc: 'Use an ability. Bare `cast q` auto-picks a target; add one to aim it yourself',
+    example: 'cast q',
     shortcuts: 'q, w, e, r',
   },
   {
     cmd: 'use <item>',
-    desc: 'Use an active/consumable item',
+    desc: 'Use an active/consumable item. Offensive actives (Dagon, Hex…) auto-hit the nearest enemy',
     example: 'use healing_salve',
     shortcuts: '—',
   },
