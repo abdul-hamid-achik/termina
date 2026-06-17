@@ -438,6 +438,45 @@ describe('BotAI - decideBotAction', () => {
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toMatchObject({ type: 'cast', ability: 'r' })
     })
+
+    it('does not burn the tick on Echo Feedback Loop (E) at 0 stacks (resolver would reject it)', () => {
+      // Echo's E hard-fails at 0 feedback stacks. With Q/W/R on cooldown, the
+      // unguarded bot would submit E anyway and waste its action on a guaranteed
+      // rejection — it should attack to BUILD stacks instead.
+      const bot = makePlayer({
+        heroId: 'echo',
+        level: 6,
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 300,
+        maxMp: 300,
+        cooldowns: { q: 5, w: 5, e: 0, r: 5 }, // only E is off cooldown
+        buffs: [], // 0 feedback stacks → E would be rejected
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
+    })
+
+    it('casts Echo Feedback Loop (E) once stacks are built', () => {
+      const bot = makePlayer({
+        heroId: 'echo',
+        level: 6,
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 300,
+        maxMp: 300,
+        cooldowns: { q: 5, w: 5, e: 0, r: 5 },
+        buffs: [{ id: 'feedbackLoop', stacks: 40, ticksRemaining: 9999, source: 'bot_alpha' }],
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toMatchObject({ type: 'cast', ability: 'e' })
+    })
   })
 
   describe('combat - creep targeting', () => {

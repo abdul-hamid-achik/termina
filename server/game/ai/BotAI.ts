@@ -382,20 +382,32 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
   )
 }
 
-// Cache's Eviction (R) deals pure damage EQUAL to stored energy, and Flush (W)
-// converts that energy to a shield — both are near-worthless at low energy (R
-// becomes a lone slow burning a 50-tick cooldown; W a ~0 shield). The generic
-// ['r','q','w','e'] priority would otherwise fire R at the very START of a fight,
-// before Cache has taken any damage to store, wasting its signature burst. Hold
-// these until the stored energy is worth spending so the bot actually plays
-// Cache's build-then-burst pattern (this is why Cache trailed in bot sims).
+// A few abilities consume a SELF-BUILT resource and are wasted — or outright
+// rejected by the resolver — when cast without it. The generic ['r','q','w','e']
+// cast priority is blind to those resources, so without a guard the bot spends
+// its one action per tick on a near-zero or auto-rejected cast instead of
+// building the resource (attacking / using its other abilities). Swept from the
+// hero resolvers, these are the only resource-gated casts:
+//   • cache R (Eviction): pure damage EQUALS stored energy; W (Flush): shield
+//     equals it. At low energy R is a lone slow on a 50-tick cooldown and W a
+//     ~0 shield — hold until it's worth spending (Cache's build-then-burst).
+//   • echo E (Feedback Loop): the resolver HARD-FAILS at 0 stored stacks, so
+//     casting it then just burns the tick. Stacks build from attacks.
 const CACHE_MIN_ENERGY_TO_EVICT = 60
 const CACHE_MIN_ENERGY_TO_FLUSH = 30
 
-function wastesStoredEnergy(bot: PlayerState, slot: AbilitySlot): boolean {
-  if (bot.heroId !== 'cache' || (slot !== 'r' && slot !== 'w')) return false
-  const energy = bot.buffs.find((b) => b.id === 'cachedEnergy')?.stacks ?? 0
-  return energy < (slot === 'r' ? CACHE_MIN_ENERGY_TO_EVICT : CACHE_MIN_ENERGY_TO_FLUSH)
+function lacksResourceForCast(bot: PlayerState, slot: AbilitySlot): boolean {
+  const stacks = (id: string) => bot.buffs.find((b) => b.id === id)?.stacks ?? 0
+  switch (bot.heroId) {
+    case 'cache':
+      if (slot === 'r') return stacks('cachedEnergy') < CACHE_MIN_ENERGY_TO_EVICT
+      if (slot === 'w') return stacks('cachedEnergy') < CACHE_MIN_ENERGY_TO_FLUSH
+      return false
+    case 'echo':
+      return slot === 'e' && stacks('feedbackLoop') <= 0
+    default:
+      return false
+  }
 }
 
 function calculateThreatScore(enemy: PlayerState, _bot: PlayerState, _state: GameState): number {
@@ -458,7 +470,7 @@ function tryGetAbilityCommand(
   for (const slot of slots) {
     const ability = hero.abilities[slot]
     if (!canCastAbility(bot, ability, slot)) continue
-    if (wastesStoredEnergy(bot, slot)) continue
+    if (lacksResourceForCast(bot, slot)) continue
     const target = getAbilityTarget(ability, bot, enemiesInZone, alliesInZone)
     if (target === undefined) continue
     if (target === null) {
@@ -597,7 +609,8 @@ function tryCombo(
       const nextAbility = comboDef.sequence[comboState.comboIndex]
       if (
         nextAbility &&
-        canCastAbility(bot, HEROES[heroId]!.abilities[nextAbility.ability], nextAbility.ability)
+        canCastAbility(bot, HEROES[heroId]!.abilities[nextAbility.ability], nextAbility.ability) &&
+        !lacksResourceForCast(bot, nextAbility.ability)
       ) {
         const newComboState: ComboState = {
           currentCombo: comboState.currentCombo,
@@ -649,7 +662,8 @@ function tryCombo(
     const firstAbility = combo.sequence[0]
     if (
       firstAbility &&
-      canCastAbility(bot, HEROES[heroId]!.abilities[firstAbility.ability], firstAbility.ability)
+      canCastAbility(bot, HEROES[heroId]!.abilities[firstAbility.ability], firstAbility.ability) &&
+      !lacksResourceForCast(bot, firstAbility.ability)
     ) {
       comboStates.set(bot.id, {
         currentCombo: [combo.name],
