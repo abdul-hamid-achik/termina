@@ -436,4 +436,25 @@ describe('Item Registry', () => {
       }
     })
   })
+
+  describe('no dead items', () => {
+    it('every non-consumable item grants a functional benefit', () => {
+      // Termina movement is a fixed 1 zone/tick, so the moveSpeed stat is inert
+      // (summed in EffectiveStats but never read). A non-consumable item must
+      // therefore DO something else: a non-moveSpeed stat, an active, or a passive
+      // — otherwise it's a gold sink that does nothing.
+      //
+      // KNOWN_DEAD: boots_of_speed is a pure-moveSpeed item kept for its iconic
+      // name; it does nothing today (the bot AI already avoids it). Flagged for an
+      // owner balance pass — see the termina-dead-boots memory. This guard keeps a
+      // NEW dead item from slipping into the shop.
+      const KNOWN_DEAD = new Set(['boots_of_speed'])
+      for (const def of Object.values(ITEMS)) {
+        if (def.consumable || KNOWN_DEAD.has(def.id)) continue
+        const functionalStats = Object.keys(def.stats).filter((k) => k !== 'moveSpeed')
+        const functional = functionalStats.length > 0 || !!def.active || !!def.passive
+        expect(functional, `${def.id} grants nothing the engine consumes`).toBe(true)
+      }
+    })
+  })
 })
