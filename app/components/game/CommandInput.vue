@@ -88,6 +88,7 @@ const suggestions = computed<Suggestion[]>(() => {
             { text: 'scan', description: 'Scan nearby zone' },
             { text: 'status', description: 'Show hero status' },
             { text: 'map', description: 'Show map overview' },
+            { text: 'help', description: 'List all commands + the goal' },
             { text: 'chat', description: 'Send chat message' },
             { text: 'ping', description: 'Ping a zone' },
             { text: 'buyback', description: 'Pay gold to respawn instantly' },
@@ -120,6 +121,7 @@ const preview = computed(() => {
     'scan',
     'status',
     'map',
+    'help',
     'chat',
     'ping',
     'buyback',
@@ -220,6 +222,7 @@ const preview = computed(() => {
     scan: '>> Scan nearby zone',
     status: '>> Show hero status',
     map: '>> Show map overview',
+    help: '>> List all commands + the goal',
   }
   if (labels[command.type]) return { type: 'valid' as const, text: labels[command.type] }
 

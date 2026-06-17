@@ -1408,7 +1408,7 @@ function handleReturnToMenu() {
         @pick="(tier, side) => handleCommand(`talent ${tier} ${side}`)"
       />
       <CommandInput
-        placeholder="Enter command (Tab for autocomplete)..."
+        placeholder="Enter command — type help for the list (Tab to autocomplete)"
         :tick-countdown="gameStore.nextTickIn"
         :player="gameStore.player"
         :visible-zones="gameStore.visibleZones"
