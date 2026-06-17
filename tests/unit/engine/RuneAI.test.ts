@@ -365,6 +365,24 @@ describe('RuneAI', () => {
       expect(result.players['p1']!.mp).toBeGreaterThan(100)
     })
 
+    it('heals Cron’s crontabHeal buff by the per-tick amount in its stacks (was dead)', () => {
+      const state = makeGameState({
+        tick: 60,
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            hp: 400,
+            maxHp: 1000,
+            buffs: [{ id: 'crontabHeal', stacks: 110, ticksRemaining: 4, source: 'cron' }],
+          }),
+        },
+      })
+
+      const result = processRuneBuffs(state)
+      // The buff was applied but never processed — now it heals `stacks` per tick.
+      expect(result.players['p1']!.hp).toBe(510)
+    })
+
     it('should heal 5% HP per tick with regen', () => {
       const maxHp = 500
       const expectedHeal = Math.floor(maxHp * 0.05)

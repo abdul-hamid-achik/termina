@@ -106,7 +106,8 @@ export function removeExpiredRunes(state: GameState): GameState {
 }
 
 /**
- * Process passive effects from rune buffs (regen, etc).
+ * Process per-tick heal-over-time buffs: the regeneration rune and Cron's
+ * Crontab (R). Runs every tick in the game loop.
  */
 export function processRuneBuffs(state: GameState): GameState {
   const players = { ...state.players }
@@ -124,6 +125,13 @@ export function processRuneBuffs(state: GameState): GameState {
     if (hasRegen) {
       hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * 0.05))
       mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * 0.05))
+    }
+
+    // Cron's Crontab (R): heal-over-time on self + allies; the per-tick heal
+    // amount is stored in the buff stacks. (Was applied but never processed.)
+    const crontab = player.buffs.find((b) => b.id === 'crontabHeal')
+    if (crontab) {
+      hp = Math.min(player.maxHp, hp + crontab.stacks)
     }
 
     // Haste rune is handled via movement (can't be rooted/stunned)
