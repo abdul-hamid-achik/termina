@@ -262,6 +262,32 @@ describe('Shop', () => {
       }
     })
 
+    it('selling an item drops its lingering buffs but keeps unrelated ones', async () => {
+      // Power Treads' mode buff is near-permanent (ticksRemaining 999); without
+      // cleanup you could toggle +15 attack, sell the boots, and keep the stat.
+      const player = makePlayer({
+        items: ['power_treads', null, null, null, null, null],
+        gold: 500,
+        buffs: [
+          { id: 'power_treads_attack', stacks: 15, ticksRemaining: 999, source: 'power_treads' },
+          { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'rune_haste' },
+        ],
+      })
+      const state = makeGameState({ players: { player_1: player } })
+
+      const exit = await runEffect(sellItem(state, 'player_1', 0))
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        const newPlayer = exit.value.players['player_1']!
+        expect(newPlayer.items[0]).toBeNull()
+        // The item's own buff is gone…
+        expect(newPlayer.buffs.some((b) => b.id === 'power_treads_attack')).toBe(false)
+        // …but an unrelated buff (a rune) survives.
+        expect(newPlayer.buffs.some((b) => b.id === 'haste')).toBe(true)
+      }
+    })
+
     it('cannot sell Divine Rapier (its defining drawback)', async () => {
       const player = makePlayer({
         items: ['divine_rapier', null, null, null, null, null],
