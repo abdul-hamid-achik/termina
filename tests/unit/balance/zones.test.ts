@@ -197,4 +197,34 @@ describe('Zone Constants', () => {
       expect(direBase.adjacentTo).toHaveLength(4)
     })
   })
+
+  // A bot-vs-bot game (same AI both sides) should trend ~50/50 only if the two
+  // halves of the map are structurally identical. Lock that fairness invariant —
+  // a missing tower, extra jungle, or lop-sided connection on one side would show
+  // up as a real side bias in the simulator, so guard it deterministically here.
+  describe('radiant/dire structural symmetry (fairness)', () => {
+    const teamZones = (team: 'radiant' | 'dire') => ZONES.filter((z) => z.team === team)
+
+    it('each side has the same per-type zone counts', () => {
+      const byType = (team: 'radiant' | 'dire') => {
+        const counts: Record<string, number> = {}
+        for (const z of teamZones(team)) counts[z.type] = (counts[z.type] ?? 0) + 1
+        return counts
+      }
+      expect(byType('radiant')).toEqual(byType('dire'))
+    })
+
+    it('the two halves have a mirrored adjacency-degree distribution', () => {
+      const degrees = (team: 'radiant' | 'dire') =>
+        teamZones(team)
+          .map((z) => z.adjacentTo.length)
+          .sort((a, b) => a - b)
+      expect(degrees('radiant')).toEqual(degrees('dire'))
+    })
+
+    it('every radiant zone has a same-(type, degree) mirror on the dire side', () => {
+      const sig = (z: (typeof ZONES)[number]) => `${z.type}:${z.adjacentTo.length}`
+      expect(teamZones('radiant').map(sig).sort()).toEqual(teamZones('dire').map(sig).sort())
+    })
+  })
 })
