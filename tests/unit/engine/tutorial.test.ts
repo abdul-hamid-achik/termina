@@ -11,6 +11,8 @@ import {
   buildTutorialRoster,
 } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
+import { ITEMS } from '~~/shared/constants/items'
+import { STARTING_GOLD } from '~~/shared/constants/balance'
 
 /** Minimal tutorial-mode state for the pure advancement helper. The human's
  *  zone matters for the move step (it holds until they leave base/fountain). */
@@ -139,6 +141,14 @@ describe('tutorial flow', () => {
       // that would stall the tutorial on step one.
       const suggested = /move ([a-z-]+)/.exec(tutorialHint(0) ?? '')?.[1]
       expect(['base', 'radiant-base']).toContain(suggested)
+    })
+
+    it('the buy hint names a real item affordable on the starting gold', () => {
+      // Every other hint gives a concrete command; the buy hint must name a real,
+      // buyable item (not a `<item>` placeholder) the player can actually afford.
+      const itemId = /buy ([a-z_]+)/.exec(tutorialHint(3) ?? '')?.[1]
+      expect(itemId && ITEMS[itemId]).toBeTruthy()
+      expect(ITEMS[itemId!]!.cost).toBeLessThanOrEqual(STARTING_GOLD)
     })
   })
 
