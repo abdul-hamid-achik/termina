@@ -5,9 +5,11 @@ import {
   awardKill,
   awardTowerKill,
   comebackMultiplier,
+  playerNetWorth,
 } from '../../../server/game/engine/GoldDistributor'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+import { ITEMS } from '../../../shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
   CREEP_GOLD_MIN,
@@ -17,6 +19,9 @@ import {
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
   TOWER_GOLD,
+  COMEBACK_BONUS_MAX,
+  COMEBACK_PENALTY_MAX,
+  COMEBACK_FULL_GAP,
 } from '../../../shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -417,6 +422,43 @@ describe('GoldDistributor', () => {
       })
       // Radiant is 10k ahead → ratio = -1, multiplier = 1 - 0.3 = 0.7
       expect(comebackMultiplier(state, 'radiant')).toBeCloseTo(0.7, 5)
+    })
+
+    it('scales linearly with the gap below the full-gap cap', () => {
+      // Behind by HALF the full gap → half the bonus; ahead by half → half the penalty.
+      const half = COMEBACK_FULL_GAP / 2
+      const behind = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', gold: 0 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', gold: half }),
+        },
+      })
+      expect(comebackMultiplier(behind, 'radiant')).toBeCloseTo(1 + 0.5 * COMEBACK_BONUS_MAX, 5)
+      expect(comebackMultiplier(behind, 'dire')).toBeCloseTo(1 - 0.5 * COMEBACK_PENALTY_MAX, 5)
+    })
+
+    it('clamps at the cap beyond the full gap (no runaway)', () => {
+      // Twice the full gap must not exceed the max bonus/penalty.
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', gold: 0 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', gold: COMEBACK_FULL_GAP * 2 }),
+        },
+      })
+      expect(comebackMultiplier(state, 'radiant')).toBe(1 + COMEBACK_BONUS_MAX)
+      expect(comebackMultiplier(state, 'dire')).toBe(1 - COMEBACK_PENALTY_MAX)
+    })
+  })
+
+  describe('playerNetWorth', () => {
+    it('is just gold when the player holds no items', () => {
+      expect(playerNetWorth(makePlayer({ gold: 750 }))).toBe(750)
+    })
+
+    it('adds each held item’s shop cost and ignores empty slots', () => {
+      const [a, b] = Object.keys(ITEMS)
+      const player = makePlayer({ gold: 600, items: [a!, null, b!, null, null, null] })
+      expect(playerNetWorth(player)).toBe(600 + ITEMS[a!]!.cost + ITEMS[b!]!.cost)
     })
   })
 })
