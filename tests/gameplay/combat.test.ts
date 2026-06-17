@@ -834,6 +834,41 @@ describe('combat', () => {
     expect(hpHardened).toBeGreaterThan(hpNoHardened)
   })
 
+  it("Daemon's first attack from stealth deals +50% (Stealth Process)", async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
+    await game.tick() // settle the level-6 maxHp recompute
+
+    // One HUMAN(daemon) swing at the ENEMY from full enemy HP, with the given
+    // daemon buffs; report the enemy's HP afterwards (more damage → lower HP).
+    const enemyHpAfterSwing = async (
+      daemonBuffs: { id: string; stacks: number; ticksRemaining: number; source: string }[],
+    ) => {
+      await game.patch((s) => ({
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: {
+            ...s.players[HUMAN]!,
+            items: [null, null, null, null, null, null], // no crit variance
+            buffs: daemonBuffs,
+          },
+          [ENEMY]: { ...s.players[ENEMY]!, hp: s.players[ENEMY]!.maxHp, buffs: [] },
+        },
+      }))
+      game.attackHero(ENEMY) // HUMAN (daemon) swings at ENEMY
+      await game.tick()
+      return (await game.player(ENEMY)).hp
+    }
+
+    const normal = await enemyHpAfterSwing([])
+    const fromStealth = await enemyHpAfterSwing([
+      { id: 'stealth', stacks: 1, ticksRemaining: 99, source: HUMAN },
+    ])
+
+    // The opening strike out of stealth hits 50% harder, so the enemy ends lower.
+    expect(fromStealth).toBeLessThan(normal)
+  })
+
   it('physical immunity (Ghost) zeroes an incoming basic attack', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
 

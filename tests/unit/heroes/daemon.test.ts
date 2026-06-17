@@ -138,6 +138,23 @@ describe('Daemon Hero', () => {
       expect(getBuffStacks(state.players['p1']!, 'stealthIdle')).toBe(0)
     })
 
+    it('breaks stealth when taking damage (per "or taking damage")', () => {
+      let player = makePlayer()
+      player = applyBuff(player, { id: 'stealth', stacks: 1, ticksRemaining: 99, source: 'p1' })
+      player = applyBuff(player, { id: 'stealthIdle', stacks: 3, ticksRemaining: 99, source: 'p1' })
+      let state = makeState([player])
+
+      // A 'damage_taken' event where p1 is the victim is synthesized by the engine.
+      state = resolvePassive(state, 'p1', {
+        tick: 10,
+        type: 'damage_taken',
+        payload: { targetId: 'p1', attackerId: 'e1', amount: 50 },
+      })
+
+      expect(hasBuff(state.players['p1']!, 'stealth')).toBe(false)
+      expect(getBuffStacks(state.players['p1']!, 'stealthIdle')).toBe(0)
+    })
+
     it('resets idle counter on ability cast', () => {
       let player = makePlayer()
       player = applyBuff(player, {

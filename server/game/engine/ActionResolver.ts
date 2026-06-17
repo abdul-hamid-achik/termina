@@ -589,6 +589,14 @@ export function resolveActions(
           attackDamage += silverEdgeBonus.stacks
         }
 
+        // Daemon's Stealth Process: the first attack out of stealth deals +50%.
+        // Only daemon's passive grants the `stealth` buff, and that buff is
+        // consumed by the same attack event (processed after damage resolves), so
+        // exactly the opening strike gets the bonus.
+        if (attacker.buffs.some((b) => b.id === 'stealth')) {
+          attackDamage = Math.round(attackDamage * 1.5)
+        }
+
         let defense = getEffectiveDefense(target, targetItemStats)
 
         if (attacker.items.includes('desolator')) {

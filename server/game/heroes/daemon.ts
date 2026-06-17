@@ -336,6 +336,20 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     }
   }
 
+  // Taking damage also breaks stealth and resets the idle counter, per the
+  // passive description ("without attacking or taking damage"). The engine
+  // synthesizes a 'damage_taken' event (payload.targetId) per damage instance.
+  if (event.type === 'damage_taken' && event.payload['targetId'] === playerId) {
+    let updated = removeBuff(player, 'stealth')
+    updated = applyBuff(updated, {
+      id: 'stealthIdle',
+      stacks: 0,
+      ticksRemaining: 99,
+      source: playerId,
+    })
+    return updatePlayer(state, updated)
+  }
+
   // On tick_end, increment idle counter
   if (event.type === 'tick_end') {
     const idleBuff = player.buffs.find((b) => b.id === 'stealthIdle')
