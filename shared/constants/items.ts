@@ -521,7 +521,7 @@ const nullPointer: ItemDef = {
   passive: {
     id: 'null_pointer_passive',
     name: 'Critical Strike',
-    description: '15% chance to deal double damage on attack.',
+    description: '15% chance to deal 1.5x damage on attack.',
   },
 }
 

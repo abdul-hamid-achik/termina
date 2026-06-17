@@ -55,6 +55,7 @@ import {
   VANGUARD_BLOCK_CHANCE,
   VANGUARD_BLOCK_AMOUNT,
   DESOLATOR_ARMOR_REDUCTION,
+  ASSAULT_CUIRASS_AURA_DEFENSE,
   MKB_BONUS_DAMAGE,
   RING_OF_HEALTH_REGEN_PERCENT,
   SOBI_MASK_REGEN_PERCENT,
@@ -594,16 +595,21 @@ export function resolveActions(
           defense = Math.max(0, defense - DESOLATOR_ARMOR_REDUCTION)
         }
 
+        // Assault Cuirass aura, both halves: an ENEMY holder in the target's
+        // zone shreds its defense; an ALLY holder (incl. the target itself)
+        // raises it. The ally half was previously unimplemented (dead tooltip).
+        // Auras don't stack — each half applies at most once.
+        let allyCuirass = false
+        let enemyCuirass = false
         for (const [, zonePlayer] of Object.entries(players)) {
-          if (
-            zonePlayer.zone === target.zone &&
-            zonePlayer.team !== target.team &&
-            zonePlayer.items.includes('assault_cuirass')
-          ) {
-            defense = Math.max(0, defense - DESOLATOR_ARMOR_REDUCTION)
-            break
+          if (zonePlayer.zone !== target.zone || !zonePlayer.items.includes('assault_cuirass')) {
+            continue
           }
+          if (zonePlayer.team === target.team) allyCuirass = true
+          else enemyCuirass = true
         }
+        if (allyCuirass) defense += ASSAULT_CUIRASS_AURA_DEFENSE
+        if (enemyCuirass) defense = Math.max(0, defense - ASSAULT_CUIRASS_AURA_DEFENSE)
 
         let blockedDamage = 0
         if (target.items.includes('vanguard') && Math.random() < VANGUARD_BLOCK_CHANCE) {
