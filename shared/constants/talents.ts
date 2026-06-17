@@ -719,7 +719,91 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
-  sentry: { heroId: 'sentry', tiers: createGenericTalents('sentry') },
+  // Sentry — a pure support (Mend heal, Barrier shield, Scan Pulse slow, Fortify
+  // team-shield). NONE of its abilities deal instant damage, so it carries NO
+  // damage_boost talents (the generic +Q-damage was 100% dead here); instead its
+  // tree is cooldown/mana efficiency on the kit + tanky-support stats.
+  sentry: {
+    heroId: 'sentry',
+    tiers: {
+      10: [
+        {
+          id: 'sentry_10_left',
+          name: '+250 HP',
+          description: '+250 HP — survive while peeling for the team',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 250 },
+        },
+        {
+          id: 'sentry_10_right',
+          name: '+15 Magic Resistance',
+          description: '+15 Magic Resistance',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'magicResist', value: 15 },
+        },
+      ],
+      15: [
+        {
+          id: 'sentry_15_left',
+          name: '-2s Mend Protocol CD',
+          description: 'Mend Protocol (Q) heal cooldown reduced — top allies up more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'q',
+          cooldownReduction: 2,
+        },
+        {
+          id: 'sentry_15_right',
+          name: '-35% Barrier Mana',
+          description: 'Refunds 35% of Barrier (W) mana — sustain more shields',
+          type: 'mana_cost_reduce',
+          tier: 15,
+          abilityId: 'w',
+          manaCostReduction: 35,
+        },
+      ],
+      20: [
+        {
+          id: 'sentry_20_left',
+          name: '-3s Scan Pulse CD',
+          description: 'Scan Pulse (E) cooldown reduced — more reveals + slows',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'e',
+          cooldownReduction: 3,
+        },
+        {
+          id: 'sentry_20_right',
+          name: '+300 Max Mana',
+          description: '+300 Max Mana — a deeper pool for sustained support',
+          type: 'stat_bonus',
+          tier: 20,
+          statBonus: { stat: 'mp', value: 300 },
+        },
+      ],
+      25: [
+        {
+          id: 'sentry_25_left',
+          name: '-12s Fortify CD',
+          description: 'Fortify (R) team-shield ultimate cooldown reduced',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'sentry_25_right',
+          name: '+10 Defense',
+          description: '+10 Defense — reinforces the Overwatch defense aura',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'defense', value: 10 },
+        },
+      ],
+    },
+  },
   socket: { heroId: 'socket', tiers: createGenericTalents('socket') },
   mutex: { heroId: 'mutex', tiers: createGenericTalents('mutex') },
   thread: { heroId: 'thread', tiers: createGenericTalents('thread') },
