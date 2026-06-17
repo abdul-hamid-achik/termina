@@ -408,4 +408,56 @@ describe('abilities', () => {
     await game.tick()
     expect((await game.me()).cooldowns.w).toBe(0)
   })
+
+  it('Ethereal Blade makes the target physical-immune but amplifies magic damage', async () => {
+    // regex Q (Match) is 70 magical damage on a hero target.
+    const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+
+    const dmgToEnemy = () =>
+      game.lastEvents.find(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )?.amount ?? 0
+
+    // Baseline magic nuke — enemy clean and topped up (caster buffs cleared so
+    // no stray amp drifts the comparison).
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    const baseMagic = dmgToEnemy()
+    expect(baseMagic).toBeGreaterThan(0)
+
+    // Ethereal'd: the same nuke hits substantially harder (+40% via magic_vuln_40).
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          hp: s.players[ENEMY]!.maxHp,
+          buffs: [
+            { id: 'ethereal', stacks: 1, ticksRemaining: 6, source: HUMAN },
+            { id: 'magic_vuln_40', stacks: 40, ticksRemaining: 6, source: HUMAN },
+          ],
+        },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    expect(dmgToEnemy()).toBeGreaterThanOrEqual(Math.round(baseMagic * 1.3))
+
+    // The other half: a basic (physical) attack on the still-ethereal target is
+    // fully absorbed — no physical damage event.
+    game.attackHero(ENEMY)
+    await game.tick()
+    expect(dmgToEnemy()).toBe(0)
+  })
 })
