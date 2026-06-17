@@ -194,6 +194,16 @@ describe('Queue', () => {
         JSON.stringify(entry1),
       )
     })
+
+    it('targets the mode-specific queue + time keys when a mode is given', async () => {
+      const entry = makeEntry({ playerId: 'p_q', mode: 'quick_3v3' })
+      redis.zrangebyscore.mockReturnValue(Effect.succeed([JSON.stringify(entry)]))
+
+      await Effect.runPromise(leaveQueue(redis as never, 'p_q', 1000, 'quick_3v3'))
+
+      expect(redis.zrem).toHaveBeenCalledWith('matchmaking:queue:quick_3v3', JSON.stringify(entry))
+      expect(redis.del).toHaveBeenCalledWith('matchmaking:queue_times:p_q:quick_3v3')
+    })
   })
 
   describe('getQueueSize', () => {
@@ -209,6 +219,14 @@ describe('Queue', () => {
 
       const size = await Effect.runPromise(getQueueSize(redis as never))
       expect(size).toBe(0)
+    })
+
+    it('queries the mode-specific queue key when a mode is given', async () => {
+      redis.zcard.mockReturnValue(Effect.succeed(3))
+
+      const size = await Effect.runPromise(getQueueSize(redis as never, 'quick_3v3'))
+      expect(size).toBe(3)
+      expect(redis.zcard).toHaveBeenCalledWith('matchmaking:queue:quick_3v3')
     })
   })
 
@@ -293,6 +311,26 @@ describe('Queue', () => {
       redis.get.mockReturnValue(Effect.succeed(null))
       const result = await Effect.runPromise(isPlayerInQueue(redis as never, 'player1'))
       expect(result).toBe(false)
+    })
+
+    it('checks only the given mode when one is specified', async () => {
+      redis.get.mockReturnValue(Effect.succeed('123'))
+      const result = await Effect.runPromise(isPlayerInQueue(redis as never, 'p9', '1v1'))
+      expect(result).toBe(true)
+      expect(redis.get).toHaveBeenCalledWith('matchmaking:queue_times:p9:1v1')
+      expect(redis.get).toHaveBeenCalledTimes(1)
+    })
+
+    it('scans all modes and finds a player registered under a non-default mode', async () => {
+      // Absent from ranked_5v5 and quick_3v3, present in 1v1 — the loop must
+      // keep scanning past the early misses before returning true.
+      redis.get
+        .mockReturnValueOnce(Effect.succeed(null))
+        .mockReturnValueOnce(Effect.succeed(null))
+        .mockReturnValueOnce(Effect.succeed('77'))
+      const result = await Effect.runPromise(isPlayerInQueue(redis as never, 'p_late'))
+      expect(result).toBe(true)
+      expect(redis.get).toHaveBeenCalledTimes(3)
     })
   })
 
@@ -407,6 +445,48 @@ describe('Queue', () => {
       expect(Math.abs(radiantMmr - direMmr)).toBeLessThan(200)
       cleanupLobby(lobby.id)
       vi.useRealTimers()
+    })
+  })
+
+  describe('MMR-range match formation', () => {
+    it('forms no match when a full queue is too far apart in MMR', async () => {
+      vi.mocked(createLobby).mockClear()
+      const now = Date.now()
+      // 10 players just joined, spread 500..5000 — far wider than even the
+      // widest allowed window, so no MATCH_SIZE group is within range.
+      for (let i = 0; i < 10; i++) {
+        const e = makeEntry({ playerId: `wide${i}`, mmr: 500 + i * 500, joinedAt: now })
+        redis._store.zadd.push(['matchmaking:queue:ranked_5v5', e.mmr, JSON.stringify(e)])
+      }
+      redis.zcard.mockReturnValue(Effect.succeed(10))
+      redis.zrangebyscore.mockReturnValue(Effect.succeed(redis._store.zadd.map(([, , m]) => m)))
+
+      const handle = startMatchmakingLoop(redis as never, ws as never, db as never)
+      await vi.advanceTimersByTimeAsync(5000)
+      clearInterval(handle)
+
+      expect(vi.mocked(createLobby)).not.toHaveBeenCalled()
+    })
+
+    it('widens the MMR window over wait time, matching a spread-out full queue after a long wait', async () => {
+      vi.mocked(createLobby).mockClear()
+      const now = Date.now()
+      // Spread ~300 (1000..1297): outside the 0s window (±50 → 100) but inside
+      // the 60s+ window (±200 → 400). All have waited 70s, so the range widens
+      // and the match forms — exercising getMmrRange's higher bracket.
+      for (let i = 0; i < 10; i++) {
+        const e = makeEntry({ playerId: `wait${i}`, mmr: 1000 + i * 33, joinedAt: now - 70_000 })
+        redis._store.zadd.push(['matchmaking:queue:ranked_5v5', e.mmr, JSON.stringify(e)])
+      }
+      redis.zcard.mockReturnValue(Effect.succeed(10))
+      redis.zrangebyscore.mockReturnValue(Effect.succeed(redis._store.zadd.map(([, , m]) => m)))
+
+      const handle = startMatchmakingLoop(redis as never, ws as never, db as never)
+      await vi.advanceTimersByTimeAsync(5000)
+      clearInterval(handle)
+
+      expect(vi.mocked(createLobby)).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(createLobby).mock.calls[0]![0]).toHaveLength(10) // a real 10-human match
     })
   })
 })
