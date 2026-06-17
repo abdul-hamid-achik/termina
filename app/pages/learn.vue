@@ -132,8 +132,8 @@ const commands = [
     shortcuts: 'mv',
   },
   {
-    cmd: 'attack <target>',
-    desc: 'Attack a target in your zone',
+    cmd: 'attack [target]',
+    desc: 'Attack a target in your zone. Bare attack auto-hits the nearest enemy hero',
     example: 'attack creep:0',
     shortcuts: 'atk',
   },

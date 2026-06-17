@@ -132,7 +132,7 @@ const preview = computed(() => {
   if (parts.length === 1 && commands.includes(cmd!)) {
     const hints: Record<string, string> = {
       move: '-- move: specify a zone',
-      attack: '-- attack: specify a target',
+      attack: '-- attack: hits the nearest enemy, or specify a target',
       cast: '-- cast: specify ability (q/w/e/r)',
       buy: '-- buy: specify an item',
       sell: '-- sell: specify an item',
