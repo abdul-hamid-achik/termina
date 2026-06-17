@@ -66,6 +66,19 @@ const ownedNone: (string | null)[] = [null, null, null, null, null, null]
       </div>
     </Variant>
 
+    <!-- Role recommendations: ★ badges on the picks + a leading "★ FOR YOU" tab. -->
+    <Variant title="role recommendations (★ for you)">
+      <div class="bg-bg-primary p-3" style="width: 520px">
+        <ItemShop
+          :items="items"
+          :gold="9000"
+          :owned-items="ownedNone"
+          :pinned-items="[]"
+          :recommended-items="[SAMPLE_ITEMS.bkb, SAMPLE_ITEMS.blink, SAMPLE_ITEMS.daedalus]"
+        />
+      </div>
+    </Variant>
+
     <!-- No items to show (e.g. a filter that matched nothing). -->
     <Variant title="empty">
       <div class="bg-bg-primary p-3" style="width: 520px">

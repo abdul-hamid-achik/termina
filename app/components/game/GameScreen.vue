@@ -19,6 +19,7 @@ import {
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
+import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { ITEMS, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 import type { TowerState } from '~~/shared/types/game'
@@ -106,6 +107,14 @@ const shopItems = computed(() => {
 
 const playerItems = computed(() => gameStore.player?.items ?? [null, null, null, null, null, null])
 const playerBuffs = computed(() => gameStore.player?.buffs ?? [])
+
+// Role-based shop recommendations for the new-player funnel — same canonical
+// build lists the bots itemise from, surfaced as the shop's "★ FOR YOU" tab.
+const recommendedShopItems = computed(() => {
+  const heroId = gameStore.player?.heroId
+  const role = heroId ? HEROES[heroId]?.role : undefined
+  return recommendedItemsForRole(role)
+})
 
 onMounted(() => {
   if (gameStore.gameId && gameStore.playerId) {
@@ -1396,6 +1405,7 @@ function handleReturnToMenu() {
           :gold="playerGold"
           :owned-items="playerItems"
           :pinned-items="pinnedItems"
+          :recommended-items="recommendedShopItems"
           @buy="handleBuyItem"
           @pin="pinItem"
           @unpin="unpinItem"
