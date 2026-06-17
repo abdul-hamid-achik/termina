@@ -16,6 +16,7 @@ import {
   getItemStatBonuses,
 } from './EffectiveStats'
 import { areAdjacent } from '~~/server/game/map/topology'
+import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/modes/tutorial'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   calculatePhysicalDamage,
@@ -149,6 +150,13 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   if (hasDebuff(player, 'hex')) return 'Cannot act while hexed'
 
   const cmd = action.command
+
+  // Tutorial mode gates commands behind staggered unlocks so a new player learns
+  // one verb at a time. Informational commands always pass; everything else must
+  // be unlocked by the current step (the gate is a no-op in normal games).
+  if (state.mode === 'tutorial' && !isCommandAllowedInTutorial(cmd.type, state.tutorialStep ?? 0)) {
+    return tutorialLockMessage(state.tutorialStep ?? 0)
+  }
 
   switch (cmd.type) {
     case 'move': {

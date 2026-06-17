@@ -220,6 +220,7 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
     dayNightTick: state.dayNightTick,
     mapId: state.mapId,
     mode: state.mode,
+    tutorialStep: state.tutorialStep,
   }
 }
 
@@ -250,6 +251,7 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
       dayNightTick: state.dayNightTick,
       mapId: state.mapId,
       mode: state.mode,
+      tutorialStep: state.tutorialStep,
     }
   }
 
@@ -360,5 +362,6 @@ export function filterStateForPlayer(state: GameState, playerId: string): Player
     dayNightTick: state.dayNightTick,
     mapId: state.mapId,
     mode: state.mode,
+    tutorialStep: state.tutorialStep,
   }
 }
