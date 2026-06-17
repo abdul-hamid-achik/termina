@@ -143,12 +143,17 @@ describe('tutorial flow', () => {
       expect(['base', 'radiant-base']).toContain(suggested)
     })
 
-    it('the buy hint names a real item affordable on the starting gold', () => {
+    it('the buy hint names a real, affordable item that actually does something', () => {
       // Every other hint gives a concrete command; the buy hint must name a real,
-      // buyable item (not a `<item>` placeholder) the player can actually afford.
+      // buyable item (not a `<item>` placeholder) the player can afford — AND one
+      // that does something. Termina movement is fixed (1 zone/tick), so a
+      // pure-moveSpeed item like Boots of Speed would be an inert suggestion.
       const itemId = /buy ([a-z_]+)/.exec(tutorialHint(3) ?? '')?.[1]
       expect(itemId && ITEMS[itemId]).toBeTruthy()
-      expect(ITEMS[itemId!]!.cost).toBeLessThanOrEqual(STARTING_GOLD)
+      const item = ITEMS[itemId!]!
+      expect(item.cost).toBeLessThanOrEqual(STARTING_GOLD)
+      const functionalStats = Object.keys(item.stats).filter((k) => k !== 'moveSpeed')
+      expect(functionalStats.length > 0 || !!item.active).toBe(true)
     })
   })
 

@@ -36,7 +36,9 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
   },
   {
     teaches: 'buy',
-    hint: '🎓 Spend your gold — head back to base and type `buy boots_of_speed` for move speed.',
+    // NB: Termina movement is a fixed 1 zone/tick, so the moveSpeed stat is
+    // inert — suggest an item with a stat that actually does something (+attack).
+    hint: '🎓 Spend your gold — head back to base and type `buy blades_of_attack` for more damage.',
   },
 ]
 
