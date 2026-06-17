@@ -244,10 +244,8 @@ export function processTick(
     currentState = trapResult.state
     allEvents.push(...trapResult.events)
 
-    // 3.7. Track last seen positions and detect missing enemies
-    const lastSeenUpdate = trackLastSeenAndMissing(currentState, allEvents)
-    currentState = lastSeenUpdate.state
-    allEvents.push(...lastSeenUpdate.events)
+    // 3.7. Track last-seen positions (fog-safe "missing" display is client-side)
+    currentState = trackLastSeen(currentState)
 
     // 3.8. Expire glyph invulnerability
     currentState = expireGlyph(currentState)
@@ -1409,60 +1407,23 @@ function checkWinCondition(state: GameState): TeamId | null {
 }
 
 /**
- * Track last seen positions for all players and detect missing enemies
+ * Track each alive player's last-seen zone/tick.
+ *
+ * NOTE: the old version of this also auto-emitted `enemy_missing` events, but
+ * that path was dead-and-wrong — it updated lastSeen for ALL alive players from
+ * the full (un-fogged) state every tick, so `ticksSinceSeen` was always ≤1 and a
+ * truly-missing enemy never triggered. It COULD only fire for a *respawned*
+ * enemy (dead players aren't updated), surfacing a misleading "MISSING" the tick
+ * an enemy came back. "Last seen" is inherently per-viewer/fog-aware, which the
+ * CLIENT already does correctly (store.lastSeen); a global server field can't
+ * model it. Manual enemy-missing calls go through the `missing` command instead.
  */
-function trackLastSeenAndMissing(
-  state: GameState,
-  events: GameEngineEvent[],
-): { state: GameState; events: GameEngineEvent[] } {
+function trackLastSeen(state: GameState): GameState {
   const updatedLastSeen = { ...state.lastSeen }
-  const newEvents: GameEngineEvent[] = []
-
-  // Update last seen for all alive players based on their current zone
   for (const [pid, player] of Object.entries(state.players)) {
     if (player.alive) {
-      updatedLastSeen[pid] = {
-        zone: player.zone,
-        tick: state.tick,
-      }
+      updatedLastSeen[pid] = { zone: player.zone, tick: state.tick }
     }
   }
-
-  // Detect missing enemies - if a player hasn't been seen in 2 ticks and was last in lane
-  const MISSING_THRESHOLD = 2 // ticks
-  for (const [pid, player] of Object.entries(state.players)) {
-    if (!player.alive) continue
-
-    const enemyTeam = player.team === 'radiant' ? 'dire' : 'radiant'
-    const enemies = Object.values(state.players).filter((p) => p.team === enemyTeam && p.alive)
-
-    for (const enemy of enemies) {
-      const lastSeen = state.lastSeen[enemy.id]
-      if (!lastSeen) continue
-
-      const ticksSinceSeen = state.tick - lastSeen.tick
-      if (ticksSinceSeen >= MISSING_THRESHOLD) {
-        // Check if not already reported this tick
-        const alreadyReported = events.some(
-          (e) => e._tag === 'enemy_missing' && e.playerId === enemy.id && e.tick === state.tick,
-        )
-
-        if (!alreadyReported) {
-          newEvents.push({
-            _tag: 'enemy_missing',
-            tick: state.tick,
-            playerId: enemy.id,
-            lastSeenZone: lastSeen.zone,
-            lastSeenTick: lastSeen.tick,
-            reportedBy: pid,
-          })
-        }
-      }
-    }
-  }
-
-  return {
-    state: { ...state, lastSeen: updatedLastSeen },
-    events: newEvents,
-  }
+  return { ...state, lastSeen: updatedLastSeen }
 }
