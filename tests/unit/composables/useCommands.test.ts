@@ -6,9 +6,17 @@ import {
   pickAbilityTargetString,
   type GameContext,
 } from '../../../app/composables/useCommands'
-import type { PlayerState } from '../../../shared/types/game'
+import type { PlayerState, ZoneRuntimeState } from '../../../shared/types/game'
 import type { ItemDef } from '../../../shared/types/items'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
+import { ZONE_IDS } from '../../../shared/constants/zones'
+
+/** The full game zone set, as the client actually receives it (state.zones). */
+function allZones(): Record<string, ZoneRuntimeState> {
+  const zones: Record<string, ZoneRuntimeState> = {}
+  for (const id of ZONE_IDS) zones[id] = { id, wards: [], creeps: [] }
+  return zones
+}
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -48,7 +56,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 function makeContext(overrides: Partial<GameContext> = {}): GameContext {
   return {
     player: makePlayer(),
+    // The client receives the full game zone set (state.zones), not just the
+    // vision-visible ones — reflect that so move validation behaves realistically.
     visibleZones: {
+      ...allZones(),
       'mid-t1-rad': { id: 'mid-t1-rad', wards: [], creeps: ['c0', 'c1'] },
     },
     allPlayers: {
@@ -1365,6 +1376,36 @@ describe('validateCommand', () => {
     const err = validateCommand({ type: 'move', zone: 'dire-fountain' }, makeContext())
     expect(err).toMatch(/one zone per tick/i)
     expect(err).toContain('mid-river')
+  })
+
+  it('rejects a globally-adjacent zone that is not on THIS map (subset/one-lane)', () => {
+    // On the one-lane map radiant-base keeps only mid-t3-rad + radiant-fountain;
+    // the top/bot T3s are globally adjacent but don't exist this game.
+    const oneLaneZones: Record<string, ZoneRuntimeState> = {}
+    for (const id of [
+      'radiant-fountain',
+      'radiant-base',
+      'mid-t3-rad',
+      'mid-t2-rad',
+      'mid-t1-rad',
+      'mid-river',
+      'mid-t1-dire',
+      'mid-t2-dire',
+      'mid-t3-dire',
+      'dire-base',
+      'dire-fountain',
+    ]) {
+      oneLaneZones[id] = { id, wards: [], creeps: [] }
+    }
+    const ctx = makeContext({
+      player: makePlayer({ zone: 'radiant-base' }),
+      visibleZones: oneLaneZones,
+    })
+
+    // Mirrors the server: off-map (but globally adjacent) is rejected...
+    expect(validateCommand({ type: 'move', zone: 'top-t3-rad' }, ctx)).toMatch(/isn.t on this map/i)
+    // ...while the on-map adjacent move is allowed.
+    expect(validateCommand({ type: 'move', zone: 'mid-t3-rad' }, ctx)).toBeNull()
   })
 
   it('rejects move while rooted', () => {

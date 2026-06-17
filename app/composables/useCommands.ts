@@ -226,6 +226,18 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (command.zone !== player.zone && !zone.adjacentTo.includes(command.zone)) {
         return `Too far — you move one zone per tick. From ${player.zone} you can reach: ${zone.adjacentTo.join(', ')}`
       }
+      // Subset maps (one-lane / tutorial) don't contain every globally-adjacent
+      // zone. Mirror the server, which also requires the destination to exist in
+      // THIS game's zone set. `visibleZones` is the full game zone set (not
+      // vision-filtered); skip the check until it's populated.
+      const gameZones = context.visibleZones
+      if (
+        command.zone !== player.zone &&
+        Object.keys(gameZones).length > 0 &&
+        !gameZones[command.zone]
+      ) {
+        return `${command.zone} isn't on this map`
+      }
       if (hasDebuff(player, 'root') || hasDebuff(player, 'stun')) {
         return 'Cannot move while rooted or stunned'
       }
