@@ -806,8 +806,10 @@ export default defineNitroPlugin(async (nitroApp) => {
         // On a subset map the role lanes (top/bot/jungle) don't exist; pin bots to
         // mid so their global-graph pathing can't walk them off the map.
         forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined,
-        // Tutorial bots play gently (slower reactions, weaker last-hits) so a new
-        // player isn't punished while learning the verbs.
+        // Tutorial bots play gently — the 'easy' config lowers their ability-combo
+        // rate, makes them retreat earlier, and drops rune/jungle/threat awareness —
+        // so a new player isn't punished while learning the verbs. (lastHitAccuracy
+        // and reactionDelayTicks are deliberately NOT wired; see BotAI's creep block.)
         difficulty: opts.mode === 'tutorial' ? 'easy' : undefined,
       },
     )
