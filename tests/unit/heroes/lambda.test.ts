@@ -253,7 +253,7 @@ describe('Lambda Hero', () => {
       const state = makeState([player])
       const cast = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
-      // Roam to top-river while the mark (ticksRemaining 6) is up.
+      // Roam to top-river while the mark (ticksRemaining 3) is up.
       let s: GameState = {
         ...cast.state,
         players: {
@@ -262,12 +262,12 @@ describe('Lambda Hero', () => {
         },
       }
 
-      // Tick down to 1 — still away, mark still up.
-      for (let i = 0; i < 5; i++) s = tickAllBuffs(s)
+      // Away for 2 ticks (ticksRemaining 3 → 2 → 1) — still away, mark still up.
+      for (let i = 0; i < 2; i++) s = tickAllBuffs(s)
       expect(s.players['p1']!.zone).toBe('top-river')
       expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(true)
 
-      // Next tick expires it → snap back to mid-river.
+      // The next (3rd) tick expires it → snap back to mid-river.
       s = tickAllBuffs(s)
       expect(s.players['p1']!.zone).toBe('mid-river')
       expect(hasBuff(s.players['p1']!, 'returnMark')).toBe(false)

@@ -155,8 +155,11 @@ function resolveW(
 
     caster = applyBuff(caster, {
       id: 'returnMark',
+      // "After 2 ticks, teleport back": the snap fires when ticksRemaining hits 1
+      // (tickAllBuffs), so 3 → away for 2 ticks, then return. (Was 6 — a ~5-tick
+      // delay that contradicted the description + effects array.)
+      ticksRemaining: 3,
       stacks: 1,
-      ticksRemaining: 6,
       source: player.id,
       destination: player.zone, // snap the caster back here when the mark expires
     })
