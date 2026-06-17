@@ -632,6 +632,45 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
     expect(r.state.players['ally']!.hp).toBe(allyHp)
     expect(r.state.players['far']!.hp).toBe(farHp)
   })
+
+  it('deals no magical damage to a magic-immune (BKB) enemy, but still slows it', () => {
+    const state = makeGameState({
+      players: {
+        p1: shiva(),
+        bkb: makePlayer({
+          id: 'bkb',
+          team: 'dire',
+          name: 'Immune',
+          zone: 'mid-river',
+          buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'black_king_bar' }],
+        }),
+      },
+    })
+    const hp0 = state.players['bkb']!.hp
+    const r = run(state, [useShiva])
+    // Magical nova is fully absorbed by spell immunity...
+    expect(r.state.players['bkb']!.hp).toBe(hp0)
+    // ...but the slow still lands (BKB lets you ACT through controls; it doesn't
+    // block slow application in this engine — same as every other slow source).
+    expect(r.state.players['bkb']!.buffs.some((b) => b.id === 'slow')).toBe(true)
+  })
+
+  it('is amplified by a magic-vulnerability debuff (e.g. Veil of Discord)', () => {
+    const mk = (buffs: PlayerState['buffs']) =>
+      makeGameState({
+        players: {
+          p1: shiva(),
+          e: makePlayer({ id: 'e', team: 'dire', name: 'E', zone: 'mid-river', buffs }),
+        },
+      })
+    const plain = mk([])
+    const veiled = mk([
+      { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'veil_of_discord' },
+    ])
+    const dmgPlain = plain.players['e']!.hp - run(plain, [useShiva]).state.players['e']!.hp
+    const dmgVeiled = veiled.players['e']!.hp - run(veiled, [useShiva]).state.players['e']!.hp
+    expect(dmgVeiled).toBeGreaterThan(dmgPlain)
+  })
 })
 
 describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
