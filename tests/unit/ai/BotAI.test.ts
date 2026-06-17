@@ -1235,6 +1235,14 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
   })
 
+  it('a support bot pops Lotus Orb (spell-reflect) under pressure', () => {
+    const bot = makePlayer({ hp: 300, maxHp: 500, items: inv('lotus_orb') }) // 60%, hurt
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'lotus_orb',
+    })
+  })
+
   it('pops Stack Overflow when an ability is ready to consume the charge', () => {
     const bot = makePlayer({ hp: 500, maxHp: 500, mp: 200, items: inv('stack_overflow') })
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
@@ -1370,6 +1378,11 @@ describe('BotAI - panic survival items (retreat branch)', () => {
   it('returns an owned, off-cooldown defensive item', () => {
     const bot = makePlayer({ items: inv('blade_mail') })
     expect(tryPanicDefensiveItem(bot, makeConfig())).toEqual({ type: 'use', item: 'blade_mail' })
+  })
+
+  it('a support bot can panic with Lotus Orb', () => {
+    const bot = makePlayer({ items: inv('lotus_orb') })
+    expect(tryPanicDefensiveItem(bot, makeConfig())).toEqual({ type: 'use', item: 'lotus_orb' })
   })
 
   it('is gated on threatAssessment (easy bots panic-walk instead)', () => {
