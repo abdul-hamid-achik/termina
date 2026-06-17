@@ -6,7 +6,12 @@ import { ITEMS } from '~~/shared/constants/items'
 const SALVE_COST = ITEMS.healing_salve!.cost
 
 function mountQuickBuy(
-  overrides: Partial<{ pinnedItems: string[]; gold: number; canBuy: boolean }> = {},
+  overrides: Partial<{
+    pinnedItems: string[]
+    gold: number
+    canBuy: boolean
+    recommendedItems: string[]
+  }> = {},
 ) {
   return mount(QuickBuy, {
     props: {
@@ -60,5 +65,29 @@ describe('QuickBuy', () => {
       'touch-target',
     )
     expect(wrapper.find('[data-testid="quickbuy-healing_salve"]').classes()).toContain('touch-gap')
+  })
+
+  describe('recommendation fallback (new-player funnel)', () => {
+    it('shows role suggestions (no unpin) when nothing is pinned', () => {
+      const wrapper = mountQuickBuy({
+        pinnedItems: [],
+        gold: 99999,
+        recommendedItems: ['blades_of_attack', 'null_pointer'],
+      })
+      expect(wrapper.text()).toContain('Suggested')
+      expect(wrapper.find('[data-testid="quickbuy-blades_of_attack"]').exists()).toBe(true)
+      // Suggestions aren't pinned, so they expose no unpin control.
+      expect(wrapper.find('[data-testid="quickbuy-unpin-blades_of_attack"]').exists()).toBe(false)
+    })
+
+    it('prefers pinned items over suggestions when both exist', () => {
+      const wrapper = mountQuickBuy({
+        pinnedItems: ['healing_salve'],
+        recommendedItems: ['blades_of_attack'],
+      })
+      expect(wrapper.text()).toContain('Quick Buy')
+      expect(wrapper.find('[data-testid="quickbuy-healing_salve"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="quickbuy-blades_of_attack"]').exists()).toBe(false)
+    })
   })
 })

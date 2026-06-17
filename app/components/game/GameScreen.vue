@@ -1418,10 +1418,11 @@ function handleReturnToMenu() {
       <div class="flex items-center gap-2 border-t border-border bg-bg-secondary px-2 py-1">
         <InventoryBar :items="playerItems" :buffs="playerBuffs" @use="handleItemUse" />
         <QuickBuy
-          v-if="pinnedItems.length"
+          v-if="pinnedItems.length || recommendedShopItems.length"
           :pinned-items="pinnedItems"
           :gold="playerGold"
           :can-buy="gameStore.canBuy"
+          :recommended-items="recommendedShopItems"
           @buy="handleBuyItem"
           @unpin="unpinItem"
         />

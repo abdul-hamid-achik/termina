@@ -7,6 +7,8 @@ const props = defineProps<{
   pinnedItems: string[]
   gold: number
   canBuy: boolean
+  /** Role recommendations, shown as a fallback when nothing is pinned. */
+  recommendedItems?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -21,8 +23,18 @@ interface PinnedEntry {
   goldNeeded: number
 }
 
+// When nothing is pinned, fall back to the first few role recommendations so the
+// quick-buy bar still guides a new player. Suggestions aren't pinned, so they
+// show no unpin control.
+const usingSuggestions = computed(
+  () => props.pinnedItems.length === 0 && (props.recommendedItems?.length ?? 0) > 0,
+)
+
 const entries = computed<PinnedEntry[]>(() => {
-  return props.pinnedItems
+  const ids = usingSuggestions.value
+    ? (props.recommendedItems ?? []).slice(0, 4)
+    : props.pinnedItems
+  return ids
     .map((id) => {
       const def = ITEMS[id]
       if (!def) return null
@@ -35,7 +47,9 @@ const entries = computed<PinnedEntry[]>(() => {
 
 <template>
   <div v-if="entries.length" class="flex flex-col gap-0.5">
-    <span class="text-[0.6rem] uppercase tracking-wide text-text-dim">Quick Buy</span>
+    <span class="text-[0.6rem] uppercase tracking-wide text-text-dim">{{
+      usingSuggestions ? 'Suggested' : 'Quick Buy'
+    }}</span>
     <div class="flex flex-wrap gap-1">
       <div
         v-for="entry in entries"
@@ -60,8 +74,9 @@ const entries = computed<PinnedEntry[]>(() => {
           [BUY]
         </button>
         <!-- Destructive unpin sits behind the coarse-pointer touch gap so a
-             missed [BUY] tap can't land on it -->
+             missed [BUY] tap can't land on it. Hidden for suggestions (not pinned). -->
         <button
+          v-if="!usingSuggestions"
           class="touch-target text-text-dim hover:text-dire"
           :data-testid="`quickbuy-unpin-${entry.id}`"
           @click="emit('unpin', entry.id)"
