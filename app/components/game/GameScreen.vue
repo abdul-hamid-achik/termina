@@ -274,7 +274,7 @@ const latestAnnouncement = computed(() => gameStore.announcements.at(-1) ?? '')
 // rises + fades once (DamageFloat.vue) and is pruned after the animation.
 const damageFloats = ref<DamageFloatEntry[]>([])
 let _floatId = 0
-function pushDamageFloat(amount: number, kind: 'taken' | 'dealt') {
+function pushDamageFloat(amount: number, kind: 'taken' | 'dealt' | 'heal') {
   if (!amount || amount <= 0) return
   const id = ++_floatId
   damageFloats.value = [...damageFloats.value, { id, amount: Math.round(amount), kind }].slice(-8)
@@ -337,6 +337,13 @@ watch(
           } else if (e.payload.sourceId === pid) {
             playSound('damage')
             pushDamageFloat(Number(e.payload.amount), 'dealt')
+          }
+          break
+        case 'heal':
+          // Self-heals get a teal +N float so regen / lifesteal / heal abilities
+          // read as feedback, not just a silent HP bump.
+          if (e.payload.targetId === pid) {
+            pushDamageFloat(Number(e.payload.amount), 'heal')
           }
           break
         case 'death':

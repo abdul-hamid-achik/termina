@@ -19,6 +19,16 @@ describe('DamageFloat', () => {
     expect(el.classes()).toContain('text-radiant')
   })
 
+  it('renders a heal as a positive teal number with a + prefix', () => {
+    const w = mount(DamageFloat, { props: { floats: [{ id: 3, amount: 50, kind: 'heal' }] } })
+    const el = w.find('[data-testid="damage-float-heal"]')
+    expect(el.exists()).toBe(true)
+    expect(el.text()).toBe('+50')
+    expect(el.classes()).toContain('text-healing')
+    // distinct from the radiant green used for dealt damage
+    expect(el.classes()).not.toContain('text-radiant')
+  })
+
   it('renders one node per float and nothing when empty', () => {
     const many = mount(DamageFloat, {
       props: {
