@@ -5,12 +5,13 @@ import {
   buybackCostFor,
   pickAbilityTargetString,
   pickAttackTargetString,
+  pickDenyTargetString,
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
   type GameContext,
 } from '../../../app/composables/useCommands'
-import type { PlayerState, ZoneRuntimeState } from '../../../shared/types/game'
+import type { PlayerState, ZoneRuntimeState, CreepState } from '../../../shared/types/game'
 import type { ItemDef } from '../../../shared/types/items'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 import { ZONE_IDS } from '../../../shared/constants/zones'
@@ -1713,5 +1714,57 @@ describe('informational readouts', () => {
   it('formatScanReadout reports an empty vision cleanly', () => {
     const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
     expect(formatScanReadout(me, { p1: me })).toMatch(/no enemy heroes/i)
+  })
+})
+
+// ── pickDenyTargetString (bare `deny` auto-target) ────────────────
+describe('pickDenyTargetString', () => {
+  // Melee creep max HP is 400; the deny threshold is 50% (200).
+  const allied = (overrides: Partial<CreepState>): CreepState => ({
+    id: 'c',
+    team: 'radiant' as const,
+    zone: 'mid-river',
+    hp: 100,
+    type: 'melee' as const,
+    ...overrides,
+  })
+
+  it('targets the lowest-HP eligible allied creep, by zone index', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const creeps = [
+      allied({ id: 'c0', hp: 180 }), // index 0 — eligible (<=200)
+      allied({ id: 'c1', hp: 120 }), // index 1 — eligible, lowest HP
+      allied({ id: 'c2', hp: 350 }), // index 2 — too healthy to deny
+    ]
+    expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:1' })
+  })
+
+  it('indexes within the player’s zone only (matches the server convention)', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const creeps = [
+      allied({ id: 'x', zone: 'top-river', hp: 50 }), // other zone — not counted
+      allied({ id: 'c0', zone: 'mid-river', hp: 150 }), // zone index 0
+    ]
+    expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:0' })
+  })
+
+  it('ignores enemy creeps and healthy allied creeps', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const creeps = [
+      allied({ id: 'e', team: 'dire', hp: 10 }), // enemy — you deny your OWN
+      allied({ id: 'healthy', hp: 399 }), // above 50% — not denyable
+    ]
+    expect('error' in pickDenyTargetString(me, creeps)).toBe(true)
+  })
+
+  it('respects per-type max HP (ranged threshold is lower)', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    // Ranged max HP 250 → threshold 125. A ranged creep at 130 is NOT denyable,
+    // but a melee creep (max 400, threshold 200) at 130 IS.
+    const creeps = [
+      allied({ id: 'ranged', type: 'ranged', hp: 130 }),
+      allied({ id: 'melee', type: 'melee', hp: 130 }),
+    ]
+    expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:1' })
   })
 })

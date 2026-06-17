@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import type { Command, TargetRef } from '~~/shared/types/commands'
-import type { PlayerState, ZoneRuntimeState, TeamId } from '~~/shared/types/game'
+import type { PlayerState, ZoneRuntimeState, TeamId, CreepState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
@@ -10,6 +10,10 @@ import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
   SURRENDER_MIN_TICK,
+  DENY_HP_THRESHOLD,
+  MELEE_CREEP_HP,
+  RANGED_CREEP_HP,
+  SIEGE_CREEP_HP,
 } from '~~/shared/constants/balance'
 
 export interface Suggestion {
@@ -130,6 +134,35 @@ export function pickAttackTargetString(
   }
   const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
   return { target: `hero:${target.id}` }
+}
+
+/** Max HP for a creep type — mirrors the server's deny eligibility check. */
+function creepMaxHp(type: CreepState['type']): number {
+  return type === 'siege' ? SIEGE_CREEP_HP : type === 'ranged' ? RANGED_CREEP_HP : MELEE_CREEP_HP
+}
+
+/**
+ * Pick a default target for a bare `deny`: the lowest-HP ALLIED creep in your
+ * zone that's eligible to deny (at/below the deny HP threshold). Returns the
+ * server's `creep:<index>` form, where the index is the creep's position among
+ * your zone's creeps — the exact convention creepInZoneByIndex resolves.
+ */
+export function pickDenyTargetString(
+  player: PlayerState,
+  creeps: CreepState[],
+): { target: string } | { error: string } {
+  const inZone = creeps.filter((c) => c.zone === player.zone) // same order the server indexes
+  let best: { hp: number; index: number } | null = null
+  for (let index = 0; index < inZone.length; index++) {
+    const c = inZone[index]!
+    if (c.team !== player.team || c.hp <= 0) continue
+    if (c.hp > creepMaxHp(c.type) * DENY_HP_THRESHOLD) continue // not low enough to deny
+    if (best === null || c.hp < best.hp) best = { hp: c.hp, index }
+  }
+  if (best === null) {
+    return { error: 'No denyable allied creep (below 50% HP) in your zone' }
+  }
+  return { target: `creep:${best.index}` }
 }
 
 // ── Informational command readouts ────────────────────────────────
