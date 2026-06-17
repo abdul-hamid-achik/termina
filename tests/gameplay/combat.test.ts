@@ -290,6 +290,31 @@ describe('combat', () => {
     expect(me.zone).toBe(me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain')
   })
 
+  it('handleDeaths sets a respawn timer that scales with hero level', async () => {
+    // The respawn FORMULA is unit-tested in balance.test.ts; this guards the
+    // APPLICATION — a higher-level hero serves a longer death penalty. Compared
+    // relatively so it survives the TERMINA_TEST_FAST_GAME respawn rescale.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        // Both freshly dead this tick (respawnTick null → handleDeaths assigns it).
+        [HUMAN]: { ...s.players[HUMAN]!, level: 8, alive: false, hp: 0, respawnTick: null },
+        [ENEMY]: { ...s.players[ENEMY]!, level: 1, alive: false, hp: 0, respawnTick: null },
+      },
+    }))
+
+    await game.tick()
+
+    const me = await game.me()
+    const enemy = await game.player(ENEMY)
+    expect(me.respawnTick).not.toBeNull()
+    expect(enemy.respawnTick).not.toBeNull()
+    // Both died on the same tick, so a later respawnTick = a longer wait.
+    expect(me.respawnTick!).toBeGreaterThan(enemy.respawnTick!)
+  })
+
   it('a shield buff absorbs an incoming attack before HP', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
