@@ -559,4 +559,64 @@ describe('Lobby Store', () => {
       expect(store.countdown).toBe(0)
     })
   })
+
+  describe('recoverState (one-shot page-refresh recovery)', () => {
+    it('returns null and changes nothing when the server reports idle', async () => {
+      mockFetch.mockResolvedValue({ status: 'idle' })
+      const store = useLobbyStore()
+      const result = await store.recoverState()
+      expect(result).toBeNull()
+      expect(store.queueStatus).toBe('idle')
+    })
+
+    it('recovers a game_starting status into the starting countdown', async () => {
+      mockFetch.mockResolvedValue({ status: 'game_starting', gameId: 'game_42' })
+      const store = useLobbyStore()
+      await store.recoverState()
+      expect(store.gameId).toBe('game_42')
+      expect(store.queueStatus).toBe('starting')
+      expect(store.countdown).toBeGreaterThan(0)
+    })
+
+    it('recovers a lobby already in the starting phase (picks + countdown)', async () => {
+      mockFetch.mockResolvedValue({
+        status: 'lobby',
+        lobbyId: 'lobby_1',
+        team: 'radiant',
+        players: [{ playerId: 'p1', team: 'radiant', heroId: 'echo' }],
+        phase: 'starting',
+      })
+      const store = useLobbyStore()
+      await store.recoverState()
+      expect(store.queueStatus).toBe('starting')
+      expect(store.pickedHeroes['p1']).toBe('echo')
+    })
+
+    it('recovers a lobby still picking via matchFound', async () => {
+      mockFetch.mockResolvedValue({
+        status: 'lobby',
+        lobbyId: 'lobby_2',
+        team: 'dire',
+        players: [{ playerId: 'p2', team: 'dire', heroId: null }],
+        phase: 'picking',
+      })
+      const store = useLobbyStore()
+      await store.recoverState()
+      expect(store.lobbyId).toBe('lobby_2')
+      expect(store.queueStatus).toBe('found') // matchFound, pre-1500ms transition
+    })
+
+    it('recovers a searching status back into the queue', async () => {
+      mockFetch.mockResolvedValue({
+        status: 'searching',
+        playersInQueue: 4,
+        estimatedWaitSeconds: 12,
+      })
+      const store = useLobbyStore()
+      await store.recoverState()
+      expect(store.queueStatus).toBe('searching')
+      expect(store.playersInQueue).toBe(4)
+      expect(store.estimatedWaitSeconds).toBe(12)
+    })
+  })
 })
