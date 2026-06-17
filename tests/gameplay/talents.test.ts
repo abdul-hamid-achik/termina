@@ -49,4 +49,52 @@ describe('talents', () => {
 
     expect(lastHitDamage()).toBeGreaterThan(before)
   })
+
+  it('a damage_boost talent amplifies a hero-tailored ability through the full tick (Cipher +30% XOR Strike)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'cipher', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+
+    const dmgToEnemy = () =>
+      game.lastEvents
+        .filter((e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY)
+        .reduce((sum, e) => sum + (e._tag === 'damage' ? e.amount : 0), 0)
+
+    // Baseline XOR Strike (Q) — no talent, caster buffs cleared, enemy topped up.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          level: 16,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [],
+          talents: { tier10: null, tier15: null, tier20: null, tier25: null },
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    const baseline = dmgToEnemy()
+    expect(baseline).toBeGreaterThan(0)
+
+    // Same cast with the tailored +30% XOR Strike talent → meaningfully more damage.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          buffs: [],
+          talents: { tier10: null, tier15: 'cipher_15_left', tier20: null, tier25: null },
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    expect(dmgToEnemy()).toBeGreaterThanOrEqual(Math.round(baseline * 1.2))
+  })
 })
