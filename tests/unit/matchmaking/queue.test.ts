@@ -8,6 +8,7 @@ import {
   isPlayerInQueue,
 } from '../../../server/game/matchmaking/queue'
 import type { QueueEntry } from '../../../server/game/matchmaking/queue'
+import { createLobby } from '../../../server/game/matchmaking/lobby'
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
@@ -228,6 +229,27 @@ describe('Queue', () => {
       vi.advanceTimersByTime(5000)
       // zcard is called inside tryFormMatch via zrangebyscore
       expect(redis.zcard).toHaveBeenCalled()
+
+      clearInterval(handle)
+    })
+
+    it('fills a long-waiting partial queue with bots and forms a match', async () => {
+      vi.mocked(createLobby).mockClear()
+      // One real player who joined well past BOT_FILL_WAIT_MS (10s) ago.
+      const waited = makeEntry({ playerId: 'human_1', joinedAt: Date.now() - 30_000 })
+      redis._store.zadd.push(['matchmaking:queue:ranked_5v5', waited.mmr, JSON.stringify(waited)])
+
+      const handle = startMatchmakingLoop(redis as never, ws as never, db as never)
+      // advanceTimersByTimeAsync flushes the async Effect program to completion.
+      await vi.advanceTimersByTimeAsync(5000)
+
+      // Bot-fill: the queue entry is removed and a lobby forms with player + bots.
+      expect(redis.zrem).toHaveBeenCalled()
+      expect(vi.mocked(createLobby)).toHaveBeenCalledTimes(1)
+      const formed = vi.mocked(createLobby).mock.calls[0]![0]
+      expect(formed).toHaveLength(10) // MATCH_SIZE: 1 human + 9 bots
+      expect(formed.some((p) => p.playerId === 'human_1')).toBe(true)
+      expect(formed.some((p) => p.playerId.startsWith('bot_'))).toBe(true)
 
       clearInterval(handle)
     })
