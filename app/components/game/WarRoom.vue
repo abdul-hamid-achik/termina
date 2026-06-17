@@ -5,6 +5,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { goldLead, formatGoldShort, visionSummary, dayNightReadout } from '~/utils/strategy'
 import ObjectiveTicker from '~/components/game/ObjectiveTicker.vue'
 import EnemyThreatSheet from '~/components/game/EnemyThreatSheet.vue'
+import AllyStatusSheet from '~/components/game/AllyStatusSheet.vue'
 import Sparkline from '~/components/game/Sparkline.vue'
 
 /**
@@ -117,12 +118,22 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       </div>
     </section>
 
-    <!-- Enemy threat sheet (the only part that scrolls; readouts above stay pinned) -->
-    <section class="min-h-0 flex-1 overflow-y-auto border-t border-border/50 pt-1.5">
-      <div class="mb-1 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
-        Enemy Threat
+    <!-- Allies + enemy threat (the scrolling region; readouts above stay pinned) -->
+    <section
+      class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto border-t border-border/50 pt-1.5"
+    >
+      <div>
+        <div class="mb-1 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
+          Allies
+        </div>
+        <AllyStatusSheet :allies="store.allyPlayers" :tick="tick" />
       </div>
-      <EnemyThreatSheet :enemies="store.enemyPlayers" :last-seen="store.lastSeen" :tick="tick" />
+      <div>
+        <div class="mb-1 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
+          Enemy Threat
+        </div>
+        <EnemyThreatSheet :enemies="store.enemyPlayers" :last-seen="store.lastSeen" :tick="tick" />
+      </div>
     </section>
   </div>
 </template>
