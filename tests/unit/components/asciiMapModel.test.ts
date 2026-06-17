@@ -79,6 +79,10 @@ describe('asciiMapModel', () => {
         expect(code.length, `code for ${id}`).toBeLessThanOrEqual(3)
       }
     })
+
+    it('falls back to a 3-char uppercase slice for an unrecognized zone id', () => {
+      expect(zoneShortCode('foobar')).toBe('FOO')
+    })
   })
 
   describe('zoneTeam', () => {
@@ -124,6 +128,10 @@ describe('asciiMapModel', () => {
     it('returns null when there is no ancient', () => {
       expect(ancientLabel(null)).toBeNull()
       expect(ancientLabel(undefined)).toBeNull()
+    })
+
+    it('shows 0% rather than dividing by a zero maxHp', () => {
+      expect(ancientLabel(makeAncient({ hp: 0, maxHp: 0 }))).toBe('0%')
     })
   })
 
@@ -184,6 +192,30 @@ describe('asciiMapModel', () => {
       expect(text).toContain('+2A') // two allies in zone
       expect(text).toContain('☘ 3') // three neutral creeps
     })
+
+    it('labels each zone category with its glyphed name (a bare zone is just the name)', () => {
+      const name = (id: string) => cellText(makeZone({ id }))
+      expect(name('mid-t3-rad')).toBe('▲ RAD T3')
+      expect(name('mid-t3-dire')).toBe('▼ DIRE T3')
+      expect(name('mid-t2-rad')).toBe('▲ RAD T2')
+      expect(name('mid-t2-dire')).toBe('▼ DIRE T2')
+      expect(name('mid-t1-rad')).toBe('▲ RAD T1')
+      expect(name('mid-t1-dire')).toBe('▼ DIRE T1')
+      expect(name('top-river')).toBe('≈ RIVER ≈')
+      expect(name('roshan-pit')).toBe('☠ ROSHAN')
+      expect(name('rune-top')).toBe('◆ RUNE')
+      expect(name('jungle-rad-top')).toBe('☘ JUNGLE')
+    })
+
+    it('falls back to an 8-char uppercase slice for an uncategorized zone id', () => {
+      // No real zone reaches this branch (all categorize), but it guards the fallback.
+      expect(cellText(makeZone({ id: 'mystery-zone' }))).toBe('MYSTERY-')
+    })
+
+    it('marks a standing tower with a check glyph', () => {
+      const zone = makeZone({ id: 'mid-t1-rad', tower: { team: 'radiant', alive: true, tier: 1 } })
+      expect(cellText(zone)).toContain('✓')
+    })
   })
 
   describe('zoneAriaLabel', () => {
@@ -224,6 +256,21 @@ describe('asciiMapModel', () => {
       const zone = makeZone({ tower: { team: 'dire', alive: false, tier: 1 } })
       const inds = compactIndicators(zone)
       expect(inds[0]).toEqual({ text: '✗ T1 down', cls: 'text-text-dim' })
+    })
+
+    it('colors a live dire tower and uses plural/singular unit forms correctly', () => {
+      const zone = makeZone({
+        tower: { team: 'dire', alive: true, tier: 3, hp: 500, maxHp: 1000 },
+        allies: ['a1', 'a2'], // plural → "allies"
+        creepCount: 2, // plural → "creeps"
+        neutralCount: 1, // singular → "neutral"
+      })
+      const inds = compactIndicators(zone)
+      const texts = inds.map((i) => i.text)
+      expect(inds[0]).toEqual({ text: '▼ T3 500/1000', cls: 'text-dire' })
+      expect(texts).toContain('+2 allies')
+      expect(texts).toContain('2 creeps')
+      expect(texts).toContain('☘ 1 neutral')
     })
 
     it('shows the ancient core with team color', () => {
