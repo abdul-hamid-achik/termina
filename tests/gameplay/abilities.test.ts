@@ -485,6 +485,52 @@ describe('abilities', () => {
     expect((await game.me()).cooldowns.w).toBeGreaterThan(0)
   })
 
+  it('BKB debuff immunity covers movement (root) and attacks (stun) too', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+
+    // Rooted + BKB → the move still goes through.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          buffs: [
+            { id: 'root', stacks: 1, ticksRemaining: 5, source: ENEMY },
+            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+          ],
+        },
+      },
+    }))
+    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    await game.tick()
+    expect((await game.me()).zone).toBe('mid-t1-rad')
+
+    // Stunned + BKB, co-located with the enemy → the attack still lands.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: s.players[ENEMY]!.zone,
+          buffs: [
+            { id: 'stun', stacks: 1, ticksRemaining: 5, source: ENEMY },
+            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+          ],
+        },
+      },
+    }))
+    game.attackHero(ENEMY)
+    await game.tick()
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      ),
+    ).toBe(true)
+  })
+
   it('BKB does NOT bypass Cyclone — it pierces magic immunity', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
