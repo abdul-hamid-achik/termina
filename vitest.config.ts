@@ -34,7 +34,7 @@ export default defineConfig({
         '**/*.config.*',
         'app/**/*.story.vue',
         'server/db/migrations/**',
-        'scripts/**',
+        'server/game/dev/simulate-game.ts', // standalone manual tool (its simStats helper IS covered)
         '.nuxt/**',
         '.output/**',
       ],

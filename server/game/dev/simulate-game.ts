@@ -1,19 +1,24 @@
 /**
  * Headless bot-vs-bot match simulator for balance validation.
  *
- *   bun scripts/simulate-game.ts [matches=1] [maxTicks=1500]
+ *   bun server/game/dev/simulate-game.ts [matches=1] [maxTicks=1500]
  *
  * Runs full 5v5 bot games through the real engine (processTick) and prints
- * pacing stats: match length, kills, gold curves, tower kills, winner.
+ * per-match pacing stats (length, kills, gold, towers, winner); with matches>1
+ * it also prints a BALANCE SUMMARY (side win-rate, length spread, per-hero
+ * win-rate) aggregated by ./simStats. A standalone manual tool — run directly,
+ * never imported, so its top-level loop only executes when you invoke it.
  */
+/* eslint-disable no-console -- this is a standalone CLI tool; console IS its UI */
 import { Effect } from 'effect'
-import { processTick } from '../server/game/engine/GameLoop'
-import { createInMemoryStateManager } from '../server/game/engine/StateManager'
-import { registerBots, cleanupGame } from '../server/game/ai/BotManager'
-import { resetCreepIdCounter } from '../server/game/map/spawner'
-import { playerNetWorth } from '../server/game/engine/GoldDistributor'
-import { HERO_IDS } from '../shared/constants/heroes'
-import type { GameState, TeamId } from '../shared/types/game'
+import { processTick } from '../engine/GameLoop'
+import { createInMemoryStateManager } from '../engine/StateManager'
+import { registerBots, cleanupGame } from '../ai/BotManager'
+import { resetCreepIdCounter } from '../map/spawner'
+import { playerNetWorth } from '../engine/GoldDistributor'
+import { summarizeSimResults, type SimResult } from './simStats'
+import { HERO_IDS } from '../../../shared/constants/heroes'
+import type { GameState, TeamId } from '../../../shared/types/game'
 
 const matches = Number(process.argv[2] ?? 1)
 const maxTicks = Number(process.argv[3] ?? 1500)
@@ -46,7 +51,7 @@ function fmtMin(tick: number): string {
   return `${Math.round((tick * 4) / 60)}m`
 }
 
-async function simulateOne(matchIdx: number): Promise<void> {
+async function simulateOne(matchIdx: number): Promise<SimResult> {
   resetCreepIdCounter()
   const gameId = `sim_${matchIdx}_${Math.random().toString(36).slice(2, 8)}`
   const stateManager = createInMemoryStateManager()
@@ -158,8 +163,31 @@ async function simulateOne(matchIdx: number): Promise<void> {
 
   cleanupGame(gameId)
   Effect.runSync(stateManager.deleteGame(gameId))
+
+  return { winner, ticks: state.tick, radiantHeroes, direHeroes }
 }
 
+const results: SimResult[] = []
 for (let i = 0; i < matches; i++) {
-  await simulateOne(i)
+  results.push(await simulateOne(i))
+}
+
+// Aggregate across the batch — the actual balance signal (a single game is noise).
+if (matches > 1) {
+  const s = summarizeSimResults(results)
+  console.log(`\n══ BALANCE SUMMARY (${s.matches} matches) ══`)
+  console.log(
+    `  side win-rate: radiant ${s.winRate.radiant.toFixed(0)}% / dire ${s.winRate.dire.toFixed(0)}%` +
+      `  (R ${s.wins.radiant} · D ${s.wins.dire} · stalled ${s.wins.none})`,
+  )
+  console.log(
+    `  length: ${fmtMin(s.length.minTicks)}–${fmtMin(s.length.maxTicks)} ` +
+      `(median ${fmtMin(s.length.medianTicks)}, avg ${fmtMin(s.length.avgTicks)})`,
+  )
+  const top = s.heroWinRates.slice(0, 5)
+  const bottom = s.heroWinRates.slice(-5).reverse()
+  const fmtHero = (h: (typeof s.heroWinRates)[number]) =>
+    `${h.heroId} ${h.winRate.toFixed(0)}% (${h.wins}/${h.appearances})`
+  console.log(`  best heroes:  ${top.map(fmtHero).join(' · ')}`)
+  console.log(`  worst heroes: ${bottom.map(fmtHero).join(' · ')}`)
 }
