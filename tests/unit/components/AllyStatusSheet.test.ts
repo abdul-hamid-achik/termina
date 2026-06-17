@@ -42,6 +42,35 @@ describe('AllyStatusSheet', () => {
     expect(w.text()).toContain('solo')
   })
 
+  describe('ult-ready badge', () => {
+    it('shows an ULT badge when an alive ally has their ultimate up', () => {
+      const w = mount(AllyStatusSheet, {
+        props: { allies: [ally({ cooldowns: { q: 0, w: 3, e: 0, r: 0 } })], tick: 10 },
+      })
+      const badge = w.find('[data-testid="ally-ult-a1"]')
+      expect(badge.exists()).toBe(true)
+      expect(badge.text()).toBe('ULT')
+      expect(badge.classes()).toContain('text-radiant')
+    })
+
+    it('hides the ULT badge while the ultimate is on cooldown', () => {
+      const w = mount(AllyStatusSheet, {
+        props: { allies: [ally({ cooldowns: { q: 0, w: 0, e: 0, r: 8 } })], tick: 10 },
+      })
+      expect(w.find('[data-testid="ally-ult-a1"]').exists()).toBe(false)
+    })
+
+    it('hides the ULT badge for a dead ally even with the ult off cooldown', () => {
+      const w = mount(AllyStatusSheet, {
+        props: {
+          allies: [ally({ alive: false, respawnTick: 40, cooldowns: { q: 0, w: 0, e: 0, r: 0 } })],
+          tick: 25,
+        },
+      })
+      expect(w.find('[data-testid="ally-ult-a1"]').exists()).toBe(false)
+    })
+  })
+
   describe('status intel (ally perspective)', () => {
     it('colours a held buff green and a debuff red', () => {
       const w = mount(AllyStatusSheet, {
