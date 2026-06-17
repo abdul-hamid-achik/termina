@@ -21,6 +21,8 @@ export interface ZoneDisplay {
   neutralCount?: number
   /** Names of visible enemy heroes in the zone (shown on compact cards). */
   enemyNames?: string[]
+  /** Own-team wards giving vision in this zone (spatial vision-coverage cue). */
+  wardCount?: number
 }
 
 export interface AncientsDisplay {
@@ -188,6 +190,10 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     indicators.push(`☘ ${zone.neutralCount}`)
   }
 
+  if (zone.wardCount && zone.wardCount > 0) {
+    indicators.push('◉')
+  }
+
   return indicators.length > 0 ? `${name} ${indicators.join(' ')}` : name
 }
 
@@ -198,6 +204,7 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
   if (zone.playerHere) parts.push('you are here')
   if (zone.allies.length > 0) parts.push(`${zone.allies.length} allies`)
   if (zone.enemyCount > 0) parts.push(`${zone.enemyCount} enemies`)
+  if (zone.wardCount && zone.wardCount > 0) parts.push('warded')
   if (ancient) {
     parts.push(ancient.alive ? `ancient at ${ancientLabel(ancient)}` : 'ancient destroyed')
   }
@@ -270,6 +277,13 @@ export function compactIndicators(
     out.push({
       text: `☘ ${zone.neutralCount} ${zone.neutralCount === 1 ? 'neutral' : 'neutrals'}`,
       cls: 'text-text-dim',
+    })
+  }
+
+  if (zone.wardCount && zone.wardCount > 0) {
+    out.push({
+      text: zone.wardCount === 1 ? '◉ warded' : `◉ ${zone.wardCount} wards`,
+      cls: 'text-ability',
     })
   }
 
