@@ -975,6 +975,21 @@ export function decideBotAction(
     }
     const path = findPath(bot.zone, fountain)
     if (path.length > 1) {
+      // Blink out of the gank: while retreating, a root HARD-blocks the next
+      // move and a slow gives it up to an 80% fail chance — either way the bot
+      // can die in place. Blink is an item action the resolver lets through both
+      // (it's resolved outside the movement phase), so when movement is impaired
+      // and a Blink Module is ready, jump to the retreat zone for a guaranteed
+      // escape. Unimpaired, a normal move is free — don't waste the cooldown.
+      const movementImpaired = bot.buffs.some((b) => b.id.includes('root') || b.id.includes('slow'))
+      if (
+        movementImpaired &&
+        bot.items.includes('blink_module') &&
+        itemOffCooldown(bot, 'blink_module') &&
+        areAdjacent(bot.zone, path[1]!)
+      ) {
+        return { type: 'use', item: 'blink_module', target: path[1]! }
+      }
       return { type: 'move', zone: path[1]! }
     }
     return null

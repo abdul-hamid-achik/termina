@@ -275,6 +275,36 @@ describe('BotAI - decideBotAction', () => {
       // Next zone is mid-river (neutral territory) and no allied creeps — wait
       expect(decideBotAction(state, bot, 'mid')).toBeNull()
     })
+
+    it('blinks out of a slow when retreating with a Blink Module ready', () => {
+      // A slowed retreat-move has up to an 80% chance to fizzle, leaving the bot
+      // to die. Blink ignores the slow, so it should escape with the item instead.
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        hp: 100,
+        maxHp: 500,
+        items: ['blink_module', null, null, null, null, null],
+        buffs: [{ id: 'slow', stacks: 40, ticksRemaining: 2, source: 'enemy1' }],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-rad' })
+    })
+
+    it('walks (saving the Blink) when retreating unimpaired', () => {
+      // No slow/root — a normal move is free and certain, so don't waste the
+      // 12-tick Blink cooldown.
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        hp: 100,
+        maxHp: 500,
+        items: ['blink_module', null, null, null, null, null],
+        buffs: [],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'move', zone: 'mid-t2-rad' })
+    })
   })
 
   describe('combat - hero targeting', () => {
