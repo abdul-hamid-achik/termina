@@ -49,7 +49,7 @@ export const HEROES: Record<string, HeroDef> = {
       w: {
         id: 'echo-w',
         name: 'Phase Shift',
-        description: 'Dodge 1 attack and gain 50% move speed for 2 ticks.',
+        description: 'Phase out to dodge the next incoming attack.',
         manaCost: 50,
         cooldownTicks: 12,
         targetType: 'self',
