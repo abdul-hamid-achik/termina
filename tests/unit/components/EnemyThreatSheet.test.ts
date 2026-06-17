@@ -99,4 +99,58 @@ describe('EnemyThreatSheet', () => {
     expect(el.text()).toContain('DEAD')
     expect(el.text()).not.toContain('respawn')
   })
+
+  describe('status intel', () => {
+    it('surfaces a visible enemy transient buffs/debuffs with perspective colours', () => {
+      const w = mount(EnemyThreatSheet, {
+        props: {
+          enemies: [
+            visibleEnemy({
+              buffs: [
+                { id: 'magic_immune', stacks: 1, ticksRemaining: 3 },
+                { id: 'stun', stacks: 1, ticksRemaining: 2 },
+              ],
+            }),
+          ],
+          lastSeen: {},
+          tick: 10,
+        },
+      })
+      const status = w.get('[data-testid="threat-status-e1"]')
+      expect(status.text()).toContain('Magic Immune')
+      expect(status.text()).toContain('Stunned')
+      // A BKB up on THEM is a caution (amber); a stun on them is my opening (green).
+      expect(status.html()).toContain('text-warn')
+      expect(status.html()).toContain('text-radiant')
+    })
+
+    it('drops near-permanent stat auras from the threat status line', () => {
+      const w = mount(EnemyThreatSheet, {
+        props: {
+          enemies: [
+            visibleEnemy({
+              buffs: [{ id: 'power_treads_attack', stacks: 15, ticksRemaining: 999 }],
+            }),
+          ],
+          lastSeen: {},
+          tick: 10,
+        },
+      })
+      expect(w.find('[data-testid="threat-status-e1"]').exists()).toBe(false)
+    })
+
+    it('never renders a status line for a fogged enemy (fog-safe)', () => {
+      const fogged = {
+        id: 'e9',
+        name: 'ghost',
+        team: 'dire',
+        heroId: 'cache',
+        level: 5,
+        alive: true,
+        fogged: true,
+      }
+      const w = mount(EnemyThreatSheet, { props: { enemies: [fogged], lastSeen: {}, tick: 0 } })
+      expect(w.find('[data-testid="threat-status-e9"]').exists()).toBe(false)
+    })
+  })
 })
