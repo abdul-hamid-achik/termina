@@ -122,6 +122,7 @@ const preview = computed(() => {
     'status',
     'map',
     'help',
+    'missing',
     'chat',
     'ping',
     'buyback',
@@ -215,6 +216,10 @@ const preview = computed(() => {
       type: 'valid' as const,
       text: command.vote === 'yes' ? '>> Vote YES to surrender' : '>> Retract surrender vote',
     }
+  }
+
+  if (command.type === 'missing') {
+    return { type: 'valid' as const, text: `>> Alert team: ${command.enemyId} missing` }
   }
 
   // Simple commands
