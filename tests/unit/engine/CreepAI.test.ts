@@ -405,6 +405,32 @@ describe('CreepAI', () => {
       expect(updatedTower.hp).toBe(initialHp - MELEE_CREEP_ATTACK)
     })
 
+    it('does NOT damage an invulnerable (glyphed) tower — the push bounces off', () => {
+      // Glyph must blunt the whole push, not just heroes. Hero attacks already
+      // bounce off an invulnerable tower; creep damage must too.
+      const towers = initializeTowers().map((t) =>
+        t.zone === 'mid-t1-dire' ? { ...t, invulnerable: true } : t,
+      )
+      const state = makeGameState({
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t1-dire' })],
+        towers,
+      })
+      const initialHp = state.towers.find((t) => t.zone === 'mid-t1-dire')!.hp
+
+      const actions: CreepAction[] = [
+        {
+          creepId: 'c1',
+          action: 'attack_tower',
+          targetZone: 'mid-t1-dire',
+          damage: MELEE_CREEP_ATTACK,
+        },
+      ]
+
+      const result = applyCreepActions(state, actions).state
+      const tower = result.towers.find((t) => t.zone === 'mid-t1-dire')!
+      expect(tower.hp).toBe(initialHp) // unchanged — glyph protects vs creeps too
+    })
+
     it('should destroy towers when HP reaches 0', () => {
       const towers = initializeTowers().map((t) =>
         t.zone === 'mid-t1-dire' ? { ...t, hp: 10 } : t,

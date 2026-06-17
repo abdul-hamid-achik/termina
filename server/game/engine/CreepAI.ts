@@ -320,10 +320,15 @@ export function applyCreepActions(
         const towerIdx = towers.findIndex((t) => t.zone === action.targetZone && t.alive)
         if (towerIdx >= 0) {
           const tower = towers[towerIdx]!
-          const newHp = Math.max(0, tower.hp - (action.damage ?? 0))
-          towers = towers.map((t, i) =>
-            i === towerIdx ? { ...t, hp: newHp, alive: newHp > 0 } : t,
-          )
+          // Glyph invulnerability blocks the creep wave too, not just heroes —
+          // otherwise a glyphed tower still gets chewed down by the push. Hero
+          // attacks already bounce off (ActionResolver), so mirror that here.
+          if (!tower.invulnerable) {
+            const newHp = Math.max(0, tower.hp - (action.damage ?? 0))
+            towers = towers.map((t, i) =>
+              i === towerIdx ? { ...t, hp: newHp, alive: newHp > 0 } : t,
+            )
+          }
         }
         break
       }
