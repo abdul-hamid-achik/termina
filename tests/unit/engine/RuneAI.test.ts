@@ -387,6 +387,25 @@ describe('RuneAI', () => {
       expect(result.players['p1']!.hp).toBe(510)
     })
 
+    it('restores mana from Cron’s crontabMana buff (the advertised MP half of Crontab)', () => {
+      const state = makeGameState({
+        tick: 60,
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            mp: 200,
+            maxMp: 1000,
+            buffs: [{ id: 'crontabMana', stacks: 15, ticksRemaining: 4, source: 'cron' }],
+          }),
+        },
+      })
+
+      const result = processRuneBuffs(state)
+      // Crontab's mpPerTick (15) was advertised in the event + description but
+      // never applied; the crontabMana buff now restores `stacks` MP per tick.
+      expect(result.players['p1']!.mp).toBe(215)
+    })
+
     it('should heal REGEN_RUNE_HEAL_PERCENT of max HP per tick with regen', () => {
       const maxHp = 500
       const expectedHeal = Math.floor(maxHp * REGEN_RUNE_HEAL_PERCENT)

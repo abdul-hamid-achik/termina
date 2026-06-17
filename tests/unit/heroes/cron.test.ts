@@ -382,6 +382,20 @@ describe('Cron Hero', () => {
       expect(buff!.ticksRemaining).toBe(4)
     })
 
+    it('also applies the crontabMana buff (the MP-over-time half) to self and allies', () => {
+      const player = makePlayer({ level: 6, mp: 500 })
+      const ally = makeAlly()
+      const state = makeState([player, ally])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+
+      expect(hasBuff(result.state.players['p1']!, 'crontabMana')).toBe(true)
+      expect(hasBuff(result.state.players['a1']!, 'crontabMana')).toBe(true)
+      const mana = result.state.players['p1']!.buffs.find((b) => b.id === 'crontabMana')
+      expect(mana!.stacks).toBe(15) // R_MP_PER_TICK
+      expect(mana!.ticksRemaining).toBe(4)
+    })
+
     it('does not affect allies in different zone', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const ally = makeAlly({ zone: 'top-river' })
