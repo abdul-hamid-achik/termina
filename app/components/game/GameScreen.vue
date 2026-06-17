@@ -9,6 +9,7 @@ import {
   buybackCostFor,
   pickAbilityTargetString,
   pickAttackTargetString,
+  pickDenyTargetString,
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
@@ -682,8 +683,8 @@ function handleCommand(cmd: string) {
   // A bare `attack` / `atk` auto-targets the lowest-HP enemy hero in your zone
   // (a MOBA right-click) so you don't have to type the full target. Creeps stay
   // explicit (attack creep:N) so auto-target never steals a last-hit.
-  const bareAttack = cmd.trim().toLowerCase()
-  if (bareAttack === 'attack' || bareAttack === 'atk') {
+  const bareCmd = cmd.trim().toLowerCase()
+  if (bareCmd === 'attack' || bareCmd === 'atk') {
     const me = gameStore.player
     if (me) {
       const picked = pickAttackTargetString(me, gameStore.allPlayers)
@@ -692,6 +693,19 @@ function handleCommand(cmd: string) {
         return
       }
       cmd = `attack ${picked.target}`
+    }
+  }
+  // A bare `deny` targets the lowest-HP eligible allied creep in your zone, so
+  // you can snap-deny an about-to-die creep without hunting for its index.
+  if (bareCmd === 'deny') {
+    const me = gameStore.player
+    if (me) {
+      const picked = pickDenyTargetString(me, gameStore.creeps)
+      if ('error' in picked) {
+        localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+        return
+      }
+      cmd = `deny ${picked.target}`
     }
   }
   // Pass the player's team so base/fountain resolve to THEIR side of the map.
