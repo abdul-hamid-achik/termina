@@ -5,6 +5,9 @@ import {
   buybackCostFor,
   pickAbilityTargetString,
   pickAttackTargetString,
+  formatStatusReadout,
+  formatMapReadout,
+  formatScanReadout,
   type GameContext,
 } from '../../../app/composables/useCommands'
 import type { PlayerState, ZoneRuntimeState } from '../../../shared/types/game'
@@ -1659,5 +1662,56 @@ describe('pickAttackTargetString', () => {
     const result = pickAttackTargetString(me, { p1: me })
     expect('error' in result && result.error).toMatch(/no enemy hero/i)
     expect('error' in result && result.error).toMatch(/creep/i)
+  })
+})
+
+// ── Informational command readouts (status / map / scan) ──────────
+describe('informational readouts', () => {
+  it('formatStatusReadout summarises the hero in one line', () => {
+    const me = makePlayer({
+      heroId: 'echo',
+      level: 7,
+      hp: 612.7,
+      maxHp: 900,
+      mp: 240.2,
+      maxMp: 400,
+      gold: 1850,
+      kills: 4,
+      deaths: 1,
+      assists: 6,
+      zone: 'mid-river',
+    })
+    const out = formatStatusReadout(me)
+    expect(out).toContain('Lv7')
+    expect(out).toContain('HP 612/900') // floored, not rounded up
+    expect(out).toContain('MP 240/400')
+    expect(out).toContain('1850g')
+    expect(out).toContain('KDA 4/1/6')
+    expect(out).toContain('Mid River')
+  })
+
+  it('formatMapReadout names your zone and reachable neighbours', () => {
+    const me = makePlayer({ zone: 'radiant-base' })
+    const out = formatMapReadout(me)
+    expect(out).toContain('Radiant Base')
+    expect(out).toMatch(/Reachable:/)
+    expect(out).toContain('Radiant Fountain') // radiant-base is adjacent to its fountain
+  })
+
+  it('formatScanReadout lists visible enemy heroes, ignoring allies/dead/fogged', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const ally = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river' })
+    const enemy = makePlayer({ id: 'e1', team: 'dire', heroId: 'daemon', zone: 'mid-t1-dire' })
+    const dead = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', alive: false })
+    const fogged = { ...makePlayer({ id: 'e3', team: 'dire', zone: 'top-river' }), fogged: true }
+    const out = formatScanReadout(me, { p1: me, a1: ally, e1: enemy, e2: dead, e3: fogged })
+    expect(out).toContain('1 enemy hero visible')
+    expect(out).toContain('Daemon')
+    expect(out).not.toContain('a1')
+  })
+
+  it('formatScanReadout reports an empty vision cleanly', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    expect(formatScanReadout(me, { p1: me })).toMatch(/no enemy heroes/i)
   })
 })

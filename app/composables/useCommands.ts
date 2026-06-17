@@ -132,6 +132,49 @@ export function pickAttackTargetString(
   return { target: `hero:${target.id}` }
 }
 
+// ── Informational command readouts ────────────────────────────────
+// status/map/scan are client-side: they print a readout to the local log and
+// DON'T consume the tick (the server "accepts but ignores" them, so sending one
+// would silently waste the player's one action that tick).
+
+const zoneName = (id: string): string => ZONE_MAP[id]?.name ?? id
+
+/** One-line hero summary for the `status` command. */
+export function formatStatusReadout(player: PlayerState): string {
+  const hero = HEROES[player.heroId ?? '']?.name ?? player.name
+  const kda = `${player.kills}/${player.deaths}/${player.assists}`
+  return (
+    `STATUS · ${hero} Lv${player.level} · ` +
+    `HP ${Math.floor(player.hp)}/${player.maxHp} MP ${Math.floor(player.mp)}/${player.maxMp} · ` +
+    `${player.gold}g · KDA ${kda} · @ ${zoneName(player.zone)}`
+  )
+}
+
+/** Your zone + where you can move next, for the `map` command. */
+export function formatMapReadout(player: PlayerState): string {
+  const reachable = ZONE_MAP[player.zone]?.adjacentTo.map(zoneName).join(', ') ?? '—'
+  return `MAP · You are @ ${zoneName(player.zone)}. Reachable: ${reachable}`
+}
+
+/** Enemy heroes currently in your vision, for the `scan` command. */
+export function formatScanReadout(
+  player: PlayerState,
+  allPlayers: Record<string, PlayerState>,
+): string {
+  const visible = Object.values(allPlayers).filter(
+    (p) =>
+      p.team !== player.team &&
+      p.alive &&
+      !(p as { fogged?: boolean }).fogged &&
+      typeof p.zone === 'string',
+  )
+  if (visible.length === 0) return 'SCAN · no enemy heroes in your vision'
+  const list = visible
+    .map((e) => `${HEROES[e.heroId ?? '']?.name ?? e.name} @ ${zoneName(e.zone)}`)
+    .join(', ')
+  return `SCAN · ${visible.length} enemy hero${visible.length === 1 ? '' : 'es'} visible: ${list}`
+}
+
 const SHORTCUTS: Record<string, string> = {
   mv: 'move',
   atk: 'attack',

@@ -9,6 +9,9 @@ import {
   buybackCostFor,
   pickAbilityTargetString,
   pickAttackTargetString,
+  formatStatusReadout,
+  formatMapReadout,
+  formatScanReadout,
 } from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
@@ -743,6 +746,22 @@ function handleCommand(cmd: string) {
     if (command.type === 'ping') {
       uiLog.debug('Ping sent', { zone: command.zone })
       gameSocket.send({ type: 'ping_map', zone: command.zone })
+      return
+    }
+    // status/map/scan are informational: print a readout to the local log and
+    // return WITHOUT sending — the server ignores them, so submitting one would
+    // silently burn the player's one action this tick.
+    if (command.type === 'status' || command.type === 'map' || command.type === 'scan') {
+      const me = gameStore.player
+      if (me) {
+        const text =
+          command.type === 'status'
+            ? formatStatusReadout(me)
+            : command.type === 'map'
+              ? formatMapReadout(me)
+              : formatScanReadout(me, gameStore.allPlayers)
+        localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+      }
       return
     }
     // Already acted this tick: buffer the command client-side and auto-send
