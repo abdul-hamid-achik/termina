@@ -982,4 +982,38 @@ describe('combat', () => {
     expect(ev?.damageType).toBe('pure')
     expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
   })
+
+  it('Blade Mail reflects ABILITY damage too (not only basic attacks)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'blade_mail', stacks: 100, ticksRemaining: 3, source: ENEMY }],
+        },
+      },
+    }))
+
+    // The reflect rides a pure-damage event from the Blade Mail holder (ENEMY)
+    // back at the caster (HUMAN).
+    const reflect = () =>
+      game.lastEvents.find(
+        (e) =>
+          e._tag === 'damage' &&
+          e.sourceId === ENEMY &&
+          e.targetId === HUMAN &&
+          e.damageType === 'pure',
+      )
+
+    const casterBefore = (await game.me()).hp
+    game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes the Blade Mail holder
+    await game.tick()
+
+    expect(reflect()).toBeDefined()
+    expect((await game.me()).hp).toBeLessThan(casterBefore)
+  })
 })
