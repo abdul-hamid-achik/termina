@@ -422,11 +422,87 @@ describe('Malloc Hero', () => {
     })
   })
 
-  // The generic talent tree (createGenericTalents) is shared by 11 heroes; its
-  // two tier-25 talents used to be dead specialEffect no-ops. malloc is a generic
-  // hero, so it exercises the now-working conversions through a real cast.
-  describe('Generic talents (engine-applied — formerly dead tier-25 no-ops)', () => {
-    it('malloc_25_left reduces ultimate cooldown by 10 (was the dead ultimate_plus_50 no-op)', () => {
+  // Malloc has a HERO-TAILORED tree (no longer the shared generic menu): talents
+  // built around its real kit — Free() execute, Pointer Dereference gap-close,
+  // Stack Overflow AoE — plus carry stats. Crucially its damage_boost talents sit
+  // on W/R (real damage), NOT Q: Q (Allocate) is a self-buff, so the old generic
+  // +Q-damage talent was a silent no-op for malloc.
+  describe('Tailored talents (hero-specific tree)', () => {
+    it('malloc_15_left adds 30% to Free() (W) damage — a boost the generic +Q-damage could not give', () => {
+      const enemyBase = makeEnemy()
+      const base = Effect.runSync(
+        resolveAbility(makeState([makePlayer({ level: 7 }), enemyBase]), 'p1', 'w', {
+          kind: 'hero',
+          name: 'e1',
+        }),
+      )
+      const baseDmg = enemyBase.hp - base.state.players['e1']!.hp
+
+      const enemyBoost = makeEnemy()
+      const boosted = Effect.runSync(
+        resolveAbility(
+          makeState([
+            makePlayer({
+              level: 7,
+              talents: { tier10: null, tier15: 'malloc_15_left', tier20: null, tier25: null },
+            }),
+            enemyBoost,
+          ]),
+          'p1',
+          'w',
+          { kind: 'hero', name: 'e1' },
+        ),
+      )
+      const boostedDmg = enemyBoost.hp - boosted.state.players['e1']!.hp
+      expect(boostedDmg).toBeGreaterThan(baseDmg)
+    })
+
+    it('malloc_15_right reduces Pointer Dereference (E) cooldown by 2', () => {
+      const player = makePlayer({
+        level: 7,
+        talents: { tier10: null, tier15: 'malloc_15_right', tier20: null, tier25: null },
+      })
+      const result = Effect.runSync(
+        resolveAbility(makeState([player, makeEnemy()]), 'p1', 'e', { kind: 'hero', name: 'e1' }),
+      )
+      // E cooldownTicks (12) − 2
+      expect(result.state.players['p1']!.cooldowns.e).toBe(10)
+    })
+
+    it('malloc_20_left adds 40% to Stack Overflow (R) AoE damage', () => {
+      const enemyBase = makeEnemy()
+      const base = Effect.runSync(
+        resolveAbility(makeState([makePlayer({ level: 7, mp: 500 }), enemyBase]), 'p1', 'r'),
+      )
+      const baseDmg = enemyBase.hp - base.state.players['e1']!.hp
+
+      const enemyBoost = makeEnemy()
+      const boosted = Effect.runSync(
+        resolveAbility(
+          makeState([
+            makePlayer({
+              level: 7,
+              mp: 500,
+              talents: { tier10: null, tier15: null, tier20: 'malloc_20_left', tier25: null },
+            }),
+            enemyBoost,
+          ]),
+          'p1',
+          'r',
+        ),
+      )
+      const boostedDmg = enemyBoost.hp - boosted.state.players['e1']!.hp
+      expect(boostedDmg).toBeGreaterThan(baseDmg)
+    })
+
+    it('malloc_10_left grants +15 Attack via getTalentStatBonus', () => {
+      const player = makePlayer({
+        talents: { tier10: 'malloc_10_left', tier15: null, tier20: null, tier25: null },
+      })
+      expect(getTalentStatBonus(player, 'attack')).toBe(15)
+    })
+
+    it('malloc_25_left reduces ultimate cooldown by 10', () => {
       const player = makePlayer({
         level: 6,
         mp: 500,
@@ -447,9 +523,19 @@ describe('Malloc Hero', () => {
       expect(getTalentStatBonus(player, 'magicResist')).toBe(20)
     })
 
-    it('no generic-talent hero has a dead specialEffect no-op anymore', () => {
+    it('no malloc talent is a dead/no-op (tailored tree)', () => {
+      for (const t of Object.values(TALENT_TREES.malloc.tiers).flat()) {
+        expect(t.type).not.toBe('special')
+        expect(t.type).not.toBe('ability_boost')
+        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+        // A damage_boost talent must sit on an ability that deals instant damage,
+        // else it silently does nothing — malloc's are on W/R, never the Q self-buff.
+        if (t.type === 'damage_boost') expect(t.abilityId).not.toBe('q')
+      }
+    })
+
+    it('no generic-talent hero (the remaining 10) has a dead specialEffect no-op anymore', () => {
       const genericHeroes = [
-        'malloc',
         'cipher',
         'sentry',
         'socket',
