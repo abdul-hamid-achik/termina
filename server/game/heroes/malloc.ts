@@ -241,6 +241,10 @@ function resolveR(
 
     let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
+    // Stack Overflow is a self-sacrifice ult: it also burns 20% of current HP
+    // (the standard mana cost above is its MP cost). 20% of current never kills.
+    const hpCost = Math.floor(player.hp * 0.2)
+    caster = { ...caster, hp: Math.max(1, caster.hp - hpCost) }
 
     const enemies = getEnemiesInZone(state, player)
     const damage = scaleValue(R_DAMAGE, level)
