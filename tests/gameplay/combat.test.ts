@@ -45,6 +45,33 @@ describe('combat', () => {
     expect(victim.buybackCost).toBe(calculateBuybackCost(victim))
   })
 
+  it('killing a high-streak (fed) enemy pays the shutdown bounty (anti-snowball)', async () => {
+    // Regression: the death handler reset the victim's killStreak to 0 BEFORE
+    // awardKill read it, so the streak-scaled shutdown bounty was always 0 — the
+    // whole "ending a fed player's run pays out" mechanic was dead. Two identical
+    // games differing only in the victim's streak isolate the bonus (same roster
+    // ⇒ same comeback multiplier ⇒ the only delta is the shutdown gold).
+    async function killGain(victimStreak: number): Promise<number> {
+      const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+      await game.patch((s) => ({
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
+          [ENEMY]: { ...s.players[ENEMY]!, hp: 1, killStreak: victimStreak },
+        },
+      }))
+      const before = (await game.me()).gold
+      game.attackHero(ENEMY)
+      await game.tick()
+      return (await game.me()).gold - before
+    }
+
+    const cleanKill = await killGain(0)
+    const shutdownKill = await killGain(6)
+    expect(shutdownKill).toBeGreaterThan(cleanKill)
+  })
+
   it('Segfault Blade resets the killer cooldowns on a hero kill', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
