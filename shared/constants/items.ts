@@ -728,3 +728,16 @@ export const ITEM_IDS = Object.keys(ITEMS)
 export function getItem(id: string): ItemDef | undefined {
   return ITEMS[id]
 }
+
+/**
+ * Default Quick-Buy pins for a player who has never customized them — cheap,
+ * universally useful early buys so a new player's Quick-Buy bar isn't empty.
+ * A TP scroll (mobility/safety), a salve (lane sustain), an Iron Branch (cheap
+ * all-stats), and Blades of Attack (early damage — the tutorial's buy hint).
+ */
+export const DEFAULT_QUICKBUY_ITEMS: readonly string[] = [
+  'town_portal_scroll',
+  'healing_salve',
+  'iron_branch',
+  'blades_of_attack',
+]

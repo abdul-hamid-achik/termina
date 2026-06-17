@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ITEMS, ITEM_IDS, getItem } from '~~/shared/constants/items'
+import { ITEMS, ITEM_IDS, getItem, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import type { ItemDef } from '../../../shared/types/items'
 
 // ── Tests ──────────────────────────────────────────────────────────
@@ -165,6 +165,22 @@ describe('Item Registry', () => {
         expect(item).toBeDefined()
         expect(item!.id).toBe(id)
       }
+    })
+  })
+
+  describe('DEFAULT_QUICKBUY_ITEMS (new-player starter pins)', () => {
+    it('every default pin is a real, affordable early item', () => {
+      expect(DEFAULT_QUICKBUY_ITEMS.length).toBeGreaterThan(0)
+      for (const id of DEFAULT_QUICKBUY_ITEMS) {
+        const item = getItem(id)
+        expect(item, `default quick-buy "${id}" must be a real item`).toBeDefined()
+        // Starters should be cheap so a new player can actually afford them early.
+        expect(item!.cost, `${id} is too expensive for a starter pin`).toBeLessThanOrEqual(500)
+      }
+    })
+
+    it('has no duplicates', () => {
+      expect(new Set(DEFAULT_QUICKBUY_ITEMS).size).toBe(DEFAULT_QUICKBUY_ITEMS.length)
     })
   })
 
