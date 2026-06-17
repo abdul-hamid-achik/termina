@@ -258,6 +258,22 @@ describe('RoshanAI', () => {
       expect(result.state.players['p1']!.alive).toBe(false)
     })
 
+    it('does not damage a physically-immune target (Ghost/Ethereal/invulnerable)', () => {
+      const immune = makePlayer({
+        id: 'p1',
+        hp: 500,
+        alive: true,
+        buffs: [{ id: 'invulnerable', stacks: 1, ticksRemaining: 2, source: 'euls' }],
+      })
+      const state = makeGameState({ players: { p1: immune } })
+
+      const result = applyRoshanActions(state, [{ targetId: 'p1', damage: 120 }])
+
+      // Immunity shrugs off Roshan, just like hero/creep/tower attacks.
+      expect(result.state.players['p1']!.hp).toBe(500)
+      expect(result.state.players['p1']!.alive).toBe(true)
+    })
+
     it('skips already-dead and unknown targets', () => {
       const dead = makePlayer({ id: 'p1', hp: 0, alive: false })
       const state = makeGameState({ players: { p1: dead } })

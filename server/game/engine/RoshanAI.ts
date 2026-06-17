@@ -8,6 +8,7 @@ import type {
 } from '~~/server/game/protocol/events'
 import { ROSHAN_ATTACK, ROSHAN_AEGIS_TICKS } from '~~/shared/constants/balance'
 import { shouldRoshanRespawn, respawnRoshan } from '~~/server/game/map/spawner'
+import { isDamageImmune } from '~~/server/game/engine/DamageCalculator'
 
 export interface RoshanAction {
   targetId: string
@@ -57,6 +58,9 @@ export function applyRoshanActions(
   for (const action of actions) {
     const target = players[action.targetId]
     if (!target || !target.alive) continue
+    // Physical immunity (Ghost Scepter / Ethereal / invulnerable) shrugs off
+    // Roshan's hit too — hero/creep/tower attacks all already honor this.
+    if (isDamageImmune(target, 'physical')) continue
 
     const newHp = Math.max(0, target.hp - action.damage)
     players[action.targetId] = {
