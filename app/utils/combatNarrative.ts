@@ -36,13 +36,19 @@ export interface NarrativeContext {
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0)
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 
-/** A kill streak of 3+ earns a named spree (mirrors the in-game shutdown bounty). */
-const SPREE_LABELS: Record<number, string> = {
+/**
+ * Kill-streak titles (Dota-style), 3 = the first named spree. The SINGLE source
+ * of truth shared by the kill-line flair (`killFlair`) and the kill-feed banner
+ * (`deriveKillFeed`) so the two can never disagree on what a streak is called.
+ */
+const STREAK_LABEL: Record<number, string> = {
   3: 'KILLING SPREE',
   4: 'DOMINATING',
   5: 'MEGA KILL',
   6: 'UNSTOPPABLE',
-  7: 'GODLIKE',
+  7: 'WICKED SICK',
+  8: 'MONSTER KILL',
+  9: 'GODLIKE',
 }
 
 /**
@@ -53,8 +59,8 @@ const SPREE_LABELS: Record<number, string> = {
 function killFlair(victimStreak: number, killerStreak: number): string {
   if (victimStreak >= 3) return `  >> SHUTDOWN! (ended a ${victimStreak}-kill streak)`
   if (killerStreak >= 3) {
-    const label =
-      killerStreak >= 8 ? 'BEYOND GODLIKE' : (SPREE_LABELS[killerStreak] ?? 'KILLING SPREE')
+    // 10+ stays at the top title rather than going unlabeled.
+    const label = STREAK_LABEL[killerStreak] ?? 'GODLIKE'
     return `  >> ${label} (${killerStreak})`
   }
   return ''
@@ -449,15 +455,7 @@ const MULTI_LABEL: Record<number, string> = {
   5: 'RAMPAGE',
 }
 
-const STREAK_LABEL: Record<number, string> = {
-  3: 'KILLING SPREE',
-  4: 'DOMINATING',
-  5: 'MEGA KILL',
-  6: 'UNSTOPPABLE',
-  7: 'WICKED SICK',
-  8: 'MONSTER KILL',
-  9: 'GODLIKE',
-}
+// STREAK_LABEL is defined once near the top (shared with the kill-line flair).
 
 /**
  * Replay the event stream to derive kill-feed headlines: first blood, multi-

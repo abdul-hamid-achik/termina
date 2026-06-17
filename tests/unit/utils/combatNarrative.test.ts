@@ -108,11 +108,20 @@ describe('eventToLine: kills', () => {
     )!
     expect(spree.text).toContain('KILLING SPREE')
 
-    const godlike = eventToLine(
-      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [], killerStreak: 9 }),
+    // 7 is 'WICKED SICK' — the line flair and the kill-feed banner share the
+    // same STREAK_LABEL, so this must match deriveKillFeed (not a separate table).
+    const seven = eventToLine(
+      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [], killerStreak: 7 }),
       ctx,
     )!
-    expect(godlike.text).toContain('BEYOND GODLIKE')
+    expect(seven.text).toContain('WICKED SICK')
+
+    // 9 = GODLIKE (top named tier); 10+ stays at GODLIKE rather than unlabeled.
+    const godlike = eventToLine(
+      ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [], killerStreak: 12 }),
+      ctx,
+    )!
+    expect(godlike.text).toContain('GODLIKE')
   })
 
   it('a SHUTDOWN takes precedence over the killer spree', () => {
