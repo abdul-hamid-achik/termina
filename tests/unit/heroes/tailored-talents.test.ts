@@ -16,7 +16,19 @@ import { HEROES } from '../../../shared/constants/heroes'
  * nuke. This asserts every tailored damage_boost sits on a real instant-damage
  * ability.
  */
-const TAILORED_HEROES = ['malloc', 'cipher', 'sentry', 'socket', 'mutex', 'thread'] as const
+const TAILORED_HEROES = [
+  'malloc',
+  'cipher',
+  'sentry',
+  'socket',
+  'mutex',
+  'thread',
+  'lambda',
+  'cron',
+  'traceroute',
+  'null_ref',
+  'ping',
+] as const
 
 describe('Tailored talent trees', () => {
   for (const heroId of TAILORED_HEROES) {

@@ -1060,91 +1060,436 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
-  lambda: { heroId: 'lambda', tiers: createGenericTalents('lambda') },
-  cron: { heroId: 'cron', tiers: createGenericTalents('cron') },
-  traceroute: { heroId: 'traceroute', tiers: createGenericTalents('traceroute') },
-  null_ref: { heroId: 'null_ref', tiers: createGenericTalents('null_ref') },
-  ping: { heroId: 'ping', tiers: createGenericTalents('ping') },
-}
-
-/** Helper to create generic talents for heroes without unique trees */
-function createGenericTalents(heroId: HeroId): TalentTree['tiers'] {
-  return {
-    10: [
-      {
-        id: `${heroId}_10_left`,
-        name: '+15 Attack',
-        description: '+15 Attack',
-        type: 'stat_bonus',
-        tier: 10,
-        statBonus: { stat: 'attack', value: 15 },
-      },
-      {
-        id: `${heroId}_10_right`,
-        name: '+200 HP',
-        description: '+200 HP',
-        type: 'stat_bonus',
-        tier: 10,
-        statBonus: { stat: 'hp', value: 200 },
-      },
-    ],
-    15: [
-      {
-        id: `${heroId}_15_left`,
-        name: '+25 Damage',
-        description: '+25 ability damage',
-        type: 'damage_boost',
-        tier: 15,
-        abilityId: 'q',
-        damageBoost: 25,
-      },
-      {
-        id: `${heroId}_15_right`,
-        name: '-2s Cooldown',
-        description: '-2s ability CD',
-        type: 'cooldown_reduce',
-        tier: 15,
-        abilityId: 'w',
-        cooldownReduction: 2,
-      },
-    ],
-    20: [
-      {
-        id: `${heroId}_20_left`,
-        name: '+30% Damage',
-        description: '+30% ability damage',
-        type: 'damage_boost',
-        tier: 20,
-        abilityId: 'q',
-        damageBoost: 30,
-      },
-      {
-        id: `${heroId}_20_right`,
-        name: '+300 HP',
-        description: '+300 HP',
-        type: 'stat_bonus',
-        tier: 20,
-        statBonus: { stat: 'hp', value: 300 },
-      },
-    ],
-    25: [
-      {
-        id: `${heroId}_25_left`,
-        name: '-10s Ultimate Cooldown',
-        description: 'Reduces ultimate cooldown by 10 seconds',
-        type: 'cooldown_reduce',
-        tier: 25,
-        abilityId: 'r',
-        cooldownReduction: 10,
-      },
-      {
-        id: `${heroId}_25_right`,
-        name: '+20 Magic Resistance',
-        description: 'Increases magic resistance by 20',
-        type: 'stat_bonus',
-        tier: 25,
-        statBonus: { stat: 'magicResist', value: 20 },
-      },
-    ],
-  }
+  // Lambda — a combo-chaining magical-burst mage (Closure rewards rapid casting).
+  // Invoke (Q), Map (E) and Reduce (R) all deal INSTANT magical damage at cast, so
+  // damage_boost lives on Q/E/R. Return (W) is a delayed self-teleport (no damage) —
+  // it only ever gets cooldown_reduce / mana_cost_reduce, never damage_boost.
+  lambda: {
+    heroId: 'lambda',
+    tiers: {
+      10: [
+        {
+          id: 'lambda_10_left',
+          name: '+300 Mana',
+          description: '+300 Mana — fuel longer Closure combo chains',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'mp', value: 300 },
+        },
+        {
+          id: 'lambda_10_right',
+          name: '+250 HP',
+          description: '+250 HP for the fragile mage',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 250 },
+        },
+      ],
+      15: [
+        {
+          id: 'lambda_15_left',
+          name: '+35% Invoke Damage',
+          description: 'Invoke (Q) deals 35% more — a harder-hitting combo opener',
+          type: 'damage_boost',
+          tier: 15,
+          abilityId: 'q',
+          damageBoost: 35,
+        },
+        {
+          id: 'lambda_15_right',
+          name: '-3s Map CD',
+          description: 'Map (E) cooldown reduced — slow + nuke the zone more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'e',
+          cooldownReduction: 3,
+        },
+      ],
+      20: [
+        {
+          id: 'lambda_20_left',
+          name: '+40% Map Damage',
+          description: 'Map (E) AoE deals 40% more across the slowed zone',
+          type: 'damage_boost',
+          tier: 20,
+          abilityId: 'e',
+          damageBoost: 40,
+        },
+        {
+          id: 'lambda_20_right',
+          name: '-4s Return CD',
+          description: 'Return (W) cooldown reduced — reposition and escape more often',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'w',
+          cooldownReduction: 4,
+        },
+      ],
+      25: [
+        {
+          id: 'lambda_25_left',
+          name: '-12s Reduce CD',
+          description: 'Reduce (R) ultimate cooldown reduced — channel the nuke more often',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'lambda_25_right',
+          name: '+40% Reduce Damage',
+          description: 'Reduce (R) channels 40% more magical damage into the target',
+          type: 'damage_boost',
+          tier: 25,
+          abilityId: 'r',
+          damageBoost: 40,
+        },
+      ],
+    },
+  },
+  // Cron — a clockwork support: Uptime (Q) ally buff, Purge (W) cleanse+shield,
+  // Kill Signal (E) physical nuke+taunt, Crontab (R) AoE heal/mana regen. Only
+  // Kill Signal (E) deals instant cast damage, so it carries the lone damage_boost;
+  // the rest of the tree is cooldown/mana efficiency on the support kit + tanky stats.
+  cron: {
+    heroId: 'cron',
+    tiers: {
+      10: [
+        {
+          id: 'cron_10_left',
+          name: '+300 Mana',
+          description: '+300 Mana — sustain the Crontab + Purge mana drain',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'mp', value: 300 },
+        },
+        {
+          id: 'cron_10_right',
+          name: '+250 HP',
+          description: '+250 HP for the front-line melee support',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 250 },
+        },
+      ],
+      15: [
+        {
+          id: 'cron_15_left',
+          name: '+35% Kill Signal Damage',
+          description: 'Kill Signal (E) deals 35% more physical burst',
+          type: 'damage_boost',
+          tier: 15,
+          abilityId: 'e',
+          damageBoost: 35,
+        },
+        {
+          id: 'cron_15_right',
+          name: '-3s Uptime CD',
+          description: 'Uptime (Q) cooldown reduced — keep an ally buffed more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'q',
+          cooldownReduction: 3,
+        },
+      ],
+      20: [
+        {
+          id: 'cron_20_left',
+          name: '-4s Purge CD',
+          description: 'Purge (W) cooldown reduced — cleanse + shield allies more often',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'w',
+          cooldownReduction: 4,
+        },
+        {
+          id: 'cron_20_right',
+          name: '-40% Kill Signal Mana',
+          description: 'Kill Signal (E) refunds 40% of its mana — spam the taunt cheaply',
+          type: 'mana_cost_reduce',
+          tier: 20,
+          abilityId: 'e',
+          manaCostReduction: 40,
+        },
+      ],
+      25: [
+        {
+          id: 'cron_25_left',
+          name: '-12s Crontab CD',
+          description: 'Crontab (R) ultimate cooldown reduced — heal the team more often',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'cron_25_right',
+          name: '+18 Magic Resistance',
+          description: '+18 Magic Resistance — survive enemy nukes while channeling support',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 18 },
+        },
+      ],
+    },
+  },
+  // Traceroute — a roaming pick-off assassin built on Probe (Q) burst, a TTL (W)
+  // delayed-root trap, a Next Hop (E) reposition, and Full Trace (R) reveal +
+  // self damage-amp. Only Probe (Q) deals instant damage at cast, so damage_boost
+  // sits on Q ALONE; W is a delayed-root trap, E a self-hop buff, R a reveal +
+  // self-buff (no instant damage) — those tiers use CD/mana/stat instead.
+  traceroute: {
+    heroId: 'traceroute',
+    tiers: {
+      10: [
+        {
+          id: 'traceroute_10_left',
+          name: '+15 Attack Damage',
+          description: '+15 Attack — sharpens Probe hits and Hop Count right-clicks',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'attack', value: 15 },
+        },
+        {
+          id: 'traceroute_10_right',
+          name: '+200 HP',
+          description: '+200 HP to survive the dive between hops',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 200 },
+        },
+      ],
+      15: [
+        {
+          id: 'traceroute_15_left',
+          name: '+35% Probe Damage',
+          description: 'Probe (Q) deals 35% more — bigger pick-off on isolated targets',
+          type: 'damage_boost',
+          tier: 15,
+          abilityId: 'q',
+          damageBoost: 35,
+        },
+        {
+          id: 'traceroute_15_right',
+          name: '-3s TTL CD',
+          description: 'TTL (W) trap cooldown reduced — lock down targets more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'w',
+          cooldownReduction: 3,
+        },
+      ],
+      20: [
+        {
+          id: 'traceroute_20_left',
+          name: '-3s Next Hop CD',
+          description: 'Next Hop (E) cooldown reduced — reposition and chase more often',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'e',
+          cooldownReduction: 3,
+        },
+        {
+          id: 'traceroute_20_right',
+          name: '-40% Probe Mana Cost',
+          description: 'Probe (Q) refunds 40% mana — spam the trace without running dry',
+          type: 'mana_cost_reduce',
+          tier: 20,
+          abilityId: 'q',
+          manaCostReduction: 40,
+        },
+      ],
+      25: [
+        {
+          id: 'traceroute_25_left',
+          name: '-12s Full Trace CD',
+          description: 'Full Trace (R) ultimate cooldown reduced — reveal + amp more often',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'traceroute_25_right',
+          name: '+18 Magic Resistance',
+          description: '+18 Magic Resistance — survive enemy nukes on the dive',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 18 },
+        },
+      ],
+    },
+  },
+  // null_ref — a void-drain burst mage built around Void Bolt (Q) and the Dereference (R)
+  // execute nuke. damage_boost sits on Q/R only (both deal instant damage at cast); W is a
+  // pure silence and E is a damage-over-time Void Zone — neither deals instant cast damage.
+  null_ref: {
+    heroId: 'null_ref',
+    tiers: {
+      10: [
+        {
+          id: 'null_ref_10_left',
+          name: '+30% Void Bolt Damage',
+          description: 'Void Bolt (Q) deals 30% more — harder poke into the resist shred',
+          type: 'damage_boost',
+          tier: 10,
+          abilityId: 'q',
+          damageBoost: 30,
+        },
+        {
+          id: 'null_ref_10_right',
+          name: '+300 Mana',
+          description: '+300 MP — fuels the void-drain caster through fights',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'mp', value: 300 },
+        },
+      ],
+      15: [
+        {
+          id: 'null_ref_15_left',
+          name: '-2s Void Bolt CD',
+          description: 'Void Bolt (Q) cooldown reduced — chain the magic-resist shred',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'q',
+          cooldownReduction: 2,
+        },
+        {
+          id: 'null_ref_15_right',
+          name: '-3s Null Pointer CD',
+          description: 'Null Pointer (W) silence cooldown reduced — lock a caster more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'w',
+          cooldownReduction: 3,
+        },
+      ],
+      20: [
+        {
+          id: 'null_ref_20_left',
+          name: '+40% Dereference Damage',
+          description: 'Dereference (R) AoE nuke deals 40% more before the execute bonus',
+          type: 'damage_boost',
+          tier: 20,
+          abilityId: 'r',
+          damageBoost: 40,
+        },
+        {
+          id: 'null_ref_20_right',
+          name: '-3s Void Zone CD',
+          description: 'Void Zone (E) cooldown reduced — keep the DoT + reveal up',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'e',
+          cooldownReduction: 3,
+        },
+      ],
+      25: [
+        {
+          id: 'null_ref_25_left',
+          name: '-12s Dereference CD',
+          description: 'Dereference (R) ultimate cooldown reduced — execute teamfights faster',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'null_ref_25_right',
+          name: '+20 Magic Resistance',
+          description: '+20 Magic Resistance — survive enemy nukes on the fragile mage',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 20 },
+        },
+      ],
+    },
+  },
+  // ping — a ranged disruptor offlaner built around ICMP Echo (Q) poke, Timeout (W) silence,
+  // Tracepath (E) vision/speed, and the Flood (R) AoE DoT ult. Q is the ONLY instant-damage
+  // ability, so damage_boost sits on Q alone; W is a silence, E a self-buff, and R a DoT —
+  // none deal instant cast damage, so they're rewarded via cooldown_reduce / mana / stats.
+  ping: {
+    heroId: 'ping',
+    tiers: {
+      10: [
+        {
+          id: 'ping_10_left',
+          name: '+30% ICMP Echo Damage',
+          description: 'ICMP Echo (Q) probes for 30% more magical damage',
+          type: 'damage_boost',
+          tier: 10,
+          abilityId: 'q',
+          damageBoost: 30,
+        },
+        {
+          id: 'ping_10_right',
+          name: '+200 HP',
+          description: '+200 HP to survive the offlane harass',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 200 },
+        },
+      ],
+      15: [
+        {
+          id: 'ping_15_left',
+          name: '-3s ICMP Echo CD',
+          description: 'ICMP Echo (Q) cooldown reduced — relentless cross-zone poke',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'q',
+          cooldownReduction: 3,
+        },
+        {
+          id: 'ping_15_right',
+          name: '-3s Timeout CD',
+          description: 'Timeout (W) silence comes back sooner — lock down casters',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'w',
+          cooldownReduction: 3,
+        },
+      ],
+      20: [
+        {
+          id: 'ping_20_left',
+          name: '+40% ICMP Echo Damage',
+          description: 'ICMP Echo (Q) deals 40% more — the poke becomes a nuke',
+          type: 'damage_boost',
+          tier: 20,
+          abilityId: 'q',
+          damageBoost: 40,
+        },
+        {
+          id: 'ping_20_right',
+          name: '+300 MP',
+          description: '+300 MP to sustain endless probing and Flood',
+          type: 'stat_bonus',
+          tier: 20,
+          statBonus: { stat: 'mp', value: 300 },
+        },
+      ],
+      25: [
+        {
+          id: 'ping_25_left',
+          name: '-12s Flood CD',
+          description: 'Flood (R) ultimate cooldown reduced — zone control more often',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'ping_25_right',
+          name: '+18 Magic Resistance',
+          description: '+18 Magic Resistance — outlast enemy nukes',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 18 },
+        },
+      ],
+    },
+  },
 }

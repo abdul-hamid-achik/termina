@@ -533,15 +533,7 @@ describe('Malloc Hero', () => {
         if (t.type === 'damage_boost') expect(t.abilityId).not.toBe('q')
       }
     })
-
-    it('no generic-talent hero (the remaining generic set) has a dead specialEffect no-op anymore', () => {
-      const genericHeroes = ['lambda', 'cron', 'traceroute', 'null_ref', 'ping'] as const
-      for (const hero of genericHeroes) {
-        for (const t of Object.values(TALENT_TREES[hero].tiers).flat()) {
-          expect(t.type).not.toBe('special')
-          expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
-        }
-      }
-    })
+    // All 11 formerly-generic heroes now have hero-tailored trees; the cross-hero
+    // "no dead generic talent" guard lives in tailored-talents.test.ts.
   })
 })
