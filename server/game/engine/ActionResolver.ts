@@ -149,6 +149,12 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   // still basic-attack.)
   if (hasDebuff(player, 'hex')) return 'Cannot act while hexed'
 
+  // Black King Bar (magic_immune) grants debuff immunity ("immune to ... debuffs"):
+  // a BKB-active hero acts through the standard control debuffs — stun, silence,
+  // root, fear, taunt. Cyclone and Hex are hard disables that pierce it (checked
+  // above), matching the usual convention.
+  const debuffImmune = player.buffs.some((b) => b.id === 'magic_immune')
+
   const cmd = action.command
 
   // Tutorial mode gates commands behind staggered unlocks so a new player learns
@@ -169,16 +175,16 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (!reachable) {
         return 'Cannot move to non-adjacent zone'
       }
-      // Check for root/stun (taunt forces attacking — no fleeing)
-      if (hasDebuff(player, 'root') || hasDebuff(player, 'stun')) {
+      // Check for root/stun (taunt forces attacking — no fleeing). BKB bypasses.
+      if (!debuffImmune && (hasDebuff(player, 'root') || hasDebuff(player, 'stun'))) {
         return 'Cannot move while rooted or stunned'
       }
-      if (hasDebuff(player, 'taunt')) return 'Cannot move while taunted'
+      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot move while taunted'
       return null
     }
     case 'attack': {
-      if (hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
-      if (hasDebuff(player, 'feared')) return 'Cannot attack while feared'
+      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
+      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot attack while feared'
       // Ghost Scepter: phased out — immune to physical damage, but cannot attack.
       if (player.buffs.some((b) => b.id === 'ghost_form')) {
         return 'Cannot attack while in ghost form'
@@ -186,10 +192,10 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       return null
     }
     case 'cast': {
-      if (hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
-      if (hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
-      if (hasDebuff(player, 'feared')) return 'Cannot cast while feared'
-      if (hasDebuff(player, 'taunt')) return 'Cannot cast while taunted'
+      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
+      if (!debuffImmune && hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
+      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot cast while feared'
+      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot cast while taunted'
       if (!player.heroId) return 'No hero selected'
 
       const hero = HEROES[player.heroId]

@@ -476,11 +476,16 @@ export function resolveAbility(
       )
     }
 
-    if (hasBuff(player, 'stun')) {
+    // Black King Bar (magic_immune) grants debuff immunity, so a BKB hero casts
+    // through stun/silence (mirrors the validateAction bypass). Cyclone/Hex still
+    // hard-disable via validateAction (they pierce magic immunity).
+    const debuffImmune = hasBuff(player, 'magic_immune')
+
+    if (!debuffImmune && hasBuff(player, 'stun')) {
       return yield* Effect.fail(new InvalidTargetError({ target: ability, reason: 'Stunned' }))
     }
 
-    if (hasBuff(player, 'silence')) {
+    if (!debuffImmune && hasBuff(player, 'silence')) {
       return yield* Effect.fail(new InvalidTargetError({ target: ability, reason: 'Silenced' }))
     }
 
