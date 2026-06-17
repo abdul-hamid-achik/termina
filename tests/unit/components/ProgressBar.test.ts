@@ -101,4 +101,35 @@ describe('ProgressBar', () => {
       expect(a).toBe(b)
     })
   })
+
+  describe('danger threshold', () => {
+    const span = (w: ReturnType<typeof mount>) => w.find('span.tracking-\\[-0\\.05em\\]')
+
+    it('flags danger at/below the threshold while alive', () => {
+      const w = mountBar({ value: 100, max: 620, dangerBelow: 0.25 }) // ~16% < 25%
+      expect(span(w).attributes('data-danger')).toBe('true')
+      expect(span(w).classes()).toContain('animate-pulse')
+    })
+
+    it('treats the exact boundary as danger (<=)', () => {
+      const w = mountBar({ value: 155, max: 620, dangerBelow: 0.25 }) // exactly 25%
+      expect(span(w).attributes('data-danger')).toBe('true')
+    })
+
+    it('does NOT flag danger above the threshold', () => {
+      const w = mountBar({ value: 500, max: 620, dangerBelow: 0.25 }) // ~80%
+      expect(span(w).attributes('data-danger')).toBeUndefined()
+      expect(span(w).classes()).not.toContain('animate-pulse')
+    })
+
+    it('does NOT flag danger at 0 (dead, not "about to die")', () => {
+      const w = mountBar({ value: 0, max: 620, dangerBelow: 0.25 })
+      expect(span(w).attributes('data-danger')).toBeUndefined()
+    })
+
+    it('is off by default even at a very low fill', () => {
+      const w = mountBar({ value: 10, max: 620 }) // low, but no dangerBelow set
+      expect(span(w).attributes('data-danger')).toBeUndefined()
+    })
+  })
 })

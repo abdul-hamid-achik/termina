@@ -69,7 +69,13 @@ const rows = computed<AllyRow[]>(() =>
       <template v-else>
         <div class="flex items-center gap-1">
           <span class="w-4 shrink-0 text-[0.58rem] text-text-dim">HP</span>
-          <ProgressBar :value="r.hp" :max="r.maxHp" color="radiant" :width="8" />
+          <ProgressBar
+            :value="r.hp"
+            :max="r.maxHp"
+            color="radiant"
+            :width="8"
+            :danger-below="0.25"
+          />
         </div>
 
         <div
