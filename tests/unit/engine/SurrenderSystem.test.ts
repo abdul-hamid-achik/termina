@@ -109,6 +109,50 @@ describe('SurrenderSystem', () => {
       const retracted = removeSurrenderVote(voted, 'r1')
       expect(retracted.surrenderVotes.radiant.size).toBe(0)
     })
+
+    it('rejects a vote from an unknown player', () => {
+      const state = makeGameState({ tick: SURRENDER_MIN_TICK })
+      const result = voteSurrender(state, 'ghost')
+      expect(result.success).toBe(false)
+      expect(result.reason).toBe('Player not found')
+      expect(result.state).toBe(state) // unchanged
+    })
+
+    it('rejects a vote from a dead player', () => {
+      const base = makeGameState({ tick: SURRENDER_MIN_TICK })
+      const state = {
+        ...base,
+        players: { ...base.players, r1: { ...base.players.r1!, alive: false } },
+      }
+      const result = voteSurrender(state, 'r1')
+      expect(result.success).toBe(false)
+      expect(result.reason).toContain('Dead')
+    })
+
+    it('removeSurrenderVote is a no-op for an unknown player', () => {
+      const state = makeGameState({ tick: SURRENDER_MIN_TICK })
+      expect(removeSurrenderVote(state, 'ghost')).toBe(state) // same reference, untouched
+    })
+  })
+
+  describe('getSurrenderStatus edge cases', () => {
+    it('reports 0% with 0 needed when the whole team is dead', () => {
+      const base = makeGameState({ tick: SURRENDER_MIN_TICK })
+      const allDead = {
+        ...base,
+        players: {
+          ...base.players,
+          r1: { ...base.players.r1!, alive: false },
+          r2: { ...base.players.r2!, alive: false },
+          r3: { ...base.players.r3!, alive: false },
+        },
+      }
+      const status = getSurrenderStatus(allDead, 'radiant')
+      expect(status.totalAlive).toBe(0)
+      expect(status.votesFor).toBe(0)
+      expect(status.votesNeeded).toBe(0)
+      expect(status.percentage).toBe(0)
+    })
   })
 
   describe('solo-vs-bots electorate', () => {
