@@ -61,6 +61,8 @@ export interface SeedOptions {
   seed?: number
   /** Full player roster override (for team-sized scenarios). Replaces human+enemy. */
   players?: PlayerSetup[]
+  /** Which map to seed (see shared/constants/maps). Default = full 5v5. */
+  mapId?: string
 }
 
 // Unique gameId per scenario so module-level engine state keyed by gameId
@@ -78,7 +80,7 @@ export async function seedGame(scenario: KnownScenario, opts: SeedOptions = {}):
   ]
   const gameId = `gp_${scenario}_${seq++}`
   const sm = createInMemoryStateManager()
-  await Effect.runPromise(sm.createGame(gameId, setup))
+  await Effect.runPromise(sm.createGame(gameId, setup, opts.mapId))
   await Effect.runPromise(
     sm.updateState(gameId, (s) =>
       applyScenario({ ...s, phase: 'playing' as const }, scenario, {
