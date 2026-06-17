@@ -107,6 +107,22 @@ describe('WarRoom', () => {
       expect(wrapper.text()).toContain('DIRE +')
     })
 
+    it('shows "even" with no leader colour when net worth is tied', () => {
+      // Equal gold + no items on both teams → a dead tie (goldLead leader null).
+      const roster = makeRoster()
+      for (const p of Object.values(roster)) {
+        p.gold = 1000
+        p.items = [null, null, null, null, null, null]
+      }
+      const zones: Record<string, ZoneRuntimeState> = {}
+      for (const p of Object.values(roster)) zones[p.zone] ??= makeZone(p.zone)
+      seedStore({ players: roster, zones })
+      const text = mountWarRoom().text()
+      expect(text).toContain('even')
+      expect(text).not.toContain('RAD +')
+      expect(text).not.toContain('DIRE +')
+    })
+
     it('feeds the lead series (radiant-dire per tick) into the Sparkline', async () => {
       const roster = makeRoster()
       for (const id of ['p1', 'p2', 'p3', 'p4', 'p5']) roster[id]!.gold = 50_000
@@ -182,6 +198,22 @@ describe('WarRoom', () => {
       // visionSummary uses ZONES.length (32) as the denominator
       expect(text).toMatch(/vision \d+\/32/)
       expect(text).toContain('no wards')
+    })
+
+    it('reports active wards (and not "no wards") when the team has vision out', () => {
+      const roster = makeRoster()
+      const zones: Record<string, ZoneRuntimeState> = {}
+      for (const p of Object.values(roster)) zones[p.zone] ??= makeZone(p.zone)
+      // A radiant ward (the local player is radiant) in a visible zone, expiry
+      // well past the seeded tick (240).
+      const firstZone = Object.keys(zones)[0]!
+      zones[firstZone] = makeZone(firstZone, {
+        wards: [{ team: 'radiant', placedTick: 0, expiryTick: 9999, type: 'observer' }],
+      })
+      seedStore({ players: roster, zones })
+      const text = mountWarRoom().text()
+      expect(text).toContain('wards 1')
+      expect(text).not.toContain('no wards')
     })
   })
 
