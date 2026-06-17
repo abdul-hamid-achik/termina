@@ -212,4 +212,67 @@ describe('CommandInput', () => {
       expect(preview.classes()).toContain('text-radiant')
     })
   })
+
+  describe('keyboard navigation', () => {
+    it('ArrowDown moves the highlighted suggestion', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true } })
+      const input = wrapper.find('input')
+      await input.setValue('m') // several suggestions: move / map / missing
+      await wrapper.vm.$nextTick()
+
+      const before = wrapper.find('.cmd-selected').text()
+      await input.trigger('keydown', { key: 'ArrowDown' })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.cmd-selected').text()).not.toBe(before)
+    })
+
+    it('Tab accepts the highlighted suggestion into the input', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true } })
+      const input = wrapper.find('input')
+      await input.setValue('mov')
+      await input.trigger('keydown', { key: 'Tab' })
+      await wrapper.vm.$nextTick()
+      expect((input.element as HTMLInputElement).value).toContain('move')
+    })
+
+    it('Escape closes the dropdown first, then clears the input', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true } })
+      const input = wrapper.find('input')
+      await input.setValue('move')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.cmd-selected').exists()).toBe(true) // dropdown open
+
+      await input.trigger('keydown', { key: 'Escape' }) // close dropdown
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.cmd-selected').exists()).toBe(false)
+
+      await input.trigger('keydown', { key: 'Escape' }) // now clear the text
+      await wrapper.vm.$nextTick()
+      expect((input.element as HTMLInputElement).value).toBe('')
+    })
+
+    it('Enter accepts a single matching suggestion instead of submitting', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true } })
+      const input = wrapper.find('input')
+      await input.setValue('mov') // single suggestion 'move', input not yet equal
+      await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      expect((input.element as HTMLInputElement).value).toContain('move')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+    })
+
+    it('ArrowUp recalls the previous command from history when the dropdown is closed', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true } })
+      const input = wrapper.find('input')
+      // Submit a command to populate history, then clear + close the dropdown.
+      await input.setValue('status')
+      await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.emitted('submit')).toBeTruthy()
+
+      await input.trigger('keydown', { key: 'ArrowUp' })
+      await wrapper.vm.$nextTick()
+      expect((input.element as HTMLInputElement).value).toBe('status')
+    })
+  })
 })
