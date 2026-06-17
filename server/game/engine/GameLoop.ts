@@ -1264,13 +1264,16 @@ function handleDeaths(
           [killerTeam]: { ...teamState, kills: teamState.kills + 1 },
         }
 
-        // Emit kill event
+        // Emit kill event. `player` is the original victim (pre-reset), so its
+        // killStreak is how fed they were; the killer's streak was just bumped.
         events.push({
           _tag: 'kill',
           tick: state.tick,
           killerId,
           victimId: pid,
           assisters,
+          victimStreak: player.killStreak ?? 0,
+          killerStreak: players[killerId]?.killStreak ?? 0,
         } as GameEngineEvent)
       }
 

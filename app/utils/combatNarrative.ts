@@ -36,6 +36,30 @@ export interface NarrativeContext {
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0)
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 
+/** A kill streak of 3+ earns a named spree (mirrors the in-game shutdown bounty). */
+const SPREE_LABELS: Record<number, string> = {
+  3: 'KILLING SPREE',
+  4: 'DOMINATING',
+  5: 'MEGA KILL',
+  6: 'UNSTOPPABLE',
+  7: 'GODLIKE',
+}
+
+/**
+ * The dramatic suffix on a kill line. Ending a fed enemy's run is the SHUTDOWN
+ * beat (and pairs with the streak-scaled bounty); otherwise a killer on a 3+
+ * run gets a named spree. Empty for ordinary kills.
+ */
+function killFlair(victimStreak: number, killerStreak: number): string {
+  if (victimStreak >= 3) return `  >> SHUTDOWN! (ended a ${victimStreak}-kill streak)`
+  if (killerStreak >= 3) {
+    const label =
+      killerStreak >= 8 ? 'BEYOND GODLIKE' : (SPREE_LABELS[killerStreak] ?? 'KILLING SPREE')
+    return `  >> ${label} (${killerStreak})`
+  }
+  return ''
+}
+
 /** Salience of a source→target interaction relative to the local player. */
 function salience(sourceId: unknown, targetId: unknown, ctx: NarrativeContext): Salience {
   const me = ctx.playerId
@@ -98,9 +122,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       const assistText = assisters.length
         ? `  assist: ${assisters.map((a) => label(a)).join(', ')}`
         : ''
+      const flair = killFlair(num(p.victimStreak), num(p.killerStreak))
       return {
         tick,
-        text: `${label(p.killerId)} terminated ${label(p.victimId)}${assistText}`,
+        text: `${label(p.killerId)} terminated ${label(p.victimId)}${flair}${assistText}`,
         type: 'kill',
         salience: salience(p.killerId, p.victimId, ctx),
         killerHeroId: ctx.heroIdOf(p.killerId),
