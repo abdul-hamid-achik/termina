@@ -1119,4 +1119,75 @@ describe('Shop', () => {
       expect(afterDagon.players['enemy_1']!.hp).toBe(305)
     })
   })
+
+  describe('Item actives — target rejection guards', () => {
+    // The caster sits in the fountain (adjacent ONLY to radiant-base), so a target
+    // in mid-river is both a DIFFERENT zone and OUT OF RANGE — which exercises the
+    // zone/range guards without depending on finer adjacency.
+    const withItem = (item: string) =>
+      makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'radiant-fountain',
+        items: [item, null, null, null, null, null],
+      })
+    const fail = async (item: string, target: Parameters<typeof useItem>[3]) =>
+      Exit.isFailure(
+        await runEffect(useItem(makeGameState({ players: state }), 'player_1', item, target)),
+      )
+    let state: Record<string, PlayerState>
+
+    it('Dagon rejects a non-hero target, a dead target, and an out-of-range target', async () => {
+      state = { player_1: withItem('dagon') }
+      expect(await fail('dagon', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
+      state = {
+        player_1: withItem('dagon'),
+        e1: makePlayer({ id: 'e1', team: 'dire', zone: 'radiant-fountain', alive: false, hp: 0 }),
+      }
+      expect(await fail('dagon', { kind: 'hero', name: 'e1' })).toBe(true) // dead
+      state = {
+        player_1: withItem('dagon'),
+        e1: makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river' }),
+      }
+      expect(await fail('dagon', { kind: 'hero', name: 'e1' })).toBe(true) // out of range
+    })
+
+    it('Ethereal Blade rejects a target in a different zone', async () => {
+      state = {
+        player_1: withItem('ethereal_blade'),
+        e1: makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river' }),
+      }
+      expect(await fail('ethereal_blade', { kind: 'hero', name: 'e1' })).toBe(true)
+    })
+
+    it('Scythe of Vyse rejects a non-hero target and an out-of-zone target', async () => {
+      state = {
+        player_1: withItem('scythe_of_vyse'),
+        e1: makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river' }),
+      }
+      expect(await fail('scythe_of_vyse', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
+      expect(await fail('scythe_of_vyse', { kind: 'hero', name: 'e1' })).toBe(true) // different zone
+    })
+
+    it("Eul's Scepter rejects an out-of-zone target that isn't the caster", async () => {
+      state = {
+        player_1: withItem('euls_scepter'),
+        e1: makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river' }),
+      }
+      expect(await fail('euls_scepter', { kind: 'hero', name: 'e1' })).toBe(true)
+    })
+
+    it('Hurricane Pike rejects an ally target (must target an enemy)', async () => {
+      state = {
+        player_1: withItem('hurricane_pike'),
+        a1: makePlayer({ id: 'a1', team: 'radiant', zone: 'radiant-fountain' }),
+      }
+      expect(await fail('hurricane_pike', { kind: 'hero', name: 'a1' })).toBe(true)
+    })
+
+    it('Blink Module rejects a non-adjacent destination', async () => {
+      state = { player_1: withItem('blink_module') }
+      expect(await fail('blink_module', { kind: 'zone', zone: 'mid-river' })).toBe(true)
+    })
+  })
 })
