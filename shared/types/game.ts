@@ -142,7 +142,14 @@ export interface GameState {
    *  The actual playable graph is reflected in `zones`/`towers`; this is the
    *  label the client uses to pick a layout and the tutorial uses to gate. */
   mapId?: string
+  /** Game mode. Absent/'normal' = a regular match; 'tutorial' = the guided
+   *  practice flow (staggered command unlocks + just-in-time hints). */
+  mode?: GameMode
 }
+
+/** A game's mode. 'normal' is a standard match; 'tutorial' is the guided
+ *  single-player practice flow built on the one-lane map. */
+export type GameMode = 'normal' | 'tutorial'
 
 export interface ZoneRuntimeState {
   id: string
@@ -201,4 +208,8 @@ export interface PlayerVisibleState {
   visibleZones: string[]
   timeOfDay: 'day' | 'night'
   dayNightTick: number
+  /** Map + mode labels, mirrored from GameState so the client can pick the
+   *  right layout and show tutorial UI. Absent = full 5v5 / normal match. */
+  mapId?: string
+  mode?: GameMode
 }

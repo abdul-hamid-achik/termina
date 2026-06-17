@@ -374,4 +374,33 @@ describe('VisionCalculator', () => {
       expect(night.size).toBeLessThan(day.size)
     })
   })
+
+  describe('map/mode labels reach the client', () => {
+    // Regression: the client picks its ASCII layout + tutorial UI off these
+    // labels, so filterStateForPlayer MUST carry them through (they were
+    // dropped originally, leaving the one-lane layout dead in the browser).
+    it('carries mapId + mode for an alive player', () => {
+      const state = makeGameState({
+        players: { p1: makePlayer() },
+        mapId: 'one_lane',
+        mode: 'tutorial',
+      })
+      const view = filterStateForPlayer(state, 'p1')
+      expect(view.mapId).toBe('one_lane')
+      expect(view.mode).toBe('tutorial')
+    })
+
+    it('carries mapId + mode even when the viewer is not in the game (dead/absent)', () => {
+      const state = makeGameState({ players: {}, mapId: 'one_lane', mode: 'tutorial' })
+      const view = filterStateForPlayer(state, 'ghost')
+      expect(view.mapId).toBe('one_lane')
+      expect(view.mode).toBe('tutorial')
+    })
+
+    it('leaves both undefined for a default 5v5 normal match', () => {
+      const view = filterStateForPlayer(makeGameState({ players: { p1: makePlayer() } }), 'p1')
+      expect(view.mapId).toBeUndefined()
+      expect(view.mode).toBeUndefined()
+    })
+  })
 })
