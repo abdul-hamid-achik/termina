@@ -305,6 +305,34 @@ describe('BotAI - decideBotAction', () => {
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'move', zone: 'mid-t2-rad' })
     })
+
+    it('uses Force Staff to escape a slow when it has no Blink', () => {
+      // Force Staff auto-disengages toward our fountain — a second escape tool
+      // that, like Blink, ignores the slow. No target needed (it aims home).
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        hp: 100,
+        maxHp: 500,
+        items: ['force_staff', null, null, null, null, null],
+        buffs: [{ id: 'slow', stacks: 40, ticksRemaining: 2, source: 'enemy1' }],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'use', item: 'force_staff' })
+    })
+
+    it('prefers Blink over Force Staff when holding both (exact retreat zone)', () => {
+      const bot = makePlayer({
+        zone: 'mid-t1-rad',
+        hp: 100,
+        maxHp: 500,
+        items: ['blink_module', 'force_staff', null, null, null, null],
+        buffs: [{ id: 'slow', stacks: 40, ticksRemaining: 2, source: 'enemy1' }],
+      })
+      const state = makeGameState({ players: { [bot.id]: bot } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-rad' })
+    })
   })
 
   describe('combat - hero targeting', () => {
