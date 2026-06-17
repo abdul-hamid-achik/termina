@@ -10,6 +10,7 @@ import {
   pickAbilityTargetString,
   pickAttackTargetString,
   pickDenyTargetString,
+  pickItemTargetString,
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
@@ -731,6 +732,26 @@ function handleCommand(cmd: string) {
           ).command
           if (resolved?.type === 'cast') command.target = resolved.target
         }
+      }
+    }
+    // Same auto-target for an item active that declares a targetType, so clicking
+    // an offensive item (Dagon, Hex, Hurricane Pike) nukes the obvious enemy
+    // instead of rejecting with "Must target a hero". Dual-use items have no
+    // targetType and still require an explicit target.
+    if (command.type === 'use' && !command.target) {
+      const user = gameStore.player
+      const targetType = ITEMS[command.item]?.active?.targetType
+      if (user && targetType) {
+        const picked = pickItemTargetString(targetType, user, gameStore.allPlayers)
+        if ('error' in picked) {
+          localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+          return
+        }
+        const resolved = commands.parse(
+          `use ${command.item} ${picked.target}`,
+          gameStore.player?.team,
+        ).command
+        if (resolved?.type === 'use') command.target = resolved.target
       }
     }
     // Resolve a `talent <tier> left|right` choice to the hero's actual talentId
