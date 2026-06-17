@@ -958,4 +958,127 @@ describe('Shop', () => {
       }
     })
   })
+
+  describe('Item actives — reject + revived-item paths', () => {
+    it("Shiva's Guard blasts and slows enemies in the caster's zone only", async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['shivas_guard', null, null, null, null, null],
+      })
+      const enemyInZone = makePlayer({
+        id: 'enemy_1',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 600,
+        maxHp: 600,
+      })
+      const enemyElsewhere = makePlayer({
+        id: 'enemy_2',
+        team: 'dire',
+        zone: 'mid-t1-dire',
+        hp: 600,
+        maxHp: 600,
+      })
+      const state = makeGameState({
+        players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
+      })
+
+      const exit = await runEffect(useItem(state, 'player_1', 'shivas_guard'))
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        const s = exit.value
+        // In-zone enemy is blasted (HP down) and slowed.
+        expect(s.players['enemy_1']!.hp).toBeLessThan(600)
+        expect(s.players['enemy_1']!.buffs.some((b) => b.id === 'slow')).toBe(true)
+        // Out-of-zone enemy is untouched.
+        expect(s.players['enemy_2']!.hp).toBe(600)
+        expect(s.players['enemy_2']!.buffs.some((b) => b.id === 'slow')).toBe(false)
+        // Caster keeps only the cooldown marker.
+        expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_shivas_guard')).toBe(true)
+      }
+    })
+
+    it('Dagon burns HP on a non-immune target and can kill it', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['dagon', null, null, null, null, null],
+      })
+      const target = makePlayer({
+        id: 'enemy_1',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 120,
+        maxHp: 800,
+        magicResist: 0,
+      })
+      const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'dagon', { kind: 'hero', name: 'enemy_1' }),
+      )
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        // 300 magical (no resist) overkills the 120-HP target.
+        expect(exit.value.players['enemy_1']!.hp).toBe(0)
+        expect(exit.value.players['enemy_1']!.alive).toBe(false)
+      }
+    })
+
+    it('Lotus Orb cast on an ally shields the ally and cools down the caster', async () => {
+      const caster = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        zone: 'mid-river',
+        items: ['lotus_orb', null, null, null, null, null],
+      })
+      const ally = makePlayer({ id: 'ally_1', team: 'radiant', zone: 'mid-river' })
+      const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'lotus_orb', { kind: 'hero', name: 'ally_1' }),
+      )
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (Exit.isSuccess(exit)) {
+        const s = exit.value
+        // Reflect buff lands on the ally; the caster only carries the cooldown.
+        expect(s.players['ally_1']!.buffs.some((b) => b.id === 'lotus_orb')).toBe(true)
+        expect(s.players['player_1']!.buffs.some((b) => b.id === 'lotus_orb')).toBe(false)
+        expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_lotus_orb')).toBe(true)
+      }
+    })
+
+    it('placing a ward past the per-team limit (3) is rejected', async () => {
+      const player = makePlayer({
+        id: 'player_1',
+        team: 'radiant',
+        items: ['observer_ward', null, null, null, null, null],
+      })
+      // The team already has WARD_LIMIT_PER_TEAM (3) wards out across the map.
+      const state = makeGameState({
+        players: { player_1: player },
+        zones: {
+          'radiant-fountain': makeZone('radiant-fountain'),
+          'mid-river': makeZone('mid-river'),
+          'mid-t1-rad': makeZone('mid-t1-rad', {
+            wards: [
+              { team: 'radiant', placedTick: 1, expiryTick: 46, type: 'observer' },
+              { team: 'radiant', placedTick: 2, expiryTick: 47, type: 'observer' },
+              { team: 'radiant', placedTick: 3, expiryTick: 48, type: 'observer' },
+            ],
+          }),
+        },
+      })
+
+      const exit = await runEffect(
+        useItem(state, 'player_1', 'observer_ward', { kind: 'zone', zone: 'mid-river' }),
+      )
+      // Over the cap → rejected, and no 4th ward is placed.
+      expect(Exit.isFailure(exit)).toBe(true)
+      expect(state.zones['mid-river']!.wards).toHaveLength(0)
+    })
+  })
 })
