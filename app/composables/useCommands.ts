@@ -111,6 +111,27 @@ export function pickAbilityTargetString(
   return { target: null }
 }
 
+/**
+ * Pick a default target for a bare `attack` (no explicit target): the lowest-HP
+ * alive enemy hero in the player's zone — a MOBA right-click on the obvious
+ * threat. Returns `{ error }` with a hint when there's no enemy hero. We do NOT
+ * auto-attack creeps: last-hitting must stay explicit (attack creep:N) so the
+ * auto-target never steals a creep and ruins the player's last-hit timing.
+ */
+export function pickAttackTargetString(
+  player: PlayerState,
+  allPlayers: Record<string, PlayerState>,
+): { target: string } | { error: string } {
+  const enemies = Object.values(allPlayers).filter(
+    (p) => p.zone === player.zone && p.alive && p.team !== player.team,
+  )
+  if (enemies.length === 0) {
+    return { error: 'No enemy hero in your zone — target a creep (attack creep:0) or tower' }
+  }
+  const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
+  return { target: `hero:${target.id}` }
+}
+
 const SHORTCUTS: Record<string, string> = {
   mv: 'move',
   atk: 'attack',

@@ -84,7 +84,7 @@ describe('learn page', () => {
     // Original 7
     for (const cmd of [
       'move <zone>',
-      'attack <target>',
+      'attack [target]',
       'cast <q|w|e|r> [target]',
       'use <item>',
       'buy <item>',

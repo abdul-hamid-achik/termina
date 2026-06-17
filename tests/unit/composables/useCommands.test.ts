@@ -4,6 +4,7 @@ import {
   validateCommand,
   buybackCostFor,
   pickAbilityTargetString,
+  pickAttackTargetString,
   type GameContext,
 } from '../../../app/composables/useCommands'
 import type { PlayerState, ZoneRuntimeState } from '../../../shared/types/game'
@@ -1625,5 +1626,38 @@ describe('pickAbilityTargetString', () => {
     expect(pickAbilityTargetString(makeAbility('zone', dmg), caster, { p1: caster })).toEqual({
       target: 'zone:mid-river',
     })
+  })
+})
+
+// ── pickAttackTargetString (bare `attack` auto-target) ────────────
+describe('pickAttackTargetString', () => {
+  it('targets the lowest-HP alive enemy hero in the player’s zone', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const e1 = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', hp: 90 })
+    expect(pickAttackTargetString(me, { p1: me, e1, e2 })).toEqual({ target: 'hero:e2' })
+  })
+
+  it('ignores allies, dead enemies, and enemies in other zones', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const ally = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river', hp: 10 })
+    const deadEnemy = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 1, alive: false })
+    const offZone = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-t1-dire', hp: 5 })
+    const liveEnemy = makePlayer({ id: 'e3', team: 'dire', zone: 'mid-river', hp: 300 })
+    const result = pickAttackTargetString(me, {
+      p1: me,
+      a1: ally,
+      e1: deadEnemy,
+      e2: offZone,
+      e3: liveEnemy,
+    })
+    expect(result).toEqual({ target: 'hero:e3' })
+  })
+
+  it('errors with a creep/tower hint when no enemy hero is in the zone', () => {
+    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const result = pickAttackTargetString(me, { p1: me })
+    expect('error' in result && result.error).toMatch(/no enemy hero/i)
+    expect('error' in result && result.error).toMatch(/creep/i)
   })
 })

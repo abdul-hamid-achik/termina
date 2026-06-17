@@ -8,6 +8,7 @@ import {
   validateCommand,
   buybackCostFor,
   pickAbilityTargetString,
+  pickAttackTargetString,
 } from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
@@ -675,6 +676,21 @@ function getTowerTier(zoneId: string): number {
 // ── Command handling ───────────────────────────────────────────
 
 function handleCommand(cmd: string) {
+  // A bare `attack` / `atk` auto-targets the lowest-HP enemy hero in your zone
+  // (a MOBA right-click) so you don't have to type the full target. Creeps stay
+  // explicit (attack creep:N) so auto-target never steals a last-hit.
+  const bareAttack = cmd.trim().toLowerCase()
+  if (bareAttack === 'attack' || bareAttack === 'atk') {
+    const me = gameStore.player
+    if (me) {
+      const picked = pickAttackTargetString(me, gameStore.allPlayers)
+      if ('error' in picked) {
+        localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
+        return
+      }
+      cmd = `attack ${picked.target}`
+    }
+  }
   // Pass the player's team so base/fountain resolve to THEIR side of the map.
   const { command, error } = commands.parse(cmd, gameStore.player?.team)
   if (command) {
