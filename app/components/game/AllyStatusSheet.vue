@@ -30,6 +30,8 @@ interface AllyRow {
   zone: string
   status: DisplayBuff[]
   respawnIn: number
+  /** Ultimate off cooldown — the key "can we fight?" coordination signal. */
+  ultReady: boolean
 }
 
 const rows = computed<AllyRow[]>(() =>
@@ -44,6 +46,7 @@ const rows = computed<AllyRow[]>(() =>
     // Transient effects only — a ticking BKB, a stun — not permanent stat auras.
     status: displayBuffs(a.buffs ?? []).filter((b) => b.ticks !== null),
     respawnIn: a.respawnTick != null ? Math.max(0, a.respawnTick - props.tick) : -1,
+    ultReady: (a.cooldowns?.r ?? 0) <= 0,
   })),
 )
 </script>
@@ -57,7 +60,15 @@ const rows = computed<AllyRow[]>(() =>
           :class="r.alive ? 'text-radiant' : 'text-text-dim line-through'"
           >{{ r.name }}</span
         >
-        <span class="shrink-0 text-[0.6rem] text-text-dim">Lv{{ r.level }} · {{ r.zone }}</span>
+        <span class="flex shrink-0 items-baseline gap-1 text-[0.6rem]">
+          <span
+            v-if="r.alive && r.ultReady"
+            class="font-bold text-radiant text-glow-sm"
+            :data-testid="`ally-ult-${r.id}`"
+            >ULT</span
+          >
+          <span class="text-text-dim">Lv{{ r.level }} · {{ r.zone }}</span>
+        </span>
       </div>
 
       <!-- Dead -->

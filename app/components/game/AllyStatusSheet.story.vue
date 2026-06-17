@@ -18,6 +18,7 @@ const allies: PlayerState[] = [
     hp: 720,
     maxHp: 900,
     level: 12,
+    cooldowns: { q: 0, w: 3, e: 0, r: 0 }, // ult ready → green ULT badge
     // Holding BKB — good for them (green): safe to dive with.
     buffs: [
       { id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'item', destination: 'a1' },
@@ -32,6 +33,7 @@ const allies: PlayerState[] = [
     hp: 90,
     maxHp: 520,
     level: 9,
+    cooldowns: { q: 0, w: 0, e: 0, r: 9 }, // ult on cooldown → no badge
     // Low HP and stunned — bad for them (red): they need help NOW.
     buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 2, source: 'enemy', destination: 'a2' }],
   }),
