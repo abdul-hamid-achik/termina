@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   checkRateLimit,
+  checkScopedRateLimit,
   getRateLimitStats,
   resetRateLimit,
   cleanupRateLimiters,
@@ -168,6 +169,86 @@ describe('RateLimiter', () => {
       expect(getRateLimitStats('player1')).toBeNull()
       expect(getRateLimitStats('player2')).toBeNull()
       expect(getRateLimitStats('player3')).toBeNull()
+    })
+  })
+
+  describe('checkScopedRateLimit', () => {
+    it('namespaces buckets per scope+key — keys and scopes are independent', () => {
+      // lobby burst is 6: exhaust it for userA
+      for (let i = 0; i < 6; i++) expect(checkScopedRateLimit('lobby', 'userA')).toBe(true)
+      expect(checkScopedRateLimit('lobby', 'userA')).toBe(false)
+      // a different key in the same scope has its own bucket
+      expect(checkScopedRateLimit('lobby', 'userB')).toBe(true)
+      // the same key in a different scope is independent too (namespaced)
+      expect(checkScopedRateLimit('queue', 'userA')).toBe(true)
+    })
+
+    it('applies each scope’s own burst budget (auth stricter than lobby)', () => {
+      // auth burst is 5 (brute-force protection); the 6th is rejected
+      for (let i = 0; i < 5; i++) expect(checkScopedRateLimit('auth', 'ip1')).toBe(true)
+      expect(checkScopedRateLimit('auth', 'ip1')).toBe(false)
+    })
+
+    it('falls back to the default budget for an unknown scope', () => {
+      // Unknown scope → DEFAULT_CONFIG (burst 10) rather than a crash.
+      const scope = 'mystery' as Parameters<typeof checkScopedRateLimit>[0]
+      for (let i = 0; i < 10; i++) expect(checkScopedRateLimit(scope, 'k')).toBe(true)
+      expect(checkScopedRateLimit(scope, 'k')).toBe(false)
+    })
+  })
+
+  describe('stale-state eviction (unbounded-growth backstop)', () => {
+    it('evicts long-idle entries once the tracked-key cap is exceeded', () => {
+      vi.useFakeTimers()
+      try {
+        // Fill to the 10k cap; each key is tracked.
+        for (let i = 0; i < 10_000; i++) checkRateLimit(`bulk_${i}`)
+        expect(getRateLimitStats('bulk_0')).not.toBeNull()
+
+        // Idle past the eviction window, then one more distinct key trips the
+        // size>=cap check and sweeps the now-idle entries.
+        vi.advanceTimersByTime(11 * 60 * 1000)
+        checkRateLimit('trigger')
+        expect(getRateLimitStats('bulk_0')).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
+  describe('rate-limit escape hatch (rateLimitDisabled)', () => {
+    const ENV_KEYS = ['TERMINA_DISABLE_RATE_LIMIT', 'NODE_ENV', 'TERMINA_TEST_HOOKS'] as const
+    const saved: Record<string, string | undefined> = {}
+    beforeEach(() => {
+      for (const k of ENV_KEYS) saved[k] = process.env[k]
+    })
+    afterEach(() => {
+      for (const k of ENV_KEYS) {
+        if (saved[k] === undefined) delete process.env[k]
+        else process.env[k] = saved[k]
+      }
+    })
+
+    it('stays ENFORCED in real production even with the disable flag set', () => {
+      // The security invariant: the escape hatch must never weaken real prod.
+      process.env.TERMINA_DISABLE_RATE_LIMIT = '1'
+      process.env.NODE_ENV = 'production'
+      delete process.env.TERMINA_TEST_HOOKS
+      for (let i = 0; i < 10; i++) checkRateLimit('prod_player') // drain the burst
+      expect(checkRateLimit('prod_player')).toBe(false)
+    })
+
+    it('disables limits on a non-production server when the flag is set', () => {
+      process.env.TERMINA_DISABLE_RATE_LIMIT = '1'
+      process.env.NODE_ENV = 'development'
+      for (let i = 0; i < 50; i++) expect(checkRateLimit('dev_player')).toBe(true)
+    })
+
+    it('disables limits on a prod test-hooks server (e2e preview)', () => {
+      process.env.TERMINA_DISABLE_RATE_LIMIT = '1'
+      process.env.NODE_ENV = 'production'
+      process.env.TERMINA_TEST_HOOKS = '1'
+      for (let i = 0; i < 50; i++) expect(checkRateLimit('e2e_player')).toBe(true)
     })
   })
 })
