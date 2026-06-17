@@ -51,6 +51,58 @@ describe('tutorial flow', () => {
     })
   })
 
+  describe('gating policy at step 0 (the strictest point)', () => {
+    // Informational / comms / essential-progression commands are never gated —
+    // a learner can read state, talk, bail, grab a rune, or spend a talent point
+    // even before they've been taught the combat verbs.
+    const ALWAYS_ALLOWED = [
+      'status',
+      'map',
+      'scan',
+      'rune',
+      'chat',
+      'ping',
+      'missing',
+      'surrender',
+      'select_talent',
+    ] as const
+
+    // Staged verbs: locked at step 0, each unlocked by its own step.
+    const STAGED_LOCKED_AT_0 = ['attack', 'cast', 'buy'] as const
+
+    // Advanced actions stay gated until free play (they aren't part of the
+    // verb-learning sequence and would only confuse a brand-new player).
+    const GATED_UNTIL_FREEPLAY = ['ward', 'use', 'deny', 'aegis', 'glyph', 'buyback'] as const
+
+    it('always allows informational / essential-progression commands', () => {
+      for (const c of ALWAYS_ALLOWED) {
+        expect(isCommandAllowedInTutorial(c, 0), `${c} should be allowed at step 0`).toBe(true)
+      }
+    })
+
+    it('does not block talent selection while learning the verbs (regression)', () => {
+      // select_talent is gated by its own level requirement, not the tutorial.
+      expect(isCommandAllowedInTutorial('select_talent', 0)).toBe(true)
+      expect(tutorialUnlockedCommands(0).has('select_talent')).toBe(true)
+    })
+
+    it('locks the staged combat verbs at step 0', () => {
+      for (const c of STAGED_LOCKED_AT_0) {
+        expect(isCommandAllowedInTutorial(c, 0), `${c} should be locked at step 0`).toBe(false)
+      }
+    })
+
+    it('keeps advanced actions gated until free play', () => {
+      for (const c of GATED_UNTIL_FREEPLAY) {
+        expect(isCommandAllowedInTutorial(c, 0), `${c} locked at step 0`).toBe(false)
+        expect(
+          isCommandAllowedInTutorial(c, TUTORIAL_STEP_COUNT),
+          `${c} unlocked in free play`,
+        ).toBe(true)
+      }
+    })
+  })
+
   describe('hints', () => {
     it('lock message points at the current step (what to do instead)', () => {
       expect(tutorialLockMessage(0)).toContain('Walk down')
