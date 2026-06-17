@@ -203,6 +203,15 @@ describe('asciiMapModel', () => {
       expect(cellText(makeZone({ id: 'rune-top' }))).not.toContain('✦')
     })
 
+    it('flags Roshan up vs respawning', () => {
+      expect(
+        cellText(makeZone({ id: 'roshan-pit', roshan: { alive: true, respawnIn: 0 } })),
+      ).toContain('UP')
+      expect(
+        cellText(makeZone({ id: 'roshan-pit', roshan: { alive: false, respawnIn: 45 } })),
+      ).toContain('↻45t')
+    })
+
     it('labels each zone category with its glyphed name (a bare zone is just the name)', () => {
       const name = (id: string) => cellText(makeZone({ id }))
       expect(name('mid-t3-rad')).toBe('▲ RAD T3')
@@ -259,6 +268,15 @@ describe('asciiMapModel', () => {
 
     it('announces a live rune for screen readers', () => {
       expect(zoneAriaLabel(makeZone({ runeType: 'dd' }))).toContain('dd rune available')
+    })
+
+    it('announces Roshan state for screen readers', () => {
+      expect(zoneAriaLabel(makeZone({ roshan: { alive: true, respawnIn: 0 } }))).toContain(
+        'Roshan alive',
+      )
+      expect(zoneAriaLabel(makeZone({ roshan: { alive: false, respawnIn: 30 } }))).toContain(
+        'Roshan respawns in 30t',
+      )
     })
   })
 
@@ -340,6 +358,19 @@ describe('asciiMapModel', () => {
       expect(
         compactIndicators(makeZone({ id: 'rune-top', runeType: 'haste' })).map((i) => i.text),
       ).toContain('✦ haste rune')
+    })
+
+    it('shows a Roshan chip (up vs respawn countdown)', () => {
+      expect(
+        compactIndicators(
+          makeZone({ id: 'roshan-pit', roshan: { alive: true, respawnIn: 0 } }),
+        ).map((i) => i.text),
+      ).toContain('☠ Roshan UP')
+      expect(
+        compactIndicators(
+          makeZone({ id: 'roshan-pit', roshan: { alive: false, respawnIn: 60 } }),
+        ).map((i) => i.text),
+      ).toContain('☠ Roshan ↻ 60t')
     })
   })
 
