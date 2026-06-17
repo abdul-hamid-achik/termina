@@ -80,7 +80,7 @@ export const HEROES: Record<string, HeroDef> = {
       r: {
         id: 'echo-r',
         name: 'Cascade',
-        description: 'Unleash 6 attacks over 3 ticks on a target, each dealing physical damage.',
+        description: 'Unleash 6 attacks on a target, each dealing physical damage.',
         manaCost: 150,
         cooldownTicks: 50,
         targetType: 'hero',
@@ -159,7 +159,7 @@ export const HEROES: Record<string, HeroDef> = {
       r: {
         id: 'sentry-r',
         name: 'Fortify',
-        description: 'Grant all allies +3 defense and 150 shield for 4 ticks.',
+        description: 'Grant allies in your zone +3 defense and 150 shield for 4 ticks.',
         manaCost: 250,
         cooldownTicks: 60,
         targetType: 'none',
@@ -282,8 +282,7 @@ export const HEROES: Record<string, HeroDef> = {
     passive: {
       id: 'kernel-passive',
       name: 'Hardened',
-      description:
-        'Gain 1 bonus defense for every 5% HP missing. At 20% HP, gain 20% damage reduction.',
+      description: 'Permanently take 10% reduced damage from all sources.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
@@ -613,7 +612,8 @@ export const HEROES: Record<string, HeroDef> = {
     passive: {
       id: 'malloc-passive',
       name: 'Heap Growth',
-      description: 'Gain +1 bonus attack damage for every 100 gold currently held.',
+      description:
+        'Gain +1 bonus attack damage for every 100 gold currently held, up to +40 (at 4000 gold).',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
@@ -1370,8 +1370,7 @@ export const HEROES: Record<string, HeroDef> = {
       w: {
         id: 'traceroute-w',
         name: 'TTL',
-        description:
-          'Set a time-to-live trap on a target. After 1 tick delay, root the target for 2 ticks.',
+        description: 'Set a time-to-live trap on a target, rooting them for 2 ticks.',
         manaCost: 70,
         cooldownTicks: 12,
         targetType: 'hero',
@@ -1468,7 +1467,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'thread-e',
         name: 'Yield',
         description:
-          'Mark a target. Consecutive attacks on the marked target deal 25% bonus damage for 3 ticks.',
+          'Mark a target. The marked target takes 25% bonus damage from all sources for 3 ticks.',
         manaCost: 60,
         cooldownTicks: 10,
         targetType: 'hero',
