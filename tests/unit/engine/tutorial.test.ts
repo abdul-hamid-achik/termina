@@ -113,6 +113,13 @@ describe('tutorial flow', () => {
       expect(tutorialHint(0)).toContain('Walk down')
       expect(tutorialHint(TUTORIAL_STEP_COUNT)).toBeNull()
     })
+
+    it('the last-hit hint teaches the explicit creep syntax, not bare attack', () => {
+      // Bare `attack` auto-targets an enemy HERO, so the last-hit step must show
+      // `attack creep:N` — otherwise the hint contradicts what the command does.
+      expect(tutorialHint(1)).toContain('creep:')
+      expect(tutorialHint(1)).not.toMatch(/type `attack` on/)
+    })
   })
 
   describe('advanceTutorialAfterTick', () => {
