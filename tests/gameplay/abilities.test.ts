@@ -279,4 +279,40 @@ describe('abilities', () => {
     expect(r?.reason).toMatch(/need \d+/) // the exact cost is hero/level-scaled
     expect(r?.reason).toContain('have 1')
   })
+
+  it('Lotus Orb reflects a single-target nuke back at the caster (charge spent)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    // Settle the first-tick recompute, zero the caster's cooldowns, and give the
+    // TARGET (ENEMY) a Lotus shell to reflect the incoming nuke.
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'lotus_orb', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes the Lotus holder (echo Q — Resonance)
+    await game.tick()
+
+    // The spell is reflected: a spell_blocked(lotus_orb) event carrying the bounced
+    // amount, a damage event from the holder back at the caster, and the charge spent.
+    const blocked = game.lastEvents.find(
+      (e) => e._tag === 'spell_blocked' && e.source === 'lotus_orb',
+    )
+    expect(blocked).toBeDefined()
+    expect(blocked?._tag === 'spell_blocked' && blocked.reflected).toBeGreaterThan(0)
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === ENEMY && e.targetId === HUMAN,
+      ),
+    ).toBe(true)
+    // The Lotus charge is consumed (one-shot), so it's gone afterwards.
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'lotus_orb')).toBe(false)
+  })
 })
