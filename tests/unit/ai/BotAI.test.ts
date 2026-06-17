@@ -400,6 +400,44 @@ describe('BotAI - decideBotAction', () => {
       // No mana, should attack
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
     })
+
+    it('holds Cache Eviction (R) at low stored energy, casting a non-ult instead', () => {
+      // Cache's R deals pure damage EQUAL to stored energy; at ~0 energy it's a
+      // 50-tick cooldown spent on a lone slow. The bot must NOT open the fight
+      // with R — it should cast a non-energy ability (Q) and build energy first.
+      const bot = makePlayer({
+        heroId: 'cache',
+        level: 6,
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 300,
+        maxMp: 300,
+        buffs: [{ id: 'cachedEnergy', stacks: 10, ticksRemaining: 9999, source: 'bot_alpha' }],
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action?.type).toBe('cast')
+      expect((action as { ability: string }).ability).not.toBe('r')
+    })
+
+    it('fires Cache Eviction (R) once stored energy is worth bursting', () => {
+      const bot = makePlayer({
+        heroId: 'cache',
+        level: 6,
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 300,
+        maxMp: 300,
+        buffs: [{ id: 'cachedEnergy', stacks: 120, ticksRemaining: 9999, source: 'bot_alpha' }],
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid')
+      expect(action).toMatchObject({ type: 'cast', ability: 'r' })
+    })
   })
 
   describe('combat - creep targeting', () => {
