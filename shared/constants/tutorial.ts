@@ -34,7 +34,10 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     teaches: 'cast',
     hint: '🎓 Use an ability — type `cast q` to fire your Q (it auto-picks a target).',
   },
-  { teaches: 'buy', hint: '🎓 Spend your gold — back at base, type `buy <item>` to power up.' },
+  {
+    teaches: 'buy',
+    hint: '🎓 Spend your gold — head back to base and type `buy boots_of_speed` for move speed.',
+  },
 ]
 
 /** The number of scripted steps in the tutorial. */
