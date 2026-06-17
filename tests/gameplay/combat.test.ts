@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, ENEMY, HUMAN } from './harness'
 import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
+import { GLYPH_DURATION_TICKS } from '~~/shared/constants/balance'
 
 /**
  * Replaces tests/e2e/flows/game_attack_lands.yml — a human basic attack on a
@@ -657,6 +658,29 @@ describe('combat', () => {
     game.submit({ type: 'glyph' })
     await game.tick()
     expect(game.lastEvents.some((e) => e._tag === 'glyph_on_cooldown')).toBe(true)
+  })
+
+  it('Glyph wears off after GLYPH_DURATION_TICKS — towers become vulnerable again', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me = await game.me()
+    const team = me.team
+
+    // Simulate a glyph cast that's now exactly past its duration: invulnerable
+    // towers + a glyphUsedTick old enough that expireGlyph should lift it.
+    await game.patch((s) => ({
+      ...s,
+      teams: {
+        ...s.teams,
+        [team]: { ...s.teams[team]!, glyphUsedTick: s.tick - GLYPH_DURATION_TICKS },
+      },
+      towers: s.towers.map((t) => (t.team === team ? { ...t, invulnerable: true } : t)),
+    }))
+
+    await game.tick()
+
+    const myTowers = (await game.state()).towers.filter((t) => t.team === team)
+    expect(myTowers.length).toBeGreaterThan(0)
+    expect(myTowers.every((t) => !t.invulnerable)).toBe(true)
   })
 
   // Characterization test (documents current behaviour + a known gap). The
