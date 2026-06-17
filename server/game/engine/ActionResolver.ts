@@ -1524,6 +1524,28 @@ function resolveHeroCast(
         const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
         dt.hero += delta
         damageTracker.set(action.playerId, dt)
+
+        // Blade Mail: an enemy hero hit by this cast reflects the damage it took
+        // back at the caster as pure damage (the same 100% return as the basic-
+        // attack reflect, now covering ability damage per "100% of damage taken").
+        if (post.buffs.some((b) => b.id === 'blade_mail')) {
+          const casterPost = newPlayers[action.playerId]
+          if (casterPost) {
+            const casterNewHp = Math.max(0, casterPost.hp - delta)
+            newPlayers = {
+              ...newPlayers,
+              [action.playerId]: { ...casterPost, hp: casterNewHp, alive: casterNewHp > 0 },
+            }
+            events.push({
+              _tag: 'damage',
+              tick: state.tick,
+              sourceId: pid,
+              targetId: action.playerId,
+              amount: delta,
+              damageType: 'pure',
+            })
+          }
+        }
       }
     } else if (delta < 0) {
       events.push({
