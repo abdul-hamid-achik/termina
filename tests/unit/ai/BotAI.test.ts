@@ -4,7 +4,9 @@ import {
   getAbilityTarget,
   sequenceManaCost,
   buildOrderForRole,
+  tryUseCombatItem,
 } from '../../../server/game/ai/BotAI'
+import type { BotDifficultyConfig } from '../../../server/game/ai/BotManager'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 import { HEROES } from '../../../shared/constants/heroes'
@@ -1159,5 +1161,128 @@ describe('sequenceManaCost (combo affordability)', () => {
 
   it('is 0 for an empty sequence', () => {
     expect(sequenceManaCost('echo', [])).toBe(0)
+  })
+})
+
+function makeConfig(overrides: Partial<BotDifficultyConfig> = {}): BotDifficultyConfig {
+  return {
+    retreatHpPercent: 30,
+    lastHitAccuracy: 1,
+    reactionDelayTicks: 0,
+    abilityComboChance: 0,
+    runeAwareness: false,
+    jungleFarming: false,
+    threatAssessment: true,
+    ...overrides,
+  }
+}
+
+/** Inventory of exactly the given item ids, padded to six slots. */
+function inv(...ids: string[]): PlayerState['items'] {
+  const slots: (string | null)[] = [...ids]
+  while (slots.length < 6) slots.push(null)
+  return slots as PlayerState['items']
+}
+
+describe('BotAI - combat item usage (tryUseCombatItem)', () => {
+  const enemy = makePlayer({ id: 'enemy', name: 'enemy', team: 'dire' })
+
+  it('returns null out of a fight (no enemy heroes in zone)', () => {
+    const bot = makePlayer({ hp: 100, maxHp: 500, items: inv('black_king_bar') })
+    expect(tryUseCombatItem(bot, [], [], makeConfig())).toBeNull()
+  })
+
+  it('is gated on threatAssessment — naive (easy) bots never micro items', () => {
+    const bot = makePlayer({ hp: 100, maxHp: 500, items: inv('black_king_bar') })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig({ threatAssessment: false }))).toBeNull()
+  })
+
+  it('pops a defensive item (BKB) when hurt in a fight', () => {
+    const bot = makePlayer({ hp: 200, maxHp: 500, items: inv('black_king_bar') }) // 40%
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'black_king_bar',
+    })
+  })
+
+  it('prefers BKB over Blade Mail (defensive priority order)', () => {
+    const bot = makePlayer({ hp: 200, maxHp: 500, items: inv('blade_mail', 'black_king_bar') })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'black_king_bar',
+    })
+    const onlyMail = makePlayer({ hp: 200, maxHp: 500, items: inv('blade_mail') })
+    expect(tryUseCombatItem(onlyMail, [enemy], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'blade_mail',
+    })
+  })
+
+  it('pops a defensive item when outnumbered even at full HP', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('blade_mail') })
+    const e2 = makePlayer({ id: 'enemy2', name: 'enemy2', team: 'dire' })
+    // 2 enemies vs (0 allies + self) → outnumbered.
+    expect(tryUseCombatItem(bot, [enemy, e2], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'blade_mail',
+    })
+  })
+
+  it('does NOT burn a defensive item on a healthy, even fight', () => {
+    // Full HP, 1v1, only a defensive item → not under pressure, nothing offensive.
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('black_king_bar') })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
+  })
+
+  it('pops Stack Overflow when an ability is ready to consume the charge', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, mp: 200, items: inv('stack_overflow') })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'stack_overflow',
+    })
+  })
+
+  it('does NOT pop Stack Overflow with no ability able to consume the charge', () => {
+    // Every ability on cooldown → nothing can consume the double-damage charge,
+    // so the bot holds it rather than wasting it on a pure right-click.
+    const bot = makePlayer({
+      hp: 500,
+      maxHp: 500,
+      cooldowns: { q: 4, w: 4, e: 4, r: 4 },
+      items: inv('stack_overflow'),
+    })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
+  })
+
+  it('pops Veil of Discord regardless of ability readiness', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, mp: 0, items: inv('veil_of_discord') })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
+      type: 'use',
+      item: 'veil_of_discord',
+    })
+  })
+
+  it('respects item cooldown (item_cd_<id> buff)', () => {
+    const bot = makePlayer({
+      hp: 100,
+      maxHp: 500,
+      items: inv('black_king_bar'),
+      buffs: [{ id: 'item_cd_black_king_bar', stacks: 1, ticksRemaining: 10, source: 'x' }],
+    })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
+  })
+
+  it('returns null when the bot owns no combat actives', () => {
+    const bot = makePlayer({ hp: 100, maxHp: 500, items: inv() })
+    expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
+  })
+
+  it('decideBotAction wires it in: a hurt bot in a fight pops its BKB', () => {
+    // 60% HP avoids the retreat threshold yet is under the defensive-pressure
+    // cutoff; default difficulty (medium) has threatAssessment on.
+    const bot = makePlayer({ zone: 'mid-river', hp: 300, maxHp: 500, items: inv('black_king_bar') })
+    const foe = makePlayer({ id: 'foe', name: 'foe', team: 'dire', zone: 'mid-river' })
+    const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
+    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
   })
 })
