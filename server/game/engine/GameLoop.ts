@@ -1140,12 +1140,15 @@ function handleDeaths(
       const respawnTicks = scaledRespawnTicks(
         RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * scaledLevels,
       )
-      const buybackCost = calculateBuybackCost(player)
+      const newDeaths = alreadyCounted ? player.deaths : player.deaths + 1
+      // Compute from the post-death death count so the displayed buyback cost
+      // matches what buyback() actually charges (both use deaths * 10).
+      const buybackCost = calculateBuybackCost({ ...player, deaths: newDeaths })
 
       players[pid] = {
         ...player,
         respawnTick: state.tick + respawnTicks,
-        deaths: alreadyCounted ? player.deaths : player.deaths + 1,
+        deaths: newDeaths,
         killStreak: 0,
         buybackCost,
       }
