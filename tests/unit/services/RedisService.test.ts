@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
 import { RedisService, makeRedisServiceLive } from '../../../server/services/RedisService'
 
-const mockRedisUrl = 'redis://localhost:6379'
+const mockRedisUrl = 'redis://localhost:6380'
 
 describe('RedisService', () => {
   describe('API interface', () => {

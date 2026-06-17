@@ -33,9 +33,9 @@ webServer:
     TERMINA_TEST_FAST_GAME: "8" # fast ticks so live-tick specs don't wait the full 4s
     NUXT_SESSION_COOKIE_SECURE: "false" # let the prod session cookie ride plain HTTP on 127.0.0.1
     NUXT_SESSION_PASSWORD: "e2e_session_password_at_least_32_chars_long"
-    NUXT_REDIS_URL: "redis://localhost:6379/1" # db1 isolation; matches the flush above
+    NUXT_REDIS_URL: "redis://localhost:6380/1" # db1 isolation; matches the flush above
     # NUXT_DATABASE_URL is intentionally NOT pinned: locally the app's compiled
-    # runtimeConfig default (…localhost:5432/termina) applies; in CI the runner
+    # runtimeConfig default (…localhost:5433/termina) applies; in CI the runner
     # exports its own (termina_test), and an inherited env value wins since it's
     # absent from this map.
 
