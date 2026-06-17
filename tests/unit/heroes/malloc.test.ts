@@ -363,6 +363,17 @@ describe('Malloc Hero', () => {
       expect(getHeapGrowthBonus(updated.players['p1']!)).toBe(5)
     })
 
+    it('caps the heap-growth bonus at +40, no matter how much gold is hoarded', () => {
+      // 6000 gold would be +60 at a raw 1-per-100, but the passive caps it at +40
+      // (reached at 4000 gold) — the boundary the ability description now states.
+      const player = makePlayer({ gold: 6000 })
+      const state = makeState([player])
+
+      const updated = resolvePassive(state, 'p1', { tick: 10, type: 'tick_end', payload: {} })
+
+      expect(getHeapGrowthBonus(updated.players['p1']!)).toBe(40)
+    })
+
     it('returns 0 with no gold', () => {
       const player = makePlayer({ gold: 50 })
       const state = makeState([player])
