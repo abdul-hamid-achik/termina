@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seedGame, HUMAN } from './harness'
+import { seedGame, HUMAN, ENEMY } from './harness'
 import { TUTORIAL_STEP_COUNT } from '~~/server/game/modes/tutorial'
 
 /** Did the human's action get rejected with a tutorial-lock hint this tick? */
@@ -70,6 +70,28 @@ describe('tutorial mode', () => {
       game.submit({ type: 'move', zone: 'mid-t3-rad' })
       await game.tick()
       expect((await game.state()).tutorialStep).toBe(1)
+    })
+
+    it('walks the full move → attack progression (steps 0 → 2)', async () => {
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+
+      // Move into the lane to clear the move step.
+      game.submit({ type: 'move', zone: 'radiant-base' })
+      await game.tick()
+      game.submit({ type: 'move', zone: 'mid-t3-rad' })
+      await game.tick()
+      expect((await game.state()).tutorialStep).toBe(1) // attack step
+
+      // Put the enemy in the human's lane zone so the attack lands, then attack.
+      await game.patch((s) => ({
+        ...s,
+        players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t3-rad', hp: 800 } },
+      }))
+      game.attackHero(ENEMY)
+      await game.tick()
+
+      // A landed attack completes step 1 → the tutorial unlocks casting (step 2).
+      expect((await game.state()).tutorialStep).toBe(2)
     })
 
     it('lets informational commands through at any step (status at step 0)', async () => {
