@@ -28,6 +28,12 @@ import ProgressBar from './ProgressBar.vue'
     <Variant title="hp — dire (low)">
       <ProgressBar :value="90" :max="980" color="dire" show-label />
     </Variant>
+    <Variant title="hp — danger threshold (reddens + pulses below 25%)">
+      <ProgressBar :value="110" :max="620" color="radiant" :danger-below="0.25" show-label />
+    </Variant>
+    <Variant title="hp — healthy (danger arm, above threshold)">
+      <ProgressBar :value="500" :max="620" color="radiant" :danger-below="0.25" show-label />
+    </Variant>
     <Variant title="mana — ability">
       <ProgressBar :value="180" :max="300" color="ability" show-label />
     </Variant>

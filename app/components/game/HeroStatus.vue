@@ -90,7 +90,14 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
     <div class="flex flex-col gap-0.5">
       <div class="flex items-center gap-1.5">
         <span class="w-5 shrink-0 text-text-dim">HP</span>
-        <ProgressBar :value="hero.hp" :max="hero.maxHp" color="radiant" :width="16" show-label />
+        <ProgressBar
+          :value="hero.hp"
+          :max="hero.maxHp"
+          color="radiant"
+          :width="16"
+          :danger-below="0.25"
+          show-label
+        />
       </div>
       <div class="flex items-center gap-1.5">
         <span class="w-5 shrink-0 text-text-dim">MP</span>
