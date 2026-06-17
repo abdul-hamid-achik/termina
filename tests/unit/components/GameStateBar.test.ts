@@ -62,6 +62,23 @@ describe('GameStateBar', () => {
     })
   })
 
+  describe('day/night tooltip (new-player clarity)', () => {
+    const titles = (w: ReturnType<typeof mountBar>) =>
+      w.findAll('[title]').map((el) => el.attributes('title') ?? '')
+
+    it('explains full vision by day', () => {
+      const wrapper = mountBar({ ...baseProps, timeOfDay: 'day', dayNightTick: 5 })
+      expect(wrapper.text()).toContain('Day')
+      expect(titles(wrapper).some((t) => t.includes('full vision'))).toBe(true)
+    })
+
+    it('explains reduced vision at night', () => {
+      const wrapper = mountBar({ ...baseProps, timeOfDay: 'night', dayNightTick: 5 })
+      expect(wrapper.text()).toContain('Night')
+      expect(titles(wrapper).some((t) => t.includes('vision is reduced'))).toBe(true)
+    })
+  })
+
   describe('macro strip', () => {
     const teams = {
       radiant: { id: 'radiant', kills: 12, towerKills: 3, gold: 0, glyphUsedTick: null },
