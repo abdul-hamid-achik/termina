@@ -202,6 +202,18 @@ function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
     }
   }
 
+  // Dust of Appearance: a carrier reveals invisible enemies in their current
+  // and adjacent zones. (The item applies a `dust_reveal` buff that nothing
+  // else consumed, so Dust was a dead anti-invis item.)
+  for (const player of Object.values(state.players)) {
+    if (player.team === team && player.alive && player.buffs.some((b) => b.id === 'dust_reveal')) {
+      trueSightZones.add(player.zone)
+      for (const z of ADJACENT_CACHE.get(player.zone) ?? []) {
+        trueSightZones.add(z)
+      }
+    }
+  }
+
   return trueSightZones
 }
 

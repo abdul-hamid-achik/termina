@@ -340,6 +340,79 @@ describe('VisionCalculator', () => {
       expect('fogged' in enemy).toBe(true)
     })
 
+    it('reveals invisible enemies in a Dust of Appearance carrier’s zone (was dead)', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            buffs: [{ id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' }],
+          }),
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'mid-river',
+            name: 'InvisEnemy',
+            hp: 300,
+            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+          }),
+        },
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      const enemy = filtered.players['e1']!
+      expect('fogged' in enemy).toBe(false)
+      expect((enemy as PlayerState).hp).toBe(300)
+    })
+
+    it('Dust of Appearance reveal extends to adjacent zones', () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            buffs: [{ id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' }],
+          }),
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'mid-t1-dire', // adjacent to mid-river
+            name: 'InvisEnemy',
+            buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
+          }),
+        },
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      expect('fogged' in filtered.players['e1']!).toBe(false)
+    })
+
+    it('Dust of Appearance truesight is team-scoped (does not reveal for the enemy team)', () => {
+      const state = makeGameState({
+        players: {
+          // Radiant carrier is itself invisible AND holds Dust.
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            name: 'InvisCarrier',
+            buffs: [
+              { id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' },
+              { id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'p1' },
+            ],
+          }),
+          e2: makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', name: 'DireViewer' }),
+        },
+      })
+
+      // Radiant's Dust adds truesight for radiant only — the dire viewer shares
+      // the zone but has no truesight, so the invisible carrier stays fogged.
+      const filtered = filterStateForPlayer(state, 'e2')
+      expect('fogged' in filtered.players['p1']!).toBe(true)
+    })
+
     it('should include visibleZones in the output', () => {
       const state = makeGameState({
         players: {
