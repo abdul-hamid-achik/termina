@@ -147,15 +147,41 @@ describe('Ping Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails when target is in different zone', () => {
-      const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'top-river' })
+    it('fails when target is in a NON-adjacent zone', () => {
+      const player = makePlayer() // mid-river
+      const enemy = makeEnemy({ zone: 'top-river' }) // not adjacent to mid-river
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
         resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }),
       )
       expect(result._tag).toBe('Failure')
+    })
+
+    it('reaches an ADJACENT-zone target for 60% damage (the cross-zone poke)', () => {
+      // Full hit on a same-zone target.
+      const inZone = makeEnemy()
+      const full = Effect.runSync(
+        resolveAbility(makeState([makePlayer({ level: 1 }), inZone]), 'p1', 'q', {
+          kind: 'hero',
+          name: 'e1',
+        }),
+      )
+      const fullDmg = inZone.hp - full.state.players['e1']!.hp
+      expect(fullDmg).toBeGreaterThan(0)
+
+      // mid-t1-dire is adjacent to the caster's mid-river → the Q reaches it but
+      // for reduced (60%) damage.
+      const adjacent = makeEnemy({ zone: 'mid-t1-dire' })
+      const adj = Effect.runSync(
+        resolveAbility(makeState([makePlayer({ level: 1 }), adjacent]), 'p1', 'q', {
+          kind: 'hero',
+          name: 'e1',
+        }),
+      )
+      const adjDmg = adjacent.hp - adj.state.players['e1']!.hp
+      expect(adjDmg).toBeGreaterThan(0)
+      expect(adjDmg).toBeLessThan(fullDmg)
     })
 
     it('fails with insufficient mana', () => {
