@@ -86,6 +86,57 @@ describe('useCommands', () => {
         expect(result.command).toBeNull()
         expect(result.error).toBe('Usage: move <zone>')
       })
+
+      describe('team-relative base/fountain aliases', () => {
+        it('resolves base/fountain to radiant zones by default (no team)', () => {
+          const { parse } = useCommands()
+          expect(parse('move base').command).toEqual({ type: 'move', zone: 'radiant-base' })
+          expect(parse('move fountain').command).toEqual({
+            type: 'move',
+            zone: 'radiant-fountain',
+          })
+        })
+
+        it('resolves base/fountain to the radiant player’s own side', () => {
+          const { parse } = useCommands()
+          expect(parse('move base', 'radiant').command).toEqual({
+            type: 'move',
+            zone: 'radiant-base',
+          })
+          expect(parse('move fountain', 'radiant').command).toEqual({
+            type: 'move',
+            zone: 'radiant-fountain',
+          })
+        })
+
+        it('resolves base/fountain to the dire player’s own side (regression)', () => {
+          // A dire player typing `move base` must NOT walk toward the enemy base.
+          const { parse } = useCommands()
+          expect(parse('move base', 'dire').command).toEqual({ type: 'move', zone: 'dire-base' })
+          expect(parse('move fountain', 'dire').command).toEqual({
+            type: 'move',
+            zone: 'dire-fountain',
+          })
+        })
+
+        it('applies team relativity to ward and ping too', () => {
+          const { parse } = useCommands()
+          expect(parse('ward base', 'dire').command).toEqual({ type: 'ward', zone: 'dire-base' })
+          expect(parse('ping fountain', 'dire').command).toEqual({
+            type: 'ping',
+            zone: 'dire-fountain',
+          })
+        })
+
+        it('leaves explicit zone ids and other aliases untouched regardless of team', () => {
+          const { parse } = useCommands()
+          expect(parse('move dire-base', 'radiant').command).toEqual({
+            type: 'move',
+            zone: 'dire-base',
+          })
+          expect(parse('move mid', 'dire').command).toEqual({ type: 'move', zone: 'mid-river' })
+        })
+      })
     })
 
     describe('attack command', () => {

@@ -145,8 +145,8 @@ const preview = computed(() => {
     if (hints[cmd!]) return { type: 'dim' as const, text: hints[cmd!] }
   }
 
-  // Parse to get validation
-  const { command, error } = parse(val)
+  // Parse to get validation (team makes base/fountain resolve to YOUR side)
+  const { command, error } = parse(val, gameContext.value.player?.team)
   if (error) return { type: 'error' as const, text: `!! ${error}` }
   if (!command) return null
 

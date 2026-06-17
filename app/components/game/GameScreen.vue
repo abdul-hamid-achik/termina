@@ -675,7 +675,8 @@ function getTowerTier(zoneId: string): number {
 // ── Command handling ───────────────────────────────────────────
 
 function handleCommand(cmd: string) {
-  const { command, error } = commands.parse(cmd)
+  // Pass the player's team so base/fountain resolve to THEIR side of the map.
+  const { command, error } = commands.parse(cmd, gameStore.player?.team)
   if (command) {
     // Auto-resolve a missing target for a targeted ability so clicking Q (or the
     // `q` shortcut, or chat `cast q`) doesn't silently reject server-side. We
@@ -691,7 +692,10 @@ function handleCommand(cmd: string) {
           return
         }
         if (picked.target) {
-          const resolved = commands.parse(`cast ${command.ability} ${picked.target}`).command
+          const resolved = commands.parse(
+            `cast ${command.ability} ${picked.target}`,
+            gameStore.player?.team,
+          ).command
           if (resolved?.type === 'cast') command.target = resolved.target
         }
       }
