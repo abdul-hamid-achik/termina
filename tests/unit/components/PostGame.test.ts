@@ -191,4 +191,28 @@ describe('PostGame', () => {
       expect(link.text()).toContain('WATCH REPLAY')
     })
   })
+
+  describe('tutorial wrap-up', () => {
+    it('frames a normal game as a match, with a PLAY AGAIN button and no tutorial note', () => {
+      const wrapper = mountPostGame()
+      expect(wrapper.text()).toContain('match concluded')
+      expect(wrapper.find('[data-testid="tutorial-wrapup"]').exists()).toBe(false)
+      expect(wrapper.get('[data-testid="play-again-btn"]').text()).toBe('PLAY AGAIN')
+    })
+
+    it('celebrates a tutorial and nudges toward a real match', () => {
+      const wrapper = mountPostGame({ mode: 'tutorial' })
+      expect(wrapper.text()).toContain('tutorial complete')
+      expect(wrapper.get('[data-testid="tutorial-wrapup"]').text()).toContain('Ready for a real')
+      // The primary CTA (still the playAgain emit → lobby) is relabelled.
+      const cta = wrapper.get('[data-testid="play-again-btn"]')
+      expect(cta.text()).toBe('FIND A REAL MATCH')
+    })
+
+    it('still emits playAgain from the relabelled tutorial CTA', async () => {
+      const wrapper = mountPostGame({ mode: 'tutorial' })
+      await wrapper.get('[data-testid="play-again-btn"]').trigger('click')
+      expect(wrapper.emitted('playAgain')).toHaveLength(1)
+    })
+  })
 })

@@ -5,6 +5,7 @@ import {
   registerBots,
   getBotPlayerIds,
   getBotLane,
+  getBotDifficulty,
   cleanupGame,
 } from '../../../server/game/ai/BotManager'
 
@@ -129,6 +130,37 @@ describe('BotManager', () => {
 
     it('defaults to mid for unknown game', () => {
       expect(getBotLane('unknown-game', 'bot_alpha')).toBe('mid')
+    })
+  })
+
+  describe('register options (the tutorial path: forceLane + difficulty)', () => {
+    beforeEach(() => {
+      cleanupGame('test-game')
+    })
+
+    const tutorialBots = [
+      { playerId: 'bot_ally', team: 'radiant' as const, heroId: 'echo' }, // carry → bot normally
+      { playerId: 'bot_enemy0', team: 'dire' as const, heroId: 'kernel' }, // tank → top normally
+    ]
+
+    it('forceLane pins every bot to one lane regardless of role', () => {
+      registerBots('test-game', tutorialBots, { forceLane: 'mid' })
+      expect(getBotLane('test-game', 'bot_ally')).toBe('mid')
+      expect(getBotLane('test-game', 'bot_enemy0')).toBe('mid')
+    })
+
+    it('applies the chosen difficulty alongside forceLane', () => {
+      registerBots('test-game', tutorialBots, { forceLane: 'mid', difficulty: 'easy' })
+      expect(getBotDifficulty('test-game', 'bot_ally')).toBe('easy')
+      expect(getBotDifficulty('test-game', 'bot_enemy0')).toBe('easy')
+      expect(getBotLane('test-game', 'bot_ally')).toBe('mid')
+    })
+
+    it('still accepts a bare difficulty string as the 3rd arg (back-compat)', () => {
+      registerBots('test-game', tutorialBots, 'hard')
+      expect(getBotDifficulty('test-game', 'bot_ally')).toBe('hard')
+      // No forceLane → role-based assignment still runs.
+      expect(getBotLane('test-game', 'bot_ally')).toBe('bot') // carry
     })
   })
 
