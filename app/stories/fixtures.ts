@@ -376,7 +376,6 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     events: SAMPLE_EVENTS,
     winner: null,
     surrenderVotes: { radiant: new Set<string>(), dire: new Set<string>() },
-    lastSeen: {},
     timeOfDay: 'day',
     dayNightTick: 12,
     ...overrides,

@@ -27,7 +27,6 @@ function makeGameState(): GameState {
     aegis: null,
     events: [],
     surrenderVotes: { radiant: new Set(['p1', 'p2']), dire: new Set(['p3']) },
-    lastSeen: {},
     timeOfDay: 'day',
     dayNightTick: 0,
   }

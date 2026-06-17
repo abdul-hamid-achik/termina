@@ -72,7 +72,6 @@ function oneLaneState(players: Record<string, PlayerState>): GameState {
     aegis: null,
     events: [],
     surrenderVotes: { radiant: new Set(), dire: new Set() },
-    lastSeen: {},
     timeOfDay: 'day',
     dayNightTick: 0,
     mapId: 'one_lane',
