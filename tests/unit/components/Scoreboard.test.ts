@@ -161,4 +161,32 @@ describe('Scoreboard', () => {
       expect(wrapper.find('[data-testid="scoreboard-hint"]').text()).toBe('tap outside to close')
     })
   })
+
+  describe('dead players + gold formatting', () => {
+    it('shows a respawn countdown and the dead row style for a dead player', () => {
+      const wrapper = mountScoreboard([
+        makePlayer('r1', 'radiant', { alive: false, respawnTick: 45 }), // tick 30 → 15t
+        makePlayer('d1', 'dire'),
+      ])
+      const row = wrapper.get('[data-testid="scoreboard-row-r1"]')
+      expect(row.classes()).toContain('scoreboard__player-row--dead')
+      expect(row.text()).toContain('15t')
+    })
+
+    it('shows DEAD with no countdown when the respawn tick is unknown', () => {
+      const wrapper = mountScoreboard([
+        makePlayer('r1', 'radiant', { alive: false, respawnTick: null }),
+        makePlayer('d1', 'dire'),
+      ])
+      expect(wrapper.get('[data-testid="scoreboard-row-r1"]').text()).toContain('DEAD')
+    })
+
+    it('abbreviates gold of 10k+ as k', () => {
+      const wrapper = mountScoreboard([
+        makePlayer('r1', 'radiant', { gold: 15_000 }),
+        makePlayer('d1', 'dire'),
+      ])
+      expect(wrapper.get('[data-testid="scoreboard-row-r1"]').text()).toContain('15.0k')
+    })
+  })
 })
