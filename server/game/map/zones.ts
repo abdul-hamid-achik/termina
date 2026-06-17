@@ -1,4 +1,5 @@
 import type { ZoneRuntimeState, WardState, TowerState, TeamId } from '~~/shared/types/game'
+import type { Zone } from '~~/shared/types/map'
 import { ZONES } from '~~/shared/constants/zones'
 import {
   TOWER_HP_T1,
@@ -34,10 +35,12 @@ function getTowerMaxHp(tier: number): number {
   }
 }
 
-/** Initialize all zone runtime states from the static zone graph. */
-export function initializeZoneStates(): Record<string, ZoneRuntimeState> {
+/** Initialize all zone runtime states from a zone graph (the full map by default). */
+export function initializeZoneStates(
+  zones: readonly Zone[] = ZONES,
+): Record<string, ZoneRuntimeState> {
   const states: Record<string, ZoneRuntimeState> = {}
-  for (const zone of ZONES) {
+  for (const zone of zones) {
     states[zone.id] = {
       id: zone.id,
       wards: [],
@@ -47,10 +50,10 @@ export function initializeZoneStates(): Record<string, ZoneRuntimeState> {
   return states
 }
 
-/** Build the initial tower list from the zone graph. */
-export function initializeTowers(): TowerState[] {
+/** Build the initial tower list from a zone graph (the full map by default). */
+export function initializeTowers(zones: readonly Zone[] = ZONES): TowerState[] {
   const towers: TowerState[] = []
-  for (const zone of ZONES) {
+  for (const zone of zones) {
     if (!zone.tower) continue
     const tier = getTowerTier(zone.id)
     const maxHp = getTowerMaxHp(tier)

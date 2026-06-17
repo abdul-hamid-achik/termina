@@ -5,6 +5,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from './AncientSystem'
+import { zonesForMap, DEFAULT_MAP_ID } from '~~/shared/constants/maps'
 
 // ── Error types ────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ export interface StateManagerApi {
   readonly createGame: (
     gameId: string,
     players: PlayerSetup[],
+    mapId?: string,
   ) => Effect.Effect<GameState, GameAlreadyExistsError>
 
   /**
@@ -97,11 +99,19 @@ function createPlayerState(setup: PlayerSetup): PlayerState {
 }
 
 /** Create a fresh game state. */
-function createInitialGameState(gameId: string, players: PlayerSetup[]): GameState {
+function createInitialGameState(
+  gameId: string,
+  players: PlayerSetup[],
+  mapId: string = DEFAULT_MAP_ID,
+): GameState {
   const playerStates: Record<string, PlayerState> = {}
   for (const setup of players) {
     playerStates[setup.id] = createPlayerState(setup)
   }
+
+  // A map's zone set drives which zones + towers exist; everything else (tower
+  // tiers, creep lanes, win condition) derives from the reused zone IDs.
+  const zones = zonesForMap(mapId)
 
   return {
     tick: 0,
@@ -111,10 +121,10 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
       dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: playerStates,
-    zones: initializeZoneStates(),
+    zones: initializeZoneStates(zones),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    towers: initializeTowers(zones),
     ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),
@@ -124,6 +134,7 @@ function createInitialGameState(gameId: string, players: PlayerSetup[]): GameSta
     lastSeen: {},
     timeOfDay: 'day',
     dayNightTick: 0,
+    mapId,
   }
 }
 
@@ -132,12 +143,12 @@ export function createInMemoryStateManager(): StateManagerApi {
   const localGames = new Map<string, GameState>()
 
   return {
-    createGame: (gameId, players) =>
+    createGame: (gameId, players, mapId) =>
       Effect.gen(function* () {
         if (localGames.has(gameId)) {
           return yield* Effect.fail(new GameAlreadyExistsError(gameId))
         }
-        const state = createInitialGameState(gameId, players)
+        const state = createInitialGameState(gameId, players, mapId)
         localGames.set(gameId, state)
         return state
       }),

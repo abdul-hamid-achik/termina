@@ -152,7 +152,13 @@ export function validateAction(state: GameState, action: PlayerAction): string |
 
   switch (cmd.type) {
     case 'move': {
-      if (!areAdjacent(player.zone, cmd.zone) && player.zone !== cmd.zone) {
+      // Reachable = your current zone, or an adjacent zone that's actually part
+      // of THIS game's map. The adjacency cache is the full graph, so subset maps
+      // (one-lane) must also gate on the game's live zone set, else a player could
+      // step out of the map into an uninitialized zone.
+      const reachable =
+        player.zone === cmd.zone || (areAdjacent(player.zone, cmd.zone) && !!state.zones[cmd.zone])
+      if (!reachable) {
         return 'Cannot move to non-adjacent zone'
       }
       // Check for root/stun (taunt forces attacking — no fleeing)

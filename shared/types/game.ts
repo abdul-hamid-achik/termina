@@ -138,6 +138,10 @@ export interface GameState {
   lastSeen: Record<string, { zone: string; tick: number }> // Track last seen position for each player
   timeOfDay: 'day' | 'night'
   dayNightTick: number
+  /** Which map this game runs on (see shared/constants/maps). Absent = full 5v5.
+   *  The actual playable graph is reflected in `zones`/`towers`; this is the
+   *  label the client uses to pick a layout and the tutorial uses to gate. */
+  mapId?: string
 }
 
 export interface ZoneRuntimeState {
