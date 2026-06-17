@@ -3,6 +3,7 @@ import { Effect } from 'effect'
 import { resolveActions, type PlayerAction } from '~~/server/game/engine/ActionResolver'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { getDistance } from '~~/server/game/map/topology'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
@@ -467,7 +468,7 @@ describe('Item actives — direct effects', () => {
 // ── Forced-movement actives (zone change) ───────────────────────
 
 describe('Item actives — forced movement', () => {
-  it('force_staff pushes the caster to an adjacent zone', () => {
+  it('force_staff disengages the caster one zone toward their own fountain (deterministic)', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
@@ -482,6 +483,11 @@ describe('Item actives — forced movement', () => {
     const newZone = r.state.players['p1']!.zone
     expect(newZone).not.toBe('mid-river')
     expect(['mid-t1-rad', 'mid-t1-dire', 'rune-top', 'rune-bot']).toContain(newZone)
+    // Disengage, not random: the push lands strictly CLOSER to the radiant
+    // fountain than mid-river was (an earlier version shoved a random direction).
+    expect(getDistance(newZone, 'radiant-fountain')).toBeLessThan(
+      getDistance('mid-river', 'radiant-fountain'),
+    )
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_force_staff')).toBe(true)
   })
 

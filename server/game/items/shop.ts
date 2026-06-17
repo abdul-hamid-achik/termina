@@ -18,7 +18,7 @@ import {
   updatePlayers,
   findTargetPlayer,
 } from '~~/server/game/heroes/_base'
-import { areAdjacent } from '~~/server/game/map/topology'
+import { areAdjacent, getDistance } from '~~/server/game/map/topology'
 import {
   calculateMagicalDamage,
   getIncomingDamageMultiplier,
@@ -505,14 +505,18 @@ function useForceStaff(
       }
     }
 
-    // Push to random adjacent zone (simulating forced movement direction)
     const currentZone = ZONE_MAP[targetPlayer.zone]
     if (!currentZone || currentZone.adjacentTo.length === 0) {
       return yield* Effect.fail(new InvalidTargetError({ reason: 'No adjacent zone to push to' }))
     }
 
-    const pushZone =
-      currentZone.adjacentTo[Math.floor(Math.random() * currentZone.adjacentTo.length)]!
+    // Deterministic disengage: shove the target one zone toward THEIR OWN
+    // fountain (the safe direction). Replaces an earlier random push that could
+    // fling them DEEPER into danger — and keeps the active replay-deterministic.
+    const homeFountain = targetPlayer.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+    const pushZone = [...currentZone.adjacentTo].sort(
+      (a, b) => getDistance(a, homeFountain) - getDistance(b, homeFountain),
+    )[0]!
 
     let updated: PlayerState = { ...targetPlayer, zone: pushZone }
 
