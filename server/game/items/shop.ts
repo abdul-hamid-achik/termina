@@ -569,7 +569,14 @@ function useHurricanePike(
       return yield* Effect.fail(new InvalidTargetError({ reason: 'No safe zone to push to' }))
     }
 
-    const pushZone = safeZones[Math.floor(Math.random() * safeZones.length)]!
+    // Deterministic disengage: among the zones away from the target, thrust to
+    // the one closest to our OWN fountain. Was a random pick that could fling the
+    // caster toward the ENEMY base — and broke replay determinism (same fix as
+    // Force Staff).
+    const homeFountain = player.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+    const pushZone = [...safeZones].sort(
+      (a, b) => getDistance(a, homeFountain) - getDistance(b, homeFountain),
+    )[0]!
 
     let updated: PlayerState = { ...player, zone: pushZone }
     // "Can attack during push": a brief attack steroid for the 2-tick thrust

@@ -511,6 +511,11 @@ describe('Item actives — forced movement', () => {
     ])
     const newZone = r.state.players['p1']!.zone
     expect(newZone).not.toBe('mid-river')
+    // Disengage toward home, not a random direction: the push lands strictly
+    // CLOSER to the radiant fountain than mid-river (and never onto the target).
+    expect(getDistance(newZone, 'radiant-fountain')).toBeLessThan(
+      getDistance('mid-river', 'radiant-fountain'),
+    )
     // target stays put (push self away).
     expect(r.state.players['p2']!.zone).toBe('mid-river')
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_hurricane_pike')).toBe(true)
