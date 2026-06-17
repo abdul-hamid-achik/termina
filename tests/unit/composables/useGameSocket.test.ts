@@ -364,6 +364,38 @@ describe('useGameSocket', () => {
       await vi.advanceTimersByTimeAsync(5000)
       expect(reconnecting.value).toBe(false)
     })
+
+    it('the reopened socket sends a reconnect message so the server can replay', async () => {
+      const { connect } = useGameSocket()
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1) // first open → join_game
+      const firstWs = MockWebSocket.last!
+
+      firstWs._disconnect() // drop → schedule reconnect
+      await vi.advanceTimersByTimeAsync(2000) // backoff fires + the new socket opens
+
+      const newWs = MockWebSocket.last!
+      expect(newWs).not.toBe(firstWs)
+      const sentTypes = newWs.send.mock.calls.map((c) => JSON.parse(c[0] as string).type)
+      expect(sentTypes).toContain('reconnect')
+    })
+
+    it('an intentional disconnect cancels a pending reconnect timer', async () => {
+      const { connect, disconnect, reconnecting } = useGameSocket()
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1)
+      const firstWs = MockWebSocket.last!
+
+      firstWs._disconnect() // schedule a reconnect…
+      expect(reconnecting.value).toBe(true)
+
+      disconnect() // …then cancel it intentionally
+      expect(reconnecting.value).toBe(false)
+
+      // The cancelled timer must not spawn a replacement socket.
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(MockWebSocket.last).toBe(firstWs)
+    })
   })
 
   describe('_open resets connected', () => {
