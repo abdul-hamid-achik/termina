@@ -131,11 +131,16 @@ export function processRuneBuffs(state: GameState): GameState {
       mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * REGEN_RUNE_HEAL_PERCENT))
     }
 
-    // Cron's Crontab (R): heal-over-time on self + allies; the per-tick heal
-    // amount is stored in the buff stacks. (Was applied but never processed.)
+    // Cron's Crontab (R): heal + mana regen over time on self + allies; the
+    // per-tick amounts ride in the buff stacks. (Heal was applied but never
+    // processed; the mana half was advertised by the ability but unimplemented.)
     const crontab = player.buffs.find((b) => b.id === 'crontabHeal')
     if (crontab) {
       hp = Math.min(player.maxHp, hp + crontab.stacks)
+    }
+    const crontabMana = player.buffs.find((b) => b.id === 'crontabMana')
+    if (crontabMana) {
+      mp = Math.min(player.maxMp, mp + crontabMana.stacks)
     }
 
     // Haste rune is handled via movement (can't be rooted/stunned)
