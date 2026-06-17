@@ -24,6 +24,12 @@ const EnemyThreatSheetStub = {
   template: `<div data-testid="enemy-threat-stub" :data-enemy-count="enemies ? enemies.length : 0" :data-tick="tick" />`,
 }
 
+const AllyStatusSheetStub = {
+  name: 'AllyStatusSheet',
+  props: ['allies', 'tick'],
+  template: `<div data-testid="ally-status-stub" :data-ally-count="allies ? allies.length : 0" :data-tick="tick" />`,
+}
+
 const SparklineStub = {
   name: 'Sparkline',
   props: ['values', 'colorVar'],
@@ -36,6 +42,7 @@ function mountWarRoom() {
       stubs: {
         ObjectiveTicker: ObjectiveTickerStub,
         EnemyThreatSheet: EnemyThreatSheetStub,
+        AllyStatusSheet: AllyStatusSheetStub,
         Sparkline: SparklineStub,
       },
     },
@@ -62,7 +69,17 @@ describe('WarRoom', () => {
     const text = wrapper.text()
     expect(text).toContain('Net Worth')
     expect(text).toContain('Objectives')
+    expect(text).toContain('Allies')
     expect(text).toContain('Enemy Threat')
+  })
+
+  it('forwards the ally roster (excluding self) to the ally status sheet', () => {
+    seedStore()
+    const wrapper = mountWarRoom()
+    const ally = wrapper.find('[data-testid="ally-status-stub"]')
+    expect(ally.exists()).toBe(true)
+    // makeRoster() seeds 5 radiant; p1 is the local player, so 4 allies remain.
+    expect(ally.attributes('data-ally-count')).toBe('4')
   })
 
   describe('net-worth lead', () => {
