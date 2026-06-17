@@ -193,6 +193,11 @@ describe('asciiMapModel', () => {
       expect(text).toContain('☘ 3') // three neutral creeps
     })
 
+    it('marks own-team ward coverage with a vision glyph', () => {
+      expect(cellText(makeZone({ wardCount: 1 }))).toContain('◉')
+      expect(cellText(makeZone({ wardCount: 0 }))).not.toContain('◉')
+    })
+
     it('labels each zone category with its glyphed name (a bare zone is just the name)', () => {
       const name = (id: string) => cellText(makeZone({ id }))
       expect(name('mid-t3-rad')).toBe('▲ RAD T3')
@@ -240,6 +245,11 @@ describe('asciiMapModel', () => {
       expect(label).toContain('1 allies')
       expect(label).toContain('2 enemies')
       expect(label).toContain('fogged')
+    })
+
+    it('announces ward coverage for screen readers', () => {
+      expect(zoneAriaLabel(makeZone({ wardCount: 1 }))).toContain('warded')
+      expect(zoneAriaLabel(makeZone({ wardCount: 0 }))).not.toContain('warded')
     })
   })
 
@@ -308,6 +318,13 @@ describe('asciiMapModel', () => {
     it('reports clear when there is nothing to show', () => {
       const inds = compactIndicators(makeZone())
       expect(inds).toEqual([{ text: 'clear', cls: 'text-text-dim' }])
+    })
+
+    it('shows a ward-coverage chip (singular and plural)', () => {
+      expect(compactIndicators(makeZone({ wardCount: 1 })).map((i) => i.text)).toContain('◉ warded')
+      expect(compactIndicators(makeZone({ wardCount: 2 })).map((i) => i.text)).toContain(
+        '◉ 2 wards',
+      )
     })
   })
 

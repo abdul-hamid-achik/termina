@@ -611,6 +611,11 @@ const mapZones = computed(() => {
     const neutralsInZone = gameStore.neutrals.filter((n) => n.zone === zone.id && n.alive)
     const neutralCount = neutralsInZone.length
 
+    // Own-team ward coverage here (a ward's zone is always in our vision).
+    const wardCount = (gameStore.visibleZones[zone.id]?.wards ?? []).filter(
+      (w) => w.team === playerTeam,
+    ).length
+
     // Tower info
     const tower = towersByZone.value.get(zone.id)
     const towerDisplay = tower
@@ -635,6 +640,7 @@ const mapZones = computed(() => {
       creepCount,
       creepTypes,
       neutralCount,
+      wardCount,
     }
   })
 })
