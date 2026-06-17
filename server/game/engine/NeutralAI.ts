@@ -28,14 +28,19 @@ const JUNGLE_ZONES = [
   'jungle-dire-bot',
 ] as const
 
-/** Spawn neutral creeps in jungle camps */
-export function spawnNeutralCreeps(tick: number): NeutralCreepState[] {
+/** Spawn neutral creeps in jungle camps. `hasZone` skips camps a subset map
+ *  doesn't have (one-lane has no jungle). */
+export function spawnNeutralCreeps(
+  tick: number,
+  hasZone?: (zoneId: string) => boolean,
+): NeutralCreepState[] {
   // Spawn at tick 60, then every 60 ticks
   if (tick === 0 || tick % NEUTRAL_CREEPS_INTERVAL_TICKS !== 0) return []
 
   const neutrals: NeutralCreepState[] = []
 
   for (const zone of JUNGLE_ZONES) {
+    if (hasZone && !hasZone(zone)) continue
     // Each camp gets 1-2 random neutrals
     const campSize = Math.random() < 0.5 ? 1 : 2
 

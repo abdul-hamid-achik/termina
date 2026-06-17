@@ -51,14 +51,21 @@ function spawnWave(team: 'radiant' | 'dire', lane: string, waveNumber: number): 
   return creeps
 }
 
-/** Spawn creep waves if the current tick is a wave tick. Returns new creeps to add. */
-export function spawnCreepWaves(tick: number): CreepState[] {
+/**
+ * Spawn creep waves if the current tick is a wave tick. Returns new creeps to add.
+ * `hasZone` (the game's live zone set) gates lanes to the current map — a subset
+ * map like one-lane only has its lanes' spawn zones, so top/bot are skipped.
+ * Omitted = full map (all three lanes).
+ */
+export function spawnCreepWaves(tick: number, hasZone?: (zoneId: string) => boolean): CreepState[] {
   if (tick === 0 || tick % CREEP_WAVE_INTERVAL_TICKS !== 0) return []
 
   const waveNumber = tick / CREEP_WAVE_INTERVAL_TICKS
   const newCreeps: CreepState[] = []
 
   for (const lane of ['top', 'mid', 'bot']) {
+    const spawn = LANE_SPAWN_ZONES[lane]
+    if (hasZone && spawn && (!hasZone(spawn.radiant) || !hasZone(spawn.dire))) continue
     newCreeps.push(...spawnWave('radiant', lane, waveNumber))
     newCreeps.push(...spawnWave('dire', lane, waveNumber))
   }
@@ -76,12 +83,14 @@ export interface RuneSpawn {
 const RUNE_TYPES = ['haste', 'dd', 'regen', 'arcane', 'invis'] as const
 const RUNE_INTERVAL_TICKS = 60
 
-/** Spawn runes if the current tick is a rune tick. */
-export function spawnRunes(tick: number): RuneSpawn[] {
+/** Spawn runes if the current tick is a rune tick. `hasZone` skips rune spots a
+ *  subset map doesn't have (one-lane has no river runes). */
+export function spawnRunes(tick: number, hasZone?: (zoneId: string) => boolean): RuneSpawn[] {
   if (tick === 0 || tick % RUNE_INTERVAL_TICKS !== 0) return []
 
   const runes: RuneSpawn[] = []
   for (const zone of ['rune-top', 'rune-bot']) {
+    if (hasZone && !hasZone(zone)) continue
     const type = RUNE_TYPES[Math.floor(Math.random() * RUNE_TYPES.length)]!
     runes.push({ zone, type, tick })
   }

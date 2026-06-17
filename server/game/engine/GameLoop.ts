@@ -960,8 +960,11 @@ export function runNPCAI(
  */
 export function runSpawning(state: GameState): GameState {
   let s = state
+  // Gate creep/neutral/rune spawning to the zones THIS game's map actually has,
+  // so subset maps (one-lane) don't spawn into uninitialized top/bot/jungle zones.
+  const hasZone = (zoneId: string) => zoneId in s.zones
 
-  const newCreeps = spawnCreepWaves(s.tick)
+  const newCreeps = spawnCreepWaves(s.tick, hasZone)
   if (newCreeps.length > 0) {
     s = { ...s, creeps: [...s.creeps, ...newCreeps] }
   }
@@ -969,12 +972,12 @@ export function runSpawning(state: GameState): GameState {
   // Defensive cap: never let creeps stack unboundedly in a zone
   s = enforceCreepZoneCap(s)
 
-  const newNeutrals = spawnNeutralCreeps(s.tick)
+  const newNeutrals = spawnNeutralCreeps(s.tick, hasZone)
   if (newNeutrals.length > 0) {
     s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
   }
 
-  const newRunes = spawnRunes(s.tick)
+  const newRunes = spawnRunes(s.tick, hasZone)
   if (newRunes.length > 0) {
     s = { ...s, runes: [...(s.runes ?? []), ...newRunes] }
   }
