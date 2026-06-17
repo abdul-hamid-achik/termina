@@ -110,8 +110,11 @@ const rows = computed<ThreatRow[]>(() =>
             :class="
               (r.cooldowns?.[k] ?? 0) > 0
                 ? 'border-border text-text-muted'
-                : 'border-ability/60 text-ability'
+                : k === 'r'
+                  ? 'border-warn font-bold text-warn text-glow-sm' // ult ready — the key threat
+                  : 'border-ability/60 text-ability'
             "
+            :data-testid="`threat-cd-${r.id}-${k}`"
           >
             {{ k.toUpperCase() }}{{ (r.cooldowns?.[k] ?? 0) > 0 ? r.cooldowns![k] : '' }}
           </span>
