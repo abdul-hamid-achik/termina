@@ -195,9 +195,9 @@ const commands = [
     shortcuts: '—',
   },
   {
-    cmd: 'scan / status / map',
-    desc: 'Reserved — accepted by the server but not implemented yet',
-    example: 'scan',
+    cmd: 'status / map / scan',
+    desc: 'Print a quick readout (your stats / reachable zones / visible enemies). Free — costs no tick',
+    example: 'status',
     shortcuts: '—',
   },
 ]

@@ -102,15 +102,17 @@ describe('learn page', () => {
       'ping <zone>',
       'buyback',
       'surrender confirm',
-      'scan / status / map',
+      'status / map / scan',
     ]) {
       expect(text).toContain(cmd)
     }
   })
 
-  it('marks scan/status/map as not implemented rather than inventing behavior', () => {
+  it('documents status/map/scan as free informational readouts (no wasted tick)', () => {
     const text = mountLearn().text()
-    expect(text).toContain('not implemented yet')
+    expect(text).toContain('status / map / scan')
+    expect(text).toMatch(/costs no tick/i)
+    expect(text).not.toContain('not implemented yet')
   })
 
   it('quotes live ward and tower numbers', () => {
