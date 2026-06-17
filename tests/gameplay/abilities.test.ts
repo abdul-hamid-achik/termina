@@ -315,4 +315,68 @@ describe('abilities', () => {
     // The Lotus charge is consumed (one-shot), so it's gone afterwards.
     expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'lotus_orb')).toBe(false)
   })
+
+  it('Linken’s Sphere blocks a single-target spell (fizzles it, spends the charge to 0)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'spellblock', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes a Linken's holder
+    await game.tick()
+
+    // The spell fizzles: a spell_blocked(linkens_sphere) event, NO damage to the
+    // holder (reverted to pre-cast), and the charge spent to stacks 0 (recharging).
+    const blocked = game.lastEvents.find(
+      (e) => e._tag === 'spell_blocked' && e.source === 'linkens_sphere',
+    )
+    expect(blocked).toBeDefined()
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      ),
+    ).toBe(false)
+    const block = (await game.player(ENEMY)).buffs.find((b) => b.id === 'spellblock')
+    expect(block?.stacks).toBe(0) // spent, not removed — Linken's auto-recharges
+  })
+
+  it('Firewall item blocks a single-target spell (fizzles it, consumes the one-shot)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'firewall_block', stacks: 1, ticksRemaining: 30, source: ENEMY }],
+        },
+      },
+    }))
+
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+
+    const blocked = game.lastEvents.find(
+      (e) => e._tag === 'spell_blocked' && e.source === 'firewall_item',
+    )
+    expect(blocked).toBeDefined()
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      ),
+    ).toBe(false)
+    // The Firewall block is a one-shot — removed entirely after blocking.
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'firewall_block')).toBe(false)
+  })
 })
