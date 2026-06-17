@@ -1,6 +1,7 @@
 import { Effect } from 'effect'
 import type { GameState, PlayerState, GameEvent } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
+import { areAdjacent } from '~~/server/game/map/topology'
 import {
   type AbilitySlot,
   type AbilityResult,
@@ -79,16 +80,27 @@ function resolveQ(
     }
 
     const targetPlayer = findTargetPlayer(state, target)
-    if (!targetPlayer || !targetPlayer.alive || targetPlayer.zone !== player.zone) {
+    if (!targetPlayer || !targetPlayer.alive) {
       return yield* Effect.fail(
-        new InvalidTargetError({ target: target.name, reason: 'Target not in same zone or dead' }),
+        new InvalidTargetError({ target: target.name, reason: 'Target not found or dead' }),
+      )
+    }
+    // ICMP Echo reaches an ADJACENT zone too, for 60% damage (heroes.ts effect).
+    const sameZone = targetPlayer.zone === player.zone
+    if (!sameZone && !areAdjacent(player.zone, targetPlayer.zone)) {
+      return yield* Effect.fail(
+        new InvalidTargetError({
+          target: target.name,
+          reason: 'Target not in range (same or adjacent zone)',
+        }),
       )
     }
 
     let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
-    const damage = scaleValue(Q_DAMAGE, level)
+    const baseDamage = scaleValue(Q_DAMAGE, level)
+    const damage = sameZone ? baseDamage : Math.round(baseDamage * 0.6)
     const updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
 
     return {
