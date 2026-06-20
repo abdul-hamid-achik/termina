@@ -37,8 +37,103 @@ export interface Lobby {
 const activeLobbies = new Map<string, Lobby>()
 const playerToLobby = new Map<string, string>()
 
+/** Redis key for the lobby + player→lobby mapping (cross-instance reads). */
+const LOBBY_PLAYER_KEY = 'termina:lobby_players'
+
+/** Redis service for the lobby mirror. Set once on boot via configureLobbyRedis. */
+let _lobbyRedis: {
+  hset: (key: string, field: string, value: string) => Effect.Effect<void>
+  hget: (key: string, field: string) => Effect.Effect<string | null>
+  hdel: (key: string, field: string) => Effect.Effect<void>
+  del: (key: string) => Effect.Effect<void>
+  get: (key: string) => Effect.Effect<string | null>
+} | null = null
+
+/** Wire up the Redis service for the lobby mirror (P4 Phase 4). In
+ * single-instance mode this stays null and the local Maps are the only path. */
+export function configureLobbyRedis(redis: typeof _lobbyRedis): void {
+  _lobbyRedis = redis
+}
+
+/** Serialize a Lobby for Redis storage (Set → array, drop the non-serializable pickTimer). */
+function serializeLobby(lobby: Lobby): string {
+  return JSON.stringify({
+    id: lobby.id,
+    players: lobby.players,
+    pickedHeroes: [...lobby.pickedHeroes],
+    pickOrder: lobby.pickOrder,
+    currentPickIndex: lobby.currentPickIndex,
+    phase: lobby.phase,
+  })
+}
+
+/** Deserialize a Lobby from Redis (array → Set, pickTimer = null). */
+function deserializeLobby(raw: string): Lobby | null {
+  try {
+    const data = JSON.parse(raw) as {
+      id: string
+      players: LobbyPlayer[]
+      pickedHeroes: string[]
+      pickOrder: number[]
+      currentPickIndex: number
+      phase: Lobby['phase']
+    }
+    return {
+      id: data.id,
+      players: data.players,
+      pickedHeroes: new Set(data.pickedHeroes),
+      pickOrder: data.pickOrder,
+      currentPickIndex: data.currentPickIndex,
+      pickTimer: null,
+      phase: data.phase,
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Mirror the lobby to Redis (write-through). Best-effort — failures fall back to local-only. */
+function mirrorLobbyToRedis(lobby: Lobby): void {
+  if (!_lobbyRedis) return
+  try {
+    const serialized = serializeLobby(lobby)
+    Effect.runSync(_lobbyRedis.hset(LOBBY_PLAYER_KEY, `lobby:${lobby.id}`, serialized))
+    // Also map each player to the lobby ID for cross-instance getPlayerLobby.
+    for (const p of lobby.players) {
+      Effect.runSync(_lobbyRedis.hset(LOBBY_PLAYER_KEY, `player:${p.playerId}`, lobby.id))
+    }
+  } catch {
+    // Redis unavailable — local Map is the source of truth.
+  }
+}
+
+/** Remove the lobby + player mappings from Redis. Best-effort. */
+function unmirrorLobbyFromRedis(lobbyId: string, playerIds: string[]): void {
+  if (!_lobbyRedis) return
+  try {
+    Effect.runSync(_lobbyRedis.hdel(LOBBY_PLAYER_KEY, `lobby:${lobbyId}`))
+    for (const pid of playerIds) {
+      Effect.runSync(_lobbyRedis.hdel(LOBBY_PLAYER_KEY, `player:${pid}`))
+    }
+  } catch {
+    // Redis unavailable — skip.
+  }
+}
+
 export function getPlayerLobby(playerId: string): string | undefined {
-  return playerToLobby.get(playerId)
+  // Local first (fast path — the owning instance has the in-process Map).
+  const local = playerToLobby.get(playerId)
+  if (local) return local
+  // Redis fallback (cross-instance — a non-owning instance can find the lobby).
+  if (_lobbyRedis) {
+    try {
+      const lobbyId = Effect.runSync(_lobbyRedis.hget(LOBBY_PLAYER_KEY, `player:${playerId}`))
+      if (lobbyId) return lobbyId
+    } catch {
+      // Redis unavailable.
+    }
+  }
+  return undefined
 }
 
 function generateId(): string {
@@ -88,6 +183,9 @@ export function createLobby(
   for (const p of players) {
     playerToLobby.set(p.playerId, lobbyId)
   }
+
+  // Mirror to Redis for cross-instance reads (P4 Phase 4).
+  mirrorLobbyToRedis(lobby)
 
   lobbyLog.info('Lobby created', { lobbyId, playerCount: players.length })
 
@@ -238,6 +336,9 @@ function confirmPick(
 
   lobby.currentPickIndex++
 
+  // Mirror the updated lobby to Redis after the pick mutation.
+  mirrorLobbyToRedis(lobby)
+
   // Check if all heroes are picked
   if (lobby.currentPickIndex >= lobby.pickOrder.length) {
     if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
@@ -265,6 +366,9 @@ function startReadyCheck(
   }
 
   lobby.phase = 'starting'
+
+  // Mirror the phase change to Redis.
+  mirrorLobbyToRedis(lobby)
 
   lobbyLog.info('Ready check started', { lobbyId: lobby.id })
 
@@ -311,15 +415,32 @@ function startReadyCheck(
 export function cleanupLobby(lobbyId: string): void {
   const lobby = activeLobbies.get(lobbyId)
   if (!lobby) return
+  const playerIds = lobby.players.map((p) => p.playerId)
   for (const p of lobby.players) {
     playerToLobby.delete(p.playerId)
   }
   activeLobbies.delete(lobbyId)
+  // Remove the Redis mirror (P4 Phase 4).
+  unmirrorLobbyFromRedis(lobbyId, playerIds)
   lobbyLog.info('Lobby cleaned up', { lobbyId })
 }
 
 export function getLobby(lobbyId: string): Lobby | undefined {
-  return activeLobbies.get(lobbyId)
+  // Local first (fast path — the owning instance has the in-process Map).
+  const local = activeLobbies.get(lobbyId)
+  if (local) return local
+  // Redis fallback (cross-instance — a non-owning instance can read the mirror).
+  // Returns a Lobby without a pickTimer (read-only — the caller can't mutate
+  // it on a non-owning instance anyway, since mutations run on the owner).
+  if (_lobbyRedis) {
+    try {
+      const raw = Effect.runSync(_lobbyRedis.hget(LOBBY_PLAYER_KEY, `lobby:${lobbyId}`))
+      if (raw) return deserializeLobby(raw) ?? undefined
+    } catch {
+      // Redis unavailable.
+    }
+  }
+  return undefined
 }
 
 /**
@@ -413,6 +534,9 @@ export function seedDraftLobby(opts: {
   activeLobbies.set(lobbyId, lobby)
   for (const p of players) playerToLobby.set(p.playerId, lobbyId)
 
+  // Mirror to Redis (P4 Phase 4).
+  mirrorLobbyToRedis(lobby)
+
   lobbyLog.info('Seeded draft lobby', { lobbyId, prepick, humanIndex, humanId: opts.humanId })
   return lobby
 }
@@ -420,6 +544,7 @@ export function seedDraftLobby(opts: {
 export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   const lobby = activeLobbies.get(lobbyId)
   if (!lobby) return
+  const playerIds = lobby.players.map((p) => p.playerId)
 
   lobby.phase = 'cancelled'
   if (lobby.pickTimer) {
@@ -438,6 +563,8 @@ export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   }
 
   activeLobbies.delete(lobbyId)
+  // Remove the Redis mirror.
+  unmirrorLobbyFromRedis(lobbyId, playerIds)
 }
 
 export function replacePlayerWithBot(
@@ -464,5 +591,7 @@ export function replacePlayerWithBot(
   }
 
   lobbyLog.info('Player replaced with bot', { lobbyId, playerId, botId })
+  // Mirror the updated lobby to Redis.
+  mirrorLobbyToRedis(lobby)
   return { success: true }
 }

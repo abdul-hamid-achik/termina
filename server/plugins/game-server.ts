@@ -55,7 +55,7 @@ import {
   GAME_OWNER_KEY,
 } from '~~/server/services/PeerRegistry'
 import type { ServerMessage } from '~~/shared/types/protocol'
-import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
+import { cleanupLobby, configureLobbyRedis } from '~~/server/game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
 import { registerAllHeroes } from '~~/server/game/heroes'
@@ -551,6 +551,18 @@ export default defineNitroPlugin(async (nitroApp) => {
     lpush: (key, value) => redis.lpush(key, value),
     lrange: (key, start, stop) => redis.lrange(key, start, stop),
     del: (key) => redis.del(key),
+  })
+
+  // Wire up lobby state mirror (P4 Phase 4). The owning instance keeps the
+  // in-process Lobby (with the pickTimer) as the source of truth, and mirrors
+  // it to Redis after every mutation so non-owning instances can read it for
+  // status polling + reconnect.
+  configureLobbyRedis({
+    hset: (key, field, value) => redis.hset(key, field, value),
+    hget: (key, field) => redis.hget(key, field),
+    hdel: (key, field) => redis.hdel(key, field),
+    del: (key) => redis.del(key),
+    get: (key) => redis.get(key),
   })
   const { startMatchmakingLoop } = await import('~~/server/game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
