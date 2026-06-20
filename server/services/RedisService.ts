@@ -241,7 +241,27 @@ let _subscriber: Redis | null = null
 
 function getClient(url: string): Redis {
   if (!_client) {
-    _client = new Redis(url)
+    _client = new Redis(url, {
+      // Unlimited retries — a transient Redis disconnect should NOT kill the
+      // server. ioredis auto-reconnects, but by default maxRetriesPerRequest
+      // is 20, after which pending commands reject. Set to null (unlimited)
+      // so commands wait for reconnection instead of failing.
+      maxRetriesPerRequest: null,
+      retryStrategy(times: number) {
+        // Exponential backoff capped at 3s — reconnect fast but don't hammer.
+        return Math.min(times * 200, 3000)
+      },
+    })
+    // ioredis auto-reconnects by default, but unhandled 'error' events can
+    // crash the process. Log and let the auto-reconnect retry.
+    _client.on('error', (err: Error) => {
+      Effect.runSync(
+        Effect.logError('Redis client error').pipe(Effect.annotateLogs({ error: err.message })),
+      )
+    })
+    _client.on('close', () => {
+      Effect.runSync(Effect.logInfo('Redis client connection closed, auto-reconnecting...'))
+    })
   }
   return _client
 }
@@ -278,7 +298,12 @@ function resubscribeAll() {
 
 function getSubscriber(url: string): Redis {
   if (!_subscriber) {
-    _subscriber = new Redis(url)
+    _subscriber = new Redis(url, {
+      maxRetriesPerRequest: null,
+      retryStrategy(times: number) {
+        return Math.min(times * 200, 3000)
+      },
+    })
 
     _subscriber.on('message', (channel: string, message: string) => {
       handleMessage(channel, message)

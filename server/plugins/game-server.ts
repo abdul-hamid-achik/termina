@@ -598,6 +598,14 @@ export default defineNitroPlugin(async (nitroApp) => {
     ;(_liveGameReaperTimer as { unref?: () => void }).unref?.()
   }
 
+  // Keep-alive timer: prevent the Node process from exiting during a Redis
+  // reconnect window. ioredis auto-reconnects, but while the connection is
+  // down the event loop may have no active tasks (if no games are running),
+  // causing Node to exit and the Nitro close hook to fire. This 10s interval
+  // keeps the event loop alive until Redis reconnects. NOT unref'd — it's
+  // cleared on genuine shutdown via the Nitro close hook.
+  const _keepAliveTimer = setInterval(() => {}, 10_000)
+
   // Build the callbacks for a single game. Captured separately from the
   // game_ready handler so the snapshot-resume path can use the same shape.
   type StartPlayer = { playerId: string; team: TeamId; heroId: string; mmr: number }
@@ -1064,6 +1072,7 @@ export default defineNitroPlugin(async (nitroApp) => {
       clearInterval(_liveGameReaperTimer)
       _liveGameReaperTimer = null
     }
+    clearInterval(_keepAliveTimer)
     await managedRuntime.runPromise(redis.shutdown())
     await managedRuntime.runPromise(db.shutdown())
     await managedRuntime.dispose()
