@@ -1,5 +1,13 @@
 import { Effect, Either } from 'effect'
-import type { CreepState, GameState, PlayerState, TeamId } from '~~/shared/types/game'
+import type {
+  CreepState,
+  GameState,
+  PlayerState,
+  TeamId,
+  TowerState,
+  AncientState,
+  ZoneRuntimeState,
+} from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import {
   resolveAbility,
@@ -314,6 +322,109 @@ function hasDebuff(player: PlayerState, type: string): boolean {
  *
  * Within each phase, all actions resolve simultaneously.
  */
+// ── Phase functions (extracted from resolveActions for readability) ───
+
+/**
+ * Phase 2: Movement — all moves resolve simultaneously.
+ * Slow has a % chance to cancel the move; Haste rune ignores slow.
+ * Moving cancels TP channeling.
+ */
+function resolveMovementPhase(
+  tick: number,
+  validActions: PlayerAction[],
+  players: Record<string, PlayerState>,
+  events: GameEngineEvent[],
+  rejected: Array<{ playerId: string; reason: string }>,
+): { players: Record<string, PlayerState> } {
+  const moves = validActions.filter((a) => a.command.type === 'move')
+  let playerUpdates: PlayerUpdates = {}
+
+  for (const action of moves) {
+    const cmd = action.command as { type: 'move'; zone: string }
+    const player = players[action.playerId]
+    if (player && player.alive) {
+      const hasted = player.buffs.some((b) => b.id === 'haste')
+      const totalSlow = Math.min(
+        80,
+        player.buffs
+          .filter((b) => b.id === 'slow' || b.id === 'broadcast_slow')
+          .reduce((sum, b) => sum + b.stacks, 0),
+      )
+      if (!hasted && totalSlow > 0 && Math.random() * 100 < totalSlow) {
+        rejected.push({ playerId: action.playerId, reason: 'Slowed — failed to move' })
+        continue
+      }
+
+      const updates: Partial<PlayerState> = { zone: cmd.zone }
+
+      if (player.buffs.some((b) => b.id === 'tp_channeling')) {
+        updates.buffs = player.buffs.filter(
+          (b) => b.id !== 'tp_channeling' && b.id !== 'tp_destination',
+        )
+        events.push({
+          _tag: 'teleport_cancelled',
+          tick,
+          playerId: action.playerId,
+          reason: 'movement',
+        })
+      }
+
+      playerUpdates[action.playerId] = playerUpdates[action.playerId]
+        ? { ...playerUpdates[action.playerId], ...updates }
+        : updates
+    }
+  }
+  return { players: applyPlayerUpdates(players, playerUpdates) }
+}
+
+/**
+ * Phase 1: Instant abilities (stuns, silences) — resolve simultaneously.
+ * These effects apply before movement so a stun from Q prevents the target's
+ * move this tick.
+ */
+function resolveInstantCastsPhase(
+  state: GameState,
+  validActions: PlayerAction[],
+  players: Record<string, PlayerState>,
+  zones: Record<string, ZoneRuntimeState>,
+  creeps: CreepState[],
+  towers: TowerState[],
+  ancients: { radiant: AncientState; dire: AncientState },
+  events: GameEngineEvent[],
+  heroAttackers: Map<string, string>,
+  rejected: Array<{ playerId: string; reason: string }>,
+  damageTracker: Map<string, { hero: number; tower: number }>,
+): { players: Record<string, PlayerState>; zones: Record<string, ZoneRuntimeState> } {
+  const instantCasts = validActions.filter(
+    (a) =>
+      a.command.type === 'cast' &&
+      isInstantAbility(
+        players[a.playerId]!,
+        a.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' },
+      ),
+  )
+  for (const action of instantCasts) {
+    const result = resolveHeroCast(
+      state,
+      players,
+      zones,
+      creeps,
+      towers,
+      ancients,
+      action,
+      events,
+      heroAttackers,
+      rejected,
+      damageTracker,
+    )
+    players = result.players
+    zones = result.zones
+  }
+  return { players, zones }
+}
+
+// ── Resolution Pipeline ────────────────────────────────────────────
+
 export function resolveActions(
   state: GameState,
   actions: PlayerAction[],
@@ -409,23 +520,15 @@ export function resolveActions(
     let playerUpdates: PlayerUpdates = {}
 
     // Phase 1: Instant abilities (stuns, silences)
-    const instantCasts = validActions.filter(
-      (a) =>
-        a.command.type === 'cast' &&
-        isInstantAbility(
-          players[a.playerId]!,
-          a.command as { type: 'cast'; ability: 'q' | 'w' | 'e' | 'r' },
-        ),
-    )
-    for (const action of instantCasts) {
-      const result = resolveHeroCast(
+    {
+      const result = resolveInstantCastsPhase(
         state,
+        validActions,
         players,
         zones,
         creeps,
         towers,
         ancients,
-        action,
         events,
         heroAttackers,
         rejected,
@@ -436,49 +539,11 @@ export function resolveActions(
     }
 
     // Phase 2: Movement — all moves resolve simultaneously
-    const moves = validActions.filter((a) => a.command.type === 'move')
-    playerUpdates = {}
-
-    for (const action of moves) {
-      const cmd = action.command as { type: 'move'; zone: string }
-      const player = players[action.playerId]
-      if (player && player.alive) {
-        // Slow semantics: total slow stacks = % chance the move fails this
-        // tick (capped at 80%). Root/stun/taunt are hard-blocked upstream in
-        // validateAction. The Haste rune ('haste' buff) makes movement
-        // unstoppable — it ignores slow entirely.
-        const hasted = player.buffs.some((b) => b.id === 'haste')
-        const totalSlow = Math.min(
-          80,
-          player.buffs
-            .filter((b) => b.id === 'slow' || b.id === 'broadcast_slow')
-            .reduce((sum, b) => sum + b.stacks, 0),
-        )
-        if (!hasted && totalSlow > 0 && Math.random() * 100 < totalSlow) {
-          rejected.push({ playerId: action.playerId, reason: 'Slowed — failed to move' })
-          continue
-        }
-
-        const updates: Partial<PlayerState> = { zone: cmd.zone }
-
-        if (player.buffs.some((b) => b.id === 'tp_channeling')) {
-          updates.buffs = player.buffs.filter(
-            (b) => b.id !== 'tp_channeling' && b.id !== 'tp_destination',
-          )
-          events.push({
-            _tag: 'teleport_cancelled',
-            tick: state.tick,
-            playerId: action.playerId,
-            reason: 'movement',
-          })
-        }
-
-        playerUpdates[action.playerId] = playerUpdates[action.playerId]
-          ? { ...playerUpdates[action.playerId], ...updates }
-          : updates
-      }
+    {
+      const result = resolveMovementPhase(state.tick, validActions, players, events, rejected)
+      players = result.players
+      // events + rejected are mutated in place by the phase
     }
-    players = applyPlayerUpdates(players, playerUpdates)
 
     // Phase 3: Attacks + targeted abilities — simultaneous
     const attacks = validActions.filter((a) => a.command.type === 'attack')
