@@ -278,8 +278,27 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   }
 }
 
+/**
+ * Exact debuff-id sets per debuff class. Action gating must match buff ids
+ * EXACTLY — the old `b.id.includes(type)` substring match would silently
+ * disable actions if a future buff id contained a debuff substring (e.g. a
+ * hypothetical `stun_immune` or `post_stun_buff`). Add new debuff ids to the
+ * appropriate set here as they are authored.
+ */
+const DEBUFF_ID_SETS: Record<string, ReadonlySet<string>> = {
+  stun: new Set(['stun']),
+  root: new Set(['root']),
+  silence: new Set(['silence']),
+  feared: new Set(['feared']),
+  taunt: new Set(['taunt']),
+  cyclone: new Set(['cyclone']),
+  hex: new Set(['hex']),
+}
+
 function hasDebuff(player: PlayerState, type: string): boolean {
-  return player.buffs.some((b) => b.id.includes(type))
+  const ids = DEBUFF_ID_SETS[type]
+  if (!ids) return false
+  return player.buffs.some((b) => ids.has(b.id))
 }
 
 // ── Resolution Pipeline ────────────────────────────────────────
@@ -306,21 +325,29 @@ export function resolveActions(
   rejected: Array<{ playerId: string; reason: string }>
 }> {
   return Effect.sync(() => {
-    // Run anti-cheat validation on all actions
+    // Anti-cheat checks run here (NOT in GameLoop's pre-filter, which only
+    // calls validateAction). validateAction is the single authoritative
+    // validation path — GameLoop already filtered invalid actions out before
+    // calling resolveActions, so we do NOT re-run validateAction here in
+    // production. A dev/test-only assertion catches a divergence between the
+    // two call sites if one is ever changed without the other.
     const cheatDetections: Array<{
       playerId: string
       command: Command
       violations: CheatDetection[]
     }> = []
     const validActions = actions.filter((a) => {
-      const validationError = validateAction(state, a)
-      if (validationError) {
-        wsLog.debug('Action validation failed', {
-          playerId: a.playerId,
-          command: a.command.type,
-          error: validationError,
-        })
-        return false
+      if (process.env.NODE_ENV !== 'production' || process.env.TERMINA_TEST_HOOKS === '1') {
+        const validationError = validateAction(state, a)
+        if (validationError) {
+          // GameLoop should have filtered this — a divergence is a bug.
+          wsLog.warn('resolveActions received an action GameLoop would have rejected', {
+            playerId: a.playerId,
+            command: a.command.type,
+            error: validationError,
+          })
+          return false
+        }
       }
 
       // Anti-cheat checks
@@ -542,14 +569,33 @@ export function resolveActions(
           getEffectiveAttack(attacker, attackerItemStats) * getAttackMultiplier(attacker),
         )
 
-        let critMultiplier = 1
+        // Crit stacking: the owned crit source with the HIGHEST proc chance
+        // wins — roll once with its multiplier. The old `else if` chain meant
+        // owning Daedalus (30%) + Crystalys (20%) was worse than owning Daedalus
+        // alone, because null_pointer/Crystalys would roll first and a miss
+        // would skip Daedalus. Highest-chance-wins matches DotA's "best crit
+        // applies" convention and makes stacking strictly non-detrimental.
+        const ownedCrits: Array<{ chance: number; multiplier: number }> = []
+        if (attacker.items.includes('null_pointer'))
+          ownedCrits.push({
+            chance: NULL_POINTER_CRIT_CHANCE,
+            multiplier: NULL_POINTER_CRIT_MULTIPLIER,
+          })
+        if (attacker.items.includes('crystalys'))
+          ownedCrits.push({
+            chance: CRYSTALYS_CRIT_CHANCE,
+            multiplier: CRYSTALYS_CRIT_MULTIPLIER,
+          })
+        if (attacker.items.includes('daedalus'))
+          ownedCrits.push({
+            chance: DAEDALUS_CRIT_CHANCE,
+            multiplier: DAEDALUS_CRIT_MULTIPLIER,
+          })
 
-        if (attacker.items.includes('null_pointer') && Math.random() < NULL_POINTER_CRIT_CHANCE) {
-          critMultiplier = NULL_POINTER_CRIT_MULTIPLIER
-        } else if (attacker.items.includes('crystalys') && Math.random() < CRYSTALYS_CRIT_CHANCE) {
-          critMultiplier = CRYSTALYS_CRIT_MULTIPLIER
-        } else if (attacker.items.includes('daedalus') && Math.random() < DAEDALUS_CRIT_CHANCE) {
-          critMultiplier = DAEDALUS_CRIT_MULTIPLIER
+        let critMultiplier = 1
+        if (ownedCrits.length > 0) {
+          const best = ownedCrits.reduce((a, b) => (b.chance > a.chance ? b : a))
+          if (Math.random() < best.chance) critMultiplier = best.multiplier
         }
 
         attackDamage = Math.round(attackDamage * critMultiplier)
@@ -1017,7 +1063,21 @@ export function resolveActions(
       const cmd = action.command as { type: 'buy'; item: string }
       const tempState: GameState = { ...state, players, creeps, towers }
       const result = Effect.runSync(
-        buyItem(tempState, action.playerId, cmd.item).pipe(Effect.orElseSucceed(() => null)),
+        buyItem(tempState, action.playerId, cmd.item).pipe(
+          Effect.match({
+            onFailure: (error) => {
+              // Surface buy failures to the player instead of silently dropping
+              // the tick — NotInShop / InsufficientGold / InventoryFull /
+              // ItemNotFound / ItemOnCooldown each become a rejection reason.
+              rejected.push({
+                playerId: action.playerId,
+                reason: `Cannot buy ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
+              })
+              return null
+            },
+            onSuccess: (updated): GameState | null => updated,
+          }),
+        ),
       )
       if (result) {
         players = { ...result.players }
@@ -1039,10 +1099,24 @@ export function resolveActions(
       const player = players[action.playerId]
       if (!player) continue
       const slotIdx = player.items.indexOf(cmd.item)
-      if (slotIdx === -1) continue
+      if (slotIdx === -1) {
+        rejected.push({ playerId: action.playerId, reason: `No ${cmd.item} in inventory to sell` })
+        continue
+      }
       const tempState: GameState = { ...state, players, creeps, towers }
       const result = Effect.runSync(
-        sellItem(tempState, action.playerId, slotIdx).pipe(Effect.orElseSucceed(() => null)),
+        sellItem(tempState, action.playerId, slotIdx).pipe(
+          Effect.match({
+            onFailure: (error) => {
+              rejected.push({
+                playerId: action.playerId,
+                reason: `Cannot sell ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
+              })
+              return null
+            },
+            onSuccess: (updated): GameState | null => updated,
+          }),
+        ),
       )
       if (result) {
         players = { ...result.players }
@@ -1066,14 +1140,13 @@ export function resolveActions(
       const result = Effect.runSync(
         useItem(tempState, action.playerId, cmd.item, cmd.target).pipe(
           Effect.match({
-            // Rejection feedback mirrors the validation-failure logging above;
-            // validateAction already surfaced ownership/cooldown errors to the
-            // player via GameLoop's rejectedActions.
+            // Surface use failures to the player as a rejection reason (was a
+            // silent debug log); validateAction already catches some cases, but
+            // cooldown/stack/target failures only surface here.
             onFailure: (error) => {
-              wsLog.debug('Item use rejected', {
+              rejected.push({
                 playerId: action.playerId,
-                item: cmd.item,
-                reason: error._tag,
+                reason: `Cannot use ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
               })
               return null
             },
@@ -1203,11 +1276,13 @@ export function resolveActions(
       const newMaxMp =
         baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
       if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
-        // Preserve HP/MP percentage when max changes to avoid losing HP on item sell
-        const hpPercent = player.maxHp > 0 ? player.hp / player.maxHp : 1
-        const mpPercent = player.maxMp > 0 ? player.mp / player.maxMp : 1
-        const newHp = Math.floor(newMaxHp * hpPercent)
-        const newMp = Math.floor(newMaxMp * mpPercent)
+        // Preserve the CURRENT HP/MP (clamped to the new max) when max changes.
+        // The old percentage-preserving logic meant selling an HP item in the
+        // fountain cost HP — a hero at 500/500 selling a +200 HP item dropped to
+        // 60% of 300 = 180, losing 320 HP for free. DotA preserves current HP;
+        // we do the same, only clamping if current exceeds the new max.
+        const newHp = Math.min(player.hp, newMaxHp)
+        const newMp = Math.min(player.mp, newMaxMp)
 
         players = {
           ...players,

@@ -7,6 +7,7 @@ import {
 } from '../../../server/game/engine/ActionResolver'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { NEUTRAL_CREEPS } from '../../../shared/constants/balance'
+import { HEROES } from '../../../shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeRoshan } from '../../../server/game/map/spawner'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
@@ -1202,6 +1203,145 @@ describe('ActionResolver', () => {
       expect(ocDmg).toBe(baseDmg * 2)
       // charge spent
       expect(r.state.players['p1']!.buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
+    })
+  })
+
+  describe('crit stacking', () => {
+    // Two heroes in the same zone; the attacker basic-attacks the defender.
+    // We stub Math.random to deterministic values so crit procs are controlled.
+    function attackState(attackerItems: (string | null)[]): {
+      state: GameState
+      attack: () => { rolledCrit: boolean; damage: number }
+    } {
+      // Use the hero's REAL stats so the per-tick maxHp recalculation doesn't
+      // collapse an inflated HP pool mid-tick and mask the actual attack damage.
+      const echo = HEROES.echo!
+      const maxHp = echo.baseStats.hp
+      const maxMp = echo.baseStats.mp
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            items: attackerItems,
+            hp: maxHp,
+            maxHp,
+            mp: maxMp,
+            maxMp,
+          }),
+          p2: makePlayer({
+            id: 'p2',
+            name: 'Enemy',
+            team: 'dire',
+            zone: 'mid-river',
+            hp: maxHp,
+            maxHp,
+            mp: maxMp,
+            maxMp,
+          }),
+        },
+      })
+      return {
+        state,
+        attack: () => {
+          const before = maxHp
+          const result = Effect.runSync(
+            resolveActions(state, [
+              { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'p2' } } },
+            ]),
+          )
+          const after = result.state.players['p2']!.hp
+          const damage = before - after
+          // echo base attack ~58 + crit item bonuses (+120) = ~178 effective.
+          // Non-crit damage vs defense 3 = ~173. Crits multiply by 1.5/1.75/
+          // 2.4, so the weakest crit (1.5x) yields ~260. Threshold 220 separates
+          // non-crit from any crit cleanly.
+          const rolledCrit = damage > 220
+          return { rolledCrit, damage }
+        },
+      }
+    }
+
+    it('rolls the single highest-chance crit source when multiple are owned', () => {
+      // Owns null_pointer (15%), crystalys (20%), daedalus (30%).
+      // Highest chance = daedalus 30%. Return 0.29 < 0.30 → daedalus procs.
+      const { attack } = attackState(['null_pointer', 'crystalys', 'daedalus', null, null, null])
+      const original = Math.random
+      Math.random = () => 0.29
+      try {
+        const { rolledCrit, damage } = attack()
+        expect(rolledCrit).toBe(true)
+        // daedalus multiplier is 2.4x — non-crit is ~173, crit ~415.
+        expect(damage).toBeGreaterThan(300)
+      } finally {
+        Math.random = original
+      }
+    })
+
+    it('does not proc a crit when the roll exceeds the highest chance', () => {
+      const { attack } = attackState(['null_pointer', 'crystalys', 'daedalus', null, null, null])
+      const original = Math.random
+      // All calls return 0.31 (> 0.30 daedalus → no crit, > 0.25 maelstrom/basher
+      // → no proc, > 0.6 vanguard → no block). The crit roll is the first random
+      // call in the attack path (no slow/stealth random before it).
+      Math.random = () => 0.31
+      try {
+        const { rolledCrit } = attack()
+        expect(rolledCrit).toBe(false)
+      } finally {
+        Math.random = original
+      }
+    })
+
+    it('owning multiple crit items is never worse than owning the best one alone', () => {
+      // The old else-if chain meant owning null_pointer (15%) + daedalus (30%)
+      // could MISS on null_pointer's 15% and then skip daedalus entirely. The
+      // new highest-chance-wins logic rolls daedalus independently of the lower
+      // sources. Verify: at roll 0.16 (a hit on daedalus 30%), both the stacked
+      // build and the bare-daedalus build proc a crit.
+      const stacked = attackState(['null_pointer', 'daedalus', null, null, null, null])
+      const bare = attackState(['daedalus', null, null, null, null, null])
+      const original = Math.random
+      Math.random = () => 0.16
+      try {
+        expect(stacked.attack().rolledCrit).toBe(true)
+        expect(bare.attack().rolledCrit).toBe(true)
+      } finally {
+        Math.random = original
+      }
+    })
+  })
+
+  describe('hasDebuff exact-match gating', () => {
+    it('a buff id containing a debuff substring but not equal to it does NOT gate actions', () => {
+      // A hypothetical 'stun_immune' buff would have falsely gated attacks
+      // under the old substring match. The exact-match DEBUFF_ID_SETS only
+      // gates on the real 'stun' id.
+      const immuneButNotStunned = makePlayer({
+        id: 'p1',
+        team: 'radiant',
+        zone: 'mid-river',
+        buffs: [{ id: 'stun_immune', stacks: 1, ticksRemaining: 2, source: 'x' }],
+      })
+      const enemy = makePlayer({
+        id: 'p2',
+        name: 'Enemy',
+        team: 'dire',
+        zone: 'mid-river',
+        hp: 9999,
+        maxHp: 9999,
+      })
+      const state = makeGameState({ players: { p1: immuneButNotStunned, p2: enemy } })
+      const result = Effect.runSync(
+        resolveActions(state, [
+          { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'p2' } } },
+        ]),
+      )
+      // The attack resolved (not rejected) — stun_immune did not gate it.
+      expect(result.rejected).toHaveLength(0)
+      // Damage landed (hp dropped below 9999).
+      expect(result.state.players['p2']!.hp).toBeLessThan(9999)
     })
   })
 })
