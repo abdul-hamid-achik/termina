@@ -10,6 +10,7 @@ import type { GameEngineEvent } from '../../../server/game/protocol/events'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { TOWER_ATTACK } from '../../../shared/constants/balance'
 import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
+import { getEffectiveDefense } from '../../../server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -316,10 +317,9 @@ describe('TowerAI', () => {
 
   describe('applyTowerActions', () => {
     it('should apply damage to heroes with defense reduction', () => {
+      const player = makePlayer({ id: 'p1', team: 'dire', zone: 'mid-t1-rad', hp: 500, defense: 3 })
       const state = makeGameState({
-        players: {
-          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-t1-rad', hp: 500, defense: 3 }),
-        },
+        players: { p1: player },
       })
 
       const actions: TowerAction[] = [
@@ -327,7 +327,9 @@ describe('TowerAI', () => {
       ]
 
       const result = applyTowerActions(state, actions)
-      const expectedDamage = calculatePhysicalDamage(TOWER_ATTACK, 3)
+      // resolvePhysicalHit routes through getEffectiveDefense (items + talents
+      // + buffs), not the raw player.defense field.
+      const expectedDamage = calculatePhysicalDamage(TOWER_ATTACK, getEffectiveDefense(player))
       expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })

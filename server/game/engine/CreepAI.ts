@@ -6,7 +6,7 @@ import {
   CREEP_BASE_IDLE_DESPAWN_TICKS,
   MAX_CREEPS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
-import { calculatePhysicalDamage, isDamageImmune } from './DamageCalculator'
+import { resolvePhysicalHit } from './CombatResolver'
 import { resolveAncientAttack } from './AncientSystem'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -296,22 +296,16 @@ export function applyCreepActions(
         break
       }
       case 'attack_hero': {
-        if (
-          action.targetId &&
-          players[action.targetId] &&
-          !isDamageImmune(players[action.targetId]!, 'physical')
-        ) {
-          const target = players[action.targetId]!
-          const rawDamage = action.damage ?? 0
-          const damage = calculatePhysicalDamage(rawDamage, target.defense)
-          const newHp = Math.max(0, target.hp - damage)
+        if (action.targetId && players[action.targetId] && players[action.targetId]!.alive) {
+          // Route through the shared mitigation chain so creep hits honor item
+          // defense, vuln amps, Kernel 'hardened', shields, and Echo phaseShift
+          // — previously creeps used raw target.defense and skipped the
+          // multiplier, hardened, shield, and dodge.
+          const hit = resolvePhysicalHit(players[action.targetId]!, action.damage ?? 0)
+          if (hit.immune || hit.damageDealt === 0) break
           players = {
             ...players,
-            [action.targetId]: {
-              ...target,
-              hp: newHp,
-              alive: newHp > 0,
-            },
+            [action.targetId]: hit.player,
           }
         }
         break

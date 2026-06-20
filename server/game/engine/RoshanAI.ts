@@ -6,9 +6,8 @@ import type {
   RoshanKilledInternalEvent,
   AegisPickedEvent,
 } from '~~/server/game/protocol/events'
-import { ROSHAN_ATTACK, ROSHAN_AEGIS_TICKS } from '~~/shared/constants/balance'
+import { ROSHAN_ATTACK, ROSHAN_AEGIS_TICKS, ROSHAN_GOLD } from '~~/shared/constants/balance'
 import { shouldRoshanRespawn, respawnRoshan } from '~~/server/game/map/spawner'
-import { isDamageImmune } from '~~/server/game/engine/DamageCalculator'
 
 export interface RoshanAction {
   targetId: string
@@ -40,50 +39,6 @@ export function runRoshanAI(state: GameState): RoshanAction[] {
   }
 
   return actions
-}
-
-/**
- * Apply Roshan attack actions to game state.
- */
-export function applyRoshanActions(
-  state: GameState,
-  actions: RoshanAction[],
-): { state: GameState; roshanKilled: boolean; aegisDropped: boolean } {
-  const roshanKilled = false
-  const aegisDropped = false
-  const roshan = { ...state.roshan }
-
-  const players = { ...state.players }
-
-  for (const action of actions) {
-    const target = players[action.targetId]
-    if (!target || !target.alive) continue
-    // Physical immunity (Ghost Scepter / Ethereal / invulnerable) shrugs off
-    // Roshan's hit too — hero/creep/tower attacks all already honor this.
-    if (isDamageImmune(target, 'physical')) continue
-
-    const newHp = Math.max(0, target.hp - action.damage)
-    players[action.targetId] = {
-      ...target,
-      hp: newHp,
-      alive: newHp > 0,
-    }
-  }
-
-  // Check for Roshan death from hero attacks this tick
-  // We need to check if Roshan took damage from events
-  const _roshanDamageEvents = state.events.filter(
-    (e) => e.type === 'roshan_damage' || (e.payload && e.payload['targetId'] === 'roshan'),
-  )
-
-  // Apply Roshan HP changes - we'll track this via events in the game loop
-  // For now, we'll handle Roshan death separately in the game loop
-
-  return {
-    state: { ...state, players, roshan },
-    roshanKilled,
-    aegisDropped,
-  }
 }
 
 /**
@@ -160,7 +115,7 @@ export function processRoshanDamage(
       // Award gold to damaging players (distributed by damage dealt)
       const totalDmg = Array.from(damageDealt.values()).reduce((a, b) => a + b, 0)
       const players = { ...state.players }
-      let remainingGold = 600 // ROSHAN_GOLD
+      let remainingGold = ROSHAN_GOLD
 
       for (const [playerId, damage] of damageDealt) {
         const share = Math.floor((damage / totalDmg) * remainingGold)

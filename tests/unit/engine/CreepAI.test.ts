@@ -16,6 +16,7 @@ import {
   MAX_CREEPS_PER_ZONE_PER_TEAM,
 } from '../../../shared/constants/balance'
 import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
+import { getEffectiveDefense } from '../../../server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -349,11 +350,10 @@ describe('CreepAI', () => {
     })
 
     it('should apply damage to heroes with defense reduction', () => {
+      const player = makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 500, defense: 3 })
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
-        players: {
-          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 500, defense: 3 }),
-        },
+        players: { p1: player },
       })
 
       const actions: CreepAction[] = [
@@ -361,7 +361,12 @@ describe('CreepAI', () => {
       ]
 
       const result = applyCreepActions(state, actions).state
-      const expectedDamage = calculatePhysicalDamage(MELEE_CREEP_ATTACK, 3)
+      // resolvePhysicalHit routes through getEffectiveDefense (items + talents
+      // + buffs), not the raw player.defense field.
+      const expectedDamage = calculatePhysicalDamage(
+        MELEE_CREEP_ATTACK,
+        getEffectiveDefense(player),
+      )
       expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
@@ -370,7 +375,10 @@ describe('CreepAI', () => {
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
         players: {
-          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 1, defense: 0 }),
+          // hp:1 means any positive damage kills; defense override is ignored by
+          // getEffectiveDefense (echo base defense applies), but the lethal blow
+          // lands regardless.
+          p1: makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 1 }),
         },
       })
 

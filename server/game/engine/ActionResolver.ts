@@ -24,6 +24,7 @@ import {
   getIncomingDamageMultiplier,
   isDamageImmune,
 } from './DamageCalculator'
+import { computeBladeMailReflect } from './CombatResolver'
 import { placeWard, canAttackTower } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -704,7 +705,12 @@ export function resolveActions(
         }
 
         if (target.buffs.some((b) => b.id === 'blade_mail')) {
-          const returnDamage = Math.round(damage)
+          // Blade Mail returns the HP the holder actually lost (post-mitigation,
+          // post-shield, including on-hit magic) back at the attacker as pure
+          // damage — the same formula as the ability-cast reflect in
+          // resolveHeroCast, via computeBladeMailReflect. Pure bypasses the
+          // attacker's armor.
+          const returnDamage = computeBladeMailReflect(hpLoss)
           const attackerPendingHp =
             (playerUpdates[action.playerId]?.hp as number | undefined) ?? attacker.hp
           const attackerNewHp = Math.max(0, attackerPendingHp - returnDamage)
@@ -1525,13 +1531,15 @@ function resolveHeroCast(
         dt.hero += delta
         damageTracker.set(action.playerId, dt)
 
-        // Blade Mail: an enemy hero hit by this cast reflects the damage it took
-        // back at the caster as pure damage (the same 100% return as the basic-
-        // attack reflect, now covering ability damage per "100% of damage taken").
+        // Blade Mail: an enemy hero hit by this cast reflects the HP it lost
+        // back at the caster as pure damage — the same computeBladeMailReflect
+        // formula as the basic-attack reflect, so the two paths can never
+        // diverge.
         if (post.buffs.some((b) => b.id === 'blade_mail')) {
           const casterPost = newPlayers[action.playerId]
           if (casterPost) {
-            const casterNewHp = Math.max(0, casterPost.hp - delta)
+            const returnDamage = computeBladeMailReflect(delta)
+            const casterNewHp = Math.max(0, casterPost.hp - returnDamage)
             newPlayers = {
               ...newPlayers,
               [action.playerId]: { ...casterPost, hp: casterNewHp, alive: casterNewHp > 0 },
@@ -1541,7 +1549,7 @@ function resolveHeroCast(
               tick: state.tick,
               sourceId: pid,
               targetId: action.playerId,
-              amount: delta,
+              amount: returnDamage,
               damageType: 'pure',
             })
           }

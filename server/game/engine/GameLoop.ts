@@ -31,7 +31,7 @@ import { runTowerAI, applyTowerActions } from './TowerAI'
 import { runRoshanAI, processRoshanDamage } from './RoshanAI'
 import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
 import { processTraps } from './TrapSystem'
-import { isDamageImmune } from './DamageCalculator'
+import { resolvePhysicalHit } from './CombatResolver'
 import { spawnCreepWaves, spawnRunes } from '~~/server/game/map/spawner'
 import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
@@ -920,14 +920,18 @@ export function runNPCAI(
   // Roshan attacks
   for (const action of runRoshanAI(s)) {
     const target = s.players[action.targetId]
-    // Physical immunity (Ghost/Ethereal/invulnerable) ignores Roshan's hit.
-    if (target && target.alive && !isDamageImmune(target, 'physical')) {
-      const newHp = Math.max(0, target.hp - action.damage)
+    if (target && target.alive) {
+      // Route through the shared mitigation chain so Roshan hits honor item
+      // defense, vuln amps, Kernel 'hardened', shields, and Echo phaseShift —
+      // previously the inline path skipped everything but immunity and emitted
+      // the RAW attack value as the damage amount.
+      const hit = resolvePhysicalHit(target, action.damage)
+      if (hit.immune || hit.damageDealt === 0) continue
       s = {
         ...s,
         players: {
           ...s.players,
-          [action.targetId]: { ...target, hp: newHp, alive: newHp > 0 },
+          [action.targetId]: hit.player,
         },
       }
       events.push({
@@ -935,7 +939,7 @@ export function runNPCAI(
         tick: s.tick,
         sourceId: 'roshan',
         targetId: action.targetId,
-        amount: action.damage,
+        amount: hit.damageDealt,
         damageType: 'physical',
       })
     }
