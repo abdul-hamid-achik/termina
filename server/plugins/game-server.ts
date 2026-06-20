@@ -35,6 +35,7 @@ import {
   filterStateForPlayer,
   filterStateForSpectator,
 } from '~~/server/game/engine/VisionCalculator'
+import { recordSentState, clearSentState } from '~~/server/game/engine/StateDelta'
 import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
 import type { TeamId, GameState, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
@@ -202,6 +203,9 @@ export function getReconnectPayload(
   }
 
   const filteredState = filterStateForPlayer(state, playerId, gameId)
+  // Reconnect sends full state — record it so the next tick's delta is relative
+  // to this snapshot (not stale from before the disconnect).
+  recordSentState(gameId, playerId, filteredState)
   const playerTeam = state.players[playerId]?.team
   const visibleZones = calculateVision(state, playerId, gameId)
   const missed = entry.recentEvents.filter(
@@ -684,6 +688,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Cleanup always runs, regardless of persistence outcome.
         for (const p of realPlayers) {
           clearPlayerGame(p.playerId)
+          clearSentState(gId, p.playerId)
         }
         cleanupGame(gId)
         clearGameSpectators(gId)

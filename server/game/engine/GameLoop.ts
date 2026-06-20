@@ -36,6 +36,7 @@ import { spawnCreepWaves, spawnRunes } from '~~/server/game/map/spawner'
 import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
 import { filterStateForPlayer } from './VisionCalculator'
+import { computeDelta, recordSentState, clearGameSentStates, getSentState } from './StateDelta'
 // Importing from '~~/server/game/heroes' (not '../heroes/_base') guarantees every hero's
 // registerHero() side effect has run before the first tick resolves a cast.
 import {
@@ -46,7 +47,7 @@ import {
   TALENT_TREES,
 } from '~~/server/game/heroes'
 import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
-import { getBotPlayerIds, getBotLane } from '~~/server/game/ai/BotManager'
+import { getBotPlayerIds, getBotLane, isBot } from '~~/server/game/ai/BotManager'
 import { decideBotAction } from '~~/server/game/ai/BotAI'
 import { engineLog } from '~~/server/utils/log'
 import { calculateBuybackCost, buyback } from './BuybackSystem'
@@ -416,6 +417,7 @@ function buildGameLoop(
       const winner = currentState.winner ?? checkWinCondition(currentState)
       if (winner) {
         try {
+          clearGameSentStates(gameId)
           callbacks.onGameOver(gameId, winner)
         } catch (err) {
           engineLog.warn('onGameOver (out-of-band end) failed', { gameId, error: String(err) })
@@ -479,11 +481,16 @@ function buildGameLoop(
       yield* Effect.forkDaemon(writeSnapshot(redis, gameId, newState, snapshotMeta))
     }
 
-    // Broadcast filtered state to each player
+    // Broadcast filtered state to each player — delta-compressed: only fields
+    // that changed since the last tick are sent (saves ~60% WS bandwidth on
+    // idle ticks where only `tick` + `players` change).
     for (const playerId of Object.keys(newState.players)) {
-      const visibleState = filterStateForPlayer(newState, playerId, gameId)
+      if (isBot(playerId)) continue
+      const fullState = filterStateForPlayer(newState, playerId, gameId)
+      const delta = computeDelta(fullState, getSentState(gameId, playerId))
       try {
-        callbacks.onTickState(gameId, playerId, visibleState)
+        callbacks.onTickState(gameId, playerId, delta as PlayerVisibleState)
+        recordSentState(gameId, playerId, fullState)
       } catch (err) {
         engineLog.warn('Failed to send tick_state', { gameId, playerId, error: String(err) })
       }
@@ -506,7 +513,10 @@ function buildGameLoop(
     // Check win — phase is set to 'ended' by processTick (towers or surrender)
     if (newState.phase === 'ended') {
       const winner = newState.winner ?? checkWinCondition(newState)
-      if (winner) callbacks.onGameOver(gameId, winner)
+      if (winner) {
+        clearGameSentStates(gameId)
+        callbacks.onGameOver(gameId, winner)
+      }
       return yield* Effect.interrupt
     }
   }).pipe(
