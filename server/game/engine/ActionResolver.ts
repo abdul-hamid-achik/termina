@@ -4,10 +4,12 @@ import type {
   GameState,
   PlayerState,
   TeamId,
+  TeamState,
   TowerState,
   AncientState,
   ZoneRuntimeState,
   NeutralCreepState,
+  RuneState,
 } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import {
@@ -901,6 +903,421 @@ function resolveAttackPhase(
   }
 }
 
+/**
+ * Phase 4: Passive effects — cooldown ticks, item regen (Ring of Health, Sobi
+ * Mask, Heart of Tarrasque, Garbage Collector), Aether Lens cooldown reduction,
+ * Linken's Sphere re-arm, Healing Salve buff regen.
+ */
+function resolvePassivesPhase(
+  players: Record<string, PlayerState>,
+  events: GameEngineEvent[],
+  heroAttackers: Map<string, string>,
+): { players: Record<string, PlayerState> } {
+  const playerUpdates: PlayerUpdates = {}
+  for (const [pid, player] of Object.entries(players)) {
+    if (!player.alive) continue
+
+    const cooldowns = { ...player.cooldowns }
+    for (const slot of ['q', 'w', 'e', 'r'] as const) {
+      if (cooldowns[slot] > 0) {
+        cooldowns[slot] = cooldowns[slot] - 1
+      }
+    }
+
+    let hp = player.hp
+    let mp = player.mp
+
+    const salveRegen = player.buffs.find((b) => b.id === 'healing_salve_regen')
+    if (salveRegen) {
+      hp = Math.min(player.maxHp, hp + salveRegen.stacks)
+    }
+
+    if (player.items.includes('ring_of_health')) {
+      hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * RING_OF_HEALTH_REGEN_PERCENT))
+    }
+
+    if (player.items.includes('sobi_mask')) {
+      mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * SOBI_MASK_REGEN_PERCENT))
+    }
+
+    if (player.items.includes('heart_of_tarrasque')) {
+      const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
+      const inCombat = player.buffs.some((b) => b.id === 'inCombat')
+      if (!tookDamage && !inCombat) {
+        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
+      }
+    }
+
+    if (player.items.includes('garbage_collector')) {
+      const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
+      const dealtDamage = heroAttackers.has(pid)
+      const inCombat = player.buffs.some((b) => b.id === 'inCombat')
+      if (!tookDamage && !dealtDamage && !inCombat) {
+        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
+      }
+    }
+
+    if (player.items.includes('aether_lens')) {
+      for (const slot of ['q', 'w', 'e', 'r'] as const) {
+        if (cooldowns[slot] > 0) {
+          cooldowns[slot] = Math.max(0, cooldowns[slot] - 1)
+        }
+      }
+    }
+
+    let buffs = player.buffs
+    if (player.items.includes('linkens_sphere')) {
+      const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
+      if (!linkenBuff) {
+        buffs = [
+          ...player.buffs,
+          {
+            id: 'spellblock',
+            stacks: 1,
+            ticksRemaining: LINKENS_RECHARGE_TICKS,
+            source: 'linkens_sphere',
+          },
+        ]
+      }
+    }
+
+    playerUpdates[pid] = { hp, mp, cooldowns, buffs }
+  }
+  return { players: applyPlayerUpdates(players, playerUpdates) }
+}
+
+/**
+ * Phase 5: Buy/Sell/Use — item shop operations + item active abilities.
+ * Buy/sell failures surface as rejection events (InsufficientGold,
+ * InventoryFull, NotSellable, etc.). Use failures surface similarly
+ * (cooldown, invalid target, max stacks).
+ */
+function resolveShopPhase(
+  state: GameState,
+  validActions: PlayerAction[],
+  players: Record<string, PlayerState>,
+  zones: Record<string, ZoneRuntimeState>,
+  creeps: CreepState[],
+  towers: TowerState[],
+  ancients: { radiant: AncientState; dire: AncientState },
+  events: GameEngineEvent[],
+  rejected: Array<{ playerId: string; reason: string }>,
+): {
+  players: Record<string, PlayerState>
+  zones: Record<string, ZoneRuntimeState>
+} {
+  // Buy
+  const buys = validActions.filter((a) => a.command.type === 'buy')
+  for (const action of buys) {
+    const cmd = action.command as { type: 'buy'; item: string }
+    const tempState: GameState = { ...state, players, creeps, towers }
+    const result = Effect.runSync(
+      buyItem(tempState, action.playerId, cmd.item).pipe(
+        Effect.match({
+          onFailure: (error) => {
+            rejected.push({
+              playerId: action.playerId,
+              reason: `Cannot buy ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
+            })
+            return null
+          },
+          onSuccess: (updated): GameState | null => updated,
+        }),
+      ),
+    )
+    if (result) {
+      players = { ...result.players }
+      events.push({
+        _tag: 'item_purchased',
+        tick: state.tick,
+        playerId: action.playerId,
+        itemId: cmd.item,
+        cost: ITEMS[cmd.item]?.cost ?? 0,
+      })
+    }
+  }
+
+  // Sell
+  const sells = validActions.filter((a) => a.command.type === 'sell')
+  for (const action of sells) {
+    const cmd = action.command as { type: 'sell'; item: string }
+    const player = players[action.playerId]
+    if (!player) continue
+    const slotIdx = player.items.indexOf(cmd.item)
+    if (slotIdx === -1) {
+      rejected.push({ playerId: action.playerId, reason: `No ${cmd.item} in inventory to sell` })
+      continue
+    }
+    const tempState: GameState = { ...state, players, creeps, towers }
+    const result = Effect.runSync(
+      sellItem(tempState, action.playerId, slotIdx).pipe(
+        Effect.match({
+          onFailure: (error) => {
+            rejected.push({
+              playerId: action.playerId,
+              reason: `Cannot sell ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
+            })
+            return null
+          },
+          onSuccess: (updated): GameState | null => updated,
+        }),
+      ),
+    )
+    if (result) {
+      players = { ...result.players }
+      events.push({
+        _tag: 'item_sold',
+        tick: state.tick,
+        playerId: action.playerId,
+        itemId: cmd.item,
+        refund: Math.floor((ITEMS[cmd.item]?.cost ?? 0) * SELL_REFUND_RATIO),
+      })
+    }
+  }
+
+  // Use item actives
+  const uses = validActions.filter((a) => a.command.type === 'use')
+  for (const action of uses) {
+    const cmd = action.command as { type: 'use'; item: string; target?: TargetRef | string }
+    const tempState: GameState = { ...state, players, zones, creeps, towers, ancients }
+    const result = Effect.runSync(
+      useItem(tempState, action.playerId, cmd.item, cmd.target).pipe(
+        Effect.match({
+          onFailure: (error) => {
+            rejected.push({
+              playerId: action.playerId,
+              reason: `Cannot use ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
+            })
+            return null
+          },
+          onSuccess: (updated): GameState | null => updated,
+        }),
+      ),
+    )
+    if (result) {
+      players = { ...result.players }
+      zones = { ...result.zones }
+      events.push({
+        _tag: 'ability_used',
+        tick: state.tick,
+        playerId: action.playerId,
+        abilityId: ITEMS[cmd.item]?.active?.id ?? cmd.item,
+      })
+    }
+  }
+
+  return { players, zones }
+}
+
+/**
+ * Post-shop phases: glyph, aegis/rune pickup, maxHp/maxMp recalc, gold/XP
+ * awards (creep/neutral/tower), damage tracking, ward placement. These all
+ * run after the shop phase and before the final state assembly.
+ */
+function resolvePostShopPhases(
+  state: GameState,
+  validActions: PlayerAction[],
+  players: Record<string, PlayerState>,
+  zones: Record<string, ZoneRuntimeState>,
+  creeps: CreepState[],
+  towers: TowerState[],
+  neutrals: NeutralCreepState[],
+  events: GameEngineEvent[],
+  _rejected: Array<{ playerId: string; reason: string }>,
+  damageTracker: Map<string, { hero: number; tower: number }>,
+  creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  neutralKills: Array<{ playerId: string; neutralId: string }>,
+  towerKills: Array<{ zone: string; team: TeamId }>,
+  getCachedItemStats: (playerId: string, items: (string | null)[]) => ItemStats,
+): {
+  players: Record<string, PlayerState>
+  zones: Record<string, ZoneRuntimeState>
+  towers: TowerState[]
+  neutrals: NeutralCreepState[]
+  teams: { radiant: TeamState; dire: TeamState }
+  aegis: GameState['aegis']
+  runes: RuneState[]
+} {
+  let teams = { ...state.teams }
+
+  // Glyph commands
+  const glyphActions = validActions.filter((a) => a.command.type === 'glyph')
+  for (const action of glyphActions) {
+    const player = players[action.playerId]
+    if (!player) continue
+    const team = player.team
+    const teamState = teams[team]
+    if (teamState.glyphUsedTick !== null) {
+      const ticksSinceUse = state.tick - teamState.glyphUsedTick
+      if (ticksSinceUse < GLYPH_COOLDOWN_TICKS) {
+        events.push({
+          _tag: 'glyph_on_cooldown',
+          tick: state.tick,
+          playerId: action.playerId,
+          remainingTicks: GLYPH_COOLDOWN_TICKS - ticksSinceUse,
+        })
+        continue
+      }
+    }
+    towers = towers.map((t) => (t.team === team ? { ...t, invulnerable: true } : t))
+    teams = { ...teams, [team]: { ...teamState, glyphUsedTick: state.tick } }
+    events.push({ _tag: 'glyph_used', tick: state.tick, team })
+  }
+
+  // Aegis pickup
+  let aegisGround = state.aegis
+  const aegisPickups = validActions.filter((a) => a.command.type === 'aegis')
+  for (const action of aegisPickups) {
+    const tempState: GameState = {
+      ...state,
+      players,
+      creeps,
+      towers,
+      runes: state.runes ?? [],
+      roshan: state.roshan,
+      aegis: aegisGround,
+    }
+    const result = pickupAegis(tempState, action.playerId)
+    if (result.event) {
+      players = { ...result.state.players }
+      aegisGround = result.state.aegis
+      events.push(result.event)
+    }
+  }
+
+  // Rune pickup
+  let runesGround = state.runes ?? []
+  const runePickups = validActions.filter((a) => a.command.type === 'rune')
+  for (const action of runePickups) {
+    const player = players[action.playerId]
+    if (!player) continue
+    const tempState: GameState = {
+      ...state,
+      players,
+      creeps,
+      towers,
+      runes: runesGround,
+      roshan: state.roshan,
+      aegis: state.aegis,
+    }
+    const result = pickupRune(tempState, action.playerId, player.zone)
+    if (result.event) {
+      players = { ...result.state.players }
+      runesGround = result.state.runes ?? []
+      events.push(result.event)
+    }
+  }
+
+  // Recalculate maxHp/maxMp
+  for (const [pid, player] of Object.entries(players)) {
+    const hero = player.heroId ? HEROES[player.heroId] : null
+    if (!hero) continue
+    const baseMaxHp = hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * (player.level - 1)
+    const baseMaxMp = hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * (player.level - 1)
+    const itemBonuses = getCachedItemStats(pid, player.items)
+    const treadsHp = player.buffs.find((b) => b.id === 'power_treads_hp')?.stacks ?? 0
+    const treadsMp = player.buffs.find((b) => b.id === 'power_treads_mp')?.stacks ?? 0
+    const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp') + treadsHp
+    const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
+    if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
+      const newHp = Math.min(player.hp, newMaxHp)
+      const newMp = Math.min(player.mp, newMaxMp)
+      players = {
+        ...players,
+        [pid]: { ...player, maxHp: newMaxHp, maxMp: newMaxMp, hp: newHp, mp: newMp },
+      }
+    }
+  }
+
+  // Creep last-hit gold + XP
+  for (const kill of creepKills) {
+    const tempState: GameState = { ...state, players, creeps, towers }
+    const awarded = awardLastHit(tempState, kill.playerId, kill.creepType)
+    players = { ...awarded.players }
+    const killer = players[kill.playerId]
+    if (killer) {
+      players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + CREEP_XP } }
+    }
+  }
+
+  // Neutral kill gold + XP
+  for (const kill of neutralKills) {
+    const neutral = neutrals.find((n) => n.id === kill.neutralId)
+    if (!neutral) continue
+    const stats = NEUTRAL_CREEPS[neutral.type as NeutralCreepType]
+    if (!stats) continue
+    const killer = players[kill.playerId]
+    if (killer) {
+      players = {
+        ...players,
+        [kill.playerId]: { ...killer, gold: killer.gold + stats.gold, xp: killer.xp + stats.xp },
+      }
+      events.push({
+        _tag: 'neutral_killed' as const,
+        tick: state.tick,
+        playerId: kill.playerId,
+        neutralId: neutral.id,
+        neutralType: neutral.type,
+        zone: neutral.zone,
+      })
+    }
+    neutrals = neutrals.filter((n) => n.id !== kill.neutralId)
+  }
+
+  // Tower kill gold
+  for (const kill of towerKills) {
+    const nearbyAllies = Object.entries(players)
+      .filter(([, p]) => p.zone === kill.zone && p.team !== kill.team && p.alive)
+      .map(([id]) => id)
+    const tempState: GameState = { ...state, players, creeps, towers }
+    const awarded = awardTowerKill(tempState, kill.zone, nearbyAllies)
+    players = { ...awarded.players }
+  }
+
+  // Damage tracking
+  for (const [pid, dmg] of damageTracker.entries()) {
+    const p = players[pid]
+    if (p) {
+      players = {
+        ...players,
+        [pid]: {
+          ...p,
+          damageDealt: p.damageDealt + dmg.hero,
+          towerDamageDealt: p.towerDamageDealt + dmg.tower,
+        },
+      }
+    }
+  }
+
+  // Ward placement
+  const wardActions = validActions.filter((a) => a.command.type === 'ward')
+  for (const action of wardActions) {
+    const cmd = action.command as { type: 'ward'; zone: string }
+    const player = players[action.playerId]
+    if (player) {
+      const wardSlot = player.items.findIndex((i) => i === 'observer_ward' || i === 'sentry_ward')
+      if (wardSlot === -1) continue
+      const wardType = player.items[wardSlot] === 'sentry_ward' ? 'sentry' : 'observer'
+      const placed = placeWard(zones, cmd.zone, player.team, state.tick, wardType)
+      if (placed) {
+        const newItems = [...player.items]
+        newItems[wardSlot] = null
+        players = { ...players, [action.playerId]: { ...player, items: newItems } }
+        events.push({
+          _tag: 'ward_placed',
+          tick: state.tick,
+          playerId: action.playerId,
+          zone: cmd.zone,
+          team: player.team,
+          wardType,
+        })
+      }
+    }
+  }
+
+  return { players, zones, towers, neutrals, teams, aegis: aegisGround, runes: runesGround }
+}
+
 // ── Resolution Pipeline ────────────────────────────────────────────
 
 export function resolveActions(
@@ -966,6 +1383,7 @@ export function resolveActions(
     let creeps = [...state.creeps]
     let neutrals = [...(state.neutrals ?? [])]
     let towers = [...state.towers]
+    let teams = { ...state.teams }
     const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
     const neutralKills: Array<{ playerId: string; neutralId: string }> = []
     const towerKills: Array<{ zone: string; team: TeamId }> = []
@@ -993,9 +1411,6 @@ export function resolveActions(
       }
       return cached
     }
-
-    // Batch update accumulator
-    let playerUpdates: PlayerUpdates = {}
 
     // Phase 1: Instant abilities (stuns, silences)
     {
@@ -1086,406 +1501,55 @@ export function resolveActions(
     }
 
     // Phase 4: Passive effects, cooldown ticks, item passives
-    playerUpdates = {}
-    for (const [pid, player] of Object.entries(players)) {
-      if (!player.alive) continue
-
-      const cooldowns = { ...player.cooldowns }
-      for (const slot of ['q', 'w', 'e', 'r'] as const) {
-        if (cooldowns[slot] > 0) {
-          cooldowns[slot] = cooldowns[slot] - 1
-        }
-      }
-
-      let hp = player.hp
-      let mp = player.mp
-
-      // Healing Salve regen (buff applied by useItem; ticked down in GameLoop)
-      const salveRegen = player.buffs.find((b) => b.id === 'healing_salve_regen')
-      if (salveRegen) {
-        hp = Math.min(player.maxHp, hp + salveRegen.stacks)
-      }
-
-      if (player.items.includes('ring_of_health')) {
-        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * RING_OF_HEALTH_REGEN_PERCENT))
-      }
-
-      if (player.items.includes('sobi_mask')) {
-        mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * SOBI_MASK_REGEN_PERCENT))
-      }
-
-      if (player.items.includes('heart_of_tarrasque')) {
-        const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
-        const inCombat = player.buffs.some((b) => b.id === 'inCombat')
-        if (!tookDamage && !inCombat) {
-          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
-        }
-      }
-
-      if (player.items.includes('garbage_collector')) {
-        const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
-        const dealtDamage = heroAttackers.has(pid)
-        const inCombat = player.buffs.some((b) => b.id === 'inCombat')
-        if (!tookDamage && !dealtDamage && !inCombat) {
-          hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
-        }
-      }
-
-      if (player.items.includes('aether_lens')) {
-        for (const slot of ['q', 'w', 'e', 'r'] as const) {
-          if (cooldowns[slot] > 0) {
-            cooldowns[slot] = Math.max(0, cooldowns[slot] - 1)
-          }
-        }
-      }
-
-      let buffs = player.buffs
-      if (player.items.includes('linkens_sphere')) {
-        // Re-arm only when no spellblock buff remains. A SPENT charge lingers as
-        // stacks 0 for LINKENS_RECHARGE_TICKS (set on block), gating re-arm.
-        const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
-        if (!linkenBuff) {
-          buffs = [
-            ...player.buffs,
-            {
-              id: 'spellblock',
-              stacks: 1,
-              ticksRemaining: LINKENS_RECHARGE_TICKS,
-              source: 'linkens_sphere',
-            },
-          ]
-        }
-      }
-
-      playerUpdates[pid] = { hp, mp, cooldowns, buffs }
+    {
+      const result = resolvePassivesPhase(players, events, heroAttackers)
+      players = result.players
     }
-    players = applyPlayerUpdates(players, playerUpdates)
 
-    // Phase 5: Buy/Sell
-    const buys = validActions.filter((a) => a.command.type === 'buy')
-    for (const action of buys) {
-      const cmd = action.command as { type: 'buy'; item: string }
-      const tempState: GameState = { ...state, players, creeps, towers }
-      const result = Effect.runSync(
-        buyItem(tempState, action.playerId, cmd.item).pipe(
-          Effect.match({
-            onFailure: (error) => {
-              // Surface buy failures to the player instead of silently dropping
-              // the tick — NotInShop / InsufficientGold / InventoryFull /
-              // ItemNotFound / ItemOnCooldown each become a rejection reason.
-              rejected.push({
-                playerId: action.playerId,
-                reason: `Cannot buy ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
-              })
-              return null
-            },
-            onSuccess: (updated): GameState | null => updated,
-          }),
-        ),
+    // Phase 5: Buy/Sell/Use
+    {
+      const result = resolveShopPhase(
+        state,
+        validActions,
+        players,
+        zones,
+        creeps,
+        towers,
+        ancients,
+        events,
+        rejected,
       )
-      if (result) {
-        players = { ...result.players }
-        // Confirm the purchase in the combat log (the item_purchased path is
-        // fully wired client-side; the buyer always sees their own purchase).
-        events.push({
-          _tag: 'item_purchased',
-          tick: state.tick,
-          playerId: action.playerId,
-          itemId: cmd.item,
-          cost: ITEMS[cmd.item]?.cost ?? 0,
-        })
-      }
+      players = result.players
+      zones = result.zones
     }
 
-    const sells = validActions.filter((a) => a.command.type === 'sell')
-    for (const action of sells) {
-      const cmd = action.command as { type: 'sell'; item: string }
-      const player = players[action.playerId]
-      if (!player) continue
-      const slotIdx = player.items.indexOf(cmd.item)
-      if (slotIdx === -1) {
-        rejected.push({ playerId: action.playerId, reason: `No ${cmd.item} in inventory to sell` })
-        continue
-      }
-      const tempState: GameState = { ...state, players, creeps, towers }
-      const result = Effect.runSync(
-        sellItem(tempState, action.playerId, slotIdx).pipe(
-          Effect.match({
-            onFailure: (error) => {
-              rejected.push({
-                playerId: action.playerId,
-                reason: `Cannot sell ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
-              })
-              return null
-            },
-            onSuccess: (updated): GameState | null => updated,
-          }),
-        ),
-      )
-      if (result) {
-        players = { ...result.players }
-        // Confirm the sale in the combat log, mirroring the buy path. Refund
-        // matches sellItem's (cost * SELL_REFUND_RATIO, floored).
-        events.push({
-          _tag: 'item_sold',
-          tick: state.tick,
-          playerId: action.playerId,
-          itemId: cmd.item,
-          refund: Math.floor((ITEMS[cmd.item]?.cost ?? 0) * SELL_REFUND_RATIO),
-        })
-      }
-    }
-
-    // Phase 5b: Use item actives (blink, BKB, salves, TP scrolls, ...)
-    const uses = validActions.filter((a) => a.command.type === 'use')
-    for (const action of uses) {
-      const cmd = action.command as { type: 'use'; item: string; target?: TargetRef | string }
-      const tempState: GameState = { ...state, players, zones, creeps, towers, ancients }
-      const result = Effect.runSync(
-        useItem(tempState, action.playerId, cmd.item, cmd.target).pipe(
-          Effect.match({
-            // Surface use failures to the player as a rejection reason (was a
-            // silent debug log); validateAction already catches some cases, but
-            // cooldown/stack/target failures only surface here.
-            onFailure: (error) => {
-              rejected.push({
-                playerId: action.playerId,
-                reason: `Cannot use ${cmd.item}: ${error._tag.replace(/Error$/, '')}`,
-              })
-              return null
-            },
-            onSuccess: (updated): GameState | null => updated,
-          }),
-        ),
-      )
-      if (result) {
-        players = { ...result.players }
-        zones = { ...result.zones }
-        events.push({
-          _tag: 'ability_used',
-          tick: state.tick,
-          playerId: action.playerId,
-          abilityId: ITEMS[cmd.item]?.active?.id ?? cmd.item,
-        })
-      }
-    }
-
-    // Handle glyph commands
-    let teams = { ...state.teams }
-    const glyphActions = validActions.filter((a) => a.command.type === 'glyph')
-    for (const action of glyphActions) {
-      const player = players[action.playerId]
-      if (!player) continue
-
-      const team = player.team
-      const teamState = teams[team]
-
-      if (teamState.glyphUsedTick !== null) {
-        const ticksSinceUse = state.tick - teamState.glyphUsedTick
-        if (ticksSinceUse < GLYPH_COOLDOWN_TICKS) {
-          events.push({
-            _tag: 'glyph_on_cooldown',
-            tick: state.tick,
-            playerId: action.playerId,
-            remainingTicks: GLYPH_COOLDOWN_TICKS - ticksSinceUse,
-          })
-          continue
-        }
-      }
-
-      towers = towers.map((t) => (t.team === team ? { ...t, invulnerable: true } : t))
-
-      teams = {
-        ...teams,
-        [team]: { ...teamState, glyphUsedTick: state.tick },
-      }
-
-      events.push({
-        _tag: 'glyph_used',
-        tick: state.tick,
-        team,
-      })
-    }
-
-    // Handle aegis pickup
+    // Handle glyph commands + pickups + statRecalc + awards + wards
     let aegisGround = state.aegis
-    const aegisPickups = validActions.filter((a) => a.command.type === 'aegis')
-    for (const action of aegisPickups) {
-      const tempState: GameState = {
-        ...state,
-        players,
-        creeps,
-        towers,
-        runes: state.runes ?? [],
-        roshan: state.roshan,
-        aegis: aegisGround,
-      }
-      const result = pickupAegis(tempState, action.playerId)
-      // pickupAegis returns { state, event } — the event is the single source
-      // of truth (no state.events mutation, no duplicate push here).
-      if (result.event) {
-        players = { ...result.state.players }
-        aegisGround = result.state.aegis
-        events.push(result.event)
-      }
-    }
-
-    // Handle rune pickup. Mirror the aegis path: pickupRune returns
-    // { state, event } — the event is the single source of truth.
     let runesGround = state.runes ?? []
-    const runePickups = validActions.filter((a) => a.command.type === 'rune')
-    for (const action of runePickups) {
-      const player = players[action.playerId]
-      if (!player) continue
-      const tempState: GameState = {
-        ...state,
+    {
+      const result = resolvePostShopPhases(
+        state,
+        validActions,
         players,
+        zones,
         creeps,
         towers,
-        runes: runesGround,
-        roshan: state.roshan,
-        aegis: state.aegis,
-      }
-      const result = pickupRune(tempState, action.playerId, player.zone)
-      if (result.event) {
-        players = { ...result.state.players }
-        runesGround = result.state.runes ?? []
-        events.push(result.event)
-      }
-    }
-
-    // Recalculate maxHp/maxMp based on items + talents
-    for (const [pid, player] of Object.entries(players)) {
-      const hero = player.heroId ? HEROES[player.heroId] : null
-      if (!hero) continue
-      const baseMaxHp = hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * (player.level - 1)
-      const baseMaxMp = hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * (player.level - 1)
-      const itemBonuses = getCachedItemStats(pid, player.items)
-      // Power Treads toggle: the active mode rides as a buff (power_treads_hp/mp);
-      // fold it into maxHp/maxMp so the toggle actually does something.
-      const treadsHp = player.buffs.find((b) => b.id === 'power_treads_hp')?.stacks ?? 0
-      const treadsMp = player.buffs.find((b) => b.id === 'power_treads_mp')?.stacks ?? 0
-      const newMaxHp =
-        baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp') + treadsHp
-      const newMaxMp =
-        baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
-      if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
-        // Preserve the CURRENT HP/MP (clamped to the new max) when max changes.
-        // The old percentage-preserving logic meant selling an HP item in the
-        // fountain cost HP — a hero at 500/500 selling a +200 HP item dropped to
-        // 60% of 300 = 180, losing 320 HP for free. DotA preserves current HP;
-        // we do the same, only clamping if current exceeds the new max.
-        const newHp = Math.min(player.hp, newMaxHp)
-        const newMp = Math.min(player.mp, newMaxMp)
-
-        players = {
-          ...players,
-          [pid]: {
-            ...player,
-            maxHp: newMaxHp,
-            maxMp: newMaxMp,
-            hp: newHp,
-            mp: newMp,
-          },
-        }
-      }
-    }
-
-    // Award gold and XP for creep last-hits
-    for (const kill of creepKills) {
-      const tempState: GameState = { ...state, players, creeps, towers }
-      const awarded = awardLastHit(tempState, kill.playerId, kill.creepType)
-      players = { ...awarded.players }
-      // Award XP for creep kill
-      const killer = players[kill.playerId]
-      if (killer) {
-        players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + CREEP_XP } }
-      }
-    }
-
-    // Award gold and XP for neutral creep kills
-    for (const kill of neutralKills) {
-      const neutral = neutrals.find((n) => n.id === kill.neutralId)
-      if (!neutral) continue
-      const stats = NEUTRAL_CREEPS[neutral.type as NeutralCreepType]
-      if (!stats) continue
-
-      const killer = players[kill.playerId]
-      if (killer) {
-        // Award gold and XP
-        const updatedKiller: PlayerState = {
-          ...killer,
-          gold: killer.gold + stats.gold,
-          xp: killer.xp + stats.xp,
-        }
-        players = { ...players, [kill.playerId]: updatedKiller }
-
-        events.push({
-          _tag: 'neutral_killed' as const,
-          tick: state.tick,
-          playerId: kill.playerId,
-          neutralId: neutral.id,
-          neutralType: neutral.type,
-          zone: neutral.zone,
-        })
-      }
-
-      // Remove the dead neutral
-      neutrals = neutrals.filter((n) => n.id !== kill.neutralId)
-    }
-
-    // Award gold for tower kills
-    for (const kill of towerKills) {
-      const nearbyAllies = Object.entries(players)
-        .filter(([, p]) => p.zone === kill.zone && p.team !== kill.team && p.alive)
-        .map(([id]) => id)
-      const tempState: GameState = { ...state, players, creeps, towers }
-      const awarded = awardTowerKill(tempState, kill.zone, nearbyAllies)
-      players = { ...awarded.players }
-    }
-
-    // Apply damage tracking to player states
-    for (const [pid, dmg] of damageTracker.entries()) {
-      const p = players[pid]
-      if (p) {
-        players = {
-          ...players,
-          [pid]: {
-            ...p,
-            damageDealt: p.damageDealt + dmg.hero,
-            towerDamageDealt: p.towerDamageDealt + dmg.tower,
-          },
-        }
-      }
-    }
-
-    // Handle ward placements
-    const wardActions = validActions.filter((a) => a.command.type === 'ward')
-    for (const action of wardActions) {
-      const cmd = action.command as { type: 'ward'; zone: string }
-      const player = players[action.playerId]
-      if (player) {
-        const wardSlot = player.items.findIndex((i) => i === 'observer_ward' || i === 'sentry_ward')
-        if (wardSlot === -1) continue
-
-        const wardType = player.items[wardSlot] === 'sentry_ward' ? 'sentry' : 'observer'
-
-        const placed = placeWard(zones, cmd.zone, player.team, state.tick, wardType)
-        if (placed) {
-          const newItems = [...player.items]
-          newItems[wardSlot] = null
-          players = { ...players, [action.playerId]: { ...player, items: newItems } }
-
-          events.push({
-            _tag: 'ward_placed',
-            tick: state.tick,
-            playerId: action.playerId,
-            zone: cmd.zone,
-            team: player.team,
-            wardType,
-          })
-        }
-      }
+        neutrals,
+        events,
+        rejected,
+        damageTracker,
+        creepKills,
+        neutralKills,
+        towerKills,
+        getCachedItemStats,
+      )
+      players = result.players
+      zones = result.zones
+      towers = result.towers
+      neutrals = result.neutrals
+      teams = result.teams
+      aegisGround = result.aegis
+      runesGround = result.runes
     }
 
     const updatedState: GameState = {
