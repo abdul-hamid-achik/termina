@@ -229,8 +229,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
                 :key="p.id"
                 class="anim-fade-in-up"
                 :class="{
-                  'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]':
-                    p.isCurrentPlayer,
+                  'bg-ability/10 font-bold shadow-inset-ability': p.isCurrentPlayer,
                 }"
               >
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
@@ -319,8 +318,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
                 :key="p.id"
                 class="anim-fade-in-up"
                 :class="{
-                  'bg-ability/10 font-bold shadow-[inset_3px_0_0_rgb(var(--color-ability))]':
-                    p.isCurrentPlayer,
+                  'bg-ability/10 font-bold shadow-inset-ability': p.isCurrentPlayer,
                 }"
               >
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">

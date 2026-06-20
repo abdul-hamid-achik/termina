@@ -41,8 +41,8 @@ import ProgressBar from './ProgressBar.vue'
       <ProgressBar :value="1400" :max="2000" color="gold" show-label />
     </Variant>
 
-    <Variant title="hex color">
-      <ProgressBar :value="60" color="#7CFC00" show-label />
+    <Variant title="zone token">
+      <ProgressBar :value="60" color="zone" show-label />
     </Variant>
     <Variant title="narrow width (8)">
       <ProgressBar :value="40" :width="8" show-label />

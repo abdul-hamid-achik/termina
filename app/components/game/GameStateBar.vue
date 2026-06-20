@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
 import {
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
@@ -93,7 +94,7 @@ function corePct(a: AncientState | undefined): number {
         data-testid="tick-countdown"
       >
         <span class="t-caption">next tick</span>
-        <span class="text-ability tracking-[-0.05em]" aria-hidden="true">{{ tickBar }}</span>
+        <span class="text-ability tracking-normal" aria-hidden="true">{{ tickBar }}</span>
         <span class="text-text-primary">{{ tickSeconds }}s</span>
       </span>
       <span v-if="nextTickIn !== undefined" class="text-border">|</span>

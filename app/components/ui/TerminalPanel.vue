@@ -10,7 +10,7 @@ defineProps<{
     class="flex min-w-0 flex-col overflow-hidden border border-border bg-bg-panel"
     :class="{
       'border-border-glow shadow-glow-highlight': variant === 'highlight',
-      'border-dire shadow-[0_0_6px_rgba(233,69,96,0.2)]': variant === 'danger',
+      'border-dire shadow-glow-dire-soft': variant === 'danger',
     }"
   >
     <div

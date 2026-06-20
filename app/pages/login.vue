@@ -205,30 +205,3 @@ if (route.query.error) {
     </div>
   </div>
 </template>
-
-<style scoped>
-.terminal-input {
-  width: 100%;
-  padding: 6px 10px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: rgb(var(--text-primary));
-  background: rgb(var(--bg-primary));
-  border: 1px solid rgb(var(--border-color));
-  outline: none;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
-}
-
-.terminal-input::placeholder {
-  color: rgb(var(--text-dim) / 0.4);
-}
-
-.terminal-input:focus {
-  border-color: rgb(var(--border-glow));
-  box-shadow:
-    0 0 4px rgb(var(--border-glow)),
-    inset 0 0 4px rgb(var(--border-glow) / 0.3);
-}
-</style>

@@ -330,7 +330,7 @@ const gameTimeFormatted = computed(() => {
   padding: 4px 6px;
   gap: 4px;
   border-bottom: 1px solid rgb(var(--border-color));
-  background: rgba(var(--bg-secondary), 0.5);
+  background: rgb(var(--bg-secondary) / 0.5);
 }
 
 .scoreboard__col-headers .scoreboard__col {
@@ -402,7 +402,7 @@ const gameTimeFormatted = computed(() => {
 
 /* ── Player rows ─────────────────────────────────────────── */
 .scoreboard__player-cell {
-  border-bottom: 1px solid rgba(var(--border-color), 0.5);
+  border-bottom: 1px solid rgb(var(--border-color) / 0.5);
 }
 
 .scoreboard__player-row {
@@ -416,7 +416,7 @@ const gameTimeFormatted = computed(() => {
 }
 
 .scoreboard__player-row:hover {
-  background: rgba(var(--border-color), 0.3);
+  background: rgb(var(--border-color) / 0.3);
 }
 
 .scoreboard__player-row--dead {
@@ -454,21 +454,21 @@ const gameTimeFormatted = computed(() => {
   justify-content: center;
   width: 13px;
   height: 13px;
-  border: 1px solid rgba(var(--border-color), 0.6);
+  border: 1px solid rgb(var(--border-color) / 0.6);
   font-size: 0.5rem;
   color: rgb(var(--text-dim));
-  background: rgba(var(--bg-primary), 0.5);
+  background: rgb(var(--bg-primary) / 0.5);
 }
 
 .scoreboard__item-slot--filled {
-  border-color: rgba(var(--color-ability), 0.4);
+  border-color: rgb(var(--color-ability) / 0.4);
   color: rgb(var(--color-ability));
-  background: rgba(var(--color-ability), 0.06);
+  background: rgb(var(--color-ability) / 0.06);
 }
 
 .scoreboard__item-slot--fogged {
-  border-color: rgba(var(--border-color), 0.3);
-  color: rgba(var(--text-dim), 0.4);
+  border-color: rgb(var(--border-color) / 0.3);
+  color: rgb(var(--text-dim) / 0.4);
 }
 
 /* ── Avatar placeholder ─────────────────────────────────── */

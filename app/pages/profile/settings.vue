@@ -205,7 +205,7 @@ async function disconnectProvider(provider: string) {
                 v-if="selectedAvatar"
                 :hero-id="selectedAvatar"
                 :size="96"
-                class="border-2 border-ability shadow-[0_0_12px_rgba(0,212,255,0.3)]"
+                class="border-2 border-ability shadow-glow-ability"
               />
               <div
                 v-else
@@ -230,7 +230,7 @@ async function disconnectProvider(provider: string) {
               class="flex cursor-pointer flex-col items-center gap-1 border bg-transparent p-1.5 transition-all duration-100"
               :class="
                 selectedAvatar === hid
-                  ? 'border-ability bg-ability/5 shadow-[0_0_8px_rgba(0,212,255,0.2)]'
+                  ? 'border-ability bg-ability/5 shadow-glow-ability-soft'
                   : 'border-border hover:border-border-glow hover:bg-border-glow/10'
               "
               @click="selectedAvatar = hid"
@@ -444,30 +444,3 @@ async function disconnectProvider(provider: string) {
     </TerminalPanel>
   </div>
 </template>
-
-<style scoped>
-.terminal-input {
-  width: 100%;
-  padding: 6px 10px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: rgb(var(--text-primary));
-  background: rgb(var(--bg-primary));
-  border: 1px solid rgb(var(--border-color));
-  outline: none;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
-}
-
-.terminal-input::placeholder {
-  color: rgb(var(--text-dim) / 0.4);
-}
-
-.terminal-input:focus {
-  border-color: rgb(var(--border-glow));
-  box-shadow:
-    0 0 4px rgb(var(--border-glow)),
-    inset 0 0 4px rgb(var(--border-glow) / 0.3);
-}
-</style>

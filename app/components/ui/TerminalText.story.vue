@@ -5,7 +5,8 @@ import TerminalText from './TerminalText.vue'
 <!--
   Pure slot/props inline text. Covers the bold + dim modifiers and the `color`
   prop resolving against the theme tokens (radiant/dire/ability/gold/text-dim)
-  as well as a raw hex fallback. Wrapped on the dark bg so colors are legible.
+  without accepting raw one-off colors. Wrapped on the dark bg so colors are
+  legible.
 -->
 <template>
   <Story title="UI/TerminalText" :layout="{ type: 'grid', width: 240 }">
@@ -55,9 +56,9 @@ import TerminalText from './TerminalText.vue'
         <TerminalText color="text-dim">muted via token</TerminalText>
       </div>
     </Variant>
-    <Variant title="color — raw hex">
+    <Variant title="color — zone token">
       <div class="bg-bg-primary p-2">
-        <TerminalText color="#7CFC00">#7CFC00</TerminalText>
+        <TerminalText color="zone">ZONE SECURE</TerminalText>
       </div>
     </Variant>
 

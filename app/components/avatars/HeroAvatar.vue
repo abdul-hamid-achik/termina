@@ -43,11 +43,10 @@ watch(() => props.heroId, draw)
 
 <template>
   <div
-    class="inline-flex shrink-0 items-center justify-center overflow-hidden border border-border bg-bg-secondary"
+    class="inline-flex shrink-0 items-center justify-center overflow-hidden border border-border bg-bg-secondary shadow-glow-highlight"
     :style="{
       width: `${size}px`,
       height: `${size}px`,
-      boxShadow: '0 0 6px rgba(42, 42, 78, 0.4)',
     }"
   >
     <canvas

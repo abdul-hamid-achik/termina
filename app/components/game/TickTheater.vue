@@ -45,7 +45,7 @@ defineProps<{
         >&gt;&gt; {{ status }}</span
       >
       <span
-        class="flex-1 truncate tracking-[-0.05em]"
+        class="flex-1 truncate tracking-normal"
         :class="tickImminent ? 'text-warn' : 'text-ability'"
         aria-hidden="true"
         >{{ bar }}</span

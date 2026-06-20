@@ -17,6 +17,7 @@ export default {
           secondary: 'rgb(var(--bg-secondary) / <alpha-value>)',
           panel: 'rgb(var(--bg-panel) / <alpha-value>)',
           elevated: 'rgb(var(--bg-elevated) / <alpha-value>)',
+          overlay: 'rgb(var(--bg-overlay) / <alpha-value>)',
         },
         border: {
           DEFAULT: 'rgb(var(--border-color) / <alpha-value>)',
@@ -55,8 +56,10 @@ export default {
           '0 0 12px rgb(var(--color-radiant) / 0.55), 0 0 28px rgb(var(--color-radiant) / 0.25)',
         'glow-dire':
           '0 0 12px rgb(var(--color-dire) / 0.55), 0 0 28px rgb(var(--color-dire) / 0.25)',
+        'glow-dire-soft': '0 0 6px rgb(var(--color-dire) / 0.25)',
         'glow-ability':
           '0 0 12px rgb(var(--color-ability) / 0.55), 0 0 28px rgb(var(--color-ability) / 0.25)',
+        'glow-ability-soft': '0 0 8px rgb(var(--color-ability) / 0.3)',
         'glow-gold':
           '0 0 12px rgb(var(--color-gold) / 0.55), 0 0 28px rgb(var(--color-gold) / 0.25)',
         'glow-highlight': '0 0 8px rgb(var(--border-glow) / 0.5)',
@@ -66,6 +69,7 @@ export default {
           '0 0 18px rgb(var(--color-dire) / 0.65), 0 0 44px rgb(var(--color-dire) / 0.35)',
         'glow-ability-lg':
           '0 0 18px rgb(var(--color-ability) / 0.65), 0 0 44px rgb(var(--color-ability) / 0.35)',
+        'inset-ability': 'inset 3px 0 0 rgb(var(--color-ability))',
       },
       keyframes: {
         blink: {

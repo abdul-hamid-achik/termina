@@ -120,7 +120,7 @@ function formatStats(def: ItemDef): string[] {
         <!-- Cooldown overlay -->
         <div
           v-if="slot.cooldown > 0"
-          class="absolute inset-0 flex items-center justify-center bg-black/60"
+          class="absolute inset-0 flex items-center justify-center bg-bg-overlay/60"
         >
           <span class="text-xs font-bold text-dire">{{ slot.cooldown }}t</span>
         </div>

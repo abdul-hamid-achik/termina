@@ -1,16 +1,47 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+type ProgressBarColor =
+  | 'radiant'
+  | 'radiant-deep'
+  | 'dire'
+  | 'dire-deep'
+  | 'self'
+  | 'gold'
+  | 'mana'
+  | 'damage'
+  | 'healing'
+  | 'system'
+  | 'zone'
+  | 'ability'
+  | 'warn'
+
+const colorVars: Record<ProgressBarColor, string> = {
+  radiant: '--color-radiant',
+  'radiant-deep': '--color-radiant-deep',
+  dire: '--color-dire',
+  'dire-deep': '--color-dire-deep',
+  self: '--color-self',
+  gold: '--color-gold',
+  mana: '--color-mana',
+  damage: '--color-damage',
+  healing: '--color-healing',
+  system: '--color-system',
+  zone: '--color-zone',
+  ability: '--color-ability',
+  warn: '--color-warn',
+}
+
 const props = withDefaults(
   defineProps<{
     value: number
     max?: number
-    color?: string
+    color?: ProgressBarColor
     width?: number
     showLabel?: boolean
     /** Ratio (0–1); at/below it the bar warns in `dangerColor` and pulses. 0 = off. */
     dangerBelow?: number
-    dangerColor?: string
+    dangerColor?: ProgressBarColor
   }>(),
   {
     max: 100,
@@ -31,6 +62,7 @@ const inDanger = computed(
   () => props.dangerBelow > 0 && props.value > 0 && ratio.value <= props.dangerBelow,
 )
 const activeColor = computed(() => (inDanger.value ? props.dangerColor : props.color))
+const activeColorStyle = computed(() => ({ color: `rgb(var(${colorVars[activeColor.value]}))` }))
 
 const filled = computed(() => Math.round(Math.max(0, Math.min(1, ratio.value)) * props.width))
 
@@ -49,10 +81,11 @@ const percentage = computed(() => {
   <span class="inline-flex items-center gap-1 whitespace-nowrap font-mono text-[0.8rem]">
     <span class="text-text-dim">[</span>
     <span
-      class="tracking-[-0.05em]"
+      class="tracking-normal"
       :class="{ 'animate-pulse': inDanger }"
       :data-danger="inDanger ? 'true' : undefined"
-      :style="{ color: `rgb(var(--color-${activeColor}, ${activeColor}))` }"
+      data-testid="progress-bar-fill"
+      :style="activeColorStyle"
       >{{ bar }}</span
     >
     <span class="text-text-dim">]</span>
