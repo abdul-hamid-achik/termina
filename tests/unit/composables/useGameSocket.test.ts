@@ -55,6 +55,12 @@ vi.stubGlobal('window', {
   location: { protocol: 'http:', host: 'localhost:3000' },
 })
 
+// Stub the Nuxt auto-imports that useGameSocket now depends on (useWsOrigin
+// resolves via useRuntimeConfig — not available in vitest). Empty public
+// config = same-origin fallback, so the WS URL uses window.location.host.
+vi.stubGlobal('useRuntimeConfig', () => ({ public: { wsUrl: '', apiUrl: '' } }))
+vi.stubGlobal('useWsOrigin', () => 'ws://localhost:3000')
+
 // ── Mock onUnmounted ──────────────────────────────────────────────
 
 vi.mock('vue', async () => {
@@ -83,6 +89,8 @@ describe('useGameSocket', () => {
     vi.stubGlobal('window', {
       location: { protocol: 'http:', host: 'localhost:3000' },
     })
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { wsUrl: '', apiUrl: '' } }))
+    vi.stubGlobal('useWsOrigin', () => 'ws://localhost:3000')
 
     // Re-mock vue after resetModules
     vi.doMock('vue', async () => {

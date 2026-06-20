@@ -64,8 +64,8 @@ export function useGameSocket() {
       // Graceful degradation — try connecting without ticket
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    let url = `${protocol}//${window.location.host}/ws?playerId=${currentPlayerId}&gameId=${currentGameId}`
+    const wsBase = useWsOrigin()
+    let url = `${wsBase}/ws?playerId=${currentPlayerId}&gameId=${currentGameId}`
     if (ticket) {
       url += `&ticket=${encodeURIComponent(ticket)}`
     }

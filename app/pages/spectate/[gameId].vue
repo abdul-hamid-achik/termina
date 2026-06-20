@@ -33,10 +33,8 @@ async function connect() {
     /* ignore */
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const url = ticket
-    ? `${protocol}//${window.location.host}/ws?ticket=${encodeURIComponent(ticket)}`
-    : `${protocol}//${window.location.host}/ws`
+  const wsBase = useWsOrigin()
+  const url = ticket ? `${wsBase}/ws?ticket=${encodeURIComponent(ticket)}` : `${wsBase}/ws`
 
   ws = new WebSocket(url)
 

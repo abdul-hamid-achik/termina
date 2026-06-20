@@ -1,0 +1,60 @@
+# DigitalOcean App Platform spec for the Termina WS + game server.
+# The full Nitro server (SSR + WS + game engine + API) runs here. The Vercel
+# frontend connects via NUXT_PUBLIC_WS_URL / NUXT_PUBLIC_API_URL.
+#
+# Secrets to set in the DO App Platform dashboard (or via `doctl apps update`):
+#   NUXT_SESSION_PASSWORD      — session signing key (≥32 chars)
+#   NUXT_DATABASE_URL          — managed Postgres connection string
+#   NUXT_REDIS_URL             — managed Redis connection string
+#   NUXT_OAUTH_GITHUB_CLIENT_ID / _SECRET
+#   NUXT_OAUTH_DISCORD_CLIENT_ID / _SECRET
+#
+# DO provides HOST + PORT automatically. Do NOT set TERMINA_TEST_HOOKS.
+
+spec:
+  name: termina-ws
+  region: nyc
+  services:
+    - name: web
+      image:
+        registry_type: DOCR
+        registry: ${DO_REGISTRY_NAME}
+        repository: termina-ws
+        tag: latest
+      http_port: 3000
+      health_check:
+        http_path: /api/health
+        initial_delay_seconds: 15
+        period_seconds: 30
+        timeout_seconds: 5
+        failure_threshold: 3
+      envs:
+        - key: NODE_ENV
+          value: production
+        - key: HOST
+          value: 0.0.0.0
+        - key: PORT
+          value: '3000'
+        - key: NUXT_SESSION_PASSWORD
+          scope: RUN_TIME
+          type: SECRET
+        - key: NUXT_DATABASE_URL
+          scope: RUN_TIME
+          type: SECRET
+        - key: NUXT_REDIS_URL
+          scope: RUN_TIME
+          type: SECRET
+        - key: NUXT_OAUTH_GITHUB_CLIENT_ID
+          scope: RUN_TIME
+          type: SECRET
+        - key: NUXT_OAUTH_GITHUB_CLIENT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+        - key: NUXT_OAUTH_DISCORD_CLIENT_ID
+          scope: RUN_TIME
+          type: SECRET
+        - key: NUXT_OAUTH_DISCORD_CLIENT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+      instance_count: 1
+      instance_size_slug: basic-xxs

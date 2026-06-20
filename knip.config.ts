@@ -14,6 +14,7 @@ const config: KnipConfig = {
       'app/layouts/**/*.{js,ts,mjs,jsx,tsx,vue}',
       'app/middleware/**/*.{js,ts,mjs,jsx,tsx,vue}',
       'app/plugins/**/*.{js,ts,mjs,jsx,tsx,vue}',
+      'app/composables/**/*.{js,ts,mjs,jsx,tsx,vue}',
       'server/api/**/*.{js,ts,mjs}',
       'server/routes/**/*.{js,ts,mjs}',
       'server/middleware/**/*.{js,ts,mjs}',

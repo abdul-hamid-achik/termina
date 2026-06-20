@@ -39,6 +39,14 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    // Public (client-exposed) — the WS + API origins for the Vercel frontend →
+    // DigitalOcean WS server split. Empty string = same-origin (dev +
+    // single-instance DO). Set NUXT_PUBLIC_WS_URL / NUXT_PUBLIC_API_URL in prod
+    // to point the Vercel SPA at the DO server.
+    public: {
+      wsUrl: '',
+      apiUrl: '',
+    },
     session: {
       password: '',
       cookie: {

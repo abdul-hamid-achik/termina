@@ -1,0 +1,11 @@
+node_modules
+.nuxt
+.histoire
+coverage
+tests
+.git
+.github
+.env
+.env.*
+*.log
+e2e-dev-server.log
