@@ -16,6 +16,7 @@ import {
   sendToPeer,
   getInstanceId,
   PLAYER_LOCATION_KEY,
+  GAME_OWNER_KEY,
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
 import { wsLog } from '~~/server/utils/log'
@@ -276,6 +277,31 @@ export default defineWebSocketHandler({
                   type: 'events',
                   tick: payload.tick,
                   events: payload.events,
+                }),
+              )
+            }
+          } else {
+            // Game not live on this instance. Check if another instance owns
+            // it (multi-instance). If so, tell the client the game is on a
+            // different server — with sticky sessions this is rare.
+            let owner: string | null = null
+            try {
+              const rt = getGameRuntime()
+              if (rt) owner = Effect.runSync(rt.redisService.hget(GAME_OWNER_KEY, parsed.gameId))
+            } catch {
+              // Redis unavailable — skip.
+            }
+            if (owner && owner !== getInstanceId()) {
+              wsLog.info('Game owned by another instance', {
+                playerId: ctx.playerId,
+                gameId: parsed.gameId,
+                ownerInstance: owner,
+              })
+              peer.send(
+                JSON.stringify({
+                  type: 'game_not_found',
+                  gameId: parsed.gameId,
+                  message: 'Game is on a different server instance',
                 }),
               )
             }

@@ -48,8 +48,10 @@ import {
   clearPlayerGame,
   hasPeer,
   setInstanceId,
+  getInstanceId,
   configureRelay,
   PLAYER_LOCATION_KEY,
+  GAME_OWNER_KEY,
 } from '~~/server/services/PeerRegistry'
 import type { ServerMessage } from '~~/shared/types/protocol'
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
@@ -170,6 +172,31 @@ function registerLiveGame(
   stateManager: ReturnType<typeof createInMemoryStateManager>,
 ): void {
   liveGames.set(gameId, { stateManager, recentEvents: [], lastTickAt: Date.now() })
+  // Claim ownership in Redis so other instances know this game lives here.
+  // Best-effort — single-instance mode has no other instance to care.
+  const instanceId = getInstanceId()
+  if (instanceId) {
+    const rt = _runtime
+    if (rt) {
+      try {
+        Effect.runSync(rt.redisService.hset(GAME_OWNER_KEY, gameId, instanceId))
+      } catch {
+        // Redis unavailable — local-only ownership is fine for single-instance.
+      }
+    }
+  }
+}
+
+/** Release game ownership in Redis (on game over / cleanup). */
+function releaseGameOwnership(gameId: string): void {
+  const rt = _runtime
+  if (rt) {
+    try {
+      Effect.runSync(rt.redisService.hdel(GAME_OWNER_KEY, gameId))
+    } catch {
+      // Redis unavailable — skip.
+    }
+  }
 }
 
 function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
@@ -186,6 +213,11 @@ function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
  * Build the payload for a reconnecting player: the current vision-filtered
  * state plus the visible events they missed since `sinceTick` (exclusive).
  * Returns null if the game isn't live on this instance.
+ *
+ * Multi-instance: when null is returned, the caller can HGET
+ * termina:game_owner to find which instance owns the game. With sticky
+ * sessions (DO App Platform default), the player is routed to the owning
+ * instance so this is rarely needed.
  */
 export function getReconnectPayload(
   gameId: string,
@@ -223,6 +255,22 @@ export function getReconnectPayload(
 
 export function getGameRuntime(): GameRuntime | null {
   return _runtime
+}
+
+/**
+ * Look up which instance owns a game (multi-instance). Returns the instance
+ * ID, or null if the game isn't registered in Redis. In single-instance mode
+ * this always returns null (no other instance to relay to) — the caller should
+ * fall back to the local liveGames lookup.
+ */
+export async function getGameOwner(gameId: string): Promise<string | null> {
+  const rt = _runtime
+  if (!rt) return null
+  try {
+    return await Effect.runSync(rt.redisService.hget(GAME_OWNER_KEY, gameId))
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -354,6 +402,7 @@ export function stopDevGame(gameId: string): void {
   const runtime = _runtime
   if (!runtime) return
   liveGames.delete(gameId)
+  releaseGameOwnership(gameId)
   _devGameLoops.delete(gameId)
   cleanupGame(gameId)
   // Interrupt the running loop fiber (no-op for manual games / already-stopped).
@@ -441,6 +490,7 @@ function reapStaleLiveGames(): void {
     }
     cleanupGame(gameId)
     liveGames.delete(gameId)
+    releaseGameOwnership(gameId)
   }
 }
 
@@ -742,6 +792,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         cleanupGame(gId)
         clearGameSpectators(gId)
         liveGames.delete(gId)
+        releaseGameOwnership(gId)
         // Leave the snapshot + action log behind so PostGame can show a replay
         // link. The Redis TTL (8h) cleans them up; the resume-on-boot path
         // already skips ended-phase snapshots.

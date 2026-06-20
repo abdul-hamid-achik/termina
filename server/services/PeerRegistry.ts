@@ -87,6 +87,9 @@ export function sendToPeer(playerId: string, message: ServerMessage): boolean {
 /** Redis key for the player→instance location hash. */
 export const PLAYER_LOCATION_KEY = 'termina:player_location'
 
+/** Redis key for the game→instance ownership hash (which instance runs the loop). */
+export const GAME_OWNER_KEY = 'termina:game_owner'
+
 /** This instance's unique ID (generated on boot). */
 let _instanceId: string | null = null
 
