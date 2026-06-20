@@ -40,6 +40,14 @@ vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
   return 0
 })
 
+const mockStorage = new Map<string, string>()
+vi.stubGlobal('localStorage', {
+  getItem: vi.fn((key: string) => mockStorage.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => void mockStorage.set(key, value)),
+  removeItem: vi.fn((key: string) => void mockStorage.delete(key)),
+  clear: vi.fn(() => void mockStorage.clear()),
+})
+
 import GameScreen from '../../../app/components/game/GameScreen.vue'
 
 // Stubs for every Nuxt auto-imported child (vitest has no auto-import). The
@@ -78,7 +86,10 @@ const stubs = {
   },
   KillFeed: true,
   HeroStatus: true,
-  ZonePanel: true,
+  ZonePanel: {
+    name: 'ZonePanel',
+    template: '<div data-testid="zone-panel" />',
+  },
   AsciiMap: true,
   Scoreboard: true,
   ItemShop: true,
@@ -105,7 +116,9 @@ function seedActiveGame() {
 
 beforeEach(() => {
   setActivePinia(createPinia())
+  mockStorage.clear()
   for (const spy of Object.values(socketSpies)) spy.mockClear()
+  vi.mocked(localStorage.clear).mockClear()
 })
 
 afterEach(() => {
@@ -158,6 +171,16 @@ describe('GameScreen', () => {
     })
 
     describe('HUD layout (setting A)', () => {
+      it('keeps the Zone panel in the left column instead of the right rail', () => {
+        localStorage.clear()
+        seedActiveGame()
+        const wrapper = mountGameScreen()
+
+        expect(wrapper.find('.game-grid__war [data-testid="zone-panel"]').exists()).toBe(true)
+        expect(wrapper.find('.game-grid__rail [data-testid="zone-panel"]').exists()).toBe(false)
+        wrapper.unmount()
+      })
+
       it('defaults to classic: combat log in the center, map a rail widget', () => {
         localStorage.clear()
         seedActiveGame()

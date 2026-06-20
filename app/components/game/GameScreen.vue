@@ -1,5 +1,24 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import AnnouncementToast from '~/components/game/AnnouncementToast.vue'
+import AsciiMap from '~/components/game/AsciiMap.vue'
+import CommandInput from '~/components/game/CommandInput.vue'
+import DamageFloat, { type DamageFloatEntry } from '~/components/game/DamageFloat.vue'
+import FocusBanner from '~/components/game/FocusBanner.vue'
+import GameStateBar from '~/components/game/GameStateBar.vue'
+import HeroStatus from '~/components/game/HeroStatus.vue'
+import InventoryBar from '~/components/game/InventoryBar.vue'
+import ItemShop from '~/components/game/ItemShop.vue'
+import KillFeed from '~/components/game/KillFeed.vue'
+import QuickBuy from '~/components/game/QuickBuy.vue'
+import Scoreboard from '~/components/game/Scoreboard.vue'
+import TalentPicker from '~/components/game/TalentPicker.vue'
+import TickTheater from '~/components/game/TickTheater.vue'
+import TutorialHint from '~/components/game/TutorialHint.vue'
+import WarRoom from '~/components/game/WarRoom.vue'
+import ZonePanel from '~/components/game/ZonePanel.vue'
+import PostGame from '~/components/lobby/PostGame.vue'
+import TerminalPanel from '~/components/ui/TerminalPanel.vue'
 import { useGameStore } from '~/stores/game'
 import { useSettingsStore } from '~/stores/settings'
 import { useGameSocket } from '~/composables/useGameSocket'
@@ -23,7 +42,6 @@ import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { ITEMS, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import { TALENT_TREES } from '~~/shared/constants/talents'
 import type { TowerState } from '~~/shared/types/game'
-import type { DamageFloatEntry } from '~/components/game/DamageFloat.vue'
 import { uiLog } from '~/utils/logger'
 import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
 import {
@@ -1213,8 +1231,7 @@ function handleReturnToMenu() {
     <!-- Critical-HP red vignette pulse over the whole screen -->
     <div
       v-if="heroCritical"
-      class="anim-glow-pulse pointer-events-none absolute inset-0 z-[15]"
-      style="box-shadow: inset 0 0 120px rgba(255, 78, 110, 0.55)"
+      class="critical-vignette anim-glow-pulse pointer-events-none absolute inset-0 z-[15]"
       aria-hidden="true"
     />
 
@@ -1247,10 +1264,33 @@ function handleReturnToMenu() {
       <FocusBanner v-if="settings.hud.focusBanner" />
     </div>
 
-    <!-- War Room: strategic dashboard (left) -->
-    <TerminalPanel title="War Room" class="game-grid__war min-h-0">
-      <WarRoom />
-    </TerminalPanel>
+    <!-- Left column: current-zone tactics (top) + strategic War Room (below).
+         Zone lives here — not the right rail — so it can't be squeezed to zero
+         height between the fixed-size Hero Status and Map panels. It is capped
+         (max-h) + shrink-0 so a busy zone scrolls internally instead of starving
+         the War Room, and a quiet zone stays compact. -->
+    <div class="game-grid__war flex min-h-0 flex-col gap-1">
+      <TerminalPanel
+        :title="`Zone: ${currentZoneName}`"
+        :variant="zoneDanger ? 'danger' : 'default'"
+        class="max-h-[45%] shrink-0"
+      >
+        <ZonePanel
+          :zone-name="currentZoneName"
+          :zone-id="playerZone"
+          :player-team="gameStore.player?.team ?? 'radiant'"
+          :enemies="gameStore.nearbyEnemies"
+          :allies="gameStore.nearbyAllies"
+          :creeps="zoneCreeps"
+          :neutrals="zoneNeutrals"
+          :tower="zoneTower"
+          @command="handleCommand"
+        />
+      </TerminalPanel>
+      <TerminalPanel title="War Room" class="game-grid__warroom min-h-0 flex-1">
+        <WarRoom />
+      </TerminalPanel>
+    </div>
 
     <!-- Center stage. Classic: the combat narrative is the centerpiece.
          Map-centric: the tactical map takes the center, full-size. -->
@@ -1281,7 +1321,7 @@ function handleReturnToMenu() {
       </div>
     </TerminalPanel>
 
-    <!-- Right rail: hero / current-zone fight / compact map (classic) or the
+    <!-- Right rail: hero status + compact map (classic) or the
          demoted combat-log ticker (map-centric). -->
     <div class="game-grid__rail flex min-h-0 flex-col gap-1 overflow-y-auto">
       <TerminalPanel
@@ -1307,24 +1347,6 @@ function handleReturnToMenu() {
         </div>
       </TerminalPanel>
 
-      <TerminalPanel
-        :title="`Zone: ${currentZoneName}`"
-        :variant="zoneDanger ? 'danger' : 'default'"
-        class="min-h-0 flex-1"
-      >
-        <ZonePanel
-          :zone-name="currentZoneName"
-          :zone-id="playerZone"
-          :player-team="gameStore.player?.team ?? 'radiant'"
-          :enemies="gameStore.nearbyEnemies"
-          :allies="gameStore.nearbyAllies"
-          :creeps="zoneCreeps"
-          :neutrals="zoneNeutrals"
-          :tower="zoneTower"
-          @command="handleCommand"
-        />
-      </TerminalPanel>
-
       <!-- Classic: compact map in the rail. Map-centric: the map is in the
            center, so the rail carries the demoted combat-log ticker. -->
       <TerminalPanel v-if="layout === 'classic'" title="Map" class="shrink-0">
@@ -1337,7 +1359,7 @@ function handleReturnToMenu() {
           @zone-click="handleZoneClick"
         />
       </TerminalPanel>
-      <TerminalPanel v-else title="Combat Log" class="min-h-0 flex-1" data-testid="rail-log">
+      <TerminalPanel v-else title="Combat Log" class="min-h-[8rem] flex-1" data-testid="rail-log">
         <TickTheater
           :events="combatEvents"
           :status="theaterStatus"
@@ -1354,7 +1376,7 @@ function handleReturnToMenu() {
     <!-- Scoreboard overlay (Tab hold on desktop, SCORE button on mobile) -->
     <div
       v-if="showScoreboard && gameStore.teams"
-      class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 p-2 anim-fade-in-up"
+      class="absolute inset-0 z-30 flex items-center justify-center bg-bg-overlay/80 p-2 anim-fade-in-up"
       data-testid="scoreboard-overlay"
       @click.self="showScoreboard = false"
     >
@@ -1375,7 +1397,10 @@ function handleReturnToMenu() {
     </div>
 
     <!-- Item Shop overlay -->
-    <div v-if="showShop" class="absolute inset-0 z-30 flex items-center justify-center bg-black/80">
+    <div
+      v-if="showShop"
+      class="absolute inset-0 z-30 flex items-center justify-center bg-bg-overlay/80"
+    >
       <div
         class="flex max-h-[85vh] w-full max-w-2xl flex-col border border-border bg-bg-primary p-4"
       >
@@ -1475,22 +1500,28 @@ function handleReturnToMenu() {
 </template>
 
 <style scoped>
-/* Desktop: three columns — War Room (left) | Tick Theater / combat log
-   (center, the focal surface) | hero+zone+map rail (right). The log is now the
+/* Desktop: three columns — Zone + War Room (left) | Tick Theater / combat log
+   (center, the focal surface) | hero+map/log rail (right). The log is now the
    largest single panel; the near-static map is demoted to a compact rail widget. */
 .game-grid {
   display: grid;
   grid-template-columns: minmax(190px, 2.4fr) minmax(0, 5fr) minmax(244px, 3.3fr);
   grid-template-rows: auto 1fr auto;
   gap: 2px;
+  overflow: hidden;
   /* dvh tracks the real visible height on mobile (URL bar collapse); vh is the fallback */
   height: 100vh;
   height: 100dvh;
 }
 
+.game-grid > * {
+  min-width: 0;
+}
+
 .game-grid__bar {
   grid-column: 1 / -1;
   grid-row: 1;
+  overflow: hidden;
 }
 .game-grid__war {
   grid-column: 1;
@@ -1519,11 +1550,13 @@ function handleReturnToMenu() {
   gap: 0;
 }
 
-.game-grid[data-vitals='on'] .game-grid__war {
+/* Dim only the strategic War Room — never the Zone panel above it, which carries
+   the tutorial-critical last-hit / attack affordances and must stay legible. */
+.game-grid[data-vitals='on'] .game-grid__warroom {
   opacity: 0.6;
   transition: opacity 0.15s;
 }
-.game-grid[data-vitals='on'] .game-grid__war:hover {
+.game-grid[data-vitals='on'] .game-grid__warroom:hover {
   opacity: 1;
 }
 .game-grid[data-vitals='on'] .hud-action-btn {
@@ -1553,15 +1586,15 @@ function handleReturnToMenu() {
   position: absolute;
   inset: 0;
   z-index: 20;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgb(var(--bg-overlay) / 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 @media (max-width: 1024px) {
-  /* Tablet: combat log spans full width as the primary surface; War Room and
-     the hero/zone/map rail share the row beneath it. */
+  /* Tablet: combat log spans full width as the primary surface; Zone + War Room
+     share the left column beneath it, while hero/map live in the right rail. */
   .game-grid {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto minmax(220px, 1.7fr) minmax(170px, 1fr) auto;
@@ -1589,13 +1622,13 @@ function handleReturnToMenu() {
 }
 
 @media (max-width: 640px) {
-  /* Phone: single column, log still primary directly under the bar; the rail
-     (hero/zone/map) and War Room stack below, each scrolling internally. */
+  /* Phone: single column, log still primary directly under the bar; hero/map
+     rail stacks above the Zone + War Room column, each scrolling internally. */
   .game-grid {
     grid-template-columns: 1fr;
     grid-template-rows:
       auto minmax(200px, 1.9fr) minmax(120px, 1.1fr)
-      minmax(96px, 0.9fr) auto;
+      minmax(170px, 1fr) auto;
     gap: 1px;
   }
   .game-grid__bar {
