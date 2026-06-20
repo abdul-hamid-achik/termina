@@ -66,6 +66,22 @@ import type { RedisServiceApi } from '~~/server/services/RedisService'
 /** Pending actions collected during the action window. */
 const gameActionQueues = new Map<string, PlayerAction[]>()
 
+/** Redis key for cross-instance action relay: termina:actions:${gameId} */
+const ACTIONS_KEY_PREFIX = 'termina:actions:'
+
+/** Redis service for cross-instance action relay (set on game loop start). */
+let _actionRedis: {
+  lpush: (key: string, value: string) => Effect.Effect<void>
+  lrange: (key: string, start: number, stop: number) => Effect.Effect<string[]>
+  del: (key: string) => Effect.Effect<void>
+} | null = null
+
+/** Wire up the Redis service for cross-instance action relay (P4 Phase 5).
+ * In single-instance mode, this stays null and actions are purely in-process. */
+export function configureActionRelay(redis: typeof _actionRedis): void {
+  _actionRedis = redis
+}
+
 // ── Assist tracking ────────────────────────────────────────────
 // Kill/assist credit comes from actual damage dealt within a recent window,
 // not just attack commands — so DoTs, abilities, and item procs count.
@@ -106,15 +122,14 @@ function getDamageContributors(gameId: string, victimId: string): string[] {
   return [...(recentHeroDamage.get(gameId)?.get(victimId)?.keys() ?? [])]
 }
 
-/** Submit an action for the current tick. */
+/** Submit an action for the current tick. Stores locally; if a Redis relay
+ * is configured (multi-instance), also LPUSHes for cross-instance drainage. */
 export function submitAction(gameId: string, playerId: string, command: Command): void {
   let queue = gameActionQueues.get(gameId)
   if (!queue) {
     queue = []
     gameActionQueues.set(gameId, queue)
   }
-  // Only one action per player per tick — second submissions overwrite the
-  // first. Log the loss so it's observable instead of silent.
   const existing = queue.findIndex((a) => a.playerId === playerId)
   if (existing >= 0) {
     const dropped = queue[existing]!.command.type
@@ -128,13 +143,46 @@ export function submitAction(gameId: string, playerId: string, command: Command)
   } else {
     queue.push({ playerId, command })
   }
+  // Cross-instance relay (P4 Phase 5): LPUSH so the owning instance can drain.
+  // Best-effort — if Redis is down, the local queue is the fallback.
+  if (_actionRedis) {
+    try {
+      Effect.runSync(
+        _actionRedis.lpush(`${ACTIONS_KEY_PREFIX}${gameId}`, JSON.stringify({ playerId, command })),
+      )
+    } catch {
+      // Redis unavailable — local queue is sufficient.
+    }
+  }
 }
 
-/** Drain all queued actions for a game. */
+/** Drain all queued actions for a game. Drains both the local in-process
+ * queue AND the Redis relay queue (if configured). */
 function drainActions(gameId: string): PlayerAction[] {
-  const queue = gameActionQueues.get(gameId) ?? []
+  const local = gameActionQueues.get(gameId) ?? []
   gameActionQueues.set(gameId, [])
-  return queue
+
+  // Cross-instance drain: LRANGE + DEL the Redis queue.
+  if (_actionRedis) {
+    try {
+      const key = `${ACTIONS_KEY_PREFIX}${gameId}`
+      const raw = Effect.runSync(_actionRedis.lrange(key, 0, -1))
+      if (raw.length > 0) {
+        Effect.runSync(_actionRedis.del(key))
+        const remote = raw.map((r) => JSON.parse(r) as PlayerAction)
+        // Merge: deduplicate by playerId (local takes priority — same-instance
+        // actions are newer since they bypass Redis latency).
+        const seen = new Set(local.map((a) => a.playerId))
+        for (const a of remote) {
+          if (!seen.has(a.playerId)) local.push(a)
+        }
+      }
+    } catch {
+      // Redis unavailable — local queue is the fallback.
+    }
+  }
+
+  return local
 }
 
 // ── Tick processing ────────────────────────────────────────────
@@ -545,6 +593,14 @@ function buildGameLoop(
     Effect.ensuring(
       Effect.sync(() => {
         gameActionQueues.delete(gameId)
+        // Clean up the Redis action relay queue (P4 Phase 5).
+        if (_actionRedis) {
+          try {
+            Effect.runSync(_actionRedis.del(`${ACTIONS_KEY_PREFIX}${gameId}`))
+          } catch {
+            /* best-effort */
+          }
+        }
         activeGames.delete(gameId)
         recentHeroDamage.delete(gameId)
       }),

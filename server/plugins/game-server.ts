@@ -22,6 +22,7 @@ import {
   startGameLoop,
   stopGameLoop,
   runOneTick,
+  configureActionRelay,
   type GameCallbacks,
 } from '~~/server/game/engine/GameLoop'
 import {
@@ -542,7 +543,15 @@ export default defineNitroPlugin(async (nitroApp) => {
     }),
   )
 
-  // Start matchmaking loop
+  // Wire up cross-instance action relay (P4 Phase 5). In single-instance mode
+  // this lets actions be LPUSHed to Redis; the owning instance drains both
+  // local + Redis queues each tick. Best-effort — Redis failures fall back to
+  // the local queue.
+  configureActionRelay({
+    lpush: (key, value) => redis.lpush(key, value),
+    lrange: (key, start, stop) => redis.lrange(key, start, stop),
+    del: (key) => redis.del(key),
+  })
   const { startMatchmakingLoop } = await import('~~/server/game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
 
