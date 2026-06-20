@@ -4,12 +4,31 @@
 //  - installs Pinia so store-coupled components (WarRoom, GameScreen) can call
 //    useGameStore() — seed state in the story via direct ref assignment
 //    (store.tick = …, store.allPlayers = …) or the store's updateFromTick action;
+//  - provides a tiny Node-side localStorage shim for setup-time store access,
+//    while leaving the browser preview's real localStorage alone;
 //  - shims the few Nuxt auto-imports/globals Histoire's standalone (non-Nuxt)
 //    runtime lacks: a <NuxtLink> passthrough and a no-op navigateTo.
 import './app/assets/css/terminal.css'
 import { defineSetupVue3 } from '@histoire/plugin-vue'
 import { createPinia } from 'pinia'
 import { h } from 'vue'
+
+if (typeof window === 'undefined') {
+  const storage = new Map<string, string>()
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      get length() {
+        return storage.size
+      },
+      clear: () => storage.clear(),
+      getItem: (key: string) => storage.get(key) ?? null,
+      key: (index: number) => Array.from(storage.keys())[index] ?? null,
+      removeItem: (key: string) => void storage.delete(key),
+      setItem: (key: string, value: string) => void storage.set(key, value),
+    },
+  })
+}
 
 // `navigateTo` is referenced bare (Nuxt auto-import) in a couple of click
 // handlers; define it on the global so those references resolve to a no-op in

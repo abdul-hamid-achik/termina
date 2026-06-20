@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
 import type { KillFeedEntry, KillCategory } from '~/utils/combatNarrative'
 
 /**

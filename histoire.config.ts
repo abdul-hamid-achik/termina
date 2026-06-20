@@ -27,6 +27,7 @@ export default defineConfig({
     plugins: [vue(), tailwindcss()],
     resolve: {
       alias: {
+        '@vue/devtools-api': 'vue-devtools-stub',
         '~~': path.resolve(__dirname),
         '~': path.resolve(__dirname, 'app'),
         '@': path.resolve(__dirname, 'app'),

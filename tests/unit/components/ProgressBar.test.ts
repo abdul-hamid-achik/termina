@@ -6,11 +6,11 @@ const FILLED = '█'
 const EMPTY = '░'
 
 /**
- * The █/░ bar lives in the span with the tight `tracking-[-0.05em]` class
- * (the surrounding spans are the outer wrapper and the `[` / `]` brackets).
+ * The █/░ bar lives in the fill span; the surrounding spans are the outer
+ * wrapper and the `[` / `]` brackets.
  */
 function barText(wrapper: ReturnType<typeof mount>): string {
-  return wrapper.find('span.tracking-\\[-0\\.05em\\]').text()
+  return wrapper.get('[data-testid="progress-bar-fill"]').text()
 }
 
 function mountBar(props: Record<string, unknown>) {
@@ -84,7 +84,7 @@ describe('ProgressBar', () => {
   })
 
   describe('color', () => {
-    // NOTE: the component sets `color: rgb(var(--color-<x>, <x>))` inline.
+    // NOTE: the component sets `color: rgb(var(--color-<token>))` inline.
     // happy-dom rejects that as an invalid CSS value and drops the style attr,
     // so we can't assert on the inline style; instead we assert the color prop
     // is accepted and never changes the bar geometry (it's purely cosmetic).
@@ -103,7 +103,7 @@ describe('ProgressBar', () => {
   })
 
   describe('danger threshold', () => {
-    const span = (w: ReturnType<typeof mount>) => w.find('span.tracking-\\[-0\\.05em\\]')
+    const span = (w: ReturnType<typeof mount>) => w.get('[data-testid="progress-bar-fill"]')
 
     it('flags danger at/below the threshold while alive', () => {
       const w = mountBar({ value: 100, max: 620, dangerBelow: 0.25 }) // ~16% < 25%

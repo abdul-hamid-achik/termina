@@ -53,6 +53,18 @@ export const HUD_PRESETS: Record<Exclude<HudPreset, 'custom'>, HudSettings> = {
 
 const DEFAULT_HUD: HudSettings = { ...HUD_PRESETS.standard }
 
+function getStorage(): Storage | null {
+  if (import.meta.server) return null
+  if (typeof window !== 'undefined') return window.localStorage
+
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  if (!descriptor || !('value' in descriptor)) return null
+  const storage = descriptor.value
+  return storage && typeof storage.getItem === 'function' && typeof storage.setItem === 'function'
+    ? (storage as Storage)
+    : null
+}
+
 /** Which named preset (if any) the current HUD settings exactly match. */
 export function detectHudPreset(h: HudSettings): HudPreset {
   for (const name of Object.keys(HUD_PRESETS) as Array<Exclude<HudPreset, 'custom'>>) {
@@ -91,9 +103,10 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function load() {
-    if (import.meta.server) return
+    const storage = getStorage()
+    if (!storage) return
     try {
-      const raw = localStorage.getItem('termina:settings')
+      const raw = storage.getItem('termina:settings')
       if (!raw) return
       const data = JSON.parse(raw)
       if (typeof data.audioEnabled === 'boolean') audioEnabled.value = data.audioEnabled
@@ -119,18 +132,23 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function save() {
-    if (import.meta.server) return
-    localStorage.setItem(
-      'termina:settings',
-      JSON.stringify({
-        audioEnabled: audioEnabled.value,
-        audioVolume: audioVolume.value,
-        quickCastEnabled: quickCastEnabled.value,
-        theme: theme.value,
-        fontSize: fontSize.value,
-        hud: hud.value,
-      }),
-    )
+    const storage = getStorage()
+    if (!storage) return
+    try {
+      storage.setItem(
+        'termina:settings',
+        JSON.stringify({
+          audioEnabled: audioEnabled.value,
+          audioVolume: audioVolume.value,
+          quickCastEnabled: quickCastEnabled.value,
+          theme: theme.value,
+          fontSize: fontSize.value,
+          hud: hud.value,
+        }),
+      )
+    } catch {
+      /* ignore unavailable storage */
+    }
   }
 
   // Auto-persist on change

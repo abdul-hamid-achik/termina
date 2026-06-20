@@ -20,7 +20,7 @@
     "test:e2e:ci": "cairn run tests/e2e/flows --config tests/e2e/cairntrace.config.yml --cold-start --backend playwright --parallel 3 --junit tests/e2e/junit.xml --stamp-if-green",
     "test:coverage": "vitest run --coverage",
     "story:dev": "histoire dev",
-    "story:build": "histoire build",
+    "story:build": "CHOKIDAR_USEPOLLING=1 histoire build",
     "story:preview": "histoire preview",
     "test:api": "hitspec run collections/ --no-history",
     "test:db": "docker compose up -d --wait && (docker compose exec -T postgres psql -U termina -c 'CREATE DATABASE termina_test' 2>/dev/null || true) && (docker compose exec -T redis redis-cli -n 1 flushdb || true) && DATABASE_URL=postgresql://termina:termina@localhost:5433/termina_test drizzle-kit push --force",
@@ -51,7 +51,7 @@
     "postgres": "^3.4.0",
     "reka-ui": "^2.1.0",
     "vue": "^3.5.0",
-    "vue-router": "^4.4.0",
+    "vue-router": "^5.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

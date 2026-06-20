@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
+import ProgressBar from '~/components/ui/ProgressBar.vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import { displayBuffs } from '~/utils/buffs'

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
+import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
 import type { CombatLine, CombatLineType, Salience } from '~/utils/combatLog'
 
 const props = defineProps<{
