@@ -53,7 +53,10 @@ vi.mock('../../../server/services/PeerRegistry', () => ({
 }))
 
 function mockRedis() {
-  const store: { zadd: [string, number, string][] } = { zadd: [] }
+  const store: { zadd: [string, number, string][]; hset: Map<string, string> } = {
+    zadd: [],
+    hset: new Map(),
+  }
 
   return {
     get: vi.fn(() => Effect.succeed(null)),
@@ -68,6 +71,15 @@ function mockRedis() {
     zrem: vi.fn(() => Effect.void),
     zcard: vi.fn(() => Effect.succeed(store.zadd.length)),
     zrangebyscore: vi.fn(() => Effect.succeed(store.zadd.map(([, , member]) => member))),
+    hset: vi.fn((key: string, field: string, value: string) => {
+      store.hset.set(`${key}:${field}`, value)
+      return Effect.void
+    }),
+    hget: vi.fn((key: string, field: string) => {
+      const v = store.hset.get(`${key}:${field}`)
+      return Effect.succeed(v ?? null)
+    }),
+    hdel: vi.fn(() => Effect.void),
     setnx: vi.fn(() => Effect.succeed(1)),
     getdel: vi.fn(() => Effect.succeed('1')),
     eval: vi.fn(() => Effect.succeed('OK')),
@@ -128,8 +140,12 @@ describe('Queue', () => {
 
       expect(redis.eval).toHaveBeenCalledWith(
         expect.any(String),
-        ['matchmaking:queue_times:p1:ranked_5v5', 'matchmaking:queue:ranked_5v5'],
-        ['p1', 1200, JSON.stringify(entry), expect.any(String)],
+        [
+          'matchmaking:queue_times:p1:ranked_5v5',
+          'matchmaking:queue:ranked_5v5',
+          'matchmaking:queue_members',
+        ],
+        ['p1', 1200, JSON.stringify(entry), expect.any(String), 'ranked_5v5'],
       )
     })
 
@@ -139,8 +155,12 @@ describe('Queue', () => {
 
       expect(redis.eval).toHaveBeenCalledWith(
         expect.any(String),
-        ['matchmaking:queue_times:p2:ranked_5v5', 'matchmaking:queue:ranked_5v5'],
-        ['p2', 1000, JSON.stringify(entry), '12345'],
+        [
+          'matchmaking:queue_times:p2:ranked_5v5',
+          'matchmaking:queue:ranked_5v5',
+          'matchmaking:queue_members',
+        ],
+        ['p2', 1000, JSON.stringify(entry), '12345', 'ranked_5v5'],
       )
     })
 
@@ -154,17 +174,22 @@ describe('Queue', () => {
   })
 
   describe('leaveQueue', () => {
-    it('removes player entry from Redis sorted set', async () => {
+    it('removes player entry from Redis sorted set via the member hash (O(1))', async () => {
       const entry = makeEntry({ playerId: 'leaving_player', mmr: 1000 })
-      redis.zrangebyscore.mockReturnValue(Effect.succeed([JSON.stringify(entry)]))
+      const member = JSON.stringify(entry)
+      redis.hget.mockReturnValue(Effect.succeed(member))
 
       await Effect.runPromise(leaveQueue(redis as never, 'leaving_player', 1000))
 
-      expect(redis.zrem).toHaveBeenCalledWith('matchmaking:queue:ranked_5v5', JSON.stringify(entry))
+      expect(redis.zrem).toHaveBeenCalledWith('matchmaking:queue:ranked_5v5', member)
+      expect(redis.hdel).toHaveBeenCalledWith(
+        'matchmaking:queue_members',
+        'leaving_player:ranked_5v5',
+      )
     })
 
     it('cleans up queue time key', async () => {
-      redis.zrangebyscore.mockReturnValue(Effect.succeed([]))
+      redis.hget.mockReturnValue(Effect.succeed(null))
 
       await Effect.runPromise(leaveQueue(redis as never, 'p_leave', 1000))
 
@@ -172,37 +197,31 @@ describe('Queue', () => {
     })
 
     it('handles player not found in queue gracefully', async () => {
-      redis.zrangebyscore.mockReturnValue(Effect.succeed([]))
+      redis.hget.mockReturnValue(Effect.succeed(null))
 
       await expect(
         Effect.runPromise(leaveQueue(redis as never, 'nonexistent', 1000)),
       ).resolves.toBeUndefined()
     })
 
-    it('only removes the matching player entry', async () => {
-      const entry1 = makeEntry({ playerId: 'p1', mmr: 1000 })
-      const entry2 = makeEntry({ playerId: 'p2', mmr: 1010 })
-      redis.zrangebyscore.mockReturnValue(
-        Effect.succeed([JSON.stringify(entry1), JSON.stringify(entry2)]),
-      )
+    it('does not call zrem when the player has no member mapping', async () => {
+      redis.hget.mockReturnValue(Effect.succeed(null))
 
-      await Effect.runPromise(leaveQueue(redis as never, 'p1', 1000))
+      await Effect.runPromise(leaveQueue(redis as never, 'ghost', 1000))
 
-      expect(redis.zrem).toHaveBeenCalledTimes(1)
-      expect(redis.zrem).toHaveBeenCalledWith(
-        'matchmaking:queue:ranked_5v5',
-        JSON.stringify(entry1),
-      )
+      expect(redis.zrem).not.toHaveBeenCalled()
     })
 
-    it('targets the mode-specific queue + time keys when a mode is given', async () => {
+    it('targets the mode-specific queue + time + member keys when a mode is given', async () => {
       const entry = makeEntry({ playerId: 'p_q', mode: 'quick_3v3' })
-      redis.zrangebyscore.mockReturnValue(Effect.succeed([JSON.stringify(entry)]))
+      const member = JSON.stringify(entry)
+      redis.hget.mockReturnValue(Effect.succeed(member))
 
       await Effect.runPromise(leaveQueue(redis as never, 'p_q', 1000, 'quick_3v3'))
 
-      expect(redis.zrem).toHaveBeenCalledWith('matchmaking:queue:quick_3v3', JSON.stringify(entry))
+      expect(redis.zrem).toHaveBeenCalledWith('matchmaking:queue:quick_3v3', member)
       expect(redis.del).toHaveBeenCalledWith('matchmaking:queue_times:p_q:quick_3v3')
+      expect(redis.hdel).toHaveBeenCalledWith('matchmaking:queue_members', 'p_q:quick_3v3')
     })
   })
 
@@ -352,7 +371,13 @@ describe('Queue', () => {
       clearInterval(handle)
 
       expect(redis.setnx).toHaveBeenCalledWith('matchmaking:lock', expect.any(String), 5)
-      expect(redis.getdel).toHaveBeenCalledWith('matchmaking:lock')
+      // Lock release is now a Lua compare-and-delete (not getdel) so a TTL
+      // expiry + peer reacquire can't have our release steal their lock.
+      expect(redis.eval).toHaveBeenCalledWith(
+        expect.stringContaining("redis.call('del'"),
+        ['matchmaking:lock'],
+        [expect.any(String)],
+      )
     })
 
     it('should handle lock contention gracefully', async () => {
@@ -384,13 +409,18 @@ describe('Queue', () => {
       redis.zcard.mockReturnValue(Effect.succeed(10))
       redis.zrangebyscore.mockReturnValue(Effect.succeed(redis._store.zadd.map(([, , m]) => m)))
       redis.setnx = vi.fn(() => Effect.succeed(1))
-      redis.getdel = vi.fn(() => Effect.succeed('1'))
+      redis.eval = vi.fn(() => Effect.succeed(1))
 
       const handle = startMatchmakingLoop(redis as never, ws as never, db as never)
       vi.advanceTimersByTime(5000)
       clearInterval(handle)
 
-      expect(redis.getdel).toHaveBeenCalledWith('matchmaking:lock')
+      // Compare-and-delete Lua release (not getdel).
+      expect(redis.eval).toHaveBeenCalledWith(
+        expect.stringContaining("redis.call('del'"),
+        ['matchmaking:lock'],
+        [expect.any(String)],
+      )
     })
   })
 

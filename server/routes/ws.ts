@@ -30,6 +30,15 @@ const peerState = new WeakMap<object, PeerContext>()
 const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const lobbyDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
+/** Clear all pending disconnect/lobby timers. Called on Nitro shutdown so the
+ *  process can exit cleanly without orphaned setTimeout callbacks. */
+export function clearDisconnectTimers(): void {
+  for (const timer of disconnectTimers.values()) clearTimeout(timer)
+  for (const timer of lobbyDisconnectTimers.values()) clearTimeout(timer)
+  disconnectTimers.clear()
+  lobbyDisconnectTimers.clear()
+}
+
 const RECONNECT_WINDOW_MS = 60_000
 // Dev/e2e (`dev_*`) games get a much shorter window: the e2e browser disconnects
 // permanently at spec end and (almost) never reconnects, so a 60s window lets
@@ -424,6 +433,18 @@ export default defineWebSocketHandler({
           )
           break
         }
+        // Rate limit chat + pings to prevent spam (was unlimited)
+        if (!checkScopedRateLimit('chat', ctx.playerId)) {
+          wsLog.warn('Chat/ping rate limited', { playerId: ctx.playerId, gameId: ctx.gameId })
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'RATE_LIMITED',
+              message: 'Chat rate limited. Please slow down.',
+            }),
+          )
+          break
+        }
         const outMsg = { playerId: ctx.playerId, ...parsed }
         // Team chat and map pings are team-scoped: fanning them to the whole game
         // leaks your strategy and where you're looking to the enemy. 'all' chat
@@ -586,3 +607,15 @@ export default defineWebSocketHandler({
     wsLog.error('WebSocket error', { error })
   },
 })
+
+// Register a Nitro close hook to clear pending disconnect timers on shutdown
+// so the process exits cleanly without orphaned setTimeout callbacks.
+// Guarded for the vitest context (no Nitro runtime there).
+try {
+  const nitroApp = useNitroApp()
+  nitroApp.hooks.hook('close', () => {
+    clearDisconnectTimers()
+  })
+} catch {
+  // No Nitro app available (vitest) — skip the hook registration.
+}

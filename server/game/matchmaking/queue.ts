@@ -9,6 +9,10 @@ import { matchLog } from '~~/server/utils/log'
 
 const QUEUE_KEY = 'matchmaking:queue'
 const QUEUE_TIMES_KEY = 'matchmaking:queue_times'
+/** Hash mapping `${playerId}:${mode}` → the JSON member string in the sorted
+ *  set, so leaveQueue can zrem directly without scanning + parsing the MMR
+ *  window. O(1) leave instead of O(n). */
+const QUEUE_MEMBERS_KEY = 'matchmaking:queue_members'
 const MATCH_SIZE = 10
 const MATCHMAKING_INTERVAL_MS = 5000
 const BOT_FILL_WAIT_MS = 10_000
@@ -48,10 +52,12 @@ export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Eff
   const luaScript = `
     local timeKey = KEYS[1]
     local queueKey = KEYS[2]
+    local membersKey = KEYS[3]
     local playerId = ARGV[1]
     local score = tonumber(ARGV[2])
     local member = ARGV[3]
     local joinedAt = ARGV[4]
+    local mode = ARGV[5]
     
     if redis.call('EXISTS', timeKey) == 1 then
       return 'DUPLICATE'
@@ -59,14 +65,15 @@ export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Eff
     
     redis.call('SET', timeKey, joinedAt)
     redis.call('ZADD', queueKey, score, member)
+    redis.call('HSET', membersKey, playerId .. ':' .. mode, member)
     return 'OK'
   `
 
   return Effect.gen(function* () {
     const result = yield* redis.eval(
       luaScript,
-      [queueTimeKey, queueKey],
-      [entry.playerId, entry.mmr, data, String(entry.joinedAt)],
+      [queueTimeKey, queueKey, QUEUE_MEMBERS_KEY],
+      [entry.playerId, entry.mmr, data, String(entry.joinedAt), entry.mode],
     )
 
     if (result === 'DUPLICATE') {
@@ -82,18 +89,18 @@ export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Eff
 export function leaveQueue(
   redis: RedisServiceApi,
   playerId: string,
-  mmr: number,
+  _mmr: number,
   mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5',
 ): Effect.Effect<void> {
   const queueKey = `${QUEUE_KEY}:${mode}`
+  const memberField = `${playerId}:${mode}`
   return Effect.gen(function* () {
-    const entries = yield* redis.zrangebyscore(queueKey, mmr - 1000, mmr + 1000)
-    for (const raw of entries) {
-      const entry: QueueEntry = JSON.parse(raw)
-      if (entry.playerId === playerId) {
-        yield* redis.zrem(queueKey, raw)
-        break
-      }
+    // O(1) leave: look up the member string from the hash and zrem directly,
+    // instead of scanning + JSON.parsing the MMR window.
+    const member = yield* redis.hget(QUEUE_MEMBERS_KEY, memberField)
+    if (member) {
+      yield* redis.zrem(queueKey, member)
+      yield* redis.hdel(QUEUE_MEMBERS_KEY, memberField)
     }
     yield* redis.del(`${QUEUE_TIMES_KEY}:${playerId}:${mode}`)
     yield* Effect.logInfo('Player left queue').pipe(Effect.annotateLogs({ playerId }))
@@ -184,6 +191,7 @@ async function tryFormMatch(
             }
             for (const p of players) {
               yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}:${mode}`)
+              yield* redis.hdel(QUEUE_MEMBERS_KEY, `${p.playerId}:${mode}`)
             }
 
             createLobby(allPlayers, ws, redis, db)
@@ -221,6 +229,7 @@ async function tryFormMatch(
             }
             for (const p of group) {
               yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}:${mode}`)
+              yield* redis.hdel(QUEUE_MEMBERS_KEY, `${p.playerId}:${mode}`)
             }
 
             createLobby(group, ws, redis, db)
@@ -230,7 +239,14 @@ async function tryFormMatch(
         }
       }
     } finally {
-      yield* redis.getdel(MATCHMAKING_LOCK_KEY)
+      // Compare-and-delete: only release the lock if we still own it. The old
+      // getdel would delete another instance's lock if our TTL expired and a
+      // peer acquired it mid-run — a real correctness bug in multi-instance.
+      yield* redis.eval(
+        `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`,
+        [MATCHMAKING_LOCK_KEY],
+        [lockValue],
+      )
     }
   })
 

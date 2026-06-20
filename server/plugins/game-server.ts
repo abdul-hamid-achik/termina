@@ -153,6 +153,9 @@ const RECENT_EVENTS_CAP = 300
 interface LiveGameEntry {
   stateManager: ReturnType<typeof createInMemoryStateManager>
   recentEvents: GameEngineEvent[]
+  /** Wall-clock ms of the last tick broadcast — used by the reaper to detect
+   *  zombie games whose loop died without firing onGameOver. */
+  lastTickAt: number
 }
 
 const liveGames = new Map<string, LiveGameEntry>()
@@ -161,7 +164,7 @@ function registerLiveGame(
   gameId: string,
   stateManager: ReturnType<typeof createInMemoryStateManager>,
 ): void {
-  liveGames.set(gameId, { stateManager, recentEvents: [] })
+  liveGames.set(gameId, { stateManager, recentEvents: [], lastTickAt: Date.now() })
 }
 
 function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
@@ -171,6 +174,7 @@ function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
   if (entry.recentEvents.length > RECENT_EVENTS_CAP) {
     entry.recentEvents.splice(0, entry.recentEvents.length - RECENT_EVENTS_CAP)
   }
+  entry.lastTickAt = Date.now()
 }
 
 /**
@@ -397,6 +401,41 @@ function reapPeerlessDevGames(): void {
   }
 }
 
+// ── Production liveGames reaper ──────────────────────────────────
+// A game whose loop dies without firing onGameOver (fiber crash, ancient
+// never dies, bug) leaks forever in liveGames + recentEvents + bot combo
+// states. The dev reaper only touches dev_* games. This sweep runs every 60s
+// and force-cleans entries whose lastTickAt is stale beyond a grace window.
+const LIVE_GAME_STALE_MS = 120_000 // 2 min with no tick → presumed dead
+let _liveGameReaperTimer: ReturnType<typeof setInterval> | null = null
+
+function reapStaleLiveGames(): void {
+  const now = Date.now()
+  for (const [gameId, entry] of liveGames) {
+    // Dev games are handled by the dev reaper above.
+    if (gameId.startsWith('dev_')) continue
+    if (now - entry.lastTickAt < LIVE_GAME_STALE_MS) continue
+    gameLog.warn('Reaping stale live game (no tick for >2min)', {
+      gameId,
+      staleMs: now - entry.lastTickAt,
+    })
+    // Best-effort: read the state, mark it ended, clean up. The loop fiber is
+    // already presumed dead so there's nothing to interrupt.
+    try {
+      const state = Effect.runSync(entry.stateManager.getState(gameId))
+      if (state.phase !== 'ended') {
+        Effect.runSync(
+          entry.stateManager.updateState(gameId, () => ({ ...state, phase: 'ended' as const })),
+        )
+      }
+    } catch {
+      // State manager itself is broken — just drop the entry.
+    }
+    cleanupGame(gameId)
+    liveGames.delete(gameId)
+  }
+}
+
 export default defineNitroPlugin(async (nitroApp) => {
   // Populate the hero ability/passive registry up front. Each hero module also
   // self-registers on import, but the production bundle tree-shook those
@@ -448,6 +487,13 @@ export default defineNitroPlugin(async (nitroApp) => {
   // Start matchmaking loop
   const { startMatchmakingLoop } = await import('~~/server/game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
+
+  // Start the production liveGames reaper — sweeps zombie games whose loop
+  // died without firing onGameOver. Unref so it doesn't keep the process alive.
+  if (!_liveGameReaperTimer) {
+    _liveGameReaperTimer = setInterval(reapStaleLiveGames, 60_000)
+    ;(_liveGameReaperTimer as { unref?: () => void }).unref?.()
+  }
 
   // Build the callbacks for a single game. Captured separately from the
   // game_ready handler so the snapshot-resume path can use the same shape.
@@ -909,7 +955,12 @@ export default defineNitroPlugin(async (nitroApp) => {
     if (_runtime?.matchmakingInterval) {
       clearInterval(_runtime.matchmakingInterval)
     }
+    if (_liveGameReaperTimer) {
+      clearInterval(_liveGameReaperTimer)
+      _liveGameReaperTimer = null
+    }
     await managedRuntime.runPromise(redis.shutdown())
+    await managedRuntime.runPromise(db.shutdown())
     await managedRuntime.dispose()
     _runtime = null
     _createDevGame = null

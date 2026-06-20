@@ -12,22 +12,26 @@ import { relations } from 'drizzle-orm'
 
 // ── Players ───────────────────────────────────────────────────────
 
-export const players = pgTable('players', {
-  id: text('id').primaryKey(),
-  username: text('username').notNull().unique(),
-  email: text('email'),
-  avatarUrl: text('avatar_url'),
-  passwordHash: text('password_hash'),
-  selectedAvatar: text('selected_avatar'),
-  /** @deprecated Use playerProviders table instead */
-  provider: text('provider', { enum: ['github', 'discord', 'local'] }),
-  /** @deprecated Use playerProviders table instead */
-  providerId: text('provider_id'),
-  mmr: integer('mmr').notNull().default(1000),
-  gamesPlayed: integer('games_played').notNull().default(0),
-  wins: integer('wins').notNull().default(0),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const players = pgTable(
+  'players',
+  {
+    id: text('id').primaryKey(),
+    username: text('username').notNull().unique(),
+    email: text('email'),
+    avatarUrl: text('avatar_url'),
+    passwordHash: text('password_hash'),
+    selectedAvatar: text('selected_avatar'),
+    /** @deprecated Use playerProviders table instead */
+    provider: text('provider', { enum: ['github', 'discord', 'local'] }),
+    /** @deprecated Use playerProviders table instead */
+    providerId: text('provider_id'),
+    mmr: integer('mmr').notNull().default(1000),
+    gamesPlayed: integer('games_played').notNull().default(0),
+    wins: integer('wins').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('players_mmr_idx').on(table.mmr)],
+)
 
 export const playersRelations = relations(players, ({ many }) => ({
   matchPlayers: many(matchPlayers),
@@ -62,14 +66,18 @@ export const playerProvidersRelations = relations(playerProviders, ({ one }) => 
 
 // ── Matches ───────────────────────────────────────────────────────
 
-export const matches = pgTable('matches', {
-  id: text('id').primaryKey(),
-  mode: text('mode', { enum: ['ranked_5v5', 'quick_3v3', '1v1'] }).notNull(),
-  winner: text('winner', { enum: ['radiant', 'dire'] }),
-  durationTicks: integer('duration_ticks'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  endedAt: timestamp('ended_at', { withTimezone: true }),
-})
+export const matches = pgTable(
+  'matches',
+  {
+    id: text('id').primaryKey(),
+    mode: text('mode', { enum: ['ranked_5v5', 'quick_3v3', '1v1'] }).notNull(),
+    winner: text('winner', { enum: ['radiant', 'dire'] }),
+    durationTicks: integer('duration_ticks'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+  },
+  (table) => [index('matches_created_at_idx').on(table.createdAt)],
+)
 
 export const matchesRelations = relations(matches, ({ many }) => ({
   matchPlayers: many(matchPlayers),

@@ -137,6 +137,8 @@ const SCOPE_CONFIGS: Record<string, RateLimitConfig> = {
   lobby: { maxActionsPerSecond: 2, maxBurstSize: 6 },
   // Tutorial game creation per user — cheap to ask for, but cap rapid spamming
   tutorial: { maxActionsPerSecond: 0.5, maxBurstSize: 3 },
+  // In-game chat + map pings per user — 3/s with a burst of 10
+  chat: { maxActionsPerSecond: 3, maxBurstSize: 10 },
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from 'effect'
 import { eq, desc, and, sql } from 'drizzle-orm'
-import { useDb } from '~~/server/db'
+import { useDb, closeDb } from '~~/server/db'
 import {
   players,
   matches,
@@ -62,6 +62,8 @@ export interface DatabaseServiceApi {
   readonly updatePlayerAvatar: (playerId: string, heroId: string | null) => Effect.Effect<void>
   readonly updatePlayerUsername: (playerId: string, username: string) => Effect.Effect<void>
   readonly updatePlayerPassword: (playerId: string, passwordHash: string) => Effect.Effect<void>
+  /** Gracefully close the postgres connection pool. Called on Nitro shutdown. */
+  readonly shutdown: () => Effect.Effect<void>
 }
 
 export class DatabaseService extends Context.Tag('DatabaseService')<
@@ -108,10 +110,14 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
   recordMatch: (match, matchPlayerData) =>
     Effect.promise(async () => {
       const db = useDb()
-      await db.insert(matches).values(match)
-      if (matchPlayerData.length > 0) {
-        await db.insert(matchPlayers).values(matchPlayerData)
-      }
+      // Transactional: if the matchPlayer insert fails, the match row is
+      // rolled back too — no orphan match with no players.
+      await db.transaction(async (tx) => {
+        await tx.insert(matches).values(match)
+        if (matchPlayerData.length > 0) {
+          await tx.insert(matchPlayers).values(matchPlayerData)
+        }
+      })
       return match.id
     }).pipe(
       Effect.tap((matchId) =>
@@ -284,4 +290,6 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       const db = useDb()
       await db.update(players).set({ passwordHash }).where(eq(players.id, playerId))
     }),
+
+  shutdown: () => Effect.promise(async () => closeDb()),
 })

@@ -3,11 +3,13 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import * as schema from './schema'
 
 let _db: ReturnType<typeof createDb> | null = null
+let _client: ReturnType<typeof postgres> | null = null
 
 function createDb() {
   const config = useRuntimeConfig()
   const connectionString = (config.database as { url: string }).url
   const client = postgres(connectionString)
+  _client = client
   return drizzle(client, { schema })
 }
 
@@ -16,6 +18,15 @@ export function useDb() {
     _db = createDb()
   }
   return _db
+}
+
+/** Gracefully close the postgres connection pool. Called on Nitro shutdown. */
+export async function closeDb(): Promise<void> {
+  if (_client) {
+    await _client.end()
+    _client = null
+    _db = null
+  }
 }
 
 export type Database = ReturnType<typeof useDb>

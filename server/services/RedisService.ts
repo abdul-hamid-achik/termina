@@ -18,6 +18,9 @@ export interface RedisServiceApi {
   readonly zrangebyscore: (key: string, min: number, max: number) => Effect.Effect<string[]>
   readonly zrem: (key: string, member: string) => Effect.Effect<void>
   readonly zcard: (key: string) => Effect.Effect<number>
+  readonly hset: (key: string, field: string, value: string) => Effect.Effect<void>
+  readonly hget: (key: string, field: string) => Effect.Effect<string | null>
+  readonly hdel: (key: string, field: string) => Effect.Effect<void>
   readonly setnx: (key: string, value: string, ttlSeconds?: number) => Effect.Effect<number>
   readonly getdel: (key: string) => Effect.Effect<string | null>
   readonly keys: (pattern: string) => Effect.Effect<string[]>
@@ -168,6 +171,24 @@ export function makeRedisServiceLive(redisUrl: string) {
       Effect.promise(() => {
         const client = getClient(redisUrl)
         return client.zcard(key)
+      }),
+
+    hset: (key, field, value) =>
+      Effect.promise(() => {
+        const client = getClient(redisUrl)
+        return client.hset(key, field, value).then(() => undefined)
+      }),
+
+    hget: (key, field) =>
+      Effect.promise(() => {
+        const client = getClient(redisUrl)
+        return client.hget(key, field)
+      }),
+
+    hdel: (key, field) =>
+      Effect.promise(() => {
+        const client = getClient(redisUrl)
+        return client.hdel(key, field).then(() => undefined)
       }),
 
     setnx: (key, value, ttlSeconds) =>
