@@ -499,4 +499,69 @@ describe('VisionCalculator', () => {
       expect(view.mode).toBeUndefined()
     })
   })
+
+  describe('night vision ordering', () => {
+    it('drops the enemy-territory neighbor first, keeping own-team vision', () => {
+      // A radiant hero in mid-river (neutral) at night. mid-river's neighbors
+      // include mid-t1-rad (radiant) and mid-t1-dire (dire). With PENALTY=1,
+      // the dire (enemy) neighbor should be dropped, keeping radiant-side vision.
+      const state = makeGameState({
+        timeOfDay: 'night',
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+        },
+      })
+      const vision = calculateVision(state, 'p1', 'game-night-test')
+
+      // Own zone always visible
+      expect(vision.has('mid-river')).toBe(true)
+      // Radiant T1 (own territory) should still be visible at night
+      expect(vision.has('mid-t1-rad')).toBe(true)
+      // Dire T1 (enemy territory) should be the dropped neighbor
+      expect(vision.has('mid-t1-dire')).toBe(false)
+    })
+
+    it('at day, sees all neighbors regardless of team', () => {
+      const state = makeGameState({
+        timeOfDay: 'day',
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+        },
+      })
+      const vision = calculateVision(state, 'p1', 'game-day-test')
+      expect(vision.has('mid-river')).toBe(true)
+      expect(vision.has('mid-t1-rad')).toBe(true)
+      expect(vision.has('mid-t1-dire')).toBe(true)
+    })
+  })
+
+  describe('vision cache isolation by gameId', () => {
+    it('does not share cache entries across games for the same playerId', () => {
+      // Same player in two "games" at different river zones — the cache key
+      // includes gameId so the second game's vision doesn't return the first's
+      // stale set. River zones aren't tower zones, so the only vision source is
+      // the player's own sight (keeping the assertion clean).
+      const stateA = makeGameState({
+        players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },
+      })
+      const stateB = makeGameState({
+        players: { p1: makePlayer({ id: 'p1', zone: 'bot-river' }) },
+      })
+
+      const visionA = calculateVision(stateA, 'p1', 'game-A')
+      const visionB = calculateVision(stateB, 'p1', 'game-B')
+
+      // mid-river is visible in A (player's zone) and is a neighbor of bot-river
+      // via rune-bot, so it MAY be visible in B too. Instead assert on the
+      // player's own zone being the distinguishing factor: both river zones are
+      // visible in their respective games.
+      expect(visionA.has('mid-river')).toBe(true)
+      expect(visionB.has('bot-river')).toBe(true)
+      // bot-river is NOT visible in A (it's 2 hops from mid-river through
+      // rune-bot, but rune-bot's neighbors get the night treatment... at day
+      // all are visible. Verify the cache didn't return A's set for B.)
+      // The key assertion: the cache returned DIFFERENT sets for the two games.
+      expect(visionA).not.toEqual(visionB)
+    })
+  })
 })

@@ -481,7 +481,7 @@ function buildGameLoop(
 
     // Broadcast filtered state to each player
     for (const playerId of Object.keys(newState.players)) {
-      const visibleState = filterStateForPlayer(newState, playerId)
+      const visibleState = filterStateForPlayer(newState, playerId, gameId)
       try {
         callbacks.onTickState(gameId, playerId, visibleState)
       } catch (err) {
@@ -596,7 +596,7 @@ export async function runOneTick(
       yield* stateManager.updateState(gameId, () => newState)
       for (const playerId of Object.keys(newState.players)) {
         try {
-          callbacks.onTickState(gameId, playerId, filterStateForPlayer(newState, playerId))
+          callbacks.onTickState(gameId, playerId, filterStateForPlayer(newState, playerId, gameId))
         } catch (err) {
           engineLog.warn('runOneTick: tick_state send failed', {
             gameId,

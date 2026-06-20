@@ -73,7 +73,7 @@ function buildTracepathKey(state: GameState, team: TeamId): string {
     .join(',')
 }
 
-export function calculateVision(state: GameState, playerId: string): Set<string> {
+export function calculateVision(state: GameState, playerId: string, gameId?: string): Set<string> {
   const player = state.players[playerId]
   if (!player) return new Set()
 
@@ -84,7 +84,11 @@ export function calculateVision(state: GameState, playerId: string): Set<string>
   const tracepathKey = buildTracepathKey(state, team)
   const timeOfDay = state.timeOfDay
 
-  const cached = visionCache.get(playerId)
+  // Key the cache by gameId:playerId so concurrent games can't pollute or evict
+  // each other's vision entries (a human re-queuing into a second game while
+  // the first is still live, or bot ids colliding across games).
+  const cacheKey = gameId ? `${gameId}:${playerId}` : playerId
+  const cached = visionCache.get(cacheKey)
   if (
     cached &&
     cached.playerZone === player.zone &&
@@ -102,12 +106,12 @@ export function calculateVision(state: GameState, playerId: string): Set<string>
 
   // Bounded LRU-ish: re-set moves the key to the most-recent insertion order.
   // When over the cap, drop the oldest insertion.
-  if (visionCache.size >= VISION_CACHE_MAX && !visionCache.has(playerId)) {
+  if (visionCache.size >= VISION_CACHE_MAX && !visionCache.has(cacheKey)) {
     const oldest = visionCache.keys().next().value
     if (oldest !== undefined) visionCache.delete(oldest)
   }
-  visionCache.delete(playerId)
-  visionCache.set(playerId, {
+  visionCache.delete(cacheKey)
+  visionCache.set(cacheKey, {
     vision,
     playerZone: player.zone,
     playerAlive: player.alive,
@@ -126,31 +130,31 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
   const isNight = state.timeOfDay === 'night'
 
   if (player.alive) {
-    addZoneWithAdjacent(visible, player.zone, isNight)
+    addZoneWithAdjacent(visible, player.zone, isNight, team)
   }
 
   const baseZone = team === 'radiant' ? 'radiant-base' : 'dire-base'
   const fountainZone = team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
-  addZoneWithAdjacent(visible, baseZone, isNight)
-  addZoneWithAdjacent(visible, fountainZone, isNight)
+  addZoneWithAdjacent(visible, baseZone, isNight, team)
+  addZoneWithAdjacent(visible, fountainZone, isNight, team)
 
   for (const zoneState of Object.values(state.zones)) {
     for (const ward of zoneState.wards) {
       if (ward.team === team) {
-        addZoneWithAdjacent(visible, zoneState.id, isNight)
+        addZoneWithAdjacent(visible, zoneState.id, isNight, team)
       }
     }
   }
 
   for (const tower of state.towers) {
     if (tower.team === team && tower.alive) {
-      addZoneWithAdjacent(visible, tower.zone, isNight)
+      addZoneWithAdjacent(visible, tower.zone, isNight, team)
     }
   }
 
   for (const p of Object.values(state.players)) {
     if (p.team === team && p.alive && p.id !== player.id) {
-      addZoneWithAdjacent(visible, p.zone, isNight)
+      addZoneWithAdjacent(visible, p.zone, isNight, team)
     }
   }
 
@@ -159,7 +163,7 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
   for (const p of Object.values(state.players)) {
     if (p.team === team && p.alive && p.buffs.some((b) => b.id === 'tracepath_vision')) {
       for (const neighbor of ADJACENT_CACHE.get(p.zone) ?? []) {
-        addZoneWithAdjacent(visible, neighbor, isNight)
+        addZoneWithAdjacent(visible, neighbor, isNight, team)
       }
     }
   }
@@ -167,7 +171,12 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
   return visible
 }
 
-function addZoneWithAdjacent(visible: Set<string>, zoneId: string, isNight: boolean = false): void {
+function addZoneWithAdjacent(
+  visible: Set<string>,
+  zoneId: string,
+  isNight: boolean = false,
+  viewerTeam?: TeamId,
+): void {
   // Own zone is ALWAYS visible, even at night. (ADJACENT_CACHE stores
   // [...adjacentTo, zoneId] with zoneId last, so the old night `slice` lopped
   // the own zone off — a hero would go blind in its own zone at night.)
@@ -175,12 +184,29 @@ function addZoneWithAdjacent(visible: Set<string>, zoneId: string, isNight: bool
   const adjacent = ADJACENT_CACHE.get(zoneId)
   if (!adjacent) return
   const neighbors = adjacent.filter((z) => z !== zoneId)
-  const zonesToAdd = isNight
-    ? neighbors.slice(0, Math.max(0, neighbors.length - NIGHT_VISION_PENALTY))
-    : neighbors
-  for (const zone of zonesToAdd) {
-    visible.add(zone)
+  if (!isNight || NIGHT_VISION_PENALTY <= 0) {
+    for (const zone of neighbors) visible.add(zone)
+    return
   }
+  // Night: drop NIGHT_VISION_PENALTY neighbors, preferring to drop the ones
+  // furthest from home — enemy-team zones first, then neutral, then own-team.
+  // The old `slice(0, len - PENALTY)` dropped the last entry by arbitrary array
+  // order, which was non-deterministic and could blind a hero toward their own
+  // base while keeping vision toward the enemy. Sorting by "how enemy is this
+  // zone" (ascending — own-team first, enemy last) and keeping the first
+  // len-PENALTY makes the loss deterministic and geometrically meaningful.
+  const enemyTeam: TeamId = viewerTeam === 'radiant' ? 'dire' : 'radiant'
+  const threatRank = (z: string): number => {
+    const team = ZONE_MAP[z]?.team
+    if (team === enemyTeam) return 2 // enemy territory — drop first
+    if (team === 'neutral') return 1 // neutral (river/jungle) — drop second
+    return 0 // own territory — keep
+  }
+  // Sort ascending (lowest threat first); slice off the end to drop the
+  // highest-threat neighbors.
+  const sorted = [...neighbors].sort((a, b) => threatRank(a) - threatRank(b))
+  const zonesToAdd = sorted.slice(0, Math.max(0, neighbors.length - NIGHT_VISION_PENALTY))
+  for (const zone of zonesToAdd) visible.add(zone)
 }
 
 function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
@@ -266,8 +292,12 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
  * Filter the full game state to what a specific player can see.
  * NEVER leaks information about fogged zones.
  */
-export function filterStateForPlayer(state: GameState, playerId: string): PlayerVisibleState {
-  let visible = calculateVision(state, playerId)
+export function filterStateForPlayer(
+  state: GameState,
+  playerId: string,
+  gameId?: string,
+): PlayerVisibleState {
+  let visible = calculateVision(state, playerId, gameId)
   const player = state.players[playerId]
   if (!player) {
     return {

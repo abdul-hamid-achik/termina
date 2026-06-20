@@ -197,9 +197,9 @@ export function getReconnectPayload(
     return null
   }
 
-  const filteredState = filterStateForPlayer(state, playerId)
+  const filteredState = filterStateForPlayer(state, playerId, gameId)
   const playerTeam = state.players[playerId]?.team
-  const visibleZones = calculateVision(state, playerId)
+  const visibleZones = calculateVision(state, playerId, gameId)
   const missed = entry.recentEvents.filter(
     (e) =>
       (sinceTick === undefined || e.tick > sinceTick) &&
@@ -509,7 +509,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           if (isBot(p.playerId)) continue
 
           if (state) {
-            const visibleZones = calculateVision(state, p.playerId)
+            const visibleZones = calculateVision(state, p.playerId, gId)
             const playerTeam = state.players[p.playerId]?.team
             const visibleEvents = events.filter((e) =>
               isEventVisibleToPlayer(e, p.playerId, playerTeam, visibleZones, state!),
