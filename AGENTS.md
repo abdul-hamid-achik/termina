@@ -15,6 +15,8 @@ Expert in the server-side game loop and combat systems.
 - `StateManager.ts` — `createPlayerState`, `createInitialGameState`, in-memory Effect service
 - `VisionCalculator.ts` — `filterStateForPlayer`, fog-of-war per team
 - `DamageCalculator.ts` — physical/magical/pure damage formulas
+- `CombatResolver.ts` — `resolvePhysicalHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeBladeMailReflect` single reflect formula
+- `StateDelta.ts` — per-player tick_state delta compression (reference-equality field diff)
 - `GoldDistributor.ts` — passive gold, kill bounties, last-hit rewards
 - `CreepAI.ts`, `TowerAI.ts` — NPC behavior each tick
 - `NeutralAI.ts` — neutral creep spawning in jungle, attacking heroes
@@ -43,9 +45,9 @@ Expert in hero definitions, abilities, and game balance.
 - `server/game/heroes/_base.ts` — `levelUpHero`, `processDoTs`, `tickAllBuffs`
 - `server/game/heroes/<name>.ts` — individual hero definitions (18 heroes)
 
-**Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6, magicResist 2–5. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/root/slow/shield/dot/buff types.
+**Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6 (tanks up to 8), magicResist 12–25. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
 
-**Mechanics constants** (balance.ts): GLYPH_DURATION_TICKS = 5, GLYPH_COOLDOWN_TICKS = 300, DAY_DURATION_TICKS = 300, NIGHT_DURATION_TICKS = 240, NIGHT_VISION_PENALTY = 1, SENTRY_WARD_DURATION_TICKS = 240.
+**Mechanics constants** (balance.ts): GLYPH_DURATION_TICKS = 5, GLYPH_COOLDOWN_TICKS = 300, DAY_DURATION_TICKS = 300, NIGHT_DURATION_TICKS = 240, NIGHT_VISION_PENALTY = 1, SENTRY_WARD_DURATION_TICKS = 30.
 
 ## frontend
 
@@ -110,8 +112,8 @@ Expert in writing and maintaining Vitest (unit/integration/component) and Cairnt
 - `tests/unit/matchmaking/` — queue, lobby (+ `seed-draft-lobby`)
 - `tests/unit/stores/` — game store, lobby store
 - `tests/unit/composables/` — useGameSocket, useCommands, useAudio
-- `tests/e2e/` — **Cairntrace** YAML flows (29). Seed exact game/draft state via the dev hooks below; `flows/`, reusable `actions/`, `cairntrace.config.yml`. See the **End-to-end** section of the root `README.md`.
-- `server/api/test/*` — dev-only, double-gated (`NODE_ENV!=production && TERMINA_TEST_HOOKS=1`) seed hooks: `login-as`, `new-game`, `new-draft`, `advance`, `state`, `force-end` (+ `applyScenario` scenarios in `server/game/dev/scenarios.ts`).
+- `tests/e2e/` — **Cairntrace** YAML flows (30). Seed exact game/draft state via the dev hooks below; `flows/`, reusable `actions/`, `cairntrace.config.yml`. See the **End-to-end** section of the root `README.md`.
+- `server/api/test/*` — dev-only, single-gated (`TERMINA_TEST_HOOKS=1`) seed hooks: `login-as`, `new-game`, `new-draft`, `advance`, `state`, `force-end` (+ `applyScenario` scenarios in `server/game/dev/scenarios.ts`). The `NODE_ENV` gate was intentionally removed so the prod-build e2e suite can use them; a loud startup warning fires when enabled.
 
 **Patterns**: Vitest 4 — projects are in `test.projects` in `vitest.config.ts`. `vi.fn()` mocks; `vi.mock()` for modules (PeerRegistry, BotManager); `vi.useFakeTimers()`; `Effect.runSync` for Effect code. NOTE vitest 4: `new (vi.fn(() => obj))()` returns the empty `this` — stub constructors with a plain `function(){ return mock }`. Clean up peers/lobbies in `afterEach`. E2E: each flow must pass `cairn run --cold-start` green and be stamped; `testUser` is `cairn_${run.token}` (per-run identity).
 
@@ -138,7 +140,7 @@ Expert in zone topology, creep spawning, towers, and wards.
 
 **Key files**:
 
-- `shared/constants/zones.ts` — 29 zones with `adjacentTo` arrays (fountain → base → T3 → T2 → T1 → river)
+- `shared/constants/zones.ts` — 32 zones with `adjacentTo` arrays (fountain → base → T3 → T2 → T1 → river)
 - `topology.ts` — `areAdjacent`, `findPath` (BFS), `getDistance`
 - `spawner.ts` — `spawnCreepWaves` (every 8 ticks: 3 melee + 1 ranged, siege every 5th wave), `spawnRunes` (every 60 ticks), `spawnNeutralCreeps` (every 60 ticks)
 - `zones.ts` — `initializeZoneStates`, `initializeTowers`, `placeWard`, `removeExpiredWards`
