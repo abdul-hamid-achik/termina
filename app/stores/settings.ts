@@ -1,9 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
-export type ThemeVariant = 'default' | 'green' | 'amber'
-export type FontSize = 'small' | 'medium' | 'large'
-
 // ── HUD / in-game layout preferences ───────────────────────────────
 // Three independent, player-toggleable directions for the in-game HUD,
 // each tuned for a text-based MOBA. Defaults reproduce TODAY's behaviour
@@ -85,8 +82,6 @@ export const useSettingsStore = defineStore('settings', () => {
   const audioEnabled = ref(true)
   const audioVolume = ref(0.5)
   const quickCastEnabled = ref(false)
-  const theme = ref<ThemeVariant>('default')
-  const fontSize = ref<FontSize>('medium')
   const hud = ref<HudSettings>({ ...DEFAULT_HUD })
   const hudPreset = ref<HudPreset>('standard')
 
@@ -112,8 +107,7 @@ export const useSettingsStore = defineStore('settings', () => {
       if (typeof data.audioEnabled === 'boolean') audioEnabled.value = data.audioEnabled
       if (typeof data.audioVolume === 'number') audioVolume.value = data.audioVolume
       if (typeof data.quickCastEnabled === 'boolean') quickCastEnabled.value = data.quickCastEnabled
-      if (data.theme) theme.value = data.theme
-      if (data.fontSize) fontSize.value = data.fontSize
+      if (data.audioEnabled === 'boolean') audioEnabled.value = data.audioEnabled
       // HUD prefs are additive: payloads written before this existed simply
       // have no `hud` key and keep the defaults. Each field is validated
       // independently so a partial/corrupt blob degrades gracefully.
@@ -141,8 +135,6 @@ export const useSettingsStore = defineStore('settings', () => {
           audioEnabled: audioEnabled.value,
           audioVolume: audioVolume.value,
           quickCastEnabled: quickCastEnabled.value,
-          theme: theme.value,
-          fontSize: fontSize.value,
           hud: hud.value,
         }),
       )
@@ -152,7 +144,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   // Auto-persist on change
-  watch([audioEnabled, audioVolume, quickCastEnabled, theme, fontSize, hud], save, { deep: true })
+  watch([audioEnabled, audioVolume, quickCastEnabled, hud], save, { deep: true })
 
   // Load on init
   load()
@@ -161,8 +153,6 @@ export const useSettingsStore = defineStore('settings', () => {
     audioEnabled,
     audioVolume,
     quickCastEnabled,
-    theme,
-    fontSize,
     hud,
     hudPreset,
     applyHudPreset,

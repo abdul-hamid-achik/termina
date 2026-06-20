@@ -28,8 +28,6 @@ describe('Settings Store', () => {
       expect(store.audioEnabled).toBe(true)
       expect(store.audioVolume).toBe(0.5)
       expect(store.quickCastEnabled).toBe(false)
-      expect(store.theme).toBe('default')
-      expect(store.fontSize).toBe('medium')
     })
   })
 
@@ -45,8 +43,6 @@ describe('Settings Store', () => {
         audioEnabled: true,
         audioVolume: 0.5,
         quickCastEnabled: false,
-        theme: 'default',
-        fontSize: 'medium',
         hud: {
           layoutMode: 'classic',
           focusBanner: false,
@@ -61,8 +57,6 @@ describe('Settings Store', () => {
       store.audioEnabled = false
       store.audioVolume = 0.8
       store.quickCastEnabled = true
-      store.theme = 'green'
-      store.fontSize = 'large'
       store.save()
 
       const saved = JSON.parse(mockStorage.get('termina:settings')!)
@@ -70,8 +64,6 @@ describe('Settings Store', () => {
         audioEnabled: false,
         audioVolume: 0.8,
         quickCastEnabled: true,
-        theme: 'green',
-        fontSize: 'large',
         hud: {
           layoutMode: 'classic',
           focusBanner: false,
@@ -90,8 +82,6 @@ describe('Settings Store', () => {
           audioEnabled: false,
           audioVolume: 0.3,
           quickCastEnabled: true,
-          theme: 'amber',
-          fontSize: 'small',
         }),
       )
 
@@ -101,8 +91,6 @@ describe('Settings Store', () => {
       expect(store.audioEnabled).toBe(false)
       expect(store.audioVolume).toBe(0.3)
       expect(store.quickCastEnabled).toBe(true)
-      expect(store.theme).toBe('amber')
-      expect(store.fontSize).toBe('small')
     })
 
     it('handles missing localStorage gracefully', () => {
@@ -112,8 +100,6 @@ describe('Settings Store', () => {
       expect(store.audioEnabled).toBe(true)
       expect(store.audioVolume).toBe(0.5)
       expect(store.quickCastEnabled).toBe(false)
-      expect(store.theme).toBe('default')
-      expect(store.fontSize).toBe('medium')
     })
 
     it('handles corrupt JSON gracefully', () => {
@@ -131,7 +117,6 @@ describe('Settings Store', () => {
         'termina:settings',
         JSON.stringify({
           audioVolume: 0.9,
-          theme: 'green',
         }),
       )
 
@@ -139,10 +124,8 @@ describe('Settings Store', () => {
       store.load()
 
       expect(store.audioVolume).toBe(0.9)
-      expect(store.theme).toBe('green')
       expect(store.audioEnabled).toBe(true)
       expect(store.quickCastEnabled).toBe(false)
-      expect(store.fontSize).toBe('medium')
     })
 
     it('ignores wrong types for boolean fields', () => {
@@ -173,22 +156,6 @@ describe('Settings Store', () => {
       store.load()
 
       expect(store.audioVolume).toBe(0.5)
-    })
-
-    it('accepts theme and fontSize as strings (truthy check)', () => {
-      mockStorage.set(
-        'termina:settings',
-        JSON.stringify({
-          theme: 'amber',
-          fontSize: 'large',
-        }),
-      )
-
-      const store = useSettingsStore()
-      store.load()
-
-      expect(store.theme).toBe('amber')
-      expect(store.fontSize).toBe('large')
     })
   })
 
@@ -264,7 +231,7 @@ describe('Settings Store', () => {
     })
 
     it('keeps HUD defaults when an old payload has no hud key', () => {
-      mockStorage.set('termina:settings', JSON.stringify({ audioEnabled: false, theme: 'green' }))
+      mockStorage.set('termina:settings', JSON.stringify({ audioEnabled: false }))
 
       const store = useSettingsStore()
       store.load()
