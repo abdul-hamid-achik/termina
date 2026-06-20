@@ -171,6 +171,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  unsubOnMessage()
   gameSocket.disconnect()
   gameStore.stopTickCountdown()
   window.removeEventListener('keydown', onKeyDown)
@@ -562,7 +563,7 @@ const zoneDanger = computed(() => gameStore.nearbyEnemies.length > 0)
 const heroCritical = computed(() => gameStore.isAlive && hpPct.value <= 15)
 
 let firstTickLogged = false
-gameSocket.onMessage((msg) => {
+const unsubOnMessage = gameSocket.onMessage((msg) => {
   if (msg.type === 'tick_state') {
     if (!firstTickLogged) {
       firstTickLogged = true

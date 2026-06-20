@@ -18,6 +18,9 @@ export default {
           panel: 'rgb(var(--bg-panel) / <alpha-value>)',
           elevated: 'rgb(var(--bg-elevated) / <alpha-value>)',
           overlay: 'rgb(var(--bg-overlay) / <alpha-value>)',
+          // tertiary = elevated (alias so components can use bg-bg-tertiary
+          // without a separate token). The TalentPicker hover uses this.
+          tertiary: 'rgb(var(--bg-elevated) / <alpha-value>)',
         },
         border: {
           DEFAULT: 'rgb(var(--border-color) / <alpha-value>)',
@@ -43,6 +46,9 @@ export default {
         healing: 'rgb(var(--color-healing) / <alpha-value>)',
         system: 'rgb(var(--color-system) / <alpha-value>)',
         zone: 'rgb(var(--color-zone) / <alpha-value>)',
+        // River = the zone color (the river crossing is a neutral zone). Used
+        // by AsciiMap's river divider between the radiant/dire halves.
+        river: 'rgb(var(--color-zone) / <alpha-value>)',
         ability: 'rgb(var(--color-ability) / <alpha-value>)',
         warn: 'rgb(var(--color-warn) / <alpha-value>)',
       },

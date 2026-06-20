@@ -8,7 +8,7 @@ definePageMeta({ ssr: false })
 const route = useRoute()
 const gameId = computed(() => String(route.params.gameId))
 
-type ConnState = 'connecting' | 'connected' | 'closed' | 'error'
+type ConnState = 'connecting' | 'connected' | 'closed' | 'reconnecting' | 'error'
 
 const conn = ref<ConnState>('connecting')
 const ackedGameId = ref<string | null>(null)
@@ -17,9 +17,13 @@ const visibleState = ref<PlayerVisibleState | null>(null)
 const errorMessage = ref<string | null>(null)
 
 let ws: WebSocket | null = null
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let reconnectAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 10
+let disposed = false
 
 async function connect() {
-  if (!import.meta.client) return
+  if (!import.meta.client || disposed) return
 
   // Best-effort ticket fetch — auth still required for WS in this app.
   let ticket = ''
@@ -40,6 +44,7 @@ async function connect() {
 
   ws.onopen = () => {
     conn.value = 'connected'
+    reconnectAttempts = 0
     ws?.send(JSON.stringify({ type: 'spectate', gameId: gameId.value }))
   }
 
@@ -60,11 +65,24 @@ async function connect() {
   }
 
   ws.onerror = () => {
-    conn.value = 'error'
+    if (conn.value !== 'closed') conn.value = 'error'
   }
 
   ws.onclose = () => {
-    conn.value = 'closed'
+    if (disposed) {
+      conn.value = 'closed'
+      return
+    }
+    // Exponential backoff reconnect (same pattern as useGameSocket, but
+    // simpler — spectator is read-only, no missed-event replay needed).
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      conn.value = 'reconnecting'
+      const delay = Math.min(1000 * 2 ** reconnectAttempts, 30000)
+      reconnectAttempts++
+      reconnectTimer = setTimeout(() => void connect(), delay)
+    } else {
+      conn.value = 'closed'
+    }
   }
 }
 
@@ -73,14 +91,23 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (ws && ws.readyState === ws.OPEN) {
-    try {
-      ws.send(JSON.stringify({ type: 'unspectate' }))
-    } catch {
-      /* ignore */
-    }
+  disposed = true
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
   }
-  ws?.close()
+  if (ws) {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify({ type: 'unspectate' }))
+      } catch {
+        /* ignore */
+      }
+    }
+    ws.onclose = null
+    ws.close()
+    ws = null
+  }
 })
 
 // The spectator stream is fogless, so every entry is a full PlayerState.
@@ -118,7 +145,7 @@ function gameTime(tick: number): string {
             :class="
               conn === 'connected'
                 ? 'text-radiant text-glow-sm'
-                : conn === 'connecting'
+                : conn === 'connecting' || conn === 'reconnecting'
                   ? 'text-warn animate-pulse'
                   : 'text-dire text-glow-dire'
             "

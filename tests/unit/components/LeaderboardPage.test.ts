@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { ref, computed, defineComponent, Suspense, h } from 'vue'
+import { ref, computed, defineComponent, Suspense, h, onMounted, onUnmounted } from 'vue'
 
 // ── Nuxt auto-import stubs ─────────────────────────────────────────
 //
@@ -30,6 +30,8 @@ function stubNuxtGlobals() {
   vi.stubGlobal('ref', ref)
   vi.stubGlobal('computed', computed)
   vi.stubGlobal('useFetch', mockUseFetch)
+  vi.stubGlobal('onMounted', onMounted)
+  vi.stubGlobal('onUnmounted', onUnmounted)
 }
 
 function leaderboardResult(

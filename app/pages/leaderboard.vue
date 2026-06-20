@@ -19,10 +19,29 @@ interface ActiveGame {
   direHeroes: string[]
 }
 
-const { data, status } = await useFetch<{ leaderboard: LeaderboardEntry[] }>('/api/leaderboard')
-const { data: activeData } = await useFetch<{ games: ActiveGame[] }>('/api/match/active', {
-  // Re-fetch every 10s while the page is open
-  server: false,
+const {
+  data,
+  status,
+  refresh: refreshLeaderboard,
+} = await useFetch<{ leaderboard: LeaderboardEntry[] }>('/api/leaderboard')
+const { data: activeData, refresh: refreshActive } = await useFetch<{ games: ActiveGame[] }>(
+  '/api/match/active',
+  {
+    // Re-fetch every 10s while the page is open
+    server: false,
+  },
+)
+
+// Poll both the leaderboard + active games every 10s while the page is open.
+let pollTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  pollTimer = setInterval(() => {
+    void refreshActive()
+    void refreshLeaderboard()
+  }, 10_000)
+})
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
 })
 
 const players = computed(() => data.value?.leaderboard ?? [])
