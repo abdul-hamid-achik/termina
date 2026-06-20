@@ -55,16 +55,22 @@ function applyRuneBuff(
 
 /**
  * Pick up a rune - player must be in the same zone as the rune.
+ * Returns the updated state and a rune_picked event; the caller (ActionResolver)
+ * merges the event into the tick's allEvents instead of mutating state.events.
  */
-export function pickupRune(state: GameState, playerId: string, zone: string): GameState {
+export function pickupRune(
+  state: GameState,
+  playerId: string,
+  zone: string,
+): { state: GameState; event: GameEngineEvent | null } {
   const player = state.players[playerId]
-  if (!player || !player.alive) return state
-  if (player.zone !== zone) return state
+  if (!player || !player.alive) return { state, event: null }
+  if (player.zone !== zone) return { state, event: null }
 
   // Find rune in this zone (handle undefined runes)
   const runes = state.runes ?? []
   const runeIndex = runes.findIndex((r) => r.zone === zone)
-  if (runeIndex === -1) return state
+  if (runeIndex === -1) return { state, event: null }
 
   const rune = runes[runeIndex]!
 
@@ -74,19 +80,16 @@ export function pickupRune(state: GameState, playerId: string, zone: string): Ga
   // Remove the rune from the ground
   const newRunes = runes.filter((_, i) => i !== runeIndex)
 
-  // Add event
-  const events = [
-    ...state.events.map((e) => e as unknown as GameEngineEvent),
-    {
+  return {
+    state: { ...state, players, runes: newRunes },
+    event: {
       _tag: 'rune_picked',
       tick: state.tick,
       playerId,
       zone,
       runeType: rune.type,
     } satisfies RunePickedEvent,
-  ]
-
-  return { ...state, players, runes: newRunes, events: events as unknown as typeof state.events }
+  }
 }
 
 /**

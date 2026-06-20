@@ -192,18 +192,16 @@ describe('systems-gaps: AEGIS ground pickup', () => {
       players: { p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }) },
     })
 
-    const after = pickupAegis(state, 'p1')
+    const { state: after, event } = pickupAegis(state, 'p1')
 
     const buff = after.players['p1']!.buffs.find((b) => b.id === 'aegis')!
     expect(buff).toBeDefined()
     expect(buff.stacks).toBe(ROSHAN_AEGIS_TICKS)
     expect(buff.ticksRemaining).toBe(ROSHAN_AEGIS_TICKS)
     expect(after.aegis).toBeNull()
-    const picked = (after.events as unknown as Array<{ _tag?: string; playerId?: string }>).find(
-      (e) => e._tag === 'aegis_picked',
-    )
-    expect(picked).toBeDefined()
-    expect(picked!.playerId).toBe('p1')
+    expect(event).not.toBeNull()
+    expect(event!._tag).toBe('aegis_picked')
+    expect((event as { playerId?: string }).playerId).toBe('p1')
   })
 
   it('pickupAegis is a no-op when the player is outside roshan-pit (in-pit guard)', () => {
@@ -211,9 +209,10 @@ describe('systems-gaps: AEGIS ground pickup', () => {
       aegis: { zone: 'roshan-pit', tick: 100, holderId: null },
       players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },
     })
-    const after = pickupAegis(state, 'p1')
+    const { state: after, event } = pickupAegis(state, 'p1')
     expect(after.players['p1']!.buffs.find((b) => b.id === 'aegis')).toBeUndefined()
     expect(after.aegis).not.toBeNull()
+    expect(event).toBeNull()
   })
 })
 

@@ -43,14 +43,15 @@ export function runRoshanAI(state: GameState): RoshanAction[] {
 
 /**
  * Process Roshan damage from player attacks and check for death.
- * Returns updated state with Roshan death handling if applicable.
+ * Returns updated state (with events kept OFF state.events — callers merge the
+ * returned events array into the tick's allEvents) plus the events to emit.
  */
 export function processRoshanDamage(
   state: GameState,
   damageDealt: Map<string, number>, // playerId -> damage
 ): { state: GameState; roshanKilled: boolean; aegisDropped: boolean; events: GameEngineEvent[] } {
   let roshan = { ...state.roshan }
-  const events: GameEngineEvent[] = state.events.map((e) => e as unknown as GameEngineEvent)
+  const events: GameEngineEvent[] = []
   let roshanKilled = false
   let aegisDropped = false
 
@@ -67,7 +68,7 @@ export function processRoshanDamage(
       } satisfies RoshanRespawnEvent)
     }
     return {
-      state: { ...state, roshan, events: [...events] as unknown as GameEvent[] },
+      state: { ...state, roshan },
       roshanKilled: false,
       aegisDropped: false,
       events,
@@ -151,7 +152,7 @@ export function processRoshanDamage(
       } satisfies RoshanKilledInternalEvent)
 
       return {
-        state: { ...state, players, roshan, aegis, events: events as unknown as GameEvent[] },
+        state: { ...state, players, roshan, aegis },
         roshanKilled: true,
         aegisDropped: true,
         events,
@@ -160,7 +161,7 @@ export function processRoshanDamage(
   }
 
   return {
-    state: { ...state, roshan, events: events as unknown as GameEvent[] },
+    state: { ...state, roshan },
     roshanKilled,
     aegisDropped,
     events,
@@ -168,17 +169,22 @@ export function processRoshanDamage(
 }
 
 /**
- * Handle aegis pickup by a player.
+ * Handle aegis pickup by a player. Returns the updated state; the aegis_picked
+ * event is returned separately so the caller (ActionResolver) can merge it into
+ * the tick's allEvents instead of mutating state.events.
  */
-export function pickupAegis(state: GameState, playerId: string): GameState {
+export function pickupAegis(
+  state: GameState,
+  playerId: string,
+): { state: GameState; event: GameEngineEvent | null } {
   const aegis = state.aegis
-  if (!aegis) return state
+  if (!aegis) return { state, event: null }
 
   const player = state.players[playerId]
-  if (!player || !player.alive) return state
+  if (!player || !player.alive) return { state, event: null }
 
   // Player must be in roshan-pit to pick up aegis
-  if (player.zone !== 'roshan-pit') return state
+  if (player.zone !== 'roshan-pit') return { state, event: null }
 
   // Add aegis buff to player (respawn speed)
   const aegisBuff = {
@@ -196,17 +202,8 @@ export function pickupAegis(state: GameState, playerId: string): GameState {
     },
   }
 
-  // Remove aegis from the ground
-  const newAegis = null
-
-  const events = [
-    ...state.events.map((e) => e as unknown as GameEngineEvent),
-    {
-      _tag: 'aegis_picked',
-      tick: state.tick,
-      playerId,
-    } satisfies AegisPickedEvent,
-  ]
-
-  return { ...state, players, aegis: newAegis, events: events as unknown as typeof state.events }
+  return {
+    state: { ...state, players, aegis: null },
+    event: { _tag: 'aegis_picked', tick: state.tick, playerId } satisfies AegisPickedEvent,
+  }
 }

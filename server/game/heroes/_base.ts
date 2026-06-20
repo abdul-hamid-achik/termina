@@ -138,7 +138,11 @@ export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
 export function tickBuffs(player: PlayerState): PlayerState {
   const buffs = player.buffs
     .map((b) => ({ ...b, ticksRemaining: b.ticksRemaining - 1 }))
-    .filter((b) => b.ticksRemaining > 0)
+    // Preserve the aegis buff at ticksRemaining === 0 so handleDeaths can proc
+    // the resurrection even if the buff would have expired this tick. If the
+    // player survives this tick, the aegis is removed as expired at the end of
+    // handleDeaths (see GameLoop.handleDeaths' aegis-expiry sweep).
+    .filter((b) => b.ticksRemaining > 0 || b.id === 'aegis')
   return { ...player, buffs }
 }
 

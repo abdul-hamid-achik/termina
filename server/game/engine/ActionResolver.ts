@@ -1217,24 +1217,22 @@ export function resolveActions(
         aegis: aegisGround,
       }
       const result = pickupAegis(tempState, action.playerId)
-      players = { ...result.players }
-      // On a successful pickup pickupAegis nulls the ground aegis — thread that
-      // through (so it can't be picked up twice) and surface the event.
-      if (result.aegis !== tempState.aegis) {
-        aegisGround = result.aegis
-        events.push({ _tag: 'aegis_picked', tick: state.tick, playerId: action.playerId })
+      // pickupAegis returns { state, event } — the event is the single source
+      // of truth (no state.events mutation, no duplicate push here).
+      if (result.event) {
+        players = { ...result.state.players }
+        aegisGround = result.state.aegis
+        events.push(result.event)
       }
     }
 
-    // Handle rune pickup. Mirror the aegis path: thread the rune removal back
-    // (so a picked rune leaves the ground and can't be re-claimed for repeat
-    // buffs) AND surface the rune_picked event for the combat log.
+    // Handle rune pickup. Mirror the aegis path: pickupRune returns
+    // { state, event } — the event is the single source of truth.
     let runesGround = state.runes ?? []
     const runePickups = validActions.filter((a) => a.command.type === 'rune')
     for (const action of runePickups) {
       const player = players[action.playerId]
       if (!player) continue
-      const runeHere = runesGround.find((r) => r.zone === player.zone)
       const tempState: GameState = {
         ...state,
         players,
@@ -1245,18 +1243,10 @@ export function resolveActions(
         aegis: state.aegis,
       }
       const result = pickupRune(tempState, action.playerId, player.zone)
-      players = { ...result.players }
-      if (result.runes.length !== runesGround.length) {
-        runesGround = result.runes
-        if (runeHere) {
-          events.push({
-            _tag: 'rune_picked',
-            tick: state.tick,
-            playerId: action.playerId,
-            zone: player.zone,
-            runeType: runeHere.type,
-          })
-        }
+      if (result.event) {
+        players = { ...result.state.players }
+        runesGround = result.state.runes ?? []
+        events.push(result.event)
       }
     }
 

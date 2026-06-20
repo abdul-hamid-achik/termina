@@ -137,7 +137,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      const hasteBuff = result.players['p1']!.buffs.find((b) => b.id === 'haste')
+      const hasteBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'haste')
       expect(hasteBuff).toBeDefined()
     })
 
@@ -151,7 +151,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      expect(result.runes).toHaveLength(0)
+      expect(result.state.runes).toHaveLength(0)
     })
 
     it('should fail if player not in same zone', () => {
@@ -163,8 +163,8 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      expect(result.runes).toHaveLength(1)
-      expect(result.players['p1']!.buffs).toHaveLength(0)
+      expect(result.state.runes).toHaveLength(1)
+      expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should fail if player is dead', () => {
@@ -176,8 +176,8 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      expect(result.runes).toHaveLength(1)
-      expect(result.players['p1']!.buffs).toHaveLength(0)
+      expect(result.state.runes).toHaveLength(1)
+      expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should fail if no rune in zone', () => {
@@ -189,7 +189,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      expect(result.players['p1']!.buffs).toHaveLength(0)
+      expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should handle non-existent player', () => {
@@ -198,7 +198,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'nonexistent', 'rune-top')
-      expect(result.runes).toHaveLength(1)
+      expect(result.state.runes).toHaveLength(1)
     })
 
     it('should emit rune_picked event', () => {
@@ -211,10 +211,8 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      const event = result.events.find(
-        (e) => ('_tag' in e && e._tag === 'rune_picked') || e.type === 'rune_picked',
-      )
-      expect(event).toBeDefined()
+      expect(result.event).not.toBeNull()
+      expect(result.event!._tag).toBe('rune_picked')
     })
 
     it('should pickup dd rune correctly', () => {
@@ -227,7 +225,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      const ddBuff = result.players['p1']!.buffs.find((b) => b.id === 'dd')
+      const ddBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'dd')
       expect(ddBuff).toBeDefined()
     })
 
@@ -241,7 +239,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      const regenBuff = result.players['p1']!.buffs.find((b) => b.id === 'regen')
+      const regenBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'regen')
       expect(regenBuff).toBeDefined()
     })
 
@@ -255,7 +253,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      const arcaneBuff = result.players['p1']!.buffs.find((b) => b.id === 'arcane')
+      const arcaneBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'arcane')
       expect(arcaneBuff).toBeDefined()
     })
 
@@ -269,7 +267,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      const invisBuff = result.players['p1']!.buffs.find((b) => b.id === 'invis')
+      const invisBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'invis')
       expect(invisBuff).toBeDefined()
     })
 
@@ -282,7 +280,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      expect(result.players['p1']!.buffs).toHaveLength(0)
+      expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
   })
 
@@ -631,7 +629,7 @@ describe('RuneAI', () => {
       })
 
       const result = pickupRune(state, 'p1', 'rune-top')
-      expect(result.players['p1']!.buffs).toHaveLength(1)
+      expect(result.state.players['p1']!.buffs).toHaveLength(1)
     })
 
     it('should handle regen at full HP and MP', () => {

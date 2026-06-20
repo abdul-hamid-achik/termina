@@ -954,9 +954,10 @@ export function runNPCAI(
   }
   const roshanResult = processRoshanDamage(s, roshanDamage)
   s = roshanResult.state
-  if (roshanResult.roshanKilled) {
-    events.push(...roshanResult.events.filter((e) => e._tag === 'roshan_killed'))
-  }
+  // processRoshanDamage keeps events OFF state.events — merge them here so they
+  // flow into allEvents via runNPCAI's return (single-source, no state.events
+  // mutation, no as-unknown-as casts).
+  events.push(...roshanResult.events)
 
   return { state: s, events }
 }
@@ -1279,6 +1280,20 @@ function handleDeaths(
         } as GameEngineEvent)
       }
 
+      changed = true
+    }
+  }
+
+  // Aegis expiry sweep: tickBuffs preserves the aegis buff at ticksRemaining ===
+  // 0 so the death loop above can proc it. If the player survived this tick
+  // (no death → no aegis consumption), remove the expired aegis now so it
+  // doesn't linger as a stale buff.
+  for (const [pid, player] of Object.entries(players)) {
+    if (player.alive && player.buffs.some((b) => b.id === 'aegis' && b.ticksRemaining <= 0)) {
+      players[pid] = {
+        ...player,
+        buffs: player.buffs.filter((b) => !(b.id === 'aegis' && b.ticksRemaining <= 0)),
+      }
       changed = true
     }
   }
