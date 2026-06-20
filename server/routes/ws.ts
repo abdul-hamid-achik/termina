@@ -14,6 +14,8 @@ import {
   unregisterPeer,
   getPlayerGame,
   sendToPeer,
+  getInstanceId,
+  PLAYER_LOCATION_KEY,
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
 import { wsLog } from '~~/server/utils/log'
@@ -101,6 +103,18 @@ export default defineWebSocketHandler({
       send: (data: string | ArrayBuffer | Uint8Array) => number | undefined
     } | null
     registerPeer(playerId, peer, rawWs)
+    // Register this player's location in Redis so other instances can relay
+    // messages to them (P4 multi-instance). Best-effort — single-instance mode
+    // has no other instance to relay to, so a failure is harmless.
+    try {
+      const runtime0 = getGameRuntime()
+      const instanceId0 = getInstanceId()
+      if (runtime0 && instanceId0) {
+        Effect.runSync(runtime0.redisService.hset(PLAYER_LOCATION_KEY, playerId, instanceId0))
+      }
+    } catch {
+      // Redis unavailable or mock environment — skip location registration.
+    }
     wsLog.info('Peer connected', { playerId })
 
     const timer = disconnectTimers.get(playerId)
@@ -590,6 +604,15 @@ export default defineWebSocketHandler({
           // reconnect) — stop the seeded game's loop so dev games don't pile up and
           // tick forever across an e2e suite. No-op for real (matchmaking) games.
           stopDevGame(gameId)
+
+          // Deregister the player's location from Redis (P4 multi-instance).
+          try {
+            if (runtime) {
+              Effect.runSync(runtime.redisService.hdel(PLAYER_LOCATION_KEY, playerId))
+            }
+          } catch {
+            // Redis unavailable — skip.
+          }
 
           peerState.delete(peer)
         },

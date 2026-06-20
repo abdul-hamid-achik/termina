@@ -125,7 +125,12 @@ function mockRuntime() {
       removeConnection: vi.fn(() => Effect.succeed(undefined)),
       broadcastToGame: vi.fn(() => Effect.succeed(undefined)),
     },
-    redisService: { publish: vi.fn(() => Effect.succeed(undefined)) },
+    redisService: {
+      publish: vi.fn(() => Effect.succeed(undefined)),
+      hset: vi.fn(() => Effect.succeed(undefined)),
+      hget: vi.fn(() => Effect.succeed(null)),
+      hdel: vi.fn(() => Effect.succeed(undefined)),
+    },
     dbService: { tag: 'db' },
   }
 }

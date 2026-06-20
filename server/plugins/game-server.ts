@@ -47,7 +47,11 @@ import {
   setPlayerGame,
   clearPlayerGame,
   hasPeer,
+  setInstanceId,
+  configureRelay,
+  PLAYER_LOCATION_KEY,
 } from '~~/server/services/PeerRegistry'
+import type { ServerMessage } from '~~/shared/types/protocol'
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -491,6 +495,51 @@ export default defineNitroPlugin(async (nitroApp) => {
   // Start matchmaking loop
   const { startMatchmakingLoop } = await import('~~/server/game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
+
+  // ── Multi-instance: instance identity + relay ───────────────────
+  // Generate a unique instance ID for cross-instance message relay (P4).
+  // In single-instance mode the relay is configured but never used (no
+  // cross-instance traffic). The relay lets sendToPeer fall back to Redis
+  // pub/sub when the player's WS is on a different DO instance.
+  const instanceId = `inst_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+  setInstanceId(instanceId)
+  gameLog.info('Instance ID assigned', { instanceId })
+
+  // Wire up the relay: lookup player location from Redis, publish to the
+  // target instance's relay channel.
+  configureRelay({
+    lookup: async (playerId: string) => {
+      try {
+        return await Effect.runSync(redis.hget(PLAYER_LOCATION_KEY, playerId))
+      } catch {
+        return null
+      }
+    },
+    publish: async (targetInstanceId: string, playerId: string, message: ServerMessage) => {
+      const payload = JSON.stringify({ playerId, message })
+      await Effect.runSync(redis.publish(`termina:relay:${targetInstanceId}`, payload))
+    },
+  })
+
+  // Subscribe to this instance's relay channel and forward messages to local peers.
+  Effect.runPromise(
+    redis.subscribe(`termina:relay:${instanceId}`, (raw: string) => {
+      try {
+        const { playerId, message } = JSON.parse(raw) as {
+          playerId: string
+          message: ServerMessage
+        }
+        sendToPeer(playerId, message)
+      } catch (err) {
+        gameLog.warn('Relay message parse failed', { error: String(err) })
+      }
+    }),
+  ).catch((err) => {
+    gameLog.warn('Relay subscription failed (single-instance mode OK)', {
+      instanceId,
+      error: String(err),
+    })
+  })
 
   // Start the production liveGames reaper — sweeps zombie games whose loop
   // died without firing onGameOver. Unref so it doesn't keep the process alive.
