@@ -1,0 +1,10 @@
+# Pulumi TypeScript build output
+/bin/
+
+# Dependencies (this project has its own, isolated from the app root)
+node_modules/
+
+# Never commit a plaintext export of secrets
+*.env
+.env
+.env.*

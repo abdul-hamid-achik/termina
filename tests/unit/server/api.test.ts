@@ -8,6 +8,7 @@ let sessionUser: { user?: { id?: string; username?: string } } | null = null
 let requestHeaders: Record<string, string> = {}
 let requestBody: unknown = {}
 let requestQuery: Record<string, unknown> = {}
+let routerParam: string | undefined
 let thrownError: { statusCode: number; message: string } | null = null
 
 function makeEvent(method: string, path: string): H3Event {
@@ -30,6 +31,8 @@ vi.stubGlobal('createError', (opts: { statusCode: number; message: string }) => 
 vi.stubGlobal('readBody', async () => requestBody)
 vi.stubGlobal('getQuery', () => requestQuery)
 vi.stubGlobal('setHeader', () => {})
+vi.stubGlobal('getRequestIP', () => '127.0.0.1')
+vi.stubGlobal('getRouterParam', () => routerParam)
 
 // ── Mocks for module imports ────────────────────────────────────────
 
@@ -58,6 +61,7 @@ const mockRuntime = {
     getPlayer: vi.fn(() => Effect.succeed(null)),
     getPlayerByProvider: vi.fn(() => Effect.succeed(null)),
     getLeaderboard: vi.fn(() => Effect.succeed([])),
+    getMatchHistory: vi.fn(() => Effect.succeed([])),
     recordMatch: vi.fn(() => Effect.succeed(undefined)),
     getPlayerStats: vi.fn(() => Effect.succeed(null)),
   },
@@ -88,11 +92,22 @@ vi.mock('~~/server/utils/RateLimiter', () => ({
   checkScopedRateLimit: vi.fn(() => true),
 }))
 
+vi.mock('~~/server/game/engine/StateSnapshot', () => ({
+  readSnapshot: vi.fn(() => Effect.succeed(null)),
+}))
+
+vi.mock('~~/server/game/engine/ActionLog', () => ({
+  readActions: vi.fn(() => Effect.succeed([])),
+}))
+
 // ── Subjects ────────────────────────────────────────────────────────
 
 const joinHandler = (await import('../../../server/api/queue/join.post')).default
 const leaveHandler = (await import('../../../server/api/queue/leave.post')).default
 const leaderboardHandler = (await import('../../../server/api/leaderboard.get')).default
+const matchHistoryHandler = (await import('../../../server/api/match/history.get')).default
+const playerHandler = (await import('../../../server/api/player/[id].get')).default
+const replayHandler = (await import('../../../server/api/replay/[gameId].get')).default
 const statusHandler = (await import('../../../server/api/queue/status.get')).default
 
 const { getGameRuntime, createTutorialGame } = await import('~~/server/plugins/game-server')
@@ -100,6 +115,8 @@ const { joinQueue, leaveQueue } = await import('~~/server/game/matchmaking/queue
 const { getPlayerGame } = await import('~~/server/services/PeerRegistry')
 const { getPlayerLobby } = await import('~~/server/game/matchmaking/lobby')
 const { checkScopedRateLimit } = await import('~~/server/utils/RateLimiter')
+const { readSnapshot } = await import('~~/server/game/engine/StateSnapshot')
+const { readActions } = await import('~~/server/game/engine/ActionLog')
 
 // ── Tests ──────────────────────────────────────────────────────────
 
@@ -109,9 +126,13 @@ describe('API endpoints', () => {
     requestHeaders = {}
     requestBody = {}
     requestQuery = {}
+    routerParam = undefined
     thrownError = null
     vi.clearAllMocks()
     vi.mocked(getGameRuntime).mockReturnValue(mockRuntime)
+    vi.mocked(checkScopedRateLimit).mockReturnValue(true)
+    vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(null))
+    vi.mocked(readActions).mockReturnValue(Effect.succeed([]))
   })
 
   afterEach(() => {
@@ -295,6 +316,125 @@ describe('API endpoints', () => {
       mockRuntime.dbService.getLeaderboard.mockReturnValue(Effect.succeed([] as never))
       await leaderboardHandler(makeEvent('GET', '/api/leaderboard'))
       expect(mockRuntime.dbService.getLeaderboard).toHaveBeenCalledWith(100)
+    })
+
+    it('429 when the per-IP publicRead rate limit is exceeded', async () => {
+      vi.mocked(checkScopedRateLimit).mockReturnValue(false)
+      await expect(leaderboardHandler(makeEvent('GET', '/api/leaderboard'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(429)
+    })
+  })
+
+  // ── /api/match/history ───────────────────────────────────────────
+
+  describe('GET /api/match/history', () => {
+    it('429 when rate limited', async () => {
+      vi.mocked(checkScopedRateLimit).mockReturnValue(false)
+      await expect(matchHistoryHandler(makeEvent('GET', '/api/match/history'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(429)
+    })
+
+    it('returns matches for an explicit player query (capping limit)', async () => {
+      requestQuery = { player: 'p1', limit: '5' }
+      mockRuntime.dbService.getMatchHistory.mockReturnValue(Effect.succeed([{ id: 'm1' }] as never))
+      const result = await matchHistoryHandler(makeEvent('GET', '/api/match/history'))
+      expect(result).toEqual({ matches: [{ id: 'm1' }] })
+      expect(mockRuntime.dbService.getMatchHistory).toHaveBeenCalledWith('p1', 5)
+    })
+
+    it('falls back to the authenticated user when no player query', async () => {
+      requestQuery = {}
+      sessionUser = { user: { id: 'me' } }
+      mockRuntime.dbService.getMatchHistory.mockReturnValue(Effect.succeed([] as never))
+      await matchHistoryHandler(makeEvent('GET', '/api/match/history'))
+      expect(mockRuntime.dbService.getMatchHistory).toHaveBeenCalledWith('me', 20)
+    })
+
+    it('401 when no player query and not authenticated', async () => {
+      requestQuery = {}
+      sessionUser = null
+      await expect(matchHistoryHandler(makeEvent('GET', '/api/match/history'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(401)
+    })
+  })
+
+  // ── /api/player/[id] ─────────────────────────────────────────────
+
+  describe('GET /api/player/[id]', () => {
+    it('429 when rate limited', async () => {
+      vi.mocked(checkScopedRateLimit).mockReturnValue(false)
+      await expect(playerHandler(makeEvent('GET', '/api/player/p1'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(429)
+    })
+
+    it('400 when no id param', async () => {
+      routerParam = undefined
+      await expect(playerHandler(makeEvent('GET', '/api/player/'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(400)
+    })
+
+    it('404 when the player does not exist', async () => {
+      routerParam = 'ghost'
+      mockRuntime.dbService.getPlayer.mockReturnValue(Effect.succeed(null))
+      await expect(playerHandler(makeEvent('GET', '/api/player/ghost'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(404)
+    })
+
+    it('returns the public profile without email/passwordHash', async () => {
+      routerParam = 'p1'
+      mockRuntime.dbService.getPlayer.mockReturnValue(
+        Effect.succeed({
+          id: 'p1',
+          username: 'alice',
+          email: 'a@x.com',
+          passwordHash: 'secret',
+          mmr: 1500,
+        } as never),
+      )
+      const result = await playerHandler(makeEvent('GET', '/api/player/p1'))
+      expect(result.player).toMatchObject({ id: 'p1', username: 'alice', mmr: 1500 })
+      expect(result.player).not.toHaveProperty('email')
+      expect(result.player).not.toHaveProperty('passwordHash')
+    })
+  })
+
+  // ── /api/replay/[gameId] ─────────────────────────────────────────
+
+  describe('GET /api/replay/[gameId]', () => {
+    it('429 when rate limited', async () => {
+      vi.mocked(checkScopedRateLimit).mockReturnValue(false)
+      await expect(replayHandler(makeEvent('GET', '/api/replay/g1'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(429)
+    })
+
+    it('400 when no gameId param', async () => {
+      routerParam = undefined
+      await expect(replayHandler(makeEvent('GET', '/api/replay/'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(400)
+    })
+
+    it('404 when no snapshot exists', async () => {
+      routerParam = 'g1'
+      vi.mocked(readSnapshot).mockReturnValue(Effect.succeed(null))
+      await expect(replayHandler(makeEvent('GET', '/api/replay/g1'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(404)
+    })
+
+    it('returns the snapshot + actions with surrenderVotes converted to arrays', async () => {
+      routerParam = 'g1'
+      vi.mocked(readSnapshot).mockReturnValue(
+        Effect.succeed({
+          savedAt: 123,
+          state: { tick: 9, surrenderVotes: { radiant: new Set(['p1']), dire: new Set() } },
+          meta: { players: [] },
+        } as never),
+      )
+      vi.mocked(readActions).mockReturnValue(Effect.succeed([{ tick: 1 }] as never))
+      const result = await replayHandler(makeEvent('GET', '/api/replay/g1'))
+      expect(result.gameId).toBe('g1')
+      expect(result.savedAt).toBe(123)
+      expect(result.state.surrenderVotes).toEqual({ radiant: ['p1'], dire: [] })
+      expect(result.actions).toEqual([{ tick: 1 }])
     })
   })
 

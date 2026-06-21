@@ -284,6 +284,13 @@ describe('ws route — message() ingress guards', () => {
     expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'INVALID_JSON' })
   })
 
+  it('rejects oversized messages with MESSAGE_TOO_LARGE before parsing', () => {
+    const peer = openAuthedPeer('p_big')
+    const huge = JSON.stringify({ type: 'chat', channel: 'all', message: 'x'.repeat(20_000) })
+    sendMsg(peer, huge)
+    expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'MESSAGE_TOO_LARGE' })
+  })
+
   it('rejects schema-invalid messages with INVALID_MESSAGE', () => {
     const peer = openAuthedPeer('p_schema')
     sendMsg(peer, { type: 'action', command: { type: 'fly_hack' } })
@@ -331,6 +338,20 @@ describe('ws route — action', () => {
     sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
     expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'RATE_LIMITED' })
     expect(submitAction).not.toHaveBeenCalled()
+  })
+
+  it('rate-limits request_state via the recovery scope', () => {
+    const peer = openAuthedPeer('p_rs_rl')
+    vi.mocked(checkScopedRateLimit).mockReturnValue(false)
+    sendMsg(peer, { type: 'request_state' })
+    expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'RATE_LIMITED' })
+  })
+
+  it('rate-limits reconnect via the recovery scope', () => {
+    const peer = openAuthedPeer('p_rc_rl')
+    vi.mocked(checkScopedRateLimit).mockReturnValue(false)
+    sendMsg(peer, { type: 'reconnect', gameId: 'game_x', playerId: 'p_rc_rl' })
+    expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'RATE_LIMITED' })
   })
 })
 

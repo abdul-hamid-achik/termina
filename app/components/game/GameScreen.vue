@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { formatTickClock } from '~/utils/gameClock'
 import AnnouncementToast from '~/components/game/AnnouncementToast.vue'
 import AsciiMap from '~/components/game/AsciiMap.vue'
 import CommandInput from '~/components/game/CommandInput.vue'
@@ -430,12 +431,7 @@ watch(
 
 const currentTick = computed(() => gameStore.tick)
 
-const gameTime = computed(() => {
-  const totalSeconds = gameStore.tick * 4
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-})
+const gameTime = computed(() => formatTickClock(gameStore.tick, true))
 
 const playerGold = computed(() => gameStore.player?.gold ?? 0)
 const playerKills = computed(() => gameStore.player?.kills ?? 0)

@@ -20,6 +20,16 @@ export default defineEventHandler((event) => {
   const path = event.path
   if (!path.startsWith('/api/')) return
 
+  // Allow-list: when NUXT_CORS_ALLOWED_ORIGINS is set (comma-separated), only
+  // those origins get credentialed CORS — a disallowed cross-origin request
+  // receives no ACAO header, so the browser blocks it. Empty (dev / same-origin
+  // DO) falls back to echoing the request origin.
+  const allowed = ((useRuntimeConfig().corsAllowedOrigins as string | undefined) ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
+  if (allowed.length > 0 && !allowed.includes(origin)) return
+
   setHeader(event, 'access-control-allow-origin', origin)
   setHeader(event, 'access-control-allow-credentials', 'true')
   setHeader(event, 'access-control-allow-methods', 'GET, POST, PUT, DELETE, OPTIONS')

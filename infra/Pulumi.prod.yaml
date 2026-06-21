@@ -1,0 +1,15 @@
+# Pulumi stack config for `prod`. NON-SECRET values only.
+# Secrets are supplied at run time by tvault (`tvault run -- pulumi up`), which
+# injects NUXT_* + DIGITALOCEAN_TOKEN as env vars that index.ts reads env-first.
+# (Alternatively: `pulumi config set --secret termina-infra:<key> <value>`,
+#  which encrypts them into this file under a `secure:` blob.)
+config:
+  termina-infra:region: nyc
+  termina-infra:appName: termina-ws
+  termina-infra:instanceCount: '1'
+  termina-infra:instanceSize: basic-xxs
+  termina-infra:imageRepository: termina-ws
+  termina-infra:imageTag: latest
+  termina-infra:registryName: termina
+  termina-infra:createRegistry: 'false'
+  termina-infra:registryTier: basic

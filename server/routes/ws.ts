@@ -102,7 +102,15 @@ function touchPeer(playerId: string): void {
 export default defineWebSocketHandler({
   open(peer) {
     const reqUrl = peer.request?.url || peer.websocket?.url || ''
-    const url = new URL(reqUrl, 'http://localhost')
+    // Guard: a malformed request URL must be a clean close, not a throw out of
+    // the open hook (which would crash connection setup).
+    let url: URL
+    try {
+      url = new URL(reqUrl, 'http://localhost')
+    } catch {
+      peer.close(4400, 'Invalid connection URL')
+      return
+    }
     const queryPlayerId = url.searchParams.get('playerId')
 
     // Derive playerId from authenticated session (attached by auth middleware)
@@ -260,9 +268,21 @@ export default defineWebSocketHandler({
       return
     }
 
+    // Reject oversized frames before parsing — valid messages are <1KB (chat
+    // caps at 500 chars). Defense-in-depth at the handler; the complete cap is a
+    // server-level ws maxPayload (tracked in the prod-readiness checklist).
+    const text = typeof message === 'string' ? message : message.toString()
+    if (Buffer.byteLength(text) > 16 * 1024) {
+      wsLog.warn('Oversized WS message rejected', { playerId: ctx.playerId, bytes: text.length })
+      peer.send(
+        JSON.stringify({ type: 'error', code: 'MESSAGE_TOO_LARGE', message: 'Message too large' }),
+      )
+      return
+    }
+
     let rawParsed: unknown
     try {
-      rawParsed = JSON.parse(typeof message === 'string' ? message : message.toString())
+      rawParsed = JSON.parse(text)
     } catch {
       peer.send(
         JSON.stringify({ type: 'error', code: 'INVALID_JSON', message: 'Invalid JSON message' }),
@@ -292,6 +312,12 @@ export default defineWebSocketHandler({
         break
 
       case 'reconnect': {
+        if (!checkScopedRateLimit('recovery', ctx.playerId)) {
+          peer.send(
+            JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Too many requests' }),
+          )
+          break
+        }
         const runtime = getGameRuntime()
         if (!runtime) {
           peer.send(
@@ -374,6 +400,12 @@ export default defineWebSocketHandler({
       }
 
       case 'request_state': {
+        if (!checkScopedRateLimit('recovery', ctx.playerId)) {
+          peer.send(
+            JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Too many requests' }),
+          )
+          break
+        }
         if (!ctx.gameId) {
           peer.send(JSON.stringify({ type: 'error', code: 'NO_GAME', message: 'Not in a game' }))
           break

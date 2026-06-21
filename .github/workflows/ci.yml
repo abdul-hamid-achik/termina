@@ -224,6 +224,29 @@ jobs:
       - name: Build (nuxt build)
         run: bun run build
 
+  # ─────────────────────────── advisory: infra (Pulumi) typecheck ─────────────────────
+  # The Pulumi deploy program in infra/ has its own deps + tsconfig and is excluded
+  # from the app typecheck, so compile it here — a type error in the deploy code is
+  # caught in CI rather than at `pulumi up`. npm-managed (Pulumi project). Advisory
+  # for now (NOT in ci-success); promote into ci-success.needs once trusted.
+  infra-typecheck:
+    name: infra typecheck (pulumi tsc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - name: Install infra deps
+        run: npm ci
+        working-directory: infra
+      - name: Typecheck the Pulumi program (tsc --noEmit)
+        run: npx tsc --noEmit -p tsconfig.json
+        working-directory: infra
+
   # ─────────────────────────── advisory: stories + coverage (NOT in ci-success) ──────
   # Same advisory posture as e2e: they run and report red/green + upload artifacts,
   # but do NOT block the merge gate. Promote into ci-success.needs once trusted.

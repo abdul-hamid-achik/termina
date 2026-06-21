@@ -111,6 +111,16 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 
 `VisionCalculator.filterStateForPlayer()` computes visible zones per player (own zone + adjacent, wards, towers, allies). Enemies outside vision are returned as `FoggedPlayer` (minimal info only).
 
+## Deployment
+
+Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
+
+- **Vercel** — the Nuxt frontend, plus the data layer (Neon Postgres + Upstash Redis) provisioned via the Vercel Marketplace
+- **DigitalOcean App Platform** — the full Nitro server (SSR + WS + 4s-tick game loop) from a DOCR Docker image (`Dockerfile`, non-root runtime). Managed as **Pulumi (TypeScript) IaC in `infra/`** — isolated (own deps/tsconfig; excluded from app lint/typecheck/knip/Docker), so it never affects app CI gates
+- **State backend** is self-managed: a DigitalOcean Spaces (S3-compatible) bucket pinned in `infra/Pulumi.yaml` `backend.url` (DO `pulumi login` not needed). Secrets via the default `passphrase` provider
+- **Secrets** are managed locally with **tvault**, keyed by their real env-var names, so `tvault run -- pulumi up` (deploy) and `tvault run -- bun run dev` (local) both inject them. `infra/index.ts` reads each secret env-first, else Pulumi config. The DO Spaces keys (`AWS_*`) are distinct from the provider token (`DIGITALOCEAN_TOKEN`)
+- CI `.github/workflows/deploy.yml` builds + pushes the image to DOCR (`registry.digitalocean.com`), then runs `pulumi up`
+
 ## Key Conventions
 
 - **Immutable state updates**: Game state uses spread operators, never mutate in place

@@ -139,6 +139,12 @@ const SCOPE_CONFIGS: Record<string, RateLimitConfig> = {
   tutorial: { maxActionsPerSecond: 0.5, maxBurstSize: 3 },
   // In-game chat + map pings per user — 3/s with a burst of 10
   chat: { maxActionsPerSecond: 3, maxBurstSize: 10 },
+  // Reconnect / request_state recovery ops per player — cheap to send but each
+  // triggers a state rebuild / snapshot read, so cap rapid spamming.
+  recovery: { maxActionsPerSecond: 1, maxBurstSize: 5 },
+  // Public read endpoints (leaderboard/history/replay/profile) keyed by IP —
+  // generous so normal browsing is never throttled; only blunts scraping/abuse.
+  publicRead: { maxActionsPerSecond: 10, maxBurstSize: 50 },
 }
 
 /**

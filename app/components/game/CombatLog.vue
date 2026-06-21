@@ -2,6 +2,7 @@
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
 import type { CombatLine, CombatLineType, Salience } from '~/utils/combatLog'
+import { formatTickClock } from '~/utils/gameClock'
 
 const props = defineProps<{
   events: CombatLine[]
@@ -84,8 +85,7 @@ const beats = computed<Beat[]>(() => {
 })
 
 function clock(tick: number): string {
-  const s = tick * 4
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  return formatTickClock(tick)
 }
 
 // ── Scroll handling ────────────────────────────────────────────

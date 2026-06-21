@@ -62,19 +62,50 @@ jobs:
         id: build
         run: |
           # Tag with the short SHA + latest.
-          IMAGE="registry.digitaloceanspaces.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:${{ github.sha }}"
+          IMAGE="registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:${{ github.sha }}"
           docker build -t "$IMAGE" .
-          docker tag "$IMAGE" registry.digitaloceanspaces.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:latest
+          docker tag "$IMAGE" registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:latest
           docker push "$IMAGE"
-          docker push registry.digitaloceanspaces.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:latest
+          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:latest
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      - name: Update the DO App Platform deployment
-        if: ${{ secrets.DO_APP_ID != '' }}
+      # ── Deploy via Pulumi (replaces the old `doctl apps update --spec` step) ──
+      # State lives in a self-managed DigitalOcean Spaces backend pinned in
+      # infra/Pulumi.yaml. The `prod` stack must be initialized once locally
+      # (`pulumi stack init prod`) before the first CI deploy — see infra/README.md.
+      # Raw CLI (not pulumi/actions) to stay independent of the action's version.
+      - name: Set up Node for the Pulumi program
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy with Pulumi (DO App Platform)
+        working-directory: infra
         run: |
-          doctl apps update ${{ secrets.DO_APP_ID }} \
-            --spec ./.github/do-app-spec.yaml \
-            --wait
+          curl -fsSL https://get.pulumi.com | sh
+          export PATH="$HOME/.pulumi/bin:$PATH"
+          npm ci
+          pulumi stack select prod
+          # Deploy the image we just built+pushed (overrides the committed `latest`).
+          pulumi config set termina-infra:imageTag "$GITHUB_SHA"
+          pulumi up --yes
+        env:
+          # State backend (DO Spaces) — Spaces keys, NOT the DO API token:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          # DO provider (create/update App Platform) — existing secret, remapped:
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          # App runtime secrets, read env-first by infra/index.ts (required):
+          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
+          NUXT_DATABASE_URL: ${{ secrets.NUXT_DATABASE_URL }}
+          NUXT_REDIS_URL: ${{ secrets.NUXT_REDIS_URL }}
+          # Optional OAuth (omitted automatically when the secret is unset/empty):
+          NUXT_OAUTH_GITHUB_CLIENT_ID: ${{ secrets.NUXT_OAUTH_GITHUB_CLIENT_ID }}
+          NUXT_OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.NUXT_OAUTH_GITHUB_CLIENT_SECRET }}
+          NUXT_OAUTH_DISCORD_CLIENT_ID: ${{ secrets.NUXT_OAUTH_DISCORD_CLIENT_ID }}
+          NUXT_OAUTH_DISCORD_CLIENT_SECRET: ${{ secrets.NUXT_OAUTH_DISCORD_CLIENT_SECRET }}
 
   # ── Vercel: deploy the frontend SPA ───────────────────────────────
   vercel-deploy:

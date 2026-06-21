@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { formatSeconds } from '~/utils/gameClock'
 
 const props = defineProps<{
   playersInQueue?: number
@@ -115,9 +116,7 @@ watch(
 )
 
 function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+  return formatSeconds(seconds)
 }
 
 // Build the visual slot list

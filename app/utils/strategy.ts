@@ -9,6 +9,7 @@
  */
 import { ITEMS } from '~~/shared/constants/items'
 import { ZONES } from '~~/shared/constants/zones'
+import { formatTickClock } from './gameClock'
 import {
   ROSHAN_RESPAWN_TICKS,
   RUNE_DURATION_TICKS,
@@ -62,10 +63,7 @@ export function formatGoldShort(n: number): string {
 
 /** Ticks -> "m:ss" clock (1 tick = 4s). Clamps negatives to 0. */
 export function ticksToClock(ticks: number): string {
-  const seconds = Math.max(0, ticks) * 4
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+  return formatTickClock(Math.max(0, ticks))
 }
 
 // ── Roshan ──────────────────────────────────────────────────────────

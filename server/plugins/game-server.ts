@@ -29,7 +29,9 @@ import {
   deleteSnapshot,
   readSnapshot,
   listSnapshotGameIds,
+  type SnapshotMeta,
 } from '~~/server/game/engine/StateSnapshot'
+import { flushFinalSnapshots } from '~~/server/game/engine/gracefulShutdown'
 import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   calculateVision,
@@ -56,6 +58,7 @@ import {
   hasPeer,
   setInstanceId,
   getInstanceId,
+  getGamePlayers,
   configureRelay,
   PLAYER_LOCATION_KEY,
   GAME_OWNER_KEY,
@@ -170,6 +173,9 @@ interface LiveGameEntry {
   /** Wall-clock ms of the last tick broadcast — used by the reaper to detect
    *  zombie games whose loop died without firing onGameOver. */
   lastTickAt: number
+  /** Snapshot meta captured at game start — lets the shutdown hook flush a
+   *  faithful final snapshot (the resume path requires meta.players). */
+  meta?: SnapshotMeta
 }
 
 const liveGames = new Map<string, LiveGameEntry>()
@@ -192,6 +198,13 @@ function registerLiveGame(
       }
     }
   }
+}
+
+/** Stash the snapshot meta on the live-game entry so the shutdown hook can
+ *  flush a faithful final snapshot (resume requires meta.players). */
+function setLiveGameMeta(gameId: string, meta: SnapshotMeta): void {
+  const entry = liveGames.get(gameId)
+  if (entry) entry.meta = meta
 }
 
 /** Release game ownership in Redis (on game over / cleanup). */
@@ -523,7 +536,7 @@ export default defineNitroPlugin(async (nitroApp) => {
   // production build, so NODE_ENV can't gate them) — they bypass auth (login-as
   // mints a session for ANY username) and must NEVER be set in a real deployment.
   if (testHooksEnabled()) {
-    console.warn(
+    gameLog.warn(
       '\n⚠️  TERMINA_TEST_HOOKS=1 — test endpoints (server/api/test/*) are ENABLED.\n' +
         '   They bypass auth and seed/teardown games. NEVER set this in production.\n',
     )
@@ -950,9 +963,9 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Start the game loop as a fiber within the managed runtime.
         // The snapshot meta lets the resume path rebuild the same callbacks
         // after a process restart.
-        startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, {
-          players: gameData.players,
-        })
+        const snapshotMeta: SnapshotMeta = { players: gameData.players }
+        startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
+        setLiveGameMeta(gameId, snapshotMeta)
       } catch (err) {
         gameLog.error('Failed to process game_ready event', { error: String(err) })
       }
@@ -1050,7 +1063,9 @@ export default defineNitroPlugin(async (nitroApp) => {
       // so a spec controls time deterministically (never races the 4s loop).
       _devGameLoops.set(gameId, { stateManager, callbacks })
     } else {
-      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, { players })
+      const snapshotMeta: SnapshotMeta = { players }
+      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
+      setLiveGameMeta(gameId, snapshotMeta)
     }
     gameLog.info('Dev game created', {
       gameId,
@@ -1117,9 +1132,9 @@ export default defineNitroPlugin(async (nitroApp) => {
       }
 
       const callbacks = buildCallbacks(snap.meta.players, stateManager)
-      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, {
-        players: snap.meta.players,
-      })
+      const snapshotMeta: SnapshotMeta = { players: snap.meta.players }
+      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
+      setLiveGameMeta(gameId, snapshotMeta)
 
       gameLog.info('Resumed game from snapshot', {
         gameId,
@@ -1144,6 +1159,34 @@ export default defineNitroPlugin(async (nitroApp) => {
       _liveGameReaperTimer = null
     }
     clearInterval(_keepAliveTimer)
+
+    // Graceful shutdown: flush a final snapshot for each live game + release its
+    // Redis ownership so a rolling deploy (App Platform sends SIGTERM) resumes
+    // games on the replacement instance with minimal tick loss. Time-bounded +
+    // best-effort so it can NEVER delay the SIGKILL grace window; on timeout or
+    // any failure the periodic snapshot (≤60s old) remains the fallback — i.e. no
+    // worse than before. Games without captured meta are skipped (resume requires
+    // meta.players, so a meta-less snapshot would break resume). Runs before the
+    // Redis connection is torn down below.
+    if (liveGames.size > 0) {
+      // Best-effort + time-bounded (see flushFinalSnapshots): a faithful final
+      // snapshot per live game, then release ownership so reconnects re-route.
+      // Falls back to the ≤60s periodic snapshot on any failure.
+      await managedRuntime.runPromise(flushFinalSnapshots(liveGames, redis))
+      for (const gameId of liveGames.keys()) {
+        releaseGameOwnership(gameId)
+        // Release this instance's player-location claims too, so the
+        // cross-instance relay doesn't route reconnects to this dying instance.
+        for (const playerId of getGamePlayers(gameId)) {
+          try {
+            Effect.runSync(redis.hdel(PLAYER_LOCATION_KEY, playerId))
+          } catch {
+            // Redis unavailable — best-effort, skip.
+          }
+        }
+      }
+    }
+
     await managedRuntime.runPromise(redis.shutdown())
     await managedRuntime.runPromise(db.shutdown())
     await managedRuntime.dispose()

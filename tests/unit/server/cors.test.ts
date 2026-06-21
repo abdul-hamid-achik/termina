@@ -10,7 +10,9 @@ import type { H3Event } from 'h3'
 
 const capturedResHeaders: Record<string, string | number> = {}
 let capturedStatus = 200
+let runtimeCorsAllowed = ''
 
+vi.stubGlobal('useRuntimeConfig', () => ({ corsAllowedOrigins: runtimeCorsAllowed }))
 vi.stubGlobal('defineEventHandler', (fn: (event: H3Event) => unknown) => fn)
 vi.stubGlobal('getHeader', (event: H3Event, name: string) => {
   const e = event as unknown as { __headers: Record<string, string> }
@@ -49,6 +51,7 @@ describe('CORS middleware', () => {
   beforeEach(() => {
     for (const k of Object.keys(capturedResHeaders)) delete capturedResHeaders[k]
     capturedStatus = 200
+    runtimeCorsAllowed = ''
   })
 
   it('no-ops when no Origin header is present', () => {
@@ -104,5 +107,27 @@ describe('CORS middleware', () => {
     const result = corsHandler(event)
     expect(result).toBeUndefined()
     expect(capturedStatus).toBe(200)
+  })
+
+  it('allows an origin on the configured allow-list', () => {
+    runtimeCorsAllowed = 'https://termina.vercel.app, https://termina.app'
+    const event = makeEventFull('GET', '/api/health', 'https://termina.vercel.app')
+    corsHandler(event)
+    expect(capturedResHeaders['access-control-allow-origin']).toBe('https://termina.vercel.app')
+  })
+
+  it('denies an origin not on the allow-list (no ACAO header set)', () => {
+    runtimeCorsAllowed = 'https://termina.vercel.app'
+    const event = makeEventFull('GET', '/api/health', 'https://evil.example.com')
+    const result = corsHandler(event)
+    expect(result).toBeUndefined()
+    expect(capturedResHeaders['access-control-allow-origin']).toBeUndefined()
+  })
+
+  it('falls back to echoing the origin when the allow-list is empty', () => {
+    runtimeCorsAllowed = ''
+    const event = makeEventFull('GET', '/api/health', 'https://anything.example.com')
+    corsHandler(event)
+    expect(capturedResHeaders['access-control-allow-origin']).toBe('https://anything.example.com')
   })
 })

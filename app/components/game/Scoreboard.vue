@@ -4,6 +4,7 @@ import type { TeamState, TeamId } from '~~/shared/types/game'
 import type { ScoreboardEntry } from '~/stores/game'
 import { ITEMS } from '~~/shared/constants/items'
 import { usePointerCoarse } from '~/composables/useTapInspect'
+import { formatTickClock } from '~/utils/gameClock'
 
 const props = defineProps<{
   players: ScoreboardEntry[]
@@ -64,12 +65,7 @@ function itemAbbrev(itemId: string | null | undefined): string {
     .slice(0, 5)
 }
 
-const gameTimeFormatted = computed(() => {
-  const totalSeconds = props.currentTick * 4
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-})
+const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true))
 </script>
 
 <template>

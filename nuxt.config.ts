@@ -47,10 +47,15 @@ export default defineNuxtConfig({
       wsUrl: '',
       apiUrl: '',
     },
+    // Server-only: comma-separated allow-list of browser Origins permitted
+    // credentialed CORS on /api/ (set NUXT_CORS_ALLOWED_ORIGINS to the Vercel
+    // app URL in prod). Empty = echo the request origin (dev / same-origin DO).
+    corsAllowedOrigins: '',
     session: {
       password: '',
       cookie: {
         secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
       },
     },
     oauth: {

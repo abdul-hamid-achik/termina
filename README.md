@@ -332,6 +332,34 @@ are keyed on the lockfile, and each job has a `timeout-minutes` backstop.
 
 ---
 
+## 🚢 Deployment
+
+Production is a **two-provider split** (see [`infra/README.md`](infra/README.md)
+for the full runbook):
+
+- **Vercel** — the Nuxt frontend (CDN + SSR) **and** the data layer, provisioned
+  via the Vercel Marketplace: **Neon** (Postgres) + **Upstash** (Redis).
+- **DigitalOcean App Platform** — the full Nitro server (SSR + WebSocket +
+  Effect-TS game loop + API), run from a DOCR Docker image. This is the one
+  stateful, long-lived piece; the in-memory game state is pinned per instance and
+  kept multi-instance-correct by the Redis relay, so it scales **up then out**.
+
+The DigitalOcean side is **infrastructure-as-code with Pulumi (TypeScript)** in
+[`infra/`](infra/) — an isolated project (own deps/tsconfig, excluded from the
+app's lint/typecheck/knip/Docker build). Local + deploy secrets are managed with
+**[tvault](https://github.com/abdul-hamid-achik/tinyvault)**, keyed by their real
+env-var names so one project drives both:
+
+```bash
+tvault run -- bun run dev        # local dev with secrets injected
+cd infra && tvault run -- pulumi up   # deploy DO App Platform
+```
+
+`infra/index.ts` reads each secret **env-var-first** (so tvault's injected vars
+are used) and falls back to Pulumi config otherwise.
+
+---
+
 ## 🔧 Development
 
 ### Adding a New Hero

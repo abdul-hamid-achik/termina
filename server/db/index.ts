@@ -8,14 +8,16 @@ let _client: ReturnType<typeof postgres> | null = null
 function createDb() {
   const config = useRuntimeConfig()
   const connectionString = (config.database as { url: string }).url
-  // Configure a connection pool with sensible defaults for a game server:
-  // max connections, prepared statements, and statement timeout to prevent
-  // a single slow query from exhausting the pool.
+  // Connection pool tuned for a game server. prepare:false is REQUIRED for
+  // Neon's transaction-mode pooler (PgBouncer) — the default Vercel↔Neon
+  // connection string — which multiplexes sessions and can't reuse named
+  // prepared statements (they error with prepare:true). It's harmless on a
+  // direct connection, so false is the safe universal choice.
   const client = postgres(connectionString, {
     max: 20,
     idle_timeout: 20,
     connect_timeout: 10,
-    prepare: true,
+    prepare: false,
   })
   _client = client
   return drizzle(client, { schema })

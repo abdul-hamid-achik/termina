@@ -1,0 +1,26 @@
+name: termina-infra
+
+# Self-managed (DIY) state backend: a private DigitalOcean Spaces bucket, NOT
+# Pulumi Cloud. The AWS_* env vars hold a DO *Spaces* access-key pair (separate
+# from DIGITALOCEAN_TOKEN, which the provider uses); secrets use the default
+# `passphrase` provider (PULUMI_CONFIG_PASSPHRASE). Create the bucket + versioning
+# once before `pulumi stack init` — see README (doctl can't create Spaces buckets).
+#
+# `endpoint` is the Spaces regional hostname (no scheme); `region` is a dummy the
+# AWS SDK requires (Spaces ignores it). Spaces defaults to virtual-hosted + HTTPS,
+# so s3ForcePathStyle/disableSSL are NOT set. If the first local `pulumi stack
+# init`/`up` errors on bucket addressing, the fallback is appending
+# `&s3ForcePathStyle=true`. Validate locally before CI relies on it.
+backend:
+  url: 's3://termina-pulumi-state?endpoint=nyc3.digitaloceanspaces.com&region=us-east-1'
+
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+description: >-
+  DigitalOcean infrastructure for the Termina game server. Manages the App
+  Platform service that runs the full Nitro server (SSR + WebSocket + Effect-TS
+  game loop + API) from the DOCR Docker image. The data layer (Neon Postgres +
+  Upstash Redis) is provisioned on the Vercel side and passed in here as secret
+  config (databaseUrl / redisUrl). See ./README.md for the full runbook.

@@ -8,6 +8,7 @@ import {
 } from '~~/shared/constants/balance'
 import type { TeamState, AncientState } from '~~/shared/types/game'
 import { goldLead, formatGoldShort, dayNightReadout } from '~/utils/strategy'
+import { formatSeconds } from '~/utils/gameClock'
 
 const props = defineProps<{
   tick: number
@@ -62,9 +63,7 @@ function formatTimeRemaining(tick: number, timeOfDay: string): string {
   const totalTicks = timeOfDay === 'day' ? DAY_DURATION_TICKS : NIGHT_DURATION_TICKS
   const remaining = totalTicks - tick
   const seconds = Math.ceil(remaining * 4)
-  const minutes = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${minutes}:${secs.toString().padStart(2, '0')}`
+  return formatSeconds(seconds)
 }
 
 // ── Macro row (team score / net worth / towers / Core HP) ──────
