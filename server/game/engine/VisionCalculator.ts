@@ -11,6 +11,22 @@ import { SENTRY_WARD_TRUE_SIGHT_RADIUS, NIGHT_VISION_PENALTY } from '~~/shared/c
 
 export type { FoggedPlayer, PlayerVisibleState }
 
+/**
+ * Exact set of buff IDs that grant invisibility/stealth to a player.
+ *
+ * Using a `ReadonlySet` with exact IDs avoids the fragile `b.id.includes('invis')`
+ * substring match — a future buff like `not_invisible` or `invis_breaker` would
+ * have wrongly matched the substring. Every ID here is a real buff applied by
+ * production code (rune, Silver Edge, Smoke of Deceit, cipher/daemon stealth).
+ */
+const INVISIBILITY_BUFF_IDS: ReadonlySet<string> = new Set([
+  'invis', // Invisibility rune
+  'invisible', // Legacy alias used in tests + some engine paths
+  'silver_edge_invis', // Silver Edge active
+  'smoke', // Smoke of Deceit
+  'stealth', // Cipher W + Daemon passive
+])
+
 const ADJACENT_CACHE = new Map<string, string[]>()
 
 for (const [zoneId, zoneData] of Object.entries(ZONE_MAP)) {
@@ -244,10 +260,7 @@ function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
 }
 
 function isInvisible(player: PlayerState): boolean {
-  // `includes('invis')` covers invisible / invis / silver_edge_invis (Silver
-  // Edge previously granted no stealth because its id matched none of the
-  // exact checks); smoke = Smoke of Deceit.
-  return player.buffs.some((b) => b.id.includes('invis') || b.id === 'stealth' || b.id === 'smoke')
+  return player.buffs.some((b) => INVISIBILITY_BUFF_IDS.has(b.id))
 }
 
 /**

@@ -16,7 +16,7 @@ import type { PlayerState } from '~~/shared/types/game'
 import type { ItemStats } from '~~/shared/types/items'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
-import { TALENT_TREES, type Talent } from '~~/shared/constants/talents'
+import { getTalentTree, type Talent } from '~~/shared/constants/talents'
 
 // Mirrors mutex.ts DEADLOCK_* constants
 const DEADLOCK_ATTACK_PER_STACK = 3
@@ -55,7 +55,7 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
 /** The talents a player has actually selected, resolved against their tree. */
 function getSelectedTalents(player: PlayerState): Talent[] {
   if (!player.heroId) return []
-  const tree = TALENT_TREES[player.heroId]
+  const tree = getTalentTree(player.heroId)
   if (!tree) return []
   const chosen = [
     player.talents?.tier10,

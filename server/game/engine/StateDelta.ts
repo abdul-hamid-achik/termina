@@ -91,30 +91,33 @@ export function computeDelta(
 }
 
 /**
- * The last-sent state cache, keyed by `${gameId}:${playerId}`.
- * Cleared on game over / disconnect to force a full resync on reconnect.
+ * The last-sent state cache, organized as a per-game sub-Map for O(1) cleanup.
+ * Outer key = gameId, inner key = playerId. Cleared on game over / disconnect
+ * to force a full resync on reconnect.
  */
-const lastSentCache = new Map<string, PlayerVisibleState>()
+const lastSentCache = new Map<string, Map<string, PlayerVisibleState>>()
 
 /** Record the state sent to a player this tick (for next tick's delta). */
 export function recordSentState(gameId: string, playerId: string, state: PlayerVisibleState): void {
-  lastSentCache.set(`${gameId}:${playerId}`, state)
+  let gameMap = lastSentCache.get(gameId)
+  if (!gameMap) {
+    gameMap = new Map()
+    lastSentCache.set(gameId, gameMap)
+  }
+  gameMap.set(playerId, state)
 }
 
 /** Clear the cache for a player (forces full_state on next tick). */
 export function clearSentState(gameId: string, playerId: string): void {
-  lastSentCache.delete(`${gameId}:${playerId}`)
+  lastSentCache.get(gameId)?.delete(playerId)
 }
 
-/** Clear all caches for a game (on game over). */
+/** Clear all caches for a game (on game over). O(1) — drops the entire sub-Map. */
 export function clearGameSentStates(gameId: string): void {
-  const prefix = `${gameId}:`
-  for (const key of lastSentCache.keys()) {
-    if (key.startsWith(prefix)) lastSentCache.delete(key)
-  }
+  lastSentCache.delete(gameId)
 }
 
 /** Get the last-sent state for a player (for delta computation). */
 export function getSentState(gameId: string, playerId: string): PlayerVisibleState | null {
-  return lastSentCache.get(`${gameId}:${playerId}`) ?? null
+  return lastSentCache.get(gameId)?.get(playerId) ?? null
 }

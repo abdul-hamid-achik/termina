@@ -3,8 +3,9 @@ import type { RedisServiceApi } from '~~/server/services/RedisService'
 import type { WebSocketServiceApi } from '~~/server/services/WebSocketService'
 import type { DatabaseServiceApi } from '~~/server/services/DatabaseService'
 import type { TeamId } from '~~/shared/types/game'
-import type { QueueEntry } from './queue'
-import { HERO_IDS } from '~~/shared/constants/heroes'
+import type { QueueEntry, QueueMode } from './queue'
+import { HERO_IDS, isHeroId } from '~~/shared/constants/heroes'
+import { mapIdForMode } from '~~/shared/constants/maps'
 import { isBot } from '~~/server/game/ai/BotManager'
 import { sendToPeer } from '~~/server/services/PeerRegistry'
 import { lobbyLog } from '~~/server/utils/log'
@@ -31,7 +32,15 @@ export interface Lobby {
   pickOrder: number[]
   currentPickIndex: number
   pickTimer: ReturnType<typeof setTimeout> | null
+  /** Timer for the 1.5s delay between the last pick and the ready-check
+   *  transition. Tracked separately from pickTimer so cancelLobby can clear
+   *  it — otherwise an orphaned timeout fires startReadyCheck on a cancelled
+   *  lobby and publishes game_ready for a match that was already cancelled. */
+  transitionTimer: ReturnType<typeof setTimeout> | null
   phase: 'picking' | 'ready_check' | 'starting' | 'cancelled'
+  /** The queue mode this lobby was formed from. Drives the map (5v5 → 3 lanes,
+   *  3v3 → 2 lanes, 1v1 → 1 lane) via mapIdForMode when the game is created. */
+  mode: QueueMode
 }
 
 const activeLobbies = new Map<string, Lobby>()
@@ -64,6 +73,7 @@ function serializeLobby(lobby: Lobby): string {
     pickOrder: lobby.pickOrder,
     currentPickIndex: lobby.currentPickIndex,
     phase: lobby.phase,
+    mode: lobby.mode,
   })
 }
 
@@ -77,6 +87,7 @@ function deserializeLobby(raw: string): Lobby | null {
       pickOrder: number[]
       currentPickIndex: number
       phase: Lobby['phase']
+      mode?: QueueMode
     }
     return {
       id: data.id,
@@ -85,7 +96,11 @@ function deserializeLobby(raw: string): Lobby | null {
       pickOrder: data.pickOrder,
       currentPickIndex: data.currentPickIndex,
       pickTimer: null,
+      transitionTimer: null,
       phase: data.phase,
+      // Older Redis mirrors predate the mode field — default to 5v5 so a stale
+      // mirror after a rolling deploy still resolves a playable map.
+      mode: data.mode ?? 'ranked_5v5',
     }
   } catch {
     return null
@@ -145,7 +160,28 @@ function generateId(): string {
 // Pick order: R1, D1, D2, R2, R3, D3, D4, R4, R5, D5
 const PICK_SEQUENCE_10 = [0, 5, 6, 1, 2, 7, 8, 3, 4, 9]
 
+// Snake pick order for a 6-player draft (3v3). With the snake team split
+// R={0,3,4}, D={1,2,5}, a snake draft is R1, D1, D2, R2, R3, D3 = 0,1,2,3,4,5.
+const PICK_SEQUENCE_6 = [0, 1, 2, 3, 4, 5]
+
+// Snake pick order for a 2-player draft (1v1): radiant = 0, dire = 1.
+const PICK_SEQUENCE_2 = [0, 1]
+
+/** Resolve the snake pick order for a roster size. Falls back to a plain
+ *  sequential order for sizes without a hand-tuned sequence so a lobby is
+ *  always fully draftable. */
+function pickSequenceFor(playerCount: number): number[] {
+  if (playerCount === 10) return PICK_SEQUENCE_10
+  if (playerCount === 6) return PICK_SEQUENCE_6
+  if (playerCount === 2) return PICK_SEQUENCE_2
+  // Fallback: a plain sequential order (each player picks once, in roster order).
+  return Array.from({ length: playerCount }, (_, i) => i)
+}
+
 function snakeDraftTeams(sortedByMmr: QueueEntry[]): LobbyPlayer[] {
+  // Snake order interleaves teams so MMR is balanced across the draft (highest
+  // two go to opposite teams, next two swap, etc.). Sliced for smaller rosters
+  // so 6/4/2-player lobbies keep the same alternating rhythm.
   const snakeOrder = [0, 1, 1, 0, 0, 1, 1, 0, 0, 1]
   return sortedByMmr.map((entry, i) => ({
     playerId: entry.playerId,
@@ -167,15 +203,20 @@ export function createLobby(
 
   const sorted = [...queueEntries].sort((a, b) => b.mmr - a.mmr)
   const players = snakeDraftTeams(sorted)
+  // All entries share a mode (they came from one queue); fall back to 5v5 if a
+  // mixed bag is ever passed in.
+  const mode = queueEntries[0]?.mode ?? 'ranked_5v5'
 
   const lobby: Lobby = {
     id: lobbyId,
     players,
     pickedHeroes: new Set(),
-    pickOrder: PICK_SEQUENCE_10.slice(0, players.length),
+    pickOrder: pickSequenceFor(players.length),
     currentPickIndex: 0,
     pickTimer: null,
+    transitionTimer: null,
     phase: 'picking', // Draft starts immediately — no ban phase
+    mode,
   }
 
   activeLobbies.set(lobbyId, lobby)
@@ -295,7 +336,7 @@ export function pickHero(
     return { success: false, error: 'Not your turn to pick' }
   }
 
-  if (!AVAILABLE_HEROES.includes(heroId)) {
+  if (!isHeroId(heroId)) {
     return { success: false, error: 'Invalid hero' }
   }
 
@@ -343,7 +384,7 @@ function confirmPick(
   if (lobby.currentPickIndex >= lobby.pickOrder.length) {
     if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
     // Brief delay so the UI can display the last hero pick before transitioning
-    setTimeout(() => {
+    lobby.transitionTimer = setTimeout(() => {
       lobby.phase = 'ready_check'
       startReadyCheck(lobby, ws, redis, db)
     }, 1500)
@@ -384,6 +425,8 @@ function startReadyCheck(
   // Transition to game after 3s countdown (publish to Redis for game engine to pick up)
   const gameData = {
     lobbyId: lobby.id,
+    mode: lobby.mode,
+    mapId: mapIdForMode(lobby.mode),
     players: lobby.players.map((p) => ({
       playerId: p.playerId,
       team: p.team,
@@ -416,6 +459,8 @@ export function cleanupLobby(lobbyId: string): void {
   const lobby = activeLobbies.get(lobbyId)
   if (!lobby) return
   const playerIds = lobby.players.map((p) => p.playerId)
+  if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+  if (lobby.transitionTimer) clearTimeout(lobby.transitionTimer)
   for (const p of lobby.players) {
     playerToLobby.delete(p.playerId)
   }
@@ -481,6 +526,7 @@ export function seedDraftLobby(opts: {
   humanId: string
   humanUsername: string
   prepick?: number
+  mode?: QueueMode
 }): Lobby {
   const prepick = Math.max(0, Math.min(PICK_SEQUENCE_10.length - 1, opts.prepick ?? 9))
   const lobbyId = generateId()
@@ -518,7 +564,11 @@ export function seedDraftLobby(opts: {
     pickOrder: [...PICK_SEQUENCE_10],
     currentPickIndex: prepick,
     pickTimer: null,
+    transitionTimer: null,
     phase: 'picking',
+    // The seed hook is a 5v5 draft by default; tests can override to exercise
+    // 3v3/1v1 map wiring end-to-end via the same path.
+    mode: opts.mode ?? 'ranked_5v5',
   }
 
   // Pre-pick distinct heroes for the bots occupying the snake slots before the
@@ -551,6 +601,12 @@ export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
     clearTimeout(lobby.pickTimer)
     lobby.pickTimer = null
   }
+  // Clear the ready-check transition timer too — otherwise an orphaned timeout
+  // fires startReadyCheck on this cancelled lobby and publishes game_ready.
+  if (lobby.transitionTimer) {
+    clearTimeout(lobby.transitionTimer)
+    lobby.transitionTimer = null
+  }
 
   for (const p of lobby.players) {
     playerToLobby.delete(p.playerId)
@@ -565,6 +621,42 @@ export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   activeLobbies.delete(lobbyId)
   // Remove the Redis mirror.
   unmirrorLobbyFromRedis(lobbyId, playerIds)
+}
+
+/** Sweep stale lobbies on boot — clears Redis mirrors left by a previous process. */
+export async function sweepStaleLobbies(
+  _lobbyIds: string[],
+  _ws: WebSocketServiceApi,
+  redis: RedisServiceApi,
+): Promise<void> {
+  // Enumerate all lobby:* fields in the LOBBY_PLAYER_KEY hash.
+  const allFields = await Effect.runPromise(redis.hgetall(LOBBY_PLAYER_KEY))
+  for (const [field, raw] of Object.entries(allFields)) {
+    if (!field.startsWith('lobby:')) continue
+    const lobbyId = field.slice('lobby:'.length)
+    if (activeLobbies.has(lobbyId)) continue // still live in this process
+    try {
+      const lobby = deserializeLobby(raw)
+      if (!lobby) {
+        await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, field))
+        continue
+      }
+      // Only sweep lobbies stuck in pre-game phases — in-game lobbies are reaped by the game-server.
+      if (lobby.phase !== 'picking' && lobby.phase !== 'ready_check') continue
+      // This lobby is NOT in activeLobbies (guarded above), so cancelLobby would
+      // early-return without touching Redis. Remove the stale mirror directly —
+      // both the lobby:<id> field and each player:<id> reverse-index field.
+      await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, field))
+      for (const p of lobby.players) {
+        await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, `player:${p.playerId}`))
+      }
+      lobbyLog.info({ lobbyId, phase: lobby.phase }, 'sweepStaleLobbies: swept stale lobby')
+    } catch {
+      // Corrupted mirror — remove it.
+      await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, field))
+      lobbyLog.warn({ lobbyId }, 'sweepStaleLobbies: removed corrupted lobby mirror')
+    }
+  }
 }
 
 export function replacePlayerWithBot(

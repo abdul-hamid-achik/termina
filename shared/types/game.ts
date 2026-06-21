@@ -193,27 +193,41 @@ export interface FoggedPlayer {
   fogged: true
 }
 
-export interface PlayerVisibleState {
-  tick: number
-  phase: GamePhase
-  teams: { radiant: TeamState; dire: TeamState }
+/**
+ * The subset of `GameState` fields that are mirrored verbatim into a player's
+ * fog-of-war-filtered view. Using `Pick` keeps the two interfaces in lockstep —
+ * adding/renaming/removing a field on `GameState` surfaces a compile error here
+ * instead of silently drifting (the old hand-mirored list was missing the
+ * `mode`/`mapId`/`tutorialStep` fields until they were bolted on ad hoc).
+ */
+export type VisibleStateBase = Pick<
+  GameState,
+  | 'tick'
+  | 'phase'
+  | 'teams'
+  | 'zones'
+  | 'creeps'
+  | 'neutrals'
+  | 'towers'
+  | 'ancients'
+  | 'runes'
+  | 'roshan'
+  | 'aegis'
+  | 'events'
+  | 'timeOfDay'
+  | 'dayNightTick'
+  | 'mapId'
+  | 'mode'
+  | 'tutorialStep'
+>
+
+export interface PlayerVisibleState extends VisibleStateBase {
+  // Fog-of-war: enemy players outside vision are replaced by a `FoggedPlayer`
+  // stub (KDA + hero + level only), unlike `GameState` which holds full
+  // `PlayerState`s. Visible allies/enemies keep their full `PlayerState`.
   players: Record<string, PlayerState | FoggedPlayer>
-  zones: Record<string, ZoneRuntimeState>
-  creeps: CreepState[]
-  neutrals: NeutralCreepState[]
-  towers: TowerState[]
-  ancients: { radiant: AncientState; dire: AncientState }
-  runes: RuneState[]
-  roshan: RoshanState
-  aegis: { zone: string; tick: number; holderId: string | null } | null
-  events: GameEvent[]
+  // Zones the viewer can currently see — drives the client's fog overlay.
+  // Has no counterpart on `GameState` (where every zone is "visible" to the
+  // authoritative state).
   visibleZones: string[]
-  timeOfDay: 'day' | 'night'
-  dayNightTick: number
-  /** Map + mode labels, mirrored from GameState so the client can pick the
-   *  right layout and show tutorial UI. Absent = full 5v5 / normal match. */
-  mapId?: string
-  mode?: GameMode
-  /** Tutorial step, mirrored so the client can show progress + the current hint. */
-  tutorialStep?: number
 }

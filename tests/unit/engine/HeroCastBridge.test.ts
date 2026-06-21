@@ -580,10 +580,11 @@ describe('talents', () => {
     })
     const result = run(state, [])
     expect(result.state.players['p1']!.maxHp).toBe(echo.maxHp + 200)
-    // Current-HP-preserving: the talent grants +200 maxHp but does NOT heal —
-    // the player stays at the HP they had (echo.maxHp), now 200 below the new
-    // ceiling. Matches DotA (an HP talent doesn't refill the bar).
-    expect(result.state.players['p1']!.hp).toBe(echo.maxHp)
+    // Percentage-preserving: the per-tick recalc scales current HP to the same %
+    // of the new max for ANY max change. This hero was at full HP, so it stays
+    // full when the talent raises the ceiling — the same rule that scales current
+    // HP when an HP item is bought/sold (see game-flow.test.ts).
+    expect(result.state.players['p1']!.hp).toBe(echo.maxHp + 200)
   })
 
   it('a cooldownReduction ability talent shortens the resolver-set cooldown', () => {

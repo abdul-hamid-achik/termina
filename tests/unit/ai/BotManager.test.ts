@@ -165,6 +165,49 @@ describe('BotManager', () => {
     })
   })
 
+  describe('availableLanes (the 3v3 two-lane map path)', () => {
+    beforeEach(() => {
+      cleanupGame('test-game')
+    })
+
+    const twoLaneBots = [
+      { playerId: 'bot_carry', team: 'radiant' as const, heroId: 'echo' }, // carry → bot normally
+      { playerId: 'bot_tank', team: 'radiant' as const, heroId: 'kernel' }, // tank → top normally
+      { playerId: 'bot_support', team: 'dire' as const, heroId: 'sentry' }, // support → mid/bot
+    ]
+
+    it('restricts lane assignment to only the provided lanes', () => {
+      // Two-lane map: top + mid only, no bot.
+      registerBots('test-game', twoLaneBots, { availableLanes: ['top', 'mid'] })
+
+      // carry would normally go 'bot' — remapped to its next preferred lane.
+      const carryLane = getBotLane('test-game', 'bot_carry')
+      expect(['top', 'mid']).toContain(carryLane)
+      const tankLane = getBotLane('test-game', 'bot_tank')
+      expect(['top', 'mid']).toContain(tankLane)
+      const supportLane = getBotLane('test-game', 'bot_support')
+      expect(['top', 'mid']).toContain(supportLane)
+    })
+
+    it('never assigns a lane outside availableLanes', () => {
+      registerBots('test-game', twoLaneBots, { availableLanes: ['top', 'mid'] })
+      for (const bot of twoLaneBots) {
+        expect(getBotLane('test-game', bot.playerId)).not.toBe('bot')
+        expect(getBotLane('test-game', bot.playerId)).not.toBe('jungle')
+      }
+    })
+
+    it('forceLane wins over availableLanes when both are set', () => {
+      registerBots('test-game', twoLaneBots, {
+        forceLane: 'mid',
+        availableLanes: ['top', 'mid'],
+      })
+      expect(getBotLane('test-game', 'bot_carry')).toBe('mid')
+      expect(getBotLane('test-game', 'bot_tank')).toBe('mid')
+      expect(getBotLane('test-game', 'bot_support')).toBe('mid')
+    })
+  })
+
   describe('cleanupGame', () => {
     it('removes bot tracking for a game', () => {
       const players = [{ playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' }]

@@ -13,6 +13,9 @@ export const useLobbyStore = defineStore('lobby', () => {
   const estimatedWaitSeconds = ref(0)
   const queueRoster = ref<{ username: string; mmrBracket: string }[]>([])
   const matchSize = ref(10)
+  // Remember which queue mode we joined so leaveQueue can target the right
+  // Redis queue keys — leaving with the wrong/default mode leaks the entry.
+  const queuedMode = ref<'ranked_5v5' | 'quick_3v3' | '1v1'>('ranked_5v5')
   const botsFilling = ref(false)
   const botsCount = ref(0)
   const lobbyId = ref<string | null>(null)
@@ -52,6 +55,7 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   async function joinQueue(mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5') {
     clearError()
+    queuedMode.value = mode
     try {
       const res = await $fetch<{ success: boolean; queueSize: number }>('/api/queue/join', {
         method: 'POST',
@@ -85,7 +89,7 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   async function leaveQueue() {
     try {
-      await $fetch('/api/queue/leave', { method: 'POST' })
+      await $fetch('/api/queue/leave', { method: 'POST', body: { mode: queuedMode.value } })
     } catch {
       // Ignore errors on leave
     }

@@ -514,8 +514,9 @@ function useForceStaff(
     // fountain (the safe direction). Replaces an earlier random push that could
     // fling them DEEPER into danger — and keeps the active replay-deterministic.
     const homeFountain = targetPlayer.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+    const hasZone = (id: string) => id in state.zones
     const pushZone = [...currentZone.adjacentTo].sort(
-      (a, b) => getDistance(a, homeFountain) - getDistance(b, homeFountain),
+      (a, b) => getDistance(a, homeFountain, hasZone) - getDistance(b, homeFountain, hasZone),
     )[0]!
 
     let updated: PlayerState = { ...targetPlayer, zone: pushZone }
@@ -574,8 +575,9 @@ function useHurricanePike(
     // caster toward the ENEMY base — and broke replay determinism (same fix as
     // Force Staff).
     const homeFountain = player.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+    const hasZone = (id: string) => id in state.zones
     const pushZone = [...safeZones].sort(
-      (a, b) => getDistance(a, homeFountain) - getDistance(b, homeFountain),
+      (a, b) => getDistance(a, homeFountain, hasZone) - getDistance(b, homeFountain, hasZone),
     )[0]!
 
     let updated: PlayerState = { ...player, zone: pushZone }

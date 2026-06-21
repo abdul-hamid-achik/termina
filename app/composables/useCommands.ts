@@ -4,8 +4,8 @@ import type { PlayerState, ZoneRuntimeState, TeamId, CreepState } from '~~/share
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
-import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
-import { TALENT_TREES } from '~~/shared/constants/talents'
+import { HEROES, isHeroId } from '~~/shared/constants/heroes'
+import { getTalentTree } from '~~/shared/constants/talents'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
@@ -304,7 +304,7 @@ function parseTarget(raw: string): TargetRef | null {
   if (raw.startsWith('tower:')) return { kind: 'tower', zone: raw.slice(6) }
   if (raw.startsWith('zone:')) return { kind: 'zone', zone: raw.slice(5) }
   // If it looks like a hero name without prefix, try hero
-  if (HERO_IDS.includes(raw)) return { kind: 'hero', name: raw }
+  if (isHeroId(raw)) return { kind: 'hero', name: raw }
   return null
 }
 
@@ -809,7 +809,7 @@ export function useCommands() {
 
     if (baseCmd === 'talent') {
       const heroId = context.player?.heroId
-      const tree = heroId ? TALENT_TREES[heroId] : undefined
+      const tree = heroId ? getTalentTree(heroId) : undefined
       // "talent <tier>" — offer reached, unchosen tiers
       if (parts.length === 2) {
         const partial = parts[1]!

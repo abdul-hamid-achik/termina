@@ -296,7 +296,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
  * hypothetical `stun_immune` or `post_stun_buff`). Add new debuff ids to the
  * appropriate set here as they are authored.
  */
-const DEBUFF_ID_SETS: Record<string, ReadonlySet<string>> = {
+const DEBUFF_ID_SETS = {
   stun: new Set(['stun']),
   root: new Set(['root']),
   silence: new Set(['silence']),
@@ -304,12 +304,13 @@ const DEBUFF_ID_SETS: Record<string, ReadonlySet<string>> = {
   taunt: new Set(['taunt']),
   cyclone: new Set(['cyclone']),
   hex: new Set(['hex']),
-}
+} as const
 
-function hasDebuff(player: PlayerState, type: string): boolean {
-  const ids = DEBUFF_ID_SETS[type]
-  if (!ids) return false
-  return player.buffs.some((b) => ids.has(b.id))
+type DebuffType = keyof typeof DEBUFF_ID_SETS
+
+function hasDebuff(player: PlayerState, type: DebuffType): boolean {
+  // `type` is keyof typeof DEBUFF_ID_SETS, so the lookup is always defined.
+  return player.buffs.some((b) => DEBUFF_ID_SETS[type].has(b.id))
 }
 
 // ── Resolution Pipeline ────────────────────────────────────────
@@ -397,6 +398,7 @@ function resolveInstantCastsPhase(
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; tower: number }>,
+  findHero: (name: string) => string | null,
 ): { players: Record<string, PlayerState>; zones: Record<string, ZoneRuntimeState> } {
   const instantCasts = validActions.filter(
     (a) =>
@@ -419,6 +421,7 @@ function resolveInstantCastsPhase(
       heroAttackers,
       rejected,
       damageTracker,
+      findHero,
     )
     players = result.players
     zones = result.zones
@@ -513,6 +516,27 @@ function resolveAttackPhase(
   ancients: { radiant: AncientState; dire: AncientState }
 } {
   let playerUpdates: PlayerUpdates = {}
+
+  // Precompute Assault Cuirass auras per zone once for the entire attack phase.
+  // Previously this scanned all players on EVERY attack action — O(players × attacks).
+  const cuirassByZone = new Map<string, { ally: boolean; enemy: boolean }>()
+  for (const [, zonePlayer] of Object.entries(players)) {
+    if (!zonePlayer.items.includes('assault_cuirass')) continue
+    let entry = cuirassByZone.get(zonePlayer.zone)
+    if (!entry) {
+      entry = { ally: false, enemy: false }
+      cuirassByZone.set(zonePlayer.zone, entry)
+    }
+    // Aura direction is relative to the TARGET, so we store both team flags.
+    // ally = at least one cuirass holder is on the target's team (defense buff)
+    // enemy = at least one holder is on the opposite team (armor shred)
+    // We use radiant/dire presence flags and resolve per-target below.
+    if (zonePlayer.team === 'radiant') {
+      entry.ally = true // radiant has cuirass in this zone
+    } else {
+      entry.enemy = true // dire has cuirass in this zone
+    }
+  }
 
   for (const action of attacks) {
     const cmd = action.command as { type: 'attack'; target: TargetRef }
@@ -621,17 +645,16 @@ function resolveAttackPhase(
         defense = Math.max(0, defense - DESOLATOR_ARMOR_REDUCTION)
       }
 
-      let allyCuirass = false
-      let enemyCuirass = false
-      for (const [, zonePlayer] of Object.entries(players)) {
-        if (zonePlayer.zone !== target.zone || !zonePlayer.items.includes('assault_cuirass')) {
-          continue
-        }
-        if (zonePlayer.team === target.team) allyCuirass = true
-        else enemyCuirass = true
+      // Assault Cuirass aura: O(1) zone lookup instead of O(players) scan per attack.
+      const cuirass = cuirassByZone.get(target.zone)
+      if (cuirass) {
+        // ally = target's team has a cuirass holder in zone → +armor
+        // enemy = opposite team has a holder → -armor
+        const allyCuirass = target.team === 'radiant' ? cuirass.ally : cuirass.enemy
+        const enemyCuirass = target.team === 'radiant' ? cuirass.enemy : cuirass.ally
+        if (allyCuirass) defense += ASSAULT_CUIRASS_AURA_DEFENSE
+        if (enemyCuirass) defense = Math.max(0, defense - ASSAULT_CUIRASS_AURA_DEFENSE)
       }
-      if (allyCuirass) defense += ASSAULT_CUIRASS_AURA_DEFENSE
-      if (enemyCuirass) defense = Math.max(0, defense - ASSAULT_CUIRASS_AURA_DEFENSE)
 
       let blockedDamage = 0
       if (target.items.includes('vanguard') && Math.random() < VANGUARD_BLOCK_CHANCE) {
@@ -1220,8 +1243,16 @@ function resolvePostShopPhases(
     const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp') + treadsHp
     const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
     if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
-      const newHp = Math.min(player.hp, newMaxHp)
-      const newMp = Math.min(player.mp, newMaxMp)
+      // Preserve the hp/mp PERCENTAGE across any max change (item buy/sell,
+      // talent, power-treads toggle): a full hero stays full, a half-hp hero
+      // stays at half. Level-ups don't reach here — levelUpHero reconciles maxHp
+      // with a flat gain, so the guard above is false for them. A live player is
+      // never dropped to 0 by a max change (e.g. selling an HP item at low HP).
+      const hpRatio = player.maxHp > 0 ? player.hp / player.maxHp : 1
+      const mpRatio = player.maxMp > 0 ? player.mp / player.maxMp : 1
+      const scaledHp = Math.min(newMaxHp, Math.floor(newMaxHp * hpRatio))
+      const newHp = player.hp > 0 ? Math.max(1, scaledHp) : scaledHp
+      const newMp = Math.min(newMaxMp, Math.floor(newMaxMp * mpRatio))
       players = {
         ...players,
         [pid]: { ...player, maxHp: newMaxHp, maxMp: newMaxMp, hp: newHp, mp: newMp },
@@ -1426,6 +1457,7 @@ export function resolveActions(
         heroAttackers,
         rejected,
         damageTracker,
+        findHeroByNameCached,
       )
       players = result.players
       zones = result.zones
@@ -1495,6 +1527,7 @@ export function resolveActions(
         heroAttackers,
         rejected,
         damageTracker,
+        findHeroByNameCached,
       )
       players = result.players
       zones = result.zones
@@ -1608,6 +1641,7 @@ function resolveHeroCast(
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; tower: number }>,
+  findHero: (name: string) => string | null,
 ): { players: Record<string, PlayerState>; zones: GameState['zones'] } {
   const cmd = action.command as { type: 'cast'; ability: AbilitySlot; target?: TargetRef }
   const caster = players[action.playerId]
@@ -1646,19 +1680,10 @@ function resolveHeroCast(
   const damageType = abilityDef?.damageType ?? 'magical'
 
   // Resolve the targeted hero id (used by the block check + ability_used event).
+  // Uses the pre-built hero index (findHero) instead of a per-cast linear scan.
   let targetId: string | undefined
   if (cmd.target?.kind === 'hero') {
-    const needle = cmd.target.name.toLowerCase()
-    for (const [id, p] of Object.entries(newPlayers)) {
-      if (
-        p.id.toLowerCase() === needle ||
-        p.name.toLowerCase() === needle ||
-        p.heroId?.toLowerCase() === needle
-      ) {
-        targetId = id
-        break
-      }
-    }
+    targetId = findHero(cmd.target.name) ?? undefined
   }
 
   // Linken's Sphere / Firewall item: a single-target ability on a hero holding a

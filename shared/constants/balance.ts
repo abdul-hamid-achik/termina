@@ -1,5 +1,7 @@
 // ── Tick & Timing ────────────────────────────────────────────────
 
+import type { RuneState } from '../types/game'
+
 export const TICK_DURATION_MS = 4000
 export const ACTION_WINDOW_MS = 3500
 
@@ -107,14 +109,15 @@ export const ROSHAN_AEGIS_TICKS = 300 // 5 minutes at 4s/tick
 export const RUNE_INTERVAL_TICKS = 60 // Spawn every 60 ticks (4 min)
 export const RUNE_DURATION_TICKS = 30 // Runes expire after 30 ticks (2 min)
 
-// Rune buff durations (in ticks)
-export const RUNE_BUFF_TICKS = {
+// Rune buff durations (in ticks). Typed against RuneState['type'] so adding a
+// new rune type is a compile error here until the duration map is updated.
+export const RUNE_BUFF_TICKS: Record<RuneState['type'], number> = {
   haste: 15, // 60 seconds
   dd: 15, // 60 seconds
   regen: 15, // 60 seconds
   arcane: 15, // 60 seconds
   invis: 15, // 60 seconds
-} as const
+}
 
 // ── Surrender ────────────────────────────────────────────────────
 
@@ -138,6 +141,10 @@ export const SIEGE_CREEP_ATTACK = 50
 // ── Neutral Creeps ─────────────────────────────────────────────────
 
 export const NEUTRAL_CREEPS_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
+
+/** Max live neutrals per jungle camp zone. Prevents unbounded accumulation
+ *  if a camp is never cleared (unlike lane creeps which have enforceCreepZoneCap). */
+export const MAX_NEUTRALS_PER_CAMP = 4
 
 // Neutral creep types with stats
 export const NEUTRAL_CREEPS = {

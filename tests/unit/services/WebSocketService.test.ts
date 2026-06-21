@@ -1,7 +1,33 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { Effect } from 'effect'
 import { WebSocketService, WebSocketServiceLive } from '../../../server/services/WebSocketService'
 import { wsLog } from '../../../server/utils/log'
+import { peerLog } from '../../../server/utils/log'
+
+// Clear PeerRegistry state between tests — it's a module-level singleton.
+import { clearPlayerGame as _clearPG } from '../../../server/services/PeerRegistry'
+
+const TEST_PLAYERS = [
+  'player_1',
+  'player_2',
+  'player_3',
+  'player_6',
+  'player_7',
+  'player_8',
+  'player_x',
+  'player_y',
+  'player_z',
+  'player_w',
+  'player_c',
+  'pa',
+  'pb',
+  'p1',
+  'p2',
+]
+
+afterEach(() => {
+  for (const pid of TEST_PLAYERS) _clearPG(pid)
+})
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -134,7 +160,7 @@ describe('WebSocketService', () => {
       ;(ws.send as ReturnType<typeof vi.fn>).mockImplementation(() => {
         throw new Error('Connection closed')
       })
-      const warnSpy = vi.spyOn(wsLog, 'warn').mockImplementation(() => {})
+      const warnSpy = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
 
       await runWithService((svc) =>
         Effect.gen(function* () {
@@ -181,7 +207,7 @@ describe('WebSocketService', () => {
       ;(ws.send as ReturnType<typeof vi.fn>).mockImplementation(() => {
         throw new Error('Connection closed')
       })
-      const warnSpy = vi.spyOn(wsLog, 'warn').mockImplementation(() => {})
+      const warnSpy = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
 
       await runWithService((svc) =>
         Effect.gen(function* () {
@@ -271,7 +297,7 @@ describe('WebSocketService', () => {
         }),
         readyState: 1,
       } as unknown as WebSocket
-      const warnSpy = vi.spyOn(wsLog, 'warn').mockImplementation(() => {})
+      const warnSpy = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
 
       await runWithService((svc) =>
         Effect.gen(function* () {
@@ -292,7 +318,7 @@ describe('WebSocketService', () => {
         }),
         readyState: 1,
       } as unknown as WebSocket
-      const warnSpy = vi.spyOn(wsLog, 'warn').mockImplementation(() => {})
+      const warnSpy = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
 
       await runWithService((svc) =>
         Effect.gen(function* () {

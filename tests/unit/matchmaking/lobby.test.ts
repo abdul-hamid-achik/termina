@@ -147,6 +147,30 @@ describe('Lobby', () => {
       expect(lobby.pickedHeroes.size).toBe(0)
       expect(lobby.currentPickIndex).toBe(0)
     })
+
+    it('defaults to ranked_5v5 mode when entries have no mode', () => {
+      const entries = makeQueueEntries(4).map((e) => ({ ...e, mode: 'ranked_5v5' as const }))
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+      expect(lobby.mode).toBe('ranked_5v5')
+    })
+
+    it('threads quick_3v3 mode from queue entries onto the lobby', () => {
+      const entries = makeQueueEntries(6).map((e) => ({ ...e, mode: 'quick_3v3' as const }))
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+      expect(lobby.mode).toBe('quick_3v3')
+      // 6-player pick sequence is the snake draft 0..5.
+      expect(lobby.pickOrder).toEqual([0, 1, 2, 3, 4, 5])
+    })
+
+    it('threads 1v1 mode from queue entries onto the lobby', () => {
+      const entries = makeQueueEntries(2).map((e) => ({ ...e, mode: '1v1' as const }))
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+      expect(lobby.mode).toBe('1v1')
+      expect(lobby.pickOrder).toEqual([0, 1])
+    })
   })
 
   describe('pickHero', () => {
@@ -474,6 +498,35 @@ describe('Lobby', () => {
       // Timer should be cleared
       expect(lobby.pickTimer).toBeNull()
       expect(getLobby(lobbyId)).toBeUndefined()
+      vi.useRealTimers()
+      createdLobbyId = null
+    })
+
+    it('clears the ready-check transition timer on cancel (orphaned timer bug)', () => {
+      vi.useFakeTimers()
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      const lobbyId = lobby.id
+      createdLobbyId = lobbyId
+
+      // Complete all picks (let every pick timer expire) — this arms the 1.5s
+      // transition timer that fires startReadyCheck.
+      vi.advanceTimersByTime(10 * 15000)
+      expect(lobby.phase).toBe('picking') // still picking until the transition fires
+
+      // Cancel during the 1.5s transition window — before the timer fires.
+      cancelLobby(lobbyId, ws as never)
+
+      // The transition timer must be cleared so it can't fire on a dead lobby.
+      expect(lobby.transitionTimer).toBeNull()
+      expect(getLobby(lobbyId)).toBeUndefined()
+
+      // Advance past the transition delay — nothing should happen (no throw,
+      // no game_ready publish). The orphaned timer would have fired here.
+      expect(() => vi.advanceTimersByTime(2000)).not.toThrow()
+
+      // Verify no game_ready was published to Redis.
+      expect(vi.mocked(redis.publish)).not.toHaveBeenCalled()
       vi.useRealTimers()
       createdLobbyId = null
     })

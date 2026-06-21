@@ -1,6 +1,6 @@
 import type { ZoneRuntimeState, WardState, TowerState, TeamId } from '~~/shared/types/game'
 import type { Zone } from '~~/shared/types/map'
-import { ZONES } from '~~/shared/constants/zones'
+import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import {
   TOWER_HP_T1,
   TOWER_HP_T2,
@@ -11,12 +11,10 @@ import {
 } from '~~/shared/constants/balance'
 import { scaledTowerHp } from '~~/server/game/engine/fastGame'
 
-/** Determine tower tier from zone ID. Returns 0 if no tower. */
+/** Determine tower tier from a zone. Returns 0 if the zone has no tower or tier is unset. */
 function getTowerTier(zoneId: string): number {
-  if (zoneId.includes('-t1-')) return 1
-  if (zoneId.includes('-t2-')) return 2
-  if (zoneId.includes('-t3-')) return 3
-  return 0
+  const zone = ZONE_MAP[zoneId]
+  return zone?.tier ?? 0
 }
 
 /** Get tower max HP by tier. */
@@ -55,10 +53,11 @@ export function initializeTowers(zones: readonly Zone[] = ZONES): TowerState[] {
   const towers: TowerState[] = []
   for (const zone of zones) {
     if (!zone.tower) continue
-    const tier = getTowerTier(zone.id)
+    if (zone.team === 'neutral') continue // neutral zones don't have towers
+    const tier = zone.tier ?? getTowerTier(zone.id)
     const maxHp = getTowerMaxHp(tier)
     towers.push({
-      team: zone.team as TeamId,
+      team: zone.team,
       zone: zone.id,
       hp: maxHp,
       maxHp,
@@ -123,11 +122,13 @@ export function canAttackTower(towers: TowerState[], zoneId: string): boolean {
   const tower = towers.find((t) => t.zone === zoneId && t.alive)
   if (!tower) return false
 
-  const tier = getTowerTier(zoneId)
+  const zone = ZONE_MAP[zoneId]
+  const tier = zone?.tier ?? getTowerTier(zoneId)
   if (tier <= 1) return true // T1 can always be attacked
 
-  // Determine the lane and team from the zone ID
-  const lane = zoneId.startsWith('top-') ? 'top' : zoneId.startsWith('mid-') ? 'mid' : 'bot'
+  // Determine the lane and team from the explicit zone fields (fall back to id parse for safety)
+  const lane =
+    zone?.lane ?? (zoneId.startsWith('top-') ? 'top' : zoneId.startsWith('mid-') ? 'mid' : 'bot')
   const team = tower.team
   const precedingTier = tier - 1
   const precedingZoneId = `${lane}-t${precedingTier}-${team === 'radiant' ? 'rad' : 'dire'}`

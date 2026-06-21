@@ -53,14 +53,16 @@ describe('Zones', () => {
 
     it('assigns correct HP by tier', () => {
       const towers = initializeTowers()
+      const zoneMap = Object.fromEntries(ZONES.map((z) => [z.id, z]))
       for (const t of towers) {
-        if (t.zone.includes('-t1-')) {
+        const tier = zoneMap[t.zone]?.tier
+        if (tier === 1) {
           expect(t.hp).toBe(TOWER_HP_T1)
           expect(t.maxHp).toBe(TOWER_HP_T1)
-        } else if (t.zone.includes('-t2-')) {
+        } else if (tier === 2) {
           expect(t.hp).toBe(TOWER_HP_T2)
           expect(t.maxHp).toBe(TOWER_HP_T2)
-        } else if (t.zone.includes('-t3-')) {
+        } else if (tier === 3) {
           expect(t.hp).toBe(TOWER_HP_T3)
           expect(t.maxHp).toBe(TOWER_HP_T3)
         }
@@ -202,6 +204,53 @@ describe('Zones', () => {
       const towers = initializeTowers()
       expect(canAttackTower(towers, 'mid-river')).toBe(false)
       expect(canAttackTower(towers, 'radiant-base')).toBe(false)
+    })
+  })
+
+  describe('zone tier and lane fields', () => {
+    it('every tower zone has a tier field', () => {
+      const towerZones = ZONES.filter((z) => z.tower)
+      for (const z of towerZones) {
+        expect(z.tier).toBeDefined()
+        expect([1, 2, 3]).toContain(z.tier)
+      }
+    })
+
+    it('every tower zone has a lane field', () => {
+      const towerZones = ZONES.filter((z) => z.tower)
+      for (const z of towerZones) {
+        expect(z.lane).toBeDefined()
+        expect(['top', 'mid', 'bot']).toContain(z.lane)
+      }
+    })
+
+    it('tier field matches the zone ID convention', () => {
+      const towerZones = ZONES.filter((z) => z.tower)
+      for (const z of towerZones) {
+        const idTier = z.id.includes('-t1-')
+          ? 1
+          : z.id.includes('-t2-')
+            ? 2
+            : z.id.includes('-t3-')
+              ? 3
+              : null
+        expect(z.tier).toBe(idTier)
+      }
+    })
+
+    it('non-tower zones do not have a tier field', () => {
+      const nonTowerZones = ZONES.filter((z) => !z.tower)
+      for (const z of nonTowerZones) {
+        expect(z.tier).toBeUndefined()
+      }
+    })
+
+    it('river crossing zones have a lane field', () => {
+      const riverZones = ZONES.filter((z) => z.type === 'river' && z.lane)
+      expect(riverZones.length).toBe(3) // top-river, mid-river, bot-river
+      for (const z of riverZones) {
+        expect(z.lane).toBe(z.id.split('-')[0])
+      }
     })
   })
 })

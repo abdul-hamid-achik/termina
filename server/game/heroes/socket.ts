@@ -231,8 +231,10 @@ function resolveE(
     let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
-    // Pull target 1 zone toward caster
-    const path = findPath(targetPlayer.zone, player.zone)
+    // Pull target 1 zone toward caster (restrict to the live game's zones so
+    // subset maps don't route the pull through pruned-out zones)
+    const hasZone = (id: string) => id in state.zones
+    const path = findPath(targetPlayer.zone, player.zone, hasZone)
     const newZone = path.length >= 2 ? path[1]! : player.zone
     const pulled = { ...targetPlayer, zone: newZone }
 

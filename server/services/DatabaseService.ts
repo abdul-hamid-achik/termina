@@ -85,9 +85,14 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       const result = await db
         .select()
         .from(players)
-        .where(eq(players.providerId, providerId))
+        .where(
+          and(
+            eq(players.providerId, providerId),
+            eq(players.provider, provider as 'github' | 'discord' | 'local'),
+          ),
+        )
         .limit(1)
-      return result.find((p) => p.provider === provider) ?? null
+      return result[0] ?? null
     }),
 
   createPlayer: (data) =>
@@ -108,16 +113,64 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
     ),
 
   recordMatch: (match, matchPlayerData) =>
-    Effect.promise(async () => {
+    Effect.gen(function* () {
       const db = useDb()
-      // Transactional: if the matchPlayer insert fails, the match row is
-      // rolled back too — no orphan match with no players.
-      await db.transaction(async (tx) => {
-        await tx.insert(matches).values(match)
-        if (matchPlayerData.length > 0) {
-          await tx.insert(matchPlayers).values(matchPlayerData)
+      // Retry with exponential backoff — a single DB hiccup (connection blip,
+      // transient deadlock) must not permanently lose a match record.
+      const MAX_RETRIES = 3
+      const BASE_DELAY_MS = 500
+      let lastErr: unknown
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        // Run the idempotency check + transactional insert as ONE fallible
+        // effect. Effect.tryPromise routes a rejection into the typed error
+        // channel (Effect.promise would turn it into an uncatchable defect that
+        // kills the fiber and bypasses this retry loop entirely), and catchAll
+        // folds success/failure into a tagged result the loop can branch on.
+        const result = yield* Effect.tryPromise(async () => {
+          // Idempotency: if the match already exists (e.g. a previous attempt
+          // partially succeeded before the ack was received), skip re-inserting
+          // to avoid a unique-constraint violation.
+          const existing = await db
+            .select({ id: matches.id })
+            .from(matches)
+            .where(eq(matches.id, match.id))
+            .limit(1)
+          if (existing.length > 0) return { idempotent: true as const }
+          // Transactional: if the matchPlayer insert fails, the match row is
+          // rolled back too — no orphan match with no players.
+          await db.transaction(async (tx) => {
+            await tx.insert(matches).values(match)
+            if (matchPlayerData.length > 0) {
+              await tx.insert(matchPlayers).values(matchPlayerData)
+            }
+          })
+          return { idempotent: false as const }
+        }).pipe(
+          Effect.map((value) => ({ ok: true as const, value })),
+          Effect.catchAll((err) => Effect.succeed({ ok: false as const, err })),
+        )
+        if (result.ok) {
+          if (result.value.idempotent) {
+            yield* Effect.logInfo('Match already persisted — idempotent skip').pipe(
+              Effect.annotateLogs({ matchId: match.id }),
+            )
+          }
+          return match.id
         }
-      })
+        lastErr = result.err
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * 2 ** attempt
+          yield* Effect.logWarning('Match persist failed — retrying').pipe(
+            Effect.annotateLogs({ matchId: match.id, attempt: attempt + 1, delay }),
+          )
+          yield* Effect.sleep(`${delay} millis`)
+        }
+      }
+      // All retries exhausted — log the error but still return the matchId
+      // (the game is already over; losing the record is logged, not fatal).
+      yield* Effect.logError('Match persist failed after all retries').pipe(
+        Effect.annotateLogs({ matchId: match.id, error: String(lastErr) }),
+      )
       return match.id
     }).pipe(
       Effect.tap((matchId) =>

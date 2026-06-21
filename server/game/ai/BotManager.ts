@@ -72,7 +72,6 @@ export type BotDifficulty = 'easy' | 'medium' | 'hard' | 'unfair'
 
 export interface BotDifficultyConfig {
   retreatHpPercent: number
-  lastHitAccuracy: number
   reactionDelayTicks: number
   abilityComboChance: number
   runeAwareness: boolean
@@ -83,7 +82,6 @@ export interface BotDifficultyConfig {
 export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> = {
   easy: {
     retreatHpPercent: 40,
-    lastHitAccuracy: 0.5,
     reactionDelayTicks: 3,
     abilityComboChance: 0.2,
     runeAwareness: false,
@@ -92,7 +90,6 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
   },
   medium: {
     retreatHpPercent: 30,
-    lastHitAccuracy: 0.75,
     reactionDelayTicks: 1,
     abilityComboChance: 0.5,
     runeAwareness: true,
@@ -101,7 +98,6 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
   },
   hard: {
     retreatHpPercent: 25,
-    lastHitAccuracy: 0.9,
     reactionDelayTicks: 0,
     abilityComboChance: 0.8,
     runeAwareness: true,
@@ -110,7 +106,6 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
   },
   unfair: {
     retreatHpPercent: 20,
-    lastHitAccuracy: 0.98,
     reactionDelayTicks: 0,
     abilityComboChance: 1.0,
     runeAwareness: true,
@@ -182,6 +177,13 @@ export interface RegisterBotsOptions {
    * target would send a bot stepping into a zone this game doesn't have.
    */
   forceLane?: string
+  /**
+   * Restrict role-based lane assignment to these lanes. Used on partial maps
+   * (e.g. the two-lane 3v3 map, which has top + mid but no bot) so a bot's
+   * role-preferred lane is remapped to a lane that actually exists. Ignored
+   * when `forceLane` is set (forceLane wins outright).
+   */
+  availableLanes?: string[]
 }
 
 export function registerBots(
@@ -217,8 +219,8 @@ export function registerBots(
   if (opts.forceLane) {
     for (const id of botIds) laneMap.set(id, opts.forceLane)
   } else {
-    assignLanesByRole(radiantBots, laneMap, 'radiant')
-    assignLanesByRole(direBots, laneMap, 'dire')
+    assignLanesByRole(radiantBots, laneMap, 'radiant', opts.availableLanes)
+    assignLanesByRole(direBots, laneMap, 'dire', opts.availableLanes)
   }
 
   gameBots.set(gameId, botIds)
@@ -230,7 +232,11 @@ function assignLanesByRole(
   bots: { playerId: string; heroId: string | null; role: HeroRole }[],
   laneMap: Map<string, string>,
   _team: TeamId,
+  availableLanes?: string[],
 ): void {
+  // Default lane pool; a partial map (e.g. two-lane 3v3) restricts this so a
+  // bot is never assigned to a lane that doesn't exist on its map.
+  const lanePool = availableLanes ?? ['top', 'mid', 'bot']
   const laneCounts: Record<string, number> = { top: 0, mid: 0, bot: 0, jungle: 0 }
   const maxPerLane = 2
 
@@ -240,7 +246,7 @@ function assignLanesByRole(
   })
 
   for (const bot of bots) {
-    const preferredLanes = LANE_PRIORITY_BY_ROLE[bot.role]
+    const preferredLanes = LANE_PRIORITY_BY_ROLE[bot.role].filter((l) => lanePool.includes(l))
 
     let assignedLane: string | null = null
     for (const lane of preferredLanes) {
@@ -251,7 +257,7 @@ function assignLanesByRole(
     }
 
     if (!assignedLane) {
-      for (const lane of ['top', 'mid', 'bot', 'jungle']) {
+      for (const lane of lanePool) {
         if (laneCounts[lane]! < maxPerLane) {
           assignedLane = lane
           break
@@ -260,7 +266,7 @@ function assignLanesByRole(
     }
 
     if (!assignedLane) {
-      assignedLane = 'mid'
+      assignedLane = lanePool[0] ?? 'mid'
     }
 
     laneMap.set(bot.playerId, assignedLane)

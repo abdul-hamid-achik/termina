@@ -44,7 +44,7 @@ import {
   processDoTs,
   tickAllBuffs,
   resolvePassive,
-  TALENT_TREES,
+  getTalentTree,
 } from '~~/server/game/heroes'
 import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
 import { getBotPlayerIds, getBotLane, isBot } from '~~/server/game/ai/BotManager'
@@ -660,6 +660,9 @@ export async function runOneTick(
       if (current.phase === 'ended') return
       const { state: newState, events } = yield* processTick(gameId, current)
       yield* stateManager.updateState(gameId, () => newState)
+      // Clear the delta cache so the next auto-tick's delta is computed fresh
+      // against this manually-stepped state, not a stale lastSent snapshot.
+      clearGameSentStates(gameId)
       for (const playerId of Object.keys(newState.players)) {
         try {
           callbacks.onTickState(gameId, playerId, filterStateForPlayer(newState, playerId, gameId))
@@ -692,6 +695,7 @@ export function stopGameLoop(gameId: string): Effect.Effect<void> {
       yield* Fiber.interrupt(fiber)
     }
     gameActionQueues.delete(gameId)
+    recentHeroDamage.delete(gameId)
   })
 }
 
@@ -792,7 +796,7 @@ export function processSpecialActions(
     } else if (action.command.type === 'select_talent') {
       const player = currentState.players[action.playerId]
       if (player && player.heroId) {
-        const talentTree = TALENT_TREES[player.heroId]
+        const talentTree = getTalentTree(player.heroId)
         if (talentTree) {
           const tierKey = `tier${action.command.tier}` as keyof typeof player.talents
           const selectedTalentId = action.command.talentId
@@ -843,8 +847,9 @@ export function processSpecialActions(
  *
  * Full trigger vocabulary used across the hero files:
  *   attack (cipher/echo/ping/thread/socket), ability_cast (lambda/regex/
- *   daemon), item_used (daemon), damage_taken (cache/firewall),
- *   move (mutex/traceroute), kill (null_ref), tick_end (cron/mutex/daemon).
+ *   daemon), item_used (daemon), damage_taken (cache/firewall/proxy),
+ *   move (mutex/traceroute), kill (null_ref),
+ *   tick_end (cron/mutex/daemon/kernel/malloc/sentry/firewall/proxy).
  *
  * Keep the synthesized list lean (no per-creep events) — the fold is
  * O(players x events) immutable state copies per tick.
@@ -1047,12 +1052,13 @@ export function runSpawning(state: GameState): GameState {
   // Defensive cap: never let creeps stack unboundedly in a zone
   s = enforceCreepZoneCap(s)
 
-  const newNeutrals = spawnNeutralCreeps(s.tick, hasZone)
+  const newNeutrals = spawnNeutralCreeps(s.tick, hasZone, s.neutrals ?? [])
   if (newNeutrals.length > 0) {
     s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
   }
 
-  const newRunes = spawnRunes(s.tick, hasZone)
+  const activeRuneZones = new Set<string>((s.runes ?? []).map((r) => r.zone))
+  const newRunes = spawnRunes(s.tick, hasZone, activeRuneZones)
   if (newRunes.length > 0) {
     s = { ...s, runes: [...(s.runes ?? []), ...newRunes] }
   }

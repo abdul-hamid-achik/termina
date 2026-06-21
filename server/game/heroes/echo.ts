@@ -16,6 +16,7 @@ import {
   setCooldown,
   applyBuff,
   getBuffStacks,
+  getAbilityLevel,
   updatePlayer,
   updatePlayers,
 } from './_base'
@@ -98,7 +99,7 @@ function resolveQ(
     const primaryDamage = scaleValue(Q_DAMAGE, level)
     const bounceDamage = Math.round(primaryDamage * Q_BOUNCE_MULTIPLIER)
 
-    let updatedTarget = dealDamage(targetPlayer, primaryDamage, 'physical')
+    const damagedPrimary = dealDamage(targetPlayer, primaryDamage, 'physical')
     const events: GameEvent[] = [
       {
         tick: state.tick,
@@ -113,12 +114,14 @@ function resolveQ(
       },
     ]
 
+    const updatedTargets: PlayerState[] = [caster, damagedPrimary]
     const enemiesInZone = getEnemiesInZone(state, player).filter(
       (e) => e.id !== targetPlayer.id && e.alive,
     )
     if (enemiesInZone.length > 0) {
       const bounceTarget = enemiesInZone[0]!
-      updatedTarget = dealDamage(bounceTarget, bounceDamage, 'physical') as PlayerState
+      const damagedBounce = dealDamage(bounceTarget, bounceDamage, 'physical') as PlayerState
+      updatedTargets.push(damagedBounce)
       events.push({
         tick: state.tick,
         type: 'ability_cast',
@@ -134,13 +137,14 @@ function resolveQ(
     }
 
     return {
-      state: updatePlayers(state, [caster, updatedTarget]),
+      state: updatePlayers(state, updatedTargets),
       events,
     }
   })
 }
 
-// W: Phase Shift — dodge next attack, +50% move speed for 2 ticks
+// W: Phase Shift — dodge the next attack (move-speed buff was removed; movement
+// is a fixed 1 zone/tick, so the stat was inert)
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -360,21 +364,6 @@ export function getResonanceMultiplier(player: PlayerState): number {
   return 1 + stacks * RESONANCE_BONUS_PER_STACK
 }
 
-// Helper to get ability level (duplicated from _base for use in passive)
-function getAbilityLevel(playerLevel: number, slot: AbilitySlot): number {
-  if (slot === 'r') {
-    if (playerLevel >= 18) return 3
-    if (playerLevel >= 12) return 2
-    if (playerLevel >= 6) return 1
-    return 0
-  }
-  if (playerLevel >= 7) return 4
-  if (playerLevel >= 5) return 3
-  if (playerLevel >= 3) return 2
-  if (playerLevel >= 1) return 1
-  return 0
-}
-
-registerHero('echo', resolveHeroAbility, resolveHeroPassive)
+registerHero('echo', resolveHeroAbility, resolveHeroPassive, ['attack'])
 
 export { resolveHeroAbility, resolveHeroPassive }

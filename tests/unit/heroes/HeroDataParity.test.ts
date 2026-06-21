@@ -94,7 +94,7 @@ function makeState(players: PlayerState[]): GameState {
 function castAndMeasure(
   heroId: string,
   slot: AbilitySlot,
-): { manaSpent: number; cooldownSet: number } {
+): { manaSpent: number; cooldownSet: number; damageDealt: number } {
   const targetType = HEROES[heroId]!.abilities[slot].targetType as string
 
   // R needs level 6 (R rank 1); Q/W/E use level 1 (ability rank 1 = base values).
@@ -158,6 +158,16 @@ function castAndMeasure(
       source: 'p1',
     })
   }
+  // Cache R (Eviction) deals pure damage = stored energy. With 0 energy it
+  // applies only the slow, so we seed cachedEnergy to verify the damage path.
+  if (heroId === 'cache' && slot === 'r') {
+    caster = applyBuff(caster, {
+      id: 'cachedEnergy',
+      stacks: 100,
+      ticksRemaining: 9999,
+      source: 'p1',
+    })
+  }
   // Daemon E (Sudo) only spends mana / sets cooldown when the target is in
   // execute range (below 30% HP); otherwise it refunds and no-ops.
   const executeEnemy =
@@ -178,10 +188,42 @@ function castAndMeasure(
   }
 
   const resultCaster = exit.value.state.players['p1']!
+
+  // Damage verification: if the ability declares any instant damage effects,
+  // the primary target's HP must have dropped. This catches bugs like the Echo
+  // Q bounce bug (primary damage silently discarded) — the constant says
+  // "damage" but the resolver applied zero.
+  const dmgTargetId = heroId === 'socket' && slot === 'e' ? 'e2' : 'e1'
+  const resultTarget = exit.value.state.players[dmgTargetId]
+  const damageDealt = resultTarget ? 5000 - resultTarget.hp : 0
+
   return {
     manaSpent: caster.mp - resultCaster.mp,
     cooldownSet: resultCaster.cooldowns[slot],
+    damageDealt,
   }
+}
+
+/**
+ * Does this ability's constant declare any instant damage-type effects? DoT-only
+ * and delayed-damage abilities are excluded — their damage is applied later
+ * (by `processDoTs`, `TrapSystem`, or `tickAllBuffs`), not on the cast tick, so
+ * HP won't drop here.
+ */
+function declaresInstantDamage(heroId: string, slot: AbilitySlot): boolean {
+  const ability = HEROES[heroId]!.abilities[slot]
+  if (!ability.effects.some((e) => e.type === 'damage' || e.type === 'execute')) return false
+  // Delayed-damage abilities: the damage is armed on cast but applied later.
+  const delayed = new Set<string>([
+    'socket.w', // traps detonate via TrapSystem.processTraps
+    'firewall.w', // DMZ explosion on buff expiry via tickAllBuffs
+  ])
+  if (delayed.has(`${heroId}.${slot}`)) return false
+  // Regex R: damage scales with the target's missing mana. The parity test
+  // uses a full-mana enemy, so the damage is 0 — not a bug, just a scaling
+  // precondition the harness doesn't set up.
+  if (heroId === 'regex' && slot === 'r') return false
+  return true
 }
 
 describe('Hero data parity: resolver vs shared constants', () => {
@@ -207,7 +249,53 @@ describe('Hero data parity: resolver vs shared constants', () => {
           // is consistent with what the resolver requires.
           expect(() => castAndMeasure(heroId, slot)).not.toThrow()
         })
+
+        it(`${slot.toUpperCase()}: ${ability.name} — damage effects actually deal damage`, () => {
+          // If the constant declares instant damage/execute effects, the resolver
+          // must actually reduce the target's HP. This catches the class of
+          // bug where damage is computed but discarded (e.g. Echo Q bounce
+          // overwrote the primary target).
+          if (!declaresInstantDamage(heroId, slot)) return // DoT-only or non-damage, skip
+          const { damageDealt } = castAndMeasure(heroId, slot)
+          expect(damageDealt, `${heroId}.${slot} declared damage but dealt 0`).toBeGreaterThan(0)
+        })
       }
     })
   }
+})
+
+// ── Echo Q bounce: primary AND bounce target both take damage ──────
+// The parity damage test above only ever has ONE enemy in the caster's zone
+// (the second is one zone away), so Echo Q's same-zone bounce never fires there
+// and the test would pass even with the old bug. This dedicated case puts a
+// SECOND enemy in the caster's zone and asserts BOTH lose HP — it FAILS on the
+// old bug where the bounce target overwrote and discarded the primary's damage.
+describe('Echo Q bounce', () => {
+  it('damages both the primary and the bounce target in the caster zone', () => {
+    const caster = makePlayer({ id: 'p1', heroId: 'echo', level: 1 })
+    const primary = makePlayer({
+      id: 'e1',
+      name: 'Primary',
+      team: 'dire',
+      heroId: 'kernel',
+      zone: CASTER_ZONE,
+    })
+    const bounce = makePlayer({
+      id: 'e2',
+      name: 'Bounce',
+      team: 'dire',
+      heroId: 'kernel',
+      zone: CASTER_ZONE,
+    })
+    const state = makeState([caster, primary, bounce])
+
+    const exit = Effect.runSyncExit(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
+    expect(Exit.isSuccess(exit)).toBe(true)
+    if (!Exit.isSuccess(exit)) return
+
+    const e1 = exit.value.state.players['e1']!
+    const e2 = exit.value.state.players['e2']!
+    expect(e1.hp, 'primary target took no damage (bounce discarded it)').toBeLessThan(5000)
+    expect(e2.hp, 'bounce target took no damage').toBeLessThan(5000)
+  })
 })

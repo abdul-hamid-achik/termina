@@ -8,6 +8,7 @@ import {
 } from '~~/shared/constants/balance'
 import { resolvePhysicalHit } from './CombatResolver'
 import { resolveAncientAttack } from './AncientSystem'
+import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /** The enemy base zone for a creep team — the end of every lane route. */
@@ -17,74 +18,7 @@ const ENEMY_BASE: Record<TeamId, string> = {
 }
 
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
-const LANE_ROUTES: Record<string, { radiant: string[]; dire: string[] }> = {
-  top: {
-    radiant: [
-      'top-t3-rad',
-      'top-t2-rad',
-      'top-t1-rad',
-      'top-river',
-      'top-t1-dire',
-      'top-t2-dire',
-      'top-t3-dire',
-      'dire-base',
-    ],
-    dire: [
-      'top-t3-dire',
-      'top-t2-dire',
-      'top-t1-dire',
-      'top-river',
-      'top-t1-rad',
-      'top-t2-rad',
-      'top-t3-rad',
-      'radiant-base',
-    ],
-  },
-  mid: {
-    radiant: [
-      'mid-t3-rad',
-      'mid-t2-rad',
-      'mid-t1-rad',
-      'mid-river',
-      'mid-t1-dire',
-      'mid-t2-dire',
-      'mid-t3-dire',
-      'dire-base',
-    ],
-    dire: [
-      'mid-t3-dire',
-      'mid-t2-dire',
-      'mid-t1-dire',
-      'mid-river',
-      'mid-t1-rad',
-      'mid-t2-rad',
-      'mid-t3-rad',
-      'radiant-base',
-    ],
-  },
-  bot: {
-    radiant: [
-      'bot-t3-rad',
-      'bot-t2-rad',
-      'bot-t1-rad',
-      'bot-river',
-      'bot-t1-dire',
-      'bot-t2-dire',
-      'bot-t3-dire',
-      'dire-base',
-    ],
-    dire: [
-      'bot-t3-dire',
-      'bot-t2-dire',
-      'bot-t1-dire',
-      'bot-river',
-      'bot-t1-rad',
-      'bot-t2-rad',
-      'bot-t3-rad',
-      'radiant-base',
-    ],
-  },
-}
+const LANE_ROUTES = LANE_ROUTES_CORE
 
 /** Get the attack damage for a creep type. */
 function getCreepAttack(type: CreepState['type']): number {

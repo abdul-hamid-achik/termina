@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PlayerState } from '~~/shared/types/game'
-import { TALENT_TREES, type TalentTier } from '~~/shared/constants/talents'
+import { getTalentTree, type TalentTier } from '~~/shared/constants/talents'
 
 const props = defineProps<{ player: PlayerState | null }>()
 const emit = defineEmits<{ pick: [tier: TalentTier, side: 'left' | 'right'] }>()
@@ -17,7 +17,7 @@ const pending = computed(() => {
   const p = props.player
   // No alive check — talents can be chosen while dead (server allows it).
   if (!p?.heroId) return null
-  const tree = TALENT_TREES[p.heroId]
+  const tree = getTalentTree(p.heroId)
   if (!tree) return null
   for (const tier of TIERS) {
     if (p.level >= tier && !p.talents[`tier${tier}` as const]) {

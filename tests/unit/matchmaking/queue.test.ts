@@ -80,6 +80,7 @@ function mockRedis() {
       return Effect.succeed(v ?? null)
     }),
     hdel: vi.fn(() => Effect.void),
+    hgetall: vi.fn(() => Effect.succeed({})),
     setnx: vi.fn(() => Effect.succeed(1)),
     getdel: vi.fn(() => Effect.succeed('1')),
     eval: vi.fn(() => Effect.succeed('OK')),
@@ -179,7 +180,7 @@ describe('Queue', () => {
       const member = JSON.stringify(entry)
       redis.hget.mockReturnValue(Effect.succeed(member))
 
-      await Effect.runPromise(leaveQueue(redis as never, 'leaving_player', 1000))
+      await Effect.runPromise(leaveQueue(redis as never, 'leaving_player'))
 
       expect(redis.zrem).toHaveBeenCalledWith('matchmaking:queue:ranked_5v5', member)
       expect(redis.hdel).toHaveBeenCalledWith(
@@ -191,7 +192,7 @@ describe('Queue', () => {
     it('cleans up queue time key', async () => {
       redis.hget.mockReturnValue(Effect.succeed(null))
 
-      await Effect.runPromise(leaveQueue(redis as never, 'p_leave', 1000))
+      await Effect.runPromise(leaveQueue(redis as never, 'p_leave'))
 
       expect(redis.del).toHaveBeenCalledWith('matchmaking:queue_times:p_leave:ranked_5v5')
     })
@@ -200,14 +201,14 @@ describe('Queue', () => {
       redis.hget.mockReturnValue(Effect.succeed(null))
 
       await expect(
-        Effect.runPromise(leaveQueue(redis as never, 'nonexistent', 1000)),
+        Effect.runPromise(leaveQueue(redis as never, 'nonexistent')),
       ).resolves.toBeUndefined()
     })
 
     it('does not call zrem when the player has no member mapping', async () => {
       redis.hget.mockReturnValue(Effect.succeed(null))
 
-      await Effect.runPromise(leaveQueue(redis as never, 'ghost', 1000))
+      await Effect.runPromise(leaveQueue(redis as never, 'ghost'))
 
       expect(redis.zrem).not.toHaveBeenCalled()
     })
@@ -217,7 +218,7 @@ describe('Queue', () => {
       const member = JSON.stringify(entry)
       redis.hget.mockReturnValue(Effect.succeed(member))
 
-      await Effect.runPromise(leaveQueue(redis as never, 'p_q', 1000, 'quick_3v3'))
+      await Effect.runPromise(leaveQueue(redis as never, 'p_q', 'quick_3v3'))
 
       expect(redis.zrem).toHaveBeenCalledWith('matchmaking:queue:quick_3v3', member)
       expect(redis.del).toHaveBeenCalledWith('matchmaking:queue_times:p_q:quick_3v3')

@@ -30,9 +30,11 @@ const _mockRedisService = Layer.succeed(RedisService, {
   hset: () => Effect.succeed(void 0),
   hget: () => Effect.succeed(null),
   hdel: () => Effect.succeed(void 0),
+  hgetall: () => Effect.succeed({}),
   setnx: () => Effect.succeed(0),
   getdel: () => Effect.succeed(null),
   keys: () => Effect.succeed([]),
+  scan: () => Effect.succeed([]),
   expire: () => Effect.succeed(void 0),
   eval: () => Effect.succeed(null),
   shutdown: () => Effect.succeed(void 0),
@@ -228,7 +230,7 @@ export function completeLowPriorityGame(
 export function decayLeaverScores(): Effect.Effect<void, never, RedisService> {
   return Effect.gen(function* () {
     const redis = yield* RedisService
-    const keys = yield* redis.keys('leaver:score:*')
+    const keys = yield* redis.scan('leaver:score:*')
 
     for (const key of keys) {
       const data = yield* redis.get(key)

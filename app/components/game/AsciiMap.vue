@@ -4,6 +4,9 @@ import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   mapRowsFor,
   colHeadersFor,
+  gridColsClass,
+  riverDividerRows,
+  compactRiverDividerRow,
   ancientForZone,
   buildAdjacentZones,
   cellText,
@@ -28,6 +31,12 @@ const props = defineProps<{
 // The grid layout + column headers for the active map.
 const MAP_ROWS = computed(() => mapRowsFor(props.mapId))
 const COL_HEADERS = computed(() => colHeadersFor(props.mapId))
+// Column count + river-divider rows derived from the active layout so the
+// one-lane (1 col) and two-lane (4 col) maps align under their headers and
+// frame their river correctly, instead of assuming the 5v5 5-column grid.
+const GRID_COLS = computed(() => gridColsClass(MAP_ROWS.value))
+const RIVER_ROWS = computed(() => riverDividerRows(MAP_ROWS.value))
+const COMPACT_RIVER_ROW = computed(() => compactRiverDividerRow(MAP_ROWS.value))
 
 const emit = defineEmits<{
   zoneClick: [zoneId: string]
@@ -196,7 +205,7 @@ function miniCellClasses(zoneId: string): string[] {
 
     <!-- ── Full 5x10 grid (desktop ≥1024px) ─────────────────────── -->
     <template v-if="!isCompact">
-      <div class="grid grid-cols-5 gap-1 py-1">
+      <div class="grid gap-1 py-1" :class="GRID_COLS">
         <span
           v-for="hdr in COL_HEADERS"
           :key="hdr"
@@ -217,10 +226,8 @@ function miniCellClasses(zoneId: string): string[] {
           <div
             v-for="(row, ri) in MAP_ROWS"
             :key="ri"
-            class="grid grid-cols-5 gap-1"
-            :class="{
-              'mb-2 border-b-2 border-river/60': ri === 3 || ri === 5,
-            }"
+            class="grid gap-1"
+            :class="[GRID_COLS, { 'mb-2 border-b-2 border-river/60': RIVER_ROWS.has(ri) }]"
           >
             <template v-for="(zoneId, ci) in row" :key="ci">
               <div
@@ -353,8 +360,8 @@ function miniCellClasses(zoneId: string): string[] {
         <div
           v-for="(row, ri) in MAP_ROWS"
           :key="ri"
-          class="grid grid-cols-5 gap-px"
-          :class="{ 'mb-1 border-b border-river/40 pb-1': ri === 4 }"
+          class="grid gap-px"
+          :class="[GRID_COLS, { 'mb-1 border-b border-river/40 pb-1': ri === COMPACT_RIVER_ROW }]"
         >
           <template v-for="(zoneId, ci) in row" :key="ci">
             <div

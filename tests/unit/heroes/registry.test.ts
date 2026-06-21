@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { registerAllHeroes, getHeroResolver } from '../../../server/game/heroes'
-import { HEROES } from '../../../shared/constants/heroes'
+import { HEROES, HERO_IDS, isHeroId, type HeroId } from '../../../shared/constants/heroes'
+import { TALENT_TREES, getTalentTree } from '../../../shared/constants/talents'
 
 /**
  * Guards the hero ability registry. The production build once tree-shook the
@@ -29,6 +30,57 @@ describe('hero ability registry', () => {
       expect(resolver, `hero "${heroId}" has no registered resolver`).toBeDefined()
       expect(typeof resolver!.ability).toBe('function')
       expect(typeof resolver!.passive).toBe('function')
+    }
+  })
+})
+
+describe('HeroId literal union + helpers', () => {
+  it('HERO_IDS lists every hero in the HEROES registry (no drift)', () => {
+    const registryKeys = new Set(Object.keys(HEROES))
+    const declaredIds = new Set<string>(HERO_IDS)
+    expect([...registryKeys].sort(), 'hero in HEROES but missing from HERO_IDS').toEqual(
+      [...declaredIds].sort(),
+    )
+  })
+
+  it('isHeroId narrows registered IDs and rejects unknown strings', () => {
+    expect(isHeroId('echo')).toBe(true)
+    expect(isHeroId('cache')).toBe(true)
+    expect(isHeroId('null_ref')).toBe(true)
+    expect(isHeroId('unknown_hero')).toBe(false)
+    expect(isHeroId('')).toBe(false)
+    // A substring of a real id must NOT match (the old isInvisible-style bug class).
+    expect(isHeroId('ech')).toBe(false)
+    expect(isHeroId('echo_evil')).toBe(false)
+  })
+
+  it('isHeroId acts as a type guard (narrowed value indexes the registry)', () => {
+    const raw: string = 'kernel'
+    if (isHeroId(raw)) {
+      // Inside this branch `raw` is narrowed to `HeroId`; indexing HEROES is safe.
+      const def = HEROES[raw]
+      expect(def?.id).toBe('kernel')
+    } else {
+      expect.unreachable('kernel should be a valid HeroId')
+    }
+  })
+
+  it('getTalentTree returns the tree for a registered hero and undefined otherwise', () => {
+    const tree = getTalentTree('echo')
+    expect(tree).toBeDefined()
+    expect(tree!.heroId).toBe('echo')
+    expect(tree!.tiers[10]).toHaveLength(2)
+    expect(tree!.tiers[25]).toHaveLength(2)
+
+    expect(getTalentTree('not_a_hero')).toBeUndefined()
+    expect(getTalentTree('')).toBeUndefined()
+  })
+
+  it('TALENT_TREES covers every HeroId (compile-time exhaustiveness is enforced by Record<HeroId, ...>)', () => {
+    // Runtime mirror of the compile-time guarantee: every HeroId must have a tree.
+    for (const id of HERO_IDS) {
+      expect(TALENT_TREES[id as HeroId], `hero "${id}" has no TALENT_TREES entry`).toBeDefined()
+      expect(TALENT_TREES[id as HeroId]!.heroId).toBe(id)
     }
   })
 })

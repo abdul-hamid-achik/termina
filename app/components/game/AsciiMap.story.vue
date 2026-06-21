@@ -66,6 +66,65 @@ const oneLaneZones: ZoneDisplay[] = [
   zone('dire-base', 'Dire Base', { fogged: true }),
   zone('dire-fountain', 'Dire Fountain', { fogged: true }),
 ]
+
+// Two-lane map (mapId='two_lane'): top + mid lanes with top-side jungle, rune,
+// and Roshan. AsciiMap lays it out as a 4-column grid. No bot lane zones.
+const twoLaneZones: ZoneDisplay[] = [
+  zone('radiant-fountain', 'Radiant Fountain', {}),
+  zone('radiant-base', 'Radiant Base', {}),
+  zone('top-t3-rad', 'Radiant Top T3', {
+    tower: { team: 'radiant', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  }),
+  zone('top-t2-rad', 'Radiant Top T2', {
+    tower: { team: 'radiant', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+  }),
+  zone('top-t1-rad', 'Radiant Top T1', {
+    tower: { team: 'radiant', alive: false, tier: 1 },
+    allies: ['proxy_jg'],
+  }),
+  zone('top-river', 'Top River', { creepCount: 4 }),
+  zone('top-t1-dire', 'Dire Top T1', {
+    tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+    enemyCount: 1,
+  }),
+  zone('top-t2-dire', 'Dire Top T2', {
+    tower: { team: 'dire', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+    fogged: true,
+  }),
+  zone('top-t3-dire', 'Dire Top T3', {
+    tower: { team: 'dire', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    fogged: true,
+  }),
+  zone('mid-t3-rad', 'Radiant Mid T3', {
+    tower: { team: 'radiant', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  }),
+  zone('mid-t2-rad', 'Radiant Mid T2', {
+    tower: { team: 'radiant', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
+  }),
+  zone('mid-t1-rad', 'Radiant Mid T1', {
+    tower: { team: 'radiant', alive: true, tier: 1, hp: 1500, maxHp: 1800 },
+  }),
+  zone('mid-river', 'Mid River', { playerHere: true, allies: ['kernel_main'] }),
+  zone('mid-t1-dire', 'Dire Mid T1', {
+    tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+    enemyCount: 1,
+    enemyNames: ['regex_mid'],
+  }),
+  zone('mid-t2-dire', 'Dire Mid T2', {
+    tower: { team: 'dire', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+    fogged: true,
+  }),
+  zone('mid-t3-dire', 'Dire Mid T3', {
+    tower: { team: 'dire', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    fogged: true,
+  }),
+  zone('jungle-rad-top', 'Radiant Jungle (Top)', { neutralCount: 2 }),
+  zone('jungle-dire-top', 'Dire Jungle (Top)', { fogged: true, enemyCount: 1 }),
+  zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
+  zone('roshan-pit', 'Roshan Pit', { neutralCount: 1, roshan: { alive: true, respawnIn: 0 } }),
+  zone('dire-base', 'Dire Base', { fogged: true }),
+  zone('dire-fountain', 'Dire Fountain', { fogged: true }),
+]
 </script>
 
 <template>
@@ -98,6 +157,32 @@ const oneLaneZones: ZoneDisplay[] = [
           :ancients="ancients"
           map-id="one_lane"
           force-mode="full"
+        />
+      </div>
+    </Variant>
+
+    <!-- Two-lane map: top + mid lanes, 4-column grid (3v3 map). -->
+    <Variant title="two-lane (full)">
+      <div class="bg-bg-primary p-2" style="width: 760px; height: 620px">
+        <AsciiMap
+          :zones="twoLaneZones"
+          player-zone="mid-river"
+          :ancients="ancients"
+          map-id="two_lane"
+          force-mode="full"
+        />
+      </div>
+    </Variant>
+
+    <!-- Two-lane map, compact (mobile). -->
+    <Variant title="two-lane (compact)">
+      <div class="bg-bg-primary p-2" style="width: 360px; height: 600px">
+        <AsciiMap
+          :zones="twoLaneZones"
+          player-zone="mid-river"
+          :ancients="ancients"
+          map-id="two_lane"
+          force-mode="compact"
         />
       </div>
     </Variant>

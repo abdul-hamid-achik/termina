@@ -4,7 +4,7 @@
  * Each hero has unique talent options per tier
  */
 
-import type { HeroId } from '~~/shared/types/hero'
+import type { HeroId } from '~~/shared/constants/heroes'
 
 export type TalentTier = 10 | 15 | 20 | 25
 
@@ -1492,4 +1492,109 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
+
+  // cache — a tank that converts damage taken into cached energy for burst
+  // abilities. Q Cache Hit (physical + cached energy) and R Eviction (pure AoE)
+  // both deal instant damage, so they carry damage_boost; W Flush (shield from
+  // cached energy) and E Invalidate (magical + anti-heal) get cooldown/mana
+  // efficiency. The stat tiers lean into tankiness (HP/defense/MR) to sustain the
+  // damage-absorption playstyle.
+  cache: {
+    heroId: 'cache',
+    tiers: {
+      10: [
+        {
+          id: 'cache_10_left',
+          name: '+300 HP',
+          description: '+300 HP — absorb more punishment to store as cached energy',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'hp', value: 300 },
+        },
+        {
+          id: 'cache_10_right',
+          name: '+15 Defense',
+          description: '+15 Defense — tank through enemy focus fire',
+          type: 'stat_bonus',
+          tier: 10,
+          statBonus: { stat: 'defense', value: 15 },
+        },
+      ],
+      15: [
+        {
+          id: 'cache_15_left',
+          name: '+30% Cache Hit Damage',
+          description: 'Cache Hit (Q) deals 30% more — a bigger burst from stored energy',
+          type: 'damage_boost',
+          tier: 15,
+          abilityId: 'q',
+          damageBoost: 30,
+        },
+        {
+          id: 'cache_15_right',
+          name: '-3s Flush CD',
+          description: 'Flush (W) shield cooldown reduced — convert energy to defense more often',
+          type: 'cooldown_reduce',
+          tier: 15,
+          abilityId: 'w',
+          cooldownReduction: 3,
+        },
+      ],
+      20: [
+        {
+          id: 'cache_20_left',
+          name: '+40% Eviction Damage',
+          description: 'Eviction (R) AoE deals 40% more — a devastating cache purge',
+          type: 'damage_boost',
+          tier: 20,
+          abilityId: 'r',
+          damageBoost: 40,
+        },
+        {
+          id: 'cache_20_right',
+          name: '-3s Invalidate CD',
+          description: 'Invalidate (E) cooldown reduced — more anti-heal + magical burst',
+          type: 'cooldown_reduce',
+          tier: 20,
+          abilityId: 'e',
+          cooldownReduction: 3,
+        },
+      ],
+      25: [
+        {
+          id: 'cache_25_left',
+          name: '-12s Eviction CD',
+          description: 'Eviction (R) ultimate cooldown reduced — unleash the cache more often',
+          type: 'cooldown_reduce',
+          tier: 25,
+          abilityId: 'r',
+          cooldownReduction: 12,
+        },
+        {
+          id: 'cache_25_right',
+          name: '+22 Magic Resistance',
+          description: '+22 Magic Resistance — shrug off magical nukes',
+          type: 'stat_bonus',
+          tier: 25,
+          statBonus: { stat: 'magicResist', value: 22 },
+        },
+      ],
+    },
+  },
 }
+
+import { isHeroId } from '~~/shared/constants/heroes'
+
+/**
+ * Safe runtime lookup of a hero's talent tree by string ID.
+ *
+ * `TALENT_TREES` is typed `Record<HeroId, TalentTree>` for compile-time
+ * exhaustiveness (adding a hero to the registry without a tree is a type
+ * error). Player state and command parsing carry `heroId: string`, so this
+ * helper provides the runtime narrowing needed at consumer sites.
+ */
+export function getTalentTree(heroId: string): TalentTree | undefined {
+  return isHeroId(heroId) ? TALENT_TREES[heroId] : undefined
+}
+
+export { isHeroId } from '~~/shared/constants/heroes'

@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
-import { HERO_IDS } from '~~/shared/constants/heroes'
+import { isHeroId } from '~~/shared/constants/heroes'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
 
   // Validate and update avatar
   if (body?.selectedAvatar !== undefined) {
-    if (body.selectedAvatar !== null && !HERO_IDS.includes(body.selectedAvatar)) {
+    if (body.selectedAvatar !== null && !isHeroId(body.selectedAvatar)) {
       throw createError({ statusCode: 400, message: 'Invalid avatar selection' })
     }
 

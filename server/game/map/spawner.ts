@@ -11,6 +11,7 @@ import {
   ROSHAN_BASE_HP,
   ROSHAN_HP_PER_MINUTE,
   TICK_DURATION_MS,
+  RUNE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
 
 let creepIdCounter = 0
@@ -31,10 +32,12 @@ const LANE_SPAWN_ZONES: Record<string, { radiant: string; dire: string }> = {
   bot: { radiant: 'bot-t3-rad', dire: 'bot-t3-dire' },
 }
 
-/** Spawn a wave of creeps for one team on one lane. */
+/** Spawn a wave of creeps for one team on one lane. Throws on unknown lane. */
 function spawnWave(team: 'radiant' | 'dire', lane: string, waveNumber: number): CreepState[] {
   const spawnZone = LANE_SPAWN_ZONES[lane]
-  if (!spawnZone) return []
+  if (!spawnZone) {
+    throw new Error(`spawnWave: unknown lane '${lane}' — expected one of top/mid/bot`)
+  }
   const zone = spawnZone[team]
   const creeps: CreepState[] = []
 
@@ -81,16 +84,22 @@ export interface RuneSpawn {
 }
 
 const RUNE_TYPES = ['haste', 'dd', 'regen', 'arcane', 'invis'] as const
-const RUNE_INTERVAL_TICKS = 60
 
 /** Spawn runes if the current tick is a rune tick. `hasZone` skips rune spots a
- *  subset map doesn't have (one-lane has no river runes). */
-export function spawnRunes(tick: number, hasZone?: (zoneId: string) => boolean): RuneSpawn[] {
+ *  subset map doesn't have (one-lane has no river runes). `activeRunes` prevents
+ *  re-spawning a rune on an occupied spot (defensive — the timing invariant
+ *  should prevent this, but occupancy check avoids stacking). */
+export function spawnRunes(
+  tick: number,
+  hasZone?: (zoneId: string) => boolean,
+  activeRunes?: Set<string>,
+): RuneSpawn[] {
   if (tick === 0 || tick % RUNE_INTERVAL_TICKS !== 0) return []
 
   const runes: RuneSpawn[] = []
   for (const zone of ['rune-top', 'rune-bot']) {
     if (hasZone && !hasZone(zone)) continue
+    if (activeRunes && activeRunes.has(zone)) continue // spot already occupied
     const type = RUNE_TYPES[Math.floor(Math.random() * RUNE_TYPES.length)]!
     runes.push({ zone, type, tick })
   }

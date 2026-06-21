@@ -2,9 +2,10 @@ import type { GameState, NeutralCreepState } from '~~/shared/types/game'
 import {
   NEUTRAL_CREEPS,
   NEUTRAL_CREEPS_INTERVAL_TICKS,
+  MAX_NEUTRALS_PER_CAMP,
   type NeutralCreepType,
 } from '~~/shared/constants/balance'
-import { isDamageImmune } from './DamageCalculator'
+import { resolvePhysicalHit } from './CombatResolver'
 
 let neutralIdCounter = 0
 let gameInstanceSuffix = ''
@@ -29,20 +30,33 @@ const JUNGLE_ZONES = [
 ] as const
 
 /** Spawn neutral creeps in jungle camps. `hasZone` skips camps a subset map
- *  doesn't have (one-lane has no jungle). */
+ *  doesn't have (one-lane has no jungle). `existingNeutrals` is used to enforce
+ *  MAX_NEUTRALS_PER_CAMP — camps at cap are skipped (no new spawns). */
 export function spawnNeutralCreeps(
   tick: number,
   hasZone?: (zoneId: string) => boolean,
+  existingNeutrals: NeutralCreepState[] = [],
 ): NeutralCreepState[] {
   // Spawn at tick 60, then every 60 ticks
   if (tick === 0 || tick % NEUTRAL_CREEPS_INTERVAL_TICKS !== 0) return []
+
+  // Count live neutrals per zone to enforce the cap
+  const liveCountByZone = new Map<string, number>()
+  for (const n of existingNeutrals) {
+    if (n.alive) liveCountByZone.set(n.zone, (liveCountByZone.get(n.zone) ?? 0) + 1)
+  }
 
   const neutrals: NeutralCreepState[] = []
 
   for (const zone of JUNGLE_ZONES) {
     if (hasZone && !hasZone(zone)) continue
-    // Each camp gets 1-2 random neutrals
-    const campSize = Math.random() < 0.5 ? 1 : 2
+    // Skip camps already at cap — prevents unbounded accumulation
+    const currentCount = liveCountByZone.get(zone) ?? 0
+    if (currentCount >= MAX_NEUTRALS_PER_CAMP) continue
+
+    // Each camp gets 1-2 random neutrals, but respect the cap
+    const campSize = Math.min(Math.random() < 0.5 ? 1 : 2, MAX_NEUTRALS_PER_CAMP - currentCount)
+    if (campSize <= 0) continue
 
     for (let i = 0; i < campSize; i++) {
       // Random creep type (weighted towards smaller ones)
@@ -126,15 +140,15 @@ export function applyNeutralActions(state: GameState, actions: NeutralAction[]):
 
     const target = players[action.targetId]
     if (!target || !target.alive) continue
-    // Physical immunity (Ghost/Ethereal/invulnerable) ignores neutral attacks.
-    if (isDamageImmune(target, 'physical')) continue
 
-    const newHp = Math.max(0, target.hp - action.damage)
-    players[action.targetId] = {
-      ...target,
-      hp: newHp,
-      alive: newHp > 0,
-    }
+    // Route through resolvePhysicalHit for the full mitigation chain — same as
+    // towers, creeps, and Roshan. Previously this did raw `hp - damage` with only
+    // an immunity check, bypassing armor items, shields, hardened reduction,
+    // vulnerability amplifiers, and phase shift dodge.
+    const hit = resolvePhysicalHit(target, action.damage)
+    if (hit.immune || hit.dodged) continue
+
+    players[action.targetId] = hit.player
   }
 
   return { ...state, players }

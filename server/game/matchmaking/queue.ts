@@ -13,7 +13,13 @@ const QUEUE_TIMES_KEY = 'matchmaking:queue_times'
  *  set, so leaveQueue can zrem directly without scanning + parsing the MMR
  *  window. O(1) leave instead of O(n). */
 const QUEUE_MEMBERS_KEY = 'matchmaking:queue_members'
-const MATCH_SIZE = 10
+
+/** The total number of players (both teams) a match needs for each mode. */
+const MATCH_SIZE_BY_MODE: Record<QueueMode, number> = {
+  ranked_5v5: 10, // 5v5 = 10 players
+  quick_3v3: 6, // 3v3 = 6 players
+  '1v1': 2, // 1v1 = 2 players
+}
 const MATCHMAKING_INTERVAL_MS = 5000
 const BOT_FILL_WAIT_MS = 10_000
 const MATCHMAKING_LOCK_KEY = 'matchmaking:lock'
@@ -26,12 +32,14 @@ const MMR_RANGES: { afterSeconds: number; range: number }[] = [
   { afterSeconds: 120, range: 500 },
 ]
 
+export type QueueMode = 'ranked_5v5' | 'quick_3v3' | '1v1'
+
 export interface QueueEntry {
   playerId: string
   username: string
   mmr: number
   joinedAt: number
-  mode: 'ranked_5v5' | 'quick_3v3' | '1v1'
+  mode: QueueMode
 }
 
 function getMmrRange(waitTimeSeconds: number): number {
@@ -89,8 +97,7 @@ export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Eff
 export function leaveQueue(
   redis: RedisServiceApi,
   playerId: string,
-  _mmr: number,
-  mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5',
+  mode: QueueMode = 'ranked_5v5',
 ): Effect.Effect<void> {
   const queueKey = `${QUEUE_KEY}:${mode}`
   const memberField = `${playerId}:${mode}`
@@ -126,7 +133,7 @@ async function tryFormMatch(
     }
 
     try {
-      const modes: Array<'ranked_5v5' | 'quick_3v3' | '1v1'> = ['ranked_5v5', 'quick_3v3', '1v1']
+      const modes: QueueMode[] = ['ranked_5v5', 'quick_3v3', '1v1']
 
       for (const mode of modes) {
         const queueKey = `${QUEUE_KEY}:${mode}`
@@ -134,7 +141,9 @@ async function tryFormMatch(
 
         if (queueSize === 0) continue
 
-        const allEntries = yield* redis.zrangebyscore(queueKey, 0, 99999)
+        const matchSize = MATCH_SIZE_BY_MODE[mode]
+
+        const allEntries = yield* redis.zrangebyscore(queueKey, 0, Number.MAX_SAFE_INTEGER)
         const players: QueueEntry[] = allEntries.map((raw) => JSON.parse(raw))
 
         const now = Date.now()
@@ -159,15 +168,15 @@ async function tryFormMatch(
             sendToPeer(p.playerId, {
               type: 'queue_roster',
               players: rosterPlayers,
-              total: MATCH_SIZE,
+              total: matchSize,
             })
           }
         }
 
-        if (players.length > 0 && players.length < MATCH_SIZE) {
+        if (players.length > 0 && players.length < matchSize) {
           const longestWait = Math.max(...players.map((p) => now - p.joinedAt))
           if (longestWait >= BOT_FILL_WAIT_MS) {
-            const botsNeeded = MATCH_SIZE - players.length
+            const botsNeeded = matchSize - players.length
             matchLog.info('Filling with bots', { realPlayers: players.length, botsNeeded })
             for (const p of players) {
               if (!isBot(p.playerId)) {
@@ -203,13 +212,13 @@ async function tryFormMatch(
           }
         }
 
-        if (queueSize < MATCH_SIZE) continue
-        if (players.length < MATCH_SIZE) continue
+        if (queueSize < matchSize) continue
+        if (players.length < matchSize) continue
 
         players.sort((a, b) => a.mmr - b.mmr)
 
-        for (let i = 0; i <= players.length - MATCH_SIZE; i++) {
-          const group = players.slice(i, i + MATCH_SIZE)
+        for (let i = 0; i <= players.length - matchSize; i++) {
+          const group = players.slice(i, i + matchSize)
           const minMmr = group[0]!.mmr
           const maxMmr = group[group.length - 1]!.mmr
 
@@ -233,7 +242,7 @@ async function tryFormMatch(
             }
 
             createLobby(group, ws, redis, db)
-            matchLog.info('Match formed', { queueSize: players.length, matchSize: MATCH_SIZE })
+            matchLog.info('Match formed', { queueSize: players.length, matchSize })
             return
           }
         }
@@ -265,10 +274,7 @@ export function startMatchmakingLoop(
   }, MATCHMAKING_INTERVAL_MS)
 }
 
-export function getQueueSize(
-  redis: RedisServiceApi,
-  mode?: 'ranked_5v5' | 'quick_3v3' | '1v1',
-): Effect.Effect<number> {
+export function getQueueSize(redis: RedisServiceApi, mode?: QueueMode): Effect.Effect<number> {
   const queueKey = mode ? `${QUEUE_KEY}:${mode}` : `${QUEUE_KEY}:ranked_5v5`
   return redis.zcard(queueKey)
 }
@@ -276,7 +282,7 @@ export function getQueueSize(
 export function isPlayerInQueue(
   redis: RedisServiceApi,
   playerId: string,
-  mode?: 'ranked_5v5' | 'quick_3v3' | '1v1',
+  mode?: QueueMode,
 ): Effect.Effect<boolean> {
   const modes = mode ? [mode] : (['ranked_5v5', 'quick_3v3', '1v1'] as const)
   return Effect.gen(function* () {

@@ -1304,7 +1304,6 @@ describe('sequenceManaCost (combo affordability)', () => {
 function makeConfig(overrides: Partial<BotDifficultyConfig> = {}): BotDifficultyConfig {
   return {
     retreatHpPercent: 30,
-    lastHitAccuracy: 1,
     reactionDelayTicks: 0,
     abilityComboChance: 0,
     runeAwareness: false,

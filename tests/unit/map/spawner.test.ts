@@ -7,6 +7,7 @@ import {
   shouldRoshanRespawn,
   respawnRoshan,
 } from '../../../server/game/map/spawner'
+import { zonesForMap, ONE_LANE_MAP_ID, TWO_LANE_MAP_ID } from '../../../shared/constants/maps'
 import {
   CREEP_WAVE_INTERVAL_TICKS,
   MELEE_CREEPS_PER_WAVE,
@@ -146,12 +147,12 @@ describe('Spawner', () => {
     })
 
     it('a rune always expires before the next spawn (no stacking at a zone)', () => {
-      // spawnRunes is purely tick-based and never checks whether a zone is
-      // already occupied, so the no-stacking guarantee rests entirely on this
-      // relationship: an unclaimed rune (lifetime RUNE_DURATION_TICKS) must be
-      // gone before the next spawn (RUNE_INTERVAL_TICKS). If a future balance
-      // change lifts the duration past the interval, runes would pile up at a
-      // zone — this test trips first.
+      // spawnRunes has a defensive occupancy check (activeRunes param) that skips
+      // re-spawning on an occupied spot, but the primary no-stacking guarantee
+      // rests on this relationship: an unclaimed rune (lifetime RUNE_DURATION_TICKS)
+      // must be gone before the next spawn (RUNE_INTERVAL_TICKS). If a future
+      // balance change lifts the duration past the interval, runes would pile up
+      // at a zone — this test trips first.
       expect(RUNE_DURATION_TICKS).toBeLessThan(RUNE_INTERVAL_TICKS)
     })
 
@@ -160,6 +161,64 @@ describe('Spawner', () => {
       for (const r of runes) {
         expect(r.tick).toBe(120)
       }
+    })
+
+    it('does not spawn a rune on an occupied zone (occupancy check)', () => {
+      const active = new Set(['rune-top'])
+      const runes = spawnRunes(60, undefined, active)
+      // rune-top is occupied → only rune-bot should spawn
+      expect(runes).toHaveLength(1)
+      expect(runes[0]!.zone).toBe('rune-bot')
+    })
+
+    it('does not spawn runes when all spots are occupied', () => {
+      const active = new Set(['rune-top', 'rune-bot'])
+      const runes = spawnRunes(60, undefined, active)
+      expect(runes).toEqual([])
+    })
+  })
+
+  // The spawner gates lane/rune spawns on a game's live zone set via the
+  // `hasZone` callback. On a subset map (one-lane, two-lane) a lane whose spawn
+  // zones aren't in the game must be skipped entirely, or creeps would be
+  // placed in zones that don't exist on this map.
+  describe('subset-map spawning (hasZone gating)', () => {
+    function hasZoneFor(mapId: string): (zoneId: string) => boolean {
+      const ids = new Set(zonesForMap(mapId).map((z) => z.id))
+      return (zoneId: string) => ids.has(zoneId)
+    }
+
+    it('one-lane map: spawns only mid-lane creeps (no top or bot)', () => {
+      const hasZone = hasZoneFor(ONE_LANE_MAP_ID)
+      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS, hasZone)
+      // Only mid lane — 3 melee + 1 ranged per team = 8 creeps.
+      expect(creeps).toHaveLength((MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE) * 2)
+      for (const c of creeps) {
+        expect(c.zone).toMatch(/^mid-t3-(rad|dire)$/)
+      }
+    })
+
+    it('one-lane map: spawns no runes (both rune spots are absent)', () => {
+      const hasZone = hasZoneFor(ONE_LANE_MAP_ID)
+      const runes = spawnRunes(RUNE_INTERVAL_TICKS, hasZone)
+      expect(runes).toEqual([])
+    })
+
+    it('two-lane map: spawns top + mid creeps (no bot)', () => {
+      const hasZone = hasZoneFor(TWO_LANE_MAP_ID)
+      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS, hasZone)
+      // Top + mid lanes — 2 lanes × 2 teams × (3 melee + 1 ranged) = 16 creeps.
+      expect(creeps).toHaveLength((MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE) * 2 * 2)
+      for (const c of creeps) {
+        expect(c.zone).not.toMatch(/^bot-/)
+      }
+    })
+
+    it('two-lane map: spawns only rune-top (rune-bot is absent)', () => {
+      const hasZone = hasZoneFor(TWO_LANE_MAP_ID)
+      const runes = spawnRunes(RUNE_INTERVAL_TICKS, hasZone)
+      expect(runes).toHaveLength(1)
+      expect(runes[0]!.zone).toBe('rune-top')
     })
   })
 

@@ -48,6 +48,7 @@ function makeMockRedis(): RedisServiceApi & { _list: Map<string, string[]> } {
     setnx: vi.fn(() => Effect.succeed(1)),
     getdel: vi.fn(() => Effect.succeed(null)),
     keys: vi.fn(() => Effect.succeed([])),
+    scan: vi.fn(() => Effect.succeed([])),
     expire: vi.fn(() => Effect.void),
     eval: vi.fn(() => Effect.succeed(null)),
     shutdown: vi.fn(() => Effect.void),

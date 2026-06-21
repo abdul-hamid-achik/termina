@@ -41,7 +41,13 @@ import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/Spe
 import type { TeamId, GameState, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
-import { isBot, registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
+import {
+  isBot,
+  registerBots,
+  cleanupGame,
+  type RegisterBotsOptions,
+} from '~~/server/game/ai/BotManager'
+import { ONE_LANE_MAP_ID, TWO_LANE_MAP_ID, mapIdForMode } from '~~/shared/constants/maps'
 import { buildTutorialRoster } from '~~/server/game/modes/tutorial'
 import {
   sendToPeer,
@@ -207,6 +213,15 @@ function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
   if (entry.recentEvents.length > RECENT_EVENTS_CAP) {
     entry.recentEvents.splice(0, entry.recentEvents.length - RECENT_EVENTS_CAP)
   }
+  entry.lastTickAt = Date.now()
+}
+
+/** Update the lastTickAt timestamp for a live game. Called from onTickState
+ *  so the reaper doesn't incorrectly kill a game whose ticks produce no events
+ *  (both teams AFK in fountain — the loop is alive but onEvents is a no-op). */
+function touchLiveGame(gameId: string): void {
+  const entry = liveGames.get(gameId)
+  if (!entry) return
   entry.lastTickAt = Date.now()
 }
 
@@ -567,6 +582,19 @@ export default defineNitroPlugin(async (nitroApp) => {
   const { startMatchmakingLoop } = await import('~~/server/game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
 
+  // ── Lobby sweep on boot ──────────────────────────────────────────
+  // Clear stale lobby mirrors left in Redis by a previous process crash/
+  // restart. Without this, stale lobbies linger forever (their pickTimers
+  // are gone with the old process, so they never publish game_ready or
+  // self-cancel). sweepStaleLobbies enumerates the lobby hash via HGETALL.
+  try {
+    const { sweepStaleLobbies } = await import('~~/server/game/matchmaking/lobby')
+    await sweepStaleLobbies([], ws, redis)
+    gameLog.info('Lobby sweep complete')
+  } catch (err) {
+    gameLog.warn('Lobby sweep failed (non-fatal)', { error: String(err) })
+  }
+
   // ── Multi-instance: instance identity + relay ───────────────────
   // Generate a unique instance ID for cross-instance message relay (P4).
   // In single-instance mode the relay is configured but never used (no
@@ -635,7 +663,10 @@ export default defineNitroPlugin(async (nitroApp) => {
     stateManager: ReturnType<typeof createInMemoryStateManager>,
   ): GameCallbacks {
     return {
-      onTickState: (_gId, playerId, filteredState) => {
+      onTickState: (gId, playerId, filteredState) => {
+        // Update lastTickAt on every tick (not just on events) so the reaper
+        // doesn't kill a live game that happens to produce no events for a while.
+        touchLiveGame(gId)
         if (isBot(playerId)) return
         sendToPeer(playerId, {
           type: 'tick_state',
@@ -835,13 +866,21 @@ export default defineNitroPlugin(async (nitroApp) => {
       try {
         const gameData = JSON.parse(message) as {
           lobbyId: string
+          mode?: string
+          mapId?: string
           players: { playerId: string; team: TeamId; heroId: string; mmr: number }[]
         }
 
         const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        // The lobby stamps the queue mode + derived mapId onto game_ready. The
+        // mapId drives which zone set the game uses (5v5 → 3 lanes, 3v3 → 2,
+        // 1v1 → 1); fall back to deriving it from mode, then to the full map.
+        const mapId = gameData.mapId ?? mapIdForMode(gameData.mode) ?? 'default_5v5'
         gameLog.info('game_ready received', {
           lobbyId: gameData.lobbyId,
           playerCount: gameData.players.length,
+          mode: gameData.mode ?? 'ranked_5v5',
+          mapId,
         })
 
         // Create a standalone state manager for this game
@@ -859,15 +898,26 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Initialise game state in a single Effect pipeline
         await managedRuntime.runPromise(
           Effect.gen(function* () {
-            yield* stateManager.createGame(gameId, playerSetups)
+            yield* stateManager.createGame(gameId, playerSetups, { mapId })
             yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
           }),
         )
 
-        // Register bots for this game (lane assignment, tracking)
+        // Register bots for this game (lane assignment, tracking). On a subset
+        // map the role lanes (top/bot/jungle) may not exist; pin bots to the
+        // lanes that do (mid-only for one-lane, top/mid for two-lane) so their
+        // global-graph pathing can't walk them off the map.
+        let botOpts: RegisterBotsOptions | undefined
+        if (mapId === ONE_LANE_MAP_ID) {
+          botOpts = { forceLane: 'mid' }
+        } else if (mapId === TWO_LANE_MAP_ID) {
+          // 3v3 two-lane map: top + mid only, no bot lane to path into.
+          botOpts = { availableLanes: ['top', 'mid'] }
+        }
         registerBots(
           gameId,
           gameData.players.map((p) => ({ playerId: p.playerId, team: p.team, heroId: p.heroId })),
+          botOpts,
         )
 
         // Notify real players that the game is starting via PeerRegistry

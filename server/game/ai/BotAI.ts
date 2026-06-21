@@ -12,98 +12,18 @@ import type { AbilityDef } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getItem } from '~~/shared/constants/items'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
-import { TALENT_TREES } from '~~/shared/constants/talents'
+import { getTalentTree } from '~~/shared/constants/talents'
 import { findPath, getDistance, areAdjacent } from '~~/server/game/map/topology'
-import { WARD_LIMIT_PER_TEAM } from '~~/shared/constants/balance'
+import {
+  WARD_LIMIT_PER_TEAM,
+  GLYPH_COOLDOWN_TICKS,
+  SELL_REFUND_RATIO,
+} from '~~/shared/constants/balance'
+import { LANE_ROUTES } from '~~/shared/constants/lanes'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
 import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
-
-const LANE_ROUTES: Record<string, Record<TeamId, string[]>> = {
-  top: {
-    radiant: [
-      'radiant-fountain',
-      'radiant-base',
-      'top-t3-rad',
-      'top-t2-rad',
-      'top-t1-rad',
-      'top-river',
-      'top-t1-dire',
-      'top-t2-dire',
-      'top-t3-dire',
-      'dire-base',
-    ],
-    dire: [
-      'dire-fountain',
-      'dire-base',
-      'top-t3-dire',
-      'top-t2-dire',
-      'top-t1-dire',
-      'top-river',
-      'top-t1-rad',
-      'top-t2-rad',
-      'top-t3-rad',
-      'radiant-base',
-    ],
-  },
-  mid: {
-    radiant: [
-      'radiant-fountain',
-      'radiant-base',
-      'mid-t3-rad',
-      'mid-t2-rad',
-      'mid-t1-rad',
-      'mid-river',
-      'mid-t1-dire',
-      'mid-t2-dire',
-      'mid-t3-dire',
-      'dire-base',
-    ],
-    dire: [
-      'dire-fountain',
-      'dire-base',
-      'mid-t3-dire',
-      'mid-t2-dire',
-      'mid-t1-dire',
-      'mid-river',
-      'mid-t1-rad',
-      'mid-t2-rad',
-      'mid-t3-rad',
-      'radiant-base',
-    ],
-  },
-  bot: {
-    radiant: [
-      'radiant-fountain',
-      'radiant-base',
-      'bot-t3-rad',
-      'bot-t2-rad',
-      'bot-t1-rad',
-      'bot-river',
-      'bot-t1-dire',
-      'bot-t2-dire',
-      'bot-t3-dire',
-      'dire-base',
-    ],
-    dire: [
-      'dire-fountain',
-      'dire-base',
-      'bot-t3-dire',
-      'bot-t2-dire',
-      'bot-t1-dire',
-      'bot-river',
-      'bot-t1-rad',
-      'bot-t2-rad',
-      'bot-t3-rad',
-      'radiant-base',
-    ],
-  },
-  jungle: {
-    radiant: ['radiant-fountain', 'radiant-base', 'jungle-rad-top', 'jungle-rad-bot'],
-    dire: ['dire-fountain', 'dire-base', 'jungle-dire-top', 'jungle-dire-bot'],
-  },
-}
 
 // Item build orders now live in shared/constants/itemBuilds (the SINGLE source
 // shared with the shop UI, which recommends them to the human player). The bot
@@ -113,6 +33,22 @@ export const buildOrderForRole = recommendedItemsForRole
 
 // Defensive consumables bots keep stocked (one of each)
 const BOT_CONSUMABLES = ['healing_salve', 'town_portal_scroll']
+
+// Heroes with invisibility abilities — drives Sentry Ward purchasing.
+// Only Cipher (W) and Daemon (passive) grant stealth; see VisionCalculator's
+// INVISIBILITY_BUFF_IDS for the authoritative buff list.
+const INVIS_HEROES = new Set(['cipher', 'daemon'])
+
+// Items a bot will sell to make room for a higher-priority purchase
+const SELLABLE_ITEMS = new Set([
+  'healing_salve',
+  'town_portal_scroll',
+  'observer_ward',
+  'sentry_ward',
+  'iron_branch',
+  'boots',
+  'quelling_blade',
+])
 
 // Combat item actives a bot uses mid-fight. Every one mirrors validateAction's
 // `use` gates via itemOffCooldown (owned + not on item_cd) and resolves cleanly:
@@ -131,6 +67,20 @@ function itemOffCooldown(bot: PlayerState, item: string): boolean {
     bot.items.includes(item) &&
     !bot.buffs.some((b) => b.id === `item_cd_${item}` && b.ticksRemaining > 0)
   )
+}
+
+/**
+ * Deterministic pseudo-random in [0, 1) from (id, tick). Keeps bot behavior
+ * reproducible across tests (Math.random would make assertion-based tests flaky).
+ * Uses a simple xfnv1a-ish hash; quality doesn't matter, only uniformity.
+ */
+function deterministicRoll(id: string, tick: number): number {
+  let hash = 2166136261
+  for (let i = 0; i < id.length; i++) {
+    hash = Math.imul(hash ^ id.charCodeAt(i), 16777619)
+  }
+  hash = Math.imul(hash ^ tick, 16777619)
+  return ((hash >>> 0) % 10000) / 10000
 }
 
 /** Magic-immune / invulnerable targets negate the pure magical-burst items (Dagon, Ethereal). */
@@ -196,6 +146,139 @@ const HERO_COMBOS: Record<string, HeroCombo[]> = {
       conditions: ['enemy_present'],
     },
   ],
+
+  // --- Support heroes: peel/fortify combos ---
+
+  sentry: [
+    {
+      name: 'fortify',
+      sequence: [{ ability: 'e' }, { ability: 'r' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+  proxy: [
+    {
+      name: 'harass',
+      sequence: [{ ability: 'q' }, { ability: 'e' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+  cron: [
+    {
+      name: 'rally',
+      sequence: [{ ability: 'e' }, { ability: 'r' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+
+  // --- Offlaners: CC chain combos ---
+
+  socket: [
+    {
+      name: 'lockdown',
+      sequence: [{ ability: 'q' }, { ability: 'e' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+  mutex: [
+    {
+      name: 'lockdown',
+      sequence: [{ ability: 'q' }, { ability: 'e' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+  ping: [
+    {
+      name: 'disrupt',
+      sequence: [{ ability: 'w' }, { ability: 'q' }],
+      conditions: ['enemy_present'],
+    },
+    {
+      name: 'flood',
+      sequence: [{ ability: 'w' }, { ability: 'r' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+
+  // --- Carries: build-then-burst combos ---
+
+  malloc: [
+    {
+      name: 'allocate',
+      sequence: [{ ability: 'q' }, { ability: 'w' }],
+      conditions: ['enemy_present'],
+    },
+    {
+      name: 'execute',
+      sequence: [{ ability: 'e' }, { ability: 'w' }],
+      conditions: ['low_hp_enemy'],
+    },
+  ],
+  thread: [
+    {
+      name: 'mark',
+      sequence: [{ ability: 'e' }, { ability: 'q' }],
+      conditions: ['enemy_present'],
+    },
+    {
+      name: 'overclock',
+      sequence: [{ ability: 'e' }, { ability: 'r' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+
+  // --- Assassins: open from stealth / isolate then burst ---
+
+  cipher: [
+    {
+      name: 'burst',
+      sequence: [{ ability: 'q' }, { ability: 'r' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+  traceroute: [
+    {
+      name: 'hunt',
+      sequence: [{ ability: 'w' }, { ability: 'q' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+
+  // --- Mages: shred defenses then nuke ---
+
+  null_ref: [
+    {
+      name: 'shred',
+      sequence: [{ ability: 'q' }, { ability: 'w' }, { ability: 'r' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+  lambda: [
+    // 3 casts trigger Closure (free + 30% bonus dmg); R as the 3rd cast
+    // gets the full amplification — the hero's defining synergy.
+    {
+      name: 'chain',
+      sequence: [{ ability: 'q' }, { ability: 'e' }, { ability: 'r' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+
+  // --- Tanks: CC chain / defensive combos ---
+
+  firewall: [
+    {
+      name: 'containment',
+      sequence: [{ ability: 'q' }, { ability: 'e' }],
+      conditions: ['enemy_present'],
+    },
+  ],
+  cache: [
+    {
+      name: 'evict',
+      sequence: [{ ability: 'e' }, { ability: 'q' }],
+      conditions: ['enemy_present'],
+    },
+  ],
 }
 
 function getEnemyHeroesInZone(state: GameState, bot: PlayerState): PlayerState[] {
@@ -250,14 +333,18 @@ function getItemCount(bot: PlayerState): number {
   return bot.items.filter((i) => i !== null).length
 }
 
-function getNextLaneZone(bot: PlayerState, lane: string): string | null {
+function getNextLaneZone(
+  bot: PlayerState,
+  lane: string,
+  hasZone?: (id: string) => boolean,
+): string | null {
   const route = LANE_ROUTES[lane]?.[bot.team]
   if (!route) return null
   const currentIdx = route.indexOf(bot.zone)
   if (currentIdx === -1) {
     const laneStart = route[2]
     if (!laneStart) return null
-    const path = findPath(bot.zone, laneStart)
+    const path = findPath(bot.zone, laneStart, hasZone)
     return path.length > 1 ? path[1]! : null
   }
   if (currentIdx < route.length - 1) {
@@ -266,13 +353,17 @@ function getNextLaneZone(bot: PlayerState, lane: string): string | null {
   return null
 }
 
-function getClosestRuneZone(bot: PlayerState, state: GameState): string | null {
+function getClosestRuneZone(
+  bot: PlayerState,
+  state: GameState,
+  hasZone?: (id: string) => boolean,
+): string | null {
   let closest: string | null = null
   let minDist = Infinity
   for (const zone of RUNE_ZONES) {
     const runes = getRunesInZone(state, zone)
     if (runes.length > 0) {
-      const dist = getDistance(bot.zone, zone)
+      const dist = getDistance(bot.zone, zone, hasZone)
       if (dist < minDist) {
         minDist = dist
         closest = zone
@@ -282,13 +373,17 @@ function getClosestRuneZone(bot: PlayerState, state: GameState): string | null {
   return closest
 }
 
-function getClosestJungleZoneWithNeutrals(bot: PlayerState, state: GameState): string | null {
+function getClosestJungleZoneWithNeutrals(
+  bot: PlayerState,
+  state: GameState,
+  hasZone?: (id: string) => boolean,
+): string | null {
   let closest: string | null = null
   let minDist = Infinity
   for (const zone of JUNGLE_ZONES) {
     const neutrals = getNeutralsInZone(state, zone)
     if (neutrals.length > 0) {
-      const dist = getDistance(bot.zone, zone)
+      const dist = getDistance(bot.zone, zone, hasZone)
       if (dist < minDist) {
         minDist = dist
         closest = zone
@@ -339,25 +434,100 @@ function lacksResourceForCast(bot: PlayerState, slot: AbilitySlot): boolean {
   }
 }
 
-function calculateThreatScore(enemy: PlayerState, _bot: PlayerState, _state: GameState): number {
+/**
+ * Expected-DPS threat model. Sums the actual damage of off-cooldown abilities
+ * (damage/stun/slow/dot/execute effects) plus auto-attack DPS, then adjusts
+ * for the level delta and item actives. A 50-mana 300-damage nuke now outscores
+ * a 200-mana utility buff — the old `manaCost * 0.3` formula had them reversed.
+ *
+ * Used by `shouldRetreatFromThreat` to decide whether a bot is outmatched in
+ * its current zone. The score is intentionally a rough proxy (cooldowns and
+ * exact damage vary by level/rank), not a precise simulation.
+ */
+function abilityDamageValue(ability: AbilityDef): number {
+  let total = 0
+  for (const effect of ability.effects) {
+    switch (effect.type) {
+      case 'damage':
+        // Some abilities list multiple damage effects (e.g. base + bonus);
+        // summing them captures the full burst.
+        total += effect.value
+        break
+      case 'dot':
+        // DoT `value` is total over `duration` ticks — already the full payload.
+        total += effect.value
+        break
+      case 'execute':
+        // Execute abilities can deal massive damage; weight by the base
+        // damage effect on the same ability if present, else a flat bonus.
+        total += 150
+        break
+      case 'stun':
+      case 'root':
+      case 'silence':
+      case 'fear':
+      case 'taunt':
+        // Hard CC is worth ~80 effective "damage" (a free turn to attack).
+        total += 80
+        break
+      case 'slow':
+        // Soft CC is worth less.
+        total += 30
+        break
+      default:
+        // Buffs/debuffs/heals/shields are situational; small contribution.
+        total += 10
+        break
+    }
+  }
+  return total
+}
+
+function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: GameState): number {
   let score = 0
   const hero = enemy.heroId ? HEROES[enemy.heroId] : null
   if (hero) {
-    score += hero.baseStats.attack * 0.5
+    // Auto-attack DPS proxy: base attack scaled by level (growth).
+    const enemyAttack =
+      hero.baseStats.attack + (hero.growthPerLevel.attack ?? 0) * (enemy.level - 1)
+    score += enemyAttack * 0.5
+
+    // Sum actual damage of off-cooldown abilities the enemy can cast right now.
     if (enemy.mp > 0) {
       for (const slot of ['q', 'w', 'e', 'r'] as const) {
         if (enemy.cooldowns[slot] === 0) {
           const ability = hero.abilities[slot]
-          score += ability.manaCost * 0.3
+          // R requires level 6+ to cast; if enemy hasn't hit it, skip.
+          if (slot === 'r' && enemy.level < 6) continue
+          if (enemy.mp >= ability.manaCost) {
+            score += abilityDamageValue(ability)
+          }
         }
       }
     }
+
+    // Item actives add burst potential — count known combat items.
+    for (const item of enemy.items) {
+      if (item === 'dagon') score += 300
+      else if (item === 'ethereal_blade') score += 150
+      else if (item === 'scythe_of_vyse') score += 80
+      else if (item === 'veil_of_discord') score += 40
+    }
   }
+
+  // Level delta: a 3-level-ahead enemy is dramatically more dangerous.
+  const levelDelta = enemy.level - bot.level
+  score += levelDelta * 15
+
+  // Low-HP enemies are less threatening (can't fight back long).
   const hpPercent = getHpPercent(enemy)
   if (hpPercent < 30) score -= 50
   else if (hpPercent < 50) score -= 25
+
+  // K/D ratio as a soft signal of combat effectiveness.
   score += enemy.kills * 10
   score -= enemy.deaths * 5
+
   return score
 }
 
@@ -367,10 +537,21 @@ function shouldRetreatFromThreat(
   config: BotDifficultyConfig,
 ): boolean {
   const hpPercent = getHpPercent(bot)
-  if (hpPercent < config.retreatHpPercent) return true
-  if (!config.threatAssessment) return false
   const enemyHeroes = getEnemyHeroesInZone(state, bot)
-  if (enemyHeroes.length === 0) return false
+
+  // Tier 1: Critical HP — always retreat below the configured floor.
+  // Slower bots (reactionDelayTicks > 0) have a per-tick chance to NOT react
+  // yet, simulating slower reflexes. But a bot at <half the floor never delays.
+  if (hpPercent < config.retreatHpPercent) {
+    if (config.reactionDelayTicks > 0 && hpPercent > config.retreatHpPercent * 0.5) {
+      const roll = deterministicRoll(bot.id, state.tick)
+      if (roll < config.reactionDelayTicks / 10) return false
+    }
+    return true
+  }
+  if (!config.threatAssessment || enemyHeroes.length === 0) return false
+
+  // Graduated threat-based retreat — the lower the HP, the more cautious.
   let totalEnemyThreat = 0
   for (const enemy of enemyHeroes) {
     totalEnemyThreat += calculateThreatScore(enemy, bot, state)
@@ -383,7 +564,24 @@ function shouldRetreatFromThreat(
   for (const ally of allies) {
     totalAllyThreat += calculateThreatScore(ally, bot, state) * 0.7
   }
-  if (totalEnemyThreat > totalAllyThreat * 1.5 && hpPercent < 50) return true
+
+  // Tier 2: Outnumbered at moderate HP — retreat when losing the fight badly.
+  // The HP threshold and the required threat ratio scale together: a hurt bot
+  // (30% HP) retreats at a modest disadvantage (1.3x), a healthy bot (50% HP)
+  // only retreats when badly outmatched (1.5x). Above 50% HP, hold ground.
+  if (hpPercent < 50) {
+    // Interpolate: at retreatHpPercent → 1.3x ratio, at 50% → 1.5x ratio.
+    const ratio =
+      1.3 + ((hpPercent - config.retreatHpPercent) / (50 - config.retreatHpPercent)) * 0.2
+    if (totalEnemyThreat > totalAllyThreat * ratio) return true
+  }
+
+  // Tier 3: Gank awareness — even at high HP, retreat if severely outnumbered
+  // (3+ enemies, alone) since a coordinated focus will burst through shields.
+  if (enemyHeroes.length >= 3 && allies.length === 0 && hpPercent < 70) {
+    return true
+  }
+
   return false
 }
 
@@ -525,7 +723,7 @@ function tryCombo(
   enemiesInZone: PlayerState[],
   config: BotDifficultyConfig,
 ): Command | null {
-  if (Math.random() > config.abilityComboChance) return null
+  if (deterministicRoll(`combo_${bot.id}`, state.tick) > config.abilityComboChance) return null
   const heroId = bot.heroId
   if (!heroId) return null
   const combos = HERO_COMBOS[heroId]
@@ -681,19 +879,228 @@ export function tryPlaceWard(state: GameState, bot: PlayerState): Command | null
   return null
 }
 
+/** Support bots also buy Sentry Wards for true-sight (reveals invisible enemies
+ *  in a zone). Only bought when the enemy team has invisibility heroes. */
+function tryBuySentryWard(bot: PlayerState, state: GameState): Command | null {
+  if (getItemCount(bot) >= 6) return null
+  const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
+  if (role !== 'support') return null
+  if (bot.items.includes('sentry_ward')) return null
+  if (bot.gold < itemCost('sentry_ward')) return null
+  // Only buy sentries when the enemy has invisibility-capable heroes
+  const hasInvisEnemy = Object.values(state.players).some(
+    (p) => p.team !== bot.team && p.alive && p.heroId && INVIS_HEROES.has(p.heroId),
+  )
+  if (!hasInvisEnemy) return null
+  return { type: 'buy', item: 'sentry_ward' }
+}
+
+/** Place a sentry ward for true-sight in the current/adjacent zone when
+ *  invisible enemies are likely nearby (enemy invis hero on the map). */
+function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null {
+  if (!bot.items.includes('sentry_ward')) return null
+  if (teamWardCount(state, bot.team) >= WARD_LIMIT_PER_TEAM) return null
+  const hasInvisEnemy = Object.values(state.players).some(
+    (p) => p.team !== bot.team && p.alive && p.heroId && INVIS_HEROES.has(p.heroId),
+  )
+  if (!hasInvisEnemy) return null
+  // Place on the current zone or an adjacent river/jungle zone
+  const candidates = [
+    bot.zone,
+    ...Object.values(state.zones)
+      .map((z) => z.id)
+      .filter((id) => areAdjacent(bot.zone, id)),
+  ]
+  for (const zone of candidates) {
+    const hasSentry = (state.zones[zone]?.wards ?? []).some(
+      (w) => w.team === bot.team && w.type === 'sentry',
+    )
+    if (!hasSentry) return { type: 'ward', zone }
+  }
+  return null
+}
+
+/** Roshan awareness — when Roshan is alive and low HP, contest it.
+ *  Only for carry/initiator roles at high HP with allies nearby. */
+function tryRoshan(
+  state: GameState,
+  bot: PlayerState,
+  config: BotDifficultyConfig,
+  hasZone?: (id: string) => boolean,
+): Command | null {
+  if (!config.threatAssessment) return null
+  const roshan = state.roshan
+  if (!roshan.alive) return null
+  // Only contest when Roshan is below 40% HP (last-hit window)
+  if (roshan.hp / roshan.maxHp > 0.4) return null
+  // Need to be healthy and level 6+
+  if (getHpPercent(bot) < 70 || bot.level < 6) return null
+  // Only carries and initiators contest Roshan
+  const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
+  if (role !== 'carry' && role !== 'tank' && role !== 'assassin' && role !== 'mage') return null
+  // Need at least one ally nearby for a safe contest
+  const alliesNear = Object.values(state.players).filter(
+    (p) =>
+      p.team === bot.team &&
+      p.alive &&
+      p.id !== bot.id &&
+      getDistance(p.zone, 'roshan-pit', hasZone) <= 2,
+  )
+  if (alliesNear.length === 0) return null
+  // If already in Roshan's pit, attack Roshan
+  if (bot.zone === 'roshan-pit') {
+    return { type: 'attack', target: { kind: 'roshan' } }
+  }
+  // Move toward Roshan
+  if (!hasZone || hasZone('roshan-pit')) {
+    const path = findPath(bot.zone, 'roshan-pit', hasZone)
+    if (path.length > 1) return { type: 'move', zone: path[1]! }
+  }
+  return null
+}
+
+/** Grab the Aegis when it has dropped in the Roshan pit and is still unclaimed.
+ *  The aegis only ever lands in roshan-pit, so a bot already there (e.g. the one
+ *  that just contested Roshan) picks it up; otherwise it only diverts when the
+ *  pit is adjacent — it never abandons its lane to trek across the map for it. */
+function tryAegis(
+  state: GameState,
+  bot: PlayerState,
+  config: BotDifficultyConfig,
+  hasZone?: (id: string) => boolean,
+): Command | null {
+  if (!config.threatAssessment) return null
+  const aegis = state.aegis
+  if (!aegis || aegis.holderId) return null // none on the ground / already held
+  if (bot.zone === 'roshan-pit') return { type: 'aegis' }
+  // Only divert when the pit is right next to us (don't cross the map for it).
+  if ((!hasZone || hasZone('roshan-pit')) && getDistance(bot.zone, 'roshan-pit', hasZone) <= 1) {
+    const path = findPath(bot.zone, 'roshan-pit', hasZone)
+    if (path.length > 1) return { type: 'move', zone: path[1]! }
+  }
+  return null
+}
+
+/** Buyback — when dead and the game is still winnable, buy back if the bot
+ *  has enough gold and the cooldown is clear. Only when there's a fight to
+ *  join (enemies near our structures) or the Ancient is threatened. */
+function tryBuyback(
+  state: GameState,
+  bot: PlayerState,
+  hasZone?: (id: string) => boolean,
+): Command | null {
+  if (bot.alive) return null
+  if (bot.respawnTick === null) return null
+  // Can't buyback if on cooldown
+  if (bot.buybackCooldown !== undefined && state.tick < bot.buybackCooldown) return null
+  if (bot.gold < bot.buybackCost) return null
+  // Don't buyback if respawn is imminent (within 2 ticks)
+  if (bot.respawnTick - state.tick <= 2) return null
+  // Buyback when the Ancient is under threat or allies are fighting near our base
+  const enemyTeam: TeamId = bot.team === 'radiant' ? 'dire' : 'radiant'
+  const ourBaseZone = bot.team === 'radiant' ? 'radiant-base' : 'dire-base'
+  const enemyNearBase = Object.values(state.players).some(
+    (p) => p.team === enemyTeam && p.alive && getDistance(p.zone, ourBaseZone, hasZone) <= 2,
+  )
+  if (enemyNearBase) return { type: 'buyback' }
+  // Buyback if allies are in a teamfight (3+ allies fighting enemies)
+  const alliesInFight = Object.values(state.players).filter(
+    (p) =>
+      p.team === bot.team &&
+      p.alive &&
+      Object.values(state.players).some(
+        (e) => e.team === enemyTeam && e.alive && e.zone === p.zone,
+      ),
+  )
+  if (alliesInFight.length >= 2) return { type: 'buyback' }
+  return null
+}
+
+/** The cheapest item a bot would sell to free a slot, or null if it holds none.
+ *  Used to make room (and check the real refund) for a higher-priority item. */
+function cheapestSellableItem(bot: PlayerState): string | null {
+  const sellable = bot.items.filter((i): i is string => i !== null && SELLABLE_ITEMS.has(i))
+  if (sellable.length === 0) return null
+  return [...sellable].sort((a, b) => itemCost(a) - itemCost(b))[0]!
+}
+
+/** Glyph/fortification — pop team-wide tower invulnerability when the enemy
+ *  team is diving a tower and it's about to fall. Only one glyph per team
+ *  per cooldown, so this is reserved for desperate saves. */
+function tryGlyph(state: GameState, bot: PlayerState): Command | null {
+  // Glyph is a team command — any teammate can issue it. Check cooldown.
+  const teamState = state.teams[bot.team]
+  if (teamState.glyphUsedTick !== null) {
+    if (state.tick - teamState.glyphUsedTick < GLYPH_COOLDOWN_TICKS) return null
+  }
+  // Only glyph when an enemy hero is attacking one of our towers that's low
+  const ourTowers = state.towers.filter((t) => t.team === bot.team && t.alive)
+  const enemyHeroes = Object.values(state.players).filter((p) => p.team !== bot.team && p.alive)
+  for (const tower of ourTowers) {
+    if (tower.hp / tower.maxHp > 0.25) continue // only glyph a critically low tower
+    const enemyOnTower = enemyHeroes.some((e) => e.zone === tower.zone)
+    if (enemyOnTower) {
+      // Bot must be on the same team and able to issue the command
+      // (glyph is team-wide, not zone-restricted)
+      return { type: 'glyph' }
+    }
+  }
+  return null
+}
+
+/** Defensive tower rotation — when an enemy hero is pushing a tower and no
+ *  ally is there to defend, move to that tower. Prioritizes the nearest
+ *  undefended tower under attack. */
+function tryDefendTower(
+  state: GameState,
+  bot: PlayerState,
+  hasZone?: (id: string) => boolean,
+): Command | null {
+  const ourTowers = state.towers.filter((t) => t.team === bot.team && t.alive)
+  const enemyHeroes = Object.values(state.players).filter((p) => p.team !== bot.team && p.alive)
+  const allies = Object.values(state.players).filter(
+    (p) => p.team === bot.team && p.alive && p.id !== bot.id,
+  )
+  // Find undefended towers under enemy hero pressure
+  const threatened = ourTowers.filter((tower) => {
+    const enemyOnTower = enemyHeroes.some((e) => e.zone === tower.zone)
+    if (!enemyOnTower) return false
+    // Is any ally already defending?
+    const allyDefending = allies.some((a) => a.zone === tower.zone)
+    return !allyDefending
+  })
+  if (threatened.length === 0) return null
+  // Move to the nearest threatened tower
+  let closest: TowerState | null = null
+  let minDist = Infinity
+  for (const tower of threatened) {
+    const dist = getDistance(bot.zone, tower.zone, hasZone)
+    if (dist < minDist) {
+      minDist = dist
+      closest = tower
+    }
+  }
+  if (closest && closest.zone !== bot.zone) {
+    const path = findPath(bot.zone, closest.zone, hasZone)
+    if (path.length > 1) return { type: 'move', zone: path[1]! }
+  }
+  return null
+}
+
 function tryPickupRune(
   state: GameState,
   bot: PlayerState,
   config: BotDifficultyConfig,
+  hasZone?: (id: string) => boolean,
 ): Command | null {
   if (!config.runeAwareness) return null
   const runesInZone = getRunesInZone(state, bot.zone)
   if (runesInZone.length > 0) {
     return { type: 'rune' }
   }
-  const closestRuneZone = getClosestRuneZone(bot, state)
-  if (closestRuneZone && getDistance(bot.zone, closestRuneZone) <= 2) {
-    const path = findPath(bot.zone, closestRuneZone)
+  const closestRuneZone = getClosestRuneZone(bot, state, hasZone)
+  if (closestRuneZone && getDistance(bot.zone, closestRuneZone, hasZone) <= 2) {
+    const path = findPath(bot.zone, closestRuneZone, hasZone)
     if (path.length > 1) {
       return { type: 'move', zone: path[1]! }
     }
@@ -705,6 +1112,7 @@ function tryFarmJungle(
   state: GameState,
   bot: PlayerState,
   config: BotDifficultyConfig,
+  hasZone?: (id: string) => boolean,
 ): Command | null {
   if (!config.jungleFarming) return null
   const neutralsHere = getNeutralsInZone(state, bot.zone)
@@ -713,9 +1121,9 @@ function tryFarmJungle(
     const neutralIdx = state.neutrals.indexOf(target)
     return { type: 'attack', target: { kind: 'neutral', index: neutralIdx } }
   }
-  const closestJungle = getClosestJungleZoneWithNeutrals(bot, state)
-  if (closestJungle && getDistance(bot.zone, closestJungle) <= 3) {
-    const path = findPath(bot.zone, closestJungle)
+  const closestJungle = getClosestJungleZoneWithNeutrals(bot, state, hasZone)
+  if (closestJungle && getDistance(bot.zone, closestJungle, hasZone) <= 3) {
+    const path = findPath(bot.zone, closestJungle, hasZone)
     if (path.length > 1) {
       return { type: 'move', zone: path[1]! }
     }
@@ -742,7 +1150,7 @@ function tryAttackAncient(state: GameState, bot: PlayerState): Command | null {
  */
 function tryPickTalent(bot: PlayerState): Command | null {
   if (!bot.heroId) return null
-  const tree = TALENT_TREES[bot.heroId]
+  const tree = getTalentTree(bot.heroId)
   if (!tree) return null
   for (const tier of [10, 15, 20, 25] as const) {
     if (bot.level >= tier && !bot.talents[`tier${tier}` as const]) {
@@ -854,7 +1262,14 @@ export function decideBotAction(
   gameId?: string,
 ): Command | null {
   const config = getBotDifficultyConfig(gameId ?? '', bot.id)
+  // Restrict pathfinding to the live game's zone set so subset maps
+  // (one-lane, two-lane) produce in-bounds paths instead of routing
+  // through zones that don't exist in this match.
+  const hasZone = (id: string) => id in state.zones
   if (!bot.alive) {
+    // Buyback when the game needs us (Ancient threatened or allies teamfighting)
+    const buybackCmd = tryBuyback(state, bot, hasZone)
+    if (buybackCmd) return buybackCmd
     if (bot.respawnTick !== null && state.tick >= bot.respawnTick) {
       const fountain = getFountainZone(bot.team)
       if (bot.zone !== fountain) {
@@ -866,8 +1281,26 @@ export function decideBotAction(
   if (isInFountain(bot)) {
     const buyCmd = tryBuyItem(bot)
     if (buyCmd) return buyCmd
+    // Buy sentry wards when enemy has invisibility heroes
+    const sentryBuy = tryBuySentryWard(bot, state)
+    if (sentryBuy) return sentryBuy
+    // Sell a low-value item to make room when at 6 items — but only if the
+    // sale actually unlocks the next core item. The refund is 50% of the SOLD
+    // item's price (not the core's), so gate on the real sale proceeds.
+    if (getItemCount(bot) >= 6) {
+      const buildOrder = buildOrderForRole(bot.heroId ? HEROES[bot.heroId]?.role : undefined)
+      const nextCore = buildOrder.find((id) => !bot.items.includes(id))
+      const sellItem = nextCore ? cheapestSellableItem(bot) : null
+      if (
+        nextCore &&
+        sellItem &&
+        bot.gold + Math.floor(itemCost(sellItem) * SELL_REFUND_RATIO) >= itemCost(nextCore)
+      ) {
+        return { type: 'sell', item: sellItem }
+      }
+    }
     if (getHpPercent(bot) >= 95 && getMpPercent(bot) >= 95) {
-      const nextZone = getNextLaneZone(bot, assignedLane)
+      const nextZone = getNextLaneZone(bot, assignedLane, hasZone)
       if (nextZone) return { type: 'move', zone: nextZone }
     }
     return null
@@ -892,7 +1325,7 @@ export function decideBotAction(
     if (
       enemyHeroes.length === 0 &&
       bot.items.includes('town_portal_scroll') &&
-      getDistance(bot.zone, fountain) > TP_RETREAT_MIN_DISTANCE
+      getDistance(bot.zone, fountain, hasZone) > TP_RETREAT_MIN_DISTANCE
     ) {
       return { type: 'use', item: 'town_portal_scroll' }
     }
@@ -902,7 +1335,7 @@ export function decideBotAction(
       const panic = tryPanicDefensiveItem(bot, config)
       if (panic) return panic
     }
-    const path = findPath(bot.zone, fountain)
+    const path = findPath(bot.zone, fountain, hasZone)
     if (path.length > 1) {
       // Escape a gank even while impaired: a root HARD-blocks the next move and
       // a slow gives it up to an 80% fail chance — either way the bot can die in
@@ -929,10 +1362,25 @@ export function decideBotAction(
   // aren't permanently down 1–4 talents on human players, then dropping a ward
   // on a strategic spot for team vision.
   if (enemyHeroes.length === 0) {
+    // Glyph to save a critically low tower from an enemy push (team-wide, any zone)
+    const glyphCmd = tryGlyph(state, bot)
+    if (glyphCmd) return glyphCmd
     const talentCmd = tryPickTalent(bot)
     if (talentCmd) return talentCmd
     const wardCmd = tryPlaceWard(state, bot)
     if (wardCmd) return wardCmd
+    // Place sentry wards for true-sight against invisible enemies
+    const sentryWardCmd = tryPlaceSentryWard(state, bot)
+    if (sentryWardCmd) return sentryWardCmd
+    // Defend an undefended tower under enemy pressure
+    const defendCmd = tryDefendTower(state, bot, hasZone)
+    if (defendCmd) return defendCmd
+    // Contest Roshan when alive and low HP (carry/initiator only, with allies)
+    const roshanCmd = tryRoshan(state, bot, config, hasZone)
+    if (roshanCmd) return roshanCmd
+    // Once Roshan is dead, grab the Aegis drop from the pit
+    const aegisCmd = tryAegis(state, bot, config, hasZone)
+    if (aegisCmd) return aegisCmd
   }
   const enemyCreeps = getEnemyCreepsInZone(state, bot)
   if (enemyHeroes.length > 0) {
@@ -969,7 +1417,7 @@ export function decideBotAction(
   if (exposedAncient?.alive && exposedAncient.vulnerable) {
     const baseZone = ANCIENT_ZONES[enemyTeamForClose]
     if (bot.zone !== baseZone) {
-      const path = findPath(bot.zone, baseZone)
+      const path = findPath(bot.zone, baseZone, hasZone)
       if (path.length > 1) return { type: 'move', zone: path[1]! }
     }
   }
@@ -980,7 +1428,7 @@ export function decideBotAction(
   if (aggressivePush) {
     const towerHere = getEnemyTowerInZone(state, bot)
     if (towerHere) return { type: 'attack', target: { kind: 'tower', zone: towerHere.zone } }
-    const advanceZone = getNextLaneZone(bot, assignedLane)
+    const advanceZone = getNextLaneZone(bot, assignedLane, hasZone)
     if (advanceZone) return { type: 'move', zone: advanceZone }
   }
 
@@ -999,10 +1447,10 @@ export function decideBotAction(
   if (enemyTower && getAlliedCreepsInZone(state, bot).length > 0) {
     return { type: 'attack', target: { kind: 'tower', zone: enemyTower.zone } }
   }
-  const runeCmd = tryPickupRune(state, bot, config)
+  const runeCmd = tryPickupRune(state, bot, config, hasZone)
   if (runeCmd) return runeCmd
   if (assignedLane === 'jungle' || (config.jungleFarming && getHpPercent(bot) > 60)) {
-    const jungleCmd = tryFarmJungle(state, bot, config)
+    const jungleCmd = tryFarmJungle(state, bot, config, hasZone)
     if (jungleCmd) return jungleCmd
   }
 
@@ -1017,7 +1465,7 @@ export function decideBotAction(
   // no co-located creeps, hard-freezing every production bot at the frontier so
   // it never pushed, attacked, or — since buying only happens in the fountain —
   // bought again.)
-  const nextZone = getNextLaneZone(bot, assignedLane)
+  const nextZone = getNextLaneZone(bot, assignedLane, hasZone)
   if (nextZone) {
     const advancingIntoEnemy = !isOwnSide(nextZone, bot.team)
     const hasLaneSupport =

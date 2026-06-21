@@ -40,7 +40,7 @@ import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { ITEMS, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
-import { TALENT_TREES } from '~~/shared/constants/talents'
+import { getTalentTree } from '~~/shared/constants/talents'
 import type { TowerState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
 import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
@@ -667,7 +667,7 @@ const mapZones = computed(() => {
       ? {
           team: tower.team,
           alive: tower.alive,
-          tier: getTowerTier(zone.id),
+          tier: zone.tier ?? getTowerTier(zone.id),
           hp: tower.hp,
           maxHp: tower.maxHp,
         }
@@ -821,7 +821,7 @@ function handleCommand(cmd: string) {
       (command.talentId === 'left' || command.talentId === 'right')
     ) {
       const heroId = gameStore.player?.heroId
-      const opts = heroId ? TALENT_TREES[heroId]?.tiers[command.tier] : undefined
+      const opts = heroId ? getTalentTree(heroId)?.tiers[command.tier] : undefined
       if (!opts) {
         localEvents.value.push({
           tick: gameStore.tick,

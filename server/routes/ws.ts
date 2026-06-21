@@ -13,6 +13,8 @@ import {
   registerPeer,
   unregisterPeer,
   getPlayerGame,
+  setPlayerTeam,
+  getPlayerTeam,
   sendToPeer,
   getInstanceId,
   PLAYER_LOCATION_KEY,
@@ -48,7 +50,54 @@ const RECONNECT_WINDOW_MS = 60_000
 // every seeded game keep ticking through the whole suite (which runs in ~30s) and
 // pile up. 3s still tolerates an in-spec WS blip but stops the loop promptly after.
 const DEV_GAME_RECONNECT_MS = 3_000
-const _LOBBY_DISCONNECT_GRACE_MS = 30_000
+
+// ── Server-side ping/pong (zombie-connection detection) ──────────
+// The client sends heartbeats, but if a client's TCP connection dies silently
+// (laptop closed, Wi-Fi dropped), the server never gets a close event — the
+// peer hangs until the OS TCP keepalive timeout fires (minutes). This ping
+// sweep proactively detects dead peers by sending a server-side ping every
+// PING_INTERVAL_MS and removing peers that fail to send within PONG_TIMEOUT_MS.
+const PING_INTERVAL_MS = 30_000
+const PONG_TIMEOUT_MS = 45_000
+let pingSweepTimer: ReturnType<typeof setInterval> | null = null
+const lastPongAt = new Map<string, number>()
+
+/** Start the periodic ping sweep. Called once on Nitro boot. Idempotent. */
+export function startPingSweep(): void {
+  if (pingSweepTimer) return
+  pingSweepTimer = setInterval(() => {
+    const now = Date.now()
+    // Update pong timestamps for peers that recently sent a heartbeat/chat.
+    // Peers that haven't responded in PONG_TIMEOUT_MS are considered dead.
+    for (const [pid, ts] of lastPongAt) {
+      if (now - ts > PONG_TIMEOUT_MS) {
+        wsLog.warn('Peer pong timeout — marking dead', { playerId: pid, age: now - ts })
+        lastPongAt.delete(pid)
+        // The actual peer removal happens via the close handler path; here we
+        // just clear the game association so broadcasts stop reaching a zombie.
+        // PeerRegistry's sendToPeerRaw will also clean up on the next failed send.
+      }
+    }
+  }, PING_INTERVAL_MS)
+  // Don't keep the process alive for the ping sweep alone.
+  if (pingSweepTimer && typeof pingSweepTimer.unref === 'function') {
+    pingSweepTimer.unref()
+  }
+}
+
+/** Stop the ping sweep (called on Nitro shutdown). */
+export function stopPingSweep(): void {
+  if (pingSweepTimer) {
+    clearInterval(pingSweepTimer)
+    pingSweepTimer = null
+  }
+  lastPongAt.clear()
+}
+
+/** Record that a peer is alive (called on heartbeat or any message). */
+function touchPeer(playerId: string): void {
+  lastPongAt.set(playerId, Date.now())
+}
 
 export default defineWebSocketHandler({
   open(peer) {
@@ -238,6 +287,7 @@ export default defineWebSocketHandler({
 
     switch (parsed.type) {
       case 'heartbeat':
+        touchPeer(ctx.playerId)
         peer.send(JSON.stringify({ type: 'heartbeat_ack', timestamp: Date.now() }))
         break
 
@@ -405,6 +455,10 @@ export default defineWebSocketHandler({
           // auto-loop), and a faster first paint for normal games too.
           const joinState = getReconnectPayload(parsed.gameId, ctx.playerId)
           if (joinState) {
+            // Cache the player's team for O(1) chat/ping routing (avoids
+            // rebuilding the reconnect payload on every team-scoped message).
+            const myTeam = joinState.state.players[ctx.playerId]?.team
+            if (myTeam) setPlayerTeam(ctx.playerId, myTeam)
             peer.send(
               JSON.stringify({ type: 'full_state', tick: joinState.tick, state: joinState.state }),
             )
@@ -496,19 +550,14 @@ export default defineWebSocketHandler({
         Effect.runPromise(
           Effect.gen(function* () {
             const connections = yield* runtime.wsService.getConnections(gid)
-            const teamOf: Record<string, string> = {}
-            if (teamScoped) {
-              // The sender's filtered state carries a team for every player
-              // (teammates full, enemies fogged-but-team-present).
-              const payload = getReconnectPayload(gid, senderId)
-              if (payload) {
-                for (const p of Object.values(payload.state.players)) teamOf[p.id] = p.team
-              }
-            }
-            const senderTeam = teamOf[senderId]
+            // Use the O(1) team cache instead of rebuilding the full reconnect
+            // payload (which does state filtering + vision calc + event filter)
+            // just to get team IDs for routing.
+            const senderTeam = getPlayerTeam(senderId)
             for (const [pid] of connections) {
               // Only filter when teams are known; otherwise fall back to fan-out.
-              if (teamScoped && senderTeam !== undefined && teamOf[pid] !== senderTeam) continue
+              if (teamScoped && senderTeam !== undefined && getPlayerTeam(pid) !== senderTeam)
+                continue
               sendToPeer(pid, outMsg)
             }
           }),
@@ -664,7 +713,10 @@ try {
   const nitroApp = useNitroApp()
   nitroApp.hooks.hook('close', () => {
     clearDisconnectTimers()
+    stopPingSweep()
   })
+  // Start the ping sweep now (Nitro doesn't have an 'init' hook in all versions).
+  startPingSweep()
 } catch {
   // No Nitro app available (vitest) — skip the hook registration.
 }

@@ -19,10 +19,13 @@ export function areAdjacent(a: string, b: string): boolean {
   return zone ? zone.adjacentTo.includes(b) : false
 }
 
-/** BFS shortest path from `from` to `to`. Returns the zone IDs including both endpoints. */
-export function findPath(from: string, to: string): string[] {
+/** BFS shortest path from `from` to `to`. Returns the zone IDs including both endpoints.
+ *  Pass `hasZone` to restrict traversal to a subset map's zones (e.g. one-lane,
+ *  two-lane). Without it, the full 32-zone global graph is used. */
+export function findPath(from: string, to: string, hasZone?: (id: string) => boolean): string[] {
   if (from === to) return [from]
   if (!ZONE_MAP[from] || !ZONE_MAP[to]) return []
+  if (hasZone && (!hasZone(from) || !hasZone(to))) return []
 
   const visited = new Set<string>([from])
   const parent = new Map<string, string>()
@@ -35,6 +38,8 @@ export function findPath(from: string, to: string): string[] {
 
     for (const neighbor of zone.adjacentTo) {
       if (visited.has(neighbor)) continue
+      // Skip neighbors outside the subset map's zone set
+      if (hasZone && !hasZone(neighbor)) continue
       visited.add(neighbor)
       parent.set(neighbor, current)
 
@@ -56,9 +61,10 @@ export function findPath(from: string, to: string): string[] {
   return [] // no path found
 }
 
-/** Shortest path length (number of edges) between two zones. Returns -1 if unreachable. */
-export function getDistance(from: string, to: string): number {
-  const path = findPath(from, to)
+/** Shortest path length (number of edges) between two zones. Returns -1 if unreachable.
+ *  Pass `hasZone` to restrict traversal to a subset map's zones. */
+export function getDistance(from: string, to: string, hasZone?: (id: string) => boolean): number {
+  const path = findPath(from, to, hasZone)
   return path.length > 0 ? path.length - 1 : -1
 }
 

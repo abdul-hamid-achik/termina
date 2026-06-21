@@ -15,7 +15,7 @@ export function getRuneBuff(type: RuneState['type']): {
   ticksRemaining: number
   source: string
 } {
-  const duration = RUNE_BUFF_TICKS[type] ?? 15
+  const duration = RUNE_BUFF_TICKS[type]
 
   switch (type) {
     case 'haste':

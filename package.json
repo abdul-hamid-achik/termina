@@ -60,6 +60,7 @@
     "@vitest/coverage-v8": "4.1.8",
     "@vue/test-utils": "^2.4.6",
     "drizzle-kit": "^0.31.0",
+    "h3": "^1.15.11",
     "happy-dom": "^20.10.0",
     "histoire": "1.0.0-beta.1",
     "knip": "^6.16.0",

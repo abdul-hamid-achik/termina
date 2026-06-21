@@ -9,7 +9,7 @@ import {
   isDamageImmune,
 } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
-import { TALENT_TREES } from '~~/shared/constants/talents'
+import { getTalentTree } from '~~/shared/constants/talents'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 // ── Typed Errors ──────────────────────────────────────────────────
@@ -69,18 +69,34 @@ const heroRegistry = new Map<
   { ability: HeroAbilityResolver; passive: HeroPassiveResolver }
 >()
 
+// Per-hero event-type filter for passives. If a hero is not in this map, it
+// receives all event types (safe default). If present, `resolvePassive` skips
+// the call entirely for event types not in the set — avoiding the O(players)
+// spread in `runHeroPassives` for events the passive no-ops on anyway.
+const heroPassiveEventTypes = new Map<string, ReadonlySet<GameEvent['type']>>()
+
 export function registerHero(
   heroId: string,
   ability: HeroAbilityResolver,
   passive: HeroPassiveResolver,
+  eventTypes?: GameEvent['type'][],
 ): void {
   heroRegistry.set(heroId, { ability, passive })
+  if (eventTypes) {
+    heroPassiveEventTypes.set(heroId, new Set(eventTypes))
+  }
 }
 
 export function getHeroResolver(heroId: string) {
   return heroRegistry.get(heroId)
 }
 
+/** Returns true if the hero's passive might act on this event type. */
+function passiveCaresAboutEvent(heroId: string, eventType: GameEvent['type']): boolean {
+  const types = heroPassiveEventTypes.get(heroId)
+  if (!types) return true // no filter registered → safe default
+  return types.has(eventType)
+}
 // ── Ability Level Scaling ─────────────────────────────────────────
 
 /** Q/W/E level at player levels 1,3,5,7. R level at player levels 6,12,18. */
@@ -336,6 +352,9 @@ export function resolvePassive(state: GameState, playerId: string, event: GameEv
   if (!player?.heroId || !player.alive) return state
   const resolver = heroRegistry.get(player.heroId)
   if (!resolver) return state
+  // Skip the call entirely if this hero's passive doesn't care about this
+  // event type — avoids the O(players) spread in runHeroPassives for no-ops.
+  if (!passiveCaresAboutEvent(player.heroId, event.type)) return state
   return resolver.passive(state, playerId, event)
 }
 
@@ -371,7 +390,12 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
       const damageType: DamageType = dot.id.includes('phys') ? 'physical' : 'magical'
       // Immunity skips the tick (e.g. BKB magic_immune ignores a magical DoT).
       if (isDamageImmune(target, damageType)) continue
-      const mitigated = calculateEffectiveDamage(dot.stacks, damageType, {
+      // Caster-side amplifiers (Mystical Staff +15% magical) apply to DoTs
+      // too — the DoT is still the caster's outgoing magical damage.
+      const caster = dot.source ? state.players[dot.source] : undefined
+      const amp = damageType === 'magical' && caster ? getMagicAmp(caster) : 1
+      const rawDamage = Math.round(dot.stacks * amp)
+      const mitigated = calculateEffectiveDamage(rawDamage, damageType, {
         defense: getEffectiveDefense(target),
         magicResist: getEffectiveMagicResist(target),
       })
@@ -578,7 +602,7 @@ function applyAbilityTalents(
   slot: AbilitySlot,
 ): AbilityResult {
   if (!caster.heroId) return result
-  const tree = TALENT_TREES[caster.heroId]
+  const tree = getTalentTree(caster.heroId)
   if (!tree) return result
   const chosen = [
     caster.talents?.tier10,

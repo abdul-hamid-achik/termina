@@ -50,6 +50,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 3,
+    lane: 'top',
   },
   {
     id: 'top-t2-rad',
@@ -59,6 +61,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 2,
+    lane: 'top',
   },
   {
     id: 'top-t1-rad',
@@ -68,6 +72,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 1,
+    lane: 'top',
   },
   {
     id: 'top-river',
@@ -77,6 +83,7 @@ export const ZONES: readonly Zone[] = [
     team: 'neutral',
     tower: false,
     shop: false,
+    lane: 'top',
   },
   {
     id: 'top-t1-dire',
@@ -86,6 +93,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 1,
+    lane: 'top',
   },
   {
     id: 'top-t2-dire',
@@ -95,6 +104,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 2,
+    lane: 'top',
   },
   {
     id: 'top-t3-dire',
@@ -104,6 +115,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 3,
+    lane: 'top',
   },
 
   // ── Mid Lane (Radiant side → Dire side) ────────────────────────
@@ -115,6 +128,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 3,
+    lane: 'mid',
   },
   {
     id: 'mid-t2-rad',
@@ -124,6 +139,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 2,
+    lane: 'mid',
   },
   {
     id: 'mid-t1-rad',
@@ -133,6 +150,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 1,
+    lane: 'mid',
   },
   {
     id: 'mid-river',
@@ -142,6 +161,7 @@ export const ZONES: readonly Zone[] = [
     team: 'neutral',
     tower: false,
     shop: false,
+    lane: 'mid',
   },
   {
     id: 'mid-t1-dire',
@@ -151,6 +171,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 1,
+    lane: 'mid',
   },
   {
     id: 'mid-t2-dire',
@@ -160,6 +182,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 2,
+    lane: 'mid',
   },
   {
     id: 'mid-t3-dire',
@@ -169,6 +193,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 3,
+    lane: 'mid',
   },
 
   // ── Bot Lane (Radiant side → Dire side) ────────────────────────
@@ -180,6 +206,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 3,
+    lane: 'bot',
   },
   {
     id: 'bot-t2-rad',
@@ -189,6 +217,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 2,
+    lane: 'bot',
   },
   {
     id: 'bot-t1-rad',
@@ -198,6 +228,8 @@ export const ZONES: readonly Zone[] = [
     team: 'radiant',
     tower: true,
     shop: false,
+    tier: 1,
+    lane: 'bot',
   },
   {
     id: 'bot-river',
@@ -207,6 +239,7 @@ export const ZONES: readonly Zone[] = [
     team: 'neutral',
     tower: false,
     shop: false,
+    lane: 'bot',
   },
   {
     id: 'bot-t1-dire',
@@ -216,6 +249,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 1,
+    lane: 'bot',
   },
   {
     id: 'bot-t2-dire',
@@ -225,6 +260,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 2,
+    lane: 'bot',
   },
   {
     id: 'bot-t3-dire',
@@ -234,6 +271,8 @@ export const ZONES: readonly Zone[] = [
     team: 'dire',
     tower: true,
     shop: false,
+    tier: 3,
+    lane: 'bot',
   },
 
   // ── Jungle ─────────────────────────────────────────────────────

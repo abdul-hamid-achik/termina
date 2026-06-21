@@ -45,24 +45,42 @@ import {
 } from './traceroute'
 
 const HERO_RESOLVERS = {
-  cache: { ability: cacheAbility, passive: cachePassive },
-  cipher: { ability: cipherAbility, passive: cipherPassive },
-  cron: { ability: cronAbility, passive: cronPassive },
-  daemon: { ability: daemonAbility, passive: daemonPassive },
-  echo: { ability: echoAbility, passive: echoPassive },
-  firewall: { ability: firewallAbility, passive: firewallPassive },
-  kernel: { ability: kernelAbility, passive: kernelPassive },
-  lambda: { ability: lambdaAbility, passive: lambdaPassive },
-  malloc: { ability: mallocAbility, passive: mallocPassive },
-  mutex: { ability: mutexAbility, passive: mutexPassive },
-  null_ref: { ability: nullRefAbility, passive: nullRefPassive },
-  ping: { ability: pingAbility, passive: pingPassive },
-  proxy: { ability: proxyAbility, passive: proxyPassive },
-  regex: { ability: regexAbility, passive: regexPassive },
-  sentry: { ability: sentryAbility, passive: sentryPassive },
-  socket: { ability: socketAbility, passive: socketPassive },
-  thread: { ability: threadAbility, passive: threadPassive },
-  traceroute: { ability: tracerouteAbility, passive: traceroutePassive },
+  cache: { ability: cacheAbility, passive: cachePassive, events: ['damage_taken'] as const },
+  cipher: { ability: cipherAbility, passive: cipherPassive, events: ['attack'] as const },
+  cron: { ability: cronAbility, passive: cronPassive, events: ['tick_end'] as const },
+  daemon: {
+    ability: daemonAbility,
+    passive: daemonPassive,
+    events: ['attack', 'ability_cast', 'item_used', 'damage_taken', 'tick_end'] as const,
+  },
+  echo: { ability: echoAbility, passive: echoPassive, events: ['attack'] as const },
+  firewall: {
+    ability: firewallAbility,
+    passive: firewallPassive,
+    // tick_end keeps the permanent packetInspection buff marker applied; without
+    // it the buff — and the first-hit reflect its ensure-block guards — only
+    // appears after firewall has already taken damage.
+    events: ['damage_taken', 'tick_end'] as const,
+  },
+  kernel: { ability: kernelAbility, passive: kernelPassive, events: ['tick_end'] as const },
+  lambda: { ability: lambdaAbility, passive: lambdaPassive, events: ['ability_cast'] as const },
+  malloc: { ability: mallocAbility, passive: mallocPassive, events: ['tick_end'] as const },
+  mutex: { ability: mutexAbility, passive: mutexPassive, events: ['move', 'tick_end'] as const },
+  null_ref: { ability: nullRefAbility, passive: nullRefPassive, events: ['kill'] as const },
+  ping: { ability: pingAbility, passive: pingPassive, events: ['attack'] as const },
+  proxy: {
+    ability: proxyAbility,
+    passive: proxyPassive,
+    // tick_end keeps the permanent middleman marker buff applied (the redirect
+    // itself reacts to damage_taken); without it the UI marker only appears
+    // after the first damage event in the game. Same pattern as firewall.
+    events: ['damage_taken', 'tick_end'] as const,
+  },
+  regex: { ability: regexAbility, passive: regexPassive, events: ['ability_cast'] as const },
+  sentry: { ability: sentryAbility, passive: sentryPassive, events: ['tick_end'] as const },
+  socket: { ability: socketAbility, passive: socketPassive, events: ['attack'] as const },
+  thread: { ability: threadAbility, passive: threadPassive, events: ['attack'] as const },
+  traceroute: { ability: tracerouteAbility, passive: traceroutePassive, events: ['move'] as const },
 } as const
 
 let registered = false
@@ -75,8 +93,8 @@ let registered = false
  */
 export function registerAllHeroes(): void {
   if (registered) return
-  for (const [id, { ability, passive }] of Object.entries(HERO_RESOLVERS)) {
-    registerHero(id, ability, passive)
+  for (const [id, { ability, passive, events }] of Object.entries(HERO_RESOLVERS)) {
+    registerHero(id, ability, passive, [...events])
   }
   registered = true
 }
@@ -86,4 +104,4 @@ export function registerAllHeroes(): void {
 registerAllHeroes()
 
 export * from './_base'
-export { TALENT_TREES } from '~~/shared/constants/talents'
+export { TALENT_TREES, getTalentTree } from '~~/shared/constants/talents'

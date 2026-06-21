@@ -115,8 +115,10 @@ export function readSnapshot(
 /** List all gameIds with an active snapshot in Redis. */
 export function listSnapshotGameIds(redis: RedisServiceApi): Effect.Effect<string[]> {
   return Effect.gen(function* () {
-    const keys = yield* redis.keys(`${KEY_PREFIX}*`)
-    return keys.map((k) => k.slice(KEY_PREFIX.length))
+    const keys = yield* redis.scan(`${KEY_PREFIX}*`)
+    // SCAN can return the same key more than once across cursor iterations —
+    // dedupe so a resumed game isn't processed twice.
+    return [...new Set(keys.map((k) => k.slice(KEY_PREFIX.length)))]
   }).pipe(
     Effect.catchAllCause((cause) => {
       engineLog.warn('Snapshot list failed', { error: String(cause) })

@@ -23,6 +23,7 @@ import {
   registerPeer,
   unregisterPeer,
   getPlayerGame,
+  getPlayerTeam,
   sendToPeer,
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
@@ -47,6 +48,7 @@ vi.mock('~~/server/services/PeerRegistry', () => ({
   registerPeer: vi.fn(),
   unregisterPeer: vi.fn(),
   getPlayerGame: vi.fn(),
+  getPlayerTeam: vi.fn(),
   sendToPeer: vi.fn(),
 }))
 vi.mock('~~/server/services/SpectatorRegistry', () => ({
@@ -130,6 +132,7 @@ function mockRuntime() {
       hset: vi.fn(() => Effect.succeed(undefined)),
       hget: vi.fn(() => Effect.succeed(null)),
       hdel: vi.fn(() => Effect.succeed(undefined)),
+      hgetall: vi.fn(() => Effect.succeed({})),
     },
     dbService: { tag: 'db' },
   }
@@ -565,8 +568,8 @@ describe('ws route — chat / ping_map fan-out', () => {
     )
   })
 
-  // Three connections across two teams; the sender's filtered state names every
-  // player's team (teammates full, enemies fogged-but-team-present).
+  // Three connections across two teams; the team cache (set on join_game)
+  // provides O(1) team lookups for chat/ping routing.
   function openTeamGame(senderId: string) {
     const { peer, runtime } = openPeerInGame(senderId, 'game_tt')
     runtime.wsService.getConnections = vi.fn(() =>
@@ -578,17 +581,12 @@ describe('ws route — chat / ping_map fan-out', () => {
         ]),
       ),
     )
-    vi.mocked(getReconnectPayload).mockReturnValue({
-      tick: 1,
-      state: {
-        players: {
-          [senderId]: { id: senderId, team: 'radiant' },
-          mate: { id: 'mate', team: 'radiant' },
-          enemy: { id: 'enemy', team: 'dire' },
-        },
-      },
-      events: [],
-    } as never)
+    // Mock the team cache: sender + mate are radiant, enemy is dire.
+    vi.mocked(getPlayerTeam).mockImplementation((id: string) => {
+      if (id === senderId || id === 'mate') return 'radiant'
+      if (id === 'enemy') return 'dire'
+      return undefined
+    })
     return peer
   }
 

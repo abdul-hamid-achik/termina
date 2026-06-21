@@ -1,6 +1,17 @@
 import { Context, Effect, Layer } from 'effect'
 import type { ServerMessage } from '~~/shared/types/protocol'
 import { wsLog } from '~~/server/utils/log'
+import {
+  registerPeer as peerRegister,
+  removePeer as peerRemovePeer,
+  setPlayerGame as peerSetPlayerGame,
+  clearPlayerGame as peerClearPlayerGame,
+  getPlayerGame as peerGetGame,
+  getGamePlayers as peerGetGamePlayers,
+  getPeer as peerGetPeer,
+  sendToPeer as peerSendToPeer,
+  sendToPeerRaw as peerSendToPeerRaw,
+} from '~~/server/services/PeerRegistry'
 
 export interface WebSocketServiceApi {
   readonly addConnection: (gameId: string, playerId: string, ws: WebSocket) => Effect.Effect<void>
@@ -20,23 +31,16 @@ export class WebSocketService extends Context.Tag('WebSocketService')<
   WebSocketServiceApi
 >() {}
 
-const gameConnections = new Map<string, Map<string, WebSocket>>()
-const playerToGame = new Map<string, string>()
-
-function removeConnectionFromMaps(playerId: string): void {
-  const gameId = playerToGame.get(playerId)
-  if (gameId) {
-    const gameMap = gameConnections.get(gameId)
-    if (gameMap) {
-      gameMap.delete(playerId)
-      if (gameMap.size === 0) {
-        gameConnections.delete(gameId)
-      }
-    }
-    playerToGame.delete(playerId)
-  }
-}
-
+/**
+ * WebSocketService delegates to PeerRegistry, the single source of truth for
+ * peer connections and player→game mapping. The old duplicate gameConnections
+ * and playerToGame maps are gone — PeerRegistry now maintains a reverse
+ * gamePlayers index that this service queries.
+ *
+ * `addConnection` / `removeConnection` register/unregister the raw WS with
+ * PeerRegistry (so sendToPeer works for game broadcasts) and track the
+ * player→game association via setPlayerGame/clearPlayerGame.
+ */
 export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
   addConnection: (gameId, playerId, ws) =>
     Effect.sync(() => {
@@ -48,14 +52,12 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
         })
         return
       }
-
-      let gameMap = gameConnections.get(gameId)
-      if (!gameMap) {
-        gameMap = new Map()
-        gameConnections.set(gameId, gameMap)
-      }
-      gameMap.set(playerId, ws)
-      playerToGame.set(playerId, gameId)
+      // Register the WS as the player's peer (for sendToPeer-based broadcasts).
+      // Use a minimal adapter so PeerRegistry's send works with a raw WebSocket.
+      const wsAdapter = ws as unknown as { send: (data: string) => void }
+      peerRegister(playerId, wsAdapter, wsAdapter)
+      // Track the player→game association so broadcasts reach this peer.
+      peerSetPlayerGame(playerId, gameId)
       wsLog.debug('addConnection', { playerId, gameId })
     }).pipe(
       Effect.tap(() =>
@@ -65,77 +67,58 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
 
   removeConnection: (playerId) =>
     Effect.sync(() => {
-      removeConnectionFromMaps(playerId)
+      // Drop the player completely: remove the peer entry so direct sendToPeer
+      // sends stop reaching them (sendToPeer routes via the peers map, not the
+      // game association), AND clear the player→game association so broadcasts
+      // skip them. The WS-route grace timer guarantees this only fires for a
+      // player who did not reconnect, so the unconditional removal is safe.
+      peerRemovePeer(playerId)
+      peerClearPlayerGame(playerId)
+      wsLog.debug('removeConnection', { playerId })
     }).pipe(
       Effect.tap(() => Effect.logDebug('WS removed').pipe(Effect.annotateLogs({ playerId }))),
     ),
 
   sendToPlayer: (playerId, message) =>
     Effect.sync(() => {
-      const gameId = playerToGame.get(playerId)
-      if (!gameId) return
-      const gameMap = gameConnections.get(gameId)
-      if (!gameMap) return
-      const ws = gameMap.get(playerId)
-      if (!ws) return
-      try {
-        ws.send(JSON.stringify(message))
-      } catch (err) {
-        wsLog.warn('send failed - removing connection', { playerId, error: err })
-        removeConnectionFromMaps(playerId)
-      }
+      // Delegate to PeerRegistry's sendToPeer (the single send path).
+      peerSendToPeer(playerId, message)
     }),
 
   broadcastToGame: (gameId, message) =>
     Effect.sync(() => {
-      const gameMap = gameConnections.get(gameId)
-      if (!gameMap) return
       const data = JSON.stringify(message)
-      const deadConnections: string[] = []
-
-      for (const [playerId, ws] of gameMap.entries()) {
-        try {
-          ws.send(data)
-        } catch (err) {
-          wsLog.warn('broadcast send failed', { playerId, error: err })
-          deadConnections.push(playerId)
-        }
-      }
-
-      for (const playerId of deadConnections) {
-        removeConnectionFromMaps(playerId)
+      const playerIds = peerGetGamePlayers(gameId)
+      for (const pid of playerIds) {
+        // Send the pre-serialized data directly to avoid double-serialize.
+        peerSendToPeerRaw(pid, data)
       }
     }),
 
   broadcastFiltered: (gameId, filterFn) =>
     Effect.sync(() => {
-      const gameMap = gameConnections.get(gameId)
-      if (!gameMap) return
-      const deadConnections: string[] = []
-
-      for (const [playerId, ws] of gameMap.entries()) {
-        const msg = filterFn(playerId)
+      const playerIds = peerGetGamePlayers(gameId)
+      for (const pid of playerIds) {
+        const msg = filterFn(pid)
         if (!msg) continue
-        try {
-          ws.send(JSON.stringify(msg))
-        } catch (err) {
-          wsLog.warn('filtered send failed', { playerId, error: err })
-          deadConnections.push(playerId)
-        }
-      }
-
-      for (const playerId of deadConnections) {
-        removeConnectionFromMaps(playerId)
+        peerSendToPeerRaw(pid, JSON.stringify(msg))
       }
     }),
 
   getConnections: (gameId) =>
     Effect.sync(() => {
-      return gameConnections.get(gameId) ?? new Map()
+      // Return a Map keyed by playerId for backward compat (chat routing
+      // iterates [pid, ws] pairs). The WS values come from PeerRegistry.
+      const map = new Map<string, WebSocket>()
+      for (const pid of peerGetGamePlayers(gameId)) {
+        const peer = peerGetPeer(pid)
+        if (peer) map.set(pid, peer as unknown as WebSocket)
+      }
+      return map
     }),
 
   getPlayerGame: (playerId) =>
     Effect.sync(() => {
-      return playerToGame.get(playerId) ?? null
+      return peerGetGame(playerId) ?? null
     }),
 })

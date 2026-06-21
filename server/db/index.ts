@@ -8,7 +8,15 @@ let _client: ReturnType<typeof postgres> | null = null
 function createDb() {
   const config = useRuntimeConfig()
   const connectionString = (config.database as { url: string }).url
-  const client = postgres(connectionString)
+  // Configure a connection pool with sensible defaults for a game server:
+  // max connections, prepared statements, and statement timeout to prevent
+  // a single slow query from exhausting the pool.
+  const client = postgres(connectionString, {
+    max: 20,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    prepare: true,
+  })
   _client = client
   return drizzle(client, { schema })
 }

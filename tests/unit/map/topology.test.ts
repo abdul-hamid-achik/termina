@@ -342,6 +342,105 @@ describe('Topology', () => {
     })
   })
 
+  // The two-lane map (3v3) is the same class of pruned subgraph as one-lane.
+  // These guard its self-containment, bidirectionality, connectivity, and the
+  // promised "top + mid only, no bot lane" shape.
+  describe('two-lane subgraph (zonesForMap "two_lane")', () => {
+    const twoLane: readonly Zone[] = zonesForMap('two_lane')
+    const ids = new Set(twoLane.map((z) => z.id))
+    const byId = new Map<string, Zone>(twoLane.map((z) => [z.id, z]))
+
+    it('is exactly 22 zones (bases + top + mid + top jungles + rune-top + roshan)', () => {
+      expect(twoLane).toHaveLength(22)
+    })
+
+    it('keeps the top and mid lanes but drops the bot lane', () => {
+      for (const id of ['top-t3-rad', 'top-river', 'top-t3-dire', 'mid-river', 'mid-t1-dire']) {
+        expect(ids.has(id), `expected ${id} in two_lane`).toBe(true)
+      }
+      for (const id of [
+        'bot-t3-rad',
+        'bot-river',
+        'bot-t3-dire',
+        'jungle-rad-bot',
+        'jungle-dire-bot',
+        'rune-bot',
+      ]) {
+        expect(ids.has(id), `${id} must NOT be in two_lane`).toBe(false)
+      }
+    })
+
+    it('keeps the top-side river objectives (rune-top + roshan)', () => {
+      expect(ids.has('rune-top')).toBe(true)
+      expect(ids.has('roshan-pit')).toBe(true)
+    })
+
+    it('is self-contained — no zone links outside the 22-zone subgraph', () => {
+      for (const zone of twoLane) {
+        for (const neighborId of zone.adjacentTo) {
+          expect(
+            ids.has(neighborId),
+            `${zone.id} → ${neighborId} escapes the two-lane subgraph`,
+          ).toBe(true)
+        }
+      }
+    })
+
+    it('keeps adjacency bidirectional within the subgraph', () => {
+      for (const zone of twoLane) {
+        for (const neighborId of zone.adjacentTo) {
+          expect(byId.get(neighborId)!.adjacentTo).toContain(zone.id)
+        }
+      }
+    })
+
+    it('forms one connected graph — every zone reachable from radiant-fountain', () => {
+      const seen = new Set<string>(['radiant-fountain'])
+      const queue: string[] = ['radiant-fountain']
+      while (queue.length > 0) {
+        const cur = queue.shift()!
+        for (const n of byId.get(cur)!.adjacentTo) {
+          if (!seen.has(n)) {
+            seen.add(n)
+            queue.push(n)
+          }
+        }
+      }
+      expect(seen.size).toBe(twoLane.length)
+      expect(seen.has('dire-fountain')).toBe(true)
+    })
+
+    it('preserves a full mid-lane chain radiant-base → dire-base', () => {
+      const chain = [
+        'mid-t3-rad',
+        'mid-t2-rad',
+        'mid-t1-rad',
+        'mid-river',
+        'mid-t1-dire',
+        'mid-t2-dire',
+        'mid-t3-dire',
+      ]
+      for (let i = 0; i < chain.length - 1; i++) {
+        expect(byId.get(chain[i]!)!.adjacentTo).toContain(chain[i + 1])
+      }
+    })
+
+    it('preserves a full top-lane chain radiant-base → dire-base', () => {
+      const chain = [
+        'top-t3-rad',
+        'top-t2-rad',
+        'top-t1-rad',
+        'top-river',
+        'top-t1-dire',
+        'top-t2-dire',
+        'top-t3-dire',
+      ]
+      for (let i = 0; i < chain.length - 1; i++) {
+        expect(byId.get(chain[i]!)!.adjacentTo).toContain(chain[i + 1])
+      }
+    })
+  })
+
   describe('zonesForMap fallbacks', () => {
     it('defaults to the full 5v5 map when mapId is undefined', () => {
       // undefined ?? DEFAULT_MAP_ID → the full map.

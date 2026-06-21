@@ -73,12 +73,70 @@ export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
 ]
 export const ONE_LANE_COL_HEADERS = ['MID LANE']
 
+/** Two-lane map layout — top + mid lanes with top-side jungle, top rune, and
+ *  Roshan pit. Mirrors shared/constants/maps `TWO_LANE_ZONES` (3v3 map). */
+export const TWO_LANE_MAP_ROWS: (string | null)[][] = [
+  [null, null, 'radiant-fountain', null],
+  [null, null, 'radiant-base', null],
+  ['top-t3-rad', null, 'mid-t3-rad', null],
+  ['top-t2-rad', 'jungle-rad-top', 'mid-t2-rad', null],
+  ['top-t1-rad', null, 'mid-t1-rad', null],
+  ['top-river', 'rune-top', 'mid-river', 'roshan-pit'],
+  ['top-t1-dire', null, 'mid-t1-dire', null],
+  ['top-t2-dire', null, 'mid-t2-dire', 'jungle-dire-top'],
+  ['top-t3-dire', null, 'mid-t3-dire', null],
+  [null, null, 'dire-base', null],
+  [null, null, 'dire-fountain', null],
+]
+export const TWO_LANE_COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE']
+
 /** Pick the grid layout + column headers for a game's map (full 5v5 by default). */
 export function mapRowsFor(mapId?: string): (string | null)[][] {
-  return mapId === 'one_lane' ? ONE_LANE_MAP_ROWS : MAP_ROWS
+  if (mapId === 'one_lane') return ONE_LANE_MAP_ROWS
+  if (mapId === 'two_lane') return TWO_LANE_MAP_ROWS
+  return MAP_ROWS
 }
 export function colHeadersFor(mapId?: string): string[] {
-  return mapId === 'one_lane' ? ONE_LANE_COL_HEADERS : COL_HEADERS
+  if (mapId === 'one_lane') return ONE_LANE_COL_HEADERS
+  if (mapId === 'two_lane') return TWO_LANE_COL_HEADERS
+  return COL_HEADERS
+}
+
+/** Tailwind grid-cols class for a layout's column count. Static class strings so
+ *  Tailwind's scanner emits the utilities (a dynamic `grid-cols-${n}` would not
+ *  be generated). The map layouts use 1 (one-lane), 4 (two-lane) or 5 (full). */
+export function gridColsClass(rows: (string | null)[][]): string {
+  switch (rows[0]?.length ?? 5) {
+    case 1:
+      return 'grid-cols-1'
+    case 2:
+      return 'grid-cols-2'
+    case 3:
+      return 'grid-cols-3'
+    case 4:
+      return 'grid-cols-4'
+    default:
+      return 'grid-cols-5'
+  }
+}
+
+/** Row indices AFTER which the desktop view draws a river-divider border —
+ *  derived from the actual river rows so every layout (5v5 / two_lane / one_lane)
+ *  frames its river correctly. For the 5v5 grid this reproduces the original
+ *  {3, 5}. */
+export function riverDividerRows(rows: (string | null)[][]): Set<number> {
+  const riverIdx = rows
+    .map((row, i) => (row.some((z) => z?.includes('-river')) ? i : -1))
+    .filter((i) => i >= 0)
+  if (riverIdx.length === 0) return new Set<number>()
+  return new Set<number>([riverIdx[0]! - 1, riverIdx[riverIdx.length - 1]!])
+}
+
+/** Row after which the compact overview draws its single river divider (the
+ *  first river row). Reproduces the original ri===4 for the 5v5 grid. */
+export function compactRiverDividerRow(rows: (string | null)[][]): number {
+  const idx = rows.findIndex((row) => row.some((z) => z?.includes('-river')))
+  return idx >= 0 ? idx : 4
 }
 
 /** Territory owner of a zone (drives color-coding in the mini overview). */

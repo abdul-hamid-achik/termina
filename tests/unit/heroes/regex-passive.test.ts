@@ -81,7 +81,7 @@ describe('Regex passive: Pattern Cache', () => {
   })
 
   it('SECOND cast on the SAME target within 3 ticks deals +15% bonus magical damage', () => {
-    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'dire', heroId: 'echo' })
+    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'dire', heroId: 'echo', level: 1 })
 
     // First cast arms the cache at tick 10.
     const armed = resolveHeroPassive(

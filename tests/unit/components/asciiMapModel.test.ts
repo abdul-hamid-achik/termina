@@ -2,8 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   MAP_ROWS,
   ONE_LANE_MAP_ROWS,
+  TWO_LANE_MAP_ROWS,
   mapRowsFor,
   colHeadersFor,
+  gridColsClass,
+  riverDividerRows,
+  compactRiverDividerRow,
   ancientForZone,
   ancientLabel,
   buildAdjacentZones,
@@ -399,6 +403,57 @@ describe('asciiMapModel', () => {
       // No off-lane zones leak into the layout.
       expect(zones.some((z) => z?.startsWith('top-') || z?.startsWith('bot-'))).toBe(false)
       expect(colHeadersFor('one_lane')).toEqual(['MID LANE'])
+    })
+
+    it('renders the two-lane map with top + mid lanes, jungle, rune, and roshan', () => {
+      const rows = mapRowsFor('two_lane')
+      expect(rows).toBe(TWO_LANE_MAP_ROWS)
+      expect(rows).toHaveLength(11)
+      // 4-column grid.
+      expect(rows.every((r) => r.length === 4)).toBe(true)
+      const zones = rows.flat().filter((z): z is string => z !== null)
+      // Endpoints.
+      expect(zones[0]).toBe('radiant-fountain')
+      expect(zones[zones.length - 1]).toBe('dire-fountain')
+      // Top + mid lanes present.
+      for (const id of ['top-t3-rad', 'top-river', 'top-t3-dire', 'mid-river', 'mid-t1-dire']) {
+        expect(zones, `expected ${id} in two_lane layout`).toContain(id)
+      }
+      // Objectives present.
+      expect(zones).toContain('rune-top')
+      expect(zones).toContain('roshan-pit')
+      // Bot lane entirely absent.
+      expect(zones.some((z) => z.startsWith('bot-'))).toBe(false)
+      expect(zones.some((z) => z.startsWith('rune-bot'))).toBe(false)
+      expect(colHeadersFor('two_lane')).toEqual([
+        'TOP LANE',
+        'RADIANT JUNGLE',
+        'MID LANE',
+        'DIRE JUNGLE',
+      ])
+    })
+  })
+
+  describe('grid layout helpers', () => {
+    it('gridColsClass matches each layout column count', () => {
+      expect(gridColsClass(MAP_ROWS)).toBe('grid-cols-5')
+      expect(gridColsClass(TWO_LANE_MAP_ROWS)).toBe('grid-cols-4')
+      expect(gridColsClass(ONE_LANE_MAP_ROWS)).toBe('grid-cols-1')
+    })
+
+    it('riverDividerRows reproduces the 5v5 {3,5} band and frames each layout river', () => {
+      expect([...riverDividerRows(MAP_ROWS)].sort((a, b) => a - b)).toEqual([3, 5])
+      for (const rows of [TWO_LANE_MAP_ROWS, ONE_LANE_MAP_ROWS]) {
+        const idx = rows.findIndex((r) => r.some((z) => z?.includes('-river')))
+        expect([...riverDividerRows(rows)].sort((a, b) => a - b)).toEqual([idx - 1, idx])
+      }
+    })
+
+    it('compactRiverDividerRow is the first river row (4 for 5v5)', () => {
+      expect(compactRiverDividerRow(MAP_ROWS)).toBe(4)
+      expect(compactRiverDividerRow(TWO_LANE_MAP_ROWS)).toBe(
+        TWO_LANE_MAP_ROWS.findIndex((r) => r.some((z) => z?.includes('-river'))),
+      )
     })
   })
 })

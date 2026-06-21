@@ -21,9 +21,15 @@ export interface RedisServiceApi {
   readonly hset: (key: string, field: string, value: string) => Effect.Effect<void>
   readonly hget: (key: string, field: string) => Effect.Effect<string | null>
   readonly hdel: (key: string, field: string) => Effect.Effect<void>
+  /** Returns all field→value pairs in a hash. Used by the lobby sweep to
+   *  enumerate stale lobby mirrors after a process restart. */
+  readonly hgetall: (key: string) => Effect.Effect<Record<string, string>>
   readonly setnx: (key: string, value: string, ttlSeconds?: number) => Effect.Effect<number>
   readonly getdel: (key: string) => Effect.Effect<string | null>
   readonly keys: (pattern: string) => Effect.Effect<string[]>
+  /** Cursor-based SCAN — non-blocking alternative to `keys`. Iterates all
+   *  matching keys without blocking the Redis server. */
+  readonly scan: (pattern: string) => Effect.Effect<string[]>
   readonly expire: (key: string, seconds: number) => Effect.Effect<void>
   readonly eval: (
     script: string,
@@ -191,6 +197,12 @@ export function makeRedisServiceLive(redisUrl: string) {
         return client.hdel(key, field).then(() => undefined)
       }),
 
+    hgetall: (key) =>
+      Effect.promise(() => {
+        const client = getClient(redisUrl)
+        return client.hgetall(key) as Promise<Record<string, string>>
+      }),
+
     setnx: (key, value, ttlSeconds) =>
       Effect.promise(async () => {
         const client = getClient(redisUrl)
@@ -211,6 +223,19 @@ export function makeRedisServiceLive(redisUrl: string) {
       Effect.promise(() => {
         const client = getClient(redisUrl)
         return client.keys(pattern)
+      }),
+
+    scan: (pattern) =>
+      Effect.promise(async () => {
+        const client = getClient(redisUrl)
+        const all: string[] = []
+        let cursor = '0'
+        do {
+          const [next, batch] = await client.scan(cursor, 'MATCH', pattern, 'COUNT', 100)
+          cursor = next
+          all.push(...batch)
+        } while (cursor !== '0')
+        return all
       }),
 
     expire: (key, seconds) =>

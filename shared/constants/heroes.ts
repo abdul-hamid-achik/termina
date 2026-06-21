@@ -20,6 +20,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 25,
       attack: 7,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'echo-passive',
@@ -46,6 +47,7 @@ export const HEROES: Record<string, HeroDef> = {
           { type: 'damage', value: 40, damageType: 'physical', description: 'Bounce damage (50%)' },
         ],
       },
+      // W: Phase Shift — dodge next attack
       w: {
         id: 'echo-w',
         name: 'Phase Shift',
@@ -53,10 +55,7 @@ export const HEROES: Record<string, HeroDef> = {
         manaCost: 50,
         cooldownTicks: 12,
         targetType: 'self',
-        effects: [
-          { type: 'buff', value: 1, duration: 1, description: 'Dodge 1 attack' },
-          { type: 'buff', value: 50, duration: 2, description: 'Move speed %' },
-        ],
+        effects: [{ type: 'buff', value: 1, duration: 1, description: 'Dodge 1 attack' }],
       },
       e: {
         id: 'echo-e',
@@ -111,6 +110,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 35,
       attack: 3,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'sentry-passive',
@@ -190,6 +190,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 20,
       attack: 8,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'daemon-passive',
@@ -502,7 +503,12 @@ export const HEROES: Record<string, HeroDef> = {
         cooldownTicks: 55,
         targetType: 'none',
         effects: [
-          { type: 'slow', value: 1, duration: 3, description: 'Global move speed reduction' },
+          {
+            type: 'slow',
+            value: 30,
+            duration: 3,
+            description: 'Global move speed reduction (% move-fail chance)',
+          },
         ],
       },
     },
@@ -527,6 +533,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 35,
       attack: 3,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'proxy-passive',
@@ -546,7 +553,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Hurl a redirected packet at an enemy, dealing magical damage and slowing them for 2 ticks.',
         manaCost: 70,
         cooldownTicks: 8,
-        targetType: 'unit',
+        targetType: 'hero',
         damageType: 'magical',
         effects: [
           { type: 'damage', value: 85, damageType: 'magical' },
@@ -608,6 +615,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 25,
       attack: 8,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'malloc-passive',
@@ -696,6 +704,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 22,
       attack: 7,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'cipher-passive',
@@ -875,6 +884,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 40,
       attack: 3,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'null_ref-passive',
@@ -896,7 +906,7 @@ export const HEROES: Record<string, HeroDef> = {
           "Fire a bolt of void energy that deals magical damage and shreds the target's magic resistance by 5 for 3 ticks.",
         manaCost: 55,
         cooldownTicks: 5,
-        targetType: 'unit',
+        targetType: 'hero',
         damageType: 'magical',
         effects: [
           { type: 'damage', value: 90, damageType: 'magical' },
@@ -969,6 +979,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 38,
       attack: 3,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'lambda-passive',
@@ -990,7 +1001,7 @@ export const HEROES: Record<string, HeroDef> = {
         description: 'Fire a quick bolt of functional energy, dealing magical damage to a target.',
         manaCost: 40,
         cooldownTicks: 5,
-        targetType: 'unit',
+        targetType: 'hero',
         damageType: 'magical',
         effects: [{ type: 'damage', value: 75, damageType: 'magical' }],
       },
@@ -1053,6 +1064,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 20,
       attack: 6,
       defense: 2,
+      magicResist: 1,
     },
     passive: {
       id: 'mutex-passive',
@@ -1151,6 +1163,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 28,
       attack: 5,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'ping-passive',
@@ -1169,7 +1182,7 @@ export const HEROES: Record<string, HeroDef> = {
           'Send a probing ping that deals magical damage. Can target enemies in adjacent zones for 60% damage.',
         manaCost: 45,
         cooldownTicks: 5,
-        targetType: 'unit',
+        targetType: 'hero',
         damageType: 'magical',
         effects: [
           { type: 'damage', value: 80, damageType: 'magical' },
@@ -1249,6 +1262,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 30,
       attack: 3,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'cron-passive',
@@ -1338,6 +1352,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 22,
       attack: 7,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'traceroute-passive',
@@ -1422,6 +1437,7 @@ export const HEROES: Record<string, HeroDef> = {
       mp: 24,
       attack: 8,
       defense: 1,
+      magicResist: 1,
     },
     passive: {
       id: 'thread-passive',
@@ -1587,6 +1603,83 @@ export const HEROES: Record<string, HeroDef> = {
       },
     },
   },
+}
+
+/** Mirrors the KEY SET of {@link HEROES} as a literal-keyed object so the hero
+ *  IDs can be surfaced as a literal union type ({@link HeroId}) without losing
+ *  the ergonomic `Record<string, HeroDef>` indexing on the runtime `HEROES`
+ *  export. Only the keys matter here (values are `0` placeholders); the
+ *  `assertHeroKeysInSync()` call below guards the two from drifting at load. */
+const _HERO_KEYS = {
+  echo: 0,
+  sentry: 0,
+  daemon: 0,
+  kernel: 0,
+  regex: 0,
+  socket: 0,
+  proxy: 0,
+  malloc: 0,
+  cipher: 0,
+  firewall: 0,
+  null_ref: 0,
+  lambda: 0,
+  mutex: 0,
+  ping: 0,
+  cron: 0,
+  traceroute: 0,
+  thread: 0,
+  cache: 0,
 } as const
 
-export const HERO_IDS = Object.keys(HEROES) as ReadonlyArray<string>
+/** The literal union of every hero ID. Deriving from `_HERO_KEYS` (mirrored
+ *  from the `HEROES` registry) gives compile-time exhaustiveness —
+ *  `Record<HeroId, T>` now catches missing entries at build time (e.g. a hero
+ *  added to `HEROES` but missing from `TALENT_TREES` is a type error, not a
+ *  silent runtime gap). **Adding a hero requires updating `_HERO_KEYS` too**,
+ *  which is the single source of truth for the `HeroId` union. */
+export type HeroId = keyof typeof _HERO_KEYS
+
+export const HERO_IDS: readonly HeroId[] = [
+  'echo',
+  'sentry',
+  'daemon',
+  'kernel',
+  'regex',
+  'socket',
+  'proxy',
+  'malloc',
+  'cipher',
+  'firewall',
+  'null_ref',
+  'lambda',
+  'mutex',
+  'ping',
+  'cron',
+  'traceroute',
+  'thread',
+  'cache',
+]
+
+/** Type guard — narrows `string` to `HeroId` if it's a registered hero ID. */
+export function isHeroId(id: string): id is HeroId {
+  return HERO_IDS.includes(id as HeroId)
+}
+
+// Runtime guard: if a hero is added to HEROES but not to _HERO_KEYS, the module
+// throws on import. Combined with the `Record<HeroId, TalentTree>` type on
+// TALENT_TREES, this gives full coverage — a missing _HERO_KEYS entry fails
+// TALENT_TREES at compile time; an extra HEROES entry fails here at load.
+// Authored as a named function + bare call (not an unused `const = IIFE`) so a
+// production bundler can't tree-shake the check away as dead code.
+function assertHeroKeysInSync(): void {
+  const registryKeys = new Set(Object.keys(HEROES))
+  const declaredKeys = new Set(Object.keys(_HERO_KEYS))
+  const missing = [...registryKeys].filter((k) => !declaredKeys.has(k))
+  const extra = [...declaredKeys].filter((k) => !registryKeys.has(k))
+  if (missing.length || extra.length) {
+    throw new Error(
+      `HEROES/_HERO_KEYS drift — missing in _HERO_KEYS: [${missing.join(', ')}], extra in _HERO_KEYS: [${extra.join(', ')}]`,
+    )
+  }
+}
+assertHeroKeysInSync()

@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
-import { leaveQueue } from '~~/server/game/matchmaking/queue'
+import { leaveQueue, type QueueMode } from '~~/server/game/matchmaking/queue'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -13,10 +13,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 503, message: 'Game server not ready' })
   }
 
-  const playerId = session.user.id as string
-  const player = await Effect.runPromise(runtime.dbService.getPlayer(playerId))
+  const body = await readBody(event).catch(() => ({}))
+  const mode = (body?.mode ?? 'ranked_5v5') as QueueMode
 
-  await Effect.runPromise(leaveQueue(runtime.redisService, playerId, player?.mmr ?? 1000))
+  if (!['ranked_5v5', 'quick_3v3', '1v1'].includes(mode)) {
+    throw createError({ statusCode: 400, message: 'Invalid game mode' })
+  }
+
+  const playerId = session.user.id as string
+
+  await Effect.runPromise(leaveQueue(runtime.redisService, playerId, mode))
 
   return { success: true }
 })
