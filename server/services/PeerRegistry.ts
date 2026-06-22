@@ -33,11 +33,6 @@ export function unregisterPeer(playerId: string, peer: CrosswsPeer) {
   }
 }
 
-/** Whether a player currently has a live WS peer connected. */
-export function hasPeer(playerId: string): boolean {
-  return peers.has(playerId)
-}
-
 /** Unconditionally remove a player's peer entry (no identity guard, unlike
  *  {@link unregisterPeer}). Used by WebSocketService.removeConnection, whose
  *  caller (the WS-route grace timer) already guarantees the player is gone for
