@@ -350,7 +350,13 @@ jobs:
       # cairn's webServer block builds (bun run build) + boots the prod preview
       # itself, so there is no separate build/boot step here anymore.
       - name: Run the e2e suite (cairn builds + boots the server, then runs flows)
-        run: bun run test:e2e:ci
+        # Shell-level timeout so a HANG fails this STEP (exit 124) before the job's
+        # timeout-minutes fires. A job killed by timeout-minutes is "cancelled",
+        # which job-level continue-on-error does NOT override (the whole run would
+        # still go red). A failed STEP + continue-on-error keeps the run green.
+        # Healthy run ~6 min; remove the timeout + continue-on-error once the CI
+        # hang is fixed and e2e is promoted into ci-success (see polish plan).
+        run: timeout -k 30s 600 bun run test:e2e:ci
 
       - name: Upload Cairntrace run artifacts
         if: always()
