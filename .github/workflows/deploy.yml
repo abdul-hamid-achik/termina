@@ -55,7 +55,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.configured == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     env:
       # The exact commit CI validated. Under workflow_run, GITHUB_SHA is the
       # default-branch tip (which may have advanced past what CI ran on), so
@@ -76,14 +76,19 @@ jobs:
           username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       - uses: docker/setup-buildx-action@v4
+      # GHA layer cache makes repeat builds fast; a healthy build is ~5 min, so the
+      # 10-min step cap fails a wedge quickly (the job cap above covers + pulumi up).
       - name: Build and push the WS server image
         uses: docker/build-push-action@v7
+        timeout-minutes: 10
         with:
           context: .
           push: true
           tags: |
             registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:${{ env.DEPLOY_SHA }}
             registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/termina-ws:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # ── Deploy via Pulumi; secrets from tvault (identity mode) ──────────────
       # State lives in a self-managed DO Spaces backend pinned in infra/Pulumi.yaml.
