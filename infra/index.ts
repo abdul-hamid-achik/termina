@@ -75,6 +75,15 @@ function optionalSecretEnv(
   return value ? [{ key: envName, value, scope: 'RUN_TIME', type: 'SECRET' }] : []
 }
 
+// Non-secret RUN_TIME env, spread only when a value is present (mirrors
+// optionalSecretEnv for GENERAL vars — e.g. the optional CORS allowlist).
+function optionalGeneralEnv(
+  key: string,
+  value: string | undefined,
+): digitalocean.types.input.AppSpecServiceEnv[] {
+  return value ? [{ key, value, scope: 'RUN_TIME', type: 'GENERAL' }] : []
+}
+
 // Required — the server cannot boot without these.
 const sessionPassword = requiredSecret('NUXT_SESSION_PASSWORD', 'sessionPassword')
 const databaseUrl = requiredSecret('NUXT_DATABASE_URL', 'databaseUrl') // Neon (via Vercel)
@@ -94,16 +103,7 @@ const envs: digitalocean.types.input.AppSpecServiceEnv[] = [
   { key: 'NODE_ENV', value: 'production', scope: 'RUN_TIME', type: 'GENERAL' },
   { key: 'HOST', value: '0.0.0.0', scope: 'RUN_TIME', type: 'GENERAL' },
   { key: 'PORT', value: '3000', scope: 'RUN_TIME', type: 'GENERAL' },
-  ...(corsAllowedOrigins
-    ? [
-        {
-          key: 'NUXT_CORS_ALLOWED_ORIGINS',
-          value: corsAllowedOrigins,
-          scope: 'RUN_TIME',
-          type: 'GENERAL',
-        } as digitalocean.types.input.AppSpecServiceEnv,
-      ]
-    : []),
+  ...optionalGeneralEnv('NUXT_CORS_ALLOWED_ORIGINS', corsAllowedOrigins || undefined),
   { key: 'NUXT_SESSION_PASSWORD', value: sessionPassword, scope: 'RUN_TIME', type: 'SECRET' },
   { key: 'NUXT_DATABASE_URL', value: databaseUrl, scope: 'RUN_TIME', type: 'SECRET' },
   { key: 'NUXT_REDIS_URL', value: redisUrl, scope: 'RUN_TIME', type: 'SECRET' },
