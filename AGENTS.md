@@ -76,7 +76,7 @@ Expert in the queue, lobby, and hero pick systems.
 **Key files**:
 
 - `queue.ts` — `joinQueue`, `leaveQueue`, `startMatchmakingLoop` (Redis sorted set by MMR)
-- `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck`, `currentPickTurn` (snake pick order); `seedDraftLobby` (dev/test-only: freeze a draft at the human's pick turn, used by the `/api/test/new-draft` hook)
+- `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck`, `currentPickTurn` (snake pick order). (`seedDraftLobby` is now dead code — it backed the removed `/api/test/new-draft` hook; left in place for a future draft-seed harness.)
 - `server/api/queue/join.post.ts`, `status.get.ts`, `pick.post.ts` — HTTP endpoints
 
 **Flow**: Queue → match found → lobby created → snake hero picks (15s per pick, auto-random on timeout) → 1.5s delay → 3s countdown → `game_ready` published to Redis → game-server.ts creates game. (No ban phase.) On lobby reconnect, `ws.ts` re-sends both `lobby_state` AND `pick_turn` so a refreshing/seeded client recovers whose turn it is.
@@ -112,12 +112,11 @@ Expert in writing and maintaining Vitest (unit/integration/component) and Cairnt
 - `tests/unit/matchmaking/` — queue, lobby (+ `seed-draft-lobby`)
 - `tests/unit/stores/` — game store, lobby store
 - `tests/unit/composables/` — useGameSocket, useCommands, useAudio
-- `tests/e2e/` — **Cairntrace** YAML flows (30). Seed exact game/draft state via the dev hooks below; `flows/`, reusable `actions/`, `cairntrace.config.yml`. See the **End-to-end** section of the root `README.md`.
-- `server/api/test/*` — dev-only, single-gated (`TERMINA_TEST_HOOKS=1`) seed hooks: `login-as`, `new-game`, `new-draft`, `advance`, `state`, `force-end` (+ `applyScenario` scenarios in `server/game/dev/scenarios.ts`). The `NODE_ENV` gate was intentionally removed so the prod-build e2e suite can use them; a loud startup warning fires when enabled.
+- `tests/e2e/` — **Cairntrace** YAML flows that drive the REAL app (register/log in through the UI, navigate, assert); NO test seed hooks. `flows/`, reusable `actions/login.yml`, `cairntrace.config.yml`. Game/engine truth lives in `tests/gameplay/` (`bun run test:gameplay`). See the **End-to-end** section of the root `README.md`.
 
-**Patterns**: Vitest 4 — projects are in `test.projects` in `vitest.config.ts`. `vi.fn()` mocks; `vi.mock()` for modules (PeerRegistry, BotManager); `vi.useFakeTimers()`; `Effect.runSync` for Effect code. NOTE vitest 4: `new (vi.fn(() => obj))()` returns the empty `this` — stub constructors with a plain `function(){ return mock }`. Clean up peers/lobbies in `afterEach`. E2E: each flow must pass `cairn run --cold-start` green and be stamped; `testUser` is `cairn_${run.token}` (per-run identity).
+**Patterns**: Vitest 4 — projects are in `test.projects` in `vitest.config.ts`. `vi.fn()` mocks; `vi.mock()` for modules (PeerRegistry, BotManager); `vi.useFakeTimers()`; `Effect.runSync` for Effect code. NOTE vitest 4: `new (vi.fn(() => obj))()` returns the empty `this` — stub constructors with a plain `function(){ return mock }`. Clean up peers/lobbies in `afterEach`. E2E: each flow must pass `cairn run --cold-start` green and be stamped; `testUser` is `${run.token}` (unique per flow, ≤20 chars for the username limit).
 
-**Commands**: `bun run test:unit | test:integration | test:components`; `npx vitest run <file>` for one; `bun run test:e2e` (needs a dev server with `TERMINA_TEST_HOOKS=1`); `bun run typecheck`, `bun run lint` (oxlint), `bun run format` (oxfmt), `bun run knip`.
+**Commands**: `bun run test:unit | test:integration | test:components`; `npx vitest run <file>` for one; `bun run test:e2e` (cairn builds + boots a prod-preview server itself); `bun run typecheck`, `bun run lint` (oxlint), `bun run format` (oxfmt), `bun run knip`.
 
 ## bot-ai
 

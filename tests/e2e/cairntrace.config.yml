@@ -22,15 +22,20 @@ webServer:
   # server resumes in-progress games from db1 snapshots, so a stale seeded game
   # would come back as a zombie. `exec` hands signals straight to node for clean
   # teardown. (The command already runs under `/bin/sh -c`.)
-  command: 'redis-cli -n 1 flushdb >/dev/null 2>&1 || true; exec node .output/server/index.mjs'
+  command: 'redis-cli -p 6380 -n 1 flushdb >/dev/null 2>&1 || true; exec node .output/server/index.mjs'
   url: http://127.0.0.1:3000 # readiness probe (and where specs are addressed)
   readyTimeoutMs: 90000 # prod server boot headroom (covers boot, not the build)
   env:
     HOST: "127.0.0.1" # IPv4 bind — see the baseUrl note below
     PORT: "3000"
-    TERMINA_TEST_HOOKS: "1" # gate the /api/test/* seeding hooks into the prod build
-    TERMINA_DISABLE_RATE_LIMIT: "1" # auth_*/parallel flows mint users from one IP — skip the 5/burst auth 429
-    TERMINA_TEST_FAST_GAME: "8" # fast ticks so live-tick specs don't wait the full 4s
+    # The e2e suite registers/logs in REAL users through the UI — there are no
+    # /api/test/* hooks any more. On a prod-preview server (NODE_ENV=production)
+    # the rate-limit escape hatch only engages when BOTH flags below are set, so
+    # the many users a parallel run mints from one IP don't hit the 5/burst auth
+    # 429. TERMINA_TEST_HOOKS enables no endpoint now (the routes are deleted); it
+    # only flags this as a non-prod test server (and turns DevTools off).
+    TERMINA_TEST_HOOKS: "1"
+    TERMINA_DISABLE_RATE_LIMIT: "1"
     NUXT_SESSION_COOKIE_SECURE: "false" # let the prod session cookie ride plain HTTP on 127.0.0.1
     NUXT_SESSION_PASSWORD: "e2e_session_password_at_least_32_chars_long"
     NUXT_REDIS_URL: "redis://localhost:6380/1" # db1 isolation; matches the flush above
@@ -40,9 +45,9 @@ webServer:
     # absent from this map.
 
 environments:
-  # Local dev: a `bun run dev` server with the dev test-hooks enabled (see
-  # README.md). The hooks are the whole point — they let specs seed an
-  # exact game state instead of playing a real match over the flaky lobby WS.
+  # Local: addressed at the prod-preview server the `webServer` block boots. Flows
+  # drive the REAL app (register/login through the UI, navigate, assert) — no
+  # seeding hooks. Game-internal truth is covered separately by `bun run test:gameplay`.
   local:
     # 127.0.0.1, NOT localhost: the Nuxt server binds IPv6 (::1) by default, and
     # on a Linux CI runner `localhost` can resolve to IPv4 first — so a Bun
@@ -52,19 +57,11 @@ environments:
     baseUrl: "http://127.0.0.1:3000"
     viewport: { width: 1280, height: 800 }
     vars:
-      # Dev identity minted by the /api/test/login-as hook (idempotent, no OAuth).
-      # `${run.token}` is a cairntrace v1.9 runtime placeholder: a unique token
-      # per run, so every spec (and every parallel worker) gets its own user.
-      # Termina broadcasts state per user-id over WS, so a shared user lets one
-      # game loop clobber another spec's seeded state — per-run identity removes
-      # that race without hand-assigning a username to each flow.
-      testUser: cairn_${run.token}
-      # Heroes the seeded game assigns (order = radiant then dire); see new_game action.
-      heroSelf: echo
-      # A scenario the dev harness knows how to seed (see README.md "Named scenarios").
-      scenario: laning
-      # Default to the live auto-loop; state-assertion specs override to "true".
-      manualTick: "false"
+      # The login action REGISTERS this user through the UI. `${run.token}` is a
+      # cairntrace runtime placeholder — a unique token per flow run — so each flow
+      # gets its own account and re-runs never collide on an already-taken username.
+      # No prefix: the app caps usernames at 20 chars and the token already fits.
+      testUser: ${run.token}
 
   # CI runners. The `webServer` block above now boots the app (PORT=3000,
   # HOST=127.0.0.1) instead of the runner, so CI addresses the same fixed
@@ -74,14 +71,13 @@ environments:
     baseUrl: "http://127.0.0.1:3000"
     viewport: { width: 1280, height: 800 }
     vars:
-      testUser: cairn_${run.token}
-      heroSelf: echo
-      scenario: laning
+      testUser: ${run.token}
 
 # Capture policy is set per-spec under `artifacts: { capture: ... }` (see the
 # graphite samples). Defaults: screenshots on-failure, trace on-failure.
 
-# Termina dev auth is username-based via the login-as hook, so no external
-# secrets are required for the local/ci paths. For a real OAuth environment,
-# capture a session once with `cairn login termina --url <oauth-start>` and use
-# `session: { resume: termina }` instead of the login action.
+# Auth is exercised for real: the login action registers a username/password
+# account through the /login UI, so no external secrets are required for the
+# local/ci paths. For a real OAuth environment, capture a session once with
+# `cairn login termina --url <oauth-start>` and use `session: { resume: termina }`
+# instead of the login action.

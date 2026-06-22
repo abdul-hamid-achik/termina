@@ -531,16 +531,19 @@ export default defineNitroPlugin(async (nitroApp) => {
   // from the plugin entry point pins the whole hero chain into the build.
   registerAllHeroes()
 
-  // Loud, unmissable warning if the dev/e2e test hooks are enabled. Their gate is
-  // now the explicit TERMINA_TEST_HOOKS=1 opt-in alone (the prod e2e runs against a
-  // production build, so NODE_ENV can't gate them) — they bypass auth (login-as
-  // mints a session for ANY username) and must NEVER be set in a real deployment.
+  // Loud, unmissable warning if the test-only relaxations are enabled. The gate is
+  // the explicit TERMINA_TEST_HOOKS=1 opt-in alone (the prod e2e runs against a
+  // production build, so NODE_ENV can't gate it). It enables no endpoints — the
+  // /api/test/* seed routes were removed — but it DOES relax the auth rate limit
+  // (with TERMINA_DISABLE_RATE_LIMIT) and the tick accelerator, so it must NEVER
+  // be set in a real deployment.
   if (testHooksEnabled()) {
     gameLog.warn(
-      '\n⚠️  TERMINA_TEST_HOOKS=1 — test endpoints (server/api/test/*) are ENABLED.\n' +
-        '   They bypass auth and seed/teardown games. NEVER set this in production.\n',
+      '\n⚠️  TERMINA_TEST_HOOKS=1 — test-only relaxations are ENABLED.\n' +
+        '   Auth rate-limit escape hatch + fast-game accelerator + DevTools off.\n' +
+        '   NEVER set this in production.\n',
     )
-    // Reap peerless seeded games so zombie loops can't pile up across an e2e run.
+    // Reap peerless dev games so zombie loops can't pile up across an e2e run.
     if (!_reaperTimer) {
       _reaperTimer = setInterval(reapPeerlessDevGames, 15_000)
       // Don't keep the process alive just for the reaper.

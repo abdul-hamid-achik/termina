@@ -17,13 +17,13 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
  * SITUATION resolve correctly" tests. It drives the REAL engine
  * (`createInMemoryStateManager` + `submitAction` + `processTick`) with ZERO infra:
  * no browser, no server, no Postgres, no Redis. It is the same pipeline
- * `scripts/simulate-game.ts` and `tests/integration/game-flow.test.ts` use, with
- * the seed → act → advance → assert ceremony factored into one ergonomic API.
+ * `server/game/dev/simulate-game.ts` and `tests/integration/game-flow.test.ts`
+ * use, with the seed → act → advance → assert ceremony factored into one
+ * ergonomic API.
  *
- * It shares its scenario catalog (`server/game/dev/scenarios.ts::applyScenario`)
- * with the Cairntrace `/api/test/new-game` hook, so a scenario means the same
- * thing in-process here and in the browser e2e. Use this for engine truth; keep
- * Cairntrace for "the UI renders + a human can click it".
+ * It owns the scenario catalog (`server/game/dev/scenarios.ts::applyScenario`) —
+ * pure `(state, opts) => GameState` transforms that shape a fresh game. Use this
+ * for engine truth; keep Cairntrace for "the UI renders + a human can click it".
  *
  * Determinism note: the engine has no injectable RNG (bot AI uses Math.random),
  * so the harness never registers bots — only the human + a single enemy exist,

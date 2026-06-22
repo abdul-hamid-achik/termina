@@ -69,8 +69,7 @@ jobs:
 
       # Build the Nitro .output NATIVELY (~1-2 min). The Docker image just packages
       # it (see Dockerfile) — building inside Docker wedged BuildKit on export of
-      # the huge build-stage layer. No TERMINA_TEST_HOOKS here, so the prod build
-      # also drops the /api/test/* hooks (nuxt.config `ignore`).
+      # the huge build-stage layer.
       - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}

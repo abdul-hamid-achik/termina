@@ -18,7 +18,7 @@ outcomes:
     description: the profile page renders the whois line identifying the current user
     verify:
       text:
-        contains: whois cairn_
+        contains: whois ${vars.testUser}
   - id: edit_link_points_to_settings
     description: the own-profile [EDIT] link is rendered exactly once and targets /profile/settings
     verify:
@@ -44,10 +44,10 @@ steps:
       waitUntil: domcontentloaded
   - id: wait_for_whois
     wait:
-      text: whois cairn_
+      text: whois ${vars.testUser}
       timeoutMs: 5000
   - id: wait_for_empty_matches
     wait:
       text: No matches played yet.
       timeoutMs: 5000
-contractHash: sha256:ba7f3257e1339edcd956cf41c25226d4e348dd059edccf306c8f6138d9fe53c2
+contractHash: sha256:07d0faff3a9c5b58d5bf82701deb152c04a369ef7bdb799ea819e46b3bf4d3fe
