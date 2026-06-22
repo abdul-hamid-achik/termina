@@ -195,67 +195,10 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-  # ── advisory: browser e2e (cairntrace, SEEDED-UI flows only) ──────────────────
-  # Engine/match truth lives in tests/gameplay/; these flows seed via /api/test/*
-  # hooks and never play a real match. NON-BLOCKING bridge: the suite still hangs
-  # in CI post-steps (suspected runner OOM under the playwright backend), so
-  # `continue-on-error` + the shell `timeout` keep the run green. Remove both +
-  # promote into ci-success once the hang is fixed (see the CI/CD polish plan).
-  e2e:
-    name: e2e (cairntrace, chromium)
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck, unit-tests, build]
-    continue-on-error: true
-    timeout-minutes: 12
-    env:
-      # cairntrace's webServer block pins HOST/PORT/TEST_HOOKS/SESSION/db1 REDIS and
-      # inherits only the DB URL, pointed at termina_test here.
-      NUXT_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/pg-redis
-        with:
-          postgres-image: ${{ env.POSTGRES_IMAGE }}
-          redis-image: ${{ env.REDIS_IMAGE }}
-      # Flush test Redis db1 so a previous run's zombie games don't leak in.
-      - name: Flush test Redis (DB 1)
-        run: docker exec redis redis-cli -n 1 flushdb
-      - uses: ./.github/actions/bun-setup
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - name: Install the cairn CLI (Cairntrace is not on npm)
-        run: bun add --global github:abdul-hamid-achik/cairntrace
-      - name: Cache Playwright browsers
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium
-          restore-keys: ${{ runner.os }}-playwright-
-      - name: Install Chromium for the playwright backend
-        run: bunx playwright install --with-deps chromium
-      - name: Push schema into the test DB
-        run: bunx drizzle-kit push --force
-      # cairn's webServer block builds + boots the prod preview itself. The shell
-      # `timeout` fails this STEP (exit 124) before the job timeout-minutes — a
-      # timeout-minutes kill is "cancelled", which continue-on-error does NOT mask.
-      - name: Run the e2e suite (cairn builds + boots the server, then runs flows)
-        run: timeout -k 30s 600 bun run test:e2e:ci
-      - name: Upload Cairntrace run artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: e2e-runs
-          path: tests/e2e/runs/**
-          retention-days: 14
-          if-no-files-found: ignore
-      - name: Upload JUnit report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: e2e-junit
-          path: '**/junit*.xml'
-          retention-days: 14
-          if-no-files-found: ignore
+  # Browser e2e (cairntrace) is intentionally NOT run in CI: under the shared
+  # prod-preview server it accumulates game loops and gets resource-starved/flaky,
+  # and it's slow. Run it locally instead: `bun run test:e2e`. Engine/match truth
+  # is covered by `tests/gameplay/` (in-process), API contracts by `api-tests`.
 
   # ── advisory: API contract tests (hitspec — GoReleaser binary, not npm) ───────
   api-tests:
