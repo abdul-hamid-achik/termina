@@ -25,19 +25,35 @@ permissions:
   contents: read
 
 jobs:
-  # ── DigitalOcean: build the image, push to DOCR, deploy via Pulumi ──────────
-  # Gated two ways:
-  #   1) CI passed (or this is a manual dispatch), AND
-  #   2) the repo variable DEPLOY_ENABLED == 'true'. Set that variable once the
-  #      deploy secrets exist (TVAULT_IDENTITY_KEY, DIGITALOCEAN_ACCESS_TOKEN,
-  #      DO_REGISTRY_NAME) and the `prod` Pulumi stack has been initialized once
-  #      locally. Until then this job SKIPS, so the Deploy run stays neutral/green
-  #      instead of failing red on missing secrets.
-  do-build:
+  # Auto-gate: the deploy runs only once its secrets actually exist — no manual
+  # flag. Secrets can't be read in a job-level `if:`, but a step CAN, so this job
+  # checks them and exposes `configured`; do-build keys off it. Before the secrets
+  # are set the run SKIPS cleanly (neutral, not red); the moment they're present
+  # it activates on its own. (Replaces the old DEPLOY_ENABLED repo variable.)
+  gate:
     if: >-
-      vars.DEPLOY_ENABLED == 'true' &&
-      (github.event_name == 'workflow_dispatch' ||
-       github.event.workflow_run.conclusion == 'success')
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        env:
+          DO_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          TVAULT_KEY: ${{ secrets.TVAULT_IDENTITY_KEY }}
+        run: |
+          if [ -n "$DO_TOKEN" ] && [ -n "$TVAULT_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deploy secrets not set — skipping DO build/deploy. Set DIGITALOCEAN_ACCESS_TOKEN + TVAULT_IDENTITY_KEY to enable."
+          fi
+
+  # ── DigitalOcean: build the image, push to DOCR, deploy via Pulumi ──────────
+  do-build:
+    needs: gate
+    if: needs.gate.outputs.configured == 'true'
     runs-on: ubuntu-latest
     env:
       # The exact commit CI validated. Under workflow_run, GITHUB_SHA is the
@@ -45,7 +61,7 @@ jobs:
       # prefer the triggering run's head_sha.
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 

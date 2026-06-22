@@ -14,3 +14,5 @@ config:
   termina-infra:createRegistry: 'false'
   termina-infra:registryTier: basic
   termina-infra:appDomain: api.terminamoba.com
+  termina-infra:corsAllowedOrigins: https://terminamoba.com,https://www.terminamoba.com
+encryptionsalt: v1:R5kv9ev1DSo=:v1:UhHvSVk6U+KQkViH:CWF9vleF0uode7FsXiO1wlebTrheag==
