@@ -93,8 +93,8 @@ cp .env.example .env
 # Start databases (Docker)
 docker-compose up -d
 
-# Run migrations
-bun run db:migrate
+# Push the schema (schema.ts is the source of truth — no migration files)
+bun run db:push
 
 # Start development server
 bun run dev

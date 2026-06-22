@@ -55,8 +55,9 @@ bun run knip              # unused files/deps/exports
 
 # Database (requires PostgreSQL via docker-compose).
 # NOTE: the DB is `drizzle-kit push`-managed — schema.ts is the source of truth.
-# The file-migration history is vestigial/broken; do NOT rely on db:generate/migrate.
-# Apply a schema change with `drizzle-kit push` (or direct SQL for index/dedupe).
+# Apply a schema change with `bun run db:push` (or direct SQL for index/dedupe).
+# There are intentionally NO db:generate/db:migrate recipes — the file-migration
+# history is vestigial/broken, so don't reintroduce them.
 docker compose up -d      # Start PostgreSQL + Redis
 bun run db:studio         # Drizzle Studio GUI
 

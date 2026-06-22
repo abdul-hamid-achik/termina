@@ -32,8 +32,7 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "knip": "knip",
     "prepare": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then lefthook install; fi"

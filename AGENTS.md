@@ -92,7 +92,7 @@ Expert in Effect-TS services, WebSocket infrastructure, and the plugin lifecycle
 - `PeerRegistry.ts` — `registerPeer`, `unregisterPeer`, `sendToPeer` (crosswsPeer primary, rawWs fallback)
 - `WebSocketService.ts` — per-game connection tracking via Effect Layer
 - `RedisService.ts` — pub/sub with `ioredis`, Effect-wrapped
-- `DatabaseService.ts` — Drizzle ORM queries (players, matches, hero stats). DB is `drizzle-kit push`-managed — `schema.ts` is the source of truth; the file-migration history is vestigial (don't `db:generate`/`migrate`). `players` and `hero_stats` both have `games_played`/`wins`, so qualify those columns in joins/upserts
+- `DatabaseService.ts` — Drizzle ORM queries (players, matches, hero stats). DB is `drizzle-kit push`-managed — `schema.ts` is the source of truth; apply schema changes with `bun run db:push`. The file-migration history is vestigial, so there are no `db:generate`/`db:migrate` recipes. `players` and `hero_stats` both have `games_played`/`wins`, so qualify those columns in joins/upserts
 - `ws.ts` — WebSocket handler: auth, message dispatch, reconnect with 60s grace window
 - `game-server.ts` — `ManagedRuntime` composition, Redis subscription for `game_ready`, game loop callbacks
 
