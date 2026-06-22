@@ -1,31 +1,19 @@
 # ── Termina WS + game server (DigitalOcean) ───────────────────────
-# Full Nitro server: SSR + WS + game engine + API. The Vercel frontend
-# connects to this instance via NUXT_PUBLIC_WS_URL / NUXT_PUBLIC_API_URL.
-
-# Bun-based build for speed; the runtime is Node (Nitro's .output/server
-# is a Node-compatible ESM bundle).
-FROM oven/bun:1 AS build
+# Full Nitro server: SSR + WS + game engine + API. The Vercel frontend connects
+# to this instance via NUXT_PUBLIC_WS_URL / NUXT_PUBLIC_API_URL.
+#
+# We deliberately do NOT build inside Docker. A multi-stage in-image build
+# (`bun install` + `nuxt build`) made BuildKit HANG on export of the huge
+# build-stage layer — both locally and on GitHub runners (build finished in ~26s,
+# then the export wedged until the job timeout). Instead CI builds the Nitro
+# `.output` natively (`bun run build`, ~1-2 min) and this image just PACKAGES it:
+# .output is a self-contained Node ESM bundle (its own node_modules), so the
+# whole image is one tiny COPY — fast to build, tiny to push, nothing to wedge.
+FROM node:24-slim
 WORKDIR /app
 
-# Install dependencies first (cached layer).
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
-
-# Copy the rest and build the Nitro server.
-COPY . .
-# `bun install` above ran the `nuxt prepare` postinstall before the source was
-# copied, leaving a stale .nuxt with incomplete auto-import types (e.g. the
-# nuxt-auth-utils server utils). Remove it so `nuxt build` regenerates types from
-# the full source — matching the CI build, which installs after checkout.
-RUN rm -rf .nuxt && bun run build
-
-# ── Runtime ───────────────────────────────────────────────────────
-FROM node:24-slim AS runtime
-WORKDIR /app
-
-# Nitro's server output is self-contained — just copy .output (owned by the
-# non-root runtime user so it's readable after the USER switch below).
-COPY --from=build --chown=node:node /app/.output ./.output
+# Pre-built in CI; owned by the non-root runtime user so it's readable post-USER.
+COPY --chown=node:node .output ./.output
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

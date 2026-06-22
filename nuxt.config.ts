@@ -16,6 +16,13 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
+  // Don't ship the dev/test-only /api/test/* hooks (incl. the `login-as` auth
+  // bypass) to a real production build — drop the code entirely, not just
+  // 404-gate it at runtime (server/utils/testHooks.ts). The e2e + api-test
+  // builds set TERMINA_TEST_HOOKS=1 and keep the hooks; every other build (the
+  // prod Docker image, the CI `build` job) excludes them.
+  ignore: process.env.TERMINA_TEST_HOOKS === '1' ? [] : ['server/api/test/**'],
+
   // Tailwind v4 is wired via its Vite plugin (the @nuxtjs/tailwindcss module is
   // v3-only). The stylesheet is imported directly via `css` below.
   modules: ['@pinia/nuxt', 'nuxt-auth-utils'],
