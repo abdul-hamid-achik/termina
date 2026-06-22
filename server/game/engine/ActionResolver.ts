@@ -77,6 +77,7 @@ import {
 import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
 import { wsLog } from '~~/server/utils/log'
+import { isRealProduction } from '~~/server/utils/testHooks'
 
 /** Ticks before Linken's Sphere recharges its spell-block after spending one. */
 const LINKENS_RECHARGE_TICKS = 12
@@ -116,12 +117,6 @@ function applyPlayerUpdates(
   }
   return newPlayers
 }
-
-// ── Item Stat Bonuses ─────────────────────────────────────────
-
-// Implementation moved to EffectiveStats (single authority for combat stats);
-// re-exported here for backward compatibility.
-export { getItemStatBonuses } from './EffectiveStats'
 
 /**
  * Resolve a zone-local creep index to the creep and its global array index.
@@ -1374,7 +1369,7 @@ export function resolveActions(
       violations: CheatDetection[]
     }> = []
     const validActions = actions.filter((a) => {
-      if (process.env.NODE_ENV !== 'production' || process.env.TERMINA_TEST_HOOKS === '1') {
+      if (!isRealProduction()) {
         const validationError = validateAction(state, a)
         if (validationError) {
           // GameLoop should have filtered this — a divergence is a bug.

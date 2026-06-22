@@ -18,11 +18,12 @@
  * Used by: any dev/test server started for e2e runs (set TERMINA_TEST_FAST_GAME
  * in the server env alongside TERMINA_TEST_HOOKS=1 — see README.md (Testing)).
  */
+import { isRealProduction } from '~~/server/utils/testHooks'
 
 const MAX_FACTOR = 16
 
 export function fastGameFactor(): number {
-  if (process.env.NODE_ENV === 'production' && process.env.TERMINA_TEST_HOOKS !== '1') return 1
+  if (isRealProduction()) return 1
   const raw = process.env.TERMINA_TEST_FAST_GAME
   if (!raw) return 1
   const factor = Number.parseFloat(raw)

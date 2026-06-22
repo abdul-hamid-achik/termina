@@ -639,53 +639,6 @@ export function startGameLoop(
   engineLog.info('Game loop fiber started', { gameId })
 }
 
-/**
- * Dev/test-only: run a SINGLE tick out-of-band (manual stepping via the
- * /api/test/advance hook). Mirrors the core of buildGameLoop's tickLoop —
- * processTick → persist → broadcast — minus the periodic snapshot / AFK /
- * action-log bookkeeping that manual dev steps don't need. Only used by games
- * created in manual-tick mode (no auto-schedule), so it never races the
- * fixed-interval loop. No-op in production.
- */
-export async function runOneTick(
-  gameId: string,
-  stateManager: StateManagerApi,
-  callbacks: GameCallbacks,
-  runtime: ManagedRuntime.ManagedRuntime<never, never>,
-): Promise<void> {
-  if (process.env.NODE_ENV === 'production' && process.env.TERMINA_TEST_HOOKS !== '1') return
-  await runtime.runPromiseExit(
-    Effect.gen(function* () {
-      const current = yield* stateManager.getState(gameId)
-      if (current.phase === 'ended') return
-      const { state: newState, events } = yield* processTick(gameId, current)
-      yield* stateManager.updateState(gameId, () => newState)
-      // Clear the delta cache so the next auto-tick's delta is computed fresh
-      // against this manually-stepped state, not a stale lastSent snapshot.
-      clearGameSentStates(gameId)
-      for (const playerId of Object.keys(newState.players)) {
-        try {
-          callbacks.onTickState(gameId, playerId, filterStateForPlayer(newState, playerId, gameId))
-        } catch (err) {
-          engineLog.warn('runOneTick: tick_state send failed', {
-            gameId,
-            playerId,
-            error: String(err),
-          })
-        }
-      }
-      if (callbacks.onSpectatorTick) {
-        try {
-          callbacks.onSpectatorTick(gameId, newState)
-        } catch {
-          /* non-critical */
-        }
-      }
-      if (events.length > 0) callbacks.onEvents(gameId, events)
-    }).pipe(Effect.catchAll(() => Effect.void)),
-  )
-}
-
 /** Stop a running game loop. */
 export function stopGameLoop(gameId: string): Effect.Effect<void> {
   return Effect.gen(function* () {

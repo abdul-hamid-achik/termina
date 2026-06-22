@@ -5,7 +5,7 @@ import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 /**
  * Production: start a single-player tutorial game (the human + bots on the
  * one-lane map, in tutorial mode) and return the /play entry URL. This is a real
- * player feature — NOT gated by test hooks, unlike /api/test/new-game.
+ * player feature, reachable in production — it is NOT gated by test hooks.
  *
  * Body: { heroSelf? }  →  { gameId, playerId, url }
  */

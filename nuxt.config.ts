@@ -8,20 +8,13 @@ export default defineNuxtConfig({
   // Vite "discover new dependencies at runtime" and force a full dep
   // re-optimization + page reload — which yanks the page out from under the
   // e2e browser mid-navigation, so the first spec's `open` never settles and
-  // the whole suite hangs. The e2e dev server runs with TERMINA_TEST_HOOKS=1,
-  // so disable DevTools there (normal local dev keeps it).
+  // the whole suite hangs. The e2e server runs with TERMINA_TEST_HOOKS=1, so
+  // disable DevTools there (normal local dev keeps it).
   devtools: { enabled: process.env.TERMINA_TEST_HOOKS !== '1' },
 
   future: {
     compatibilityVersion: 4,
   },
-
-  // Don't ship the dev/test-only /api/test/* hooks (incl. the `login-as` auth
-  // bypass) to a real production build — drop the code entirely, not just
-  // 404-gate it at runtime (server/utils/testHooks.ts). The e2e + api-test
-  // builds set TERMINA_TEST_HOOKS=1 and keep the hooks; every other build (the
-  // prod Docker image, the CI `build` job) excludes them.
-  ignore: process.env.TERMINA_TEST_HOOKS === '1' ? [] : ['server/api/test/**'],
 
   // Tailwind v4 is wired via its Vite plugin (the @nuxtjs/tailwindcss module is
   // v3-only). The stylesheet is imported directly via `css` below.

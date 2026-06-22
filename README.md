@@ -70,7 +70,7 @@ termina/
 - **Real-time**: WebSocket (crossws)
 - **Runtime**: Bun
 - **Tooling**: oxlint (lint) · oxfmt (format) · knip (dead-code) · lefthook (git hooks)
-- **Testing**: Vitest (unit/integration/component) · Cairntrace (browser E2E, seeded via dev hooks)
+- **Testing**: Vitest (unit/integration/component) · Cairntrace (browser E2E, real flows)
 
 ---
 
@@ -93,8 +93,8 @@ cp .env.example .env
 # Start databases (Docker)
 docker-compose up -d
 
-# Run migrations
-bun run db:migrate
+# Push the schema (schema.ts is the source of truth — no migration files)
+bun run db:push
 
 # Start development server
 bun run dev
@@ -231,77 +231,56 @@ services, stores, and composables. Projects live in `test.projects` in
 The **integration** project includes real-Postgres `DatabaseService` tests
 (against a disposable `termina_test` DB), so it needs the docker services up.
 
-### End-to-end (Cairntrace + dev seed hooks)
+### End-to-end (Cairntrace)
 
 Browser E2E uses [Cairntrace](https://github.com/abdul-hamid-achik/cairntrace)
-YAML flows paired with **dev-only seed hooks** so a spec lands in an exact game
-or draft state instead of playing a flaky bot match. The flows cover the **UI**
-(auth, nav, lobby, in-game screens); gameplay/engine truth moved to the
-in-process `bun run test:gameplay` harness. The easy path is `bun run test:e2e`,
-which is just `cairn run tests/e2e/flows --config … --cold-start`: cairn's
-`webServer:` config block (cairntrace ≥1.11.0) builds the app and boots a
-**production preview server** (`node .output/server`, IPv4, `TERMINA_TEST_HOOKS=1`),
-runs the suite, and tears it down — replacing the old `scripts/e2e.mjs`. The prod
-preview avoids `nuxt dev`'s Vite-proxy / cold-compile / IPv6 flakiness. To drive
-`cairn` by hand against a server you already have on `:3000`, drop `--cold-start`
-(it reuses a running server) or point at it:
+YAML flows that drive the **real app** — each flow registers/logs in a user
+through the UI, navigates, and asserts on what renders. There are **no test seed
+hooks**: the flows cover UI + auth + navigation journeys (auth, nav, lobby queue,
+profile, mobile), while gameplay/engine truth lives in the in-process `bun run
+test:gameplay` harness (seed scenario → act → advance ticks → assert engine
+truth, no browser). The easy path is `bun run test:e2e`, which is just `cairn run
+tests/e2e/flows --config … --cold-start`: cairn's `webServer:` config block
+(cairntrace ≥1.11.0) builds the app and boots a **production preview server**
+(`node .output/server`, IPv4), runs the suite, and tears it down — replacing the
+old `scripts/e2e.mjs`. The prod preview avoids `nuxt dev`'s Vite-proxy /
+cold-compile / IPv6 flakiness. To drive `cairn` by hand against a server you
+already have on `:3000`, drop `--cold-start` (it reuses a running server).
+
+The preview server is booted with two **test-only** env flags (set in
+`cairntrace.config.yml`, never in production): `TERMINA_DISABLE_RATE_LIMIT=1` +
+`TERMINA_TEST_HOOKS=1` together relax the per-IP auth rate limit, so a parallel
+run can register many users from one IP without hitting the 5/burst 429;
+`TERMINA_TEST_HOOKS=1` also turns DevTools off (a cold Vite cache can otherwise
+re-optimize deps mid-navigation and yank the page out from under the browser).
+`TERMINA_TEST_HOOKS` no longer enables any endpoint — the old `/api/test/*` seed
+routes were removed.
 
 ```bash
-# 1. a server with the test hooks (preview = robust; dev = faster to iterate)
-TERMINA_TEST_HOOKS=1 bun run build && \
-  HOST=127.0.0.1 NUXT_SESSION_COOKIE_SECURE=false TERMINA_TEST_HOOKS=1 node .output/server/index.mjs
-#    …or, for quick local iteration: TERMINA_TEST_HOOKS=1 bun run dev
-
-# 2. whole suite (= `bun run test:e2e`; add --junit --stamp-if-green for CI = test:e2e:ci)
+# whole suite (= `bun run test:e2e`; add --junit --stamp-if-green for CI = test:e2e:ci)
 cairn run tests/e2e/flows --config tests/e2e/cairntrace.config.yml --cold-start
 
 # one flow · lint+stamp a contract · heal selectors after a UI rename
-cairn run        tests/e2e/flows/game_screen_renders.yml --config tests/e2e/cairntrace.config.yml --cold-start
-cairn spec verify tests/e2e/flows/game_screen_renders.yml --config tests/e2e/cairntrace.config.yml --stamp
-cairn spec heal   tests/e2e/flows/game_screen_renders.yml
+cairn run        tests/e2e/flows/profile_view.yml --config tests/e2e/cairntrace.config.yml --cold-start
+cairn spec verify tests/e2e/flows/profile_view.yml --config tests/e2e/cairntrace.config.yml --stamp
+cairn spec heal   tests/e2e/flows/profile_view.yml
 ```
 
-`tests/e2e/` holds `flows/` (one behaviour per file, self-documenting headers),
-reusable `actions/` (`login`, `new_game`), `cairntrace.config.yml`, and a
-gitignored `runs/` artifact root. Two flows are `partial`:
-`game_websocket_connection` (connect-on-mount only — the `join_game` frame needs
-a WS-frame verifier cairntrace lacks) and `lobby_queue` (the live queue→match
-transition isn't seeded; the draft→game path is covered by
-`lobby_matchmaking_to_game`).
+`tests/e2e/` holds `flows/` (one behaviour per file, self-documenting headers), a
+reusable `actions/login.yml` (registers a fresh user through the /login Register
+tab), `cairntrace.config.yml`, and a gitignored `runs/` artifact root.
+`lobby_queue` is tagged `partial`: it covers the idle→searching→cancel UI journey
+for a solo queuer (a real match needs 10 players, so the draft→game handoff isn't
+exercised in-browser).
 
-#### Dev seed hooks (`server/api/test/*`)
-
-The point: **stop having to play the game to test it.** These build a *real*
-`GameState` through the same `createGame`/`startGameLoop` path the lobby uses —
-only **matchmaking** is bypassed. Every hook is gated on the explicit
-**`TERMINA_TEST_HOOKS=1`** opt-in (`server/utils/testHooks.ts`): off by default,
-404 + hard-return unless set, with a loud startup warning when enabled. (It used
-to *also* require `NODE_ENV !== 'production'`, but e2e now runs against a
-**production preview build**, so the env var is the sole gate — a real
-deployment must never set it, since `login-as` mints a session for any username.)
-
-| Route | Body | Returns | Purpose |
-| --- | --- | --- | --- |
-| `login-as` | `{ username }` | `{ playerId }` | Mint a session for a dev user (create if missing). Username `\w{3,40}`. |
-| `new-game` | `{ scenario?, heroSelf?, seed?, manualTick? }` | `{ gameId, playerId, url }` | Build a real 5v5 (user + 9 bots), apply the scenario, return the `/play` URL. Skips matchmaking. |
-| `new-draft` | `{ prepick? }` | `{ lobbyId, playerId, team, url }` | Seed a hero draft frozen at the user's pick turn (`prepick` slots pre-picked by bots). The pick runs the real `pickHero`→`game_ready` pipeline. `prepick:5`=mid-draft, `prepick:9`=final pick→game. Skips the live matchmaker. |
-| `advance` | `{ gameId, ticks }` | `{ tick }` | Step a `manualTick` game N ticks immediately (deterministic). |
-| `state` (GET) | `?gameId=` | `GameState` | Engine-truth snapshot for `httpJson`/`script` verifiers (cross-check the DOM against engine state). |
-| `force-end` | `{ gameId, winner }` | `{ ended }` | End a live game → the post-game screen renders. |
-
-**Scenarios** (`applyScenario` in `server/game/dev/scenarios.ts`, pure
-`(state, opts) => GameState` transforms): `fresh`/`laning`, `roshan_dead`,
-`core_vulnerable`, `night`, `self_dead` (kills the human → death overlay; seed
-with `manualTick: true`). Add more as specs need them. Engine-side seeding lives
-in `server/plugins/game-server.ts` (`createDevGame`/`advanceDevGame`),
-`server/game/matchmaking/lobby.ts` (`seedDraftLobby`), and `GameLoop.ts`
-(`runOneTick`).
-
-**Determinism & isolation:** specs seed state (never play); tick-progression
-specs use `manualTick: true` + `advance`; `testUser` is `cairn_${run.token}`
-(per-run identity — Termina broadcasts state per user-id, so a shared user would
-clobber another spec's seeded game). Flush the test Redis between sessions:
-`redis-cli -n 1 FLUSHDB`.
+**Auth & isolation:** flows authenticate for real — `actions/login.yml` registers
+a username/password account through the /login Register tab (which logs you in on
+success). `testUser` is `${run.token}` — a unique per-flow token, kept ≤20 chars
+(the app's username limit), so parallel flows and re-runs never collide on a taken
+username. The preview server points at an isolated test Redis
+(`redis://localhost:6380/1`), which the config flushes before each fresh boot
+(`redis-cli -p 6380 -n 1 flushdb`) so a prior run's in-progress games can't resume
+as zombies.
 
 ### Continuous integration (GitHub Actions)
 

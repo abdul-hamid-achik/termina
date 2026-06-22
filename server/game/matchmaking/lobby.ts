@@ -515,8 +515,9 @@ export function currentPickTurn(
  * human's pick (via the normal `pickHero` path) RESUMES the real draft: the
  * remaining bots auto-pick and the lobby publishes `matchmaking:game_ready`
  * exactly as a live match would. This is the pre-game/draft analogue of
- * `createDevGame` (which seeds an in-progress game). Inert unless called — only
- * the double-gated /api/test/new-draft hook invokes it.
+ * `createDevGame` (which seeds an in-progress game). Currently UNUSED — its only
+ * caller was the removed `/api/test/new-draft` hook; kept for a future draft-seed
+ * harness.
  *
  * `prepick` = how many snake-order slots are filled (by bots) before the human.
  * 9 ⇒ the human makes the FINAL pick, so a single confirm completes the draft

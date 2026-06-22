@@ -9,8 +9,6 @@ intent: >
   completion (hero-pick draft and match-to-game handoff) is driven by the matchmaker over WebSocket
   and is NOT exercised here, as there is no dev hook to seed a draft state.
 mode: normal
-vars:
-  testUser: cairn_${run.token}
 metadata:
   feature: lobby
   tags:

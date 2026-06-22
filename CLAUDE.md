@@ -34,7 +34,7 @@ bun run test:api          # API tests (hitspec, requires running server)
 bun run test:coverage     # All vitest projects with v8 coverage; ENFORCES the thresholds
                           #   in vitest.config.ts (lines 78 / branches 69 / funcs 76 / stmts 76)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
-cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
+cairn run tests/e2e/flows/profile_view.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
 
 # Histoire — visual component workbench (heroes/items/menus/screens/components).
 bun run story:dev         # Histoire dev server (interactive)
@@ -55,8 +55,9 @@ bun run knip              # unused files/deps/exports
 
 # Database (requires PostgreSQL via docker-compose).
 # NOTE: the DB is `drizzle-kit push`-managed — schema.ts is the source of truth.
-# The file-migration history is vestigial/broken; do NOT rely on db:generate/migrate.
-# Apply a schema change with `drizzle-kit push` (or direct SQL for index/dedupe).
+# Apply a schema change with `bun run db:push` (or direct SQL for index/dedupe).
+# There are intentionally NO db:generate/db:migrate recipes — the file-migration
+# history is vestigial/broken, so don't reintroduce them.
 docker compose up -d      # Start PostgreSQL + Redis
 bun run db:studio         # Drizzle Studio GUI
 
@@ -130,7 +131,7 @@ Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
 - **Type imports**: oxlint enforces `import type { ... }` (`typescript/consistent-type-imports`)
 - **Imports**: server code uses the `~~/server/...` root alias, not `../../` (`~~` → repo root, `~`/`@` → `app/`); resolves in Nitro, vitest, and tsc
 - **No `scripts/` folder / no orchestration scripts** (owner preference): there is NO `scripts/` directory — do NOT create one or add `*.mjs|*.ts` glue for builds/tests/servers. Compose behavior from `package.json` scripts (chained with `&&`, env inline) + config + a small idiomatic dev dep. E.g. "boot a server → wait → test → tear down" is `start-server-and-test 'bun run serve:test' <url> 'bun run …'`, NOT a custom runner — this is exactly why the old `scripts/e2e.mjs` → cairntrace `webServer` and why there is no `test-all.mjs`. The one standalone manual *tool* (a bot-match balance simulator) lives in the code as `server/game/dev/simulate-game.ts` — run it via `bun run sim [matches] [maxTicks]` (or directly with `bun server/game/dev/simulate-game.ts …`). With `matches>1` it prints a BALANCE SUMMARY (side win-rate + 2σ significance, length spread, per-hero win-rate with a `*` for win-rates beyond small-sample noise) via the unit-tested `server/game/dev/simStats.ts`. NOT in a `scripts/` folder.
-- **Testing**: Vitest 4 for unit tests — projects live in `test.projects` in `vitest.config.ts` (`bun run test:unit|components|integration`), `vi.fn()` mocks, `describe/it`; hitspec for API tests (`.http` in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that seed an exact game via the `server/api/test/*` dev hooks instead of playing a match — see the **End-to-end** section of `README.md`)
+- **Testing**: Vitest 4 for unit tests — projects live in `test.projects` in `vitest.config.ts` (`bun run test:unit|components|integration`), `vi.fn()` mocks, `describe/it`; hitspec for API tests (`.http` in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that drive the real app — register/log in through the UI, navigate, assert; NO test hooks. Game/engine truth lives in `bun run test:gameplay`. See the **End-to-end** section of `README.md`)
 - **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind 4 utilities extend them (e.g., `text-radiant`, `bg-bg-primary`, `text-dire`). Tailwind 4 is wired via `@tailwindcss/vite` + an `@config` directive in terminal.css that keeps the v3-style `tailwind.config.ts` theme
 
 ## Important Gotchas

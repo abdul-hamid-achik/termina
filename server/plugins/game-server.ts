@@ -1,5 +1,5 @@
 import { Effect, Layer, ManagedRuntime } from 'effect'
-import { testHooksEnabled } from '~~/server/utils/testHooks'
+import { testHooksEnabled, isRealProduction } from '~~/server/utils/testHooks'
 import {
   RedisService,
   makeRedisServiceLive,
@@ -21,7 +21,6 @@ import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
 import {
   startGameLoop,
   stopGameLoop,
-  runOneTick,
   configureActionRelay,
   type GameCallbacks,
 } from '~~/server/game/engine/GameLoop'
@@ -55,7 +54,6 @@ import {
   sendToPeer,
   setPlayerGame,
   clearPlayerGame,
-  hasPeer,
   setInstanceId,
   getInstanceId,
   getGamePlayers,
@@ -68,7 +66,6 @@ import { cleanupLobby, configureLobbyRedis } from '~~/server/game/matchmaking/lo
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
 import { registerAllHeroes } from '~~/server/game/heroes'
-import { applyScenario } from '~~/server/game/dev/scenarios'
 
 /** Check if a game event is visible to a specific player based on vision. */
 export function isEventVisibleToPlayer(
@@ -315,11 +312,12 @@ export async function getGameOwner(gameId: string): Promise<string | null> {
  * Returns false if no such live game exists (e.g. on another instance, or
  * already ended). HARD no-op in production — never end real matches.
  *
- * Gated again at the API layer (server/api/test/force-end.post.ts), but the
- * production guard lives here too so no caller can ever reach it in prod.
+ * Currently has no production caller (its /api/test/force-end route was removed);
+ * kept as a tested admin/test primitive, guarded by isRealProduction() so it can
+ * never end a real match even if a future caller is added.
  */
 export function forceEndGame(gameId: string, winner: TeamId): boolean {
-  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return false
+  if (isRealProduction()) return false
 
   const entry = liveGames.get(gameId)
   if (!entry) return false
@@ -342,23 +340,17 @@ export function forceEndGame(gameId: string, winner: TeamId): boolean {
   }
 }
 
-// ── Dev-only seed hooks (see README.md, Testing section) ──────
-// Build a REAL game directly, bypassing matchmaking, so BDD/e2e specs can land
-// in a known state instead of playing a bot match. The implementation is wired
-// from inside the plugin (it shares the same services + buildCallbacks as the
-// matchmaking path); these top-level shims forward to it and HARD no-op in
-// production. Routes (server/api/test/*) gate again on TERMINA_TEST_HOOKS.
+// ── Tutorial game support ─────────────────────────────────────
+// Build a REAL game directly, bypassing matchmaking, so the single-player
+// tutorial can drop a human into a guided bot match. Wired from inside the plugin
+// (it shares the same services + buildCallbacks as the matchmaking path);
+// `createTutorialGame` is the only entry point. (The dev/e2e `/api/test/*` seed
+// routes that also drove this were removed — e2e drives the real app now.)
 
-export interface DevGameOpts {
+interface DevGameOpts {
   /** The authenticated session user — becomes the human player. */
   humanId: string
   humanHeroId?: string
-  /** Reproducible game id; also reserved for the Phase-B seeded RNG. */
-  seed?: number
-  /** Named scenario to shape the fresh game into. */
-  scenario?: string
-  /** Manual-tick mode: no auto-schedule; ticks are driven by advanceDevGame (A3). */
-  manualTick?: boolean
   /** Map to run on (default full 5v5). 'one_lane' forces bots to the mid lane. */
   mapId?: string
   /** Game mode (default 'normal'). 'tutorial' uses the small guided roster. */
@@ -367,16 +359,9 @@ export interface DevGameOpts {
 
 let _createDevGame: ((opts: DevGameOpts) => Promise<{ gameId: string } | null>) | null = null
 
-/** Dev/test-only: create a real game with no matchmaking. Null in prod / pre-boot. */
-export async function createDevGame(opts: DevGameOpts): Promise<{ gameId: string } | null> {
-  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return null
-  return _createDevGame ? _createDevGame(opts) : null
-}
-
 /**
- * Production: create a single-player tutorial game — the human plus bots on the
- * one-lane map, in tutorial mode. UNLIKE createDevGame this is a real player
- * feature, so it is NOT gated by test hooks (only by being booted). Returns null
+ * Create a single-player tutorial game — the human plus bots on the one-lane map,
+ * in tutorial mode. A real player feature, reachable in production; returns null
  * before the game server has finished starting.
  */
 export async function createTutorialGame(opts: {
@@ -393,38 +378,10 @@ export async function createTutorialGame(opts: {
     : null
 }
 
-/** Dev/test-only: raw GameState snapshot for spec assertions (engine-truth checks). */
-export function getDevRawState(gameId: string): GameState | null {
-  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return null
-  const entry = liveGames.get(gameId)
-  if (!entry) return null
-  try {
-    return Effect.runSync(entry.stateManager.getState(gameId))
-  } catch {
-    return null
-  }
-}
-
-// Manual-tick dev games (created with manualTick: true) — driven by advanceDevGame
-// instead of the fixed-interval loop, so a spec controls time deterministically.
-const _devGameLoops = new Map<
-  string,
-  { stateManager: ReturnType<typeof createInMemoryStateManager>; callbacks: GameCallbacks }
->()
-let _advanceDevGame: ((gameId: string, ticks: number) => Promise<number>) | null = null
-
-/** Dev/test-only: advance a manual-tick dev game by N ticks. 0 in prod / unknown game. */
-export async function advanceDevGame(gameId: string, ticks: number): Promise<number> {
-  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return 0
-  return _advanceDevGame ? _advanceDevGame(gameId, ticks) : 0
-}
-
 /**
- * Dev/test-only: stop + drop a seeded game so it stops ticking. Called from the WS
- * close handler when a dev game's player disconnects with no reconnect (the e2e
- * spec is done). Without this, every non-manual seeded game's loop runs FOREVER —
- * across a suite they pile up and load the single server process until navigations
- * time out. Only touches `dev_` games (which exist only under TERMINA_TEST_HOOKS).
+ * Stop + drop a tutorial/dev game so it stops ticking. Called from the WS close
+ * handler when a `dev_` game's player disconnects with no reconnect, so the loop
+ * doesn't run forever after the human leaves. Only touches `dev_` games.
  */
 export function stopDevGame(gameId: string): void {
   if (!gameId.startsWith('dev_')) return
@@ -432,59 +389,9 @@ export function stopDevGame(gameId: string): void {
   if (!runtime) return
   liveGames.delete(gameId)
   releaseGameOwnership(gameId)
-  _devGameLoops.delete(gameId)
   cleanupGame(gameId)
-  // Interrupt the running loop fiber (no-op for manual games / already-stopped).
+  // Interrupt the running loop fiber (no-op if already stopped).
   void runtime.managedRuntime.runPromise(stopGameLoop(gameId)).catch(() => {})
-}
-
-// ── Zombie dev-game reaper ──────────────────────────────────────
-// A seeded LIVE (non-manualTick) game auto-starts its loop at /api/test/new-game
-// and keeps running the full processTick pipeline + broadcasting every tick even
-// when NO browser peer is connected — e.g. the e2e browser failed to connect under
-// CI load, or a spec ended without a clean WS close (so the close-handler teardown
-// never fired). Those zombies run to natural game-end (~325 ticks at fast-game),
-// spamming "No peer found" and burning CPU; under the parallel e2e suite they
-// saturate CI cores and blow the watchdog budget. stopDevGame only fires on a WS
-// CLOSE, which never comes if the peer never opened — so this reaper catches the
-// never-connected case by polling for dev games with no connected human peer.
-//
-// Grace must exceed the browser's connect time (seed -> cold-start /play nav ->
-// WS join can take ~30s in CI), so we reap only after a sustained peerless window.
-// Test-hooks-only: dev_ games exist only under TERMINA_TEST_HOOKS=1, so there is
-// zero production overhead and real games are never touched.
-const DEV_PEERLESS_REAP_MS = 60_000
-const _devPeerlessSince = new Map<string, number>()
-let _reaperTimer: ReturnType<typeof setInterval> | null = null
-
-function reapPeerlessDevGames(): void {
-  const now = Date.now()
-  for (const gameId of liveGames.keys()) {
-    if (!gameId.startsWith('dev_')) continue
-    const state = getDevRawState(gameId)
-    if (!state || state.phase === 'ended') {
-      _devPeerlessSince.delete(gameId)
-      continue
-    }
-    const humanConnected = Object.values(state.players).some((p) => !isBot(p.id) && hasPeer(p.id))
-    if (humanConnected) {
-      _devPeerlessSince.delete(gameId)
-      continue
-    }
-    let since = _devPeerlessSince.get(gameId)
-    if (since === undefined) {
-      since = now
-      _devPeerlessSince.set(gameId, now)
-    }
-    if (now - since >= DEV_PEERLESS_REAP_MS) {
-      _devPeerlessSince.delete(gameId)
-      gameLog.warn('Reaping peerless dev game (no connected human peer)', {
-        gameId,
-        peerlessMs: now - since,
-      })
-      stopDevGame(gameId)
-    }
-  }
 }
 
 // ── Production liveGames reaper ──────────────────────────────────
@@ -531,21 +438,18 @@ export default defineNitroPlugin(async (nitroApp) => {
   // from the plugin entry point pins the whole hero chain into the build.
   registerAllHeroes()
 
-  // Loud, unmissable warning if the dev/e2e test hooks are enabled. Their gate is
-  // now the explicit TERMINA_TEST_HOOKS=1 opt-in alone (the prod e2e runs against a
-  // production build, so NODE_ENV can't gate them) — they bypass auth (login-as
-  // mints a session for ANY username) and must NEVER be set in a real deployment.
+  // Loud, unmissable warning if the test-only relaxations are enabled. The gate is
+  // the explicit TERMINA_TEST_HOOKS=1 opt-in alone (the prod e2e runs against a
+  // production build, so NODE_ENV can't gate it). It enables no endpoints — the
+  // /api/test/* seed routes were removed — but it DOES relax the auth rate limit
+  // (with TERMINA_DISABLE_RATE_LIMIT) and the tick accelerator, so it must NEVER
+  // be set in a real deployment.
   if (testHooksEnabled()) {
     gameLog.warn(
-      '\n⚠️  TERMINA_TEST_HOOKS=1 — test endpoints (server/api/test/*) are ENABLED.\n' +
-        '   They bypass auth and seed/teardown games. NEVER set this in production.\n',
+      '\n⚠️  TERMINA_TEST_HOOKS=1 — test-only relaxations are ENABLED.\n' +
+        '   Auth rate-limit escape hatch + fast-game accelerator + DevTools off.\n' +
+        '   NEVER set this in production.\n',
     )
-    // Reap peerless seeded games so zombie loops can't pile up across an e2e run.
-    if (!_reaperTimer) {
-      _reaperTimer = setInterval(reapPeerlessDevGames, 15_000)
-      // Don't keep the process alive just for the reaper.
-      ;(_reaperTimer as { unref?: () => void }).unref?.()
-    }
   }
 
   const config = useRuntimeConfig()
@@ -984,7 +888,7 @@ export default defineNitroPlugin(async (nitroApp) => {
   // + buildCallbacks the matchmaking handler uses; the game_ready path is left
   // untouched. Gated by createDevGame() above + the route layer (no-op in prod).
   _createDevGame = async (opts) => {
-    const seed = opts.seed ?? Date.now()
+    const seed = Date.now()
     const gameId = `dev_${seed}_${Math.random().toString(36).slice(2, 6)}`
 
     // Roster. Tutorial = a small guided 2v2 on the one-lane map; otherwise the
@@ -1032,12 +936,7 @@ export default defineNitroPlugin(async (nitroApp) => {
     await managedRuntime.runPromise(
       Effect.gen(function* () {
         yield* stateManager.createGame(gameId, playerSetups, { mapId: opts.mapId, mode: opts.mode })
-        yield* stateManager.updateState(gameId, (s) => {
-          const playing = { ...s, phase: 'playing' as const }
-          return opts.scenario
-            ? applyScenario(playing, opts.scenario, { seed, humanId: opts.humanId })
-            : playing
-        })
+        yield* stateManager.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const }))
       }),
     )
     registerBots(
@@ -1058,34 +957,16 @@ export default defineNitroPlugin(async (nitroApp) => {
     )
     setPlayerGame(opts.humanId, gameId)
     const callbacks = buildCallbacks(players, stateManager)
-    if (opts.manualTick) {
-      // Manual mode: no auto-schedule — ticks are driven by /api/test/advance,
-      // so a spec controls time deterministically (never races the 4s loop).
-      _devGameLoops.set(gameId, { stateManager, callbacks })
-    } else {
-      const snapshotMeta: SnapshotMeta = { players }
-      startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
-      setLiveGameMeta(gameId, snapshotMeta)
-    }
+    const snapshotMeta: SnapshotMeta = { players }
+    startGameLoop(gameId, stateManager, callbacks, managedRuntime, redis, snapshotMeta)
+    setLiveGameMeta(gameId, snapshotMeta)
     gameLog.info('Dev game created', {
       gameId,
       humanId: opts.humanId,
-      scenario: opts.scenario ?? 'fresh',
-      manualTick: !!opts.manualTick,
       mode: opts.mode ?? 'normal',
       mapId: opts.mapId ?? 'default_5v5',
     })
     return { gameId }
-  }
-
-  _advanceDevGame = async (gameId, ticks) => {
-    const g = _devGameLoops.get(gameId)
-    if (!g) return 0
-    const n = Math.max(0, Math.min(200, Math.floor(ticks)))
-    for (let i = 0; i < n; i++) {
-      await runOneTick(gameId, g.stateManager, g.callbacks, managedRuntime)
-    }
-    return n
   }
 
   // Resume any in-progress games whose snapshots survived a restart.
@@ -1192,8 +1073,6 @@ export default defineNitroPlugin(async (nitroApp) => {
     await managedRuntime.dispose()
     _runtime = null
     _createDevGame = null
-    _advanceDevGame = null
-    _devGameLoops.clear()
     gameLog.info('Game server shut down')
   })
 })

@@ -2,6 +2,7 @@
  * Rate limiter for player actions to prevent spam and cheating.
  * Tracks action frequency per player and enforces limits.
  */
+import { isRealProduction } from '~~/server/utils/testHooks'
 
 export interface RateLimitConfig {
   maxActionsPerSecond: number
@@ -32,7 +33,7 @@ const playerStates = new Map<string, PlayerRateLimitState>()
 // neither flag, so they still exercise the real token-bucket behaviour.
 function rateLimitDisabled(): boolean {
   if (process.env.TERMINA_DISABLE_RATE_LIMIT !== '1') return false
-  return process.env.NODE_ENV !== 'production' || process.env.TERMINA_TEST_HOOKS === '1'
+  return !isRealProduction()
 }
 
 // Bound the tracked-key map: when it grows past the cap, evict entries that
