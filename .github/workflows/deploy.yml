@@ -129,7 +129,11 @@ jobs:
           # Decrypt the recipient-sealed deploy secrets with the CI identity (no
           # passphrase), load them into this step's env, then shred the plaintext.
           tvault open --in .env.encrypted --out .env
-          set -a; . ./.env; set +a
+          # Load the dotenv WITHOUT shell-sourcing it: secret values (e.g. the Neon
+          # DB URL) contain `&`/`?`/`=`, and a bare `. ./.env` parse-errors on `&`,
+          # leaving EVERY var empty (=> pulumi "Missing required ... databaseUrl").
+          # Read each line and export the value literally.
+          while IFS='=' read -r k v; do [ -n "$k" ] && export "$k=$v"; done < .env
           rm -f .env
           curl -fsSL https://get.pulumi.com | sh
           export PATH="$HOME/.pulumi/bin:$PATH"
