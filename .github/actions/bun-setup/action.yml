@@ -1,0 +1,26 @@
+name: 'Bun setup + install'
+description: >
+  Install the pinned Bun, restore the bun install cache, and run a frozen
+  install. Collapses the setup-bun + actions/cache + `bun install --frozen-lockfile`
+  block that was copy-pasted into every CI job into a single `uses:` (same pattern
+  as the pg-redis composite). Composite actions can't read the caller's `env`, so
+  the Bun version is an input — pass ${{ env.BUN_VERSION }} from the workflow
+  (CI's single source of truth). Assumes actions/checkout has already run.
+inputs:
+  bun-version:
+    description: Bun version to install (pass ${{ env.BUN_VERSION }}).
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ inputs.bun-version }}
+    - uses: actions/cache@v5
+      with:
+        path: ~/.bun/install/cache
+        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+        restore-keys: ${{ runner.os }}-bun-
+    - name: Install dependencies (frozen lockfile)
+      shell: bash
+      run: bun install --frozen-lockfile

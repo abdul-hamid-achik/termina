@@ -53,6 +53,12 @@ const projectEnvironment = config.get('projectEnvironment') ?? 'Production'
 // add an external CNAME (api → the app's default ingress) at your DNS provider;
 // DO issues + renews TLS. Empty = serve only on the default *.ondigitalocean.app.
 const appDomain = config.get('appDomain') ?? ''
+// Comma-separated origins granted credentialed CORS on /api (the Vercel
+// frontend). Without it the browser blocks authenticated cross-origin calls
+// from terminamoba.com -> api.terminamoba.com (login fails). Env-first so
+// tvault can inject it; else Pulumi config (set in Pulumi.<stack>.yaml).
+const corsAllowedOrigins =
+  process.env.NUXT_CORS_ALLOWED_ORIGINS ?? config.get('corsAllowedOrigins') ?? ''
 
 // ── Secret resolution: env var (tvault-injected) → Pulumi config ──
 function requiredSecret(envName: string, configKey: string): pulumi.Output<string> {
@@ -88,6 +94,16 @@ const envs: digitalocean.types.input.AppSpecServiceEnv[] = [
   { key: 'NODE_ENV', value: 'production', scope: 'RUN_TIME', type: 'GENERAL' },
   { key: 'HOST', value: '0.0.0.0', scope: 'RUN_TIME', type: 'GENERAL' },
   { key: 'PORT', value: '3000', scope: 'RUN_TIME', type: 'GENERAL' },
+  ...(corsAllowedOrigins
+    ? [
+        {
+          key: 'NUXT_CORS_ALLOWED_ORIGINS',
+          value: corsAllowedOrigins,
+          scope: 'RUN_TIME',
+          type: 'GENERAL',
+        } as digitalocean.types.input.AppSpecServiceEnv,
+      ]
+    : []),
   { key: 'NUXT_SESSION_PASSWORD', value: sessionPassword, scope: 'RUN_TIME', type: 'SECRET' },
   { key: 'NUXT_DATABASE_URL', value: databaseUrl, scope: 'RUN_TIME', type: 'SECRET' },
   { key: 'NUXT_REDIS_URL', value: redisUrl, scope: 'RUN_TIME', type: 'SECRET' },

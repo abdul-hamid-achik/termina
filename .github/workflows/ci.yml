@@ -9,8 +9,7 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Least-privilege floor. read-packages lets the optional GHCR mirror path (and
-# any future GITHUB_TOKEN-authenticated pulls) work; widen per-job if ever needed.
+# Least-privilege floor; widen per-job if ever needed.
 permissions:
   contents: read
   packages: read
@@ -20,222 +19,149 @@ env:
   # reads DATABASE_URL. Both point at the CI Postgres published on localhost:5432.
   TEST_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
   DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
-  # Single source of truth for the runtime + image tags used across jobs.
+  # Single source of truth for the Bun runtime + service image tags across jobs.
   BUN_VERSION: '1.3.13'
   POSTGRES_IMAGE: postgres:17-alpine
   REDIS_IMAGE: redis:8-alpine
 
+# Every Bun job opens with `actions/checkout` + the `./.github/actions/bun-setup`
+# composite (pinned Bun + cached `bun install --frozen-lockfile`). Service jobs add
+# `./.github/actions/pg-redis` (Postgres+Redis via retryable docker run).
+
 jobs:
-  # ─────────────────────────── tier 1: cheap static checks (parallel, no services) ───
+  # ── tier 1: cheap static checks + fast tests (parallel, no services) ──────────
   lint:
     name: lint (oxlint)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - name: Lint (oxlint)
-        run: bun run lint
+      - run: bun run lint
 
   format:
     name: format (oxfmt --check)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - name: Format check (oxfmt --check)
-        run: bun run format:check
+      - run: bun run format:check
 
   typecheck:
     name: typecheck (vue-tsc)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - name: Typecheck (nuxt typecheck / vue-tsc)
-        run: bun run typecheck
+      - run: bun run typecheck
 
   knip:
     name: knip (dead-code)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - name: Dead-code check (knip)
-        run: bun run knip
+      - run: bun run knip
 
   unit-tests:
     name: unit tests (vitest)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - name: Unit tests (vitest, node env)
-        run: bun run test:unit
+      - run: bun run test:unit
 
   component-tests:
     name: component tests (vitest)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - name: Component tests (vitest, happy-dom)
-        run: bun run test:components
+      - run: bun run test:components
 
   gameplay-tests:
     name: gameplay tests (in-process engine)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      # The in-process gameplay harness drives the real engine (seed scenario →
-      # act → advance ticks → assert GameState) with NO browser/server/DB, so it's
-      # a fast tier-1 job AND the first REQUIRED gate job that plays game
-      # situations (the browser e2e is still advisory).
-      - name: Gameplay harness (vitest, in-process engine)
-        run: bun run test:gameplay
+      # In-process engine truth (seed → act → advance ticks → assert GameState),
+      # no browser/server/DB. The first REQUIRED gate job that plays game
+      # situations — browser e2e stays advisory.
+      - run: bun run test:gameplay
 
-  # ─────────────────────────── tier 2: needs Postgres+Redis (resilient pulls) ────────
-  # Runs the full vitest suite under coverage (integration + everything else), so
-  # it also owns threshold enforcement — the old separate `coverage` job is folded
-  # in here to avoid a second PG+Redis bootstrap + schema push.
+  # ── tier 2: needs Postgres+Redis ──────────────────────────────────────────────
+  # Runs the full vitest suite under v8 coverage, so it also ENFORCES the coverage
+  # thresholds (the old standalone `coverage` job folded in — one PG+Redis bootstrap).
   integration-tests:
     name: integration + coverage (vitest v8 + postgres)
     runs-on: ubuntu-latest
     needs: [lint, typecheck, unit-tests]
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v5
-
-      # Postgres + Redis via the shared composite action (retryable pulls, not
-      # `services:`). See .github/actions/pg-redis for the rationale + the Docker
-      # Hub auth escape hatch.
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/pg-redis
         with:
           postgres-image: ${{ env.POSTGRES_IMAGE }}
           redis-image: ${{ env.REDIS_IMAGE }}
-
-      - uses: oven-sh/setup-bun@v2
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-
       - name: Push schema into the test DB
         run: bunx drizzle-kit push --force
-      # This job runs the FULL vitest suite under v8 coverage (all projects need
-      # PG+Redis anyway), folding the old standalone advisory `coverage` job in —
-      # one PG+Redis bootstrap + one schema push instead of two, and the
-      # vitest.config.ts thresholds now gate the merge instead of being advisory.
       - name: Integration + coverage (vitest v8 — enforces thresholds)
         run: bun run test:coverage
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/**
           retention-days: 14
           if-no-files-found: ignore
 
-  # ─────────────────────────── tier 2: build (parallel with integration) ─────────────
   build:
     name: build (nuxt)
     runs-on: ubuntu-latest
     needs: [lint, typecheck, unit-tests]
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - name: Build (nuxt build)
-        run: bun run build
+      - run: bun run build
 
-  # ─────────────────────────── advisory: infra (Pulumi) typecheck ─────────────────────
-  # The Pulumi deploy program in infra/ has its own deps + tsconfig and is excluded
-  # from the app typecheck, so compile it here — a type error in the deploy code is
-  # caught in CI rather than at `pulumi up`. npm-managed (Pulumi project). Advisory
-  # for now (NOT in ci-success); promote into ci-success.needs once trusted.
+  # ── advisory: infra (Pulumi) typecheck — npm-managed, own tsconfig ────────────
+  # A type error in the deploy program is caught here, not at `pulumi up`. Advisory
+  # (NOT in ci-success); promote once trusted.
   infra-typecheck:
     name: infra typecheck (pulumi tsc)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -247,120 +173,76 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.json
         working-directory: infra
 
-  # ─────────────────────────── advisory: stories + coverage (NOT in ci-success) ──────
-  # Same advisory posture as e2e: they run and report red/green + upload artifacts,
-  # but do NOT block the merge gate. Promote into ci-success.needs once trusted.
+  # ── advisory: histoire story catalog (NOT in ci-success) ──────────────────────
   stories:
     name: stories (histoire build)
     runs-on: ubuntu-latest
     needs: [lint, typecheck]
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
       - name: Build the Histoire story catalog (advisory — surfaces broken stories)
         run: bun run story:build
       - name: Upload built stories
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: histoire-stories
           path: .histoire/dist/**
           retention-days: 14
           if-no-files-found: ignore
 
-  # (The old standalone `coverage` job was folded into `integration-tests` above —
-  # it ran the identical vitest projects with a second PG+Redis bootstrap + schema
-  # push. Coverage thresholds are now enforced there as part of the merge gate.)
-
-  # ─────────────────────────── tier 3: browser e2e (Cairntrace) ──────────────────────
-  # Needs cairn (not on npm → install from the public GitHub repo) + Chromium for the
-  # playwright backend. Gated on the cheap checks so a flaky browser/install can't mask
-  # core failures. Uploads run artifacts on every outcome for headless debugging.
+  # ── advisory: browser e2e (cairntrace, SEEDED-UI flows only) ──────────────────
+  # Engine/match truth lives in tests/gameplay/; these flows seed via /api/test/*
+  # hooks and never play a real match. NON-BLOCKING bridge: the suite still hangs
+  # in CI post-steps (suspected runner OOM under the playwright backend), so
+  # `continue-on-error` + the shell `timeout` keep the run green. Remove both +
+  # promote into ci-success once the hang is fixed (see the CI/CD polish plan).
   e2e:
     name: e2e (cairntrace, chromium)
     runs-on: ubuntu-latest
     needs: [lint, typecheck, unit-tests, build]
-    # ADVISORY + NON-BLOCKING (temporary bridge). The suite currently hangs in CI
-    # under the playwright backend AFTER a flow's steps complete (observed ~5
-    # flows in on auth_register / game_ascii_map — all step snapshots captured,
-    # then no run.json) — a CI-sandbox-specific hang that does NOT reproduce
-    # locally. The cairntrace in-process evaluate-floor fix (5a20eb1) was a real
-    # robustness win but not this root cause. `continue-on-error` keeps the
-    # overall run GREEN; the 12-min cap stops the old 30-min waste (a healthy run
-    # is ~6 min). REMOVE both + promote into ci-success once the hang is traced
-    # and fixed (see the CI/CD polish plan).
     continue-on-error: true
     timeout-minutes: 12
     env:
-      # The webServer block in tests/e2e/cairntrace.config.yml pins HOST/PORT,
-      # TERMINA_TEST_HOOKS, TERMINA_TEST_FAST_GAME, NUXT_SESSION_*, and the db1
-      # NUXT_REDIS_URL. The ONE thing it intentionally inherits is the DB URL, so
-      # CI points the server it spawns at termina_test here.
+      # cairntrace's webServer block pins HOST/PORT/TEST_HOOKS/SESSION/db1 REDIS and
+      # inherits only the DB URL, pointed at termina_test here.
       NUXT_DATABASE_URL: postgresql://termina:termina@localhost:5432/termina_test
     steps:
-      - uses: actions/checkout@v5
-
-      # Postgres + Redis via the shared composite action (retryable pulls).
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/pg-redis
         with:
           postgres-image: ${{ env.POSTGRES_IMAGE }}
           redis-image: ${{ env.REDIS_IMAGE }}
-
-      # Flush test Redis (DB 1) so a previous run's zombie games don't leak in.
-      # (Belt-and-braces: the webServer `command` also flushes db1 just before it
-      # boots — but redis-cli may not exist on the runner host, so do it in-container
-      # here too.)
+      # Flush test Redis db1 so a previous run's zombie games don't leak in.
       - name: Flush test Redis (DB 1)
         run: docker exec redis redis-cli -n 1 flushdb
-
-      - uses: oven-sh/setup-bun@v2
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-
-      - name: Install the cairn CLI (Cairntrace is not published to npm)
+      - name: Install the cairn CLI (Cairntrace is not on npm)
         run: bun add --global github:abdul-hamid-achik/cairntrace
-
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-chromium
           restore-keys: ${{ runner.os }}-playwright-
       - name: Install Chromium for the playwright backend
         run: bunx playwright install --with-deps chromium
-
       - name: Push schema into the test DB
         run: bunx drizzle-kit push --force
-
-      # cairn's webServer block builds (bun run build) + boots the prod preview
-      # itself, so there is no separate build/boot step here anymore.
+      # cairn's webServer block builds + boots the prod preview itself. The shell
+      # `timeout` fails this STEP (exit 124) before the job timeout-minutes — a
+      # timeout-minutes kill is "cancelled", which continue-on-error does NOT mask.
       - name: Run the e2e suite (cairn builds + boots the server, then runs flows)
-        # Shell-level timeout so a HANG fails this STEP (exit 124) before the job's
-        # timeout-minutes fires. A job killed by timeout-minutes is "cancelled",
-        # which job-level continue-on-error does NOT override (the whole run would
-        # still go red). A failed STEP + continue-on-error keeps the run green.
-        # Healthy run ~6 min; remove the timeout + continue-on-error once the CI
-        # hang is fixed and e2e is promoted into ci-success (see polish plan).
         run: timeout -k 30s 600 bun run test:e2e:ci
-
       - name: Upload Cairntrace run artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-runs
           path: tests/e2e/runs/**
@@ -368,19 +250,14 @@ jobs:
           if-no-files-found: ignore
       - name: Upload JUnit report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-junit
           path: '**/junit*.xml'
           retention-days: 14
           if-no-files-found: ignore
 
-  # ─────────────────────────── advisory: API contract tests (hitspec) ─────────────────
-  # hitspec (the user's own tool: github.com/abdul-hamid-achik/hitspec) is distributed
-  # via a Homebrew tap, NOT npm — so install the GoReleaser linux binary from the GitHub
-  # release. Boots the prod server in the background (TERMINA_DISABLE_RATE_LIMIT so the
-  # collections can mint users from one IP) and runs the .http contracts against it.
-  # Advisory for now (not in ci-success) — promote once it's green on CI hardware.
+  # ── advisory: API contract tests (hitspec — GoReleaser binary, not npm) ───────
   api-tests:
     name: api tests (hitspec)
     runs-on: ubuntu-latest
@@ -397,23 +274,14 @@ jobs:
       HOST: 127.0.0.1
       PORT: '3000'
     steps:
-      - uses: actions/checkout@v5
-
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/pg-redis
         with:
           postgres-image: ${{ env.POSTGRES_IMAGE }}
           redis-image: ${{ env.REDIS_IMAGE }}
-
-      - uses: oven-sh/setup-bun@v2
+      - uses: ./.github/actions/bun-setup
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-
       - name: Install hitspec (GoReleaser linux binary from the GitHub release)
         run: |
           set -euo pipefail
@@ -424,12 +292,10 @@ jobs:
           install -m755 "$(find "$tmp" -name hitspec -type f | head -1)" "$HOME/.local/bin/hitspec"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           "$HOME/.local/bin/hitspec" --version
-
       - name: Push schema into the test DB
         run: bunx drizzle-kit push --force
       - name: Build the app (hitspec runs against the prod server)
         run: bun run build
-
       - name: Boot the server, run hitspec, tear it down
         run: |
           set -uo pipefail
@@ -445,25 +311,18 @@ jobs:
           exit $code
       - name: Upload server log on failure
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: api-server-log
           path: /tmp/api-server.log
           retention-days: 14
           if-no-files-found: ignore
 
-  # ─────────────────────────── aggregate: one stable required check ──────────────────
-  # Make THIS the single required status check in branch protection. It lets you evolve
-  # the internal job graph without editing protection rules. Fails if any needed job
-  # failed OR was cancelled (a skipped dependency would otherwise let `success()` pass).
-  #
-  # NOTE: `e2e` and `stories` are intentionally NOT in this list — they run and
-  # report their own red/green (and upload artifacts) but do NOT block the merge
-  # gate yet. Promote one by adding it to `needs` below once it's consistently green
-  # in CI (e2e is still being stabilized on CI hardware). Coverage is no longer a
-  # separate advisory job — it's folded into `integration-tests`, so its thresholds
-  # now gate. `gameplay-tests` (in-process engine) is required: it's fast and has no
-  # browser/server flakiness, so it gates from day one.
+  # ── aggregate: the single required branch-protection check ────────────────────
+  # Keep THIS as the only required status check — it lets the internal job graph
+  # change without editing protection rules. Fails if any needed job failed OR was
+  # cancelled. e2e / stories / api-tests / infra-typecheck are advisory (not listed);
+  # promote one by adding it below once it's consistently green.
   ci-success:
     name: ci-success
     runs-on: ubuntu-latest
@@ -486,4 +345,3 @@ jobs:
             exit 1
           fi
           echo "all CI jobs succeeded"
-
