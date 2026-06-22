@@ -34,7 +34,7 @@ bun run test:api          # API tests (hitspec, requires running server)
 bun run test:coverage     # All vitest projects with v8 coverage; ENFORCES the thresholds
                           #   in vitest.config.ts (lines 78 / branches 69 / funcs 76 / stmts 76)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
-cairn run tests/e2e/flows/objectives_seeded.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
+cairn run tests/e2e/flows/profile_view.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
 
 # Histoire — visual component workbench (heroes/items/menus/screens/components).
 bun run story:dev         # Histoire dev server (interactive)

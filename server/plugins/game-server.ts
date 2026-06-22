@@ -312,8 +312,9 @@ export async function getGameOwner(gameId: string): Promise<string | null> {
  * Returns false if no such live game exists (e.g. on another instance, or
  * already ended). HARD no-op in production — never end real matches.
  *
- * Gated again at the API layer (server/api/test/force-end.post.ts), but the
- * production guard lives here too so no caller can ever reach it in prod.
+ * Currently has no production caller (its /api/test/force-end route was removed);
+ * kept as a tested admin/test primitive, guarded by isRealProduction() so it can
+ * never end a real match even if a future caller is added.
  */
 export function forceEndGame(gameId: string, winner: TeamId): boolean {
   if (isRealProduction()) return false
