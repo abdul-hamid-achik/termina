@@ -118,12 +118,6 @@ function applyPlayerUpdates(
   return newPlayers
 }
 
-// ── Item Stat Bonuses ─────────────────────────────────────────
-
-// Implementation moved to EffectiveStats (single authority for combat stats);
-// re-exported here for backward compatibility.
-export { getItemStatBonuses } from './EffectiveStats'
-
 /**
  * Resolve a zone-local creep index to the creep and its global array index.
  * Clients (zone panel, autocomplete) count creeps within the player's zone —
