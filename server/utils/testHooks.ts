@@ -22,3 +22,14 @@
 export function testHooksEnabled(): boolean {
   return process.env.TERMINA_TEST_HOOKS === '1'
 }
+
+/**
+ * Whether this is a REAL production server — a production build that is NOT an
+ * e2e/test-relaxed preview. The single source of truth for the recurring
+ * `NODE_ENV === 'production' && !testHooksEnabled()` check: prod-only guards run
+ * when this is true; test-only relaxations (rate-limit escape, fast-game) are
+ * refused when this is true. See the security model above.
+ */
+export function isRealProduction(): boolean {
+  return process.env.NODE_ENV === 'production' && !testHooksEnabled()
+}

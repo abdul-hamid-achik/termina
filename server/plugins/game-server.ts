@@ -1,5 +1,5 @@
 import { Effect, Layer, ManagedRuntime } from 'effect'
-import { testHooksEnabled } from '~~/server/utils/testHooks'
+import { testHooksEnabled, isRealProduction } from '~~/server/utils/testHooks'
 import {
   RedisService,
   makeRedisServiceLive,
@@ -316,7 +316,7 @@ export async function getGameOwner(gameId: string): Promise<string | null> {
  * production guard lives here too so no caller can ever reach it in prod.
  */
 export function forceEndGame(gameId: string, winner: TeamId): boolean {
-  if (process.env.NODE_ENV === 'production' && !testHooksEnabled()) return false
+  if (isRealProduction()) return false
 
   const entry = liveGames.get(gameId)
   if (!entry) return false
