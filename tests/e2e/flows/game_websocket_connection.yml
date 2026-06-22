@@ -60,10 +60,11 @@ outcomes:
           params.get('gameId'); const bar =
           document.querySelector('[data-testid="game-state-bar"]'); const barText = bar ?
           bar.textContent : ''; return fetch('/api/test/state?gameId=' + encodeURIComponent(gameId),
-          { credentials: 'include' }).then((r) => r.json()).then((s) => { const serverTick = s.tick
-          ?? 0; const online = /\[ONLINE/.test(barText); return { ok: online && serverTick > 0,
-          evidence: 'serverTick=' + serverTick + ' online=' + online + ' bar=' +
-          barText.replace(/\s+/g, ' ').trim().slice(0, 120) }; });
+          { credentials: 'include', signal: AbortSignal.timeout(8000) }).then((r) =>
+          r.json()).then((s) => { const serverTick = s.tick ?? 0; const online =
+          /\[ONLINE/.test(barText); return { ok: online && serverTick > 0, evidence: 'serverTick=' +
+          serverTick + ' online=' + online + ' bar=' + barText.replace(/\s+/g, ' ').trim().slice(0,
+          120) }; });
   - id: clean_console
     description: the game screen loads and connects with no console errors
     verify:
@@ -80,4 +81,4 @@ steps:
     snapshot:
       interactive: true
       label: in-game screen with WebSocket online
-contractHash: sha256:97e964a31c7d930be8bae6669ba855aa69bd3b4cfaf86a3a00e15350bbbc71c3
+contractHash: sha256:1bce01baa2772b9908d4cf8421ecb52d4f0bdedf15ff1fbfe3412ef9548a1475

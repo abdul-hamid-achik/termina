@@ -8,3 +8,7 @@ node_modules/
 *.env
 .env
 .env.*
+# …except the recipient-sealed (v2) deploy secrets, which ARE commit-safe:
+# ciphertext sealed to the `ci` tvault identity, decrypted in CI with
+# TVAULT_IDENTITY_KEY. Create with: tvault -p termina seal --recipient <ci-pub> --out infra/.env.encrypted
+!.env.encrypted

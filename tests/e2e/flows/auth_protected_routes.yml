@@ -33,7 +33,7 @@ outcomes:
             const fails = [];
             const landings = {};
             for (const route of routes) {
-              const res = await fetch(route, { redirect: 'follow', headers: { accept: 'text/html' } });
+              const res = await fetch(route, { redirect: 'follow', headers: { accept: 'text/html' }, signal: AbortSignal.timeout(8000) });
               const finalPath = new URL(res.url, window.location.origin).pathname;
               landings[route] = { status: res.status, finalPath };
               if (res.status !== 200) fails.push(route + ' returned status ' + res.status);
@@ -78,4 +78,4 @@ steps:
     wait:
       text: authenticate to continue
       timeoutMs: 10000
-contractHash: sha256:61f07f480f2d0e9b43b90b535ed6cbcc12afafdcc0116b44b3dc277db72ba4a5
+contractHash: sha256:11cda7512132f4c43533d0db442e3f25856b09e602777f1847b8c503ff221f0c

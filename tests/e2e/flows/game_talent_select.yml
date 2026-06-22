@@ -31,10 +31,10 @@ outcomes:
         run: >
           const params = new URLSearchParams(window.location.search); const gameId =
           params.get('gameId'); const playerId = params.get('playerId'); return
-          fetch('/api/test/state?gameId=' + encodeURIComponent(gameId), { credentials: 'include'
-          }).then((r) => r.json()).then((s) => { const p = s.players && s.players[playerId]; const t
-          = p && p.talents ? p.talents.tier10 : null; return { ok: !!t, evidence: 'talents=' +
-          JSON.stringify(p && p.talents) }; });
+          fetch('/api/test/state?gameId=' + encodeURIComponent(gameId), { credentials: 'include',
+          signal: AbortSignal.timeout(8000) }).then((r) => r.json()).then((s) => { const p =
+          s.players && s.players[playerId]; const t = p && p.talents ? p.talents.tier10 : null;
+          return { ok: !!t, evidence: 'talents=' + JSON.stringify(p && p.talents) }; });
 steps:
   - use: login
   - id: seed_manual
@@ -78,4 +78,4 @@ steps:
     snapshot:
       interactive: true
       label: talent picker after choosing the left option
-contractHash: sha256:79ad29566d8f2a57b63d6e46397a4d3d5564f28b56a6108e49b07e814fd386c0
+contractHash: sha256:b13c77b718b1bd7a898146197331558135f3d87592a11111f82ab35d5fdbdf97

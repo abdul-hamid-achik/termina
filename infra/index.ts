@@ -49,6 +49,10 @@ const registryTier = config.get('registryTier') ?? 'basic'
 const createProject = config.getBoolean('createProject') ?? false
 const projectName = config.get('projectName') ?? 'termina'
 const projectEnvironment = config.get('projectEnvironment') ?? 'Production'
+// Optional custom domain for the App (e.g. api.terminamoba.com). After deploy,
+// add an external CNAME (api → the app's default ingress) at your DNS provider;
+// DO issues + renews TLS. Empty = serve only on the default *.ondigitalocean.app.
+const appDomain = config.get('appDomain') ?? ''
 
 // ── Secret resolution: env var (tvault-injected) → Pulumi config ──
 function requiredSecret(envName: string, configKey: string): pulumi.Output<string> {
@@ -100,6 +104,7 @@ const app = new digitalocean.App('termina-ws', {
   spec: {
     name: appName,
     region,
+    ...(appDomain ? { domainNames: [{ name: appDomain, type: 'PRIMARY' }] } : {}),
     // Ops alerts → the DO team's notification email by default (no destinations
     // block needed). App-level: deploy + domain failures.
     alerts: [{ rule: 'DEPLOYMENT_FAILED' }, { rule: 'DOMAIN_FAILED' }],

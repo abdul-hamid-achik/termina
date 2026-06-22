@@ -62,21 +62,26 @@ section below.
 2. **Vercel — frontend**: deploy the Nuxt app (leave `NUXT_PUBLIC_*` unset for now).
 3. **DO — Spaces**: create a Spaces access-key pair, then the state bucket +
    versioning (see [Self-managed state backend](#self-managed-state-backend-digitalocean-spaces)).
-4. **Secrets — tvault**: store `NUXT_*`, `DIGITALOCEAN_TOKEN`, the Spaces `AWS_*`
-   keys, and `PULUMI_CONFIG_PASSPHRASE` (see [Secrets with tvault](#secrets-with-tvault)).
+4. **Secrets — tvault** (`tvault use termina`): store `NUXT_*`, `DIGITALOCEAN_TOKEN`,
+   and the Spaces `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION`.
+   (`PULUMI_CONFIG_PASSPHRASE` is **already generated + stored**; the `ci` identity
+   + `TVAULT_IDENTITY_KEY` GitHub secret are **already set up**.)
 5. **Pulumi — first init (local)**: `cd infra && npm install && tvault run --
    pulumi stack init prod`. This validates the backend URL — if it errors on
    bucket addressing, append `&s3ForcePathStyle=true` to `Pulumi.yaml`.
-6. **First deploy**: `tvault run -- pulumi up` (or push to `main` once the GitHub
-   secrets in [CI](#ci) are set).
-7. **Wire the frontend**: set Vercel `NUXT_PUBLIC_API_URL` = `pulumi stack output
+6. **Seal deploy secrets for CI**: `tvault -p termina seal --recipient <ci-public>
+   --out infra/.env.encrypted && git add infra/.env.encrypted && git commit` (the
+   commit-safe ciphertext CI decrypts — see [CI](#ci)). Re-seal when a secret changes.
+7. **First deploy**: `tvault run -- pulumi up` locally, or push to `main` (CI deploys
+   via the sealed file + `TVAULT_IDENTITY_KEY`).
+8. **Wire the frontend**: set Vercel `NUXT_PUBLIC_API_URL` = `pulumi stack output
    vercelApiUrl` and `NUXT_PUBLIC_WS_URL` = `pulumi stack output vercelWsUrl`;
    redeploy Vercel.
-8. **Lock down CORS**: set `NUXT_CORS_ALLOWED_ORIGINS` (on the DO side) to the
+9. **Lock down CORS**: set `NUXT_CORS_ALLOWED_ORIGINS` (on the DO side) to the
    Vercel origin — until then the API echoes any origin.
-9. **Alerts**: set a team notification email in the DO console (alerts are
-   pre-declared — see [Alerts](#alerts)).
-10. **Smoke test**: `curl https://<app>/api/health` → `{"status":"ok",…}`, then
+10. **Alerts**: set a team notification email in the DO console (alerts are
+    pre-declared — see [Alerts](#alerts)).
+11. **Smoke test**: `curl https://<app>/api/health` → `{"status":"ok",…}`, then
     connect a client and confirm a game starts and ticks.
 
 **Before heavy traffic — open hardening items:**
@@ -187,9 +192,18 @@ tvault-injected env vars are picked up automatically and wrapped in
 `pulumi.secret()` (encrypted in state). If you'd rather not use tvault, set them
 the classic way: `pulumi config set --secret termina-infra:databaseUrl …`.
 
-> Note: a running `tvault mcp` server holds an exclusive lock on `~/.tvault/vault.db`.
-> If a `tvault` CLI command hangs/times out, stop that server first (or run the
-> commands through the MCP-connected agent).
+tvault ≥ 0.12.0 niceties: `tvault run --only DIGITALOCEAN_TOKEN,NUXT_DATABASE_URL,…
+-- pulumi up` injects just the keys the deploy needs (least-privilege); or push
+secrets into Pulumi's own config with `tvault env --format pulumi-config --stack
+prod | sh`. For CI, share the deploy project with a `ci` identity and run
+`tvault run --identity ci -- pulumi up` (one `TVAULT_IDENTITY_KEY`, no per-secret
+GitHub secrets) — see tvault's Pulumi & CI/CD guides.
+
+> **tvault ≥ 0.12.0**: a running `tvault mcp` server now coexists with the CLI
+> (reopen-per-request) — CLI commands no longer block on it. If an mcp process
+> started by an older build is still running, restart it to pick up 0.12.0; until
+> then the CLI reports `vault is locked by another tvault process` and you can
+> stop that process or read via `tvault agent start`.
 
 ## Deploy
 
@@ -226,20 +240,39 @@ pulumi stack output vercelWsUrl    # -> NUXT_PUBLIC_WS_URL   (wss://…)
 ## CI
 
 `.github/workflows/deploy.yml` builds + pushes the image to DOCR, then runs
-`pulumi up` (replacing the old `doctl apps update --spec` step) via the Pulumi
-CLI, deploying the freshly-built `:<git-sha>` image. Required **GitHub secrets**:
+`pulumi up`, deploying the freshly-built `:<git-sha>` image. Deploy secrets use
+**tvault identity mode** (passphrase-free): the deploy secrets are
+recipient-sealed into a committed `infra/.env.encrypted` (sealed to the `ci`
+identity), and CI decrypts it with a single secret — no per-secret GitHub secrets,
+no vault passphrase in CI.
 
-| Secret | Maps to env | Purpose |
-| --- | --- | --- |
-| `SPACES_ACCESS_KEY_ID` | `AWS_ACCESS_KEY_ID` | DO Spaces key — state backend |
-| `SPACES_SECRET_ACCESS_KEY` | `AWS_SECRET_ACCESS_KEY` | DO Spaces secret — state backend |
-| `PULUMI_CONFIG_PASSPHRASE` | (same) | secrets-provider passphrase |
-| `DIGITALOCEAN_ACCESS_TOKEN` | `DIGITALOCEAN_TOKEN` | DO provider (already present) |
-| `NUXT_SESSION_PASSWORD`, `NUXT_DATABASE_URL`, `NUXT_REDIS_URL` | (same) | app runtime secrets (`index.ts` reads env-first) |
+**GitHub secrets** (the only ones the deploy job needs):
 
-The `prod` stack must be initialized in the Space (a one-time local
-`pulumi stack init prod`) **before** the first CI run. `.github/do-app-spec.yaml`
-and the `DO_APP_ID` secret are no longer used by this path.
+| Secret | Purpose |
+| --- | --- |
+| `TVAULT_IDENTITY_KEY` | the `ci` identity's private key (`tvault-key1…`); decrypts `infra/.env.encrypted`. **Already set.** |
+| `DIGITALOCEAN_ACCESS_TOKEN` | `doctl registry login` for the image push (build step). |
+| `DO_REGISTRY_NAME` | DOCR registry name for the image path. |
+
+**The sealed deploy secrets** live in the tvault `termina` project and get sealed
+into `infra/.env.encrypted`: `DIGITALOCEAN_TOKEN` (Pulumi provider), `AWS_ACCESS_KEY_ID`
+/ `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` (Spaces backend), `PULUMI_CONFIG_PASSPHRASE`
+(already generated + stored), and `NUXT_SESSION_PASSWORD` / `NUXT_DATABASE_URL` /
+`NUXT_REDIS_URL` (+ optional OAuth).
+
+**One-time, after you've stored the real secrets in the vault** (`tvault use termina`):
+
+```bash
+# seal the whole termina project to the ci identity → commit-safe ciphertext
+tvault -p termina seal --recipient <ci-public-tvault1…> --out infra/.env.encrypted
+git add infra/.env.encrypted && git commit -m "chore(deploy): seal ci deploy secrets"
+```
+
+Re-run that `seal` + commit whenever a deploy secret changes. The `prod` stack must
+also be initialized in the Space (a one-time local `pulumi stack init prod`) before
+the first CI run. `.github/do-app-spec.yaml` and `DO_APP_ID` are no longer used.
+
+> Local deploys don't need the sealed file — just `tvault run -- pulumi up`.
 
 ## Alerts
 

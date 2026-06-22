@@ -10,6 +10,7 @@ config:
   termina-infra:instanceSize: basic-xxs
   termina-infra:imageRepository: termina-ws
   termina-infra:imageTag: latest
-  termina-infra:registryName: termina
+  termina-infra:registryName: terminamoba
   termina-infra:createRegistry: 'false'
   termina-infra:registryTier: basic
+  termina-infra:appDomain: api.terminamoba.com

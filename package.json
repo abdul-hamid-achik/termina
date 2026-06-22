@@ -36,7 +36,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "knip": "knip",
-    "prepare": "lefthook install"
+    "prepare": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then lefthook install; fi"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.1.0",

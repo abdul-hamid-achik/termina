@@ -13,10 +13,14 @@ RUN bun install --frozen-lockfile
 
 # Copy the rest and build the Nitro server.
 COPY . .
-RUN bun run build
+# `bun install` above ran the `nuxt prepare` postinstall before the source was
+# copied, leaving a stale .nuxt with incomplete auto-import types (e.g. the
+# nuxt-auth-utils server utils). Remove it so `nuxt build` regenerates types from
+# the full source — matching the CI build, which installs after checkout.
+RUN rm -rf .nuxt && bun run build
 
 # ── Runtime ───────────────────────────────────────────────────────
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 WORKDIR /app
 
 # Nitro's server output is self-contained — just copy .output (owned by the
@@ -29,7 +33,7 @@ ENV PORT=3000
 
 EXPOSE 3000
 
-# Drop root: node:22-slim ships a built-in unprivileged `node` user. The server
+# Drop root: node:24-slim ships a built-in unprivileged `node` user. The server
 # binds 3000 (>1024) and writes nothing to the app dir at runtime (all state
 # lives in Redis/Postgres), so it runs fine unprivileged. Standard hardening.
 USER node
