@@ -23,7 +23,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Player not found' })
   }
 
+  // Per-hero record is public (W/L + KDA per hero) — powers the profile's
+  // "most played heroes" panel.
+  const heroStats = await Effect.runPromise(runtime.dbService.getHeroStats(playerId))
+
   // Don't expose sensitive fields
   const { email: _email, passwordHash: _passwordHash, ...publicProfile } = player
-  return { player: publicProfile }
+  return { player: publicProfile, heroStats }
 })
