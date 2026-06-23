@@ -33,6 +33,11 @@ export default defineConfig({
         '**/*.d.ts',
         '**/*.config.*',
         'app/**/*.story.vue',
+        // Route components (pages) are exercised by cairntrace e2e + render
+        // checks, not unit tests — per the project's responsibility split (UI/e2e
+        // → cairntrace, logic → unit). Counting them in UNIT coverage just drags
+        // the logic bar down for code that's covered elsewhere.
+        'app/pages/**',
         'server/db/migrations/**',
         'server/game/dev/simulate-game.ts', // standalone manual tool (its simStats helper IS covered)
         '.nuxt/**',
