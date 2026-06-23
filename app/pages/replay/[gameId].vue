@@ -181,15 +181,19 @@ function heroName(id: string | null): string {
   return HEROES[id]?.name ?? id
 }
 
-// Initialise scrubber to last tick once data arrives.
-// Prefer the frame count when available so the slider lines up with the
-// per-tick frames we actually rendered.
+// Initialise the scrubber to the last tick ONCE data arrives. Guarded so it
+// fires only on first load — without `inited` it would re-trigger whenever
+// scrubTick returns to 0 (e.g. play-from-the-top), yanking the scrub back to
+// the end. Prefer the frame count so the slider lines up with rendered frames.
+let inited = false
 watchEffect(() => {
-  if (scrubTick.value !== 0) return
+  if (inited) return
   if (framesData.value?.totalTicks) {
     scrubTick.value = framesData.value.totalTicks
+    inited = true
   } else if (data.value) {
     scrubTick.value = data.value.state.tick
+    inited = true
   }
 })
 </script>
