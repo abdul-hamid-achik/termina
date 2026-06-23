@@ -6,9 +6,10 @@ intent: >
   that overflows horizontally (documentElement.scrollWidth > innerWidth) makes the terminal UI pan
   sideways on phones, which it must never do. Each page is rendered into a 390px-wide frame so the
   mobile breakpoints fire exactly as on a phone, and its rendered width is measured directly. Covers
-  every public page: home (/), login (/login), learn (/learn) and leaderboard (/leaderboard) all fit
-  at phone width. (/learn previously overflowed at ~468px — its wide command/targeting tables now
-  scroll inside their panels and TerminalPanel carries min-w-0, so the page itself fits the phone.)
+  every public page: home (/), login, learn, leaderboard, and the learning pages heroes, items and
+  lore all fit at phone width. (/learn previously overflowed at ~468px — its wide command/targeting
+  tables now scroll inside their panels and TerminalPanel carries min-w-0, so the page fits the
+  phone.)
 mode: normal
 viewport:
   width: 390
@@ -24,15 +25,15 @@ metadata:
 outcomes:
   - id: public_pages_no_horizontal_overflow
     description: >
-      The home (/), login (/login), learn (/learn) and leaderboard (/leaderboard) pages each
-      rendered at a 390px phone viewport have no horizontal overflow (documentElement.scrollWidth <=
-      innerWidth + 1px) and genuinely render at phone width.
+      Every public page — home (/), login, learn, leaderboard, and the learning pages heroes, items
+      and lore — rendered at a 390px phone viewport has no horizontal overflow
+      (documentElement.scrollWidth <= innerWidth + 1px) and genuinely renders at phone width.
     verify:
       script:
         run: >
           return (async () => {
             const PHONE_WIDTH = 390;
-            const routes = ['/', '/login', '/learn', '/leaderboard'];
+            const routes = ['/', '/login', '/learn', '/leaderboard', '/heroes', '/items', '/lore'];
             const results = {};
             const fails = [];
             const frame = document.createElement('iframe');
@@ -124,4 +125,4 @@ steps:
     wait:
       text: where every command is a kill
       timeoutMs: 10000
-contractHash: sha256:7197380b763c19479330f2d366229ff97840a7216e89c51ee416f221f3d55765
+contractHash: sha256:ebab99c46cb4a1da75f9be465a3f1c658d528322d7626baa76db15fba6f15bd8
