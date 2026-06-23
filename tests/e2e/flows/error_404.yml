@@ -1,0 +1,37 @@
+version: 1
+name: error_404
+intent: An unknown route renders the terminal-themed error page (ERROR 404 — segment not found) with
+  a recovery link, instead of a bare default error screen.
+mode: normal
+metadata:
+  feature: navigation
+  tags:
+    - error
+    - public
+outcomes:
+  - id: themed_404_renders
+    description: the themed 404 error line renders
+    verify:
+      text:
+        contains: ERROR 404
+  - id: explains_not_found
+    description: the 404 is explained in-theme
+    verify:
+      text:
+        contains: segment not found
+  - id: offers_recovery_link
+    description: a recovery link back to the learn guide is offered
+    verify:
+      count:
+        selector: a[href="/learn"]
+        atLeast: 1
+steps:
+  - id: open_unknown_route
+    open:
+      path: /this-route-does-not-exist
+      waitUntil: domcontentloaded
+  - id: wait_for_error
+    wait:
+      text: ERROR 404
+      timeoutMs: 10000
+contractHash: sha256:e5ec133a09e1367dbaa1ad2f36b1763d1f3f68a08a2fb4798e477ac6b53df234
