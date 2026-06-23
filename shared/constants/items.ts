@@ -1,4 +1,4 @@
-import type { ItemDef } from '~~/shared/types/items'
+import type { ItemDef, ItemCategory } from '~~/shared/types/items'
 
 // ── Starter Items (cost <= 500) ─────────────────────────────────────
 
@@ -728,6 +728,107 @@ export const ITEM_IDS = Object.keys(ITEMS)
 export function getItem(id: string): ItemDef | undefined {
   return ITEMS[id]
 }
+
+/**
+ * Thematic shop sections for the items reference page (/items), mirroring the
+ * curated grouping in the ITEMS registry above. Order is the browse order;
+ * ids within a section keep registry order (the page sorts by cost). The set of
+ * ids across all categories must exactly equal Object.keys(ITEMS) — enforced by
+ * a structural test so adding an item without categorizing it fails the build.
+ */
+export const ITEM_CATEGORIES: ItemCategory[] = [
+  {
+    id: 'starter',
+    label: 'Starter',
+    blurb: 'Cheap opening buys — lane sustain, regen and modest all-round stats to survive early.',
+    ids: [
+      'healing_salve',
+      'mana_vial',
+      'iron_branch',
+      'power_treads',
+      'ring_of_health',
+      'sobi_mask',
+      'blades_of_attack',
+      'chainmail',
+      'cloak',
+      'boots_of_speed',
+    ],
+  },
+  {
+    id: 'attack',
+    label: 'Attack',
+    blurb:
+      'Raw physical power — attack damage, crits and armor shred for carries and right-clickers.',
+    ids: [
+      'desolator',
+      'crystalys',
+      'daedalus',
+      'maelstrom',
+      'monkey_king_bar',
+      'divine_rapier',
+      'silver_edge',
+      'skull_basher',
+      'null_pointer',
+      'segfault_blade',
+    ],
+  },
+  {
+    id: 'magic',
+    label: 'Magic',
+    blurb: 'Spell power and burst — amplify magical damage or nuke a target outright.',
+    ids: [
+      'mystical_staff',
+      'veil_of_discord',
+      'shivas_guard',
+      'aether_lens',
+      'dagon',
+      'ethereal_blade',
+      'stack_overflow',
+    ],
+  },
+  {
+    id: 'defensive',
+    label: 'Defensive',
+    blurb: 'Staying alive — health, armor, magic resist and panic-button saves.',
+    ids: [
+      'vanguard',
+      'linkens_sphere',
+      'black_king_bar',
+      'heart_of_tarrasque',
+      'assault_cuirass',
+      'lotus_orb',
+      'blade_mail',
+      'garbage_collector',
+      'firewall_item',
+    ],
+  },
+  {
+    id: 'utility',
+    label: 'Utility',
+    blurb: 'Mobility, control and tempo — blinks, disables and cooldown resets that swing fights.',
+    ids: [
+      'blink_module',
+      'force_staff',
+      'hurricane_pike',
+      'scythe_of_vyse',
+      'euls_scepter',
+      'refresher_orb',
+      'ghost_scepter',
+    ],
+  },
+  {
+    id: 'consumable',
+    label: 'Consumables',
+    blurb: 'Single-use tools — vision, healing, escape and detection. Restock often.',
+    ids: [
+      'observer_ward',
+      'sentry_ward',
+      'smoke_of_deceit',
+      'dust_of_appearance',
+      'town_portal_scroll',
+    ],
+  },
+]
 
 /**
  * Default Quick-Buy pins for a player who has never customized them — cheap,
