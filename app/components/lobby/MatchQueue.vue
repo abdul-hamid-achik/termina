@@ -265,8 +265,12 @@ const filledCount = computed(() => {
         <!-- Footer stats -->
         <div class="flex items-center justify-between border-t border-border pt-2">
           <div class="flex flex-col gap-0.5">
-            <div v-if="estimatedWaitSeconds" class="text-[0.7rem] text-text-dim">
-              Est. wait: ~{{ formatTime(estimatedWaitSeconds) }}
+            <!-- Always show the wait line so the footer doesn't collapse before
+                 the server computes an estimate — fall back to "estimating…"
+                 (a 0/undefined estimate means "not computed yet", not "instant"). -->
+            <div class="text-[0.7rem] text-text-dim">
+              Est. wait:
+              {{ estimatedWaitSeconds ? `~${formatTime(estimatedWaitSeconds)}` : 'estimating…' }}
             </div>
           </div>
           <AsciiButton label="CANCEL" variant="danger" @click="emit('cancel')" />
