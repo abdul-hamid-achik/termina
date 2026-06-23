@@ -86,6 +86,7 @@ const rows = computed<AllyRow[]>(() =>
             color="radiant"
             :width="8"
             :danger-below="0.25"
+            :label="`${r.name} HP`"
           />
         </div>
 

@@ -132,4 +132,21 @@ describe('ProgressBar', () => {
       expect(span(w).attributes('data-danger')).toBeUndefined()
     })
   })
+
+  describe('accessibility', () => {
+    it('exposes a progressbar role with value semantics + label', () => {
+      const w = mountBar({ value: 420, max: 620, label: 'Echo HP' })
+      const root = w.get('[role="progressbar"]')
+      expect(root.attributes('aria-valuenow')).toBe('420')
+      expect(root.attributes('aria-valuemin')).toBe('0')
+      expect(root.attributes('aria-valuemax')).toBe('620')
+      expect(root.attributes('aria-valuetext')).toBe('420 / 620')
+      expect(root.attributes('aria-label')).toBe('Echo HP')
+    })
+
+    it('hides the decorative bar glyph from assistive tech', () => {
+      const w = mountBar({ value: 5, max: 10 })
+      expect(w.get('[data-testid="progress-bar-fill"]').attributes('aria-hidden')).toBe('true')
+    })
+  })
 })

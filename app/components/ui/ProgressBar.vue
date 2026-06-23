@@ -39,6 +39,8 @@ const props = withDefaults(
     color?: ProgressBarColor
     width?: number
     showLabel?: boolean
+    /** Accessible name for the bar (e.g. "Echo HP"); exposed via aria-label. */
+    label?: string
     /** Ratio (0–1); at/below it the bar warns in `dangerColor` and pulses. 0 = off. */
     dangerBelow?: number
     dangerColor?: ProgressBarColor
@@ -78,18 +80,27 @@ const percentage = computed(() => {
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1 whitespace-nowrap font-mono text-[0.8rem]">
-    <span class="text-text-dim">[</span>
+  <span
+    class="inline-flex items-center gap-1 whitespace-nowrap font-mono text-[0.8rem]"
+    role="progressbar"
+    :aria-label="label"
+    :aria-valuenow="value"
+    :aria-valuemin="0"
+    :aria-valuemax="max"
+    :aria-valuetext="`${value} / ${max}`"
+  >
+    <span aria-hidden="true" class="text-text-dim">[</span>
     <span
       class="tracking-normal"
       :class="{ 'animate-pulse': inDanger }"
       :data-danger="inDanger ? 'true' : undefined"
       data-testid="progress-bar-fill"
+      aria-hidden="true"
       :style="activeColorStyle"
       >{{ bar }}</span
     >
-    <span class="text-text-dim">]</span>
-    <span v-if="showLabel" class="text-text-primary text-xs">
+    <span aria-hidden="true" class="text-text-dim">]</span>
+    <span v-if="showLabel" aria-hidden="true" class="text-text-primary text-xs">
       {{ value }}/{{ max }}
       <span class="text-text-dim">({{ percentage }}%)</span>
     </span>

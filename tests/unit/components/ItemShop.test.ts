@@ -65,9 +65,31 @@ describe('ItemShop', () => {
     expect(wrapper.find('[data-testid="shop-buy-healing_salve"]').exists()).toBe(false)
   })
 
-  it('hides [BUY] when the item is owned', () => {
+  it('marks a unique (non-consumable) item [OWNED] and hides [BUY]', () => {
+    // iron_branch has no maxStacks → unique → owning one caps it.
+    const wrapper = mountShop({
+      ownedItems: ['iron_branch', null, null, null, null, null],
+    })
+
+    expect(wrapper.find('[data-testid="shop-buy-iron_branch"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('[OWNED]')
+  })
+
+  it('keeps [BUY] for a restockable consumable below its stack cap', () => {
+    // healing_salve stacks to 3 — owning one must NOT lock out re-buying.
     const wrapper = mountShop({
       ownedItems: ['healing_salve', null, null, null, null, null],
+    })
+
+    expect(wrapper.find('[data-testid="shop-buy-healing_salve"]').exists()).toBe(true)
+    // shows an owned-count indicator, not [OWNED]
+    expect(wrapper.text()).toContain('×1')
+    expect(wrapper.text()).not.toContain('[OWNED]')
+  })
+
+  it('hides [BUY] and shows [OWNED] only when a consumable hits its stack cap', () => {
+    const wrapper = mountShop({
+      ownedItems: ['healing_salve', 'healing_salve', 'healing_salve', null, null, null],
     })
 
     expect(wrapper.find('[data-testid="shop-buy-healing_salve"]').exists()).toBe(false)

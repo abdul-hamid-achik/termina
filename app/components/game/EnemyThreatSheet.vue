@@ -96,11 +96,23 @@ const rows = computed<ThreatRow[]>(() =>
       <template v-else>
         <div class="flex items-center gap-1">
           <span class="w-4 shrink-0 text-[0.58rem] text-text-dim">HP</span>
-          <ProgressBar :value="r.hp ?? 0" :max="r.maxHp ?? 1" color="dire" :width="8" />
+          <ProgressBar
+            :value="r.hp ?? 0"
+            :max="r.maxHp ?? 1"
+            color="dire"
+            :width="8"
+            :label="`${r.name} HP`"
+          />
         </div>
         <div class="flex items-center gap-1">
           <span class="w-4 shrink-0 text-[0.58rem] text-text-dim">MP</span>
-          <ProgressBar :value="r.mp ?? 0" :max="r.maxMp ?? 1" color="mana" :width="8" />
+          <ProgressBar
+            :value="r.mp ?? 0"
+            :max="r.maxMp ?? 1"
+            color="mana"
+            :width="8"
+            :label="`${r.name} MP`"
+          />
         </div>
         <div class="mt-0.5 flex gap-1" :data-testid="`threat-cooldowns-${r.id}`">
           <span
