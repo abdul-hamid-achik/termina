@@ -4,6 +4,7 @@ import type { HeroId } from '~~/shared/types/hero'
 import { abilitySummary, abilityImpact } from '~~/shared/abilityFormat'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
+import { useStartTutorial } from '~/composables/useStartTutorial'
 
 useHead({ title: 'Heroes · TERMINA' })
 
@@ -124,6 +125,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 const manaPct = computed(() =>
   hero.value.baseStats.mp ? Math.round((mana.value / hero.value.baseStats.mp) * 100) : 0,
 )
+
+// Learn → play: shared practice-vs-bots launcher for the footer CTA.
+const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
 </script>
 
 <template>
@@ -230,5 +234,23 @@ const manaPct = computed(() =>
         </div>
       </section>
     </div>
+
+    <footer class="flex flex-col items-center gap-2 border-t border-border pt-3 text-center">
+      <p class="text-[0.8rem] text-text-dim">
+        Got the hang of {{ hero.name }}? Take a kit into a real match.
+      </p>
+      <div class="flex flex-wrap justify-center gap-3">
+        <AsciiButton
+          :label="startingTutorial ? 'STARTING…' : 'PRACTICE VS BOTS'"
+          :disabled="startingTutorial"
+          variant="primary"
+          data-testid="start-tutorial"
+          @click="startTutorial"
+        />
+        <NuxtLink to="/lobby" class="no-underline">
+          <AsciiButton label="ENTER THE QUEUE" variant="ghost" />
+        </NuxtLink>
+      </div>
+    </footer>
   </div>
 </template>
