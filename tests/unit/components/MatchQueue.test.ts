@@ -62,6 +62,15 @@ describe('MatchQueue', () => {
       expect(wrapper.text()).toContain('0/10 Players Found')
     })
 
+    it('announces roster progress to screen readers via an aria-live region', async () => {
+      const wrapper = mountQueue({ roster: roster3, matchSize: 6 })
+      await settleAnimations()
+      const live = wrapper.find('[aria-live="polite"]')
+      expect(live.exists()).toBe(true)
+      expect(live.classes()).toContain('sr-only')
+      expect(live.text()).toContain('3 of 6 players found')
+    })
+
     it('reflects roster size and a custom matchSize', async () => {
       const wrapper = mountQueue({ roster: roster3, matchSize: 6 })
       await settleAnimations()

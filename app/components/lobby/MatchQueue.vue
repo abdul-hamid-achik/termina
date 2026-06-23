@@ -169,6 +169,13 @@ const filledCount = computed(() => {
   <div class="w-full max-w-[480px]" data-testid="match-queue">
     <TerminalPanel title="Matchmaking">
       <div class="flex flex-col gap-3 p-4">
+        <!-- Screen-reader progress: announce roster fill (keyed off the count,
+             not the per-tick typing cursor, so it isn't spammy). -->
+        <div aria-live="polite" class="sr-only">
+          {{ filledCount }} of {{ totalSlots }} players found<span v-if="botsFilling">
+            — filling with {{ botsCount }} AI opponents</span
+          >
+        </div>
         <!-- Header: progress -->
         <div class="flex items-center justify-between">
           <span class="text-sm font-bold tracking-wide text-ability">
@@ -224,7 +231,7 @@ const filledCount = computed(() => {
             </span>
 
             <!-- Divider -->
-            <span class="text-text-dim">│</span>
+            <span aria-hidden="true" class="text-text-dim">│</span>
 
             <!-- Content -->
             <template v-if="slot.type === 'player'">
@@ -240,12 +247,12 @@ const filledCount = computed(() => {
             <template v-else-if="slot.type === 'typing'">
               <span class="flex-1 text-xs text-ability">
                 <span class="animate-pulse">connecting</span>
-                <span v-if="cursorVisible" class="text-ability">█</span>
+                <span v-if="cursorVisible" aria-hidden="true" class="text-ability">█</span>
               </span>
             </template>
 
             <template v-else>
-              <span class="flex-1 text-xs text-text-dim">
+              <span aria-hidden="true" class="flex-1 text-xs text-text-dim">
                 <span v-if="cursorVisible && slot.index === filledCount" class="text-border-glow"
                   >_</span
                 >
