@@ -377,6 +377,23 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ man move</span>
       </div>
+
+      <!-- Interactive map primer: explore the real topology + feel adjacency
+           before a live game. Click a dashed zone to hop one zone per tick. -->
+      <div class="mb-4">
+        <div class="mb-1.5 text-[0.85rem] font-bold text-gold">Explore the Map</div>
+        <ClientOnly>
+          <MapPrimer />
+          <template #fallback>
+            <div
+              class="flex h-[460px] items-center justify-center border border-border text-text-dim"
+            >
+              &gt;_ loading map…
+            </div>
+          </template>
+        </ClientOnly>
+      </div>
+
       <div class="flex flex-col gap-4">
         <div v-for="section in movementGuide" :key="section.title">
           <div class="mb-1.5 text-[0.85rem] font-bold text-gold">{{ section.title }}</div>
