@@ -82,7 +82,7 @@ describe('AsciiMap', () => {
       expect(label).toContain('you')
     })
 
-    it('should be keyboard navigable with arrow keys', async () => {
+    it('navigates the visual grid with arrow keys, skipping null gaps', async () => {
       const zones = [makeZone({ id: 'radiant-fountain' }), makeZone({ id: 'mid-t1-rad' })]
       const wrapper = mount(AsciiMap, {
         props: { zones, playerZone: 'radiant-fountain' },
@@ -91,12 +91,19 @@ describe('AsciiMap', () => {
       expect(wrapper.vm.focusedZoneId).toBe(null)
 
       const grid = wrapper.find('[role="grid"]')
+      // First arrow enters at the first real zone (the top row leads with a gap).
       await grid.trigger('keydown', { key: 'ArrowRight' })
-
       expect(wrapper.vm.focusedZoneId).toBe('radiant-fountain')
 
+      // Top row is [_, radiant-fountain, _, radiant-base, _] — Right skips the
+      // null gap to the next real cell (grid order, not data order).
       await grid.trigger('keydown', { key: 'ArrowRight' })
-      expect(wrapper.vm.focusedZoneId).toBe('mid-t1-rad')
+      expect(wrapper.vm.focusedZoneId).toBe('radiant-base')
+
+      // Down moves a row and lands on the nearest real zone to that column,
+      // proving the step is grid-derived (not a hardcoded ±5).
+      await grid.trigger('keydown', { key: 'ArrowDown' })
+      expect(wrapper.vm.focusedZoneId).toBe('mid-t3-rad')
     })
 
     it('should announce zone updates to screen readers', async () => {
