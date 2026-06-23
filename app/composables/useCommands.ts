@@ -313,8 +313,23 @@ export interface ParseResult {
   error: string | null
 }
 
-function hasDebuff(player: PlayerState, type: string): boolean {
-  return player.buffs.some((b) => b.id.includes(type))
+// Exact-id sets (mirrors the server's DEBUFF_ID_SETS) — NOT substring matching,
+// which would silently disable actions if a future buff id contained a debuff
+// substring (e.g. a hypothetical `stun_immune`).
+const DEBUFF_ID_SETS = {
+  stun: new Set(['stun']),
+  root: new Set(['root']),
+  silence: new Set(['silence']),
+  feared: new Set(['feared']),
+  taunt: new Set(['taunt']),
+  cyclone: new Set(['cyclone']),
+  hex: new Set(['hex']),
+} as const
+
+type DebuffType = keyof typeof DEBUFF_ID_SETS
+
+function hasDebuff(player: PlayerState, type: DebuffType): boolean {
+  return player.buffs.some((b) => DEBUFF_ID_SETS[type].has(b.id))
 }
 
 /**
@@ -336,10 +351,19 @@ export function validateCommand(command: Command, context: GameContext): string 
   ) {
     return 'Cannot act while dead'
   }
-  // Eul's Cyclone fully disables the target (mirrors the server validateAction).
-  if (player.buffs.some((b) => b.id.includes('cyclone')) && command.type !== 'select_talent') {
+  // Hard disables that pierce BKB (mirror the server): Cyclone + Hex fully
+  // disable — no move/attack/cast. (select_talent is a meta-action, exempted as
+  // it is for the dead-player gate above.)
+  if (hasDebuff(player, 'cyclone') && command.type !== 'select_talent') {
     return 'Cannot act while cycloned'
   }
+  if (hasDebuff(player, 'hex') && command.type !== 'select_talent') {
+    return 'Cannot act while hexed'
+  }
+  // Black King Bar (magic_immune) lets a hero act through the SOFT control
+  // debuffs (stun/silence/root/fear/taunt). The client previously had no such
+  // concept, so it falsely blocked BKB heroes that the server would let act.
+  const debuffImmune = player.buffs.some((b) => b.id === 'magic_immune')
 
   switch (command.type) {
     case 'buyback': {
@@ -381,13 +405,18 @@ export function validateCommand(command: Command, context: GameContext): string 
       ) {
         return `${command.zone} isn't on this map`
       }
-      if (hasDebuff(player, 'root') || hasDebuff(player, 'stun')) {
+      if (!debuffImmune && (hasDebuff(player, 'root') || hasDebuff(player, 'stun'))) {
         return 'Cannot move while rooted or stunned'
       }
+      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot move while taunted'
       return null
     }
     case 'attack': {
-      if (hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
+      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
+      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot attack while feared'
+      // Ghost Scepter: phased out — cannot attack (pierces BKB; not a debuff).
+      if (player.buffs.some((b) => b.id === 'ghost_form'))
+        return 'Cannot attack while in ghost form'
       const t = command.target
       if (t.kind === 'hero') {
         const target = Object.values(context.allPlayers).find(
@@ -409,8 +438,10 @@ export function validateCommand(command: Command, context: GameContext): string 
       return null
     }
     case 'cast': {
-      if (hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
-      if (hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
+      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
+      if (!debuffImmune && hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
+      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot cast while feared'
+      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot cast while taunted'
       if (!player.heroId) return 'No hero selected'
       const hero = HEROES[player.heroId]
       if (!hero) return null

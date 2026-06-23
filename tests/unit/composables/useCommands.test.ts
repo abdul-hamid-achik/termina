@@ -1490,6 +1490,45 @@ describe('validateCommand', () => {
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/rooted/)
   })
 
+  // ── Control-gate parity with the server (ActionResolver.validateAction) ──
+  const debuff = (id: string) => ({ id, stacks: 1, ticksRemaining: 2, source: 'e1' })
+
+  it('rejects move while taunted', () => {
+    const ctx = makeContext({ player: makePlayer({ buffs: [debuff('taunt')] }) })
+    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/taunted/)
+  })
+
+  it('rejects attack while feared', () => {
+    const ctx = makeContext({ player: makePlayer({ buffs: [debuff('feared')] }) })
+    expect(validateCommand({ type: 'attack', target: { kind: 'hero', name: 'x' } }, ctx)).toMatch(
+      /feared/,
+    )
+  })
+
+  it('rejects attack while in ghost form', () => {
+    const ctx = makeContext({ player: makePlayer({ buffs: [debuff('ghost_form')] }) })
+    expect(validateCommand({ type: 'attack', target: { kind: 'hero', name: 'x' } }, ctx)).toMatch(
+      /ghost form/,
+    )
+  })
+
+  it('rejects every action while hexed', () => {
+    const ctx = makeContext({ player: makePlayer({ buffs: [debuff('hex')] }) })
+    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toMatch(/hexed/)
+    expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toMatch(/hexed/)
+  })
+
+  it('lets a magic-immune (BKB) hero act through soft control debuffs', () => {
+    const ctx = makeContext({
+      player: makePlayer({
+        mp: 280,
+        buffs: [debuff('stun'), debuff('silence'), debuff('root'), debuff('magic_immune')],
+      }),
+    })
+    expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toBeNull()
+    expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toBeNull()
+  })
+
   it('rejects cast on cooldown with tick count', () => {
     const ctx = makeContext({
       player: makePlayer({ cooldowns: { q: 3, w: 0, e: 0, r: 0 } }),
