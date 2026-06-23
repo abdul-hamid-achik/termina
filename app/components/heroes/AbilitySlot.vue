@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 import { formatEffect, cooldownSeconds } from '~~/shared/abilityFormat'
