@@ -303,11 +303,16 @@ describe('useGameSocket', () => {
       expect(spy).not.toHaveBeenCalled()
     })
 
-    it('routes game_over to setGameOver', async () => {
+    it('routes game_over to setGameOver (incl. the recipient mmrChange)', async () => {
       const store = await connectWithStore()
       const spy = vi.spyOn(store, 'setGameOver')
-      MockWebSocket.last!._receive({ type: 'game_over', winner: 'radiant', stats: { foo: 1 } })
-      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 })
+      MockWebSocket.last!._receive({
+        type: 'game_over',
+        winner: 'radiant',
+        stats: { foo: 1 },
+        mmrChange: 25,
+      })
+      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 }, 25)
     })
 
     it('routes full_state through updateFromTick', async () => {

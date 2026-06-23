@@ -39,6 +39,8 @@ export interface GameOverMessage {
   type: 'game_over'
   winner: TeamId
   stats: Record<string, PlayerEndStats>
+  /** The recipient's own Elo change for this match (sent per-peer). */
+  mmrChange?: number
 }
 
 export interface PlayerEndStats {

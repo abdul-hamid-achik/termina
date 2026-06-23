@@ -98,6 +98,7 @@ export const useGameStore = defineStore('game', () => {
   const lastTickAt = ref<number | null>(null)
   const scoreboard = ref<ScoreboardEntry[]>([])
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
+  const gameOverMmrChange = ref<number | null>(null)
   const winner = ref<TeamId | null>(null)
   const timeOfDay = ref<'day' | 'night'>('day')
   /** Which map this game runs on (undefined = full 5v5); drives the ASCII layout. */
@@ -368,9 +369,14 @@ export const useGameStore = defineStore('game', () => {
     phase.value = newPhase
   }
 
-  function setGameOver(winnerTeam: TeamId, stats: Record<string, PlayerEndStats>) {
+  function setGameOver(
+    winnerTeam: TeamId,
+    stats: Record<string, PlayerEndStats>,
+    mmrChange?: number,
+  ) {
     winner.value = winnerTeam
     gameOverStats.value = stats
+    gameOverMmrChange.value = mmrChange ?? null
     phase.value = 'ended'
   }
 
@@ -406,6 +412,7 @@ export const useGameStore = defineStore('game', () => {
     stopTickCountdown()
     scoreboard.value = []
     gameOverStats.value = null
+    gameOverMmrChange.value = null
     winner.value = null
     lastActionTick.value = -1
     pendingCommand.value = null
@@ -449,6 +456,7 @@ export const useGameStore = defineStore('game', () => {
     bufferedCommand,
     scoreboard,
     gameOverStats,
+    gameOverMmrChange,
     winner,
     lastActionTick,
     timeOfDay,

@@ -700,8 +700,25 @@ export default defineNitroPlugin(async (nitroApp) => {
           }
         }
 
+        // Elo change per real player vs the enemy team's average MMR (bots queue
+        // with a real bracket, so they count). Computed BEFORE the broadcast so
+        // each player sees their own change on the post-game screen; reused for
+        // the DB persistence below.
+        const mmrChanges = new Map<string, number>()
         for (const p of realPlayers) {
-          sendToPeer(p.playerId, { type: 'game_over', winner, stats: endStats })
+          const enemyAvg = teamAverageMmr(
+            players.filter((e) => e.team !== p.team).map((e) => e.mmr),
+          )
+          mmrChanges.set(p.playerId, calculateMmrChange(p.mmr, enemyAvg, p.team === winner))
+        }
+
+        for (const p of realPlayers) {
+          sendToPeer(p.playerId, {
+            type: 'game_over',
+            winner,
+            stats: endStats,
+            mmrChange: mmrChanges.get(p.playerId) ?? 0,
+          })
         }
 
         // Persist the match + MMR separately — failure is logged but never
@@ -713,15 +730,6 @@ export default defineNitroPlugin(async (nitroApp) => {
             winner,
             durationTicks: finalState.tick,
             endedAt: new Date(),
-          }
-          // Elo: each player's change is measured against the enemy team's
-          // average MMR (bots included — they queue with a real bracket).
-          const mmrChanges = new Map<string, number>()
-          for (const p of realPlayers) {
-            const enemyAvg = teamAverageMmr(
-              players.filter((e) => e.team !== p.team).map((e) => e.mmr),
-            )
-            mmrChanges.set(p.playerId, calculateMmrChange(p.mmr, enemyAvg, p.team === winner))
           }
           const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
             const ps = finalState.players[p.playerId]

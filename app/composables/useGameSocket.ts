@@ -140,7 +140,7 @@ export function useGameSocket() {
           gameStore.addAnnouncement(`[ERROR] ${msg.message}`, 'error')
           break
         case 'game_over':
-          gameStore.setGameOver(msg.winner, msg.stats)
+          gameStore.setGameOver(msg.winner, msg.stats, msg.mmrChange)
           break
         case 'player_disconnect': {
           // Surface the drop so the team knows they're a player down (was sent by
