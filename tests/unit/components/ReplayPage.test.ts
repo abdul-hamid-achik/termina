@@ -8,6 +8,8 @@ import { ref, defineComponent, Suspense, h, nextTick, watchEffect } from 'vue'
 // directly, so only the three auto-imports below need stubbing. (Mirrors the
 // LeaderboardPage component-test pattern.)
 import ReplayPage from '../../../app/pages/replay/[gameId].vue'
+// Auto-imported by Nuxt in-app; register it explicitly for the test mount.
+import PlayerScoreTable from '../../../app/components/game/PlayerScoreTable.vue'
 
 interface FetchResult {
   data: ReturnType<typeof ref>
@@ -101,7 +103,12 @@ async function mountReplay() {
     defineComponent({
       render: () => h(Suspense, null, { default: () => h(ReplayPage) }),
     }),
-    { global: { stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } },
+    {
+      global: {
+        components: { PlayerScoreTable },
+        stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } },
+      },
+    },
   )
   await flushPromises()
   return wrapper

@@ -3,6 +3,7 @@ import { computed, ref, onUnmounted } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { formatReplayCommand, clampFrameIndex, nextScrubTick, keyMoments } from '~/utils/replayView'
 import { playerNetWorth, goldLead, formatGoldShort, type NetWorthInput } from '~/utils/strategy'
+import type { PlayerScoreRow } from '~/components/game/PlayerScoreTable.vue'
 
 definePageMeta({ ssr: false })
 
@@ -162,6 +163,37 @@ const direPlayers = computed(() => {
   return Object.values(data.value.state.players).filter((p) => p.team === 'dire')
 })
 
+// Normalise frame/snapshot players into the shared PlayerScoreTable row shape.
+// hero id is resolved from the match meta (frames carry no heroId per player).
+function toScoreRow(p: {
+  id: string
+  level: number
+  hp?: number
+  maxHp?: number
+  kills: number
+  deaths: number
+  assists: number
+  gold: number
+  zone: string
+  alive: boolean
+}): PlayerScoreRow {
+  return {
+    id: p.id,
+    heroName: heroName(heroIdForPlayer(p.id)),
+    level: p.level,
+    hp: p.hp,
+    maxHp: p.maxHp,
+    kills: p.kills,
+    deaths: p.deaths,
+    assists: p.assists,
+    gold: p.gold,
+    zone: p.zone,
+    alive: p.alive,
+  }
+}
+const radiantRows = computed(() => radiantPlayers.value.map(toScoreRow))
+const direRows = computed(() => direPlayers.value.map(toScoreRow))
+
 // Net-worth gold lead at the scrub position — scrubs with the frame so a learner
 // can watch the lead swing. Net worth = liquid gold + carried item value (per
 // the tested strategy helpers); the snapshot fallback carries no items, so it's
@@ -301,51 +333,7 @@ watchEffect(() => {
             >
               RADIANT
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full t-mono-num text-xs">
-                <caption class="sr-only">
-                  Radiant players
-                </caption>
-                <thead>
-                  <tr class="text-text-muted">
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="p in radiantPlayers"
-                    :key="p.id"
-                    class="border-t border-border/50"
-                    :class="{ 'opacity-50': !p.alive }"
-                  >
-                    <th scope="row" class="px-2 py-1 font-normal">
-                      {{ heroName(heroIdForPlayer(p.id)) }}
-                    </th>
-                    <td class="px-2 py-1 text-gold">{{ p.level }}</td>
-                    <td class="px-2 py-1">
-                      <span v-if="'hp' in p && 'maxHp' in p"
-                        >{{ p.hp }}<span class="text-text-muted">/{{ p.maxHp }}</span></span
-                      >
-                      <span v-else class="text-text-muted">?</span>
-                    </td>
-                    <td class="px-2 py-1">
-                      <span class="text-radiant">{{ p.kills }}</span
-                      ><span class="text-text-muted">/</span
-                      ><span class="text-dire">{{ p.deaths }}</span
-                      ><span class="text-text-muted">/</span
-                      ><span class="text-text-dim">{{ p.assists }}</span>
-                    </td>
-                    <td class="px-2 py-1 text-gold">{{ p.gold.toLocaleString() }}</td>
-                    <td class="px-2 py-1 text-zone t-caption">{{ p.zone }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <PlayerScoreTable caption="Radiant players" :rows="radiantRows" />
           </div>
 
           <div class="border border-dire/40 bg-bg-panel">
@@ -354,51 +342,7 @@ watchEffect(() => {
             >
               DIRE
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full t-mono-num text-xs">
-                <caption class="sr-only">
-                  Dire players
-                </caption>
-                <thead>
-                  <tr class="text-text-muted">
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
-                    <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="p in direPlayers"
-                    :key="p.id"
-                    class="border-t border-border/50"
-                    :class="{ 'opacity-50': !p.alive }"
-                  >
-                    <th scope="row" class="px-2 py-1 font-normal">
-                      {{ heroName(heroIdForPlayer(p.id)) }}
-                    </th>
-                    <td class="px-2 py-1 text-gold">{{ p.level }}</td>
-                    <td class="px-2 py-1">
-                      <span v-if="'hp' in p && 'maxHp' in p"
-                        >{{ p.hp }}<span class="text-text-muted">/{{ p.maxHp }}</span></span
-                      >
-                      <span v-else class="text-text-muted">?</span>
-                    </td>
-                    <td class="px-2 py-1">
-                      <span class="text-radiant">{{ p.kills }}</span
-                      ><span class="text-text-muted">/</span
-                      ><span class="text-dire">{{ p.deaths }}</span
-                      ><span class="text-text-muted">/</span
-                      ><span class="text-text-dim">{{ p.assists }}</span>
-                    </td>
-                    <td class="px-2 py-1 text-gold">{{ p.gold.toLocaleString() }}</td>
-                    <td class="px-2 py-1 text-zone t-caption">{{ p.zone }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <PlayerScoreTable caption="Dire players" :rows="direRows" />
           </div>
         </div>
 
