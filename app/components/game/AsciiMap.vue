@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   mapRowsFor,
@@ -204,7 +204,14 @@ function handleGridKeydown(e: KeyboardEvent) {
     default:
       return
   }
-  if (next) focusedZoneId.value = next
+  if (next) {
+    focusedZoneId.value = next
+    // Move real DOM focus to the cell (now focusable via the roving tabindex)
+    // so screen readers announce its aria-label — visual focus alone was silent.
+    nextTick(() => {
+      gridRef.value?.querySelector<HTMLElement>(`[data-zone-cell="${next}"]`)?.focus()
+    })
+  }
 }
 
 // ── Compact (mobile) mode ─────────────────────────────────────────
@@ -292,6 +299,7 @@ function miniCellClasses(zoneId: string): string[] {
               <div
                 v-if="zoneId && getZone(zoneId)"
                 role="gridcell"
+                :data-zone-cell="zoneId"
                 :tabindex="focusedZoneId === zoneId ? 0 : -1"
                 :aria-label="zoneAriaLabel(getZone(zoneId)!, ancientForZone(zoneId, ancients))"
                 class="relative flex min-h-[70px] flex-col items-center justify-center px-1 py-2 text-center font-mono text-xs leading-tight transition-all"
