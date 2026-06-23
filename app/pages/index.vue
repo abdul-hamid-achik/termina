@@ -70,7 +70,10 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
       <p class="text-text-dim">&nbsp;&nbsp;⤷ tick 42 · Resonance hits Daemon — 80 dmg (+bounce)</p>
       <p><span class="text-radiant">&gt;</span> <span class="text-ability">move mid-river</span></p>
       <p class="text-text-dim">&nbsp;&nbsp;⤷ tick 43 · you advance to mid-river</p>
-      <p><span class="text-radiant">&gt;</span> <span class="text-ability">attack tower</span></p>
+      <p>
+        <span class="text-radiant">&gt;</span>
+        <span class="text-ability">attack tower:mid-t1-rad</span>
+      </p>
       <p class="text-text-dim">&nbsp;&nbsp;⤷ tick 44 · tower takes 55, your creeps pile in</p>
     </div>
 

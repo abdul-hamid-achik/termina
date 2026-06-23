@@ -204,6 +204,12 @@ const commands = [
     shortcuts: '—',
   },
   {
+    cmd: 'talent <10|15|20|25> <left|right>',
+    desc: 'Pick a tier talent — a one-time left/right power choice unlocked at levels 10/15/20/25',
+    example: 'talent 10 left',
+    shortcuts: '—',
+  },
+  {
     cmd: 'status / map / scan',
     desc: 'Print a quick readout (your stats / reachable zones / visible enemies). Free — costs no tick',
     example: 'status',
@@ -272,7 +278,7 @@ const concepts = [
   {
     term: 'Levels & XP',
     icon: '^',
-    desc: `Gain XP from creep kills and hero kills, up to level ${MAX_LEVEL}. All four abilities (Q/W/E/R) work from level 1 — leveling up grows your stats, it does not unlock abilities.`,
+    desc: `Gain XP from creep kills and hero kills, up to level ${MAX_LEVEL}. All four abilities (Q/W/E/R) work from level 1 — leveling up grows your stats, it does not unlock abilities. Reaching levels 10, 15, 20 and 25 each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`.`,
   },
   {
     term: 'Abilities',

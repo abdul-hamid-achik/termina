@@ -563,13 +563,13 @@ const unsubOnMessage = gameSocket.onMessage((msg) => {
     const tag = msg.channel === 'team' ? '[TEAM]' : '[ALL]'
     localEvents.value.push({
       tick: gameStore.tick,
-      text: `${tag} ${msg.playerId}: ${msg.message}`,
+      text: `${tag} ${entityLabel(msg.playerId)}: ${msg.message}`,
       type: 'system',
     })
   } else if (msg.type === 'ping_map') {
     localEvents.value.push({
       tick: gameStore.tick,
-      text: `[PING] ${msg.playerId} pinged ${msg.zone}`,
+      text: `[PING] ${entityLabel(msg.playerId)} pinged ${ZONE_MAP[msg.zone]?.name ?? msg.zone}`,
       type: 'system',
     })
   }
