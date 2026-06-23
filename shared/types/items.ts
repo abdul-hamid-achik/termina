@@ -40,3 +40,20 @@ export interface ItemDef {
   consumable: boolean
   maxStacks?: number
 }
+
+export type ItemCategoryId = 'starter' | 'attack' | 'magic' | 'defensive' | 'utility' | 'consumable'
+
+/**
+ * A thematic shop section for the items reference page. The grouping is
+ * curated data (not derivable from stats — e.g. Dagon and Ethereal Blade both
+ * carry attack+mp yet are Magic items) and is kept in sync with the ITEMS
+ * registry by a structural test in tests/unit/shared/itemFormat.test.ts.
+ */
+export interface ItemCategory {
+  id: ItemCategoryId
+  label: string
+  /** One-line teaching blurb: what this class of item is for. */
+  blurb: string
+  /** Item ids in this category (must partition the ITEMS registry). */
+  ids: string[]
+}

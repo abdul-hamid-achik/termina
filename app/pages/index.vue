@@ -70,6 +70,9 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
       <NuxtLink to="/heroes" class="text-ability no-underline transition-colors hover:text-radiant">
         &gt; meet the heroes
       </NuxtLink>
+      <NuxtLink to="/items" class="text-text-dim no-underline transition-colors hover:text-ability">
+        &gt; browse items
+      </NuxtLink>
       <NuxtLink to="/learn" class="text-text-dim no-underline transition-colors hover:text-ability">
         &gt; learn commands
       </NuxtLink>
