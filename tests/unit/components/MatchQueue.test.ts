@@ -165,9 +165,11 @@ describe('MatchQueue', () => {
       expect(wrapper.text()).toContain('Est. wait: ~1:35')
     })
 
-    it('omits the estimated wait when not provided', () => {
+    it('shows "estimating…" instead of collapsing when no estimate yet', () => {
       const wrapper = mountQueue()
-      expect(wrapper.text()).not.toContain('Est. wait')
+      // Footer stays informative before the server computes a wait (a 0/undefined
+      // estimate means "not computed", not "instant").
+      expect(wrapper.text()).toContain('Est. wait: estimating…')
     })
 
     it('emits cancel when the CANCEL button is clicked', async () => {

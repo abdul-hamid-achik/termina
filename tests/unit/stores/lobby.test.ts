@@ -106,6 +106,34 @@ describe('Lobby Store', () => {
       expect(store.lastError).toBe('could not join queue — Already in queue')
     })
 
+    it('recovers into the active game (no dead-end error) on a 409', async () => {
+      const store = useLobbyStore()
+      // join is refused: the player is already in an active game
+      mockFetch.mockRejectedValueOnce(
+        Object.assign(new Error('Conflict'), {
+          statusCode: 409,
+          data: { message: 'Already in an active game' },
+        }),
+      )
+      // the recovery status endpoint then reports that active game
+      mockFetch.mockResolvedValueOnce({ status: 'game_starting', gameId: 'game-live' })
+
+      // Should NOT throw — the 409 is turned into a rejoin, not an error
+      await store.joinQueue()
+
+      expect(store.gameId).toBe('game-live')
+      expect(store.lastError).toBeNull()
+    })
+
+    it('still surfaces a non-409 error normally', async () => {
+      const store = useLobbyStore()
+      mockFetch.mockRejectedValue(
+        Object.assign(new Error('boom'), { statusCode: 500, data: { message: 'server down' } }),
+      )
+      await expect(store.joinQueue()).rejects.toThrow()
+      expect(store.lastError).toBe('could not join queue — server down')
+    })
+
     it('clears lastError when retrying', async () => {
       const store = useLobbyStore()
       mockFetch.mockRejectedValue(new Error('boom'))

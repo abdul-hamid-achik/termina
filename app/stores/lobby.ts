@@ -86,9 +86,26 @@ export const useLobbyStore = defineStore('lobby', () => {
       _startQueueTimer()
     } catch (err) {
       lobbyLog.error('Failed to join queue', err)
+      // 409 = the server refused because we're already in an active game. Don't
+      // dead-end the player with a confusing "could not join queue" error —
+      // recover straight back into that game (recoverState detects it and the
+      // gameStore.gameId watcher in lobby.vue navigates to /play).
+      if (_errorStatus(err) === 409) {
+        const recovered = await recoverState()
+        if (recovered === 'game_starting') return
+      }
       lastError.value = `could not join queue — ${_errorReason(err)}`
       throw err
     }
+  }
+
+  /** Extract an HTTP status code from a $fetch/network error, if present. */
+  function _errorStatus(err: unknown): number | undefined {
+    if (err && typeof err === 'object') {
+      const e = err as { statusCode?: number; status?: number; response?: { status?: number } }
+      return e.statusCode ?? e.status ?? e.response?.status
+    }
+    return undefined
   }
 
   /** Extract a human-readable reason from a $fetch/network error. */
