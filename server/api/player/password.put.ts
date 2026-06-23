@@ -1,5 +1,7 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
+import { sendEmail } from '~~/server/utils/email'
+import { passwordChangedTemplate } from '~~/shared/emailTemplates'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -54,6 +56,11 @@ export default defineEventHandler(async (event) => {
       hasPassword: true,
     },
   })
+
+  // Best-effort security alert to the account email (never block the change).
+  if (player.email) {
+    void sendEmail({ to: player.email, ...passwordChangedTemplate() })
+  }
 
   return { success: true }
 })

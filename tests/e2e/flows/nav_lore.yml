@@ -1,0 +1,37 @@
+version: 1
+name: nav_lore
+intent: The public /lore page renders the worldbuilding intro (the Grid + the Mainframe) and the
+  role-grouped operative roster with at least one hero's lore.
+mode: normal
+metadata:
+  feature: lore
+  tags:
+    - lore
+    - public
+    - navigation
+outcomes:
+  - id: worldbuilding_renders
+    description: the worldbuilding intro mentions the Mainframe
+    verify:
+      text:
+        contains: Mainframe
+  - id: roster_groups_render
+    description: the roster shows role groups
+    verify:
+      text:
+        contains: Carries
+  - id: hero_lore_renders
+    description: at least one operative's lore card renders (Echo)
+    verify:
+      text:
+        contains: Echo
+steps:
+  - id: open_lore
+    open:
+      path: /lore
+      waitUntil: domcontentloaded
+  - id: wait_for_heading
+    wait:
+      text: THE GRID
+      timeoutMs: 10000
+contractHash: sha256:200893b3f3fe1aa28f693c465ac4ea37e9aa30fb74f0698dd5021a23cfdb759d

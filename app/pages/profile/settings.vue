@@ -41,6 +41,32 @@ function isProviderLinked(provider: string) {
   return providers.value.some((p) => p.provider === provider)
 }
 
+// ── Email & verification ─────────────────────────────────────────
+const { data: emailStatus } = await useFetch<{
+  email: string | null
+  verified: boolean
+}>('/api/player/email-status')
+const resendingVerification = ref(false)
+const emailMsg = ref<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+async function resendVerification() {
+  if (resendingVerification.value) return
+  resendingVerification.value = true
+  emailMsg.value = null
+  try {
+    await $fetch('/api/auth/resend-verification', { method: 'POST' })
+    emailMsg.value = { type: 'ok', text: 'Verification email sent — check your inbox.' }
+  } catch (err: unknown) {
+    const fetchErr = err as { data?: { message?: string } }
+    emailMsg.value = {
+      type: 'err',
+      text: fetchErr?.data?.message || 'Could not send verification email',
+    }
+  } finally {
+    resendingVerification.value = false
+  }
+}
+
 function getProviderUsername(provider: string) {
   return providers.value.find((p) => p.provider === provider)?.providerUsername ?? null
 }
@@ -303,6 +329,39 @@ async function disconnectProvider(provider: string) {
           </span>
         </div>
       </form>
+    </TerminalPanel>
+
+    <!-- ═══ EMAIL ═══ -->
+    <TerminalPanel title="Email">
+      <div class="flex flex-col gap-3">
+        <div
+          v-if="emailStatus?.email"
+          class="flex items-center justify-between gap-2 border border-border p-2.5"
+        >
+          <div class="flex flex-col gap-0.5">
+            <span class="text-[0.85rem] text-text-primary">{{ emailStatus.email }}</span>
+            <span v-if="emailStatus.verified" class="text-[0.75rem] text-radiant">✓ verified</span>
+            <span v-else class="text-[0.75rem] text-gold">! unverified</span>
+          </div>
+          <AsciiButton
+            v-if="!emailStatus.verified"
+            :label="resendingVerification ? 'SENDING...' : 'RESEND VERIFICATION'"
+            variant="primary"
+            :disabled="resendingVerification"
+            @click="resendVerification"
+          />
+        </div>
+        <p v-else class="text-[0.8rem] text-text-dim">
+          No email on file. Without one, you can't recover a forgotten password.
+        </p>
+        <span
+          v-if="emailMsg"
+          class="text-[0.75rem]"
+          :class="emailMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
+        >
+          {{ emailMsg.text }}
+        </span>
+      </div>
     </TerminalPanel>
 
     <!-- ═══ PASSWORD ═══ -->

@@ -1,0 +1,37 @@
+version: 1
+name: legal_privacy
+intent: The public /privacy page renders the Privacy Policy — the heading, the data-collection
+  section, and the third-party processors list (including Resend for email).
+mode: normal
+metadata:
+  feature: legal
+  tags:
+    - legal
+    - public
+    - privacy
+outcomes:
+  - id: privacy_heading_renders
+    description: the Privacy Policy heading renders
+    verify:
+      text:
+        contains: PRIVACY POLICY
+  - id: collection_section_renders
+    description: the information-we-collect section renders
+    verify:
+      text:
+        contains: Information We Collect
+  - id: lists_resend_processor
+    description: the processors list discloses Resend (email delivery)
+    verify:
+      text:
+        contains: Resend
+steps:
+  - id: open_privacy
+    open:
+      path: /privacy
+      waitUntil: domcontentloaded
+  - id: wait_for_heading
+    wait:
+      text: PRIVACY POLICY
+      timeoutMs: 10000
+contractHash: sha256:ac1b6aa381094198664711a743eb241de91a381517b60e6bdcb4155e7e9396a5

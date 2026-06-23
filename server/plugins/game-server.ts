@@ -431,6 +431,15 @@ function reapStaleLiveGames(): void {
 }
 
 export default defineNitroPlugin(async (nitroApp) => {
+  // During the build-time prerender pass, Nitro boots the server in-process to
+  // SSR the prerendered routes (/terms, /privacy). The game server must NOT run
+  // then: it would connect to Redis/Postgres, and with the resilient ioredis
+  // retry strategy a missing service (as in CI, where the build job has no
+  // database) retries forever — the `await managedRuntime.runPromise` below
+  // never resolves and the build hangs. Prerendering only needs the HTTP/SSR
+  // layer, so skip the entire game-loop/Redis/DB bring-up here.
+  if (import.meta.prerender) return
+
   // Populate the hero ability/passive registry up front. Each hero module also
   // self-registers on import, but the production bundle tree-shook those
   // side-effect-only imports (see server/game/heroes/index.ts) — leaving an empty

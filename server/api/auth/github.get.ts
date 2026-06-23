@@ -1,6 +1,8 @@
 import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
 import { authLog } from '~~/server/utils/log'
+import { sendEmail } from '~~/server/utils/email'
+import { welcomeTemplate } from '~~/shared/emailTemplates'
 
 export default defineOAuthGitHubEventHandler({
   config: {
@@ -29,8 +31,14 @@ export default defineOAuthGitHubEventHandler({
             avatarUrl: user.avatar_url ?? null,
             provider: 'github',
             providerId: String(user.id),
+            // GitHub has already verified this email, so mark it verified.
+            emailVerifiedAt: user.email ? new Date() : null,
           }),
         )
+        // Best-effort welcome for brand-new accounts (never block sign-in).
+        if (user.email) {
+          void sendEmail({ to: user.email, ...welcomeTemplate(player.username) })
+        }
       }
 
       // Ensure provider is linked in playerProviders table

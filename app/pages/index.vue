@@ -79,8 +79,18 @@ async function startTutorial() {
         data-testid="start-tutorial"
         @click="startTutorial"
       />
-      <NuxtLink to="/learn" class="no-underline">
-        <AsciiButton label="LEARN COMMANDS" variant="ghost" />
+    </div>
+
+    <!-- New-player paths: learn the kit + the world before queueing. -->
+    <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.8rem]">
+      <NuxtLink to="/heroes" class="text-ability no-underline transition-colors hover:text-radiant">
+        &gt; meet the heroes
+      </NuxtLink>
+      <NuxtLink to="/learn" class="text-text-dim no-underline transition-colors hover:text-ability">
+        &gt; learn commands
+      </NuxtLink>
+      <NuxtLink to="/lore" class="text-text-dim no-underline transition-colors hover:text-ability">
+        &gt; read the lore
       </NuxtLink>
     </div>
 

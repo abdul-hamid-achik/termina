@@ -6,10 +6,15 @@ const route = useRoute()
 
 const mode = ref<'login' | 'register'>('login')
 const username = ref('')
+const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
 const loading = ref(false)
+
+// Email is optional, but enables password recovery. Validate only if provided.
+const emailValid = computed(() => !email.value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value))
+const emailError = computed(() => (email.value && !emailValid.value ? 'enter a valid email' : ''))
 
 // Validation
 const usernameValid = computed(() => /^\w{3,20}$/.test(username.value))
@@ -39,7 +44,9 @@ const confirmError = computed(() => {
 const canSubmit = computed(() => {
   if (!username.value || !password.value) return false
   if (mode.value === 'register') {
-    return usernameValid.value && passwordLongEnough.value && passwordsMatch.value
+    return (
+      usernameValid.value && emailValid.value && passwordLongEnough.value && passwordsMatch.value
+    )
   }
   return true
 })
@@ -53,7 +60,7 @@ async function handleSubmit() {
     if (mode.value === 'login') {
       await authStore.loginWithCredentials(username.value, password.value)
     } else {
-      await authStore.register(username.value, password.value)
+      await authStore.register(username.value, password.value, email.value || undefined)
     }
     const redirect = (route.query.redirect as string) || '/'
     navigateTo(redirect)
@@ -143,6 +150,26 @@ if (route.query.error) {
             </div>
           </div>
 
+          <!-- Email (register only, optional — enables password recovery) -->
+          <div v-if="mode === 'register'" class="flex flex-col gap-1">
+            <label class="font-mono text-xs uppercase tracking-wider text-text-dim">
+              <span class="text-radiant">$</span> email
+              <span class="text-text-dim/60">(optional)</span>
+            </label>
+            <input
+              v-model="email"
+              type="email"
+              autocomplete="email"
+              spellcheck="false"
+              placeholder="you@example.com — for password recovery"
+              class="terminal-input"
+            />
+            <div v-if="email" class="text-[0.7rem]">
+              <span v-if="emailError" class="text-dire">! {{ emailError }}</span>
+              <span v-else class="text-radiant">ok</span>
+            </div>
+          </div>
+
           <!-- Password -->
           <div class="flex flex-col gap-1">
             <label class="font-mono text-xs uppercase tracking-wider text-text-dim">
@@ -160,6 +187,15 @@ if (route.query.error) {
               <span v-else class="text-radiant">ok</span>
             </div>
           </div>
+
+          <!-- Forgot password (login only) -->
+          <NuxtLink
+            v-if="mode === 'login'"
+            to="/forgot-password"
+            class="-mt-1 self-end text-[0.7rem] text-text-dim no-underline transition-colors hover:text-ability"
+          >
+            forgot password?
+          </NuxtLink>
 
           <!-- Confirm Password (register only) -->
           <div v-if="mode === 'register'" class="flex flex-col gap-1">

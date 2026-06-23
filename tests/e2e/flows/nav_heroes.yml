@@ -1,0 +1,40 @@
+version: 1
+name: nav_heroes
+intent: The public /heroes training console renders a hero's kit + the cast console, and casting the
+  Q ability (clicking the Q slot) prints the resolved outcome to the terminal log.
+mode: normal
+metadata:
+  feature: heroes
+  tags:
+    - heroes
+    - public
+    - training
+outcomes:
+  - id: console_renders
+    description: the training console renders (advance-tick control present)
+    verify:
+      text:
+        contains: ADVANCE TICK
+  - id: cast_prints_to_log
+    description: casting the Q ability prints a "casts" line to the log
+    verify:
+      text:
+        contains: casts
+steps:
+  - id: open_heroes
+    open:
+      path: /heroes
+      waitUntil: domcontentloaded
+  - id: wait_for_console
+    wait:
+      text: HERO TRAINING
+      timeoutMs: 10000
+  - id: cast_q
+    click:
+      by: selector
+      selector: '[data-testid="ability-q"]'
+  - id: await_cast_log
+    wait:
+      text: casts
+      timeoutMs: 10000
+contractHash: sha256:d030c46a99558ec9202a957723b87c1a682de9001bceb5e5e89305c8e91959ae
