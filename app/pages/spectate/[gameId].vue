@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
+import { reconnectDelay } from '~/utils/reconnect'
+import { formatTickClock } from '~/utils/gameClock'
 import type { PlayerState, PlayerVisibleState } from '~~/shared/types/game'
 
 definePageMeta({ ssr: false })
@@ -77,7 +79,7 @@ async function connect() {
     // simpler — spectator is read-only, no missed-event replay needed).
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       conn.value = 'reconnecting'
-      const delay = Math.min(1000 * 2 ** reconnectAttempts, 30000)
+      const delay = reconnectDelay(reconnectAttempts)
       reconnectAttempts++
       reconnectTimer = setTimeout(() => void connect(), delay)
     } else {
@@ -123,11 +125,9 @@ function heroName(id: string | null | undefined): string {
   return HEROES[id]?.name ?? id
 }
 
+// Padded MM:SS game clock from a tick count (shared tick→clock helper).
 function gameTime(tick: number): string {
-  const totalSeconds = tick * 4
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return formatTickClock(tick, true)
 }
 </script>
 
