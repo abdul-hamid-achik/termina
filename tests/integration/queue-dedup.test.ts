@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import { Effect } from 'effect'
+import Redis from 'ioredis'
 import {
   RedisService,
   makeRedisServiceLive,
@@ -33,6 +34,30 @@ async function cleanup() {
 }
 
 describe('queue dedup sentinel (real Redis)', () => {
+  // Fail FAST + LOUD if Redis is unreachable instead of letting the shared
+  // client's unlimited-retry strategy (maxRetriesPerRequest: null) queue every
+  // command forever — that turned a wrong-port into a 10s hang on every hook in
+  // CI. A throwaway client with no retries pings once and reports the real URL.
+  beforeAll(async () => {
+    const probe = new Redis(REDIS_URL, {
+      lazyConnect: true,
+      connectTimeout: 3000,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null, // do not reconnect — surface the failure now
+    })
+    try {
+      await probe.connect()
+      await probe.ping()
+    } catch (err) {
+      throw new Error(
+        `queue-dedup integration test needs Redis at ${REDIS_URL} ` +
+          `(override with NUXT_REDIS_URL). Connection failed: ${String(err)}`,
+      )
+    } finally {
+      probe.disconnect()
+    }
+  })
+
   beforeEach(cleanup)
   afterAll(async () => {
     await cleanup()
