@@ -234,14 +234,17 @@ watchEffect(() => {
               RADIANT
             </div>
             <table class="w-full t-mono-num text-xs">
+              <caption class="sr-only">
+                Radiant players
+              </caption>
               <thead>
                 <tr class="text-text-muted">
-                  <th class="px-2 py-1 text-left t-caption">Hero</th>
-                  <th class="px-2 py-1 text-left t-caption">Lv</th>
-                  <th class="px-2 py-1 text-left t-caption">HP</th>
-                  <th class="px-2 py-1 text-left t-caption">K/D/A</th>
-                  <th class="px-2 py-1 text-left t-caption">Gold</th>
-                  <th class="px-2 py-1 text-left t-caption">Zone</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
                 </tr>
               </thead>
               <tbody>
@@ -251,7 +254,9 @@ watchEffect(() => {
                   class="border-t border-border/50"
                   :class="{ 'opacity-50': !p.alive }"
                 >
-                  <td class="px-2 py-1">{{ heroName(heroIdForPlayer(p.id)) }}</td>
+                  <th scope="row" class="px-2 py-1 font-normal">
+                    {{ heroName(heroIdForPlayer(p.id)) }}
+                  </th>
                   <td class="px-2 py-1 text-gold">{{ p.level }}</td>
                   <td class="px-2 py-1">
                     <span v-if="'hp' in p && 'maxHp' in p"
@@ -280,14 +285,17 @@ watchEffect(() => {
               DIRE
             </div>
             <table class="w-full t-mono-num text-xs">
+              <caption class="sr-only">
+                Dire players
+              </caption>
               <thead>
                 <tr class="text-text-muted">
-                  <th class="px-2 py-1 text-left t-caption">Hero</th>
-                  <th class="px-2 py-1 text-left t-caption">Lv</th>
-                  <th class="px-2 py-1 text-left t-caption">HP</th>
-                  <th class="px-2 py-1 text-left t-caption">K/D/A</th>
-                  <th class="px-2 py-1 text-left t-caption">Gold</th>
-                  <th class="px-2 py-1 text-left t-caption">Zone</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
+                  <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,7 +305,9 @@ watchEffect(() => {
                   class="border-t border-border/50"
                   :class="{ 'opacity-50': !p.alive }"
                 >
-                  <td class="px-2 py-1">{{ heroName(heroIdForPlayer(p.id)) }}</td>
+                  <th scope="row" class="px-2 py-1 font-normal">
+                    {{ heroName(heroIdForPlayer(p.id)) }}
+                  </th>
                   <td class="px-2 py-1 text-gold">{{ p.level }}</td>
                   <td class="px-2 py-1">
                     <span v-if="'hp' in p && 'maxHp' in p"

@@ -31,33 +31,41 @@ outcomes:
     verify:
       script:
         run: >
-          const want = ['move <zone>', 'attack <target>', 'cast <q|w|e|r> [target]', 'buy <item>'];
+          const want = ['move <zone>', 'attack [target]', 'cast <q|w|e|r> [target]', 'buy <item>'];
 
-          const cells = Array.from(document.querySelectorAll('td')).map(td =>
-          td.textContent.trim());
+          const cells = Array.from(document.querySelectorAll('th, td')).map(c =>
+          c.textContent.trim());
 
           const missing = want.filter(t => !cells.includes(t));
 
           return { ok: missing.length === 0, evidence: missing.length ? 'missing: ' +
           missing.join(', ') : 'all present: ' + want.join(', ') };
-  - id: cta_links_lobby_and_leaderboard
-    description: the closing CTA buttons link to /lobby (ENTER THE TERMINAL) and /leaderboard (VIEW LEADERBOARD)
+  - id: command_table_has_caption
+    description: the command reference table is captioned for screen readers
     verify:
       script:
         run: >
-          const links = Array.from(document.querySelectorAll('a'));
+          const caps = Array.from(document.querySelectorAll('caption')).map(c =>
+          c.textContent.trim());
 
-          const enter = links.find(a => /ENTER THE TERMINAL/i.test(a.textContent));
+          const ok = caps.some(t => /command reference/i.test(t));
 
-          const board = links.find(a => /VIEW LEADERBOARD/i.test(a.textContent));
+          return { ok, evidence: 'captions: ' + JSON.stringify(caps) };
+  - id: cta_links_play_and_practice
+    description: the closing CTA links to /lobby (ENTER THE TERMINAL) and offers PRACTICE VS BOTS
+    verify:
+      script:
+        run: >
+          const enter = Array.from(document.querySelectorAll('a')).find(a => /ENTER THE
+          TERMINAL/i.test(a.textContent));
 
           const enterHref = enter && enter.getAttribute('href');
 
-          const boardHref = board && board.getAttribute('href');
+          const practice = document.querySelector('[data-testid="start-tutorial"]');
 
           return {
-            ok: enterHref === '/lobby' && boardHref === '/leaderboard',
-            evidence: 'ENTER THE TERMINAL -> ' + JSON.stringify(enterHref) + ' | VIEW LEADERBOARD -> ' + JSON.stringify(boardHref),
+            ok: enterHref === '/lobby' && !!practice,
+            evidence: 'ENTER THE TERMINAL -> ' + JSON.stringify(enterHref) + ' | practice button: ' + !!practice,
           };
 steps:
   - id: open_learn
@@ -68,4 +76,4 @@ steps:
     wait:
       text: COMMAND REFERENCE
       timeoutMs: 10000
-contractHash: sha256:2f9d095b6646ad47760996db024ff00f55df38016949c4dd692e6531674800a3
+contractHash: sha256:7072a1a706fb6542dbbcac166d4ebbc4826aadae79dff8fafcbdb95a4402436c
