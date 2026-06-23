@@ -247,12 +247,15 @@ async function disconnectProvider(provider: string) {
           </div>
         </div>
 
-        <!-- Grid -->
-        <div class="grid grid-cols-5 gap-2">
+        <!-- Grid: 3 columns on phones (5 crowds the 48px tiles), 5 from sm up -->
+        <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
           <ClientOnly>
             <button
               v-for="hid in heroIds"
               :key="hid"
+              type="button"
+              :aria-pressed="selectedAvatar === hid"
+              :aria-label="`Use ${HEROES[hid]?.name} as avatar`"
               class="flex cursor-pointer flex-col items-center gap-1 border bg-transparent p-1.5 transition-all duration-100"
               :class="
                 selectedAvatar === hid
