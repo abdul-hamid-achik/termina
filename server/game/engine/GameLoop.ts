@@ -1413,7 +1413,7 @@ function applyInCombatBuffs(state: GameState, events: GameEngineEvent[]): GameSt
     const existing = player.buffs.findIndex((b) => b.id === 'inCombat')
     const buffs = [...player.buffs]
     if (existing >= 0) {
-      buffs[existing] = { ...buffs[existing]!, ticksRemaining: 3 }
+      buffs[existing] = { ...buffs[existing]!, ticksRemaining: IN_COMBAT_BUFF_DURATION }
     } else {
       buffs.push({
         id: 'inCombat',

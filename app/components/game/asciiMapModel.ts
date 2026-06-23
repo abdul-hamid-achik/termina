@@ -54,7 +54,7 @@ export const MAP_ROWS: (string | null)[][] = [
   [null, 'dire-base', null, 'dire-fountain', null],
 ]
 
-export const COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE', 'BOT LANE']
+const COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE', 'BOT LANE']
 
 /** One-lane map layout — a single mid-lane column (radiant fountain at top, dire
  *  at the bottom). Mirrors shared/constants/maps `ONE_LANE_ZONES`. */
@@ -71,7 +71,7 @@ export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
   ['dire-base'],
   ['dire-fountain'],
 ]
-export const ONE_LANE_COL_HEADERS = ['MID LANE']
+const ONE_LANE_COL_HEADERS = ['MID LANE']
 
 /** Two-lane map layout — top + mid lanes with top-side jungle, top rune, and
  *  Roshan pit. Mirrors shared/constants/maps `TWO_LANE_ZONES` (3v3 map). */
@@ -88,7 +88,7 @@ export const TWO_LANE_MAP_ROWS: (string | null)[][] = [
   [null, null, 'dire-base', null],
   [null, null, 'dire-fountain', null],
 ]
-export const TWO_LANE_COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE']
+const TWO_LANE_COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE']
 
 /** Pick the grid layout + column headers for a game's map (full 5v5 by default). */
 export function mapRowsFor(mapId?: string): (string | null)[][] {

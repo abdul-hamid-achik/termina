@@ -338,13 +338,6 @@ export function getBotDifficultyConfig(gameId: string, botId: string): BotDiffic
   return BOT_DIFFICULTY_CONFIGS[difficulty]
 }
 
-export function setBotDifficulty(gameId: string, botId: string, difficulty: BotDifficulty): void {
-  const difficultyMap = gameBotDifficulties.get(gameId)
-  if (difficultyMap) {
-    difficultyMap.set(botId, difficulty)
-  }
-}
-
 export function cleanupGame(gameId: string): void {
   // Clear each bot's per-bot combo state (BotAI's comboStates) before dropping
   // the roster. comboStates is keyed by bot id and is only pruned mid-combo, so

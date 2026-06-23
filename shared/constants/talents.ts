@@ -1596,5 +1596,3 @@ import { isHeroId } from '~~/shared/constants/heroes'
 export function getTalentTree(heroId: string): TalentTree | undefined {
   return isHeroId(heroId) ? TALENT_TREES[heroId] : undefined
 }
-
-export { isHeroId } from '~~/shared/constants/heroes'
