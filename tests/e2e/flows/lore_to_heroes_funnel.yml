@@ -1,0 +1,45 @@
+version: 1
+name: lore_to_heroes_funnel
+intent: The learning funnel connects — reading a hero's lore on /lore, the "TRAIN" link carries you
+  to the /heroes console with that exact hero (Echo) preselected, ready to cast its kit.
+mode: normal
+metadata:
+  feature: lore
+  tags:
+    - lore
+    - heroes
+    - public
+    - funnel
+outcomes:
+  - id: funnel_navigates_to_console
+    description: following a lore TRAIN link lands on the hero training console
+    verify:
+      text:
+        contains: HERO TRAINING
+  - id: funnel_preselects_the_hero
+    description: the console opens on the chosen hero's kit (Echo's Q, Resonance)
+    verify:
+      text:
+        contains: Resonance
+steps:
+  - id: open_lore
+    open:
+      path: /lore
+      waitUntil: domcontentloaded
+  - id: wait_for_lore
+    wait:
+      text: THE GRID
+      timeoutMs: 10000
+  - id: click_train_echo
+    click:
+      by: selector
+      selector: a[href="/heroes?hero=echo"]
+  - id: await_console
+    wait:
+      text: HERO TRAINING
+      timeoutMs: 10000
+  - id: await_echo_kit
+    wait:
+      text: Resonance
+      timeoutMs: 10000
+contractHash: sha256:27e170c5817aafcc9e22c551e5618cebbf7076eec21eb57bfd0c7d892e4aa690

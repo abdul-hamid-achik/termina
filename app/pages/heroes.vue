@@ -11,7 +11,16 @@ useHead({ title: 'Heroes · TERMINA' })
 
 const allHeroes = Object.values(HEROES)
 
-const selectedId = ref<HeroId>('echo')
+// Deep-link support: /heroes?hero=daemon preselects that hero (e.g. from a lore
+// card's TRAIN link), so reading a hero's story flows straight into its kit.
+// Falls back to echo for a missing/unknown id.
+const route = useRoute()
+const queryHero =
+  typeof route.query.hero === 'string' && route.query.hero in HEROES
+    ? (route.query.hero as HeroId)
+    : 'echo'
+
+const selectedId = ref<HeroId>(queryHero)
 // selectedId is always a valid HeroId, but noUncheckedIndexedAccess widens the
 // lookup to `| undefined` — assert since the key is guaranteed present.
 const hero = computed(() => HEROES[selectedId.value]!)

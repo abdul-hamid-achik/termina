@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HeroDef, HeroRole } from '~~/shared/types/hero'
 
-defineProps<{ hero: Pick<HeroDef, 'name' | 'role' | 'lore'> }>()
+defineProps<{ hero: Pick<HeroDef, 'id' | 'name' | 'role' | 'lore'> }>()
 
 // Role → theme colour, so the roster reads at a glance.
 const roleColor: Record<HeroRole, string> = {
@@ -26,5 +26,14 @@ const roleColor: Record<HeroRole, string> = {
       </span>
     </div>
     <p class="text-[0.78rem] leading-relaxed text-text-dim">{{ hero.lore }}</p>
+    <!-- Funnel: read the lore → train this exact hero's kit (deep-links the
+         /heroes console to this operative via ?hero=). -->
+    <NuxtLink
+      :to="`/heroes?hero=${hero.id}`"
+      class="mt-auto pt-1 text-[0.7rem] text-ability no-underline hover:text-radiant"
+      :aria-label="`Train ${hero.name} in the hero console`"
+    >
+      &gt; TRAIN {{ hero.name }}
+    </NuxtLink>
   </div>
 </template>
