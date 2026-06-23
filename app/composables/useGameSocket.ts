@@ -198,11 +198,19 @@ export function useGameSocket() {
     }
   }
 
-  function send(message: ClientMessage) {
+  /** Returns true if the message went out, false if the socket isn't open
+   *  (caller can then buffer/retry instead of assuming the action landed). */
+  function send(message: ClientMessage): boolean {
     if (ws && ws.readyState === WebSocket.OPEN) {
       socketLog.trace(`Sending: ${message.type}`, { type: message.type })
       ws.send(JSON.stringify(message))
+      return true
     }
+    socketLog.warn('Send dropped — socket not open', {
+      type: message.type,
+      readyState: ws?.readyState ?? 'none',
+    })
+    return false
   }
 
   function onMessage(handler: (msg: ServerMessage) => void) {

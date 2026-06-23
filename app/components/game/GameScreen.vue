@@ -934,8 +934,20 @@ function handleCommand(cmd: string) {
       })
       return
     }
+    // If the socket isn't open (reconnecting), the action never reached the
+    // server — don't fake "Action sent". Buffer it so the next tick after we
+    // reconnect re-sends it, and tell the player why their input paused.
+    const sent = gameSocket.send({ type: 'action', command })
+    if (!sent) {
+      gameStore.bufferCommand(cmd)
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: `⚠ Connection unstable — "${cmd}" paused, will retry`,
+        type: 'system',
+      })
+      return
+    }
     uiLog.debug('Command sent', { type: command.type })
-    gameSocket.send({ type: 'action', command })
     gameStore.markActionSent(cmd)
     // Immediate positive confirmation so the action feels registered NOW, not
     // only when the tick resolves ~4s later. Pre-flight validation already gated

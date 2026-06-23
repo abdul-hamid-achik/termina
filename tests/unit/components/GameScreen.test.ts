@@ -19,7 +19,9 @@ import {
 // touches the network. We capture the spies so tests can assert wiring.
 const socketSpies = {
   connect: vi.fn(),
-  send: vi.fn(),
+  // send() returns true when the message went out (socket open) — the happy
+  // path for most tests; the disconnected case overrides it to false.
+  send: vi.fn(() => true),
   disconnect: vi.fn(),
   onMessage: vi.fn(() => () => {}),
 }
@@ -327,6 +329,20 @@ describe('GameScreen', () => {
       // surrender is a "special" action that bypasses the canAct gate, so it
       // must actually reach the socket even while dead.
       expect(socketSpies.send).toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('buffers an action for retry instead of faking "sent" when the socket is down', async () => {
+      seedDeadPlayer()
+      const wrapper = mountGameScreen()
+      const store = useGameStore()
+      socketSpies.send.mockImplementationOnce(() => false) // socket down for this send
+
+      await wrapper.find('[data-testid="death-surrender-button"]').trigger('click')
+
+      // attempted, reported failure → buffered for next-tick retry, not lost
+      expect(socketSpies.send).toHaveBeenCalled()
+      expect(store.bufferedCommand).toBe('surrender confirm')
       wrapper.unmount()
     })
   })
