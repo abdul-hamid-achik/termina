@@ -98,12 +98,20 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
           color="radiant"
           :width="16"
           :danger-below="0.25"
+          :label="`${hero.name} HP`"
           show-label
         />
       </div>
       <div class="flex items-center gap-1.5">
         <span class="w-5 shrink-0 text-text-dim">MP</span>
-        <ProgressBar :value="hero.mp" :max="hero.maxMp" color="mana" :width="16" show-label />
+        <ProgressBar
+          :value="hero.mp"
+          :max="hero.maxMp"
+          color="mana"
+          :width="16"
+          :label="`${hero.name} MP`"
+          show-label
+        />
       </div>
     </div>
 

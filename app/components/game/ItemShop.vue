@@ -63,8 +63,19 @@ const filtered = computed(() => {
   return list
 })
 
-function isOwned(itemId: string): boolean {
-  return props.ownedItems.includes(itemId)
+function ownedCount(itemId: string): number {
+  return props.ownedItems.filter((i) => i === itemId).length
+}
+
+// Mirror server/game/items/shop.ts: consumables stack up to maxStacks (∞ if
+// unset); other items are unique unless they declare a maxStacks. The shop must
+// keep offering [BUY] until the player is actually at the cap, otherwise
+// restockable consumables (wards, salves) look permanently "owned".
+function stackCap(item: ShopItem): number {
+  return item.def.consumable ? (item.def.maxStacks ?? Infinity) : (item.def.maxStacks ?? 1)
+}
+function atStackCap(item: ShopItem): boolean {
+  return ownedCount(item.id) >= stackCap(item)
 }
 
 function isPinned(itemId: string): boolean {
@@ -101,6 +112,7 @@ function formatStats(def: ItemDef): string[] {
             ? 'border-gold text-gold'
             : 'border-border text-text-dim hover:text-text-primary',
         ]"
+        :aria-pressed="activeTab === tab.key"
         @click="activeTab = tab.key"
       >
         {{ tab.label }}
@@ -112,6 +124,7 @@ function formatStats(def: ItemDef): string[] {
       <span class="font-bold text-gold">&gt;</span>
       <input
         v-model="search"
+        aria-label="Search items"
         class="flex-1 border-none bg-transparent font-mono text-[0.8rem] text-text-primary outline-none placeholder:text-text-dim placeholder:opacity-50"
         placeholder="search items..."
         spellcheck="false"
@@ -128,13 +141,13 @@ function formatStats(def: ItemDef): string[] {
         :data-testid="`shop-item-${item.id}`"
         class="flex flex-col gap-0.5 border p-1.5 text-xs transition-[border-color] duration-150"
         :class="[
-          isOwned(item.id)
+          atStackCap(item)
             ? 'border-radiant bg-radiant/5'
             : item.cost <= gold
               ? 'border-border-glow cursor-pointer hover:border-gold'
               : 'border-border opacity-60',
         ]"
-        @click="item.cost <= gold && emit('buy', item.id)"
+        @click="item.cost <= gold && !atStackCap(item) && emit('buy', item.id)"
       >
         <div class="flex items-center justify-between">
           <span class="inline-flex items-center gap-1">
@@ -147,7 +160,10 @@ function formatStats(def: ItemDef): string[] {
               >★</span
             >
           </span>
-          <span v-if="isOwned(item.id)" class="text-[0.6rem] text-radiant">[OWNED]</span>
+          <span v-if="atStackCap(item)" class="text-[0.6rem] text-radiant">[OWNED]</span>
+          <span v-else-if="ownedCount(item.id) > 0" class="text-[0.6rem] text-radiant/70"
+            >×{{ ownedCount(item.id) }}</span
+          >
         </div>
 
         <!-- Stats -->
@@ -185,14 +201,16 @@ function formatStats(def: ItemDef): string[] {
               class="touch-target text-[0.65rem] transition-colors duration-100"
               :class="isPinned(item.id) ? 'text-gold' : 'text-text-dim hover:text-gold'"
               :data-testid="`shop-pin-${item.id}`"
+              :aria-label="isPinned(item.id) ? `Unpin ${item.name}` : `Pin ${item.name}`"
               @click.stop="togglePin(item.id)"
             >
               {{ isPinned(item.id) ? '[PINNED]' : '[PIN]' }}
             </button>
             <button
-              v-if="item.cost <= gold && !isOwned(item.id)"
+              v-if="item.cost <= gold && !atStackCap(item)"
               class="touch-target text-[0.65rem] text-radiant hover:underline"
               :data-testid="`shop-buy-${item.id}`"
+              :aria-label="`Buy ${item.name} for ${item.cost} gold`"
               @click.stop="emit('buy', item.id)"
             >
               [BUY]
