@@ -306,6 +306,15 @@ export interface SurrenderedEvent {
   readonly winner: 'radiant' | 'dire'
 }
 
+export interface AfkTakeoverEvent {
+  readonly _tag: 'afk_takeover'
+  readonly tick: number
+  readonly playerId: string
+  readonly heroId: string | null
+  readonly team: 'radiant' | 'dire'
+  readonly message: string
+}
+
 export type GameEngineEvent =
   | DamageEvent
   | HealEvent
@@ -345,6 +354,7 @@ export type GameEngineEvent =
   | TowerInvulnerableEvent
   | SurrenderVoteEvent
   | SurrenderedEvent
+  | AfkTakeoverEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

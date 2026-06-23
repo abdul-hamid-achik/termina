@@ -112,6 +112,19 @@ describe('LeaverSystem AFK detection', () => {
     expect(detectAFKPlayers(state)).toEqual([])
   })
 
+  it('skips players already replaced by a bot (aiControlled)', () => {
+    // Once an AFK human is taken over, a bot plays the slot — it must not be
+    // re-flagged, so the takeover + leaver record fire exactly once.
+    const state = makeGameState({
+      tick: 200,
+      players: {
+        p1: makePlayer({ id: 'p1', aiControlled: true }),
+        p2: makePlayer({ id: 'p2', team: 'dire', lastActionTick: 199 }),
+      },
+    })
+    expect(detectAFKPlayers(state)).toEqual([])
+  })
+
   it('processTick stamps lastActionTick when a player acts', () => {
     const state = makeGameState({
       players: {

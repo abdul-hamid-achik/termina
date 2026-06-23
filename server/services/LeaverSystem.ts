@@ -74,6 +74,9 @@ export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ti
   for (const [playerId, player] of Object.entries(state.players)) {
     if (!player.alive) continue
     if (isBot(playerId)) continue
+    // Already replaced by a bot (AFK takeover) — a bot plays this slot now, so
+    // it is no longer "AFK". Keeps the takeover + leaver record firing once.
+    if (player.aiControlled) continue
 
     // lastActionTick is stamped in GameLoop when actions are drained.
     // A player who has never acted counts as AFK since game start (tick 0).

@@ -39,6 +39,7 @@ export interface PlayerState {
   buybackCost: number
   buybackCooldown?: number // tick when buyback becomes available again
   lastActionTick?: number // last tick this player submitted any action (AFK detection)
+  aiControlled?: boolean // true once an AFK human is replaced by a bot (no-reclaim takeover)
   talents: {
     tier10: string | null // Talent ID chosen at level 10
     tier15: string | null // Talent ID chosen at level 15

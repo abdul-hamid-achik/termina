@@ -162,6 +162,25 @@ describe('Scoreboard', () => {
     })
   })
 
+  describe('AFK bot-takeover badge', () => {
+    it('shows an [AI] tag for a bot-controlled (AFK) player', () => {
+      const wrapper = mountScoreboard([
+        makePlayer('r1', 'radiant', { aiControlled: true }),
+        makePlayer('d1', 'dire'),
+      ])
+      const row = wrapper.get('[data-testid="scoreboard-row-r1"]')
+      expect(row.find('.scoreboard__ai-tag').exists()).toBe(true)
+      expect(row.text()).toContain('[AI]')
+    })
+
+    it('does not show the tag for a normal player', () => {
+      const wrapper = mountScoreboard([makePlayer('r1', 'radiant'), makePlayer('d1', 'dire')])
+      expect(
+        wrapper.get('[data-testid="scoreboard-row-r1"]').find('.scoreboard__ai-tag').exists(),
+      ).toBe(false)
+    })
+  })
+
   describe('dead players + gold formatting', () => {
     it('shows a respawn countdown and the dead row style for a dead player', () => {
       const wrapper = mountScoreboard([

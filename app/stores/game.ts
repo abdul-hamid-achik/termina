@@ -49,6 +49,7 @@ export interface ScoreboardEntry {
   alive: boolean
   respawnTick: number | null
   fogged: boolean
+  aiControlled?: boolean // true once an AFK player was replaced by a bot
 }
 
 export const useGameStore = defineStore('game', () => {
@@ -338,6 +339,7 @@ export const useGameStore = defineStore('game', () => {
         alive: (p.alive as boolean) ?? true,
         respawnTick: (p.respawnTick as number | null) ?? null,
         fogged: isFogged,
+        aiControlled: (p as { aiControlled?: boolean }).aiControlled ?? false,
       }
     })
   }

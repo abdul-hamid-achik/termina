@@ -2,6 +2,7 @@ import { Effect } from 'effect'
 import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime, getReconnectPayload, stopDevGame } from '~~/server/plugins/game-server'
 import { submitAction } from '~~/server/game/engine/GameLoop'
+import { isGameBot } from '~~/server/game/ai/BotManager'
 import {
   pickHero,
   getPlayerLobby,
@@ -429,6 +430,20 @@ export default defineWebSocketHandler({
         if (!ctx.gameId) {
           wsLog.warn('Action rejected — no gameId', { playerId: ctx.playerId })
           peer.send(JSON.stringify({ type: 'error', code: 'NO_GAME', message: 'Not in a game' }))
+          break
+        }
+
+        // No-reclaim AFK takeover: once a player has been replaced by a bot,
+        // their slot is bot-controlled for the rest of the match. Drop any input
+        // a reconnecting human sends so they can't fight the bot for control.
+        if (isGameBot(ctx.gameId, ctx.playerId)) {
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'AI_CONTROLLED',
+              message: 'You went AFK — a bot has taken over your hero for this match.',
+            }),
+          )
           break
         }
 

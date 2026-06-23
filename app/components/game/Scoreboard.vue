@@ -134,6 +134,12 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
               </div>
               <div class="scoreboard__col scoreboard__col--name" :title="player.name">
                 {{ player.name }}
+                <span
+                  v-if="'aiControlled' in player && player.aiControlled"
+                  class="scoreboard__ai-tag"
+                  title="Replaced by a bot (went AFK)"
+                  >[AI]</span
+                >
               </div>
               <div class="scoreboard__col scoreboard__col--kda">
                 <span class="text-radiant">{{ player.kills }}</span
@@ -353,6 +359,14 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.scoreboard__ai-tag {
+  margin-left: 0.35em;
+  font-size: 0.7em;
+  letter-spacing: 0.05em;
+  color: rgb(var(--color-warn));
+  opacity: 0.85;
 }
 
 .scoreboard__col--kda {

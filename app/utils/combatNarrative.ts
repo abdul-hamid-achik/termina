@@ -387,6 +387,14 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         type: 'victory',
       }
 
+    case 'afk_takeover':
+      return {
+        tick,
+        text: `${label(p.playerId)} ${str(p.message) || 'went AFK — a bot has taken over'}`,
+        type: 'system',
+        salience: actorSalience(p.playerId, ctx),
+      }
+
     // Internal / non-narrative events — intentionally produce no line.
     case 'cooldown_used':
     case 'contest_lasthit':

@@ -55,6 +55,11 @@ const stomp = makeScoreboard().map((p) =>
     ? makeScoreboardEntry({ ...p, kills: p.kills + 6, gold: 16_800, level: 25, items: fullBuild })
     : makeScoreboardEntry({ ...p, alive: false, respawnTick: 320, deaths: p.deaths + 4 }),
 )
+
+// One ally went AFK and was replaced by a bot — flagged with an [AI] tag.
+const afkTakeover = makeScoreboard().map((p, i) =>
+  p.team === 'radiant' && i === 1 ? makeScoreboardEntry({ ...p, aiControlled: true }) : p,
+)
 </script>
 
 <template>
@@ -88,6 +93,17 @@ const stomp = makeScoreboard().map((p) =>
           :players="stomp"
           :teams="stompTeams"
           :current-tick="525"
+          current-player-id="p1"
+        />
+      </div>
+    </Variant>
+
+    <Variant title="ally replaced by bot (AFK)">
+      <div class="bg-bg-primary" style="width: 760px">
+        <Scoreboard
+          :players="afkTakeover"
+          :teams="teams"
+          :current-tick="240"
           current-player-id="p1"
         />
       </div>

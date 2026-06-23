@@ -407,6 +407,11 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['surrender_vote', { team: 'radiant', votesFor: 2, votesNeeded: 3 }, '2/3'],
     ['surrendered', { team: 'dire', winner: 'radiant' }, 'surrendered'],
     ['roshan_respawn', {}, 'respawned'],
+    [
+      'afk_takeover',
+      { playerId: 'enemy1', team: 'dire', message: 'went AFK — a bot has taken over' },
+      'a bot has taken over',
+    ],
   ]
 
   it.each(cases)('narrates %s with a matching line', (type, payload, expected) => {

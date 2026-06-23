@@ -279,6 +279,52 @@ export function getBotPlayerIds(gameId: string): string[] {
   return bots ? [...bots] : []
 }
 
+/** True if `playerId` is in `gameId`'s bot roster — a real bot OR an AFK takeover. */
+export function isGameBot(gameId: string, playerId: string): boolean {
+  return gameBots.get(gameId)?.has(playerId) ?? false
+}
+
+/**
+ * Replace a present human player with a bot ("AFK takeover"): add their id to
+ * the bot roster (with a lane + difficulty) so the GameLoop's bot driver issues
+ * actions for them, keeping their team at full strength.
+ *
+ * No-reclaim by design — once converted the player stays bot-controlled for the
+ * rest of the match even if the human reconnects (the WS action path drops their
+ * commands via `isGameBot`). Idempotent: returns `true` only on the call that
+ * actually performs the conversion, so callers announce/record the swap once.
+ */
+export function convertToBot(
+  gameId: string,
+  playerId: string,
+  lane = 'mid',
+  difficulty: BotDifficulty = 'medium',
+): boolean {
+  let bots = gameBots.get(gameId)
+  if (!bots) {
+    bots = new Set<string>()
+    gameBots.set(gameId, bots)
+  }
+  if (bots.has(playerId)) return false
+  bots.add(playerId)
+
+  let laneMap = gameBotLanes.get(gameId)
+  if (!laneMap) {
+    laneMap = new Map<string, string>()
+    gameBotLanes.set(gameId, laneMap)
+  }
+  laneMap.set(playerId, lane)
+
+  let difficultyMap = gameBotDifficulties.get(gameId)
+  if (!difficultyMap) {
+    difficultyMap = new Map<string, BotDifficulty>()
+    gameBotDifficulties.set(gameId, difficultyMap)
+  }
+  difficultyMap.set(playerId, difficulty)
+
+  return true
+}
+
 export function getBotLane(gameId: string, botId: string): string {
   return gameBotLanes.get(gameId)?.get(botId) ?? 'mid'
 }

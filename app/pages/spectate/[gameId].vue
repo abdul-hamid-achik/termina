@@ -231,7 +231,12 @@ function gameTime(tick: number): string {
                   class="border-t border-border/50"
                   :class="{ 'opacity-50': !p.alive }"
                 >
-                  <th scope="row" class="px-2 py-1 font-normal">{{ heroName(p.heroId) }}</th>
+                  <th scope="row" class="px-2 py-1 font-normal">
+                    {{ heroName(p.heroId) }}
+                    <span v-if="p.aiControlled" class="text-warn t-caption" title="AFK — bot"
+                      >[AI]</span
+                    >
+                  </th>
                   <td class="px-2 py-1 text-gold">{{ 'level' in p ? p.level : '?' }}</td>
                   <td class="px-2 py-1">
                     <span v-if="'hp' in p && 'maxHp' in p"
@@ -284,7 +289,12 @@ function gameTime(tick: number): string {
                   class="border-t border-border/50"
                   :class="{ 'opacity-50': !p.alive }"
                 >
-                  <th scope="row" class="px-2 py-1 font-normal">{{ heroName(p.heroId) }}</th>
+                  <th scope="row" class="px-2 py-1 font-normal">
+                    {{ heroName(p.heroId) }}
+                    <span v-if="p.aiControlled" class="text-warn t-caption" title="AFK — bot"
+                      >[AI]</span
+                    >
+                  </th>
                   <td class="px-2 py-1 text-gold">{{ 'level' in p ? p.level : '?' }}</td>
                   <td class="px-2 py-1">
                     <span v-if="'hp' in p && 'maxHp' in p"

@@ -47,7 +47,7 @@ import {
   getTalentTree,
 } from '~~/server/game/heroes'
 import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
-import { getBotPlayerIds, getBotLane, isBot } from '~~/server/game/ai/BotManager'
+import { getBotPlayerIds, getBotLane, isBot, convertToBot } from '~~/server/game/ai/BotManager'
 import { decideBotAction } from '~~/server/game/ai/BotAI'
 import { engineLog } from '~~/server/utils/log'
 import { calculateBuybackCost, buyback } from './BuybackSystem'
@@ -401,6 +401,35 @@ export function processTick(
     currentState = dayNight.state
     allEvents.push(...dayNight.events)
 
+    // 13.5. AFK takeover — every 60 ticks, replace any human who has stopped
+    // acting (past the AFK threshold) with a bot so their team isn't left a
+    // player down. convertToBot adds them to the bot roster, so the driver at
+    // the top of this pipeline issues their actions from next tick; we flag the
+    // slot `aiControlled` for the UI and emit an afk_takeover event. No-reclaim:
+    // the WS action path drops a reconnecting human's input via isGameBot, and
+    // detectAFKPlayers skips aiControlled slots so this fires exactly once.
+    if (currentState.tick % 60 === 0) {
+      for (const afk of detectAFKPlayers(currentState)) {
+        const player = currentState.players[afk.playerId]
+        if (!player || !convertToBot(gameId, afk.playerId)) continue
+        currentState = {
+          ...currentState,
+          players: {
+            ...currentState.players,
+            [afk.playerId]: { ...player, aiControlled: true },
+          },
+        }
+        allEvents.push({
+          _tag: 'afk_takeover',
+          tick: currentState.tick,
+          playerId: afk.playerId,
+          heroId: player.heroId,
+          team: player.team,
+          message: 'went AFK — a bot has taken over',
+        })
+      }
+    }
+
     // 14. Store events on state — merge instead of overwrite so wire-format
     // events pushed directly onto state during the tick (e.g. tickAllBuffs'
     // teleport_complete) aren't dropped.
@@ -510,17 +539,14 @@ function buildGameLoop(
       engineLog.debug('Tick', { gameId, tick: newState.tick })
     }
 
-    // Check for AFK players every 60 ticks and record leavers
-    if (newState.tick % 60 === 0) {
-      const afkPlayers = detectAFKPlayers(newState)
-      for (const afk of afkPlayers) {
-        recordLeaverSafe(afk.playerId, gameId, newState, 'afk', redis)
-        engineLog.warn('AFK player detected', {
-          gameId,
-          playerId: afk.playerId,
-          ticksAFK: afk.ticksAFK,
-        })
-      }
+    // Persist a leaver record (best-effort, Redis) for each AFK takeover this
+    // tick performed. Driven off the emitted event so it fires exactly once per
+    // player: processTick owns the detection + bot swap; the fiber owns the
+    // Redis write (processTick has no Redis handle).
+    for (const event of events) {
+      if (event._tag !== 'afk_takeover') continue
+      recordLeaverSafe(event.playerId, gameId, newState, 'afk', redis)
+      engineLog.warn('AFK player replaced by bot', { gameId, playerId: event.playerId })
     }
 
     // Periodic state snapshot (best-effort; failures don't break the loop).

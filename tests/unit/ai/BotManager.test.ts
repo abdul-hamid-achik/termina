@@ -6,6 +6,8 @@ import {
   getBotPlayerIds,
   getBotLane,
   getBotDifficulty,
+  convertToBot,
+  isGameBot,
   cleanupGame,
 } from '../../../server/game/ai/BotManager'
 import * as BotAI from '../../../server/game/ai/BotAI'
@@ -205,6 +207,48 @@ describe('BotManager', () => {
       expect(getBotLane('test-game', 'bot_carry')).toBe('mid')
       expect(getBotLane('test-game', 'bot_tank')).toBe('mid')
       expect(getBotLane('test-game', 'bot_support')).toBe('mid')
+    })
+  })
+
+  describe('convertToBot / isGameBot (AFK takeover)', () => {
+    beforeEach(() => {
+      cleanupGame('afk-game')
+    })
+
+    it('adds a human to the bot roster with a lane + difficulty', () => {
+      expect(isGameBot('afk-game', 'human1')).toBe(false)
+
+      const converted = convertToBot('afk-game', 'human1')
+      expect(converted).toBe(true)
+      expect(isGameBot('afk-game', 'human1')).toBe(true)
+      expect(getBotPlayerIds('afk-game')).toContain('human1')
+      // Defaults so the GameLoop bot driver can act for the slot.
+      expect(getBotLane('afk-game', 'human1')).toBe('mid')
+      expect(getBotDifficulty('afk-game', 'human1')).toBe('medium')
+    })
+
+    it('honours an explicit lane + difficulty', () => {
+      convertToBot('afk-game', 'human2', 'top', 'hard')
+      expect(getBotLane('afk-game', 'human2')).toBe('top')
+      expect(getBotDifficulty('afk-game', 'human2')).toBe('hard')
+    })
+
+    it('is idempotent — only the first conversion returns true', () => {
+      expect(convertToBot('afk-game', 'human3')).toBe(true)
+      expect(convertToBot('afk-game', 'human3')).toBe(false)
+      expect(getBotPlayerIds('afk-game').filter((id) => id === 'human3')).toHaveLength(1)
+    })
+
+    it('coexists with real bots already registered for the game', () => {
+      registerBots('afk-game', [{ playerId: 'bot_alpha', team: 'radiant', heroId: 'echo' }])
+      convertToBot('afk-game', 'human4')
+      const ids = getBotPlayerIds('afk-game')
+      expect(ids).toContain('bot_alpha')
+      expect(ids).toContain('human4')
+    })
+
+    it('isGameBot returns false for an unknown game', () => {
+      expect(isGameBot('no-such-game', 'human1')).toBe(false)
     })
   })
 
