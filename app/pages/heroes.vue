@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
 import { ROLE_META } from '~~/shared/constants/roles'
-import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
+import { heroPlaystyleTags, type PlaystyleTag } from '~~/shared/heroPlaystyle'
+import { filterHeroes, type RoleFilter, type PlaystyleFilter } from '~/utils/heroFilter'
 import type { HeroId, HeroRole } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
@@ -29,22 +30,39 @@ const hero = computed(() => HEROES[selectedId.value]!)
 // Kit-identity tags (Burst/Control/Sustain/…) — a quick "how does this play".
 const playstyle = computed(() => heroPlaystyleTags(hero.value))
 
-// Role filter so a newcomer can narrow the roster to a role they want to learn
-// ("show me a support"). 'all' shows everyone.
+// Two filter axes a newcomer can narrow the roster by: role (lane/job) and
+// playstyle (how the kit plays). 'all' on either passes everything through.
 const ROLE_FILTERS = ['all', 'carry', 'support', 'mage', 'assassin', 'tank', 'offlaner'] as const
-const selectedRole = ref<'all' | HeroRole>('all')
+const PLAYSTYLE_TAGS = ['Burst', 'Damage over time', 'Control', 'Sustain', 'Mobility'] as const
+const selectedRole = ref<RoleFilter>('all')
+const selectedPlaystyle = ref<PlaystyleFilter>('all')
+
+// Only offer playstyle filters that some hero actually has (e.g. drop a tag no
+// kit qualifies for), so a filter chip never yields an empty grid by itself.
+const availablePlaystyles = computed<PlaystyleFilter[]>(() => {
+  const present = new Set<PlaystyleTag>()
+  for (const h of allHeroes) for (const t of heroPlaystyleTags(h)) present.add(t)
+  return ['all', ...PLAYSTYLE_TAGS.filter((t) => present.has(t))]
+})
+
 const filteredHeroes = computed(() =>
-  selectedRole.value === 'all' ? allHeroes : allHeroes.filter((h) => h.role === selectedRole.value),
+  filterHeroes(allHeroes, selectedRole.value, selectedPlaystyle.value),
 )
-function selectRole(role: 'all' | HeroRole) {
+
+function selectRole(role: RoleFilter) {
   selectedRole.value = role
-  // Keep the kit panel in sync with the visible grid: if the current hero isn't
-  // in the chosen role, jump to the first hero of that role.
-  if (role !== 'all' && hero.value.role !== role) {
-    const first = filteredHeroes.value[0]
-    if (first) selectedId.value = first.id as HeroId
-  }
 }
+function selectPlaystyle(p: PlaystyleFilter) {
+  selectedPlaystyle.value = p
+}
+
+// Keep the kit panel coherent with the grid: if the active filters hide the
+// currently-selected hero, jump to the first one still visible (when any).
+watch(filteredHeroes, (list) => {
+  if (list.length && !list.some((h) => h.id === selectedId.value)) {
+    selectedId.value = list[0]!.id as HeroId
+  }
+})
 
 // The training-console state machine (cast/advance-tick/dummy/DoT) lives in a
 // unit-tested composable; the page just wires it to the UI.
@@ -129,6 +147,41 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
       {{ ROLE_META[selectedRole].blurb }}
     </p>
 
+    <!-- Playstyle filter — narrow by how the kit plays (Burst/Control/…) -->
+    <div
+      class="flex flex-wrap items-center gap-1.5"
+      role="group"
+      aria-label="Filter heroes by playstyle"
+    >
+      <span class="text-[0.6rem] uppercase tracking-wider text-text-muted">playstyle</span>
+      <button
+        v-for="p in availablePlaystyles"
+        :key="p"
+        type="button"
+        :data-testid="`playstyle-filter-${p}`"
+        :aria-pressed="p === selectedPlaystyle"
+        class="border px-2 py-0.5 text-[0.65rem] uppercase tracking-wider transition-colors"
+        :class="
+          p === selectedPlaystyle
+            ? 'border-ability bg-ability/10 text-ability'
+            : 'border-border text-text-dim hover:border-border-glow hover:text-text-primary'
+        "
+        @click="selectPlaystyle(p)"
+      >
+        {{ p }}
+      </button>
+    </div>
+
+    <!-- Empty state when the two filters together match no hero -->
+    <p
+      v-if="filteredHeroes.length === 0"
+      class="-mt-1 text-[0.72rem] text-warn"
+      data-testid="hero-filter-empty"
+    >
+      &gt;_ no {{ selectedRole === 'all' ? '' : selectedRole + ' ' }}hero plays
+      {{ selectedPlaystyle }} — try another combination.
+    </p>
+
     <!-- Hero selector -->
     <div class="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
       <button
@@ -137,6 +190,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
         type="button"
         data-testid="hero-pick"
         :data-role="h.role"
+        :data-playstyle="heroPlaystyleTags(h).join(',')"
         :aria-pressed="h.id === selectedId"
         class="flex flex-col items-center gap-0.5 border px-1 py-1.5 transition-colors"
         :class="

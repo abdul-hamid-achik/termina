@@ -52,6 +52,18 @@ outcomes:
           s.textContent.trim()).filter(Boolean) : [];
 
           return { ok: chips.length > 0, evidence: 'tags: ' + JSON.stringify(chips) };
+  - id: playstyle_filter_narrows_roster
+    description: the playstyle filter further narrows the grid to heroes carrying that tag
+    verify:
+      script:
+        run: |
+          const picks = Array.from(document.querySelectorAll('[data-testid="hero-pick"]'));
+          const allMobility = picks.length > 0 && picks.every((b) =>
+            (b.getAttribute('data-playstyle') || '').split(',').includes('Mobility'));
+          return {
+            ok: allMobility,
+            evidence: picks.length + ' heroes shown; all carry Mobility: ' + allMobility,
+          };
 steps:
   - id: open_heroes
     open:
@@ -68,6 +80,14 @@ steps:
   - id: settle_filter
     wait:
       text: SUPPORT
+      timeoutMs: 10000
+  - id: filter_mobility
+    click:
+      by: selector
+      selector: '[data-testid="playstyle-filter-Mobility"]'
+  - id: settle_playstyle
+    wait:
+      text: Proxy
       timeoutMs: 10000
   - id: cast_q
     click:
@@ -87,4 +107,4 @@ steps:
     wait:
       text: combo landed
       timeoutMs: 10000
-contractHash: sha256:78183497e8be8b55941857a788e53c90fe6c636e92c716ba82d77844d43e98a8
+contractHash: sha256:6c72a82058956862ee27a7a4905960636368e672971974fe855e76bf11faf718
