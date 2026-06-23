@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
+import { ROLE_META } from '~~/shared/constants/roles'
 import type { HeroId, HeroRole } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
@@ -115,6 +116,14 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
         {{ r }}
       </button>
     </div>
+    <!-- What the filtered role does — a one-line primer for newcomers. -->
+    <p
+      v-if="selectedRole !== 'all'"
+      class="-mt-2 text-[0.72rem] text-text-dim"
+      data-testid="role-blurb"
+    >
+      {{ ROLE_META[selectedRole].blurb }}
+    </p>
 
     <!-- Hero selector -->
     <div class="grid grid-cols-3 gap-1.5 sm:grid-cols-6">

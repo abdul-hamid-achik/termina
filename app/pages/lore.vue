@@ -1,46 +1,21 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
+import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
 import HeroLoreCard from '~/components/lore/HeroLoreCard.vue'
-import type { HeroRole } from '~~/shared/types/hero'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 
 useHead({ title: 'Lore · TERMINA' })
 
 const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
 
-// Roster grouped by role — data-driven from HEROES so it can never drift.
-const roles: { role: HeroRole; label: string; blurb: string }[] = [
-  {
-    role: 'carry',
-    label: 'Carries',
-    blurb: 'Fragile early, unstoppable if fed — they scale into late-game wreckers.',
-  },
-  { role: 'mage', label: 'Mages', blurb: 'Burst casters who delete targets with ability combos.' },
-  {
-    role: 'assassin',
-    label: 'Assassins',
-    blurb: 'Pick off isolated targets from stealth and reposition before the answer lands.',
-  },
-  {
-    role: 'tank',
-    label: 'Tanks',
-    blurb: 'Front-line cores that soak punishment and start the fights.',
-  },
-  {
-    role: 'support',
-    label: 'Supports',
-    blurb: 'Enable the team — heals, shields, vision, and utility.',
-  },
-  {
-    role: 'offlaner',
-    label: 'Offlaners',
-    blurb: 'Durable disruptors who thrive in contested space.',
-  },
-]
-
-const roster = roles
-  .map((r) => ({ ...r, heroes: Object.values(HEROES).filter((h) => h.role === r.role) }))
-  .filter((r) => r.heroes.length > 0)
+// Roster grouped by role — labels/blurbs from the shared ROLE_META, heroes
+// data-driven from HEROES, so neither can drift.
+const roster = ROLE_ORDER.map((role) => ({
+  role,
+  label: ROLE_META[role].label,
+  blurb: ROLE_META[role].blurb,
+  heroes: Object.values(HEROES).filter((h) => h.role === role),
+})).filter((r) => r.heroes.length > 0)
 </script>
 
 <template>

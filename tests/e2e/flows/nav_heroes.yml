@@ -36,6 +36,11 @@ outcomes:
             ok: picks.length > 0 && roles.length === 1 && roles[0] === 'support',
             evidence: picks.length + ' heroes shown, roles: ' + JSON.stringify(roles),
           };
+  - id: role_filter_shows_blurb
+    description: filtering to a role shows that role's teaching blurb
+    verify:
+      text:
+        contains: Enable the team
 steps:
   - id: open_heroes
     open:
@@ -71,4 +76,4 @@ steps:
     wait:
       text: combo landed
       timeoutMs: 10000
-contractHash: sha256:ee12241550ae19065f2c1f946f4edc50d18bbe5e87118f42af5ac7401f68762b
+contractHash: sha256:8f711410ad4f38b9e7c5c0f95c9d043179862f7e941ec34046d16fe00b87378e
