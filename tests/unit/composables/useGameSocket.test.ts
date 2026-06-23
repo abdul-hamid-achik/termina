@@ -166,6 +166,22 @@ describe('useGameSocket', () => {
   })
 
   describe('send', () => {
+    it('returns false when no socket is connected (caller can buffer/retry)', () => {
+      const { send } = useGameSocket()
+      expect(send({ type: 'ping_map', zone: 'mid-river' })).toBe(false)
+    })
+
+    it('returns true and forwards the message when the socket is open', async () => {
+      const { connect, send } = useGameSocket()
+      connect('game-1', 'player-1')
+      await vi.advanceTimersByTimeAsync(1) // trigger onopen
+
+      expect(send({ type: 'ping_map', zone: 'mid-river' })).toBe(true)
+      expect(MockWebSocket.last?.send).toHaveBeenCalled()
+    })
+  })
+
+  describe('send', () => {
     it('sends JSON-encoded messages when connected', async () => {
       const { connect, send } = useGameSocket()
 
