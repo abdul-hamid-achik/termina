@@ -58,6 +58,7 @@ import {
   GLYPH_COOLDOWN_TICKS,
 } from '~~/shared/constants/balance'
 import { formatRoshan } from '~/utils/strategy'
+import { arrowTargetZone } from '~/utils/arrowMove'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
@@ -264,37 +265,10 @@ function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'Arr
   const playerZone = ZONE_MAP[p.zone]
   if (!playerZone || !playerZone.adjacentTo.length) return
 
-  // Map arrow keys to adjacent zones based on map position
-  // This is a simplified approach - we use the first adjacent zone in a direction
-  const adjacent = playerZone.adjacentTo
-
-  // Simple heuristic based on zone naming patterns
-  let targetZone: string | null = null
-
-  if (direction === 'ArrowUp') {
-    // Move toward radiant base (top of map)
-    targetZone =
-      adjacent.find(
-        (z) =>
-          z.includes('rad') ||
-          z.includes('t3-rad') ||
-          z === 'radiant-base' ||
-          z === 'radiant-fountain',
-      ) ?? null
-  } else if (direction === 'ArrowDown') {
-    // Move toward dire base (bottom of map)
-    targetZone =
-      adjacent.find(
-        (z) =>
-          z.includes('dire') || z.includes('t3-dire') || z === 'dire-base' || z === 'dire-fountain',
-      ) ?? null
-  } else if (direction === 'ArrowLeft') {
-    // Move toward left side (top lane or jungle)
-    targetZone = adjacent.find((z) => z.startsWith('top-') || z.startsWith('jungle-rad')) ?? null
-  } else if (direction === 'ArrowRight') {
-    // Move toward right side (bot lane or jungle)
-    targetZone = adjacent.find((z) => z.startsWith('bot-') || z.startsWith('jungle-dire')) ?? null
-  }
+  // Pick the adjacent zone in the pressed direction — pure heuristic extracted
+  // to a unit-tested util (arrowTargetZone) so the keyboard mapping is covered
+  // independently of this component.
+  const targetZone = arrowTargetZone(direction, playerZone.adjacentTo)
 
   // No blind fallback: if no adjacent zone clearly lies in the pressed
   // direction, do nothing rather than shoving the hero into an arbitrary
