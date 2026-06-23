@@ -39,6 +39,9 @@ import {
   GLYPH_DURATION_TICKS,
   GLYPH_COOLDOWN_TICKS,
 } from '~~/shared/constants/balance'
+import { useStartTutorial } from '~/composables/useStartTutorial'
+
+const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
 
 // ── Derived display values ───────────────────────────────────────
 // Everything below is computed from the live engine constants so the
@@ -551,12 +554,16 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       <div class="flex flex-col items-center gap-4 py-4">
         <span class="text-[0.8rem] text-text-dim">&gt;_ tutorial_complete. deploy --force</span>
         <span class="text-lg font-bold tracking-widest text-radiant">READY TO PLAY?</span>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap justify-center gap-3">
+          <AsciiButton
+            :label="startingTutorial ? 'STARTING…' : 'PRACTICE VS BOTS'"
+            :disabled="startingTutorial"
+            variant="primary"
+            data-testid="start-tutorial"
+            @click="startTutorial"
+          />
           <NuxtLink to="/lobby">
-            <AsciiButton label="ENTER THE TERMINAL" variant="primary" />
-          </NuxtLink>
-          <NuxtLink to="/leaderboard">
-            <AsciiButton label="VIEW LEADERBOARD" variant="ghost" />
+            <AsciiButton label="ENTER THE TERMINAL" variant="ghost" />
           </NuxtLink>
         </div>
       </div>

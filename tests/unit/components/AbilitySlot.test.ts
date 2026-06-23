@@ -107,4 +107,18 @@ describe('AbilitySlot', () => {
     // no effect chips when effects is empty
     expect(text).not.toContain('dmg')
   })
+
+  it('shows the cooldown (not "no mp") when both on cooldown and unaffordable', () => {
+    const wrapper = mountSlot({ interactive: true, manaAvailable: 0, cooldownRemaining: 3 })
+    expect(wrapper.text()).toContain('CD 3t')
+    expect(wrapper.text()).not.toContain('no mp')
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+  })
+
+  it('applies cooldown dimming even on a non-interactive slot', () => {
+    const wrapper = mountSlot({ cooldownRemaining: 2 })
+    expect(wrapper.element.tagName).toBe('DIV')
+    expect(wrapper.text()).toContain('CD 2t')
+    expect(wrapper.classes()).toContain('opacity-50')
+  })
 })

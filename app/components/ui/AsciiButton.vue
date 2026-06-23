@@ -12,6 +12,7 @@ defineEmits<{
 
 <template>
   <button
+    type="button"
     class="group inline-flex items-center gap-1 border px-1 py-1.5 font-mono text-sm transition-all duration-100 select-none"
     :class="[
       disabled ? 'pointer-events-none cursor-not-allowed opacity-35' : 'cursor-pointer',

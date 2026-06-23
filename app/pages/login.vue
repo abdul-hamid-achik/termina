@@ -90,7 +90,10 @@ if (route.query.error) {
   <div class="flex min-h-[calc(100vh-120px)] items-center justify-center p-8 max-sm:p-4">
     <div class="w-full max-w-[420px]">
       <!-- ASCII Art Header -->
-      <pre class="m-0 mb-4 text-center text-[0.6rem] leading-tight text-radiant select-none">
+      <pre
+        aria-hidden="true"
+        class="m-0 mb-4 text-center text-[0.6rem] leading-tight text-radiant select-none"
+      >
 ╔╦╗╔═╗╦═╗╔╦╗╦╔╗╔╔═╗
  ║ ║╣ ╠╦╝║║║║║║║╠═╣
  ╩ ╚═╝╩╚═╩ ╩╩╝╚╝╩ ╩</pre

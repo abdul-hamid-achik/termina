@@ -1,0 +1,127 @@
+import { ref, reactive, watch } from 'vue'
+import type { Ref } from 'vue'
+import type { HeroDef } from '~~/shared/types/hero'
+import { abilitySummary, abilityImpact } from '~~/shared/abilityFormat'
+
+export type ConsoleSlot = 'q' | 'w' | 'e' | 'r'
+const SLOTS: ConsoleSlot[] = ['q', 'w', 'e', 'r']
+
+interface ActiveDot {
+  source: string
+  perTick: number
+  ticksLeft: number
+}
+
+const DUMMY_NAME = 'training dummy'
+
+/**
+ * The /heroes training-console state machine: a safe, offline dry-run of a kit
+ * (real ability data, cooldowns + mana on the 4s scheduler) resolved against a
+ * practice dummy. Extracted from the page so the cast / advance-tick / DoT /
+ * respawn rules are unit-tested — mirroring useLoadout. `hero` is reactive;
+ * changing it resets the console.
+ */
+export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
+  const mana = ref(0)
+  const cooldowns = reactive<Record<ConsoleSlot, number>>({ q: 0, w: 0, e: 0, r: 0 })
+  const tick = ref(0)
+  const log = ref<string[]>([])
+  const dummyHp = ref(dummyMax)
+  const dots = ref<ActiveDot[]>([])
+
+  function pushLog(...lines: string[]) {
+    log.value.push(...lines)
+    if (log.value.length > 50) log.value = log.value.slice(-50)
+  }
+
+  function checkDummy() {
+    if (dummyHp.value <= 0) {
+      dummyHp.value = dummyMax
+      dots.value = []
+      pushLog(`! ${DUMMY_NAME} destroyed — respawning at full hp`)
+    }
+  }
+
+  function reset() {
+    mana.value = hero.value.baseStats.mp
+    for (const s of SLOTS) cooldowns[s] = 0
+    tick.value = 0
+    dummyHp.value = dummyMax
+    dots.value = []
+    log.value = [`>_ ${hero.value.name} loaded — click an ability or press Q/W/E/R to cast.`]
+  }
+
+  function cast(slot: ConsoleSlot) {
+    const ab = hero.value.abilities[slot]
+    if (cooldowns[slot] > 0) {
+      pushLog(`! ${ab.name} on cooldown (${cooldowns[slot]}t left)`)
+      return
+    }
+    if (mana.value < ab.manaCost) {
+      pushLog(`! not enough mana for ${ab.name} (need ${ab.manaCost}, have ${mana.value})`)
+      return
+    }
+    mana.value -= ab.manaCost
+    cooldowns[slot] = ab.cooldownTicks
+    pushLog(`> cast ${slot}`, `  ${hero.value.name} casts ${ab.name} — ${abilitySummary(ab)}`)
+
+    // Resolve the ability's impact against the dummy so the player sees it land.
+    const impact = abilityImpact(ab)
+    if (impact.burst > 0) {
+      dummyHp.value = Math.max(0, dummyHp.value - impact.burst)
+      pushLog(`  → ${impact.burst} burst dmg  ·  ${DUMMY_NAME} ${dummyHp.value}/${dummyMax}`)
+    }
+    if (impact.dotPerTick > 0 && impact.dotDuration > 0) {
+      dots.value.push({
+        source: ab.name,
+        perTick: impact.dotPerTick,
+        ticksLeft: impact.dotDuration,
+      })
+      pushLog(
+        `  → ${impact.dotPerTick} dmg/t for ${impact.dotDuration}t (advance ticks to resolve)`,
+      )
+    }
+    if (impact.heal > 0) pushLog(`  → heals ${impact.heal} (self/ally)`)
+    if (impact.shield > 0) pushLog(`  → grants a ${impact.shield} shield`)
+    checkDummy()
+  }
+
+  function advanceTick() {
+    tick.value++
+    // Resolve damage-over-time before regen/cooldowns so the dummy drains live.
+    if (dots.value.length > 0) {
+      let dmg = 0
+      for (const d of dots.value) {
+        dmg += d.perTick
+        d.ticksLeft--
+      }
+      dots.value = dots.value.filter((d) => d.ticksLeft > 0)
+      if (dmg > 0) {
+        dummyHp.value = Math.max(0, dummyHp.value - dmg)
+        pushLog(`— dot tick: −${dmg}  ·  ${DUMMY_NAME} ${dummyHp.value}/${dummyMax}`)
+        checkDummy()
+      }
+    }
+    for (const s of SLOTS) if (cooldowns[s] > 0) cooldowns[s]--
+    const regen = Math.max(2, Math.round(hero.value.baseStats.mp * 0.05))
+    mana.value = Math.min(hero.value.baseStats.mp, mana.value + regen)
+    pushLog(`— scheduler tick ${tick.value}  (+${regen} mp · cooldowns −1)`)
+  }
+
+  watch(hero, reset, { immediate: true })
+
+  return {
+    SLOTS,
+    DUMMY_NAME,
+    dummyMax,
+    mana,
+    cooldowns,
+    tick,
+    log,
+    dummyHp,
+    dots,
+    cast,
+    advanceTick,
+    reset,
+  }
+}

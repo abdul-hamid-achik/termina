@@ -14,7 +14,10 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
     class="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center gap-8 p-8 text-center max-sm:p-4"
   >
     <div class="flex flex-col items-center gap-3">
-      <pre class="m-0 text-[0.5rem] leading-[1.15] text-radiant text-glow md:text-[0.7rem]">
+      <pre
+        aria-hidden="true"
+        class="m-0 text-[0.5rem] leading-[1.15] text-radiant text-glow md:text-[0.7rem]"
+      >
 ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗
 ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗
    ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║
@@ -84,7 +87,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
     <div class="mt-4 text-[0.85rem]">
       <span class="font-bold text-radiant">&gt;</span>
       <span class="ml-1 text-text-dim">ready_</span>
-      <span class="animate-blink">█</span>
+      <span aria-hidden="true" class="animate-blink">█</span>
     </div>
   </div>
 </template>
