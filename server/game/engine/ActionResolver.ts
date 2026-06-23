@@ -11,11 +11,13 @@ import type {
   NeutralCreepState,
   RuneState,
 } from '~~/shared/types/game'
+import type { DamageType } from '~~/shared/types/hero'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import {
   resolveAbility,
   getAbilityLevel,
   absorbShield,
+  findTargetPlayer,
   type AbilitySlot,
 } from '~~/server/game/heroes'
 import {
@@ -1153,6 +1155,34 @@ function resolveShopPhase(
         abilityId: ITEMS[cmd.item]?.active?.id ?? cmd.item,
       })
 
+      // Linken's Sphere / Firewall / Lotus Orb block targeted item actives the
+      // same as targeted ability casts — Dagon/Scythe/Ethereal/Eul's all aim at
+      // a single enemy hero. Resolve that hero from the use target (dual-use
+      // items like Eul's/Ethereal carry no active.targetType, so resolve the
+      // explicit target rather than gating on it), and if it's an enemy, run the
+      // shared block BEFORE the HP-diff synthesis below — a block reverts the
+      // target to its pre-use state, so the diff then emits no damage for it.
+      const useUser = prePlayers[action.playerId]
+      let blockTargetId: string | undefined
+      const useTarget = cmd.target
+      if (typeof useTarget === 'string') {
+        const id = useTarget.startsWith('hero:') ? useTarget.slice(5) : useTarget
+        if (prePlayers[id]) blockTargetId = id
+      } else if (useTarget?.kind === 'hero') {
+        blockTargetId = findTargetPlayer({ ...state, players: prePlayers }, useTarget)?.id
+      }
+      if (useUser && blockTargetId && prePlayers[blockTargetId]?.team !== useUser.team) {
+        players = applyTargetedSpellBlock(
+          players,
+          prePlayers,
+          blockTargetId,
+          action.playerId,
+          'magical',
+          state.tick,
+          events,
+        )
+      }
+
       // Item actives that change HP (Dagon, Shiva's Guard, …) mutate HP inside
       // useItem but, historically, emitted NO damage/heal event — so an item
       // kill gave no killer credit/bounty/assist, never reflected Blade Mail,
@@ -1459,7 +1489,7 @@ export function resolveActions(
       command: Command
       violations: CheatDetection[]
     }> = []
-    const validActions = actions.filter((a) => {
+    let validActions = actions.filter((a) => {
       if (!isRealProduction()) {
         const validationError = validateAction(state, a)
         if (validationError) {
@@ -1515,6 +1545,37 @@ export function resolveActions(
     }
     const findHeroByNameCached = (name: string): string | null => {
       return heroIndex.get(name.toLowerCase()) ?? null
+    }
+
+    // Taunt forces every taunted hero to attack the taunter (Kernel/Firewall E
+    // "force enemies to attack me"). validateAction already blocked their move +
+    // cast; here we OVERRIDE their action with an attack on the taunter so they
+    // can't act freely — overriding bots too, so no separate bot-AI handling is
+    // needed. Skipped for BKB (magic_immune ignores the debuff) and for heroes
+    // who couldn't attack anyway (stun/feared/ghost), and only when the taunter
+    // is alive in the same zone (otherwise there's nothing to force-attack).
+    const tauntForced = new Map<string, string>()
+    for (const [pid, p] of Object.entries(players)) {
+      if (!p.alive) continue
+      if (p.buffs.some((b) => b.id === 'magic_immune')) continue
+      if (p.buffs.some((b) => b.id === 'stun' || b.id === 'feared' || b.id === 'ghost_form')) {
+        continue
+      }
+      const taunt = p.buffs.find((b) => b.id === 'taunt')
+      if (!taunt) continue
+      const taunter = players[taunt.source]
+      if (taunter?.alive && taunter.zone === p.zone && taunter.team !== p.team) {
+        tauntForced.set(pid, taunter.id)
+      }
+    }
+    if (tauntForced.size > 0) {
+      validActions = validActions.filter((a) => !tauntForced.has(a.playerId))
+      for (const [pid, taunterId] of tauntForced) {
+        validActions.push({
+          playerId: pid,
+          command: { type: 'attack', target: { kind: 'hero', name: taunterId } },
+        })
+      }
     }
 
     // Item stat cache
@@ -1708,6 +1769,92 @@ function isInstantAbility(
 }
 
 /**
+ * Linken's Sphere / Firewall item / Lotus Orb protection against a SINGLE-target
+ * effect aimed at `targetId`. Shared by hero ability casts (resolveHeroCast) and
+ * targeted item actives (the use-item loop), so Dagon / Scythe of Vyse /
+ * Ethereal Blade / Eul's are blocked exactly like a targeted ability instead of
+ * slipping through unblocked.
+ *
+ * On an armed block charge the target is reverted to its pre-effect state
+ * (undoing the damage/disable) and one charge is consumed (firewall_block is
+ * removed; spellblock is spent to stacks 0 with a fresh recharge window). On
+ * Lotus Orb the effect is negated on the holder and the HP it would have lost is
+ * reflected back at the caster (gated by the caster's own immunity). Emits
+ * spell_blocked and returns the (possibly updated) players map.
+ */
+function applyTargetedSpellBlock(
+  players: Record<string, PlayerState>,
+  prePlayers: Record<string, PlayerState>,
+  targetId: string,
+  casterId: string,
+  damageType: DamageType,
+  tick: number,
+  events: GameEngineEvent[],
+): Record<string, PlayerState> {
+  const pre = prePlayers[targetId]
+  const post = players[targetId]
+  if (!pre) return players
+
+  // Only an ARMED charge (stacks >= 1) blocks — a spent Linken's is stacks 0.
+  const blockId = pre.buffs.find(
+    (b) => (b.id === 'spellblock' || b.id === 'firewall_block') && b.stacks >= 1,
+  )?.id
+  if (blockId) {
+    const buffs = pre.buffs.flatMap((b) => {
+      if (b.id !== blockId) return [b]
+      return b.id === 'spellblock'
+        ? [{ ...b, stacks: 0, ticksRemaining: LINKENS_RECHARGE_TICKS }]
+        : []
+    })
+    events.push({
+      _tag: 'spell_blocked',
+      tick,
+      casterId,
+      targetId,
+      source: blockId === 'spellblock' ? 'linkens_sphere' : 'firewall_item',
+    })
+    return { ...players, [targetId]: { ...pre, buffs } }
+  }
+
+  if (post && pre.buffs.some((b) => b.id === 'lotus_orb')) {
+    const reflected = pre.hp - post.hp
+    let removed = false
+    const buffs = pre.buffs.filter((b) => {
+      if (!removed && b.id === 'lotus_orb') {
+        removed = true
+        return false
+      }
+      return true
+    })
+    let next = { ...players, [targetId]: { ...pre, buffs } } // negate on holder
+    const casterPost = next[casterId]
+    if (reflected > 0 && casterPost && !isDamageImmune(casterPost, damageType)) {
+      const newHp = Math.max(0, casterPost.hp - reflected)
+      next = { ...next, [casterId]: { ...casterPost, hp: newHp, alive: newHp > 0 } }
+      events.push({
+        _tag: 'damage',
+        tick,
+        sourceId: targetId,
+        targetId: casterId,
+        amount: reflected,
+        damageType,
+      })
+    }
+    events.push({
+      _tag: 'spell_blocked',
+      tick,
+      casterId,
+      targetId,
+      source: 'lotus_orb',
+      reflected: reflected > 0 ? reflected : 0,
+    })
+    return next
+  }
+
+  return players
+}
+
+/**
  * The cast bridge — runs the per-hero registry resolver (`resolveAbility`)
  * against a temp GameState assembled from the in-flight resolution buffers,
  * then synthesizes backward-compatible damage/heal events by diffing
@@ -1774,73 +1921,20 @@ function resolveHeroCast(
     targetId = findHero(cmd.target.name) ?? undefined
   }
 
-  // Linken's Sphere / Firewall item: a single-target ability on a hero holding a
-  // block charge fizzles — the caster still pays mana + cooldown (already
-  // deducted by the resolver), but the target's effect is reverted to its
-  // pre-cast state and one block charge is consumed.
+  // Linken's Sphere / Firewall item / Lotus Orb: a single-target ability on a
+  // hero holding a charge fizzles — the caster still pays mana + cooldown, but
+  // the target's effect is reverted and a charge consumed (shared with the
+  // targeted-item-active path so Dagon/Scythe/Ethereal/Eul's block identically).
   if (targetId && abilityDef?.targetType === 'hero') {
-    const pre = players[targetId]
-    const post = newPlayers[targetId]
-    // Only an ARMED charge (stacks >= 1) blocks — a spent Linken's is stacks 0.
-    const blockId = pre?.buffs.find(
-      (b) => (b.id === 'spellblock' || b.id === 'firewall_block') && b.stacks >= 1,
-    )?.id
-    if (pre && blockId) {
-      const buffs = pre.buffs.flatMap((b) => {
-        if (b.id !== blockId) return [b]
-        // firewall_block is a one-shot from an item active → remove it.
-        // spellblock auto-recharges (every tick it's absent), so instead spend
-        // it to stacks 0 with a fresh 12-tick window to gate the next block.
-        return b.id === 'spellblock'
-          ? [{ ...b, stacks: 0, ticksRemaining: LINKENS_RECHARGE_TICKS }]
-          : []
-      })
-      newPlayers = { ...newPlayers, [targetId]: { ...pre, buffs } }
-      events.push({
-        _tag: 'spell_blocked',
-        tick: state.tick,
-        casterId: action.playerId,
-        targetId,
-        source: blockId === 'spellblock' ? 'linkens_sphere' : 'firewall_item',
-      })
-    } else if (pre && post && pre.buffs.some((b) => b.id === 'lotus_orb')) {
-      // Lotus Orb: negate the spell on the holder and bounce the damage it would
-      // have taken back to the caster (gated by the caster's own immunity).
-      const reflected = pre.hp - post.hp
-      let removed = false
-      const buffs = pre.buffs.filter((b) => {
-        if (!removed && b.id === 'lotus_orb') {
-          removed = true
-          return false
-        }
-        return true
-      })
-      newPlayers = { ...newPlayers, [targetId]: { ...pre, buffs } } // negate on holder
-      const casterPost = newPlayers[action.playerId]
-      if (reflected > 0 && casterPost && !isDamageImmune(casterPost, damageType)) {
-        const newHp = Math.max(0, casterPost.hp - reflected)
-        newPlayers = {
-          ...newPlayers,
-          [action.playerId]: { ...casterPost, hp: newHp, alive: newHp > 0 },
-        }
-        events.push({
-          _tag: 'damage',
-          tick: state.tick,
-          sourceId: targetId,
-          targetId: action.playerId,
-          amount: reflected,
-          damageType,
-        })
-      }
-      events.push({
-        _tag: 'spell_blocked',
-        tick: state.tick,
-        casterId: action.playerId,
-        targetId,
-        source: 'lotus_orb',
-        reflected: reflected > 0 ? reflected : 0,
-      })
-    }
+    newPlayers = applyTargetedSpellBlock(
+      newPlayers,
+      players,
+      targetId,
+      action.playerId,
+      damageType,
+      state.tick,
+      events,
+    )
   }
 
   // Synthesize legacy-shape damage/heal events from the HP diff. Amounts are

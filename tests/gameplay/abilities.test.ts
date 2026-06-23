@@ -380,6 +380,149 @@ describe('abilities', () => {
     expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'firewall_block')).toBe(false)
   })
 
+  it("Linken's Sphere blocks a targeted ITEM active (Dagon), not just abilities", async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, items: [...s.players[HUMAN]!.items, 'dagon'], buffs: [] },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'spellblock', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+    const enemyBefore = (await game.player(ENEMY)).hp
+
+    game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: ENEMY } })
+    await game.tick()
+
+    // The item nuke fizzles: spell_blocked(linkens_sphere), no HP lost (reverted),
+    // charge spent to 0. Before the fix the block path only covered ability casts.
+    expect(
+      game.lastEvents.some((e) => e._tag === 'spell_blocked' && e.source === 'linkens_sphere'),
+    ).toBe(true)
+    expect((await game.player(ENEMY)).hp).toBe(enemyBefore)
+    expect((await game.player(ENEMY)).buffs.find((b) => b.id === 'spellblock')?.stacks).toBe(0)
+  })
+
+  it('Lotus Orb reflects a targeted ITEM nuke (Dagon) back at the user', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, items: [...s.players[HUMAN]!.items, 'dagon'], buffs: [] },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'lotus_orb', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+    const enemyBefore = (await game.player(ENEMY)).hp
+
+    game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: ENEMY } })
+    await game.tick()
+
+    const blocked = game.lastEvents.find(
+      (e) => e._tag === 'spell_blocked' && e.source === 'lotus_orb',
+    )
+    expect(blocked).toBeDefined()
+    expect(blocked?._tag === 'spell_blocked' && blocked.reflected).toBeGreaterThan(0)
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === ENEMY && e.targetId === HUMAN,
+      ),
+    ).toBe(true)
+    expect((await game.player(ENEMY)).hp).toBe(enemyBefore) // negated on the holder
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'lotus_orb')).toBe(false)
+  })
+
+  it("Linken's Sphere negates a disable-only ITEM active (Scythe hex) with no damage", async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: [...s.players[HUMAN]!.items, 'scythe_of_vyse'],
+          buffs: [],
+        },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'spellblock', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+
+    game.submit({ type: 'use', item: 'scythe_of_vyse', target: { kind: 'hero', name: ENEMY } })
+    await game.tick()
+
+    // The hex is fully negated — no hex buff lands, the charge is spent, and the
+    // reflect is 0 (a disable carries no HP loss to bounce).
+    const blocked = game.lastEvents.find(
+      (e) => e._tag === 'spell_blocked' && e.source === 'linkens_sphere',
+    )
+    expect(blocked).toBeDefined()
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'hex')).toBe(false)
+    expect((await game.player(ENEMY)).buffs.find((b) => b.id === 'spellblock')?.stacks).toBe(0)
+  })
+
+  it('a taunted enemy is forced to attack the taunter even when idle (Kernel/Firewall E)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'taunt', stacks: 1, ticksRemaining: 2, source: HUMAN }],
+        },
+      },
+    }))
+
+    // ENEMY submits nothing — the taunt overrides into a forced attack on HUMAN
+    // (the taunter), so a damage event flows from ENEMY back at HUMAN.
+    await game.tick()
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === ENEMY && e.targetId === HUMAN,
+      ),
+    ).toBe(true)
+  })
+
+  it('a BKB (magic_immune) hero ignores taunt — not forced to attack the taunter', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick()
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [
+            { id: 'taunt', stacks: 1, ticksRemaining: 2, source: HUMAN },
+            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: ENEMY },
+          ],
+        },
+      },
+    }))
+
+    await game.tick()
+    // BKB pierces the taunt: the idle ENEMY is NOT force-attacked into HUMAN.
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === ENEMY && e.targetId === HUMAN,
+      ),
+    ).toBe(false)
+  })
+
   it('a hexed hero (Scythe of Vyse) is fully disabled — no move AND no cast, with feedback', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
