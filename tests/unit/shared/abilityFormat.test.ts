@@ -4,6 +4,7 @@ import {
   abilitySummary,
   cooldownSeconds,
   abilityImpact,
+  abilityControls,
 } from '~~/shared/abilityFormat'
 import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
 
@@ -147,5 +148,59 @@ describe('abilityImpact', () => {
   it('is all-zero for a pure-utility ability', () => {
     const i = abilityImpact(ability([effect({ type: 'slow', value: 30, duration: 2 })]))
     expect(i).toEqual({ burst: 0, dotPerTick: 0, dotDuration: 0, total: 0, heal: 0, shield: 0 })
+  })
+})
+
+describe('abilityControls', () => {
+  const ability = (effects: AbilityEffect[]): AbilityDef => ({
+    id: 'x',
+    name: 'X',
+    description: '',
+    manaCost: 0,
+    cooldownTicks: 0,
+    targetType: 'none',
+    effects,
+  })
+
+  it('extracts each control with an uppercase label + duration', () => {
+    const c = abilityControls(
+      ability([
+        effect({ type: 'stun', duration: 2 }),
+        effect({ type: 'slow', value: 30, duration: 3 }),
+      ]),
+    )
+    expect(c).toEqual([
+      { kind: 'stun', label: 'STUNNED', duration: 2 },
+      { kind: 'slow', label: 'SLOW 30%', duration: 3 },
+    ])
+  })
+
+  it('defaults a missing/zero duration to 1 tick', () => {
+    expect(abilityControls(ability([effect({ type: 'silence' })]))).toEqual([
+      { kind: 'silence', label: 'SILENCED', duration: 1 },
+    ])
+    expect(abilityControls(ability([effect({ type: 'root', duration: 0 })]))).toEqual([
+      { kind: 'root', label: 'ROOTED', duration: 1 },
+    ])
+  })
+
+  it('labels taunt + fear', () => {
+    const c = abilityControls(
+      ability([effect({ type: 'taunt', duration: 1 }), effect({ type: 'fear', duration: 2 })]),
+    )
+    expect(c.map((x) => x.label)).toEqual(['TAUNTED', 'FEARED'])
+  })
+
+  it('ignores damage/heal/shield/dot/buff effects', () => {
+    expect(
+      abilityControls(
+        ability([
+          effect({ type: 'damage', value: 50 }),
+          effect({ type: 'heal', value: 20 }),
+          effect({ type: 'dot', value: 60, duration: 3 }),
+          effect({ type: 'buff', value: 5 }),
+        ]),
+      ),
+    ).toEqual([])
   })
 })

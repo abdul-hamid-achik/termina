@@ -55,6 +55,7 @@ const {
   log,
   dummyHp,
   dots,
+  statuses,
   totalDamage,
   castCount,
   cast,
@@ -210,7 +211,13 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           </div>
         </div>
 
-        <TargetDummy :name="DUMMY_NAME" :hp="dummyHp" :max-hp="dummyMax" :dots="dots.length" />
+        <TargetDummy
+          :name="DUMMY_NAME"
+          :hp="dummyHp"
+          :max-hp="dummyMax"
+          :dots="dots.length"
+          :statuses="statuses"
+        />
         <p class="text-[0.6rem] leading-snug text-text-dim">
           Impact shows base values — no armor, magic resist or amp. A feel for each kit, not a
           combat sim.

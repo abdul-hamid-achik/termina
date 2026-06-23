@@ -1,7 +1,7 @@
 import { ref, reactive, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { HeroDef } from '~~/shared/types/hero'
-import { abilitySummary, abilityImpact } from '~~/shared/abilityFormat'
+import { abilitySummary, abilityImpact, abilityControls } from '~~/shared/abilityFormat'
 
 export type ConsoleSlot = 'q' | 'w' | 'e' | 'r'
 const SLOTS: ConsoleSlot[] = ['q', 'w', 'e', 'r']
@@ -9,6 +9,13 @@ const SLOTS: ConsoleSlot[] = ['q', 'w', 'e', 'r']
 interface ActiveDot {
   source: string
   perTick: number
+  ticksLeft: number
+}
+
+/** A control/disable currently afflicting the dummy (decays on the scheduler). */
+export interface ActiveStatus {
+  kind: string
+  label: string
   ticksLeft: number
 }
 
@@ -28,6 +35,9 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
   const log = ref<string[]>([])
   const dummyHp = ref(dummyMax)
   const dots = ref<ActiveDot[]>([])
+  // Control effects (stun/slow/silence/…) on the dummy, ticking down live so a
+  // learner sees what a kit's disables do and how long they hold.
+  const statuses = ref<ActiveStatus[]>([])
   // Running tallies so a learner can compare kits' output at a glance — total
   // damage (burst + resolved DoT ticks) and how many casts it took.
   const totalDamage = ref(0)
@@ -42,6 +52,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     if (dummyHp.value <= 0) {
       dummyHp.value = dummyMax
       dots.value = []
+      statuses.value = []
       pushLog(`! ${DUMMY_NAME} destroyed — respawning at full hp`)
     }
   }
@@ -52,6 +63,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     tick.value = 0
     dummyHp.value = dummyMax
     dots.value = []
+    statuses.value = []
     totalDamage.value = 0
     castCount.value = 0
     log.value = [`>_ ${hero.value.name} loaded — click an ability or press Q/W/E/R to cast.`]
@@ -91,6 +103,19 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     }
     if (impact.heal > 0) pushLog(`  → heals ${impact.heal} (self/ally)`)
     if (impact.shield > 0) pushLog(`  → grants a ${impact.shield} shield`)
+
+    // Apply control/disable effects to the dummy so disables are visible, not
+    // just damage. Re-applying the same control refreshes its duration (the
+    // engine doesn't stack identical disables) rather than piling up chips.
+    for (const c of abilityControls(ab)) {
+      const existing = statuses.value.find((s) => s.kind === c.kind)
+      if (existing) {
+        existing.ticksLeft = Math.max(existing.ticksLeft, c.duration)
+      } else {
+        statuses.value.push({ kind: c.kind, label: c.label, ticksLeft: c.duration })
+      }
+      pushLog(`  → ${c.label} for ${c.duration}t`)
+    }
     checkDummy()
   }
 
@@ -137,6 +162,14 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
         checkDummy()
       }
     }
+    // Decay control effects on the dummy, announcing any that wear off — the
+    // learner watches each disable expire on the 4-second clock.
+    if (statuses.value.length > 0) {
+      for (const s of statuses.value) s.ticksLeft--
+      const worn = statuses.value.filter((s) => s.ticksLeft <= 0)
+      statuses.value = statuses.value.filter((s) => s.ticksLeft > 0)
+      for (const s of worn) pushLog(`— ${s.label} wore off`)
+    }
     for (const s of SLOTS) if (cooldowns[s] > 0) cooldowns[s]--
     const regen = Math.max(2, Math.round(hero.value.baseStats.mp * 0.05))
     mana.value = Math.min(hero.value.baseStats.mp, mana.value + regen)
@@ -155,6 +188,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     log,
     dummyHp,
     dots,
+    statuses,
     totalDamage,
     castCount,
     cast,

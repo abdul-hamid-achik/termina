@@ -82,4 +82,26 @@ describe('TargetDummy', () => {
     expect(mountDummy({ dots: 0 }).text()).not.toContain('damage-over-time')
     expect(mountDummy().text()).not.toContain('damage-over-time')
   })
+
+  describe('control status chips', () => {
+    it('renders a chip per active control with its label + ticks left', () => {
+      const wrapper = mountDummy({
+        statuses: [
+          { label: 'STUNNED', ticksLeft: 2 },
+          { label: 'SLOW 30%', ticksLeft: 3 },
+        ],
+      })
+      const chips = wrapper.find('[data-testid="target-dummy-statuses"]')
+      expect(chips.exists()).toBe(true)
+      expect(chips.text()).toContain('STUNNED · 2t')
+      expect(chips.text()).toContain('SLOW 30% · 3t')
+    })
+
+    it('hides the status row when there are no controls', () => {
+      expect(mountDummy().find('[data-testid="target-dummy-statuses"]').exists()).toBe(false)
+      expect(
+        mountDummy({ statuses: [] }).find('[data-testid="target-dummy-statuses"]').exists(),
+      ).toBe(false)
+    })
+  })
 })

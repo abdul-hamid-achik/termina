@@ -7,6 +7,8 @@ const props = defineProps<{
   maxHp: number
   /** Active damage-over-time stacks ticking on the dummy, for the status line. */
   dots?: number
+  /** Control effects (stun/slow/…) on the dummy, shown as decaying chips. */
+  statuses?: { label: string; ticksLeft: number }[]
 }>()
 
 const pct = computed(() =>
@@ -40,6 +42,19 @@ const barColor = computed(() =>
     </div>
     <div v-if="dots && dots > 0" class="text-[0.62rem] text-dire">
       &gt; {{ dots }} damage-over-time stack{{ dots > 1 ? 's' : '' }} active
+    </div>
+    <div
+      v-if="statuses && statuses.length > 0"
+      class="flex flex-wrap gap-1"
+      data-testid="target-dummy-statuses"
+    >
+      <span
+        v-for="(s, i) in statuses"
+        :key="i"
+        class="border border-gold/60 bg-gold/10 px-1 py-0.5 text-[0.6rem] uppercase tracking-wider text-gold"
+      >
+        {{ s.label }} · {{ s.ticksLeft }}t
+      </span>
     </div>
   </div>
 </template>

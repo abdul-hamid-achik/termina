@@ -1,4 +1,4 @@
-import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
+import type { AbilityDef, AbilityEffect, AbilityEffectType } from '~~/shared/types/hero'
 
 /**
  * Pure, human-readable formatting of ability data for the hero training console
@@ -78,6 +78,66 @@ export interface AbilityImpact {
   heal: number
   /** Shield granted. */
   shield: number
+}
+
+/** A control/disable an ability lands on its target, for the dummy status line. */
+export interface AbilityControl {
+  /** The underlying effect type (stun/slow/silence/root/taunt/fear). */
+  kind: AbilityEffectType
+  /** Short uppercase label, e.g. "STUNNED", "SLOW 30%". */
+  label: string
+  /** Ticks the control lasts on the dummy (always ≥ 1). */
+  duration: number
+}
+
+const CONTROL_TYPES = new Set<AbilityEffectType>([
+  'stun',
+  'silence',
+  'root',
+  'slow',
+  'taunt',
+  'fear',
+])
+
+function controlLabel(e: AbilityEffect): string {
+  switch (e.type) {
+    case 'stun':
+      return 'STUNNED'
+    case 'silence':
+      return 'SILENCED'
+    case 'root':
+      return 'ROOTED'
+    case 'slow':
+      return `SLOW ${e.value}%`
+    case 'taunt':
+      return 'TAUNTED'
+    case 'fear':
+      return 'FEARED'
+    default:
+      return e.type.toUpperCase()
+  }
+}
+
+/**
+ * Control/disable effects an ability applies to its target, for the training
+ * console's dummy status line. `abilityImpact` covers damage/heal/shield; this
+ * surfaces the disables (stun/slow/silence/root/taunt/fear) so a learner sees
+ * what a control-heavy kit actually DOES — not just its damage — and can watch
+ * each control decay on the 4-second scheduler. BASE durations from the hero
+ * data; a teaching view, not a combat sim. A control with no/zero declared
+ * duration defaults to 1 tick (the engine's minimum disable window).
+ */
+export function abilityControls(a: AbilityDef): AbilityControl[] {
+  const out: AbilityControl[] = []
+  for (const e of a.effects) {
+    if (!CONTROL_TYPES.has(e.type)) continue
+    out.push({
+      kind: e.type,
+      label: controlLabel(e),
+      duration: e.duration && e.duration > 0 ? e.duration : 1,
+    })
+  }
+  return out
 }
 
 export function abilityImpact(a: AbilityDef): AbilityImpact {

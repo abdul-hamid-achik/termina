@@ -13,6 +13,17 @@ import TargetDummy from './TargetDummy.vue'
     <Variant title="Low (dire) + DoT">
       <TargetDummy name="Target Dummy" :hp="180" :max-hp="1000" :dots="2" />
     </Variant>
+    <Variant title="Under control (stun + slow)">
+      <TargetDummy
+        name="Target Dummy"
+        :hp="620"
+        :max-hp="1000"
+        :statuses="[
+          { label: 'STUNNED', ticksLeft: 2 },
+          { label: 'SLOW 30%', ticksLeft: 3 },
+        ]"
+      />
+    </Variant>
     <Variant title="Destroyed">
       <TargetDummy name="Target Dummy" :hp="0" :max-hp="1000" />
     </Variant>

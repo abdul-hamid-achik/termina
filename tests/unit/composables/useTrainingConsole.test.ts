@@ -207,4 +207,72 @@ describe('useTrainingConsole', () => {
       expect(c.castCount.value).toBe(0)
     })
   })
+
+  describe('control effects on the dummy', () => {
+    // A hero whose R stuns for 2t and Q slows for 3t (alongside its damage).
+    const controlHero = () =>
+      makeHero({
+        abilities: {
+          ...makeHero().abilities,
+          q: ability({
+            id: 'q',
+            name: 'Q',
+            manaCost: 50,
+            cooldownTicks: 0,
+            effects: [
+              { type: 'damage', value: 100 },
+              { type: 'slow', value: 30, duration: 3 },
+            ],
+          }),
+          r: ability({
+            id: 'r',
+            name: 'R',
+            manaCost: 0,
+            cooldownTicks: 0,
+            effects: [{ type: 'stun', duration: 2 }],
+          }),
+        },
+      })
+
+    it('applies a control status and logs it on cast', () => {
+      const c = useTrainingConsole(ref(controlHero()))
+      c.cast('r')
+      expect(c.statuses.value).toEqual([{ kind: 'stun', label: 'STUNNED', ticksLeft: 2 }])
+      expect(c.log.value.some((l) => l.includes('STUNNED for 2t'))).toBe(true)
+    })
+
+    it('decays statuses each tick and announces when they wear off', () => {
+      const c = useTrainingConsole(ref(controlHero()))
+      c.cast('r') // stun 2t
+      c.advanceTick()
+      expect(c.statuses.value[0]!.ticksLeft).toBe(1)
+      c.advanceTick()
+      expect(c.statuses.value).toHaveLength(0)
+      expect(c.log.value.some((l) => l.includes('STUNNED wore off'))).toBe(true)
+    })
+
+    it('refreshes an existing control instead of stacking duplicates', () => {
+      const c = useTrainingConsole(ref(controlHero()))
+      c.cast('r')
+      c.advanceTick() // stun → 1t left
+      c.cast('r') // re-stun → refreshed back to 2t
+      expect(c.statuses.value).toHaveLength(1)
+      expect(c.statuses.value[0]!.ticksLeft).toBe(2)
+    })
+
+    it('tracks damage + control from the same ability', () => {
+      const c = useTrainingConsole(ref(controlHero()))
+      c.cast('q') // 100 dmg + 30% slow 3t
+      expect(c.dummyHp.value).toBe(900)
+      expect(c.statuses.value).toEqual([{ kind: 'slow', label: 'SLOW 30%', ticksLeft: 3 }])
+    })
+
+    it('clears statuses on reset', () => {
+      const c = useTrainingConsole(ref(controlHero()))
+      c.cast('r')
+      expect(c.statuses.value).toHaveLength(1)
+      c.reset()
+      expect(c.statuses.value).toHaveLength(0)
+    })
+  })
 })
