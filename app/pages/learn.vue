@@ -360,8 +360,16 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
 
 <template>
   <div class="mx-auto mt-4 flex max-w-[850px] flex-col gap-4 pb-8">
+    <header class="border-b border-border pb-2">
+      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ HOW TO PLAY</h1>
+      <p class="mt-1 text-[0.78rem] text-text-dim">
+        Everything you need before your first match — movement, commands, targeting, and the
+        concepts that win games on the 4-second scheduler.
+      </p>
+    </header>
+
     <!-- Quick Start -->
-    <TerminalPanel title="Quick Start Guide">
+    <TerminalPanel title="Quick Start Guide" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ cat /usr/share/termina/quickstart.txt</span>
       </div>
@@ -379,7 +387,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     </TerminalPanel>
 
     <!-- Movement Guide -->
-    <TerminalPanel title="Movement & Navigation">
+    <TerminalPanel title="Movement & Navigation" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ man move</span>
       </div>
@@ -454,7 +462,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     </TerminalPanel>
 
     <!-- Commands Reference -->
-    <TerminalPanel title="Command Reference">
+    <TerminalPanel title="Command Reference" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ help --all</span>
       </div>
@@ -511,7 +519,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     </TerminalPanel>
 
     <!-- Targeting -->
-    <TerminalPanel title="Targeting System">
+    <TerminalPanel title="Targeting System" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ man targeting</span>
       </div>
@@ -559,7 +567,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     </TerminalPanel>
 
     <!-- Keyboard Shortcuts -->
-    <TerminalPanel title="Keyboard Shortcuts">
+    <TerminalPanel title="Keyboard Shortcuts" title-as="h2">
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div
           v-for="k in keybinds"
@@ -573,7 +581,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     </TerminalPanel>
 
     <!-- Game Concepts -->
-    <TerminalPanel title="Game Concepts">
+    <TerminalPanel title="Game Concepts" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ cat /etc/termina/rules.conf</span>
       </div>
@@ -589,7 +597,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     </TerminalPanel>
 
     <!-- Hero Roles -->
-    <TerminalPanel title="Hero Roles">
+    <TerminalPanel title="Hero Roles" title-as="h2">
       <div class="mb-2 border-b border-border pb-2">
         <span class="text-[0.8rem] text-text-dim">&gt;_ ls /heroes/roles/</span>
       </div>
@@ -606,7 +614,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     </TerminalPanel>
 
     <!-- Ready CTA -->
-    <TerminalPanel title="Ready?">
+    <TerminalPanel title="Ready?" title-as="h2">
       <div class="flex flex-col items-center gap-4 py-4">
         <span class="text-[0.8rem] text-text-dim">&gt;_ tutorial_complete. deploy --force</span>
         <span class="text-lg font-bold tracking-widest text-radiant">READY TO PLAY?</span>

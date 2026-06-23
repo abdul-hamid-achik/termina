@@ -2,6 +2,12 @@
 defineProps<{
   title?: string
   variant?: 'default' | 'highlight' | 'danger'
+  /**
+   * Element to render the title as. Defaults to a non-semantic 'span' so the
+   * in-game HUD panels (and every existing caller) are unchanged; content pages
+   * can opt the panel title into a real heading (h2/h3) for a proper outline.
+   */
+  titleAs?: 'span' | 'h2' | 'h3'
 }>()
 </script>
 
@@ -18,9 +24,12 @@ defineProps<{
       class="flex h-6 items-center overflow-hidden border-b border-border bg-bg-secondary px-2 text-xs select-none"
     >
       <span class="shrink-0 text-text-dim">┌─</span>
-      <span class="truncate px-1.5 font-bold uppercase tracking-wide text-ability">{{
-        title
-      }}</span>
+      <component
+        :is="titleAs ?? 'span'"
+        class="truncate px-1.5 font-bold uppercase tracking-wide text-ability"
+      >
+        {{ title }}
+      </component>
       <span class="flex-1 overflow-hidden text-right text-text-dim">─┐</span>
     </div>
     <div class="flex-1 overflow-auto p-2">
