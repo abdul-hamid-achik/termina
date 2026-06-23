@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import AsciiMap from '../../../app/components/game/AsciiMap.vue'
 import type { ZoneDisplay } from '../../../app/components/game/asciiMapModel'
@@ -104,6 +105,21 @@ describe('AsciiMap', () => {
       // proving the step is grid-derived (not a hardcoded ±5).
       await grid.trigger('keydown', { key: 'ArrowDown' })
       expect(wrapper.vm.focusedZoneId).toBe('mid-t3-rad')
+    })
+
+    it('moves real DOM focus to the navigated cell (so its aria-label is announced)', async () => {
+      const wrapper = mount(AsciiMap, {
+        attachTo: document.body,
+        props: { zones: [makeZone({ id: 'radiant-fountain' })], playerZone: 'radiant-fountain' },
+      })
+
+      const grid = wrapper.find('[role="grid"]')
+      await grid.trigger('keydown', { key: 'ArrowRight' })
+      await nextTick() // the .focus() runs in a nextTick after focusedZoneId updates
+
+      const active = document.activeElement as HTMLElement | null
+      expect(active?.getAttribute('data-zone-cell')).toBe('radiant-fountain')
+      wrapper.unmount()
     })
 
     it('should announce zone updates to screen readers', async () => {
