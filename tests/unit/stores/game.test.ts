@@ -128,6 +128,28 @@ describe('Game Store', () => {
       expect(store.teams).not.toBeNull()
       expect(store.teams?.radiant).toBeDefined()
     })
+
+    it('tracks the server fog list (visibleZoneIds) distinctly from the zones map', () => {
+      const store = useGameStore()
+      store.updateFromTick({
+        type: 'tick_state',
+        tick: 5,
+        state: {
+          phase: 'playing',
+          players: { p1: makePlayer() },
+          // zones MAP carries two zones (one fogged-but-present)...
+          zones: { 'mid-river': makeZone('mid-river'), 'top-river': makeZone('top-river') },
+          // ...but only one is actually visible this tick.
+          visibleZones: ['mid-river'],
+          teams: makeTeams(),
+        },
+      } as never)
+
+      expect(store.visibleZoneIds).toEqual(['mid-river'])
+      // The map still holds both (for per-zone data lookups) — the fog list is
+      // the narrower, authoritative set.
+      expect(Object.keys(store.visibleZones)).toHaveLength(2)
+    })
   })
 
   describe('computed getters', () => {

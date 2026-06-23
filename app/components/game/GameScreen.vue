@@ -588,7 +588,7 @@ const towersByZone = computed(() => {
 const mapZones = computed(() => {
   const playerZoneId = gameStore.player?.zone ?? ''
   const playerTeam = gameStore.player?.team ?? 'radiant'
-  const visibleZoneIds = new Set(Object.keys(gameStore.visibleZones))
+  const visibleZoneIds = new Set(gameStore.visibleZoneIds)
 
   // Currently-live runes by zone (spawned but not yet expired).
   const liveRuneByZone = new Map<string, string>()

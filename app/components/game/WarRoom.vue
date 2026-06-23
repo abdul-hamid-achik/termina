@@ -56,7 +56,7 @@ const vision = computed(() => {
   const wards = Object.values(store.visibleZones)
     .flatMap((z) => z.wards ?? [])
     .filter((w) => !myTeam || w.team === myTeam)
-  return visionSummary(Object.keys(store.visibleZones), wards, store.tick)
+  return visionSummary(store.visibleZoneIds, wards, store.tick)
 })
 
 const dayNight = computed(() => dayNightReadout(store.timeOfDay))

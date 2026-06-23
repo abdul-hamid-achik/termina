@@ -59,7 +59,13 @@ export const useGameStore = defineStore('game', () => {
   const phase = ref<GamePhase>('waiting')
   const tick = ref(0)
   const player = ref<PlayerState | null>(null)
+  // The zones MAP (every zone, fogged ones stripped) — used for per-zone data
+  // lookups. NOT the fog list: `visibleZones` here is the map keyed by id.
   const visibleZones = ref<Record<string, ZoneRuntimeState>>({})
+  // The server's fog list — the ids of zones THIS player can actually see this
+  // tick (own + adjacent + ward/tower vision). Distinct from the zones map
+  // (which carries all zones); drives map fog-dimming + the War Room vision %.
+  const visibleZoneIds = ref<string[]>([])
   const allPlayers = ref<Record<string, PlayerState>>({})
   const teams = ref<{ radiant: TeamState; dire: TeamState } | null>(null)
   const towers = ref<TowerState[]>([])
@@ -235,6 +241,7 @@ export const useGameStore = defineStore('game', () => {
       phase: GamePhase
       players: Record<string, PlayerState>
       zones: Record<string, ZoneRuntimeState>
+      visibleZones?: string[]
       teams: { radiant: TeamState; dire: TeamState }
       towers?: TowerState[]
       ancients?: { radiant: AncientState; dire: AncientState }
@@ -272,6 +279,9 @@ export const useGameStore = defineStore('game', () => {
     if (state.phase) phase.value = state.phase
     allPlayers.value = state.players
     visibleZones.value = state.zones
+    // visibleZones (the fog id list) is always sent in the delta; fall back to
+    // all zone ids only for payloads that omit it (e.g. spectator full state).
+    visibleZoneIds.value = state.visibleZones ?? Object.keys(state.zones)
     if (state.teams) teams.value = state.teams
     if (state.towers) towers.value = state.towers
     if (state.ancients) ancients.value = state.ancients
@@ -398,6 +408,7 @@ export const useGameStore = defineStore('game', () => {
     tick.value = 0
     player.value = null
     visibleZones.value = {}
+    visibleZoneIds.value = []
     allPlayers.value = {}
     teams.value = null
     towers.value = []
@@ -439,6 +450,7 @@ export const useGameStore = defineStore('game', () => {
     tick,
     player,
     visibleZones,
+    visibleZoneIds,
     allPlayers,
     teams,
     towers,
