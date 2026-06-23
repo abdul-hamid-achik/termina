@@ -167,6 +167,10 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
             yield* Effect.logInfo('Match already persisted — idempotent skip').pipe(
               Effect.annotateLogs({ matchId: match.id }),
             )
+          } else {
+            yield* Effect.logInfo('Match persisted').pipe(
+              Effect.annotateLogs({ matchId: match.id }),
+            )
           }
           return match.id
         }
@@ -185,11 +189,7 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
         Effect.annotateLogs({ matchId: match.id, error: String(lastErr) }),
       )
       return match.id
-    }).pipe(
-      Effect.tap((matchId) =>
-        Effect.logInfo('Match persisted').pipe(Effect.annotateLogs({ matchId })),
-      ),
-    ),
+    }),
 
   getMatchHistory: (playerId, limit = 20) =>
     Effect.promise(async () => {

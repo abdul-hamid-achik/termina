@@ -39,7 +39,18 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 409, message: 'Username already taken' })
     }
 
-    await Effect.runPromise(runtime.dbService.updatePlayerUsername(playerId, username))
+    // The check above is check-then-act: two users claiming the same free name
+    // concurrently both pass it, and the loser's UPDATE hits the unique index.
+    // Map that Postgres 23505 to the same 409 instead of leaking a generic 500.
+    try {
+      await Effect.runPromise(runtime.dbService.updatePlayerUsername(playerId, username))
+    } catch (err) {
+      const e = err as { code?: string; cause?: { code?: string } }
+      if (e?.code === '23505' || e?.cause?.code === '23505') {
+        throw createError({ statusCode: 409, message: 'Username already taken' })
+      }
+      throw err
+    }
 
     // Update session with new username
     await setUserSession(event, {

@@ -13,6 +13,7 @@ import {
 import {
   registerPeer,
   unregisterPeer,
+  getPeer,
   getPlayerGame,
   setPlayerTeam,
   getPlayerTeam,
@@ -676,6 +677,9 @@ export default defineWebSocketHandler({
     wsLog.info('Peer disconnected', { playerId, gameId })
     unregisterPeer(playerId, peer)
     removeSpectator(playerId)
+    // Heartbeat timestamp is dead the moment the socket closes; drop it now
+    // rather than waiting for the ping sweep (a reconnect re-touches it).
+    lastPongAt.delete(playerId)
 
     const existingTimer = disconnectTimers.get(playerId)
     if (existingTimer) {
@@ -717,6 +721,16 @@ export default defineWebSocketHandler({
       const timer = setTimeout(
         () => {
           disconnectTimers.delete(playerId)
+
+          // Peer-identity guard: if a newer connection has already taken over
+          // this player's slot (duplicate tab, or a reconnect that opened before
+          // this close fired), `unregisterPeer` left that live peer registered —
+          // so tearing down here would kill the live connection. Only this stale
+          // peer's bookkeeping is dropped; the active connection is left intact.
+          if (getPeer(playerId)) {
+            peerState.delete(peer)
+            return
+          }
 
           resetRateLimit(playerId)
 

@@ -47,6 +47,7 @@ vi.mock('~~/server/game/matchmaking/lobby', () => ({
 vi.mock('~~/server/services/PeerRegistry', () => ({
   registerPeer: vi.fn(),
   unregisterPeer: vi.fn(),
+  getPeer: vi.fn(),
   getPlayerGame: vi.fn(),
   getPlayerTeam: vi.fn(),
   sendToPeer: vi.fn(),

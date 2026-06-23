@@ -671,6 +671,11 @@ export function replacePlayerWithBot(
   const player = lobby.players.find((p) => p.playerId === playerId)
   if (!player) return { success: false, error: 'Player not found' }
 
+  // Keep the playerToLobby reverse-index consistent with the id swap, else the
+  // human's entry leaks forever (cleanup iterates lobby.players by the NEW bot
+  // id, which was never indexed). Bots aren't tracked in the index (cleanup
+  // skips them), so just drop the human's entry.
+  playerToLobby.delete(playerId)
   player.playerId = botId
   player.username = botId.replace('bot_', 'Bot ').replace(/\b\w/g, (c) => c.toUpperCase())
 
