@@ -148,4 +148,63 @@ describe('useTrainingConsole', () => {
     for (let i = 0; i < 60; i++) c.advanceTick()
     expect(c.log.value.length).toBeLessThanOrEqual(50)
   })
+
+  describe('castCombo', () => {
+    it('fires every ready + affordable ability in one go, skipping the rest', () => {
+      const c = useTrainingConsole(ref(makeHero()))
+      c.castCombo()
+      // q (50) + w (30) + r (0) land; e (500) is unaffordable with 200 mana
+      expect(c.mana.value).toBe(120) // 200 - 50 - 30 - 0
+      expect(c.castCount.value).toBe(3)
+      expect(c.cooldowns.q).toBe(2)
+      expect(c.cooldowns.w).toBe(3)
+      expect(c.cooldowns.e).toBe(0) // skipped — never cast
+      // only q dealt burst (w is a DoT, r is inert); dummy 1000 - 100
+      expect(c.dummyHp.value).toBe(900)
+      expect(c.totalDamage.value).toBe(100)
+      expect(c.log.value.some((l) => l.includes('cast COMBO'))).toBe(true)
+      expect(c.log.value.some((l) => l.includes('combo landed 3'))).toBe(true)
+    })
+
+    it('reports when nothing is ready instead of casting', () => {
+      const c = useTrainingConsole(
+        ref(
+          makeHero({
+            abilities: {
+              q: ability({ id: 'q', name: 'Q', manaCost: 9999 }),
+              w: ability({ id: 'w', name: 'W', manaCost: 9999 }),
+              e: ability({ id: 'e', name: 'E', manaCost: 9999 }),
+              r: ability({ id: 'r', name: 'R', manaCost: 9999 }),
+            },
+          }),
+        ),
+      )
+      c.castCombo()
+      expect(c.castCount.value).toBe(0)
+      expect(c.mana.value).toBe(200) // untouched
+      expect(c.log.value.some((l) => l.includes('nothing ready'))).toBe(true)
+    })
+  })
+
+  describe('output tallies', () => {
+    it('accumulates burst and resolved DoT damage across casts + ticks', () => {
+      const c = useTrainingConsole(ref(makeHero()))
+      c.cast('q') // 100 burst
+      c.cast('w') // dot 60 over 3 → 20/tick
+      c.advanceTick()
+      c.advanceTick()
+      c.advanceTick() // 3 dot ticks → +60
+      expect(c.totalDamage.value).toBe(160)
+      expect(c.castCount.value).toBe(2)
+    })
+
+    it('zeroes the tallies on reset', () => {
+      const c = useTrainingConsole(ref(makeHero()))
+      c.cast('q')
+      expect(c.totalDamage.value).toBeGreaterThan(0)
+      c.reset()
+      expect(c.totalDamage.value).toBe(0)
+      expect(c.castCount.value).toBe(0)
+    })
+  })
 })
