@@ -161,8 +161,19 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   function matchFound(id?: string) {
-    queueStatus.value = 'found'
     if (id) lobbyId.value = id
+    // Idempotent: the 3s HTTP recovery poll calls this on every tick for an
+    // active lobby. Without this guard it would reset a player already drafting
+    // back to the 'found' splash every poll (the picking↔found bounce). Only run
+    // the found→picking transition from a genuinely pre-match state.
+    if (
+      queueStatus.value === 'found' ||
+      queueStatus.value === 'picking' ||
+      queueStatus.value === 'starting'
+    ) {
+      return
+    }
+    queueStatus.value = 'found'
     lobbyLog.info('Match found', { lobbyId: id })
     // Transition to picking after a brief delay — guard against race with allPicksComplete
     setTimeout(() => {
