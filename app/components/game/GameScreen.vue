@@ -81,7 +81,14 @@ const pinnedItems = ref<string[]>([...DEFAULT_QUICKBUY_ITEMS])
 if (import.meta.client) {
   try {
     const raw = localStorage.getItem('termina:quickbuy')
-    if (raw) pinnedItems.value = JSON.parse(raw)
+    if (raw) {
+      // Validate shape: a tampered/legacy value that parses to a non-string[]
+      // (object, numbers, string) would break the pin filters/props downstream.
+      const parsed: unknown = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.every((i) => typeof i === 'string')) {
+        pinnedItems.value = parsed
+      }
+    }
   } catch {
     /* ignore */
   }
@@ -182,8 +189,17 @@ onUnmounted(() => {
 function onKeyDown(e: KeyboardEvent) {
   const target = e.target as HTMLElement
   const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
+  const overlayOpen = showShop.value || showScoreboard.value
 
-  // Tab: autocomplete when input is focused, toggle scoreboard when not
+  // Escape closes an open overlay (shop / scoreboard).
+  if (e.key === 'Escape' && overlayOpen) {
+    e.preventDefault()
+    showShop.value = false
+    showScoreboard.value = false
+    return
+  }
+
+  // Tab: autocomplete when input is focused, hold-to-view scoreboard when not
   if (e.key === 'Tab') {
     e.preventDefault()
     if (isInputFocused) {
@@ -194,14 +210,7 @@ function onKeyDown(e: KeyboardEvent) {
     return
   }
 
-  // Q/W/E/R for abilities - only when not in input
-  if (!isInputFocused && ['q', 'w', 'e', 'r'].includes(e.key.toLowerCase())) {
-    e.preventDefault()
-    handleQuickAction(e.key.toLowerCase())
-    return
-  }
-
-  // S key for shop toggle (only when not focused on input)
+  // S toggles the shop (and closes it) — works even while the shop is open.
   if (e.key.toLowerCase() === 's') {
     if (isInputFocused) return
     e.preventDefault()
@@ -209,15 +218,27 @@ function onKeyDown(e: KeyboardEvent) {
     return
   }
 
-  // Number keys 1-6 for item use (only when not focused on input)
-  if (isInputFocused) return
+  // Everything below is an in-world action (cast / use item / move). Suppress
+  // it while typing OR while an overlay is open, so the player isn't acting
+  // blind behind the shop/scoreboard.
+  if (isInputFocused || overlayOpen) return
+
+  // Q/W/E/R for abilities
+  if (['q', 'w', 'e', 'r'].includes(e.key.toLowerCase())) {
+    e.preventDefault()
+    handleQuickAction(e.key.toLowerCase())
+    return
+  }
+
+  // Number keys 1-6 for item use
   const slot = Number.parseInt(e.key, 10)
   if (slot >= 1 && slot <= 6) {
     e.preventDefault()
     handleItemUseBySlot(slot - 1)
+    return
   }
 
-  // Arrow keys for quick movement (only when input not focused)
+  // Arrow keys for quick movement
   if (!target.closest('.cmd-input-wrapper')) {
     if (
       e.key === 'ArrowUp' ||
@@ -270,11 +291,10 @@ function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'Arr
     targetZone = adjacent.find((z) => z.startsWith('bot-') || z.startsWith('jungle-dire')) ?? null
   }
 
-  // Fallback: just pick first adjacent
-  if (!targetZone && adjacent.length > 0) {
-    targetZone = adjacent[0]!
-  }
-
+  // No blind fallback: if no adjacent zone clearly lies in the pressed
+  // direction, do nothing rather than shoving the hero into an arbitrary
+  // adjacent zone (often the wrong way, into danger). The map click + `move
+  // <zone>` command remain the precise paths.
   if (targetZone) {
     handleCommand(`move ${targetZone}`)
   }
@@ -331,6 +351,18 @@ function triggerShake(level: 'light' | 'strong') {
 
 // On each new tick: play the tick sound and flush any command the player
 // pre-typed while waiting (buffered client-side, sent now that they can act).
+// Dying closes the shop/scoreboard overlays (z-30) that would otherwise hide
+// the death screen (z-20), and the shop is non-functional while dead anyway.
+watch(
+  () => gameStore.isAlive,
+  (alive) => {
+    if (!alive) {
+      showShop.value = false
+      showScoreboard.value = false
+    }
+  },
+)
+
 watch(
   () => gameStore.tick,
   () => {
@@ -1201,6 +1233,15 @@ function handleReturnToMenu() {
           </p>
         </div>
         <p class="mt-4 t-caption">Wait for respawn or buy back to return instantly</p>
+        <!-- Dead players can still vote to surrender a lost game (the overlay
+             otherwise covers the command input). Server validates timing/threshold. -->
+        <button
+          data-testid="death-surrender-button"
+          class="mt-5 border border-border px-4 py-1.5 font-mono text-xs text-text-dim transition-colors hover:border-dire hover:text-dire active:scale-95"
+          @click="handleCommand('surrender confirm')"
+        >
+          [VOTE TO SURRENDER]
+        </button>
       </div>
     </div>
     <!-- Connection lost: all reconnect attempts exhausted -->
