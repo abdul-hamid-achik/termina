@@ -275,8 +275,13 @@ function initialOf(name: string | undefined | null): string {
           : 'border-border bg-bg-panel text-text-dim normal-case font-normal'
       "
       data-testid="turn-banner"
+      role="status"
+      aria-live="polite"
     >
-      <template v-if="isMyTurn && !myPick">&gt;&gt; YOUR TURN TO PICK &lt;&lt;</template>
+      <template v-if="isMyTurn && !myPick"
+        ><span aria-hidden="true">&gt;&gt;</span> YOUR TURN TO PICK
+        <span aria-hidden="true">&lt;&lt;</span></template
+      >
       <template v-else-if="isMyTurn && myPick">pick locked in — waiting for server…</template>
       <template v-else>waiting: {{ currentPicker.username }} is picking…</template>
     </div>
@@ -286,6 +291,8 @@ function initialOf(name: string | undefined | null): string {
       v-if="errorMessage"
       class="mb-2 border border-dire bg-dire/10 px-2 py-1 text-center text-[0.75rem] text-dire"
       data-testid="pick-error"
+      role="alert"
+      aria-live="assertive"
     >
       [ERR] {{ errorMessage }}
     </div>
@@ -297,6 +304,11 @@ function initialOf(name: string | undefined | null): string {
           v-for="hero in heroList"
           :key="hero.id"
           :data-testid="'hero-card-' + hero.id"
+          role="button"
+          :tabindex="hero.picked || lockedIn ? -1 : 0"
+          :aria-pressed="selectedHero === hero.id"
+          :aria-disabled="hero.picked || lockedIn ? 'true' : undefined"
+          :aria-label="hero.picked ? `${hero.name}, already picked` : `${hero.name}, ${hero.role}`"
           class="relative cursor-pointer border border-border bg-bg-panel p-2 transition-all duration-150"
           :class="{
             'border-ability bloom-ability scale-[1.02]': selectedHero === hero.id && !lockedIn,
@@ -306,6 +318,8 @@ function initialOf(name: string | undefined | null): string {
               !hero.picked && selectedHero !== hero.id,
           }"
           @click="selectHero(hero.id)"
+          @keydown.enter.prevent="selectHero(hero.id)"
+          @keydown.space.prevent="selectHero(hero.id)"
         >
           <div class="flex items-center gap-1.5">
             <HeroAvatar :hero-id="hero.id" :size="32" />
