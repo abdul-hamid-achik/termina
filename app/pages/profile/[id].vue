@@ -177,11 +177,15 @@ function formatDate(dateStr: string | null): string {
           </thead>
           <tbody>
             <tr v-for="h in heroStats" :key="h.heroId" data-testid="hero-stat-row">
-              <th
-                scope="row"
-                class="border-b border-border/50 px-1.5 py-1 text-left font-normal text-ability"
-              >
-                {{ heroName(h.heroId) }}
+              <th scope="row" class="border-b border-border/50 px-1.5 py-1 text-left font-normal">
+                <!-- Funnel: a hero you play → train its kit on /heroes. -->
+                <NuxtLink
+                  :to="`/heroes?hero=${h.heroId}`"
+                  class="text-ability no-underline hover:text-radiant"
+                  :aria-label="`Train ${heroName(h.heroId)} in the hero console`"
+                >
+                  {{ heroName(h.heroId) }}
+                </NuxtLink>
               </th>
               <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ h.games }}</td>
               <td
