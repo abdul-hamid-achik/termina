@@ -28,7 +28,10 @@ const {
   log,
   dummyHp,
   dots,
+  totalDamage,
+  castCount,
   cast,
+  castCombo,
   advanceTick,
   reset,
 } = useTrainingConsole(hero)
@@ -41,6 +44,9 @@ function onKey(e: KeyboardEvent) {
   if ((SLOTS as string[]).includes(k)) {
     e.preventDefault()
     cast(k as ConsoleSlot)
+  } else if (k === 'c') {
+    e.preventDefault()
+    castCombo()
   }
 }
 onMounted(() => window.addEventListener('keydown', onKey))
@@ -112,7 +118,9 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           interactive
           @cast="cast(s)"
         />
-        <p class="text-[0.6rem] text-text-dim">Click a slot or press Q / W / E / R to cast.</p>
+        <p class="text-[0.6rem] text-text-dim">
+          Click a slot or press Q / W / E / R to cast — or C for the full combo.
+        </p>
       </section>
 
       <!-- Console -->
@@ -125,7 +133,13 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           <div class="h-1.5 w-full bg-bg-secondary">
             <div class="h-full bg-ability transition-all" :style="{ width: `${manaPct}%` }" />
           </div>
-          <div class="mt-1 flex gap-2">
+          <!-- Output tally — lets a learner compare each kit's burst at a glance. -->
+          <div class="flex items-center justify-between text-[0.7rem] text-text-dim">
+            <span><span class="text-dire">dmg dealt</span> {{ totalDamage.toLocaleString() }}</span>
+            <span>{{ castCount }} cast{{ castCount === 1 ? '' : 's' }}</span>
+          </div>
+          <div class="mt-1 flex flex-wrap gap-2">
+            <AsciiButton label="CAST COMBO (C)" variant="primary" @click="castCombo" />
             <AsciiButton label="ADVANCE TICK (4s)" @click="advanceTick" />
             <AsciiButton label="RESET" variant="ghost" @click="reset" />
           </div>

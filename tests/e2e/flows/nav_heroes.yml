@@ -20,6 +20,11 @@ outcomes:
     verify:
       text:
         contains: casts
+  - id: combo_casts_full_rotation
+    description: the CAST COMBO control fires the kit's rotation and logs the combo result
+    verify:
+      text:
+        contains: combo landed
 steps:
   - id: open_heroes
     open:
@@ -37,4 +42,14 @@ steps:
     wait:
       text: casts
       timeoutMs: 10000
-contractHash: sha256:d030c46a99558ec9202a957723b87c1a682de9001bceb5e5e89305c8e91959ae
+  - id: cast_combo
+    click:
+      by: role
+      role: button
+      name: "[ CAST COMBO (C) ]"
+      exact: true
+  - id: await_combo_log
+    wait:
+      text: combo landed
+      timeoutMs: 10000
+contractHash: sha256:904fa5c5f5f47672c89d3e0957e0fca6d802afa76711ce90daa121622ba5b017
