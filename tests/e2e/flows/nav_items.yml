@@ -20,6 +20,11 @@ outcomes:
     verify:
       text:
         contains: 1 / 6
+  - id: loadout_shows_economy_cue
+    description: the build summary shows the tangible last-hits-to-farm economy cue
+    verify:
+      text:
+        contains: last-hits to farm
 steps:
   - id: open_items
     open:
@@ -37,4 +42,8 @@ steps:
     wait:
       text: 1 / 6
       timeoutMs: 10000
-contractHash: sha256:18fa89cc4f96f3bddc51d4525c20ee7d9fd65b8cfe52229ccfba33b4ab88e901
+  - id: await_economy_cue
+    wait:
+      text: last-hits to farm
+      timeoutMs: 10000
+contractHash: sha256:69d39c26803ee4d733a06879f80968c65719d4a301a34c162f3a478408d59dbf

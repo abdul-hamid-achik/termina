@@ -3,6 +3,7 @@ import {
   formatStats,
   aggregateStats,
   totalCost,
+  lastHitsToAfford,
   activeCooldownSeconds,
   byCostAscending,
   browseSections,
@@ -57,6 +58,20 @@ describe('totalCost', () => {
   })
   it('is zero for an empty loadout', () => {
     expect(totalCost([])).toBe(0)
+  })
+})
+
+describe('lastHitsToAfford', () => {
+  // avg creep bounty = (30 + 50) / 2 = 40 gold
+  it('converts gold to creep last-hits at the average bounty, rounding up', () => {
+    expect(lastHitsToAfford(40)).toBe(1)
+    expect(lastHitsToAfford(80)).toBe(2)
+    expect(lastHitsToAfford(100)).toBe(3) // 2.5 → 3
+    expect(lastHitsToAfford(4000)).toBe(100)
+  })
+  it('is zero for a free/empty build', () => {
+    expect(lastHitsToAfford(0)).toBe(0)
+    expect(lastHitsToAfford(-50)).toBe(0)
   })
 })
 

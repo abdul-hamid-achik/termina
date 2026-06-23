@@ -32,6 +32,15 @@ describe('LoadoutSummary', () => {
     expect(wrapper.text()).toContain('Pick items')
     // no clear button when empty
     expect(wrapper.find('[data-testid="loadout-clear"]').exists()).toBe(false)
+    // the last-hits economy cue only shows once there's a build
+    expect(wrapper.find('[data-testid="loadout-lasthits"]').exists()).toBe(false)
+  })
+
+  it('shows the ≈ last-hits economy cue for a build (cost / avg creep bounty)', () => {
+    const wrapper = mountSummary([vanguard, dagon]) // 5250g → ceil(5250/40) = 132
+    const lh = wrapper.find('[data-testid="loadout-lasthits"]')
+    expect(lh.exists()).toBe(true)
+    expect(lh.text()).toContain('132')
   })
 
   it('aggregates cost, stats and slot count across the build', () => {
