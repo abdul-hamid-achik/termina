@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
-import { formatReplayCommand, clampFrameIndex } from '~/utils/replayView'
+import { formatReplayCommand, clampFrameIndex, nextScrubTick } from '~/utils/replayView'
 
 definePageMeta({ ssr: false })
 
@@ -81,6 +81,34 @@ const maxTick = computed(() => {
   if (framesData.value?.totalTicks) return framesData.value.totalTicks
   return data.value?.state.tick ?? 0
 })
+
+// Playback: auto-advance the scrubber so a replay can be watched, not just
+// dragged. ~0.6s per tick is a readable pace for the 4s-tick game.
+const playing = ref(false)
+let playTimer: ReturnType<typeof setInterval> | null = null
+function stopPlayback() {
+  if (playTimer) {
+    clearInterval(playTimer)
+    playTimer = null
+  }
+  playing.value = false
+}
+function togglePlayback() {
+  if (playing.value) {
+    stopPlayback()
+    return
+  }
+  if (scrubTick.value >= maxTick.value) scrubTick.value = 0 // replay from the top
+  playing.value = true
+  playTimer = setInterval(() => {
+    if (scrubTick.value >= maxTick.value) {
+      stopPlayback()
+      return
+    }
+    scrubTick.value = nextScrubTick(scrubTick.value, maxTick.value)
+  }, 600)
+}
+onUnmounted(stopPlayback)
 
 // Filter actions visible up to scrubTick
 const visibleActions = computed(() => {
@@ -345,14 +373,27 @@ watchEffect(() => {
               <span>scrub: tick {{ scrubTick }}</span>
               <span>tick {{ maxTick }}</span>
             </div>
-            <input
-              v-model.number="scrubTick"
-              type="range"
-              min="0"
-              :max="maxTick"
-              step="1"
-              class="w-full accent-ability"
-            />
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="shrink-0 border border-border px-2 py-0.5 text-xs text-ability transition-colors hover:border-border-glow hover:text-radiant"
+                :aria-label="playing ? 'Pause replay playback' : 'Play replay'"
+                :aria-pressed="playing"
+                data-testid="replay-play"
+                @click="togglePlayback"
+              >
+                {{ playing ? '⏸ PAUSE' : '▶ PLAY' }}
+              </button>
+              <input
+                v-model.number="scrubTick"
+                type="range"
+                min="0"
+                :max="maxTick"
+                step="1"
+                class="w-full accent-ability"
+                aria-label="Scrub replay tick"
+              />
+            </div>
           </div>
 
           <div class="max-h-[420px] overflow-y-auto px-2 py-1 text-xs t-mono-num">

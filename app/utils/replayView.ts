@@ -50,3 +50,13 @@ export function clampFrameIndex(frameCount: number, scrubTick: number): number {
   if (scrubTick < 0) return 0
   return Math.min(scrubTick, frameCount - 1)
 }
+
+/**
+ * The next playback position, one tick on, capped at the final tick — drives the
+ * replay's play/pause auto-advance. Stays at `max` once reached (the caller stops
+ * the timer there).
+ */
+export function nextScrubTick(current: number, max: number): number {
+  if (max <= 0) return 0
+  return Math.min(current + 1, max)
+}

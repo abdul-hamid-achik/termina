@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatReplayCommand, clampFrameIndex } from '../../../app/utils/replayView'
+import { formatReplayCommand, clampFrameIndex, nextScrubTick } from '../../../app/utils/replayView'
 
 describe('formatReplayCommand', () => {
   it('formats movement with the destination zone', () => {
@@ -55,5 +55,19 @@ describe('clampFrameIndex', () => {
     expect(clampFrameIndex(10, 0)).toBe(0)
     expect(clampFrameIndex(10, 4)).toBe(4)
     expect(clampFrameIndex(10, 9)).toBe(9)
+  })
+})
+
+describe('nextScrubTick', () => {
+  it('advances one tick', () => {
+    expect(nextScrubTick(0, 100)).toBe(1)
+    expect(nextScrubTick(41, 100)).toBe(42)
+  })
+  it('caps at the final tick (playback stalls there)', () => {
+    expect(nextScrubTick(100, 100)).toBe(100)
+    expect(nextScrubTick(99, 100)).toBe(100)
+  })
+  it('is 0 for an empty replay', () => {
+    expect(nextScrubTick(0, 0)).toBe(0)
   })
 })
