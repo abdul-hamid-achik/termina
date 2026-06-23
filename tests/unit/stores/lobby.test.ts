@@ -606,6 +606,24 @@ describe('Lobby Store', () => {
       expect(store.queueStatus).toBe('found') // matchFound, pre-1500ms transition
     })
 
+    it('does not bounce a drafting player back to found on a repeat recovery poll', async () => {
+      mockFetch.mockResolvedValue({
+        status: 'lobby',
+        lobbyId: 'lobby_3',
+        team: 'dire',
+        players: [{ playerId: 'p2', team: 'dire', heroId: null }],
+        phase: 'picking',
+      })
+      const store = useLobbyStore()
+      store.queueStatus = 'picking' // already in the draft (past the found splash)
+
+      await store.recoverState() // the 3s recovery poll fires again
+
+      // matchFound is idempotent — the player stays drafting, not reset to found
+      expect(store.queueStatus).toBe('picking')
+      expect(store.lobbyId).toBe('lobby_3')
+    })
+
     it('recovers a searching status back into the queue', async () => {
       mockFetch.mockResolvedValue({
         status: 'searching',
