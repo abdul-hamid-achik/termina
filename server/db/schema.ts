@@ -157,6 +157,8 @@ export type Player = typeof players.$inferSelect
 export type NewPlayer = typeof players.$inferInsert
 export type Match = typeof matches.$inferSelect
 export type NewMatch = typeof matches.$inferInsert
+/** A match plus the queried player's team in it (returned by getMatchHistory). */
+export type MatchHistoryEntry = Match & { team: 'radiant' | 'dire' }
 export type MatchPlayer = typeof matchPlayers.$inferSelect
 export type NewMatchPlayer = typeof matchPlayers.$inferInsert
 export type HeroStat = typeof heroStats.$inferSelect

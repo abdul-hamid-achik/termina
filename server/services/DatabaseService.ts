@@ -10,6 +10,7 @@ import {
   type Player,
   type NewPlayer,
   type Match,
+  type MatchHistoryEntry,
   type NewMatch,
   type NewMatchPlayer,
   type HeroStat,
@@ -37,7 +38,7 @@ export interface DatabaseServiceApi {
   readonly createPlayer: (data: NewPlayer) => Effect.Effect<Player>
   readonly updatePlayerMMR: (id: string, mmr: number) => Effect.Effect<void>
   readonly recordMatch: (match: NewMatch, players: NewMatchPlayer[]) => Effect.Effect<string>
-  readonly getMatchHistory: (playerId: string, limit?: number) => Effect.Effect<Match[]>
+  readonly getMatchHistory: (playerId: string, limit?: number) => Effect.Effect<MatchHistoryEntry[]>
   readonly getMatch: (id: string) => Effect.Effect<MatchWithPlayers | null>
   readonly getLeaderboard: (limit?: number) => Effect.Effect<Player[]>
   readonly updateHeroStats: (
@@ -188,14 +189,16 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
     Effect.promise(async () => {
       const db = useDb()
       const results = await db
-        .select({ match: matches })
+        .select({ match: matches, team: matchPlayers.team })
         .from(matchPlayers)
         .innerJoin(matches, eq(matchPlayers.matchId, matches.id))
         .where(eq(matchPlayers.playerId, playerId))
         .orderBy(desc(matches.createdAt))
         .limit(limit)
 
-      return results.map((r) => r.match)
+      // Carry the queried player's team so the UI can show Victory/Defeat from
+      // their perspective (not just which side won).
+      return results.map((r) => ({ ...r.match, team: r.team }))
     }),
 
   getMatch: (id) =>
