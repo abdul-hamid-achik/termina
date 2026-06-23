@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
-import type { HeroId } from '~~/shared/types/hero'
+import type { HeroId, HeroRole } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
@@ -24,6 +24,23 @@ const selectedId = ref<HeroId>(queryHero)
 // selectedId is always a valid HeroId, but noUncheckedIndexedAccess widens the
 // lookup to `| undefined` — assert since the key is guaranteed present.
 const hero = computed(() => HEROES[selectedId.value]!)
+
+// Role filter so a newcomer can narrow the roster to a role they want to learn
+// ("show me a support"). 'all' shows everyone.
+const ROLE_FILTERS = ['all', 'carry', 'support', 'mage', 'assassin', 'tank', 'offlaner'] as const
+const selectedRole = ref<'all' | HeroRole>('all')
+const filteredHeroes = computed(() =>
+  selectedRole.value === 'all' ? allHeroes : allHeroes.filter((h) => h.role === selectedRole.value),
+)
+function selectRole(role: 'all' | HeroRole) {
+  selectedRole.value = role
+  // Keep the kit panel in sync with the visible grid: if the current hero isn't
+  // in the chosen role, jump to the first hero of that role.
+  if (role !== 'all' && hero.value.role !== role) {
+    const first = filteredHeroes.value[0]
+    if (first) selectedId.value = first.id as HeroId
+  }
+}
 
 // The training-console state machine (cast/advance-tick/dummy/DoT) lives in a
 // unit-tested composable; the page just wires it to the UI.
@@ -79,12 +96,34 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
       </p>
     </header>
 
+    <!-- Role filter — narrow the roster to a role to learn -->
+    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Filter heroes by role">
+      <button
+        v-for="r in ROLE_FILTERS"
+        :key="r"
+        type="button"
+        :data-testid="`role-filter-${r}`"
+        :aria-pressed="r === selectedRole"
+        class="border px-2 py-0.5 text-[0.65rem] uppercase tracking-wider transition-colors"
+        :class="
+          r === selectedRole
+            ? 'border-ability bg-ability/10 text-ability'
+            : 'border-border text-text-dim hover:border-border-glow hover:text-text-primary'
+        "
+        @click="selectRole(r)"
+      >
+        {{ r }}
+      </button>
+    </div>
+
     <!-- Hero selector -->
     <div class="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
       <button
-        v-for="h in allHeroes"
+        v-for="h in filteredHeroes"
         :key="h.id"
         type="button"
+        data-testid="hero-pick"
+        :data-role="h.role"
         :aria-pressed="h.id === selectedId"
         class="flex flex-col items-center gap-0.5 border px-1 py-1.5 transition-colors"
         :class="
