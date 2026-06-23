@@ -179,44 +179,55 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
         <div class="t-h3 pb-1 pt-1.5 text-radiant text-glow-radiant">RADIANT</div>
         <div class="mb-3 overflow-x-auto">
           <table class="w-full border-collapse text-xs">
+            <caption class="sr-only">
+              Radiant team final scoreboard
+            </caption>
             <thead>
               <tr>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Hero
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Player
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   K
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   D
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   A
                 </th>
                 <th
+                  scope="col"
                   class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
                 >
                   DMG
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Gold
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Items
@@ -235,9 +246,12 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
                   {{ HEROES[p.heroId]?.name ?? p.heroId }}
                 </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
+                <th
+                  scope="row"
+                  class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-left font-normal"
+                >
                   {{ p.name }}
-                </td>
+                </th>
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
                   {{ p.kills }}
                 </td>
@@ -268,44 +282,55 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
         <div class="t-h3 pb-1 pt-1.5 text-dire text-glow-dire">DIRE</div>
         <div class="overflow-x-auto">
           <table class="w-full border-collapse text-xs">
+            <caption class="sr-only">
+              Dire team final scoreboard
+            </caption>
             <thead>
               <tr>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Hero
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Player
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   K
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   D
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   A
                 </th>
                 <th
+                  scope="col"
                   class="hidden border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim md:table-cell"
                 >
                   DMG
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Gold
                 </th>
                 <th
+                  scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
                 >
                   Items
@@ -324,9 +349,12 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-ability">
                   {{ HEROES[p.heroId]?.name ?? p.heroId }}
                 </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5">
+                <th
+                  scope="row"
+                  class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-left font-normal"
+                >
                   {{ p.name }}
-                </td>
+                </th>
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
                   {{ p.kills }}
                 </td>

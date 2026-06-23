@@ -146,6 +146,20 @@ describe('PostGame', () => {
       expect(rows).toHaveLength(4)
     })
 
+    it('exposes accessible table semantics (caption + scoped headers)', () => {
+      const wrapper = mountPostGame()
+      // Each team table is labelled for screen readers.
+      const captions = wrapper.findAll('caption').map((c) => c.text())
+      expect(captions).toContain('Radiant team final scoreboard')
+      expect(captions).toContain('Dire team final scoreboard')
+      // Column headers are scoped (8 columns × 2 tables).
+      expect(wrapper.findAll('th[scope="col"]').length).toBeGreaterThanOrEqual(16)
+      // Each player's name cell is a row header (4 players → 4 row headers).
+      const rowHeaders = wrapper.findAll('th[scope="row"]')
+      expect(rowHeaders).toHaveLength(4)
+      expect(rowHeaders.map((h) => h.text())).toContain('you')
+    })
+
     it('resolves item ids to readable item names', () => {
       const players = [
         { id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'radiant' as TeamId },
