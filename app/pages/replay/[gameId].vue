@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
+import { formatReplayCommand, clampFrameIndex } from '~/utils/replayView'
 
 definePageMeta({ ssr: false })
 
@@ -90,9 +91,9 @@ const visibleActions = computed(() => {
 // Frame at the scrub position — frames are indexed by tick (0..N).
 const currentFrame = computed<Frame | null>(() => {
   const frames = framesData.value?.frames
-  if (!frames || frames.length === 0) return null
-  const idx = Math.min(scrubTick.value, frames.length - 1)
-  return frames[idx] ?? null
+  if (!frames) return null
+  const idx = clampFrameIndex(frames.length, scrubTick.value)
+  return idx < 0 ? null : (frames[idx] ?? null)
 })
 
 function frameTeam(team: 'radiant' | 'dire'): FramePlayer[] {
@@ -145,33 +146,6 @@ const teamScores = computed(() => {
 
 function fmtSavedAt(ts: number): string {
   return new Date(ts).toLocaleString()
-}
-
-function fmtCommand(cmd: { type: string; [k: string]: unknown }): string {
-  switch (cmd.type) {
-    case 'move':
-      return `move → ${String(cmd['zone'] ?? '?')}`
-    case 'attack': {
-      const t = cmd['target'] as { kind?: string; id?: string } | undefined
-      return `attack ${t?.kind ?? ''} ${t?.id ?? ''}`
-    }
-    case 'cast':
-      return `cast ${String(cmd['ability'] ?? '?')}`
-    case 'buy':
-      return `buy ${String(cmd['item'] ?? '?')}`
-    case 'sell':
-      return `sell ${String(cmd['item'] ?? '?')}`
-    case 'buyback':
-      return 'buyback'
-    case 'surrender':
-      return `surrender (${String(cmd['vote'] ?? '?')})`
-    case 'select_talent':
-      return `talent tier${String(cmd['tier'] ?? '?')}`
-    case 'place_ward':
-      return `ward ${String(cmd['kind'] ?? '?')} @ ${String(cmd['zone'] ?? '?')}`
-    default:
-      return cmd.type
-  }
 }
 
 function heroName(id: string | null): string {
@@ -379,7 +353,7 @@ watchEffect(() => {
             >
               <span class="w-12 shrink-0 text-text-muted">[T{{ a.tick }}]</span>
               <span class="w-32 shrink-0 truncate text-self">{{ a.playerId }}</span>
-              <span class="text-text-primary">{{ fmtCommand(a.command) }}</span>
+              <span class="text-text-primary">{{ formatReplayCommand(a.command) }}</span>
             </div>
             <div v-if="visibleActions.length === 0" class="t-caption px-2 py-2">
               &gt;_ no actions yet at this tick
