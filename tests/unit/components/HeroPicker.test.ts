@@ -64,6 +64,25 @@ describe('HeroPicker', () => {
       expect(wrapper.emitted('pick')).toEqual([['echo']])
     })
 
+    it('selects a hero by keyboard (Enter) — the card is a focusable button', async () => {
+      const wrapper = mountPicker({
+        currentPicker: { playerId: 'me', username: 'Me' },
+      })
+
+      const card = wrapper.find('[data-testid="hero-card-echo"]')
+      // exposed as a keyboard-operable control
+      expect(card.attributes('role')).toBe('button')
+      expect(card.attributes('tabindex')).toBe('0')
+
+      await card.trigger('keydown.enter')
+      expect(card.attributes('aria-pressed')).toBe('true')
+
+      const btn = wrapper.find('[data-testid="ascii-button"]')
+      expect(btn.attributes('disabled')).toBeUndefined()
+      await btn.trigger('click')
+      expect(wrapper.emitted('pick')).toEqual([['echo']])
+    })
+
     it('does not emit pick when confirming out of turn', async () => {
       const wrapper = mountPicker({
         currentPicker: { playerId: 'p2', username: 'Ally' },
