@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
+import { ITEMS } from '~~/shared/constants/items'
+import { PASSIVE_GOLD_PER_TICK } from '~~/shared/constants/balance'
 
 /**
  * Replaces tests/e2e/flows/game_buy_resolves.yml — a buy action lands the item
@@ -15,6 +17,18 @@ describe('shop', () => {
 
     const me = await game.me()
     expect(me.items).toContain('iron_branch')
+  })
+
+  it('buying deducts exactly the item cost (net of the tick passive income)', async () => {
+    const game = await seedGame('laning', { heroSelf: 'echo' })
+    const before = (await game.me()).gold
+
+    game.buy('iron_branch')
+    await game.tick()
+
+    const me = await game.me()
+    // The only gold movements this idle tick are the buy and passive income.
+    expect(me.gold).toBe(before - ITEMS.iron_branch!.cost + PASSIVE_GOLD_PER_TICK)
   })
 
   it('buying emits an item_purchased event so the buy is confirmed in the log', async () => {
