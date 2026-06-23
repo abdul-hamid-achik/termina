@@ -67,6 +67,22 @@ outcomes:
             ok: enterHref === '/lobby' && !!practice,
             evidence: 'ENTER THE TERMINAL -> ' + JSON.stringify(enterHref) + ' | practice button: ' + !!practice,
           };
+  - id: map_primer_renders
+    description: the interactive map primer renders in the Movement panel
+    verify:
+      text:
+        contains: Explore the Map
+  - id: map_primer_hop_updates_caption
+    description: clicking an adjacent zone hops the explorer there and updates the caption
+    verify:
+      script:
+        run: >
+          const cap = document.querySelector('[data-testid="map-primer-caption"]');
+
+          const t = cap ? cap.textContent : '';
+
+          return { ok: /Radiant Base/.test(t), evidence: 'caption after hop: ' + JSON.stringify(t)
+          };
 steps:
   - id: open_learn
     open:
@@ -76,4 +92,16 @@ steps:
     wait:
       text: COMMAND REFERENCE
       timeoutMs: 10000
-contractHash: sha256:7072a1a706fb6542dbbcac166d4ebbc4826aadae79dff8fafcbdb95a4402436c
+  - id: wait_for_map_primer
+    wait:
+      text: Explore the Map
+      timeoutMs: 10000
+  - id: hop_to_base
+    click:
+      by: selector
+      selector: '[data-zone-cell="radiant-base"]'
+  - id: await_hop_caption
+    wait:
+      text: Standing in Radiant Base
+      timeoutMs: 10000
+contractHash: sha256:71f1eb204e934e3172d31842399b6ed82c674416990210a57c71f25313b9758c
