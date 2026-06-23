@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
 
-useHead({ title: 'Reset password · TERMINA' })
+useHead({ title: 'Forgot password · TERMINA' })
 
 const authStore = useAuthStore()
 const username = ref('')

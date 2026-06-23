@@ -104,6 +104,13 @@ function gameTime(tick: number): string {
         Loading leaderboard<span class="animate-blink">_</span>
       </div>
 
+      <div v-else-if="status === 'error'" class="py-6 text-center text-[0.85rem] text-dire">
+        Couldn't load the leaderboard.
+        <button type="button" class="text-ability hover:text-radiant" @click="refreshLeaderboard()">
+          retry
+        </button>
+      </div>
+
       <div v-else-if="players.length === 0" class="py-6 text-center text-[0.85rem] text-text-dim">
         No players found.
       </div>

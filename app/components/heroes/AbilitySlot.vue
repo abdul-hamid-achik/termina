@@ -33,7 +33,7 @@ function onClick() {
 <template>
   <component
     :is="interactive ? 'button' : 'div'"
-    type="button"
+    :type="interactive ? 'button' : undefined"
     :data-testid="`ability-${slotKey.toLowerCase()}`"
     class="flex w-full flex-col gap-1.5 border p-2.5 text-left transition-colors"
     :class="[

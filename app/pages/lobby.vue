@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useLobbyStore } from '~/stores/lobby'
 import { useGameStore } from '~/stores/game'
@@ -93,11 +93,11 @@ function handleServerMessage(msg: ServerMessage) {
   }
 }
 
-let joining = false
+const joining = ref(false)
 
 async function handleJoinQueue() {
-  if (joining) return
-  joining = true
+  if (joining.value) return
+  joining.value = true
   lobbyLog.info('Joining queue')
   try {
     await lobbyStore.joinQueue()
@@ -105,7 +105,7 @@ async function handleJoinQueue() {
     // Store already set lastError for the inline panel — just log here
     lobbyLog.error('Join queue failed', err)
   } finally {
-    joining = false
+    joining.value = false
   }
 }
 
@@ -299,7 +299,12 @@ onUnmounted(() => {
             >
               [ERR] {{ lobbyStore.lastError }} — retry
             </div>
-            <AsciiButton label="FIND MATCH" variant="primary" @click="handleJoinQueue" />
+            <AsciiButton
+              :label="joining ? 'SEARCHING…' : 'FIND MATCH'"
+              :disabled="joining"
+              variant="primary"
+              @click="handleJoinQueue"
+            />
           </div>
         </TerminalPanel>
       </template>

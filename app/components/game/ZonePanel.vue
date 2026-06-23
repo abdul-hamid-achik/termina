@@ -225,12 +225,24 @@ const isEmpty = computed(
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">HP</span>
-        <ProgressBar :value="e.hp" :max="e.maxHp" color="dire" :width="10" />
+        <ProgressBar
+          :value="e.hp"
+          :max="e.maxHp"
+          color="dire"
+          :width="10"
+          :label="`${heroName(e)} HP`"
+        />
         <span class="text-text-primary">{{ e.hp }}/{{ e.maxHp }}</span>
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">MP</span>
-        <ProgressBar :value="e.mp" :max="e.maxMp" color="mana" :width="10" />
+        <ProgressBar
+          :value="e.mp"
+          :max="e.maxMp"
+          color="mana"
+          :width="10"
+          :label="`${heroName(e)} MP`"
+        />
         <span class="text-text-dim">{{ e.mp }}/{{ e.maxMp }}</span>
       </div>
     </button>
@@ -248,7 +260,13 @@ const isEmpty = computed(
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">HP</span>
-        <ProgressBar :value="a.hp" :max="a.maxHp" color="radiant" :width="10" />
+        <ProgressBar
+          :value="a.hp"
+          :max="a.maxHp"
+          color="radiant"
+          :width="10"
+          :label="`${heroName(a)} HP`"
+        />
         <span class="text-text-primary">{{ a.hp }}/{{ a.maxHp }}</span>
       </div>
     </div>
@@ -279,6 +297,7 @@ const isEmpty = computed(
           :max="towerHere.maxHp"
           :color="towerIsEnemy ? 'dire' : 'radiant'"
           :width="10"
+          :label="`Tower ${towerHere.team} HP`"
         />
         <span class="text-text-primary">{{ towerHere.hp }}/{{ towerHere.maxHp }}</span>
       </div>

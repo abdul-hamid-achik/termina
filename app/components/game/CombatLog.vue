@@ -218,6 +218,10 @@ function eventAriaLabel(line: CombatLine): string {
         :class="verbose ? 'border-border text-text-dim' : 'border-ability text-ability'"
         data-testid="log-density-toggle"
         :title="verbose ? 'Verbose — click for terse' : 'Terse — click for verbose'"
+        :aria-label="
+          verbose ? 'Switch combat log to terse density' : 'Switch combat log to verbose density'
+        "
+        :aria-pressed="verbose"
         @click="verbose = !verbose"
       >
         {{ verbose ? '≡' : '─' }}

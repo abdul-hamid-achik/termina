@@ -285,6 +285,8 @@ async function disconnectProvider(provider: string) {
           />
           <span
             v-if="avatarMsg"
+            role="status"
+            aria-live="polite"
             class="text-[0.75rem]"
             :class="avatarMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
           >
@@ -329,6 +331,8 @@ async function disconnectProvider(provider: string) {
           />
           <span
             v-if="usernameMsg"
+            role="status"
+            aria-live="polite"
             class="text-[0.75rem]"
             :class="usernameMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
           >
@@ -363,6 +367,8 @@ async function disconnectProvider(provider: string) {
         </p>
         <span
           v-if="emailMsg"
+          role="status"
+          aria-live="polite"
           class="text-[0.75rem]"
           :class="emailMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
         >
@@ -447,6 +453,8 @@ async function disconnectProvider(provider: string) {
           />
           <span
             v-if="passwordMsg"
+            role="status"
+            aria-live="polite"
             class="text-[0.75rem]"
             :class="passwordMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
           >

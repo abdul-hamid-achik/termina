@@ -225,9 +225,9 @@ watchEffect(() => {
     <div class="mx-auto flex max-w-6xl flex-col gap-4">
       <!-- Header -->
       <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
-        <div>
+        <div class="min-w-0">
           <div class="t-caption">// replay</div>
-          <h1 class="t-h1 text-glow-sm t-mono-num">{{ gameId }}</h1>
+          <h1 class="t-h1 text-glow-sm t-mono-num break-all">{{ gameId }}</h1>
         </div>
         <NuxtLink
           to="/"
@@ -301,49 +301,51 @@ watchEffect(() => {
             >
               RADIANT
             </div>
-            <table class="w-full t-mono-num text-xs">
-              <caption class="sr-only">
-                Radiant players
-              </caption>
-              <thead>
-                <tr class="text-text-muted">
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="p in radiantPlayers"
-                  :key="p.id"
-                  class="border-t border-border/50"
-                  :class="{ 'opacity-50': !p.alive }"
-                >
-                  <th scope="row" class="px-2 py-1 font-normal">
-                    {{ heroName(heroIdForPlayer(p.id)) }}
-                  </th>
-                  <td class="px-2 py-1 text-gold">{{ p.level }}</td>
-                  <td class="px-2 py-1">
-                    <span v-if="'hp' in p && 'maxHp' in p"
-                      >{{ p.hp }}<span class="text-text-muted">/{{ p.maxHp }}</span></span
-                    >
-                    <span v-else class="text-text-muted">?</span>
-                  </td>
-                  <td class="px-2 py-1">
-                    <span class="text-radiant">{{ p.kills }}</span
-                    ><span class="text-text-muted">/</span
-                    ><span class="text-dire">{{ p.deaths }}</span
-                    ><span class="text-text-muted">/</span
-                    ><span class="text-text-dim">{{ p.assists }}</span>
-                  </td>
-                  <td class="px-2 py-1 text-gold">{{ p.gold.toLocaleString() }}</td>
-                  <td class="px-2 py-1 text-zone t-caption">{{ p.zone }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="overflow-x-auto">
+              <table class="w-full t-mono-num text-xs">
+                <caption class="sr-only">
+                  Radiant players
+                </caption>
+                <thead>
+                  <tr class="text-text-muted">
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="p in radiantPlayers"
+                    :key="p.id"
+                    class="border-t border-border/50"
+                    :class="{ 'opacity-50': !p.alive }"
+                  >
+                    <th scope="row" class="px-2 py-1 font-normal">
+                      {{ heroName(heroIdForPlayer(p.id)) }}
+                    </th>
+                    <td class="px-2 py-1 text-gold">{{ p.level }}</td>
+                    <td class="px-2 py-1">
+                      <span v-if="'hp' in p && 'maxHp' in p"
+                        >{{ p.hp }}<span class="text-text-muted">/{{ p.maxHp }}</span></span
+                      >
+                      <span v-else class="text-text-muted">?</span>
+                    </td>
+                    <td class="px-2 py-1">
+                      <span class="text-radiant">{{ p.kills }}</span
+                      ><span class="text-text-muted">/</span
+                      ><span class="text-dire">{{ p.deaths }}</span
+                      ><span class="text-text-muted">/</span
+                      ><span class="text-text-dim">{{ p.assists }}</span>
+                    </td>
+                    <td class="px-2 py-1 text-gold">{{ p.gold.toLocaleString() }}</td>
+                    <td class="px-2 py-1 text-zone t-caption">{{ p.zone }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div class="border border-dire/40 bg-bg-panel">
@@ -352,49 +354,51 @@ watchEffect(() => {
             >
               DIRE
             </div>
-            <table class="w-full t-mono-num text-xs">
-              <caption class="sr-only">
-                Dire players
-              </caption>
-              <thead>
-                <tr class="text-text-muted">
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
-                  <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="p in direPlayers"
-                  :key="p.id"
-                  class="border-t border-border/50"
-                  :class="{ 'opacity-50': !p.alive }"
-                >
-                  <th scope="row" class="px-2 py-1 font-normal">
-                    {{ heroName(heroIdForPlayer(p.id)) }}
-                  </th>
-                  <td class="px-2 py-1 text-gold">{{ p.level }}</td>
-                  <td class="px-2 py-1">
-                    <span v-if="'hp' in p && 'maxHp' in p"
-                      >{{ p.hp }}<span class="text-text-muted">/{{ p.maxHp }}</span></span
-                    >
-                    <span v-else class="text-text-muted">?</span>
-                  </td>
-                  <td class="px-2 py-1">
-                    <span class="text-radiant">{{ p.kills }}</span
-                    ><span class="text-text-muted">/</span
-                    ><span class="text-dire">{{ p.deaths }}</span
-                    ><span class="text-text-muted">/</span
-                    ><span class="text-text-dim">{{ p.assists }}</span>
-                  </td>
-                  <td class="px-2 py-1 text-gold">{{ p.gold.toLocaleString() }}</td>
-                  <td class="px-2 py-1 text-zone t-caption">{{ p.zone }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="overflow-x-auto">
+              <table class="w-full t-mono-num text-xs">
+                <caption class="sr-only">
+                  Dire players
+                </caption>
+                <thead>
+                  <tr class="text-text-muted">
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
+                    <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="p in direPlayers"
+                    :key="p.id"
+                    class="border-t border-border/50"
+                    :class="{ 'opacity-50': !p.alive }"
+                  >
+                    <th scope="row" class="px-2 py-1 font-normal">
+                      {{ heroName(heroIdForPlayer(p.id)) }}
+                    </th>
+                    <td class="px-2 py-1 text-gold">{{ p.level }}</td>
+                    <td class="px-2 py-1">
+                      <span v-if="'hp' in p && 'maxHp' in p"
+                        >{{ p.hp }}<span class="text-text-muted">/{{ p.maxHp }}</span></span
+                      >
+                      <span v-else class="text-text-muted">?</span>
+                    </td>
+                    <td class="px-2 py-1">
+                      <span class="text-radiant">{{ p.kills }}</span
+                      ><span class="text-text-muted">/</span
+                      ><span class="text-dire">{{ p.deaths }}</span
+                      ><span class="text-text-muted">/</span
+                      ><span class="text-text-dim">{{ p.assists }}</span>
+                    </td>
+                    <td class="px-2 py-1 text-gold">{{ p.gold.toLocaleString() }}</td>
+                    <td class="px-2 py-1 text-zone t-caption">{{ p.zone }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
