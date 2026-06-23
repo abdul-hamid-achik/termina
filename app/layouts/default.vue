@@ -4,6 +4,7 @@ const { loggedIn, clear: clearSession } = useUserSession()
 const publicNavLinks = [
   { label: 'PLAY', to: '/lobby' },
   { label: 'LEARN', to: '/learn' },
+  { label: 'HEROES', to: '/heroes' },
   { label: 'LORE', to: '/lore' },
   { label: 'LEADERBOARD', to: '/leaderboard' },
 ]
