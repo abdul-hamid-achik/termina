@@ -55,6 +55,7 @@ import { TICK_DURATION_MS, RUNE_DURATION_TICKS } from '~~/shared/constants/balan
 import { formatRoshan } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
+import { routeGameKey } from '~/utils/gameKeys'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
@@ -190,67 +191,36 @@ onUnmounted(() => {
 
 function onKeyDown(e: KeyboardEvent) {
   const target = e.target as HTMLElement
-  const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
-  const overlayOpen = showShop.value || showScoreboard.value
-
-  // Escape closes an open overlay (shop / scoreboard).
-  if (e.key === 'Escape' && overlayOpen) {
-    e.preventDefault()
-    showShop.value = false
-    showScoreboard.value = false
-    return
-  }
-
-  // Tab: autocomplete when input is focused, hold-to-view scoreboard when not
-  if (e.key === 'Tab') {
-    e.preventDefault()
-    if (isInputFocused) {
-      // Let CommandInput handle autocomplete - don't do anything here
-      return
-    }
-    showScoreboard.value = true
-    return
-  }
-
-  // S toggles the shop (and closes it) — works even while the shop is open.
-  if (e.key.toLowerCase() === 's') {
-    if (isInputFocused) return
-    e.preventDefault()
-    showShop.value = !showShop.value
-    return
-  }
-
-  // Everything below is an in-world action (cast / use item / move). Suppress
-  // it while typing OR while an overlay is open, so the player isn't acting
-  // blind behind the shop/scoreboard.
-  if (isInputFocused || overlayOpen) return
-
-  // Q/W/E/R for abilities
-  if (['q', 'w', 'e', 'r'].includes(e.key.toLowerCase())) {
-    e.preventDefault()
-    handleQuickAction(e.key.toLowerCase())
-    return
-  }
-
-  // Number keys 1-6 for item use
-  const slot = Number.parseInt(e.key, 10)
-  if (slot >= 1 && slot <= 6) {
-    e.preventDefault()
-    handleItemUseBySlot(slot - 1)
-    return
-  }
-
-  // Arrow keys for quick movement
-  if (!target.closest('.cmd-input-wrapper')) {
-    if (
-      e.key === 'ArrowUp' ||
-      e.key === 'ArrowDown' ||
-      e.key === 'ArrowLeft' ||
-      e.key === 'ArrowRight'
-    ) {
-      e.preventDefault()
-      handleArrowMove(e.key)
-    }
+  // Pure routing (unit-tested in gameKeys); this only dispatches the side effect.
+  const action = routeGameKey(e.key, {
+    isInputFocused: target.tagName === 'INPUT' || target.tagName === 'TEXTAREA',
+    overlayOpen: showShop.value || showScoreboard.value,
+    inCmdInput: !!target.closest('.cmd-input-wrapper'),
+  })
+  if (action.type === 'none') return
+  e.preventDefault()
+  switch (action.type) {
+    case 'closeOverlay':
+      showShop.value = false
+      showScoreboard.value = false
+      break
+    case 'autocomplete':
+      break // CommandInput owns autocomplete; we just suppressed the default Tab
+    case 'showScoreboard':
+      showScoreboard.value = true
+      break
+    case 'toggleShop':
+      showShop.value = !showShop.value
+      break
+    case 'quickAbility':
+      handleQuickAction(action.key)
+      break
+    case 'useItem':
+      handleItemUseBySlot(action.index)
+      break
+    case 'move':
+      handleArrowMove(action.direction)
+      break
   }
 }
 
