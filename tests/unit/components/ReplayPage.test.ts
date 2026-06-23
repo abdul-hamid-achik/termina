@@ -189,4 +189,59 @@ describe('replay page', () => {
     await wrapper.find('[data-testid="key-moment-fight"]').trigger('click')
     expect(wrapper.text()).toContain('scrub: tick 5')
   })
+
+  it('shows the net-worth gold lead derived from the current frame', async () => {
+    const fp = (id: string, gold: number) => ({
+      id,
+      hp: 600,
+      maxHp: 600,
+      mp: 300,
+      maxMp: 300,
+      level: 6,
+      gold,
+      kills: 0,
+      deaths: 0,
+      assists: 0,
+      alive: true,
+      zone: 'mid-river',
+      items: [] as (string | null)[],
+    })
+    // Teams are grouped by the snapshot meta, so it must carry both players.
+    const snapshot = replayResult()
+    ;(snapshot.data.value as { meta: { players: unknown[] } }).meta = {
+      players: [
+        { playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 },
+        { playerId: 'd1', team: 'dire', heroId: 'daemon', mmr: 1500 },
+      ],
+    }
+    fetchResults = [
+      snapshot,
+      {
+        data: ref({
+          gameId: 'g1',
+          totalTicks: 1,
+          frames: [
+            {
+              tick: 0,
+              teams: { radiant: { kills: 0, towerKills: 0 }, dire: { kills: 0, towerKills: 0 } },
+              timeOfDay: 'day' as const,
+              // radiant 3000g vs dire 1000g → radiant +2000 net worth
+              players: { p1: fp('p1', 3000), d1: fp('d1', 1000) },
+            },
+          ],
+          meta: {
+            players: [
+              { playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 },
+              { playerId: 'd1', team: 'dire', heroId: 'daemon', mmr: 1500 },
+            ],
+          },
+        }),
+      },
+    ]
+    const wrapper = await mountReplay()
+    const leadEl = wrapper.find('[data-testid="replay-gold-lead"]')
+    expect(leadEl.exists()).toBe(true)
+    expect(leadEl.text()).toContain('RADIANT')
+    expect(leadEl.text()).toContain('2.0k') // 3000 − 1000 = 2000
+  })
 })

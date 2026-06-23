@@ -2,6 +2,7 @@
 import { computed, ref, onUnmounted } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { formatReplayCommand, clampFrameIndex, nextScrubTick, keyMoments } from '~/utils/replayView'
+import { playerNetWorth, goldLead, formatGoldShort, type NetWorthInput } from '~/utils/strategy'
 
 definePageMeta({ ssr: false })
 
@@ -161,6 +162,18 @@ const direPlayers = computed(() => {
   return Object.values(data.value.state.players).filter((p) => p.team === 'dire')
 })
 
+// Net-worth gold lead at the scrub position — scrubs with the frame so a learner
+// can watch the lead swing. Net worth = liquid gold + carried item value (per
+// the tested strategy helpers); the snapshot fallback carries no items, so it's
+// gold-only until frames load.
+const radiantNetWorth = computed(() =>
+  radiantPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
+)
+const direNetWorth = computed(() =>
+  direPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
+)
+const lead = computed(() => goldLead(radiantNetWorth.value, direNetWorth.value))
+
 const teamScores = computed(() => {
   if (currentFrame.value) {
     return {
@@ -255,6 +268,20 @@ watchEffect(() => {
             <div class="t-caption mt-1">
               {{ currentFrame?.timeOfDay ?? data.state.timeOfDay }} · saved
               {{ fmtSavedAt(data.savedAt) }}
+            </div>
+            <div
+              v-if="lead.leader"
+              class="t-caption mt-1 t-mono-num"
+              :class="lead.leader === 'radiant' ? 'text-radiant' : 'text-dire'"
+              data-testid="replay-gold-lead"
+            >
+              {{ lead.leader === 'radiant' ? 'RADIANT' : 'DIRE' }} +{{
+                formatGoldShort(lead.amount)
+              }}
+              net worth
+            </div>
+            <div v-else class="t-caption mt-1 text-text-dim" data-testid="replay-gold-lead">
+              net worth even
             </div>
           </div>
           <div class="border-l border-border p-3 text-center bloom-dire">
