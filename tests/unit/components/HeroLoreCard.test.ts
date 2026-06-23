@@ -46,6 +46,11 @@ describe('HeroLoreCard', () => {
     expect(link.text()).toContain('Daemon')
   })
 
+  it('anchors the card with a per-hero id for /lore#lore-<id> deep links', () => {
+    const wrapper = mountCard({ id: 'daemon', name: 'Daemon', role: 'assassin', lore: 'lore' })
+    expect(wrapper.find('#lore-daemon').exists()).toBe(true)
+  })
+
   // Role themes the roster so it reads at a glance — assert each mapping.
   const roleColors: Array<[HeroRole, string]> = [
     ['carry', 'text-gold'],
