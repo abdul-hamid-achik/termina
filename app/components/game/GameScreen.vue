@@ -1066,27 +1066,46 @@ function handleQuickAction(cmd: string) {
 // at a glance which abilities are actually castable this tick.
 const abilityButtonState = computed(() => {
   const p = gameStore.player
-  const result: Record<string, { ready: boolean; label: string }> = {}
+  const result: Record<string, { ready: boolean; label: string; aria: string }> = {}
   for (const slot of ['q', 'w', 'e', 'r'] as const) {
     const upper = slot.toUpperCase()
     if (!p || !p.alive || !p.heroId) {
-      result[upper] = { ready: false, label: upper }
+      result[upper] = { ready: false, label: upper, aria: `${upper}, unavailable` }
       continue
     }
+    const name = HEROES[p.heroId]?.abilities[slot]?.name ?? upper
     const cd = p.cooldowns[slot]
     if (cd > 0) {
-      result[upper] = { ready: false, label: `${upper}·${cd}` }
+      result[upper] = {
+        ready: false,
+        label: `${upper}·${cd}`,
+        aria: `${upper} ${name}, on cooldown ${cd} ticks`,
+      }
       continue
     }
     const ability = HEROES[p.heroId]?.abilities[slot]
     if (ability && p.mp < ability.manaCost) {
-      result[upper] = { ready: false, label: upper }
+      result[upper] = { ready: false, label: upper, aria: `${upper} ${name}, not enough mana` }
       continue
     }
-    result[upper] = { ready: true, label: upper }
+    result[upper] = { ready: true, label: upper, aria: `${upper} ${name}, ready` }
   }
   return result
 })
+
+// Accessible name + toggle state for the quick-action bar buttons (#14).
+function quickActionAria(cmd: string): string {
+  if (cmd === 'Q' || cmd === 'W' || cmd === 'E' || cmd === 'R') {
+    return abilityButtonState.value[cmd]?.aria ?? cmd
+  }
+  const labels: Record<string, string> = {
+    ATK: 'Attack nearest enemy',
+    MOVE: 'Move',
+    SHOP: 'Toggle shop',
+    SCORE: 'Toggle scoreboard',
+  }
+  return labels[cmd] ?? cmd
+}
 
 // ── Item use from inventory bar / keybinds ───────────────────
 function handleItemUse(_slotIndex: number, itemId: string) {
@@ -1428,6 +1447,9 @@ function handleReturnToMenu() {
       v-if="showScoreboard && gameStore.teams"
       class="absolute inset-0 z-30 flex items-center justify-center bg-bg-overlay/80 p-2 anim-fade-in-up"
       data-testid="scoreboard-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Scoreboard"
       @click.self="showScoreboard = false"
     >
       <div class="w-full max-w-4xl border border-border bg-bg-primary">
@@ -1450,6 +1472,10 @@ function handleReturnToMenu() {
     <div
       v-if="showShop"
       class="absolute inset-0 z-30 flex items-center justify-center bg-bg-overlay/80"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Item shop"
+      @click.self="showShop = false"
     >
       <div
         class="flex max-h-[85vh] w-full max-w-2xl flex-col border border-border bg-bg-primary p-4"
@@ -1505,6 +1531,8 @@ function handleReturnToMenu() {
           class="ml-auto whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-gold hover:text-text-primary active:bg-border"
           :class="{ 'border-gold': gameStore.canBuy }"
           title="Shop (S)"
+          aria-label="Toggle shop"
+          :aria-pressed="showShop"
           @click="showShop = !showShop"
         >
           [SHOP]
@@ -1523,6 +1551,13 @@ function handleReturnToMenu() {
               ['Q', 'W', 'E', 'R'].includes(cmd) && !abilityButtonState[cmd]?.ready,
             'border-self text-self': cmd === 'SCORE',
           }"
+          :aria-label="quickActionAria(cmd)"
+          :aria-disabled="
+            ['Q', 'W', 'E', 'R'].includes(cmd) && !abilityButtonState[cmd]?.ready
+              ? 'true'
+              : undefined
+          "
+          :aria-pressed="cmd === 'SHOP' ? showShop : cmd === 'SCORE' ? showScoreboard : undefined"
           @click="handleQuickAction(cmd)"
         >
           {{ ['Q', 'W', 'E', 'R'].includes(cmd) ? abilityButtonState[cmd]?.label : cmd }}

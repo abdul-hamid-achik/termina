@@ -393,4 +393,35 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
   })
+
+  describe('in-game a11y', () => {
+    it('exposes a11y state on the quick-action bar (aria-label + toggle aria-pressed)', () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      const btns = wrapper.findAll('.hud-action-btn')
+      const shop = btns.find((b) => b.text() === 'SHOP')
+      const score = btns.find((b) => b.text() === 'SCORE')
+      expect(shop?.attributes('aria-label')).toBe('Toggle shop')
+      expect(shop?.attributes('aria-pressed')).toBe('false')
+      expect(score?.attributes('aria-pressed')).toBe('false')
+      // ability buttons carry a descriptive label (name + state)
+      const q = btns.find((b) => b.text().startsWith('Q'))
+      expect(q?.attributes('aria-label')).toBeTruthy()
+      wrapper.unmount()
+    })
+
+    it('opens the shop overlay as an accessible modal dialog', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      const shopBtn = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
+      await shopBtn!.trigger('click')
+
+      const dialog = wrapper.find('[role="dialog"][aria-label="Item shop"]')
+      expect(dialog.exists()).toBe(true)
+      expect(dialog.attributes('aria-modal')).toBe('true')
+      wrapper.unmount()
+    })
+  })
 })
