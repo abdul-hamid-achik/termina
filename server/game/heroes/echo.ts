@@ -15,6 +15,7 @@ import {
   deductMana,
   setCooldown,
   applyBuff,
+  removeBuff,
   getBuffStacks,
   getAbilityLevel,
   updatePlayer,
@@ -311,7 +312,11 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   // Handle Resonance passive on attack
   if (event.type === 'attack' && event.payload['attackerId'] === playerId) {
     const targetId = event.payload['targetId'] as string
-    const lastTarget = player.buffs.find((b) => b.id === 'resonanceTarget')?.source
+    // Last-attacked target is stored in the single resonanceTarget buff's
+    // `destination` (with a stable source=playerId), NOT keyed by source=target —
+    // the latter pushed a NEW buff per target so find() returned the stale first
+    // one and resonance stopped ramping after one target switch.
+    const lastTarget = player.buffs.find((b) => b.id === 'resonanceTarget')?.destination
 
     let updatedPlayer: PlayerState
     if (lastTarget === targetId) {
@@ -332,11 +337,17 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
       })
     }
 
+    // Keep exactly ONE resonanceTarget buff: drop any prior, then record the
+    // current target in `destination`. removeBuff-then-applyBuff is required
+    // because applyBuff's in-place update refreshes only stacks/ticksRemaining,
+    // not destination.
+    updatedPlayer = removeBuff(updatedPlayer, 'resonanceTarget')
     updatedPlayer = applyBuff(updatedPlayer, {
       id: 'resonanceTarget',
       stacks: 1,
       ticksRemaining: 30,
-      source: targetId,
+      source: playerId,
+      destination: targetId,
     })
 
     // Add Feedback Loop stacks on attack

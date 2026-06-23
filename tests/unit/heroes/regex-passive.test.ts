@@ -73,10 +73,11 @@ describe('Regex passive: Pattern Cache', () => {
 
     // No bonus damage applied on the first cast.
     expect(after.players['e1']!.hp).toBe(enemy.hp)
-    // Cache armed: target stored as source, tick stored as stacks.
+    // Cache armed: target stored in `destination` (single buff, stable
+    // source=p1 so it overwrites across target switches), tick stored as stacks.
     const tgt = after.players['p1']!.buffs.find((b) => b.id === 'patternCacheTarget')
     const tk = after.players['p1']!.buffs.find((b) => b.id === 'patternCacheTick')
-    expect(tgt?.source).toBe('e1')
+    expect(tgt?.destination).toBe('e1')
     expect(tk?.stacks).toBe(10)
   })
 
@@ -124,6 +125,26 @@ describe('Regex passive: Pattern Cache', () => {
     // Second cast at tick 12 on e2 (different target) — no bonus to e2.
     const second = resolveHeroPassive({ ...armed, tick: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
     expect(second.players['e2']!.hp).toBe(e2.hp)
+  })
+
+  it('STILL bonuses on a re-targeted hero after a switch (regression: never-expiring stale cache)', () => {
+    // Bug: patternCacheTarget was keyed by source=targetId with ticksRemaining
+    // 999, so after targeting a second hero the cache held two buffs and find()
+    // read the stale first one — the +15% PERMANENTLY stopped firing. Now the
+    // cache tracks the latest target, so repeating a target re-arms + bonuses.
+    const e1 = makePlayer({ id: 'e1', name: 'E1', team: 'dire', heroId: 'echo', level: 1 })
+    const e2 = makePlayer({ id: 'e2', name: 'E2', team: 'dire', heroId: 'echo', level: 1 })
+
+    let state = makeState([makePlayer(), e1, e2], 10)
+    state = resolveHeroPassive(state, 'p1', castEvent('p1', 'e1', 10, 100)) // arm on e1
+    state = resolveHeroPassive({ ...state, tick: 11 }, 'p1', castEvent('p1', 'e2', 11, 100)) // switch → arm on e2
+    // Exactly one cache-target buff, pointing at the latest target.
+    const targets = state.players['p1']!.buffs.filter((b) => b.id === 'patternCacheTarget')
+    expect(targets).toHaveLength(1)
+    expect(targets[0]!.destination).toBe('e2')
+    // Repeat e2 within the window → bonus fires (HP drops below the cast's normal hit).
+    const repeat = resolveHeroPassive({ ...state, tick: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
+    expect(repeat.players['e2']!.hp).toBeLessThan(e2.hp)
   })
 
   it('does NOT bonus when the second cast is MORE than 3 ticks later', () => {

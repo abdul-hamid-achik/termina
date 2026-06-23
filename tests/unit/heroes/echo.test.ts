@@ -494,7 +494,11 @@ describe('Echo Hero', () => {
         attackEvent('p1', 'e1'),
       )
       expect(resonance(out)).toBe(1)
-      expect(out.players['p1']!.buffs.find((b) => b.id === 'resonanceTarget')?.source).toBe('e1')
+      // Target is recorded in `destination` now (single buff, stable source=p1)
+      // so resonance keeps ramping across target switches instead of going stale.
+      expect(out.players['p1']!.buffs.find((b) => b.id === 'resonanceTarget')?.destination).toBe(
+        'e1',
+      )
     })
 
     it('ramps resonance on consecutive attacks against the same target, capped at 5', () => {
@@ -510,6 +514,21 @@ describe('Echo Hero', () => {
       expect(resonance(state)).toBe(2)
       state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e2'))
       expect(resonance(state)).toBe(1)
+    })
+
+    it('keeps ramping on a NEW target after a switch (regression: stale resonanceTarget)', () => {
+      // Bug: resonanceTarget was keyed by source=targetId, so after one switch a
+      // second buff accumulated and find() read the stale first target — resonance
+      // permanently stuck at 1 on the new target. Now it tracks the latest target.
+      let state = makeState([makePlayer({ level: 1 })])
+      state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e1')) // e1 → 1
+      state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e2')) // switch → 1
+      state = resolveHeroPassive(state, 'p1', attackEvent('p1', 'e2')) // repeat e2 → 2
+      expect(resonance(state)).toBe(2)
+      // And exactly one resonanceTarget buff exists, pointing at the latest target.
+      const targets = state.players['p1']!.buffs.filter((b) => b.id === 'resonanceTarget')
+      expect(targets).toHaveLength(1)
+      expect(targets[0]!.destination).toBe('e2')
     })
 
     it('builds Feedback Loop stacks on attack when E is learned', () => {

@@ -240,19 +240,25 @@ export function absorbShield(
   buffs: BuffState[],
   damage: number,
 ): { buffs: BuffState[]; remaining: number } {
-  const shield = buffs.find((b) => b.id === 'shield')
-  if (!shield || shield.stacks <= 0) return { buffs, remaining: damage }
-  if (shield.stacks >= damage) {
-    // Shield absorbs all damage
-    return {
-      buffs: buffs.map((b) => (b.id === 'shield' ? { ...b, stacks: b.stacks - damage } : b)),
-      remaining: 0,
-    }
+  if (damage <= 0 || !buffs.some((b) => b.id === 'shield' && b.stacks > 0)) {
+    return { buffs, remaining: damage }
   }
-  return {
-    buffs: buffs.filter((b) => b.id !== 'shield'),
-    remaining: damage - shield.stacks,
-  }
+  // Consume the shield POOL sequentially across every 'shield' buff (a hero can
+  // hold more than one — e.g. an item shield + an ability shield). The old
+  // find()-based code only sized off the FIRST shield: it then either subtracted
+  // the damage from ALL shields (over-absorb) or deleted ALL shields (lost the
+  // untouched ones). Sequential consumption drains each in turn, drops only
+  // fully-spent shields, and is byte-for-byte identical in the single-shield case.
+  let remaining = damage
+  const out = buffs
+    .map((b) => {
+      if (b.id !== 'shield' || remaining <= 0 || b.stacks <= 0) return b
+      const used = Math.min(b.stacks, remaining)
+      remaining -= used
+      return { ...b, stacks: b.stacks - used }
+    })
+    .filter((b) => !(b.id === 'shield' && b.stacks <= 0))
+  return { buffs: out, remaining }
 }
 
 export function dealDamage(
@@ -497,9 +503,18 @@ export function tickAllBuffs(state: GameState): GameState {
     const caster = updated.players[ex.casterId]
     if (!caster) continue
     let hitAny = false
+    // Per-victim HP loss so GameLoop can bridge each into a _tag:'damage' engine
+    // event — without it the explosion mutates HP but emits no damage event, so
+    // a lethal blast gives NO kill credit/bounty/XP and the victim's damage-taken
+    // passives (cache energy, firewall/proxy reflect, daemon stealth-break) never
+    // fire. Same fix shape as the item-active synthesize-from-HP-diff loop.
+    const victims: { id: string; amount: number }[] = []
     for (const enemy of Object.values(updated.players)) {
       if (enemy.team === caster.team || !enemy.alive || enemy.zone !== ex.zone) continue
+      const preHp = enemy.hp
       updated = updatePlayer(updated, dealAbilityDamage(caster, enemy, ex.damage, 'magical'))
+      const hpLost = Math.max(0, preHp - (updated.players[enemy.id]?.hp ?? preHp))
+      if (hpLost > 0) victims.push({ id: enemy.id, amount: hpLost })
       hitAny = true
     }
     if (hitAny) {
@@ -511,6 +526,7 @@ export function tickAllBuffs(state: GameState): GameState {
           ability: 'w',
           effect: 'dmz_explosion',
           damage: ex.damage,
+          victims,
         },
       })
     }

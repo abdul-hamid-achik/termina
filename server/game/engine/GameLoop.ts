@@ -335,14 +335,35 @@ export function processTick(
     // actually reaches the combat log — mirroring teleport_cancelled, which is
     // already authored as a _tag event in the resolver.
     for (const e of currentState.events.slice(eventsBeforeBuffTick)) {
-      if (e.type !== 'teleport_complete') continue
-      allEvents.push({
-        _tag: 'teleport_complete',
-        tick: e.tick,
-        playerId: e.payload.playerId as string,
-        destination: e.payload.destination as string,
-        ...(e.payload.source ? { source: e.payload.source as 'return' | 'next_hop' } : {}),
-      })
+      if (e.type === 'teleport_complete') {
+        allEvents.push({
+          _tag: 'teleport_complete',
+          tick: e.tick,
+          playerId: e.payload.playerId as string,
+          destination: e.payload.destination as string,
+          ...(e.payload.source ? { source: e.payload.source as 'return' | 'next_hop' } : {}),
+        })
+      } else if (e.type === 'ability_used' && e.payload.effect === 'dmz_explosion') {
+        // Firewall DMZ explosion mutates enemy HP inside tickAllBuffs but only
+        // authors a wire ability_used event. Bridge its per-victim HP loss into
+        // the _tag/allEvents damage channel (BEFORE trackHeroDamage/handleDeaths
+        // below) so the blast yields kill credit, assists, bounty, and triggers
+        // the victims' damage_taken passives — same as any other damage source.
+        const casterId = e.payload.playerId as string
+        const victims = (e.payload.victims as { id: string; amount: number }[] | undefined) ?? []
+        for (const v of victims) {
+          if (v.amount > 0) {
+            allEvents.push({
+              _tag: 'damage',
+              tick: e.tick,
+              sourceId: casterId,
+              targetId: v.id,
+              amount: v.amount,
+              damageType: 'magical',
+            })
+          }
+        }
+      }
     }
 
     // 11. Handle deaths — check for newly dead players, attribute kills.

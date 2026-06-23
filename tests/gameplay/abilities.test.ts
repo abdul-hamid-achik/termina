@@ -577,4 +577,92 @@ describe('abilities', () => {
     await game.tick(3)
     expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
   })
+
+  it('DMZ explosion now emits a damage event from the caster (kill credit + damage_taken passives)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'firewall', heroEnemy: 'daemon' })
+    await game.tick() // settle the level-6 maxHp recompute
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
+      },
+    }))
+
+    game.cast('w')
+    await game.tick()
+    const enemyBefore = (await game.player(ENEMY)).hp
+    await game.tick(3) // dmz expires → explosion
+
+    // Bug: the blast changed HP but emitted NO damage event, so a lethal blast
+    // gave no kill credit/bounty/XP and the victim's damage_taken passives never
+    // fired. The only HUMAN→ENEMY magical damage this match is the explosion.
+    expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
+    const blast = game.allEvents.find(
+      (e) =>
+        e._tag === 'damage' &&
+        e.sourceId === HUMAN &&
+        e.targetId === ENEMY &&
+        e.damageType === 'magical',
+    )
+    expect(blast).toBeDefined()
+    expect(blast!._tag === 'damage' && blast!.amount).toBeGreaterThan(0)
+  })
+
+  it('attacking a phase-shifted enemy deals no damage and emits no damage event (no false credit)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick() // settle maxHp
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+        },
+      },
+    }))
+    const enemyBefore = (await game.player(ENEMY)).hp
+
+    game.attackHero(ENEMY)
+    await game.tick()
+
+    // Dodge: no HP lost (regen only ever adds), the phaseShift is consumed, and —
+    // the fix — NO damage event is emitted, so the attacker gets no false
+    // kill/assist credit and the victim's damage_taken passives don't fire.
+    expect((await game.player(ENEMY)).hp).toBeGreaterThanOrEqual(enemyBefore)
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'phaseShift')).toBe(false)
+    expect(
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      ),
+    ).toBe(false)
+  })
+
+  it('Silver Edge empowers only the first attack from invis, then consumes the bonus + breaks stealth', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.tick() // settle maxHp
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          buffs: [
+            { id: 'silver_edge_invis', stacks: 1, ticksRemaining: 3, source: 'silver_edge' },
+            { id: 'silver_edge_bonus', stacks: 150, ticksRemaining: 3, source: 'silver_edge' },
+          ],
+        },
+      },
+    }))
+
+    game.attackHero(ENEMY)
+    await game.tick()
+
+    // Bug: the +bonus applied to EVERY attack and invis never broke. Now one
+    // attack consumes both — so it can't keep empowering and stealth ends.
+    const me = await game.me()
+    expect(me.buffs.some((b) => b.id === 'silver_edge_invis')).toBe(false)
+    expect(me.buffs.some((b) => b.id === 'silver_edge_bonus')).toBe(false)
+  })
 })

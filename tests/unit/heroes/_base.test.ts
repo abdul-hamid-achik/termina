@@ -288,6 +288,41 @@ describe('_base hero utilities', () => {
       expect(result.buffs.find((b) => b.id === 'phaseShift')).toBeUndefined()
     })
 
+    it('consumes only the needed shields when holding two (no over-drain)', () => {
+      // Regression: absorbShield sized off the FIRST shield only and then
+      // subtracted the damage from ALL shields (full-absorb) — a 20 hit against
+      // a 30+40 pool wrongly drained both. It must spend the first shield first.
+      const player = makePlayer({
+        hp: 500,
+        buffs: [
+          { id: 'shield', stacks: 30, ticksRemaining: 5, source: 's1' },
+          { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
+        ],
+      })
+      const result = dealDamage(player, 20, 'pure')
+      expect(result.hp).toBe(500)
+      expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's1')?.stacks).toBe(10)
+      expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's2')?.stacks).toBe(40)
+    })
+
+    it('drains the first shield then the second across a two-shield pool (no leak/loss)', () => {
+      // Regression: the partial-absorb branch filtered out ALL shields and leaked
+      // the overflow to HP — a 50 hit against a 30+40 pool wrongly deleted both
+      // shields AND dealt 20 to HP. It must keep the partially-spent second shield
+      // and absorb the whole 50.
+      const player = makePlayer({
+        hp: 500,
+        buffs: [
+          { id: 'shield', stacks: 30, ticksRemaining: 5, source: 's1' },
+          { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
+        ],
+      })
+      const result = dealDamage(player, 50, 'pure')
+      expect(result.hp).toBe(500) // 50 < 70 pool → fully absorbed
+      expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's1')).toBeUndefined()
+      expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's2')?.stacks).toBe(20)
+    })
+
     it('should apply hardened reduction', () => {
       const player = makePlayer({
         hp: 500,

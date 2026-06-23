@@ -612,8 +612,11 @@ function useSilverEdge(state: GameState, player: PlayerState): GameState {
   })
   updated = applyBuff(updated, {
     id: 'silver_edge_bonus',
+    // Matches the invis window (3 ticks) so the empowered hit can't linger past
+    // stealth even if the holder never attacks; the attack-gate already requires
+    // active invis, so this is belt-and-suspenders.
     stacks: 150,
-    ticksRemaining: 5,
+    ticksRemaining: 3,
     source: 'silver_edge',
   })
   updated = applyBuff(updated, {

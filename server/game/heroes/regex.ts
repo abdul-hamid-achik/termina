@@ -14,6 +14,7 @@ import {
   deductMana,
   setCooldown,
   applyBuff,
+  removeBuff,
   updatePlayer,
   updatePlayers,
 } from './_base'
@@ -324,7 +325,11 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const player = state.players[playerId]
   if (!player) return state
 
-  const lastTarget = player.buffs.find((b) => b.id === 'patternCacheTarget')?.source
+  // Last-targeted hero is stored in the single patternCacheTarget buff's
+  // `destination` (stable source=playerId). The old source=targetId keying
+  // pushed a fresh never-expiring buff per target, so find() returned the stale
+  // first one and the +bonus permanently stopped firing after a target switch.
+  const lastTarget = player.buffs.find((b) => b.id === 'patternCacheTarget')?.destination
   const lastCastTick = player.buffs.find((b) => b.id === 'patternCacheTick')?.stacks ?? 0
 
   const currentTick = state.tick
@@ -339,11 +344,18 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     }
   }
 
-  let updatedPlayer = applyBuff(player, {
+  // Keep exactly ONE patternCacheTarget: drop any prior, then record the current
+  // target in `destination`. removeBuff-then-applyBuff because applyBuff's
+  // in-place update refreshes only stacks/ticksRemaining, not destination. The
+  // window is still enforced by the currentTick - lastCastTick <= 3 check; the
+  // 4-tick duration just lets the buff age out instead of lingering forever.
+  let updatedPlayer = removeBuff(player, 'patternCacheTarget')
+  updatedPlayer = applyBuff(updatedPlayer, {
     id: 'patternCacheTarget',
     stacks: 1,
-    ticksRemaining: 999,
-    source: targetId,
+    ticksRemaining: 4,
+    source: playerId,
+    destination: targetId,
   })
   updatedPlayer = applyBuff(updatedPlayer, {
     id: 'patternCacheTick',

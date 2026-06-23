@@ -625,9 +625,25 @@ function resolveAttackPhase(
         }
       }
 
+      // Silver Edge: the +bonus is an empowered NEXT-attack-from-invis (like
+      // every stealth in the engine), not a permanent every-attack buff. Only
+      // apply it while invis is active, and consume BOTH the bonus and the invis
+      // on the attack — which also correctly breaks stealth on attacking.
+      const silverEdgeInvis = attacker.buffs.some((b) => b.id === 'silver_edge_invis')
       const silverEdgeBonus = attacker.buffs.find((b) => b.id === 'silver_edge_bonus')
-      if (silverEdgeBonus) {
+      if (silverEdgeBonus && silverEdgeInvis) {
         attackDamage += silverEdgeBonus.stacks
+      }
+      if (silverEdgeInvis) {
+        const attackerPendingBuffs =
+          (playerUpdates[action.playerId]?.buffs as typeof attacker.buffs | undefined) ??
+          attacker.buffs
+        playerUpdates[action.playerId] = {
+          ...playerUpdates[action.playerId],
+          buffs: attackerPendingBuffs.filter(
+            (b) => b.id !== 'silver_edge_invis' && b.id !== 'silver_edge_bonus',
+          ),
+        }
       }
 
       if (attacker.buffs.some((b) => b.id === 'stealth')) {
@@ -665,8 +681,13 @@ function resolveAttackPhase(
         damage = Math.round(damage * getIncomingDamageMultiplier(target, 'physical'))
       }
 
+      // A phaseShift dodge nullifies the whole hit — compute once and reuse so
+      // no damage event, magic proc, tracking, or attacker credit is emitted for
+      // a hit that deals 0 HP (mirrors the NPC path's damageDealt===0 skip).
+      const dodged = targetPendingBuffs.some((b) => b.id === 'phaseShift')
+
       let totalDamage = damage
-      if (bonusMagicDamage > 0 && !isDamageImmune(target, 'magical')) {
+      if (bonusMagicDamage > 0 && !isDamageImmune(target, 'magical') && !dodged) {
         const rawMagic = calculateMagicalDamage(
           bonusMagicDamage,
           getEffectiveMagicResist(target, targetItemStats),
@@ -689,7 +710,7 @@ function resolveAttackPhase(
 
       let newBuffs = [...targetPendingBuffs]
       let hpLoss = totalDamage
-      if (targetPendingBuffs.some((b) => b.id === 'phaseShift')) {
+      if (dodged) {
         hpLoss = 0
         newBuffs = newBuffs.filter((b) => b.id !== 'phaseShift')
       } else {
@@ -741,20 +762,22 @@ function resolveAttackPhase(
         buffs: newBuffs,
       }
 
-      heroAttackers.set(action.playerId, targetId)
+      if (!dodged) {
+        heroAttackers.set(action.playerId, targetId)
 
-      const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
-      dt.hero += damage
-      damageTracker.set(action.playerId, dt)
+        const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+        dt.hero += damage
+        damageTracker.set(action.playerId, dt)
 
-      events.push({
-        _tag: 'damage',
-        tick: state.tick,
-        sourceId: action.playerId,
-        targetId,
-        amount: damage,
-        damageType: 'physical',
-      })
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          sourceId: action.playerId,
+          targetId,
+          amount: damage,
+          damageType: 'physical',
+        })
+      }
     } else if (cmd.target.kind === 'creep') {
       const resolved = creepInZoneByIndex(creeps, attacker.zone, cmd.target.index)
       if (!resolved) continue
