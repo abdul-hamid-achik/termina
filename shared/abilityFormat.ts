@@ -56,3 +56,50 @@ export function abilitySummary(a: AbilityDef): string {
 export function cooldownSeconds(a: AbilityDef, tickMs: number): number {
   return Math.round((a.cooldownTicks * tickMs) / 1000)
 }
+
+/**
+ * Aggregated combat impact of an ability's declared effects, for the training
+ * dummy. BASE values only — no resistances/armor/amp. It's a teaching view of
+ * raw kit power (so a player can compare burst vs DoT vs sustain across heroes),
+ * not a faithful combat simulation.
+ */
+export interface AbilityImpact {
+  /** Immediate one-shot damage (sum of `damage` effects). */
+  burst: number
+  /** Damage applied each scheduler tick by damage-over-time effects. */
+  dotPerTick: number
+  /** Ticks the longest DoT lasts. */
+  dotDuration: number
+  /** Total damage over the ability's full duration (burst + dotPerTick × dotDuration). */
+  total: number
+  /** Healing granted to the caster/ally. */
+  heal: number
+  /** Shield granted. */
+  shield: number
+}
+
+export function abilityImpact(a: AbilityDef): AbilityImpact {
+  let burst = 0
+  let dotPerTick = 0
+  let dotDuration = 0
+  let heal = 0
+  let shield = 0
+  for (const e of a.effects) {
+    switch (e.type) {
+      case 'damage':
+        burst += e.value
+        break
+      case 'dot':
+        dotPerTick += e.value
+        dotDuration = Math.max(dotDuration, e.duration ?? 0)
+        break
+      case 'heal':
+        heal += e.value
+        break
+      case 'shield':
+        shield += e.value
+        break
+    }
+  }
+  return { burst, dotPerTick, dotDuration, total: burst + dotPerTick * dotDuration, heal, shield }
+}
