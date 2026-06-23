@@ -245,5 +245,23 @@ describe('HeroPicker', () => {
       expect(wrapper.find('[data-testid="picker-passive"]').exists()).toBe(false)
       expect(wrapper.text()).toContain('select a hero')
     })
+
+    it('shows kit-identity playstyle tags for the selected hero', async () => {
+      const wrapper = mountPicker()
+      await wrapper.find('[data-testid="hero-card-echo"]').trigger('click')
+
+      const tags = wrapper.find('[data-testid="picker-playstyle"]')
+      expect(tags.exists()).toBe(true)
+      // echo is a burst carry — at least one tag, all from the known set.
+      const chips = tags.findAll('span').map((s) => s.text())
+      expect(chips.length).toBeGreaterThan(0)
+      const known = ['Burst', 'Damage over time', 'Control', 'Sustain', 'Mobility']
+      for (const c of chips) expect(known).toContain(c)
+    })
+
+    it('shows no playstyle tags before a hero is chosen', () => {
+      const wrapper = mountPicker()
+      expect(wrapper.find('[data-testid="picker-playstyle"]').exists()).toBe(false)
+    })
   })
 })

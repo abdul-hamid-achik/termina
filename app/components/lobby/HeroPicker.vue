@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
+import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import type { TeamId } from '~~/shared/types/game'
 
 const props = withDefaults(
@@ -84,6 +85,11 @@ const heroList = computed(() =>
 )
 
 const selectedHeroDef = computed(() => (selectedHero.value ? HEROES[selectedHero.value] : null))
+// Kit-identity tags (Burst/Control/…) for the selected hero — same at-a-glance
+// summary the /heroes console + /lore cards show, brought to the draft.
+const selectedPlaystyle = computed(() =>
+  selectedHeroDef.value ? heroPlaystyleTags(selectedHeroDef.value) : [],
+)
 
 const radiantRoster = computed(() => props.teamRoster.filter((m) => m.team === 'radiant'))
 const direRoster = computed(() => props.teamRoster.filter((m) => m.team === 'dire'))
@@ -357,6 +363,20 @@ function initialOf(name: string | undefined | null): string {
       <div v-if="selectedHeroDef" class="anim-fade-in-up min-w-0 flex-1">
         <div class="t-h2 mb-1 text-ability text-glow-ability">
           {{ selectedHeroDef.name }}
+        </div>
+        <!-- Kit identity at a glance — how this hero plays, beyond its role. -->
+        <div
+          v-if="selectedPlaystyle.length"
+          class="mb-1.5 flex flex-wrap gap-1"
+          data-testid="picker-playstyle"
+        >
+          <span
+            v-for="t in selectedPlaystyle"
+            :key="t"
+            class="border border-ability/40 bg-ability/10 px-1 py-0.5 text-[0.55rem] uppercase tracking-wider text-ability"
+          >
+            {{ t }}
+          </span>
         </div>
         <div
           v-if="selectedHeroDef.passive"
