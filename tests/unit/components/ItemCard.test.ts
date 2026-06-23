@@ -88,6 +88,24 @@ describe('ItemCard', () => {
     expect(wrapper.classes()).toContain('border-radiant')
   })
 
+  it('reflects selected state via aria-pressed on the interactive button', () => {
+    expect(mountCard({}, { interactive: true }).attributes('aria-pressed')).toBe('false')
+    expect(mountCard({}, { interactive: true, selected: true }).attributes('aria-pressed')).toBe(
+      'true',
+    )
+    // non-interactive div carries no aria-pressed
+    expect(mountCard().attributes('aria-pressed')).toBeUndefined()
+  })
+
+  it('is inert when disabled: dimmed, native-disabled and emits nothing on click', async () => {
+    const wrapper = mountCard({}, { interactive: true, disabled: true })
+    expect(wrapper.attributes('disabled')).toBeDefined()
+    expect(wrapper.classes()).toContain('opacity-50')
+    expect(wrapper.classes()).toContain('cursor-not-allowed')
+    await wrapper.trigger('click')
+    expect(wrapper.emitted('toggle')).toBeUndefined()
+  })
+
   it('omits the active/passive/stats blocks when absent', () => {
     const wrapper = mountCard({ stats: {}, active: undefined, passive: undefined })
     const text = wrapper.text()

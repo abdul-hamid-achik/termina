@@ -1,0 +1,40 @@
+version: 1
+name: nav_items
+intent: The public /items reference renders the catalogue grouped by category, and clicking an item
+  adds it to the loadout build summary (the interactive learn-itemization flow).
+mode: normal
+metadata:
+  feature: items
+  tags:
+    - items
+    - public
+    - reference
+outcomes:
+  - id: catalogue_renders
+    description: the items catalogue renders (item shop header present)
+    verify:
+      text:
+        contains: ITEM SHOP
+  - id: loadout_builds
+    description: clicking an item adds it to the build summary (1 / 6 slots)
+    verify:
+      text:
+        contains: 1 / 6
+steps:
+  - id: open_items
+    open:
+      path: /items
+      waitUntil: domcontentloaded
+  - id: wait_for_shop
+    wait:
+      text: ITEM SHOP
+      timeoutMs: 10000
+  - id: add_item
+    click:
+      by: selector
+      selector: '[data-testid="item-card-iron_branch"]'
+  - id: await_loadout
+    wait:
+      text: 1 / 6
+      timeoutMs: 10000
+contractHash: sha256:18fa89cc4f96f3bddc51d4525c20ee7d9fd65b8cfe52229ccfba33b4ab88e901

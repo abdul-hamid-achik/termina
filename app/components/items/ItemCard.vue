@@ -10,6 +10,8 @@ const props = defineProps<{
   selected?: boolean
   /** Render as a clickable button that emits `toggle`. */
   interactive?: boolean
+  /** At-capacity, unselected card: inert + dimmed (the build is full). */
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{ toggle: [] }>()
@@ -18,21 +20,25 @@ const stats = computed(() => formatStats(props.item.stats))
 const cdSeconds = computed(() =>
   props.item.active ? activeCooldownSeconds(props.item.active, TICK_DURATION_MS) : 0,
 )
+const inert = computed(() => !!props.interactive && !!props.disabled)
 
 function onClick() {
-  if (props.interactive) emit('toggle')
+  if (props.interactive && !props.disabled) emit('toggle')
 }
 </script>
 
 <template>
   <component
     :is="interactive ? 'button' : 'div'"
-    type="button"
+    :type="interactive ? 'button' : undefined"
     :data-testid="`item-card-${item.id}`"
+    :aria-pressed="interactive ? !!selected : undefined"
+    :disabled="inert"
     class="flex w-full flex-col gap-1.5 border p-2.5 text-left text-xs transition-colors"
     :class="[
       selected ? 'border-radiant bg-radiant/5' : 'border-border',
-      interactive ? 'cursor-pointer hover:border-border-glow' : '',
+      interactive && !inert ? 'cursor-pointer hover:border-border-glow' : '',
+      inert ? 'cursor-not-allowed opacity-50' : '',
     ]"
     @click="onClick"
   >

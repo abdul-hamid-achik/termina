@@ -121,7 +121,7 @@ const desolator: ItemDef = {
   passive: {
     id: 'desolator_passive',
     name: 'Corruption',
-    description: 'Attacks reduce target defense by 5 for 3 ticks.',
+    description: "Your attacks ignore 5 of the target's defense.",
   },
 }
 
@@ -160,7 +160,7 @@ const maelstrom: ItemDef = {
   passive: {
     id: 'maelstrom_passive',
     name: 'Chain Lightning',
-    description: '25% chance on attack to deal 60 magical damage to target and 1 nearby enemy.',
+    description: '25% chance on attack to deal 60 magical damage to a nearby enemy.',
   },
 }
 
@@ -591,7 +591,8 @@ const observerWard: ItemDef = {
   active: {
     id: 'observer_ward_active',
     name: 'Place Ward',
-    description: 'Place in a zone for vision lasting 45 ticks. Max 3 active per team.',
+    description:
+      'Place in a zone for vision lasting 45 ticks. Max 3 wards per team (shared with sentries).',
     cooldownTicks: 0,
     targetType: 'zone',
   },
@@ -607,7 +608,8 @@ const sentryWard: ItemDef = {
   active: {
     id: 'sentry_ward_active',
     name: 'Place Sentry Ward',
-    description: 'Reveals invisible units in the area. Lasts 30 ticks. Max 3 active per team.',
+    description:
+      'Reveals invisible units in the area. Lasts 30 ticks. Max 3 wards per team (shared with observers).',
     cooldownTicks: 0,
     targetType: 'zone',
   },

@@ -1,4 +1,10 @@
-import type { ItemDef, ItemStats, ItemActiveDef } from '~~/shared/types/items'
+import type {
+  ItemDef,
+  ItemStats,
+  ItemActiveDef,
+  ItemCategory,
+  ItemCategoryId,
+} from '~~/shared/types/items'
 
 /**
  * Pure, human-readable formatting + aggregation of item data for the items
@@ -58,4 +64,39 @@ export function activeCooldownSeconds(active: ItemActiveDef, tickMs: number): nu
 /** Sort a list of items by cost ascending (stable on equal cost via name). */
 export function byCostAscending(items: ItemDef[]): ItemDef[] {
   return [...items].sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name))
+}
+
+export interface BrowseSection {
+  id: ItemCategoryId
+  label: string
+  blurb: string
+  items: ItemDef[]
+}
+
+/**
+ * Resolve the visible item-browser sections for the /items page: keep the
+ * selected category (or all), resolve ids to items, filter by a name search,
+ * sort each section cheapest-first, and drop sections left empty. Pure so the
+ * page's filter/search behavior is unit-tested.
+ */
+export function browseSections(
+  categories: ItemCategory[],
+  itemsById: Record<string, ItemDef>,
+  activeCategory: ItemCategoryId | 'all',
+  search: string,
+): BrowseSection[] {
+  const q = search.trim().toLowerCase()
+  return categories
+    .filter((c) => activeCategory === 'all' || c.id === activeCategory)
+    .map((c) => ({
+      id: c.id,
+      label: c.label,
+      blurb: c.blurb,
+      items: byCostAscending(
+        c.ids
+          .map((id) => itemsById[id])
+          .filter((it): it is ItemDef => !!it && (!q || it.name.toLowerCase().includes(q))),
+      ),
+    }))
+    .filter((c) => c.items.length > 0)
 }

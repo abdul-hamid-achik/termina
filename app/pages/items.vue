@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ITEMS, ITEM_CATEGORIES } from '~~/shared/constants/items'
-import type { ItemDef, ItemCategoryId } from '~~/shared/types/items'
-import { byCostAscending } from '~~/shared/itemFormat'
+import type { ItemCategoryId } from '~~/shared/types/items'
+import { browseSections } from '~~/shared/itemFormat'
 import ItemCard from '~/components/items/ItemCard.vue'
 import LoadoutSummary from '~/components/items/LoadoutSummary.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
+import { useLoadout } from '~/composables/useLoadout'
 
 useHead({ title: 'Items · TERMINA' })
 
@@ -13,37 +14,25 @@ const MAX_SLOTS = 6
 type Filter = ItemCategoryId | 'all'
 const activeCategory = ref<Filter>('all')
 const search = ref('')
+const query = computed(() => search.value.trim())
 
 // Visible sections = the selected category (or all), each filtered by the search
-// box and sorted cheapest-first; empty sections drop out.
-const visibleSections = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  return ITEM_CATEGORIES.filter(
-    (c) => activeCategory.value === 'all' || c.id === activeCategory.value,
-  )
-    .map((c) => ({
-      ...c,
-      items: byCostAscending(
-        c.ids.map((id) => ITEMS[id]!).filter((it) => !q || it.name.toLowerCase().includes(q)),
-      ),
-    }))
-    .filter((c) => c.items.length > 0)
-})
+// box and sorted cheapest-first; empty sections drop out. Logic lives in the
+// unit-tested browseSections helper.
+const visibleSections = computed(() =>
+  browseSections(ITEM_CATEGORIES, ITEMS, activeCategory.value, query.value),
+)
 
 // Loadout sandbox: click items to stack up to a full inventory and see what
 // stats, cost and actives the build adds up to — itemization, made tangible.
-const loadout = ref<ItemDef[]>([])
-function isSelected(id: string) {
-  return loadout.value.some((i) => i.id === id)
-}
-function toggleItem(item: ItemDef) {
-  const idx = loadout.value.findIndex((i) => i.id === item.id)
-  if (idx >= 0) loadout.value.splice(idx, 1)
-  else if (loadout.value.length < MAX_SLOTS) loadout.value.push(item)
-}
-function clearLoadout() {
-  loadout.value = []
-}
+// Add/remove/cap rules live in the unit-tested useLoadout composable.
+const {
+  items: loadout,
+  isFull,
+  isSelected,
+  toggle: toggleItem,
+  clear: clearLoadout,
+} = useLoadout(MAX_SLOTS)
 
 const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
 </script>
@@ -69,6 +58,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
               ? 'border-ability bg-ability/10 text-ability'
               : 'border-border text-text-dim hover:border-border-glow hover:text-text-primary'
           "
+          :aria-pressed="activeCategory === 'all'"
           data-testid="item-category-all"
           @click="activeCategory = 'all'"
         >
@@ -84,6 +74,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
               ? 'border-ability bg-ability/10 text-ability'
               : 'border-border text-text-dim hover:border-border-glow hover:text-text-primary'
           "
+          :aria-pressed="activeCategory === c.id"
           :data-testid="`item-category-${c.id}`"
           @click="activeCategory = c.id"
         >
@@ -94,7 +85,8 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
         <span class="text-[0.75rem] text-gold">&gt;</span>
         <input
           v-model="search"
-          type="text"
+          type="search"
+          aria-label="Search items"
           placeholder="search items…"
           class="w-full bg-transparent text-[0.78rem] text-text-primary placeholder:text-text-dim focus:outline-none"
           data-testid="item-search"
@@ -117,12 +109,13 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
               :item="it"
               interactive
               :selected="isSelected(it.id)"
+              :disabled="isFull && !isSelected(it.id)"
               @toggle="toggleItem(it)"
             />
           </div>
         </section>
         <p v-if="visibleSections.length === 0" class="text-[0.78rem] italic text-text-dim">
-          No items match "{{ search }}".
+          No items match "{{ query }}".
         </p>
         <p class="text-[0.62rem] italic text-text-dim">
           Note: Move Speed is currently cosmetic — movement is a fixed one zone per tick.

@@ -45,10 +45,17 @@ describe('LoadoutSummary', () => {
     expect(text).toContain('+5 Defense')
   })
 
-  it('lists the actives the build grants', () => {
-    const text = mountSummary([vanguard, dagon]).text()
-    expect(text).toContain('Energy Burst') // dagon's active
-    // vanguard has no active → only one active listed
+  it('lists only the actives the build grants (passive-only items excluded)', () => {
+    const wrapper = mountSummary([vanguard, dagon])
+    expect(wrapper.text()).toContain('Energy Burst') // dagon's active
+    // vanguard is passive-only → exactly one active listed, not two
+    expect(wrapper.findAll('.text-ability')).toHaveLength(1)
+  })
+
+  it('omits the actives section entirely for a passive-only build', () => {
+    const wrapper = mountSummary([vanguard])
+    expect(wrapper.findAll('.text-ability')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('actives')
   })
 
   it('emits clear when the clear button is clicked', async () => {

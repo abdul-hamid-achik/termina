@@ -5,6 +5,7 @@ import {
   totalCost,
   activeCooldownSeconds,
   byCostAscending,
+  browseSections,
   STAT_LABELS,
 } from '~~/shared/itemFormat'
 import { ITEMS, ITEM_IDS, ITEM_CATEGORIES } from '~~/shared/constants/items'
@@ -76,6 +77,45 @@ describe('byCostAscending', () => {
     const sorted = byCostAscending(input)
     expect(sorted.map((i) => i.id)).toEqual(['a', 'b'])
     expect(input.map((i) => i.id)).toEqual(['b', 'a']) // original untouched
+  })
+  it('breaks cost ties by name', () => {
+    const sorted = byCostAscending([
+      item({ id: 'z', name: 'Zeta', cost: 100 }),
+      item({ id: 'a', name: 'Alpha', cost: 100 }),
+    ])
+    expect(sorted.map((i) => i.id)).toEqual(['a', 'z'])
+  })
+})
+
+describe('browseSections', () => {
+  const cats = ITEM_CATEGORIES
+  it("returns every category when filter is 'all' and no search", () => {
+    const sections = browseSections(cats, ITEMS, 'all', '')
+    expect(sections).toHaveLength(cats.length)
+    // each section's items are cost-ascending
+    for (const s of sections) {
+      const costs = s.items.map((i) => i.cost)
+      expect(costs).toEqual([...costs].sort((a, b) => a - b))
+    }
+  })
+  it('narrows to a single section when a category is selected', () => {
+    const sections = browseSections(cats, ITEMS, 'attack', '')
+    expect(sections).toHaveLength(1)
+    expect(sections[0]!.id).toBe('attack')
+  })
+  it('filters items by a case-insensitive name search across categories', () => {
+    const sections = browseSections(cats, ITEMS, 'all', 'WARD')
+    const ids = sections.flatMap((s) => s.items.map((i) => i.id))
+    expect(ids).toContain('observer_ward')
+    expect(ids).toContain('sentry_ward')
+    expect(ids).not.toContain('dagon')
+  })
+  it('drops sections left empty by the search and returns [] on no match', () => {
+    expect(browseSections(cats, ITEMS, 'all', 'zzzznotanitem')).toEqual([])
+  })
+  it('ignores surrounding whitespace in the search', () => {
+    const a = browseSections(cats, ITEMS, 'all', '  dagon  ')
+    expect(a.flatMap((s) => s.items.map((i) => i.id))).toContain('dagon')
   })
 })
 
