@@ -2,6 +2,8 @@
 
 A text-based multiplayer online battle arena (MOBA) where strategy matters more than reflexes. Built with modern web technologies for a chess-like MOBA experience.
 
+**▶ Play it live: [www.terminamoba.com](https://www.terminamoba.com)** — or learn first: [meet the heroes](https://www.terminamoba.com/heroes) · [browse items](https://www.terminamoba.com/items) · [learn the commands](https://www.terminamoba.com/learn) · [read the lore](https://www.terminamoba.com/lore)
+
 ## 🎮 Features
 
 ### Core Gameplay
