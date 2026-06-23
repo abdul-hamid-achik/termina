@@ -122,30 +122,89 @@ function handleZoneClick(zoneId: string) {
 }
 
 function handleGridKeydown(e: KeyboardEvent) {
-  const allZones = props.zones.map((z) => z.id)
-  const currentIdx = focusedZoneId.value ? allZones.indexOf(focusedZoneId.value) : -1
+  // Navigate the actual 2D layout (MAP_ROWS) rather than a flat list with a
+  // hardcoded 5-column step — that broke up/down on the one-lane (1 col) and
+  // two-lane (4 col) maps. MAP_ROWS has null cells (visual gaps), so movement
+  // skips over them to the next real zone in the pressed direction.
+  const rows = MAP_ROWS.value
+  if (!rows.length) return
 
-  if (e.key === 'ArrowRight') {
-    e.preventDefault()
-    const nextIdx = Math.min(currentIdx + 1, allZones.length - 1)
-    focusedZoneId.value = allZones[nextIdx] ?? null
-  } else if (e.key === 'ArrowLeft') {
-    e.preventDefault()
-    const nextIdx = Math.max(currentIdx - 1, 0)
-    focusedZoneId.value = allZones[nextIdx] ?? null
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    const nextIdx = Math.min(currentIdx + 5, allZones.length - 1)
-    focusedZoneId.value = allZones[nextIdx] ?? null
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    const nextIdx = Math.max(currentIdx - 5, 0)
-    focusedZoneId.value = allZones[nextIdx] ?? null
-  } else if (e.key === 'Enter' && focusedZoneId.value) {
-    if (zoneClickable(focusedZoneId.value)) {
-      handleZoneClick(focusedZoneId.value)
+  // Locate the focused cell in the grid (row, col).
+  let r = -1
+  let c = -1
+  if (focusedZoneId.value) {
+    for (let ri = 0; ri < rows.length; ri++) {
+      const ci = rows[ri]!.indexOf(focusedZoneId.value)
+      if (ci !== -1) {
+        r = ri
+        c = ci
+        break
+      }
     }
   }
+
+  // First real zone scanning the whole grid — the entry point from no focus.
+  function firstCell(): string | null {
+    for (const row of rows) for (const id of row) if (id) return id
+    return null
+  }
+  // Nearest real zone in a row to column `col` (search outward both ways).
+  function nearestInRow(ri: number, col: number): string | null {
+    const row = rows[ri]
+    if (!row) return null
+    if (row[col]) return row[col]!
+    for (let d = 1; d < row.length; d++) {
+      if (row[col - d]) return row[col - d]!
+      if (row[col + d]) return row[col + d]!
+    }
+    return null
+  }
+  // Horizontal scan from c in `step` direction, skipping null gaps.
+  function horiz(step: number): string | null {
+    if (r < 0) return firstCell()
+    const row = rows[r]!
+    for (let nc = c + step; nc >= 0 && nc < row.length; nc += step) {
+      if (row[nc]) return row[nc]!
+    }
+    return null
+  }
+  // Vertical: walk rows in `step` direction, landing on the nearest real zone.
+  function vert(step: number): string | null {
+    if (r < 0) return firstCell()
+    for (let nr = r + step; nr >= 0 && nr < rows.length; nr += step) {
+      const id = nearestInRow(nr, c)
+      if (id) return id
+    }
+    return null
+  }
+
+  let next: string | null = null
+  switch (e.key) {
+    case 'ArrowRight':
+      e.preventDefault()
+      next = horiz(1)
+      break
+    case 'ArrowLeft':
+      e.preventDefault()
+      next = horiz(-1)
+      break
+    case 'ArrowDown':
+      e.preventDefault()
+      next = vert(1)
+      break
+    case 'ArrowUp':
+      e.preventDefault()
+      next = vert(-1)
+      break
+    case 'Enter':
+      if (focusedZoneId.value && zoneClickable(focusedZoneId.value)) {
+        handleZoneClick(focusedZoneId.value)
+      }
+      return
+    default:
+      return
+  }
+  if (next) focusedZoneId.value = next
 }
 
 // ── Compact (mobile) mode ─────────────────────────────────────────
