@@ -51,14 +51,10 @@ import {
   type NarrativeContext,
   type KillFeedEntry,
 } from '~/utils/combatNarrative'
-import {
-  TICK_DURATION_MS,
-  RUNE_DURATION_TICKS,
-  SURRENDER_MIN_TICK,
-  GLYPH_COOLDOWN_TICKS,
-} from '~~/shared/constants/balance'
+import { TICK_DURATION_MS, RUNE_DURATION_TICKS } from '~~/shared/constants/balance'
 import { formatRoshan } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
+import { computeSituationalActions } from '~/utils/situationalActions'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
@@ -1043,37 +1039,19 @@ function handleQuickAction(cmd: string) {
 // Situational actions (ward / deny / aegis / rune / glyph / surrender) were
 // command-line only — invisible + unusable on touch. Surface them as on-screen
 // buttons, shown only when actually available so the row stays contextual.
-const situationalActions = computed(() => {
-  const p = gameStore.player
-  if (!p || !gameStore.isAlive) return [] as { cmd: string; label: string; aria: string }[]
-  const out: { cmd: string; label: string; aria: string }[] = []
-
-  if (p.items.some((i) => i === 'observer_ward' || i === 'sentry_ward')) {
-    out.push({ cmd: 'ward', label: 'WARD', aria: `Place a ward in ${p.zone}` })
-  }
-  if (!('error' in pickDenyTargetString(p, gameStore.creeps))) {
-    out.push({ cmd: 'deny', label: 'DENY', aria: 'Deny a low-HP allied creep' })
-  }
-  const aegis = gameStore.aegis
-  if (aegis && aegis.zone === p.zone && !aegis.holderId) {
-    out.push({ cmd: 'aegis', label: 'AEGIS', aria: 'Pick up the Aegis of the Immortal' })
-  }
-  if (gameStore.runes.some((r) => r.zone === p.zone)) {
-    out.push({ cmd: 'rune', label: 'RUNE', aria: 'Grab the rune in your zone' })
-  }
-  const teamState = gameStore.teams?.[p.team] ?? null
-  const glyphReady =
-    !teamState ||
-    teamState.glyphUsedTick == null ||
-    gameStore.tick - teamState.glyphUsedTick >= GLYPH_COOLDOWN_TICKS
-  if (glyphReady) {
-    out.push({ cmd: 'glyph', label: 'GLYPH', aria: 'Activate team glyph (fortify structures)' })
-  }
-  if (gameStore.tick >= SURRENDER_MIN_TICK) {
-    out.push({ cmd: 'surrender', label: 'SURRENDER', aria: 'Vote to surrender the match' })
-  }
-  return out
-})
+// Which contextual actions the player can take now — pure rules extracted to a
+// unit-tested util (computeSituationalActions).
+const situationalActions = computed(() =>
+  computeSituationalActions({
+    player: gameStore.player,
+    isAlive: gameStore.isAlive,
+    creeps: gameStore.creeps,
+    aegis: gameStore.aegis,
+    runes: gameStore.runes,
+    teams: gameStore.teams,
+    tick: gameStore.tick,
+  }),
+)
 
 function runSituational(cmd: string) {
   const p = gameStore.player
