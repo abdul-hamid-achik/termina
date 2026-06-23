@@ -205,29 +205,37 @@ function formatDate(dateStr: string | null): string {
           No matches played yet.
         </div>
         <table v-else class="w-full border-collapse text-xs">
+          <caption class="sr-only">
+            Recent matches — mode, result, duration and date
+          </caption>
           <thead>
             <tr>
               <th
+                scope="col"
                 class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
               >
                 Mode
               </th>
               <th
+                scope="col"
                 class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
               >
                 Result
               </th>
               <th
+                scope="col"
                 class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
               >
                 Duration
               </th>
               <th
+                scope="col"
                 class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
               >
                 Date
               </th>
               <th
+                scope="col"
                 class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
               >
                 Watch
@@ -236,9 +244,12 @@ function formatDate(dateStr: string | null): string {
           </thead>
           <tbody>
             <tr v-for="m in decoratedMatches" :key="m.id">
-              <td class="border-b border-border/50 px-1.5 py-1 text-ability">
+              <th
+                scope="row"
+                class="border-b border-border/50 px-1.5 py-1 text-left font-normal text-ability"
+              >
                 {{ formatGameMode(m.mode) }}
-              </td>
+              </th>
               <td
                 class="border-b border-border/50 px-1.5 py-1 font-bold"
                 :class="{
