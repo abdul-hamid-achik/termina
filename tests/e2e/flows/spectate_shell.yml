@@ -1,0 +1,36 @@
+version: 1
+name: spectate_shell
+intent: The /spectate/[gameId] page renders its live-spectator shell — the "spectator · live" header
+  and the requested gameId — on mount, without needing a live game to stream.
+mode: normal
+metadata:
+  feature: spectate
+  tags:
+    - spectate
+    - public
+outcomes:
+  - id: spectator_header_renders
+    description: the spectator chrome (the "spectator · live" caption) renders
+    verify:
+      text:
+        contains: spectator
+  - id: game_id_echoed
+    description: the page binds the route param and shows the requested game id
+    verify:
+      text:
+        contains: smoke-demo
+  - id: exit_link_present
+    description: an exit link back out of the spectator is offered
+    verify:
+      text:
+        contains: exit
+steps:
+  - id: open_spectate
+    open:
+      path: /spectate/smoke-demo
+      waitUntil: domcontentloaded
+  - id: wait_for_shell
+    wait:
+      text: spectator
+      timeoutMs: 10000
+contractHash: sha256:1004cd86dc2a2ffcdaf160d73c86fd4a1a82c14b99e79f6eff13e98ebe643d08

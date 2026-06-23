@@ -1,0 +1,36 @@
+version: 1
+name: replay_unavailable
+intent: The /replay/[gameId] page renders its shell and degrades to a graceful "REPLAY UNAVAILABLE"
+  state (not a crash or blank page) when the requested replay does not exist.
+mode: normal
+metadata:
+  feature: replay
+  tags:
+    - replay
+    - public
+outcomes:
+  - id: replay_chrome_renders
+    description: the replay page chrome (the "// replay" caption) renders
+    verify:
+      text:
+        contains: replay
+  - id: game_id_echoed
+    description: the page binds the route param and shows the requested game id
+    verify:
+      text:
+        contains: smoke-demo
+  - id: unavailable_state
+    description: a missing replay degrades gracefully to the REPLAY UNAVAILABLE notice
+    verify:
+      text:
+        contains: REPLAY UNAVAILABLE
+steps:
+  - id: open_replay
+    open:
+      path: /replay/smoke-demo
+      waitUntil: domcontentloaded
+  - id: wait_for_unavailable
+    wait:
+      text: REPLAY UNAVAILABLE
+      timeoutMs: 10000
+contractHash: sha256:964e10704319d616eed265f08c60c7a44ea596d136b6586109fc2bacabcfe810
