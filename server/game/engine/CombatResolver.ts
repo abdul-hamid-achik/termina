@@ -8,7 +8,7 @@ import { dealDamage, hasBuff } from '../heroes/_base'
  * Heroes defend themselves with the SAME mitigation chain regardless of who
  * swings at them: immunity (Ghost/Ethereal/invulnerable) → effective defense
  * (items + talents + buffs) → Kernel 'hardened' 10% reduction → target-side
- * vuln amps (thread Yield) → shield absorption → Echo 'phaseShift' dodge.
+ * vuln amps (thread Yield) → Echo 'phaseShift' dodge → shield absorption.
  *
  * Before this helper, each NPC site reimplemented a *slice* of that chain —
  * towers used raw `target.defense` (ignoring items, cuirass, vuln, hardened,

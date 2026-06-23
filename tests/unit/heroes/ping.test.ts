@@ -218,7 +218,8 @@ describe('Ping Hero', () => {
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'silence')).toBe(true)
       const silence = updatedEnemy.buffs.find((b) => b.id === 'silence')
-      expect(silence!.ticksRemaining).toBe(1)
+      // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
+      expect(silence!.ticksRemaining).toBe(2)
 
       expect(hasBuff(updatedEnemy, 'attackReduction')).toBe(true)
       const atkReduce = updatedEnemy.buffs.find((b) => b.id === 'attackReduction')

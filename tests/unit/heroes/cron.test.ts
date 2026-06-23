@@ -292,7 +292,8 @@ describe('Cron Hero', () => {
       expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
       expect(hasBuff(updatedEnemy, 'taunt')).toBe(true)
       const taunt = updatedEnemy.buffs.find((b) => b.id === 'taunt')
-      expect(taunt!.ticksRemaining).toBe(1)
+      // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
+      expect(taunt!.ticksRemaining).toBe(2)
     })
 
     it('scales damage with level', () => {

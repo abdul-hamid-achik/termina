@@ -284,7 +284,8 @@ function resolveR(
       updatedTarget = applyBuff(updatedTarget, {
         id: 'stun',
         stacks: 1,
-        ticksRemaining: 1,
+        // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
+        ticksRemaining: 2,
         source: player.id,
       })
     }

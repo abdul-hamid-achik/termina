@@ -454,7 +454,8 @@ describe('Lambda Hero', () => {
       const updatedEnemy = result.state.players['e1']!
       expect(hasBuff(updatedEnemy, 'stun')).toBe(true)
       const stun = updatedEnemy.buffs.find((b) => b.id === 'stun')
-      expect(stun!.ticksRemaining).toBe(1)
+      // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
+      expect(stun!.ticksRemaining).toBe(2)
     })
 
     it('does not stun without closureActive', () => {

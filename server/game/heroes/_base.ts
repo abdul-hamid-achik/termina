@@ -136,6 +136,15 @@ export function getPlayerCombatStats(player: PlayerState): CombatStats {
 
 // ── Buff Utilities ────────────────────────────────────────────────
 
+/**
+ * Why cast-applied control disables (stun/silence/root/taunt) use ticksRemaining
+ * 2, not 1, to gate ONE future action: the debuff is applied during the resolve
+ * phase, but the victim's action THIS tick was already validated at tick start,
+ * and tickAllBuffs reaps the debuff at the END of this same tick. So
+ * ticksRemaining:1 decrements to 0 and is gone before the next validateAction
+ * ever sees it (a silent no-op). 2 survives the same-tick reap, gates the next
+ * action, then expires. (See the `ticksRemaining: 2 // one gated action` sites.)
+ */
 export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
   const idx = player.buffs.findIndex((b) => b.id === buff.id && b.source === buff.source)
   const buffs = [...player.buffs]
@@ -285,6 +294,13 @@ export function dealDamage(
   // shield so the shield soaks the amplified amount ("takes more damage").
   remaining = Math.round(remaining * getIncomingDamageMultiplier(target, damageType))
 
+  // Phase Shift (Echo W) dodges the hit ENTIRELY — check BEFORE shield so a
+  // dodged hit doesn't spend the shield (matches the basic-attack path order in
+  // ActionResolver and Phase Shift's "dodge the attack" contract).
+  if (hasBuff(target, 'phaseShift')) {
+    return removeBuff(target, 'phaseShift')
+  }
+
   // Check for shield buff
   const shield = target.buffs.find((b) => b.id === 'shield')
   if (shield && shield.stacks > 0) {
@@ -294,11 +310,6 @@ export function dealDamage(
     }
     remaining = absorbed.remaining
     target = { ...target, buffs: absorbed.buffs }
-  }
-
-  // Check Phase Shift (Echo W) — dodge attack
-  if (hasBuff(target, 'phaseShift')) {
-    return removeBuff(target, 'phaseShift')
   }
 
   const newHp = Math.max(0, target.hp - remaining)

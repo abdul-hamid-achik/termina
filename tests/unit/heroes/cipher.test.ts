@@ -237,7 +237,8 @@ describe('Cipher Hero', () => {
       const revealed = updatedEnemy.buffs.find((b) => b.id === 'revealed')
       expect(revealed!.ticksRemaining).toBe(3)
       const silence = updatedEnemy.buffs.find((b) => b.id === 'silence')
-      expect(silence!.ticksRemaining).toBe(1)
+      // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
+      expect(silence!.ticksRemaining).toBe(2)
     })
 
     it('deducts mana and sets cooldown', () => {

@@ -270,8 +270,9 @@ describe('Regex Hero', () => {
       const targetStun = result.state.players['e1']!.buffs.find((b) => b.id === 'stun')
       expect(casterStun).toBeDefined()
       expect(targetStun).toBeDefined()
-      expect(casterStun!.ticksRemaining).toBe(1)
-      expect(targetStun!.ticksRemaining).toBe(1)
+      // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
+      expect(casterStun!.ticksRemaining).toBe(2)
+      expect(targetStun!.ticksRemaining).toBe(2)
     })
 
     it('deducts mana and sets cooldown', () => {

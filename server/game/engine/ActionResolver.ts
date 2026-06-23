@@ -378,8 +378,11 @@ function resolveMovementPhase(
 
 /**
  * Phase 1: Instant abilities (stuns, silences) — resolve simultaneously.
- * These effects apply before movement so a stun from Q prevents the target's
- * move this tick.
+ * These apply before movement, but they do NOT gate the victim's SAME-tick
+ * action (which was already validated at tick start) — a cast-applied disable
+ * gates the victim's NEXT tick, which is why those disables use ticksRemaining 2
+ * (see the applyBuff note in heroes/_base): a 1-tick disable is reaped this same
+ * tick before any future validateAction sees it.
  */
 function resolveInstantCastsPhase(
   state: GameState,
@@ -722,7 +725,9 @@ function resolveAttackPhase(
       const newHp = Math.max(0, targetPendingHp - hpLoss)
 
       if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
-        newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 1, source: attacker.id })
+        // ticksRemaining 2 = one gated action: reaped same-tick by tickAllBuffs
+        // (see the applyBuff note), so 1 would never reach the next validateAction.
+        newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 2, source: attacker.id })
       }
 
       if (newBuffs.some((b) => b.id === 'tp_channeling')) {

@@ -156,7 +156,8 @@ function resolveW(
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'silence',
       stacks: 1,
-      ticksRemaining: 1,
+      // 2 = one gated action: reaped same-tick by tickAllBuffs (see applyBuff note)
+      ticksRemaining: 2,
       source: player.id,
     })
     updatedTarget = applyBuff(updatedTarget, {

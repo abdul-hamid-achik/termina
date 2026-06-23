@@ -34,7 +34,9 @@ const W_DOT_DURATION = 3
 
 const E_MANA = 100
 const E_COOLDOWN = [15, 14, 13, 12] as const
-const E_STUN_DURATION = 1
+// 2 = one gated action: a cast-applied stun is reaped same-tick by tickAllBuffs
+// (see the applyBuff note in _base), so it needs 2 ticks to gate one action.
+const E_STUN_DURATION = 2
 
 const R_MANA = 300
 const R_COOLDOWN = [60, 55, 50] as const
