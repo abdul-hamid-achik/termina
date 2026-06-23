@@ -314,6 +314,21 @@ describe('GameScreen', () => {
       expect(wrapper.find('[data-testid="buyback-button"]').exists()).toBe(true)
       wrapper.unmount()
     })
+
+    it('lets a dead player vote to surrender from the death overlay', async () => {
+      seedDeadPlayer()
+      const wrapper = mountGameScreen()
+
+      const btn = wrapper.find('[data-testid="death-surrender-button"]')
+      expect(btn.exists()).toBe(true)
+
+      socketSpies.send.mockClear()
+      await btn.trigger('click')
+      // surrender is a "special" action that bypasses the canAct gate, so it
+      // must actually reach the socket even while dead.
+      expect(socketSpies.send).toHaveBeenCalled()
+      wrapper.unmount()
+    })
   })
 
   describe('game over (game_over oracle)', () => {
