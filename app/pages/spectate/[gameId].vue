@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { reconnectDelay } from '~/utils/reconnect'
+import { parseSpectatorMessage } from '~/utils/spectatorMessage'
 import { formatTickClock } from '~/utils/gameClock'
 import type { PlayerState, PlayerVisibleState } from '~~/shared/types/game'
 
@@ -51,18 +52,15 @@ async function connect() {
   }
 
   ws.onmessage = (ev) => {
-    try {
-      const msg = JSON.parse(ev.data)
-      if (msg.type === 'spectator_ack') {
-        ackedGameId.value = msg.gameId
-      } else if (msg.type === 'spectator_tick') {
-        lastTick.value = msg.tick
-        visibleState.value = msg.state as PlayerVisibleState
-      } else if (msg.type === 'error') {
-        errorMessage.value = `${msg.code}: ${msg.message}`
-      }
-    } catch {
-      /* drop unparseable */
+    // Parse + classify is unit-tested in spectatorMessage; this only applies it.
+    const msg = parseSpectatorMessage(ev.data)
+    if (msg.type === 'ack') {
+      ackedGameId.value = msg.gameId
+    } else if (msg.type === 'tick') {
+      lastTick.value = msg.tick
+      visibleState.value = msg.state
+    } else if (msg.type === 'error') {
+      errorMessage.value = msg.message
     }
   }
 
