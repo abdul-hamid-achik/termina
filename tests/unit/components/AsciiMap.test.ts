@@ -295,7 +295,7 @@ describe('AsciiMap', () => {
       expect(cells.length).toBe(2)
       expect(cells[0]!.text()).toContain('◈50%')
       expect(cells[0]!.attributes('aria-label')).toContain('ancient at 50%')
-      expect(cells[1]!.text()).toContain('◈☠')
+      expect(cells[1]!.text()).toContain('◈✗')
       expect(cells[1]!.attributes('aria-label')).toContain('ancient destroyed')
     })
 

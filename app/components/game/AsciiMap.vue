@@ -232,7 +232,7 @@ function miniCellText(zoneId: string): string {
   const zone = getZone(zoneId)
   const ancient = ancientForZone(zoneId, props.ancients)
   let text = zoneShortCode(zoneId)
-  if (ancient && !ancient.alive) text += '☠'
+  if (ancient && !ancient.alive) text += '◈✗'
   if (zone && zone.enemyCount > 0) text += '!'
   if (zone?.playerHere) text = `►${text}`
   return text
@@ -344,7 +344,7 @@ function miniCellClasses(zoneId: string): string[] {
         <span class="text-text-dim">cN = N Creeps</span>
         <span class="text-text-dim">☘N = N Neutrals</span>
         <span class="text-text-dim">✓/✗ = Tower</span>
-        <span class="text-text-dim">◈ = Core</span>
+        <span class="text-text-dim">◈ = Mainframe</span>
       </div>
     </template>
 
@@ -444,7 +444,7 @@ function miniCellClasses(zoneId: string): string[] {
         <div class="mt-1 flex flex-wrap justify-center gap-x-3 text-[0.6rem] text-text-dim">
           <span class="text-self">► you</span>
           <span class="text-dire">! enemies</span>
-          <span>☠ core down</span>
+          <span>◈✗ mainframe razed</span>
           <span
             ><span class="text-radiant">rad</span>/<span class="text-dire">dire</span> ground</span
           >

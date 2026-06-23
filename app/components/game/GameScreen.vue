@@ -164,7 +164,7 @@ onMounted(() => {
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
         'Last-hit enemy creeps (≈<50% HP) for gold — tap the creep group in the Zone panel.',
         'In the fountain/base press [S] (SHOP) to buy items; Q/W/E/R cast your abilities.',
-        'Destroy the enemy Mainframe (their Ancient) to win. Good luck!',
+        'Destroy the enemy Mainframe to win. Good luck!',
       ]
       for (const text of intro)
         localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
@@ -512,9 +512,9 @@ function entityLabel(id: unknown): string {
   }
   if (id.startsWith('ancient_')) {
     const team = id.slice('ancient_'.length)
-    if (team === 'radiant') return 'the Radiant Core'
-    if (team === 'dire') return 'the Dire Core'
-    return `the ${team} Core`
+    if (team === 'radiant') return 'the Radiant Mainframe'
+    if (team === 'dire') return 'the Dire Mainframe'
+    return `the ${team} Mainframe`
   }
   if (id === 'roshan') return 'Roshan'
   if (id === 'buyback') return 'buyback'

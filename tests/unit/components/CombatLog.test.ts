@@ -112,13 +112,13 @@ describe('CombatLog', () => {
 
 describe('combatLog helpers', () => {
   describe('ancientLabel', () => {
-    it('resolves ancient ids to readable Core names', () => {
-      expect(ancientLabel('ancient_radiant')).toBe('the Radiant Core')
-      expect(ancientLabel('ancient_dire')).toBe('the Dire Core')
+    it('resolves ancient ids to readable Mainframe names', () => {
+      expect(ancientLabel('ancient_radiant')).toBe('the Radiant Mainframe')
+      expect(ancientLabel('ancient_dire')).toBe('the Dire Mainframe')
     })
 
-    it('falls back to a generic Core label for unknown teams', () => {
-      expect(ancientLabel('ancient_neutral')).toBe('the neutral Core')
+    it('falls back to a generic Mainframe label for unknown teams', () => {
+      expect(ancientLabel('ancient_neutral')).toBe('the neutral Mainframe')
     })
 
     it('returns null for non-ancient ids', () => {

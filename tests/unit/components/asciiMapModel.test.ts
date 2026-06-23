@@ -125,8 +125,9 @@ describe('asciiMapModel', () => {
       expect(ancientLabel(makeAncient())).toBe('100%')
     })
 
-    it('shows a skull when destroyed', () => {
-      expect(ancientLabel(makeAncient({ hp: 0, alive: false }))).toBe('☠')
+    it('shows a razed marker (not ☠ — that is Roshan) when destroyed', () => {
+      // bare ✗; callers prepend ◈ → ◈✗
+      expect(ancientLabel(makeAncient({ hp: 0, alive: false }))).toBe('✗')
     })
 
     it('returns null when there is no ancient', () => {
@@ -168,9 +169,9 @@ describe('asciiMapModel', () => {
       expect(cellText(zone, makeAncient({ hp: 3000, maxHp: 6000 }))).toContain('◈50%')
     })
 
-    it('shows a skull for a destroyed ancient', () => {
+    it('shows a razed marker for a destroyed Mainframe', () => {
       const zone = makeZone({ id: 'dire-base', name: 'Dire Base' })
-      expect(cellText(zone, makeAncient({ team: 'dire', hp: 0, alive: false }))).toContain('◈☠')
+      expect(cellText(zone, makeAncient({ team: 'dire', hp: 0, alive: false }))).toContain('◈✗')
     })
 
     it('shows the ancient through fog (global info, like towers)', () => {

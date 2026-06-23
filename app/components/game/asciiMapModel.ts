@@ -172,10 +172,14 @@ export function ancientForZone(
   return null
 }
 
-/** Short HP readout for an Ancient: '83%' while alive, '☠' once destroyed. */
+/**
+ * Short HP readout for the Mainframe: '83%' while alive, '✗' once destroyed
+ * (callers prepend the ◈ glyph → '◈✗'). Destroyed is ✗, NOT ☠ — ☠ is
+ * reserved for the Roshan pit (see MapLegend), which previously collided.
+ */
 export function ancientLabel(ancient: AncientState | null | undefined): string | null {
   if (!ancient) return null
-  if (!ancient.alive) return '☠'
+  if (!ancient.alive) return '✗'
   const pct = ancient.maxHp > 0 ? Math.round((ancient.hp / ancient.maxHp) * 100) : 0
   return `${pct}%`
 }
