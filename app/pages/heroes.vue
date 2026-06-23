@@ -111,6 +111,14 @@ const manaPct = computed(() =>
           <h2 class="text-[0.95rem] font-bold text-text-primary">{{ hero.name }}</h2>
           <span class="text-[0.65rem] uppercase tracking-widest text-ability">{{ hero.role }}</span>
         </div>
+        <div class="flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-text-dim">
+          <span><span class="text-radiant">hp</span> {{ hero.baseStats.hp }}</span>
+          <span><span class="text-ability">mp</span> {{ hero.baseStats.mp }}</span>
+          <span><span class="text-gold">atk</span> {{ hero.baseStats.attack }}</span>
+          <span>def {{ hero.baseStats.defense }}</span>
+          <span>mres {{ hero.baseStats.magicResist }}</span>
+          <span class="uppercase">{{ hero.baseStats.attackRange }}</span>
+        </div>
         <p class="text-[0.75rem] italic leading-relaxed text-text-dim">{{ hero.lore }}</p>
 
         <AbilitySlot slot-key="◆" :ability="hero.passive" class="mt-1" />
