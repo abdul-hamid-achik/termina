@@ -301,8 +301,10 @@ onUnmounted(() => {
       <!-- FOUND: Match found transition -->
       <template v-else-if="lobbyStore.queueStatus === 'found'">
         <TerminalPanel title="Matchmaking">
-          <div class="flex flex-col items-center gap-4 p-6">
-            <p class="text-base font-bold text-radiant text-glow">&gt;_ MATCH FOUND</p>
+          <div class="flex flex-col items-center gap-4 p-6" role="status" aria-live="assertive">
+            <p class="text-base font-bold text-radiant text-glow">
+              <span aria-hidden="true">&gt;_</span> MATCH FOUND
+            </p>
             <p class="text-[0.8rem] text-text-dim">Preparing hero selection...</p>
           </div>
         </TerminalPanel>
@@ -312,18 +314,27 @@ onUnmounted(() => {
       <template v-else-if="lobbyStore.queueStatus === 'starting'">
         <TerminalPanel title="Game Starting">
           <div class="flex flex-col items-center gap-4 p-6">
-            <p class="text-base font-bold text-radiant text-glow">&gt;_ GAME STARTING</p>
+            <p
+              class="text-base font-bold text-radiant text-glow"
+              role="status"
+              aria-live="assertive"
+            >
+              <span aria-hidden="true">&gt;_</span> GAME STARTING
+            </p>
+            <!-- aria-hidden: the per-second countdown would otherwise spam a
+                 screen reader; the heading + status text below convey it. -->
             <span
               v-if="lobbyStore.countdown > 0"
+              aria-hidden="true"
               class="text-4xl font-bold tabular-nums text-radiant"
               :class="{ 'animate-blink text-dire': lobbyStore.countdown <= 3 }"
             >
               {{ lobbyStore.countdown }}
             </span>
-            <p class="text-[0.8rem] text-text-dim">
+            <p class="text-[0.8rem] text-text-dim" role="status" aria-live="polite">
               {{ lobbyStore.countdown > 0 ? 'Preparing match...' : 'Loading into match...' }}
             </p>
-            <span class="animate-blink text-2xl text-radiant">|</span>
+            <span aria-hidden="true" class="animate-blink text-2xl text-radiant">|</span>
           </div>
         </TerminalPanel>
       </template>
