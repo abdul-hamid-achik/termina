@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
-import { formatReplayCommand, clampFrameIndex, nextScrubTick } from '~/utils/replayView'
+import { formatReplayCommand, clampFrameIndex, nextScrubTick, keyMoments } from '~/utils/replayView'
 
 definePageMeta({ ssr: false })
 
@@ -109,6 +109,15 @@ function togglePlayback() {
   }, 600)
 }
 onUnmounted(stopPlayback)
+
+// Key moments (fights + tower falls) so a learner can jump to the action
+// instead of scrubbing blindly. Derived from the frame stream's score deltas.
+const moments = computed(() => keyMoments(framesData.value?.frames ?? []))
+
+function jumpTo(tick: number) {
+  stopPlayback()
+  scrubTick.value = tick
+}
 
 // Filter actions visible up to scrubTick
 const visibleActions = computed(() => {
@@ -369,6 +378,31 @@ watchEffect(() => {
             <div class="t-caption t-mono-num">
               {{ visibleActions.length }} / {{ data.actions.length }} actions
             </div>
+          </div>
+
+          <!-- Key moments — jump straight to the fights + tower falls -->
+          <div
+            v-if="moments.length"
+            class="flex flex-wrap items-center gap-1 border-b border-border bg-bg-secondary px-3 py-2"
+            data-testid="replay-key-moments"
+          >
+            <span class="t-caption mr-1 text-text-muted">key moments</span>
+            <button
+              v-for="(m, i) in moments"
+              :key="i"
+              type="button"
+              class="border px-1.5 py-0.5 text-[0.62rem] uppercase tracking-wider transition-colors hover:border-border-glow"
+              :class="
+                m.kind === 'tower'
+                  ? 'border-gold/50 text-gold hover:text-gold'
+                  : 'border-dire/50 text-dire hover:text-dire'
+              "
+              :data-testid="`key-moment-${m.kind}`"
+              :aria-label="`Jump to ${m.label} at tick ${m.tick}`"
+              @click="jumpTo(m.tick)"
+            >
+              {{ m.label }} · T{{ m.tick }}
+            </button>
           </div>
 
           <div class="border-b border-border bg-bg-secondary px-3 py-2">

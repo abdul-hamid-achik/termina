@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { formatReplayCommand, clampFrameIndex, nextScrubTick } from '../../../app/utils/replayView'
+import {
+  formatReplayCommand,
+  clampFrameIndex,
+  nextScrubTick,
+  keyMoments,
+  type ReplayFrameLite,
+} from '../../../app/utils/replayView'
+
+// Build a frame stream from per-tick cumulative [radiantKills, direKills,
+// radiantTowers, direTowers] tuples — terse fixtures for the delta logic.
+function frames(rows: Array<[number, number, number, number, number]>): ReplayFrameLite[] {
+  return rows.map(([tick, rk, dk, rt, dt]) => ({
+    tick,
+    teams: { radiant: { kills: rk, towerKills: rt }, dire: { kills: dk, towerKills: dt } },
+  }))
+}
 
 describe('formatReplayCommand', () => {
   it('formats movement with the destination zone', () => {
@@ -69,5 +84,70 @@ describe('nextScrubTick', () => {
   })
   it('is 0 for an empty replay', () => {
     expect(nextScrubTick(0, 0)).toBe(0)
+  })
+})
+
+describe('keyMoments', () => {
+  it('returns nothing for an eventless replay', () => {
+    expect(
+      keyMoments(
+        frames([
+          [0, 0, 0, 0, 0],
+          [10, 0, 0, 0, 0],
+        ]),
+      ),
+    ).toEqual([])
+    expect(keyMoments([])).toEqual([])
+  })
+
+  it('marks a single kill as a Kill', () => {
+    const m = keyMoments(
+      frames([
+        [0, 0, 0, 0, 0],
+        [5, 1, 0, 0, 0],
+      ]),
+    )
+    expect(m).toEqual([{ tick: 5, kind: 'fight', label: 'Kill' }])
+  })
+
+  it('coalesces a run of kills into one Fight tallying the kills', () => {
+    // kills at ticks 5,6,7 (within the default gap) → one Fight ×3 at tick 5
+    const m = keyMoments(
+      frames([
+        [0, 0, 0, 0, 0],
+        [5, 1, 0, 0, 0],
+        [6, 1, 1, 0, 0],
+        [7, 2, 1, 0, 0],
+      ]),
+    )
+    expect(m).toEqual([{ tick: 5, kind: 'fight', label: 'Fight ×3' }])
+  })
+
+  it('splits kills separated by a long lull into distinct fights', () => {
+    const m = keyMoments(
+      frames([
+        [0, 0, 0, 0, 0],
+        [5, 1, 0, 0, 0],
+        [40, 2, 0, 0, 0], // 35-tick gap → a new fight
+      ]),
+    )
+    expect(m).toEqual([
+      { tick: 5, kind: 'fight', label: 'Kill' },
+      { tick: 40, kind: 'fight', label: 'Kill' },
+    ])
+  })
+
+  it('marks tower falls as their own beat, in chronological order', () => {
+    const m = keyMoments(
+      frames([
+        [0, 0, 0, 0, 0],
+        [5, 1, 0, 0, 0], // kill
+        [12, 1, 0, 1, 0], // radiant takes a dire tower
+      ]),
+    )
+    expect(m).toEqual([
+      { tick: 5, kind: 'fight', label: 'Kill' },
+      { tick: 12, kind: 'tower', label: 'Tower' },
+    ])
   })
 })

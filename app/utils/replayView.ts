@@ -60,3 +60,66 @@ export function nextScrubTick(current: number, max: number): number {
   if (max <= 0) return 0
   return Math.min(current + 1, max)
 }
+
+/** The minimal frame shape keyMoments needs (team kill/tower tallies per tick). */
+export interface ReplayFrameLite {
+  tick: number
+  teams: {
+    radiant: { kills: number; towerKills: number }
+    dire: { kills: number; towerKills: number }
+  }
+}
+
+/** A notable tick in a replay, for the jump-to-the-action markers. */
+export interface KeyMoment {
+  tick: number
+  kind: 'fight' | 'tower'
+  label: string
+}
+
+/**
+ * Notable ticks in a replay, derived from frame-to-frame score deltas, so a
+ * learner can jump straight to the action instead of scrubbing blindly. A tower
+ * falling is its own marker; runs of consecutive kill ticks (within
+ * `coalesceGap` ticks of each other) fold into ONE "fight" marker anchored at
+ * the first kill and tallying the kills — so a teamfight reads as a single chip,
+ * not five. Pure over the frame stream; returned in chronological order.
+ */
+export function keyMoments(frames: ReplayFrameLite[], coalesceGap = 3): KeyMoment[] {
+  const moments: KeyMoment[] = []
+  const totalKills = (f: ReplayFrameLite) => f.teams.radiant.kills + f.teams.dire.kills
+  const totalTowers = (f: ReplayFrameLite) => f.teams.radiant.towerKills + f.teams.dire.towerKills
+
+  let fight: { tick: number; kills: number; lastTick: number } | null = null
+  const flush = () => {
+    if (!fight) return
+    moments.push({
+      tick: fight.tick,
+      kind: 'fight',
+      label: fight.kills > 1 ? `Fight ×${fight.kills}` : 'Kill',
+    })
+    fight = null
+  }
+
+  for (let i = 1; i < frames.length; i++) {
+    const prev = frames[i - 1]!
+    const cur = frames[i]!
+    const killDelta = totalKills(cur) - totalKills(prev)
+    const towerDelta = totalTowers(cur) - totalTowers(prev)
+
+    // A long lull since the last kill closes the current fight.
+    if (fight && cur.tick - fight.lastTick > coalesceGap) flush()
+
+    if (killDelta > 0) {
+      if (fight) {
+        fight.kills += killDelta
+        fight.lastTick = cur.tick
+      } else {
+        fight = { tick: cur.tick, kills: killDelta, lastTick: cur.tick }
+      }
+    }
+    if (towerDelta > 0) moments.push({ tick: cur.tick, kind: 'tower', label: 'Tower' })
+  }
+  flush()
+  return moments.sort((a, b) => a.tick - b.tick)
+}

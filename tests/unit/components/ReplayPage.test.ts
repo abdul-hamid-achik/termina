@@ -157,4 +157,36 @@ describe('replay page', () => {
     await nextTick()
     expect(wrapper.text()).toContain('scrub: tick 2') // frozen after pause
   })
+
+  it('renders key-moment markers and jumps the scrubber when one is clicked', async () => {
+    // A multi-frame replay with a kill (tick 5) and a tower fall (tick 12).
+    const frame = (tick: number, rk: number, dk: number, rt: number, dt: number) => ({
+      tick,
+      teams: { radiant: { kills: rk, towerKills: rt }, dire: { kills: dk, towerKills: dt } },
+      timeOfDay: 'day' as const,
+      players: {},
+    })
+    fetchResults = [
+      replayResult(),
+      {
+        data: ref({
+          gameId: 'g1',
+          totalTicks: 12,
+          frames: [frame(0, 0, 0, 0, 0), frame(5, 1, 0, 0, 0), frame(12, 1, 0, 1, 0)],
+          meta: { players: [{ playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 }] },
+        }),
+      },
+    ]
+    const wrapper = await mountReplay()
+
+    const strip = wrapper.find('[data-testid="replay-key-moments"]')
+    expect(strip.exists()).toBe(true)
+    expect(wrapper.find('[data-testid="key-moment-fight"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="key-moment-tower"]').exists()).toBe(true)
+
+    // scrubber initialises to the final tick (12); clicking the fight jumps to 5
+    expect(wrapper.text()).toContain('scrub: tick 12')
+    await wrapper.find('[data-testid="key-moment-fight"]').trigger('click')
+    expect(wrapper.text()).toContain('scrub: tick 5')
+  })
 })
