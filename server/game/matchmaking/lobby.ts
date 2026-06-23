@@ -438,6 +438,18 @@ function startReadyCheck(
   Effect.runPromise(
     Effect.sleep(Duration.seconds(3)).pipe(
       Effect.andThen(() => {
+        // Re-check phase before publishing: cancelLobby (e.g. the disconnect
+        // grace timer) can fire during this detached 3s sleep and set
+        // phase='cancelled' synchronously. Without this guard a game_ready would
+        // still publish and the game-server would spin up a full game for a
+        // lobby that no longer exists.
+        if (lobby.phase !== 'starting') {
+          lobbyLog.info('Skipping game_ready — lobby no longer starting', {
+            lobbyId: lobby.id,
+            phase: lobby.phase,
+          })
+          return Effect.void
+        }
         lobbyLog.info('Publishing game_ready', { lobbyId: lobby.id })
         return redis.publish('matchmaking:game_ready', JSON.stringify(gameData))
       }),

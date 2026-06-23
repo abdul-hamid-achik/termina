@@ -530,6 +530,28 @@ describe('Lobby', () => {
       vi.useRealTimers()
       createdLobbyId = null
     })
+
+    it('does not publish game_ready when cancelled during the 3s ready countdown', async () => {
+      vi.useFakeTimers()
+      const entries = makeQueueEntries(10)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      const lobbyId = lobby.id
+      createdLobbyId = lobbyId
+
+      // Drive through the draft + the 1.5s transition so startReadyCheck fires
+      // and schedules its detached 3s game_ready publish.
+      vi.advanceTimersByTime(10 * 15000 + 1500)
+      expect(lobby.phase).toBe('starting')
+
+      // Cancel mid-countdown (e.g. a disconnect grace timer), then let the 3s
+      // sleep resolve — the post-sleep phase guard must suppress the publish.
+      cancelLobby(lobbyId, ws as never)
+      await vi.advanceTimersByTimeAsync(3500)
+
+      expect(vi.mocked(redis.publish)).not.toHaveBeenCalled()
+      vi.useRealTimers()
+      createdLobbyId = null
+    })
   })
 
   describe('currentPickTurn', () => {
