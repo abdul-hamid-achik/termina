@@ -5,6 +5,7 @@ import type {
   ItemCategory,
   ItemCategoryId,
 } from '~~/shared/types/items'
+import { CREEP_GOLD_MIN, CREEP_GOLD_MAX } from '~~/shared/constants/balance'
 
 /**
  * Pure, human-readable formatting + aggregation of item data for the items
@@ -54,6 +55,19 @@ export function aggregateStats(items: ItemDef[]): ItemStats {
 /** Total gold cost of a list of items. */
 export function totalCost(items: ItemDef[]): number {
   return items.reduce((sum, it) => sum + it.cost, 0)
+}
+
+/** Average gold from one creep last-hit (the in-game bounty range midpoint). */
+const AVG_CREEP_GOLD = (CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2
+
+/**
+ * Roughly how many creep last-hits a gold amount represents — makes an abstract
+ * build cost tangible for a newcomer ("this build ≈ N last-hits") and teaches
+ * that last-hitting is how items get funded. Uses the average creep bounty.
+ */
+export function lastHitsToAfford(gold: number): number {
+  if (gold <= 0) return 0
+  return Math.ceil(gold / AVG_CREEP_GOLD)
 }
 
 /** Item active cooldown in whole seconds (0 ⇒ no cooldown), given the tick ms. */

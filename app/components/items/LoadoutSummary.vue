@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ItemDef } from '~~/shared/types/items'
-import { aggregateStats, totalCost, formatStats } from '~~/shared/itemFormat'
+import { aggregateStats, totalCost, formatStats, lastHitsToAfford } from '~~/shared/itemFormat'
 
 const props = defineProps<{
   items: ItemDef[]
@@ -12,6 +12,8 @@ const props = defineProps<{
 const emit = defineEmits<{ clear: [] }>()
 
 const cost = computed(() => totalCost(props.items))
+// Make the gold number tangible — how much last-hitting funds this build.
+const lastHits = computed(() => lastHitsToAfford(cost.value))
 const statLines = computed(() => formatStats(aggregateStats(props.items)))
 // Items that bring an activated ability — what this build can *do* in a fight.
 const actives = computed(() => props.items.filter((i) => i.active).map((i) => i.active!))
@@ -32,6 +34,16 @@ const actives = computed(() => props.items.filter((i) => i.active).map((i) => i.
     <div class="flex items-center justify-between text-[0.72rem]">
       <span class="text-text-dim">total cost</span>
       <span class="text-gold" data-testid="loadout-cost">{{ cost }}g</span>
+    </div>
+
+    <!-- Tangible economy cue: how much last-hitting this build represents. -->
+    <div
+      v-if="items.length > 0"
+      class="flex items-center justify-between text-[0.66rem]"
+      data-testid="loadout-lasthits"
+    >
+      <span class="text-text-dim">≈ last-hits to farm</span>
+      <span class="text-text-dim">{{ lastHits }}</span>
     </div>
 
     <div v-if="items.length === 0" class="text-[0.66rem] italic text-text-dim">
