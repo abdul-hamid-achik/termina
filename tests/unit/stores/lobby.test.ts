@@ -298,6 +298,38 @@ describe('Lobby Store', () => {
     })
   })
 
+  describe('setAnnouncement', () => {
+    it('stores the message + level and bumps a monotonic seq', () => {
+      const store = useLobbyStore()
+      expect(store.lastAnnouncement).toBeNull()
+
+      store.setAnnouncement('Match cancelled. Returning to queue...', 'warning')
+      expect(store.lastAnnouncement?.message).toBe('Match cancelled. Returning to queue...')
+      expect(store.lastAnnouncement?.level).toBe('warning')
+      expect(store.lastAnnouncement?.seq).toBe(1)
+
+      // A repeated identical message still re-fires the toast (seq increments)
+      store.setAnnouncement('Match cancelled. Returning to queue...', 'warning')
+      expect(store.lastAnnouncement?.seq).toBe(2)
+    })
+
+    it('defaults the level to info', () => {
+      const store = useLobbyStore()
+      store.setAnnouncement('alice has been replaced by a bot.')
+      expect(store.lastAnnouncement?.level).toBe('info')
+    })
+
+    it('is reset on leaveQueue', async () => {
+      const store = useLobbyStore()
+      store.setAnnouncement('boom', 'warning')
+
+      mockFetch.mockResolvedValue({})
+      await store.leaveQueue()
+
+      expect(store.lastAnnouncement).toBeNull()
+    })
+  })
+
   describe('allPicksComplete', () => {
     it('sets status to starting', () => {
       const store = useLobbyStore()
@@ -401,6 +433,28 @@ describe('Lobby Store', () => {
       expect(store.lobbyId).toBe('lobby-abc')
       expect(store.team).toBe('dire')
       expect(store.queueStatus).toBe('found')
+    })
+
+    it('uses usernames (not raw playerIds) for the recovered roster', async () => {
+      const store = useLobbyStore()
+
+      mockFetch.mockResolvedValue({
+        status: 'lobby',
+        lobbyId: 'lobby-abc',
+        team: 'radiant',
+        players: [
+          { playerId: 'github_7379966', username: 'alice', team: 'radiant', heroId: null },
+          // No username (e.g. a bot or pre-username record) → falls back to playerId
+          { playerId: 'bot_1', team: 'radiant', heroId: null },
+        ],
+        phase: 'picking',
+      })
+
+      await store.recoverState()
+
+      expect(store.teamRoster[0]!.name).toBe('alice')
+      expect(store.teamRoster[0]!.name).not.toBe('github_7379966')
+      expect(store.teamRoster[1]!.name).toBe('bot_1')
     })
 
     it('recovers game_starting state', async () => {

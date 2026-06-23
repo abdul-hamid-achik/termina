@@ -35,6 +35,9 @@ export default defineEventHandler(async (event) => {
           team: player?.team ?? 'radiant',
           players: lobby.players.map((p) => ({
             playerId: p.playerId,
+            // Include username so a page-refresh recovery shows real names, not
+            // raw playerIds (e.g. github_7379966) — matches the WS lobby_state path.
+            username: p.username,
             team: p.team,
             heroId: p.heroId,
           })),

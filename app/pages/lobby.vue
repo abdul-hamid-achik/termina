@@ -34,6 +34,9 @@ function handleServerMessage(msg: ServerMessage) {
       lobbyStore.botsCount = msg.botsCount
       break
     case 'announcement':
+      // Surface lobby/draft announcements (match cancelled, player→bot swap) as
+      // a transient toast instead of dropping them silently.
+      lobbyStore.setAnnouncement(msg.message, msg.level)
       break
     case 'error':
       lobbyLog.warn('Server error during lobby', { code: msg.code, message: msg.message })
@@ -245,6 +248,15 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-1 flex-col">
+    <!-- Transient toast for server announcements during lobby/draft (match
+         cancelled, a player replaced by a bot). Rendered at the page root so it
+         shows over every phase (searching / found / picking / starting). -->
+    <AnnouncementToast
+      :text="lobbyStore.lastAnnouncement?.message ?? ''"
+      :seq="lobbyStore.lastAnnouncement?.seq ?? 0"
+      :level="lobbyStore.lastAnnouncement?.level ?? 'info'"
+    />
+
     <!-- PICKING: Hero selection (full-width layout).
          The wrapper caps the picker at the visible viewport height (dvh) on
          phones so the hero grid scrolls internally and the sticky confirm

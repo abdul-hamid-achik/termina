@@ -34,6 +34,14 @@ export const useLobbyStore = defineStore('lobby', () => {
   // Last user-facing error (failed queue join, server-rejected pick, WS errors).
   // Rendered inline by the lobby UI instead of dying in the console.
   const lastError = ref<string | null>(null)
+  // Last server announcement during the lobby/draft phase (match cancelled, a
+  // player replaced by a bot, …). Surfaced as a transient toast — the `seq`
+  // counter re-fires the toast even for a repeated message.
+  const lastAnnouncement = ref<{
+    message: string
+    level: 'info' | 'warning' | 'kill' | 'objective'
+    seq: number
+  } | null>(null)
   // Optimistic hero pick awaiting server confirmation (hero_pick broadcast).
   // Rolled back via rollbackPendingPick() when the server rejects it.
   const pendingPick = ref<{ playerId: string; heroId: string } | null>(null)
@@ -49,6 +57,17 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   function clearError() {
     lastError.value = null
+  }
+
+  function setAnnouncement(
+    message: string,
+    level: 'info' | 'warning' | 'kill' | 'objective' = 'info',
+  ) {
+    lastAnnouncement.value = {
+      message,
+      level,
+      seq: (lastAnnouncement.value?.seq ?? 0) + 1,
+    }
   }
 
   let queueTimer: ReturnType<typeof setInterval> | null = null
@@ -106,7 +125,12 @@ export const useLobbyStore = defineStore('lobby', () => {
             status: 'lobby'
             lobbyId: string
             team: TeamId
-            players: { playerId: string; team: TeamId; heroId: string | null }[]
+            players: {
+              playerId: string
+              username?: string
+              team: TeamId
+              heroId: string | null
+            }[]
             phase: string
           }
         | { status: 'game_starting'; gameId: string }
@@ -129,7 +153,7 @@ export const useLobbyStore = defineStore('lobby', () => {
           res.team,
           res.players.map((p) => ({
             playerId: p.playerId,
-            name: p.playerId,
+            name: p.username ?? p.playerId,
             heroId: p.heroId,
             team: p.team,
           })),
@@ -280,6 +304,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     currentPicker.value = null
     pickDeadline.value = null
     lastError.value = null
+    lastAnnouncement.value = null
     pendingPick.value = null
   }
 
@@ -310,6 +335,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     currentPicker,
     pickDeadline,
     lastError,
+    lastAnnouncement,
     pendingPick,
     // Actions
     joinQueue,
@@ -325,6 +351,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     setPickTurn,
     setError,
     clearError,
+    setAnnouncement,
     $dispose,
   }
 })
