@@ -172,9 +172,9 @@ function corePct(a: AncientState | undefined): number {
       </span>
       <template v-if="ancients">
         <span class="text-border">|</span>
-        <!-- Core HP — turns urgent once vulnerable -->
+        <!-- Mainframe HP — turns urgent once vulnerable -->
         <span class="inline-flex items-center gap-1">
-          <span class="t-caption">CORE</span>
+          <span class="t-caption">MAINFRAME</span>
           <span
             :class="
               ancients.radiant.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-radiant'

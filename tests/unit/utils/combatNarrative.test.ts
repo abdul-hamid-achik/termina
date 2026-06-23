@@ -233,7 +233,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   it('keeps the exact victory phrasing for the core', () => {
     const line = eventToLine(ev('ancient_destroyed', { team: 'dire', killerTeam: 'radiant' }), ctx)!
     expect(line.type).toBe('victory')
-    expect(line.text).toBe('Radiant destroyed the Dire Core!')
+    expect(line.text).toBe('Radiant destroyed the Dire Mainframe!')
     expect(line.text).not.toContain('tower')
   })
   it('suppresses internal/non-narrative events', () => {
@@ -459,11 +459,11 @@ describe('eventToLine: narration coverage for every event type', () => {
 })
 
 describe('combatLog label helpers', () => {
-  it('ancientLabel resolves the team Core, or null for non-ancient ids', () => {
-    expect(ancientLabel('ancient_radiant')).toBe('the Radiant Core')
-    expect(ancientLabel('ancient_dire')).toBe('the Dire Core')
+  it('ancientLabel resolves the team Mainframe, or null for non-ancient ids', () => {
+    expect(ancientLabel('ancient_radiant')).toBe('the Radiant Mainframe')
+    expect(ancientLabel('ancient_dire')).toBe('the Dire Mainframe')
     // Unknown team falls back to a readable label rather than null/crash.
-    expect(ancientLabel('ancient_neutral')).toBe('the neutral Core')
+    expect(ancientLabel('ancient_neutral')).toBe('the neutral Mainframe')
     expect(ancientLabel('tower_mid_t1_rad')).toBeNull()
     expect(ancientLabel('hero_echo')).toBeNull()
   })
@@ -491,14 +491,14 @@ describe('collapseStructureDamage (direct)', () => {
 
   it('collapses consecutive same-key lines, accumulating count + total', () => {
     const lines: CombatLine[] = [
-      { tick: 1, text: 'You hit the Core', type: 'damage', dedupKey: 'k', dmgAmount: 70 },
-      { tick: 2, text: 'You hit the Core', type: 'damage', dedupKey: 'k', dmgAmount: 50 },
+      { tick: 1, text: 'You hit the Mainframe', type: 'damage', dedupKey: 'k', dmgAmount: 70 },
+      { tick: 2, text: 'You hit the Mainframe', type: 'damage', dedupKey: 'k', dmgAmount: 50 },
     ]
     const out = collapseStructureDamage(lines, fmt)
     expect(out).toHaveLength(1)
     expect(out[0]!.count).toBe(2)
     expect(out[0]!.tick).toBe(2) // keeps the latest tick
-    expect(out[0]!.text).toBe('You hit the Core ×2 (120)')
+    expect(out[0]!.text).toBe('You hit the Mainframe ×2 (120)')
     // internal bookkeeping fields are stripped from the result
     expect('total' in out[0]!).toBe(false)
     expect('baseText' in out[0]!).toBe(false)

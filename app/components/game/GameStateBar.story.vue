@@ -3,7 +3,7 @@ import { SAMPLE_HERO_ID, makeAncient, makeTeamState } from '~/stories/fixtures'
 import GameStateBar from './GameStateBar.vue'
 
 // The top bar: self state (tick heartbeat, gold, KDA, connection) plus an
-// always-on macro row (team kills, net-worth lead, towers, Core HP).
+// always-on macro row (team kills, net-worth lead, towers, Mainframe HP).
 const teams = { radiant: makeTeamState('radiant'), dire: makeTeamState('dire') }
 const ancients = { radiant: makeAncient('radiant'), dire: makeAncient('dire') }
 
@@ -38,7 +38,7 @@ const base = {
       </div>
     </Variant>
 
-    <!-- Night, reconnecting banner, dire ahead, Core under threat. -->
+    <!-- Night, reconnecting banner, dire ahead, Mainframe under threat. -->
     <Variant title="reconnecting (night, core vulnerable)">
       <div class="bg-bg-primary" style="width: 820px">
         <GameStateBar

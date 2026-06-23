@@ -963,8 +963,8 @@ export function useCommands() {
 
     // Suggest the enemy Mainframe when standing in the enemy base
     const enemyBase = context.player.team === 'radiant' ? 'dire-base' : 'radiant-base'
-    if (context.player.zone === enemyBase && 'ancient'.includes(partial)) {
-      suggestions.push({ text: 'ancient', description: 'Enemy Mainframe (win the game!)' })
+    if (context.player.zone === enemyBase && 'mainframe'.includes(partial)) {
+      suggestions.push({ text: 'mainframe', description: 'Enemy Mainframe (win the game!)' })
     }
 
     // Suggest self

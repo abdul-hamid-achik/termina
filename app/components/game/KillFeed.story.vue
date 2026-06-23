@@ -62,7 +62,7 @@ const coreDown = [
     category: 'core',
     killerHeroId: undefined,
     victimHeroId: undefined,
-    text: 'RADIANT CORE DUMPED the DIRE Core',
+    text: 'RADIANT CORE DUMPED the DIRE Mainframe',
   }),
 ]
 </script>

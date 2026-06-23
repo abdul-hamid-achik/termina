@@ -160,10 +160,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
 
     case 'ancient_destroyed':
-      // Keep the exact "destroyed the … Core!" phrasing the victory line expects.
+      // Keep the exact "destroyed the … Mainframe!" phrasing the victory line expects.
       return {
         tick,
-        text: `${teamLabel(str(p.killerTeam))} destroyed the ${teamLabel(str(p.team))} Core!`,
+        text: `${teamLabel(str(p.killerTeam))} destroyed the ${teamLabel(str(p.team))} Mainframe!`,
         type: 'victory',
       }
 
@@ -521,7 +521,7 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
         tick: e.tick,
         category: 'core',
         assisters: [],
-        text: `${teamLabel(str(p.killerTeam))} CORE DUMPED the ${teamLabel(str(p.team))} Core`,
+        text: `${teamLabel(str(p.killerTeam))} CORE DUMPED the ${teamLabel(str(p.team))} Mainframe`,
       })
       continue
     }
