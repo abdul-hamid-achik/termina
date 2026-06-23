@@ -1,28 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { HERO_IDS } from '~~/shared/constants/heroes'
+import { useStartTutorial } from '~/composables/useStartTutorial'
 
 // Live hero count from the registry so the landing page can't drift.
 const heroCount = HERO_IDS.length
 
-// Practice: spin up a guided one-lane tutorial vs bots and jump straight in,
-// bypassing matchmaking. Not signed in → the server 401s and we send to login.
-const startingTutorial = ref(false)
-async function startTutorial() {
-  if (startingTutorial.value) return
-  startingTutorial.value = true
-  try {
-    const res = await $fetch<{ url: string }>('/api/game/tutorial', { method: 'POST', body: {} })
-    await navigateTo(res.url)
-  } catch (err: unknown) {
-    const status = (err as { statusCode?: number })?.statusCode
-    // 401 = not signed in; anything else (already in a game, server warming up)
-    // still routes to the lobby, which surfaces the right next step.
-    await navigateTo(status === 401 ? '/login' : '/lobby')
-  } finally {
-    startingTutorial.value = false
-  }
-}
+// Practice vs bots: shared one-lane tutorial launcher (see useStartTutorial).
+const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
 </script>
 
 <template>
