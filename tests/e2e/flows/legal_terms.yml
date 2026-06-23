@@ -1,0 +1,40 @@
+version: 1
+name: legal_terms
+intent: The public /terms page renders the Terms of Service — the heading, the Fair Play /
+  Acceptable Use section, and a link to the Privacy Policy.
+mode: normal
+metadata:
+  feature: legal
+  tags:
+    - legal
+    - public
+    - terms
+outcomes:
+  - id: terms_heading_renders
+    description: the Terms of Service heading renders
+    verify:
+      text:
+        contains: TERMS OF SERVICE
+  - id: fair_play_section_renders
+    description: the fair-play / acceptable-use section renders
+    verify:
+      text:
+        contains: Fair Play
+  - id: links_to_privacy
+    description: the page links to the Privacy Policy
+    verify:
+      script:
+        run: >
+          const a = Array.from(document.querySelectorAll('a')).find(a =>
+          /\/privacy$/.test(a.getAttribute('href') || '')); return { ok: !!a, evidence: a ? 'privacy
+          link present' : 'no /privacy link found' };
+steps:
+  - id: open_terms
+    open:
+      path: /terms
+      waitUntil: domcontentloaded
+  - id: wait_for_heading
+    wait:
+      text: TERMS OF SERVICE
+      timeoutMs: 10000
+contractHash: sha256:1b1038204e1bf2a52bde6c7f1d76fe53b2146d5e6fed307ef85877c296895dea

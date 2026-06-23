@@ -2,6 +2,11 @@ import { Effect } from 'effect'
 import { getGameRuntime } from '~~/server/plugins/game-server'
 import { authLog } from '~~/server/utils/log'
 import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
+import { sendEmail } from '~~/server/utils/email'
+import { verifyEmailTemplate, welcomeTemplate } from '~~/shared/emailTemplates'
+import { createVerifyToken } from '~~/server/utils/authTokens'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default defineEventHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
@@ -9,14 +14,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 429, message: 'Too many attempts — try again shortly' })
   }
 
-  const body = await readBody<{ username?: string; password?: string }>(event)
+  const body = await readBody<{ username?: string; password?: string; email?: string }>(event)
 
   // Validate input
   const username = body?.username?.trim()
   const password = body?.password
+  // Email is OPTIONAL — but it's the only way to recover a forgotten password,
+  // so we collect + verify it when provided.
+  const email = body?.email?.trim() || null
 
   if (!username || !password) {
     throw createError({ statusCode: 400, message: 'Username and password are required' })
+  }
+
+  if (email && !EMAIL_RE.test(email)) {
+    throw createError({ statusCode: 400, message: 'Enter a valid email address' })
   }
 
   if (username.length < 3 || username.length > 20) {
@@ -52,10 +64,34 @@ export default defineEventHandler(async (event) => {
 
     // Create player
     const player = await Effect.runPromise(
-      runtime.dbService.createLocalPlayer(username, passwordHash),
+      runtime.dbService.createLocalPlayer(username, passwordHash, email),
     )
 
-    authLog.info('New local player registered', { playerId: player.id, username })
+    authLog.info('New local player registered', {
+      playerId: player.id,
+      username,
+      hasEmail: !!email,
+    })
+
+    // Best-effort welcome + verification emails (never block registration).
+    if (email) {
+      const appUrl = useRuntimeConfig().appUrl
+      void (async () => {
+        try {
+          const token = await createVerifyToken(runtime.redisService, player.id)
+          const verifyUrl = `${appUrl}/verify-email?token=${token}`
+          const welcome = welcomeTemplate(username)
+          await sendEmail({ to: email, ...welcome })
+          const verify = verifyEmailTemplate(verifyUrl)
+          await sendEmail({ to: email, ...verify })
+        } catch (err) {
+          authLog.error('Post-registration email failed', {
+            playerId: player.id,
+            error: String(err),
+          })
+        }
+      })()
+    }
 
     // Set session
     await setUserSession(event, {

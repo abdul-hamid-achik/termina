@@ -60,6 +60,15 @@ const appDomain = config.get('appDomain') ?? ''
 const corsAllowedOrigins =
   process.env.NUXT_CORS_ALLOWED_ORIGINS ?? config.get('corsAllowedOrigins') ?? ''
 
+// Transactional email (Resend). The from-address (NUXT_RESEND_FROM) + the public
+// app URL used in email links (NUXT_APP_URL = the frontend origin) are non-secret;
+// the API key is a secret (see optionalSecretEnv below). Env-first so tvault can
+// inject them; else Pulumi config.
+const resendFrom = process.env.NUXT_RESEND_FROM ?? config.get('resendFrom') ?? ''
+const appPublicUrl = process.env.NUXT_APP_URL ?? config.get('appPublicUrl') ?? ''
+// Optional testing sink: route ALL transactional email to one address.
+const resendRedirectTo = process.env.NUXT_RESEND_REDIRECT_TO ?? config.get('resendRedirectTo') ?? ''
+
 // ── Secret resolution: env var (tvault-injected) → Pulumi config ──
 function requiredSecret(envName: string, configKey: string): pulumi.Output<string> {
   const fromEnv = process.env[envName]
@@ -111,6 +120,10 @@ const envs: digitalocean.types.input.AppSpecServiceEnv[] = [
   ...optionalSecretEnv('NUXT_OAUTH_GITHUB_CLIENT_SECRET', 'githubClientSecret'),
   ...optionalSecretEnv('NUXT_OAUTH_DISCORD_CLIENT_ID', 'discordClientId'),
   ...optionalSecretEnv('NUXT_OAUTH_DISCORD_CLIENT_SECRET', 'discordClientSecret'),
+  ...optionalSecretEnv('NUXT_RESEND_API_KEY', 'resendApiKey'),
+  ...optionalGeneralEnv('NUXT_RESEND_FROM', resendFrom || undefined),
+  ...optionalGeneralEnv('NUXT_APP_URL', appPublicUrl || undefined),
+  ...optionalGeneralEnv('NUXT_RESEND_REDIRECT_TO', resendRedirectTo || undefined),
 ]
 
 // ── App Platform service ────────────────────────────────────────────────────

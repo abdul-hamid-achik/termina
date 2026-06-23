@@ -67,11 +67,24 @@ async function logout() {
     </main>
 
     <footer
-      class="flex items-center justify-center gap-2 border-t border-border bg-bg-secondary px-4 py-2"
+      class="flex flex-wrap items-center justify-center gap-2 border-t border-border bg-bg-secondary px-4 py-2"
     >
       <span class="text-[0.7rem] text-text-dim">TERMINA v0.1.0-alpha</span>
       <span class="text-[0.7rem] text-border">|</span>
       <span class="text-[0.7rem] text-text-dim">&gt;_ where every command is a kill</span>
+      <span class="text-[0.7rem] text-border">|</span>
+      <NuxtLink
+        to="/terms"
+        class="text-[0.7rem] text-text-dim no-underline transition-colors duration-150 hover:text-ability"
+      >
+        [TERMS]
+      </NuxtLink>
+      <NuxtLink
+        to="/privacy"
+        class="text-[0.7rem] text-text-dim no-underline transition-colors duration-150 hover:text-ability"
+      >
+        [PRIVACY]
+      </NuxtLink>
     </footer>
   </div>
 </template>

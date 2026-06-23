@@ -16,6 +16,14 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
+  // Prerender the static legal pages to real HTML so they're served directly at
+  // /terms and /privacy (incl. on the static Vercel deploy) — important for the
+  // OAuth providers' app review + crawlers, which shouldn't depend on client JS.
+  routeRules: {
+    '/terms': { prerender: true },
+    '/privacy': { prerender: true },
+  },
+
   // Tailwind v4 is wired via its Vite plugin (the @nuxtjs/tailwindcss module is
   // v3-only). The stylesheet is imported directly via `css` below.
   modules: ['@pinia/nuxt', 'nuxt-auth-utils'],
@@ -64,6 +72,14 @@ export default defineNuxtConfig({
     },
     redis: { url: 'redis://localhost:6380' },
     database: { url: 'postgresql://termina:termina@localhost:5433/termina' },
+    // Transactional email (Resend). apiKey ← NUXT_RESEND_API_KEY (secret); from
+    // ← NUXT_RESEND_FROM (needs a verified domain in Resend). Empty apiKey =
+    // emails are logged + skipped (see server/utils/email.ts). redirectTo ←
+    // NUXT_RESEND_REDIRECT_TO routes ALL mail to one address (testing sink).
+    resend: { apiKey: '', from: '', redirectTo: '' },
+    // Public base URL used to build links inside emails (verify / reset). Set
+    // NUXT_APP_URL to the frontend origin in prod, e.g. https://terminamoba.com.
+    appUrl: 'http://localhost:3000',
   },
 
   nitro: {

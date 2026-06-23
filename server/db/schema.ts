@@ -28,6 +28,10 @@ export const players = pgTable(
     mmr: integer('mmr').notNull().default(1000),
     gamesPlayed: integer('games_played').notNull().default(0),
     wins: integer('wins').notNull().default(0),
+    // Set when the user confirms their email (verification link) or signs in via
+    // an OAuth provider that already verified it. Null = unverified. Nullable +
+    // additive, so `drizzle-kit push` applies it with no data migration.
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index('players_mmr_idx').on(table.mmr)],

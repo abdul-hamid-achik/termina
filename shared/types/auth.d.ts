@@ -23,6 +23,8 @@ declare module '@nuxt/schema' {
     }
     redis: { url: string }
     database: { url: string }
+    resend: { apiKey: string; from: string; redirectTo: string }
+    appUrl: string
   }
 }
 

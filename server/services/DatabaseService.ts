@@ -49,7 +49,13 @@ export interface DatabaseServiceApi {
   readonly incrementGamesPlayed: (playerId: string) => Effect.Effect<void>
   readonly incrementWins: (playerId: string) => Effect.Effect<void>
   readonly getPlayerByUsername: (username: string) => Effect.Effect<Player | null>
-  readonly createLocalPlayer: (username: string, passwordHash: string) => Effect.Effect<Player>
+  readonly createLocalPlayer: (
+    username: string,
+    passwordHash: string,
+    email?: string | null,
+  ) => Effect.Effect<Player>
+  /** Mark a player's email as verified (sets email_verified_at = now). */
+  readonly setEmailVerified: (playerId: string) => Effect.Effect<void>
   readonly linkProvider: (
     playerId: string,
     provider: string,
@@ -279,7 +285,7 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       return result[0] ?? null
     }),
 
-  createLocalPlayer: (username, passwordHash) =>
+  createLocalPlayer: (username, passwordHash, email) =>
     Effect.promise(async () => {
       const db = useDb()
       const id = `local_${crypto.randomUUID()}`
@@ -289,11 +295,18 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
           id,
           username,
           passwordHash,
+          email: email ?? null,
           provider: 'local',
           providerId: id,
         })
         .returning()
       return result[0]!
+    }),
+
+  setEmailVerified: (playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db.update(players).set({ emailVerifiedAt: new Date() }).where(eq(players.id, playerId))
     }),
 
   linkProvider: (playerId, provider, providerId, username, avatarUrl) =>
