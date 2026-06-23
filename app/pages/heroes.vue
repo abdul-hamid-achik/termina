@@ -105,6 +105,14 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
         <div class="flex items-baseline gap-2 border-b border-border pb-1">
           <h2 class="text-[0.95rem] font-bold text-text-primary">{{ hero.name }}</h2>
           <span class="text-[0.65rem] uppercase tracking-widest text-ability">{{ hero.role }}</span>
+          <!-- Reverse funnel: jump to this hero's lore card on /lore. -->
+          <NuxtLink
+            :to="`/lore#lore-${selectedId}`"
+            class="ml-auto text-[0.65rem] text-text-dim no-underline hover:text-radiant"
+            :aria-label="`Read ${hero.name}'s lore`"
+          >
+            &gt; LORE
+          </NuxtLink>
         </div>
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-text-dim">
           <span><span class="text-radiant">hp</span> {{ hero.baseStats.hp }}</span>

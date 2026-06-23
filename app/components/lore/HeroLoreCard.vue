@@ -15,7 +15,12 @@ const roleColor: Record<HeroRole, string> = {
 </script>
 
 <template>
-  <div class="flex h-full flex-col gap-1.5 border border-border bg-bg-secondary p-3">
+  <!-- id anchors the card so /lore#lore-<id> (the heroes console's reverse LORE
+       link) scrolls straight to this operative; scroll-mt clears the header. -->
+  <div
+    :id="`lore-${hero.id}`"
+    class="flex h-full scroll-mt-20 flex-col gap-1.5 border border-border bg-bg-secondary p-3"
+  >
     <div class="flex items-baseline justify-between gap-2">
       <span class="text-[0.95rem] font-bold text-text-primary">{{ hero.name }}</span>
       <span
