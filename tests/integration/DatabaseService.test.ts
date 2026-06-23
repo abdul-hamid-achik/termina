@@ -99,6 +99,17 @@ describe('DatabaseService (real Postgres)', () => {
       expect(m?.players[0]?.player.id).toBe('p1')
       expect(await run((s) => s.getMatch('absent'))).toBeNull()
     })
+    it('getMatch never leaks credentials (no email / passwordHash on player)', async () => {
+      await seedMatch('m1')
+      const m = await run((s) => s.getMatch('m1'))
+      const player = m?.players[0]?.player as Record<string, unknown>
+      expect(player).toBeDefined()
+      expect(player).not.toHaveProperty('email')
+      expect(player).not.toHaveProperty('passwordHash')
+      expect(player).not.toHaveProperty('providerId')
+      // public fields still present
+      expect(player.username).toBeDefined()
+    })
     it('getMatchHistory returns the player matches, respects limit, empty for none', async () => {
       await seedPlayer()
       for (const id of ['m1', 'm2', 'm3']) {

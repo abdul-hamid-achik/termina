@@ -18,8 +18,14 @@ import {
   type PlayerProvider,
 } from '~~/server/db/schema'
 
+/** Public-safe subset of a player — NEVER includes email / passwordHash / provider ids. */
+export type PublicMatchPlayer = Pick<
+  Player,
+  'id' | 'username' | 'avatarUrl' | 'selectedAvatar' | 'mmr'
+>
+
 export interface MatchWithPlayers extends Match {
-  players: (MatchPlayer & { player: Player })[]
+  players: (MatchPlayer & { player: PublicMatchPlayer })[]
 }
 
 export interface HeroStatUpdate {
@@ -208,15 +214,27 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       const match = matchResult[0]
       if (!match) return null
 
+      // Project ONLY public player columns — the join must never carry
+      // email / passwordHash / provider ids off the server (a match payload is
+      // readable by any authenticated user).
       const results = await db
-        .select()
+        .select({
+          match_players: matchPlayers,
+          player: {
+            id: players.id,
+            username: players.username,
+            avatarUrl: players.avatarUrl,
+            selectedAvatar: players.selectedAvatar,
+            mmr: players.mmr,
+          },
+        })
         .from(matchPlayers)
         .innerJoin(players, eq(matchPlayers.playerId, players.id))
         .where(eq(matchPlayers.matchId, id))
 
       const playersInMatch = results.map((r) => ({
         ...r.match_players,
-        player: r.players,
+        player: r.player,
       }))
 
       return { ...match, players: playersInMatch }

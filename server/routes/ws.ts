@@ -330,6 +330,23 @@ export default defineWebSocketHandler({
           )
           break
         }
+        // Ownership check (same guard as join_game): only reconnect into the
+        // game this player is actually assigned to. Without this, any authed
+        // client could reconnect into an arbitrary gameId and receive its
+        // objective state + inject chat/pings into a match they're not in.
+        {
+          const assignedGame = getPlayerGame(ctx.playerId)
+          if (!assignedGame || assignedGame !== parsed.gameId) {
+            peer.send(
+              JSON.stringify({
+                type: 'error',
+                code: 'NOT_ASSIGNED',
+                message: 'Not assigned to this game',
+              }),
+            )
+            break
+          }
+        }
         try {
           ctx.gameId = parsed.gameId
           const addConn = runtime.wsService.addConnection(

@@ -355,6 +355,29 @@ describe('ws route — action', () => {
   })
 })
 
+describe('ws route — reconnect ownership', () => {
+  it('rejects reconnecting into a game the player is not assigned to', () => {
+    vi.mocked(getGameRuntime).mockReturnValue(mockRuntime() as never)
+    const peer = openAuthedPeer('p_rc_own1')
+    vi.mocked(getPlayerGame).mockReturnValue('game_mine')
+    sendMsg(peer, { type: 'reconnect', gameId: 'game_other', playerId: 'p_rc_own1' })
+    expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'NOT_ASSIGNED' })
+  })
+
+  it('reconnects when the gameId matches the assigned game', () => {
+    const runtime = mockRuntime()
+    vi.mocked(getGameRuntime).mockReturnValue(runtime as never)
+    const peer = openAuthedPeer('p_rc_own2')
+    vi.mocked(getPlayerGame).mockReturnValue('game_mine')
+    sendMsg(peer, { type: 'reconnect', gameId: 'game_mine', playerId: 'p_rc_own2' })
+    expect(runtime.wsService.addConnection).toHaveBeenCalledWith(
+      'game_mine',
+      'p_rc_own2',
+      peer.websocket,
+    )
+  })
+})
+
 describe('ws route — join_game', () => {
   it('does nothing when the game runtime is not ready', () => {
     const peer = openAuthedPeer('p_join')
@@ -423,6 +446,7 @@ describe('ws route — reconnect', () => {
       events: [{ type: 'kill', tick: 41 }],
     } as never)
     const peer = openAuthedPeer('p_rc1')
+    vi.mocked(getPlayerGame).mockReturnValue('game_1') // reconnect requires ownership
     sendMsg(peer, { type: 'reconnect', gameId: 'game_1', playerId: 'p_rc1', lastTick: 40 })
 
     expect(runtime.wsService.addConnection).toHaveBeenCalledWith('game_1', 'p_rc1', peer.websocket)
@@ -446,6 +470,7 @@ describe('ws route — reconnect', () => {
       events: [],
     } as never)
     const peer = openAuthedPeer('p_rc2')
+    vi.mocked(getPlayerGame).mockReturnValue('game_1') // reconnect requires ownership
     sendMsg(peer, { type: 'reconnect', gameId: 'game_1', playerId: 'p_rc2' })
     const msgs = sentMessages(peer)
     expect(msgs.some((m) => m.type === 'full_state')).toBe(true)
@@ -459,6 +484,7 @@ describe('ws route — reconnect', () => {
     }) as never
     vi.mocked(getGameRuntime).mockReturnValue(runtime as never)
     const peer = openAuthedPeer('p_rc3')
+    vi.mocked(getPlayerGame).mockReturnValue('game_1') // reconnect requires ownership
     sendMsg(peer, { type: 'reconnect', gameId: 'game_1', playerId: 'p_rc3' })
     expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'RECONNECT_FAILED' })
   })
