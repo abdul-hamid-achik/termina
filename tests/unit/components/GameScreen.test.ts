@@ -424,4 +424,37 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
   })
+
+  describe('situational action bar (#11)', () => {
+    it('surfaces glyph as an on-screen button and runs it via the command path', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      expect(wrapper.find('[data-testid="situational-actions"]').exists()).toBe(true)
+      const glyph = wrapper.find('[data-testid="situational-glyph"]')
+      expect(glyph.exists()).toBe(true)
+      expect(glyph.attributes('aria-label')).toContain('glyph')
+
+      socketSpies.send.mockClear()
+      await glyph.trigger('click')
+      expect(socketSpies.send).toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('gates the surrender button on the surrender tick', () => {
+      const store = useGameStore()
+      store.gameId = 'g'
+      store.playerId = 'p1'
+
+      store.updateFromTick(makeTickMessage({ tick: 10 })) // before SURRENDER_MIN_TICK (225)
+      const early = mountGameScreen()
+      expect(early.find('[data-testid="situational-surrender"]').exists()).toBe(false)
+      early.unmount()
+
+      store.updateFromTick(makeTickMessage({ tick: 240 })) // past the gate
+      const late = mountGameScreen()
+      expect(late.find('[data-testid="situational-surrender"]').exists()).toBe(true)
+      late.unmount()
+    })
+  })
 })

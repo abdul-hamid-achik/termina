@@ -51,7 +51,12 @@ import {
   type NarrativeContext,
   type KillFeedEntry,
 } from '~/utils/combatNarrative'
-import { TICK_DURATION_MS, RUNE_DURATION_TICKS } from '~~/shared/constants/balance'
+import {
+  TICK_DURATION_MS,
+  RUNE_DURATION_TICKS,
+  SURRENDER_MIN_TICK,
+  GLYPH_COOLDOWN_TICKS,
+} from '~~/shared/constants/balance'
 import { formatRoshan } from '~/utils/strategy'
 
 const gameStore = useGameStore()
@@ -1061,6 +1066,49 @@ function handleQuickAction(cmd: string) {
   handleCommand(cmd.toLowerCase())
 }
 
+// Situational actions (ward / deny / aegis / rune / glyph / surrender) were
+// command-line only — invisible + unusable on touch. Surface them as on-screen
+// buttons, shown only when actually available so the row stays contextual.
+const situationalActions = computed(() => {
+  const p = gameStore.player
+  if (!p || !gameStore.isAlive) return [] as { cmd: string; label: string; aria: string }[]
+  const out: { cmd: string; label: string; aria: string }[] = []
+
+  if (p.items.some((i) => i === 'observer_ward' || i === 'sentry_ward')) {
+    out.push({ cmd: 'ward', label: 'WARD', aria: `Place a ward in ${p.zone}` })
+  }
+  if (!('error' in pickDenyTargetString(p, gameStore.creeps))) {
+    out.push({ cmd: 'deny', label: 'DENY', aria: 'Deny a low-HP allied creep' })
+  }
+  const aegis = gameStore.aegis
+  if (aegis && aegis.zone === p.zone && !aegis.holderId) {
+    out.push({ cmd: 'aegis', label: 'AEGIS', aria: 'Pick up the Aegis of the Immortal' })
+  }
+  if (gameStore.runes.some((r) => r.zone === p.zone)) {
+    out.push({ cmd: 'rune', label: 'RUNE', aria: 'Grab the rune in your zone' })
+  }
+  const teamState = gameStore.teams?.[p.team] ?? null
+  const glyphReady =
+    !teamState ||
+    teamState.glyphUsedTick == null ||
+    gameStore.tick - teamState.glyphUsedTick >= GLYPH_COOLDOWN_TICKS
+  if (glyphReady) {
+    out.push({ cmd: 'glyph', label: 'GLYPH', aria: 'Activate team glyph (fortify structures)' })
+  }
+  if (gameStore.tick >= SURRENDER_MIN_TICK) {
+    out.push({ cmd: 'surrender', label: 'SURRENDER', aria: 'Vote to surrender the match' })
+  }
+  return out
+})
+
+function runSituational(cmd: string) {
+  const p = gameStore.player
+  if (!p) return
+  if (cmd === 'ward') handleCommand(`ward ${p.zone}`)
+  else if (cmd === 'surrender') handleCommand('surrender confirm')
+  else handleCommand(cmd) // deny / aegis / rune / glyph — bare commands (auto-resolved)
+}
+
 // ── Quick action button availability ─────────────────────────
 // Greys out Q/W/E/R when on cooldown or unaffordable so players can see
 // at a glance which abilities are actually castable this tick.
@@ -1561,6 +1609,25 @@ function handleReturnToMenu() {
           @click="handleQuickAction(cmd)"
         >
           {{ ['Q', 'W', 'E', 'R'].includes(cmd) ? abilityButtonState[cmd]?.label : cmd }}
+        </button>
+      </div>
+      <!-- Situational actions — surfaced as buttons only when available, so the
+           command-only verbs (ward/deny/aegis/rune/glyph/surrender) are usable
+           on touch and discoverable to new players. -->
+      <div
+        v-if="situationalActions.length"
+        class="flex flex-wrap gap-1 px-2 pb-1.5"
+        data-testid="situational-actions"
+      >
+        <button
+          v-for="a in situationalActions"
+          :key="a.cmd"
+          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-ability/40 bg-bg-secondary px-2 py-1 font-mono text-[0.68rem] text-ability transition-all active:bg-border active:scale-95"
+          :data-testid="`situational-${a.cmd}`"
+          :aria-label="a.aria"
+          @click="runSituational(a.cmd)"
+        >
+          {{ a.label }}
         </button>
       </div>
       <TalentPicker
