@@ -12,9 +12,12 @@ const NuxtLinkStub = {
   template: '<a :href="to"><slot /></a>',
 }
 
-function mountCard(hero: { id?: string; name: string; role: HeroRole; lore: string }) {
+function mountCard(
+  hero: { id?: string; name: string; role: HeroRole; lore: string },
+  tags?: string[],
+) {
   return mount(HeroLoreCard, {
-    props: { hero: { id: 'echo', ...hero } },
+    props: { hero: { id: 'echo', ...hero }, ...(tags ? { tags } : {}) },
     global: { stubs: { NuxtLink: NuxtLinkStub } },
   })
 }
@@ -31,6 +34,22 @@ describe('HeroLoreCard', () => {
     expect(text).toContain('Echo')
     expect(text).toContain('assassin') // CSS uppercases it visually
     expect(text).toContain('A ghost in the wire, striking from the dark.')
+  })
+
+  it('renders kit-identity playstyle tags when provided', () => {
+    const wrapper = mountCard({ name: 'Echo', role: 'assassin', lore: 'lore' }, [
+      'Burst',
+      'Mobility',
+    ])
+    const tags = wrapper.find('[data-testid="lore-playstyle"]')
+    expect(tags.exists()).toBe(true)
+    expect(tags.text()).toContain('Burst')
+    expect(tags.text()).toContain('Mobility')
+  })
+
+  it('omits the playstyle row when no tags are given', () => {
+    const wrapper = mountCard({ name: 'Echo', role: 'assassin', lore: 'lore' })
+    expect(wrapper.find('[data-testid="lore-playstyle"]').exists()).toBe(false)
   })
 
   it('links TRAIN to the hero console deep-linked to this hero', () => {

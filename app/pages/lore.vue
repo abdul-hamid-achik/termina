@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
 import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
+import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import HeroLoreCard from '~/components/lore/HeroLoreCard.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 
@@ -56,7 +57,12 @@ const roster = ROLE_ORDER.map((role) => ({
         <p class="text-[0.72rem] text-text-dim">{{ group.blurb }}</p>
       </div>
       <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <HeroLoreCard v-for="h in group.heroes" :key="h.id" :hero="h" />
+        <HeroLoreCard
+          v-for="h in group.heroes"
+          :key="h.id"
+          :hero="h"
+          :tags="heroPlaystyleTags(h)"
+        />
       </div>
     </section>
 

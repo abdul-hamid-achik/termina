@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { HeroDef, HeroRole } from '~~/shared/types/hero'
+import type { PlaystyleTag } from '~~/shared/heroPlaystyle'
 
-defineProps<{ hero: Pick<HeroDef, 'id' | 'name' | 'role' | 'lore'> }>()
+defineProps<{
+  hero: Pick<HeroDef, 'id' | 'name' | 'role' | 'lore'>
+  /** Kit-identity tags (Burst/Control/…) from heroPlaystyleTags — optional. */
+  tags?: PlaystyleTag[]
+}>()
 
 // Role → theme colour, so the roster reads at a glance.
 const roleColor: Record<HeroRole, string> = {
@@ -28,6 +33,16 @@ const roleColor: Record<HeroRole, string> = {
         :class="roleColor[hero.role] ?? 'text-text-dim'"
       >
         {{ hero.role }}
+      </span>
+    </div>
+    <!-- Kit identity at a glance — how the hero plays beyond its role label. -->
+    <div v-if="tags && tags.length" class="flex flex-wrap gap-1" data-testid="lore-playstyle">
+      <span
+        v-for="t in tags"
+        :key="t"
+        class="border border-ability/40 bg-ability/10 px-1 py-0.5 text-[0.58rem] uppercase tracking-wider text-ability"
+      >
+        {{ t }}
       </span>
     </div>
     <p class="text-[0.78rem] leading-relaxed text-text-dim">{{ hero.lore }}</p>

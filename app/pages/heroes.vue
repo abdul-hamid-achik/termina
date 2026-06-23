@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
 import { ROLE_META } from '~~/shared/constants/roles'
+import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import type { HeroId, HeroRole } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
@@ -25,6 +26,8 @@ const selectedId = ref<HeroId>(queryHero)
 // selectedId is always a valid HeroId, but noUncheckedIndexedAccess widens the
 // lookup to `| undefined` — assert since the key is guaranteed present.
 const hero = computed(() => HEROES[selectedId.value]!)
+// Kit-identity tags (Burst/Control/Sustain/…) — a quick "how does this play".
+const playstyle = computed(() => heroPlaystyleTags(hero.value))
 
 // Role filter so a newcomer can narrow the roster to a role they want to learn
 // ("show me a support"). 'all' shows everyone.
@@ -170,6 +173,16 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           <span>def {{ hero.baseStats.defense }}</span>
           <span>mres {{ hero.baseStats.magicResist }}</span>
           <span class="uppercase">{{ hero.baseStats.attackRange }}</span>
+        </div>
+        <!-- Kit identity at a glance — how this hero plays, beyond its role. -->
+        <div class="flex flex-wrap gap-1" data-testid="hero-playstyle">
+          <span
+            v-for="t in playstyle"
+            :key="t"
+            class="border border-ability/40 bg-ability/10 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wider text-ability"
+          >
+            {{ t }}
+          </span>
         </div>
         <p class="text-[0.75rem] italic leading-relaxed text-text-dim">{{ hero.lore }}</p>
 
