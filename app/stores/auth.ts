@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { useGameStore } from '~/stores/game'
+import { useLobbyStore } from '~/stores/lobby'
 
 export const useAuthStore = defineStore('auth', () => {
   const { loggedIn, user, fetch: fetchSession, clear: clearSession } = useUserSession()
@@ -50,6 +52,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
+    // Drop the prior session's in-memory game/lobby state BEFORE clearing the
+    // session, so it can't leak into the next user on a shared tab (the SPA
+    // logout does no page reload, so the Pinia singletons otherwise survive).
+    // reset() deliberately keeps playerId (for PostGame "play again"), so clear
+    // it explicitly here — on logout it's the departing user's id.
+    const game = useGameStore()
+    game.reset()
+    game.playerId = null
+    useLobbyStore().reset()
     await clearSession()
     navigateTo('/')
   }

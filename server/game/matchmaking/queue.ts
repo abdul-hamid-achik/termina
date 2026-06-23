@@ -13,6 +13,13 @@ const QUEUE_TIMES_KEY = 'matchmaking:queue_times'
  *  set, so leaveQueue can zrem directly without scanning + parsing the MMR
  *  window. O(1) leave instead of O(n). */
 const QUEUE_MEMBERS_KEY = 'matchmaking:queue_members'
+/** Mode-AGNOSTIC per-player sentinel — set atomically on join, so a player can
+ *  be in at most ONE queue across all modes. The per-mode timeKey couldn't
+ *  enforce this: two concurrent joins for DIFFERENT modes each passed their own
+ *  per-mode guard and ended up double-queued. Cleared wherever a player leaves a
+ *  queue (leaveQueue + both match-formation paths). */
+const QUEUE_SENTINEL_KEY = 'matchmaking:queued'
+const sentinelKeyFor = (playerId: string) => `${QUEUE_SENTINEL_KEY}:${playerId}`
 
 /** The total number of players (both teams) a match needs for each mode. */
 const MATCH_SIZE_BY_MODE: Record<QueueMode, number> = {
@@ -56,21 +63,30 @@ export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Eff
   const data = JSON.stringify(entry)
   const queueKey = `${QUEUE_KEY}:${entry.mode}`
   const queueTimeKey = `${QUEUE_TIMES_KEY}:${entry.playerId}:${entry.mode}`
+  const sentinelKey = sentinelKeyFor(entry.playerId)
 
   const luaScript = `
     local timeKey = KEYS[1]
     local queueKey = KEYS[2]
     local membersKey = KEYS[3]
+    local sentinelKey = KEYS[4]
     local playerId = ARGV[1]
     local score = tonumber(ARGV[2])
     local member = ARGV[3]
     local joinedAt = ARGV[4]
     local mode = ARGV[5]
-    
+
+    -- Mode-agnostic guard FIRST: atomically reject if the player is already in
+    -- ANY queue (closes the concurrent cross-mode double-join race). Redis runs
+    -- each eval atomically, so two racing joins can't both pass this.
+    if redis.call('EXISTS', sentinelKey) == 1 then
+      return 'DUPLICATE'
+    end
     if redis.call('EXISTS', timeKey) == 1 then
       return 'DUPLICATE'
     end
-    
+
+    redis.call('SET', sentinelKey, mode)
     redis.call('SET', timeKey, joinedAt)
     redis.call('ZADD', queueKey, score, member)
     redis.call('HSET', membersKey, playerId .. ':' .. mode, member)
@@ -80,7 +96,7 @@ export function joinQueue(redis: RedisServiceApi, entry: QueueEntry): Effect.Eff
   return Effect.gen(function* () {
     const result = yield* redis.eval(
       luaScript,
-      [queueTimeKey, queueKey, QUEUE_MEMBERS_KEY],
+      [queueTimeKey, queueKey, QUEUE_MEMBERS_KEY, sentinelKey],
       [entry.playerId, entry.mmr, data, String(entry.joinedAt), entry.mode],
     )
 
@@ -110,6 +126,7 @@ export function leaveQueue(
       yield* redis.hdel(QUEUE_MEMBERS_KEY, memberField)
     }
     yield* redis.del(`${QUEUE_TIMES_KEY}:${playerId}:${mode}`)
+    yield* redis.del(sentinelKeyFor(playerId)) // release the mode-agnostic guard
     yield* Effect.logInfo('Player left queue').pipe(Effect.annotateLogs({ playerId }))
   })
 }
@@ -201,6 +218,7 @@ async function tryFormMatch(
             for (const p of players) {
               yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}:${mode}`)
               yield* redis.hdel(QUEUE_MEMBERS_KEY, `${p.playerId}:${mode}`)
+              yield* redis.del(sentinelKeyFor(p.playerId)) // released into the match
             }
 
             createLobby(allPlayers, ws, redis, db)
@@ -239,6 +257,7 @@ async function tryFormMatch(
             for (const p of group) {
               yield* redis.del(`${QUEUE_TIMES_KEY}:${p.playerId}:${mode}`)
               yield* redis.hdel(QUEUE_MEMBERS_KEY, `${p.playerId}:${mode}`)
+              yield* redis.del(sentinelKeyFor(p.playerId)) // released into the match
             }
 
             createLobby(group, ws, redis, db)

@@ -624,10 +624,12 @@ export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   for (const p of lobby.players) {
     playerToLobby.delete(p.playerId)
     if (isBot(p.playerId)) continue
+    // lobby_cancelled (not a bare announcement) so the client resets its lobby
+    // store off the draft/found/starting screen — a generic toast left a
+    // surviving drafter frozen with no in-app escape.
     sendToPeer(p.playerId, {
-      type: 'announcement',
-      message: 'Match cancelled. Returning to queue...',
-      level: 'warning',
+      type: 'lobby_cancelled',
+      reason: 'Match cancelled — a player failed to load. Back to the menu.',
     })
   }
 

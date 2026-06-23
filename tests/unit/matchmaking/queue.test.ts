@@ -145,6 +145,7 @@ describe('Queue', () => {
           'matchmaking:queue_times:p1:ranked_5v5',
           'matchmaking:queue:ranked_5v5',
           'matchmaking:queue_members',
+          'matchmaking:queued:p1', // mode-agnostic dedup sentinel
         ],
         ['p1', 1200, JSON.stringify(entry), expect.any(String), 'ranked_5v5'],
       )
@@ -160,6 +161,7 @@ describe('Queue', () => {
           'matchmaking:queue_times:p2:ranked_5v5',
           'matchmaking:queue:ranked_5v5',
           'matchmaking:queue_members',
+          'matchmaking:queued:p2',
         ],
         ['p2', 1000, JSON.stringify(entry), '12345', 'ranked_5v5'],
       )
@@ -195,6 +197,16 @@ describe('Queue', () => {
       await Effect.runPromise(leaveQueue(redis as never, 'p_leave'))
 
       expect(redis.del).toHaveBeenCalledWith('matchmaking:queue_times:p_leave:ranked_5v5')
+    })
+
+    it('releases the mode-agnostic dedup sentinel so the player can re-queue', async () => {
+      redis.hget.mockReturnValue(Effect.succeed(null))
+
+      await Effect.runPromise(leaveQueue(redis as never, 'p_leave'))
+
+      // Without this, a leave that fails to clear the sentinel would lock the
+      // player out of ALL queues permanently.
+      expect(redis.del).toHaveBeenCalledWith('matchmaking:queued:p_leave')
     })
 
     it('handles player not found in queue gracefully', async () => {

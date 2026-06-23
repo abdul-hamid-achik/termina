@@ -34,9 +34,16 @@ function handleServerMessage(msg: ServerMessage) {
       lobbyStore.botsCount = msg.botsCount
       break
     case 'announcement':
-      // Surface lobby/draft announcements (match cancelled, player→bot swap) as
-      // a transient toast instead of dropping them silently.
+      // Surface lobby/draft announcements (player→bot swap, etc.) as a transient
+      // toast instead of dropping them silently.
       lobbyStore.setAnnouncement(msg.message, msg.level)
+      break
+    case 'lobby_cancelled':
+      // The forming lobby was torn down — reset back to the find-match screen so
+      // a surviving drafter isn't frozen on draft/found/starting, then surface
+      // the reason as a toast (setAnnouncement AFTER reset, which clears it).
+      lobbyStore.reset()
+      lobbyStore.setAnnouncement(msg.reason, 'warning')
       break
     case 'error':
       lobbyLog.warn('Server error during lobby', { code: msg.code, message: msg.message })

@@ -24,6 +24,8 @@ vi.stubGlobal('useUserSession', () => ({
 
 // eslint-disable-next-line import/first
 import { useAuthStore } from '../../../app/stores/auth'
+// eslint-disable-next-line import/first
+import { useGameStore } from '../../../app/stores/game'
 
 // ── Tests ─────────────────────────────────────────────────────────
 
@@ -108,6 +110,18 @@ describe('Auth Store', () => {
 
       expect(mockClearSession).toHaveBeenCalled()
       expect(mockNavigateTo).toHaveBeenCalledWith('/')
+    })
+
+    it('resets the game store so prior-session state cannot leak on a shared tab', async () => {
+      mockClearSession.mockResolvedValue(undefined)
+      const game = useGameStore()
+      game.gameId = 'g1'
+      game.playerId = 'p1'
+
+      await useAuthStore().logout()
+
+      expect(game.gameId).toBeNull()
+      expect(game.playerId).toBeNull()
     })
   })
 

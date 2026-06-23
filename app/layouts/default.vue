@@ -1,5 +1,8 @@
 <script setup lang="ts">
-const { loggedIn, clear: clearSession } = useUserSession()
+import { useAuthStore } from '~/stores/auth'
+
+const { loggedIn } = useUserSession()
+const authStore = useAuthStore()
 
 const publicNavLinks = [
   { label: 'PLAY', to: '/lobby' },
@@ -19,9 +22,11 @@ const navLinks = computed(() =>
   loggedIn.value ? [...publicNavLinks, ...authNavLinks] : publicNavLinks,
 )
 
-async function logout() {
-  await clearSession()
-  navigateTo('/login')
+// Single logout path: the auth store resets the game/lobby stores, then clears
+// the session and navigates home (avoids a duplicate clearSession that bypassed
+// the store reset).
+function logout() {
+  return authStore.logout()
 }
 </script>
 

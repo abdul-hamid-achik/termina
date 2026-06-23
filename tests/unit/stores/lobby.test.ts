@@ -427,6 +427,20 @@ describe('Lobby Store', () => {
   })
 
   describe('recoverState', () => {
+    it('resets a stuck pre-game store when the server reports idle (cancelled lobby)', async () => {
+      const store = useLobbyStore()
+      // Simulate being frozen on the draft screen after a missed cancel.
+      store.matchFound('lobby-x') // → 'found'
+      store.allPicksComplete?.()
+      expect(store.queueStatus).not.toBe('idle')
+
+      mockFetch.mockResolvedValue({ status: 'idle' })
+      await store.recoverState()
+
+      expect(store.queueStatus).toBe('idle')
+      expect(store.lobbyId).toBeNull()
+    })
+
     it('recovers searching state from server', async () => {
       const store = useLobbyStore()
 

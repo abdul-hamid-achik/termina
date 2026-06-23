@@ -165,6 +165,14 @@ export interface PlayerReconnectMessage {
   playerId: string
 }
 
+/** The server tore down a forming lobby (e.g. a drafter never reconnected past
+ *  the grace window). The client resets its lobby store back to find-match so a
+ *  surviving player isn't frozen on the draft/found/starting screen. */
+export interface LobbyCancelledMessage {
+  type: 'lobby_cancelled'
+  reason: string
+}
+
 export type ServerMessage =
   | TickStateMessage
   | EventsMessage
@@ -188,3 +196,4 @@ export type ServerMessage =
   | SpectatorAckMessage
   | PlayerDisconnectMessage
   | PlayerReconnectMessage
+  | LobbyCancelledMessage

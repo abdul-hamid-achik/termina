@@ -157,6 +157,14 @@ export const useLobbyStore = defineStore('lobby', () => {
       lobbyLog.debug('Recovery result', { status: res.status })
 
       if (res.status === 'idle') {
+        // Server says we're in nothing — if the store is still showing a
+        // pre-game phase (e.g. a cancel WS message was missed while
+        // disconnected), reset back to find-match instead of staying frozen.
+        if (queueStatus.value !== 'idle') {
+          const note = lastAnnouncement.value
+          _reset()
+          lastAnnouncement.value = note // keep any "cancelled" toast across reset
+        }
         return null
       } else if (res.status === 'game_starting') {
         gameId.value = res.gameId
@@ -371,6 +379,9 @@ export const useLobbyStore = defineStore('lobby', () => {
     joinQueue,
     leaveQueue,
     recoverState,
+    // Public reset — clears all queue/lobby state + timers (used on logout so a
+    // prior session's lobby state can't leak into the next one on a shared tab).
+    reset: _reset,
     matchFound,
     heroPicked,
     optimisticPick,
