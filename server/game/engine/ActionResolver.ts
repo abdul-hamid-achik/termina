@@ -1020,6 +1020,8 @@ function resolveShopPhase(
   ancients: { radiant: AncientState; dire: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
+  heroAttackers: Map<string, string>,
+  damageTracker: Map<string, { hero: number; tower: number }>,
 ): {
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
@@ -1113,6 +1115,7 @@ function resolveShopPhase(
       ),
     )
     if (result) {
+      const prePlayers = players
       players = { ...result.players }
       zones = { ...result.zones }
       events.push({
@@ -1121,6 +1124,66 @@ function resolveShopPhase(
         playerId: action.playerId,
         abilityId: ITEMS[cmd.item]?.active?.id ?? cmd.item,
       })
+
+      // Item actives that change HP (Dagon, Shiva's Guard, …) mutate HP inside
+      // useItem but, historically, emitted NO damage/heal event — so an item
+      // kill gave no killer credit/bounty/assist, never reflected Blade Mail,
+      // and never fired the damage-taken passives (daemon stealth-break,
+      // cache/firewall/proxy). Diff pre→post HP and synthesise the same events
+      // the cast path does (ActionResolver.resolveHeroCast), so item damage is a
+      // first-class damage source. Magical is the item-nuke damage type.
+      const user = players[action.playerId]
+      for (const [pid, post] of Object.entries(players)) {
+        const pre = prePlayers[pid]
+        if (!pre) continue
+        const delta = pre.hp - post.hp
+        if (delta > 0) {
+          events.push({
+            _tag: 'damage',
+            tick: state.tick,
+            sourceId: action.playerId,
+            targetId: pid,
+            amount: delta,
+            damageType: 'magical',
+          })
+          if (user && post.team !== user.team) {
+            heroAttackers.set(action.playerId, pid)
+            const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+            dt.hero += delta
+            damageTracker.set(action.playerId, dt)
+
+            // Blade Mail: an enemy hit by the item reflects the HP it lost back
+            // at the user as pure damage — same formula as the cast/attack path.
+            if (post.buffs.some((b) => b.id === 'blade_mail')) {
+              const userPost = players[action.playerId]
+              if (userPost) {
+                const returnDamage = computeBladeMailReflect(delta)
+                const userNewHp = Math.max(0, userPost.hp - returnDamage)
+                players = {
+                  ...players,
+                  [action.playerId]: { ...userPost, hp: userNewHp, alive: userNewHp > 0 },
+                }
+                events.push({
+                  _tag: 'damage',
+                  tick: state.tick,
+                  sourceId: pid,
+                  targetId: action.playerId,
+                  amount: returnDamage,
+                  damageType: 'pure',
+                })
+              }
+            }
+          }
+        } else if (delta < 0) {
+          events.push({
+            _tag: 'heal',
+            tick: state.tick,
+            sourceId: action.playerId,
+            targetId: pid,
+            amount: -delta,
+          })
+        }
+      }
     }
   }
 
@@ -1546,6 +1609,8 @@ export function resolveActions(
         ancients,
         events,
         rejected,
+        heroAttackers,
+        damageTracker,
       )
       players = result.players
       zones = result.zones
