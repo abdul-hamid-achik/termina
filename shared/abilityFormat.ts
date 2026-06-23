@@ -18,7 +18,9 @@ export function formatEffect(e: AbilityEffect): string {
     case 'shield':
       return `shield ${e.value}`
     case 'dot':
-      return `${e.value} dmg/t${e.duration ? ` for ${e.duration}t` : ''}`
+      // `value` is the TOTAL damage dealt across the duration (the convention
+      // the engine + hero data use), not per-tick.
+      return `${e.value} dmg${e.duration ? ` over ${e.duration}t` : ''}`
     case 'slow':
       return `${e.value}% slow${e.duration ? ` for ${e.duration}t` : ''}`
     case 'stun':
@@ -66,11 +68,11 @@ export function cooldownSeconds(a: AbilityDef, tickMs: number): number {
 export interface AbilityImpact {
   /** Immediate one-shot damage (sum of `damage` effects). */
   burst: number
-  /** Damage applied each scheduler tick by damage-over-time effects. */
+  /** Approx damage each scheduler tick (each DoT's total spread over its duration). */
   dotPerTick: number
   /** Ticks the longest DoT lasts. */
   dotDuration: number
-  /** Total damage over the ability's full duration (burst + dotPerTick × dotDuration). */
+  /** Total damage over the ability's full duration (burst + every DoT's total). */
   total: number
   /** Healing granted to the caster/ally. */
   heal: number
@@ -82,6 +84,7 @@ export function abilityImpact(a: AbilityDef): AbilityImpact {
   let burst = 0
   let dotPerTick = 0
   let dotDuration = 0
+  let dotTotal = 0
   let heal = 0
   let shield = 0
   for (const e of a.effects) {
@@ -90,7 +93,9 @@ export function abilityImpact(a: AbilityDef): AbilityImpact {
         burst += e.value
         break
       case 'dot':
-        dotPerTick += e.value
+        // `value` is TOTAL damage over the duration; derive the per-tick rate.
+        dotTotal += e.value
+        dotPerTick += e.duration ? Math.round(e.value / e.duration) : e.value
         dotDuration = Math.max(dotDuration, e.duration ?? 0)
         break
       case 'heal':
@@ -101,5 +106,5 @@ export function abilityImpact(a: AbilityDef): AbilityImpact {
         break
     }
   }
-  return { burst, dotPerTick, dotDuration, total: burst + dotPerTick * dotDuration, heal, shield }
+  return { burst, dotPerTick, dotDuration, total: burst + dotTotal, heal, shield }
 }

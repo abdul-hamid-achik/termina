@@ -2,8 +2,11 @@
 import { HEROES } from '~~/shared/constants/heroes'
 import HeroLoreCard from '~/components/lore/HeroLoreCard.vue'
 import type { HeroRole } from '~~/shared/types/hero'
+import { useStartTutorial } from '~/composables/useStartTutorial'
 
 useHead({ title: 'Lore · TERMINA' })
+
+const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
 
 // Roster grouped by role — data-driven from HEROES so it can never drift.
 const roles: { role: HeroRole; label: string; blurb: string }[] = [
@@ -82,15 +85,20 @@ const roster = roles
       </div>
     </section>
 
-    <footer class="mt-2 border-t border-border pt-3 text-[0.78rem] text-text-dim">
-      Ready to deploy?
-      <NuxtLink to="/learn" class="text-ability no-underline hover:underline"
-        >learn the verbs</NuxtLink
-      >
-      or
-      <NuxtLink to="/lobby" class="text-ability no-underline hover:underline"
-        >enter the terminal</NuxtLink
-      >.
+    <footer class="mt-2 flex flex-col items-center gap-2 border-t border-border pt-3 text-center">
+      <p class="text-[0.8rem] text-text-dim">Ready to deploy?</p>
+      <div class="flex flex-wrap justify-center gap-3">
+        <AsciiButton
+          :label="startingTutorial ? 'STARTING…' : 'PRACTICE VS BOTS'"
+          :disabled="startingTutorial"
+          variant="primary"
+          data-testid="start-tutorial"
+          @click="startTutorial"
+        />
+        <NuxtLink to="/heroes" class="no-underline">
+          <AsciiButton label="MEET THE HEROES" variant="ghost" />
+        </NuxtLink>
+      </div>
     </footer>
   </article>
 </template>

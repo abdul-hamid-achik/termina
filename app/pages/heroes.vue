@@ -1,122 +1,46 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
 import type { HeroId } from '~~/shared/types/hero'
-import { abilitySummary, abilityImpact } from '~~/shared/abilityFormat'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
+import { useTrainingConsole } from '~/composables/useTrainingConsole'
+import type { ConsoleSlot } from '~/composables/useTrainingConsole'
 
 useHead({ title: 'Heroes · TERMINA' })
 
 const allHeroes = Object.values(HEROES)
-
-type Slot = 'q' | 'w' | 'e' | 'r'
-const SLOTS: Slot[] = ['q', 'w', 'e', 'r']
 
 const selectedId = ref<HeroId>('echo')
 // selectedId is always a valid HeroId, but noUncheckedIndexedAccess widens the
 // lookup to `| undefined` — assert since the key is guaranteed present.
 const hero = computed(() => HEROES[selectedId.value]!)
 
-// Mock training-console state — a safe, offline dry-run of the cast interface
-// (real ability data, real cooldowns/mana, on the same 4s scheduler tick).
-const mana = ref(0)
-const cooldowns = reactive<Record<Slot, number>>({ q: 0, w: 0, e: 0, r: 0 })
-const tick = ref(0)
-const log = ref<string[]>([])
-
-// A practice target so abilities show concrete impact (base values, no
-// resistances) and DoTs visibly tick down over the scheduler ticks.
-const DUMMY_NAME = 'training dummy'
-const DUMMY_MAX = 1000
-const dummyHp = ref(DUMMY_MAX)
-interface ActiveDot {
-  source: string
-  perTick: number
-  ticksLeft: number
-}
-const dots = ref<ActiveDot[]>([])
-
-function pushLog(...lines: string[]) {
-  log.value.push(...lines)
-  if (log.value.length > 50) log.value = log.value.slice(-50)
-}
-
-function checkDummy() {
-  if (dummyHp.value <= 0) {
-    dummyHp.value = DUMMY_MAX
-    dots.value = []
-    pushLog(`! ${DUMMY_NAME} destroyed — respawning at full hp`)
-  }
-}
-
-function reset() {
-  mana.value = hero.value.baseStats.mp
-  for (const s of SLOTS) cooldowns[s] = 0
-  tick.value = 0
-  dummyHp.value = DUMMY_MAX
-  dots.value = []
-  log.value = [`>_ ${hero.value.name} loaded — click an ability or press Q/W/E/R to cast.`]
-}
-watch(selectedId, reset, { immediate: true })
-
-function cast(slot: Slot) {
-  const ab = hero.value.abilities[slot]
-  if (cooldowns[slot] > 0) {
-    pushLog(`! ${ab.name} on cooldown (${cooldowns[slot]}t left)`)
-    return
-  }
-  if (mana.value < ab.manaCost) {
-    pushLog(`! not enough mana for ${ab.name} (need ${ab.manaCost}, have ${mana.value})`)
-    return
-  }
-  mana.value -= ab.manaCost
-  cooldowns[slot] = ab.cooldownTicks
-  pushLog(`> cast ${slot}`, `  ${hero.value.name} casts ${ab.name} — ${abilitySummary(ab)}`)
-
-  // Resolve the ability's impact against the dummy so the player sees it land.
-  const impact = abilityImpact(ab)
-  if (impact.burst > 0) {
-    dummyHp.value = Math.max(0, dummyHp.value - impact.burst)
-    pushLog(`  → ${impact.burst} burst dmg  ·  ${DUMMY_NAME} ${dummyHp.value}/${DUMMY_MAX}`)
-  }
-  if (impact.dotPerTick > 0 && impact.dotDuration > 0) {
-    dots.value.push({ source: ab.name, perTick: impact.dotPerTick, ticksLeft: impact.dotDuration })
-    pushLog(`  → ${impact.dotPerTick} dmg/t for ${impact.dotDuration}t (advance ticks to resolve)`)
-  }
-  if (impact.heal > 0) pushLog(`  → heals ${impact.heal} (self/ally)`)
-  if (impact.shield > 0) pushLog(`  → grants a ${impact.shield} shield`)
-  checkDummy()
-}
-
-function advanceTick() {
-  tick.value++
-  // Resolve damage-over-time before regen/cooldowns so the dummy drains live.
-  if (dots.value.length > 0) {
-    let dmg = 0
-    for (const d of dots.value) {
-      dmg += d.perTick
-      d.ticksLeft--
-    }
-    dots.value = dots.value.filter((d) => d.ticksLeft > 0)
-    if (dmg > 0) {
-      dummyHp.value = Math.max(0, dummyHp.value - dmg)
-      pushLog(`— dot tick: −${dmg}  ·  ${DUMMY_NAME} ${dummyHp.value}/${DUMMY_MAX}`)
-      checkDummy()
-    }
-  }
-  for (const s of SLOTS) if (cooldowns[s] > 0) cooldowns[s]--
-  const regen = Math.max(2, Math.round(hero.value.baseStats.mp * 0.05))
-  mana.value = Math.min(hero.value.baseStats.mp, mana.value + regen)
-  pushLog(`— scheduler tick ${tick.value}  (+${regen} mp · cooldowns −1)`)
-}
+// The training-console state machine (cast/advance-tick/dummy/DoT) lives in a
+// unit-tested composable; the page just wires it to the UI.
+const {
+  SLOTS,
+  DUMMY_NAME,
+  dummyMax,
+  mana,
+  cooldowns,
+  tick,
+  log,
+  dummyHp,
+  dots,
+  cast,
+  advanceTick,
+  reset,
+} = useTrainingConsole(hero)
 
 function onKey(e: KeyboardEvent) {
+  // Don't hijack browser/OS chords (Cmd/Ctrl/Alt + key) or typing in fields.
+  if (e.ctrlKey || e.metaKey || e.altKey) return
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
   const k = e.key.toLowerCase()
   if ((SLOTS as string[]).includes(k)) {
     e.preventDefault()
-    cast(k as Slot)
+    cast(k as ConsoleSlot)
   }
 }
 onMounted(() => window.addEventListener('keydown', onKey))
@@ -146,6 +70,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
         v-for="h in allHeroes"
         :key="h.id"
         type="button"
+        :aria-pressed="h.id === selectedId"
         class="flex flex-col items-center gap-0.5 border px-1 py-1.5 transition-colors"
         :class="
           h.id === selectedId
@@ -187,6 +112,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           interactive
           @cast="cast(s)"
         />
+        <p class="text-[0.6rem] text-text-dim">Click a slot or press Q / W / E / R to cast.</p>
       </section>
 
       <!-- Console -->
@@ -205,12 +131,14 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           </div>
         </div>
 
-        <TargetDummy name="training dummy" :hp="dummyHp" :max-hp="DUMMY_MAX" :dots="dots.length" />
+        <TargetDummy :name="DUMMY_NAME" :hp="dummyHp" :max-hp="dummyMax" :dots="dots.length" />
         <p class="text-[0.6rem] leading-snug text-text-dim">
           Impact shows base values — no armor, magic resist or amp. A feel for each kit, not a
           combat sim.
         </p>
 
+        <!-- Announce only the latest line to AT, not the whole 50-line buffer. -->
+        <div aria-live="polite" aria-atomic="true" class="sr-only">{{ log[log.length - 1] }}</div>
         <div
           class="flex-1 overflow-y-auto border border-border bg-bg-secondary p-2 font-mono text-[0.72rem] leading-relaxed"
           style="min-height: 240px; max-height: 360px"
@@ -248,7 +176,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           @click="startTutorial"
         />
         <NuxtLink to="/lobby" class="no-underline">
-          <AsciiButton label="ENTER THE QUEUE" variant="ghost" />
+          <AsciiButton label="ENTER THE TERMINAL" variant="ghost" />
         </NuxtLink>
       </div>
     </footer>

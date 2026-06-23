@@ -390,10 +390,10 @@ export const HEROES: Record<string, HeroDef> = {
           { type: 'root', value: 1, duration: 2 },
           {
             type: 'dot',
-            value: 30,
+            value: 90,
             duration: 3,
             damageType: 'magical',
-            description: 'Per tick for 3 ticks',
+            description: 'Total damage over 3 ticks',
           },
         ],
       },

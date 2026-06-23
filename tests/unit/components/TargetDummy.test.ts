@@ -49,6 +49,22 @@ describe('TargetDummy', () => {
         'bg-dire',
       )
     })
+    it('pins the boundaries: exactly 50% is gold, exactly 25% is dire', () => {
+      expect(
+        mountDummy({ hp: 500, maxHp: 1000 }).find('[data-testid="target-dummy-bar"]').classes(),
+      ).toContain('bg-gold')
+      expect(
+        mountDummy({ hp: 250, maxHp: 1000 }).find('[data-testid="target-dummy-bar"]').classes(),
+      ).toContain('bg-dire')
+    })
+  })
+
+  it('handles maxHp=0 without NaN (0% width, DESTROYED)', () => {
+    const wrapper = mountDummy({ hp: 0, maxHp: 0 })
+    expect(wrapper.find('[data-testid="target-dummy-bar"]').attributes('style')).toContain(
+      'width: 0%',
+    )
+    expect(wrapper.text()).toContain('DESTROYED')
   })
 
   it('shows DESTROYED when hp reaches zero', () => {

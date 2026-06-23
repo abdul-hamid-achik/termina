@@ -26,13 +26,33 @@ describe('formatEffect', () => {
   it('formats heal / shield / dot / execute', () => {
     expect(formatEffect(effect({ type: 'heal', value: 50 }))).toBe('heal 50')
     expect(formatEffect(effect({ type: 'shield', value: 100 }))).toBe('shield 100')
-    expect(formatEffect(effect({ type: 'dot', value: 10, duration: 3 }))).toBe('10 dmg/t for 3t')
+    expect(formatEffect(effect({ type: 'dot', value: 90, duration: 3 }))).toBe('90 dmg over 3t')
     expect(formatEffect(effect({ type: 'execute', value: 15 }))).toBe('execute < 15% hp')
   })
   it('prefers an authored description for buffs', () => {
     expect(formatEffect(effect({ type: 'buff', value: 8, description: 'amp per stack' }))).toBe(
       'amp per stack',
     )
+  })
+
+  it.each([
+    [{ type: 'silence', duration: 2 }, 'silence 2t'],
+    [{ type: 'silence' }, 'silence'],
+    [{ type: 'root', duration: 2 }, 'root 2t'],
+    [{ type: 'root' }, 'root'],
+    [{ type: 'taunt', duration: 1 }, 'taunt 1t'],
+    [{ type: 'fear', duration: 2 }, 'fear 2t'],
+    [{ type: 'teleport' }, 'teleport'],
+    [{ type: 'reveal' }, 'reveal'],
+  ] as const)('formats %o as "%s"', (input, expected) => {
+    expect(formatEffect(effect(input))).toBe(expected)
+  })
+
+  it('falls back to a generated label when buff/debuff have no description', () => {
+    expect(formatEffect(effect({ type: 'buff', value: 8 }))).toBe('buff +8')
+    expect(formatEffect(effect({ type: 'debuff', value: 5 }))).toBe('debuff 5')
+    // whitespace-only description still falls back
+    expect(formatEffect(effect({ type: 'buff', value: 3, description: '   ' }))).toBe('buff +3')
   })
 })
 
@@ -91,27 +111,28 @@ describe('abilityImpact', () => {
     expect(i.total).toBe(65)
   })
 
-  it('aggregates DoT per-tick and takes the longest duration', () => {
+  it('treats DoT value as total, deriving per-tick, and takes the longest duration', () => {
     const i = abilityImpact(
       ability([
-        effect({ type: 'dot', value: 10, duration: 3 }),
-        effect({ type: 'dot', value: 5, duration: 5 }),
+        effect({ type: 'dot', value: 60, duration: 3 }), // 20/t
+        effect({ type: 'dot', value: 50, duration: 5 }), // 10/t
       ]),
     )
-    expect(i.dotPerTick).toBe(15)
+    expect(i.dotPerTick).toBe(30) // 20 + 10
     expect(i.dotDuration).toBe(5)
-    // total = dotPerTick (15) × longest duration (5) = 75
-    expect(i.total).toBe(75)
+    // total = sum of DoT totals (60 + 50)
+    expect(i.total).toBe(110)
   })
 
-  it('combines burst + DoT into total over the full duration', () => {
+  it('combines burst + DoT totals', () => {
     const i = abilityImpact(
       ability([
         effect({ type: 'damage', value: 50 }),
-        effect({ type: 'dot', value: 20, duration: 2 }),
+        effect({ type: 'dot', value: 60, duration: 3 }),
       ]),
     )
-    expect(i.total).toBe(50 + 20 * 2) // 90
+    expect(i.dotPerTick).toBe(20)
+    expect(i.total).toBe(50 + 60) // 110
   })
 
   it('captures heal and shield sustain', () => {

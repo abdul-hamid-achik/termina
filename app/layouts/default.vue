@@ -30,8 +30,8 @@ async function logout() {
     <header
       class="flex items-center justify-between border-b border-border bg-bg-secondary px-4 py-2 max-sm:flex-col max-sm:gap-2"
     >
-      <NuxtLink to="/" class="text-radiant no-underline">
-        <pre class="m-0 text-[0.55rem] leading-tight max-sm:text-[0.45rem]">
+      <NuxtLink to="/" aria-label="Termina home" class="text-radiant no-underline">
+        <pre aria-hidden="true" class="m-0 text-[0.55rem] leading-tight max-sm:text-[0.45rem]">
 ╔╦╗╔═╗╦═╗╔╦╗╦╔╗╔╔═╗
  ║ ║╣ ╠╦╝║║║║║║║╠═╣
  ╩ ╚═╝╩╚═╩ ╩╩╝╚╝╩ ╩</pre
