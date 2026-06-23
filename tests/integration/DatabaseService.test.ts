@@ -108,7 +108,10 @@ describe('DatabaseService (real Postgres)', () => {
           ]),
         )
       }
-      expect(await run((s) => s.getMatchHistory('p1'))).toHaveLength(3)
+      const hist = await run((s) => s.getMatchHistory('p1'))
+      expect(hist).toHaveLength(3)
+      // each entry carries the queried player's team (for Victory/Defeat display)
+      expect(hist[0]!.team).toBe('radiant')
       expect(await run((s) => s.getMatchHistory('p1', 2))).toHaveLength(2)
       expect(await run((s) => s.getMatchHistory('ghost'))).toHaveLength(0)
     })

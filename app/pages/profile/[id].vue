@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
+import { formatGameMode, matchResult } from '~~/shared/matchFormat'
+import { formatTickClock } from '~/utils/gameClock'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -28,6 +30,7 @@ interface MatchSummary {
   id: string
   mode: string
   winner: 'radiant' | 'dire' | null
+  team: 'radiant' | 'dire' | null
   durationTicks: number | null
   createdAt: string | null
 }
@@ -50,12 +53,14 @@ const recentMatches = computed<MatchSummary[]>(
   () => (matchData.value as { matches?: MatchSummary[] } | null)?.matches ?? [],
 )
 
+// Decorate each match with the player-perspective result (Victory/Defeat/In
+// Progress) so the template doesn't recompute it per cell.
+const decoratedMatches = computed(() =>
+  recentMatches.value.map((m) => ({ ...m, result: matchResult(m.winner, m.team) })),
+)
+
 function formatDuration(ticks: number | null): string {
-  if (!ticks) return '--:--'
-  const totalSeconds = ticks * 4
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+  return ticks ? formatTickClock(ticks) : '--:--'
 }
 
 function formatDate(dateStr: string | null): string {
@@ -160,13 +165,19 @@ function formatDate(dateStr: string | null): string {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="m in recentMatches" :key="m.id">
-              <td class="border-b border-border/50 px-1.5 py-1 text-ability">{{ m.mode }}</td>
+            <tr v-for="m in decoratedMatches" :key="m.id">
+              <td class="border-b border-border/50 px-1.5 py-1 text-ability">
+                {{ formatGameMode(m.mode) }}
+              </td>
               <td
                 class="border-b border-border/50 px-1.5 py-1 font-bold"
-                :class="m.winner ? 'text-radiant' : 'text-text-dim'"
+                :class="{
+                  'text-radiant': m.result === 'Victory',
+                  'text-dire': m.result === 'Defeat',
+                  'text-text-dim': m.result === 'In Progress',
+                }"
               >
-                {{ m.winner ?? 'IN PROGRESS' }}
+                {{ m.result }}
               </td>
               <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">
                 {{ formatDuration(m.durationTicks) }}
