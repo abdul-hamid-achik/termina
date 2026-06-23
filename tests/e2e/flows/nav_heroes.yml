@@ -25,6 +25,17 @@ outcomes:
     verify:
       text:
         contains: combo landed
+  - id: role_filter_narrows_roster
+    description: the role filter narrows the hero grid to only that role
+    verify:
+      script:
+        run: |
+          const picks = Array.from(document.querySelectorAll('[data-testid="hero-pick"]'));
+          const roles = [...new Set(picks.map((b) => b.getAttribute('data-role')))];
+          return {
+            ok: picks.length > 0 && roles.length === 1 && roles[0] === 'support',
+            evidence: picks.length + ' heroes shown, roles: ' + JSON.stringify(roles),
+          };
 steps:
   - id: open_heroes
     open:
@@ -33,6 +44,14 @@ steps:
   - id: wait_for_console
     wait:
       text: HERO TRAINING
+      timeoutMs: 10000
+  - id: filter_support
+    click:
+      by: selector
+      selector: '[data-testid="role-filter-support"]'
+  - id: settle_filter
+    wait:
+      text: SUPPORT
       timeoutMs: 10000
   - id: cast_q
     click:
@@ -52,4 +71,4 @@ steps:
     wait:
       text: combo landed
       timeoutMs: 10000
-contractHash: sha256:904fa5c5f5f47672c89d3e0957e0fca6d802afa76711ce90daa121622ba5b017
+contractHash: sha256:ee12241550ae19065f2c1f946f4edc50d18bbe5e87118f42af5ac7401f68762b
