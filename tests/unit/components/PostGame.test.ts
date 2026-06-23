@@ -82,6 +82,19 @@ describe('PostGame', () => {
     })
   })
 
+  describe('MMR change tile', () => {
+    it('shows a signed MMR delta when provided', () => {
+      expect(mountPostGame({ mmrChange: 25 }).text()).toContain('+25')
+      expect(mountPostGame({ mmrChange: -18 }).text()).toContain('-18')
+    })
+
+    it('omits the MMR tile when no change is provided', () => {
+      const wrapper = mountPostGame()
+      // 'MMR' label only renders inside the tile (v-if mmrChange !== undefined)
+      expect(wrapper.text()).not.toContain('MMR')
+    })
+  })
+
   describe('your-performance panel', () => {
     it("shows the current player's K/D/A, damage and gold", () => {
       const wrapper = mountPostGame()

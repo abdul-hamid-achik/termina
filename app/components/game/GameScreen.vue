@@ -1230,6 +1230,7 @@ function handleReturnToMenu() {
     :current-player-id="gameStore.playerId ?? ''"
     :game-id="gameStore.gameId ?? null"
     :mode="gameStore.mode"
+    :mmr-change="gameStore.gameOverMmrChange ?? undefined"
     @play-again="handlePlayAgain"
     @return-to-menu="handleReturnToMenu"
   />
