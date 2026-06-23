@@ -73,6 +73,16 @@ function onSlotTap(slot: SlotView) {
   useItem(slot)
 }
 
+// Accessible name for a slot: item, cooldown/active/passive state, or empty.
+function slotLabel(slot: SlotView): string {
+  if (!slot.def) return `Item slot ${slot.index + 1}, empty`
+  const parts = [`Item slot ${slot.index + 1}: ${slot.def.name}`]
+  if (slot.cooldown > 0) parts.push(`on cooldown, ${slot.cooldown} ticks`)
+  else if (slot.def.active) parts.push('active ready')
+  else if (slot.def.passive) parts.push('passive')
+  return parts.join(', ')
+}
+
 function confirmUse(slot: SlotView) {
   useItem(slot)
   dismiss()
@@ -105,7 +115,12 @@ function formatStats(def: ItemDef): string[] {
           : 'border-dashed border-border bg-transparent text-text-dim',
       ]"
       :data-testid="`inventory-slot-${slot.index}`"
+      :role="slot.def ? 'button' : undefined"
+      :tabindex="slot.def ? 0 : undefined"
+      :aria-label="slotLabel(slot)"
       @click="onSlotTap(slot)"
+      @keydown.enter.prevent="onSlotTap(slot)"
+      @keydown.space.prevent="onSlotTap(slot)"
       @mouseenter="hoverEnter(slotKey(slot.index))"
       @mouseleave="hoverLeave()"
     >

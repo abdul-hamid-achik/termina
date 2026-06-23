@@ -69,6 +69,7 @@ const entries = computed<PinnedEntry[]>(() => {
           v-if="entry.affordable && canBuy"
           class="touch-target text-radiant hover:underline"
           :data-testid="`quickbuy-buy-${entry.id}`"
+          :aria-label="`Buy ${entry.def.name} for ${entry.def.cost} gold`"
           @click="emit('buy', entry.id)"
         >
           [BUY]
@@ -79,6 +80,7 @@ const entries = computed<PinnedEntry[]>(() => {
           v-if="!usingSuggestions"
           class="touch-target text-text-dim hover:text-dire"
           :data-testid="`quickbuy-unpin-${entry.id}`"
+          :aria-label="`Unpin ${entry.def.name}`"
           @click="emit('unpin', entry.id)"
         >
           x
