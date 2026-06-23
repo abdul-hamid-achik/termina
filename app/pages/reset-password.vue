@@ -41,7 +41,7 @@ async function submit() {
   <div class="flex min-h-[calc(100vh-120px)] items-center justify-center p-8 max-sm:p-4">
     <div class="w-full max-w-[420px]">
       <p class="mb-4 text-center text-[0.85rem] text-text-dim">&gt;_ set a new password</p>
-      <TerminalPanel title="password reset">
+      <TerminalPanel title="password reset" title-as="h1">
         <!-- Missing token -->
         <div v-if="!token" class="flex flex-col gap-3 text-xs">
           <p class="text-dire">This reset link is missing its token. Request a new one.</p>

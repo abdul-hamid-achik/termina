@@ -27,7 +27,7 @@ async function submit() {
   <div class="flex min-h-[calc(100vh-120px)] items-center justify-center p-8 max-sm:p-4">
     <div class="w-full max-w-[420px]">
       <p class="mb-4 text-center text-[0.85rem] text-text-dim">&gt;_ recover access</p>
-      <TerminalPanel title="password reset">
+      <TerminalPanel title="password reset" title-as="h1">
         <div v-if="sent" class="flex flex-col gap-3 text-xs">
           <p class="leading-relaxed text-text-dim">
             <span class="text-radiant">ok</span> — if an account with that username has an email on

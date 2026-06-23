@@ -200,6 +200,9 @@ async function disconnectProvider(provider: string) {
 
 <template>
   <div class="mx-auto mt-6 flex max-w-[600px] flex-col gap-4">
+    <header class="border-b border-border pb-2">
+      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ SETTINGS</h1>
+    </header>
     <div class="mb-2 flex items-center justify-between">
       <span class="text-[0.8rem] text-text-dim">&gt;_ /profile/settings</span>
       <NuxtLink to="/profile/me" class="text-[0.8rem] text-ability no-underline hover:text-radiant">
@@ -208,7 +211,7 @@ async function disconnectProvider(provider: string) {
     </div>
 
     <!-- ═══ HUD & DISPLAY ═══ -->
-    <TerminalPanel title="HUD & Display">
+    <TerminalPanel title="HUD & Display" title-as="h2">
       <div class="flex flex-col gap-2">
         <p class="text-[0.75rem] text-text-dim">
           Tune the in-game HUD for a text MOBA. Stored on this device; takes effect next match.
@@ -220,7 +223,7 @@ async function disconnectProvider(provider: string) {
     </TerminalPanel>
 
     <!-- ═══ AVATAR ═══ -->
-    <TerminalPanel title="Avatar">
+    <TerminalPanel title="Avatar" title-as="h2">
       <div class="flex flex-col gap-3">
         <!-- Preview -->
         <div class="flex items-center gap-3">
@@ -297,7 +300,7 @@ async function disconnectProvider(provider: string) {
     </TerminalPanel>
 
     <!-- ═══ ACCOUNT ═══ -->
-    <TerminalPanel title="Account">
+    <TerminalPanel title="Account" title-as="h2">
       <form class="flex flex-col gap-3" @submit.prevent="saveUsername">
         <div class="flex flex-col gap-1">
           <label
@@ -343,7 +346,7 @@ async function disconnectProvider(provider: string) {
     </TerminalPanel>
 
     <!-- ═══ EMAIL ═══ -->
-    <TerminalPanel title="Email">
+    <TerminalPanel title="Email" title-as="h2">
       <div class="flex flex-col gap-3">
         <div
           v-if="emailStatus?.email"
@@ -378,7 +381,7 @@ async function disconnectProvider(provider: string) {
     </TerminalPanel>
 
     <!-- ═══ PASSWORD ═══ -->
-    <TerminalPanel title="Password">
+    <TerminalPanel title="Password" title-as="h2">
       <form class="flex flex-col gap-3" @submit.prevent="savePassword">
         <p v-if="!hasPassword" class="text-[0.8rem] text-text-dim">
           Set a password to enable credential login.

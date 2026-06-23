@@ -100,7 +100,7 @@ if (route.query.error) {
       >
       <p class="mb-4 text-center text-[0.85rem] text-text-dim">&gt;_ authenticate to continue</p>
 
-      <TerminalPanel :title="mode === 'login' ? 'authentication' : 'registration'">
+      <TerminalPanel :title="mode === 'login' ? 'authentication' : 'registration'" title-as="h1">
         <!-- Tab Switcher -->
         <div class="-mx-2 -mt-2 mb-4 flex border-b border-border">
           <button

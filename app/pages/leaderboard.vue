@@ -61,7 +61,10 @@ function gameTime(tick: number): string {
 
 <template>
   <div class="mx-auto mt-6 flex max-w-[700px] flex-col gap-4">
-    <TerminalPanel v-if="activeGames.length > 0" title="Live Games">
+    <header class="border-b border-border pb-2">
+      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ LEADERBOARD</h1>
+    </header>
+    <TerminalPanel v-if="activeGames.length > 0" title="Live Games" title-as="h2">
       <div class="mb-2 border-b border-border pb-2 text-[0.8rem] text-text-dim">
         &gt;_ {{ activeGames.length }} game{{ activeGames.length === 1 ? '' : 's' }} in progress —
         click to spectate
@@ -95,7 +98,7 @@ function gameTime(tick: number): string {
       </div>
     </TerminalPanel>
 
-    <TerminalPanel title="Leaderboard">
+    <TerminalPanel title="Leaderboard" title-as="h2">
       <div class="mb-3 border-b border-border pb-3">
         <span class="text-[0.8rem] text-text-dim">&gt;_ top players by rating</span>
       </div>

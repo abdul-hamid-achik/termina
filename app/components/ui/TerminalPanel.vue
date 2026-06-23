@@ -5,9 +5,11 @@ defineProps<{
   /**
    * Element to render the title as. Defaults to a non-semantic 'span' so the
    * in-game HUD panels (and every existing caller) are unchanged; content pages
-   * can opt the panel title into a real heading (h2/h3) for a proper outline.
+   * can opt the panel title into a real heading for a proper outline — h1 for a
+   * single-panel page where the panel title IS the page heading (focused auth
+   * cards), h2/h3 for section panels under a page-level heading.
    */
-  titleAs?: 'span' | 'h2' | 'h3'
+  titleAs?: 'span' | 'h1' | 'h2' | 'h3'
 }>()
 </script>
 
