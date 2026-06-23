@@ -62,6 +62,7 @@ const mockRuntime = {
     getPlayerByProvider: vi.fn(() => Effect.succeed(null)),
     getLeaderboard: vi.fn(() => Effect.succeed([])),
     getMatchHistory: vi.fn(() => Effect.succeed([])),
+    getHeroStats: vi.fn(() => Effect.succeed([])),
     recordMatch: vi.fn(() => Effect.succeed(undefined)),
     getPlayerStats: vi.fn(() => Effect.succeed(null)),
   },
@@ -395,6 +396,19 @@ describe('API endpoints', () => {
       expect(result.player).toMatchObject({ id: 'p1', username: 'alice', mmr: 1500 })
       expect(result.player).not.toHaveProperty('email')
       expect(result.player).not.toHaveProperty('passwordHash')
+    })
+
+    it('includes the public per-hero record (heroStats) for the profile', async () => {
+      routerParam = 'p1'
+      mockRuntime.dbService.getPlayer.mockReturnValue(
+        Effect.succeed({ id: 'p1', username: 'alice', mmr: 1500 } as never),
+      )
+      mockRuntime.dbService.getHeroStats.mockReturnValue(
+        Effect.succeed([{ heroId: 'echo', gamesPlayed: 5, wins: 3 }] as never),
+      )
+      const result = await playerHandler(makeEvent('GET', '/api/player/p1'))
+      expect(result.heroStats).toEqual([{ heroId: 'echo', gamesPlayed: 5, wins: 3 }])
+      expect(mockRuntime.dbService.getHeroStats).toHaveBeenCalledWith('p1')
     })
   })
 

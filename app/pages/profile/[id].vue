@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
 import { formatGameMode, matchResult } from '~~/shared/matchFormat'
+import { topHeroStats } from '~~/shared/heroStatsView'
+import type { HeroStatRow } from '~~/shared/heroStatsView'
+import { HEROES } from '~~/shared/constants/heroes'
 import { formatTickClock } from '~/utils/gameClock'
 
 const route = useRoute()
@@ -52,6 +55,15 @@ const player = computed<ProfilePlayer | null>(
 const recentMatches = computed<MatchSummary[]>(
   () => (matchData.value as { matches?: MatchSummary[] } | null)?.matches ?? [],
 )
+
+// Most-played heroes (public per-hero record) — sorted + win-rate/KDA computed
+// by the pure shared helper.
+const heroStats = computed(() =>
+  topHeroStats((profileData.value as { heroStats?: HeroStatRow[] } | null)?.heroStats ?? []),
+)
+function heroName(id: string): string {
+  return HEROES[id]?.name ?? id
+}
 
 // Decorate each match with the player-perspective result (Victory/Defeat/In
 // Progress) so the template doesn't recompute it per cell.
@@ -128,6 +140,60 @@ function formatDate(dateStr: string | null): string {
             <span class="text-text-primary">{{ formatDate(player.createdAt) }}</span>
           </div>
         </div>
+      </TerminalPanel>
+
+      <TerminalPanel v-if="heroStats.length > 0" title="Most Played Heroes">
+        <table class="w-full border-collapse text-xs">
+          <caption class="sr-only">
+            Most played heroes by games, with win rate and average KDA
+          </caption>
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Hero
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Games
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                Win%
+              </th>
+              <th
+                scope="col"
+                class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+              >
+                KDA
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="h in heroStats" :key="h.heroId" data-testid="hero-stat-row">
+              <th
+                scope="row"
+                class="border-b border-border/50 px-1.5 py-1 text-left font-normal text-ability"
+              >
+                {{ heroName(h.heroId) }}
+              </th>
+              <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ h.games }}</td>
+              <td
+                class="border-b border-border/50 px-1.5 py-1"
+                :class="h.winRate >= 50 ? 'text-radiant' : 'text-dire'"
+              >
+                {{ h.winRate }}%
+              </td>
+              <td class="border-b border-border/50 px-1.5 py-1 text-gold">{{ h.kda }}</td>
+            </tr>
+          </tbody>
+        </table>
       </TerminalPanel>
 
       <TerminalPanel title="Recent Matches">
