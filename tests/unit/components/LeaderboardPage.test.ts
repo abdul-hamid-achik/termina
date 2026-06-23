@@ -26,12 +26,19 @@ interface FetchResult {
 let fetchResults: FetchResult[] = []
 const mockUseFetch = vi.fn(() => fetchResults.shift()!)
 
+// The session user the page sees (null = anonymous viewer). Set per-test before
+// mounting to exercise the "highlight my row" path.
+let sessionUserId: string | null = null
+
 function stubNuxtGlobals() {
   vi.stubGlobal('ref', ref)
   vi.stubGlobal('computed', computed)
   vi.stubGlobal('useFetch', mockUseFetch)
   vi.stubGlobal('onMounted', onMounted)
   vi.stubGlobal('onUnmounted', onUnmounted)
+  vi.stubGlobal('useUserSession', () => ({
+    user: ref(sessionUserId ? { id: sessionUserId } : null),
+  }))
 }
 
 function leaderboardResult(
@@ -106,6 +113,7 @@ async function mountLeaderboard() {
 }
 
 beforeEach(() => {
+  sessionUserId = null
   stubNuxtGlobals()
   mockUseFetch.mockClear()
   fetchResults = []
@@ -165,6 +173,49 @@ describe('leaderboard page', () => {
       const link = wrapper.find('tbody a')
       expect(link.attributes('href')).toBe('/profile/github_42')
       expect(link.text()).toBe('linus')
+    })
+
+    it('highlights the viewing player’s own row with a "you" marker', async () => {
+      sessionUserId = 'p2'
+      fetchResults = [
+        leaderboardResult([
+          makeEntry({ rank: 1, id: 'p1', username: 'alpha' }),
+          makeEntry({ rank: 2, id: 'p2', username: 'me' }),
+        ]),
+        activeResult([]),
+      ]
+      const wrapper = await mountLeaderboard()
+
+      const rows = wrapper.findAll('tbody tr')
+      // only my row is flagged
+      expect(rows[0]!.attributes('data-self')).toBeUndefined()
+      expect(rows[1]!.attributes('data-self')).toBe('true')
+      expect(rows[1]!.text()).toContain('you')
+    })
+
+    it('flags no row when the viewer is anonymous or absent from the board', async () => {
+      sessionUserId = null
+      fetchResults = [
+        leaderboardResult([makeEntry({ id: 'p1' }), makeEntry({ rank: 2, id: 'p2' })]),
+        activeResult([]),
+      ]
+      const wrapper = await mountLeaderboard()
+      expect(wrapper.find('tbody tr[data-self="true"]').exists()).toBe(false)
+    })
+
+    it('exposes accessible table semantics (caption + scoped headers + row headers)', async () => {
+      sessionUserId = null
+      fetchResults = [
+        leaderboardResult([makeEntry({ id: 'p1', username: 'alpha' })]),
+        activeResult([]),
+      ]
+      const wrapper = await mountLeaderboard()
+
+      expect(wrapper.find('caption').text()).toContain('Top players')
+      expect(wrapper.findAll('th[scope="col"]').length).toBe(6)
+      const rowHeader = wrapper.find('tbody th[scope="row"]')
+      expect(rowHeader.exists()).toBe(true)
+      expect(rowHeader.text()).toContain('alpha')
     })
   })
 

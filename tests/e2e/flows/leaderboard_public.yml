@@ -1,0 +1,31 @@
+version: 1
+name: leaderboard_public
+intent: The /leaderboard is public — an anonymous visitor sees the ranking table (header + columns)
+  without logging in, and the page renders without requiring a session.
+mode: normal
+metadata:
+  feature: leaderboard
+  tags:
+    - leaderboard
+    - public
+outcomes:
+  - id: leaderboard_renders_anon
+    description: the leaderboard panel renders for an anonymous visitor
+    verify:
+      text:
+        contains: top players by rating
+  - id: columns_render
+    description: the ranking table columns are present
+    verify:
+      text:
+        contains: Rating
+steps:
+  - id: open_leaderboard
+    open:
+      path: /leaderboard
+      waitUntil: domcontentloaded
+  - id: wait_for_panel
+    wait:
+      text: top players by rating
+      timeoutMs: 10000
+contractHash: sha256:e3d1954423edcaaf5facb826887eb8d7041d3416ad5a7e8f953c81e3eb78570c

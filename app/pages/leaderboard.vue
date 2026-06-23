@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatTickClock } from '~/utils/gameClock'
+
 interface LeaderboardEntry {
   rank: number
   id: string
@@ -47,11 +49,13 @@ onUnmounted(() => {
 const players = computed(() => data.value?.leaderboard ?? [])
 const activeGames = computed(() => activeData.value?.games ?? [])
 
+// Highlight the viewing player's own row so they can spot their rank at a glance
+// (null when anonymous — the leaderboard is public).
+const { user } = useUserSession()
+const meId = computed(() => (user.value?.id as string | undefined) ?? null)
+
 function gameTime(tick: number): string {
-  const totalSeconds = tick * 4
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+  return formatTickClock(tick)
 }
 </script>
 
@@ -105,34 +109,43 @@ function gameTime(tick: number): string {
       </div>
 
       <table v-else class="w-full border-collapse text-xs">
+        <caption class="sr-only">
+          Top players ranked by rating
+        </caption>
         <thead>
           <tr>
             <th
+              scope="col"
               class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               #
             </th>
             <th
+              scope="col"
               class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               Player
             </th>
             <th
+              scope="col"
               class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               Rating
             </th>
             <th
+              scope="col"
               class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               W
             </th>
             <th
+              scope="col"
               class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               L
             </th>
             <th
+              scope="col"
               class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
               Win%
@@ -140,11 +153,19 @@ function gameTime(tick: number): string {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in players" :key="p.id">
+          <tr
+            v-for="p in players"
+            :key="p.id"
+            :class="{ 'bg-ability/10 font-bold': p.id === meId }"
+            :data-self="p.id === meId ? 'true' : undefined"
+          >
             <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ p.rank }}</td>
-            <td class="border-b border-border/50 px-1.5 py-1">
+            <th scope="row" class="border-b border-border/50 px-1.5 py-1 text-left font-normal">
               <NuxtLink :to="`/profile/${p.id}`" class="text-ability">{{ p.username }}</NuxtLink>
-            </td>
+              <span v-if="p.id === meId" class="ml-1 text-[0.65rem] text-radiant">
+                &lt; you<span class="sr-only"> (this is your rank)</span>
+              </span>
+            </th>
             <td class="border-b border-border/50 px-1.5 py-1 font-bold text-gold">{{ p.mmr }}</td>
             <td class="border-b border-border/50 px-1.5 py-1 text-radiant">{{ p.wins }}</td>
             <td class="border-b border-border/50 px-1.5 py-1 text-dire">
