@@ -416,6 +416,10 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (!hero) return null
       const ability = hero.abilities[command.ability]
       if (!ability) return 'Unknown ability'
+      // Auto-leveling gate (mirrors the server's getAbilityLevel): Q/W/E unlock
+      // at level 1, the ultimate (R) at level 6 — reject early so the player
+      // doesn't waste their one action this tick on a server-rejected cast.
+      if (command.ability === 'r' && player.level < 6) return 'Ultimate unlocks at level 6'
       const cd = player.cooldowns[command.ability]
       if (cd > 0) return `${ability.name} on cooldown (${cd} tick${cd === 1 ? '' : 's'})`
       if (player.mp < ability.manaCost) {

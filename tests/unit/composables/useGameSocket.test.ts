@@ -142,6 +142,33 @@ describe('useGameSocket', () => {
       expect(connected.value).toBe(true)
     })
 
+    it('does not build an orphan socket when disconnect happens during the ticket fetch', async () => {
+      // Deferred fetch so we can interleave disconnect() while _open() is awaiting.
+      let resolveFetch: ((v: unknown) => void) | undefined
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => new Promise((r) => (resolveFetch = r))),
+      )
+      MockWebSocket.last = null
+
+      const { connect, disconnect, connected } = useGameSocket()
+      connect('game-1', 'player-1') // _open() now suspended on the ticket fetch
+      expect(MockWebSocket.last).toBeNull() // socket is built only AFTER the ticket
+
+      disconnect() // cancel before the ticket resolves
+      resolveFetch?.({ ok: true, json: async () => ({ ticket: 't' }) })
+      await vi.advanceTimersByTimeAsync(1) // let _open resume past the await
+
+      // The epoch guard must abort — no orphan socket, no live connection.
+      expect(MockWebSocket.last).toBeNull()
+      expect(connected.value).toBe(false)
+
+      // Drop the deferred-fetch stub so it can't leak into later tests (the
+      // file's afterEach restores spies but not stubGlobal); beforeEach re-stubs
+      // the WebSocket/window globals for the next test.
+      vi.unstubAllGlobals()
+    })
+
     it('sets gameId and playerId on the game store', async () => {
       const { useGameStore } = await import('../../../app/stores/game')
       const gameStore = useGameStore()

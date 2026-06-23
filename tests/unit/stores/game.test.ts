@@ -105,6 +105,31 @@ describe('Game Store', () => {
     })
   })
 
+  describe('delta merge (updateFromTick)', () => {
+    it('retains phase + teams when a steady-state delta omits them', () => {
+      const store = useGameStore()
+      // Full tick first (server always sends phase + teams on a full/changed tick).
+      store.updateFromTick(makeTickMessage({ phase: 'playing' }))
+      expect(store.phase).toBe('playing')
+      expect(store.teams).not.toBeNull()
+
+      // A delta-compressed steady tick OMITS phase + teams (unchanged). They must
+      // be preserved, not clobbered to undefined.
+      store.updateFromTick({
+        type: 'tick_state',
+        tick: 11,
+        state: {
+          players: { p1: makePlayer() },
+          zones: { 'mid-t1-rad': makeZone('mid-t1-rad') },
+        },
+      } as never)
+
+      expect(store.phase).toBe('playing')
+      expect(store.teams).not.toBeNull()
+      expect(store.teams?.radiant).toBeDefined()
+    })
+  })
+
   describe('computed getters', () => {
     describe('currentZone', () => {
       it('returns null when no player', () => {

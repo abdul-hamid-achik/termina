@@ -71,6 +71,7 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   let queueTimer: ReturnType<typeof setInterval> | null = null
+  let foundTransitionTimer: ReturnType<typeof setTimeout> | null = null
 
   async function joinQueue(mode: 'ranked_5v5' | 'quick_3v3' | '1v1' = 'ranked_5v5') {
     clearError()
@@ -216,8 +217,12 @@ export const useLobbyStore = defineStore('lobby', () => {
     }
     queueStatus.value = 'found'
     lobbyLog.info('Match found', { lobbyId: id })
-    // Transition to picking after a brief delay — guard against race with allPicksComplete
-    setTimeout(() => {
+    // Transition to picking after a brief delay — guard against race with
+    // allPicksComplete. Tracked + cleared in _reset/$dispose so a leave→rejoin
+    // within the 1.5s window can't fire this stale timer onto the new lobby.
+    if (foundTransitionTimer) clearTimeout(foundTransitionTimer)
+    foundTransitionTimer = setTimeout(() => {
+      foundTransitionTimer = null
       if (queueStatus.value === 'found') {
         queueStatus.value = 'picking'
         lobbyLog.debug('Transitioned to picking')
@@ -304,6 +309,10 @@ export const useLobbyStore = defineStore('lobby', () => {
       clearInterval(countdownTimer)
       countdownTimer = null
     }
+    if (foundTransitionTimer) {
+      clearTimeout(foundTransitionTimer)
+      foundTransitionTimer = null
+    }
     queueStatus.value = 'idle'
     queueTime.value = 0
     playersInQueue.value = 0
@@ -330,6 +339,10 @@ export const useLobbyStore = defineStore('lobby', () => {
     if (countdownTimer) {
       clearInterval(countdownTimer)
       countdownTimer = null
+    }
+    if (foundTransitionTimer) {
+      clearTimeout(foundTransitionTimer)
+      foundTransitionTimer = null
     }
   }
 

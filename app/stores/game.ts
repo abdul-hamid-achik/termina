@@ -264,10 +264,15 @@ export const useGameStore = defineStore('game', () => {
     lastTickAt.value = Date.now()
     _updateCountdown()
     _ensureCountdownTimer()
-    phase.value = state.phase
+    // phase + teams are delta-OMITTED when unchanged (StateDelta), so they must
+    // be merge-guarded like every field below — an unconditional assign clobbers
+    // them to undefined on every steady tick (blanks the score banner/scoreboard
+    // and corrupts any phase check). players + zones are always sent, so stay
+    // unconditional.
+    if (state.phase) phase.value = state.phase
     allPlayers.value = state.players
     visibleZones.value = state.zones
-    teams.value = state.teams
+    if (state.teams) teams.value = state.teams
     if (state.towers) towers.value = state.towers
     if (state.ancients) ancients.value = state.ancients
     if (state.creeps) creeps.value = state.creeps

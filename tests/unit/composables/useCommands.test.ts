@@ -1500,10 +1500,21 @@ describe('validateCommand', () => {
   })
 
   it('rejects cast without enough mana', () => {
-    // echo r costs 150 mana
-    const ctx = makeContext({ player: makePlayer({ mp: 100 }) })
+    // echo r costs 150 mana — level 6 so the ultimate is unlocked and the mana
+    // check (not the level gate) is what rejects.
+    const ctx = makeContext({ player: makePlayer({ mp: 100, level: 6 }) })
     const err = validateCommand({ type: 'cast', ability: 'r' }, ctx)
     expect(err).toMatch(/mana/)
+  })
+
+  it('rejects casting the ultimate before level 6', () => {
+    const ctx = makeContext({ player: makePlayer({ mp: 280, level: 5 }) })
+    expect(validateCommand({ type: 'cast', ability: 'r' }, ctx)).toMatch(/level 6/)
+  })
+
+  it('allows the ultimate at level 6 with mana', () => {
+    const ctx = makeContext({ player: makePlayer({ mp: 280, level: 6 }) })
+    expect(validateCommand({ type: 'cast', ability: 'r' }, ctx)).toBeNull()
   })
 
   it('allows cast with enough mana and no cooldown', () => {

@@ -25,6 +25,11 @@ export function useGameSocket() {
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let reconnectAttempts = 0
+  // Connection epoch: bumped on every _open() and on disconnect(), so an _open
+  // suspended on the async ticket fetch can detect it was superseded (a newer
+  // connect/_open) or cancelled (disconnect) and abort instead of building an
+  // orphan socket whose handlers write to the store after unmount/navigation.
+  let openGen = 0
   let currentGameId: string | null = null
   let currentPlayerId: string | null = null
   let lastPingTime = 0
@@ -47,6 +52,7 @@ export function useGameSocket() {
   }
 
   async function _open() {
+    const myGen = ++openGen
     if (ws) {
       ws.onclose = null
       ws.close()
@@ -63,6 +69,13 @@ export function useGameSocket() {
       }
     } catch {
       // Graceful degradation — try connecting without ticket
+    }
+
+    // Superseded (newer _open) or cancelled (disconnect cleared the target)
+    // while awaiting the ticket — do NOT build a now-orphan socket.
+    if (myGen !== openGen || !currentGameId || !currentPlayerId) {
+      connected.value = false
+      return
     }
 
     const wsBase = useWsOrigin()
@@ -223,6 +236,7 @@ export function useGameSocket() {
   }
 
   function disconnect() {
+    openGen++ // invalidate any _open() suspended on the ticket fetch
     _stopHeartbeat()
     _clearReconnect()
     reconnecting.value = false
