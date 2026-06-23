@@ -2,6 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import type { ClientMessage, ServerMessage } from '~~/shared/types/protocol'
 import { useGameStore } from '~/stores/game'
 import { socketLog } from '~/utils/logger'
+import { reconnectDelay } from '~/utils/reconnect'
 
 const MAX_RECONNECT_DELAY = 30_000
 const MAX_RECONNECT_ATTEMPTS = 20
@@ -296,7 +297,7 @@ export function useGameSocket() {
       return
     }
     reconnecting.value = true
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY)
+    const delay = reconnectDelay(reconnectAttempts, 1000, MAX_RECONNECT_DELAY)
     reconnectAttempts++
     reconnectTimer = setTimeout(() => {
       _open()
