@@ -224,13 +224,14 @@ function eventAriaLabel(line: CombatLine): string {
       </button>
     </div>
 
-    <div
+    <button
       v-if="pinned"
+      type="button"
       class="absolute inset-x-0 top-5 z-[1] cursor-pointer border-b border-border bg-bg-secondary px-2 py-0.5 text-center text-[0.7rem] text-text-dim"
       @click="togglePin"
     >
       [scroll pinned — click to resume]
-    </div>
+    </button>
 
     <div
       ref="logEl"

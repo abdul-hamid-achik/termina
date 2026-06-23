@@ -298,10 +298,14 @@ async function disconnectProvider(provider: string) {
     <TerminalPanel title="Account">
       <form class="flex flex-col gap-3" @submit.prevent="saveUsername">
         <div class="flex flex-col gap-1">
-          <label class="font-mono text-xs uppercase tracking-wider text-text-dim">
+          <label
+            for="settings-username"
+            class="font-mono text-xs uppercase tracking-wider text-text-dim"
+          >
             <span class="text-radiant">$</span> username
           </label>
           <input
+            id="settings-username"
             v-model="usernameInput"
             type="text"
             autocomplete="username"
@@ -376,10 +380,14 @@ async function disconnectProvider(provider: string) {
 
         <!-- Current password (only if user already has one) -->
         <div v-if="hasPassword" class="flex flex-col gap-1">
-          <label class="font-mono text-xs uppercase tracking-wider text-text-dim">
+          <label
+            for="settings-current-password"
+            class="font-mono text-xs uppercase tracking-wider text-text-dim"
+          >
             <span class="text-radiant">$</span> current password
           </label>
           <input
+            id="settings-current-password"
             v-model="currentPassword"
             type="password"
             autocomplete="current-password"
@@ -390,10 +398,14 @@ async function disconnectProvider(provider: string) {
 
         <!-- New password -->
         <div class="flex flex-col gap-1">
-          <label class="font-mono text-xs uppercase tracking-wider text-text-dim">
+          <label
+            for="settings-new-password"
+            class="font-mono text-xs uppercase tracking-wider text-text-dim"
+          >
             <span class="text-radiant">$</span> new password
           </label>
           <input
+            id="settings-new-password"
             v-model="newPassword"
             type="password"
             autocomplete="new-password"
@@ -407,10 +419,14 @@ async function disconnectProvider(provider: string) {
 
         <!-- Confirm password -->
         <div class="flex flex-col gap-1">
-          <label class="font-mono text-xs uppercase tracking-wider text-text-dim">
+          <label
+            for="settings-confirm-password"
+            class="font-mono text-xs uppercase tracking-wider text-text-dim"
+          >
             <span class="text-radiant">$</span> confirm password
           </label>
           <input
+            id="settings-confirm-password"
             v-model="confirmPassword"
             type="password"
             autocomplete="new-password"

@@ -42,10 +42,14 @@ async function submit() {
             Enter your username and we'll email a reset link to the address on your account.
           </p>
           <div class="flex flex-col gap-1">
-            <label class="font-mono text-xs uppercase tracking-wider text-text-dim">
+            <label
+              for="forgot-username"
+              class="font-mono text-xs uppercase tracking-wider text-text-dim"
+            >
               <span class="text-radiant">$</span> username
             </label>
             <input
+              id="forgot-username"
               v-model="username"
               type="text"
               autocomplete="username"

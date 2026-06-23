@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { HEROES } from '~~/shared/constants/heroes'
 import { heroPixelData } from './pixelData'
 
 const props = withDefaults(
@@ -9,6 +10,10 @@ const props = withDefaults(
   }>(),
   { size: 48 },
 )
+
+// Canvas content is opaque to assistive tech, so give the avatar an accessible
+// name from the hero registry (falls back to the raw id for unknown heroes).
+const label = computed(() => HEROES[props.heroId]?.name ?? props.heroId)
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 
@@ -44,6 +49,8 @@ watch(() => props.heroId, draw)
 <template>
   <div
     class="inline-flex shrink-0 items-center justify-center overflow-hidden border border-border bg-bg-secondary shadow-glow-highlight"
+    role="img"
+    :aria-label="label"
     :style="{
       width: `${size}px`,
       height: `${size}px`,
@@ -51,6 +58,7 @@ watch(() => props.heroId, draw)
   >
     <canvas
       ref="canvas"
+      aria-hidden="true"
       class="block"
       :style="{
         width: `${size}px`,
