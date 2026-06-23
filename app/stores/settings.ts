@@ -107,7 +107,6 @@ export const useSettingsStore = defineStore('settings', () => {
       if (typeof data.audioEnabled === 'boolean') audioEnabled.value = data.audioEnabled
       if (typeof data.audioVolume === 'number') audioVolume.value = data.audioVolume
       if (typeof data.quickCastEnabled === 'boolean') quickCastEnabled.value = data.quickCastEnabled
-      if (data.audioEnabled === 'boolean') audioEnabled.value = data.audioEnabled
       // HUD prefs are additive: payloads written before this existed simply
       // have no `hud` key and keep the defaults. Each field is validated
       // independently so a partial/corrupt blob degrades gracefully.
