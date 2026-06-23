@@ -32,6 +32,20 @@ describe('InventoryBar', () => {
       wrapper.unmount()
     })
 
+    it('exposes a filled slot as a keyboard-operable button and uses it on Enter', async () => {
+      mockPointer(false)
+      const wrapper = mountBar()
+      const slot = wrapper.find('[data-testid="inventory-slot-0"]')
+
+      expect(slot.attributes('role')).toBe('button')
+      expect(slot.attributes('tabindex')).toBe('0')
+      expect(slot.attributes('aria-label')).toContain('Healing Salve')
+
+      await slot.trigger('keydown.enter')
+      expect(wrapper.emitted('use')).toEqual([[0, 'healing_salve']])
+      wrapper.unmount()
+    })
+
     it('shows tooltip on hover with keyboard hint and no [USE] button', async () => {
       mockPointer(false)
       const wrapper = mountBar()

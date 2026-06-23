@@ -50,6 +50,9 @@ const historyIndex = ref(-1)
 const open = ref(false)
 const selectedIndex = ref(0)
 const listEl = ref<HTMLDivElement>()
+// Combobox ARIA wiring: the input owns the listbox and points at the active
+// option so screen readers announce suggestions + arrow-key navigation.
+const LISTBOX_ID = 'cmd-suggestion-listbox'
 
 const gameContext = computed<GameContext>(() => ({
   player: props.player ?? null,
@@ -440,12 +443,18 @@ onUnmounted(() => {
     <!-- Suggestions dropdown -->
     <div
       v-if="open && suggestions.length > 0"
+      :id="LISTBOX_ID"
       ref="listEl"
+      role="listbox"
+      aria-label="Command suggestions"
       class="absolute inset-x-0 bottom-full z-10 max-h-[200px] overflow-y-auto border border-border bg-bg-panel"
     >
       <div
         v-for="(s, i) in suggestions"
+        :id="`cmd-opt-${i}`"
         :key="s.text"
+        role="option"
+        :aria-selected="i === selectedIndex"
         class="flex cursor-pointer items-center gap-2 px-3 py-1 font-mono text-[0.8rem]"
         :class="[
           i === selectedIndex
@@ -502,6 +511,13 @@ onUnmounted(() => {
         v-model="input"
         data-testid="command-input-field"
         aria-label="Command input"
+        role="combobox"
+        aria-autocomplete="list"
+        :aria-expanded="open && suggestions.length > 0"
+        :aria-controls="LISTBOX_ID"
+        :aria-activedescendant="
+          open && suggestions.length > 0 ? `cmd-opt-${selectedIndex}` : undefined
+        "
         class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
         :placeholder="
           !canAct

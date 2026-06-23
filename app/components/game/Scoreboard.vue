@@ -168,9 +168,11 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
               <div class="scoreboard__col scoreboard__col--status">
                 <template v-if="player.alive">
                   <span
+                    aria-hidden="true"
                     class="scoreboard__alive-dot"
                     :class="`scoreboard__alive-dot--${block.team}`"
                   />
+                  <span class="sr-only">Alive</span>
                 </template>
                 <template v-else>
                   <span class="scoreboard__dead-label">{{
