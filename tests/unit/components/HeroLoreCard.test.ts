@@ -3,8 +3,20 @@ import { mount } from '@vue/test-utils'
 import HeroLoreCard from '../../../app/components/lore/HeroLoreCard.vue'
 import type { HeroRole } from '../../../shared/types/hero'
 
-function mountCard(hero: { name: string; role: HeroRole; lore: string }) {
-  return mount(HeroLoreCard, { props: { hero } })
+// HeroLoreCard renders a <NuxtLink> for its TRAIN deep-link; the component
+// vitest project has no Nuxt auto-import, so stub it as a real anchor mirroring
+// the `to` → href contract.
+const NuxtLinkStub = {
+  name: 'NuxtLink',
+  props: ['to'],
+  template: '<a :href="to"><slot /></a>',
+}
+
+function mountCard(hero: { id?: string; name: string; role: HeroRole; lore: string }) {
+  return mount(HeroLoreCard, {
+    props: { hero: { id: 'echo', ...hero } },
+    global: { stubs: { NuxtLink: NuxtLinkStub } },
+  })
 }
 
 describe('HeroLoreCard', () => {
@@ -19,6 +31,19 @@ describe('HeroLoreCard', () => {
     expect(text).toContain('Echo')
     expect(text).toContain('assassin') // CSS uppercases it visually
     expect(text).toContain('A ghost in the wire, striking from the dark.')
+  })
+
+  it('links TRAIN to the hero console deep-linked to this hero', () => {
+    const wrapper = mountCard({
+      id: 'daemon',
+      name: 'Daemon',
+      role: 'assassin',
+      lore: 'lore',
+    })
+    const link = wrapper.find('a[href="/heroes?hero=daemon"]')
+    expect(link.exists()).toBe(true)
+    expect(link.text()).toContain('TRAIN')
+    expect(link.text()).toContain('Daemon')
   })
 
   // Role themes the roster so it reads at a glance — assert each mapping.
