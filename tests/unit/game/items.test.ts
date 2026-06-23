@@ -136,4 +136,60 @@ describe('Items Registry', () => {
       }
     })
   })
+
+  describe('data integrity (no silent typos / broken references)', () => {
+    const STAT_KEYS = ['hp', 'mp', 'attack', 'defense', 'magicResist', 'moveSpeed']
+    const TARGET_TYPES = ['enemy', 'ally', 'self', 'zone']
+
+    it('stats use only known keys with finite numeric values', () => {
+      // A typo'd stat key (e.g. "armour") is silently ignored by the engine + UI.
+      const bad: string[] = []
+      for (const item of Object.values(ITEMS)) {
+        for (const [k, v] of Object.entries(item.stats)) {
+          if (!STAT_KEYS.includes(k)) bad.push(`${item.id}: unknown stat "${k}"`)
+          else if (typeof v !== 'number' || !Number.isFinite(v)) bad.push(`${item.id}.${k} = ${v}`)
+        }
+      }
+      expect(bad, bad.join('; ')).toEqual([])
+    })
+
+    it('costs are non-negative', () => {
+      for (const item of Object.values(ITEMS)) {
+        expect(item.cost, item.id).toBeGreaterThanOrEqual(0)
+      }
+    })
+
+    it('active targetType (when set) is a valid kind, and cooldown is non-negative', () => {
+      // targetType drives client auto-targeting for `use <item>`; a bad value
+      // means an offensive active silently rejects server-side.
+      const bad: string[] = []
+      for (const item of Object.values(ITEMS)) {
+        if (!item.active) continue
+        if (item.active.cooldownTicks < 0) bad.push(`${item.id}: negative cooldown`)
+        const tt = item.active.targetType
+        if (tt !== undefined && !TARGET_TYPES.includes(tt)) {
+          bad.push(`${item.id}: bad targetType "${tt}"`)
+        }
+      }
+      expect(bad, bad.join('; ')).toEqual([])
+    })
+
+    it('buildsFrom references only real items', () => {
+      const bad: string[] = []
+      for (const item of Object.values(ITEMS)) {
+        for (const comp of item.buildsFrom ?? []) {
+          if (!(comp in ITEMS)) bad.push(`${item.id}: buildsFrom unknown "${comp}"`)
+        }
+      }
+      expect(bad, bad.join('; ')).toEqual([])
+    })
+
+    it('maxStacks (when set) is at least 1', () => {
+      for (const item of Object.values(ITEMS)) {
+        if (item.maxStacks !== undefined) {
+          expect(item.maxStacks, item.id).toBeGreaterThanOrEqual(1)
+        }
+      }
+    })
+  })
 })
