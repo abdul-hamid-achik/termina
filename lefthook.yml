@@ -1,5 +1,6 @@
-# Jobs run sequentially (no `parallel: true`) so lint --fix and format --write
-# don't race on the same staged files.
+# pre-commit jobs run sequentially (no `parallel: true`) so lint --fix and
+# format --write don't race on the same staged files. The unit suite is added
+# last and is glob-gated, so a docs/config-only commit stays instant.
 pre-commit:
   jobs:
     - name: lint
@@ -15,8 +16,26 @@ pre-commit:
     - name: knip
       run: bunx knip --no-progress
 
+    # Unit suite (vitest, node env, ~5s). Glob-gated: runs the full suite only
+    # when code is staged, so docs/config-only commits skip it.
+    - name: unit
+      glob: "*.{ts,tsx,vue,mjs,cjs,mts,cts}"
+      run: bun run test:unit -- --run
+
+# pre-push runs in parallel — typecheck (vue-tsc) is the long pole at ~5-9 min,
+# so the unit + component suites finish well within its window for free. All
+# three are glob-gated, so a docs/config-only push skips them entirely.
 pre-push:
   parallel: true
   jobs:
-    - name: test
+    - name: unit
+      glob: "*.{ts,tsx,vue,mjs,cjs,mts,cts}"
       run: bun run test:unit -- --run
+
+    - name: components
+      glob: "*.{ts,tsx,vue,mjs,cjs,mts,cts}"
+      run: bun run test:components -- --run
+
+    - name: typecheck
+      glob: "*.{ts,tsx,vue,mjs,cjs,mts,cts}"
+      run: bun run typecheck
