@@ -6,7 +6,7 @@
   "regions": ["iad1"],
   "rewrites": [
     {
-      "source": "/api/((?!auth/github|auth/discord).*)",
+      "source": "/api/(.*)",
       "destination": "https://api.terminamoba.com/api/$1"
     }
   ],

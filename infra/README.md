@@ -74,13 +74,18 @@ section below.
    commit-safe ciphertext CI decrypts — see [CI](#ci)). Re-seal when a secret changes.
 7. **First deploy**: `tvault run -- pulumi up` locally, or push to `main` (CI deploys
    via the sealed file + `TVAULT_IDENTITY_KEY`).
-8. **Wire the frontend** (same-origin API proxy — default, recommended): **leave
-   `NUXT_PUBLIC_API_URL` empty** and set `NUXT_PUBLIC_WS_URL` = `pulumi stack
-   output vercelWsUrl`. The browser then calls `www/api/...` first-party and
-   `vercel.json` `rewrites` forward it to the DO server (no CORS, no
-   cross-origin cookie). Ensure **`NUXT_SESSION_PASSWORD` is byte-identical on
-   Vercel and DO** — OAuth seals the session cookie on Vercel and DO must
-   unseal it (and vice-versa for credentials login). Redeploy Vercel.
+8. **Wire the frontend** (same-origin API proxy — default, recommended): Vercel
+   is a pure frontend; **DO holds ALL backend secrets and runs the entire API,
+   including OAuth.** On Vercel, **leave `NUXT_PUBLIC_API_URL` empty** (so the
+   browser calls `www/api/...` first-party and `vercel.json` `rewrites` forward
+   EVERY `/api/*` — auth included — to DO; no CORS, no cross-origin cookie) and
+   set `NUXT_PUBLIC_WS_URL` = `pulumi stack output vercelWsUrl`. Also set
+   **`NUXT_SESSION_PASSWORD` on Vercel = the DO value** so Vercel's SSR (route
+   middleware / `useUserSession`) can read the DO-issued session cookie; it must
+   be byte-identical to DO's. OAuth runs on DO via the proxy, so the GitHub /
+   Discord OAuth apps must register the **`https://www.terminamoba.com/api/auth/<provider>`**
+   callback (DO derives `redirect_uri` from the proxied `x-forwarded-host` = www).
+   Redeploy Vercel.
    _(Direct cross-origin fallback: set `NUXT_PUBLIC_API_URL` = `vercelApiUrl`
    AND `NUXT_SESSION_COOKIE_DOMAIN=.terminamoba.com` on **both** sides — the
    client then calls `api.terminamoba.com` directly with credentials and a
