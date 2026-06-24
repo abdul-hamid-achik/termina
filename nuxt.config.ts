@@ -76,8 +76,14 @@ export default defineNuxtConfig({
       },
     },
     oauth: {
-      github: { clientId: '', clientSecret: '' },
-      discord: { clientId: '', clientSecret: '' },
+      // redirectURL is forced to the www frontend in prod (NUXT_OAUTH_*_REDIRECT_URL).
+      // Behind the Vercel→DO proxy, DO sees Host: api.terminamoba.com, so without
+      // an explicit redirectURL nuxt-auth-utils would derive an api.* callback —
+      // which mismatches the registered www callback and lands users on the api
+      // subdomain (breaking the same-origin cookie). Empty = derive from request
+      // (correct for same-origin dev).
+      github: { clientId: '', clientSecret: '', redirectURL: '' },
+      discord: { clientId: '', clientSecret: '', redirectURL: '' },
     },
     redis: { url: 'redis://localhost:6380' },
     database: { url: 'postgresql://termina:termina@localhost:5433/termina' },

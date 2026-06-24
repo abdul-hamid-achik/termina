@@ -66,6 +66,15 @@ const corsAllowedOrigins =
 // identical NUXT_SESSION_PASSWORD (the seal must be mutually decryptable).
 const sessionCookieDomain =
   process.env.NUXT_SESSION_COOKIE_DOMAIN ?? config.get('sessionCookieDomain') ?? ''
+// OAuth callbacks must resolve to the www frontend, NOT this api host. Behind the
+// Vercel→DO proxy DO sees Host: api.terminamoba.com, so nuxt-auth-utils would
+// otherwise derive an api.* redirect_uri — mismatching the registered www
+// callback and stranding users on the api subdomain. These are public URLs (not
+// secrets). Override the base via NUXT_OAUTH_REDIRECT_BASE / Pulumi config.
+const oauthRedirectBase =
+  process.env.NUXT_OAUTH_REDIRECT_BASE ??
+  config.get('oauthRedirectBase') ??
+  'https://www.terminamoba.com'
 
 // Transactional email (Resend). The from-address (NUXT_RESEND_FROM) + the public
 // app URL used in email links (NUXT_APP_URL = the frontend origin) are non-secret;
@@ -128,6 +137,19 @@ const envs: digitalocean.types.input.AppSpecServiceEnv[] = [
   ...optionalSecretEnv('NUXT_OAUTH_GITHUB_CLIENT_SECRET', 'githubClientSecret'),
   ...optionalSecretEnv('NUXT_OAUTH_DISCORD_CLIENT_ID', 'discordClientId'),
   ...optionalSecretEnv('NUXT_OAUTH_DISCORD_CLIENT_SECRET', 'discordClientSecret'),
+  // Force the OAuth callbacks onto the www frontend (see oauthRedirectBase).
+  {
+    key: 'NUXT_OAUTH_GITHUB_REDIRECT_URL',
+    value: `${oauthRedirectBase}/api/auth/github`,
+    scope: 'RUN_TIME',
+    type: 'GENERAL',
+  },
+  {
+    key: 'NUXT_OAUTH_DISCORD_REDIRECT_URL',
+    value: `${oauthRedirectBase}/api/auth/discord`,
+    scope: 'RUN_TIME',
+    type: 'GENERAL',
+  },
   ...optionalSecretEnv('NUXT_RESEND_API_KEY', 'resendApiKey'),
   ...optionalGeneralEnv('NUXT_RESEND_FROM', resendFrom || undefined),
   ...optionalGeneralEnv('NUXT_APP_URL', appPublicUrl || undefined),
