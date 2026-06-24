@@ -1,0 +1,48 @@
+version: 1
+name: tutorial_launch
+intent: >
+  A logged-in player on the home page clicks "PRACTICE VS BOTS" and is taken into a game at /play
+  (the one-lane tutorial vs bots launches). This guards the authed POST /api/game/tutorial
+  round-trip: a regression there bounces the player to /login (the 401 path) instead of /play.
+  Game-internal truth (ticks, bots, combat) is covered separately by `bun run test:gameplay`, NOT
+  here — this flow only asserts the launch navigation.
+mode: normal
+metadata:
+  feature: tutorial
+  tags:
+    - tutorial
+    - practice-vs-bots
+    - launch
+    - auth
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: lands_on_play
+    description: clicking PRACTICE VS BOTS navigates the authed player into the game at /play (a /play
+      URL is, by construction, not the /login bounce a 401 would produce)
+    verify:
+      url:
+        matches: /play
+steps:
+  - use: login
+  - id: open_home
+    open:
+      path: /
+      waitUntil: domcontentloaded
+  - id: await_home
+    wait:
+      text: where every command is a kill
+      timeoutMs: 10000
+  - id: confirm_logged_in
+    wait:
+      text: "[LOGOUT]"
+      timeoutMs: 10000
+  - id: click_practice
+    click:
+      by: selector
+      selector: '[data-testid="start-tutorial"]'
+  - id: await_left_home
+    wait:
+      notText: where every command is a kill
+      timeoutMs: 15000
+contractHash: sha256:14c87557d67038f9699b022e46e29865968b7c67b7aac203dc4bbfd2decef87a
