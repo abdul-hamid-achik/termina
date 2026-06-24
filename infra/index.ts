@@ -59,6 +59,13 @@ const appDomain = config.get('appDomain') ?? ''
 // tvault can inject it; else Pulumi config (set in Pulumi.<stack>.yaml).
 const corsAllowedOrigins =
   process.env.NUXT_CORS_ALLOWED_ORIGINS ?? config.get('corsAllowedOrigins') ?? ''
+// Cookie Domain shared across the www (Vercel) + api (DO) subdomains so the
+// nuxt-auth-utils session cookie is sent on cross-subdomain /api calls (e.g.
+// `.terminamoba.com`). Without it the cookie is host-only and authed /api calls
+// from www -> api 401. MUST be set identically on the Vercel deploy too, with an
+// identical NUXT_SESSION_PASSWORD (the seal must be mutually decryptable).
+const sessionCookieDomain =
+  process.env.NUXT_SESSION_COOKIE_DOMAIN ?? config.get('sessionCookieDomain') ?? ''
 
 // Transactional email (Resend). The from-address (NUXT_RESEND_FROM) + the public
 // app URL used in email links (NUXT_APP_URL = the frontend origin) are non-secret;
@@ -113,6 +120,7 @@ const envs: digitalocean.types.input.AppSpecServiceEnv[] = [
   { key: 'HOST', value: '0.0.0.0', scope: 'RUN_TIME', type: 'GENERAL' },
   { key: 'PORT', value: '3000', scope: 'RUN_TIME', type: 'GENERAL' },
   ...optionalGeneralEnv('NUXT_CORS_ALLOWED_ORIGINS', corsAllowedOrigins || undefined),
+  ...optionalGeneralEnv('NUXT_SESSION_COOKIE_DOMAIN', sessionCookieDomain || undefined),
   { key: 'NUXT_SESSION_PASSWORD', value: sessionPassword, scope: 'RUN_TIME', type: 'SECRET' },
   { key: 'NUXT_DATABASE_URL', value: databaseUrl, scope: 'RUN_TIME', type: 'SECRET' },
   { key: 'NUXT_REDIS_URL', value: redisUrl, scope: 'RUN_TIME', type: 'SECRET' },

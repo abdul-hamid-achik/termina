@@ -64,6 +64,15 @@ export default defineNuxtConfig({
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
+        // Empty = host-only cookie. This is correct for dev AND for the default
+        // production same-origin proxy (the browser only ever talks to www, so
+        // the cookie need not be shared). It is ONLY needed for the direct
+        // cross-origin fallback (NUXT_PUBLIC_API_URL set → the SPA calls
+        // api.terminamoba.com directly): then set NUXT_SESSION_COOKIE_DOMAIN=
+        // .terminamoba.com on BOTH deployments so the cookie is shared across
+        // www. and api. (www↔api are same-site, so SameSite=Lax suffices). In
+        // every mode NUXT_SESSION_PASSWORD must be identical on Vercel and DO.
+        domain: '',
       },
     },
     oauth: {

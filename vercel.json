@@ -4,6 +4,12 @@
   "outputDirectory": ".output/public",
   "framework": "nuxtjs",
   "regions": ["iad1"],
+  "rewrites": [
+    {
+      "source": "/api/((?!auth/github|auth/discord).*)",
+      "destination": "https://api.terminamoba.com/api/$1"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

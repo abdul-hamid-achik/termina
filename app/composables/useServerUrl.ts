@@ -38,3 +38,25 @@ export function useApiOrigin(): string {
   const config = useRuntimeConfig()
   return (config.public.apiUrl as string) || ''
 }
+
+/**
+ * Pure transform behind the `api-origin.client.ts` fetch shim.
+ *
+ * In the Vercel(www) + DO(api) split a relative `/api/...` call must be sent to
+ * the DO origin AND opt into credentials — otherwise the browser won't attach
+ * the shared-domain (`.terminamoba.com`) session cookie to the cross-origin
+ * request and every authed endpoint 401s. Non-API URLs, full URLs, and
+ * `Request`/`URL` objects pass through untouched (same-origin, no rewrite).
+ *
+ * Extracted as a pure function so it's unit-testable without the Nuxt runtime.
+ */
+export function rewriteApiRequest(
+  apiOrigin: string,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): [RequestInfo | URL, RequestInit | undefined] {
+  if (apiOrigin && typeof input === 'string' && input.startsWith('/api/')) {
+    return [`${apiOrigin}${input}`, { ...init, credentials: 'include' }]
+  }
+  return [input, init]
+}

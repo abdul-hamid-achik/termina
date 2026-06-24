@@ -74,11 +74,20 @@ section below.
    commit-safe ciphertext CI decrypts — see [CI](#ci)). Re-seal when a secret changes.
 7. **First deploy**: `tvault run -- pulumi up` locally, or push to `main` (CI deploys
    via the sealed file + `TVAULT_IDENTITY_KEY`).
-8. **Wire the frontend**: set Vercel `NUXT_PUBLIC_API_URL` = `pulumi stack output
-   vercelApiUrl` and `NUXT_PUBLIC_WS_URL` = `pulumi stack output vercelWsUrl`;
-   redeploy Vercel.
-9. **Lock down CORS**: set `NUXT_CORS_ALLOWED_ORIGINS` (on the DO side) to the
-   Vercel origin — until then the API echoes any origin.
+8. **Wire the frontend** (same-origin API proxy — default, recommended): **leave
+   `NUXT_PUBLIC_API_URL` empty** and set `NUXT_PUBLIC_WS_URL` = `pulumi stack
+   output vercelWsUrl`. The browser then calls `www/api/...` first-party and
+   `vercel.json` `rewrites` forward it to the DO server (no CORS, no
+   cross-origin cookie). Ensure **`NUXT_SESSION_PASSWORD` is byte-identical on
+   Vercel and DO** — OAuth seals the session cookie on Vercel and DO must
+   unseal it (and vice-versa for credentials login). Redeploy Vercel.
+   _(Direct cross-origin fallback: set `NUXT_PUBLIC_API_URL` = `vercelApiUrl`
+   AND `NUXT_SESSION_COOKIE_DOMAIN=.terminamoba.com` on **both** sides — the
+   client then calls `api.terminamoba.com` directly with credentials and a
+   shared-domain cookie; the CORS allowlist below becomes load-bearing.)_
+9. **Lock down CORS** (only load-bearing in the cross-origin fallback): set
+   `NUXT_CORS_ALLOWED_ORIGINS` (on the DO side) to the Vercel origin — until
+   then the API echoes any origin. Harmless to set under the proxy model.
 10. **Alerts**: set a team notification email in the DO console (alerts are
     pre-declared — see [Alerts](#alerts)).
 11. **Smoke test**: `curl https://<app>/api/health` → `{"status":"ok",…}`, then
@@ -230,12 +239,18 @@ tvault run -- pulumi up
 
 ### Wire the frontend to the server
 
-After `pulumi up`, read the outputs and set them on the Vercel project:
+After `pulumi up`, read the outputs and set them on the Vercel project. Under
+the default same-origin proxy, only `NUXT_PUBLIC_WS_URL` is set (the HTTP API is
+proxied via `vercel.json`, so `NUXT_PUBLIC_API_URL` stays empty):
 
 ```bash
-pulumi stack output vercelApiUrl   # -> NUXT_PUBLIC_API_URL (https://…)
 pulumi stack output vercelWsUrl    # -> NUXT_PUBLIC_WS_URL   (wss://…)
+# pulumi stack output vercelApiUrl # -> NUXT_PUBLIC_API_URL only for the direct
+#                                  #    cross-origin fallback (see step 8)
 ```
+
+The proxy target host in `vercel.json` (`rewrites[0].destination`) must match
+the App's custom domain (`api.terminamoba.com`); update it if the domain changes.
 
 ## CI
 
