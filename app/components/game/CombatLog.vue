@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
+import { buildTickStoryView } from '~/utils/combatLog'
 import type { CombatLine, CombatLineType, Salience } from '~/utils/combatLog'
 import { formatTickClock } from '~/utils/gameClock'
 
@@ -15,10 +16,11 @@ const lastEvent = ref<CombatLine | null>(null)
 const MAX_VISIBLE_EVENTS = 120
 
 // ── Filtering ──────────────────────────────────────────────────
-// A compact set of chips + a verbose/terse density toggle. `verbose`
-// defaults ON so the log is a superset of the old flat stream (terse is an
-// opt-in noise cut). Lines without a salience (system/chat/announcements)
-// are always shown regardless of density.
+// A compact set of chips + a story/verbose toggle. STORY is the default view:
+// everyone's farm noise folds into one dim line per tick and each tick's lines
+// are ordered by salience (your results first, kills/objectives loud). Verbose
+// shows the raw line-per-event stream. Lines without a salience (system/chat/
+// announcements) are always shown regardless of density.
 type Filter = 'all' | 'combat' | 'me' | 'obj'
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'ALL' },
@@ -27,7 +29,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: 'obj', label: 'OBJ' },
 ]
 const filter = ref<Filter>('all')
-const verbose = ref(true)
+const verbose = ref(false)
 
 const COMBAT_TYPES: CombatLineType[] = ['damage', 'healing', 'kill', 'ability']
 const OBJ_TYPES: CombatLineType[] = ['objective', 'victory']
@@ -48,17 +50,10 @@ function passesFilter(line: CombatLine): boolean {
   }
 }
 
-// Terse mode hides only bystander chip / farming noise: explicit world-salience
-// damage & gold. Kills, objectives, and anything about me/allies always stay.
-function passesDensity(line: CombatLine): boolean {
-  if (verbose.value) return true
-  if (line.salience === 'world' && (line.type === 'damage' || line.type === 'gold')) return false
-  return true
-}
-
-const filteredEvents = computed(() =>
-  props.events.filter((l) => passesFilter(l) && passesDensity(l)),
-)
+const filteredEvents = computed(() => {
+  const source = verbose.value ? props.events : buildTickStoryView(props.events)
+  return source.filter(passesFilter)
+})
 
 const visibleEvents = computed(() => {
   const e = filteredEvents.value
@@ -95,12 +90,15 @@ function scrollToBottom() {
   }
 }
 
+// Watch the ARRAY, not its length: the store caps events at 200, so length
+// saturates mid-game and a length-based watch silently stops firing — the
+// "auto-scroll died" bug. The parent recomputes the array every tick, so the
+// reference changes whenever content can have changed.
 watch(
-  () => props.events.length,
-  (newLen, oldLen) => {
-    if (newLen > (oldLen ?? 0) && props.events.length > 0) {
-      lastEvent.value = props.events[props.events.length - 1]!
-    }
+  () => props.events,
+  (events) => {
+    const last = events[events.length - 1]
+    if (last && last !== lastEvent.value) lastEvent.value = last
     nextTick(scrollToBottom)
   },
 )
@@ -131,6 +129,7 @@ const borderColors: Record<CombatLineType, string> = {
   ability: 'border-l-ability',
   victory: 'border-l-gold',
   objective: 'border-l-zone',
+  farm: 'border-l-transparent',
 }
 
 function typeColor(type: CombatLineType): string {
@@ -143,6 +142,7 @@ function typeColor(type: CombatLineType): string {
     ability: 'rgb(var(--color-ability))',
     victory: 'rgb(var(--color-gold))',
     objective: 'rgb(var(--color-zone))',
+    farm: 'rgb(var(--text-dim))',
   }
   return map[type] ?? 'rgb(var(--text-primary))'
 }
@@ -157,6 +157,7 @@ function typePrefix(type: CombatLineType): string {
     ability: '[ABILITY]',
     victory: '[VICTORY]',
     objective: '[OBJ]',
+    farm: '·',
   }
   return map[type] ?? ''
 }
@@ -263,6 +264,11 @@ function eventAriaLabel(line: CombatLine): string {
           :style="{ animationDelay: `${Math.min(i, 8) * 35}ms` }"
         >
           <span v-if="event.salience === 'mine-in'" class="mr-1 text-[0.6rem] font-bold text-dire"
+            >&#9656;YOU</span
+          >
+          <span
+            v-else-if="event.salience === 'mine-out' && event.type !== 'farm'"
+            class="mr-1 text-[0.6rem] font-bold text-self"
             >&#9656;YOU</span
           >
           <span

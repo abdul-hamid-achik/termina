@@ -91,7 +91,7 @@ describe('ActionResolver', () => {
       expect(error).toBeNull()
     })
 
-    it('should reject moving to non-adjacent zone', () => {
+    it('should allow moving to a distant zone (auto-path walks one hop per tick)', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ zone: 'mid-t1-rad' }) },
       })
@@ -99,7 +99,29 @@ describe('ActionResolver', () => {
         playerId: 'p1',
         command: { type: 'move', zone: 'bot-t1-rad' },
       })
-      expect(error).toBe('Cannot move to non-adjacent zone')
+      expect(error).toBeNull()
+    })
+
+    it('should reject moving to a zone outside the game map', () => {
+      // A subset map (one-lane style): only these zones exist in the live state,
+      // so a globally-valid zone off this map has no path and must be rejected.
+      const allZones = initializeZoneStates()
+      const subset = Object.fromEntries(
+        Object.entries(allZones).filter(([id]) =>
+          ['radiant-fountain', 'radiant-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad'].includes(
+            id,
+          ),
+        ),
+      )
+      const state = makeGameState({
+        zones: subset,
+        players: { p1: makePlayer({ zone: 'mid-t1-rad' }) },
+      })
+      const error = validateAction(state, {
+        playerId: 'p1',
+        command: { type: 'move', zone: 'bot-t1-rad' },
+      })
+      expect(error).toBe('No path to that zone')
     })
 
     it('should reject actions from dead players', () => {

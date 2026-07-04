@@ -7,10 +7,10 @@ import { ZONE_MAP } from '~~/shared/constants/zones'
 /**
  * An interactive, no-game map primer for /learn — renders the real in-game
  * AsciiMap over a static, fully-revealed topology so a newcomer can SEE the
- * zones, lanes, river, jungle, bases and Roshan, and learn the core movement
- * rule by feel: AsciiMap only makes adjacent zones clickable, so each click
- * "hops" the explorer exactly one zone — the one-adjacent-zone-per-tick rule
- * made tangible before they ever queue.
+ * zones, lanes, river, jungle, bases and Roshan, and learn the movement rule
+ * by feel: every zone is clickable (a real game auto-paths you there one zone
+ * per tick), adjacent zones glow brighter because those arrive next tick. The
+ * primer teleports the explorer to whatever they click — a real game walks.
  */
 const zones = buildMapPrimerZones()
 
@@ -25,8 +25,8 @@ const selectedName = computed(() => ZONE_MAP[selected.value]?.name ?? selected.v
 const adjacentCount = computed(() => ZONE_MAP[selected.value]?.adjacentTo.length ?? 0)
 
 function onZoneClick(id: string) {
-  // AsciiMap only emits for adjacent (clickable) zones, so this is always a
-  // single legal hop — exactly what a move command does in a real game.
+  // Any zone is a legal order (auto-path); the primer just jumps the explorer
+  // there so the topology can be browsed quickly.
   selected.value = id
 }
 </script>
@@ -44,9 +44,10 @@ function onZoneClick(id: string) {
     <p class="text-[0.75rem] text-text-dim" data-testid="map-primer-caption">
       Standing in <span class="text-self">{{ selectedName }}</span> —
       <span class="text-radiant">{{ adjacentCount }}</span> adjacent zone{{
-        adjacentCount === 1 ? '' : 's'
+        adjacentCount === 1 ? ' arrives' : 's arrive'
       }}
-      reachable next tick. Click a highlighted (dashed) zone to hop there, one zone per tick.
+      next tick (bright dashed). In a game you can order a move to ANY zone — your hero walks there
+      one zone per tick.
     </p>
   </div>
 </template>

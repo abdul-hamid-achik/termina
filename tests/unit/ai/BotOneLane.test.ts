@@ -159,11 +159,10 @@ describe('bots on the one-lane map', () => {
         const p = state.players[b.id]
         if (p) expect(validZones.has(p.zone)).toBe(true)
       }
-      // A bot trying to walk off the lane would surface as a 'non-adjacent'
-      // rejection — forceLane='mid' must keep that from ever happening.
-      offMapRejections += result.rejectedActions.filter((r) =>
-        r.reason.includes('non-adjacent'),
-      ).length
+      // A bot trying to walk off the lane would surface as a 'No path'
+      // rejection (auto-path validation) — forceLane='mid' must keep that
+      // from ever happening.
+      offMapRejections += result.rejectedActions.filter((r) => r.reason.includes('No path')).length
 
       // Forward progress: a radiant bot reaches the river or the enemy half.
       if (

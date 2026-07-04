@@ -35,6 +35,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Replay not found' })
   }
 
+  // Replays are post-game only. Mid-game snapshots are written every N ticks
+  // for crash recovery and carry the FULL unfogged state (positions, gold,
+  // items, queued auto-path orders) — serving them while the game runs would
+  // be a free maphack for anyone polling this public endpoint.
+  if (snap.state.phase !== 'ended') {
+    throw createError({ statusCode: 403, message: 'Replay available after the game ends' })
+  }
+
   const actions = await Effect.runPromise(readActions(runtime.redisService, gameId))
 
   return {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { formatRoshan, formatRunes, formatAegis } from '~/utils/strategy'
+import { buffLabel } from '~/utils/buffs'
 import type { RoshanState, RuneState } from '~~/shared/types/game'
 
 const props = defineProps<{
@@ -45,7 +46,8 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
         :class="rune.live.length ? 'text-ability text-glow-ability font-bold' : 'text-text-dim'"
       >
         <template v-if="rune.live.length"
-          >{{ rune.live[0]!.type }} · {{ rune.live[0]!.expiresIn }}t</template
+          ><!-- buffLabel: 'dd' → 'Double Damage', 'invis' → 'Invisible' -->
+          {{ buffLabel(rune.live[0]!.type) }} · {{ rune.live[0]!.expiresIn }}t</template
         >
         <template v-else>next {{ rune.nextIn }}t</template>
       </span>

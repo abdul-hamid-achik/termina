@@ -4,8 +4,19 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import WarRoom from '../../../app/components/game/WarRoom.vue'
 import { useGameStore } from '../../../app/stores/game'
+import { useSettingsStore } from '../../../app/stores/settings'
 import { makeTickMessage, makeRoster, makePlayer, makeZone } from '../../../app/stories/fixtures'
 import type { ZoneRuntimeState } from '../../../shared/types/game'
+
+// WarRoom now reads useSettingsStore (the collapsible roster is a HUD
+// setting that auto-persists); stub localStorage so no state leaks between
+// tests through happy-dom's real storage.
+const mockStorage = new Map<string, string>()
+vi.stubGlobal('localStorage', {
+  getItem: vi.fn((k: string) => mockStorage.get(k) ?? null),
+  setItem: vi.fn((k: string, v: string) => void mockStorage.set(k, v)),
+  removeItem: vi.fn((k: string) => void mockStorage.delete(k)),
+})
 
 // WarRoom is a store-connected container; its leaf panels (ObjectiveTicker,
 // EnemyThreatSheet, Sparkline) are pure and tested elsewhere. We stub them with
@@ -57,13 +68,21 @@ function seedStore(opts: Parameters<typeof makeTickMessage>[0] = {}) {
   return store
 }
 
+/** The roster is collapsed by default (simplified HUD); expand it for tests
+ *  that assert the ally/enemy sheets. */
+function expandRoster() {
+  useSettingsStore().setHud('rosterExpanded', true)
+}
+
 beforeEach(() => {
   setActivePinia(createPinia())
+  mockStorage.clear()
 })
 
 describe('WarRoom', () => {
-  it('renders the war-room shell with all four sections', () => {
+  it('renders the war-room shell with all four sections when the roster is expanded', () => {
     seedStore()
+    expandRoster()
     const wrapper = mountWarRoom()
     expect(wrapper.find('[data-testid="war-room"]').exists()).toBe(true)
     const text = wrapper.text()
@@ -75,11 +94,72 @@ describe('WarRoom', () => {
 
   it('forwards the ally roster (excluding self) to the ally status sheet', () => {
     seedStore()
+    expandRoster()
     const wrapper = mountWarRoom()
     const ally = wrapper.find('[data-testid="ally-status-stub"]')
     expect(ally.exists()).toBe(true)
     // makeRoster() seeds 5 radiant; p1 is the local player, so 4 allies remain.
     expect(ally.attributes('data-ally-count')).toBe('4')
+  })
+
+  describe('collapsible roster', () => {
+    it('collapses the roster to a slim [+] row by default (standard preset)', () => {
+      seedStore()
+      const wrapper = mountWarRoom()
+      // The always-on readouts stay.
+      const text = wrapper.text()
+      expect(text).toContain('Net Worth')
+      expect(text).toContain('Objectives')
+      // The roster sheets are gone, replaced by the expand row.
+      expect(wrapper.find('[data-testid="war-room-roster"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="ally-status-stub"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="enemy-threat-stub"]').exists()).toBe(false)
+      const toggle = wrapper.find('[data-testid="war-room-roster-toggle"]')
+      expect(toggle.exists()).toBe(true)
+      expect(toggle.text()).toContain('[+]')
+      expect(toggle.text()).toContain('Allies & Enemy Threat')
+      expect(toggle.attributes('aria-expanded')).toBe('false')
+    })
+
+    it('expands on click via the settings store (preset re-derives to custom)', async () => {
+      seedStore()
+      const settings = useSettingsStore()
+      const wrapper = mountWarRoom()
+
+      await wrapper.find('[data-testid="war-room-roster-toggle"]').trigger('click')
+
+      // The toggle went through setHud → persists + preset becomes custom.
+      expect(settings.hud.rosterExpanded).toBe(true)
+      expect(settings.hudPreset).toBe('custom')
+      expect(wrapper.find('[data-testid="war-room-roster"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="ally-status-stub"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="enemy-threat-stub"]').exists()).toBe(true)
+      const toggle = wrapper.find('[data-testid="war-room-roster-toggle"]')
+      expect(toggle.text()).toContain('[−]')
+      expect(toggle.attributes('aria-expanded')).toBe('true')
+    })
+
+    it('collapses again from the expanded [−] affordance', async () => {
+      seedStore()
+      expandRoster()
+      const settings = useSettingsStore()
+      const wrapper = mountWarRoom()
+      expect(wrapper.find('[data-testid="war-room-roster"]').exists()).toBe(true)
+
+      await wrapper.find('[data-testid="war-room-roster-toggle"]').trigger('click')
+
+      expect(settings.hud.rosterExpanded).toBe(false)
+      expect(wrapper.find('[data-testid="war-room-roster"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="ally-status-stub"]').exists()).toBe(false)
+    })
+
+    it('renders expanded when the tactical preset (rosterExpanded) is active', () => {
+      seedStore()
+      useSettingsStore().applyHudPreset('tactical')
+      const wrapper = mountWarRoom()
+      expect(wrapper.find('[data-testid="war-room-roster"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="ally-status-stub"]').exists()).toBe(true)
+    })
   })
 
   describe('net-worth lead', () => {
@@ -220,6 +300,7 @@ describe('WarRoom', () => {
   describe('enemy threat wiring', () => {
     it('forwards the full enemy roster (5 dire players) to the EnemyThreatSheet', () => {
       seedStore()
+      expandRoster()
       const wrapper = mountWarRoom()
       const sheet = wrapper.find('[data-testid="enemy-threat-stub"]')
       expect(Number(sheet.attributes('data-enemy-count'))).toBe(5)

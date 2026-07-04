@@ -3,6 +3,7 @@ import type { ClientMessage } from '~~/shared/types/protocol'
 import { getGameRuntime, getReconnectPayload, stopDevGame } from '~~/server/plugins/game-server'
 import { submitAction } from '~~/server/game/engine/GameLoop'
 import { isGameBot } from '~~/server/game/ai/BotManager'
+import { markClientInput } from '~~/server/services/LeaverSystem'
 import {
   pickHero,
   getPlayerLobby,
@@ -451,15 +452,28 @@ export default defineWebSocketHandler({
           break
         }
 
+        // Any attempted action is presence — feeds the AFK takeover's gate even
+        // if a later check drops the command. Gated on the player still being
+        // assigned to this game (clearPlayerGame runs at cleanup), so a
+        // straggler message after game end can't repopulate the ledger that
+        // clearClientInput just emptied (a slow map-entry leak otherwise).
+        if (getPlayerGame(ctx.playerId) === ctx.gameId) {
+          markClientInput(ctx.gameId, ctx.playerId)
+        }
+
         // No-reclaim AFK takeover: once a player has been replaced by a bot,
         // their slot is bot-controlled for the rest of the match. Drop any input
-        // a reconnecting human sends so they can't fight the bot for control.
-        if (isGameBot(ctx.gameId, ctx.playerId)) {
+        // a reconnecting human sends so they can't fight the bot for control —
+        // EXCEPT surrender: the human is still a team member and must be able to
+        // concede a match they can no longer play (their vote counts, the bot's
+        // never does).
+        if (isGameBot(ctx.gameId, ctx.playerId) && parsed.command.type !== 'surrender') {
           peer.send(
             JSON.stringify({
               type: 'error',
               code: 'AI_CONTROLLED',
-              message: 'You went AFK — a bot has taken over your hero for this match.',
+              message:
+                'A bot is playing your hero for the rest of this match (AFK takeover). You can still chat, ping, and vote to surrender.',
             }),
           )
           break
@@ -591,6 +605,11 @@ export default defineWebSocketHandler({
             }),
           )
           break
+        }
+        // Chat + pings are deliberate input — presence for the AFK takeover
+        // gate. Same still-assigned guard as the action case (see above).
+        if (getPlayerGame(ctx.playerId) === ctx.gameId) {
+          markClientInput(ctx.gameId, ctx.playerId)
         }
         // Rate limit chat + pings to prevent spam (was unlimited)
         if (!checkScopedRateLimit('chat', ctx.playerId)) {

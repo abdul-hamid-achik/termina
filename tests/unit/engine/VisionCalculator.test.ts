@@ -190,6 +190,38 @@ describe('VisionCalculator', () => {
       expect('items' in enemy).toBe(false)
     })
 
+    it("strips a VISIBLE enemy's queued auto-path destination (intent must not leak)", () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          // Same zone — fully visible enemy, mid-walk toward the radiant base.
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'mid-river',
+            name: 'Enemy',
+            moveTarget: 'radiant-base',
+          }),
+          // Teammate mid-walk: allies DO see each other's destinations.
+          p2: makePlayer({
+            id: 'p2',
+            team: 'radiant',
+            zone: 'mid-t1-rad',
+            name: 'Ally',
+            moveTarget: 'dire-base',
+          }),
+        },
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      const enemy = filtered.players['e1'] as PlayerState
+      expect('fogged' in enemy).toBe(false) // visible, full combat state...
+      expect(enemy.hp).toBe(500)
+      expect('moveTarget' in enemy).toBe(false) // ...but never their intent
+      const ally = filtered.players['p2'] as PlayerState
+      expect(ally.moveTarget).toBe('dire-base')
+    })
+
     it('keeps a fogged enemy KDA + level public (scoreboard shows it even in fog)', () => {
       const state = makeGameState({
         players: {

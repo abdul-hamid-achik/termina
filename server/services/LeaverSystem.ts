@@ -9,6 +9,7 @@ import type { GameState } from '~~/shared/types/game'
 import { RedisService, type RedisServiceApi } from './RedisService'
 import { engineLog } from '~~/server/utils/log'
 import { isBot } from '~~/server/game/ai/BotManager'
+import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 
 const _mockRedisService = Layer.succeed(RedisService, {
   get: () => Effect.succeed(null),
@@ -60,9 +61,40 @@ export interface PlayerPenalty {
 }
 
 const AFK_THRESHOLD_TICKS = 30 // 2 minutes at 4s/tick
+// A CONNECTED player gets double the window before takeover — "no game action
+// for 2 minutes" is normal for someone reading the shop or watching a fight.
+const CONNECTED_AFK_THRESHOLD_TICKS = AFK_THRESHOLD_TICKS * 2
 const LEAVER_SCORE_DECAY = 1 // Points decay per day
 const LOW_PRIORITY_THRESHOLD = 30 // Score above this = low priority
 const LOW_PRIORITY_GAMES = 3 // Games required to clear low priority
+
+// ── Client presence ledger (in-memory) ─────────────────────────
+// Wall-clock timestamp of the last DELIBERATE client input per game+player
+// (an action, a chat message, a map ping — NOT the automatic heartbeat),
+// stamped by the WS route. Lets the AFK takeover distinguish "present but
+// between actions" from "gone": someone still touching the game is presence,
+// even when their last drained game action is minutes old.
+const clientInputAt = new Map<string, number>()
+const inputKey = (gameId: string, playerId: string) => `${gameId}:${playerId}`
+
+/** Record a deliberate client input (call from the WS route on action/chat/ping). */
+export function markClientInput(gameId: string, playerId: string): void {
+  clientInputAt.set(inputKey(gameId, playerId), Date.now())
+}
+
+/** ms since the player's last deliberate input this game, or null if none yet. */
+export function msSinceClientInput(gameId: string, playerId: string): number | null {
+  const at = clientInputAt.get(inputKey(gameId, playerId))
+  return at == null ? null : Date.now() - at
+}
+
+/** Drop a finished game's presence entries (call alongside BotManager.cleanupGame). */
+export function clearClientInput(gameId: string): void {
+  const prefix = `${gameId}:`
+  for (const key of clientInputAt.keys()) {
+    if (key.startsWith(prefix)) clientInputAt.delete(key)
+  }
+}
 
 /**
  * Check for AFK players in the game
@@ -89,6 +121,44 @@ export function detectAFKPlayers(state: GameState): Array<{ playerId: string; ti
   }
 
   return afkPlayers
+}
+
+/**
+ * Should a player past the action-AFK threshold actually be replaced by a bot?
+ *
+ * `detectAFKPlayers` only knows "no game action for N ticks", which false-
+ * positives on a player who is present but idle — reading the shop, watching a
+ * fight, typing chat. This gate adds presence:
+ *
+ *  - Disconnected (no live WS peer): convert — the original rule.
+ *  - Connected: convert only when ALL of
+ *      · another human on the team would benefit (converting the only human
+ *        in a bots match serves nobody and ruins their practice game),
+ *      · no game action for the LONGER connected threshold, and
+ *      · no deliberate client input (action/chat/ping) in that same window.
+ */
+export function shouldConvertAFK(
+  state: GameState,
+  playerId: string,
+  presence: { isConnected: boolean; msSinceInput: number | null },
+): boolean {
+  if (!presence.isConnected) return true
+
+  const player = state.players[playerId]
+  if (!player) return false
+
+  const hasHumanTeammate = Object.values(state.players).some(
+    (p) => p.id !== playerId && p.team === player.team && !isBot(p.id) && !p.aiControlled,
+  )
+  if (!hasHumanTeammate) return false
+
+  const ticksSinceAction = state.tick - (player.lastActionTick ?? 0)
+  if (ticksSinceAction < CONNECTED_AFK_THRESHOLD_TICKS) return false
+
+  return (
+    presence.msSinceInput == null ||
+    presence.msSinceInput >= CONNECTED_AFK_THRESHOLD_TICKS * TICK_DURATION_MS
+  )
 }
 
 /**

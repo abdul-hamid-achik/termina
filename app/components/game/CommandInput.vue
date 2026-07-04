@@ -5,12 +5,12 @@ import type { GameContext, Suggestion } from '~/composables/useCommands'
 import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { pathDistance } from '~~/shared/pathfinding'
 
 const props = withDefaults(
   defineProps<{
     disabled?: boolean
     placeholder?: string
-    tickCountdown?: number
     player?: PlayerState | null
     visibleZones?: Record<string, ZoneRuntimeState>
     allPlayers?: Record<string, PlayerState>
@@ -25,7 +25,6 @@ const props = withDefaults(
   }>(),
   {
     placeholder: 'Enter command...',
-    tickCountdown: 0,
     player: null,
     visibleZones: () => ({}),
     allPlayers: () => ({}),
@@ -164,7 +163,14 @@ const preview = computed(() => {
 
   if (command.type === 'move') {
     const destZone = ZONE_MAP[command.zone]
-    return { type: 'valid' as const, text: `>> Move to ${destZone?.name ?? command.zone}` }
+    // Auto-path: show the travel time so a cross-map order reads as a plan.
+    const zones = props.visibleZones ?? {}
+    const hasZones = Object.keys(zones).length > 0
+    const hops = props.player
+      ? pathDistance(props.player.zone, command.zone, hasZones ? (id) => !!zones[id] : undefined)
+      : 0
+    const eta = hops > 1 ? ` (${hops} ticks)` : ''
+    return { type: 'valid' as const, text: `>> Move to ${destZone?.name ?? command.zone}${eta}` }
   }
 
   if (command.type === 'attack') {
@@ -535,14 +541,8 @@ onUnmounted(() => {
         class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"
         >&#x2588;</span
       >
-      <span
-        v-if="tickCountdown > 0"
-        class="shrink-0 whitespace-nowrap text-[0.7rem]"
-        :class="canAct ? 'text-text-dim' : 'text-dire'"
-      >
-        <template v-if="canAct">Next tick in {{ (tickCountdown / 1000).toFixed(1) }}s</template>
-        <template v-else>WAITING...</template>
-      </span>
+      <!-- No countdown here — the combat log's theater header is the game's
+           single tick clock (four duplicate countdowns was a legibility bug). -->
     </div>
   </div>
 </template>

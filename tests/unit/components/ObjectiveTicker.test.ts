@@ -27,7 +27,8 @@ describe('ObjectiveTicker', () => {
 
   it('shows a live rune and its expiry', () => {
     const w = mountTicker({ runes: [{ zone: 'rune-top', type: 'haste', tick: 50 }], tick: 60 })
-    expect(w.text()).toContain('haste')
+    // Rune type ids render through buffLabel ('haste' → 'Haste', 'dd' → 'Double Damage').
+    expect(w.text()).toContain('Haste')
   })
 
   it('shows next rune timer when none are live', () => {

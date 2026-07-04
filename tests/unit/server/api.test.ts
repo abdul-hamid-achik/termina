@@ -434,12 +434,33 @@ describe('API endpoints', () => {
       expect(thrownError?.statusCode).toBe(404)
     })
 
+    it('403 for a mid-game snapshot — replays are post-game only (live-state maphack)', async () => {
+      routerParam = 'g_live'
+      vi.mocked(readSnapshot).mockReturnValue(
+        Effect.succeed({
+          savedAt: 100,
+          state: {
+            tick: 9,
+            phase: 'playing',
+            surrenderVotes: { radiant: new Set(), dire: new Set() },
+          },
+          meta: { players: [] },
+        } as never),
+      )
+      await expect(replayHandler(makeEvent('GET', '/api/replay/g_live'))).rejects.toThrow()
+      expect(thrownError?.statusCode).toBe(403)
+    })
+
     it('returns the snapshot + actions with surrenderVotes converted to arrays', async () => {
       routerParam = 'g1'
       vi.mocked(readSnapshot).mockReturnValue(
         Effect.succeed({
           savedAt: 123,
-          state: { tick: 9, surrenderVotes: { radiant: new Set(['p1']), dire: new Set() } },
+          state: {
+            tick: 9,
+            phase: 'ended',
+            surrenderVotes: { radiant: new Set(['p1']), dire: new Set() },
+          },
           meta: { players: [] },
         } as never),
       )

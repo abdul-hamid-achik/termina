@@ -99,9 +99,9 @@ const movementGuide = [
     title: 'How Movement Works',
     items: [
       'The map is divided into zones (fountain, base, lanes, jungle, river)',
-      `You can only move to adjacent zones — one zone per tick (${tickSeconds} seconds)`,
-      'Type move <zone-id> to move (e.g., move radiant-base, move mid-t3-rad)',
-      'Click the MOVE button to see which zones are adjacent to your current location',
+      `You walk one zone per tick (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, tick by tick`,
+      'Type move <zone-id> to move (e.g., move radiant-base, move mid-t3-rad), or tap any zone on the map',
+      'Issuing any new action cancels the walk; a new move order redirects it',
       'Shortcut: mv is the same as move (e.g., mv mid-t2-rad)',
     ],
   },
@@ -130,7 +130,7 @@ const movementGuide = [
 const commands = [
   {
     cmd: 'move <zone>',
-    desc: 'Move to an adjacent zone',
+    desc: 'Walk to any zone — one zone per tick, auto-pathing until you arrive',
     example: 'move mid-t1-rad',
     shortcuts: 'mv',
   },

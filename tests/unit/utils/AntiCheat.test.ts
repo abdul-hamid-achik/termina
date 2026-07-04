@@ -84,16 +84,21 @@ describe('AntiCheat', () => {
       expect(violation).toBeNull()
     })
 
-    it('should detect vision bypass attempts', () => {
+    it('accepts a distant move (auto-path) but flags an off-map destination', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
         },
       })
 
-      // Attempt to move to non-adjacent zone (enemy base)
-      const command: Command = { type: 'move', zone: 'dire-fountain' }
-      const violation = validateVision(state, 'p1', command)
+      // Distant zone: a legal auto-path order now, not a violation.
+      expect(validateVision(state, 'p1', { type: 'move', zone: 'dire-fountain' })).toBeNull()
+
+      // A zone that doesn't exist in THIS game's zone set is still a violation.
+      const zones = { ...state.zones }
+      delete zones['top-t3-rad']
+      const subsetState = { ...state, zones }
+      const violation = validateVision(subsetState, 'p1', { type: 'move', zone: 'top-t3-rad' })
       expect(violation).not.toBeNull()
       expect(violation?.violationType).toBe('INVALID_MOVE')
     })

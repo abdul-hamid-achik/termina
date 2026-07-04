@@ -54,6 +54,41 @@ describe('surrender', () => {
     expect(run.allEvents.some((e) => e._tag === 'surrendered' && e.team === 'radiant')).toBe(true)
   })
 
+  it("an AFK-converted player's vote is not clobbered by the bot driver and still concedes", async () => {
+    // The exact lockout the owner hit live: takeover fired, then SURRENDER was
+    // dead. The WS gate now forwards the vote, and the bot driver must skip its
+    // decision for a slot with a queued surrender (latest-wins queue would
+    // otherwise overwrite the vote every tick).
+    const { convertToBot, cleanupGame } = await import('~~/server/game/ai/BotManager')
+    const run = await seedGame('laning', { players: roster })
+    await run.patch((s) => ({ ...s, tick: 224 }))
+    try {
+      // Both radiant humans got converted (the electorate stays human-id based).
+      convertToBot(run.gameId, HUMAN)
+      convertToBot(run.gameId, 'r2')
+      await run.patch((s) => ({
+        ...s,
+        players: {
+          ...s.players,
+          [HUMAN]: { ...s.players[HUMAN]!, aiControlled: true },
+          r2: { ...s.players['r2']!, aiControlled: true },
+        },
+      }))
+
+      run.submit({ type: 'surrender', vote: 'yes' }, HUMAN)
+      await run.tick()
+      expect(run.allEvents.some((e) => e._tag === 'surrender_vote')).toBe(true)
+
+      run.submit({ type: 'surrender', vote: 'yes' }, 'r2')
+      await run.tick()
+      const s = await run.state()
+      expect(s.phase).toBe('ended')
+      expect(s.winner).toBe('dire')
+    } finally {
+      cleanupGame(run.gameId)
+    }
+  })
+
   it('lets a player retract their vote, keeping the team below threshold', async () => {
     const run = await seedGame('laning', { players: roster })
     await run.patch((s) => ({ ...s, tick: 224 }))

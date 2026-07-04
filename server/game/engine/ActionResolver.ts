@@ -28,7 +28,7 @@ import {
   getTalentStatBonus,
   getItemStatBonuses,
 } from './EffectiveStats'
-import { areAdjacent } from '~~/server/game/map/topology'
+import { areAdjacent, findPath } from '~~/server/game/map/topology'
 import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/modes/tutorial'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
@@ -89,6 +89,10 @@ const LINKENS_RECHARGE_TICKS = 12
 export interface PlayerAction {
   playerId: string
   command: Command
+  /** Auto-path continuation synthesized by GameLoop (not typed by the player)
+   *  — its rejections are silent so a rooted/slowed walker isn't spammed with
+   *  warnings for a command they issued ticks ago. */
+  synthesized?: boolean
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -175,14 +179,17 @@ export function validateAction(state: GameState, action: PlayerAction): string |
 
   switch (cmd.type) {
     case 'move': {
-      // Reachable = your current zone, or an adjacent zone that's actually part
-      // of THIS game's map. The adjacency cache is the full graph, so subset maps
-      // (one-lane) must also gate on the game's live zone set, else a player could
-      // step out of the map into an uninitialized zone.
+      // Auto-path: ANY zone of THIS game's map with a path from here is a valid
+      // order — the hero walks one zone per tick toward it (resolveMovementPhase
+      // takes the next hop; GameLoop re-issues the move until arrival). Gating on
+      // the game's live zone set keeps subset maps (one-lane) closed, else a
+      // player could step out of the map into an uninitialized zone.
       const reachable =
-        player.zone === cmd.zone || (areAdjacent(player.zone, cmd.zone) && !!state.zones[cmd.zone])
+        player.zone === cmd.zone ||
+        (!!state.zones[cmd.zone] &&
+          findPath(player.zone, cmd.zone, (id) => !!state.zones[id]).length > 0)
       if (!reachable) {
-        return 'Cannot move to non-adjacent zone'
+        return 'No path to that zone'
       }
       // Check for root/stun (taunt forces attacking — no fleeing). BKB bypasses.
       if (!debuffImmune && (hasDebuff(player, 'root') || hasDebuff(player, 'stun'))) {
@@ -334,6 +341,7 @@ function resolveMovementPhase(
   tick: number,
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
+  zones: Record<string, ZoneRuntimeState>,
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
 ): { players: Record<string, PlayerState> } {
@@ -344,6 +352,18 @@ function resolveMovementPhase(
     const cmd = action.command as { type: 'move'; zone: string }
     const player = players[action.playerId]
     if (player && player.alive) {
+      // Auto-path: the order names the DESTINATION; each tick moves one hop
+      // along the BFS path (recomputed per tick, so it self-heals). A hop
+      // beyond this one stores the destination as moveTarget — GameLoop
+      // re-issues the move next tick until arrival or a new deliberate action.
+      const path = findPath(player.zone, cmd.zone, (id) => !!zones[id])
+      const nextHop = path[1]
+      if (!nextHop) {
+        // Already there (or the path vanished — a stale target): stop walking.
+        playerUpdates[action.playerId] = { ...playerUpdates[action.playerId], moveTarget: null }
+        continue
+      }
+
       const hasted = player.buffs.some((b) => b.id === 'haste')
       const totalSlow = Math.min(
         80,
@@ -352,11 +372,20 @@ function resolveMovementPhase(
           .reduce((sum, b) => sum + b.stacks, 0),
       )
       if (!hasted && totalSlow > 0 && Math.random() * 100 < totalSlow) {
-        rejected.push({ playerId: action.playerId, reason: 'Slowed — failed to move' })
+        // Synthesized continuations fail silently — the player already got
+        // their feedback when they issued the order.
+        if (!action.synthesized) {
+          rejected.push({ playerId: action.playerId, reason: 'Slowed — failed to move' })
+        }
+        // The slow costs a tick of progress, not the order — keep walking.
+        playerUpdates[action.playerId] = { ...playerUpdates[action.playerId], moveTarget: cmd.zone }
         continue
       }
 
-      const updates: Partial<PlayerState> = { zone: cmd.zone }
+      const updates: Partial<PlayerState> = {
+        zone: nextHop,
+        moveTarget: nextHop === cmd.zone ? null : cmd.zone,
+      }
 
       if (player.buffs.some((b) => b.id === 'tp_channeling')) {
         updates.buffs = player.buffs.filter(
@@ -503,7 +532,7 @@ function resolveAttackPhase(
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
   damageTracker: Map<string, { hero: number; tower: number }>,
-  creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   towerKills: Array<{ zone: string; team: TeamId }>,
   findHeroByName: (name: string) => string | null,
@@ -798,7 +827,7 @@ function resolveAttackPhase(
       creeps[creepIdx] = { ...creep, hp: newHp }
 
       if (newHp <= 0) {
-        creepKills.push({ playerId: action.playerId, creepType: creep.type })
+        creepKills.push({ playerId: action.playerId, creepId: creep.id, creepType: creep.type })
       }
 
       events.push({
@@ -1264,7 +1293,7 @@ function resolvePostShopPhases(
   events: GameEngineEvent[],
   _rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; tower: number }>,
-  creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   towerKills: Array<{ zone: string; team: TeamId }>,
   getCachedItemStats: (playerId: string, items: (string | null)[]) => ItemStats,
@@ -1379,11 +1408,23 @@ function resolvePostShopPhases(
   // Creep last-hit gold + XP
   for (const kill of creepKills) {
     const tempState: GameState = { ...state, players, creeps, towers }
+    const goldBefore = players[kill.playerId]?.gold ?? 0
     const awarded = awardLastHit(tempState, kill.playerId, kill.creepType)
     players = { ...awarded.players }
     const killer = players[kill.playerId]
     if (killer) {
       players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + CREEP_XP } }
+      // The reward line the feed shows ("last-hit +38g") — this event existed in
+      // the protocol but was never emitted, so the player's own farming was the
+      // one thing the combat log stayed silent about.
+      events.push({
+        _tag: 'creep_lasthit',
+        tick: state.tick,
+        playerId: kill.playerId,
+        creepId: kill.creepId,
+        creepType: kill.creepType,
+        goldAwarded: killer.gold - goldBefore,
+      })
     }
   }
 
@@ -1531,7 +1572,11 @@ export function resolveActions(
     let neutrals = [...(state.neutrals ?? [])]
     let towers = [...state.towers]
     let teams = { ...state.teams }
-    const creepKills: Array<{ playerId: string; creepType: 'melee' | 'ranged' | 'siege' }> = []
+    const creepKills: Array<{
+      playerId: string
+      creepId: string
+      creepType: 'melee' | 'ranged' | 'siege'
+    }> = []
     const neutralKills: Array<{ playerId: string; neutralId: string }> = []
     const towerKills: Array<{ zone: string; team: TeamId }> = []
     const damageTracker = new Map<string, { hero: number; tower: number }>()
@@ -1612,7 +1657,14 @@ export function resolveActions(
 
     // Phase 2: Movement — all moves resolve simultaneously
     {
-      const result = resolveMovementPhase(state.tick, validActions, players, events, rejected)
+      const result = resolveMovementPhase(
+        state.tick,
+        validActions,
+        players,
+        state.zones,
+        events,
+        rejected,
+      )
       players = result.players
       // events + rejected are mutated in place by the phase
     }

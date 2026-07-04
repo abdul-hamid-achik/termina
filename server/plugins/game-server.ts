@@ -39,6 +39,7 @@ import {
 } from '~~/server/game/engine/VisionCalculator'
 import { recordSentState, clearSentState } from '~~/server/game/engine/StateDelta'
 import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
+import { clearClientInput } from '~~/server/services/LeaverSystem'
 import type { TeamId, GameState, GameMode } from '~~/shared/types/game'
 import type { PlayerEndStats } from '~~/shared/types/protocol'
 import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
@@ -390,6 +391,7 @@ export function stopDevGame(gameId: string): void {
   liveGames.delete(gameId)
   releaseGameOwnership(gameId)
   cleanupGame(gameId)
+  clearClientInput(gameId)
   // Interrupt the running loop fiber (no-op if already stopped).
   void runtime.managedRuntime.runPromise(stopGameLoop(gameId)).catch(() => {})
 }
@@ -421,10 +423,18 @@ function reapStaleLiveGames(): void {
           entry.stateManager.updateState(gameId, () => ({ ...state, phase: 'ended' as const })),
         )
       }
+      // Release the player→game assignments too (mirrors onGameOver) —
+      // otherwise still-connected clients of the dead game keep passing the
+      // "still assigned" guards (e.g. the WS presence stamp) forever.
+      for (const pid of Object.keys(state.players)) {
+        clearPlayerGame(pid)
+        clearSentState(gameId, pid)
+      }
     } catch {
       // State manager itself is broken — just drop the entry.
     }
     cleanupGame(gameId)
+    clearClientInput(gameId)
     liveGames.delete(gameId)
     releaseGameOwnership(gameId)
   }
@@ -784,6 +794,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           clearSentState(gId, p.playerId)
         }
         cleanupGame(gId)
+        clearClientInput(gId)
         clearGameSpectators(gId)
         liveGames.delete(gId)
         releaseGameOwnership(gId)

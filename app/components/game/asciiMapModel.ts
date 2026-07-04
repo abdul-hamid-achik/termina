@@ -102,6 +102,15 @@ export function colHeadersFor(mapId?: string): string[] {
   return COL_HEADERS
 }
 
+/** Short column headers for the compact mini overview, derived from the active
+ *  map's full headers so every layout (5v5 / two_lane / one_lane) stays aligned:
+ *  'TOP LANE' → 'TOP', 'RADIANT JUNGLE'/'DIRE JUNGLE' → 'JG', 'MID LANE' → 'MID'. */
+export function shortColHeadersFor(mapId?: string): string[] {
+  return colHeadersFor(mapId).map((h) =>
+    h.toUpperCase().includes('JUNGLE') ? 'JG' : h.split(' ')[0]!.toUpperCase(),
+  )
+}
+
 /** Tailwind grid-cols class for a layout's column count. Static class strings so
  *  Tailwind's scanner emits the utilities (a dynamic `grid-cols-${n}` would not
  *  be generated). The map layouts use 1 (one-lane), 4 (two-lane) or 5 (full). */
@@ -159,6 +168,53 @@ export function zoneShortCode(zoneId: string): string {
     return lane[2] === 'river' ? `${laneChar}R` : `${laneChar}${lane[2]!.charAt(1)}`
   }
   return zoneId.slice(0, 3).toUpperCase()
+}
+
+/** Per-cell model for the compact mini-overview grid: the ►-prefixed short code,
+ *  an optional team-colored tower-state glyph, trailing markers (razed mainframe,
+ *  enemy presence), and the cell's classes. Pure — unit-testable without a mount. */
+export interface MiniOverviewCell {
+  /** Zone short code, ►-prefixed when the player is here. */
+  code: string
+  /** Tower-state glyph (▲ standing / ✗ razed) + its color class, if the zone has a tower. */
+  tower: { glyph: string; cls: string } | null
+  /** Trailing markers: '◈✗' razed mainframe, '!' enemies present. */
+  marks: string
+  /** Classes for the whole cell (territory color, player highlight, fog). */
+  classes: string[]
+}
+
+export function miniOverviewCell(
+  zoneId: string,
+  zone: ZoneDisplay | undefined,
+  ancient?: AncientState | null,
+): MiniOverviewCell {
+  const code = (zone?.playerHere ? '►' : '') + zoneShortCode(zoneId)
+
+  // Towers are global info (like the desktop grid's ✓/✗) — shown through fog too.
+  let tower: MiniOverviewCell['tower'] = null
+  if (zone?.tower) {
+    tower = zone.tower.alive
+      ? { glyph: '▲', cls: zone.tower.team === 'radiant' ? 'text-radiant' : 'text-dire' }
+      : { glyph: '✗', cls: 'text-text-dim' }
+  }
+
+  let marks = ''
+  if (ancient && !ancient.alive) marks += '◈✗'
+  if (zone && zone.enemyCount > 0) marks += '!'
+
+  const team = zoneTeam(zoneId)
+  const classes: string[] = [
+    team === 'radiant' ? 'text-radiant' : team === 'dire' ? 'text-dire' : 'text-text-dim',
+  ]
+  if (zone?.playerHere) {
+    classes.push('bg-self/30', 'font-bold')
+  } else {
+    classes.push('bg-bg-primary/60')
+  }
+  if (zone?.fogged) classes.push('opacity-40')
+
+  return { code, tower, marks, classes }
 }
 
 /** The Ancient that lives in a given zone (base zones only). */

@@ -1445,10 +1445,8 @@ describe('validateCommand', () => {
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, makeContext())).toBeNull()
   })
 
-  it('rejects a non-adjacent move and lists reachable zones', () => {
-    const err = validateCommand({ type: 'move', zone: 'dire-fountain' }, makeContext())
-    expect(err).toMatch(/one zone per tick/i)
-    expect(err).toContain('mid-river')
+  it('passes a distant move — auto-path walks it one zone per tick', () => {
+    expect(validateCommand({ type: 'move', zone: 'dire-fountain' }, makeContext())).toBeNull()
   })
 
   it('rejects a globally-adjacent zone that is not on THIS map (subset/one-lane)', () => {

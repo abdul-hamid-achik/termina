@@ -27,7 +27,6 @@ const TICK = 240
           :all-players="allPlayers"
           :items="ITEMS"
           :tick="TICK"
-          :tick-countdown="2600"
           :can-act="true"
         />
       </div>
@@ -42,7 +41,6 @@ const TICK = 240
           :all-players="allPlayers"
           :items="ITEMS"
           :tick="TICK"
-          :tick-countdown="1400"
           :can-act="false"
           pending-command="move top-river"
         />

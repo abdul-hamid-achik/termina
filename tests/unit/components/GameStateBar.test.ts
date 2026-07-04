@@ -29,36 +29,12 @@ describe('GameStateBar', () => {
   })
 
   describe('tick countdown', () => {
-    it('shows the countdown in seconds when nextTickIn is provided', () => {
-      const wrapper = mountBar({ ...baseProps, nextTickIn: 2400 })
-
-      const countdown = wrapper.find('[data-testid="tick-countdown"]')
-      expect(countdown.exists()).toBe(true)
-      expect(countdown.text()).toContain('next tick')
-      expect(countdown.text()).toContain('2.4s')
-    })
-
-    it('renders a fuller bar with more time remaining', () => {
-      const nearlyFull = mountBar({ ...baseProps, nextTickIn: 4000 })
-      const nearlyEmpty = mountBar({ ...baseProps, nextTickIn: 400 })
-
-      const fullBar = nearlyFull.find('[data-testid="tick-countdown"]').text()
-      const emptyBar = nearlyEmpty.find('[data-testid="tick-countdown"]').text()
-
-      const count = (s: string, ch: string) => s.split(ch).length - 1
-      expect(count(fullBar, '█')).toBeGreaterThan(count(emptyBar, '█'))
-    })
-
-    it('shows 0.0s when the tick is due', () => {
-      const wrapper = mountBar({ ...baseProps, nextTickIn: 0 })
-
-      expect(wrapper.find('[data-testid="tick-countdown"]').text()).toContain('0.0s')
-    })
-
-    it('hides the countdown when nextTickIn is not provided', () => {
+    it('renders NO countdown — the theater header is the game’s single clock', () => {
+      // Four simultaneous countdowns was a legibility complaint; the bar keeps
+      // only the tick number.
       const wrapper = mountBar(baseProps)
-
       expect(wrapper.find('[data-testid="tick-countdown"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('next tick')
     })
   })
 

@@ -22,6 +22,16 @@ const LEGEND: { glyph: string; meaning: string }[] = [
   { glyph: '☘ N', meaning: 'neutral camp' },
   { glyph: 'cN', meaning: 'lane creeps' },
 ]
+
+// Zone codes used by the compact map's mini overview grid (see AsciiMap).
+const ZONE_CODES: { glyph: string; meaning: string }[] = [
+  { glyph: 'T1-3', meaning: 'tower zones (T/M/B lane)' },
+  { glyph: 'JG', meaning: 'jungle' },
+  { glyph: 'RN', meaning: 'rune spot' },
+  { glyph: 'ROS', meaning: 'Roshan pit' },
+  { glyph: 'RF/RB', meaning: 'fountain / base' },
+  { glyph: 'TR/MR/BR', meaning: 'river crossings' },
+]
 </script>
 
 <template>
@@ -33,6 +43,14 @@ const LEGEND: { glyph: string; meaning: string }[] = [
       <span v-for="item in LEGEND" :key="item.glyph" :data-testid="`legend-${item.glyph}`">
         <span class="font-mono text-text-primary">{{ item.glyph }}</span> {{ item.meaning }}
       </span>
+    </div>
+    <div class="mt-1 border-t border-border/40 pt-1">
+      <div class="uppercase tracking-wider opacity-70">overview zone codes</div>
+      <div class="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
+        <span v-for="item in ZONE_CODES" :key="item.glyph" :data-testid="`legend-${item.glyph}`">
+          <span class="font-mono text-text-primary">{{ item.glyph }}</span> {{ item.meaning }}
+        </span>
+      </div>
     </div>
   </details>
 </template>

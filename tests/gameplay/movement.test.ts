@@ -3,10 +3,11 @@ import { areAdjacent } from '~~/server/game/map/topology'
 import { seedGame, HUMAN, ENEMY } from './harness'
 
 /**
- * The one-zone-per-tick adjacency rule is the foundation of the whole map: a hero
- * may only step to a zone that borders its current one. These exercise that rule
- * through the full loop (not a bare validateAction) — the positive case lands the
- * move, the negative case is rejected with feedback and the hero stays put.
+ * Movement is one zone per tick, but an order may name ANY reachable zone —
+ * the hero auto-paths toward it, one hop per tick, until arrival or a new
+ * deliberate action. These exercise the rule through the full loop (not a bare
+ * validateAction): single steps land next tick, distant orders walk the BFS
+ * path, and a new intent cancels the walk.
  */
 describe('movement', () => {
   it('a hero can step to an adjacent zone in one tick', async () => {
@@ -24,24 +25,72 @@ describe('movement', () => {
     expect((await game.me()).zone).toBe('mid-t1-rad')
   })
 
-  it('a hero cannot teleport across the map — a non-adjacent move is rejected with feedback', async () => {
+  it('a distant order auto-paths: one hop per tick, never a teleport, arriving over N ticks', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
     }))
 
-    // dire-base is across the map — nowhere near mid-river.
+    // dire-base is across the map — 4 hops down mid lane.
     expect(areAdjacent('mid-river', 'dire-base')).toBe(false)
     game.submit({ type: 'move', zone: 'dire-base' })
     await game.tick()
 
-    // The hero stays put, and the rejection reason reaches the player (not a
-    // silent drop) — the same feedback channel a misclick would surface.
-    expect((await game.me()).zone).toBe('mid-river')
-    expect(
-      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('non-adjacent')),
-    ).toBe(true)
+    // First hop only, with the destination remembered.
+    const afterOne = await game.me()
+    expect(afterOne.zone).toBe('mid-t1-dire')
+    expect(afterOne.moveTarget).toBe('dire-base')
+
+    // No further orders — the hero keeps walking and arrives, target cleared.
+    await game.tick(3)
+    const arrived = await game.me()
+    expect(arrived.zone).toBe('dire-base')
+    expect(arrived.moveTarget ?? null).toBeNull()
+  })
+
+  it('a new deliberate action cancels the auto-path walk', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-dire' },
+      },
+    }))
+
+    game.submit({ type: 'move', zone: 'dire-base' })
+    await game.tick()
+    expect((await game.me()).moveTarget).toBe('dire-base')
+
+    // The hero walked into the enemy's zone; attacking is a new intent — the
+    // remaining walk is dropped and the hero holds position.
+    game.attackHero('Daemon')
+    await game.tick()
+    const afterAttack = await game.me()
+    expect(afterAttack.moveTarget ?? null).toBeNull()
+    await game.tick(2)
+    expect((await game.me()).zone).toBe('mid-t1-dire')
+  })
+
+  it('a new move order redirects the walk (latest destination wins)', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t3-rad' } },
+    }))
+
+    game.submit({ type: 'move', zone: 'mid-river' })
+    await game.tick()
+    expect((await game.me()).moveTarget).toBe('mid-river')
+
+    // Change of plans mid-walk: head home instead (3 hops from mid-t2-rad).
+    game.submit({ type: 'move', zone: 'radiant-fountain' })
+    await game.tick(3)
+    const me = await game.me()
+    expect(me.zone).toBe('radiant-fountain')
+    expect(me.moveTarget ?? null).toBeNull()
   })
 
   it('only one action per player per tick — a second submission overwrites the first (latest wins)', async () => {

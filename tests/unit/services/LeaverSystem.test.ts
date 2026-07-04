@@ -1,7 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { Effect } from 'effect'
 import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
-import { detectAFKPlayers } from '../../../server/services/LeaverSystem'
+import {
+  detectAFKPlayers,
+  shouldConvertAFK,
+  markClientInput,
+  msSinceClientInput,
+  clearClientInput,
+} from '../../../server/services/LeaverSystem'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeRoshan } from '../../../server/game/map/spawner'
@@ -136,5 +142,92 @@ describe('LeaverSystem AFK detection', () => {
     const result = Effect.runSync(processTick('afk-stamp-1', state))
     expect(result.state.players['p1']!.lastActionTick).toBe(1)
     expect(result.state.players['p2']!.lastActionTick).toBeUndefined()
+  })
+})
+
+describe('shouldConvertAFK (presence gate)', () => {
+  // Two humans on radiant so the "human teammate benefits" clause can pass.
+  function twoHumanState(tick: number, p1: Partial<PlayerState> = {}): GameState {
+    return makeGameState({
+      tick,
+      players: {
+        p1: makePlayer({ id: 'p1', ...p1 }),
+        p3: makePlayer({ id: 'p3', name: 'Player3', lastActionTick: tick }),
+        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', lastActionTick: tick }),
+      },
+    })
+  }
+
+  it('converts a disconnected player (the original rule)', () => {
+    const state = twoHumanState(60)
+    expect(shouldConvertAFK(state, 'p1', { isConnected: false, msSinceInput: null })).toBe(true)
+  })
+
+  it('never converts a connected player with recent client input', () => {
+    const state = twoHumanState(600, { lastActionTick: 0 })
+    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: 5_000 })).toBe(false)
+  })
+
+  it('never converts a connected player whose team has no other human', () => {
+    // Solo-vs-bots: converting the only human serves nobody.
+    const state = makeGameState({
+      tick: 600,
+      players: {
+        p1: makePlayer({ id: 'p1', lastActionTick: 0 }),
+        bot_ally: makePlayer({ id: 'bot_ally', name: 'Bot' }),
+        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', lastActionTick: 600 }),
+      },
+    })
+    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
+  })
+
+  it('a teammate already replaced by a bot does not count as a human teammate', () => {
+    const state = makeGameState({
+      tick: 600,
+      players: {
+        p1: makePlayer({ id: 'p1', lastActionTick: 0 }),
+        p3: makePlayer({ id: 'p3', name: 'Player3', aiControlled: true }),
+        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', lastActionTick: 600 }),
+      },
+    })
+    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
+  })
+
+  it('does not convert a connected player under the longer connected threshold', () => {
+    // 40 ticks without an action clears the base threshold (30) but not the
+    // connected one (60) — present players get the longer window.
+    const state = twoHumanState(40, { lastActionTick: 0 })
+    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
+  })
+
+  it('converts a connected but fully silent player when a human teammate benefits', () => {
+    const state = twoHumanState(120, { lastActionTick: 0 })
+    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(true)
+    // …but any input inside the window keeps them safe.
+    expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: 60_000 })).toBe(false)
+  })
+})
+
+describe('client input ledger', () => {
+  afterEach(() => clearClientInput('ledger-game'))
+
+  it('stamps and reads deliberate input per game+player', () => {
+    expect(msSinceClientInput('ledger-game', 'p1')).toBeNull()
+    markClientInput('ledger-game', 'p1')
+    const ms = msSinceClientInput('ledger-game', 'p1')
+    expect(ms).not.toBeNull()
+    expect(ms!).toBeLessThan(1_000)
+    // Other players/games unaffected.
+    expect(msSinceClientInput('ledger-game', 'p2')).toBeNull()
+    expect(msSinceClientInput('other-game', 'p1')).toBeNull()
+  })
+
+  it('clearClientInput drops only the finished game', () => {
+    markClientInput('ledger-game', 'p1')
+    markClientInput('ledger-game-2', 'p1')
+    clearClientInput('ledger-game')
+    expect(msSinceClientInput('ledger-game', 'p1')).toBeNull()
+    expect(msSinceClientInput('ledger-game-2', 'p1')).not.toBeNull()
+    clearClientInput('ledger-game-2')
   })
 })

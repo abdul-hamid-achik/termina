@@ -32,6 +32,7 @@ describe('HudSettings', () => {
     expect(wrapper.find('[data-testid="hud-density-comfortable"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="hud-density-compact"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="hud-toggle-emphasizeVitals"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="hud-toggle-rosterExpanded"]').exists()).toBe(true)
   })
 
   it('marks the standard preset active by default', () => {
@@ -61,9 +62,12 @@ describe('HudSettings', () => {
     const store = useSettingsStore()
     const wrapper = mount(HudSettings)
 
-    await wrapper.find('[data-testid="hud-toggle-emphasizeVitals"]').trigger('click')
+    // From standard, map-centric alone matches no preset (tactical also
+    // needs compact density + an expanded roster). NOTE: emphasizeVitals
+    // alone would land exactly on the focus preset now.
+    await wrapper.find('[data-testid="hud-layout-map-centric"]').trigger('click')
 
-    expect(store.hud.emphasizeVitals).toBe(true)
+    expect(store.hud.layoutMode).toBe('map-centric')
     expect(store.hudPreset).toBe('custom')
     expect(wrapper.find('[data-testid="hud-active-preset"]').text()).toContain('Custom')
   })
@@ -92,18 +96,40 @@ describe('HudSettings', () => {
     expect(store.hud.density).toBe('compact')
   })
 
-  it('the focus-banner toggle flips on then off', async () => {
+  it('the focus-banner toggle flips off then on (defaults on)', async () => {
     const store = useSettingsStore()
     const wrapper = mount(HudSettings)
     const btn = () => wrapper.find('[data-testid="hud-toggle-focusBanner"]')
 
-    expect(store.hud.focusBanner).toBe(false)
-    await btn().trigger('click')
+    // The simplified default HUD ships with the banner ON.
     expect(store.hud.focusBanner).toBe(true)
     expect(btn().text()).toContain('On')
 
     await btn().trigger('click')
     expect(store.hud.focusBanner).toBe(false)
+    expect(btn().text()).toContain('Off')
+
+    await btn().trigger('click')
+    expect(store.hud.focusBanner).toBe(true)
+    expect(btn().text()).toContain('On')
+  })
+
+  it('the War Room roster toggle flips on then off (defaults collapsed)', async () => {
+    const store = useSettingsStore()
+    const wrapper = mount(HudSettings)
+    const btn = () => wrapper.find('[data-testid="hud-toggle-rosterExpanded"]')
+
+    expect(store.hud.rosterExpanded).toBe(false)
+    expect(btn().text()).toContain('Off')
+
+    await btn().trigger('click')
+    expect(store.hud.rosterExpanded).toBe(true)
+    expect(store.hudPreset).toBe('custom')
+    expect(btn().text()).toContain('On')
+
+    await btn().trigger('click')
+    expect(store.hud.rosterExpanded).toBe(false)
+    expect(store.hudPreset).toBe('standard')
     expect(btn().text()).toContain('Off')
   })
 })

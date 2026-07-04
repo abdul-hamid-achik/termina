@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { HEROES } from '~~/shared/constants/heroes'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 import { displayBuffs, type DisplayBuff } from '~/utils/buffs'
 import type { PlayerState, FoggedPlayer } from '~~/shared/types/game'
@@ -55,7 +56,9 @@ const rows = computed<ThreatRow[]>(() =>
       // -1 when we don't know the respawn (fogged death) so the UI can hide the
       // misleading "respawn 0t".
       respawnIn: full.respawnTick != null ? Math.max(0, full.respawnTick - props.tick) : -1,
-      lastSeen: ls ? `${ls.zone} · ${Math.max(0, props.tick - ls.tick)}t` : null,
+      lastSeen: ls
+        ? `${ZONE_MAP[ls.zone]?.name ?? ls.zone} · ${Math.max(0, props.tick - ls.tick)}t`
+        : null,
     }
   }),
 )

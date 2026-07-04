@@ -24,7 +24,7 @@ describe('MapPrimer', () => {
   it('starts the explorer at the radiant fountain with its (singular) adjacency', () => {
     const cap = caption(mountPrimer())
     expect(cap).toContain('Radiant Fountain')
-    expect(cap).toContain('1 adjacent zone reachable')
+    expect(cap).toContain('1 adjacent zone arrives')
   })
 
   it('hops to an adjacent zone on zoneClick and updates the caption (plural)', async () => {
@@ -32,7 +32,7 @@ describe('MapPrimer', () => {
     await w.find('[data-testid="hop"]').trigger('click')
     const cap = caption(w)
     expect(cap).toContain('Radiant Base')
-    expect(cap).toContain('4 adjacent zones reachable')
+    expect(cap).toContain('4 adjacent zones arrive')
   })
 
   it('feeds the selected zone to AsciiMap as the player zone', async () => {

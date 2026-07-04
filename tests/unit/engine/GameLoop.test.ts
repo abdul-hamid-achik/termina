@@ -364,7 +364,7 @@ describe('GameLoop', () => {
       expect(result.state.players['p1']!.mp).toBe(280)
     })
 
-    it('should reject invalid actions and still process valid ones', () => {
+    it('auto-paths a distant move one hop per tick and stores the destination', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
@@ -372,12 +372,13 @@ describe('GameLoop', () => {
         },
       })
 
-      // Invalid: move to non-adjacent zone
+      // Distant zone: a valid order now — the hero walks one hop per tick
       submitAction('game-mixed', 'p1', { type: 'move', zone: 'bot-t1-rad' })
 
       const result = Effect.runSync(processTick('game-mixed', state))
-      // Invalid action should be rejected, player stays
-      expect(result.state.players['p1']!.zone).toBe('mid-t1-rad')
+      const p1 = result.state.players['p1']!
+      expect(p1.zone).not.toBe('mid-t1-rad') // took the first hop
+      expect(p1.moveTarget).toBe('bot-t1-rad') // still walking
     })
 
     it('should not process actions when game is ended', () => {
@@ -452,6 +453,9 @@ describe('GameLoop', () => {
             mp: 0,
             zone: 'mid-river',
             respawnTick: null,
+            // Died mid-walk: the aegis revive must ALSO cancel the auto-path
+            // (or the hero resumes marching into whoever just killed them).
+            moveTarget: 'dire-base',
             buffs: [{ id: 'aegis', stacks: 1, ticksRemaining: 999, source: 'roshan' }],
           }),
           p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
@@ -467,6 +471,7 @@ describe('GameLoop', () => {
       expect(p1.respawnTick).toBeNull()
       expect(p1.buffs).toEqual([])
       expect(p1.zone).toBe('mid-river')
+      expect(p1.moveTarget ?? null).toBeNull()
 
       const aegisEvents = result.events.filter((e) => e._tag === 'aegis_used')
       expect(aegisEvents.length).toBe(1)

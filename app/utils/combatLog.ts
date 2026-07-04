@@ -16,6 +16,9 @@ export type CombatLineType =
   | 'ability'
   | 'victory'
   | 'objective'
+  // One dim roll-up line per tick summarizing everyone's farming (see
+  // digestFarmNoise) — the story-mode replacement for the creep-hit firehose.
+  | 'farm'
 
 /**
  * How relevant a line is to the local player — drives visual salience so the
@@ -45,6 +48,14 @@ export interface CombatLine {
   dedupKey?: string
   /** Per-line damage amount, summed into the running total when collapsing. */
   dmgAmount?: number
+  /**
+   * Farm-noise tag: what kind of farming beat this line narrates. Story mode
+   * (digestFarmNoise) folds all tagged lines of a tick into one dim summary
+   * line; verbose mode shows them raw. Untagged lines are never folded.
+   */
+  farmKind?: 'hit' | 'lasthit' | 'camp' | 'deny'
+  /** Gold carried by a folded farm line (my last-hit reward in the summary). */
+  goldAmount?: number
 }
 
 /** Working line with internal bookkeeping used only while collapsing. */
@@ -118,4 +129,124 @@ export function collapseStructureDamage(
 
   // Strip the internal bookkeeping fields before returning.
   return out.map(({ total: _total, baseText: _baseText, ...rest }) => rest)
+}
+
+// ── Tick story (feed default view) ──────────────────────────────
+
+/** Salience → beat position. Your lines lead, headline plays follow, the
+ *  world's business trails, the farm digest closes the beat. */
+function storyPriority(line: CombatLine): number {
+  if (line.type === 'farm') return 9
+  if (line.salience === 'mine-in') return 0
+  if (line.salience === 'mine-out') return 1
+  if (line.type === 'kill' || line.type === 'victory') return 2
+  if (line.type === 'objective') return 3
+  if (line.salience === 'ally') return 4
+  if (line.type === 'system') return 6
+  return 5
+}
+
+/**
+ * Fold every farm-tagged line of a tick into ONE dim summary line:
+ * "· farm: you +38g (last-hit) · team 4 creeps, 1 camp · enemy farming in sight".
+ * Untagged lines pass through untouched, in their original tick order.
+ */
+export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
+  const out: CombatLine[] = []
+  let tick: number | null = null
+  let bucket: CombatLine[] = []
+
+  const flush = () => {
+    if (tick === null || bucket.length === 0) return
+    let myGold = 0
+    let myLastHits = 0
+    let myCamps = 0
+    let myDenies = 0
+    let teamLastHits = 0
+    let teamCamps = 0
+    let teamDenies = 0
+    let enemyLastHits = 0
+    let enemyCamps = 0
+    let enemyDenies = 0
+    let enemyHitsSeen = false
+    for (const l of bucket) {
+      // Three-way attribution: mine / team (ally) / enemy (world) — visible
+      // enemy camp clears and denies must not be counted as "team".
+      const side = l.salience === 'mine-out' ? 'mine' : l.salience === 'world' ? 'enemy' : 'team'
+      if (l.farmKind === 'lasthit') {
+        if (side === 'mine') {
+          myLastHits++
+          myGold += l.goldAmount ?? 0
+        } else if (side === 'enemy') enemyLastHits++
+        else teamLastHits++
+      } else if (l.farmKind === 'camp') {
+        if (side === 'mine') myCamps++
+        else if (side === 'enemy') enemyCamps++
+        else teamCamps++
+      } else if (l.farmKind === 'deny') {
+        if (side === 'mine') myDenies++
+        else if (side === 'enemy') enemyDenies++
+        else teamDenies++
+      } else if (l.farmKind === 'hit') {
+        if (side === 'enemy') enemyHitsSeen = true
+      }
+    }
+    const parts: string[] = []
+    if (myLastHits > 0)
+      parts.push(`you +${myGold}g (${myLastHits} last-hit${myLastHits === 1 ? '' : 's'})`)
+    if (myCamps > 0) parts.push(`you cleared ${myCamps === 1 ? 'a camp' : `${myCamps} camps`}`)
+    if (myDenies > 0) parts.push(`you denied ${myDenies === 1 ? 'a creep' : `${myDenies} creeps`}`)
+    const teamBits: string[] = []
+    if (teamLastHits > 0) teamBits.push(`${teamLastHits} creep${teamLastHits === 1 ? '' : 's'}`)
+    if (teamCamps > 0) teamBits.push(`${teamCamps} camp${teamCamps === 1 ? '' : 's'}`)
+    if (teamDenies > 0) teamBits.push(`${teamDenies} den${teamDenies === 1 ? 'y' : 'ies'}`)
+    if (teamBits.length) parts.push(`team ${teamBits.join(', ')}`)
+    const enemyBits: string[] = []
+    if (enemyLastHits > 0) enemyBits.push(`${enemyLastHits} creep${enemyLastHits === 1 ? '' : 's'}`)
+    if (enemyCamps > 0) enemyBits.push(`${enemyCamps} camp${enemyCamps === 1 ? '' : 's'}`)
+    if (enemyDenies > 0) enemyBits.push(`${enemyDenies} den${enemyDenies === 1 ? 'y' : 'ies'}`)
+    if (enemyBits.length) parts.push(`enemy ${enemyBits.join(', ')}`)
+    else if (enemyHitsSeen) parts.push('enemy farming in sight')
+    if (parts.length) {
+      // The digest carrying MY rewards is mine — the ME filter must keep it.
+      const hasMine = myLastHits > 0 || myCamps > 0 || myDenies > 0
+      out.push({
+        tick,
+        text: `farm: ${parts.join(' · ')}`,
+        type: 'farm',
+        salience: hasMine ? 'mine-out' : 'world',
+      })
+    }
+    bucket = []
+  }
+
+  for (const line of lines) {
+    if (line.tick !== tick) {
+      flush()
+      tick = line.tick
+    }
+    if (line.farmKind) bucket.push(line)
+    else out.push(line)
+  }
+  flush()
+  return out
+}
+
+/**
+ * The feed's default ("story") view: farm noise folded to one line per tick,
+ * then each tick's lines ordered by salience — YOUR results first, kills and
+ * objectives loud, the farm digest last. Stable within a priority band.
+ */
+export function buildTickStoryView(lines: CombatLine[]): CombatLine[] {
+  const digested = digestFarmNoise(lines)
+  // Stable sort per tick: decorate with the original index, sort, strip.
+  return digested
+    .map((line, i) => ({ line, i }))
+    .sort((a, b) => {
+      if (a.line.tick !== b.line.tick) return a.line.tick - b.line.tick
+      const pa = storyPriority(a.line)
+      const pb = storyPriority(b.line)
+      return pa !== pb ? pa - pb : a.i - b.i
+    })
+    .map(({ line }) => line)
 }

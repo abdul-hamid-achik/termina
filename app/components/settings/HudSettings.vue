@@ -10,7 +10,7 @@ const settings = useSettingsStore()
 
 const PRESETS: { id: Exclude<HudPreset, 'custom'>; label: string; blurb: string }[] = [
   { id: 'standard', label: 'Standard', blurb: 'Classic combat-log layout' },
-  { id: 'tactical', label: 'Tactical', blurb: 'Map-centric · compact · banner' },
+  { id: 'tactical', label: 'Tactical', blurb: 'Map-centric · compact · full roster' },
   { id: 'focus', label: 'Focus', blurb: 'Action banner · big vitals' },
 ]
 
@@ -148,6 +148,30 @@ const presetLabel = computed(() =>
             : 'border-border text-text-dim'
         "
         >{{ settings.hud.emphasizeVitals ? 'On' : 'Off' }}</span
+      >
+    </button>
+
+    <!-- War Room roster toggle -->
+    <button
+      class="flex items-center justify-between border border-border px-3 py-2 text-left transition-all hover:border-border-glow"
+      data-testid="hud-toggle-rosterExpanded"
+      :aria-pressed="settings.hud.rosterExpanded"
+      @click="settings.setHud('rosterExpanded', !settings.hud.rosterExpanded)"
+    >
+      <span class="flex flex-col gap-0.5">
+        <span class="text-[0.78rem] font-bold text-text-primary">Show team roster in War Room</span>
+        <span class="text-[0.62rem] text-text-dim"
+          >Ally status + enemy threat sheets; off = a slim expand row</span
+        >
+      </span>
+      <span
+        class="shrink-0 border px-2 py-0.5 text-[0.66rem] font-bold uppercase"
+        :class="
+          settings.hud.rosterExpanded
+            ? 'border-gold text-gold text-glow-gold'
+            : 'border-border text-text-dim'
+        "
+        >{{ settings.hud.rosterExpanded ? 'On' : 'Off' }}</span
       >
     </button>
   </div>

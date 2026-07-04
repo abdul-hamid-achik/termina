@@ -2,6 +2,7 @@
 import { reactive } from 'vue'
 import type { PlayerState } from '~~/shared/types/game'
 import { useGameStore } from '~/stores/game'
+import { useSettingsStore } from '~/stores/settings'
 import WarRoom from './WarRoom.vue'
 
 // Validates the Histoire Pinia plumbing (histoire.setup.ts installs Pinia, so
@@ -41,7 +42,11 @@ function player(overrides: Partial<PlayerState> = {}): PlayerState {
   }
 }
 
-function base() {
+function base(rosterExpanded = true) {
+  // The roster toggle is a persisted HUD setting and Histoire variants share
+  // the preview's localStorage — seed it EXPLICITLY per variant so one
+  // variant's toggle can't leak into another.
+  useSettingsStore().setHud('rosterExpanded', rosterExpanded)
   const store = useGameStore()
   store.playerId = 'p1'
   store.dayNightTick = 12
@@ -88,6 +93,18 @@ function seedLateGame() {
   })
   store.roshan = { alive: false, hp: 0, maxHp: 5000, deathTick: 560 }
 }
+
+// The simplified default: roster collapsed to the slim [+] row (readouts stay).
+function seedCollapsed() {
+  const store = base(false)
+  store.tick = 240
+  store.timeOfDay = 'day'
+  store.netWorthHistory = reactive({
+    radiant: [3200, 3400, 3800, 4200, 4600, 5100],
+    dire: [3100, 3300, 3500, 3700, 3900, 4150],
+  })
+  store.roshan = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
+}
 </script>
 
 <template>
@@ -105,6 +122,12 @@ function seedLateGame() {
     </Variant>
 
     <Variant title="late game · night · Roshan down" :setup-app="seedLateGame">
+      <div class="bg-bg-primary p-2" style="width: 320px">
+        <WarRoom />
+      </div>
+    </Variant>
+
+    <Variant title="roster collapsed (default)" :setup-app="seedCollapsed">
       <div class="bg-bg-primary p-2" style="width: 320px">
         <WarRoom />
       </div>

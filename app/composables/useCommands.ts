@@ -4,6 +4,7 @@ import type { PlayerState, ZoneRuntimeState, TeamId, CreepState } from '~~/share
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
+import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
 import { getTalentTree } from '~~/shared/constants/talents'
 import {
@@ -390,20 +391,21 @@ export function validateCommand(command: Command, context: GameContext): string 
     case 'move': {
       const zone = ZONE_MAP[player.zone]
       if (!zone) return null
-      if (command.zone !== player.zone && !zone.adjacentTo.includes(command.zone)) {
-        return `Too far — you move one zone per tick. From ${player.zone} you can reach: ${zone.adjacentTo.join(', ')}`
-      }
-      // Subset maps (one-lane / tutorial) don't contain every globally-adjacent
-      // zone. Mirror the server, which also requires the destination to exist in
-      // THIS game's zone set. `visibleZones` is the full game zone set (not
-      // vision-filtered); skip the check until it's populated.
+      // Auto-path (mirrors the server): ANY zone on this game's map with a path
+      // from here is a valid order — the hero walks one zone per tick toward it.
+      // `visibleZones` is the full game zone set (not vision-filtered); skip the
+      // subset check until it's populated.
       const gameZones = context.visibleZones
+      const hasGameZones = Object.keys(gameZones).length > 0
+      if (command.zone !== player.zone && hasGameZones && !gameZones[command.zone]) {
+        return `${command.zone} isn't on this map`
+      }
       if (
         command.zone !== player.zone &&
-        Object.keys(gameZones).length > 0 &&
-        !gameZones[command.zone]
+        findPath(player.zone, command.zone, hasGameZones ? (id) => !!gameZones[id] : undefined)
+          .length === 0
       ) {
-        return `${command.zone} isn't on this map`
+        return `No path from ${player.zone} to ${command.zone}`
       }
       if (!debuffImmune && (hasDebuff(player, 'root') || hasDebuff(player, 'stun'))) {
         return 'Cannot move while rooted or stunned'

@@ -29,7 +29,7 @@ function makeEvent(overrides: Partial<LogEvent> = {}): LogEvent {
 
 describe('CombatLog', () => {
   describe('accessibility', () => {
-    it('should have text prefix for event type', () => {
+    it('should have text prefix for event type (story mode leads with the kill)', () => {
       const events = [
         makeEvent({ type: 'damage', text: 'Player1 dealt 50 damage' }),
         makeEvent({ type: 'healing', text: 'Player1 healed for 30' }),
@@ -38,10 +38,12 @@ describe('CombatLog', () => {
       ]
       const wrapper = mount(CombatLog, { props: { events } })
 
+      // Default story view orders a tick's lines by salience: the kill leads,
+      // the rest keep their original relative order.
       const eventElements = wrapper.findAll('[data-testid="log-event"]')
-      expect(eventElements[0]?.text()).toContain('[DAMAGE]')
-      expect(eventElements[1]?.text()).toContain('[HEAL]')
-      expect(eventElements[2]?.text()).toContain('[KILL]')
+      expect(eventElements[0]?.text()).toContain('[KILL]')
+      expect(eventElements[1]?.text()).toContain('[DAMAGE]')
+      expect(eventElements[2]?.text()).toContain('[HEAL]')
       expect(eventElements[3]?.text()).toContain('[GOLD]')
     })
 
@@ -265,12 +267,71 @@ describe('CombatLog filters + density', () => {
     expect(wrapper.text()).not.toContain('bystander chip')
   })
 
-  it('terse density hides bystander chip but keeps kills + objectives', async () => {
-    const wrapper = mount(CombatLog, { props: { events } })
-    await wrapper.get('[data-testid="log-density-toggle"]').trigger('click') // verbose -> terse
-    expect(wrapper.text()).not.toContain('bystander chip')
+  it('story mode (default) folds farm-tagged lines into one digest per tick', () => {
+    const wrapper = mount(CombatLog, {
+      props: {
+        events: [
+          {
+            tick: 1,
+            text: 'Kernel hit a creep for 60',
+            type: 'damage',
+            salience: 'ally',
+            farmKind: 'hit',
+          },
+          {
+            tick: 1,
+            text: 'Ping hit a creep for 55',
+            type: 'damage',
+            salience: 'ally',
+            farmKind: 'hit',
+          },
+          {
+            tick: 1,
+            text: 'Kernel last-hit a melee creep (+40g)',
+            type: 'gold',
+            salience: 'ally',
+            farmKind: 'lasthit',
+          },
+          {
+            tick: 1,
+            text: 'You last-hit a melee creep (+38g)',
+            type: 'gold',
+            salience: 'mine-out',
+            farmKind: 'lasthit',
+            goldAmount: 38,
+          },
+          { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+        ] as CombatLine[],
+      },
+    })
+    // Raw farm lines are folded away…
+    expect(wrapper.text()).not.toContain('Kernel hit a creep')
+    expect(wrapper.text()).not.toContain('Ping hit a creep')
+    // …into one dim summary carrying my gold + the team tally…
+    expect(wrapper.text()).toContain('farm: you +38g (1 last-hit) · team 1 creep')
+    // …while the kill stays loud.
     expect(wrapper.text()).toContain('a kill happened')
-    expect(wrapper.text()).toContain('night falls')
+  })
+
+  it('the verbose toggle restores the raw line-per-event stream', async () => {
+    const wrapper = mount(CombatLog, {
+      props: {
+        events: [
+          {
+            tick: 1,
+            text: 'Kernel hit a creep for 60',
+            type: 'damage',
+            salience: 'ally',
+            farmKind: 'hit',
+          },
+          { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
+        ] as CombatLine[],
+      },
+    })
+    await wrapper.get('[data-testid="log-density-toggle"]').trigger('click') // story -> verbose
+    expect(wrapper.text()).toContain('Kernel hit a creep for 60')
+    expect(wrapper.text()).toContain('a kill happened')
+    expect(wrapper.text()).not.toContain('farm:')
   })
 
   it('OBJ filter shows objectives and kills (plus system), hiding plain damage', async () => {
@@ -292,17 +353,16 @@ describe('CombatLog filters + density', () => {
     expect(wrapper.text()).toContain('no events match')
   })
 
-  it('terse density also hides bystander gold spam', async () => {
+  it('story mode keeps untagged lines (hero fights, gold) — only farm noise folds', () => {
     const wrapper = mount(CombatLog, {
       props: {
         events: [
           { tick: 1, text: 'someone banked gold', type: 'gold', salience: 'world' },
           { tick: 1, text: 'a kill happened', type: 'kill', salience: 'world' },
-        ],
+        ] as CombatLine[],
       },
     })
-    await wrapper.get('[data-testid="log-density-toggle"]').trigger('click')
-    expect(wrapper.text()).not.toContain('someone banked gold') // world gold hidden in terse
+    expect(wrapper.text()).toContain('someone banked gold')
     expect(wrapper.text()).toContain('a kill happened')
   })
 })

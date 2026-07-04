@@ -373,7 +373,10 @@ export function filterStateForPlayer(
           fogged: true,
         }
       } else {
-        filteredPlayers[pid] = p
+        // A visible enemy shows full combat state, but never their queued
+        // auto-path destination — that would leak where they're rotating.
+        const { moveTarget: _moveTarget, ...publicState } = p
+        filteredPlayers[pid] = publicState
       }
     } else {
       filteredPlayers[pid] = {

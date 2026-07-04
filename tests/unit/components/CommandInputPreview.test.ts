@@ -73,12 +73,12 @@ describe('CommandInput preview line', () => {
     wrapper.unmount()
   })
 
-  it('shows an error preview when moving to a non-adjacent zone', async () => {
+  it('previews a distant move as a travel plan with its ETA (auto-path)', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const preview = await previewFor(wrapper, 'move dire-base')
-    expect(preview.text()).toContain('!!')
-    expect(preview.text().toLowerCase()).toContain('one zone per tick')
-    expect(preview.classes()).toContain('text-dire')
+    // mid-river → mid-t1/2/3-dire → dire-base = 4 hops.
+    expect(preview.text()).toContain('>> Move to Dire Base (4 ticks)')
+    expect(preview.classes()).toContain('text-radiant')
     wrapper.unmount()
   })
 
@@ -193,7 +193,7 @@ describe('CommandInput keyboard driving', () => {
   it('does not submit a command whose preview is an error', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const input = wrapper.find('input')
-    await input.setValue('move dire-base') // not adjacent -> error preview
+    await input.setValue('use dagon') // not owned -> error preview
 
     const vm = wrapper.vm as unknown as { open: boolean }
     vm.open = false

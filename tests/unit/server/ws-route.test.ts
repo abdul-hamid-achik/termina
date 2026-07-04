@@ -341,6 +341,46 @@ describe('ws route — action', () => {
     expect(submitAction).not.toHaveBeenCalled()
   })
 
+  it('lets an AFK-converted player vote surrender, but nothing else (no-reclaim)', async () => {
+    const { convertToBot, cleanupGame } = await import('~~/server/game/ai/BotManager')
+    const { msSinceClientInput, clearClientInput } = await import('~~/server/services/LeaverSystem')
+    try {
+      const { peer } = openPeerInGame('p_converted', 'game_afk')
+      convertToBot('game_afk', 'p_converted')
+
+      // Ordinary input is dropped with the takeover notice…
+      sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
+      expect(lastMessage(peer)).toMatchObject({ type: 'error', code: 'AI_CONTROLLED' })
+      expect(submitAction).not.toHaveBeenCalled()
+
+      // …but a surrender vote still reaches the queue (their vote counts).
+      sendMsg(peer, { type: 'action', command: { type: 'surrender', vote: 'yes' } })
+      expect(submitAction).toHaveBeenCalledWith('game_afk', 'p_converted', {
+        type: 'surrender',
+        vote: 'yes',
+      })
+
+      // Both attempts are deliberate input — presence for the AFK gate.
+      expect(msSinceClientInput('game_afk', 'p_converted')).not.toBeNull()
+    } finally {
+      cleanupGame('game_afk')
+      clearClientInput('game_afk')
+    }
+  })
+
+  it('does not stamp presence for a player no longer assigned to the game', async () => {
+    const { msSinceClientInput, clearClientInput } = await import('~~/server/services/LeaverSystem')
+    try {
+      const { peer } = openPeerInGame('p_straggler', 'game_over')
+      // Game ended: cleanup ran clearPlayerGame, so the assignment is gone.
+      vi.mocked(getPlayerGame).mockReturnValue(undefined)
+      sendMsg(peer, { type: 'action', command: { type: 'move', zone: 'mid' } })
+      expect(msSinceClientInput('game_over', 'p_straggler')).toBeNull()
+    } finally {
+      clearClientInput('game_over')
+    }
+  })
+
   it('rate-limits request_state via the recovery scope', () => {
     const peer = openAuthedPeer('p_rs_rl')
     vi.mocked(checkScopedRateLimit).mockReturnValue(false)

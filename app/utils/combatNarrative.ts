@@ -15,6 +15,7 @@
  */
 import type { GameEvent } from '~~/shared/types/game'
 import { isStructureTarget, teamLabel, type CombatLine, type Salience } from './combatLog'
+import { buffLabel } from './buffs'
 
 export interface NarrativeContext {
   /** The local player's id (for salience). */
@@ -31,6 +32,9 @@ export interface NarrativeContext {
   heroIdOf: (id: unknown) => string | undefined
   /** Item display name for an item id. */
   itemName: (id: string) => string
+  /** Human zone name for a zone id ("mid-t2-rad" → "Mid Lane T2 (Radiant)").
+   *  Optional — raw ids pass through when absent (older callers/tests). */
+  zoneName?: (id: string) => string
 }
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0)
@@ -97,6 +101,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
   const p = e.payload
   const tick = e.tick
   const label = ctx.entityLabel.bind(ctx)
+  const zname = (z: unknown) => ctx.zoneName?.(str(z)) ?? str(z)
 
   switch (e.type) {
     case 'damage': {
@@ -111,6 +116,15 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       if (isStructureTarget(p.targetId)) {
         line.dedupKey = `dmg:${str(p.sourceId)}->${str(p.targetId)}`
         line.dmgAmount = num(p.amount)
+      }
+      // Someone else's creep farming — story mode folds these into the per-tick
+      // farm digest. My own hits stay explicit (they're my action's feedback).
+      const target = str(p.targetId)
+      if (
+        (target.startsWith('creep') || target.startsWith('neutral')) &&
+        (line.salience === 'ally' || line.salience === 'world')
+      ) {
+        line.farmKind = 'hit'
       }
       return line
     }
@@ -154,7 +168,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'tower_kill':
       return {
         tick,
-        text: `${teamLabel(str(p.killerTeam))} razed the ${teamLabel(str(p.team))} tower in ${str(p.zone)}`,
+        text: `${teamLabel(str(p.killerTeam))} razed the ${teamLabel(str(p.team))} tower in ${zname(p.zone)}`,
         type: 'kill',
         salience: ctx.myTeam === str(p.killerTeam) ? 'mine-out' : 'mine-in',
       }
@@ -173,6 +187,8 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         text: `${label(p.playerId)} last-hit a ${str(p.creepType)} creep (+${num(p.goldAwarded)}g)`,
         type: 'gold',
         salience: actorSalience(p.playerId, ctx),
+        farmKind: 'lasthit',
+        goldAmount: num(p.goldAwarded),
       }
 
     case 'creep_deny':
@@ -181,6 +197,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         text: `${label(p.playerId)} denied a ${str(p.creepType)} creep`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
+        farmKind: 'deny',
       }
 
     case 'gold_change': {
@@ -225,7 +242,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'enemy_missing':
       return {
         tick,
-        text: `[MISSING] ${label(p.playerId)} — last seen ${str(p.lastSeenZone)}`,
+        text: `[MISSING] ${label(p.playerId)} — last seen ${zname(p.lastSeenZone)}`,
         type: 'system',
         salience: 'ally',
       }
@@ -249,7 +266,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'ward_placed':
       return {
         tick,
-        text: `${label(p.playerId)} planted a ${str(p.wardType)} ward in ${str(p.zone)}`,
+        text: `${label(p.playerId)} planted a ${str(p.wardType)} ward in ${zname(p.zone)}`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
       }
@@ -257,7 +274,8 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'rune_picked':
       return {
         tick,
-        text: `${label(p.playerId)} grabbed the ${str(p.runeType)} rune`,
+        // buffLabel: 'dd' → 'Double Damage', 'invis' → 'Invisible', etc.
+        text: `${label(p.playerId)} grabbed the ${buffLabel(str(p.runeType))} rune`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }
@@ -289,9 +307,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'neutral_killed':
       return {
         tick,
-        text: `${label(p.playerId)} cleared a ${str(p.neutralType)} camp`,
+        text: `${label(p.playerId)} cleared a ${str(p.neutralType).replace(/_/g, ' ')} camp in ${zname(p.zone)}`,
         type: 'gold',
         salience: actorSalience(p.playerId, ctx),
+        farmKind: 'camp',
       }
 
     case 'aegis_picked':
@@ -323,8 +342,8 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         tick,
         text:
           p.source === 'next_hop'
-            ? `${label(p.playerId)}'s return shadow snapped them back to ${str(p.destination)}`
-            : `${label(p.playerId)} teleported to ${str(p.destination)}`,
+            ? `${label(p.playerId)}'s return shadow snapped them back to ${zname(p.destination)}`
+            : `${label(p.playerId)} teleported to ${zname(p.destination)}`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
       }
@@ -332,7 +351,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'trap_triggered':
       return {
         tick,
-        text: `${label(p.owner)}'s trap caught ${label(p.targetId)} in ${str(p.zone)} (-${num(p.damage)})`,
+        text: `${label(p.owner)}'s trap caught ${label(p.targetId)} in ${zname(p.zone)} (-${num(p.damage)})`,
         type: 'damage',
         salience: salience(p.owner, p.targetId, ctx),
       }

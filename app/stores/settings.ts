@@ -2,11 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 // ── HUD / in-game layout preferences ───────────────────────────────
-// Three independent, player-toggleable directions for the in-game HUD,
-// each tuned for a text-based MOBA. Defaults reproduce TODAY's behaviour
-// exactly (classic combat-log-centric layout, no banner, comfortable
-// density, no vital emphasis), so existing players see no change until
-// they opt in.
+// Independent, player-toggleable directions for the in-game HUD, each
+// tuned for a text-based MOBA. The fresh-install default (`standard`) is
+// the SIMPLIFIED HUD: classic combat-log-centric layout with the focus
+// banner ON and the War Room roster collapsed. Persisted settings load
+// per-field, so existing players keep whatever they already chose.
 export type LayoutMode = 'classic' | 'map-centric' // direction A: where the map lives
 export type Density = 'comfortable' | 'compact' // direction C: spacing scale
 export type HudPreset = 'standard' | 'tactical' | 'focus' | 'custom'
@@ -20,23 +20,29 @@ export interface HudSettings {
   density: Density
   /** Direction C: bigger HP/mana + ability bar, recede secondary panels. */
   emphasizeVitals: boolean
+  /** War Room: show the ally + enemy-threat roster (collapsed to a slim row when off). */
+  rosterExpanded: boolean
 }
 
 /** Named bundles the player can apply in one click. 'custom' is implicit. */
 export const HUD_PRESETS: Record<Exclude<HudPreset, 'custom'>, HudSettings> = {
-  // Standard = exactly today's classic layout, no extras.
+  // Standard = the simplified default: classic layout + focus banner,
+  // War Room roster tucked away until asked for.
   standard: {
     layoutMode: 'classic',
-    focusBanner: false,
+    focusBanner: true,
     density: 'comfortable',
     emphasizeVitals: false,
+    rosterExpanded: false,
   },
-  // Tactical = read-the-board first: map-centric + a banner + dense panels.
+  // Tactical = read-the-board first: map-centric + a banner + dense panels
+  // + the full roster on display.
   tactical: {
     layoutMode: 'map-centric',
     focusBanner: true,
     density: 'compact',
     emphasizeVitals: false,
+    rosterExpanded: true,
   },
   // Focus = classic layout, but a loud action banner + emphasized vitals
   // for players who want maximum "what do I do now" clarity.
@@ -45,6 +51,7 @@ export const HUD_PRESETS: Record<Exclude<HudPreset, 'custom'>, HudSettings> = {
     focusBanner: true,
     density: 'comfortable',
     emphasizeVitals: true,
+    rosterExpanded: false,
   },
 }
 
@@ -70,7 +77,8 @@ export function detectHudPreset(h: HudSettings): HudPreset {
       p.layoutMode === h.layoutMode &&
       p.focusBanner === h.focusBanner &&
       p.density === h.density &&
-      p.emphasizeVitals === h.emphasizeVitals
+      p.emphasizeVitals === h.emphasizeVitals &&
+      p.rosterExpanded === h.rosterExpanded
     ) {
       return name
     }
@@ -117,6 +125,7 @@ export const useSettingsStore = defineStore('settings', () => {
         if (typeof h.focusBanner === 'boolean') hud.value.focusBanner = h.focusBanner
         if (h.density === 'comfortable' || h.density === 'compact') hud.value.density = h.density
         if (typeof h.emphasizeVitals === 'boolean') hud.value.emphasizeVitals = h.emphasizeVitals
+        if (typeof h.rosterExpanded === 'boolean') hud.value.rosterExpanded = h.rosterExpanded
         hudPreset.value = detectHudPreset(hud.value)
       }
     } catch {

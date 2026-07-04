@@ -4,6 +4,7 @@ import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   mapRowsFor,
   colHeadersFor,
+  shortColHeadersFor,
   gridColsClass,
   riverDividerRows,
   compactRiverDividerRow,
@@ -11,9 +12,8 @@ import {
   buildAdjacentZones,
   cellText,
   compactIndicators,
+  miniOverviewCell,
   zoneAriaLabel,
-  zoneShortCode,
-  zoneTeam,
 } from './asciiMapModel'
 import type { AncientsDisplay, ZoneDisplay } from './asciiMapModel'
 import MapLegend from './MapLegend.vue'
@@ -26,6 +26,8 @@ const props = defineProps<{
   forceMode?: 'full' | 'compact'
   /** Which map's grid to render (see shared/constants/maps). Default = full 5v5. */
   mapId?: string
+  /** Start with the compact mini overview expanded (used by stories/tests). */
+  overviewOpen?: boolean
 }>()
 
 // The grid layout + column headers for the active map.
@@ -104,9 +106,12 @@ function cellClasses(zone: ZoneDisplay): string[] {
   return classes
 }
 
+// Auto-path: every zone is a valid movement order (the hero walks one zone
+// per tick toward it), so every cell except your own is clickable. Adjacent
+// zones keep the brighter dashed styling — those arrive next tick.
 function zoneClickable(zoneId: string): boolean {
   if (!props.playerZone) return false
-  return isAdjacent(zoneId)
+  return zoneId !== props.playerZone
 }
 
 function isAdjacent(zoneId: string): boolean {
@@ -215,7 +220,7 @@ function handleGridKeydown(e: KeyboardEvent) {
 }
 
 // ── Compact (mobile) mode ─────────────────────────────────────────
-const showOverview = ref(false)
+const showOverview = ref(props.overviewOpen ?? false)
 
 const currentZoneCard = computed(() => zoneMap.value.get(props.playerZone) ?? null)
 
@@ -228,30 +233,19 @@ function moveAriaLabel(zone: ZoneDisplay): string {
   return `Move to ${zone.name}. ${detail}`
 }
 
-function miniCellText(zoneId: string): string {
-  const zone = getZone(zoneId)
-  const ancient = ancientForZone(zoneId, props.ancients)
-  let text = zoneShortCode(zoneId)
-  if (ancient && !ancient.alive) text += '◈✗'
-  if (zone && zone.enemyCount > 0) text += '!'
-  if (zone?.playerHere) text = `►${text}`
-  return text
-}
+// Mini-overview: short column headers + per-cell display models, all derived
+// from the active map layout via pure asciiMapModel helpers.
+const MINI_COL_HEADERS = computed(() => shortColHeadersFor(props.mapId))
 
-function miniCellClasses(zoneId: string): string[] {
-  const zone = getZone(zoneId)
-  const team = zoneTeam(zoneId)
-  const classes: string[] = [
-    team === 'radiant' ? 'text-radiant' : team === 'dire' ? 'text-dire' : 'text-text-dim',
-  ]
-  if (zone?.playerHere) {
-    classes.push('bg-self/30', 'font-bold')
-  } else {
-    classes.push('bg-bg-primary/60')
-  }
-  if (zone?.fogged) classes.push('opacity-40')
-  return classes
-}
+const miniRows = computed(() =>
+  MAP_ROWS.value.map((row) =>
+    row.map((zoneId) =>
+      zoneId
+        ? miniOverviewCell(zoneId, getZone(zoneId), ancientForZone(zoneId, props.ancients))
+        : null,
+    ),
+  ),
+)
 </script>
 
 <template>
@@ -305,17 +299,19 @@ function miniCellClasses(zoneId: string): string[] {
                 class="relative flex min-h-[70px] flex-col items-center justify-center px-1 py-2 text-center font-mono text-xs leading-tight transition-all"
                 :class="[
                   cellClasses(getZone(zoneId)!),
-                  zoneClickable(zoneId)
-                    ? 'bg-radiant/10 cursor-pointer border-2 border-dashed border-radiant/60 hover:scale-105'
-                    : 'cursor-default border-2 border-border/50 bg-bg-secondary/50',
+                  !zoneClickable(zoneId)
+                    ? 'cursor-default border-2 border-border/50 bg-bg-secondary/50'
+                    : isAdjacent(zoneId)
+                      ? 'bg-radiant/10 cursor-pointer border-2 border-dashed border-radiant/60 hover:scale-105'
+                      : 'cursor-pointer border-2 border-border/60 bg-bg-secondary/50 hover:border-radiant/50 hover:scale-105',
                 ]"
                 :title="
                   zoneId +
-                  (zoneClickable(zoneId)
-                    ? ' (click to move)'
-                    : getZone(zoneId)!.fogged
-                      ? ' (fogged — no vision)'
-                      : ' (not adjacent)')
+                  (!zoneClickable(zoneId)
+                    ? ''
+                    : isAdjacent(zoneId)
+                      ? ' (click to move — next tick)'
+                      : ' (click to travel — one zone per tick)')
                 "
                 @click="zoneClickable(zoneId) && handleZoneClick(zoneId)"
                 @focus="focusedZoneId = zoneId"
@@ -424,26 +420,53 @@ function miniCellClasses(zoneId: string): string[] {
         data-testid="mini-overview"
         class="border border-border bg-bg-secondary/40 p-1.5"
       >
+        <!-- Column headers derived from the active layout (5v5 / two_lane / one_lane). -->
+        <div class="grid gap-px pb-0.5" :class="GRID_COLS">
+          <span
+            v-for="(hdr, hi) in MINI_COL_HEADERS"
+            :key="hi"
+            class="text-center font-mono text-[0.55rem] font-bold uppercase tracking-wider text-text-dim"
+          >
+            {{ hdr }}
+          </span>
+        </div>
+        <!-- Radiant half is always the top of the grid, Dire the bottom. -->
+        <div class="pb-0.5 text-center text-[0.55rem] font-bold tracking-widest text-radiant">
+          RADIANT ▲
+        </div>
         <div
-          v-for="(row, ri) in MAP_ROWS"
+          v-for="(row, ri) in miniRows"
           :key="ri"
           class="grid gap-px"
           :class="[GRID_COLS, { 'mb-1 border-b border-river/40 pb-1': ri === COMPACT_RIVER_ROW }]"
         >
-          <template v-for="(zoneId, ci) in row" :key="ci">
+          <template v-for="(cell, ci) in row" :key="ci">
             <div
-              v-if="zoneId"
+              v-if="cell"
               class="flex h-7 items-center justify-center font-mono text-[0.6rem]"
-              :class="miniCellClasses(zoneId)"
+              :class="cell.classes"
             >
-              {{ miniCellText(zoneId) }}
+              <span>{{ cell.code }}</span>
+              <span v-if="cell.tower" :class="cell.tower.cls">{{ cell.tower.glyph }}</span>
+              <span v-if="cell.marks">{{ cell.marks }}</span>
             </div>
             <div v-else class="h-7 bg-bg-primary/30" />
           </template>
         </div>
-        <div class="mt-1 flex flex-wrap justify-center gap-x-3 text-[0.6rem] text-text-dim">
+        <div class="pt-0.5 text-center text-[0.55rem] font-bold tracking-widest text-dire">
+          DIRE ▼
+        </div>
+        <div
+          class="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[0.6rem] text-text-dim"
+        >
+          <span>T1-3 tower zones</span>
+          <span>JG jungle</span>
+          <span>RN rune</span>
+          <span>ROS Roshan</span>
+          <span>RF/RB fountain/base</span>
           <span class="text-self">► you</span>
           <span class="text-dire">! enemies</span>
+          <span>▲ tower up · ✗ razed</span>
           <span>◈✗ mainframe razed</span>
           <span
             ><span class="text-radiant">rad</span>/<span class="text-dire">dire</span> ground</span

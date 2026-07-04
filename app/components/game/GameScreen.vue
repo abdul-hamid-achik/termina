@@ -52,6 +52,7 @@ import {
   type KillFeedEntry,
 } from '~/utils/combatNarrative'
 import { TICK_DURATION_MS, RUNE_DURATION_TICKS } from '~~/shared/constants/balance'
+import { pathDistance } from '~~/shared/pathfinding'
 import { formatRoshan } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
@@ -322,6 +323,26 @@ watch(
   },
 )
 
+// Auto-path walk feedback: each hop prints where you are and how far is left,
+// so a multi-zone order reads as progress instead of silence.
+watch(
+  () => gameStore.player?.zone,
+  (zone, oldZone) => {
+    const p = gameStore.player
+    if (!p || !zone || !oldZone || zone === oldZone) return
+    const target = p.moveTarget
+    if (!target) return
+    const remaining = pathDistance(zone, target, (id) => !!gameStore.visibleZones[id])
+    if (remaining > 0) {
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: `▸ You reach ${ZONE_MAP[zone]?.name ?? zone} — ${remaining} more to ${ZONE_MAP[target]?.name ?? target}`,
+        type: 'system',
+      })
+    }
+  },
+)
+
 // Watch game events for audio cues + shake. Keyed on the store's monotonic
 // eventSeq (not events.length, which freezes at the 200-event cap and would
 // stop firing mid-game); the newest batch is read from latestEvents.
@@ -421,7 +442,7 @@ const heroData = computed(() => {
   return {
     name: (p.heroId && HEROES[p.heroId]?.name) || p.name,
     level: p.level,
-    zone: p.zone,
+    zone: zoneLabel(p.zone),
     hp: p.hp,
     maxHp: p.maxHp,
     mp: p.mp,
@@ -469,7 +490,18 @@ function entityLabel(id: unknown): string {
 
 function abilityLabel(id: unknown): string {
   if (typeof id !== 'string') return '?'
-  return abilityNameById[id] ?? id
+  if (abilityNameById[id]) return abilityNameById[id]
+  // Item actives arrive as '<itemId>_active' — resolve to the item's name so
+  // the feed says "cast Town Portal Scroll", not "cast town_portal_scroll_active".
+  if (id.endsWith('_active')) {
+    const item = ITEMS[id.slice(0, -'_active'.length)]
+    if (item) return item.name
+  }
+  return id
+}
+
+function zoneLabel(id: string): string {
+  return ZONE_MAP[id]?.name ?? id
 }
 
 // Build the combat log + kill feed from the engine event stream. The big
@@ -484,6 +516,7 @@ const narrativeCtx = computed<NarrativeContext>(() => ({
   heroIdOf: (id) =>
     typeof id === 'string' ? (gameStore.allPlayers[id]?.heroId ?? undefined) : undefined,
   itemName: (id) => ITEMS[id]?.name ?? id,
+  zoneName: zoneLabel,
 }))
 
 const combatEvents = computed<CombatLine[]>(() => {
@@ -848,6 +881,18 @@ function handleCommand(cmd: string) {
       }
       return
     }
+    // AFK takeover (no-reclaim): a bot plays this hero for the rest of the
+    // match, so don't queue doomed game actions — the server would drop them.
+    // Surrender still goes through (the human's vote counts); chat/ping/missing
+    // and the local readouts returned above stay available too.
+    if (gameStore.player?.aiControlled && command.type !== 'surrender') {
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: 'A bot controls your hero for the rest of this match — you can still chat, ping, and vote to surrender.',
+        type: 'system',
+      })
+      return
+    }
     // Already acted this tick: buffer the command client-side and auto-send
     // it when the next tick arrives (buyback/surrender are special actions
     // the server handles out-of-band, so they always go through directly).
@@ -916,28 +961,17 @@ function handleZoneClick(zoneId: string) {
   const p = gameStore.player
   if (!p) return
 
-  // Check if zone is adjacent or current
-  const playerZone = ZONE_MAP[p.zone]
-  if (!playerZone) return
-
   if (p.zone === zoneId) {
     localEvents.value.push({
       tick: gameStore.tick,
-      text: `Already in ${zoneId}`,
+      text: `Already in ${ZONE_MAP[zoneId]?.name ?? zoneId}`,
       type: 'system',
     })
     return
   }
 
-  if (!playerZone.adjacentTo.includes(zoneId)) {
-    localEvents.value.push({
-      tick: gameStore.tick,
-      text: `Cannot move to ${zoneId} — not adjacent`,
-      type: 'system',
-    })
-    return
-  }
-
+  // Auto-path: any zone is a valid order — the hero walks one zone per tick
+  // toward it (validateCommand still rejects zones off this game's map).
   handleCommand(`move ${zoneId}`)
 }
 
@@ -1289,7 +1323,6 @@ function handleReturnToMenu() {
         :latency="latency"
         :time-of-day="gameStore.timeOfDay"
         :day-night-tick="gameStore.dayNightTick"
-        :next-tick-in="gameStore.nextTickIn"
         :teams="gameStore.teams"
         :ancients="ancients"
         :net-worth-radiant="gameStore.netWorth.radiant"
@@ -1559,7 +1592,6 @@ function handleReturnToMenu() {
       />
       <CommandInput
         placeholder="Enter command — type help for the list (Tab to autocomplete)"
-        :tick-countdown="gameStore.nextTickIn"
         :player="gameStore.player"
         :visible-zones="gameStore.visibleZones"
         :all-players="gameStore.allPlayers"

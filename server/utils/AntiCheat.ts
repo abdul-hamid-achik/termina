@@ -9,7 +9,7 @@
 
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import type { Command } from '~~/shared/types/commands'
-import { areAdjacent } from '~~/server/game/map/topology'
+import { areAdjacent, findPath } from '~~/server/game/map/topology'
 import { HEROES } from '~~/shared/constants/heroes'
 import { MAX_LEVEL } from '~~/shared/constants/balance'
 import { getRateLimitStats } from './RateLimiter'
@@ -57,9 +57,14 @@ export function validateVision(
   // Check movement commands
   if (command.type === 'move') {
     const targetZone = command.zone
-    // Players can only move to adjacent zones or stay in current zone
-    // This is already validated in ActionResolver, but we double-check here for cheating
-    if (!areAdjacent(player.zone, targetZone) && player.zone !== targetZone) {
+    // Auto-path: any zone of THIS game's map with a path from here is a legal
+    // order (the hero walks one hop per tick). Only an off-map/unreachable
+    // destination is a violation. Mirrors ActionResolver's validateAction.
+    const reachable =
+      player.zone === targetZone ||
+      (!!state.zones[targetZone] &&
+        findPath(player.zone, targetZone, (id) => !!state.zones[id]).length > 0)
+    if (!reachable) {
       return createViolation(
         playerId,
         'INVALID_MOVE',

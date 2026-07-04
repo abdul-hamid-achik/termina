@@ -257,6 +257,65 @@ describe('AsciiMap', () => {
       expect(wrapper.find('[data-testid="mini-overview"]').exists()).toBe(false)
     })
 
+    it('renders column headers, side labels, and the code legend in the mini overview', async () => {
+      const wrapper = mountCompact()
+      await wrapper.find('[data-testid="overview-toggle"]').trigger('click')
+
+      const text = wrapper.find('[data-testid="mini-overview"]').text()
+      // Short column headers derived from the 5v5 layout (jungles collapse to JG).
+      expect(text).toContain('TOP')
+      expect(text).toContain('MID')
+      expect(text).toContain('BOT')
+      expect(text).toContain('JG')
+      // Side labels marking the two halves of the map.
+      expect(text).toContain('RADIANT ▲')
+      expect(text).toContain('DIRE ▼')
+      // The legend line explains the zone codes.
+      expect(text).toContain('T1-3 tower zones')
+      expect(text).toContain('JG jungle')
+      expect(text).toContain('RN rune')
+      expect(text).toContain('ROS Roshan')
+      expect(text).toContain('RF/RB fountain/base')
+      expect(text).toContain('▲ tower up · ✗ razed')
+    })
+
+    it('shows tower state glyphs in the mini overview lane cells', async () => {
+      const zones = [
+        makeZone({
+          id: 'mid-t1-rad',
+          playerHere: true,
+          tower: { team: 'radiant', alive: false, tier: 1 },
+        }),
+        makeZone({ id: 'mid-t1-dire', tower: { team: 'dire', alive: true, tier: 1 } }),
+      ]
+      const wrapper = mount(AsciiMap, {
+        props: { zones, playerZone: 'mid-t1-rad', forceMode: 'compact' as const },
+      })
+      await wrapper.find('[data-testid="overview-toggle"]').trigger('click')
+
+      const overview = wrapper.find('[data-testid="mini-overview"]')
+      // Razed radiant tower on the player's cell (✗ after the code), live dire tower (▲).
+      expect(overview.text()).toContain('►M1✗')
+      expect(overview.text()).toContain('M1▲')
+      // The standing tower's glyph is team-colored.
+      const direGlyph = overview
+        .findAll('span')
+        .find((s) => s.text() === '▲' && s.classes().includes('text-dire'))
+      expect(direGlyph).toBeTruthy()
+    })
+
+    it('starts with the overview expanded when overviewOpen is set (stories)', () => {
+      const wrapper = mount(AsciiMap, {
+        props: {
+          zones: compactZones(),
+          playerZone: 'mid-t1-rad',
+          forceMode: 'compact' as const,
+          overviewOpen: true,
+        },
+      })
+      expect(wrapper.find('[data-testid="mini-overview"]').exists()).toBe(true)
+    })
+
     it('keeps the full grid when forced to full mode', () => {
       const wrapper = mount(AsciiMap, {
         props: {
@@ -338,13 +397,13 @@ describe('AsciiMap', () => {
       expect(wrapper.emitted('zoneClick')).toEqual([['mid-river']])
     })
 
-    it('does not emit when a non-adjacent zone is clicked', async () => {
+    it('emits for a distant zone too — auto-path makes every zone a travel order', async () => {
       const wrapper = mountFull()
       const cell = wrapper.find('[title^="dire-base"]')
       expect(cell.exists()).toBe(true)
-      expect(cell.attributes('title')).toContain('not adjacent')
+      expect(cell.attributes('title')).toContain('click to travel')
       await cell.trigger('click')
-      expect(wrapper.emitted('zoneClick')).toBeUndefined()
+      expect(wrapper.emitted('zoneClick')).toEqual([['dire-base']])
     })
 
     it('makes nothing clickable when the player has no zone', async () => {

@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
-import {
-  DAY_DURATION_TICKS,
-  NIGHT_DURATION_TICKS,
-  TICK_DURATION_MS,
-} from '~~/shared/constants/balance'
+import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '~~/shared/constants/balance'
 import type { TeamState, AncientState } from '~~/shared/types/game'
 import { goldLead, formatGoldShort, dayNightReadout } from '~/utils/strategy'
 import { formatSeconds } from '~/utils/gameClock'
@@ -23,8 +19,6 @@ const props = defineProps<{
   latency?: number
   timeOfDay?: 'day' | 'night'
   dayNightTick?: number
-  /** Milliseconds until the next tick resolves (live countdown). */
-  nextTickIn?: number
   /** Team-level macro state (renders the always-on macro row when present). */
   teams?: { radiant: TeamState; dire: TeamState } | null
   ancients?: { radiant: AncientState; dire: AncientState } | null
@@ -34,16 +28,8 @@ const props = defineProps<{
   kdaPopKey?: number
 }>()
 
-// ── Tick countdown bar ─────────────────────────────────────────
-const TICK_BAR_WIDTH = 8
-
-const tickBar = computed(() => {
-  const remaining = Math.max(0, Math.min(TICK_DURATION_MS, props.nextTickIn ?? 0))
-  const filled = Math.round((remaining / TICK_DURATION_MS) * TICK_BAR_WIDTH)
-  return '█'.repeat(filled) + '░'.repeat(TICK_BAR_WIDTH - filled)
-})
-
-const tickSeconds = computed(() => ((props.nextTickIn ?? 0) / 1000).toFixed(1))
+// The bar shows no tick countdown — the combat log's theater header is the
+// game's single clock (four duplicate countdowns was a legibility complaint).
 
 function formatGold(n: number): string {
   return n.toLocaleString()
@@ -87,16 +73,6 @@ function corePct(a: AncientState | undefined): number {
         <span class="text-text-primary">{{ tick }}</span>
       </span>
       <span class="text-border">|</span>
-      <span
-        v-if="nextTickIn !== undefined"
-        class="inline-flex items-center gap-1"
-        data-testid="tick-countdown"
-      >
-        <span class="t-caption">next tick</span>
-        <span class="text-ability tracking-normal" aria-hidden="true">{{ tickBar }}</span>
-        <span class="text-text-primary">{{ tickSeconds }}s</span>
-      </span>
-      <span v-if="nextTickIn !== undefined" class="text-border">|</span>
       <span class="inline-flex gap-1">
         <span class="text-text-primary text-glow-sm">{{ gameTime }}</span>
       </span>

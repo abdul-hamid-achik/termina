@@ -148,6 +148,20 @@ const twoLaneZones: ZoneDisplay[] = [
       </div>
     </Variant>
 
+    <!-- Mini overview expanded: column headers, RADIANT/DIRE half labels, and
+         tower-state glyphs (▲ standing team-colored, ✗ razed) in lane cells. -->
+    <Variant title="mini overview (compact)">
+      <div class="bg-bg-primary p-2" style="width: 360px; height: 860px">
+        <AsciiMap
+          :zones="zones"
+          player-zone="mid-river"
+          :ancients="ancients"
+          force-mode="compact"
+          :overview-open="true"
+        />
+      </div>
+    </Variant>
+
     <!-- One-lane map: single mid-lane column (map-id drives the layout). -->
     <Variant title="one-lane (full)">
       <div class="bg-bg-primary p-2" style="width: 760px; height: 620px">
@@ -183,6 +197,20 @@ const twoLaneZones: ZoneDisplay[] = [
           :ancients="ancients"
           map-id="two_lane"
           force-mode="compact"
+        />
+      </div>
+    </Variant>
+
+    <!-- Two-lane mini overview: 4-column headers derived from the layout. -->
+    <Variant title="mini overview (two-lane, compact)">
+      <div class="bg-bg-primary p-2" style="width: 360px; height: 860px">
+        <AsciiMap
+          :zones="twoLaneZones"
+          player-zone="mid-river"
+          :ancients="ancients"
+          map-id="two_lane"
+          force-mode="compact"
+          :overview-open="true"
         />
       </div>
     </Variant>

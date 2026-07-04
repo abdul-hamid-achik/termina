@@ -31,7 +31,6 @@ const base = {
           :latency="38"
           time-of-day="day"
           :day-night-tick="12"
-          :next-tick-in="2400"
           :teams="teams"
           :ancients="ancients"
         />
@@ -46,7 +45,6 @@ const base = {
           :reconnecting="true"
           time-of-day="night"
           :day-night-tick="6"
-          :next-tick-in="900"
           :net-worth-radiant="4200"
           :net-worth-dire="6100"
           :teams="{

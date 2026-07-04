@@ -39,13 +39,14 @@ describe('one-lane map', () => {
     await game.tick()
 
     // radiant-base is globally adjacent to top-t3-rad, but that zone isn't on the
-    // one-lane map — the move must be refused, not step into an uninitialized zone.
+    // one-lane map — no path exists inside this map's zone set, so the move must
+    // be refused (auto-path included), not step into an uninitialized zone.
     game.submit({ type: 'move', zone: 'top-t3-rad' })
     await game.tick()
 
     expect((await game.me()).zone).toBe('radiant-base') // stayed put
     expect(
-      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('non-adjacent')),
+      game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('No path')),
     ).toBe(true)
   })
 

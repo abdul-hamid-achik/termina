@@ -55,13 +55,21 @@ import { voteSurrender, removeSurrenderVote } from './SurrenderSystem'
 import {
   markPlayerActiveSafe,
   detectAFKPlayers,
+  shouldConvertAFK,
+  msSinceClientInput,
   recordLeaverSafe,
 } from '~~/server/services/LeaverSystem'
+import { getPeer } from '~~/server/services/PeerRegistry'
 import { writeSnapshot, SNAPSHOT_EVERY_N_TICKS, type SnapshotMeta } from './StateSnapshot'
 import { appendActions } from './ActionLog'
 import type { RedisServiceApi } from '~~/server/services/RedisService'
 
 // ── Action queue per game ──────────────────────────────────────
+
+/** Command verbs that do NOT cancel an in-progress auto-path walk: a new move
+ *  replaces the destination in the resolver, and the out-of-band verbs resolve
+ *  without expressing a new positional intent. */
+const KEEPS_AUTOPATH = new Set(['move', 'surrender', 'select_talent', 'buyback'])
 
 /** Pending actions collected during the action window. */
 const gameActionQueues = new Map<string, PlayerAction[]>()
@@ -156,6 +164,12 @@ export function submitAction(gameId: string, playerId: string, command: Command)
   }
 }
 
+/** The command type currently queued for a player this tick, if any. */
+function queuedCommandType(gameId: string, playerId: string): string | null {
+  const queued = gameActionQueues.get(gameId)?.find((a) => a.playerId === playerId)
+  return queued ? queued.command.type : null
+}
+
 /** Drain all queued actions for a game. Drains both the local in-process
  * queue AND the Redis relay queue (if configured). */
 function drainActions(gameId: string): PlayerAction[] {
@@ -221,6 +235,11 @@ export function processTick(
     for (const botId of botPlayerIds) {
       const bot = currentState.players[botId]
       if (bot && bot.alive) {
+        // An AFK-converted human may have queued a surrender vote via WS this
+        // tick — the queue is latest-wins per player, so the bot's decision
+        // would clobber it. Skip the bot for one tick so the vote reaches
+        // processSpecialActions (the only input a converted human can send).
+        if (queuedCommandType(gameId, botId) === 'surrender') continue
         const command = decideBotAction(currentState, bot, getBotLane(gameId, botId), gameId)
         if (command) {
           submitAction(gameId, botId, command)
@@ -231,19 +250,43 @@ export function processTick(
     // 1. Collect all player actions from queue
     const actions = drainActions(gameId)
 
-    // 1.2. Mark players as active when they take actions
+    // 1.2. Mark players as active when they take actions. A deliberate
+    // non-move order also cancels any queued auto-path walk (a new intent
+    // replaces the old one); moves replace the destination inside the
+    // resolver, and out-of-band verbs (surrender vote, talent pick, buyback)
+    // don't interrupt walking.
     for (const action of actions) {
       markPlayerActiveSafe(gameId, action.playerId)
       const actor = currentState.players[action.playerId]
       if (actor) {
+        const cancelsWalk = !KEEPS_AUTOPATH.has(action.command.type) && actor.moveTarget != null
         currentState = {
           ...currentState,
           players: {
             ...currentState.players,
-            [action.playerId]: { ...actor, lastActionTick: currentState.tick },
+            [action.playerId]: {
+              ...actor,
+              lastActionTick: currentState.tick,
+              ...(cancelsWalk ? { moveTarget: null } : {}),
+            },
           },
         }
       }
+    }
+
+    // 1.3. Auto-path continuation — players with a queued destination and no
+    // explicit order this tick keep walking, one hop per tick, through the
+    // normal validate/resolve pipeline (so root/stun/taunt still gate the hop).
+    // Added AFTER the activity stamping above: a continuation is not player
+    // activity, and AFK detection must still see an idle human as idle.
+    const actedThisTick = new Set(actions.map((a) => a.playerId))
+    for (const [pid, p] of Object.entries(currentState.players)) {
+      if (!p.alive || !p.moveTarget || actedThisTick.has(pid)) continue
+      actions.push({
+        playerId: pid,
+        command: { type: 'move', zone: p.moveTarget },
+        synthesized: true,
+      })
     }
 
     // 1.5. Handle special commands (buyback, surrender, talent) before validation
@@ -261,7 +304,11 @@ export function processTick(
       const error = validateAction(currentState, action)
       if (error === null) {
         validActions.push(action)
-      } else {
+      } else if (!action.synthesized) {
+        // Synthesized auto-path continuations fail silently: a rooted walker
+        // would otherwise get "Cannot move while rooted" warnings every tick
+        // for an order they issued long ago. The walk resumes when the
+        // disable expires (moveTarget persists).
         rejectedActions.push({ playerId: action.playerId, reason: error })
       }
     }
@@ -432,7 +479,16 @@ export function processTick(
     if (currentState.tick % 60 === 0) {
       for (const afk of detectAFKPlayers(currentState)) {
         const player = currentState.players[afk.playerId]
-        if (!player || !convertToBot(gameId, afk.playerId)) continue
+        if (!player) continue
+        // Presence gate: "no game action for 2 min" alone false-positives on a
+        // player who is at the screen but between actions (reading the shop,
+        // watching a fight). A connected player is only converted after the
+        // longer silence window, and only when a human teammate benefits.
+        const convert = shouldConvertAFK(currentState, afk.playerId, {
+          isConnected: getPeer(afk.playerId) !== undefined,
+          msSinceInput: msSinceClientInput(gameId, afk.playerId),
+        })
+        if (!convert || !convertToBot(gameId, afk.playerId)) continue
         currentState = {
           ...currentState,
           players: {
@@ -1198,6 +1254,9 @@ function handleDeaths(
           hp: player.maxHp,
           mp: player.maxMp,
           buffs: player.buffs.filter((b) => b.id !== 'aegis'),
+          // Death cancels the auto-path walk on this branch too — an aegis
+          // revive must not resume marching into whoever just killed you.
+          moveTarget: null,
         }
         events.push({
           _tag: 'aegis_used',
@@ -1226,6 +1285,9 @@ function handleDeaths(
         deaths: newDeaths,
         killStreak: 0,
         buybackCost,
+        // Death cancels any queued auto-path walk — respawning at the fountain
+        // with a stale destination would march the hero straight back out.
+        moveTarget: null,
       }
       if (!alreadyCounted) {
         events.push({

@@ -45,9 +45,10 @@ describe('Settings Store', () => {
         quickCastEnabled: false,
         hud: {
           layoutMode: 'classic',
-          focusBanner: false,
+          focusBanner: true,
           density: 'comfortable',
           emphasizeVitals: false,
+          rosterExpanded: false,
         },
       })
     })
@@ -66,9 +67,10 @@ describe('Settings Store', () => {
         quickCastEnabled: true,
         hud: {
           layoutMode: 'classic',
-          focusBanner: false,
+          focusBanner: true,
           density: 'comfortable',
           emphasizeVitals: false,
+          rosterExpanded: false,
         },
       })
     })
@@ -160,15 +162,16 @@ describe('Settings Store', () => {
   })
 
   describe('HUD settings', () => {
-    it('defaults to the standard preset (today’s classic layout)', () => {
+    it('defaults to the standard preset (simplified HUD: banner on, roster collapsed)', () => {
       const store = useSettingsStore()
 
       expect(store.hudPreset).toBe('standard')
       expect(store.hud).toEqual({
         layoutMode: 'classic',
-        focusBanner: false,
+        focusBanner: true,
         density: 'comfortable',
         emphasizeVitals: false,
+        rosterExpanded: false,
       })
     })
 
@@ -182,34 +185,46 @@ describe('Settings Store', () => {
         focusBanner: true,
         density: 'compact',
         emphasizeVitals: false,
+        rosterExpanded: true,
       })
 
       store.applyHudPreset('focus')
       expect(store.hudPreset).toBe('focus')
       expect(store.hud.emphasizeVitals).toBe(true)
       expect(store.hud.focusBanner).toBe(true)
+      expect(store.hud.rosterExpanded).toBe(false)
     })
 
     it('setHud toggles one field and re-derives the preset label', () => {
       const store = useSettingsStore()
 
-      // Off a named preset → 'custom'.
-      store.setHud('emphasizeVitals', true)
-      expect(store.hud.emphasizeVitals).toBe(true)
+      // Off a named preset → 'custom' (no preset is classic + roster expanded).
+      store.setHud('rosterExpanded', true)
+      expect(store.hud.rosterExpanded).toBe(true)
       expect(store.hudPreset).toBe('custom')
 
       // Toggling back to a combination that matches 'standard' re-detects it.
-      store.setHud('emphasizeVitals', false)
+      store.setHud('rosterExpanded', false)
       expect(store.hudPreset).toBe('standard')
     })
 
     it('detects the focus preset when fields are set individually', () => {
       const store = useSettingsStore()
-      store.setHud('focusBanner', true)
-      expect(store.hudPreset).toBe('custom')
+      // standard differs from focus only by emphasizeVitals now that both
+      // share the banner — one toggle lands exactly on the focus preset.
       store.setHud('emphasizeVitals', true)
-      // classic + banner + comfortable + vitals === the focus preset
       expect(store.hudPreset).toBe('focus')
+    })
+
+    it('detects the tactical preset when fields are set individually', () => {
+      const store = useSettingsStore()
+      store.setHud('layoutMode', 'map-centric')
+      expect(store.hudPreset).toBe('custom')
+      store.setHud('density', 'compact')
+      expect(store.hudPreset).toBe('custom')
+      store.setHud('rosterExpanded', true)
+      // map-centric + banner + compact + no vitals + roster === tactical
+      expect(store.hudPreset).toBe('tactical')
     })
 
     it('persists and reloads HUD settings round-trip', () => {
@@ -226,8 +241,34 @@ describe('Settings Store', () => {
         focusBanner: true,
         density: 'compact',
         emphasizeVitals: false,
+        rosterExpanded: true,
       })
       expect(reloaded.hudPreset).toBe('tactical')
+    })
+
+    it('keeps a persisted pre-change choice (focusBanner off) → custom preset', () => {
+      // A user who saved settings before the default flip has focusBanner:false
+      // in localStorage; per-field loading must honour it, not the new default.
+      mockStorage.set(
+        'termina:settings',
+        JSON.stringify({
+          hud: {
+            layoutMode: 'classic',
+            focusBanner: false,
+            density: 'comfortable',
+            emphasizeVitals: false,
+          },
+        }),
+      )
+
+      const store = useSettingsStore()
+      store.load()
+
+      expect(store.hud.focusBanner).toBe(false)
+      // No hud.rosterExpanded in the old payload → keeps the new default.
+      expect(store.hud.rosterExpanded).toBe(false)
+      // classic + NO banner matches no named preset any more.
+      expect(store.hudPreset).toBe('custom')
     })
 
     it('keeps HUD defaults when an old payload has no hud key', () => {
@@ -247,9 +288,10 @@ describe('Settings Store', () => {
         JSON.stringify({
           hud: {
             layoutMode: 'map-centric', // valid → applied
-            focusBanner: 'yes', // wrong type → ignored (stays false)
+            focusBanner: 'yes', // wrong type → ignored (stays true, the default)
             density: 'ultra', // invalid enum → ignored (stays comfortable)
             emphasizeVitals: true, // valid → applied
+            rosterExpanded: 'wide', // wrong type → ignored (stays false)
           },
         }),
       )
@@ -258,9 +300,10 @@ describe('Settings Store', () => {
       store.load()
 
       expect(store.hud.layoutMode).toBe('map-centric')
-      expect(store.hud.focusBanner).toBe(false)
+      expect(store.hud.focusBanner).toBe(true)
       expect(store.hud.density).toBe('comfortable')
       expect(store.hud.emphasizeVitals).toBe(true)
+      expect(store.hud.rosterExpanded).toBe(false)
       expect(store.hudPreset).toBe('custom')
     })
   })

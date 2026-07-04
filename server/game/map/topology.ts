@@ -1,6 +1,7 @@
 import type { Zone, ZoneType } from '~~/shared/types/map'
 import type { TeamId } from '~~/shared/types/game'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
+import { findPath } from '~~/shared/pathfinding'
 
 /** Look up a zone by ID. */
 export function getZone(id: string): Zone | undefined {
@@ -21,45 +22,10 @@ export function areAdjacent(a: string, b: string): boolean {
 
 /** BFS shortest path from `from` to `to`. Returns the zone IDs including both endpoints.
  *  Pass `hasZone` to restrict traversal to a subset map's zones (e.g. one-lane,
- *  two-lane). Without it, the full 32-zone global graph is used. */
-export function findPath(from: string, to: string, hasZone?: (id: string) => boolean): string[] {
-  if (from === to) return [from]
-  if (!ZONE_MAP[from] || !ZONE_MAP[to]) return []
-  if (hasZone && (!hasZone(from) || !hasZone(to))) return []
-
-  const visited = new Set<string>([from])
-  const parent = new Map<string, string>()
-  const queue: string[] = [from]
-
-  while (queue.length > 0) {
-    const current = queue.shift()!
-    const zone = ZONE_MAP[current]
-    if (!zone) continue
-
-    for (const neighbor of zone.adjacentTo) {
-      if (visited.has(neighbor)) continue
-      // Skip neighbors outside the subset map's zone set
-      if (hasZone && !hasZone(neighbor)) continue
-      visited.add(neighbor)
-      parent.set(neighbor, current)
-
-      if (neighbor === to) {
-        // Reconstruct path
-        const path: string[] = [to]
-        let node = to
-        while (node !== from) {
-          node = parent.get(node)!
-          path.unshift(node)
-        }
-        return path
-      }
-
-      queue.push(neighbor)
-    }
-  }
-
-  return [] // no path found
-}
+ *  two-lane). Without it, the full 32-zone global graph is used.
+ *  The BFS itself lives in shared/pathfinding so the client can mirror the
+ *  server's reachability rule for auto-path move validation. */
+export { findPath }
 
 /** Shortest path length (number of edges) between two zones. Returns -1 if unreachable.
  *  Pass `hasZone` to restrict traversal to a subset map's zones. */

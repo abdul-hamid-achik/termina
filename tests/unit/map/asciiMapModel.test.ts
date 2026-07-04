@@ -5,6 +5,7 @@ import {
   TWO_LANE_MAP_ROWS,
   mapRowsFor,
   colHeadersFor,
+  shortColHeadersFor,
   gridColsClass,
   riverDividerRows,
   compactRiverDividerRow,
@@ -13,6 +14,7 @@ import {
   buildAdjacentZones,
   cellText,
   compactIndicators,
+  miniOverviewCell,
   zoneAriaLabel,
   zoneShortCode,
   zoneTeam,
@@ -432,6 +434,97 @@ describe('asciiMapModel', () => {
         'MID LANE',
         'DIRE JUNGLE',
       ])
+    })
+  })
+
+  describe('shortColHeadersFor (mini-overview headers)', () => {
+    it('shortens the 5v5 headers, collapsing both jungles to JG', () => {
+      expect(shortColHeadersFor(undefined)).toEqual(['TOP', 'JG', 'MID', 'JG', 'BOT'])
+    })
+
+    it('derives from the active layout for one_lane and two_lane', () => {
+      expect(shortColHeadersFor('one_lane')).toEqual(['MID'])
+      expect(shortColHeadersFor('two_lane')).toEqual(['TOP', 'JG', 'MID', 'JG'])
+    })
+
+    it('always matches the layout column count (never a hardcoded 5)', () => {
+      for (const mapId of [undefined, 'one_lane', 'two_lane', 'default_5v5']) {
+        expect(shortColHeadersFor(mapId)).toHaveLength(mapRowsFor(mapId)[0]!.length)
+      }
+    })
+  })
+
+  describe('miniOverviewCell', () => {
+    it('shows the bare short code with territory color for an empty zone', () => {
+      const cell = miniOverviewCell('mid-t2-dire', makeZone({ id: 'mid-t2-dire' }), null)
+      expect(cell.code).toBe('M2')
+      expect(cell.tower).toBeNull()
+      expect(cell.marks).toBe('')
+      expect(cell.classes).toContain('text-dire')
+      expect(cell.classes).toContain('bg-bg-primary/60')
+    })
+
+    it('prefixes ► and highlights the cell where the player is', () => {
+      const cell = miniOverviewCell('mid-t1-rad', makeZone({ playerHere: true }), null)
+      expect(cell.code).toBe('►M1')
+      expect(cell.classes).toEqual(expect.arrayContaining(['bg-self/30', 'font-bold']))
+    })
+
+    it('appends a team-colored ▲ for a standing tower', () => {
+      const rad = miniOverviewCell(
+        'mid-t1-rad',
+        makeZone({ tower: { team: 'radiant', alive: true, tier: 1 } }),
+        null,
+      )
+      expect(rad.tower).toEqual({ glyph: '▲', cls: 'text-radiant' })
+      const dire = miniOverviewCell(
+        'mid-t1-dire',
+        makeZone({ id: 'mid-t1-dire', tower: { team: 'dire', alive: true, tier: 1 } }),
+        null,
+      )
+      expect(dire.tower).toEqual({ glyph: '▲', cls: 'text-dire' })
+    })
+
+    it('appends a dim ✗ for a razed tower', () => {
+      const cell = miniOverviewCell(
+        'mid-t1-rad',
+        makeZone({ tower: { team: 'radiant', alive: false, tier: 1 } }),
+        null,
+      )
+      expect(cell.tower).toEqual({ glyph: '✗', cls: 'text-text-dim' })
+    })
+
+    it('shows a standing tower through fog (global info)', () => {
+      const cell = miniOverviewCell(
+        'mid-t2-dire',
+        makeZone({
+          id: 'mid-t2-dire',
+          fogged: true,
+          tower: { team: 'dire', alive: true, tier: 2 },
+        }),
+        null,
+      )
+      expect(cell.tower).toEqual({ glyph: '▲', cls: 'text-dire' })
+      expect(cell.classes).toContain('opacity-40')
+    })
+
+    it('marks enemies and a razed mainframe after the code', () => {
+      const cell = miniOverviewCell(
+        'dire-base',
+        makeZone({ id: 'dire-base', enemyCount: 2 }),
+        makeAncient({ team: 'dire', alive: false }),
+      )
+      expect(cell.code).toBe('DB')
+      expect(cell.marks).toBe('◈✗!')
+    })
+
+    it('handles zones missing from the display list', () => {
+      const cell = miniOverviewCell('roshan-pit', undefined, null)
+      expect(cell.code).toBe('ROS')
+      expect(cell.tower).toBeNull()
+      expect(cell.marks).toBe('')
+      expect(cell.classes).toContain('text-text-dim')
+      expect(cell.classes).toContain('bg-bg-primary/60')
     })
   })
 
