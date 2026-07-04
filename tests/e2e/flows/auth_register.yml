@@ -57,7 +57,8 @@ steps:
   - id: type_short_password
     fill:
       by: selector
-      selector: form > div:nth-child(2) input
+      # Stable id — the optional EMAIL field made positional selectors drift.
+      selector: "#login-password"
       value: short
   - id: see_password_hint
     wait:
@@ -66,7 +67,7 @@ steps:
   - id: type_mismatch_confirm
     fill:
       by: selector
-      selector: form > div:nth-child(3) input
+      selector: "#login-confirm-password"
       value: different
   - id: see_mismatch_hint
     wait:

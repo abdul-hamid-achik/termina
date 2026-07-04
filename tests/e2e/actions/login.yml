@@ -26,12 +26,14 @@ steps:
   - id: fill_password
     fill:
       by: selector
-      selector: form > div:nth-child(2) input
+      # Stable id, drift-proof against form reordering (the optional EMAIL field
+      # added between username and password broke the old positional selector).
+      selector: "#login-password"
       value: Testpass123
   - id: fill_confirm
     fill:
       by: selector
-      selector: form > div:nth-child(3) input
+      selector: "#login-confirm-password"
       value: Testpass123
   # The register form has five buttons (LOGIN/REGISTER tabs, the submit, two OAuth),
   # so target the submit by its exact accessible name — `form button` is ambiguous

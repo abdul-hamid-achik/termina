@@ -2,8 +2,10 @@
 import { SAMPLE_HERO_ID, makeAncient, makeTeamState } from '~/stories/fixtures'
 import GameStateBar from './GameStateBar.vue'
 
-// The top bar: self state (tick heartbeat, gold, KDA, connection) plus an
+// The top bar: self state (tick number, gold, KDA, connection) plus an
 // always-on macro row (team kills, net-worth lead, towers, Mainframe HP).
+// NOTE: the bar shows NO tick countdown — the TickTheater header is the game's
+// single clock (the countdown props were removed in the HUD declutter).
 const teams = { radiant: makeTeamState('radiant'), dire: makeTeamState('dire') }
 const ancients = { radiant: makeAncient('radiant'), dire: makeAncient('dire') }
 
@@ -22,7 +24,7 @@ const base = {
 
 <template>
   <Story title="Game/GameStateBar">
-    <!-- Online, day, radiant ahead, mid tick countdown. -->
+    <!-- Online, day, radiant ahead. -->
     <Variant title="online (day, radiant ahead)">
       <div class="bg-bg-primary" style="width: 820px">
         <GameStateBar

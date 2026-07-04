@@ -1,0 +1,90 @@
+version: 1
+name: game_hud_shell
+intent: >
+  The in-game HUD after the legibility overhaul: the combat-log theater header
+  is the game's ONLY tick clock (the old GameStateBar countdown is gone), the
+  map's [SHOW MAP OVERVIEW] toggle reveals the labeled mini overview with a
+  legend that explains its codes, and the War Room roster ships collapsed and
+  expands on tap. UI shell + interactions only — game truth (ticks, bots,
+  combat) is covered by `bun run test:gameplay`, not here.
+mode: normal
+metadata:
+  feature: game-hud
+  tags:
+    - game
+    - hud
+    - map
+    - war-room
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: single_tick_clock
+    description: the theater header renders and the removed GameStateBar countdown
+      does not — one clock on screen, not four
+    verify:
+      script:
+        run: >
+          const theater =
+          document.querySelector('[data-testid="theater-header"]');
+
+          const barCountdown =
+          document.querySelector('[data-testid="tick-countdown"]');
+
+          return { ok: !!theater && !barCountdown, evidence: 'theater=' +
+          !!theater + ' oldBarCountdown=' + !!barCountdown };
+  - id: map_overview_explains_codes
+    description: the opened mini overview carries the legend that explains its zone
+      codes (the old unlabeled letter-matrix was a core complaint)
+    verify:
+      text:
+        contains: tower zones
+        region: '[data-testid="compact-map"]'
+  - id: war_room_roster_expands
+    description: the collapsed-by-default War Room roster is open after tapping its
+      expand row
+    verify:
+      script:
+        run: >
+          const roster =
+          document.querySelector('[data-testid="war-room-roster"]');
+
+          return { ok: !!roster, evidence: 'roster rendered=' + !!roster };
+steps:
+  - use: login
+  - id: open_home
+    open:
+      path: /
+      waitUntil: domcontentloaded
+  - id: confirm_logged_in
+    wait:
+      text: "[LOGOUT]"
+      timeoutMs: 10000
+  - id: click_practice
+    click:
+      by: selector
+      selector: '[data-testid="start-tutorial"]'
+  - id: await_game_screen
+    wait:
+      selector: '[data-testid="game-screen"]'
+      timeoutMs: 20000
+  - id: await_theater_header
+    wait:
+      selector: '[data-testid="theater-header"]'
+      timeoutMs: 15000
+  - id: open_map_overview
+    click:
+      by: selector
+      selector: '[data-testid="overview-toggle"]'
+  - id: await_mini_overview
+    wait:
+      selector: '[data-testid="mini-overview"]'
+      timeoutMs: 10000
+  - id: expand_war_room_roster
+    click:
+      by: selector
+      selector: '[data-testid="war-room-roster-toggle"]'
+  - id: await_roster
+    wait:
+      selector: '[data-testid="war-room-roster"]'
+      timeoutMs: 10000
+contractHash: sha256:d7c9c1357d99219ae44ad7a9d538e67adb771b2b152075666e4c72ee773fb335

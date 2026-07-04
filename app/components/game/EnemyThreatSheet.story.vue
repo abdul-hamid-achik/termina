@@ -4,8 +4,11 @@ import { SAMPLE_HEROES, makePlayer } from '~/stories/fixtures'
 import EnemyThreatSheet from './EnemyThreatSheet.vue'
 
 // The sheet shows enemy intel: visible enemies get HP/MP bars + ability
-// cooldowns; fogged enemies show only last-seen; dead enemies show a respawn
-// timer. `lastSeen` is keyed by player id.
+// cooldowns + status chips with readable labels from ~/utils/buffs (Magic
+// Immune, Haste, Stunned, Slowed); fogged enemies show only last-seen, with
+// the zone HUMANIZED to its display name ("Top River Crossing", not
+// 'top-river'); dead enemies show a respawn timer. `lastSeen` is keyed by
+// player id.
 const TICK = 240
 
 const visible: PlayerState[] = [
@@ -37,10 +40,11 @@ const visible: PlayerState[] = [
     maxMp: 320,
     level: 9,
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-    // Stunned + slowed at low HP — an OPENING (rendered green): go in.
+    // Stunned + slowed at low HP — an OPENING (rendered green): go in. The
+    // slow's `stacks` is a magnitude (40%), so no count is shown on the chip.
     buffs: [
-      { id: 'stun', stacks: 1, ticksRemaining: 2, source: 'e?', destination: 'e2' },
-      { id: 'slow', stacks: 40, ticksRemaining: 2, source: 'e?', destination: 'e2' },
+      { id: 'stun', stacks: 1, ticksRemaining: 2, source: 'ally', destination: 'e2' },
+      { id: 'slow', stacks: 40, ticksRemaining: 2, source: 'ally', destination: 'e2' },
     ],
   }),
 ]
@@ -69,8 +73,9 @@ const dead: PlayerState = makePlayer({
   respawnTick: TICK + 18,
 })
 
+// Renders as "last Top River Crossing · 6t" — display name, not the raw id.
 const lastSeen: Record<string, { zone: string; tick: number }> = {
-  e3: { zone: 'dire-jungle', tick: TICK - 6 },
+  e3: { zone: 'top-river', tick: TICK - 6 },
 }
 
 const mixed = [visible[0]!, visible[1]!, fogged, dead]

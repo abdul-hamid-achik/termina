@@ -73,6 +73,42 @@ const fullBuild = heroFrom(
   }),
 )
 
+// Buff-strip presentation rules (~/utils/buffs displayBuffs):
+//  - bookkeeping ids (stealthIdle, inCombat, …) NEVER render;
+//  - stacks show only for true ramping counters (Heap Growth x24) — for the
+//    rest, `stacks` encodes a magnitude and is hidden (Treads' 12 attack);
+//  - permanent/refreshing markers (power_treads_*, Resonance) show no
+//    countdown; genuinely timed effects (Stunned 2t, Healing Salve 4t) do.
+const buffShowcase = heroFrom(
+  makePlayer({
+    name: 'buff_bearer',
+    items: [SAMPLE_ITEMS.treads, null, null, null, null, null],
+    buffs: [
+      // Real effects — these render:
+      { id: 'heapGrowth', stacks: 24, ticksRemaining: 999, source: 'ability', destination: 'p1' },
+      { id: 'resonance', stacks: 5, ticksRemaining: 999, source: 'ability', destination: 'p1' },
+      {
+        id: 'power_treads_attack',
+        stacks: 12,
+        ticksRemaining: 999,
+        source: 'item',
+        destination: 'p1',
+      },
+      { id: 'stun', stacks: 1, ticksRemaining: 2, source: 'enemy', destination: 'p1' },
+      {
+        id: 'healing_salve_regen',
+        stacks: 40,
+        ticksRemaining: 4,
+        source: 'item',
+        destination: 'p1',
+      },
+      // Engine bookkeeping — the strip must NOT show these:
+      { id: 'stealthIdle', stacks: 1, ticksRemaining: 3, source: 'ability', destination: 'p1' },
+      { id: 'inCombat', stacks: 1, ticksRemaining: 2, source: 'system', destination: 'p1' },
+    ],
+  }),
+)
+
 const lowHp = heroFrom(
   makePlayer({
     name: 'one_more_hit',
@@ -127,6 +163,12 @@ const noBuild = heroFrom(
     <Variant title="full build + buffs">
       <div class="bg-bg-primary p-3" style="width: 320px">
         <HeroStatus :hero="fullBuild" :hero-id="SAMPLE_HEROES.daemon" />
+      </div>
+    </Variant>
+
+    <Variant title="buffs (bookkeeping hidden)">
+      <div class="bg-bg-primary p-3" style="width: 320px">
+        <HeroStatus :hero="buffShowcase" :hero-id="SAMPLE_HERO_ID" />
       </div>
     </Variant>
 

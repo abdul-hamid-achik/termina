@@ -1,0 +1,59 @@
+version: 1
+name: game_autopath_preview
+intent: >
+  Auto-path movement in the command bar: typing a move order to a DISTANT zone
+  previews it as a travel plan with its ETA ("Move to Dire Base (9 ticks)")
+  instead of rejecting it — the client mirror of the server's
+  walk-one-zone-per-tick rule. Typing never submits, so this exercises the pure
+  UI affordance; the walking itself is engine truth covered by `bun run
+  test:gameplay`.
+mode: normal
+metadata:
+  feature: game-commands
+  tags:
+    - game
+    - autopath
+    - command-input
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: distant_move_previews_travel_plan
+    description: the preview line names the resolved destination and its tick ETA
+      rather than a "too far" rejection
+    verify:
+      script:
+        run: >
+          const el = document.querySelector('[data-testid="command-preview"]');
+
+          const t = el ? el.textContent : '';
+
+          return { ok: /Move to Dire Base \(\d+ ticks\)/.test(t), evidence:
+          'preview: ' + JSON.stringify(t) };
+steps:
+  - use: login
+  - id: open_home
+    open:
+      path: /
+      waitUntil: domcontentloaded
+  - id: confirm_logged_in
+    wait:
+      text: "[LOGOUT]"
+      timeoutMs: 10000
+  - id: click_practice
+    click:
+      by: selector
+      selector: '[data-testid="start-tutorial"]'
+  - id: await_game_screen
+    wait:
+      selector: '[data-testid="game-screen"]'
+      timeoutMs: 20000
+  - id: type_distant_move
+    fill:
+      by: selector
+      selector: '[data-testid="command-input-field"]'
+      value: move dire-base
+  - id: await_preview
+    wait:
+      selector: '[data-testid="command-preview"]'
+      timeoutMs: 10000
+contractHash: sha256:c10e8b14292eb12803589908cd120c32a79091164790313e6cefaa01bc2f99c4

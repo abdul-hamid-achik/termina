@@ -8,7 +8,8 @@ const TICK = 240
 
 <template>
   <Story title="Game/ObjectiveTicker" :layout="{ type: 'grid', width: 240 }">
-    <!-- Rosh up, a live rune in pit, no aegis. -->
+    <!-- Rosh up, a live rune, no aegis. Rune types render through buffLabel:
+         'dd' shows as "Double Damage", never the raw id. -->
     <Variant title="all live">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
@@ -32,7 +33,7 @@ const TICK = 240
       </div>
     </Variant>
 
-    <!-- Aegis claimed by a carrier, ticking down. -->
+    <!-- Aegis claimed by a carrier, ticking down; 'haste' rune → "Haste". -->
     <Variant title="aegis held">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
