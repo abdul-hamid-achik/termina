@@ -36,9 +36,7 @@ outcomes:
 steps:
   - use: login
   - id: open_settings
-    open:
-      path: /profile/settings
-      waitUntil: domcontentloaded
+    open: /profile/settings
   - id: await_hud_panel
     wait:
       selector: '[data-testid="hud-settings"]'
@@ -52,9 +50,7 @@ steps:
       selector: '[data-testid="hud-toggle-rosterExpanded"][aria-pressed="true"]'
       timeoutMs: 10000
   - id: reload_settings
-    open:
-      path: /profile/settings
-      waitUntil: domcontentloaded
+    open: /profile/settings
   - id: await_hud_panel_again
     wait:
       selector: '[data-testid="hud-settings"]'

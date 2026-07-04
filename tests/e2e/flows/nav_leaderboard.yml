@@ -39,9 +39,7 @@ outcomes:
 steps:
   - use: login
   - id: open_leaderboard
-    open:
-      path: /leaderboard
-      waitUntil: domcontentloaded
+    open: /leaderboard
   - id: await_table
     wait:
       text: Rating

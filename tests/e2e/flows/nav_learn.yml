@@ -85,9 +85,7 @@ outcomes:
           };
 steps:
   - id: open_learn
-    open:
-      path: /learn
-      waitUntil: domcontentloaded
+    open: /learn
   - id: wait_for_command_reference
     wait:
       text: COMMAND REFERENCE

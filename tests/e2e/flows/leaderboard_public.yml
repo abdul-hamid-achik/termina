@@ -21,9 +21,7 @@ outcomes:
         contains: Rating
 steps:
   - id: open_leaderboard
-    open:
-      path: /leaderboard
-      waitUntil: domcontentloaded
+    open: /leaderboard
   - id: wait_for_panel
     wait:
       text: top players by rating

@@ -26,9 +26,7 @@ outcomes:
 steps:
   - use: login
   - id: open_home
-    open:
-      path: /
-      waitUntil: domcontentloaded
+    open: /
   - id: await_home
     wait:
       text: where every command is a kill

@@ -27,9 +27,7 @@ outcomes:
         contains: Resend
 steps:
   - id: open_privacy
-    open:
-      path: /privacy
-      waitUntil: domcontentloaded
+    open: /privacy
   - id: wait_for_heading
     wait:
       text: PRIVACY POLICY

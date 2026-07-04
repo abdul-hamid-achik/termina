@@ -23,9 +23,7 @@ outcomes:
         contains: Daemon
 steps:
   - id: open_console_for_daemon
-    open:
-      path: /heroes?hero=daemon
-      waitUntil: domcontentloaded
+    open: /heroes?hero=daemon
   - id: wait_for_console
     wait:
       text: HERO TRAINING

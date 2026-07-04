@@ -66,9 +66,7 @@ outcomes:
           };
 steps:
   - id: open_heroes
-    open:
-      path: /heroes
-      waitUntil: domcontentloaded
+    open: /heroes
   - id: wait_for_console
     wait:
       text: HERO TRAINING

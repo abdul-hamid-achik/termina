@@ -23,9 +23,7 @@ outcomes:
         contains: Resonance
 steps:
   - id: open_lore
-    open:
-      path: /lore
-      waitUntil: domcontentloaded
+    open: /lore
   - id: wait_for_lore
     wait:
       text: THE GRID

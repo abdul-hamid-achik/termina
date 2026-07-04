@@ -46,9 +46,7 @@ outcomes:
         contains: cast q hero:daemon
 steps:
   - id: open_home
-    open:
-      path: /
-      waitUntil: domcontentloaded
+    open: /
   - id: await_tagline
     wait:
       text: where every command is a kill

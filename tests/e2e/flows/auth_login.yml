@@ -40,9 +40,7 @@ outcomes:
         equals: 1
 steps:
   - id: open_login
-    open:
-      path: /login
-      waitUntil: domcontentloaded
+    open: /login
   - id: await_form
     wait:
       text: authenticate to continue

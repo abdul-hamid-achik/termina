@@ -27,9 +27,7 @@ outcomes:
         atLeast: 1
 steps:
   - id: open_unknown_route
-    open:
-      path: /this-route-does-not-exist
-      waitUntil: domcontentloaded
+    open: /this-route-does-not-exist
   - id: wait_for_error
     wait:
       text: ERROR 404

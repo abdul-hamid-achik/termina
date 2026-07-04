@@ -52,9 +52,7 @@ outcomes:
 steps:
   - use: login
   - id: open_home
-    open:
-      path: /
-      waitUntil: domcontentloaded
+    open: /
   - id: confirm_logged_in
     wait:
       text: "[LOGOUT]"

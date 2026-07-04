@@ -31,9 +31,7 @@ outcomes:
 steps:
   - use: login
   - id: open_home
-    open:
-      path: /
-      waitUntil: domcontentloaded
+    open: /
   - id: click_logout
     click:
       by: role
@@ -44,9 +42,7 @@ steps:
       text: "[LOGIN]"
       timeoutMs: 10000
   - id: visit_protected_lobby
-    open:
-      path: /lobby
-      waitUntil: domcontentloaded
+    open: /lobby
   - id: await_protected_redirect
     wait:
       text: "[LOGIN]"

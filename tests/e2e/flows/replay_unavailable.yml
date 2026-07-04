@@ -26,9 +26,7 @@ outcomes:
         contains: REPLAY UNAVAILABLE
 steps:
   - id: open_replay
-    open:
-      path: /replay/smoke-demo
-      waitUntil: domcontentloaded
+    open: /replay/smoke-demo
   - id: wait_for_unavailable
     wait:
       text: REPLAY UNAVAILABLE

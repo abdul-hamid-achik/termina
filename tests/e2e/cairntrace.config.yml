@@ -39,10 +39,20 @@ webServer:
     NUXT_SESSION_COOKIE_SECURE: "false" # let the prod session cookie ride plain HTTP on 127.0.0.1
     NUXT_SESSION_PASSWORD: "e2e_session_password_at_least_32_chars_long"
     NUXT_REDIS_URL: "redis://localhost:6380/1" # db1 isolation; matches the flush above
+    # Fast game: 500ms ticks + shrunken structure HP (server/game/engine/fastGame.ts,
+    # inert in production). In-game UI flows (feed digest, shop, scoreboard) would
+    # otherwise wait 4s per tick for anything to happen.
+    TERMINA_TEST_FAST_GAME: "8"
     # NUXT_DATABASE_URL is intentionally NOT pinned: locally the app's compiled
     # runtimeConfig default (…localhost:5433/termina) applies; in CI the runner
     # exports its own (termina_test), and an inherited env value wins since it's
     # absent from this map.
+
+# In-game flows click while the WS tick stream keeps the page busy — the
+# fold-a-networkidle-settle-into-every-click default can time out there even
+# though the click landed. Keep the settle but don't let it fail clicks.
+browser:
+  verifyAfterClick: false
 
 environments:
   # Local: addressed at the prod-preview server the `webServer` block boots. Flows

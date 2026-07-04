@@ -27,9 +27,7 @@ outcomes:
         contains: last-hits to farm
 steps:
   - id: open_items
-    open:
-      path: /items
-      waitUntil: domcontentloaded
+    open: /items
   - id: wait_for_shop
     wait:
       text: ITEM SHOP

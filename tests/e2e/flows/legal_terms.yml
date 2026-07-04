@@ -30,9 +30,7 @@ outcomes:
           link present' : 'no /privacy link found' };
 steps:
   - id: open_terms
-    open:
-      path: /terms
-      waitUntil: domcontentloaded
+    open: /terms
   - id: wait_for_heading
     wait:
       text: TERMS OF SERVICE

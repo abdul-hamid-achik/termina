@@ -26,9 +26,7 @@ outcomes:
         contains: exit
 steps:
   - id: open_spectate
-    open:
-      path: /spectate/smoke-demo
-      waitUntil: domcontentloaded
+    open: /spectate/smoke-demo
   - id: wait_for_shell
     wait:
       text: spectator

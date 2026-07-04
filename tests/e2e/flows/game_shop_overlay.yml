@@ -1,0 +1,76 @@
+version: 1
+name: game_shop_overlay
+intent: >
+  The in-game item shop overlay: the [SHOP] button opens it, item cards render
+  with prices and category tabs, pinning an item adds it to the QUICK BUY row (a
+  client-side preference, no game action — so this works even while the tutorial
+  still gates `buy`), and [CLOSE] dismisses the overlay. Purchase resolution
+  itself is engine truth (gameplay suite + hitspec), not asserted here.
+mode: normal
+metadata:
+  feature: game-shop
+  tags:
+    - game
+    - shop
+    - quick-buy
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: pinned_item_reaches_quick_buy
+    description: after pinning Chainmail in the shop and closing the overlay, the
+      Chainmail chip sits in the quick-buy row (the only remaining on-screen
+      source of that name)
+    verify:
+      text:
+        contains: Chainmail
+        region: '[data-testid="game-screen"]'
+  - id: shop_overlay_closed
+    description: the overlay is gone after [CLOSE]
+    verify:
+      script:
+        run: >
+          const shop = document.querySelector('[data-testid="item-shop"]');
+
+          return { ok: !shop, evidence: 'item-shop still mounted=' + !!shop };
+steps:
+  - use: login
+  - id: open_home
+    open: /
+  - id: confirm_logged_in
+    wait:
+      text: "[LOGOUT]"
+      timeoutMs: 10000
+  - id: click_practice
+    click:
+      by: selector
+      selector: '[data-testid="start-tutorial"]'
+  - id: await_game_screen
+    wait:
+      selector: '[data-testid="game-screen"]'
+      timeoutMs: 20000
+  - id: open_shop
+    click:
+      by: selector
+      selector: 'button[title="Shop (S)"]'
+  - id: await_shop
+    wait:
+      selector: '[data-testid="item-shop"]'
+      timeoutMs: 10000
+  - id: see_item_card
+    wait:
+      selector: '[data-testid="shop-item-healing_salve"]'
+      timeoutMs: 5000
+  - id: pin_chainmail
+    click:
+      by: selector
+      selector: '[data-testid="shop-pin-chainmail"]'
+  - id: close_shop
+    click:
+      by: role
+      role: button
+      name: "[CLOSE]"
+  - id: await_shop_gone
+    wait:
+      notText: search items
+      timeoutMs: 5000
+contractHash: sha256:63531398a568a9f73be467fe52eb6df779f0f355e086bc53f37eb748303c56e0

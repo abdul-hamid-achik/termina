@@ -94,33 +94,25 @@ outcomes:
           })();
 steps:
   - id: open_login
-    open:
-      path: /login
-      waitUntil: domcontentloaded
+    open: /login
   - id: await_login
     wait:
       text: authenticate to continue
       timeoutMs: 10000
   - id: open_learn
-    open:
-      path: /learn
-      waitUntil: domcontentloaded
+    open: /learn
   - id: await_learn
     wait:
       text: COMMAND REFERENCE
       timeoutMs: 10000
   - id: open_leaderboard
-    open:
-      path: /leaderboard
-      waitUntil: domcontentloaded
+    open: /leaderboard
   - id: await_leaderboard
     wait:
       text: top players by rating
       timeoutMs: 10000
   - id: open_home_last
-    open:
-      path: /
-      waitUntil: domcontentloaded
+    open: /
   - id: await_home
     wait:
       text: where every command is a kill

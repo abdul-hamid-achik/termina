@@ -27,9 +27,7 @@ outcomes:
         contains: Echo
 steps:
   - id: open_lore
-    open:
-      path: /lore
-      waitUntil: domcontentloaded
+    open: /lore
   - id: wait_for_heading
     wait:
       text: THE GRID

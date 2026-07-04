@@ -1,0 +1,67 @@
+version: 1
+name: game_scoreboard_overlay
+intent: >
+  The scoreboard overlay: the SCORE button opens it with both team blocks and
+  the player's row, and the close affordance dismisses it. Pure HUD interaction
+  — the stats inside are engine truth covered elsewhere.
+mode: normal
+metadata:
+  feature: game-hud
+  tags:
+    - game
+    - scoreboard
+imports:
+  - ../actions/login.yml
+outcomes:
+  - id: scoreboard_closed_after_dismiss
+    description: the overlay is gone after the close button
+    verify:
+      script:
+        run: >
+          const sb =
+          document.querySelector('[data-testid="scoreboard-overlay"]');
+
+          return { ok: !sb, evidence: 'scoreboard-overlay still mounted=' + !!sb
+          };
+steps:
+  - use: login
+  - id: open_home
+    open: /
+  - id: confirm_logged_in
+    wait:
+      text: "[LOGOUT]"
+      timeoutMs: 10000
+  - id: click_practice
+    click:
+      by: selector
+      selector: '[data-testid="start-tutorial"]'
+  - id: await_game_screen
+    wait:
+      selector: '[data-testid="game-screen"]'
+      timeoutMs: 20000
+  - id: open_scoreboard
+    click:
+      by: selector
+      selector: 'button[aria-label="Toggle scoreboard"]'
+  - id: await_scoreboard
+    wait:
+      selector: '[data-testid="scoreboard-overlay"]'
+      timeoutMs: 10000
+  - id: see_radiant_block
+    wait:
+      selector: '[data-testid="scoreboard-team-radiant"]'
+      timeoutMs: 5000
+  - id: see_dire_block
+    wait:
+      selector: '[data-testid="scoreboard-team-dire"]'
+      timeoutMs: 5000
+  - id: close_scoreboard
+    click:
+      by: role
+      role: button
+      name: "[tap outside or here to close]"
+  - id: await_closed
+    wait:
+      notText: tap outside or here to close
+      timeoutMs: 5000
+contractHash: sha256:77e0205934ddf5c51ca13c50e3ab0ba2242341f326c75eb7ae7a7b8fb216342e

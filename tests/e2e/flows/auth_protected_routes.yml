@@ -43,37 +43,27 @@ outcomes:
           })();
 steps:
   - id: open_play_protected
-    open:
-      path: /play
-      waitUntil: domcontentloaded
+    open: /play
   - id: play_redirects_to_login
     wait:
       text: authenticate to continue
       timeoutMs: 10000
   - id: open_settings_protected
-    open:
-      path: /profile/settings
-      waitUntil: domcontentloaded
+    open: /profile/settings
   - id: settings_redirects_to_login
     wait:
       text: authenticate to continue
       timeoutMs: 10000
   - id: open_learn_public
-    open:
-      path: /learn
-      waitUntil: domcontentloaded
+    open: /learn
   - id: learn_renders_no_redirect
     wait:
       text: COMMAND REFERENCE
       timeoutMs: 10000
   - id: open_leaderboard_public
-    open:
-      path: /leaderboard
-      waitUntil: domcontentloaded
+    open: /leaderboard
   - id: open_lobby_protected_last
-    open:
-      path: /lobby
-      waitUntil: domcontentloaded
+    open: /lobby
   - id: lobby_redirects_to_login
     wait:
       text: authenticate to continue

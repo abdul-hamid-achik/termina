@@ -30,6 +30,7 @@ import {
 } from './EffectiveStats'
 import { areAdjacent, findPath } from '~~/server/game/map/topology'
 import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/modes/tutorial'
+import { isBot } from '~~/server/game/ai/BotManager'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   calculatePhysicalDamage,
@@ -173,7 +174,15 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   // Tutorial mode gates commands behind staggered unlocks so a new player learns
   // one verb at a time. Informational commands always pass; everything else must
   // be unlocked by the current step (the gate is a no-op in normal games).
-  if (state.mode === 'tutorial' && !isCommandAllowedInTutorial(cmd.type, state.tutorialStep ?? 0)) {
+  // BOTS are exempt: gating them froze the whole tutorial world — no farming
+  // ally, no pushing creeps, a silent feed — until the human advanced the steps.
+  // The learner should study a LIVE game; safety comes from the 'easy' bot
+  // difficulty, not from paralysis.
+  if (
+    state.mode === 'tutorial' &&
+    !isBot(action.playerId) &&
+    !isCommandAllowedInTutorial(cmd.type, state.tutorialStep ?? 0)
+  ) {
     return tutorialLockMessage(state.tutorialStep ?? 0)
   }
 

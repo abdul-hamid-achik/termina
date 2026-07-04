@@ -56,6 +56,42 @@ describe('tutorial mode', () => {
       expect(lockedThisTick(game.lastRejected)).toBe(false)
     })
 
+    it('exempts bots from the step gate — the tutorial world stays ALIVE while the human learns', async () => {
+      // Regression: gating bots froze the whole tutorial (no farming ally, no
+      // pushing enemies, a silent feed) until the human advanced the steps —
+      // caught by the game_feed_story e2e flow showing a tick-181 game with an
+      // empty combat feed.
+      const { registerBots, cleanupGame } = await import('~~/server/game/ai/BotManager')
+      const game = await seedGame('fresh', {
+        mode: 'tutorial',
+        mapId: 'one_lane',
+        players: [
+          { id: HUMAN, name: HUMAN, team: 'radiant', heroId: 'echo' },
+          { id: 'bot_ally', name: 'bot_ally', team: 'radiant', heroId: 'kernel' },
+          { id: 'bot_foe', name: 'bot_foe', team: 'dire', heroId: 'regex' },
+        ],
+      })
+      registerBots(
+        game.gameId,
+        [
+          { playerId: 'bot_ally', team: 'radiant', heroId: 'kernel' },
+          { playerId: 'bot_foe', team: 'dire', heroId: 'regex' },
+        ],
+        { forceLane: 'mid', difficulty: 'easy' },
+      )
+      try {
+        await game.tick(30)
+        // Bots left their fountains (their moves/buys were NOT tutorial-locked)…
+        const ally = await game.player('bot_ally')
+        const foe = await game.player('bot_foe')
+        expect(ally.zone === 'radiant-fountain' && foe.zone === 'dire-fountain').toBe(false)
+        // …and the world produced events by tick 30 (a frozen tutorial had none).
+        expect(game.allEvents.length).toBeGreaterThan(0)
+      } finally {
+        cleanupGame(game.gameId)
+      }
+    })
+
     it('advances the move step only once the human reaches the lane', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
       expect((await game.state()).tutorialStep).toBe(0)

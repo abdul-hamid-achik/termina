@@ -34,9 +34,7 @@ steps:
   - id: auth
     use: login
   - id: open_lobby
-    open:
-      path: /lobby
-      waitUntil: domcontentloaded
+    open: /lobby
   - id: await_find_match
     wait:
       text: FIND MATCH

@@ -42,9 +42,7 @@ outcomes:
         errorsMax: 0
 steps:
   - id: open_home_anon
-    open:
-      path: /
-      waitUntil: domcontentloaded
+    open: /
   - id: anon_shows_play
     wait:
       text: "[PLAY]"
@@ -67,9 +65,7 @@ steps:
       label: Anonymous nav on home
   - use: login
   - id: reload_home_auth
-    open:
-      path: /
-      waitUntil: domcontentloaded
+    open: /
   - id: wait_auth_nav
     wait:
       text: "[LOGOUT]"
