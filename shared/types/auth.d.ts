@@ -6,6 +6,8 @@ declare module '#auth-utils' {
     selectedAvatar: string | null
     provider: 'github' | 'discord' | 'local'
     hasPassword: boolean
+    /** True once the guided tutorial is done — drives the new-player funnel. */
+    tutorialCompleted: boolean
   }
 }
 

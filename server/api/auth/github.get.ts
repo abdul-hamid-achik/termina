@@ -64,6 +64,7 @@ export default defineOAuthGitHubEventHandler({
           selectedAvatar: player.selectedAvatar,
           provider: 'github',
           hasPassword: !!player.passwordHash,
+          tutorialCompleted: !!player.tutorialCompleted,
         },
       })
 

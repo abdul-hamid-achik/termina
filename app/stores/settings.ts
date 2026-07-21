@@ -10,6 +10,9 @@ import { ref, watch } from 'vue'
 export type LayoutMode = 'classic' | 'map-centric' // direction A: where the map lives
 export type Density = 'comfortable' | 'compact' // direction C: spacing scale
 export type HudPreset = 'standard' | 'tactical' | 'focus' | 'custom'
+/** Team color palette. 'colorblind' swaps the green/red team colors for a
+ *  blue/orange (Okabe-Ito) pairing distinguishable with red-green CVD. */
+export type TeamPalette = 'classic' | 'colorblind'
 
 export interface HudSettings {
   /** Combat-log-centric (classic) vs. map-as-centerpiece (tactical). */
@@ -90,8 +93,14 @@ export const useSettingsStore = defineStore('settings', () => {
   const audioEnabled = ref(true)
   const audioVolume = ref(0.5)
   const quickCastEnabled = ref(false)
+  const teamPalette = ref<TeamPalette>('classic')
   const hud = ref<HudSettings>({ ...DEFAULT_HUD })
   const hudPreset = ref<HudPreset>('standard')
+
+  /** Switch the team color palette (classic green/red vs colorblind blue/orange). */
+  function setTeamPalette(palette: TeamPalette) {
+    teamPalette.value = palette
+  }
 
   /** Apply a named HUD preset (sets every field + the preset label). */
   function applyHudPreset(name: Exclude<HudPreset, 'custom'>) {
@@ -115,6 +124,8 @@ export const useSettingsStore = defineStore('settings', () => {
       if (typeof data.audioEnabled === 'boolean') audioEnabled.value = data.audioEnabled
       if (typeof data.audioVolume === 'number') audioVolume.value = data.audioVolume
       if (typeof data.quickCastEnabled === 'boolean') quickCastEnabled.value = data.quickCastEnabled
+      if (data.teamPalette === 'classic' || data.teamPalette === 'colorblind')
+        teamPalette.value = data.teamPalette
       // HUD prefs are additive: payloads written before this existed simply
       // have no `hud` key and keep the defaults. Each field is validated
       // independently so a partial/corrupt blob degrades gracefully.
@@ -143,6 +154,7 @@ export const useSettingsStore = defineStore('settings', () => {
           audioEnabled: audioEnabled.value,
           audioVolume: audioVolume.value,
           quickCastEnabled: quickCastEnabled.value,
+          teamPalette: teamPalette.value,
           hud: hud.value,
         }),
       )
@@ -152,7 +164,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   // Auto-persist on change
-  watch([audioEnabled, audioVolume, quickCastEnabled, hud], save, { deep: true })
+  watch([audioEnabled, audioVolume, quickCastEnabled, teamPalette, hud], save, { deep: true })
 
   // Load on init
   load()
@@ -161,10 +173,12 @@ export const useSettingsStore = defineStore('settings', () => {
     audioEnabled,
     audioVolume,
     quickCastEnabled,
+    teamPalette,
     hud,
     hudPreset,
     applyHudPreset,
     setHud,
+    setTeamPalette,
     load,
     save,
   }

@@ -260,6 +260,9 @@ const heroFlashKey = ref(0) // I took damage → red flash on the hero panel
 const kdaPopKey = ref(0) // I got a kill → KDA pop
 const tickPulseKey = ref(0) // each tick → reveal flash in the Tick Theater
 const deathVignetteKey = ref(0) // I died → instant red vignette pulse (on the event)
+// Game-end climax: a one-shot team-colored flash + victory/defeat stinger.
+const endFlashKey = ref(0)
+const endFlashType = ref<'victory' | 'defeat' | null>(null)
 
 // The most recent server announcement (rejected-action feedback), shown by the
 // transient AnnouncementToast and retriggered via gameStore.announcementSeq.
@@ -422,6 +425,23 @@ watch(
           break
       }
     }
+  },
+)
+
+// Game-end climax: the win/loss moment gets its own juice — a team-colored
+// full-screen flash, a strong shake, and a victory/defeat stinger. PostGame
+// provides the screen; this provides the instantaneous punch the fade-in alone
+// lacks. Keyed on (ended && winner) so it survives either the tick_state phase
+// or the game_over message arriving first, and re-arms when the game resets.
+watch(
+  () => gameStore.phase === 'ended' && gameStore.winner != null,
+  (ended) => {
+    if (!ended) return
+    const won = gameStore.player?.team != null && gameStore.player.team === gameStore.winner
+    endFlashType.value = won ? 'victory' : 'defeat'
+    endFlashKey.value++
+    playSound(won ? 'victory' : 'defeat')
+    triggerShake('strong')
   },
 )
 
@@ -1187,6 +1207,7 @@ function handleReturnToMenu() {
     :game-id="gameStore.gameId ?? null"
     :mode="gameStore.mode"
     :mmr-change="gameStore.gameOverMmrChange ?? undefined"
+    :ranked="gameStore.gameOverRanked"
     @play-again="handlePlayAgain"
     @return-to-menu="handleReturnToMenu"
   />
@@ -1223,6 +1244,16 @@ function handleReturnToMenu() {
       v-if="deathVignetteKey > 0"
       :key="deathVignetteKey"
       class="anim-death-vignette pointer-events-none absolute inset-0 z-40"
+      aria-hidden="true"
+    />
+
+    <!-- Game-end climax flash: a one-shot team-colored wash fired the instant
+         the game ends (paired with the victory/defeat stinger + strong shake) -->
+    <div
+      v-if="endFlashKey > 0 && endFlashType"
+      :key="endFlashKey"
+      :class="endFlashType === 'victory' ? 'anim-end-victory' : 'anim-end-defeat'"
+      class="pointer-events-none absolute inset-0 z-40"
       aria-hidden="true"
     />
 

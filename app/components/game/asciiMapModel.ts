@@ -301,7 +301,15 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
   }
 
   if (zone.enemyCount > 0) {
-    indicators.push(`!${zone.enemyCount}E`)
+    // Name the threats when few enough to fit the dense cell — "who is here"
+    // beats "how many" (parity with the mobile compactIndicators). Fall back to
+    // a count for larger groups so the single-line cell doesn't overflow.
+    const names = zone.enemyNames ?? []
+    if (names.length > 0 && names.length <= 2) {
+      indicators.push(`!${names.join(',')}`)
+    } else {
+      indicators.push(`!${zone.enemyCount}E`)
+    }
   }
 
   if (zone.creepCount && zone.creepCount > 0) {

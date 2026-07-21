@@ -6,8 +6,7 @@ import {
   TICK_DURATION_MS,
   ACTION_WINDOW_MS,
   PASSIVE_GOLD_PER_TICK,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
+  CREEP_GOLD,
   KILL_BOUNTY_BASE,
   ASSIST_GOLD,
   TOWER_GOLD,
@@ -80,7 +79,7 @@ const quickStart = [
   {
     step: '4',
     title: 'Farm Creeps',
-    desc: `Creep waves spawn every ${CREEP_WAVE_INTERVAL_TICKS} ticks. Last-hit them with attack creep:0 to earn ${CREEP_GOLD_MIN}-${CREEP_GOLD_MAX}g and XP.`,
+    desc: `Creep waves spawn every ${CREEP_WAVE_INTERVAL_TICKS} ticks. Last-hit them with attack creep:0 to earn ${CREEP_GOLD}g and XP.`,
   },
   {
     step: '5',
@@ -253,7 +252,7 @@ const concepts = [
   {
     term: 'Gold & Items',
     icon: '$',
-    desc: `Earn gold from creep last-hits (${CREEP_GOLD_MIN}-${CREEP_GOLD_MAX}g), hero kills (${KILL_BOUNTY_BASE}g base + streak and comeback bonuses), assists (${ASSIST_GOLD}g split), and passive income (${PASSIVE_GOLD_PER_TICK}g/tick). Spend gold at the shop in your base. Max ${MAX_ITEMS} items.`,
+    desc: `Earn gold from creep last-hits (${CREEP_GOLD}g), hero kills (${KILL_BOUNTY_BASE}g base + streak and comeback bonuses), assists (${ASSIST_GOLD}g split), and passive income (${PASSIVE_GOLD_PER_TICK}g/tick). Spend gold at the shop in your base. Max ${MAX_ITEMS} items.`,
   },
   {
     term: 'Fog of War',

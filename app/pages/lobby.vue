@@ -56,9 +56,17 @@ function handleServerMessage(msg: ServerMessage) {
       lobbyLog.debug('Hero pick received', { playerId: msg.playerId, heroId: msg.heroId })
       lobbyStore.heroPicked(msg.playerId, msg.heroId)
       break
+    case 'hero_ban':
+      lobbyLog.debug('Hero ban received', { playerId: msg.playerId, heroId: msg.heroId })
+      lobbyStore.heroBanned(msg.heroId)
+      break
     case 'pick_turn':
       lobbyLog.debug('Pick turn received', { playerId: msg.playerId })
       lobbyStore.setPickTurn(msg.playerId, msg.username, msg.timeRemainingMs)
+      break
+    case 'ban_turn':
+      lobbyLog.debug('Ban turn received', { playerId: msg.playerId })
+      lobbyStore.setBanTurn(msg.playerId, msg.username, msg.timeRemainingMs)
       break
     case 'lobby_state':
       lobbyLog.info('Lobby state received', { lobbyId: msg.lobbyId, team: msg.team })
@@ -77,6 +85,13 @@ function handleServerMessage(msg: ServerMessage) {
         if (p.heroId) {
           lobbyStore.heroPicked(p.playerId, p.heroId)
         }
+      }
+      // Sync bans + the draft phase (banning vs picking) on (re)connect.
+      for (const b of msg.bans ?? []) {
+        lobbyStore.heroBanned(b)
+      }
+      if (msg.phase === 'banning') {
+        lobbyStore.queueStatus = 'banning'
       }
       lobbyStore.matchFound(msg.lobbyId)
       break
@@ -135,6 +150,25 @@ async function handleHeroPick(heroId: string) {
       lobbyLog.error('HTTP hero pick failed', err)
       lobbyStore.rollbackPendingPick()
       lobbyStore.setError('hero pick failed — try again')
+    }
+  }
+}
+
+async function handleHeroBan(heroId: string) {
+  if (!lobbyStore.lobbyId) return
+
+  if (connected.value) {
+    send({ type: 'hero_ban', lobbyId: lobbyStore.lobbyId, heroId })
+  } else {
+    // HTTP fallback when WebSocket isn't connected
+    try {
+      await $fetch('/api/queue/ban', {
+        method: 'POST',
+        body: { lobbyId: lobbyStore.lobbyId, heroId },
+      })
+    } catch (err) {
+      lobbyLog.error('HTTP hero ban failed', err)
+      lobbyStore.setError('hero ban failed — try again')
     }
   }
 }
@@ -269,18 +303,25 @@ onUnmounted(() => {
          phones so the hero grid scrolls internally and the sticky confirm
          bar stays pinned on-screen. -->
     <div
-      v-if="lobbyStore.queueStatus === 'picking'"
+      v-if="lobbyStore.queueStatus === 'picking' || lobbyStore.queueStatus === 'banning'"
       class="flex min-h-0 flex-1 flex-col max-sm:max-h-[calc(100dvh-7.5rem)]"
     >
       <HeroPicker
+        :mode="lobbyStore.queueStatus === 'banning' ? 'ban' : 'pick'"
         :team="lobbyStore.team ?? 'radiant'"
         :picked-heroes="lobbyStore.pickedHeroes"
+        :banned-heroes="lobbyStore.bannedHeroes"
         :team-roster="lobbyStore.teamRoster"
-        :current-picker="lobbyStore.currentPicker"
-        :pick-deadline="lobbyStore.pickDeadline"
+        :current-picker="
+          lobbyStore.queueStatus === 'banning' ? lobbyStore.currentBanner : lobbyStore.currentPicker
+        "
+        :pick-deadline="
+          lobbyStore.queueStatus === 'banning' ? lobbyStore.banDeadline : lobbyStore.pickDeadline
+        "
         :my-player-id="authStore.user?.id ?? null"
         :error-message="lobbyStore.lastError"
         @pick="handleHeroPick"
+        @ban="handleHeroBan"
       />
     </div>
 
@@ -288,25 +329,32 @@ onUnmounted(() => {
     <div v-else class="mx-auto flex flex-1 max-w-[500px] flex-col items-center justify-center">
       <!-- IDLE: Find Match -->
       <template v-if="lobbyStore.queueStatus === 'idle'">
-        <TerminalPanel title="Matchmaking">
-          <div class="flex flex-col items-center gap-4 p-6">
-            <p class="text-base text-text-primary">&gt;_ ready to queue</p>
-            <p class="text-[0.8rem] text-text-dim">Find a match (5v5 — Radiant vs Dire)</p>
-            <div
-              v-if="lobbyStore.lastError"
-              data-testid="queue-error"
-              class="w-full border border-dire bg-dire/10 px-3 py-2 text-center text-[0.8rem] text-dire"
-            >
-              [ERR] {{ lobbyStore.lastError }} — retry
+        <div class="flex w-full flex-col justify-center gap-4">
+          <TerminalPanel title="Matchmaking">
+            <div class="flex flex-col items-center gap-4 p-6">
+              <p class="text-base text-text-primary">&gt;_ ready to queue</p>
+              <p class="text-[0.8rem] text-text-dim">Find a match (5v5 — Radiant vs Dire)</p>
+              <div
+                v-if="lobbyStore.lastError"
+                data-testid="queue-error"
+                class="w-full border border-dire bg-dire/10 px-3 py-2 text-center text-[0.8rem] text-dire"
+              >
+                [ERR] {{ lobbyStore.lastError }} — retry
+              </div>
+              <AsciiButton
+                :label="joining ? 'SEARCHING…' : 'FIND MATCH'"
+                :disabled="joining"
+                variant="primary"
+                @click="handleJoinQueue"
+              />
             </div>
-            <AsciiButton
-              :label="joining ? 'SEARCHING…' : 'FIND MATCH'"
-              :disabled="joining"
-              variant="primary"
-              @click="handleJoinQueue"
-            />
-          </div>
-        </TerminalPanel>
+          </TerminalPanel>
+          <!-- Co-op with friends: party up and play vs bots (no rating on the line).
+             Starting broadcasts lobby_state over WS, which drives the draft. -->
+          <PartyPanel :my-player-id="authStore.user?.id ?? null" />
+          <!-- Persistent guild/clan: create or join; the tag shows on the leaderboard. -->
+          <GuildPanel :my-player-id="authStore.user?.id ?? null" />
+        </div>
       </template>
 
       <!-- SEARCHING: Queue with live stats -->

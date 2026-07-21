@@ -39,10 +39,12 @@ vi.mock('~~/server/game/engine/GameLoop', () => ({
 }))
 vi.mock('~~/server/game/matchmaking/lobby', () => ({
   pickHero: vi.fn(),
+  banHero: vi.fn(),
   getPlayerLobby: vi.fn(),
   getLobby: vi.fn(),
   cancelLobby: vi.fn(),
   currentPickTurn: vi.fn(() => null),
+  currentBanTurn: vi.fn(() => null),
 }))
 vi.mock('~~/server/services/PeerRegistry', () => ({
   registerPeer: vi.fn(),

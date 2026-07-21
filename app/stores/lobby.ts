@@ -4,7 +4,7 @@ import type { TeamId } from '~~/shared/types/game'
 import { lobbyLog } from '~/utils/logger'
 import { useGameStore } from '~/stores/game'
 
-export type QueueStatus = 'idle' | 'searching' | 'found' | 'picking' | 'starting'
+export type QueueStatus = 'idle' | 'searching' | 'found' | 'banning' | 'picking' | 'starting'
 
 export const useLobbyStore = defineStore('lobby', () => {
   const queueStatus = ref<QueueStatus>('idle')
@@ -31,6 +31,11 @@ export const useLobbyStore = defineStore('lobby', () => {
   // running their own drifting timers.
   const currentPicker = ref<{ playerId: string; username: string } | null>(null)
   const pickDeadline = ref<number | null>(null)
+  // Ban phase: heroes removed from the draft + whose turn it is to ban and the
+  // server-authoritative ban deadline (mirrors currentPicker/pickDeadline).
+  const bannedHeroes = ref<string[]>([])
+  const currentBanner = ref<{ playerId: string; username: string } | null>(null)
+  const banDeadline = ref<number | null>(null)
   // Last user-facing error (failed queue join, server-rejected pick, WS errors).
   // Rendered inline by the lobby UI instead of dying in the console.
   const lastError = ref<string | null>(null)
@@ -49,6 +54,19 @@ export const useLobbyStore = defineStore('lobby', () => {
   function setPickTurn(playerId: string, username: string, timeRemainingMs: number) {
     currentPicker.value = { playerId, username }
     pickDeadline.value = Date.now() + timeRemainingMs
+  }
+
+  function setBanTurn(playerId: string, username: string, timeRemainingMs: number) {
+    currentBanner.value = { playerId, username }
+    banDeadline.value = Date.now() + timeRemainingMs
+    queueStatus.value = 'banning'
+  }
+
+  /** Record a banned hero (idempotent). */
+  function heroBanned(heroId: string) {
+    if (!bannedHeroes.value.includes(heroId)) {
+      bannedHeroes.value = [...bannedHeroes.value, heroId]
+    }
   }
 
   function setError(message: string) {
@@ -337,6 +355,9 @@ export const useLobbyStore = defineStore('lobby', () => {
     countdown.value = 0
     currentPicker.value = null
     pickDeadline.value = null
+    bannedHeroes.value = []
+    currentBanner.value = null
+    banDeadline.value = null
     lastError.value = null
     lastAnnouncement.value = null
     pendingPick.value = null
@@ -372,6 +393,9 @@ export const useLobbyStore = defineStore('lobby', () => {
     countdown,
     currentPicker,
     pickDeadline,
+    bannedHeroes,
+    currentBanner,
+    banDeadline,
     lastError,
     lastAnnouncement,
     pendingPick,
@@ -390,6 +414,8 @@ export const useLobbyStore = defineStore('lobby', () => {
     setTeamInfo,
     startCountdown,
     setPickTurn,
+    setBanTurn,
+    heroBanned,
     setError,
     clearError,
     setAnnouncement,

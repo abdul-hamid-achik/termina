@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { ref, computed } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import IndexPage from '../../../app/pages/index.vue'
 import { HERO_IDS } from '../../../shared/constants/heroes'
 
@@ -10,6 +12,16 @@ const mockNavigateTo = vi.fn()
 const mockFetch = vi.fn()
 
 beforeEach(() => {
+  // index.vue reads useAuthStore() to personalize the funnel CTAs; the store
+  // wraps useUserSession (a nuxt-auth-utils global) — stub it like LoginPage.
+  setActivePinia(createPinia())
+  vi.stubGlobal('computed', computed)
+  vi.stubGlobal('useUserSession', () => ({
+    loggedIn: ref(false),
+    user: ref(null),
+    fetch: vi.fn(),
+    clear: vi.fn(),
+  }))
   mockNavigateTo.mockReset()
   mockFetch.mockReset()
   vi.stubGlobal('navigateTo', mockNavigateTo)

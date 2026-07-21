@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from 'effect'
-import { eq, desc, and, sql } from 'drizzle-orm'
+import { eq, desc, and, sql, inArray } from 'drizzle-orm'
 import { useDb, closeDb } from '~~/server/db'
 import {
   players,
@@ -7,6 +7,8 @@ import {
   matchPlayers,
   heroStats,
   playerProviders,
+  seasons,
+  guilds,
   type Player,
   type NewPlayer,
   type Match,
@@ -16,6 +18,8 @@ import {
   type HeroStat,
   type MatchPlayer,
   type PlayerProvider,
+  type Season,
+  type Guild,
 } from '~~/server/db/schema'
 
 /** Public-safe subset of a player — NEVER includes email / passwordHash / provider ids. */
@@ -55,6 +59,29 @@ export interface DatabaseServiceApi {
   readonly getHeroStats: (playerId: string) => Effect.Effect<HeroStat[]>
   readonly incrementGamesPlayed: (playerId: string) => Effect.Effect<void>
   readonly incrementWins: (playerId: string) => Effect.Effect<void>
+  /** Mark the guided tutorial as completed for a player (idempotent). */
+  readonly markTutorialCompleted: (playerId: string) => Effect.Effect<void>
+  /** Get the active season, creating Season 1 on first use. */
+  readonly getCurrentSeason: () => Effect.Effect<Season>
+  /** Apply a seasonal MMR delta atomically (floored at 0) — mirrors a ranked
+   *  game's lifetime MMR change onto the resettable seasonal ladder. */
+  readonly applySeasonMmrChange: (playerId: string, change: number) => Effect.Effect<void>
+  readonly incrementSeasonGamesPlayed: (playerId: string) => Effect.Effect<void>
+  readonly incrementSeasonWins: (playerId: string) => Effect.Effect<void>
+  /** Leaderboard ordered by seasonal MMR (the current competitive ladder). */
+  readonly getSeasonLeaderboard: (limit?: number) => Effect.Effect<Player[]>
+  /** End the active season and start the next one, soft-resetting the ladder. */
+  readonly startNewSeason: () => Effect.Effect<Season>
+  /** Create a guild and make the creator its leader (and first member). */
+  readonly createGuild: (name: string, tag: string, leaderId: string) => Effect.Effect<Guild>
+  readonly getGuild: (guildId: string) => Effect.Effect<Guild | null>
+  readonly getGuildByName: (name: string) => Effect.Effect<Guild | null>
+  readonly getPlayerGuild: (playerId: string) => Effect.Effect<Guild | null>
+  readonly getGuildMembers: (guildId: string) => Effect.Effect<Player[]>
+  readonly listGuilds: (limit?: number) => Effect.Effect<Guild[]>
+  readonly getGuildsByIds: (ids: string[]) => Effect.Effect<Guild[]>
+  readonly joinGuild: (guildId: string, playerId: string) => Effect.Effect<void>
+  readonly leaveGuild: (playerId: string) => Effect.Effect<void>
   readonly getPlayerByUsername: (username: string) => Effect.Effect<Player | null>
   readonly createLocalPlayer: (
     username: string,
@@ -297,6 +324,162 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
         .update(players)
         .set({ wins: sql`wins + 1` })
         .where(eq(players.id, playerId))
+    }),
+
+  markTutorialCompleted: (playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db.update(players).set({ tutorialCompleted: true }).where(eq(players.id, playerId))
+    }),
+
+  getCurrentSeason: () =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const active = await db.select().from(seasons).where(eq(seasons.active, true)).limit(1)
+      if (active[0]) return active[0]
+      // First use → create Season 1. The unique season_number guards against a
+      // concurrent creator; if this insert loses the race, re-read the winner.
+      try {
+        const created = await db
+          .insert(seasons)
+          .values({ seasonNumber: 1, active: true })
+          .returning()
+        return created[0]!
+      } catch {
+        const retry = await db.select().from(seasons).where(eq(seasons.active, true)).limit(1)
+        return retry[0]!
+      }
+    }),
+
+  applySeasonMmrChange: (playerId, change) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db
+        .update(players)
+        .set({ seasonMmr: sql`GREATEST(0, ${players.seasonMmr} + ${change})` })
+        .where(eq(players.id, playerId))
+    }),
+
+  incrementSeasonGamesPlayed: (playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db
+        .update(players)
+        .set({ seasonGamesPlayed: sql`season_games_played + 1` })
+        .where(eq(players.id, playerId))
+    }),
+
+  incrementSeasonWins: (playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db
+        .update(players)
+        .set({ seasonWins: sql`season_wins + 1` })
+        .where(eq(players.id, playerId))
+    }),
+
+  getSeasonLeaderboard: (limit = 100) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      return db.select().from(players).orderBy(desc(players.seasonMmr)).limit(limit)
+    }),
+
+  startNewSeason: () =>
+    Effect.promise(async () => {
+      const db = useDb()
+      // Close out the current active season (if any).
+      await db
+        .update(seasons)
+        .set({ active: false, endedAt: new Date() })
+        .where(eq(seasons.active, true))
+      const last = await db
+        .select({ seasonNumber: seasons.seasonNumber })
+        .from(seasons)
+        .orderBy(desc(seasons.seasonNumber))
+        .limit(1)
+      const nextNumber = (last[0]?.seasonNumber ?? 0) + 1
+      const created = await db
+        .insert(seasons)
+        .values({ seasonNumber: nextNumber, active: true })
+        .returning()
+      // Soft-reset the ladder: pull everyone's seasonal MMR halfway toward the
+      // 1000 baseline and zero the seasonal W/L record. Lifetime mmr is untouched.
+      await db.update(players).set({
+        seasonMmr: sql`1000 + (${players.seasonMmr} - 1000) / 2`,
+        seasonGamesPlayed: 0,
+        seasonWins: 0,
+        seasonNumber: nextNumber,
+      })
+      return created[0]!
+    }),
+
+  createGuild: (name, tag, leaderId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const created = await db
+        .insert(guilds)
+        .values({ id: crypto.randomUUID(), name, tag, leaderId })
+        .returning()
+      // The creator is the first member.
+      await db.update(players).set({ guildId: created[0]!.id }).where(eq(players.id, leaderId))
+      return created[0]!
+    }),
+
+  getGuild: (guildId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const rows = await db.select().from(guilds).where(eq(guilds.id, guildId)).limit(1)
+      return rows[0] ?? null
+    }),
+
+  getGuildByName: (name) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const rows = await db.select().from(guilds).where(eq(guilds.name, name)).limit(1)
+      return rows[0] ?? null
+    }),
+
+  getPlayerGuild: (playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      const rows = await db
+        .select({ guild: guilds })
+        .from(players)
+        .innerJoin(guilds, eq(players.guildId, guilds.id))
+        .where(eq(players.id, playerId))
+        .limit(1)
+      return rows[0]?.guild ?? null
+    }),
+
+  getGuildMembers: (guildId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      return db.select().from(players).where(eq(players.guildId, guildId))
+    }),
+
+  listGuilds: (limit = 50) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      return db.select().from(guilds).orderBy(guilds.name).limit(limit)
+    }),
+
+  getGuildsByIds: (ids) =>
+    Effect.promise(async () => {
+      if (ids.length === 0) return []
+      const db = useDb()
+      return db.select().from(guilds).where(inArray(guilds.id, ids))
+    }),
+
+  joinGuild: (guildId, playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db.update(players).set({ guildId }).where(eq(players.id, playerId))
+    }),
+
+  leaveGuild: (playerId) =>
+    Effect.promise(async () => {
+      const db = useDb()
+      await db.update(players).set({ guildId: null }).where(eq(players.id, playerId))
     }),
 
   getPlayerByUsername: (username) =>

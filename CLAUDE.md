@@ -144,7 +144,7 @@ Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
 - **Never use `bun --bun nuxt dev`** — Bun's native HTTP breaks the WebSocket proxy chain in dev mode
 - **Font imports** go in `app/assets/css/terminal.css` via `@import`, not in `nuxt.config.ts` `css` array (prevents SSR 404s)
 - **`<ClientOnly>`** is needed around auth-conditional UI in layouts (Nuxt 4 loads layouts async, causing hydration mismatches)
-- **`processTick` validates actions twice** — once in GameLoop (line 88) and once inside `resolveActions`. The GameLoop validation catches rejections for player feedback; the ActionResolver validation is a safety net
+- **`processTick` validates actions once in production** — GameLoop validates up front (catching rejections for player feedback); `resolveActions` only re-validates in dev/test as a divergence assertion ("GameLoop should have filtered this — a divergence is a bug"). It used to validate twice; the redundant production pass was removed
 - **Bot IDs** start with `bot_` prefix — checked via `isBot()` from BotManager
 - **Lobby cleanup** happens in `game-server.ts` after game creation, not in lobby.ts — prevents race condition where poll returns 'searching' between lobby end and game start
 - **knip config is `knip.config.ts`, NOT `knip.json`** — knip resolves `knip.json` first, so adding one shadows the tuned config and explodes findings. Unused exports/types are advisory `warn`; unused files/deps fail the gate

@@ -188,6 +188,19 @@ describe('asciiMapModel', () => {
       expect(cellText(zone)).toBe('▲ RAD T1 ►YOU !2E c3')
     })
 
+    it('names visible enemies when few enough to fit the dense cell, else counts', () => {
+      // 1-2 named enemies → "who is here" (parity with the mobile cards).
+      const named = makeZone({ id: 'mid-t1-rad', enemyCount: 2, enemyNames: ['Axe', 'Lina'] })
+      expect(cellText(named)).toContain('!Axe,Lina')
+      // 3+ would overflow the single-line cell → fall back to a count.
+      const many = makeZone({
+        id: 'mid-t1-rad',
+        enemyCount: 3,
+        enemyNames: ['Axe', 'Lina', 'Dawn'],
+      })
+      expect(cellText(many)).toContain('!3E')
+    })
+
     it('shows the dead-tower glyph, ally count, and neutral-camp count', () => {
       const zone = makeZone({
         tower: { team: 'radiant', alive: false, tier: 1, hp: 0, maxHp: 600 },

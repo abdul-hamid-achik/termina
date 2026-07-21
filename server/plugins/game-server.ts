@@ -18,12 +18,7 @@ import {
 import { gameLoggerLive } from '~~/server/utils/logger'
 import { gameLog } from '~~/server/utils/log'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
-import {
-  startGameLoop,
-  stopGameLoop,
-  configureActionRelay,
-  type GameCallbacks,
-} from '~~/server/game/engine/GameLoop'
+import { startGameLoop, stopGameLoop, type GameCallbacks } from '~~/server/game/engine/GameLoop'
 import {
   deleteSnapshot,
   readSnapshot,
@@ -51,19 +46,8 @@ import {
 } from '~~/server/game/ai/BotManager'
 import { ONE_LANE_MAP_ID, TWO_LANE_MAP_ID, mapIdForMode } from '~~/shared/constants/maps'
 import { buildTutorialRoster } from '~~/server/game/modes/tutorial'
-import {
-  sendToPeer,
-  setPlayerGame,
-  clearPlayerGame,
-  setInstanceId,
-  getInstanceId,
-  getGamePlayers,
-  configureRelay,
-  PLAYER_LOCATION_KEY,
-  GAME_OWNER_KEY,
-} from '~~/server/services/PeerRegistry'
-import type { ServerMessage } from '~~/shared/types/protocol'
-import { cleanupLobby, configureLobbyRedis } from '~~/server/game/matchmaking/lobby'
+import { sendToPeer, setPlayerGame, clearPlayerGame } from '~~/server/services/PeerRegistry'
+import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
 import { registerAllHeroes } from '~~/server/game/heroes'
@@ -183,19 +167,6 @@ function registerLiveGame(
   stateManager: ReturnType<typeof createInMemoryStateManager>,
 ): void {
   liveGames.set(gameId, { stateManager, recentEvents: [], lastTickAt: Date.now() })
-  // Claim ownership in Redis so other instances know this game lives here.
-  // Best-effort — single-instance mode has no other instance to care.
-  const instanceId = getInstanceId()
-  if (instanceId) {
-    const rt = _runtime
-    if (rt) {
-      try {
-        Effect.runSync(rt.redisService.hset(GAME_OWNER_KEY, gameId, instanceId))
-      } catch {
-        // Redis unavailable — local-only ownership is fine for single-instance.
-      }
-    }
-  }
 }
 
 /** Stash the snapshot meta on the live-game entry so the shutdown hook can
@@ -203,18 +174,6 @@ function registerLiveGame(
 function setLiveGameMeta(gameId: string, meta: SnapshotMeta): void {
   const entry = liveGames.get(gameId)
   if (entry) entry.meta = meta
-}
-
-/** Release game ownership in Redis (on game over / cleanup). */
-function releaseGameOwnership(gameId: string): void {
-  const rt = _runtime
-  if (rt) {
-    try {
-      Effect.runSync(rt.redisService.hdel(GAME_OWNER_KEY, gameId))
-    } catch {
-      // Redis unavailable — skip.
-    }
-  }
 }
 
 function recordRecentEvents(gameId: string, events: GameEngineEvent[]): void {
@@ -240,11 +199,6 @@ function touchLiveGame(gameId: string): void {
  * Build the payload for a reconnecting player: the current vision-filtered
  * state plus the visible events they missed since `sinceTick` (exclusive).
  * Returns null if the game isn't live on this instance.
- *
- * Multi-instance: when null is returned, the caller can HGET
- * termina:game_owner to find which instance owns the game. With sticky
- * sessions (DO App Platform default), the player is routed to the owning
- * instance so this is rarely needed.
  */
 export function getReconnectPayload(
   gameId: string,
@@ -282,22 +236,6 @@ export function getReconnectPayload(
 
 export function getGameRuntime(): GameRuntime | null {
   return _runtime
-}
-
-/**
- * Look up which instance owns a game (multi-instance). Returns the instance
- * ID, or null if the game isn't registered in Redis. In single-instance mode
- * this always returns null (no other instance to relay to) — the caller should
- * fall back to the local liveGames lookup.
- */
-export async function getGameOwner(gameId: string): Promise<string | null> {
-  const rt = _runtime
-  if (!rt) return null
-  try {
-    return await Effect.runSync(rt.redisService.hget(GAME_OWNER_KEY, gameId))
-  } catch {
-    return null
-  }
 }
 
 /**
@@ -389,7 +327,6 @@ export function stopDevGame(gameId: string): void {
   const runtime = _runtime
   if (!runtime) return
   liveGames.delete(gameId)
-  releaseGameOwnership(gameId)
   cleanupGame(gameId)
   clearClientInput(gameId)
   // Interrupt the running loop fiber (no-op if already stopped).
@@ -436,7 +373,6 @@ function reapStaleLiveGames(): void {
     cleanupGame(gameId)
     clearClientInput(gameId)
     liveGames.delete(gameId)
-    releaseGameOwnership(gameId)
   }
 }
 
@@ -494,87 +430,8 @@ export default defineNitroPlugin(async (nitroApp) => {
     }),
   )
 
-  // Wire up cross-instance action relay (P4 Phase 5). In single-instance mode
-  // this lets actions be LPUSHed to Redis; the owning instance drains both
-  // local + Redis queues each tick. Best-effort — Redis failures fall back to
-  // the local queue.
-  configureActionRelay({
-    lpush: (key, value) => redis.lpush(key, value),
-    lrange: (key, start, stop) => redis.lrange(key, start, stop),
-    del: (key) => redis.del(key),
-  })
-
-  // Wire up lobby state mirror (P4 Phase 4). The owning instance keeps the
-  // in-process Lobby (with the pickTimer) as the source of truth, and mirrors
-  // it to Redis after every mutation so non-owning instances can read it for
-  // status polling + reconnect.
-  configureLobbyRedis({
-    hset: (key, field, value) => redis.hset(key, field, value),
-    hget: (key, field) => redis.hget(key, field),
-    hdel: (key, field) => redis.hdel(key, field),
-    del: (key) => redis.del(key),
-    get: (key) => redis.get(key),
-  })
   const { startMatchmakingLoop } = await import('~~/server/game/matchmaking/queue')
   const matchmakingInterval = startMatchmakingLoop(redis, ws, db)
-
-  // ── Lobby sweep on boot ──────────────────────────────────────────
-  // Clear stale lobby mirrors left in Redis by a previous process crash/
-  // restart. Without this, stale lobbies linger forever (their pickTimers
-  // are gone with the old process, so they never publish game_ready or
-  // self-cancel). sweepStaleLobbies enumerates the lobby hash via HGETALL.
-  try {
-    const { sweepStaleLobbies } = await import('~~/server/game/matchmaking/lobby')
-    await sweepStaleLobbies([], ws, redis)
-    gameLog.info('Lobby sweep complete')
-  } catch (err) {
-    gameLog.warn('Lobby sweep failed (non-fatal)', { error: String(err) })
-  }
-
-  // ── Multi-instance: instance identity + relay ───────────────────
-  // Generate a unique instance ID for cross-instance message relay (P4).
-  // In single-instance mode the relay is configured but never used (no
-  // cross-instance traffic). The relay lets sendToPeer fall back to Redis
-  // pub/sub when the player's WS is on a different DO instance.
-  const instanceId = `inst_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
-  setInstanceId(instanceId)
-  gameLog.info('Instance ID assigned', { instanceId })
-
-  // Wire up the relay: lookup player location from Redis, publish to the
-  // target instance's relay channel.
-  configureRelay({
-    lookup: async (playerId: string) => {
-      try {
-        return await Effect.runSync(redis.hget(PLAYER_LOCATION_KEY, playerId))
-      } catch {
-        return null
-      }
-    },
-    publish: async (targetInstanceId: string, playerId: string, message: ServerMessage) => {
-      const payload = JSON.stringify({ playerId, message })
-      await Effect.runSync(redis.publish(`termina:relay:${targetInstanceId}`, payload))
-    },
-  })
-
-  // Subscribe to this instance's relay channel and forward messages to local peers.
-  Effect.runPromise(
-    redis.subscribe(`termina:relay:${instanceId}`, (raw: string) => {
-      try {
-        const { playerId, message } = JSON.parse(raw) as {
-          playerId: string
-          message: ServerMessage
-        }
-        sendToPeer(playerId, message)
-      } catch (err) {
-        gameLog.warn('Relay message parse failed', { error: String(err) })
-      }
-    }),
-  ).catch((err) => {
-    gameLog.warn('Relay subscription failed (single-instance mode OK)', {
-      instanceId,
-      error: String(err),
-    })
-  })
 
   // Start the production liveGames reaper — sweeps zombie games whose loop
   // died without firing onGameOver. Unref so it doesn't keep the process alive.
@@ -638,6 +495,19 @@ export default defineNitroPlugin(async (nitroApp) => {
         })
       },
 
+      onTutorialCompleted: (_gId, playerId) => {
+        if (isBot(playerId)) return
+        // Persist best-effort: a DB hiccup must never block the game loop. The
+        // client funnel degrades gracefully if this never lands (it just keeps
+        // offering practice).
+        managedRuntime.runPromise(db.markTutorialCompleted(playerId)).catch((err) =>
+          gameLog.warn('Failed to persist tutorial completion', {
+            playerId,
+            error: String(err),
+          }),
+        )
+      },
+
       onEvents: (gId, events) => {
         if (events.length === 0) return
 
@@ -689,6 +559,11 @@ export default defineNitroPlugin(async (nitroApp) => {
         }
 
         const realPlayers = players.filter((p) => !isBot(p.playerId))
+        // A match only affects MMR if it contained NO bots. Bot-filled matchmaking
+        // and practice games are recorded for history but are NOT ranked — otherwise
+        // the leaderboard (ordered by MMR) could be grinded against bots.
+        const hasBots = players.some((p) => isBot(p.playerId))
+        const isRanked = !hasBots
 
         // Build the end-of-game stats (no DB needed) and broadcast game_over
         // FIRST. Players must reach the post-game screen even if DB persistence
@@ -710,16 +585,18 @@ export default defineNitroPlugin(async (nitroApp) => {
           }
         }
 
-        // Elo change per real player vs the enemy team's average MMR (bots queue
-        // with a real bracket, so they count). Computed BEFORE the broadcast so
-        // each player sees their own change on the post-game screen; reused for
-        // the DB persistence below.
+        // Elo change per real player vs the enemy team's average MMR. Computed
+        // BEFORE the broadcast so each player sees their own change on the
+        // post-game screen; reused for the DB persistence below. Skipped entirely
+        // for unranked (bot) games — those report a 0 change and never touch MMR.
         const mmrChanges = new Map<string, number>()
-        for (const p of realPlayers) {
-          const enemyAvg = teamAverageMmr(
-            players.filter((e) => e.team !== p.team).map((e) => e.mmr),
-          )
-          mmrChanges.set(p.playerId, calculateMmrChange(p.mmr, enemyAvg, p.team === winner))
+        if (isRanked) {
+          for (const p of realPlayers) {
+            const enemyAvg = teamAverageMmr(
+              players.filter((e) => e.team !== p.team).map((e) => e.mmr),
+            )
+            mmrChanges.set(p.playerId, calculateMmrChange(p.mmr, enemyAvg, p.team === winner))
+          }
         }
 
         for (const p of realPlayers) {
@@ -728,17 +605,32 @@ export default defineNitroPlugin(async (nitroApp) => {
             winner,
             stats: endStats,
             mmrChange: mmrChanges.get(p.playerId) ?? 0,
+            ranked: isRanked,
           })
         }
 
         // Persist the match + MMR separately — failure is logged but never
         // blocks the broadcast above or the cleanup below.
         try {
+          // Label the match by its format. Bot games are 'casual_5v5' (unranked);
+          // human games are labelled by team size (this also fixes the old
+          // hardcoded 'ranked_5v5' that mislabeled 3v3/1v1 history).
+          const teamSize = players.filter((p) => p.team === 'radiant').length
+          const matchMode: NewMatch['mode'] = hasBots
+            ? 'casual_5v5'
+            : teamSize <= 1
+              ? '1v1'
+              : teamSize <= 3
+                ? 'quick_3v3'
+                : 'ranked_5v5'
+          // Tag the match with the active season (creates Season 1 on first use).
+          const season = await managedRuntime.runPromise(db.getCurrentSeason())
           const matchRecord: NewMatch = {
             id: gId,
-            mode: 'ranked_5v5',
+            mode: matchMode,
             winner,
             durationTicks: finalState.tick,
+            seasonNumber: season.seasonNumber,
             endedAt: new Date(),
           }
           const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
@@ -767,10 +659,21 @@ export default defineNitroPlugin(async (nitroApp) => {
 
               for (const p of realPlayers) {
                 const isWinner = p.team === winner
-                const newMmr = applyMmrChange(p.mmr, mmrChanges.get(p.playerId) ?? 0)
                 const ps = finalState.players[p.playerId]
 
-                yield* db.updatePlayerMMR(p.playerId, newMmr)
+                // MMR only moves for ranked (no-bot) games — bot games record
+                // history/stats but leave the competitive ladder untouched.
+                if (isRanked) {
+                  const mmrChange = mmrChanges.get(p.playerId) ?? 0
+                  const newMmr = applyMmrChange(p.mmr, mmrChange)
+                  yield* db.updatePlayerMMR(p.playerId, newMmr)
+                  // Mirror the change onto the seasonal ladder + seasonal W/L.
+                  yield* db.applySeasonMmrChange(p.playerId, mmrChange)
+                  yield* db.incrementSeasonGamesPlayed(p.playerId)
+                  if (isWinner) {
+                    yield* db.incrementSeasonWins(p.playerId)
+                  }
+                }
                 yield* db.incrementGamesPlayed(p.playerId)
                 if (isWinner) {
                   yield* db.incrementWins(p.playerId)
@@ -797,7 +700,6 @@ export default defineNitroPlugin(async (nitroApp) => {
         clearClientInput(gId)
         clearGameSpectators(gId)
         liveGames.delete(gId)
-        releaseGameOwnership(gId)
         // Leave the snapshot + action log behind so PostGame can show a replay
         // link. The Redis TTL (8h) cleans them up; the resume-on-boot path
         // already skips ended-phase snapshots.
@@ -1079,21 +981,9 @@ export default defineNitroPlugin(async (nitroApp) => {
     // Redis connection is torn down below.
     if (liveGames.size > 0) {
       // Best-effort + time-bounded (see flushFinalSnapshots): a faithful final
-      // snapshot per live game, then release ownership so reconnects re-route.
-      // Falls back to the ≤60s periodic snapshot on any failure.
+      // snapshot per live game. Falls back to the ≤60s periodic snapshot on any
+      // failure.
       await managedRuntime.runPromise(flushFinalSnapshots(liveGames, redis))
-      for (const gameId of liveGames.keys()) {
-        releaseGameOwnership(gameId)
-        // Release this instance's player-location claims too, so the
-        // cross-instance relay doesn't route reconnects to this dying instance.
-        for (const playerId of getGamePlayers(gameId)) {
-          try {
-            Effect.runSync(redis.hdel(PLAYER_LOCATION_KEY, playerId))
-          } catch {
-            // Redis unavailable — best-effort, skip.
-          }
-        }
-      }
     }
 
     await managedRuntime.runPromise(redis.shutdown())

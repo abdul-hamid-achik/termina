@@ -68,6 +68,7 @@ export default defineOAuthDiscordEventHandler({
         selectedAvatar: player.selectedAvatar,
         provider: 'discord',
         hasPassword: !!player.passwordHash,
+        tutorialCompleted: !!player.tutorialCompleted,
       },
     })
 

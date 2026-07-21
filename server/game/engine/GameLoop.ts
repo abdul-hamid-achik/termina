@@ -23,8 +23,8 @@ import {
 import type { StateManagerApi } from './StateManager'
 import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
-import { advanceTutorialAfterTick } from '~~/server/game/modes/tutorial'
-import { distributePassiveGold, awardKill } from './GoldDistributor'
+import { advanceTutorialAfterTick, TUTORIAL_STEP_COUNT } from '~~/server/game/modes/tutorial'
+import { distributePassiveGold, awardKill, xpComebackMultiplier } from './GoldDistributor'
 import { runCreepAI, applyCreepActions, enforceCreepZoneCap } from './CreepAI'
 import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
 import { runTowerAI, applyTowerActions } from './TowerAI'
@@ -74,22 +74,6 @@ const KEEPS_AUTOPATH = new Set(['move', 'surrender', 'select_talent', 'buyback']
 /** Pending actions collected during the action window. */
 const gameActionQueues = new Map<string, PlayerAction[]>()
 
-/** Redis key for cross-instance action relay: termina:actions:${gameId} */
-const ACTIONS_KEY_PREFIX = 'termina:actions:'
-
-/** Redis service for cross-instance action relay (set on game loop start). */
-let _actionRedis: {
-  lpush: (key: string, value: string) => Effect.Effect<void>
-  lrange: (key: string, start: number, stop: number) => Effect.Effect<string[]>
-  del: (key: string) => Effect.Effect<void>
-} | null = null
-
-/** Wire up the Redis service for cross-instance action relay (P4 Phase 5).
- * In single-instance mode, this stays null and actions are purely in-process. */
-export function configureActionRelay(redis: typeof _actionRedis): void {
-  _actionRedis = redis
-}
-
 // ── Assist tracking ────────────────────────────────────────────
 // Kill/assist credit comes from actual damage dealt within a recent window,
 // not just attack commands — so DoTs, abilities, and item procs count.
@@ -130,8 +114,7 @@ function getDamageContributors(gameId: string, victimId: string): string[] {
   return [...(recentHeroDamage.get(gameId)?.get(victimId)?.keys() ?? [])]
 }
 
-/** Submit an action for the current tick. Stores locally; if a Redis relay
- * is configured (multi-instance), also LPUSHes for cross-instance drainage. */
+/** Submit an action for the current tick (single-instance, in-process queue). */
 export function submitAction(gameId: string, playerId: string, command: Command): void {
   let queue = gameActionQueues.get(gameId)
   if (!queue) {
@@ -151,17 +134,6 @@ export function submitAction(gameId: string, playerId: string, command: Command)
   } else {
     queue.push({ playerId, command })
   }
-  // Cross-instance relay (P4 Phase 5): LPUSH so the owning instance can drain.
-  // Best-effort — if Redis is down, the local queue is the fallback.
-  if (_actionRedis) {
-    try {
-      Effect.runSync(
-        _actionRedis.lpush(`${ACTIONS_KEY_PREFIX}${gameId}`, JSON.stringify({ playerId, command })),
-      )
-    } catch {
-      // Redis unavailable — local queue is sufficient.
-    }
-  }
 }
 
 /** The command type currently queued for a player this tick, if any. */
@@ -170,32 +142,10 @@ function queuedCommandType(gameId: string, playerId: string): string | null {
   return queued ? queued.command.type : null
 }
 
-/** Drain all queued actions for a game. Drains both the local in-process
- * queue AND the Redis relay queue (if configured). */
+/** Drain all queued actions for a game (single-instance, in-process queue). */
 function drainActions(gameId: string): PlayerAction[] {
   const local = gameActionQueues.get(gameId) ?? []
   gameActionQueues.set(gameId, [])
-
-  // Cross-instance drain: LRANGE + DEL the Redis queue.
-  if (_actionRedis) {
-    try {
-      const key = `${ACTIONS_KEY_PREFIX}${gameId}`
-      const raw = Effect.runSync(_actionRedis.lrange(key, 0, -1))
-      if (raw.length > 0) {
-        Effect.runSync(_actionRedis.del(key))
-        const remote = raw.map((r) => JSON.parse(r) as PlayerAction)
-        // Merge: deduplicate by playerId (local takes priority — same-instance
-        // actions are newer since they bypass Redis latency).
-        const seen = new Set(local.map((a) => a.playerId))
-        for (const a of remote) {
-          if (!seen.has(a.playerId)) local.push(a)
-        }
-      }
-    } catch {
-      // Redis unavailable — local queue is the fallback.
-    }
-  }
-
   return local
 }
 
@@ -535,6 +485,12 @@ export interface GameCallbacks {
   onGameOver: (gameId: string, winner: TeamId) => void
   onActionRejected?: (gameId: string, playerId: string, reason: string) => void
   /**
+   * Fires once when the human player finishes the last tutorial step. Optional —
+   * the plugin persists it (players.tutorialCompleted) so the client funnel can
+   * stop routing returning players to practice. Skipped if not set.
+   */
+  onTutorialCompleted?: (gameId: string, playerId: string) => void
+  /**
    * Fires once per tick with the unfiltered (fogless) state. Optional —
    * implemented by the plugin to broadcast to spectators. Skipped if not set.
    */
@@ -580,13 +536,47 @@ function buildGameLoop(
       return yield* Effect.interrupt
     }
 
+    const tickStart = performance.now()
     const {
       state: newState,
       events,
       rejectedActions,
       actions,
     } = yield* processTick(gameId, currentState)
+    // Observability: warn when a tick's engine work eats into the schedule
+    // budget (>50% of the interval). Sustained breaches are what push
+    // Schedule.fixed into its running-behind regime (a slowed game clock) — this
+    // is the early signal that the "~N games per instance" ceiling is being hit.
+    const tickMs = performance.now() - tickStart
+    if (tickMs > TICK_DURATION_MS * 0.5) {
+      engineLog.warn('Slow tick', {
+        gameId,
+        tick: currentState.tick,
+        tickMs: Math.round(tickMs),
+        budgetMs: TICK_DURATION_MS,
+        players: Object.keys(currentState.players).length,
+      })
+    }
     yield* stateManager.updateState(gameId, () => newState)
+
+    // Tutorial completion: processTick advanced the human past the last scripted
+    // step → fire the callback (the plugin persists players.tutorialCompleted) so
+    // the client funnel stops routing this player to practice. Detected here, not
+    // in processTick, because only the loop fiber holds the callbacks handle.
+    if (
+      callbacks.onTutorialCompleted &&
+      (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
+      (newState.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT
+    ) {
+      const humanId = Object.keys(newState.players).find((id) => !isBot(id))
+      if (humanId) {
+        try {
+          callbacks.onTutorialCompleted(gameId, humanId)
+        } catch {
+          // Non-critical — a persistence failure just leaves the funnel as-is.
+        }
+      }
+    }
 
     // Persist this tick's actions for replay/debugging. Forked so a slow
     // Redis write never blocks the broadcast.
@@ -696,14 +686,6 @@ function buildGameLoop(
     Effect.ensuring(
       Effect.sync(() => {
         gameActionQueues.delete(gameId)
-        // Clean up the Redis action relay queue (P4 Phase 5).
-        if (_actionRedis) {
-          try {
-            Effect.runSync(_actionRedis.del(`${ACTIONS_KEY_PREFIX}${gameId}`))
-          } catch {
-            /* best-effort */
-          }
-        }
         activeGames.delete(gameId)
         recentHeroDamage.delete(gameId)
       }),
@@ -1351,13 +1333,20 @@ function handleDeaths(
           }
         }
 
-        // Award XP for hero kill to killer
+        // Award XP for hero kill to killer. The killer's team earns a comeback
+        // multiplier from the average team level gap (xpComebackMultiplier), so a
+        // team behind in levels catches up instead of snowballing further — the
+        // XP mirror of the gold comeback bounty applied in awardKill above.
         const victim = players[pid]!
-        const killXp = HERO_KILL_XP_BASE + HERO_KILL_XP_PER_LEVEL * victim.level
         const killerForXp = players[killerId]!
+        const xpMult = xpComebackMultiplier({ ...state, players }, killerForXp.team)
+        const killXp = Math.round(
+          (HERO_KILL_XP_BASE + HERO_KILL_XP_PER_LEVEL * victim.level) * xpMult,
+        )
         players[killerId] = { ...killerForXp, xp: killerForXp.xp + killXp }
 
-        // Award assisters a fraction of the kill XP (ASSIST_XP_RATIO)
+        // Award assisters a fraction of the kill XP (ASSIST_XP_RATIO). Derived
+        // from the already-adjusted killXp, so assisters share the comeback too.
         const assistXp = Math.floor(killXp * ASSIST_XP_RATIO)
         for (const assistId of assisters) {
           const assister = players[assistId]

@@ -10,6 +10,9 @@ export const ACTION_WINDOW_MS = 3500
 export const PASSIVE_GOLD_PER_TICK = 4
 export const CREEP_GOLD_MIN = 30
 export const CREEP_GOLD_MAX = 50
+/** Fixed normal-creep last-hit gold (was random 30–50). Deterministic so farm
+ * reward doesn't swing on dice; equals the old average so economy is unchanged. */
+export const CREEP_GOLD = 40
 export const SIEGE_CREEP_GOLD = 75
 export const KILL_BOUNTY_BASE = 200
 export const KILL_BOUNTY_PER_STREAK = 50
@@ -67,6 +70,17 @@ export const XP_PER_LEVEL: readonly number[] = [
 export const CREEP_XP = 40
 export const HERO_KILL_XP_BASE = 100
 export const HERO_KILL_XP_PER_LEVEL = 20
+
+/**
+ * Comeback XP: kill XP is multiplied by a factor based on the average team
+ * LEVEL gap (see xpComebackMultiplier). A team behind in average level earns
+ * bonus XP so a level lead can't compound without a catch-up mechanism — the
+ * XP mirror of the gold comeback bounty above. An average level gap of
+ * XP_COMEBACK_FULL_LEVEL_GAP yields the cap multiplier.
+ */
+export const XP_COMEBACK_BONUS_MAX = 0.5
+export const XP_COMEBACK_PENALTY_MAX = 0.3
+export const XP_COMEBACK_FULL_LEVEL_GAP = 5
 
 // ── Respawn ──────────────────────────────────────────────────────
 

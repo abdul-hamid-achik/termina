@@ -11,8 +11,7 @@ import {
   RESPAWN_FREE_LEVELS,
   OBSERVER_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
+  CREEP_GOLD,
   KILL_BOUNTY_BASE,
   TOWER_HP_T1,
   TOWER_HP_T2,
@@ -62,7 +61,7 @@ describe('learn page', () => {
     const text = mountLearn().text()
     expect(text).toContain(`${PASSIVE_GOLD_PER_TICK}g/tick`)
     expect(text).not.toContain('2g/tick')
-    expect(text).toContain(`${CREEP_GOLD_MIN}-${CREEP_GOLD_MAX}g`)
+    expect(text).toContain(`${CREEP_GOLD}g`)
     expect(text).toContain(`${KILL_BOUNTY_BASE}g base`)
   })
 

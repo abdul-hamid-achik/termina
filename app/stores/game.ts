@@ -106,6 +106,9 @@ export const useGameStore = defineStore('game', () => {
   const scoreboard = ref<ScoreboardEntry[]>([])
   const gameOverStats = ref<Record<string, PlayerEndStats> | null>(null)
   const gameOverMmrChange = ref<number | null>(null)
+  // False when the finished match contained bots (practice / bot-filled) and so
+  // did not affect MMR — the post-game screen shows "unranked" instead of a number.
+  const gameOverRanked = ref<boolean>(true)
   const winner = ref<TeamId | null>(null)
   const timeOfDay = ref<'day' | 'night'>('day')
   /** Which map this game runs on (undefined = full 5v5); drives the ASCII layout. */
@@ -390,10 +393,12 @@ export const useGameStore = defineStore('game', () => {
     winnerTeam: TeamId,
     stats: Record<string, PlayerEndStats>,
     mmrChange?: number,
+    ranked = true,
   ) {
     winner.value = winnerTeam
     gameOverStats.value = stats
     gameOverMmrChange.value = mmrChange ?? null
+    gameOverRanked.value = ranked
     phase.value = 'ended'
   }
 
@@ -431,6 +436,7 @@ export const useGameStore = defineStore('game', () => {
     scoreboard.value = []
     gameOverStats.value = null
     gameOverMmrChange.value = null
+    gameOverRanked.value = true
     winner.value = null
     lastActionTick.value = -1
     pendingCommand.value = null
@@ -476,6 +482,7 @@ export const useGameStore = defineStore('game', () => {
     scoreboard,
     gameOverStats,
     gameOverMmrChange,
+    gameOverRanked,
     winner,
     lastActionTick,
     timeOfDay,

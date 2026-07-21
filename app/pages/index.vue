@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { HERO_IDS } from '~~/shared/constants/heroes'
 import { useStartTutorial } from '~/composables/useStartTutorial'
+import { useAuthStore } from '~/stores/auth'
 
 // Live hero count from the registry so the landing page can't drift.
 const heroCount = HERO_IDS.length
 
 // Practice vs bots: shared one-lane tutorial launcher (see useStartTutorial).
 const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
+
+// Funnel: new players (no completed tutorial) are steered to practice as the
+// primary CTA; returning players who finished it get ranked as the primary.
+const authStore = useAuthStore()
+const tutorialDone = computed(() => authStore.user?.tutorialCompleted === true)
 </script>
 
 <template>
@@ -28,6 +34,10 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
       >
 
       <p class="text-base tracking-wide text-text-dim">&gt;_ where every command is a kill</p>
+      <p class="max-w-[460px] text-[0.8rem] leading-relaxed text-text-dim/80">
+        A 5v5 MOBA of pure strategy — no reflexes, no download, no waiting on a queue. Play against
+        bots any time, or rank up when you're ready.
+      </p>
     </div>
 
     <div class="flex max-w-[600px] flex-col gap-2 text-left">
@@ -79,16 +89,18 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
     </div>
 
     <div class="flex flex-wrap justify-center gap-3">
-      <NuxtLink to="/lobby" class="no-underline">
-        <AsciiButton label="ENTER THE TERMINAL" variant="primary" />
-      </NuxtLink>
+      <!-- Funnel: practice is the primary CTA until the tutorial is done, then
+           ranked takes the primary slot (returning players skip the nudge). -->
       <AsciiButton
         :label="startingTutorial ? 'STARTING…' : 'PRACTICE VS BOTS'"
         :disabled="startingTutorial"
-        variant="ghost"
+        :variant="tutorialDone ? 'ghost' : 'primary'"
         data-testid="start-tutorial"
         @click="startTutorial"
       />
+      <NuxtLink to="/lobby" class="no-underline">
+        <AsciiButton label="ENTER THE TERMINAL" :variant="tutorialDone ? 'primary' : 'ghost'" />
+      </NuxtLink>
     </div>
 
     <!-- New-player paths: learn the kit + the world before queueing. -->

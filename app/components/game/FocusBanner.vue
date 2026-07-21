@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useGameStore } from '~/stores/game'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { HEROES } from '~~/shared/constants/heroes'
 import { computeThreat, threatToneClass, recommendAction } from '~/utils/tactics'
 
 // Direction B of the HUD-settings system: an at-a-glance "what do I do now"
@@ -81,6 +82,22 @@ const recommendation = computed(() =>
     hasReadyAbility: readyAbilities.value.length > 0,
   }),
 )
+
+// Telegraph: turn the 4s wait into active prediction by surfacing a visible
+// "something is cooking" threat — a nearby enemy whose ultimate is off cooldown
+// with enough mana to cast it. Derived ONLY from state the team can already see
+// (fogged enemies lack cooldowns/mp and are skipped), so it never leaks fog.
+const telegraphs = computed<string[]>(() => {
+  const out: string[] = []
+  for (const e of store.nearbyEnemies) {
+    if (!('cooldowns' in e) || !e.cooldowns) continue
+    const ultCost = e.heroId ? (HEROES[e.heroId]?.abilities.r.manaCost ?? 0) : 0
+    if (ultCost > 0 && (e.cooldowns.r ?? 0) <= 0 && (e.mp ?? 0) >= ultCost) {
+      out.push(`⚠ ${e.name} ult ready`)
+    }
+  }
+  return out
+})
 </script>
 
 <template>
@@ -111,6 +128,15 @@ const recommendation = computed(() =>
     <!-- Recommendation -->
     <span class="min-w-0 flex-1 truncate text-text-primary" data-testid="focus-recommendation"
       >▸ {{ recommendation }}</span
+    >
+
+    <!-- Telegraph: visible "something is cooking" warnings (e.g. enemy ult ready) -->
+    <span
+      v-for="(t, i) in telegraphs"
+      :key="i"
+      class="shrink-0 font-bold text-warn text-glow-sm animate-pulse"
+      data-testid="focus-telegraph"
+      >{{ t }}</span
     >
 
     <!-- Ready abilities -->

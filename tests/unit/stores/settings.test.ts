@@ -43,6 +43,7 @@ describe('Settings Store', () => {
         audioEnabled: true,
         audioVolume: 0.5,
         quickCastEnabled: false,
+        teamPalette: 'classic',
         hud: {
           layoutMode: 'classic',
           focusBanner: true,
@@ -65,6 +66,7 @@ describe('Settings Store', () => {
         audioEnabled: false,
         audioVolume: 0.8,
         quickCastEnabled: true,
+        teamPalette: 'classic',
         hud: {
           layoutMode: 'classic',
           focusBanner: true,

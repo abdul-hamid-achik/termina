@@ -6,6 +6,7 @@ import {
   isStructureTarget,
   teamLabel,
   collapseStructureDamage,
+  digestTeamfightNoise,
   type CombatLine,
 } from '../../../app/utils/combatLog'
 
@@ -222,6 +223,59 @@ describe('combatLog helpers', () => {
       const result = collapseStructureDamage([dmgLine(1, 'Thread', 'the Dire Core', 10)], fmt)
       expect(result[0]).not.toHaveProperty('total')
       expect(result[0]).not.toHaveProperty('baseText')
+    })
+  })
+
+  describe('digestTeamfightNoise', () => {
+    const worldDmg = (tick: number, amount: number): CombatLine => ({
+      tick,
+      text: 'some hero hits another',
+      type: 'damage',
+      salience: 'world',
+      dmgAmount: amount,
+    })
+
+    it('folds a run of bystander damage into one summary past the threshold', () => {
+      const lines = [
+        worldDmg(5, 40),
+        worldDmg(5, 50),
+        worldDmg(5, 30),
+        worldDmg(5, 60),
+        worldDmg(5, 20),
+      ]
+      const result = digestTeamfightNoise(lines)
+      expect(result).toHaveLength(1)
+      expect(result[0]!.text).toContain('teamfight')
+      expect(result[0]!.text).toContain('5 hits')
+      expect(result[0]!.text).toContain('200 dmg')
+    })
+
+    it('leaves a small skirmish (at/below threshold) as individual lines', () => {
+      const lines = [worldDmg(5, 40), worldDmg(5, 50), worldDmg(5, 30)]
+      const result = digestTeamfightNoise(lines)
+      expect(result).toHaveLength(3)
+    })
+
+    it('never folds lines that involve me, an ally, kills, or structures', () => {
+      const mine: CombatLine = {
+        tick: 5,
+        text: 'I take damage',
+        type: 'damage',
+        salience: 'mine-in',
+        dmgAmount: 99,
+      }
+      const kill: CombatLine = { tick: 5, text: 'a kill', type: 'kill', salience: 'world' }
+      const struct: CombatLine = {
+        tick: 5,
+        text: 'tower hit',
+        type: 'damage',
+        salience: 'world',
+        dedupKey: 'dmg:x->tower',
+        dmgAmount: 10,
+      }
+      const result = digestTeamfightNoise([mine, kill, struct])
+      expect(result).toHaveLength(3)
+      expect(result).toContainEqual(expect.objectContaining({ salience: 'mine-in' }))
     })
   })
 })

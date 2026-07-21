@@ -6,21 +6,26 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import { computeMvp } from '~/utils/postgame'
 
-const props = defineProps<{
-  winner: TeamId
-  stats: Record<string, PlayerEndStats>
-  players: Array<{
-    id: string
-    name: string
-    heroId: string
-    team: TeamId
-  }>
-  currentPlayerId: string
-  mmrChange?: number
-  gameId?: string | null
-  /** Mode of the concluded game; 'tutorial' swaps in a learn-the-ropes wrap-up. */
-  mode?: GameMode
-}>()
+const props = withDefaults(
+  defineProps<{
+    winner: TeamId
+    stats: Record<string, PlayerEndStats>
+    players: Array<{
+      id: string
+      name: string
+      heroId: string
+      team: TeamId
+    }>
+    currentPlayerId: string
+    mmrChange?: number
+    /** False when the match contained bots and did not affect MMR. */
+    ranked?: boolean
+    gameId?: string | null
+    /** Mode of the concluded game; 'tutorial' swaps in a learn-the-ropes wrap-up. */
+    mode?: GameMode
+  }>(),
+  { ranked: true },
+)
 
 // After a tutorial we nudge the player toward a real match rather than framing
 // it as a ranked result — and 'PLAY AGAIN' (→ lobby) becomes 'FIND A REAL MATCH'.
@@ -161,7 +166,16 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
           </div>
           <div v-if="mmrChange !== undefined" class="flex flex-col gap-1">
             <span class="t-caption uppercase">MMR</span>
+            <!-- Bot games (practice / bot-filled) are unranked — no MMR moved. -->
             <span
+              v-if="ranked === false"
+              class="t-h1 text-text-dim"
+              title="This match contained bots and did not affect MMR"
+            >
+              UNRANKED
+            </span>
+            <span
+              v-else
               class="t-h1 t-mono-num"
               :class="
                 mmrChange >= 0 ? 'text-radiant text-glow-radiant' : 'text-dire text-glow-dire'

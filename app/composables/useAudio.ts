@@ -10,6 +10,8 @@ export type SoundName =
   | 'ready'
   | 'cast'
   | 'tower_fall'
+  | 'victory'
+  | 'defeat'
 
 let audioCtx: AudioContext | null = null
 
@@ -31,6 +33,10 @@ interface OscLayer {
   peak?: number
   /** Attack time in seconds (defaults to 0.005). */
   attack?: number
+  /** Start offset in seconds relative to the sound's t0 (defaults to 0).
+   * Lets a sound sequence notes (e.g. a victory fanfare arpeggio) instead of
+   * stacking every layer simultaneously. */
+  delay?: number
 }
 
 interface NoiseLayer {
@@ -127,6 +133,62 @@ const SOUNDS: Record<SoundName, SoundDef> = {
     ],
     noise: { duration: 0.35, gain: 0.22, cutoff: 1400 },
   },
+  // Victory: triumphant rising major arpeggio (C5-E5-G5-C6) with an octave
+  // shimmer on the held top note — the climax stinger the win screen lacked.
+  victory: {
+    oscs: [
+      { type: 'square', freqStart: 523, duration: 0.5, gain: 0.16, attack: 0.004, delay: 0 },
+      { type: 'square', freqStart: 659, duration: 0.46, gain: 0.16, attack: 0.004, delay: 0.11 },
+      { type: 'square', freqStart: 784, duration: 0.42, gain: 0.16, attack: 0.004, delay: 0.22 },
+      { type: 'square', freqStart: 1046, duration: 0.55, gain: 0.2, attack: 0.004, delay: 0.33 },
+      {
+        type: 'sine',
+        freqStart: 2093,
+        duration: 0.55,
+        gain: 0.1,
+        attack: 0.01,
+        delay: 0.33,
+        detune: 4,
+      },
+    ],
+    noise: { duration: 0.3, gain: 0.1, cutoff: 6000 },
+    masterGain: 0.9,
+  },
+  // Defeat: somber descending minor fall (A4→E3→A2), slow low-pass closing —
+  // the mirror of the victory stinger for a lost game.
+  defeat: {
+    oscs: [
+      {
+        type: 'sawtooth',
+        freqStart: 440,
+        freqEnd: 220,
+        duration: 0.7,
+        gain: 0.2,
+        attack: 0.01,
+        delay: 0,
+      },
+      {
+        type: 'sawtooth',
+        freqStart: 330,
+        freqEnd: 165,
+        duration: 0.7,
+        gain: 0.18,
+        attack: 0.01,
+        delay: 0.18,
+      },
+      {
+        type: 'sine',
+        freqStart: 220,
+        freqEnd: 110,
+        duration: 0.9,
+        gain: 0.22,
+        attack: 0.02,
+        delay: 0.36,
+      },
+    ],
+    noise: { duration: 0.5, gain: 0.1, cutoff: 500 },
+    masterGain: 0.9,
+  },
 }
 
 function makeNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
@@ -164,26 +226,28 @@ export function useAudio() {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
 
+        const start = t0 + (layer.delay ?? 0)
+
         osc.type = layer.type
-        osc.frequency.setValueAtTime(layer.freqStart, t0)
+        osc.frequency.setValueAtTime(layer.freqStart, start)
         if (layer.freqEnd !== undefined) {
           osc.frequency.exponentialRampToValueAtTime(
             Math.max(layer.freqEnd, 1),
-            t0 + layer.duration,
+            start + layer.duration,
           )
         }
-        if (layer.detune) osc.detune.setValueAtTime(layer.detune, t0)
+        if (layer.detune) osc.detune.setValueAtTime(layer.detune, start)
 
         const peak = layer.peak ?? layer.gain
         const attack = layer.attack ?? 0.005
-        gain.gain.setValueAtTime(0, t0)
-        gain.gain.linearRampToValueAtTime(peak, t0 + attack)
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + layer.duration)
+        gain.gain.setValueAtTime(0, start)
+        gain.gain.linearRampToValueAtTime(peak, start + attack)
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + layer.duration)
 
         osc.connect(gain)
         gain.connect(master)
-        osc.start(t0)
-        osc.stop(t0 + layer.duration + 0.02)
+        osc.start(start)
+        osc.stop(start + layer.duration + 0.02)
       }
 
       // Noise layer (percussive transient)

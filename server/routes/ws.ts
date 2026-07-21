@@ -6,10 +6,12 @@ import { isGameBot } from '~~/server/game/ai/BotManager'
 import { markClientInput } from '~~/server/services/LeaverSystem'
 import {
   pickHero,
+  banHero,
   getPlayerLobby,
   getLobby,
   cancelLobby,
   currentPickTurn,
+  currentBanTurn,
 } from '~~/server/game/matchmaking/lobby'
 import {
   registerPeer,
@@ -19,9 +21,6 @@ import {
   setPlayerTeam,
   getPlayerTeam,
   sendToPeer,
-  getInstanceId,
-  PLAYER_LOCATION_KEY,
-  GAME_OWNER_KEY,
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
 import { wsLog } from '~~/server/utils/log'
@@ -164,18 +163,6 @@ export default defineWebSocketHandler({
       send: (data: string | ArrayBuffer | Uint8Array) => number | undefined
     } | null
     registerPeer(playerId, peer, rawWs)
-    // Register this player's location in Redis so other instances can relay
-    // messages to them (P4 multi-instance). Best-effort — single-instance mode
-    // has no other instance to relay to, so a failure is harmless.
-    try {
-      const runtime0 = getGameRuntime()
-      const instanceId0 = getInstanceId()
-      if (runtime0 && instanceId0) {
-        Effect.runSync(runtime0.redisService.hset(PLAYER_LOCATION_KEY, playerId, instanceId0))
-      }
-    } catch {
-      // Redis unavailable or mock environment — skip location registration.
-    }
     wsLog.info('Peer connected', { playerId })
 
     const timer = disconnectTimers.get(playerId)
@@ -246,12 +233,19 @@ export default defineWebSocketHandler({
                 team: p.team,
                 heroId: p.heroId,
               })),
+              phase: lobby.phase === 'banning' ? 'banning' : 'picking',
+              bans: [...(lobby.bannedHeroes ?? [])],
             }),
           )
           wsLog.info('Re-sent lobby_state on reconnect', { playerId, lobbyId: existingLobbyId })
           // Also re-send whose-turn-it-is — lobby_state alone doesn't carry the
-          // current picker, so without this a client that (re)connects mid-draft
-          // (a refresh, or a seeded draft) never learns it's their turn.
+          // current picker/banner, so without this a client that (re)connects
+          // mid-draft (a refresh, or a seeded draft) never learns it's their turn.
+          const banTurn = currentBanTurn(lobby)
+          if (banTurn) {
+            peer.send(JSON.stringify(banTurn))
+            wsLog.info('Re-sent ban_turn on reconnect', { playerId, banner: banTurn.playerId })
+          }
           const turn = currentPickTurn(lobby)
           if (turn) {
             peer.send(JSON.stringify(turn))
@@ -373,31 +367,6 @@ export default defineWebSocketHandler({
                   type: 'events',
                   tick: payload.tick,
                   events: payload.events,
-                }),
-              )
-            }
-          } else {
-            // Game not live on this instance. Check if another instance owns
-            // it (multi-instance). If so, tell the client the game is on a
-            // different server — with sticky sessions this is rare.
-            let owner: string | null = null
-            try {
-              const rt = getGameRuntime()
-              if (rt) owner = Effect.runSync(rt.redisService.hget(GAME_OWNER_KEY, parsed.gameId))
-            } catch {
-              // Redis unavailable — skip.
-            }
-            if (owner && owner !== getInstanceId()) {
-              wsLog.info('Game owned by another instance', {
-                playerId: ctx.playerId,
-                gameId: parsed.gameId,
-                ownerInstance: owner,
-              })
-              peer.send(
-                JSON.stringify({
-                  type: 'game_not_found',
-                  gameId: parsed.gameId,
-                  message: 'Game is on a different server instance',
                 }),
               )
             }
@@ -593,6 +562,47 @@ export default defineWebSocketHandler({
         break
       }
 
+      case 'hero_ban': {
+        wsLog.debug('hero_ban received', {
+          playerId: ctx.playerId,
+          lobbyId: parsed.lobbyId,
+          heroId: parsed.heroId,
+        })
+        if (!checkScopedRateLimit('lobby', ctx.playerId)) {
+          peer.send(JSON.stringify({ type: 'error', code: 'RATE_LIMITED', message: 'Slow down' }))
+          break
+        }
+        const runtime = getGameRuntime()
+        if (!runtime) {
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'NO_GAME_SERVER',
+              message: 'Game server not ready',
+            }),
+          )
+          break
+        }
+        const banResult = banHero(
+          parsed.lobbyId,
+          ctx.playerId,
+          parsed.heroId,
+          runtime.wsService,
+          runtime.redisService,
+          runtime.dbService,
+        )
+        if (!banResult.success) {
+          peer.send(
+            JSON.stringify({
+              type: 'error',
+              code: 'BAN_FAILED',
+              message: banResult.error ?? 'Hero ban failed',
+            }),
+          )
+        }
+        break
+      }
+
       case 'chat':
       case 'ping_map': {
         const runtime = getGameRuntime()
@@ -776,15 +786,6 @@ export default defineWebSocketHandler({
           // reconnect) — stop the seeded game's loop so dev games don't pile up and
           // tick forever across an e2e suite. No-op for real (matchmaking) games.
           stopDevGame(gameId)
-
-          // Deregister the player's location from Redis (P4 multi-instance).
-          try {
-            if (runtime) {
-              Effect.runSync(runtime.redisService.hdel(PLAYER_LOCATION_KEY, playerId))
-            }
-          } catch {
-            // Redis unavailable — skip.
-          }
 
           peerState.delete(peer)
         },

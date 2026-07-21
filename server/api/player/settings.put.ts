@@ -81,6 +81,7 @@ export default defineEventHandler(async (event) => {
       selectedAvatar: player!.selectedAvatar,
       provider: session.user.provider as 'github' | 'discord' | 'local',
       hasPassword: !!player!.passwordHash,
+      tutorialCompleted: !!player!.tutorialCompleted,
     },
   })
 

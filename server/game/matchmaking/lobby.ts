@@ -6,13 +6,16 @@ import type { TeamId } from '~~/shared/types/game'
 import type { QueueEntry, QueueMode } from './queue'
 import { HERO_IDS, isHeroId } from '~~/shared/constants/heroes'
 import { mapIdForMode } from '~~/shared/constants/maps'
-import { isBot } from '~~/server/game/ai/BotManager'
+import { isBot, createBotPlayers } from '~~/server/game/ai/BotManager'
 import { sendToPeer } from '~~/server/services/PeerRegistry'
 import { lobbyLog } from '~~/server/utils/log'
 
 const PICK_TIME_SECONDS = 15
 const PICK_TIME_MS = PICK_TIME_SECONDS * 1000
 const BOT_PICK_DELAY_MS = 1500
+const BAN_TIME_SECONDS = 15
+const BAN_TIME_MS = BAN_TIME_SECONDS * 1000
+const BOT_BAN_DELAY_MS = 1500
 
 const AVAILABLE_HEROES = [...HERO_IDS]
 
@@ -29,6 +32,11 @@ export interface Lobby {
   id: string
   players: LobbyPlayer[]
   pickedHeroes: Set<string>
+  /** Heroes removed from the draft during the ban phase (unpickable). */
+  bannedHeroes: Set<string>
+  /** Player indices (into `players`) in ban order; empty = no ban phase. */
+  banOrder: number[]
+  currentBanIndex: number
   pickOrder: number[]
   currentPickIndex: number
   pickTimer: ReturnType<typeof setTimeout> | null
@@ -37,7 +45,7 @@ export interface Lobby {
    *  it — otherwise an orphaned timeout fires startReadyCheck on a cancelled
    *  lobby and publishes game_ready for a match that was already cancelled. */
   transitionTimer: ReturnType<typeof setTimeout> | null
-  phase: 'picking' | 'ready_check' | 'starting' | 'cancelled'
+  phase: 'banning' | 'picking' | 'ready_check' | 'starting' | 'cancelled'
   /** The queue mode this lobby was formed from. Drives the map (5v5 → 3 lanes,
    *  3v3 → 2 lanes, 1v1 → 1 lane) via mapIdForMode when the game is created. */
   mode: QueueMode
@@ -46,109 +54,8 @@ export interface Lobby {
 const activeLobbies = new Map<string, Lobby>()
 const playerToLobby = new Map<string, string>()
 
-/** Redis key for the lobby + player→lobby mapping (cross-instance reads). */
-const LOBBY_PLAYER_KEY = 'termina:lobby_players'
-
-/** Redis service for the lobby mirror. Set once on boot via configureLobbyRedis. */
-let _lobbyRedis: {
-  hset: (key: string, field: string, value: string) => Effect.Effect<void>
-  hget: (key: string, field: string) => Effect.Effect<string | null>
-  hdel: (key: string, field: string) => Effect.Effect<void>
-  del: (key: string) => Effect.Effect<void>
-  get: (key: string) => Effect.Effect<string | null>
-} | null = null
-
-/** Wire up the Redis service for the lobby mirror (P4 Phase 4). In
- * single-instance mode this stays null and the local Maps are the only path. */
-export function configureLobbyRedis(redis: typeof _lobbyRedis): void {
-  _lobbyRedis = redis
-}
-
-/** Serialize a Lobby for Redis storage (Set → array, drop the non-serializable pickTimer). */
-function serializeLobby(lobby: Lobby): string {
-  return JSON.stringify({
-    id: lobby.id,
-    players: lobby.players,
-    pickedHeroes: [...lobby.pickedHeroes],
-    pickOrder: lobby.pickOrder,
-    currentPickIndex: lobby.currentPickIndex,
-    phase: lobby.phase,
-    mode: lobby.mode,
-  })
-}
-
-/** Deserialize a Lobby from Redis (array → Set, pickTimer = null). */
-function deserializeLobby(raw: string): Lobby | null {
-  try {
-    const data = JSON.parse(raw) as {
-      id: string
-      players: LobbyPlayer[]
-      pickedHeroes: string[]
-      pickOrder: number[]
-      currentPickIndex: number
-      phase: Lobby['phase']
-      mode?: QueueMode
-    }
-    return {
-      id: data.id,
-      players: data.players,
-      pickedHeroes: new Set(data.pickedHeroes),
-      pickOrder: data.pickOrder,
-      currentPickIndex: data.currentPickIndex,
-      pickTimer: null,
-      transitionTimer: null,
-      phase: data.phase,
-      // Older Redis mirrors predate the mode field — default to 5v5 so a stale
-      // mirror after a rolling deploy still resolves a playable map.
-      mode: data.mode ?? 'ranked_5v5',
-    }
-  } catch {
-    return null
-  }
-}
-
-/** Mirror the lobby to Redis (write-through). Best-effort — failures fall back to local-only. */
-function mirrorLobbyToRedis(lobby: Lobby): void {
-  if (!_lobbyRedis) return
-  try {
-    const serialized = serializeLobby(lobby)
-    Effect.runSync(_lobbyRedis.hset(LOBBY_PLAYER_KEY, `lobby:${lobby.id}`, serialized))
-    // Also map each player to the lobby ID for cross-instance getPlayerLobby.
-    for (const p of lobby.players) {
-      Effect.runSync(_lobbyRedis.hset(LOBBY_PLAYER_KEY, `player:${p.playerId}`, lobby.id))
-    }
-  } catch {
-    // Redis unavailable — local Map is the source of truth.
-  }
-}
-
-/** Remove the lobby + player mappings from Redis. Best-effort. */
-function unmirrorLobbyFromRedis(lobbyId: string, playerIds: string[]): void {
-  if (!_lobbyRedis) return
-  try {
-    Effect.runSync(_lobbyRedis.hdel(LOBBY_PLAYER_KEY, `lobby:${lobbyId}`))
-    for (const pid of playerIds) {
-      Effect.runSync(_lobbyRedis.hdel(LOBBY_PLAYER_KEY, `player:${pid}`))
-    }
-  } catch {
-    // Redis unavailable — skip.
-  }
-}
-
 export function getPlayerLobby(playerId: string): string | undefined {
-  // Local first (fast path — the owning instance has the in-process Map).
-  const local = playerToLobby.get(playerId)
-  if (local) return local
-  // Redis fallback (cross-instance — a non-owning instance can find the lobby).
-  if (_lobbyRedis) {
-    try {
-      const lobbyId = Effect.runSync(_lobbyRedis.hget(LOBBY_PLAYER_KEY, `player:${playerId}`))
-      if (lobbyId) return lobbyId
-    } catch {
-      // Redis unavailable.
-    }
-  }
-  return undefined
+  return playerToLobby.get(playerId)
 }
 
 function generateId(): string {
@@ -176,6 +83,23 @@ function pickSequenceFor(playerCount: number): number[] {
   if (playerCount === 2) return PICK_SEQUENCE_2
   // Fallback: a plain sequential order (each player picks once, in roster order).
   return Array.from({ length: playerCount }, (_, i) => i)
+}
+
+// Ban order: player indices (into `players`) alternating teams. snakeDraftTeams
+// splits radiant={0,3,4,7,8} / dire={1,2,5,6,9} for 10 players, so these pick
+// the first two of each team in an R,D,R,D rhythm (2 bans per side).
+const BAN_SEQUENCE_10 = [0, 1, 3, 2]
+// 3v3 (radiant={0,3,4}, dire={1,2,5}): one ban per side.
+const BAN_SEQUENCE_6 = [0, 1]
+// 1v1: no bans.
+const BAN_SEQUENCE_2: number[] = []
+
+/** Resolve the ban order for a roster size. Empty = no ban phase (the lobby
+ *  goes straight to picking). */
+function banSequenceFor(playerCount: number): number[] {
+  if (playerCount === 10) return BAN_SEQUENCE_10
+  if (playerCount === 6) return BAN_SEQUENCE_6
+  return BAN_SEQUENCE_2
 }
 
 function snakeDraftTeams(sortedByMmr: QueueEntry[]): LobbyPlayer[] {
@@ -207,15 +131,22 @@ export function createLobby(
   // mixed bag is ever passed in.
   const mode = queueEntries[0]?.mode ?? 'ranked_5v5'
 
+  // Larger drafts open with a ban phase; 1v1 (and any size without a tuned ban
+  // sequence) skips straight to picking.
+  const banOrder = banSequenceFor(players.length)
+
   const lobby: Lobby = {
     id: lobbyId,
     players,
     pickedHeroes: new Set(),
+    bannedHeroes: new Set(),
+    banOrder,
+    currentBanIndex: 0,
     pickOrder: pickSequenceFor(players.length),
     currentPickIndex: 0,
     pickTimer: null,
     transitionTimer: null,
-    phase: 'picking', // Draft starts immediately — no ban phase
+    phase: banOrder.length > 0 ? 'banning' : 'picking',
     mode,
   }
 
@@ -224,9 +155,6 @@ export function createLobby(
   for (const p of players) {
     playerToLobby.set(p.playerId, lobbyId)
   }
-
-  // Mirror to Redis for cross-instance reads (P4 Phase 4).
-  mirrorLobbyToRedis(lobby)
 
   lobbyLog.info('Lobby created', { lobbyId, playerCount: players.length })
 
@@ -244,20 +172,253 @@ export function createLobby(
       lobbyId,
       team: p.team,
       players: allPlayers,
-      phase: 'picking',
+      phase: lobby.phase === 'banning' ? 'banning' : 'picking',
+      bans: [],
     })
   }
 
-  startPickTimer(lobby, ws, redis, db)
+  if (lobby.phase === 'banning') {
+    startBanTimer(lobby, ws, redis, db)
+  } else {
+    startPickTimer(lobby, ws, redis, db)
+  }
 
   return lobby
 }
 
+/**
+ * Create a co-op-vs-bots lobby for a party (or a solo player). The party members
+ * take radiant; bots fill radiant up to 5 and all of dire, so it's always a 5v5
+ * with the humans together on one team. Casual: no ban phase, and the resulting
+ * match is labelled casual_5v5 at game-over (it contains bots → no MMR).
+ */
+export function createCoopLobby(
+  members: { playerId: string; username: string; mmr: number }[],
+  ws: WebSocketServiceApi,
+  redis: RedisServiceApi,
+  db: DatabaseServiceApi,
+): Lobby {
+  const lobbyId = generateId()
+  const avgMmr = members.length
+    ? Math.round(members.reduce((s, m) => s + m.mmr, 0) / members.length)
+    : 1000
+
+  const players: LobbyPlayer[] = members.map((m) => ({
+    playerId: m.playerId,
+    username: m.username,
+    mmr: m.mmr,
+    team: 'radiant' as TeamId,
+    heroId: null,
+    ready: false,
+  }))
+
+  const radiantBotsNeeded = Math.max(0, 5 - members.length)
+  const direBotsNeeded = 5
+  const botEntries = createBotPlayers(
+    radiantBotsNeeded + direBotsNeeded,
+    members.map((m) => m.playerId),
+    avgMmr,
+  )
+  botEntries.forEach((b, i) => {
+    players.push({
+      playerId: b.playerId,
+      username: b.username,
+      mmr: b.mmr,
+      team: i < radiantBotsNeeded ? ('radiant' as TeamId) : ('dire' as TeamId),
+      heroId: null,
+      ready: false,
+    })
+  })
+
+  const lobby: Lobby = {
+    id: lobbyId,
+    players,
+    pickedHeroes: new Set(),
+    bannedHeroes: new Set(),
+    banOrder: [], // casual co-op skips bans
+    currentBanIndex: 0,
+    pickOrder: pickSequenceFor(players.length),
+    currentPickIndex: 0,
+    pickTimer: null,
+    transitionTimer: null,
+    phase: 'picking',
+    mode: 'ranked_5v5', // relabelled casual_5v5 at game-over (hasBots)
+  }
+
+  activeLobbies.set(lobbyId, lobby)
+  for (const p of players) {
+    playerToLobby.set(p.playerId, lobbyId)
+  }
+
+  lobbyLog.info('Co-op lobby created', {
+    lobbyId,
+    humans: members.length,
+    players: players.length,
+  })
+
+  const allPlayers = players.map((p) => ({
+    playerId: p.playerId,
+    username: p.username,
+    team: p.team,
+    heroId: p.heroId,
+  }))
+  for (const p of players) {
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, {
+      type: 'lobby_state',
+      lobbyId,
+      team: p.team,
+      players: allPlayers,
+      phase: 'picking',
+      bans: [],
+    })
+  }
+
+  startPickTimer(lobby, ws, redis, db)
+  return lobby
+}
+
 function pickRandomHero(lobby: Lobby): string {
-  // Prefer unpicked heroes, but allow duplicates if all are taken
-  const available = AVAILABLE_HEROES.filter((h) => !lobby.pickedHeroes.has(h))
+  // Prefer unpicked, unbanned heroes; fall back to the full pool only if the
+  // draft is somehow exhausted.
+  const available = AVAILABLE_HEROES.filter(
+    (h) => !lobby.pickedHeroes.has(h) && !lobby.bannedHeroes.has(h),
+  )
   const pool = available.length > 0 ? available : AVAILABLE_HEROES
   return pool[Math.floor(Math.random() * pool.length)]!
+}
+
+/** Pick a random hero to ban (bots / ban timeout). Avoids heroes already banned
+ *  or picked unless the pool is somehow exhausted. */
+function pickRandomBan(lobby: Lobby): string {
+  const available = AVAILABLE_HEROES.filter(
+    (h) => !lobby.bannedHeroes.has(h) && !lobby.pickedHeroes.has(h),
+  )
+  const pool = available.length > 0 ? available : AVAILABLE_HEROES
+  return pool[Math.floor(Math.random() * pool.length)]!
+}
+
+function startBanTimer(
+  lobby: Lobby,
+  ws: WebSocketServiceApi,
+  redis: RedisServiceApi,
+  db: DatabaseServiceApi,
+): void {
+  if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+
+  // Tell all clients whose turn it is to ban + the authoritative deadline so the
+  // ban countdown is server-synced instead of a drifting client timer.
+  const turnIdx = lobby.banOrder[lobby.currentBanIndex]
+  const turnPlayer = turnIdx !== undefined ? lobby.players[turnIdx] : undefined
+  if (turnPlayer) {
+    const turnIsBot = isBot(turnPlayer.playerId)
+    for (const p of lobby.players) {
+      if (isBot(p.playerId)) continue
+      sendToPeer(p.playerId, {
+        type: 'ban_turn',
+        playerId: turnPlayer.playerId,
+        username: turnPlayer.username,
+        timeRemainingMs: turnIsBot ? BOT_BAN_DELAY_MS : BAN_TIME_MS,
+      })
+    }
+  }
+
+  // If the current banner is a bot, auto-ban after a visible delay.
+  const banIdx = lobby.banOrder[lobby.currentBanIndex]
+  if (banIdx !== undefined) {
+    const player = lobby.players[banIdx]
+    if (player && isBot(player.playerId)) {
+      const randomHero = pickRandomBan(lobby)
+      lobby.pickTimer = setTimeout(
+        () => confirmBan(lobby, player.playerId, randomHero, ws, redis, db),
+        BOT_BAN_DELAY_MS,
+      )
+      return
+    }
+  }
+
+  lobby.pickTimer = setTimeout(() => {
+    // Auto-ban a random hero on timeout.
+    const idx = lobby.banOrder[lobby.currentBanIndex]
+    if (idx === undefined) return
+    const player = lobby.players[idx]
+    if (!player) return
+    confirmBan(lobby, player.playerId, pickRandomBan(lobby), ws, redis, db)
+  }, BAN_TIME_MS)
+}
+
+export function banHero(
+  lobbyId: string,
+  playerId: string,
+  heroId: string,
+  ws: WebSocketServiceApi,
+  redis: RedisServiceApi,
+  db: DatabaseServiceApi,
+): { success: boolean; error?: string } {
+  const lobby = activeLobbies.get(lobbyId)
+  if (!lobby) return { success: false, error: 'Lobby not found' }
+  if (lobby.phase !== 'banning') return { success: false, error: 'Not in banning phase' }
+
+  const banIdx = lobby.banOrder[lobby.currentBanIndex]
+  if (banIdx === undefined) return { success: false, error: 'Invalid ban index' }
+  const currentBanner = lobby.players[banIdx]
+  if (!currentBanner || currentBanner.playerId !== playerId) {
+    return { success: false, error: 'Not your turn to ban' }
+  }
+
+  if (!isHeroId(heroId)) return { success: false, error: 'Invalid hero' }
+  if (lobby.bannedHeroes.has(heroId)) return { success: false, error: 'Hero already banned' }
+  if (lobby.pickedHeroes.has(heroId)) return { success: false, error: 'Hero already picked' }
+
+  confirmBan(lobby, playerId, heroId, ws, redis, db)
+  lobbyLog.debug('Hero banned', { lobbyId, playerId, heroId })
+  return { success: true }
+}
+
+function confirmBan(
+  lobby: Lobby,
+  playerId: string,
+  heroId: string,
+  ws: WebSocketServiceApi,
+  redis: RedisServiceApi,
+  db: DatabaseServiceApi,
+): void {
+  lobby.bannedHeroes.add(heroId)
+
+  for (const p of lobby.players) {
+    if (isBot(p.playerId)) continue
+    sendToPeer(p.playerId, { type: 'hero_ban', playerId, heroId })
+  }
+
+  lobby.currentBanIndex++
+
+  // All bans done → flip to the pick phase and re-broadcast so clients swap the
+  // ban UI for the pick UI.
+  if (lobby.currentBanIndex >= lobby.banOrder.length) {
+    if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
+    lobby.phase = 'picking'
+    const allPlayers = lobby.players.map((p) => ({
+      playerId: p.playerId,
+      username: p.username,
+      team: p.team,
+      heroId: p.heroId,
+    }))
+    for (const p of lobby.players) {
+      if (isBot(p.playerId)) continue
+      sendToPeer(p.playerId, {
+        type: 'lobby_state',
+        lobbyId: lobby.id,
+        team: p.team,
+        players: allPlayers,
+        phase: 'picking',
+        bans: [...lobby.bannedHeroes],
+      })
+    }
+    startPickTimer(lobby, ws, redis, db)
+    return
+  }
+
+  startBanTimer(lobby, ws, redis, db)
 }
 
 function startPickTimer(
@@ -340,6 +501,11 @@ export function pickHero(
     return { success: false, error: 'Invalid hero' }
   }
 
+  // Banned heroes are unpickable.
+  if (lobby.bannedHeroes.has(heroId)) {
+    return { success: false, error: 'Hero is banned' }
+  }
+
   // Check hero is available (allow duplicates when all unique heroes are exhausted)
   const available = AVAILABLE_HEROES.filter((h) => !lobby.pickedHeroes.has(h))
   if (available.length > 0 && lobby.pickedHeroes.has(heroId)) {
@@ -377,9 +543,6 @@ function confirmPick(
 
   lobby.currentPickIndex++
 
-  // Mirror the updated lobby to Redis after the pick mutation.
-  mirrorLobbyToRedis(lobby)
-
   // Check if all heroes are picked
   if (lobby.currentPickIndex >= lobby.pickOrder.length) {
     if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
@@ -407,9 +570,6 @@ function startReadyCheck(
   }
 
   lobby.phase = 'starting'
-
-  // Mirror the phase change to Redis.
-  mirrorLobbyToRedis(lobby)
 
   lobbyLog.info('Ready check started', { lobbyId: lobby.id })
 
@@ -470,34 +630,17 @@ function startReadyCheck(
 export function cleanupLobby(lobbyId: string): void {
   const lobby = activeLobbies.get(lobbyId)
   if (!lobby) return
-  const playerIds = lobby.players.map((p) => p.playerId)
   if (lobby.pickTimer) clearTimeout(lobby.pickTimer)
   if (lobby.transitionTimer) clearTimeout(lobby.transitionTimer)
   for (const p of lobby.players) {
     playerToLobby.delete(p.playerId)
   }
   activeLobbies.delete(lobbyId)
-  // Remove the Redis mirror (P4 Phase 4).
-  unmirrorLobbyFromRedis(lobbyId, playerIds)
   lobbyLog.info('Lobby cleaned up', { lobbyId })
 }
 
 export function getLobby(lobbyId: string): Lobby | undefined {
-  // Local first (fast path — the owning instance has the in-process Map).
-  const local = activeLobbies.get(lobbyId)
-  if (local) return local
-  // Redis fallback (cross-instance — a non-owning instance can read the mirror).
-  // Returns a Lobby without a pickTimer (read-only — the caller can't mutate
-  // it on a non-owning instance anyway, since mutations run on the owner).
-  if (_lobbyRedis) {
-    try {
-      const raw = Effect.runSync(_lobbyRedis.hget(LOBBY_PLAYER_KEY, `lobby:${lobbyId}`))
-      if (raw) return deserializeLobby(raw) ?? undefined
-    } catch {
-      // Redis unavailable.
-    }
-  }
-  return undefined
+  return activeLobbies.get(lobbyId)
 }
 
 /**
@@ -518,6 +661,22 @@ export function currentPickTurn(
     playerId: player.playerId,
     username: player.username,
     timeRemainingMs: isBot(player.playerId) ? BOT_PICK_DELAY_MS : PICK_TIME_MS,
+  }
+}
+
+/** Whose turn it is to ban (for reconnect recovery). Null outside the ban phase. */
+export function currentBanTurn(
+  lobby: Lobby,
+): { type: 'ban_turn'; playerId: string; username: string; timeRemainingMs: number } | null {
+  if (lobby.phase !== 'banning') return null
+  const idx = lobby.banOrder[lobby.currentBanIndex]
+  const player = idx !== undefined ? lobby.players[idx] : undefined
+  if (!player) return null
+  return {
+    type: 'ban_turn',
+    playerId: player.playerId,
+    username: player.username,
+    timeRemainingMs: isBot(player.playerId) ? BOT_BAN_DELAY_MS : BAN_TIME_MS,
   }
 }
 
@@ -574,6 +733,10 @@ export function seedDraftLobby(opts: {
     id: lobbyId,
     players,
     pickedHeroes: new Set(),
+    // Seeded draft starts at the human's pick turn — the ban phase is skipped.
+    bannedHeroes: new Set(),
+    banOrder: [],
+    currentBanIndex: 0,
     pickOrder: [...PICK_SEQUENCE_10],
     currentPickIndex: prepick,
     pickTimer: null,
@@ -597,9 +760,6 @@ export function seedDraftLobby(opts: {
   activeLobbies.set(lobbyId, lobby)
   for (const p of players) playerToLobby.set(p.playerId, lobbyId)
 
-  // Mirror to Redis (P4 Phase 4).
-  mirrorLobbyToRedis(lobby)
-
   lobbyLog.info('Seeded draft lobby', { lobbyId, prepick, humanIndex, humanId: opts.humanId })
   return lobby
 }
@@ -607,7 +767,6 @@ export function seedDraftLobby(opts: {
 export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   const lobby = activeLobbies.get(lobbyId)
   if (!lobby) return
-  const playerIds = lobby.players.map((p) => p.playerId)
 
   lobby.phase = 'cancelled'
   if (lobby.pickTimer) {
@@ -634,44 +793,6 @@ export function cancelLobby(lobbyId: string, _ws: WebSocketServiceApi): void {
   }
 
   activeLobbies.delete(lobbyId)
-  // Remove the Redis mirror.
-  unmirrorLobbyFromRedis(lobbyId, playerIds)
-}
-
-/** Sweep stale lobbies on boot — clears Redis mirrors left by a previous process. */
-export async function sweepStaleLobbies(
-  _lobbyIds: string[],
-  _ws: WebSocketServiceApi,
-  redis: RedisServiceApi,
-): Promise<void> {
-  // Enumerate all lobby:* fields in the LOBBY_PLAYER_KEY hash.
-  const allFields = await Effect.runPromise(redis.hgetall(LOBBY_PLAYER_KEY))
-  for (const [field, raw] of Object.entries(allFields)) {
-    if (!field.startsWith('lobby:')) continue
-    const lobbyId = field.slice('lobby:'.length)
-    if (activeLobbies.has(lobbyId)) continue // still live in this process
-    try {
-      const lobby = deserializeLobby(raw)
-      if (!lobby) {
-        await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, field))
-        continue
-      }
-      // Only sweep lobbies stuck in pre-game phases — in-game lobbies are reaped by the game-server.
-      if (lobby.phase !== 'picking' && lobby.phase !== 'ready_check') continue
-      // This lobby is NOT in activeLobbies (guarded above), so cancelLobby would
-      // early-return without touching Redis. Remove the stale mirror directly —
-      // both the lobby:<id> field and each player:<id> reverse-index field.
-      await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, field))
-      for (const p of lobby.players) {
-        await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, `player:${p.playerId}`))
-      }
-      lobbyLog.info({ lobbyId, phase: lobby.phase }, 'sweepStaleLobbies: swept stale lobby')
-    } catch {
-      // Corrupted mirror — remove it.
-      await Effect.runPromise(redis.hdel(LOBBY_PLAYER_KEY, field))
-      lobbyLog.warn({ lobbyId }, 'sweepStaleLobbies: removed corrupted lobby mirror')
-    }
-  }
 }
 
 export function replacePlayerWithBot(
@@ -703,7 +824,5 @@ export function replacePlayerWithBot(
   }
 
   lobbyLog.info('Player replaced with bot', { lobbyId, playerId, botId })
-  // Mirror the updated lobby to Redis.
-  mirrorLobbyToRedis(lobby)
   return { success: true }
 }

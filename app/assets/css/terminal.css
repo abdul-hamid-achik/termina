@@ -38,6 +38,19 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+/* Colorblind team palette — toggled by a `.palette-colorblind` class on <html>
+   (synced from the settings store). Swaps the green/red team colors for the
+   Okabe-Ito blue/orange pairing, distinguishable under red-green CVD. Defined
+   after :root so it wins the equal-specificity override. Self stays a bright
+   cyan (and is always symbol-marked ►YOU) so it reads distinct from team blue. */
+.palette-colorblind {
+  --color-radiant: 86 180 233;
+  --color-radiant-deep: 46 140 200;
+  --color-dire: 230 159 0;
+  --color-dire-deep: 185 125 0;
+  --color-self: 150 235 255;
+}
+
 /* ── Base Layer ────────────────────────────────────────────────── */
 
 @layer base {
@@ -324,6 +337,26 @@
     );
   }
 
+  /* Game-end climax flash — a one-shot team-colored wash fired the instant the
+     game ends (PostGame provides the screen; this is the instantaneous punch).
+     Victory blooms radiant green from the center; defeat closes in dire red. */
+  .anim-end-victory {
+    animation: end-flash 1s ease-out forwards;
+    background: radial-gradient(
+      ellipse at center,
+      rgb(var(--color-radiant) / 0.45) 0%,
+      transparent 70%
+    );
+  }
+  .anim-end-defeat {
+    animation: end-flash 1s ease-out forwards;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 30%,
+      rgb(var(--color-dire) / 0.6) 100%
+    );
+  }
+
   .critical-vignette {
     box-shadow: inset 0 0 120px rgb(var(--color-dire) / 0.55);
   }
@@ -453,6 +486,18 @@
   }
 }
 
+@keyframes end-flash {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-shake,
   .anim-shake-strong,
@@ -462,6 +507,8 @@
   .anim-flash,
   .anim-tick-pulse,
   .anim-dmg-float,
+  .anim-end-victory,
+  .anim-end-defeat,
   .anim-death-vignette {
     animation: none;
   }

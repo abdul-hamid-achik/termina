@@ -339,7 +339,7 @@ describe('useGameSocket', () => {
         stats: { foo: 1 },
         mmrChange: 25,
       })
-      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 }, 25)
+      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 }, 25, true)
     })
 
     it('routes full_state through updateFromTick', async () => {

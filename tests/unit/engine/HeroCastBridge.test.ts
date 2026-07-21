@@ -425,10 +425,12 @@ describe('basic-attack path: shield, phase shift, fear', () => {
   })
 })
 
-describe('slow mechanic (move-fail chance)', () => {
-  it('cancels a move when the slow roll hits, with player feedback', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0)
+describe('slow mechanic (deterministic move-fail)', () => {
+  it('cancels a move on a tick where the deterministic slow pattern blocks', () => {
+    // Slow blocks when (tick * stacks) % 100 < stacks. At tick 4 with 30% slow:
+    // (4*30)%100 = 20 < 30 → blocked. No RNG involved.
     const state = makeGameState({
+      tick: 4,
       players: {
         p1: makeHero('echo', {
           id: 'p1',
@@ -443,9 +445,10 @@ describe('slow mechanic (move-fail chance)', () => {
     expect(result.rejected[0]!.reason).toMatch(/slow/i)
   })
 
-  it('lets the move through when the slow roll misses', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.99)
+  it('lets the move through on a tick where the pattern misses', () => {
+    // At tick 1 with 30% slow: (1*30)%100 = 30, not < 30 → passes.
     const state = makeGameState({
+      tick: 1,
       players: {
         p1: makeHero('echo', {
           id: 'p1',

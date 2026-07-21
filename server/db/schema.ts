@@ -7,6 +7,7 @@ import {
   serial,
   index,
   uniqueIndex,
+  boolean,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -28,6 +29,22 @@ export const players = pgTable(
     mmr: integer('mmr').notNull().default(1000),
     gamesPlayed: integer('games_played').notNull().default(0),
     wins: integer('wins').notNull().default(0),
+    // Seasonal rating — the competitive ladder resets each season (soft reset
+    // toward the baseline), while `mmr` above stays as the lifetime rating.
+    // The leaderboard + rank tiers are driven by seasonMmr. Additive + default
+    // 1000 → `drizzle-kit push` safe.
+    seasonMmr: integer('season_mmr').notNull().default(1000),
+    seasonGamesPlayed: integer('season_games_played').notNull().default(0),
+    seasonWins: integer('season_wins').notNull().default(0),
+    // Which season the seasonal fields belong to (matches seasons.seasonNumber).
+    seasonNumber: integer('season_number').notNull().default(1),
+    // The guild/clan this player belongs to (null = unaffiliated). Additive +
+    // nullable → `drizzle-kit push` safe.
+    guildId: text('guild_id'),
+    // Set true once the player finishes the guided tutorial. Lets the client
+    // funnel new players toward practice and skip the "learn to play" nudge for
+    // returning players. Additive + default false → `drizzle-kit push` safe.
+    tutorialCompleted: boolean('tutorial_completed').notNull().default(false),
     // Set when the user confirms their email (verification link) or signs in via
     // an OAuth provider that already verified it. Null = unverified. Nullable +
     // additive, so `drizzle-kit push` applies it with no data migration.
@@ -74,9 +91,13 @@ export const matches = pgTable(
   'matches',
   {
     id: text('id').primaryKey(),
-    mode: text('mode', { enum: ['ranked_5v5', 'quick_3v3', '1v1'] }).notNull(),
+    // casual_5v5 = a game that contained bots (bot-filled matchmaking or practice);
+    // it is recorded for history but never affects MMR (see game-server onGameOver).
+    mode: text('mode', { enum: ['ranked_5v5', 'quick_3v3', '1v1', 'casual_5v5'] }).notNull(),
     winner: text('winner', { enum: ['radiant', 'dire'] }),
     durationTicks: integer('duration_ticks'),
+    // The season this match was played in (null for pre-seasons history).
+    seasonNumber: integer('season_number'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     endedAt: timestamp('ended_at', { withTimezone: true }),
   },
@@ -86,6 +107,37 @@ export const matches = pgTable(
 export const matchesRelations = relations(matches, ({ many }) => ({
   matchPlayers: many(matchPlayers),
 }))
+
+// ── Seasons ───────────────────────────────────────────────────────
+// Competitive seasons. Exactly one row has active=true at a time; the seasonal
+// ladder (players.seasonMmr) resets when a new season starts.
+
+export const seasons = pgTable('seasons', {
+  id: serial('id').primaryKey(),
+  seasonNumber: integer('season_number').notNull().unique(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
+  active: boolean('active').notNull().default(true),
+})
+
+// ── Guilds / Clans ────────────────────────────────────────────────
+// A guild is a persistent named group with a short tag shown next to members'
+// names. Membership is one-to-one (players.guildId). The leader is recorded so
+// the roster can mark them; deleting/transfer is out of scope for the MVP.
+
+export const guilds = pgTable(
+  'guilds',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    tag: text('tag').notNull(),
+    leaderId: text('leader_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    guildNameIdx: index('guild_name_idx').on(table.name),
+  }),
+)
 
 // ── Match Players ─────────────────────────────────────────────────
 
@@ -165,3 +217,7 @@ export type HeroStat = typeof heroStats.$inferSelect
 export type NewHeroStat = typeof heroStats.$inferInsert
 export type PlayerProvider = typeof playerProviders.$inferSelect
 export type NewPlayerProvider = typeof playerProviders.$inferInsert
+export type Season = typeof seasons.$inferSelect
+export type NewSeason = typeof seasons.$inferInsert
+export type Guild = typeof guilds.$inferSelect
+export type NewGuild = typeof guilds.$inferInsert

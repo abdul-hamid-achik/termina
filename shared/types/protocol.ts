@@ -11,6 +11,7 @@ export type ClientMessage =
   | { type: 'reconnect'; gameId: string; playerId: string; lastTick?: number }
   | { type: 'join_game'; gameId: string }
   | { type: 'hero_pick'; lobbyId: string; heroId: string }
+  | { type: 'hero_ban'; lobbyId: string; heroId: string }
   | { type: 'request_state' }
   | { type: 'spectate'; gameId: string }
   | { type: 'unspectate' }
@@ -41,6 +42,9 @@ export interface GameOverMessage {
   stats: Record<string, PlayerEndStats>
   /** The recipient's own Elo change for this match (sent per-peer). */
   mmrChange?: number
+  /** False when the match contained bots (practice / bot-filled) and therefore
+   * did not affect MMR — the post-game screen shows "unranked" instead of a number. */
+  ranked?: boolean
 }
 
 export interface PlayerEndStats {
@@ -71,6 +75,12 @@ export interface HeroPickMessage {
   heroId: string
 }
 
+export interface HeroBanMessage {
+  type: 'hero_ban'
+  playerId: string
+  heroId: string
+}
+
 export interface PickTurnMessage {
   type: 'pick_turn'
   /** The player whose turn it is to pick. */
@@ -80,12 +90,23 @@ export interface PickTurnMessage {
   timeRemainingMs: number
 }
 
+export interface BanTurnMessage {
+  type: 'ban_turn'
+  /** The player whose turn it is to ban. */
+  playerId: string
+  username: string
+  /** Time until the server auto-bans for them (ms). */
+  timeRemainingMs: number
+}
+
 export interface LobbyStateMessage {
   type: 'lobby_state'
   lobbyId: string
   team: TeamId
   players: { playerId: string; username: string; team: TeamId; heroId: string | null }[]
-  phase?: 'picking'
+  phase?: 'banning' | 'picking'
+  /** Heroes banned so far (only meaningful during/after the ban phase). */
+  bans?: string[]
 }
 
 export interface GameStartingMessage {
@@ -181,7 +202,9 @@ export type ServerMessage =
   | ErrorMessage
   | QueueUpdateMessage
   | HeroPickMessage
+  | HeroBanMessage
   | PickTurnMessage
+  | BanTurnMessage
   | LobbyStateMessage
   | GameStartingMessage
   | GameCountdownMessage

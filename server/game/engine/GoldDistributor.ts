@@ -2,8 +2,7 @@ import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { getItem } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
+  CREEP_GOLD,
   SIEGE_CREEP_GOLD,
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
@@ -12,6 +11,9 @@ import {
   COMEBACK_BONUS_MAX,
   COMEBACK_PENALTY_MAX,
   COMEBACK_FULL_GAP,
+  XP_COMEBACK_BONUS_MAX,
+  XP_COMEBACK_PENALTY_MAX,
+  XP_COMEBACK_FULL_LEVEL_GAP,
 } from '~~/shared/constants/balance'
 
 /**
@@ -44,6 +46,36 @@ export function comebackMultiplier(state: GameState, killerTeam: TeamId): number
   return 1 + ratio * COMEBACK_PENALTY_MAX
 }
 
+/**
+ * Compute the XP comeback multiplier for a team based on the average team
+ * LEVEL gap — the XP mirror of comebackMultiplier (which uses net worth).
+ * Returns a value in [1 - XP_COMEBACK_PENALTY_MAX, 1 + XP_COMEBACK_BONUS_MAX].
+ * >1 means `team` is behind in average level (bonus XP to catch up); <1 means
+ * it is ahead (reduced XP so a level lead doesn't compound unchecked).
+ * Exported for tests.
+ */
+export function xpComebackMultiplier(state: GameState, team: TeamId): number {
+  let teamLevels = 0
+  let teamCount = 0
+  let enemyLevels = 0
+  let enemyCount = 0
+  for (const p of Object.values(state.players)) {
+    if (p.team === team) {
+      teamLevels += p.level
+      teamCount++
+    } else {
+      enemyLevels += p.level
+      enemyCount++
+    }
+  }
+  if (teamCount === 0 || enemyCount === 0) return 1
+  // Positive gap = team is behind by `gap` average levels
+  const gap = enemyLevels / enemyCount - teamLevels / teamCount
+  const ratio = Math.max(-1, Math.min(1, gap / XP_COMEBACK_FULL_LEVEL_GAP))
+  if (ratio >= 0) return 1 + ratio * XP_COMEBACK_BONUS_MAX
+  return 1 + ratio * XP_COMEBACK_PENALTY_MAX
+}
+
 /** Award passive gold to all alive players. +1g per tick. */
 export function distributePassiveGold(state: GameState): GameState {
   const updatedPlayers = { ...state.players }
@@ -60,7 +92,8 @@ export function distributePassiveGold(state: GameState): GameState {
   return { ...state, players: updatedPlayers }
 }
 
-/** Award gold for a last-hit on a creep. Melee/Ranged: 30-50g random, Siege: 75g. */
+/** Award gold for a last-hit on a creep. Melee/Ranged: CREEP_GOLD (fixed, no
+ * RNG), Siege: SIEGE_CREEP_GOLD. */
 export function awardLastHit(
   state: GameState,
   playerId: string,
@@ -69,12 +102,7 @@ export function awardLastHit(
   const player = state.players[playerId]
   if (!player) return state
 
-  let gold: number
-  if (creepType === 'siege') {
-    gold = SIEGE_CREEP_GOLD
-  } else {
-    gold = CREEP_GOLD_MIN + Math.floor(Math.random() * (CREEP_GOLD_MAX - CREEP_GOLD_MIN + 1))
-  }
+  const gold = creepType === 'siege' ? SIEGE_CREEP_GOLD : CREEP_GOLD
 
   return updatePlayerGold(state, playerId, gold)
 }

@@ -61,6 +61,20 @@ const mockRuntime = {
     getPlayer: vi.fn(() => Effect.succeed(null)),
     getPlayerByProvider: vi.fn(() => Effect.succeed(null)),
     getLeaderboard: vi.fn(() => Effect.succeed([])),
+    getSeasonLeaderboard: vi.fn(() => Effect.succeed([])),
+    getGuildsByIds: vi.fn(() => Effect.succeed([])),
+    createGuild: vi.fn(() =>
+      Effect.succeed({ id: 'g1', name: 'Void', tag: 'VOID', leaderId: 'p1' }),
+    ),
+    getGuildByName: vi.fn(() => Effect.succeed(null)),
+    getPlayerGuild: vi.fn(() => Effect.succeed(null)),
+    getGuildMembers: vi.fn(() => Effect.succeed([])),
+    listGuilds: vi.fn(() => Effect.succeed([])),
+    joinGuild: vi.fn(() => Effect.succeed(undefined)),
+    leaveGuild: vi.fn(() => Effect.succeed(undefined)),
+    getCurrentSeason: vi.fn(() =>
+      Effect.succeed({ seasonNumber: 1, startedAt: new Date(), active: true }),
+    ),
     getMatchHistory: vi.fn(() => Effect.succeed([])),
     getHeroStats: vi.fn(() => Effect.succeed([])),
     recordMatch: vi.fn(() => Effect.succeed(undefined)),
@@ -110,6 +124,9 @@ const matchHistoryHandler = (await import('../../../server/api/match/history.get
 const playerHandler = (await import('../../../server/api/player/[id].get')).default
 const replayHandler = (await import('../../../server/api/replay/[gameId].get')).default
 const statusHandler = (await import('../../../server/api/queue/status.get')).default
+const guildCreateHandler = (await import('../../../server/api/guild/create.post')).default
+const guildJoinHandler = (await import('../../../server/api/guild/join.post')).default
+const guildMyHandler = (await import('../../../server/api/guild/my.get')).default
 
 const { getGameRuntime, createTutorialGame } = await import('~~/server/plugins/game-server')
 const { joinQueue, leaveQueue } = await import('~~/server/game/matchmaking/queue')
@@ -292,31 +309,54 @@ describe('API endpoints', () => {
       expect(thrownError?.statusCode).toBe(503)
     })
 
-    it('returns mapped leaderboard with computed winRate', async () => {
-      mockRuntime.dbService.getLeaderboard.mockReturnValue(
+    it('returns mapped leaderboard with computed winRate + rank tier', async () => {
+      mockRuntime.dbService.getSeasonLeaderboard.mockReturnValue(
         Effect.succeed([
-          { id: 'p1', username: 'alice', avatarUrl: null, mmr: 2000, gamesPlayed: 10, wins: 7 },
-          { id: 'p2', username: 'bob', avatarUrl: null, mmr: 1500, gamesPlayed: 0, wins: 0 },
+          {
+            id: 'p1',
+            username: 'alice',
+            avatarUrl: null,
+            mmr: 2000,
+            seasonMmr: 2000,
+            seasonGamesPlayed: 10,
+            seasonWins: 7,
+          },
+          {
+            id: 'p2',
+            username: 'bob',
+            avatarUrl: null,
+            mmr: 1500,
+            seasonMmr: 1500,
+            seasonGamesPlayed: 0,
+            seasonWins: 0,
+          },
         ] as never),
       )
       const result = await leaderboardHandler(makeEvent('GET', '/api/leaderboard'))
       expect(result.leaderboard).toHaveLength(2)
-      expect(result.leaderboard[0]).toMatchObject({ rank: 1, username: 'alice', winRate: 70 })
+      expect(result.leaderboard[0]).toMatchObject({
+        rank: 1,
+        username: 'alice',
+        mmr: 2000,
+        winRate: 70,
+        rankName: 'Diamond',
+      })
       expect(result.leaderboard[1]).toMatchObject({ rank: 2, username: 'bob', winRate: 0 })
+      expect(result.season).toMatchObject({ number: 1 })
     })
 
     it('caps limit at 500', async () => {
       requestQuery = { limit: '99999' }
-      mockRuntime.dbService.getLeaderboard.mockReturnValue(Effect.succeed([] as never))
+      mockRuntime.dbService.getSeasonLeaderboard.mockReturnValue(Effect.succeed([] as never))
       await leaderboardHandler(makeEvent('GET', '/api/leaderboard'))
-      expect(mockRuntime.dbService.getLeaderboard).toHaveBeenCalledWith(500)
+      expect(mockRuntime.dbService.getSeasonLeaderboard).toHaveBeenCalledWith(500)
     })
 
     it('defaults limit to 100', async () => {
       requestQuery = {}
-      mockRuntime.dbService.getLeaderboard.mockReturnValue(Effect.succeed([] as never))
+      mockRuntime.dbService.getSeasonLeaderboard.mockReturnValue(Effect.succeed([] as never))
       await leaderboardHandler(makeEvent('GET', '/api/leaderboard'))
-      expect(mockRuntime.dbService.getLeaderboard).toHaveBeenCalledWith(100)
+      expect(mockRuntime.dbService.getSeasonLeaderboard).toHaveBeenCalledWith(100)
     })
 
     it('429 when the per-IP publicRead rate limit is exceeded', async () => {
@@ -553,6 +593,62 @@ describe('API endpoints', () => {
       const result = await tutorialHandler(makeEvent('POST', '/api/game/tutorial'))
       expect(result).toMatchObject({ gameId: 'tut-1', playerId: 'p1' })
       expect(result.url).toContain('/play?gameId=tut-1')
+    })
+  })
+
+  describe('guild endpoints', () => {
+    it('rejects guild create with a too-short name', async () => {
+      sessionUser = { user: { id: 'p1', username: 'alice' } }
+      requestBody = { name: 'ab', tag: 'AB' }
+      await expect(guildCreateHandler(makeEvent('POST', '/api/guild/create'))).rejects.toThrow(
+        '3-24 characters',
+      )
+    })
+
+    it('rejects guild create with a too-short tag', async () => {
+      sessionUser = { user: { id: 'p1', username: 'alice' } }
+      requestBody = { name: 'Valid Name', tag: 'A' }
+      await expect(guildCreateHandler(makeEvent('POST', '/api/guild/create'))).rejects.toThrow(
+        '2-5 characters',
+      )
+    })
+
+    it('rejects a duplicate guild name', async () => {
+      sessionUser = { user: { id: 'p1', username: 'alice' } }
+      requestBody = { name: 'Taken', tag: 'TKN' }
+      mockRuntime.dbService.getGuildByName.mockReturnValue(
+        Effect.succeed({ id: 'g9', name: 'Taken', tag: 'TKN', leaderId: 'x' } as never),
+      )
+      await expect(guildCreateHandler(makeEvent('POST', '/api/guild/create'))).rejects.toThrow(
+        'taken',
+      )
+    })
+
+    it('creates a guild for a valid request', async () => {
+      sessionUser = { user: { id: 'p1', username: 'alice' } }
+      requestBody = { name: 'Void Callers', tag: 'void' }
+      mockRuntime.dbService.getGuildByName.mockReturnValue(Effect.succeed(null))
+      const result = await guildCreateHandler(makeEvent('POST', '/api/guild/create'))
+      expect(result.guild).toMatchObject({ name: 'Void', tag: 'VOID' })
+      expect(mockRuntime.dbService.createGuild).toHaveBeenCalledWith('Void Callers', 'VOID', 'p1')
+    })
+
+    it('joins a guild by name', async () => {
+      sessionUser = { user: { id: 'p2', username: 'bob' } }
+      requestBody = { name: 'Void Callers' }
+      mockRuntime.dbService.getGuildByName.mockReturnValue(
+        Effect.succeed({ id: 'g1', name: 'Void Callers', tag: 'VOID', leaderId: 'p1' } as never),
+      )
+      const result = await guildJoinHandler(makeEvent('POST', '/api/guild/join'))
+      expect(result.guild).toMatchObject({ id: 'g1' })
+      expect(mockRuntime.dbService.joinGuild).toHaveBeenCalledWith('g1', 'p2')
+    })
+
+    it('returns null guild + empty members when unaffiliated', async () => {
+      sessionUser = { user: { id: 'p1', username: 'alice' } }
+      mockRuntime.dbService.getPlayerGuild.mockReturnValue(Effect.succeed(null))
+      const result = await guildMyHandler(makeEvent('GET', '/api/guild/my'))
+      expect(result).toEqual({ guild: null, members: [] })
     })
   })
 })

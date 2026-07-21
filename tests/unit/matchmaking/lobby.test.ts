@@ -3,11 +3,13 @@ import { Effect } from 'effect'
 import {
   createLobby,
   pickHero,
+  banHero,
   getLobby,
   getPlayerLobby,
   cleanupLobby,
   cancelLobby,
   currentPickTurn,
+  currentBanTurn,
   replacePlayerWithBot,
   seedDraftLobby,
 } from '../../../server/game/matchmaking/lobby'
@@ -94,6 +96,39 @@ describe('Lobby', () => {
     vi.useRealTimers()
   })
 
+  /**
+   * Drive a lobby through its ban phase by calling `banHero` for whichever
+   * player is up next, until the lobby flips to `'picking'`. Bans are pulled
+   * from the TAIL of HERO_IDS so they never collide with the heroes the
+   * pick-phase tests use ('echo'/'daemon'/HERO_IDS.slice(0, n)). Returns the
+   * list of banned hero IDs. Called synchronously (no timer advance) so the
+   * bot auto-ban timers stay pending and never race the manual bans.
+   */
+  function completeBanPhase(lobby: Lobby): string[] {
+    const banned: string[] = []
+    let poolIdx = HERO_IDS.length - 1
+    while (lobby.phase === 'banning') {
+      const banner = lobby.players[lobby.banOrder[lobby.currentBanIndex]!]!
+      let heroId = HERO_IDS[poolIdx]!
+      while (lobby.bannedHeroes.has(heroId) || lobby.pickedHeroes.has(heroId)) {
+        poolIdx -= 1
+        heroId = HERO_IDS[poolIdx]!
+      }
+      poolIdx -= 1
+      const result = banHero(
+        lobby.id,
+        banner.playerId,
+        heroId,
+        ws as never,
+        redis as never,
+        db as never,
+      )
+      if (!result.success) throw new Error(`completeBanPhase failed: ${result.error}`)
+      banned.push(heroId)
+    }
+    return banned
+  }
+
   describe('createLobby', () => {
     it('creates a lobby with correct player count', () => {
       const entries = makeQueueEntries(10)
@@ -101,7 +136,19 @@ describe('Lobby', () => {
       createdLobbyId = lobby.id
 
       expect(lobby.players).toHaveLength(10)
-      expect(lobby.phase).toBe('picking') // Draft starts immediately — no ban phase
+      // A 5v5 draft opens with a ban phase before any picks happen.
+      expect(lobby.phase).toBe('banning')
+      expect(lobby.banOrder).toEqual([0, 1, 3, 2])
+      expect(lobby.bannedHeroes.size).toBe(0)
+    })
+
+    it('starts a 1v1 lobby directly in picking with no ban phase', () => {
+      const entries = makeQueueEntries(2)
+      const lobby = createLobby(entries, ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+
+      expect(lobby.phase).toBe('picking')
+      expect(lobby.banOrder).toEqual([])
     })
 
     it('assigns teams in alternating fashion by MMR', () => {
@@ -174,11 +221,13 @@ describe('Lobby', () => {
   })
 
   describe('pickHero', () => {
-    // Use 10 players to match the PICK_SEQUENCE_10 indices
+    // Use 10 players to match the PICK_SEQUENCE_10 indices. A 10-player lobby
+    // opens in the ban phase, so drive it through to 'picking' first.
     function createPickableLobby() {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
+      completeBanPhase(lobby)
       return lobby
     }
 
@@ -360,21 +409,21 @@ describe('Lobby', () => {
   })
 
   describe('pick phases and transitions', () => {
-    it('starts directly in picking phase and notifies the first picker', () => {
+    it('starts in banning phase and notifies the first banner', () => {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
 
-      expect(lobby.phase).toBe('picking')
+      expect(lobby.phase).toBe('banning')
 
-      const firstPicker = lobby.players[lobby.pickOrder[0]!]!
+      const firstBanner = lobby.players[lobby.banOrder[0]!]!
       expect(vi.mocked(sendToPeer)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ type: 'pick_turn', playerId: firstPicker.playerId }),
+        expect.objectContaining({ type: 'ban_turn', playerId: firstBanner.playerId }),
       )
     })
 
-    it('sends lobby_state with phase picking and no ban fields', () => {
+    it('sends lobby_state with phase banning and an empty bans list', () => {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
@@ -384,29 +433,41 @@ describe('Lobby', () => {
         .mock.calls.filter(([, msg]) => (msg as { type: string }).type === 'lobby_state')
       expect(lobbyStateCalls.length).toBe(10)
       for (const [, msg] of lobbyStateCalls) {
-        expect(msg).toMatchObject({ type: 'lobby_state', phase: 'picking' })
-        expect(msg).not.toHaveProperty('bannedHeroes')
-        expect(msg).not.toHaveProperty('currentBanIndex')
+        expect(msg).toMatchObject({ type: 'lobby_state', phase: 'banning', bans: [] })
       }
     })
 
-    it('never sends hero_ban messages', () => {
+    it('sends hero_ban messages during the ban phase', () => {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
 
-      vi.advanceTimersByTime(60000)
+      const firstBanner = lobby.players[lobby.banOrder[0]!]!
+      const result = banHero(
+        lobby.id,
+        firstBanner.playerId,
+        'cache',
+        ws as never,
+        redis as never,
+        db as never,
+      )
+      expect(result.success).toBe(true)
 
-      const banCalls = vi
-        .mocked(sendToPeer)
-        .mock.calls.filter(([, msg]) => (msg as { type: string }).type === 'hero_ban')
-      expect(banCalls).toHaveLength(0)
+      expect(vi.mocked(sendToPeer)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          type: 'hero_ban',
+          playerId: firstBanner.playerId,
+          heroId: 'cache',
+        }),
+      )
     })
 
     it('auto-picks for the current player when the pick timer expires', () => {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
+      completeBanPhase(lobby)
 
       const firstPicker = lobby.players[lobby.pickOrder[0]!]!
       expect(firstPicker.heroId).toBeNull()
@@ -423,6 +484,7 @@ describe('Lobby', () => {
       entries[9] = { ...entries[9]!, playerId: 'bot_alpha', username: 'Bot Alpha' }
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
+      completeBanPhase(lobby)
 
       const firstPicker = lobby.players[lobby.pickOrder[0]!]!
       expect(firstPicker.playerId).toBe('bot_alpha')
@@ -454,6 +516,7 @@ describe('Lobby', () => {
       const entries = makeQueueEntries(10)
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
+      completeBanPhase(lobby)
 
       // Let every pick time out (10 × 15s) plus the ready-check delay
       vi.advanceTimersByTime(10 * 15000 + 1500)
@@ -508,6 +571,7 @@ describe('Lobby', () => {
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       const lobbyId = lobby.id
       createdLobbyId = lobbyId
+      completeBanPhase(lobby)
 
       // Complete all picks (let every pick timer expire) — this arms the 1.5s
       // transition timer that fires startReadyCheck.
@@ -537,6 +601,7 @@ describe('Lobby', () => {
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       const lobbyId = lobby.id
       createdLobbyId = lobbyId
+      completeBanPhase(lobby)
 
       // Drive through the draft + the 1.5s transition so startReadyCheck fires
       // and schedules its detached 3s game_ready publish.
@@ -584,6 +649,124 @@ describe('Lobby', () => {
     it('returns null when the pick index points past the roster', () => {
       const lobby = { ...pickingLobby('human_1', 'Alice'), currentPickIndex: 9 } as unknown as Lobby
       expect(currentPickTurn(lobby)).toBeNull()
+    })
+  })
+
+  describe('banHero', () => {
+    function createBanningLobby() {
+      const lobby = createLobby(makeQueueEntries(10), ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+      expect(lobby.phase).toBe('banning')
+      return lobby
+    }
+
+    it("bans a valid hero when it is the player's turn", () => {
+      const lobby = createBanningLobby()
+      const banner = lobby.players[lobby.banOrder[0]!]!
+
+      const result = banHero(
+        lobby.id,
+        banner.playerId,
+        'cache',
+        ws as never,
+        redis as never,
+        db as never,
+      )
+      expect(result.success).toBe(true)
+      expect(lobby.bannedHeroes.has('cache')).toBe(true)
+      expect(lobby.currentBanIndex).toBe(1)
+    })
+
+    it('rejects a ban from the wrong player', () => {
+      const lobby = createBanningLobby()
+      // It's banOrder[0]'s turn; banOrder[1] tries to ban out of turn.
+      const wrongBanner = lobby.players[lobby.banOrder[1]!]!
+
+      const result = banHero(
+        lobby.id,
+        wrongBanner.playerId,
+        'cache',
+        ws as never,
+        redis as never,
+        db as never,
+      )
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Not your turn to ban')
+      expect(lobby.bannedHeroes.has('cache')).toBe(false)
+    })
+
+    it('rejects banning a hero that is already banned', () => {
+      const lobby = createBanningLobby()
+      const firstBanner = lobby.players[lobby.banOrder[0]!]!
+      banHero(lobby.id, firstBanner.playerId, 'cache', ws as never, redis as never, db as never)
+
+      // Next banner tries to ban the same hero.
+      const secondBanner = lobby.players[lobby.banOrder[1]!]!
+      const result = banHero(
+        lobby.id,
+        secondBanner.playerId,
+        'cache',
+        ws as never,
+        redis as never,
+        db as never,
+      )
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Hero already banned')
+    })
+
+    it('makes a banned hero unpickable in the pick phase', () => {
+      const lobby = createBanningLobby()
+      const firstBanner = lobby.players[lobby.banOrder[0]!]!
+      banHero(lobby.id, firstBanner.playerId, 'cache', ws as never, redis as never, db as never)
+      // Finish the remaining bans so the lobby reaches the pick phase.
+      completeBanPhase(lobby)
+      expect(lobby.phase).toBe('picking')
+      expect(lobby.bannedHeroes.has('cache')).toBe(true)
+
+      const firstPicker = lobby.players[lobby.pickOrder[0]!]!
+      const result = pickHero(
+        lobby.id,
+        firstPicker.playerId,
+        'cache',
+        ws as never,
+        redis as never,
+        db as never,
+      )
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Hero is banned')
+    })
+  })
+
+  describe('currentBanTurn', () => {
+    it('returns the current banner during the banning phase', () => {
+      const lobby = createLobby(makeQueueEntries(10), ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+      expect(lobby.phase).toBe('banning')
+
+      const turn = currentBanTurn(lobby)
+      const firstBanner = lobby.players[lobby.banOrder[0]!]!
+      expect(turn).not.toBeNull()
+      expect(turn!.type).toBe('ban_turn')
+      expect(turn!.playerId).toBe(firstBanner.playerId)
+      expect(turn!.username).toBe(firstBanner.username)
+      expect(turn!.timeRemainingMs).toBeGreaterThan(1500) // humans get more than the bot delay
+    })
+
+    it('returns null once the ban phase is complete', () => {
+      const lobby = createLobby(makeQueueEntries(10), ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+      completeBanPhase(lobby)
+      expect(lobby.phase).toBe('picking')
+
+      expect(currentBanTurn(lobby)).toBeNull()
+    })
+
+    it('returns null for a 1v1 lobby that starts directly in picking', () => {
+      const lobby = createLobby(makeQueueEntries(2), ws as never, redis as never, db as never)
+      createdLobbyId = lobby.id
+      expect(lobby.phase).toBe('picking')
+
+      expect(currentBanTurn(lobby)).toBeNull()
     })
   })
 

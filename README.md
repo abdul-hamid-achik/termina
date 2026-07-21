@@ -1,6 +1,11 @@
 # TERMINA - Strategic Turn-Based MOBA
 
-A text-based multiplayer online battle arena (MOBA) where strategy matters more than reflexes. Built with modern web technologies for a chess-like MOBA experience.
+A text-based MOBA you play right in your browser — deep 5v5 strategy where
+**reading the board beats reflexes**. No downloads, no waiting on a queue:
+jump into a match against bots any time (a guided tutorial shows you the ropes),
+or queue for ranked when you're ready. Built for players who love MOBA depth but
+want it **accessible and at their own pace** — every command is one keystroke,
+every tick is a decision.
 
 **▶ Play it live: [www.terminamoba.com](https://www.terminamoba.com)** — or learn first: [meet the heroes](https://www.terminamoba.com/heroes) · [browse items](https://www.terminamoba.com/items) · [learn the commands](https://www.terminamoba.com/learn) · [read the lore](https://www.terminamoba.com/lore)
 
@@ -28,7 +33,7 @@ A text-based multiplayer online battle arena (MOBA) where strategy matters more 
 - **Stat Validation** - Detect impossible states
 
 ### Infrastructure
-- **State Persistence** - Redis snapshots every 4 minutes
+- **State Persistence** - Redis snapshots every 60s (15 ticks)
 - **Auto-Recovery** - Restore games after server restart
 - **Effect-TS** - Type-safe functional programming
 - **WebSocket** - Real-time communication
@@ -180,14 +185,15 @@ Each hero has 8 talents (2 choices × 4 tiers):
 **Level 10** - Stat bonuses (+15 Attack or +200 HP)
 **Level 15** - Ability enhancements (+damage or -cooldown)
 **Level 20** - Major power spikes (+30% damage or +25% resist)
-**Level 25** - Ultimate upgrades (AOE+, double cast, etc.)
+**Level 25** - Larger numeric bonuses (the exotic ultimate transforms — AOE+,
+double cast — are designed but not yet wired into the engine)
 
 Example (Echo):
 ```
 Level 10: +15 Attack Damage OR +200 HP
 Level 15: Echo Stun +0.5s OR -2s Echo Location CD
 Level 20: +30% Echo Damage OR +15% Magic Resist
-Level 25: Ultimate AOE +50% OR Double Echo (25% chance)
+Level 25: +40% Echo Damage OR -4s Echo Location CD
 ```
 
 ### Deny Mechanics
@@ -322,8 +328,11 @@ for the full runbook):
   via the Vercel Marketplace: **Neon** (Postgres) + **Upstash** (Redis).
 - **DigitalOcean App Platform** — the full Nitro server (SSR + WebSocket +
   Effect-TS game loop + API), run from a DOCR Docker image. This is the one
-  stateful, long-lived piece; the in-memory game state is pinned per instance and
-  kept multi-instance-correct by the Redis relay, so it scales **up then out**.
+  stateful, long-lived piece: the game runs as a **single authoritative
+  instance** (in-memory game state + a fixed-timestep loop), with Redis used for
+  pub/sub matchmaking handoff and snapshot persistence. Horizontal scaling is
+  not currently wired — a single instance comfortably hosts many concurrent
+  games, and slow ticks are logged so the ceiling is observable.
 
 The DigitalOcean side is **infrastructure-as-code with Pulumi (TypeScript)** in
 [`infra/`](infra/) — an isolated project (own deps/tsconfig, excluded from the
@@ -371,13 +380,15 @@ are used) and falls back to Pulumi config otherwise.
 ### Current Capabilities
 - **Tick Rate**: 4 seconds (250ms planned for future)
 - **Players per Game**: 10 (5v5)
-- **Concurrent Games**: ~50 per server instance
+- **Concurrent Games**: ~50 per server instance (estimate — slow ticks are
+  logged with their duration so the real ceiling is observable)
 - **Memory**: ~100MB per active game
 
 ### Optimization Roadmap
-- [ ] Delta compression for state updates
+- [~] Delta compression for state updates (partial: top-level field diff;
+  per-entity dirty-tracking is the remaining work)
 - [ ] Vision calculation caching
-- [ ] Horizontal scaling (sharding)
+- [ ] Horizontal scaling (sharding) — single-instance today
 - [ ] Database read replicas
 - [ ] Event batching
 

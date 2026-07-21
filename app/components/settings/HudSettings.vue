@@ -174,5 +174,31 @@ const presetLabel = computed(() =>
         >{{ settings.hud.rosterExpanded ? 'On' : 'Off' }}</span
       >
     </button>
+
+    <!-- Accessibility · colorblind team palette -->
+    <button
+      class="flex items-center justify-between border border-border px-3 py-2 text-left transition-all hover:border-border-glow"
+      data-testid="hud-toggle-colorblind"
+      :aria-pressed="settings.teamPalette === 'colorblind'"
+      @click="
+        settings.setTeamPalette(settings.teamPalette === 'colorblind' ? 'classic' : 'colorblind')
+      "
+    >
+      <span class="flex flex-col gap-0.5">
+        <span class="text-[0.78rem] font-bold text-text-primary">Colorblind team colors</span>
+        <span class="text-[0.62rem] text-text-dim"
+          >Swap green/red teams for blue/orange (color-vision friendly)</span
+        >
+      </span>
+      <span
+        class="shrink-0 border px-2 py-0.5 text-[0.66rem] font-bold uppercase"
+        :class="
+          settings.teamPalette === 'colorblind'
+            ? 'border-gold text-gold text-glow-gold'
+            : 'border-border text-text-dim'
+        "
+        >{{ settings.teamPalette === 'colorblind' ? 'On' : 'Off' }}</span
+      >
+    </button>
   </div>
 </template>

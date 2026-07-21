@@ -1,0 +1,17 @@
+import { Effect } from 'effect'
+import { getGameRuntime } from '~~/server/plugins/game-server'
+
+export default defineEventHandler(async (event) => {
+  const session = await getUserSession(event)
+  if (!session?.user?.id) {
+    throw createError({ statusCode: 401, message: 'Authentication required' })
+  }
+
+  const runtime = getGameRuntime()
+  if (!runtime) {
+    throw createError({ statusCode: 503, message: 'Game server not ready' })
+  }
+
+  await Effect.runPromise(runtime.dbService.leaveGuild(session.user.id as string))
+  return { success: true }
+})

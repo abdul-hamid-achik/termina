@@ -10,6 +10,7 @@ import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
   CREEP_XP,
+  CREEP_GOLD,
   CREEP_GOLD_MIN,
   CREEP_GOLD_MAX,
   SIEGE_CREEP_GOLD,
@@ -225,10 +226,10 @@ describe('Economy through resolution', () => {
       expect(r.state.creeps.some((c) => c.id === 'enemy_melee' && c.hp > 0)).toBe(false)
       const after = r.state.players['lm_r0']!
       expect(after.xp - xpBefore).toBe(CREEP_XP)
-      // Randomized melee last-hit gold falls in [CREEP_GOLD_MIN, CREEP_GOLD_MAX]
-      // (passive gold can only push it higher → assert the lower bound).
+      // Fixed melee last-hit gold is CREEP_GOLD (no RNG); passive income adds a
+      // bit more on top, so assert at least the last-hit amount.
       const goldDelta = after.gold - goldBefore
-      expect(goldDelta).toBeGreaterThanOrEqual(CREEP_GOLD_MIN)
+      expect(goldDelta).toBeGreaterThanOrEqual(CREEP_GOLD)
     })
   })
 
@@ -241,8 +242,12 @@ describe('Economy through resolution', () => {
       // formula is exact. Freeze the victim at 1 HP for a guaranteed lethal.
       const VICTIM_LEVEL = 3
       await arrange(sm, gameId, (s) => {
-        let next = setPlayer(s, 'kx_r0', { zone: 'mid-river' })
-        next = setPlayer(next, 'kx_r1', { zone: 'mid-river' })
+        // All four players share VICTIM_LEVEL so both teams' average level is
+        // equal — the XP comeback multiplier is exactly 1 and the raw kill-XP
+        // formula (base + 20*victim.level) holds without a comeback adjustment.
+        let next = setPlayer(s, 'kx_r0', { zone: 'mid-river', level: VICTIM_LEVEL })
+        next = setPlayer(next, 'kx_r1', { zone: 'mid-river', level: VICTIM_LEVEL })
+        next = setPlayer(next, 'kx_d1', { level: VICTIM_LEVEL })
         next = setPlayer(next, 'kx_d0', {
           zone: 'mid-river',
           level: VICTIM_LEVEL,

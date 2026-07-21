@@ -712,22 +712,30 @@ describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
     }
   })
 
-  it('control: WITHOUT haste, an 80% slow fails the move at least once over 20 tries', () => {
-    const state = makeGameState({
-      players: {
-        p1: makePlayer({
-          id: 'p1',
-          team: 'radiant',
-          zone: 'mid-river',
-          buffs: [{ id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' }],
-        }),
-      },
-    })
+  it('control: WITHOUT haste, an 80% slow blocks the move on some ticks (deterministic pattern)', () => {
+    // Slow blocks when (tick * stacks) % 100 < stacks. Sweep distinct ticks so
+    // the deterministic pattern produces both blocks and passes; an 80% slow
+    // blocks the large majority of ticks.
     let failedAtLeastOnce = false
-    for (let i = 0; i < 20; i++) {
-      if (run(state, [moveDire]).state.players['p1']!.zone === 'mid-river') failedAtLeastOnce = true
+    let passedAtLeastOnce = false
+    for (let tick = 1; tick <= 20; tick++) {
+      const state = makeGameState({
+        tick,
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            buffs: [{ id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' }],
+          }),
+        },
+      })
+      const zone = run(state, [moveDire]).state.players['p1']!.zone
+      if (zone === 'mid-river') failedAtLeastOnce = true
+      if (zone === 'mid-t1-dire') passedAtLeastOnce = true
     }
     expect(failedAtLeastOnce).toBe(true)
+    expect(passedAtLeastOnce).toBe(true)
   })
 })
 

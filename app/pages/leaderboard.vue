@@ -6,7 +6,11 @@ interface LeaderboardEntry {
   id: string
   username: string
   avatarUrl: string | null
+  guildTag: string | null
   mmr: number
+  lifetimeMmr: number
+  rankTier: string
+  rankName: string
   gamesPlayed: number
   wins: number
   winRate: number
@@ -25,7 +29,10 @@ const {
   data,
   status,
   refresh: refreshLeaderboard,
-} = await useFetch<{ leaderboard: LeaderboardEntry[] }>('/api/leaderboard')
+} = await useFetch<{
+  season: { number: number; startedAt: string }
+  leaderboard: LeaderboardEntry[]
+}>('/api/leaderboard')
 const { data: activeData, refresh: refreshActive } = await useFetch<{ games: ActiveGame[] }>(
   '/api/match/active',
   {
@@ -61,8 +68,15 @@ function gameTime(tick: number): string {
 
 <template>
   <div class="mx-auto mt-6 flex max-w-[700px] flex-col gap-4">
-    <header class="border-b border-border pb-2">
+    <header class="flex items-center justify-between gap-2 border-b border-border pb-2">
       <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ LEADERBOARD</h1>
+      <span
+        v-if="data?.season"
+        class="border border-gold/40 bg-gold/10 px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider text-gold"
+        data-testid="season-badge"
+      >
+        Season {{ data.season.number }}
+      </span>
     </header>
     <TerminalPanel v-if="activeGames.length > 0" title="Live Games" title-as="h2">
       <div class="mb-2 border-b border-border pb-2 text-[0.8rem] text-text-dim">
@@ -146,6 +160,12 @@ function gameTime(tick: number): string {
               scope="col"
               class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
             >
+              Rank
+            </th>
+            <th
+              scope="col"
+              class="whitespace-nowrap border-b border-border px-1.5 py-1 text-left font-normal text-text-dim"
+            >
               W
             </th>
             <th
@@ -171,12 +191,23 @@ function gameTime(tick: number): string {
           >
             <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ p.rank }}</td>
             <th scope="row" class="border-b border-border/50 px-1.5 py-1 text-left font-normal">
+              <span
+                v-if="p.guildTag"
+                class="mr-1 border border-ability/50 px-1 font-mono text-[0.6rem] text-ability"
+                data-testid="leaderboard-guild-tag"
+                >{{ p.guildTag }}</span
+              >
               <NuxtLink :to="`/profile/${p.id}`" class="text-ability">{{ p.username }}</NuxtLink>
               <span v-if="p.id === meId" class="ml-1 text-[0.65rem] text-radiant">
                 &lt; you<span class="sr-only"> (this is your rank)</span>
               </span>
             </th>
             <td class="border-b border-border/50 px-1.5 py-1 font-bold text-gold">{{ p.mmr }}</td>
+            <td
+              class="border-b border-border/50 px-1.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-ability"
+            >
+              {{ p.rankName }}
+            </td>
             <td class="border-b border-border/50 px-1.5 py-1 text-radiant">{{ p.wins }}</td>
             <td class="border-b border-border/50 px-1.5 py-1 text-dire">
               {{ p.gamesPlayed - p.wins }}

@@ -343,7 +343,8 @@ function hasDebuff(player: PlayerState, type: DebuffType): boolean {
 
 /**
  * Phase 2: Movement — all moves resolve simultaneously.
- * Slow has a % chance to cancel the move; Haste rune ignores slow.
+ * Slow deterministically blocks movement on a fixed fraction of ticks (no RNG);
+ * Haste rune ignores slow.
  * Moving cancels TP channeling.
  */
 function resolveMovementPhase(
@@ -380,7 +381,13 @@ function resolveMovementPhase(
           .filter((b) => b.id === 'slow' || b.id === 'broadcast_slow')
           .reduce((sum, b) => sum + b.stacks, 0),
       )
-      if (!hasted && totalSlow > 0 && Math.random() * 100 < totalSlow) {
+      // Deterministic slow: instead of a per-tick coin flip (Math.random < slow),
+      // block movement on a fixed, evenly-spaced pattern that yields the SAME
+      // average skip rate (totalSlow% of ticks) but is fully predictable — a
+      // slowed escape no longer fails "because of dice". `(tick * slow) % 100 < slow`
+      // skips exactly slow/100 of ticks, distributed evenly across the slow.
+      const slowBlocks = !hasted && totalSlow > 0 && (tick * totalSlow) % 100 < totalSlow
+      if (slowBlocks) {
         // Synthesized continuations fail silently — the player already got
         // their feedback when they issued the order.
         if (!action.synthesized) {

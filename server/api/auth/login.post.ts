@@ -46,6 +46,7 @@ export default defineEventHandler(async (event) => {
         selectedAvatar: player.selectedAvatar,
         provider: 'local',
         hasPassword: true,
+        tutorialCompleted: !!player.tutorialCompleted,
       },
     })
 
@@ -57,6 +58,7 @@ export default defineEventHandler(async (event) => {
         selectedAvatar: player.selectedAvatar,
         provider: 'local' as const,
         hasPassword: true,
+        tutorialCompleted: !!player.tutorialCompleted,
       },
     }
   } catch (err) {

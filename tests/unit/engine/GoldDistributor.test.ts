@@ -5,6 +5,7 @@ import {
   awardKill,
   awardTowerKill,
   comebackMultiplier,
+  xpComebackMultiplier,
   playerNetWorth,
 } from '../../../server/game/engine/GoldDistributor'
 import type { GameState, PlayerState } from '../../../shared/types/game'
@@ -12,8 +13,7 @@ import { initializeZoneStates, initializeTowers } from '../../../server/game/map
 import { ITEMS } from '../../../shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
+  CREEP_GOLD,
   SIEGE_CREEP_GOLD,
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
@@ -22,6 +22,9 @@ import {
   COMEBACK_BONUS_MAX,
   COMEBACK_PENALTY_MAX,
   COMEBACK_FULL_GAP,
+  XP_COMEBACK_BONUS_MAX,
+  XP_COMEBACK_PENALTY_MAX,
+  XP_COMEBACK_FULL_LEVEL_GAP,
 } from '../../../shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -112,26 +115,24 @@ describe('GoldDistributor', () => {
   })
 
   describe('awardLastHit', () => {
-    it('should award gold for melee creep last hit (within range)', () => {
+    it('should award fixed gold for melee creep last hit (no RNG)', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
       })
 
       const result = awardLastHit(state, 'p1', 'melee')
       const goldGained = result.players['p1']!.gold - 100
-      expect(goldGained).toBeGreaterThanOrEqual(CREEP_GOLD_MIN)
-      expect(goldGained).toBeLessThanOrEqual(CREEP_GOLD_MAX)
+      expect(goldGained).toBe(CREEP_GOLD)
     })
 
-    it('should award gold for ranged creep last hit (within range)', () => {
+    it('should award fixed gold for ranged creep last hit (no RNG)', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
       })
 
       const result = awardLastHit(state, 'p1', 'ranged')
       const goldGained = result.players['p1']!.gold - 100
-      expect(goldGained).toBeGreaterThanOrEqual(CREEP_GOLD_MIN)
-      expect(goldGained).toBeLessThanOrEqual(CREEP_GOLD_MAX)
+      expect(goldGained).toBe(CREEP_GOLD)
     })
 
     it('should award fixed gold for siege creep last hit', () => {
@@ -447,6 +448,75 @@ describe('GoldDistributor', () => {
       })
       expect(comebackMultiplier(state, 'radiant')).toBe(1 + COMEBACK_BONUS_MAX)
       expect(comebackMultiplier(state, 'dire')).toBe(1 - COMEBACK_PENALTY_MAX)
+    })
+  })
+
+  describe('xpComebackMultiplier', () => {
+    it('returns ~1 when teams are equal in average level', () => {
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', level: 10 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', level: 10 }),
+        },
+      })
+      expect(xpComebackMultiplier(state, 'radiant')).toBe(1)
+    })
+
+    it('boosts kill XP for the team that is far behind in levels', () => {
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', level: 5 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', level: 5 + XP_COMEBACK_FULL_LEVEL_GAP }),
+        },
+      })
+      // Radiant is a full level-gap behind → ratio capped at 1 → 1 + bonus max
+      expect(xpComebackMultiplier(state, 'radiant')).toBeCloseTo(1 + XP_COMEBACK_BONUS_MAX, 5)
+    })
+
+    it('penalizes kill XP for the team that is far ahead in levels', () => {
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', level: 5 + XP_COMEBACK_FULL_LEVEL_GAP }),
+          d1: makePlayer({ id: 'd1', team: 'dire', level: 5 }),
+        },
+      })
+      // Radiant is a full level-gap ahead → ratio = -1 → 1 - penalty max
+      expect(xpComebackMultiplier(state, 'radiant')).toBeCloseTo(1 - XP_COMEBACK_PENALTY_MAX, 5)
+    })
+
+    it('uses the team AVERAGE level (multiple players per side)', () => {
+      const state = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', level: 4 }),
+          r2: makePlayer({ id: 'r2', level: 6 }), // radiant avg = 5
+          d1: makePlayer({ id: 'd1', team: 'dire', level: 10 }),
+          d2: makePlayer({ id: 'd2', team: 'dire', level: 10 }), // dire avg = 10
+        },
+      })
+      // Radiant behind by 5 avg levels = full gap → full bonus
+      expect(xpComebackMultiplier(state, 'radiant')).toBeCloseTo(1 + XP_COMEBACK_BONUS_MAX, 5)
+    })
+
+    it('scales linearly with the level gap below the full-gap cap', () => {
+      const halfGap = XP_COMEBACK_FULL_LEVEL_GAP / 2
+      const behind = makeGameState({
+        players: {
+          r1: makePlayer({ id: 'r1', level: 10 }),
+          d1: makePlayer({ id: 'd1', team: 'dire', level: 10 + halfGap }),
+        },
+      })
+      expect(xpComebackMultiplier(behind, 'radiant')).toBeCloseTo(
+        1 + 0.5 * XP_COMEBACK_BONUS_MAX,
+        5,
+      )
+      expect(xpComebackMultiplier(behind, 'dire')).toBeCloseTo(1 - 0.5 * XP_COMEBACK_PENALTY_MAX, 5)
+    })
+
+    it('returns 1 when a team has no players (degenerate)', () => {
+      const state = makeGameState({
+        players: { r1: makePlayer({ id: 'r1', level: 10 }) },
+      })
+      expect(xpComebackMultiplier(state, 'radiant')).toBe(1)
     })
   })
 

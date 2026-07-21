@@ -67,6 +67,9 @@ function makeEntry(overrides: Record<string, unknown> = {}) {
     username: 'shroud',
     avatarUrl: null,
     mmr: 2400,
+    lifetimeMmr: 2400,
+    rankTier: 'terminal',
+    rankName: 'Terminal',
     gamesPlayed: 100,
     wins: 70,
     winRate: 70,
@@ -212,7 +215,7 @@ describe('leaderboard page', () => {
       const wrapper = await mountLeaderboard()
 
       expect(wrapper.find('caption').text()).toContain('Top players')
-      expect(wrapper.findAll('th[scope="col"]').length).toBe(6)
+      expect(wrapper.findAll('th[scope="col"]').length).toBe(7)
       const rowHeader = wrapper.find('tbody th[scope="row"]')
       expect(rowHeader.exists()).toBe(true)
       expect(rowHeader.text()).toContain('alpha')

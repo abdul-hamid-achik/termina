@@ -6,8 +6,12 @@ import type { TeamId } from '~~/shared/types/game'
 
 const props = withDefaults(
   defineProps<{
+    /** 'pick' = normal draft; 'ban' = ban phase (clicking bans, not picks). */
+    mode?: 'pick' | 'ban'
     team: TeamId
     pickedHeroes?: Record<string, string>
+    /** Heroes removed from the draft during the ban phase (unpickable). */
+    bannedHeroes?: string[]
     teamRoster?: Array<{ playerId: string; name: string; heroId: string | null; team: TeamId }>
     timeRemaining?: number
     /** Whose turn it is in the snake draft (from the server's pick_turn message). */
@@ -20,7 +24,9 @@ const props = withDefaults(
     errorMessage?: string | null
   }>(),
   {
+    mode: 'pick',
     pickedHeroes: () => ({}),
+    bannedHeroes: () => [],
     teamRoster: () => [],
     timeRemaining: 30,
     currentPicker: null,
@@ -32,8 +38,11 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   pick: [heroId: string]
+  ban: [heroId: string]
   confirm: []
 }>()
+
+const isBanMode = computed(() => props.mode === 'ban')
 
 const selectedHero = ref<string | null>(null)
 const confirmed = ref(false)
@@ -80,6 +89,7 @@ const heroList = computed(() =>
       ...hero,
       picked: !!pickedBy,
       pickedByName: pickedBy?.[0] ?? null,
+      banned: props.bannedHeroes.includes(id),
     }
   }),
 )
@@ -104,9 +114,20 @@ const myPick = computed(() =>
   props.myPlayerId ? (props.pickedHeroes[props.myPlayerId] ?? null) : null,
 )
 
-const lockedIn = computed(() => confirmed.value || !!myPick.value)
+const lockedIn = computed(() =>
+  // Ban phase has no per-player lock — the turn advances server-side after each
+  // ban. Pick phase gates on the confirm latch / the player's landed pick.
+  isBanMode.value ? false : confirmed.value || !!myPick.value,
+)
 
-const canConfirm = computed(() => isMyTurn.value && !!selectedHero.value && !lockedIn.value)
+const canConfirm = computed(() => {
+  if (!isMyTurn.value || !selectedHero.value) return false
+  if (isBanMode.value) {
+    const hero = heroList.value.find((h) => h.id === selectedHero.value)
+    return !!hero && !hero.banned && !hero.picked
+  }
+  return !lockedIn.value
+})
 
 // New pick turn → clear the one-shot confirm latch. If our pick actually
 // landed, `myPick` keeps the button disabled; if it was rejected out-of-turn,
@@ -136,11 +157,17 @@ function selectHero(id: string) {
   if (lockedIn.value) return
   const hero = heroList.value.find((h) => h.id === id)
   if (hero?.picked) return
+  if (isBanMode.value && hero?.banned) return
   selectedHero.value = id
 }
 
 function confirmPick() {
   if (!canConfirm.value || !selectedHero.value) return
+  if (isBanMode.value) {
+    emit('ban', selectedHero.value)
+    selectedHero.value = null
+    return
+  }
   confirmed.value = true
   emit('pick', selectedHero.value)
   emit('confirm')
@@ -284,12 +311,14 @@ function initialOf(name: string | undefined | null): string {
       role="status"
       aria-live="polite"
     >
-      <template v-if="isMyTurn && !myPick"
-        ><span aria-hidden="true">&gt;&gt;</span> YOUR TURN TO PICK
+      <template v-if="isMyTurn && (isBanMode || !myPick)"
+        ><span aria-hidden="true">&gt;&gt;</span> YOUR TURN TO {{ isBanMode ? 'BAN' : 'PICK' }}
         <span aria-hidden="true">&lt;&lt;</span></template
       >
       <template v-else-if="isMyTurn && myPick">pick locked in — waiting for server…</template>
-      <template v-else>waiting: {{ currentPicker.username }} is picking…</template>
+      <template v-else
+        >waiting: {{ currentPicker.username }} is {{ isBanMode ? 'banning' : 'picking' }}…</template
+      >
     </div>
 
     <!-- Inline error notice (server rejections, etc.) -->
@@ -311,17 +340,23 @@ function initialOf(name: string | undefined | null): string {
           :key="hero.id"
           :data-testid="'hero-card-' + hero.id"
           role="button"
-          :tabindex="hero.picked || lockedIn ? -1 : 0"
+          :tabindex="hero.picked || hero.banned || lockedIn ? -1 : 0"
           :aria-pressed="selectedHero === hero.id"
-          :aria-disabled="hero.picked || lockedIn ? 'true' : undefined"
-          :aria-label="hero.picked ? `${hero.name}, already picked` : `${hero.name}, ${hero.role}`"
+          :aria-disabled="hero.picked || hero.banned || lockedIn ? 'true' : undefined"
+          :aria-label="
+            hero.banned
+              ? `${hero.name}, banned`
+              : hero.picked
+                ? `${hero.name}, already picked`
+                : `${hero.name}, ${hero.role}`
+          "
           class="relative cursor-pointer border border-border bg-bg-panel p-2 transition-all duration-150"
           :class="{
             'border-ability bloom-ability scale-[1.02]': selectedHero === hero.id && !lockedIn,
             'border-radiant bloom-radiant': lockedIn && selectedHero === hero.id,
-            'cursor-not-allowed opacity-30': hero.picked,
+            'cursor-not-allowed opacity-30': hero.picked || hero.banned,
             'hover:border-border-glow hover:scale-[1.02] hover:shadow-glow-highlight':
-              !hero.picked && selectedHero !== hero.id,
+              !hero.picked && !hero.banned && selectedHero !== hero.id,
           }"
           @click="selectHero(hero.id)"
           @keydown.enter.prevent="selectHero(hero.id)"
@@ -350,6 +385,12 @@ function initialOf(name: string | undefined | null): string {
             class="t-h3 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-dire text-glow-dire"
           >
             PICKED
+          </div>
+          <div
+            v-else-if="hero.banned"
+            class="t-h3 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-warn text-glow line-through"
+          >
+            BANNED
           </div>
         </div>
       </div>
@@ -419,7 +460,9 @@ function initialOf(name: string | undefined | null): string {
           </div>
         </div>
       </div>
-      <div v-else class="min-w-0 flex-1 t-caption">&gt;_ select a hero to deploy...</div>
+      <div v-else class="min-w-0 flex-1 t-caption">
+        &gt;_ select a hero to {{ isBanMode ? 'ban' : 'deploy' }}...
+      </div>
       <div class="flex items-center justify-between gap-3 sm:justify-end">
         <!-- Mobile countdown (the desktop one lives in the VS column) -->
         <span
@@ -430,7 +473,7 @@ function initialOf(name: string | undefined | null): string {
           {{ countdown }}<span class="t-h3 ml-0.5 text-text-muted">s</span>
         </span>
         <AsciiButton
-          label="CONFIRM"
+          :label="isBanMode ? 'BAN' : 'CONFIRM'"
           variant="primary"
           :disabled="!canConfirm"
           @click="confirmPick"

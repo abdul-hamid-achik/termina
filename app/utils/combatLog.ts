@@ -233,6 +233,47 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
 }
 
 /**
+ * Fold a run of bystander hero-vs-hero damage into ONE summary line when a
+ * teamfight produces many "world" damage lines at once — the teamfight analogue
+ * of digestFarmNoise. Lines involving ME or an ally, kills, abilities, etc. are
+ * never folded; only the chip-damage firehose between OTHER heroes collapses, so
+ * a 10-hero clash reads as one "⚔ teamfight" beat instead of ~18 lines. Applied
+ * after the story sort, where a tick's world-damage lines sit contiguous.
+ */
+export function digestTeamfightNoise(lines: CombatLine[], threshold = 4): CombatLine[] {
+  const out: CombatLine[] = []
+  let bucket: CombatLine[] = []
+
+  const flush = () => {
+    if (bucket.length === 0) return
+    if (bucket.length > threshold) {
+      const tick = bucket[0]!.tick
+      const total = bucket.reduce((s, l) => s + (l.dmgAmount ?? 0), 0)
+      out.push({
+        tick,
+        text: `⚔ teamfight: ${bucket.length} hits trading${total > 0 ? ` (${total} dmg)` : ''}`,
+        type: 'damage',
+        salience: 'world',
+      })
+    } else {
+      out.push(...bucket)
+    }
+    bucket = []
+  }
+
+  for (const line of lines) {
+    if (line.type === 'damage' && line.salience === 'world' && !line.dedupKey) {
+      bucket.push(line)
+    } else {
+      flush()
+      out.push(line)
+    }
+  }
+  flush()
+  return out
+}
+
+/**
  * The feed's default ("story") view: farm noise folded to one line per tick,
  * then each tick's lines ordered by salience — YOUR results first, kills and
  * objectives loud, the farm digest last. Stable within a priority band.
@@ -240,7 +281,7 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
 export function buildTickStoryView(lines: CombatLine[]): CombatLine[] {
   const digested = digestFarmNoise(lines)
   // Stable sort per tick: decorate with the original index, sort, strip.
-  return digested
+  const sorted = digested
     .map((line, i) => ({ line, i }))
     .sort((a, b) => {
       if (a.line.tick !== b.line.tick) return a.line.tick - b.line.tick
@@ -249,4 +290,6 @@ export function buildTickStoryView(lines: CombatLine[]): CombatLine[] {
       return pa !== pb ? pa - pb : a.i - b.i
     })
     .map(({ line }) => line)
+  // Fold bystander teamfight damage now that it sits contiguous per tick.
+  return digestTeamfightNoise(sorted)
 }
