@@ -12,6 +12,7 @@ export type SoundName =
   | 'tower_fall'
   | 'victory'
   | 'defeat'
+  | 'double_cast'
 
 let audioCtx: AudioContext | null = null
 
@@ -188,6 +189,22 @@ const SOUNDS: Record<SoundName, SoundDef> = {
     ],
     noise: { duration: 0.5, gain: 0.1, cutoff: 500 },
     masterGain: 0.9,
+  },
+  // Double-cast proc: a quick bright ascending shimmer — the "it fired twice!"
+  // cue that pairs with the DOUBLE CAST feed line.
+  double_cast: {
+    oscs: [
+      {
+        type: 'square',
+        freqStart: 880,
+        freqEnd: 1320,
+        duration: 0.12,
+        gain: 0.16,
+        attack: 0.004,
+      },
+      { type: 'sine', freqStart: 1760, duration: 0.1, gain: 0.1, attack: 0.004, delay: 0.05 },
+    ],
+    masterGain: 0.8,
   },
 }
 

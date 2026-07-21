@@ -423,6 +423,12 @@ watch(
             heroFlashKey.value++
           }
           break
+        case 'double_cast':
+          // Tier-25 exotic proc — a satisfying cue when MY ability fires twice.
+          if (e.payload.playerId === pid) {
+            playSound('double_cast')
+          }
+          break
       }
     }
   },
