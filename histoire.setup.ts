@@ -35,6 +35,12 @@ if (typeof window === 'undefined') {
 // stories instead of throwing ReferenceError when invoked.
 ;(globalThis as Record<string, unknown>).navigateTo ??= () => Promise.resolve()
 
+// `$fetch` (Nuxt auto-import) is used by the data-fetching panels (PartyPanel,
+// GuildPanel) on mount. Stub it to resolve with permissive empty shapes so those
+// stories render their empty ("create / join") state instead of throwing.
+;(globalThis as Record<string, unknown>).$fetch ??= () =>
+  Promise.resolve({ party: null, guild: null, members: [], guilds: [] })
+
 export const setupVue3 = defineSetupVue3(({ app }) => {
   app.use(createPinia())
   // <NuxtLink> → passthrough <a> (render fn, not a template string, so we don't
