@@ -27,7 +27,17 @@ export default defineEventHandler(async (event) => {
   // "most played heroes" panel.
   const heroStats = await Effect.runPromise(runtime.dbService.getHeroStats(playerId))
 
+  // Resolve the player's guild (name + tag) so the profile can show it without a
+  // second round-trip.
+  const guild = player.guildId
+    ? await Effect.runPromise(runtime.dbService.getGuild(player.guildId))
+    : null
+
   // Don't expose sensitive fields
   const { email: _email, passwordHash: _passwordHash, ...publicProfile } = player
-  return { player: publicProfile, heroStats }
+  return {
+    player: publicProfile,
+    heroStats,
+    guild: guild ? { id: guild.id, name: guild.name, tag: guild.tag } : null,
+  }
 })

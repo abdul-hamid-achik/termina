@@ -66,6 +66,7 @@ const mockRuntime = {
     createGuild: vi.fn(() =>
       Effect.succeed({ id: 'g1', name: 'Void', tag: 'VOID', leaderId: 'p1' }),
     ),
+    getGuild: vi.fn(() => Effect.succeed(null)),
     getGuildByName: vi.fn(() => Effect.succeed(null)),
     getPlayerGuild: vi.fn(() => Effect.succeed(null)),
     getGuildMembers: vi.fn(() => Effect.succeed([])),
@@ -449,6 +450,28 @@ describe('API endpoints', () => {
       const result = await playerHandler(makeEvent('GET', '/api/player/p1'))
       expect(result.heroStats).toEqual([{ heroId: 'echo', gamesPlayed: 5, wins: 3 }])
       expect(mockRuntime.dbService.getHeroStats).toHaveBeenCalledWith('p1')
+    })
+
+    it('resolves the guild (name + tag) when the player is in one', async () => {
+      routerParam = 'p1'
+      mockRuntime.dbService.getPlayer.mockReturnValue(
+        Effect.succeed({ id: 'p1', username: 'alice', mmr: 1500, guildId: 'g1' } as never),
+      )
+      mockRuntime.dbService.getGuild.mockReturnValue(
+        Effect.succeed({ id: 'g1', name: 'Void Callers', tag: 'VOID', leaderId: 'p1' } as never),
+      )
+      const result = await playerHandler(makeEvent('GET', '/api/player/p1'))
+      expect(result.guild).toEqual({ id: 'g1', name: 'Void Callers', tag: 'VOID' })
+      expect(mockRuntime.dbService.getGuild).toHaveBeenCalledWith('g1')
+    })
+
+    it('returns null guild when the player is unaffiliated', async () => {
+      routerParam = 'p1'
+      mockRuntime.dbService.getPlayer.mockReturnValue(
+        Effect.succeed({ id: 'p1', username: 'alice', mmr: 1500, guildId: null } as never),
+      )
+      const result = await playerHandler(makeEvent('GET', '/api/player/p1'))
+      expect(result.guild).toBeNull()
     })
   })
 

@@ -90,10 +90,15 @@ function handleServerMessage(msg: ServerMessage) {
       for (const b of msg.bans ?? []) {
         lobbyStore.heroBanned(b)
       }
+      lobbyStore.matchFound(msg.lobbyId)
+      // Drive the draft phase from the server's authoritative phase so the
+      // banning→picking transition lands when bans complete (matchFound only runs
+      // the found-splash from a pre-match state). Don't clobber 'starting'.
       if (msg.phase === 'banning') {
         lobbyStore.queueStatus = 'banning'
+      } else if (msg.phase === 'picking' && lobbyStore.queueStatus !== 'starting') {
+        lobbyStore.queueStatus = 'picking'
       }
-      lobbyStore.matchFound(msg.lobbyId)
       break
     case 'game_countdown':
       lobbyLog.info('Game countdown received', { seconds: msg.seconds })

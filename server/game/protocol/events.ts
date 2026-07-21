@@ -315,6 +315,13 @@ export interface AfkTakeoverEvent {
   readonly message: string
 }
 
+export interface DoubleCastEvent {
+  readonly _tag: 'double_cast'
+  readonly tick: number
+  readonly playerId: string
+  readonly abilityId: string
+}
+
 export type GameEngineEvent =
   | DamageEvent
   | HealEvent
@@ -355,6 +362,7 @@ export type GameEngineEvent =
   | SurrenderVoteEvent
   | SurrenderedEvent
   | AfkTakeoverEvent
+  | DoubleCastEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

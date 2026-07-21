@@ -4,6 +4,7 @@ import { formatGameMode, matchResult } from '~~/shared/matchFormat'
 import { topHeroStats } from '~~/shared/heroStatsView'
 import type { HeroStatRow } from '~~/shared/heroStatsView'
 import { HEROES } from '~~/shared/constants/heroes'
+import { getRankTier } from '~~/shared/constants/ranks'
 import { formatTickClock } from '~/utils/gameClock'
 
 const route = useRoute()
@@ -26,7 +27,17 @@ interface ProfilePlayer {
   mmr: number
   gamesPlayed: number
   wins: number
+  seasonMmr: number
+  seasonGamesPlayed: number
+  seasonWins: number
+  seasonNumber: number
   createdAt: string | null
+}
+
+interface ProfileGuild {
+  id: string
+  name: string
+  tag: string
 }
 
 interface MatchSummary {
@@ -52,6 +63,11 @@ const { data: matchData } = await useFetch(() => `/api/match/history?player=${pl
 const player = computed<ProfilePlayer | null>(
   () => (profileData.value as { player?: ProfilePlayer } | null)?.player ?? null,
 )
+const guild = computed<ProfileGuild | null>(
+  () => (profileData.value as { guild?: ProfileGuild | null } | null)?.guild ?? null,
+)
+// Competitive identity: rank tier derived from the seasonal ladder rating.
+const rank = computed(() => (player.value ? getRankTier(player.value.seasonMmr ?? 1000) : null))
 const recentMatches = computed<MatchSummary[]>(
   () => (matchData.value as { matches?: MatchSummary[] } | null)?.matches ?? [],
 )
@@ -116,6 +132,22 @@ function formatDate(dateStr: string | null): string {
         </div>
 
         <div class="flex flex-col gap-1.5">
+          <div v-if="rank" class="flex gap-2 text-[0.85rem]">
+            <span class="min-w-[80px] text-text-dim">Rank:</span>
+            <span class="font-bold uppercase tracking-wide text-ability" data-testid="profile-rank">
+              {{ rank.name }}
+            </span>
+            <span class="text-text-dim"
+              >({{ player.seasonMmr ?? 1000 }} SR · S{{ player.seasonNumber ?? 1 }})</span
+            >
+          </div>
+          <div v-if="guild" class="flex gap-2 text-[0.85rem]">
+            <span class="min-w-[80px] text-text-dim">Guild:</span>
+            <span class="border border-ability/50 px-1 font-mono text-[0.7rem] text-ability">{{
+              guild.tag
+            }}</span>
+            <span class="text-text-primary" data-testid="profile-guild">{{ guild.name }}</span>
+          </div>
           <div class="flex gap-2 text-[0.85rem]">
             <span class="min-w-[80px] text-text-dim">Rating:</span>
             <span class="font-bold text-gold">{{ player.mmr ?? 1000 }}</span>

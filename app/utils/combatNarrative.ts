@@ -230,6 +230,15 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
+    case 'double_cast':
+      // Tier-25 exotic proc — loud, so the player notices the ability fired twice.
+      return {
+        tick,
+        text: `≫ DOUBLE CAST! ${label(p.playerId)}'s ${ctx.abilityLabel(p.abilityId)} fires twice`,
+        type: 'ability',
+        salience: actorSalience(p.playerId, ctx),
+      }
+
     case 'power_spike':
       // The engine already writes human prose here — surface it instead of JSON.
       return {

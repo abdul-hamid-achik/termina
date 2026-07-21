@@ -304,6 +304,26 @@ const concepts = [
     icon: 'W',
     desc: `Destroying any of a team's T3 towers exposes their Mainframe (${ANCIENT_HP} HP) in their base. Destroy the enemy Mainframe to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
   },
+  {
+    term: 'Draft & Bans',
+    icon: 'D',
+    desc: "In 5v5 and 3v3, the draft opens with a ban phase: teams take turns removing heroes from the pool before the snake pick. Banned heroes can't be picked by either side — use bans to deny a matchup you don't want to face.",
+  },
+  {
+    term: 'Seasons & Ranks',
+    icon: 'S',
+    desc: 'The competitive ladder resets each season. Ranked games (no bots) move your seasonal rating (SR); from it you earn a rank tier — Iron → Bronze → Silver → Gold → Platinum → Diamond → Terminal. The leaderboard shows the current season; your lifetime rating is tracked separately.',
+  },
+  {
+    term: 'Parties & Co-op',
+    icon: '&',
+    desc: "Create a party from the lobby and share the 5-letter code with friends (up to 5). The leader can start a co-op game: your party takes Radiant and bots fill the rest — a no-pressure way to play together (co-op games don't affect your rating).",
+  },
+  {
+    term: 'Guilds',
+    icon: 'G',
+    desc: 'Found or join a guild to get a tag that rides next to your name on the leaderboard and your profile. Guilds are persistent — a home for your crew across seasons.',
+  },
 ]
 
 const ROLE_DETAILS: ReadonlyArray<{ role: HeroRole; label: string; icon: string; desc: string }> = [

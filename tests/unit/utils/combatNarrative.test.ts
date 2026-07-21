@@ -69,6 +69,23 @@ describe('eventToLine: salience', () => {
   })
 })
 
+describe('eventToLine: double cast proc', () => {
+  it('renders a loud DOUBLE CAST line for my proc (mine-out)', () => {
+    const line = eventToLine(ev('double_cast', { playerId: 'me', abilityId: 'echo-q' }), ctx)!
+    expect(line.text).toContain('DOUBLE CAST')
+    expect(line.text).toContain('ability:echo-q')
+    expect(line.salience).toBe('mine-out')
+  })
+  it('renders an enemy double cast as world salience', () => {
+    const line = eventToLine(
+      ev('double_cast', { playerId: 'enemy1', abilityId: 'null_ref-q' }),
+      ctx,
+    )!
+    expect(line.text).toContain('DOUBLE CAST')
+    expect(line.salience).toBe('world')
+  })
+})
+
 describe('eventToLine: structure damage collapses', () => {
   it('tags tower/core damage with a dedupKey + amount', () => {
     const line = eventToLine(

@@ -236,6 +236,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     // the found→picking transition from a genuinely pre-match state.
     if (
       queueStatus.value === 'found' ||
+      queueStatus.value === 'banning' ||
       queueStatus.value === 'picking' ||
       queueStatus.value === 'starting'
     ) {

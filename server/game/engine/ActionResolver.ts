@@ -2117,6 +2117,13 @@ function resolveHeroCast(
       )
       if (Either.isRight(echoResult)) {
         const echoNewPlayers = echoResult.right.state.players
+        // Feedback: announce the proc so the player knows the ability fired twice.
+        events.push({
+          _tag: 'double_cast',
+          tick: state.tick,
+          playerId: action.playerId,
+          abilityId: abilityDef?.id ?? cmd.ability,
+        })
         for (const [pid, post] of Object.entries(echoNewPlayers)) {
           const pre = echoPlayers[pid]
           if (!pre) continue
