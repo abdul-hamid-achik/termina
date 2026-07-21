@@ -359,8 +359,14 @@ describe('systems-gaps: echo talents — dead specialEffect no-ops swapped for w
 
   it('no echo talent is a dead specialEffect no-op anymore', () => {
     for (const t of Object.values(TALENT_TREES.echo.tiers).flat()) {
-      expect(t.type).not.toBe('special')
-      expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+      // 'special' talents are fine now that they're wired (echo_25_left is the
+      // Double Echo double-cast); they just must carry a real castEffect.
+      if (t.type === 'special' || (t as { specialEffect?: string }).specialEffect) {
+        expect(
+          (t as { castEffect?: string }).castEffect,
+          `echo ${t.id} is special without a wired castEffect (dead no-op)`,
+        ).toBeDefined()
+      }
     }
   })
 })

@@ -42,11 +42,18 @@ describe('Tailored talent trees', () => {
         }
       })
 
-      it('has no dead special / ability_boost / specialEffect talents', () => {
+      it('has no dead special / ability_boost talents (special must be wired via castEffect)', () => {
         for (const t of Object.values(tree.tiers).flat()) {
-          expect(t.type).not.toBe('special')
           expect(t.type).not.toBe('ability_boost')
-          expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+          // A 'special' talent is valid only if it carries a wired mechanical
+          // effect (castEffect) — otherwise it's a silent no-op like the old
+          // dead specialEffect talents this guard was written to catch.
+          if (t.type === 'special' || (t as { specialEffect?: string }).specialEffect) {
+            expect(
+              (t as { castEffect?: string }).castEffect,
+              `${heroId} ${t.id} is a special talent without a wired castEffect (dead no-op)`,
+            ).toBeDefined()
+          }
         }
       })
 

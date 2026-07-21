@@ -27,6 +27,7 @@ import {
   getAttackMultiplier,
   getTalentStatBonus,
   getItemStatBonuses,
+  hasTalentCastEffect,
 } from './EffectiveStats'
 import { areAdjacent, findPath } from '~~/server/game/map/topology'
 import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/modes/tutorial'
@@ -76,6 +77,7 @@ import {
   SOBI_MASK_REGEN_PERCENT,
   HEART_REGEN_PERCENT,
   SELL_REFUND_RATIO,
+  DOUBLE_CAST_CHANCE,
 } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
@@ -2079,6 +2081,71 @@ function resolveHeroCast(
       newPlayers = {
         ...newPlayers,
         [action.playerId]: { ...c, buffs: c.buffs.filter((b) => b.id !== 'stack_overflow_buff') },
+      }
+    }
+  }
+
+  // Tier-25 exotic — double cast: a chance for the talented ability to fire a
+  // second time. Re-runs the hero resolver on the post-first-cast state with the
+  // just-set cooldown cleared (so the echo isn't rejected); mana is paid again,
+  // so the echo only happens if the caster can afford both casts. Emits plain
+  // damage/heal events from the echo's HP diff (no Blade Mail/Overclock recursion
+  // on the echo — deliberately simple).
+  if (
+    hasTalentCastEffect(caster, 'double_cast', cmd.ability) &&
+    Math.random() < DOUBLE_CAST_CHANCE
+  ) {
+    const echoCaster = newPlayers[action.playerId]
+    if (echoCaster) {
+      const echoPlayers = {
+        ...newPlayers,
+        [action.playerId]: {
+          ...echoCaster,
+          cooldowns: { ...echoCaster.cooldowns, [cmd.ability]: 0 },
+        },
+      }
+      const echoState: GameState = {
+        ...state,
+        players: echoPlayers,
+        zones,
+        creeps,
+        towers,
+        ancients,
+      }
+      const echoResult = Effect.runSync(
+        Effect.either(resolveAbility(echoState, action.playerId, cmd.ability, cmd.target)),
+      )
+      if (Either.isRight(echoResult)) {
+        const echoNewPlayers = echoResult.right.state.players
+        for (const [pid, post] of Object.entries(echoNewPlayers)) {
+          const pre = echoPlayers[pid]
+          if (!pre) continue
+          const delta = pre.hp - post.hp
+          if (delta > 0) {
+            events.push({
+              _tag: 'damage',
+              tick: state.tick,
+              sourceId: action.playerId,
+              targetId: pid,
+              amount: delta,
+              damageType,
+            })
+            if (post.team !== caster.team) {
+              const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+              dt.hero += delta
+              damageTracker.set(action.playerId, dt)
+            }
+          } else if (delta < 0) {
+            events.push({
+              _tag: 'heal',
+              tick: state.tick,
+              sourceId: action.playerId,
+              targetId: pid,
+              amount: -delta,
+            })
+          }
+        }
+        newPlayers = echoNewPlayers
       }
     }
   }

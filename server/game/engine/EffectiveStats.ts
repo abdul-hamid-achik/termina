@@ -80,6 +80,21 @@ export function getTalentStatBonus(
   return total
 }
 
+/**
+ * Whether the player has selected a talent granting a mechanical cast effect
+ * (a tier-25 "exotic" upgrade). If `abilityId` is given, only talents bound to
+ * that ability slot match — so a double-cast talent on Q only double-casts Q.
+ */
+export function hasTalentCastEffect(
+  player: PlayerState,
+  effect: 'double_cast',
+  abilityId?: 'q' | 'w' | 'e' | 'r',
+): boolean {
+  return getSelectedTalents(player).some(
+    (t) => t.castEffect === effect && (abilityId === undefined || t.abilityId === abilityId),
+  )
+}
+
 function getBuffStacks(player: PlayerState, buffId: string): number {
   return player.buffs.find((b) => b.id === buffId)?.stacks ?? 0
 }

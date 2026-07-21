@@ -185,15 +185,17 @@ Each hero has 8 talents (2 choices × 4 tiers):
 **Level 10** - Stat bonuses (+15 Attack or +200 HP)
 **Level 15** - Ability enhancements (+damage or -cooldown)
 **Level 20** - Major power spikes (+30% damage or +25% resist)
-**Level 25** - Larger numeric bonuses (the exotic ultimate transforms — AOE+,
-double cast — are designed but not yet wired into the engine)
+**Level 25** - Exotic upgrades: a few heroes get a mechanical transform — e.g.
+Echo's _Double Echo_ and Lambda's _Double Cast_ (their Q has a 25% chance to fire
+twice). The rest are large numeric bonuses; more exotic transforms (AOE+, global
+ultimate) are future work
 
 Example (Echo):
 ```
 Level 10: +15 Attack Damage OR +200 HP
 Level 15: Echo Stun +0.5s OR -2s Echo Location CD
 Level 20: +30% Echo Damage OR +15% Magic Resist
-Level 25: +40% Echo Damage OR -4s Echo Location CD
+Level 25: Double Echo (Q casts twice, 25%) OR +250 Max HP
 ```
 
 ### Deny Mechanics

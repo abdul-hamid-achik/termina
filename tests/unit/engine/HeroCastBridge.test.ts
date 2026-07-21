@@ -18,6 +18,7 @@ import {
   getEffectiveAttack,
   getEffectiveDefense,
   getTalentStatBonus,
+  hasTalentCastEffect,
 } from '../../../server/game/engine/EffectiveStats'
 import { filterStateForPlayer } from '../../../server/game/engine/VisionCalculator'
 import type { GameState, PlayerState } from '../../../shared/types/game'
@@ -145,6 +146,55 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     expect(used).toMatchObject({ playerId: 'p1', abilityId: 'mutex-q', targetId: 'p2' })
     const cd = result.events.find((e) => e._tag === 'cooldown_used')
     expect(cd).toMatchObject({ abilityId: 'q', cooldownTicks: 8 })
+  })
+
+  describe('tier-25 exotic: double cast', () => {
+    it('hasTalentCastEffect detects the talent and respects the ability slot', () => {
+      const talented = makeHero('echo', {
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'echo_25_left' },
+      })
+      const untalented = makeHero('echo')
+      expect(hasTalentCastEffect(talented, 'double_cast', 'q')).toBe(true)
+      // echo_25_left is bound to Q — it must not apply to other slots.
+      expect(hasTalentCastEffect(talented, 'double_cast', 'w')).toBe(false)
+      expect(hasTalentCastEffect(untalented, 'double_cast', 'q')).toBe(false)
+    })
+
+    it('procs a second cast (more damage) when the chance hits', () => {
+      const caster = () =>
+        makeHero('echo', {
+          id: 'p1',
+          team: 'radiant',
+          level: 5,
+          mp: 2000,
+          maxMp: 2000,
+          talents: { tier10: null, tier15: null, tier20: null, tier25: 'echo_25_left' },
+        })
+      const target = () => makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'dire' })
+      const castQ: PlayerAction[] = [
+        {
+          playerId: 'p1',
+          command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+        },
+      ]
+      const damageTo = (events: { _tag: string; targetId?: string; amount?: number }[]) =>
+        events
+          .filter((e) => e._tag === 'damage' && e.targetId === 'p2')
+          .reduce((s, e) => s + (e.amount ?? 0), 0)
+
+      // Chance misses (0.99 > 0.25) → single cast.
+      vi.spyOn(Math, 'random').mockReturnValue(0.99)
+      const single = run(makeGameState({ players: { p1: caster(), p2: target() } }), castQ)
+      const singleTotal = damageTo(single.events)
+
+      // Chance hits (0 < 0.25) → the ability fires twice.
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+      const double = run(makeGameState({ players: { p1: caster(), p2: target() } }), castQ)
+      const doubleTotal = damageTo(double.events)
+
+      expect(singleTotal).toBeGreaterThan(0)
+      expect(doubleTotal).toBeGreaterThan(singleTotal)
+    })
   })
 
   it('buff honors the resolver effect value (mutex W shield stacks = 180 at rank 1)', () => {

@@ -82,6 +82,12 @@ export const XP_COMEBACK_BONUS_MAX = 0.5
 export const XP_COMEBACK_PENALTY_MAX = 0.3
 export const XP_COMEBACK_FULL_LEVEL_GAP = 5
 
+/**
+ * Tier-25 "double cast" exotic talent: each cast of the talented ability has
+ * this chance to fire a second time (paying mana again).
+ */
+export const DOUBLE_CAST_CHANCE = 0.25
+
 // ── Respawn ──────────────────────────────────────────────────────
 
 /**

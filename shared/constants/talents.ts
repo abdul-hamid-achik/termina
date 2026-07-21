@@ -34,6 +34,13 @@ export interface Talent {
   damageBoost?: number // percentage
   // Special effects
   specialEffect?: string // Description of unique effect
+  /**
+   * Mechanical cast effect granted when this talent is selected (a tier-25
+   * "exotic" upgrade). Unlike the numeric modifiers above, these change HOW an
+   * ability behaves. Currently:
+   * - 'double_cast': each cast of the talent's ability has a chance to fire twice.
+   */
+  castEffect?: 'double_cast'
 }
 
 export interface TalentTree {
@@ -114,12 +121,13 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       25: [
         {
           id: 'echo_25_left',
-          name: '+40% Echo Ultimate Damage',
-          description: 'Echo Ultimate deals 40% more damage',
-          type: 'damage_boost',
+          name: 'Double Echo',
+          description: 'Echo Streak (Q) has a 25% chance to cast twice',
+          type: 'special',
           tier: 25,
-          abilityId: 'r',
-          damageBoost: 40,
+          abilityId: 'q',
+          castEffect: 'double_cast',
+          specialEffect: 'Double Echo (Q) — 25% chance to cast twice',
         },
         {
           id: 'echo_25_right',
@@ -1137,12 +1145,13 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'lambda_25_right',
-          name: '+40% Reduce Damage',
-          description: 'Reduce (R) channels 40% more magical damage into the target',
-          type: 'damage_boost',
+          name: 'Double Cast',
+          description: 'Your Q has a 25% chance to cast twice',
+          type: 'special',
           tier: 25,
-          abilityId: 'r',
-          damageBoost: 40,
+          abilityId: 'q',
+          castEffect: 'double_cast',
+          specialEffect: 'Double Cast (Q) — 25% chance to cast twice',
         },
       ],
     },
