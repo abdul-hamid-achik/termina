@@ -6,6 +6,7 @@ export const GAME_MODE_LABELS = {
   ranked_5v5: 'Ranked 5v5',
   quick_3v3: 'Quick 3v3',
   '1v1': '1v1 Duel',
+  casual_5v5: 'Co-op 5v5',
 } as const
 
 export type GameMode = keyof typeof GAME_MODE_LABELS

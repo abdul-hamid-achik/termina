@@ -6,10 +6,16 @@ describe('formatGameMode', () => {
     expect(formatGameMode('ranked_5v5')).toBe('Ranked 5v5')
     expect(formatGameMode('quick_3v3')).toBe('Quick 3v3')
     expect(formatGameMode('1v1')).toBe('1v1 Duel')
+    expect(formatGameMode('casual_5v5')).toBe('Co-op 5v5')
   })
 
   it('covers exactly the labelled modes', () => {
-    expect(Object.keys(GAME_MODE_LABELS).sort()).toEqual(['1v1', 'quick_3v3', 'ranked_5v5'])
+    expect(Object.keys(GAME_MODE_LABELS).sort()).toEqual([
+      '1v1',
+      'casual_5v5',
+      'quick_3v3',
+      'ranked_5v5',
+    ])
   })
 
   it('degrades an unknown/legacy mode to underscores-as-spaces (no raw enum leak)', () => {
