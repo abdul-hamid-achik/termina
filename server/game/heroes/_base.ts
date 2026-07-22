@@ -10,6 +10,7 @@ import {
 } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
 import { getTalentTree } from '~~/shared/constants/talents'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 // ── Typed Errors ──────────────────────────────────────────────────
@@ -222,6 +223,26 @@ export function getEnemiesInZone(
   zone?: string,
 ): PlayerState[] {
   return getPlayersInZone(state, zone ?? player.zone).filter((p) => p.team !== player.team)
+}
+
+/**
+ * Alive enemies in the player's zone AND every adjacent zone — the AOE+ exotic
+ * talent widens an ability's reach this way (deduped by id so a target is only
+ * hit once even if it somehow appears in two listed zones).
+ */
+export function getEnemiesInZoneAndAdjacent(state: GameState, player: PlayerState): PlayerState[] {
+  const zoneIds = [player.zone, ...(ZONE_MAP[player.zone]?.adjacentTo ?? [])]
+  const seen = new Set<string>()
+  const out: PlayerState[] = []
+  for (const zoneId of zoneIds) {
+    for (const p of getPlayersInZone(state, zoneId)) {
+      if (p.team !== player.team && !seen.has(p.id)) {
+        seen.add(p.id)
+        out.push(p)
+      }
+    }
+  }
+  return out
 }
 
 export function getAlliesInZone(

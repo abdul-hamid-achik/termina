@@ -21,8 +21,9 @@ export type TalentType =
  * - 'double_cast': each cast of the talent's ability has a chance to fire twice.
  * - 'spell_lifesteal': ability damage dealt to enemy heroes heals the caster.
  * - 'global_ultimate': the talented R can target a hero in any zone (no range limit).
+ * - 'aoe_bonus': the talented ability also hits enemies in adjacent zones.
  */
-export type CastEffect = 'double_cast' | 'spell_lifesteal' | 'global_ultimate'
+export type CastEffect = 'double_cast' | 'spell_lifesteal' | 'global_ultimate' | 'aoe_bonus'
 
 export interface Talent {
   id: string
@@ -1416,11 +1417,13 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'null_ref_25_right',
-          name: '+20 Magic Resistance',
-          description: '+20 Magic Resistance — survive enemy nukes on the fragile mage',
-          type: 'stat_bonus',
+          name: 'Cascading Dereference',
+          description: 'Dereference (R) also hits enemies in adjacent zones — wider AoE',
+          type: 'special',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 20 },
+          abilityId: 'r',
+          castEffect: 'aoe_bonus',
+          specialEffect: 'Cascading Dereference (R) — AoE reaches adjacent zones',
         },
       ],
     },

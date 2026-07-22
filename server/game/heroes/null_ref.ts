@@ -11,6 +11,7 @@ import {
   scaleValue,
   findTargetPlayer,
   getEnemiesInZone,
+  getEnemiesInZoneAndAdjacent,
   dealAbilityDamage,
   deductMana,
   setCooldown,
@@ -18,6 +19,7 @@ import {
   updatePlayer,
   updatePlayers,
 } from './_base'
+import { hasTalentCastEffect } from '~~/server/game/engine/EffectiveStats'
 
 // ── Scaling Values ────────────────────────────────────────────────
 
@@ -254,7 +256,11 @@ function resolveR(
     let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
-    const enemies = getEnemiesInZone(state, player)
+    // AOE+ exotic: the tier-25 talent widens Dereference to enemies in adjacent
+    // zones too, not just the caster's own zone.
+    const enemies = hasTalentCastEffect(player, 'aoe_bonus', 'r')
+      ? getEnemiesInZoneAndAdjacent(state, player)
+      : getEnemiesInZone(state, player)
     const baseDamage = scaleValue(R_DAMAGE, level)
 
     const updatedEnemies = enemies.map((e) => {

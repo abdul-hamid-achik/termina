@@ -187,9 +187,9 @@ Each hero has 8 talents (2 choices × 4 tiers):
 **Level 20** - Major power spikes (+30% damage or +25% resist)
 **Level 25** - Exotic upgrades: a few heroes get a mechanical transform — e.g.
 Echo's _Double Echo_ / Lambda's _Double Cast_ (Q has a 25% chance to fire twice),
-Daemon's _Soul Siphon_ (ability damage heals you), and Regex's _Global
-Backtracking_ (R can target a hero in any zone). The rest are large numeric
-bonuses; more exotic transforms (AOE+) are future work
+Daemon's _Soul Siphon_ (ability damage heals you), Regex's _Global Backtracking_
+(R can target a hero in any zone), and Null's _Cascading Dereference_ (R also hits
+adjacent zones). The rest are large numeric bonuses
 
 Example (Echo):
 ```

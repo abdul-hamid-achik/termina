@@ -349,6 +349,49 @@ describe('Null (null_ref) Hero', () => {
       expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
     })
 
+    it('AOE+ talent (Cascading Dereference) also hits enemies in adjacent zones', () => {
+      const player = makePlayer({
+        level: 6,
+        mp: 500,
+        talents: { tier10: null, tier15: null, tier20: null, tier25: 'null_ref_25_right' },
+      })
+      const enemyInZone = makeEnemy({ hp: 800, maxHp: 800 })
+      // mid-t1-dire is adjacent to mid-river (the caster's zone).
+      const enemyAdjacent = makeEnemy({
+        id: 'e2',
+        name: 'Enemy2',
+        zone: 'mid-t1-dire',
+        hp: 800,
+        maxHp: 800,
+      })
+      const state = makeState([player, enemyInZone, enemyAdjacent])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+
+      // Both the in-zone enemy and the adjacent-zone enemy are hit with AOE+.
+      expect(result.state.players['e1']!.hp).toBeLessThan(enemyInZone.hp)
+      expect(result.state.players['e2']!.hp).toBeLessThan(enemyAdjacent.hp)
+    })
+
+    it('without AOE+ talent, Dereference does not hit enemies in adjacent zones', () => {
+      const player = makePlayer({ level: 6, mp: 500 }) // no tier-25 talent
+      const enemyInZone = makeEnemy({ hp: 800, maxHp: 800 })
+      const enemyAdjacent = makeEnemy({
+        id: 'e2',
+        name: 'Enemy2',
+        zone: 'mid-t1-dire',
+        hp: 800,
+        maxHp: 800,
+      })
+      const state = makeState([player, enemyInZone, enemyAdjacent])
+
+      const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
+
+      // In-zone enemy hit; adjacent-zone enemy untouched.
+      expect(result.state.players['e1']!.hp).toBeLessThan(enemyInZone.hp)
+      expect(result.state.players['e2']!.hp).toBe(enemyAdjacent.hp)
+    })
+
     it('deals 50% bonus damage to enemies below 25% HP', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       // Give both enemies high HP pools so neither dies, but set current HP differently
