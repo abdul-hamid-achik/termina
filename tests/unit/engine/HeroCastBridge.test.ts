@@ -197,6 +197,51 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     })
   })
 
+  describe('tier-25 exotic: spell lifesteal', () => {
+    // Daemon's E (Sudo) is an execute that only lands below 30% HP, so the
+    // target starts low. We compare the caster's HP with vs without the talent
+    // (rather than an absolute value) so the assertion is robust to any other
+    // HP changes in the tick.
+    const target = () =>
+      makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'dire', hp: 100, maxHp: 1000 })
+    const castE: PlayerAction[] = [
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'e', target: { kind: 'hero', name: 'p2' } },
+      },
+    ]
+    const daemon = (talent25: string | null) =>
+      makeHero('daemon', {
+        id: 'p1',
+        team: 'radiant',
+        level: 5,
+        hp: 200,
+        maxHp: 1000,
+        mp: 2000,
+        maxMp: 2000,
+        talents: { tier10: null, tier15: null, tier20: null, tier25: talent25 },
+      })
+
+    it('heals the caster for a fraction of ability damage dealt to enemy heroes', () => {
+      const result = run(
+        makeGameState({ players: { p1: daemon('daemon_25_right'), p2: target() } }),
+        castE,
+      )
+      const heal = result.events.find((e) => e._tag === 'heal' && e.targetId === 'p1')
+      expect(heal).toBeDefined()
+      expect((heal as { amount?: number }).amount).toBeGreaterThan(0)
+    })
+
+    it('ends with more HP than an identical cast without the talent', () => {
+      const withTalent = run(
+        makeGameState({ players: { p1: daemon('daemon_25_right'), p2: target() } }),
+        castE,
+      )
+      const without = run(makeGameState({ players: { p1: daemon(null), p2: target() } }), castE)
+      expect(withTalent.state.players['p1']!.hp).toBeGreaterThan(without.state.players['p1']!.hp)
+    })
+  })
+
   it('buff honors the resolver effect value (mutex W shield stacks = 180 at rank 1)', () => {
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1' }) },

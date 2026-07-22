@@ -8,7 +8,7 @@ import {
   hasBuff,
   getBuffStacks,
 } from '../../../server/game/heroes/_base'
-import { getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
+import { hasTalentCastEffect } from '../../../server/game/engine/EffectiveStats'
 import { TALENT_TREES } from '../../../shared/constants/talents'
 // Register daemon hero
 import '../../../server/game/heroes/daemon'
@@ -420,18 +420,23 @@ describe('Daemon Hero', () => {
       expect(result.state.players['p1']!.mp).toBe(268)
     })
 
-    it('daemon_25_right grants +50 attack via getTalentStatBonus (was the dead execute no-op)', () => {
+    it('daemon_25_right grants the spell-lifesteal exotic (Soul Siphon)', () => {
       const player = makePlayer({
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'daemon_25_right' },
       })
-      expect(getTalentStatBonus(player, 'attack')).toBe(50)
+      expect(hasTalentCastEffect(player, 'spell_lifesteal')).toBe(true)
     })
 
     it('no daemon talent is a dead specialEffect no-op anymore', () => {
       for (const t of Object.values(TALENT_TREES.daemon.tiers).flat()) {
-        expect(t.type).not.toBe('special')
         expect(t.type).not.toBe('ability_boost')
-        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+        // 'special' talents are valid only when wired via a castEffect.
+        if (t.type === 'special' || (t as { specialEffect?: string }).specialEffect) {
+          expect(
+            (t as { castEffect?: string }).castEffect,
+            `daemon ${t.id} is special without a wired castEffect (dead no-op)`,
+          ).toBeDefined()
+        }
       }
     })
   })

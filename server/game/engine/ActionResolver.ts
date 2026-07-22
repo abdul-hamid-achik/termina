@@ -78,6 +78,7 @@ import {
   HEART_REGEN_PERCENT,
   SELL_REFUND_RATIO,
   DOUBLE_CAST_CHANCE,
+  SPELL_LIFESTEAL_PERCENT,
 } from '~~/shared/constants/balance'
 import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
@@ -2017,6 +2018,8 @@ function resolveHeroCast(
   const hasOverclock = !!newPlayers[action.playerId]?.buffs.some(
     (b) => b.id === 'stack_overflow_buff',
   )
+  // Damage this cast deals to enemy heroes — feeds the spell-lifesteal exotic.
+  let castDamageToEnemies = 0
   for (const [pid, post] of Object.entries(newPlayers)) {
     const pre = players[pid]
     if (!pre) continue
@@ -2040,6 +2043,7 @@ function resolveHeroCast(
         const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
         dt.hero += delta
         damageTracker.set(action.playerId, dt)
+        castDamageToEnemies += delta
 
         // Blade Mail: an enemy hero hit by this cast reflects the HP it lost
         // back at the caster as pure damage — the same computeBladeMailReflect
@@ -2141,6 +2145,7 @@ function resolveHeroCast(
               const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
               dt.hero += delta
               damageTracker.set(action.playerId, dt)
+              castDamageToEnemies += delta
             }
           } else if (delta < 0) {
             events.push({
@@ -2153,6 +2158,32 @@ function resolveHeroCast(
           }
         }
         newPlayers = echoNewPlayers
+      }
+    }
+  }
+
+  // Tier-25 exotic — spell lifesteal: heal the caster for a fraction of the
+  // damage this cast dealt to enemy heroes (capped at max HP). Applies to the
+  // double-cast echo's damage too, since castDamageToEnemies spans both.
+  if (hasTalentCastEffect(caster, 'spell_lifesteal') && castDamageToEnemies > 0) {
+    const lc = newPlayers[action.playerId]
+    if (lc && lc.alive) {
+      const healAmount = Math.min(
+        Math.floor(SPELL_LIFESTEAL_PERCENT * castDamageToEnemies),
+        Math.max(0, lc.maxHp - lc.hp),
+      )
+      if (healAmount > 0) {
+        newPlayers = {
+          ...newPlayers,
+          [action.playerId]: { ...lc, hp: lc.hp + healAmount },
+        }
+        events.push({
+          _tag: 'heal',
+          tick: state.tick,
+          sourceId: action.playerId,
+          targetId: action.playerId,
+          amount: healAmount,
+        })
       }
     }
   }

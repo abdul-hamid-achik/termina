@@ -88,6 +88,12 @@ export const XP_COMEBACK_FULL_LEVEL_GAP = 5
  */
 export const DOUBLE_CAST_CHANCE = 0.25
 
+/**
+ * Tier-25 "spell lifesteal" exotic talent: ability damage dealt to enemy heroes
+ * heals the caster for this fraction of the damage dealt.
+ */
+export const SPELL_LIFESTEAL_PERCENT = 0.3
+
 // ── Respawn ──────────────────────────────────────────────────────
 
 /**

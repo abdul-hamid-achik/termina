@@ -16,6 +16,13 @@ export type TalentType =
   | 'damage_boost' // +X% damage
   | 'special' // Unique hero-specific effect
 
+/**
+ * Mechanical cast effects granted by tier-25 "exotic" talents (Talent.castEffect).
+ * - 'double_cast': each cast of the talent's ability has a chance to fire twice.
+ * - 'spell_lifesteal': ability damage dealt to enemy heroes heals the caster.
+ */
+export type CastEffect = 'double_cast' | 'spell_lifesteal'
+
 export interface Talent {
   id: string
   name: string
@@ -37,10 +44,9 @@ export interface Talent {
   /**
    * Mechanical cast effect granted when this talent is selected (a tier-25
    * "exotic" upgrade). Unlike the numeric modifiers above, these change HOW an
-   * ability behaves. Currently:
-   * - 'double_cast': each cast of the talent's ability has a chance to fire twice.
+   * ability behaves. See CastEffect for the available effects.
    */
-  castEffect?: 'double_cast'
+  castEffect?: CastEffect
 }
 
 export interface TalentTree {
@@ -217,11 +223,12 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'daemon_25_right',
-          name: '+50 Attack Damage',
-          description: 'Increases attack damage by 50',
-          type: 'stat_bonus',
+          name: 'Soul Siphon',
+          description: 'Ability damage dealt to enemy heroes heals you for 30%',
+          type: 'special',
           tier: 25,
-          statBonus: { stat: 'attack', value: 50 },
+          castEffect: 'spell_lifesteal',
+          specialEffect: 'Soul Siphon — ability damage heals you for 30%',
         },
       ],
     },

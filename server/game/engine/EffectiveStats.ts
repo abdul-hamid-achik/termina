@@ -16,7 +16,7 @@ import type { PlayerState } from '~~/shared/types/game'
 import type { ItemStats } from '~~/shared/types/items'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
-import { getTalentTree, type Talent } from '~~/shared/constants/talents'
+import { getTalentTree, type Talent, type CastEffect } from '~~/shared/constants/talents'
 
 // Mirrors mutex.ts DEADLOCK_* constants
 const DEADLOCK_ATTACK_PER_STACK = 3
@@ -87,7 +87,7 @@ export function getTalentStatBonus(
  */
 export function hasTalentCastEffect(
   player: PlayerState,
-  effect: 'double_cast',
+  effect: CastEffect,
   abilityId?: 'q' | 'w' | 'e' | 'r',
 ): boolean {
   return getSelectedTalents(player).some(
