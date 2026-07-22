@@ -242,6 +242,62 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     })
   })
 
+  describe('tier-25 exotic: global ultimate', () => {
+    // regex's R (Catastrophic Backtracking) is a single-target ability with a
+    // same-zone check — a clean target for the global_ultimate exotic.
+    const regexCaster = (talent25: string | null) =>
+      makeHero('regex', {
+        id: 'p1',
+        team: 'radiant',
+        level: 6,
+        zone: 'mid-river',
+        mp: 2000,
+        maxMp: 2000,
+        talents: { tier10: null, tier15: null, tier20: null, tier25: talent25 },
+      })
+    // Target in a DIFFERENT zone than the caster.
+    const distantTarget = () =>
+      makeHero('mutex', {
+        id: 'p2',
+        name: 'Enemy',
+        team: 'dire',
+        zone: 'top-river',
+        mp: 100,
+        maxMp: 500,
+      })
+    const castR: PlayerAction[] = [
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'r', target: { kind: 'hero', name: 'p2' } },
+      },
+    ]
+
+    it('lets the talented R hit a hero in another zone', () => {
+      const result = run(
+        makeGameState({ players: { p1: regexCaster('regex_25_right'), p2: distantTarget() } }),
+        castR,
+      )
+      expect(result.rejected).toHaveLength(0)
+    })
+
+    it('still rejects an out-of-zone R without the talent', () => {
+      const result = run(
+        makeGameState({ players: { p1: regexCaster(null), p2: distantTarget() } }),
+        castR,
+      )
+      expect(result.rejected.length).toBeGreaterThan(0)
+      expect(result.rejected[0]!.reason).toMatch(/zone/i)
+    })
+
+    it('does not move the caster (zone restored after the global cast)', () => {
+      const result = run(
+        makeGameState({ players: { p1: regexCaster('regex_25_right'), p2: distantTarget() } }),
+        castR,
+      )
+      expect(result.state.players['p1']!.zone).toBe('mid-river')
+    })
+  })
+
   it('buff honors the resolver effect value (mutex W shield stacks = 180 at rank 1)', () => {
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1' }) },

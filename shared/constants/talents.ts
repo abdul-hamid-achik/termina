@@ -20,8 +20,9 @@ export type TalentType =
  * Mechanical cast effects granted by tier-25 "exotic" talents (Talent.castEffect).
  * - 'double_cast': each cast of the talent's ability has a chance to fire twice.
  * - 'spell_lifesteal': ability damage dealt to enemy heroes heals the caster.
+ * - 'global_ultimate': the talented R can target a hero in any zone (no range limit).
  */
-export type CastEffect = 'double_cast' | 'spell_lifesteal'
+export type CastEffect = 'double_cast' | 'spell_lifesteal' | 'global_ultimate'
 
 export interface Talent {
   id: string
@@ -389,12 +390,14 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'regex_25_right',
-          name: '-12s Backtracking CD',
-          description: 'Catastrophic Backtracking cooldown reduced by 12 seconds',
-          type: 'cooldown_reduce',
+          name: 'Global Backtracking',
+          description:
+            'Catastrophic Backtracking (R) can target a hero in any zone — no range limit',
+          type: 'special',
           tier: 25,
           abilityId: 'r',
-          cooldownReduction: 12,
+          castEffect: 'global_ultimate',
+          specialEffect: 'Global Backtracking (R) — silence + mana-burn any hero, anywhere',
         },
       ],
     },

@@ -3,6 +3,7 @@ import { Effect } from 'effect'
 import type { GameState, PlayerState } from '../../../shared/types/game'
 import { resolveAbility } from '../../../server/game/heroes/_base'
 import { TALENT_TREES } from '../../../shared/constants/talents'
+import { hasTalentCastEffect } from '../../../server/game/engine/EffectiveStats'
 import '../../../server/game/heroes/regex'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -477,19 +478,13 @@ describe('Regex Hero', () => {
       expect(result.state.players['p1']!.cooldowns.w).toBe(8)
     })
 
-    it('regex_25_right reduces Backtracking cooldown by 12 (was the dead triple_cast no-op)', () => {
+    it('regex_25_right grants the global-ultimate exotic (Global Backtracking)', () => {
       const player = makePlayer({
         level: 6,
         mp: 500,
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'regex_25_right' },
       })
-      const enemy = makeEnemy()
-      const state = makeState([player, enemy])
-
-      const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
-
-      // R_COOLDOWN (60) − 12
-      expect(result.state.players['p1']!.cooldowns.r).toBe(48)
+      expect(hasTalentCastEffect(player, 'global_ultimate', 'r')).toBe(true)
     })
 
     it('regex_25_left boosts Backtracking damage (was the dead global_ultimate no-op)', () => {
@@ -527,9 +522,14 @@ describe('Regex Hero', () => {
 
     it('no regex talent is a dead specialEffect no-op anymore', () => {
       for (const t of Object.values(TALENT_TREES.regex.tiers).flat()) {
-        expect(t.type).not.toBe('special')
         expect(t.type).not.toBe('ability_boost')
-        expect((t as { specialEffect?: string }).specialEffect).toBeUndefined()
+        // 'special' talents are valid only when wired via a castEffect.
+        if (t.type === 'special' || (t as { specialEffect?: string }).specialEffect) {
+          expect(
+            (t as { castEffect?: string }).castEffect,
+            `regex ${t.id} is special without a wired castEffect (dead no-op)`,
+          ).toBeDefined()
+        }
       }
     })
   })

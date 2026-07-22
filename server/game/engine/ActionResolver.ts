@@ -1953,7 +1953,25 @@ function resolveHeroCast(
   const caster = players[action.playerId]
   if (!caster?.heroId) return { players, zones }
 
-  const tempState: GameState = { ...state, players, zones, creeps, towers, ancients }
+  // Tier-25 exotic — global ultimate: the talented R can hit a hero in ANY zone.
+  // The per-hero resolvers enforce a same-zone check, so we satisfy it by
+  // temporarily placing the caster in the target's zone for the resolver call,
+  // then restore the caster's real zone on the way out (the caster never moves).
+  const isGlobalUlt =
+    cmd.ability === 'r' &&
+    cmd.target?.kind === 'hero' &&
+    hasTalentCastEffect(caster, 'global_ultimate', 'r')
+  const realCasterZone = caster.zone
+  let castPlayers = players
+  if (isGlobalUlt && cmd.target?.kind === 'hero') {
+    const targetId = findHero(cmd.target.name)
+    const targetZone = targetId ? players[targetId]?.zone : undefined
+    if (targetZone && targetZone !== caster.zone) {
+      castPlayers = { ...players, [action.playerId]: { ...caster, zone: targetZone } }
+    }
+  }
+
+  const tempState: GameState = { ...state, players: castPlayers, zones, creeps, towers, ancients }
   // Effect.either keeps AbilityError failures as values — an uncaught defect
   // here would abort the entire tick (GameLoop recovers but loses actions).
   const result = Effect.runSync(
@@ -1982,6 +2000,12 @@ function resolveHeroCast(
 
   const newState = result.right.state
   let newPlayers = newState.players
+  // Restore the caster's real zone after a global ult — the resolver only saw
+  // them in the target's zone to pass the same-zone check; they never moved.
+  if (isGlobalUlt && newPlayers[action.playerId]) {
+    const restored: PlayerState = { ...newPlayers[action.playerId]!, zone: realCasterZone }
+    newPlayers = { ...newPlayers, [action.playerId]: restored }
+  }
   const abilityDef = HEROES[caster.heroId]?.abilities[cmd.ability]
   const damageType = abilityDef?.damageType ?? 'magical'
 
