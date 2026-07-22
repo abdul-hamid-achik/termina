@@ -1,0 +1,16 @@
+@baseUrl = http://localhost:3000
+
+### Admin rotate-season: disabled when TERMINA_ADMIN_KEY is not configured
+# In the test/dev environment TERMINA_ADMIN_KEY is unset, so the endpoint is
+# disabled and refuses the rotation (it is never accidentally open). A real
+# deployment sets TERMINA_ADMIN_KEY and authenticates via the x-admin-key header.
+# @name adminRotateSeasonNotConfigured
+POST {{baseUrl}}/api/admin/rotate-season
+Content-Type: application/json
+
+{}
+
+>>>
+expect status 403
+expect body.message contains "not configured"
+<<<

@@ -150,3 +150,17 @@ Cookie: {{qCookie}}
 expect status 400
 expect body.message contains "Missing lobbyId or heroId"
 <<<
+
+### Queue ban: missing body fields
+# @name queueBanMissing
+# @depends setupQueueUser
+POST {{baseUrl}}/api/queue/ban
+Content-Type: application/json
+Cookie: {{qCookie}}
+
+{}
+
+>>>
+expect status 400
+expect body.message contains "Missing lobbyId or heroId"
+<<<

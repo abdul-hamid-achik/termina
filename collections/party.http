@@ -1,0 +1,125 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user for party tests
+# @name setupPartyUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "party_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+partyCookie from header Set-Cookie
+<<<
+
+### Party status: not in a party initially
+# @name partyStatusNone
+# @depends setupPartyUser
+GET {{baseUrl}}/api/party/status
+Cookie: {{partyCookie}}
+
+>>>
+expect status 200
+expect body.party == null
+<<<
+
+### Party create: successful
+# @name partyCreate
+# @depends partyStatusNone
+POST {{baseUrl}}/api/party/create
+Content-Type: application/json
+Cookie: {{partyCookie}}
+
+{}
+
+>>>
+expect status 200
+expect body.party.code exists
+expect body.party.leaderId exists
+expect body.party.members exists
+<<<
+
+### Party status: in party after create
+# @name partyStatusInParty
+# @depends partyCreate
+GET {{baseUrl}}/api/party/status
+Cookie: {{partyCookie}}
+
+>>>
+expect status 200
+expect body.party.code exists
+expect body.party.members exists
+<<<
+
+### Party leave: successful
+# @name partyLeave
+# @depends partyStatusInParty
+POST {{baseUrl}}/api/party/leave
+Content-Type: application/json
+Cookie: {{partyCookie}}
+
+>>>
+expect status 200
+expect body.success == true
+<<<
+
+### Party status: not in a party after leave
+# @name partyStatusAfterLeave
+# @depends partyLeave
+GET {{baseUrl}}/api/party/status
+Cookie: {{partyCookie}}
+
+>>>
+expect status 200
+expect body.party == null
+<<<
+
+### Party join: missing code
+# @name partyJoinMissingCode
+# @depends partyStatusAfterLeave
+POST {{baseUrl}}/api/party/join
+Content-Type: application/json
+Cookie: {{partyCookie}}
+
+{}
+
+>>>
+expect status 400
+expect body.message contains "Missing party code"
+<<<
+
+### Party join: nonexistent code
+# @name partyJoinNotFound
+# @depends partyJoinMissingCode
+POST {{baseUrl}}/api/party/join
+Content-Type: application/json
+Cookie: {{partyCookie}}
+
+{
+  "code": "ZZZZZ"
+}
+
+>>>
+expect status 400
+expect body.message contains "Party not found"
+<<<
+
+### Party start-coop: rejected when not in a party
+# @name partyStartCoopNoParty
+# @depends partyJoinNotFound
+POST {{baseUrl}}/api/party/start-coop
+Content-Type: application/json
+Cookie: {{partyCookie}}
+
+{}
+
+>>>
+expect status 400
+expect body.message contains "not in a party"
+<<<

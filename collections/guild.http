@@ -1,0 +1,128 @@
+@baseUrl = http://localhost:3000
+
+### Setup: register a user for guild tests
+# @name setupGuildUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "guild_{{$random(10000, 99999)}}",
+  "password": "TestPass123!"
+}
+
+>>>
+expect status 200
+<<<
+
+>>>capture
+guildCookie from header Set-Cookie
+<<<
+
+### Guild my: not in a guild initially
+# @name guildMyNone
+# @depends setupGuildUser
+GET {{baseUrl}}/api/guild/my
+Cookie: {{guildCookie}}
+
+>>>
+expect status 200
+expect body.guild == null
+<<<
+
+### Guild create: successful
+# @name guildCreate
+# @depends guildMyNone
+POST {{baseUrl}}/api/guild/create
+Content-Type: application/json
+Cookie: {{guildCookie}}
+
+{
+  "name": "guild_{{$random(10000, 99999)}}",
+  "tag": "TST"
+}
+
+>>>
+expect status 200
+expect body.guild.id exists
+expect body.guild.tag == "TST"
+<<<
+
+### Guild my: in guild after create (with members)
+# @name guildMyInGuild
+# @depends guildCreate
+GET {{baseUrl}}/api/guild/my
+Cookie: {{guildCookie}}
+
+>>>
+expect status 200
+expect body.guild.id exists
+expect body.members exists
+<<<
+
+### Guild list: includes guilds
+# @name guildList
+# @depends guildMyInGuild
+GET {{baseUrl}}/api/guild/list
+Cookie: {{guildCookie}}
+
+>>>
+expect status 200
+expect body.guilds exists
+<<<
+
+### Guild leave: successful
+# @name guildLeave
+# @depends guildList
+POST {{baseUrl}}/api/guild/leave
+Content-Type: application/json
+Cookie: {{guildCookie}}
+
+>>>
+expect status 200
+expect body.success == true
+<<<
+
+### Guild my: not in a guild after leave
+# @name guildMyAfterLeave
+# @depends guildLeave
+GET {{baseUrl}}/api/guild/my
+Cookie: {{guildCookie}}
+
+>>>
+expect status 200
+expect body.guild == null
+<<<
+
+### Guild create: name too short
+# @name guildCreateShortName
+# @depends guildMyAfterLeave
+POST {{baseUrl}}/api/guild/create
+Content-Type: application/json
+Cookie: {{guildCookie}}
+
+{
+  "name": "ab",
+  "tag": "TST"
+}
+
+>>>
+expect status 400
+expect body.message contains "3-24 characters"
+<<<
+
+### Guild create: tag too short
+# @name guildCreateShortTag
+# @depends guildCreateShortName
+POST {{baseUrl}}/api/guild/create
+Content-Type: application/json
+Cookie: {{guildCookie}}
+
+{
+  "name": "valid guild name",
+  "tag": "A"
+}
+
+>>>
+expect status 400
+expect body.message contains "2-5 characters"
+<<<
