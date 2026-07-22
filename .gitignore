@@ -42,6 +42,9 @@ tests/e2e/runs/
 # Claude
 .claude/worktrees/
 
+# Qwen session artifacts (review reports, etc.)
+.qwen-review/
+
 # Cairntrace JUnit report (written by test:e2e:ci)
 tests/e2e/junit.xml
 
