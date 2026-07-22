@@ -130,7 +130,9 @@ describe('exotic tier-25 cast effects', () => {
         },
       }))
     const dmgFromMe = () =>
-      game.lastEvents.some((e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY)
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )
 
     // No talent: R is out of range → no damage from the caster.
     await setup(null)
@@ -166,7 +168,9 @@ describe('exotic tier-25 cast effects', () => {
         },
       }))
     const dmgFromMe = () =>
-      game.lastEvents.some((e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY)
+      game.lastEvents.some(
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+      )
 
     // No talent: Dereference (untargeted AOE) only hits the caster's own zone.
     await setup(null)
