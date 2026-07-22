@@ -363,6 +363,7 @@ export function filterStateForPlayer(
         filteredPlayers[pid] = {
           id: p.id,
           name: p.name,
+          guildTag: p.guildTag,
           team: p.team,
           heroId: p.heroId,
           level: p.level,
@@ -382,6 +383,7 @@ export function filterStateForPlayer(
       filteredPlayers[pid] = {
         id: p.id,
         name: p.name,
+        guildTag: p.guildTag,
         team: p.team,
         heroId: p.heroId,
         level: p.level,

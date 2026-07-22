@@ -80,6 +80,8 @@ export interface DatabaseServiceApi {
   readonly getGuildMembers: (guildId: string) => Effect.Effect<Player[]>
   readonly listGuilds: (limit?: number) => Effect.Effect<Guild[]>
   readonly getGuildsByIds: (ids: string[]) => Effect.Effect<Guild[]>
+  /** Resolve playerId → guild tag for a batch of players (for in-game display). */
+  readonly getGuildTagsForPlayers: (playerIds: string[]) => Effect.Effect<Record<string, string>>
   readonly joinGuild: (guildId: string, playerId: string) => Effect.Effect<void>
   readonly leaveGuild: (playerId: string) => Effect.Effect<void>
   readonly getPlayerByUsername: (username: string) => Effect.Effect<Player | null>
@@ -468,6 +470,20 @@ export const DatabaseServiceLive = Layer.succeed(DatabaseService, {
       if (ids.length === 0) return []
       const db = useDb()
       return db.select().from(guilds).where(inArray(guilds.id, ids))
+    }),
+
+  getGuildTagsForPlayers: (playerIds) =>
+    Effect.promise(async () => {
+      if (playerIds.length === 0) return {}
+      const db = useDb()
+      const rows = await db
+        .select({ playerId: players.id, tag: guilds.tag })
+        .from(players)
+        .innerJoin(guilds, eq(players.guildId, guilds.id))
+        .where(inArray(players.id, playerIds))
+      const out: Record<string, string> = {}
+      for (const r of rows) out[r.playerId] = r.tag
+      return out
     }),
 
   joinGuild: (guildId, playerId) =>

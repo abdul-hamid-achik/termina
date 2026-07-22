@@ -26,6 +26,7 @@ export interface PlayerSetup {
   name: string
   team: TeamId
   heroId: string | null
+  guildTag?: string
 }
 
 // ── Service interface ──────────────────────────────────────────
@@ -71,6 +72,7 @@ function createPlayerState(setup: PlayerSetup): PlayerState {
   return {
     id: setup.id,
     name: setup.name,
+    guildTag: setup.guildTag,
     team: setup.team,
     heroId: setup.heroId,
     zone: setup.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain',

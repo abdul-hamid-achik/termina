@@ -38,6 +38,8 @@ const COUNTDOWN_REFRESH_MS = 100
 export interface ScoreboardEntry {
   id: string
   name: string
+  /** Guild/clan tag (public identity) — shown next to the name. */
+  guildTag?: string
   heroId: string
   team: TeamId
   kills: number
@@ -346,6 +348,7 @@ export const useGameStore = defineStore('game', () => {
       return {
         id: p.id,
         name: p.name,
+        guildTag: (p as { guildTag?: string }).guildTag,
         heroId: p.heroId ?? '',
         team: p.team,
         kills: p.kills ?? 0,

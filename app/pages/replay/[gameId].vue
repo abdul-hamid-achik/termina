@@ -167,6 +167,7 @@ const direPlayers = computed(() => {
 // hero id is resolved from the match meta (frames carry no heroId per player).
 function toScoreRow(p: {
   id: string
+  guildTag?: string
   level: number
   hp?: number
   maxHp?: number
@@ -180,6 +181,7 @@ function toScoreRow(p: {
   return {
     id: p.id,
     heroName: heroName(heroIdForPlayer(p.id)),
+    guildTag: p.guildTag,
     level: p.level,
     hp: p.hp,
     maxHp: p.maxHp,

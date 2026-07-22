@@ -734,12 +734,20 @@ export default defineNitroPlugin(async (nitroApp) => {
         const stateManager = createInMemoryStateManager()
         registerLiveGame(gameId, stateManager)
 
+        // Resolve guild tags for in-game display (humans only — bots have none).
+        // Best-effort: a DB hiccup just leaves tags undefined, never blocks the game.
+        const humanIds = gameData.players.filter((p) => !isBot(p.playerId)).map((p) => p.playerId)
+        const guildTags = await managedRuntime
+          .runPromise(db.getGuildTagsForPlayers(humanIds))
+          .catch(() => ({}) as Record<string, string>)
+
         // Create player setups
         const playerSetups = gameData.players.map((p) => ({
           id: p.playerId,
           name: p.playerId,
           team: p.team,
           heroId: p.heroId,
+          guildTag: guildTags[p.playerId],
         }))
 
         // Initialise game state in a single Effect pipeline

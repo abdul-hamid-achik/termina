@@ -10,6 +10,8 @@
 export interface PlayerScoreRow {
   id: string
   heroName: string
+  /** Guild/clan tag (public identity) — shown next to the hero name. */
+  guildTag?: string
   level: number
   /** hp/maxHp are optional — the replay end-state snapshot (shown before frames
    *  load) carries no HP, so the cell renders "?" when either is absent. */
@@ -58,7 +60,12 @@ defineProps<{
           :class="{ 'opacity-50': !p.alive }"
         >
           <th scope="row" class="px-2 py-1 font-normal">
-            {{ p.heroName }}
+            <span
+              v-if="p.guildTag"
+              class="mr-1 text-[0.6rem] text-ability"
+              data-testid="score-guild-tag"
+              >[{{ p.guildTag }}]</span
+            >{{ p.heroName }}
             <span v-if="p.aiControlled" class="text-warn t-caption" title="AFK — bot">[AI]</span>
           </th>
           <td class="px-2 py-1 text-gold">{{ p.level }}</td>

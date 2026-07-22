@@ -130,6 +130,7 @@ function toRow(p: PlayerState): PlayerScoreRow {
   return {
     id: p.id,
     heroName: heroName(p.heroId),
+    guildTag: p.guildTag,
     level: p.level,
     hp: p.hp,
     maxHp: p.maxHp,

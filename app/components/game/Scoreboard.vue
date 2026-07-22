@@ -133,7 +133,12 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
                 <div v-else class="scoreboard__no-avatar">?</div>
               </div>
               <div class="scoreboard__col scoreboard__col--name" :title="player.name">
-                {{ player.name }}
+                <span
+                  v-if="player.guildTag"
+                  class="mr-1 text-[0.6rem] text-ability"
+                  data-testid="scoreboard-guild-tag"
+                  >[{{ player.guildTag }}]</span
+                >{{ player.name }}
                 <span
                   v-if="'aiControlled' in player && player.aiControlled"
                   class="scoreboard__ai-tag"

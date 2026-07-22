@@ -13,6 +13,8 @@ export interface BuffState {
 export interface PlayerState {
   id: string
   name: string
+  /** Guild/clan tag (resolved at game creation) — shown next to the name. */
+  guildTag?: string
   team: TeamId
   heroId: string | null
   zone: string
@@ -185,6 +187,8 @@ export interface TrapState {
 export interface FoggedPlayer {
   id: string
   name: string
+  /** Guild tag is public identity (like KDA) — shown even in fog. */
+  guildTag?: string
   team: string
   heroId: string | null
   level: number
