@@ -252,3 +252,38 @@ describe('isEventVisibleToPlayer — ability / ward / rune', () => {
     expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'rune-bot' }), ['rune-bot'])).toBe(true)
   })
 })
+
+describe('status_applied obeys the same fog rule as damage', () => {
+  // REGRESSION: status_applied was added to the union without a case here, so it
+  // fell through `default: return true` and announced every disable in the match
+  // to all ten players — while the `ability_used` that caused it was correctly
+  // hidden. Same payload shape, same information, same rule.
+  const cc = (sourceId: string, targetId: string): GameEngineEvent =>
+    ({
+      _tag: 'status_applied',
+      tick: 1,
+      sourceId,
+      targetId,
+      status: 'stun',
+      ticksRemaining: 2,
+    }) as GameEngineEvent
+
+  it('shows a disable involving me or my team', () => {
+    expect(isEventVisibleToPlayer(cc('enemy', 'me'), 'me', 'radiant', new Set(), state)).toBe(true)
+    expect(isEventVisibleToPlayer(cc('enemy', 'ally'), 'me', 'radiant', new Set(), state)).toBe(
+      true,
+    )
+  })
+
+  it('hides an enemy-on-enemy disable I have no vision on', () => {
+    expect(isEventVisibleToPlayer(cc('enemy', 'enemy2'), 'me', 'radiant', new Set(), state)).toBe(
+      false,
+    )
+  })
+
+  it('shows an enemy-on-enemy disable in a zone I can see', () => {
+    expect(
+      isEventVisibleToPlayer(cc('enemy', 'enemy2'), 'me', 'radiant', new Set(['bot-river']), state),
+    ).toBe(true)
+  })
+})

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
+import { CREEP_ESCALATION_INTERVAL_TICKS, creepMaxHp } from '~~/shared/constants/balance'
 
 /**
  * Engine-truth coverage for lane creep combat (CreepAI). When opposing waves
@@ -145,6 +146,77 @@ describe('creeps: last-hit & deny economy', () => {
     expect(theirs).toBeGreaterThan(0)
     // ...but strictly less than the last-hitter's, or timing stops mattering.
     expect(theirs).toBeLessThan(mine)
+  })
+
+  it("the deny window follows the creep's OWN max HP, not a level-1 constant", async () => {
+    // REGRESSION (survived mutation testing once already): creeps escalate with
+    // match time. Judging the 50% deny threshold against the level-1 constant
+    // makes denying steadily impossible; judging it against the CURRENT tick's
+    // tier makes a creep that outlived an escalation boundary deniable well
+    // above half health. The creep's own spawn-time maxHp is the only correct
+    // reference. Every other deny test sits at tick ~0 where the multiplier is
+    // 1.0, so none of them can see this.
+    const lateTick = CREEP_ESCALATION_INTERVAL_TICKS * 2
+    const spawnMax = creepMaxHp('melee', lateTick)
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me0 = await game.me()
+    await game.patch((s) => ({
+      ...s,
+      tick: lateTick,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      creeps: [
+        {
+          id: 'ally_creep',
+          team: me0.team,
+          zone: 'mid-river',
+          // Just under half of what this creep actually spawned with. Against the
+          // tick-0 constant this reads as ABOVE the threshold and is refused.
+          hp: Math.round(spawnMax * 0.45),
+          maxHp: spawnMax,
+          type: 'melee',
+        },
+      ],
+    }))
+
+    game.submit({ type: 'deny', target: { kind: 'creep', index: 0 } })
+    await game.tick()
+
+    const creep = (await game.state()).creeps.find((c) => c.id === 'ally_creep')
+    expect(!creep || creep.hp <= 0, 'an escalated creep under half HP must be deniable').toBe(true)
+  })
+
+  it('an OLD creep at a late tick is judged by what IT spawned with, not the current tier', async () => {
+    // The other half of the same rule, and the one a "use the current tick"
+    // implementation gets wrong: a creep that spawned early keeps its small max
+    // for life. Judged against the late-game tier its 60%-HP is under the
+    // threshold and it would be wrongly deniable.
+    const baseMax = creepMaxHp('melee', 0)
+    const lateTick = CREEP_ESCALATION_INTERVAL_TICKS * 2
+    expect(creepMaxHp('melee', lateTick)).toBeGreaterThan(baseMax * 1.2)
+
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me0 = await game.me()
+    await game.patch((s) => ({
+      ...s,
+      tick: lateTick,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      creeps: [
+        {
+          id: 'old_creep',
+          team: me0.team,
+          zone: 'mid-river',
+          hp: Math.round(baseMax * 0.6), // above ITS half, below the late tier's half
+          maxHp: baseMax,
+          type: 'melee',
+        },
+      ],
+    }))
+
+    game.submit({ type: 'deny', target: { kind: 'creep', index: 0 } })
+    await game.tick()
+
+    const creep = (await game.state()).creeps.find((c) => c.id === 'old_creep')
+    expect(creep?.hp, 'a creep above ITS OWN half must not be deniable').toBeGreaterThan(0)
   })
 
   it('`attack` on your OWN creep is refused — no kill, no bounty, and the player is told why', async () => {

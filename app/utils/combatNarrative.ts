@@ -249,9 +249,19 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       // thing that can happen to you in a teamfight, and it was un-narrated.
       const status = buffLabel(str(p.status)).toUpperCase()
       const ticks = num(p.ticksRemaining)
+      const dur = ticks > 0 ? ` (${ticks}t)` : ''
+      // Several abilities disable their own caster (Regex's E roots itself while
+      // channelling). Reading those out as "You STUNNED You" is nonsense, so a
+      // self-application is phrased as a state the actor is in, not an act they
+      // performed on someone.
+      const victim = label(p.targetId)
+      const text =
+        p.sourceId === p.targetId
+          ? `${victim} ${victim === 'You' ? 'are' : 'is'} ${status}${dur}`
+          : `${label(p.sourceId)} ${status} ${victim}${dur}`
       return {
         tick,
-        text: `${label(p.sourceId)} ${status} ${label(p.targetId)}${ticks > 0 ? ` (${ticks}t)` : ''}`,
+        text,
         type: 'ability',
         salience: salience(p.sourceId, p.targetId, ctx),
       }
@@ -377,14 +387,14 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
 
     case 'trap_triggered':
+      // Deliberately carries NO dmgAmount: the engine emits a `damage` event for
+      // the same hit, and the per-tick recap sums dmgAmount across lines — so
+      // supplying it here made every trap count twice in "You took N".
       return {
         tick,
         text: `${label(p.owner)}'s trap caught ${label(p.targetId)} in ${zname(p.zone)} (-${num(p.damage)})`,
         type: 'damage',
         salience: salience(p.owner, p.targetId, ctx),
-        dmgAmount: num(p.damage),
-        sourceLabel: `${label(p.owner)}'s trap`,
-        targetLabel: label(p.targetId),
       }
 
     case 'spell_blocked': {

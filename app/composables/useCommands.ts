@@ -9,7 +9,7 @@ import type {
 } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
-import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
+import { isShopZoneFor, ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
@@ -19,9 +19,7 @@ import {
   BUYBACK_COST_PER_LEVEL,
   SURRENDER_MIN_TICK,
   DENY_HP_THRESHOLD,
-  MELEE_CREEP_HP,
-  RANGED_CREEP_HP,
-  SIEGE_CREEP_HP,
+  creepMaxHp,
 } from '~~/shared/constants/balance'
 
 export interface Suggestion {
@@ -181,9 +179,15 @@ export function pickItemTargetString(
   return { target: `hero:${target.id}` }
 }
 
-/** Max HP for a creep type — mirrors the server's deny eligibility check. */
-function creepMaxHp(type: CreepState['type']): number {
-  return type === 'siege' ? SIEGE_CREEP_HP : type === 'ranged' ? RANGED_CREEP_HP : MELEE_CREEP_HP
+/**
+ * The HP a creep spawned with — mirrors the server's deny eligibility check.
+ *
+ * Reads the stamped value rather than a constant: creeps escalate with match
+ * time, so a fixed level-1 max made the deny affordance silently shrink every
+ * minute until the client stopped offering a deny the server would have allowed.
+ */
+function creepFullHp(c: CreepState): number {
+  return c.maxHp ?? creepMaxHp(c.type, 0)
 }
 
 /**
@@ -201,7 +205,7 @@ export function pickDenyTargetString(
   for (let index = 0; index < inZone.length; index++) {
     const c = inZone[index]!
     if (c.team !== player.team || c.hp <= 0) continue
-    if (c.hp > creepMaxHp(c.type) * DENY_HP_THRESHOLD) continue // not low enough to deny
+    if (c.hp > creepFullHp(c) * DENY_HP_THRESHOLD) continue // not low enough to deny
     if (best === null || c.hp < best.hp) best = { hp: c.hp, index }
   }
   if (best === null) {
@@ -509,8 +513,8 @@ export function validateCommand(command: Command, context: GameContext): string 
       return null
     }
     case 'buy': {
-      const zone = ZONE_MAP[player.zone]
-      if (!zone?.shop) return 'Not in a shop zone — return to base or fountain'
+      if (!isShopZoneFor(player.zone, player.team))
+        return 'Not in a shop zone — return to YOUR base or fountain'
       const item = context.items?.[command.item]
       if (item) {
         if (player.gold < item.cost) {
@@ -528,8 +532,8 @@ export function validateCommand(command: Command, context: GameContext): string 
       return null
     }
     case 'sell': {
-      const zone = ZONE_MAP[player.zone]
-      if (!zone?.shop) return 'Not in a shop zone — return to base or fountain'
+      if (!isShopZoneFor(player.zone, player.team))
+        return 'Not in a shop zone — return to YOUR base or fountain'
       if (!player.items.includes(command.item)) return 'Item not owned'
       return null
     }

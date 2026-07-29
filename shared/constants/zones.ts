@@ -1,4 +1,5 @@
 import type { Zone } from '../types/map'
+import type { TeamId } from '../types/game'
 
 export const ZONES: readonly Zone[] = [
   // ── Radiant Base ───────────────────────────────────────────────
@@ -350,3 +351,16 @@ export const ZONES: readonly Zone[] = [
 export const ZONE_MAP: Record<string, Zone> = Object.fromEntries(ZONES.map((z) => [z.id, z]))
 
 export const ZONE_IDS = ZONES.map((z) => z.id)
+
+/**
+ * Can THIS team shop in this zone?
+ *
+ * Both bases became shops so a 430g purchase no longer costs ~9 near-inputless
+ * ticks — but `shop` alone is not the rule. Every shop zone is team-owned, and a
+ * base is the natural place a siege happens, so a bare `zone.shop` test let an
+ * attacker restock from the defender's shop mid-fight.
+ */
+export function isShopZoneFor(zoneId: string, team: TeamId): boolean {
+  const zone = ZONE_MAP[zoneId]
+  return !!zone?.shop && zone.team === team
+}

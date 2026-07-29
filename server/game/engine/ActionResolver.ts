@@ -32,7 +32,7 @@ import {
 import { areAdjacent, findPath } from '~~/server/game/map/topology'
 import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/modes/tutorial'
 import { isBot } from '~~/server/game/ai/BotManager'
-import { ZONE_MAP } from '~~/shared/constants/zones'
+import { isShopZoneFor } from '~~/shared/constants/zones'
 import {
   calculatePhysicalDamage,
   calculateMagicalDamage,
@@ -246,13 +246,11 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       return null
     }
     case 'buy': {
-      const zone = ZONE_MAP[player.zone]
-      if (!zone?.shop) return 'Not in a shop zone'
+      if (!isShopZoneFor(player.zone, player.team)) return 'Not in a shop zone'
       return null
     }
     case 'sell': {
-      const sellZone = ZONE_MAP[player.zone]
-      if (!sellZone?.shop) return 'Not in a shop zone'
+      if (!isShopZoneFor(player.zone, player.team)) return 'Not in a shop zone'
       return null
     }
     case 'use': {
@@ -544,10 +542,12 @@ function resolveDenyPhase(
     if (creep.hp <= 0) continue
 
     if (creep.team !== denier.team) continue
-    // Against the escalated max for THIS tick, not the level-1 constant: creeps
-    // gain HP as the match runs, so a fixed threshold would silently shrink the
-    // deny window until denying became impossible in the late game.
-    if (creep.hp > creepMaxHp(creep.type, tick) * DENY_HP_THRESHOLD) continue
+    // Read the max the creep SPAWNED with. Creeps escalate with match time, so
+    // neither the level-1 constant (the window shrinks every minute until
+    // denying is impossible) nor the current tick's tier (the window widens past
+    // the threshold for any creep that outlived an escalation boundary) is
+    // right. Fall back to the tick-0 base for fixtures that omit maxHp.
+    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * DENY_HP_THRESHOLD) continue
 
     creeps[creepIdx] = { ...creep, hp: 0 }
 

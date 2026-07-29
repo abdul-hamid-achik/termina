@@ -48,14 +48,20 @@ function spawnWave(
   const zone = spawnZone[team]
   const creeps: CreepState[] = []
 
+  // Stamp maxHp at spawn: this creep keeps this max for life, so anything
+  // reasoning about a fraction of full health stays correct after the wave
+  // outlives an escalation boundary.
+  const melee = creepMaxHp('melee', tick)
   for (let i = 0; i < MELEE_CREEPS_PER_WAVE; i++) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: creepMaxHp('melee', tick), type: 'melee' })
+    creeps.push({ id: nextCreepId(), team, zone, hp: melee, maxHp: melee, type: 'melee' })
   }
+  const ranged = creepMaxHp('ranged', tick)
   for (let i = 0; i < RANGED_CREEPS_PER_WAVE; i++) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: creepMaxHp('ranged', tick), type: 'ranged' })
+    creeps.push({ id: nextCreepId(), team, zone, hp: ranged, maxHp: ranged, type: 'ranged' })
   }
   if (waveNumber > 0 && waveNumber % SIEGE_CREEP_WAVE_INTERVAL === 0) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: creepMaxHp('siege', tick), type: 'siege' })
+    const siege = creepMaxHp('siege', tick)
+    creeps.push({ id: nextCreepId(), team, zone, hp: siege, maxHp: siege, type: 'siege' })
   }
 
   return creeps

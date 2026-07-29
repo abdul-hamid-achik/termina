@@ -39,8 +39,13 @@ const LANE: Record<'self' | 'target', string> = {
  * all. Absolute placement plus an offset derived from the entry id keeps each
  * float still from birth to death, whatever happens to its neighbours.
  */
-function offsetStyle(id: number): Record<string, string> {
-  return { left: `${((id * 37) % 56) - 28}px`, top: `${(id * 23) % 40}px` }
+function offsetStyle(id: number, anchor: 'self' | 'target'): Record<string, string> {
+  // Grow INBOARD from whichever edge the lane is anchored to. A left offset on
+  // the right-anchored self lane pushed the number past the grid edge and it was
+  // clipped away entirely on any viewport below ~1025px.
+  const dx = `${((id * 37) % 56) - 28}px`
+  const top = `${(id * 23) % 40}px`
+  return anchor === 'self' ? { right: dx, top } : { left: dx, top }
 }
 
 function floatClass(kind: DamageFloatEntry['kind']): string {
@@ -74,7 +79,7 @@ function floatSuffix(kind: DamageFloatEntry['kind']): string {
       :key="f.id"
       class="anim-dmg-float absolute font-mono text-2xl font-bold tracking-tight whitespace-nowrap"
       :class="floatClass(f.kind)"
-      :style="offsetStyle(f.id)"
+      :style="offsetStyle(f.id, anchor)"
       :data-testid="`damage-float-${f.kind}`"
       >{{ floatPrefix(f.kind) }}{{ f.amount }}{{ floatSuffix(f.kind) }}</span
     >

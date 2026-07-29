@@ -852,12 +852,16 @@ describe('eventToLine: damage metadata for the tick recap', () => {
     expect(line.dedupKey).toBeUndefined()
   })
 
-  it('carries a trap hit too — it is damage the recap must not miss', () => {
+  it('does NOT carry a trap hit — the paired damage event already does', () => {
+    // REGRESSION: the engine emits BOTH trap_triggered and a damage event for one
+    // trap hit. Giving this line a dmgAmount made the per-tick recap, which sums
+    // dmgAmount across lines, report every trap at double its real damage.
     const line = eventToLine(
       ev('trap_triggered', { owner: 'enemy1', targetId: 'me', zone: 'mid-river', damage: 100 }),
       ctx,
     )!
-    expect(line.dmgAmount).toBe(100)
-    expect(line.targetLabel).toBe('You')
+    expect(line.dmgAmount).toBeUndefined()
+    // The narrative line itself still names the hit and its number.
+    expect(line.text).toContain('100')
   })
 })

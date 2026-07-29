@@ -76,6 +76,12 @@ export function isEventVisibleToPlayer(
   }
   // Check per-event visibility
   switch (event._tag) {
+    // status_applied carries the same sourceId/targetId shape as damage and
+    // exposes the same information (who did what to whom, where), so it must
+    // obey the same fog rule. Without a case it fell to `default: return true`
+    // and announced every disable in the match to all ten players — including
+    // ones whose causing `ability_used` was correctly hidden.
+    case 'status_applied':
     case 'damage':
     case 'heal': {
       if (event.sourceId === playerId || event.targetId === playerId) return true

@@ -24,7 +24,7 @@ import type {
 // Server announcement severities plus a client-only 'error' (synthesised for
 // connection/[ERROR] messages) — drives the AnnouncementToast colour.
 export type AnnouncementLevel = AnnouncementMessage['level'] | 'error'
-import { ZONE_MAP } from '~~/shared/constants/zones'
+import { isShopZoneFor, ZONE_MAP } from '~~/shared/constants/zones'
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 import { gameLog } from '~/utils/logger'
 import { playerNetWorth } from '~/utils/strategy'
@@ -151,8 +151,7 @@ export const useGameStore = defineStore('game', () => {
 
   const canBuy = computed(() => {
     if (!player.value || !isAlive.value) return false
-    const zone = ZONE_MAP[player.value.zone]
-    return zone?.shop ?? false
+    return isShopZoneFor(player.value.zone, player.value.team)
   })
 
   const kda = computed(() => {

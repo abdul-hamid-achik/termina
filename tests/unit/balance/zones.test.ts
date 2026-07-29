@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ZONES, ZONE_MAP, ZONE_IDS } from '../../../shared/constants/zones'
+import { ZONES, ZONE_MAP, ZONE_IDS, isShopZoneFor } from '../../../shared/constants/zones'
 
 describe('Zone Constants', () => {
   describe('zone count and structure', () => {
@@ -237,5 +237,27 @@ describe('Zone Constants', () => {
       const sig = (z: (typeof ZONES)[number]) => `${z.type}:${z.adjacentTo.length}`
       expect(teamZones('radiant').map(sig).sort()).toEqual(teamZones('dire').map(sig).sort())
     })
+  })
+})
+
+describe('shop zones are team-gated', () => {
+  // REGRESSION: both bases became shops so a 430g purchase stops costing ~9
+  // near-inputless ticks — but a base is exactly where a siege happens, and a
+  // bare `zone.shop` test let the attacker restock from the DEFENDER's shop
+  // mid-fight.
+  it('lets a team shop in its own base and fountain', () => {
+    expect(isShopZoneFor('radiant-base', 'radiant')).toBe(true)
+    expect(isShopZoneFor('radiant-fountain', 'radiant')).toBe(true)
+    expect(isShopZoneFor('dire-base', 'dire')).toBe(true)
+  })
+
+  it('refuses the enemy shop', () => {
+    expect(isShopZoneFor('dire-base', 'radiant')).toBe(false)
+    expect(isShopZoneFor('radiant-base', 'dire')).toBe(false)
+    expect(isShopZoneFor('dire-fountain', 'radiant')).toBe(false)
+  })
+
+  it('refuses a zone that is not a shop at all', () => {
+    expect(isShopZoneFor('mid-river', 'radiant')).toBe(false)
   })
 })

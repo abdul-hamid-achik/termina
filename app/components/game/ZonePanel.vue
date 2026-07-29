@@ -10,12 +10,7 @@ import type {
 } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import {
-  MELEE_CREEP_HP,
-  RANGED_CREEP_HP,
-  SIEGE_CREEP_HP,
-  DENY_HP_THRESHOLD,
-} from '~~/shared/constants/balance'
+import { creepMaxHp, DENY_HP_THRESHOLD } from '~~/shared/constants/balance'
 import { computeThreat, threatToneClass } from '~/utils/tactics'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 
@@ -89,16 +84,14 @@ function attackLowestCreep() {
 // An allied creep can only be denied once it drops below the deny HP
 // threshold (mirrors the server's DENY_HP_THRESHOLD check). Surface the
 // affordance only when a denyable creep exists so the tap can't no-op.
-function creepMaxHp(c: IndexedCreep): number {
-  return c.type === 'siege'
-    ? SIEGE_CREEP_HP
-    : c.type === 'ranged'
-      ? RANGED_CREEP_HP
-      : MELEE_CREEP_HP
+// Reads the HP the creep SPAWNED with, not a level-1 constant: creeps escalate
+// with match time, so a fixed max made this affordance vanish as the game ran.
+function creepFullHp(c: IndexedCreep): number {
+  return c.maxHp ?? creepMaxHp(c.type, 0)
 }
 
 const denyableAlliedCreep = computed<IndexedCreep | null>(() => {
-  const eligible = alliedCreeps.value.filter((c) => c.hp <= creepMaxHp(c) * DENY_HP_THRESHOLD)
+  const eligible = alliedCreeps.value.filter((c) => c.hp <= creepFullHp(c) * DENY_HP_THRESHOLD)
   return lowestHpCreep(eligible)
 })
 

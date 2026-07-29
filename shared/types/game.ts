@@ -59,6 +59,14 @@ export interface CreepState {
   team: TeamId
   zone: string
   hp: number
+  /**
+   * The HP this creep spawned with. Creeps escalate with match time, so their
+   * max is a property of WHEN THEY SPAWNED, not of the current tick — anything
+   * that reasons about a fraction of full health (the deny window, HP bars) has
+   * to read it from here. Optional so fixtures can omit it; callers fall back to
+   * the tick-0 base rather than the current tier.
+   */
+  maxHp?: number
   type: 'melee' | 'ranged' | 'siege'
   /**
    * Ticks spent idle in a base zone (no target, invulnerable Ancient).
