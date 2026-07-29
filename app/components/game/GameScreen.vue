@@ -51,7 +51,12 @@ import {
   type NarrativeContext,
   type KillFeedEntry,
 } from '~/utils/combatNarrative'
-import { TICK_DURATION_MS, RUNE_DURATION_TICKS } from '~~/shared/constants/balance'
+import {
+  TICK_DURATION_MS,
+  RUNE_DURATION_TICKS,
+  ULTIMATE_UNLOCK_LEVEL,
+  getAbilityLevel,
+} from '~~/shared/constants/balance'
 import { pathDistance } from '~~/shared/pathfinding'
 import { formatRoshan } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
@@ -941,6 +946,7 @@ function handleCommand(cmd: string) {
       allPlayers: gameStore.allPlayers,
       items: ITEMS,
       tick: gameStore.tick,
+      mode: gameStore.mode,
     })
     if (validationError) {
       localEvents.value.push({
@@ -1080,6 +1086,7 @@ const situationalActions = computed(() =>
     runes: gameStore.runes,
     teams: gameStore.teams,
     tick: gameStore.tick,
+    mode: gameStore.mode,
   }),
 )
 
@@ -1104,6 +1111,20 @@ const abilityButtonState = computed(() => {
       continue
     }
     const name = HEROES[p.heroId]?.abilities[slot]?.name ?? upper
+    // Not learned yet outranks every other reason: the ultimate is unusable
+    // below ULTIMATE_UNLOCK_LEVEL (getAbilityLevel returns rank 0 and the engine
+    // refuses with "Ability not yet learned"). R used to render as READY at
+    // level 1, so the button promised a cast the server was always going to
+    // reject — and nothing on screen said why.
+    if (getAbilityLevel(p.level, slot) <= 0) {
+      const at = slot === 'r' ? ULTIMATE_UNLOCK_LEVEL : 1
+      result[upper] = {
+        ready: false,
+        label: `${upper}·L${at}`,
+        aria: `${upper} ${name}, unlocks at level ${at}`,
+      }
+      continue
+    }
     const cd = p.cooldowns[slot]
     if (cd > 0) {
       result[upper] = {

@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
-import { TUTORIAL_STEP_COUNT, tutorialHint } from '~~/server/game/modes/tutorial'
+import {
+  TUTORIAL_STEP_COUNT,
+  TUTORIAL_STEP_DEADLINE_TICKS,
+  tutorialHint,
+} from '~~/server/game/modes/tutorial'
+import { canSurrender } from '~~/server/game/engine/SurrenderSystem'
+import { SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
 
 /** Did the human's action get rejected with a tutorial-lock hint this tick? */
 function lockedThisTick(rejected: Array<{ playerId: string; reason: string }>): boolean {
@@ -183,6 +189,56 @@ describe('tutorial mode', () => {
       game.submit({ type: 'buy', item: 'boots' })
       await game.tick()
       expect(lockedThisTick(game.lastRejected)).toBe(false)
+    })
+  })
+
+  describe('graduation ends the game (no limbo)', () => {
+    // REGRESSION: the tutorial's designed happy path used to terminate in the
+    // app's WORST state. The four hints finish around tick 60, the banner
+    // announced "free play", and the player was then held in an endless 2v2
+    // with no menu and no surrender — SURRENDER_MIN_TICK is 225 (15 min), so
+    // the only real way out was closing the tab.
+    it('ends the game and credits the human when the last step completes', async () => {
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+      // Park on the final step with its deadline already elapsed. Driving
+      // graduation off the clock rather than a purchase keeps the test about
+      // "graduation ends the game" instead of item economics — and the deadline
+      // is the path a real stuck player takes anyway.
+      await game.patch((s) => ({
+        ...s,
+        tutorialStep: TUTORIAL_STEP_COUNT - 1,
+        tutorialStepSince: s.tick - TUTORIAL_STEP_DEADLINE_TICKS,
+      }))
+      await game.tick()
+
+      const s = await game.state()
+      expect(s.tutorialStep).toBeGreaterThanOrEqual(TUTORIAL_STEP_COUNT)
+      expect(s.phase).toBe('ended')
+      expect(s.winner).toBe(s.players[HUMAN]?.team)
+    })
+
+    it('leaves a mid-flow tutorial running (only graduation ends it)', async () => {
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+      await game.tick()
+      const s = await game.state()
+      expect(s.tutorialStep).toBeLessThan(TUTORIAL_STEP_COUNT)
+      expect(s.phase).toBe('playing')
+    })
+
+    it('is quittable immediately — no 15-minute surrender lock', async () => {
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+      const early = await game.state()
+      expect(early.tick).toBeLessThan(SURRENDER_MIN_TICK)
+
+      expect(canSurrender(early, early.players[HUMAN]!.team).can).toBe(true)
+    })
+
+    it('still holds a NORMAL game to the surrender tick gate', async () => {
+      const game = await seedGame('fresh')
+      const s = await game.state()
+      const verdict = canSurrender(s, s.players[HUMAN]!.team)
+      expect(verdict.can).toBe(false)
+      expect(verdict.reason).toContain('Too early')
     })
   })
 })

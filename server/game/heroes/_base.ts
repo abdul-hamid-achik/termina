@@ -10,6 +10,7 @@ import {
 } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
 import { getTalentTree } from '~~/shared/constants/talents'
+import { getAbilityLevel } from '~~/shared/constants/balance'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -100,20 +101,14 @@ function passiveCaresAboutEvent(heroId: string, eventType: GameEvent['type']): b
 }
 // ── Ability Level Scaling ─────────────────────────────────────────
 
-/** Q/W/E level at player levels 1,3,5,7. R level at player levels 6,12,18. */
-export function getAbilityLevel(playerLevel: number, slot: AbilitySlot): number {
-  if (slot === 'r') {
-    if (playerLevel >= 18) return 3
-    if (playerLevel >= 12) return 2
-    if (playerLevel >= 6) return 1
-    return 0
-  }
-  if (playerLevel >= 7) return 4
-  if (playerLevel >= 5) return 3
-  if (playerLevel >= 3) return 2
-  if (playerLevel >= 1) return 1
-  return 0
-}
+/**
+ * Rank of an ability at a given player level — 0 means "not learned yet", which
+ * resolveAbility rejects. Defined in shared/ so the client answers identically
+ * (the ability buttons must not advertise an unlearned ultimate as ready, and
+ * /learn must state the schedule the engine enforces). Re-exported here because
+ * the engine and every hero module import it from this path.
+ */
+export { getAbilityLevel }
 
 /** Pick a scaled value from an array based on ability level. */
 export function scaleValue(values: readonly number[], level: number): number {

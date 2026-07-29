@@ -282,10 +282,32 @@ export function processTick(
     // a failed cast doesn't count.
     {
       const advanced = advanceTutorialAfterTick(currentState, validActions, resolved.rejected)
+      const graduated =
+        currentState.mode === 'tutorial' &&
+        (currentState.tutorialStep ?? 0) < TUTORIAL_STEP_COUNT &&
+        (advanced.state.tutorialStep ?? 0) >= TUTORIAL_STEP_COUNT
       currentState = advanced.state
-      if (advanced.notice) {
-        const humanId = Object.keys(currentState.players).find((id) => !isBot(id))
-        if (humanId) notices.push({ playerId: humanId, message: advanced.notice })
+      const humanId = Object.keys(currentState.players).find((id) => !isBot(id))
+      if (advanced.notice && humanId) {
+        notices.push({ playerId: humanId, message: advanced.notice })
+      }
+      // Graduating used to drop the player into the app's worst state: the
+      // scripted hints stop, the banner says "you're in free play", and they are
+      // left in an endless 2v2 with no menu and — because SURRENDER_MIN_TICK is
+      // 225 (15 min) and the tutorial ends around tick 60 — no way to quit for
+      // another ~11 minutes. Closing the tab was the only real option. End the
+      // game on graduation instead: the win block below preserves an
+      // already-set winner, so onGameOver fires exactly as an Ancient kill
+      // would and the player lands on the post-game screen.
+      const team = humanId ? currentState.players[humanId]?.team : undefined
+      if (graduated && team) {
+        currentState = { ...currentState, phase: 'ended', winner: team }
+        if (humanId) {
+          notices.push({
+            playerId: humanId,
+            message: "🎓 That's the basics — practice complete. Here's how it went.",
+          })
+        }
       }
     }
 

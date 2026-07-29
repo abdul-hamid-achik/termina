@@ -29,6 +29,8 @@ export interface GameContext {
   items?: Record<string, ItemDef>
   /** Current game tick — enables cooldown/timing validation when provided. */
   tick?: number
+  /** Game mode — the tutorial is exempt from the surrender tick gate. */
+  mode?: GameMode
 }
 
 /**
@@ -383,7 +385,14 @@ export function validateCommand(command: Command, context: GameContext): string 
       return null
     }
     case 'surrender': {
-      if (context.tick !== undefined && context.tick < SURRENDER_MIN_TICK) {
+      // Mirrors SurrenderSystem.canSurrender: the tick gate stops rage-quits in
+      // a real match, but the tutorial is single-player and ends long before
+      // tick 225 — gating it there just traps a learner with no way out.
+      if (
+        context.mode !== 'tutorial' &&
+        context.tick !== undefined &&
+        context.tick < SURRENDER_MIN_TICK
+      ) {
         return `Too early to surrender (available at tick ${SURRENDER_MIN_TICK})`
       }
       return null

@@ -37,6 +37,42 @@ export const COMEBACK_FULL_GAP = 8000
 
 export const MAX_LEVEL = 25
 
+/**
+ * Player levels at which each ability slot gains a rank, ascending.
+ *
+ * Lives here — not in the engine — because the teaching surfaces (/learn, the
+ * hero pages, the in-game ability buttons) have to state the same schedule the
+ * engine enforces. They previously hardcoded prose and drifted: /learn claimed
+ * "all four abilities work from level 1 — leveling up does not unlock
+ * abilities", which is false for R and left players picking a hero for an
+ * ultimate they could not cast until level 6.
+ *
+ * `getAbilityLevel` (server/game/heroes/_base.ts) derives from these, so a
+ * change here moves the rule and every explanation of it together.
+ */
+export const BASIC_ABILITY_RANKS: readonly number[] = [1, 3, 5, 7]
+export const ULTIMATE_RANKS: readonly number[] = [6, 12, 18]
+
+/** The level at which the ultimate (R) becomes castable at all. */
+export const ULTIMATE_UNLOCK_LEVEL = ULTIMATE_RANKS[0]!
+
+/**
+ * Rank of an ability at a given player level. 0 means "not learned yet" —
+ * resolveAbility refuses those with "Ability not yet learned".
+ *
+ * Shared rather than engine-side because the CLIENT needs the same answer: the
+ * ability buttons must not advertise an ultimate as READY at level 1 (they used
+ * to), and the teaching pages must state the schedule the engine enforces.
+ */
+export function getAbilityLevel(playerLevel: number, slot: 'q' | 'w' | 'e' | 'r'): number {
+  const ranks = slot === 'r' ? ULTIMATE_RANKS : BASIC_ABILITY_RANKS
+  let level = 0
+  for (const required of ranks) {
+    if (playerLevel >= required) level++
+  }
+  return level
+}
+
 /** XP required to reach each level (index = level, index 0 unused). */
 export const XP_PER_LEVEL: readonly number[] = [
   0, // 0 (unused)

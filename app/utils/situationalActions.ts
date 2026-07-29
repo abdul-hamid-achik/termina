@@ -1,6 +1,13 @@
 import { GLYPH_COOLDOWN_TICKS, SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
 import { pickDenyTargetString } from '~/composables/useCommands'
-import type { PlayerState, CreepState, RuneState, TeamState, TeamId } from '~~/shared/types/game'
+import type {
+  PlayerState,
+  CreepState,
+  RuneState,
+  TeamState,
+  TeamId,
+  GameMode,
+} from '~~/shared/types/game'
 
 export interface SituationalAction {
   cmd: string
@@ -17,6 +24,8 @@ export interface SituationalContext {
   runes: RuneState[]
   teams: Record<TeamId, TeamState> | null
   tick: number
+  /** Game mode — the tutorial is exempt from the surrender tick gate. */
+  mode?: GameMode
 }
 
 /**
@@ -50,8 +59,14 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   if (glyphReady) {
     out.push({ cmd: 'glyph', label: 'GLYPH', aria: 'Activate team glyph (fortify structures)' })
   }
-  if (ctx.tick >= SURRENDER_MIN_TICK) {
-    out.push({ cmd: 'surrender', label: 'SURRENDER', aria: 'Vote to surrender the match' })
+  // Mirrors SurrenderSystem.canSurrender: the tutorial has no tick gate, so a
+  // learner always has a visible way out of a practice game.
+  if (ctx.mode === 'tutorial' || ctx.tick >= SURRENDER_MIN_TICK) {
+    out.push({
+      cmd: 'surrender',
+      label: ctx.mode === 'tutorial' ? 'END PRACTICE' : 'SURRENDER',
+      aria: ctx.mode === 'tutorial' ? 'End this practice game' : 'Vote to surrender the match',
+    })
   }
   return out
 }

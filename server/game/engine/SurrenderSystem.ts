@@ -32,7 +32,11 @@ export interface SurrenderResult {
  * Check if surrender vote can be initiated
  */
 export function canSurrender(state: GameState, team: TeamId): { can: boolean; reason?: string } {
-  if (state.tick < SURRENDER_MIN_TICK) {
+  // The minimum-tick rule exists to stop a losing team rage-quitting a real
+  // match early. It makes no sense in the tutorial, which is single-player and
+  // finishes well before tick 225 — it only trapped learners in a game they had
+  // already graduated from, with no other way out than closing the tab.
+  if (state.mode !== 'tutorial' && state.tick < SURRENDER_MIN_TICK) {
     return {
       can: false,
       reason: `Too early to surrender (wait until tick ${SURRENDER_MIN_TICK})`,

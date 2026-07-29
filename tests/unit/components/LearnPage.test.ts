@@ -17,7 +17,10 @@ import {
   TOWER_HP_T2,
   TOWER_HP_T3,
   TOWER_ATTACK,
+  BASIC_ABILITY_RANKS,
+  ULTIMATE_UNLOCK_LEVEL,
 } from '../../../shared/constants/balance'
+import { getAbilityLevel } from '../../../server/game/heroes/_base'
 
 // TerminalPanel renders its default slot; NuxtLink/AsciiButton are
 // Nuxt auto-imports stubbed out for plain vitest mounting.
@@ -49,12 +52,22 @@ describe('learn page', () => {
     expect(text).not.toContain('Destroy all 3 tower tiers in any lane to expose the enemy base')
   })
 
-  it('does not claim a fictional ability-unlock schedule', () => {
+  it('states the real ability-unlock schedule the engine enforces', () => {
+    // REGRESSION: this test used to REQUIRE the page to say "does not unlock
+    // abilities" — i.e. it enforced a falsehood. getAbilityLevel() returns 0 for
+    // R below level 6, and resolveAbility rejects rank 0 with "Ability not yet
+    // learned". A player read /learn, picked a hero for its ultimate, pressed R
+    // in a real match and was refused with no warning anywhere.
     const text = mountLearn().text()
-    expect(text).not.toContain('levels 1,3,5,7')
-    expect(text).not.toContain('R (ultimate) at 6,12,18')
-    expect(text).toContain('from level 1')
-    expect(text).toContain('does not unlock abilities')
+    expect(text).not.toContain('does not unlock abilities')
+    // Derived from the shared schedule, not typed here, so the page and the
+    // engine rule move together.
+    expect(text).toContain(`unlocks at level ${ULTIMATE_UNLOCK_LEVEL}`)
+    expect(text).toContain(BASIC_ABILITY_RANKS.join(', '))
+    // Sanity-check the constants really are what the engine does.
+    expect(getAbilityLevel(ULTIMATE_UNLOCK_LEVEL - 1, 'r')).toBe(0)
+    expect(getAbilityLevel(ULTIMATE_UNLOCK_LEVEL, 'r')).toBe(1)
+    expect(getAbilityLevel(1, 'q')).toBe(1)
   })
 
   it('quotes live gold values from balance constants', () => {

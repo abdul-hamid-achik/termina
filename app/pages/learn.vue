@@ -13,6 +13,9 @@ import {
   STARTING_GOLD,
   MAX_ITEMS,
   MAX_LEVEL,
+  BASIC_ABILITY_RANKS,
+  ULTIMATE_RANKS,
+  ULTIMATE_UNLOCK_LEVEL,
   RESPAWN_BASE_TICKS,
   RESPAWN_PER_LEVEL_TICKS,
   RESPAWN_FREE_LEVELS,
@@ -73,7 +76,7 @@ const quickStart = [
   {
     step: '2',
     title: 'Pick a Hero',
-    desc: `Choose from ${heroCount} heroes, each with a passive and four actives (Q/W/E/R) — all usable from level 1. Picks alternate between teams.`,
+    desc: `Choose from ${heroCount} heroes, each with a passive and four actives — Q/W/E from level 1, the ultimate (R) at level ${ULTIMATE_UNLOCK_LEVEL}. Picks alternate between teams.`,
   },
   {
     step: '3',
@@ -281,7 +284,7 @@ const concepts = [
   {
     term: 'Levels & XP',
     icon: '^',
-    desc: `Gain XP from creep kills and hero kills, up to level ${MAX_LEVEL}. All four abilities (Q/W/E/R) work from level 1 — leveling up grows your stats, it does not unlock abilities. Reaching levels 10, 15, 20 and 25 each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`.`,
+    desc: `Gain XP from creep kills and hero kills, up to level ${MAX_LEVEL}. Q/W/E are usable from level 1 and get stronger at levels ${BASIC_ABILITY_RANKS.join(', ')}. Your ultimate (R) unlocks at level ${ULTIMATE_UNLOCK_LEVEL} and strengthens at ${ULTIMATE_RANKS.slice(1).join(' and ')}. Reaching levels 10, 15, 20 and 25 each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`.`,
   },
   {
     term: 'Abilities',

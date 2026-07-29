@@ -87,7 +87,7 @@ const tutorialDone = computed(() => authStore.user?.tutorialCompleted === true)
       <p class="text-text-dim">&nbsp;&nbsp;⤷ tick 43 · you advance to mid-river</p>
       <p>
         <span class="text-radiant">&gt;</span>
-        <span class="text-ability">attack tower:mid-t1-rad</span>
+        <span class="text-ability">attack tower:mid-t1-dire</span>
       </p>
       <p class="text-text-dim">&nbsp;&nbsp;⤷ tick 44 · tower takes 55, your creeps pile in</p>
     </div>
