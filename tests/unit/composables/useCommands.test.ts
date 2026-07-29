@@ -2025,6 +2025,23 @@ describe('informational readouts', () => {
     expect(out).toContain('Radiant Fountain') // radiant-base is adjacent to its fountain
   })
 
+  it('formatMapReadout lists only the neighbours this game map actually has', () => {
+    // REGRESSION: read straight off the global 32-zone graph, so on the one-lane
+    // tutorial map it named the top/bot T3 towers — zones the game does not
+    // contain and `move` would reject.
+    const me = makePlayer({ zone: 'radiant-base' })
+    const out = formatMapReadout(me, 'one_lane')
+    expect(out).toContain('Radiant Fountain')
+    expect(out).toContain('Mid Lane T3 (Radiant)')
+    expect(out).not.toContain('Top Lane T3')
+    expect(out).not.toContain('Bot Lane T3')
+  })
+
+  it('formatMapReadout falls back cleanly for a zone off the resolved map', () => {
+    const me = makePlayer({ zone: 'rune-top' })
+    expect(formatMapReadout(me, 'one_lane')).toContain('Reachable: —')
+  })
+
   it('formatScanReadout lists visible enemy heroes, ignoring allies/dead/fogged', () => {
     const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
     const ally = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river' })

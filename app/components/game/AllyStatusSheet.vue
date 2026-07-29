@@ -52,7 +52,7 @@ const rows = computed<AllyRow[]>(() =>
 </script>
 
 <template>
-  <div data-testid="ally-status-sheet" class="flex flex-col gap-1.5 font-mono text-[0.7rem]">
+  <div data-testid="ally-status-sheet" class="flex flex-col gap-1.5 font-mono t-hud-sm">
     <div v-for="r in rows" :key="r.id" class="border-l-2 border-radiant/40 pl-1.5">
       <div class="flex items-baseline justify-between gap-1">
         <span
@@ -60,7 +60,7 @@ const rows = computed<AllyRow[]>(() =>
           :class="r.alive ? 'text-radiant' : 'text-text-dim line-through'"
           >{{ r.name }}</span
         >
-        <span class="flex shrink-0 items-baseline gap-1 text-[0.6rem]">
+        <span class="flex shrink-0 items-baseline gap-1 t-hud-xs">
           <span
             v-if="r.alive && r.ultReady"
             class="font-bold text-radiant text-glow-sm"
@@ -72,14 +72,14 @@ const rows = computed<AllyRow[]>(() =>
       </div>
 
       <!-- Dead -->
-      <div v-if="!r.alive" class="text-[0.62rem] text-text-dim" :data-testid="`ally-dead-${r.id}`">
+      <div v-if="!r.alive" class="t-hud-xs text-text-dim" :data-testid="`ally-dead-${r.id}`">
         DEAD<template v-if="r.respawnIn >= 0"> · respawn {{ r.respawnIn }}t</template>
       </div>
 
       <!-- Alive: HP + transient status -->
       <template v-else>
         <div class="flex items-center gap-1">
-          <span class="w-4 shrink-0 text-[0.58rem] text-text-dim">HP</span>
+          <span class="w-4 shrink-0 t-hud-xs text-text-dim">HP</span>
           <ProgressBar
             :value="r.hp"
             :max="r.maxHp"
@@ -98,7 +98,7 @@ const rows = computed<AllyRow[]>(() =>
           <span
             v-for="b in r.status"
             :key="b.id"
-            class="text-[0.58rem]"
+            class="t-hud-xs"
             :class="{
               'text-radiant': b.kind === 'positive',
               'text-dire': b.kind === 'negative',

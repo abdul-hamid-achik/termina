@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
-import { buildTickStoryView } from '~/utils/combatLog'
+import { buildTickStoryView, buildTickRecaps } from '~/utils/combatLog'
 import type { CombatLine, CombatLineType, Salience } from '~/utils/combatLog'
 import { formatTickClock } from '~/utils/gameClock'
 
@@ -30,6 +30,10 @@ const FILTERS: { id: Filter; label: string }[] = [
 ]
 const filter = ref<Filter>('all')
 const verbose = ref(false)
+// Per-tick personal recap, ON by default: the whole point of a 4-second turn is
+// that it is comprehensible in one read, and summing "84 + 25 + 22" by eye every
+// four seconds is what makes players stop reading the feed altogether.
+const recap = ref(true)
 
 const COMBAT_TYPES: CombatLineType[] = ['damage', 'healing', 'kill', 'ability']
 const OBJ_TYPES: CombatLineType[] = ['objective', 'victory']
@@ -59,6 +63,10 @@ const visibleEvents = computed(() => {
   const e = filteredEvents.value
   return e.length <= MAX_VISIBLE_EVENTS ? e : e.slice(-MAX_VISIBLE_EVENTS)
 })
+
+// Built from the UNFILTERED stream: what a tick did to you must not change
+// because a filter chip is active or the render cap dropped an early line.
+const recapByTick = computed(() => buildTickRecaps(props.events))
 
 // ── Per-tick beats ─────────────────────────────────────────────
 // Group consecutive same-tick lines into a "beat" with a single header, so the
@@ -103,7 +111,7 @@ watch(
   },
 )
 
-watch([filter, verbose], () => nextTick(scrollToBottom))
+watch([filter, verbose, recap], () => nextTick(scrollToBottom))
 
 onMounted(scrollToBottom)
 
@@ -162,12 +170,32 @@ function typePrefix(type: CombatLineType): string {
   return map[type] ?? ''
 }
 
+/**
+ * Type → weight tier. Nine line types used to render at exactly two weights —
+ * kill/victory loud, the other seven identical — so a hero death, a level-up, a
+ * blocked spell and a creep's chip damage all carried the same emphasis.
+ * Headline = a life or the match changed; notable = a power or map swing;
+ * everything else stays at the reading weight.
+ */
+const emphasisByType: Record<CombatLineType, string> = {
+  kill: 'font-bold text-glow-sm',
+  victory: 'font-bold text-glow-sm',
+  objective: 'font-semibold',
+  ability: '',
+  damage: '',
+  healing: '',
+  gold: '',
+  system: '',
+  farm: '',
+}
+
 /** Per-line classes from salience — the text-MOBA equivalent of the camera
  * being centred on your hero: incoming-to-me is loudest, my actions calmer,
  * pure bystander chip dims out. */
 function salienceClasses(s: Salience | undefined, type: CombatLineType): string[] {
   const out: string[] = []
   if (type === 'kill' || type === 'victory') out.push('font-bold')
+  else if (type === 'objective') out.push('font-semibold')
   switch (s) {
     case 'mine-in':
       out.push('bg-dire/[0.07]', 'text-text-primary', 'font-semibold')
@@ -195,9 +223,11 @@ function eventAriaLabel(line: CombatLine): string {
       {{ lastEvent ? eventAriaLabel(lastEvent) : '' }}
     </div>
 
-    <!-- Filter chips + density toggle -->
+    <!-- Filter chips + density toggle. Fixed height because the pinned-scroll
+         banner below is absolutely positioned to sit flush under this row; a
+         row that grows with its type would slide under the banner. -->
     <div
-      class="flex shrink-0 items-center gap-1 border-b border-border bg-bg-secondary/60 px-2 py-0.5 text-[0.6rem]"
+      class="flex h-6 shrink-0 items-center gap-1 border-b border-border bg-bg-secondary/60 px-2 t-hud-xs"
     >
       <span class="mr-auto font-bold tracking-wider text-text-dim">&gt;_ FEED</span>
       <button
@@ -216,6 +246,17 @@ function eventAriaLabel(line: CombatLine): string {
       </button>
       <button
         class="ml-1 border px-1 py-px font-mono tracking-wider transition-colors"
+        :class="recap ? 'border-ability text-ability' : 'border-border text-text-dim'"
+        data-testid="log-recap-toggle"
+        :title="recap ? 'Per-tick recap on — click to hide' : 'Per-tick recap off — click to show'"
+        :aria-label="recap ? 'Hide the per-tick damage recap' : 'Show the per-tick damage recap'"
+        :aria-pressed="recap"
+        @click="recap = !recap"
+      >
+        Σ
+      </button>
+      <button
+        class="border px-1 py-px font-mono tracking-wider transition-colors"
         :class="verbose ? 'border-border text-text-dim' : 'border-ability text-ability'"
         data-testid="log-density-toggle"
         :title="verbose ? 'Verbose — click for terse' : 'Terse — click for verbose'"
@@ -232,7 +273,7 @@ function eventAriaLabel(line: CombatLine): string {
     <button
       v-if="pinned"
       type="button"
-      class="absolute inset-x-0 top-5 z-[1] cursor-pointer border-b border-border bg-bg-secondary px-2 py-0.5 text-center text-[0.7rem] text-text-dim"
+      class="absolute inset-x-0 top-6 z-[1] cursor-pointer border-b border-border bg-bg-secondary px-2 py-0.5 text-center t-hud-sm text-text-dim"
       @click="togglePin"
     >
       [scroll pinned — click to resume]
@@ -244,14 +285,28 @@ function eventAriaLabel(line: CombatLine): string {
       @scroll="handleScroll"
     >
       <div v-for="beat in beats" :key="beat.tick" class="mb-0.5">
-        <!-- Tick beat header -->
-        <div
-          class="sticky top-0 z-[1] flex items-center gap-1 bg-bg-panel/95 px-2 py-px text-[0.6rem] tracking-wider text-text-muted select-none"
-        >
-          <span class="text-border">──</span>
-          <span class="font-bold">TICK {{ beat.tick }}</span>
-          <span class="text-text-dim">· {{ clock(beat.tick) }}</span>
-          <span class="flex-1 truncate text-right text-border">{{ '─'.repeat(40) }}</span>
+        <!-- Tick beat header. The recap rides INSIDE the sticky block so the
+             turn's bottom line stays on screen while its detail scrolls away. -->
+        <div class="sticky top-0 z-[1] bg-bg-panel/95 select-none">
+          <div class="flex items-center gap-1 px-2 py-px t-hud-xs tracking-wider text-text-muted">
+            <span class="text-border">──</span>
+            <span class="font-bold">TICK {{ beat.tick }}</span>
+            <span class="text-text-dim">· {{ clock(beat.tick) }}</span>
+            <span class="flex-1 truncate text-right text-border">{{ '─'.repeat(40) }}</span>
+          </div>
+          <div
+            v-if="recap && recapByTick.get(beat.tick)"
+            class="flex flex-wrap items-baseline gap-x-2 px-2 pb-px t-hud-sm t-mono-num"
+            data-testid="tick-recap"
+            :aria-label="`Tick ${beat.tick} recap: ${recapByTick.get(beat.tick)!.text}`"
+          >
+            <span v-if="recapByTick.get(beat.tick)!.takenText" class="font-semibold text-dire">
+              {{ recapByTick.get(beat.tick)!.takenText }}
+            </span>
+            <span v-if="recapByTick.get(beat.tick)!.dealtText" class="text-self">
+              {{ recapByTick.get(beat.tick)!.dealtText }}
+            </span>
+          </div>
         </div>
 
         <div
@@ -263,16 +318,16 @@ function eventAriaLabel(line: CombatLine): string {
           :class="[borderColors[event.type], ...salienceClasses(event.salience, event.type)]"
           :style="{ animationDelay: `${Math.min(i, 8) * 35}ms` }"
         >
-          <span v-if="event.salience === 'mine-in'" class="mr-1 text-[0.6rem] font-bold text-dire"
+          <span v-if="event.salience === 'mine-in'" class="mr-1 t-hud-xs font-bold text-dire"
             >&#9656;YOU</span
           >
           <span
             v-else-if="event.salience === 'mine-out' && event.type !== 'farm'"
-            class="mr-1 text-[0.6rem] font-bold text-self"
+            class="mr-1 t-hud-xs font-bold text-self"
             >&#9656;YOU</span
           >
           <span
-            class="mr-1 text-[0.65rem] font-bold"
+            class="mr-1 t-hud-xs font-bold"
             :class="
               event.type === 'kill'
                 ? 'text-glow-dire'
@@ -289,13 +344,9 @@ function eventAriaLabel(line: CombatLine): string {
             :size="16"
             class="mr-1 inline-flex align-middle"
           />
-          <span
-            :class="
-              event.type === 'kill' || event.type === 'victory' ? 'font-bold text-glow-sm' : ''
-            "
-            :style="{ color: typeColor(event.type) }"
-            >{{ event.text }}</span
-          >
+          <span :class="emphasisByType[event.type]" :style="{ color: typeColor(event.type) }">{{
+            event.text
+          }}</span>
           <HeroAvatar
             v-if="event.type === 'kill' && event.victimHeroId"
             :hero-id="event.victimHeroId"
@@ -308,7 +359,7 @@ function eventAriaLabel(line: CombatLine): string {
       <div v-if="!events.length" class="p-2 text-[0.8rem] text-text-dim">
         &gt;_ awaiting events...
       </div>
-      <div v-else-if="!beats.length" class="p-2 text-[0.75rem] text-text-dim">
+      <div v-else-if="!beats.length" class="p-2 t-hud-xs text-text-dim">
         &gt;_ no events match this filter
       </div>
     </div>

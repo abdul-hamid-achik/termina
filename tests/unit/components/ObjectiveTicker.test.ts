@@ -29,10 +29,19 @@ describe('ObjectiveTicker', () => {
     expect(w.text()).not.toContain(`${ticksLeft}t`)
   })
 
-  it('shows a live rune and its expiry', () => {
+  it('shows a live rune, WHERE it is, and its expiry', () => {
     const w = mountTicker({ runes: [{ zone: 'rune-top', type: 'haste', tick: 50 }], tick: 60 })
     // Rune type ids render through buffLabel ('haste' → 'Haste', 'dd' → 'Double Damage').
     expect(w.text()).toContain('Haste')
+    // The zone is the whole decision — a rune you cannot reach before it expires
+    // is not an objective. formatRunes already returned it; the ticker dropped it.
+    expect(w.text()).toContain('rune top')
+  })
+
+  it('names the zone of whichever rune is live, not a fixed spot', () => {
+    const w = mountTicker({ runes: [{ zone: 'rune-bot', type: 'dd', tick: 50 }], tick: 60 })
+    expect(w.text()).toContain('rune bot')
+    expect(w.text()).not.toContain('rune top')
   })
 
   it('shows next rune timer when none are live', () => {

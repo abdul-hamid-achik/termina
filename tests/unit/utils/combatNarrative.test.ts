@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import {
   eventToLine,
@@ -7,6 +9,7 @@ import {
 } from '../../../app/utils/combatNarrative'
 import {
   collapseStructureDamage,
+  buildTickStoryView,
   ancientLabel,
   isStructureTarget,
   teamLabel,
@@ -255,12 +258,19 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   })
   it('suppresses internal/non-narrative events', () => {
     expect(eventToLine(ev('cooldown_used', { playerId: 'me', abilityId: 'q' }), ctx)).toBeNull()
-    expect(eventToLine(ev('tower_invulnerable', { zone: 'mid-t1-rad' }), ctx)).toBeNull()
-    // glyph_on_cooldown is deliberately silent — a private "your glyph isn't
-    // ready" signal, not lane-wide news. Lock the suppression so it isn't
-    // accidentally promoted into the feed.
-    expect(eventToLine(ev('glyph_on_cooldown', { team: 'radiant' }), ctx)).toBeNull()
     expect(eventToLine(ev('totally_unknown_event', {}), ctx)).toBeNull()
+  })
+
+  it('explains the two failures that used to be emitted then silently dropped', () => {
+    // Both are the server's answer to an action the player just spent a tick
+    // on — swallowing them left the tick looking like it did nothing at all.
+    const invuln = eventToLine(ev('tower_invulnerable', { zone: 'mid-t1-rad' }), ctx)!
+    expect(invuln.text).toContain('Glyph')
+    expect(invuln.text).toContain('mid-t1-rad')
+
+    const cd = eventToLine(ev('glyph_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx)!
+    expect(cd.text).toContain('120t')
+    expect(cd.salience).toBe('mine-out')
   })
 })
 
@@ -412,7 +422,6 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['creep_lasthit', { playerId: 'me', creepType: 'melee', goldAwarded: 40 }, 'last-hit'],
     ['creep_deny', { playerId: 'me', creepType: 'melee' }, 'denied'],
     ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
-    ['enemy_missing', { playerId: 'enemy1', lastSeenZone: 'mid-river' }, 'MISSING'],
     ['item_purchased', { playerId: 'me', itemId: 'dagon', cost: 2700 }, 'acquired'],
     ['neutral_killed', { playerId: 'me', neutralType: 'kobold' }, 'kobold camp'],
     ['aegis_used', { playerId: 'me' }, 'reincarnated'],
@@ -469,13 +478,195 @@ describe('eventToLine: narration coverage for every event type', () => {
   })
 
   it('produces no line for internal / non-narrative events', () => {
-    for (const t of [
-      'contest_lasthit',
-      'glyph_on_cooldown',
-      'tower_invulnerable',
-      'cooldown_used',
-    ]) {
-      expect(eventToLine(ev(t, {}), ctx)).toBeNull()
+    expect(eventToLine(ev('cooldown_used', {}), ctx)).toBeNull()
+  })
+})
+
+describe('eventToLine: crowd control', () => {
+  it('narrates a disable landing on me, loud, with the engine duration', () => {
+    const line = eventToLine(
+      ev('status_applied', {
+        sourceId: 'enemy1',
+        targetId: 'me',
+        status: 'root',
+        ticksRemaining: 1,
+      }),
+      ctx,
+    )!
+    expect(line.text).toBe('enemy1 ROOTED You (1t)')
+    // mine-in is what the feed renders loudest and sorts to the top of the beat.
+    expect(line.salience).toBe('mine-in')
+  })
+
+  it('renders each disable id under its player-facing name', () => {
+    const named = (status: string) =>
+      eventToLine(
+        ev('status_applied', { sourceId: 'me', targetId: 'enemy1', status, ticksRemaining: 2 }),
+        ctx,
+      )!.text
+    expect(named('stun')).toContain('STUNNED')
+    expect(named('silence')).toContain('SILENCED')
+    expect(named('hex')).toContain('HEXED')
+    expect(named('taunt')).toContain('TAUNTED')
+    // Unknown ids still read as words rather than leaking a raw engine id.
+    expect(named('some_new_disable')).toContain('SOME NEW DISABLE')
+  })
+
+  it('omits the duration when the engine reports none', () => {
+    const line = eventToLine(
+      ev('status_applied', { sourceId: 'me', targetId: 'enemy1', status: 'stun' }),
+      ctx,
+    )!
+    expect(line.text).not.toContain('(')
+  })
+})
+
+describe('eventToLine: cause-before-effect salience', () => {
+  it('ranks an enemy cast aimed at me as mine-in, not bystander noise', () => {
+    // The story view sorts a tick by salience, so an actor-only salience put the
+    // enemy's spell (world) BELOW the damage it caused (mine-in) — the log
+    // literally printed the effect before the cause.
+    const line = eventToLine(
+      ev('ability_used', { playerId: 'enemy1', abilityId: 'q', targetId: 'me' }),
+      ctx,
+    )!
+    expect(line.salience).toBe('mine-in')
+  })
+
+  it('orders the beat cause-first once the server emits the cast first', () => {
+    // The end-to-end shape of the fix: ActionResolver splices ability_used
+    // ahead of its own damage, and this salience puts both in the same
+    // priority band so the stable sort preserves that order.
+    const lines = buildCombatLines(
+      [
+        ev('ability_used', { playerId: 'enemy1', abilityId: 'q', targetId: 'me' }, 7),
+        ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 106, damageType: 'magical' }, 7),
+      ],
+      ctx,
+      collapseStructureDamage,
+    )
+    expect(buildTickStoryView(lines).map((l) => l.type)).toEqual(['ability', 'damage'])
+  })
+
+  it('keeps my own cast as mine-out and an unrelated enemy cast as world', () => {
+    expect(eventToLine(ev('ability_used', { playerId: 'me', abilityId: 'q' }), ctx)!.salience).toBe(
+      'mine-out',
+    )
+    expect(
+      eventToLine(
+        ev('ability_used', { playerId: 'enemy1', abilityId: 'q', targetId: 'enemy2' }),
+        ctx,
+      )!.salience,
+    ).toBe('world')
+  })
+})
+
+/**
+ * The drift guard. Every gap this wave closed (kill gold, status effects, the
+ * two suppressed failures) was the same defect: an event the engine emits that
+ * the narrative layer silently forgets. Enumerate the union from its own source
+ * so a new event type must either render a line or be added to the allow-list
+ * below — no third option.
+ */
+describe('narration drift guard', () => {
+  const eventsSource = readFileSync(
+    fileURLToPath(new URL('../../../server/game/protocol/events.ts', import.meta.url)),
+    'utf8',
+  )
+
+  /** Tags of every interface named in the `GameEngineEvent` union. */
+  function unionTags(): string[] {
+    const tagOf = new Map<string, string>()
+    for (const m of eventsSource.matchAll(/export interface (\w+)\s*\{([\s\S]*?)\n\}/g)) {
+      const tag = /_tag:\s*'([^']+)'/.exec(m[2]!)?.[1]
+      if (tag) tagOf.set(m[1]!, tag)
+    }
+    const union = /export type GameEngineEvent =([\s\S]*?)\n\n/.exec(eventsSource)?.[1]
+    expect(union, 'could not locate the GameEngineEvent union').toBeTruthy()
+    const tags = [...union!.matchAll(/\|\s*(\w+)/g)].map((m) => {
+      const tag = tagOf.get(m[1]!)
+      expect(tag, `union member ${m[1]} has no _tag literal`).toBeTruthy()
+      return tag!
+    })
+    expect(tags.length).toBeGreaterThan(30)
+    return [...new Set(tags)]
+  }
+
+  /**
+   * Events that intentionally produce no line. Adding to this list is a
+   * deliberate product decision — it is not a place to park an oversight.
+   */
+  const SUPPRESSED = new Set([
+    // Bookkeeping twin of ability_used; the cooldown is already on the slot.
+    'cooldown_used',
+  ])
+
+  /** Superset payload — every field any renderer reads, with values that are
+   *  valid for whichever event consumes them. */
+  const PROBE: Record<string, unknown> = {
+    playerId: 'me',
+    sourceId: 'enemy1',
+    targetId: 'me',
+    casterId: 'enemy1',
+    killerId: 'me',
+    victimId: 'enemy1',
+    assisters: [],
+    owner: 'enemy1',
+    team: 'radiant',
+    killerTeam: 'radiant',
+    winner: 'radiant',
+    zone: 'mid-river',
+    destination: 'mid-river',
+    amount: 10,
+    damage: 10,
+    goldAwarded: 40,
+    cost: 100,
+    refund: 25,
+    // A reason the client does NOT treat as farm noise — gold suppression is
+    // content-based (see REDUNDANT_GOLD), never type-based.
+    reason: 'hero kill',
+    abilityId: 'q',
+    itemId: 'dagon',
+    talentName: 'Sharp Edge',
+    message: 'power spike',
+    status: 'stun',
+    ticksRemaining: 2,
+    remainingTicks: 12,
+    newLevel: 6,
+    creepType: 'melee',
+    neutralType: 'kobold',
+    runeType: 'haste',
+    wardType: 'observer',
+    damageType: 'physical',
+    hp: 100,
+    maxHp: 200,
+    votesFor: 1,
+    votesNeeded: 3,
+    source: 'linkens_sphere',
+    respawnTick: 5,
+    heroId: 'echo',
+  }
+
+  it('every GameEngineEvent renders a line or is explicitly suppressed', () => {
+    const missing: string[] = []
+    for (const tag of unionTags()) {
+      const line = eventToLine(ev(tag, PROBE), ctx)
+      if (SUPPRESSED.has(tag)) {
+        expect(line, `${tag} is allow-listed as suppressed but rendered a line`).toBeNull()
+      } else if (!line || line.text.trim() === '') {
+        missing.push(tag)
+      }
+    }
+    expect(missing, `events with no combat-log line: ${missing.join(', ')}`).toEqual([])
+  })
+
+  it('no line leaks a raw payload dump or an unresolved id', () => {
+    for (const tag of unionTags()) {
+      const line = eventToLine(ev(tag, PROBE), ctx)
+      if (!line) continue
+      expect(line.text, `${tag} renders raw JSON`).not.toContain('{')
+      expect(line.text, `${tag} renders [object Object]`).not.toContain('[object')
+      expect(line.text, `${tag} renders "undefined"`).not.toContain('undefined')
     }
   })
 })
@@ -572,11 +763,6 @@ describe('eventToLine: remaining event-type lines', () => {
     expect(noTarget).toContain('cast ability:w')
     expect(noTarget).not.toContain(' on ')
   })
-  it('enemy_missing → MISSING callout', () => {
-    expect(
-      line('enemy_missing', { playerId: 'enemy1', lastSeenZone: 'mid-river' })!.text,
-    ).toContain('[MISSING]')
-  })
   it('neutral_killed → camp cleared', () => {
     expect(line('neutral_killed', { playerId: 'me', neutralType: 'kobold' })!.text).toContain(
       'cleared a kobold camp',
@@ -618,7 +804,60 @@ describe('eventToLine: remaining event-type lines', () => {
   it('surrendered → victory line', () => {
     expect(line('surrendered', { team: 'dire', winner: 'radiant' })!.text).toContain('surrendered')
   })
-  it('an internal event (contest_lasthit) produces no line', () => {
-    expect(line('contest_lasthit', { playerId: 'me' })).toBeNull()
+  it('an internal event (cooldown_used) produces no line', () => {
+    expect(line('cooldown_used', { playerId: 'me', abilityId: 'q' })).toBeNull()
+  })
+})
+
+describe('eventToLine: semantic hierarchy', () => {
+  it('types a hero death as a headline, not as chip damage', () => {
+    // A hero dying used to render `damage` — the same red, the same weight as a
+    // creep taking 9 off a tower — and the OBJ filter dropped it entirely.
+    const death = eventToLine(ev('death', { playerId: 'enemy1', respawnTick: 20 }), ctx)!
+    expect(death.type).toBe('kill')
+  })
+
+  it('types power-curve beats as objectives so OBJ can find them', () => {
+    expect(eventToLine(ev('level_up', { playerId: 'me', newLevel: 7 }), ctx)!.type).toBe(
+      'objective',
+    )
+    expect(
+      eventToLine(ev('talent_selected', { playerId: 'me', talentName: '+250 HP' }), ctx)!.type,
+    ).toBe('objective')
+  })
+
+  it('types a negated spell as a spell beat, not a grey notice', () => {
+    expect(
+      eventToLine(
+        ev('spell_blocked', { source: 'linkens_sphere', targetId: 'me', casterId: 'enemy1' }),
+        ctx,
+      )!.type,
+    ).toBe('ability')
+    expect(
+      eventToLine(ev('teleport_cancelled', { playerId: 'me', reason: 'stunned' }), ctx)!.type,
+    ).toBe('ability')
+  })
+})
+
+describe('eventToLine: damage metadata for the tick recap', () => {
+  it('carries the amount and both labels on hero damage, not only structure chip', () => {
+    const line = eventToLine(
+      ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 84, damageType: 'physical' }),
+      ctx,
+    )!
+    expect(line.dmgAmount).toBe(84)
+    expect(line.sourceLabel).toBe('enemy1')
+    expect(line.targetLabel).toBe('You')
+    // Hero damage must still never collapse into a running line.
+    expect(line.dedupKey).toBeUndefined()
+  })
+
+  it('carries a trap hit too — it is damage the recap must not miss', () => {
+    const line = eventToLine(
+      ev('trap_triggered', { owner: 'enemy1', targetId: 'me', zone: 'mid-river', damage: 100 }),
+      ctx,
+    )!
+    expect(line.dmgAmount).toBe(100)
+    expect(line.targetLabel).toBe('You')
   })
 })

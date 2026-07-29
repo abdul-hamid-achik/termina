@@ -379,8 +379,8 @@ describe('AsciiMap', () => {
 
       const cells = wrapper.findAll('[role="gridcell"]')
       expect(cells.length).toBe(2)
-      expect(cells[0]!.text()).toContain('◈50%')
-      expect(cells[0]!.attributes('aria-label')).toContain('ancient at 50%')
+      expect(cells[0]!.text()).toContain('◈LOCKED 50%')
+      expect(cells[0]!.attributes('aria-label')).toContain('ancient locked at 50%')
       expect(cells[1]!.text()).toContain('◈✗')
       expect(cells[1]!.attributes('aria-label')).toContain('ancient destroyed')
     })
@@ -395,7 +395,9 @@ describe('AsciiMap', () => {
         },
       })
 
-      expect(wrapper.find('[data-testid="compact-current-zone"]').text()).toContain('◈ CORE 50%')
+      expect(wrapper.find('[data-testid="compact-current-zone"]').text()).toContain(
+        '◈ CORE LOCKED 50%',
+      )
     })
   })
 
@@ -438,6 +440,83 @@ describe('AsciiMap', () => {
       const cell = wrapper.find('[title^="mid-river"]')
       await cell.trigger('click')
       expect(wrapper.emitted('zoneClick')).toBeUndefined()
+    })
+
+    it('orients the grid: Radiant is the top of the board, Dire the bottom', () => {
+      // The banner reads left-to-right ("RADIANT [MAP] DIRE"), which says nothing
+      // about which END of the grid each team holds.
+      const text = mountFull().text()
+      expect(text).toContain('RADIANT ▲')
+      expect(text).toContain('DIRE ▼')
+    })
+
+    it('decodes the fog glyph and the tower pips in the legend', () => {
+      const text = mountFull().text()
+      expect(text).toContain('? = No vision')
+      expect(text).toContain('▲▲▲/✗ = Tower HP')
+      expect(text).not.toContain('✓/✗ = Tower')
+    })
+  })
+
+  describe('auto-path route (W2-8)', () => {
+    // The full mid corridor, so the BFS has a real multi-hop route to draw.
+    const CORRIDOR = ['radiant-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']
+
+    function mountRoute(props: Record<string, unknown> = {}) {
+      return mount(AsciiMap, {
+        props: {
+          zones: CORRIDOR.map((id) => makeZone({ id, name: id })),
+          playerZone: 'radiant-base',
+          forceMode: 'full' as const,
+          ...props,
+        },
+      })
+    }
+
+    const markers = (w: ReturnType<typeof mountRoute>) =>
+      Object.fromEntries(
+        w.findAll('[data-route-marker]').map((s) => [s.attributes('data-route-marker'), s.text()]),
+      )
+
+    it('draws nothing when the hero is not walking', () => {
+      expect(markers(mountRoute())).toEqual({})
+      expect(markers(mountRoute({ moveTarget: null }))).toEqual({})
+    })
+
+    it('numbers each hop and targets the destination cell', () => {
+      // A queued walk was previously invisible on the board — the hero just
+      // drifted one zone per tick with nothing showing where it was headed.
+      expect(markers(mountRoute({ moveTarget: 'mid-t1-rad' }))).toEqual({
+        'mid-t3-rad': '1',
+        'mid-t2-rad': '2',
+        'mid-t1-rad': '⌖',
+      })
+    })
+
+    it('routes only through the zones this game actually has', () => {
+      // From mid-t1-rad the GLOBAL graph reaches rune-top in two hops, the first
+      // of which (mid-river) IS on this board — so an unrestricted BFS would
+      // draw a route toward a zone the game does not contain.
+      const w = mountRoute({ playerZone: 'mid-t1-rad', moveTarget: 'rune-top' })
+      expect(markers(w)).toEqual({})
+    })
+
+    it('announces the route to screen readers on the destination cell', () => {
+      const w = mountRoute({ moveTarget: 'mid-t1-rad' })
+      const label = (id: string) =>
+        w.find(`[data-zone-cell="${id}"]`).attributes('aria-label') ?? ''
+      expect(label('mid-t1-rad')).toContain('walk destination')
+      expect(label('mid-t2-rad')).toContain('walk step 2')
+      expect(label('radiant-base')).not.toContain('walk')
+    })
+
+    it('marks the route on the compact cards too (the desktop rail map is compact)', () => {
+      const w = mountRoute({ forceMode: 'compact' as const, moveTarget: 'mid-t1-rad' })
+      expect(markers(w)).toEqual({ 'mid-t3-rad': '1' })
+      const card = w
+        .findAll('[data-testid="compact-adjacent-zone"]')
+        .find((c) => c.text().includes('mid-t3-rad'))
+      expect(card?.attributes('aria-label')).toContain('walk step 1')
     })
   })
 })

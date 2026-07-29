@@ -762,6 +762,16 @@ describe('ActionResolver', () => {
       expect(tower.alive).toBe(false)
       // awardTowerKill pays the in-zone attacker (tower_kill event itself is emitted by GameLoop)
       expect(result.state.players['p1']!.gold).toBeGreaterThan(600)
+
+      // …and says so. The payout was silent, so razing a tower read as a pure
+      // objective with no reward.
+      const gold = result.events.filter((e) => e._tag === 'gold_change')
+      expect(gold).toHaveLength(1)
+      expect(gold[0]).toMatchObject({
+        playerId: 'p1',
+        reason: 'tower kill',
+        amount: result.state.players['p1']!.gold - 600,
+      })
     })
 
     it('should reject glyph when on cooldown', () => {
@@ -1330,6 +1340,61 @@ describe('ActionResolver', () => {
       try {
         expect(stacked.attack().rolledCrit).toBe(true)
         expect(bare.attack().rolledCrit).toBe(true)
+      } finally {
+        Math.random = original
+      }
+    })
+  })
+
+  describe('skull_basher bash narration', () => {
+    // The bash is applied deep inside the attack phase's staged buff list, so
+    // it can't be recovered by the buff diff the cast/item paths use — it is
+    // announced at the point of application instead. Without this the target
+    // simply lost their next action with no explanation anywhere.
+    function bashState() {
+      return makeGameState({
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'radiant',
+            zone: 'mid-river',
+            items: ['skull_basher', null, null, null, null, null],
+          }),
+          p2: makePlayer({ id: 'p2', name: 'Enemy', team: 'dire', zone: 'mid-river' }),
+        },
+      })
+    }
+    const attack: PlayerAction[] = [
+      { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'p2' } } },
+    ]
+
+    it('emits status_applied when the bash procs', () => {
+      const original = Math.random
+      Math.random = () => 0 // every proc roll hits, including the 25% bash
+      try {
+        const result = Effect.runSync(resolveActions(bashState(), attack))
+        expect(result.state.players['p2']!.buffs.some((b) => b.id === 'stun')).toBe(true)
+        expect(result.events.filter((e) => e._tag === 'status_applied')).toEqual([
+          {
+            _tag: 'status_applied',
+            tick: 1,
+            sourceId: 'p1',
+            targetId: 'p2',
+            status: 'stun',
+            ticksRemaining: 2,
+          },
+        ])
+      } finally {
+        Math.random = original
+      }
+    })
+
+    it('emits nothing when the bash does not proc', () => {
+      const original = Math.random
+      Math.random = () => 0.99
+      try {
+        const result = Effect.runSync(resolveActions(bashState(), attack))
+        expect(result.events.some((e) => e._tag === 'status_applied')).toBe(false)
       } finally {
         Math.random = original
       }

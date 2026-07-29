@@ -16,6 +16,8 @@ import {
   MELEE_CREEP_HP,
   RANGED_CREEP_HP,
   SIEGE_CREEP_HP,
+  CREEP_ESCALATION_INTERVAL_TICKS,
+  creepMaxHp,
   ROSHAN_RESPAWN_TICKS,
   ROSHAN_BASE_HP,
   RUNE_INTERVAL_TICKS,
@@ -73,6 +75,33 @@ describe('Spawner', () => {
         else if (c.type === 'ranged') expect(c.hp).toBe(RANGED_CREEP_HP)
         else if (c.type === 'siege') expect(c.hp).toBe(SIEGE_CREEP_HP)
       }
+    })
+
+    it('spawns escalated creeps once the game is past the first interval', () => {
+      // First wave tick at or after two full escalation intervals.
+      const tick =
+        Math.ceil((CREEP_ESCALATION_INTERVAL_TICKS * 2) / CREEP_WAVE_INTERVAL_TICKS) *
+        CREEP_WAVE_INTERVAL_TICKS
+      const creeps = spawnCreepWaves(tick)
+
+      expect(creeps.length).toBeGreaterThan(0)
+      for (const c of creeps) {
+        expect(c.hp).toBe(creepMaxHp(c.type, tick))
+      }
+      const melee = creeps.find((c) => c.type === 'melee')!
+      expect(melee.hp).toBeGreaterThan(MELEE_CREEP_HP)
+    })
+
+    it('waves keep the HP of the tick they spawned on, so late waves are tougher', () => {
+      const earlyTick = CREEP_WAVE_INTERVAL_TICKS
+      const lateTick =
+        Math.ceil((CREEP_ESCALATION_INTERVAL_TICKS * 3) / CREEP_WAVE_INTERVAL_TICKS) *
+        CREEP_WAVE_INTERVAL_TICKS
+      const early = spawnCreepWaves(earlyTick).find((c) => c.type === 'melee')!
+      const late = spawnCreepWaves(lateTick).find((c) => c.type === 'melee')!
+
+      expect(early.hp).toBe(MELEE_CREEP_HP)
+      expect(late.hp).toBeGreaterThan(early.hp)
     })
 
     it('assigns unique IDs to each creep', () => {

@@ -4,9 +4,7 @@ import {
   MELEE_CREEPS_PER_WAVE,
   RANGED_CREEPS_PER_WAVE,
   SIEGE_CREEP_WAVE_INTERVAL,
-  MELEE_CREEP_HP,
-  RANGED_CREEP_HP,
-  SIEGE_CREEP_HP,
+  creepMaxHp,
   ROSHAN_RESPAWN_TICKS,
   ROSHAN_BASE_HP,
   ROSHAN_HP_PER_MINUTE,
@@ -32,8 +30,17 @@ const LANE_SPAWN_ZONES: Record<string, { radiant: string; dire: string }> = {
   bot: { radiant: 'bot-t3-rad', dire: 'bot-t3-dire' },
 }
 
-/** Spawn a wave of creeps for one team on one lane. Throws on unknown lane. */
-function spawnWave(team: 'radiant' | 'dire', lane: string, waveNumber: number): CreepState[] {
+/**
+ * Spawn a wave of creeps for one team on one lane. Throws on unknown lane.
+ * `tick` fixes the wave's escalation tier: creeps keep the HP they spawned
+ * with for life, so a late wave is permanently tougher than an early one.
+ */
+function spawnWave(
+  team: 'radiant' | 'dire',
+  lane: string,
+  waveNumber: number,
+  tick: number,
+): CreepState[] {
   const spawnZone = LANE_SPAWN_ZONES[lane]
   if (!spawnZone) {
     throw new Error(`spawnWave: unknown lane '${lane}' — expected one of top/mid/bot`)
@@ -42,13 +49,13 @@ function spawnWave(team: 'radiant' | 'dire', lane: string, waveNumber: number): 
   const creeps: CreepState[] = []
 
   for (let i = 0; i < MELEE_CREEPS_PER_WAVE; i++) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: MELEE_CREEP_HP, type: 'melee' })
+    creeps.push({ id: nextCreepId(), team, zone, hp: creepMaxHp('melee', tick), type: 'melee' })
   }
   for (let i = 0; i < RANGED_CREEPS_PER_WAVE; i++) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: RANGED_CREEP_HP, type: 'ranged' })
+    creeps.push({ id: nextCreepId(), team, zone, hp: creepMaxHp('ranged', tick), type: 'ranged' })
   }
   if (waveNumber > 0 && waveNumber % SIEGE_CREEP_WAVE_INTERVAL === 0) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: SIEGE_CREEP_HP, type: 'siege' })
+    creeps.push({ id: nextCreepId(), team, zone, hp: creepMaxHp('siege', tick), type: 'siege' })
   }
 
   return creeps
@@ -69,8 +76,8 @@ export function spawnCreepWaves(tick: number, hasZone?: (zoneId: string) => bool
   for (const lane of ['top', 'mid', 'bot']) {
     const spawn = LANE_SPAWN_ZONES[lane]
     if (hasZone && spawn && (!hasZone(spawn.radiant) || !hasZone(spawn.dire))) continue
-    newCreeps.push(...spawnWave('radiant', lane, waveNumber))
-    newCreeps.push(...spawnWave('dire', lane, waveNumber))
+    newCreeps.push(...spawnWave('radiant', lane, waveNumber, tick))
+    newCreeps.push(...spawnWave('dire', lane, waveNumber, tick))
   }
 
   return newCreeps

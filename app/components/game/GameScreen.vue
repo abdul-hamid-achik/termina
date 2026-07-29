@@ -37,7 +37,9 @@ import {
   formatHelpReadout,
 } from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
-import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
+import { ZONE_MAP } from '~~/shared/constants/zones'
+import { zonesForMap } from '~~/shared/constants/maps'
+import { buildAdjacentZones } from '~/components/game/asciiMapModel'
 import { HEROES } from '~~/shared/constants/heroes'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { ITEMS, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
@@ -152,6 +154,17 @@ const recommendedShopItems = computed(() => {
   return recommendedItemsForRole(role)
 })
 
+// `canBuy` is false for two unrelated reasons — wrong zone, or dead — and the
+// shop only ever named the first, so a corpse was told to walk somewhere it
+// cannot walk. Buying while dead stays unsupported (the server's buy/sell path
+// requires a shop zone, and a dead hero's zone is wherever it fell), so the
+// honest fix is to say so rather than to pretend the zone is the problem.
+const shopBlockedReason = computed(() =>
+  gameStore.isAlive
+    ? 'You must be in the fountain or base zone to purchase items.'
+    : 'You cannot buy while dead — wait for respawn, or buy back to return now.',
+)
+
 onMounted(() => {
   if (gameStore.gameId && gameStore.playerId) {
     uiLog.info('GameScreen connecting', { gameId: gameStore.gameId, playerId: gameStore.playerId })
@@ -186,6 +199,12 @@ onMounted(() => {
   // Keyboard listener for Tab (scoreboard toggle)
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
+
+  // Reloading mid-death still owes a respawn cue; the watcher below only sees
+  // transitions, and this one already happened.
+  awaitingRespawn = gameStore.player != null && !gameStore.isAlive
+
+  measureBar()
 })
 
 onUnmounted(() => {
@@ -194,7 +213,38 @@ onUnmounted(() => {
   gameStore.stopTickCountdown()
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
+  barObserver?.disconnect()
 })
+
+// ── HUD lane geometry ─────────────────────────────────────────
+// The kill feed and the announcement toast are absolutely positioned overlays
+// with hardcoded top offsets that landed on the state bar and the focus banner —
+// i.e. on top of the always-on HUD, whose height changes with the tutorial
+// banner, the focus banner and the emphasize-vitals setting. Measure the bar and
+// publish it as a custom property the overlay lanes are anchored to.
+const barEl = ref<HTMLElement | null>(null)
+const hudBarHeight = ref(0)
+let barObserver: ResizeObserver | null = null
+
+const hudBarStyle = computed(() =>
+  hudBarHeight.value > 0 ? { '--hud-bar-h': `${hudBarHeight.value}px` } : {},
+)
+
+function measureBar() {
+  const el = barEl.value
+  if (!el) return
+  // No ResizeObserver (older browsers, SSR-ish environments): a single
+  // post-mount read still beats the hardcoded offset.
+  if (typeof ResizeObserver === 'undefined') {
+    hudBarHeight.value = el.offsetHeight
+    return
+  }
+  barObserver = new ResizeObserver((entries) => {
+    const h = entries[0]?.contentRect.height ?? 0
+    if (h > 0) hudBarHeight.value = h
+  })
+  barObserver.observe(el)
+}
 
 function onKeyDown(e: KeyboardEvent) {
   const target = e.target as HTMLElement
@@ -279,13 +329,15 @@ function onKeyUp(e: KeyboardEvent) {
   }
 }
 
-// ── Audio cues + screen shake ──────────────────────────────────
+// ── Audio cues + impact feedback ───────────────────────────────
 
 // ── Game-feel: impact keys (bumped to replay one-shot animations) ──
 const heroFlashKey = ref(0) // I took damage → red flash on the hero panel
 const kdaPopKey = ref(0) // I got a kill → KDA pop
 const tickPulseKey = ref(0) // each tick → reveal flash in the Tick Theater
 const deathVignetteKey = ref(0) // I died → instant red vignette pulse (on the event)
+const respawnKey = ref(0) // I respawned → one-shot radiant vignette
+let awaitingRespawn = false
 // Game-end climax: a one-shot team-colored flash + victory/defeat stinger.
 const endFlashKey = ref(0)
 const endFlashType = ref<'victory' | 'defeat' | null>(null)
@@ -298,30 +350,63 @@ const latestAnnouncement = computed(() => gameStore.announcements.at(-1) ?? '')
 // rises + fades once (DamageFloat.vue) and is pruned after the animation.
 const damageFloats = ref<DamageFloatEntry[]>([])
 let _floatId = 0
-function pushDamageFloat(amount: number, kind: 'taken' | 'dealt' | 'heal') {
+
+/** What happens to you rises over your vitals; what you do, over the zone. */
+const FLOAT_ANCHOR: Record<DamageFloatEntry['kind'], 'self' | 'target'> = {
+  taken: 'self',
+  heal: 'self',
+  dealt: 'target',
+  gold: 'target',
+}
+
+function pushDamageFloat(amount: number, kind: DamageFloatEntry['kind']) {
   if (!amount || amount <= 0) return
   const id = ++_floatId
-  damageFloats.value = [...damageFloats.value, { id, amount: Math.round(amount), kind }].slice(-8)
+  damageFloats.value = [
+    ...damageFloats.value,
+    { id, amount: Math.round(amount), kind, anchor: FLOAT_ANCHOR[kind] },
+  ].slice(-8)
   setTimeout(() => {
     damageFloats.value = damageFloats.value.filter((f) => f.id !== id)
   }, 750)
 }
 
-const screenShake = ref<'none' | 'light' | 'strong'>('none')
-let shakeTimer: ReturnType<typeof setTimeout> | null = null
-function triggerShake(level: 'light' | 'strong') {
-  if (shakeTimer) clearTimeout(shakeTimer)
-  // re-trigger by going none → level on next frame
-  screenShake.value = 'none'
-  requestAnimationFrame(() => {
-    screenShake.value = level
-    shakeTimer = setTimeout(
-      () => {
-        screenShake.value = 'none'
-      },
-      level === 'strong' ? 600 : 400,
-    )
-  })
+const selfFloats = computed(() => damageFloats.value.filter((f) => f.anchor === 'self'))
+const targetFloats = computed(() => damageFloats.value.filter((f) => f.anchor !== 'self'))
+
+// How hard the last hit landed, as a fraction of max HP, driving the flash and
+// impact alpha: a creep chip and a full combo used to paint identically.
+const hitIntensity = ref(1)
+
+function hitStrength(amount: number, maxHp: number): number {
+  if (!(maxHp > 0)) return 0.5
+  return Math.min(1, Math.max(0.25, (amount / maxHp) * 3))
+}
+
+// A hit used to translate the ENTIRE 100dvh grid root — including the command
+// input the player is reading and typing into — which also exposed the body
+// background as a flickering band at the edges. The punch is now a colored
+// inset flare on a transparent overlay: nothing that carries text moves.
+const impactKey = ref(0)
+const impactLevel = ref<'light' | 'strong'>('light')
+let lastImpactAt = 0
+/** Multiple hits land in the same tick; without a floor they retrigger the
+ *  flare on top of itself and it reads as a strobe rather than as impact. */
+const IMPACT_RETRIGGER_MS = 250
+
+function triggerImpact(level: 'light' | 'strong') {
+  const now = Date.now()
+  if (level === 'light' && now - lastImpactAt < IMPACT_RETRIGGER_MS) return
+  lastImpactAt = now
+  impactLevel.value = level
+  impactKey.value++
+}
+
+/** Taking damage: the localized panel flash, the screen flare, and the number. */
+function registerHit(amount: number) {
+  hitIntensity.value = hitStrength(amount, gameStore.player?.maxHp ?? 0)
+  heroFlashKey.value++
+  triggerImpact('light')
 }
 
 // The destination the player last ordered. The server nulls `moveTarget` on the
@@ -345,7 +430,21 @@ watch(
       // respawn relocates you to the fountain — a surviving order would narrate
       // that jump as progress toward a destination you abandoned.
       walkTarget.value = null
+      awaitingRespawn = true
+      return
     }
+    // Coming back was a UI element silently disappearing. Gated on an actual
+    // death: the store reports "not alive" until the first tick_state lands, so
+    // an ungated rising edge would fire the cue on every game load.
+    if (!awaitingRespawn) return
+    awaitingRespawn = false
+    playSound('respawn')
+    respawnKey.value++
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: '>_ PROCESS RESTORED — you are back in the fight',
+      type: 'system',
+    })
   },
 )
 
@@ -395,7 +494,7 @@ watch(
   },
 )
 
-// Watch game events for audio cues + shake. Keyed on the store's monotonic
+// Watch game events for audio cues + impact. Keyed on the store's monotonic
 // eventSeq (not events.length, which freezes at the 200-event cap and would
 // stop firing mid-game); the newest batch is read from latestEvents.
 watch(
@@ -410,8 +509,7 @@ watch(
         case 'damage':
           if (e.payload.targetId === pid) {
             playSound('damage')
-            triggerShake('light')
-            heroFlashKey.value++
+            registerHit(Number(e.payload.amount))
             pushDamageFloat(Number(e.payload.amount), 'taken')
           } else if (e.payload.sourceId === pid) {
             playSound('damage')
@@ -428,17 +526,26 @@ watch(
         case 'death':
           if (e.payload.playerId === pid) {
             playSound('death')
-            triggerShake('strong')
+            triggerImpact('strong')
             // Instant red vignette on the EVENT — the "PROCESS TERMINATED" overlay
             // is tied to authoritative isAlive state (a tick_state away), which can
             // lag the event under latency; the vignette confirms death immediately.
             deathVignetteKey.value++
           }
           break
-        case 'gold_change':
+        // Farming — the loop the player spends most of the match in. The gold
+        // cue used to hang off `gold_change`, whose only emitter is a win
+        // sentinel carrying an empty playerId, so last-hitting was silent.
+        case 'creep_lasthit':
+        case 'creep_deny':
           if (e.payload.playerId === pid) {
             playSound('gold')
+            pushDamageFloat(Number(e.payload.goldAwarded), 'gold')
           }
+          break
+        case 'neutral_killed':
+          // The camp's bounty is not on the wire, so the cue carries no number.
+          if (e.payload.playerId === pid) playSound('gold')
           break
         case 'level_up':
           if (e.payload.playerId === pid) {
@@ -455,21 +562,37 @@ watch(
         case 'kill':
           if (e.payload.killerId === pid) {
             playSound('kill')
-            triggerShake('light')
+            triggerImpact('light')
+            kdaPopKey.value++
+          } else if (Array.isArray(e.payload.assisters) && e.payload.assisters.includes(pid)) {
+            // An assist moves your KDA and your gold; it was the one scoring
+            // event with no feedback at all. No flare — you did not land it.
+            playSound('kill')
             kdaPopKey.value++
           }
           break
-        case 'tower_kill':
-          // Audible to everyone — towers are global events
-          playSound('tower_fall')
-          if (e.payload.killerId === pid) triggerShake('light')
+        case 'tower_kill': {
+          // `killerId` was tested here, a field TowerKillEvent has never had, so
+          // every tower read identically regardless of whose it was.
+          const myTeam = gameStore.player?.team
+          if (myTeam && e.payload.team === myTeam) {
+            playSound('tower_lost')
+            const where = zoneLabel(String(e.payload.zone))
+            gameStore.addAnnouncement(`Tower lost — ${where}`, 'warning')
+          } else {
+            // Audible to everyone — towers are global events.
+            playSound('tower_fall')
+            if (myTeam && e.payload.killerTeam === myTeam) triggerImpact('light')
+          }
           break
+        }
         case 'ability_used':
           // The caster's cast cue now fires immediately on send (handleCommand),
           // so here we only react when WE are the target of an enemy ability.
           if (e.payload.targetId === pid && e.payload.playerId !== pid) {
-            triggerShake('light')
+            hitIntensity.value = 0.5
             heroFlashKey.value++
+            triggerImpact('light')
           }
           break
         case 'double_cast':
@@ -484,7 +607,7 @@ watch(
 )
 
 // Game-end climax: the win/loss moment gets its own juice — a team-colored
-// full-screen flash, a strong shake, and a victory/defeat stinger. PostGame
+// full-screen flash, a strong flare, and a victory/defeat stinger. PostGame
 // provides the screen; this provides the instantaneous punch the fade-in alone
 // lacks. Keyed on (ended && winner) so it survives either the tick_state phase
 // or the game_over message arriving first, and re-arms when the game resets.
@@ -496,7 +619,7 @@ watch(
     endFlashType.value = won ? 'victory' : 'defeat'
     endFlashKey.value++
     playSound(won ? 'victory' : 'defeat')
-    triggerShake('strong')
+    triggerImpact('strong')
   },
 )
 
@@ -707,7 +830,11 @@ const mapZones = computed(() => {
   // Roshan state for the pit (reuses the War Room's tested respawn readout).
   const roshanReadout = gameStore.roshan ? formatRoshan(gameStore.roshan, gameStore.tick) : null
 
-  return ZONES.map((zone) => {
+  // The GAME's zone set, not the global 32. On the one-lane tutorial map the
+  // full list put ~20 zones on the board that the game does not contain — and
+  // because the compact map derives its tap-to-move cards from this list, half
+  // of them ordered a walk to a zone the server would reject.
+  return zonesForMap(gameStore.mapId).map((zone) => {
     const fogged = !visibleZoneIds.has(zone.id)
 
     // Count allies and enemies in this zone
@@ -767,8 +894,11 @@ const mapZones = computed(() => {
       creepTypes,
       neutralCount,
       wardCount,
-      // Vision-gated: a live rune only shows where the player can see it.
-      runeType: fogged ? undefined : liveRuneByZone.get(zone.id),
+      // Global, not vision-gated: the server sends runes unfiltered (see
+      // VisionCalculator) and the War Room ticker already names the live one.
+      // Hiding the map marker only made the two surfaces disagree — a rune spot
+      // is unwarded almost by definition, so the fog gate hid it nearly always.
+      runeType: liveRuneByZone.get(zone.id),
       roshan:
         zone.id === 'roshan-pit' && !fogged && roshanReadout && roshanReadout.status !== 'unknown'
           ? { alive: roshanReadout.status === 'up', respawnIn: roshanReadout.respawnIn }
@@ -778,6 +908,32 @@ const mapZones = computed(() => {
 })
 
 const playerZone = computed(() => gameStore.player?.zone ?? '')
+
+// ── Auto-path readout ────────────────────────────────────────
+// Where the hero is walking, if anywhere. Same source of truth as the arrival
+// narration: the server nulls `moveTarget` on the last hop, so the local order
+// is what covers the final leg and every single-hop move.
+const walkDestination = computed(() => gameStore.player?.moveTarget ?? walkTarget.value)
+
+/** `WALKING → <name> · Nt` — a queued walk had no persistent surface at all. */
+const walkReadout = computed(() => {
+  const p = gameStore.player
+  const target = walkDestination.value
+  if (!p || !p.alive || !target || target === p.zone) return null
+  const zoneIds = new Set(mapZones.value.map((z) => z.id))
+  // Restricted to this game's zone set, mirroring the server's own BFS
+  // (resolveMovementPhase paths over `zones`, never over what you can see).
+  const ticks = pathDistance(p.zone, target, (id) => zoneIds.has(id))
+  if (ticks <= 0) return null
+  return { zone: target, name: ZONE_MAP[target]?.name ?? target, ticks }
+})
+
+/** Stop walking: re-ordering a move to where you stand clears `moveTarget`. */
+function stopWalking() {
+  const p = gameStore.player
+  if (!p) return
+  handleCommand(`move ${p.zone}`)
+}
 
 // ── Zone panel data (who's in my zone) ────────────────────────
 const currentZoneName = computed(() => gameStore.currentZone?.name ?? playerZone.value)
@@ -975,7 +1131,7 @@ function handleCommand(cmd: string) {
           command.type === 'status'
             ? formatStatusReadout(me)
             : command.type === 'map'
-              ? formatMapReadout(me)
+              ? formatMapReadout(me, gameStore.mapId)
               : formatScanReadout(me, gameStore.allPlayers)
         localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
       }
@@ -1024,6 +1180,10 @@ function handleCommand(cmd: string) {
         text: validationError,
         type: 'system',
       })
+      // A rejection is the one [SYS] line the player MUST notice — client-side
+      // rejects now raise the same amber toast the server path already raises,
+      // which keeps grey [SYS] for genuine meta-chatter (chat, pings, readouts).
+      gameStore.addAnnouncement(validationError, 'warning')
       return
     }
     // If the socket isn't open (reconnecting), the action never reached the
@@ -1044,19 +1204,27 @@ function handleCommand(cmd: string) {
     // Remember (or drop) the walk order. `isSpecial` is exactly the server's
     // KEEPS_AUTOPATH set minus `move`, so this mirrors GameLoop: a deliberate
     // non-move order replaces the walk, and no arrival is owed any more.
-    if (command.type === 'move') walkTarget.value = command.zone
-    else if (!isSpecial) walkTarget.value = null
+    // Ordering a move to where you already stand is the STOP command (the
+    // server's BFS finds no next hop and nulls moveTarget), so it must clear
+    // the local memory too rather than leave the current zone as a destination.
+    if (command.type === 'move') {
+      walkTarget.value = command.zone === gameStore.player?.zone ? null : command.zone
+    } else if (!isSpecial) walkTarget.value = null
     // Immediate positive confirmation so the action feels registered NOW, not
     // only when the tick resolves ~4s later. Pre-flight validation already gated
     // out rejects above, so this fires only on actions that will resolve; the
-    // landing cues (damage floats, target shake) still come from the tick events.
+    // landing cues (damage floats, impact flare) still come from the tick events.
+    // Offensive orders get the meatier `cast` whoosh; everything else — move,
+    // buy, ward, deny — used to send in total silence.
     if (command.type === 'cast' || command.type === 'attack') playSound('cast')
+    else playSound('submit')
   } else if (error) {
     localEvents.value.push({
       tick: gameStore.tick,
       text: error,
       type: 'system',
     })
+    gameStore.addAnnouncement(error, 'warning')
   }
 }
 
@@ -1082,6 +1250,19 @@ function handleZoneClick(zoneId: string) {
   handleCommand(`move ${zoneId}`)
 }
 
+// ── [MOVE] picker ────────────────────────────────────────────
+// The same one-tap-to-move list the compact AsciiMap draws, reachable from the
+// action bar (which is on screen at every breakpoint, unlike the map).
+const showMovePicker = ref(false)
+const movePickerZones = computed(() =>
+  buildAdjacentZones(gameStore.player?.zone ?? '', mapZones.value),
+)
+
+function pickMoveZone(zoneId: string) {
+  showMovePicker.value = false
+  handleZoneClick(zoneId)
+}
+
 function handleQuickAction(cmd: string) {
   uiLog.debug('Quick action', { cmd })
   const p = gameStore.player
@@ -1098,16 +1279,18 @@ function handleQuickAction(cmd: string) {
   }
 
   if (cmd === 'MOVE') {
-    // Show adjacent zones as a hint
-    const zone = ZONE_MAP[p.zone]
-    if (zone) {
-      const adjacent = zone.adjacentTo.join(', ')
+    // Used to print the raw adjacency list ("mid-t1-rad, rune-top, …") — slugs
+    // that appear nowhere else in the UI, off this game's map half the time,
+    // and not clickable. It is a MOVE button; it now moves.
+    if (!movePickerZones.value.length) {
       localEvents.value.push({
         tick: gameStore.tick,
-        text: `Adjacent zones: ${adjacent}`,
+        text: 'No adjacent zones to move to from here.',
         type: 'system',
       })
+      return
     }
+    showMovePicker.value = !showMovePicker.value
     return
   }
 
@@ -1347,18 +1530,29 @@ function handleReturnToMenu() {
   <div
     v-else
     class="game-grid relative bg-bg-primary"
-    :class="{
-      'anim-shake': screenShake === 'light',
-      'anim-shake-strong': screenShake === 'strong',
-    }"
+    :style="hudBarStyle"
     data-testid="game-screen"
     :data-game-id="gameStore.gameId ?? ''"
     :data-layout="layout"
     :data-density="settings.hud.density"
     :data-vitals="settings.hud.emphasizeVitals ? 'on' : 'off'"
   >
-    <!-- Floating combat numbers (rise + fade on damage involving you) -->
-    <DamageFloat :floats="damageFloats" />
+    <!-- Floating combat numbers, one lane each: what lands on you, and what you
+         land on someone else -->
+    <DamageFloat :floats="selfFloats" anchor="self" />
+    <DamageFloat :floats="targetFloats" anchor="target" />
+
+    <!-- Impact flare: the hit punch that used to translate this whole grid —
+         command input included — and expose the page background at the edges -->
+    <div
+      v-if="impactKey > 0"
+      :key="impactKey"
+      class="pointer-events-none absolute inset-0 z-[16]"
+      :class="impactLevel === 'strong' ? 'anim-impact-strong' : 'anim-impact'"
+      :style="{ '--hit-intensity': hitIntensity }"
+      data-testid="impact-overlay"
+      aria-hidden="true"
+    />
 
     <!-- Transient action-feedback toast: surfaces server rejections (out of
          range, juked target, firewalled Ancient, not enough mana, …) that would
@@ -1378,8 +1572,18 @@ function handleReturnToMenu() {
       aria-hidden="true"
     />
 
+    <!-- Respawn: the mirror of the death vignette, so coming back is an event
+         rather than an overlay quietly vanishing -->
+    <div
+      v-if="respawnKey > 0"
+      :key="respawnKey"
+      class="anim-respawn-vignette pointer-events-none absolute inset-0 z-40"
+      data-testid="respawn-vignette"
+      aria-hidden="true"
+    />
+
     <!-- Game-end climax flash: a one-shot team-colored wash fired the instant
-         the game ends (paired with the victory/defeat stinger + strong shake) -->
+         the game ends (paired with the victory/defeat stinger + strong flare) -->
     <div
       v-if="endFlashKey > 0 && endFlashType"
       :key="endFlashKey"
@@ -1394,7 +1598,7 @@ function handleReturnToMenu() {
       data-testid="death-overlay"
     >
       <div
-        class="anim-fade-in-up flex h-full flex-col items-center justify-center rounded-lg border-2 border-dire bg-bg-panel p-6 text-center bloom-dire"
+        class="anim-fade-in-up pointer-events-auto flex max-h-[90%] max-w-[min(92vw,26rem)] flex-col items-center justify-center overflow-y-auto rounded-lg border-2 border-dire bg-bg-panel p-6 text-center bloom-dire"
       >
         <div class="mb-4 text-6xl text-dire text-glow-dire anim-glow-pulse">☠</div>
         <p class="t-display text-dire text-glow-dire tracking-widest">PROCESS TERMINATED</p>
@@ -1470,7 +1674,7 @@ function handleReturnToMenu() {
       aria-hidden="true"
     />
 
-    <div class="game-grid__bar">
+    <div ref="barEl" class="game-grid__bar">
       <GameStateBar
         :tick="currentTick"
         :game-time="gameTime"
@@ -1550,6 +1754,7 @@ function handleReturnToMenu() {
           :player-zone="playerZone"
           :ancients="ancients"
           :map-id="gameStore.mapId"
+          :move-target="walkDestination"
           force-mode="full"
           @zone-click="handleZoneClick"
         />
@@ -1579,6 +1784,7 @@ function handleReturnToMenu() {
           :player-zone="playerZone"
           :ancients="ancients"
           :map-id="gameStore.mapId"
+          :move-target="walkDestination"
           force-mode="compact"
           :overview-open="true"
           @zone-click="handleZoneClick"
@@ -1595,7 +1801,9 @@ function handleReturnToMenu() {
                canvas avatar + open tooltips) is NOT remounted on every hit. -->
           <div
             :key="heroFlashKey"
-            class="anim-flash pointer-events-none absolute inset-0 z-10"
+            class="anim-flash-damage pointer-events-none absolute inset-0 z-10"
+            :style="{ '--hit-intensity': hitIntensity }"
+            data-testid="hero-hit-flash"
             aria-hidden="true"
           />
           <HeroStatus
@@ -1668,7 +1876,7 @@ function handleReturnToMenu() {
         <div class="mb-2 flex items-center justify-between">
           <span class="text-[0.9rem] font-bold text-gold">&gt;_ ITEM SHOP</span>
           <button
-            class="border border-border px-2 py-0.5 font-mono text-[0.7rem] text-text-dim hover:text-text-primary"
+            class="border border-border px-2 py-0.5 font-mono t-hud-sm text-text-dim hover:text-text-primary"
             @click="showShop = false"
           >
             [CLOSE]
@@ -1677,8 +1885,9 @@ function handleReturnToMenu() {
         <div
           v-if="!gameStore.canBuy"
           class="mb-2 border border-dire/30 bg-dire/5 px-3 py-1.5 text-xs text-dire"
+          data-testid="shop-blocked-reason"
         >
-          [WARN] You must be in the fountain or base zone to purchase items.
+          [WARN] {{ shopBlockedReason }}
         </div>
         <div
           v-if="playerItems.filter(Boolean).length >= 6"
@@ -1713,7 +1922,7 @@ function handleReturnToMenu() {
           @unpin="unpinItem"
         />
         <button
-          class="ml-auto whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-gold hover:text-text-primary active:bg-border"
+          class="ml-auto whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-gold hover:text-text-primary active:bg-border"
           :class="{ 'border-gold': gameStore.canBuy }"
           title="Shop — click, or press Esc then S"
           aria-label="Toggle shop"
@@ -1727,7 +1936,7 @@ function handleReturnToMenu() {
         <button
           v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP', 'SCORE']"
           :key="cmd"
-          class="hud-action-btn min-h-[40px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono text-[0.75rem] font-bold text-text-primary transition-all active:bg-border active:scale-95"
+          class="hud-action-btn min-h-[40px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono t-hud-sm font-bold text-text-primary transition-all active:bg-border active:scale-95"
           :class="{
             'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy,
             'border-ability text-ability shadow-glow-ability':
@@ -1742,10 +1951,58 @@ function handleReturnToMenu() {
               ? 'true'
               : undefined
           "
-          :aria-pressed="cmd === 'SHOP' ? showShop : cmd === 'SCORE' ? showScoreboard : undefined"
+          :aria-pressed="
+            cmd === 'SHOP'
+              ? showShop
+              : cmd === 'SCORE'
+                ? showScoreboard
+                : cmd === 'MOVE'
+                  ? showMovePicker
+                  : undefined
+          "
           @click="handleQuickAction(cmd)"
         >
           {{ ['Q', 'W', 'E', 'R'].includes(cmd) ? abilityButtonState[cmd]?.label : cmd }}
+        </button>
+      </div>
+
+      <!-- [MOVE] picker: one tap per adjacent zone, named as the rest of the UI
+           names them. Only this game's map contributes (mapZones). -->
+      <div
+        v-if="showMovePicker"
+        class="flex flex-wrap gap-1 px-2 pb-1.5"
+        data-testid="move-picker"
+        role="group"
+        aria-label="Move to an adjacent zone"
+      >
+        <button
+          v-for="z in movePickerZones"
+          :key="z.id"
+          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-radiant/50 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-radiant transition-all active:bg-border active:scale-95"
+          :class="{ 'opacity-60': z.fogged }"
+          :data-testid="`move-picker-${z.id}`"
+          :aria-label="`Move to ${z.name}`"
+          @click="pickMoveZone(z.id)"
+        >
+          ▸ {{ z.name }}
+        </button>
+      </div>
+
+      <!-- A queued walk is otherwise invisible: the order scrolls out of the log
+           and the hero just drifts a zone per tick with no way to call it off. -->
+      <div
+        v-if="walkReadout"
+        class="flex items-center gap-2 px-2 pb-1 font-mono t-hud-sm text-self"
+        data-testid="walk-strip"
+      >
+        <span>WALKING → {{ walkReadout.name }} · {{ walkReadout.ticks }}t</span>
+        <button
+          class="border border-border px-1.5 py-0.5 text-text-dim hover:text-text-primary active:bg-border"
+          data-testid="walk-stop"
+          aria-label="Stop walking"
+          @click="stopWalking"
+        >
+          [stop]
         </button>
       </div>
       <!-- Situational actions — surfaced as buttons only when available, so the
@@ -1759,7 +2016,7 @@ function handleReturnToMenu() {
         <button
           v-for="a in situationalActions"
           :key="a.cmd"
-          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-ability/40 bg-bg-secondary px-2 py-1 font-mono text-[0.68rem] text-ability transition-all active:bg-border active:scale-95"
+          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-ability/40 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-ability transition-all active:bg-border active:scale-95"
           :data-testid="`situational-${a.cmd}`"
           :aria-label="a.aria"
           @click="runSituational(a.cmd)"
@@ -1839,6 +2096,12 @@ function handleReturnToMenu() {
    (min-width:1025px) so it never fights the responsive mobile templates. */
 .game-grid[data-density='compact'] {
   gap: 0;
+  /* Flooring the panel type at 12px costs rows per screen. Compact is the knob
+     that already exists for buying those rows back, so it steps the two HUD
+     tiers down rather than a separate "small text" setting being invented — and
+     it still lands well above the 7.7px–8.1px this replaced. */
+  --hud-text-xs: 0.6875rem;
+  --hud-text-sm: 0.75rem;
 }
 
 /* Dim only the strategic War Room — never the Zone panel above it, which carries
@@ -1862,10 +2125,13 @@ function handleReturnToMenu() {
   }
 }
 
-/* Kill feed floats over the top-center, below the bar. */
+/* Overlay lanes, stacked below the measured HUD bar (--hud-bar-h, published from
+   the script). The fixed 4.25rem both of these used to sit at is 68px at the
+   root font size — squarely on the focus banner and the tick/gold/KDA row. The
+   fallback keeps the old placement if the measurement never arrives. */
 .game-grid__killfeed {
   position: absolute;
-  top: 4.25rem;
+  top: calc(var(--hud-bar-h, 4.25rem) + 2.75rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
@@ -1873,11 +2139,22 @@ function handleReturnToMenu() {
   max-width: 92%;
 }
 
+/* The toast owns the lane directly under the bar; the kill feed sits below it. */
+.game-grid :deep(.announcement-toast) {
+  top: calc(var(--hud-bar-h, 4.25rem) + 0.5rem);
+}
+
+/* Death is up to 108 seconds long. A 70%-opaque full-bleed scrim that also ate
+   every click turned that into a blackout: the map, the log, the war room and
+   the scoreboard were all unreadable and unreachable for the duration. Only the
+   card takes pointer events, so the HUD underneath keeps working — watching the
+   fight you just lost is most of what there is to do while dead. */
 .death-overlay {
   position: absolute;
   inset: 0;
   z-index: 20;
-  background: rgb(var(--bg-overlay) / 0.7);
+  pointer-events: none;
+  background: rgb(var(--bg-overlay) / 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1886,9 +2163,15 @@ function handleReturnToMenu() {
 @media (max-width: 1024px) {
   /* Tablet: combat log spans full width as the primary surface; Zone + War Room
      share the left column beneath it, while hero/map live in the right rail. */
+  /* The content rows must be free to shrink to nothing. `.game-grid` is
+     `overflow: hidden; height: 100dvh`, so any px floor here is subtracted from
+     the LAST row — the command input, Q/W/E/R and shop — and pushes it off the
+     bottom of the screen. Every row below the bar scrolls internally already
+     (TerminalPanel's body, and `.game-grid__rail`), so there is nothing a floor
+     protects. */
   .game-grid {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto minmax(220px, 1.7fr) minmax(170px, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
   }
   .game-grid__bar {
     grid-column: 1 / -1;
@@ -1918,8 +2201,8 @@ function handleReturnToMenu() {
   .game-grid {
     grid-template-columns: 1fr;
     grid-template-rows:
-      auto minmax(200px, 1.9fr) minmax(120px, 1.1fr)
-      minmax(170px, 1fr) auto;
+      auto minmax(0, 1.9fr) minmax(0, 1.1fr)
+      minmax(0, 1fr) auto;
     gap: 1px;
   }
   .game-grid__bar {

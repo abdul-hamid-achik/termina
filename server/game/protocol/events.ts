@@ -98,6 +98,24 @@ export interface AbilityUsedEvent {
   readonly cooldown?: number
 }
 
+/**
+ * A crowd-control effect landing on a hero. Synthesized by diffing the target's
+ * buff list across a cast/item-active rather than read off the resolver's own
+ * payload — the resolvers speak a wire `ability_cast` shape the client never
+ * sees, and diffing state is what makes AoE secondaries, bashes and item
+ * actives narrate identically to a single-target cast.
+ */
+export interface StatusAppliedEvent {
+  readonly _tag: 'status_applied'
+  readonly tick: number
+  readonly sourceId: string
+  readonly targetId: string
+  /** Engine buff id (`stun`, `root`, `silence`, `hex`, …). */
+  readonly status: string
+  /** The engine's real remaining duration, not the ability's advertised one. */
+  readonly ticksRemaining: number
+}
+
 export interface CooldownEvent {
   readonly _tag: 'cooldown_used'
   readonly tick: number
@@ -114,24 +132,6 @@ export interface PowerSpikeEvent {
   readonly spikeType: 'level_6' | 'level_12' | 'level_18' | 'core_item'
   readonly itemId?: string
   readonly message: string
-}
-
-export interface EnemyMissingEvent {
-  readonly _tag: 'enemy_missing'
-  readonly tick: number
-  readonly playerId: string
-  readonly lastSeenZone: string
-  readonly lastSeenTick: number
-  readonly reportedBy: string
-}
-
-export interface ContestLasthitEvent {
-  readonly _tag: 'contest_lasthit'
-  readonly tick: number
-  readonly farmerId: string
-  readonly harasserId: string
-  readonly damageDealt: number
-  readonly success: boolean
 }
 
 export interface ItemPurchasedEvent {
@@ -334,10 +334,9 @@ export type GameEngineEvent =
   | GoldChangeEvent
   | LevelUpEvent
   | AbilityUsedEvent
+  | StatusAppliedEvent
   | CooldownEvent
   | PowerSpikeEvent
-  | EnemyMissingEvent
-  | ContestLasthitEvent
   | ItemPurchasedEvent
   | ItemSoldEvent
   | WardPlacedEvent

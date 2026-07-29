@@ -11,7 +11,10 @@ import {
   compactRiverDividerRow,
   ancientForZone,
   ancientLabel,
+  ancientStatusLabel,
   buildAdjacentZones,
+  buildRouteMarkers,
+  towerPips,
   cellText,
   compactIndicators,
   miniOverviewCell,
@@ -168,7 +171,14 @@ describe('asciiMapModel', () => {
   describe('cellText', () => {
     it('appends the ancient HP indicator on base zones', () => {
       const zone = makeZone({ id: 'radiant-base', name: 'Radiant Base' })
-      expect(cellText(zone, makeAncient({ hp: 3000, maxHp: 6000 }))).toContain('◈50%')
+      expect(cellText(zone, makeAncient({ hp: 3000, maxHp: 6000 }))).toContain('◈LOCKED 50%')
+    })
+
+    it('names the core as EXPOSED once it can actually be attacked', () => {
+      const zone = makeZone({ id: 'radiant-base', name: 'Radiant Base' })
+      const text = cellText(zone, makeAncient({ hp: 6000, maxHp: 6000, vulnerable: true }))
+      expect(text).toContain('◈EXPOSED 100%')
+      expect(text).not.toContain('LOCKED')
     })
 
     it('shows a razed marker for a destroyed Mainframe', () => {
@@ -179,8 +189,22 @@ describe('asciiMapModel', () => {
     it('shows the ancient through fog (global info, like towers)', () => {
       const zone = makeZone({ id: 'dire-base', name: 'Dire Base', fogged: true })
       const text = cellText(zone, makeAncient({ team: 'dire', hp: 3000, maxHp: 6000 }))
-      expect(text).toContain('◈50%')
+      expect(text).toContain('◈LOCKED 50%')
       expect(text).toContain('?')
+    })
+
+    it('shows the tower through fog too — towers reach every client unfiltered', () => {
+      // REGRESSION: the desktop grid returned from the fog branch BEFORE pushing
+      // the tower indicator, so the one renderer a desktop player looks at was
+      // also the only one that hid the objective it was global information about.
+      const zone = makeZone({
+        id: 'mid-t2-dire',
+        fogged: true,
+        tower: { team: 'dire', alive: true, tier: 2, hp: 600, maxHp: 900 },
+      })
+      const text = cellText(zone)
+      expect(text).toContain('▲▲·')
+      expect(text.endsWith('?')).toBe(true)
     })
 
     it('is unchanged for zones without an ancient', () => {
@@ -251,17 +275,118 @@ describe('asciiMapModel', () => {
       expect(cellText(makeZone({ id: 'mystery-zone' }))).toBe('MYSTERY-')
     })
 
-    it('marks a standing tower with a check glyph', () => {
-      const zone = makeZone({ id: 'mid-t1-rad', tower: { team: 'radiant', alive: true, tier: 1 } })
-      expect(cellText(zone)).toContain('✓')
+    it('marks a standing tower with HP pips', () => {
+      const zone = makeZone({
+        id: 'mid-t1-rad',
+        tower: { team: 'radiant', alive: true, tier: 1, hp: 200, maxHp: 900 },
+      })
+      expect(cellText(zone)).toContain('▲··')
+    })
+  })
+
+  describe('towerPips', () => {
+    it('scales three pips with remaining HP', () => {
+      const at = (hp: number) =>
+        towerPips({ team: 'radiant', alive: true, tier: 1, hp, maxHp: 900 })
+      expect(at(900)).toBe('▲▲▲')
+      expect(at(700)).toBe('▲▲▲')
+      expect(at(600)).toBe('▲▲·')
+      expect(at(301)).toBe('▲▲·')
+      expect(at(300)).toBe('▲··')
+      expect(at(1)).toBe('▲··')
+    })
+
+    it('never empties the pips while the tower still stands', () => {
+      // A standing tower must not render identically to a razed one — the whole
+      // point of the readout is "can I take this now".
+      expect(towerPips({ team: 'dire', alive: true, tier: 3, hp: 0, maxHp: 900 })).toBe('▲··')
+    })
+
+    it('falls back to full pips when the server sent no usable HP', () => {
+      expect(towerPips({ team: 'dire', alive: true, tier: 3 })).toBe('▲▲▲')
+      // A zero maxHp would divide to NaN and render an EMPTY cell — worse than
+      // saying nothing, since an empty slot reads as "no tower here".
+      expect(towerPips({ team: 'dire', alive: true, tier: 3, hp: 0, maxHp: 0 })).toBe('▲▲▲')
+    })
+
+    it('marks a razed tower with the razed glyph, not pips', () => {
+      expect(towerPips({ team: 'radiant', alive: false, tier: 1, hp: 0, maxHp: 900 })).toBe('✗')
+    })
+  })
+
+  describe('ancientStatusLabel', () => {
+    it('names whether the core can be attacked yet', () => {
+      expect(ancientStatusLabel(makeAncient({ hp: 6000, maxHp: 6000 }))).toBe('LOCKED 100%')
+      expect(ancientStatusLabel(makeAncient({ hp: 3000, maxHp: 6000, vulnerable: true }))).toBe(
+        'EXPOSED 50%',
+      )
+    })
+
+    it('drops the lock state once the core is razed', () => {
+      expect(ancientStatusLabel(makeAncient({ hp: 0, alive: false }))).toBe('✗')
+    })
+
+    it('returns null when there is no ancient', () => {
+      expect(ancientStatusLabel(null)).toBeNull()
+      expect(ancientStatusLabel(undefined)).toBeNull()
+    })
+  })
+
+  describe('buildRouteMarkers', () => {
+    it('numbers every hop and flags the destination', () => {
+      const markers = buildRouteMarkers('radiant-fountain', 'mid-t1-rad')
+      // radiant-fountain → radiant-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
+      expect(markers.get('radiant-base')).toBe('1')
+      expect(markers.get('mid-t3-rad')).toBe('2')
+      expect(markers.get('mid-t2-rad')).toBe('3')
+      expect(markers.get('mid-t1-rad')).toBe('⌖')
+      // The zone you are standing in is never part of the drawn route.
+      expect(markers.has('radiant-fountain')).toBe(false)
+    })
+
+    it('marks a single-hop walk as the destination outright', () => {
+      const markers = buildRouteMarkers('mid-t1-rad', 'mid-river')
+      expect([...markers]).toEqual([['mid-river', '⌖']])
+    })
+
+    it('draws nothing without a destination, or when already there', () => {
+      expect(buildRouteMarkers('mid-river', null).size).toBe(0)
+      expect(buildRouteMarkers('mid-river', undefined).size).toBe(0)
+      expect(buildRouteMarkers('mid-river', 'mid-river').size).toBe(0)
+      expect(buildRouteMarkers('', 'mid-river').size).toBe(0)
+    })
+
+    it('routes through the game map only, matching the hops the server will take', () => {
+      const oneLane = new Set(ONE_LANE_MAP_ROWS.flat().filter((id): id is string => id !== null))
+      // Off the one-lane map rune-top is unreachable, so no route is drawn at all
+      // rather than one running through zones this game does not contain.
+      expect(buildRouteMarkers('mid-river', 'rune-top', (id) => oneLane.has(id)).size).toBe(0)
+      expect(buildRouteMarkers('mid-river', 'rune-top').get('rune-top')).toBe('⌖')
     })
   })
 
   describe('zoneAriaLabel', () => {
-    it('describes a living ancient', () => {
+    it('describes a living ancient and whether it is attackable', () => {
       const zone = makeZone({ id: 'radiant-base', name: 'Radiant Base' })
       expect(zoneAriaLabel(zone, makeAncient({ hp: 3000, maxHp: 6000 }))).toContain(
-        'ancient at 50%',
+        'ancient locked at 50%',
+      )
+      expect(
+        zoneAriaLabel(zone, makeAncient({ hp: 3000, maxHp: 6000, vulnerable: true })),
+      ).toContain('ancient exposed at 50%')
+    })
+
+    it('announces tower state, which is global info a fogged cell still carries', () => {
+      expect(
+        zoneAriaLabel(
+          makeZone({
+            fogged: true,
+            tower: { team: 'dire', alive: true, tier: 2, hp: 450, maxHp: 900 },
+          }),
+        ),
+      ).toContain('tier 2 tower standing at 50 percent')
+      expect(zoneAriaLabel(makeZone({ tower: { team: 'dire', alive: false, tier: 2 } }))).toContain(
+        'tier 2 tower destroyed',
       )
     })
 
@@ -333,7 +458,7 @@ describe('asciiMapModel', () => {
     it('shows the ancient core with team color', () => {
       const zone = makeZone({ id: 'dire-base', name: 'Dire Base' })
       const inds = compactIndicators(zone, makeAncient({ team: 'dire', hp: 3000, maxHp: 6000 }))
-      expect(inds).toContainEqual({ text: '◈ CORE 50%', cls: 'text-dire' })
+      expect(inds).toContainEqual({ text: '◈ CORE LOCKED 50%', cls: 'text-dire' })
     })
 
     it('hides unit info for fogged zones but keeps global info', () => {

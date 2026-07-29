@@ -10,6 +10,7 @@ import {
   compactRiverDividerRow,
   ancientForZone,
   buildAdjacentZones,
+  buildRouteMarkers,
   cellText,
   compactIndicators,
   miniOverviewCell,
@@ -28,6 +29,8 @@ const props = defineProps<{
   mapId?: string
   /** Start with the compact mini overview expanded (used by stories/tests). */
   overviewOpen?: boolean
+  /** Destination of the hero's queued auto-path walk, if any — drawn as a route. */
+  moveTarget?: string | null
 }>()
 
 // The grid layout + column headers for the active map.
@@ -96,6 +99,19 @@ const zoneMap = computed(() => {
 
 function getZone(id: string): ZoneDisplay | undefined {
   return zoneMap.value.get(id)
+}
+
+// The walk drawn on the board. The display list IS the game's zone set (GameScreen
+// builds it from zonesForMap), so it doubles as the BFS restriction — the route
+// then matches the hops the server will actually take.
+const routeMarkers = computed(() =>
+  buildRouteMarkers(props.playerZone, props.moveTarget, (id) => zoneMap.value.has(id)),
+)
+
+function routeAria(zoneId: string): string {
+  const marker = routeMarkers.value.get(zoneId)
+  if (!marker) return ''
+  return marker === '⌖' ? ', walk destination' : `, walk step ${marker}`
 }
 
 function cellClasses(zone: ZoneDisplay): string[] {
@@ -237,7 +253,7 @@ function moveAriaLabel(zone: ZoneDisplay): string {
   const detail = compactIndicators(zone, ancientForZone(zone.id, props.ancients))
     .map((i) => i.text)
     .join(', ')
-  return `Move to ${zone.name}. ${detail}`
+  return `Move to ${zone.name}${routeAria(zone.id)}. ${detail}`
 }
 
 // Mini-overview: short column headers + per-cell display models, all derived
@@ -282,6 +298,10 @@ const miniRows = computed(() =>
         </span>
       </div>
 
+      <!-- The banner above reads left-to-right, which says nothing about which
+           END of the grid each team holds. Radiant is always the top row. -->
+      <div class="text-center t-hud-xs font-bold tracking-widest text-radiant">RADIANT ▲</div>
+
       <div class="flex-1 overflow-auto p-2">
         <div
           ref="gridRef"
@@ -302,7 +322,10 @@ const miniRows = computed(() =>
                 role="gridcell"
                 :data-zone-cell="zoneId"
                 :tabindex="focusedZoneId === zoneId ? 0 : -1"
-                :aria-label="zoneAriaLabel(getZone(zoneId)!, ancientForZone(zoneId, ancients))"
+                :aria-label="
+                  zoneAriaLabel(getZone(zoneId)!, ancientForZone(zoneId, ancients)) +
+                  routeAria(zoneId)
+                "
                 class="relative flex min-h-[70px] flex-col items-center justify-center px-1 py-2 text-center font-mono text-xs leading-tight transition-all"
                 :class="[
                   cellClasses(getZone(zoneId)!),
@@ -323,6 +346,13 @@ const miniRows = computed(() =>
                 @click="zoneClickable(zoneId) && handleZoneClick(zoneId)"
                 @focus="focusedZoneId = zoneId"
               >
+                <span
+                  v-if="routeMarkers.get(zoneId)"
+                  class="absolute top-0.5 right-0.5 z-10 font-mono t-hud-xs font-bold text-self"
+                  :data-route-marker="zoneId"
+                  aria-hidden="true"
+                  >{{ routeMarkers.get(zoneId) }}</span
+                >
                 <span class="relative z-10">{{
                   cellText(getZone(zoneId)!, ancientForZone(zoneId, ancients))
                 }}</span>
@@ -338,6 +368,8 @@ const miniRows = computed(() =>
         </div>
       </div>
 
+      <div class="text-center t-hud-xs font-bold tracking-widest text-dire">DIRE ▼</div>
+
       <div
         class="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-border pt-2 text-xs"
       >
@@ -346,8 +378,10 @@ const miniRows = computed(() =>
         <span class="text-self">►YOU = You</span>
         <span class="text-text-dim">cN = N Creeps</span>
         <span class="text-text-dim">☘N = N Neutrals</span>
-        <span class="text-text-dim">✓/✗ = Tower</span>
+        <span class="text-text-dim">▲▲▲/✗ = Tower HP</span>
         <span class="text-text-dim">◈ = Mainframe</span>
+        <span class="text-self">⌖/N = Walk target / hop</span>
+        <span class="text-text-dim">? = No vision</span>
       </div>
     </template>
 
@@ -365,7 +399,7 @@ const miniRows = computed(() =>
       >
         <div class="flex items-baseline justify-between gap-2">
           <span class="text-sm font-bold text-text-primary">{{ currentZoneCard.name }}</span>
-          <span class="shrink-0 text-[0.65rem] font-bold tracking-widest text-self">►YOU</span>
+          <span class="shrink-0 t-hud-xs font-bold tracking-widest text-self">►YOU</span>
         </div>
         <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
           <span
@@ -394,8 +428,16 @@ const miniRows = computed(() =>
           @click="handleZoneClick(zone.id)"
         >
           <div class="flex items-center justify-between gap-2">
-            <span class="text-sm font-bold text-text-primary">{{ zone.name }}</span>
-            <span class="shrink-0 text-[0.65rem] font-bold tracking-wider text-radiant">
+            <span class="text-sm font-bold text-text-primary">
+              <span
+                v-if="routeMarkers.get(zone.id)"
+                class="text-self"
+                :data-route-marker="zone.id"
+                >{{ routeMarkers.get(zone.id) }}</span
+              >
+              {{ zone.name }}
+            </span>
+            <span class="shrink-0 t-hud-xs font-bold tracking-wider text-radiant">
               TAP TO MOVE ▸
             </span>
           </div>
@@ -427,6 +469,12 @@ const miniRows = computed(() =>
         data-testid="mini-overview"
         class="border border-border bg-bg-secondary/40 p-1.5"
       >
+        <!-- The thumbnail's own geometry (column headers and cells) is the one
+             place exempt from the HUD type floor: ten columns of `RF T3 T2 T1
+             RIV …` plus per-cell `T2▲▲▲►!` have to fit the rail's width, so
+             flooring them at 12px would spill the grid instead of enlarging it.
+             Everything around the grid — the orientation labels and the legend
+             below — is prose and reads at the floor. -->
         <!-- Column headers derived from the active layout (5v5 / two_lane / one_lane). -->
         <div class="grid gap-px pb-0.5" :class="GRID_COLS">
           <span
@@ -438,7 +486,7 @@ const miniRows = computed(() =>
           </span>
         </div>
         <!-- Radiant half is always the top of the grid, Dire the bottom. -->
-        <div class="pb-0.5 text-center text-[0.55rem] font-bold tracking-widest text-radiant">
+        <div class="pb-0.5 text-center t-hud-xs font-bold tracking-widest text-radiant">
           RADIANT ▲
         </div>
         <div
@@ -460,12 +508,8 @@ const miniRows = computed(() =>
             <div v-else class="h-7 bg-bg-primary/30" />
           </template>
         </div>
-        <div class="pt-0.5 text-center text-[0.55rem] font-bold tracking-widest text-dire">
-          DIRE ▼
-        </div>
-        <div
-          class="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[0.6rem] text-text-dim"
-        >
+        <div class="pt-0.5 text-center t-hud-xs font-bold tracking-widest text-dire">DIRE ▼</div>
+        <div class="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 t-hud-xs text-text-dim">
           <span>T1-3 tower zones</span>
           <span>JG jungle</span>
           <span>RN rune</span>
@@ -475,6 +519,7 @@ const miniRows = computed(() =>
           <span class="text-dire">! enemies</span>
           <span>▲ tower up · ✗ razed</span>
           <span>◈✗ mainframe razed</span>
+          <span>dimmed = no vision</span>
           <span
             ><span class="text-radiant">rad</span>/<span class="text-dire">dire</span> ground</span
           >

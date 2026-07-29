@@ -4,6 +4,7 @@ import { useAuthStore } from '~/stores/auth'
 import { useLobbyStore } from '~/stores/lobby'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
+import { useAudio } from '~/composables/useAudio'
 import { lobbyLog } from '~/utils/logger'
 import type { ServerMessage } from '~~/shared/types/protocol'
 
@@ -15,6 +16,7 @@ const gameStore = useGameStore()
 const router = useRouter()
 
 const { connect, connected, onMessage, disconnect, send } = useGameSocket()
+const { playSound } = useAudio()
 
 let removeHandler: (() => void) | null = null
 
@@ -177,6 +179,36 @@ async function handleHeroBan(heroId: string) {
     }
   }
 }
+
+// Audio cues for the three lobby moments a player can miss while looking at
+// another tab: the match landing, their own draft turn, and the last seconds
+// before the game takes over the screen.
+watch(
+  () => lobbyStore.queueStatus,
+  (status, prev) => {
+    if (status === 'found' && prev !== 'found') playSound('ready')
+  },
+)
+
+// A draft turn is a 15s window that ends in an auto-random, so missing it is
+// expensive — it gets the same cue as the match landing.
+watch(
+  () => {
+    const me = authStore.user?.id
+    if (!me) return false
+    return lobbyStore.currentPicker?.playerId === me || lobbyStore.currentBanner?.playerId === me
+  },
+  (mine, wasMine) => {
+    if (mine && !wasMine) playSound('ready')
+  },
+)
+
+watch(
+  () => lobbyStore.countdown,
+  (seconds) => {
+    if (seconds > 0 && seconds <= 3) playSound('tick')
+  },
+)
 
 // Connect WS eagerly on mount — always ready for server pushes.
 // Recovery (page refresh) runs after the connection is established.
@@ -399,12 +431,17 @@ onUnmounted(() => {
               <span aria-hidden="true">&gt;_</span> GAME STARTING
             </p>
             <!-- aria-hidden: the per-second countdown would otherwise spam a
-                 screen reader; the heading + status text below convey it. -->
+                 screen reader; the heading + status text below convey it.
+                 The :key re-mounts the digit so anim-pop replays each second —
+                 animate-blink used to leave it INVISIBLE for half of every
+                 second, which reads as a broken countdown rather than urgency. -->
             <span
               v-if="lobbyStore.countdown > 0"
+              :key="lobbyStore.countdown"
+              data-testid="countdown-digit"
               aria-hidden="true"
-              class="text-4xl font-bold tabular-nums text-radiant"
-              :class="{ 'animate-blink text-dire': lobbyStore.countdown <= 3 }"
+              class="anim-pop text-4xl font-bold tabular-nums text-radiant"
+              :class="{ 'text-dire': lobbyStore.countdown <= 3 }"
             >
               {{ lobbyStore.countdown }}
             </span>

@@ -74,6 +74,22 @@ vi.mock('~/stores/settings', () => ({
   })),
 }))
 
+function enableAudio(volume = 0.5) {
+  vi.mocked(useSettingsStore).mockReturnValue({
+    audioEnabled: true,
+    audioVolume: volume,
+  } as ReturnType<typeof useSettingsStore>)
+}
+
+/** Every distinct time an oscillator was scheduled to start, ascending — one
+ * entry per sound actually played (a sound's layers share its t0). */
+function uniqueStarts(): number[] {
+  const all = mockAudioCtx.createOscillator.mock.results.flatMap((r) =>
+    (r.value as ReturnType<typeof makeOsc>).start.mock.calls.map((c) => c[0] as number),
+  )
+  return [...new Set(all)].sort((a, b) => a - b)
+}
+
 describe('useAudio', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -130,6 +146,11 @@ describe('useAudio', () => {
       'ready',
       'cast',
       'tower_fall',
+      'tower_lost',
+      'respawn',
+      'victory',
+      'defeat',
+      'double_cast',
     ]
 
     for (const name of sounds) {
@@ -175,5 +196,95 @@ describe('useAudio', () => {
     const result = useAudio()
     expect(result).toHaveProperty('playSound')
     expect(typeof result.playSound).toBe('function')
+  })
+
+  it('defines the tower_lost and respawn cues', () => {
+    enableAudio()
+    const { playSound } = useAudio()
+
+    playSound('tower_lost')
+    expect(mockAudioCtx.createOscillator).toHaveBeenCalled()
+    // Distinct from tower_fall: it is the low, crash-less variant, so it must
+    // not be an alias that plays nothing.
+    expect(mockAudioCtx.createBufferSource).toHaveBeenCalled()
+
+    mockAudioCtx.createOscillator.mockClear()
+    playSound('respawn')
+    expect(mockAudioCtx.createOscillator).toHaveBeenCalled()
+  })
+
+  // ── Burst staggering ────────────────────────────────────────────────
+  // A tick resolves in one JS task, so N damage events all read the SAME
+  // ctx.currentTime and start perfectly phase-aligned — they sum into a single
+  // clipped transient instead of reading as N hits.
+  describe('burst staggering', () => {
+    it('spaces repeats of a burst sound instead of stacking them on one instant', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 100
+      const { playSound } = useAudio()
+
+      playSound('damage')
+      playSound('damage')
+      playSound('damage')
+
+      const starts = uniqueStarts()
+      expect(starts).toHaveLength(3)
+      expect(starts[0]).toBeCloseTo(100, 6)
+      expect(starts[1]! - starts[0]!).toBeGreaterThanOrEqual(0.05)
+      expect(starts[2]! - starts[1]!).toBeGreaterThanOrEqual(0.05)
+    })
+
+    it('starts a lone sound exactly at ctx.currentTime', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 200
+      const { playSound } = useAudio()
+
+      playSound('damage')
+
+      expect(uniqueStarts()).toEqual([200])
+    })
+
+    it('drops repeats that would land past the audible window', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 300
+      const { playSound } = useAudio()
+
+      for (let i = 0; i < 12; i++) playSound('damage')
+
+      // 0.06s apart inside a 0.25s window admits 5; the rest would land under
+      // the next tick's events, so they are dropped rather than smeared.
+      const starts = uniqueStarts()
+      expect(starts).toHaveLength(5)
+      expect(starts[starts.length - 1]!).toBeLessThanOrEqual(300.25)
+    })
+
+    it('leaves sounds without a burst gap untouched', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 400
+      const { playSound } = useAudio()
+
+      playSound('tick')
+      playSound('tick')
+      playSound('tick')
+
+      // The UI tick is one-per-tick by construction; delaying it would smear
+      // the beat the whole HUD is timed against.
+      expect(uniqueStarts()).toEqual([400])
+    })
+
+    it('recovers when the context clock restarts behind the last scheduled start', () => {
+      enableAudio()
+      mockAudioCtx.currentTime = 500
+      const { playSound } = useAudio()
+      playSound('gold')
+
+      // A fresh AudioContext restarts currentTime near 0; without a staleness
+      // guard the stored future start would silence the sound permanently.
+      mockAudioCtx.currentTime = 0
+      mockAudioCtx.createOscillator.mockClear()
+      playSound('gold')
+
+      expect(uniqueStarts()).toEqual([0])
+    })
   })
 })

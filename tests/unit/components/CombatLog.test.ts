@@ -420,3 +420,112 @@ describe('CombatLog filters + density', () => {
     expect(wrapper.text()).toContain('a kill happened')
   })
 })
+
+describe('CombatLog per-tick recap', () => {
+  const fight: CombatLine[] = [
+    {
+      tick: 12,
+      text: 'Mutex hit You for 84',
+      type: 'damage',
+      salience: 'mine-in',
+      dmgAmount: 84,
+      sourceLabel: 'Mutex',
+      targetLabel: 'You',
+    },
+    {
+      tick: 12,
+      text: 'burn hit You for 25',
+      type: 'damage',
+      salience: 'mine-in',
+      dmgAmount: 25,
+      sourceLabel: 'burn',
+      targetLabel: 'You',
+    },
+    {
+      tick: 12,
+      text: 'You hit Thread for 62',
+      type: 'damage',
+      salience: 'mine-out',
+      dmgAmount: 62,
+      sourceLabel: 'You',
+      targetLabel: 'Thread',
+    },
+  ]
+
+  it('sums the tick for the player, on by default', () => {
+    const wrapper = mount(CombatLog, { props: { events: fight } })
+    const recap = wrapper.find('[data-testid="tick-recap"]')
+    expect(recap.exists()).toBe(true)
+    expect(recap.text()).toContain('You took 109 (Mutex 84, burn 25)')
+    expect(recap.text()).toContain('You dealt 62 to Thread')
+  })
+
+  it('is dismissable from the toggle beside the density button', async () => {
+    const wrapper = mount(CombatLog, { props: { events: fight } })
+    await wrapper.get('[data-testid="log-recap-toggle"]').trigger('click')
+    expect(wrapper.find('[data-testid="tick-recap"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="log-recap-toggle"]').trigger('click')
+    expect(wrapper.find('[data-testid="tick-recap"]').exists()).toBe(true)
+  })
+
+  it('reports the whole tick even when a filter hides the lines it summed', async () => {
+    const events: CombatLine[] = [
+      ...fight,
+      { tick: 12, text: 'Mutex terminated Kernel', type: 'kill', salience: 'ally' },
+    ]
+    const wrapper = mount(CombatLog, { props: { events } })
+    await wrapper.get('[data-testid="log-filter-obj"]').trigger('click')
+    // OBJ drops every damage line, but what the tick did to you is not a
+    // function of which chip you are currently looking at.
+    expect(wrapper.text()).not.toContain('Mutex hit You for 84')
+    expect(wrapper.find('[data-testid="tick-recap"]').text()).toContain('You took 109')
+  })
+
+  it('says nothing for a tick that did not touch the player', () => {
+    const wrapper = mount(CombatLog, {
+      props: {
+        events: [
+          {
+            tick: 3,
+            text: 'Kernel hit Thread for 90',
+            type: 'damage',
+            salience: 'ally',
+            dmgAmount: 90,
+          },
+        ] as CombatLine[],
+      },
+    })
+    expect(wrapper.find('[data-testid="tick-recap"]').exists()).toBe(false)
+  })
+})
+
+describe('CombatLog semantic hierarchy', () => {
+  /** Weight classes on the line row (the tag span is always bold). */
+  function lineClasses(event: CombatLine): string[] {
+    const wrapper = mount(CombatLog, { props: { events: [event] } })
+    return wrapper.find('[data-testid="log-event"]').classes()
+  }
+
+  it('ranks a headline above a notable event above ordinary chip', () => {
+    // Nine line types used to render at two weights, so a hero death, a
+    // level-up and a creep's chip damage all read at the same emphasis.
+    expect(lineClasses({ tick: 1, text: 'a death', type: 'kill' })).toContain('font-bold')
+    const objective = lineClasses({ tick: 1, text: 'reached level 7', type: 'objective' })
+    expect(objective).toContain('font-semibold')
+    expect(objective).not.toContain('font-bold')
+    const chip = lineClasses({ tick: 1, text: 'chip', type: 'damage' })
+    expect(chip).not.toContain('font-bold')
+    expect(chip).not.toContain('font-semibold')
+  })
+
+  it('glows the headline text itself, and only the headline', () => {
+    const html = (event: CombatLine) =>
+      mount(CombatLog, { props: { events: [event] } })
+        .find('[data-testid="log-event"] span:last-child')
+        .classes()
+    expect(html({ tick: 1, text: 'the Core fell', type: 'victory' })).toContain('text-glow-sm')
+    expect(html({ tick: 1, text: 'reached level 7', type: 'objective' })).not.toContain(
+      'text-glow-sm',
+    )
+  })
+})

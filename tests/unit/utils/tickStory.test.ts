@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { digestFarmNoise, buildTickStoryView, type CombatLine } from '../../../app/utils/combatLog'
+import {
+  digestFarmNoise,
+  buildTickStoryView,
+  buildTickRecaps,
+  collapseStructureDamage,
+  type CombatLine,
+} from '../../../app/utils/combatLog'
 
 /** Shorthand line factory. */
 function line(overrides: Partial<CombatLine> & { text: string }): CombatLine {
@@ -163,5 +169,103 @@ describe('buildTickStoryView', () => {
       line({ text: 'second world line', salience: 'world' }),
     ])
     expect(out.map((l) => l.text)).toEqual(['first world line', 'second world line'])
+  })
+})
+
+describe('buildTickRecaps', () => {
+  /** Damage landing ON the local player. */
+  function incoming(tick: number, source: string, amount: number): CombatLine {
+    return {
+      tick,
+      text: `${source} hit You for ${amount}`,
+      type: 'damage',
+      salience: 'mine-in',
+      dmgAmount: amount,
+      sourceLabel: source,
+      targetLabel: 'You',
+    }
+  }
+
+  /** Damage the local player deals. */
+  function outgoing(tick: number, target: string, amount: number): CombatLine {
+    return {
+      tick,
+      text: `You hit ${target} for ${amount}`,
+      type: 'damage',
+      salience: 'mine-out',
+      dmgAmount: amount,
+      sourceLabel: 'You',
+      targetLabel: target,
+    }
+  }
+
+  it('sums the tick into one sentence instead of leaving the player to add it up', () => {
+    const recaps = buildTickRecaps([
+      incoming(12, 'Mutex', 84),
+      incoming(12, 'Mutex', 22),
+      incoming(12, 'burn', 25),
+      outgoing(12, 'Thread', 62),
+    ])
+    const r = recaps.get(12)!
+    expect(r.taken).toBe(131)
+    expect(r.dealt).toBe(62)
+    expect(r.takenText).toBe('You took 131 (Mutex 106, burn 25)')
+    expect(r.dealtText).toBe('You dealt 62 to Thread')
+    expect(r.text).toBe('You took 131 (Mutex 106, burn 25) · You dealt 62 to Thread')
+  })
+
+  it('names a lone contributor inline rather than as a one-item breakdown', () => {
+    expect(buildTickRecaps([incoming(3, 'a creep', 40)]).get(3)!.takenText).toBe(
+      'You took 40 from a creep',
+    )
+  })
+
+  it('orders the breakdown by damage and rolls the tail into "+N more"', () => {
+    const r = buildTickRecaps([
+      incoming(1, 'D', 5),
+      incoming(1, 'C', 10),
+      incoming(1, 'B', 20),
+      incoming(1, 'A', 40),
+    ]).get(1)!
+    expect(r.takenText).toBe('You took 75 (A 40, B 20, C 10, +1 more)')
+  })
+
+  it('ignores everyone else’s fight and every non-damage line', () => {
+    const recaps = buildTickRecaps([
+      {
+        tick: 4,
+        text: 'Kernel hit Thread for 90',
+        type: 'damage',
+        salience: 'ally',
+        dmgAmount: 90,
+      },
+      { tick: 4, text: 'Thread hit Echo for 70', type: 'damage', salience: 'world', dmgAmount: 70 },
+      { tick: 4, text: 'You restored 60', type: 'healing', salience: 'mine-in', dmgAmount: 60 },
+    ])
+    expect(recaps.size).toBe(0)
+  })
+
+  it('reports one recap per tick and never merges ticks', () => {
+    const recaps = buildTickRecaps([incoming(1, 'Mutex', 30), incoming(2, 'Mutex', 40)])
+    expect([...recaps.keys()].sort((a, b) => a - b)).toEqual([1, 2])
+    expect(recaps.get(1)!.taken).toBe(30)
+    expect(recaps.get(2)!.taken).toBe(40)
+  })
+
+  it('counts a collapsed structure run at its RUN total, not its first hit', () => {
+    // The tower/Core chip the player is dealing arrives as one line per tick and
+    // is collapsed before it ever reaches the recap; reading the surviving
+    // line's original dmgAmount would report a fifth of the siege.
+    const run = [1, 2, 3].map((tick) => ({
+      ...outgoing(tick, 'tower (mid-t1-dire)', 70),
+      dedupKey: 'dmg:me->tower_mid-t1-dire',
+    }))
+    const collapsed = collapseStructureDamage(
+      run,
+      ({ baseText, total }) => `${baseText} (${total})`,
+    )
+    expect(collapsed).toHaveLength(1)
+    const r = buildTickRecaps(collapsed).get(3)!
+    expect(r.dealt).toBe(210)
   })
 })

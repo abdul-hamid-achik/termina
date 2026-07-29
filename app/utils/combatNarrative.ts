@@ -106,16 +106,22 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
   switch (e.type) {
     case 'damage': {
       const dtype = str(p.damageType)
+      const source = label(p.sourceId)
+      const victim = label(p.targetId)
       const line: CombatLine = {
         tick,
-        text: `${label(p.sourceId)} hit ${label(p.targetId)} for ${num(p.amount)}${dtype ? ` ${dtype}` : ''}`,
+        text: `${source} hit ${victim} for ${num(p.amount)}${dtype ? ` ${dtype}` : ''}`,
         type: 'damage',
         salience: salience(p.sourceId, p.targetId, ctx),
+        // Carried on EVERY damage line, not just structure chip: the per-tick
+        // recap sums these, and the teamfight digest reports a real total.
+        dmgAmount: num(p.amount),
+        sourceLabel: source,
+        targetLabel: victim,
       }
       // Repeated chip on a tower/Core collapses into one running line.
       if (isStructureTarget(p.targetId)) {
         line.dedupKey = `dmg:${str(p.sourceId)}->${str(p.targetId)}`
-        line.dmgAmount = num(p.amount)
       }
       // Someone else's creep farming — story mode folds these into the per-tick
       // farm digest. My own hits stay explicit (they're my action's feedback).
@@ -159,8 +165,11 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         p.respawnTick != null ? ` — respawn ${Math.max(0, num(p.respawnTick) - tick)}t` : ''
       return {
         tick,
+        // A hero dying is a headline, not chip damage: typed `kill` so it reads
+        // at the same weight as the kill line it accompanies (and so the OBJ
+        // filter, which is really "what changed the game", keeps it).
         text: `${label(p.playerId)} was terminated${respawn}`,
-        type: 'damage',
+        type: 'kill',
         salience: actorSalience(p.playerId, ctx),
       }
     }
@@ -217,8 +226,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'level_up':
       return {
         tick,
+        // Power-curve beats, not meta-chatter — `[SYS]` grey is reserved for
+        // chat, pings and client notices so those stay scannable.
         text: `${label(p.playerId)} reached level ${num(p.newLevel)}`,
-        type: 'system',
+        type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }
 
@@ -227,8 +238,24 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         tick,
         text: `${label(p.playerId)} cast ${ctx.abilityLabel(p.abilityId)}${p.targetId ? ` on ${label(p.targetId)}` : ''}`,
         type: 'ability',
-        salience: actorSalience(p.playerId, ctx),
+        // Source→target, not actor-only: a cast aimed at ME is my business, and
+        // the story view sorts by salience — ranking it as a bystander event
+        // printed the enemy's spell BELOW the damage it caused.
+        salience: salience(p.playerId, p.targetId, ctx),
       }
+
+    case 'status_applied': {
+      // Loud and uppercase: being disabled is the single most consequential
+      // thing that can happen to you in a teamfight, and it was un-narrated.
+      const status = buffLabel(str(p.status)).toUpperCase()
+      const ticks = num(p.ticksRemaining)
+      return {
+        tick,
+        text: `${label(p.sourceId)} ${status} ${label(p.targetId)}${ticks > 0 ? ` (${ticks}t)` : ''}`,
+        type: 'ability',
+        salience: salience(p.sourceId, p.targetId, ctx),
+      }
+    }
 
     case 'double_cast':
       // Tier-25 exotic proc — loud, so the player notices the ability fired twice.
@@ -246,14 +273,6 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         text: str(p.message) || `${label(p.playerId)} hit a power spike`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
-      }
-
-    case 'enemy_missing':
-      return {
-        tick,
-        text: `[MISSING] ${label(p.playerId)} — last seen ${zname(p.lastSeenZone)}`,
-        type: 'system',
-        salience: 'ally',
       }
 
     case 'item_purchased':
@@ -342,7 +361,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       return {
         tick,
         text: `${label(p.playerId)} learned ${str(p.talentName)}`,
-        type: 'system',
+        type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }
 
@@ -363,6 +382,9 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         text: `${label(p.owner)}'s trap caught ${label(p.targetId)} in ${zname(p.zone)} (-${num(p.damage)})`,
         type: 'damage',
         salience: salience(p.owner, p.targetId, ctx),
+        dmgAmount: num(p.damage),
+        sourceLabel: `${label(p.owner)}'s trap`,
+        targetLabel: label(p.targetId),
       }
 
     case 'spell_blocked': {
@@ -373,7 +395,9 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       return {
         tick,
         text,
-        type: 'system',
+        // A spell that did NOT land is a spell beat — cyan, alongside the cast
+        // it negated, rather than lost among the grey notices.
+        type: 'ability',
         salience: salience(p.casterId, p.targetId, ctx),
       }
     }
@@ -382,7 +406,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       return {
         tick,
         text: `${label(p.playerId)}'s teleport was cancelled (${str(p.reason)})`,
-        type: 'system',
+        type: 'ability',
         salience: actorSalience(p.playerId, ctx),
       }
 
@@ -423,11 +447,28 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
-    // Internal / non-narrative events — intentionally produce no line.
-    case 'cooldown_used':
-    case 'contest_lasthit':
-    case 'glyph_on_cooldown':
     case 'tower_invulnerable':
+      return {
+        tick,
+        text: `The tower in ${zname(p.zone)} is Glyphed — attacks do nothing until it expires`,
+        type: 'system',
+        salience: 'world',
+      }
+
+    case 'glyph_on_cooldown': {
+      const left = num(p.remainingTicks)
+      return {
+        tick,
+        text: `Glyph is not ready — ${left}t remaining`,
+        type: 'system',
+        salience: actorSalience(p.playerId, ctx),
+      }
+    }
+
+    // Internal / non-narrative events — intentionally produce no line.
+    // `cooldown_used` duplicates the cooldown already shown on the ability
+    // slot and always accompanies an `ability_used` line.
+    case 'cooldown_used':
       return null
 
     default:

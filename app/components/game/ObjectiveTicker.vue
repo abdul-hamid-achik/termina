@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatRoshan, formatRunes, formatAegis, ticksToClock } from '~/utils/strategy'
+import { formatRoshan, formatRunes, formatAegis, ticksToClock, shortZone } from '~/utils/strategy'
 import { buffLabel } from '~/utils/buffs'
 import type { RoshanState, RuneState } from '~~/shared/types/game'
 
@@ -49,9 +49,12 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
       <span
         :class="rune.live.length ? 'text-ability text-glow-ability font-bold' : 'text-text-dim'"
       >
+        <!-- The zone is the whole decision: a rune you cannot reach before it
+             expires is not an objective. formatRunes already carried it. -->
         <template v-if="rune.live.length"
           ><!-- buffLabel: 'dd' → 'Double Damage', 'invis' → 'Invisible' -->
-          {{ buffLabel(rune.live[0]!.type) }} · {{ rune.live[0]!.expiresIn }}t</template
+          {{ buffLabel(rune.live[0]!.type) }} @ {{ shortZone(rune.live[0]!.zone) }} ·
+          {{ rune.live[0]!.expiresIn }}t</template
         >
         <template v-else>next {{ rune.nextIn }}t</template>
       </span>

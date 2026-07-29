@@ -65,7 +65,7 @@ const rows = computed<ThreatRow[]>(() =>
 </script>
 
 <template>
-  <div data-testid="enemy-threat-sheet" class="flex flex-col gap-1.5 font-mono text-[0.7rem]">
+  <div data-testid="enemy-threat-sheet" class="flex flex-col gap-1.5 font-mono t-hud-sm">
     <div v-for="r in rows" :key="r.id" class="border-l-2 border-dire/40 pl-1.5">
       <div class="flex items-baseline justify-between gap-1">
         <span
@@ -73,22 +73,18 @@ const rows = computed<ThreatRow[]>(() =>
           :class="r.alive ? 'text-dire' : 'text-text-dim line-through'"
           >{{ r.name }}</span
         >
-        <span class="shrink-0 text-[0.6rem] text-text-dim">Lv{{ r.level }}</span>
+        <span class="shrink-0 t-hud-xs text-text-dim">Lv{{ r.level }}</span>
       </div>
 
       <!-- Dead -->
-      <div
-        v-if="!r.alive"
-        class="text-[0.62rem] text-text-dim"
-        :data-testid="`threat-dead-${r.id}`"
-      >
+      <div v-if="!r.alive" class="t-hud-xs text-text-dim" :data-testid="`threat-dead-${r.id}`">
         DEAD<template v-if="r.respawnIn >= 0"> · respawn {{ r.respawnIn }}t</template>
       </div>
 
       <!-- Fogged (last-seen intel only) -->
       <div
         v-else-if="r.fogged"
-        class="text-[0.62rem] text-text-dim"
+        class="t-hud-xs text-text-dim"
         :data-testid="`threat-fogged-${r.id}`"
       >
         <span class="text-warn">? fogged</span>
@@ -98,7 +94,7 @@ const rows = computed<ThreatRow[]>(() =>
       <!-- Visible & alive: vitals + ability cooldowns -->
       <template v-else>
         <div class="flex items-center gap-1">
-          <span class="w-4 shrink-0 text-[0.58rem] text-text-dim">HP</span>
+          <span class="w-4 shrink-0 t-hud-xs text-text-dim">HP</span>
           <ProgressBar
             :value="r.hp ?? 0"
             :max="r.maxHp ?? 1"
@@ -108,7 +104,7 @@ const rows = computed<ThreatRow[]>(() =>
           />
         </div>
         <div class="flex items-center gap-1">
-          <span class="w-4 shrink-0 text-[0.58rem] text-text-dim">MP</span>
+          <span class="w-4 shrink-0 t-hud-xs text-text-dim">MP</span>
           <ProgressBar
             :value="r.mp ?? 0"
             :max="r.maxMp ?? 1"
@@ -121,7 +117,7 @@ const rows = computed<ThreatRow[]>(() =>
           <span
             v-for="k in ABILITIES"
             :key="k"
-            class="inline-flex min-w-[18px] justify-center border px-0.5 text-[0.58rem]"
+            class="inline-flex min-w-[18px] justify-center border px-0.5 t-hud-xs"
             :class="
               (r.cooldowns?.[k] ?? 0) > 0
                 ? 'border-border text-text-muted'
@@ -146,7 +142,7 @@ const rows = computed<ThreatRow[]>(() =>
           <span
             v-for="b in r.status"
             :key="b.id"
-            class="text-[0.58rem]"
+            class="t-hud-xs"
             :class="b.kind === 'negative' ? 'text-radiant' : 'text-warn'"
             >{{ b.label
             }}<span v-if="b.ticks !== null" class="opacity-70">·{{ b.ticks }}</span></span

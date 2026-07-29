@@ -9,7 +9,11 @@ export const ZONES: readonly Zone[] = [
     adjacentTo: ['radiant-fountain', 'top-t3-rad', 'mid-t3-rad', 'bot-t3-rad'],
     team: 'radiant',
     tower: false,
-    shop: false,
+    // Bases sell too, not just fountains: shopping used to cost a detour to the
+    // fountain and back — ~9 near-inputless ticks for one 430g purchase — and
+    // both /learn and the client's own "return to base" error already told
+    // players the base was a shop.
+    shop: true,
   },
   {
     id: 'radiant-fountain',
@@ -29,7 +33,7 @@ export const ZONES: readonly Zone[] = [
     adjacentTo: ['dire-fountain', 'top-t3-dire', 'mid-t3-dire', 'bot-t3-dire'],
     team: 'dire',
     tower: false,
-    shop: false,
+    shop: true,
   },
   {
     id: 'dire-fountain',

@@ -74,14 +74,12 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
 </script>
 
 <template>
-  <div data-testid="war-room" class="flex h-full min-h-0 flex-col gap-2 p-1 text-[0.72rem]">
+  <div data-testid="war-room" class="flex h-full min-h-0 flex-col gap-2 p-1 t-hud-sm">
     <!-- Net worth lead + trend -->
     <section class="shrink-0">
       <div class="mb-0.5 flex items-center justify-between">
-        <span class="text-[0.6rem] font-bold tracking-wider text-text-dim uppercase"
-          >Net Worth</span
-        >
-        <Sparkline :values="leadSeries" :color-var="leadColorVar" class="text-[0.7rem]" />
+        <span class="t-hud-xs font-bold tracking-wider text-text-dim uppercase">Net Worth</span>
+        <Sparkline :values="leadSeries" :color-var="leadColorVar" class="t-hud-sm" />
       </div>
       <div class="flex items-baseline gap-1 font-mono">
         <span
@@ -97,9 +95,7 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
 
     <!-- Objectives -->
     <section class="shrink-0 border-t border-border/50 pt-1.5">
-      <div class="mb-0.5 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
-        Objectives
-      </div>
+      <div class="mb-0.5 t-hud-xs font-bold tracking-wider text-text-dim uppercase">Objectives</div>
       <ObjectiveTicker
         :roshan="store.roshan"
         :runes="store.runes"
@@ -115,9 +111,9 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
         <span :class="dayNight.isNight ? 'text-self' : 'text-gold'" class="font-bold">{{
           dayNight.label
         }}</span>
-        <span class="text-[0.62rem] text-text-dim">{{ dayNight.meaning }}</span>
+        <span class="t-hud-xs text-text-dim">{{ dayNight.meaning }}</span>
       </div>
-      <div class="mt-0.5 flex items-center justify-between text-[0.62rem] text-text-dim">
+      <div class="mt-0.5 flex items-center justify-between t-hud-xs text-text-dim">
         <span>vision {{ vision.visible }}/{{ vision.total }} ({{ vision.pct }}%)</span>
         <span v-if="vision.wardsActive"
           >wards {{ vision.wardsActive
@@ -138,7 +134,7 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       data-testid="war-room-enemy-threat"
       class="flex min-h-0 flex-1 flex-col border-t border-border/50 pt-1.5"
     >
-      <div class="mb-1 shrink-0 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
+      <div class="mb-1 shrink-0 t-hud-xs font-bold tracking-wider text-text-dim uppercase">
         Enemy Threat
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto">
@@ -151,7 +147,7 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       type="button"
       data-testid="war-room-roster-toggle"
       aria-expanded="false"
-      class="min-h-[2rem] w-full shrink-0 border-t border-border/50 pt-1.5 text-left text-[0.6rem] font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
+      class="min-h-[2rem] w-full shrink-0 border-t border-border/50 pt-1.5 text-left t-hud-xs font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
       @click="toggleRoster"
     >
       [+] Allies
@@ -165,7 +161,7 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
         type="button"
         data-testid="war-room-roster-toggle"
         aria-expanded="true"
-        class="min-h-[2rem] w-full shrink-0 text-left text-[0.6rem] font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
+        class="min-h-[2rem] w-full shrink-0 text-left t-hud-xs font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
         @click="toggleRoster"
       >
         [−] Allies

@@ -148,10 +148,24 @@ const identityTag = computed(() => {
   return `${m.type}${owner}`
 })
 
+/**
+ * Team-IDENTITY color, for the two rows that print a team's name next to the
+ * swatch (the zone's owner, the tower's team). Painting those by allegiance —
+ * green when they are mine — meant a Dire player read "Tower (dire)" in the
+ * Radiant green while the map's ▼, the score header and the zone tag beside it
+ * all said dire: the label and its color contradicted each other inside one
+ * line. Hero rows below deliberately keep the allegiance convention (green =
+ * with me, red = against me) shared with AllyStatusSheet, EnemyThreatSheet and
+ * the map's ally/enemy counts.
+ */
+function teamTextClass(team: TeamId): string {
+  return team === 'radiant' ? 'text-radiant' : 'text-dire'
+}
+
 const identityClass = computed(() => {
   const m = zoneMeta.value
   if (!m || m.team === 'neutral') return 'text-text-dim'
-  return m.team === props.playerTeam ? 'text-radiant' : 'text-dire'
+  return teamTextClass(m.team)
 })
 
 /** Allied hero headcount including the local player (always present in-zone). */
@@ -307,9 +321,7 @@ const isEmpty = computed(
       @click="attackTower"
     >
       <div class="flex items-baseline justify-between gap-2">
-        <span :class="towerIsEnemy ? 'text-dire' : 'text-radiant'">
-          Tower ({{ towerHere.team }})
-        </span>
+        <span :class="teamTextClass(towerHere.team)"> Tower ({{ towerHere.team }}) </span>
         <span class="shrink-0 t-caption">{{ towerIsEnemy ? '[ATK]' : 'allied' }}</span>
       </div>
       <div class="flex items-center gap-1">
@@ -317,7 +329,7 @@ const isEmpty = computed(
         <ProgressBar
           :value="towerHere.hp"
           :max="towerHere.maxHp"
-          :color="towerIsEnemy ? 'dire' : 'radiant'"
+          :color="towerHere.team === 'radiant' ? 'radiant' : 'dire'"
           :width="10"
           :label="`Tower ${towerHere.team} HP`"
         />

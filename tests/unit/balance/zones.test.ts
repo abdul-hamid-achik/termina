@@ -102,10 +102,21 @@ describe('Zone Constants', () => {
   })
 
   describe('shop zones', () => {
-    it('only fountains have shops', () => {
+    it('only bases and fountains have shops', () => {
       const shops = ZONES.filter((z) => z.shop)
-      expect(shops).toHaveLength(2)
-      expect(shops.map((s) => s.id).sort()).toEqual(['dire-fountain', 'radiant-fountain'])
+      expect(shops).toHaveLength(4)
+      expect(shops.map((s) => s.id).sort()).toEqual([
+        'dire-base',
+        'dire-fountain',
+        'radiant-base',
+        'radiant-fountain',
+      ])
+    })
+
+    it('both teams can shop without leaving their base', () => {
+      for (const id of ['radiant-base', 'dire-base']) {
+        expect(ZONES.find((z) => z.id === id)?.shop).toBe(true)
+      }
     })
   })
 

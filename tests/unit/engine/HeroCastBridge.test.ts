@@ -148,6 +148,85 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     expect(cd).toMatchObject({ abilityId: 'q', cooldownTicks: 8 })
   })
 
+  it('the cast is emitted BEFORE the damage it causes (cause, then effect)', () => {
+    // The feed orders a tick by salience and falls back to emission order, so
+    // appending ability_used last printed "you took 106" above "Mutex cast
+    // Priority Inversion on you". The push is spliced back to the cast's start.
+    const state = makeGameState({
+      players: {
+        p1: makeHero('mutex', { id: 'p1', team: 'radiant' }),
+        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+      },
+    })
+
+    const result = run(state, [
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+      },
+    ])
+
+    const castIdx = result.events.findIndex((e) => e._tag === 'ability_used')
+    const dmgIdx = result.events.findIndex((e) => e._tag === 'damage')
+    expect(castIdx).toBeGreaterThanOrEqual(0)
+    expect(dmgIdx).toBeGreaterThanOrEqual(0)
+    expect(castIdx).toBeLessThan(dmgIdx)
+  })
+
+  it('a disable rider emits status_applied with the engine’s real duration', () => {
+    // Hero resolvers return rich effect payloads that the bridge discards
+    // verbatim, so crowd control — the core of a teamfight — was completely
+    // un-narrated. Recovered by diffing the target's buffs across the cast.
+    const state = makeGameState({
+      players: {
+        p1: makeHero('mutex', { id: 'p1', team: 'radiant' }),
+        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+      },
+    })
+
+    const result = run(state, [
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+      },
+    ])
+
+    const root = result.state.players['p2']!.buffs.find((b) => b.id === 'root')!
+    const status = result.events.filter((e) => e._tag === 'status_applied')
+    expect(status).toHaveLength(1)
+    expect(status[0]).toMatchObject({
+      sourceId: 'p1',
+      targetId: 'p2',
+      status: 'root',
+      // The advertised duration is not the applied one — report what the engine
+      // actually wrote, so "(2t)" in the log is a number the player can trust.
+      ticksRemaining: root.ticksRemaining,
+    })
+  })
+
+  it('does not re-announce a disable the target already had', () => {
+    const state = makeGameState({
+      players: {
+        p1: makeHero('mutex', { id: 'p1', team: 'radiant' }),
+        p2: makeHero('echo', {
+          id: 'p2',
+          name: 'Enemy',
+          team: 'dire',
+          buffs: [{ id: 'root', stacks: 1, ticksRemaining: 3, source: 'someone' }],
+        }),
+      },
+    })
+
+    const result = run(state, [
+      {
+        playerId: 'p1',
+        command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
+      },
+    ])
+
+    expect(result.events.filter((e) => e._tag === 'status_applied')).toHaveLength(0)
+  })
+
   describe('tier-25 exotic: double cast', () => {
     it('hasTalentCastEffect detects the talent and respects the ability slot', () => {
       const talented = makeHero('echo', {

@@ -33,7 +33,14 @@ function onZoneClick(id: string) {
 
 <template>
   <div class="flex flex-col gap-2" data-testid="map-primer">
-    <div class="h-[460px] border border-border bg-bg-primary max-sm:h-[520px]">
+    <!-- The full desktop grid is ~740px of cells plus header/legend chrome, so a
+         fixed 460px box showed a new player the Radiant half and cut the map in
+         two — the one surface on /learn whose entire job is "here is the board".
+         Viewport-relative with a ceiling so it still fits a laptop. -->
+    <div
+      class="h-[min(78vh,820px)] min-h-[420px] border border-border bg-bg-primary"
+      data-testid="map-primer-frame"
+    >
       <AsciiMap
         :zones="displayZones"
         :player-zone="selected"

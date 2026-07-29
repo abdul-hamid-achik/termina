@@ -1,12 +1,12 @@
 import type { CreepState, GameState, TeamId, TowerState, PlayerState } from '~~/shared/types/game'
 import {
-  MELEE_CREEP_ATTACK,
-  RANGED_CREEP_ATTACK,
-  SIEGE_CREEP_ATTACK,
+  creepAttack,
   CREEP_BASE_IDLE_DESPAWN_TICKS,
+  CREEP_XP_SHARED,
   MAX_CREEPS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { resolvePhysicalHit } from './CombatResolver'
+import { awardZoneXp } from './XpDistributor'
 import { resolveAncientAttack } from './AncientSystem'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -19,18 +19,6 @@ const ENEMY_BASE: Record<TeamId, string> = {
 
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
 const LANE_ROUTES = LANE_ROUTES_CORE
-
-/** Get the attack damage for a creep type. */
-function getCreepAttack(type: CreepState['type']): number {
-  switch (type) {
-    case 'melee':
-      return MELEE_CREEP_ATTACK
-    case 'ranged':
-      return RANGED_CREEP_ATTACK
-    case 'siege':
-      return SIEGE_CREEP_ATTACK
-  }
-}
 
 /** Determine which lane a creep is on based on its zone. */
 function getCreepLane(zone: string): string | null {
@@ -114,7 +102,10 @@ export function runCreepAI(state: GameState): CreepAction[] {
   for (const creep of state.creeps) {
     if (creep.hp <= 0) continue
 
-    const damage = getCreepAttack(creep.type)
+    // Damage escalates with the CURRENT tick, not the creep's spawn wave:
+    // CreepState carries no per-creep stats, and a whole board that gets
+    // stronger together is also the readable rule for the player.
+    const damage = creepAttack(creep.type, state.tick)
     const inEnemyBase = creep.zone === ENEMY_BASE[creep.team]
     const enemyAncient = creep.team === 'radiant' ? state.ancients?.dire : state.ancients?.radiant
 
@@ -226,6 +217,15 @@ export function applyCreepActions(
         if (target && target.hp > 0) {
           const newHp = Math.max(0, target.hp - (action.damage ?? 0))
           creeps = creeps.map((c) => (c.id === action.targetId ? { ...c, hp: newHp } : c))
+          if (newHp === 0) {
+            // Creeps kill each other far more often than heroes kill them
+            // (priority 1 above focuses enemy creeps), so this is where the
+            // MAJORITY of creep XP enters the game. Without it a laner who
+            // never last-hits earns nothing at all from a wave they stood in.
+            // The killing creep's team is by construction the dying creep's
+            // enemy — getEnemyCreepsInZone only ever targets across teams.
+            players = awardZoneXp(players, target.zone, creep.team, CREEP_XP_SHARED)
+          }
         }
         break
       }

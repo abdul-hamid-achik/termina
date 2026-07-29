@@ -1,6 +1,6 @@
 // ── Tick & Timing ────────────────────────────────────────────────
 
-import type { RuneState } from '../types/game'
+import type { CreepState, RuneState } from '../types/game'
 
 export const TICK_DURATION_MS = 4000
 export const ACTION_WINDOW_MS = 3500
@@ -108,6 +108,19 @@ export const HERO_KILL_XP_BASE = 100
 export const HERO_KILL_XP_PER_LEVEL = 20
 
 /**
+ * Fraction of CREEP_XP paid to every living hero of the killing team standing
+ * in the creep's zone, on top of the full CREEP_XP the last-hitter earns.
+ *
+ * XP used to come exclusively from hero last-hits, so a laner who mistimed
+ * their attacks earned literally zero and sat five levels behind — and since
+ * creeps overwhelmingly die to other creeps (CreepAI focuses enemy creeps
+ * first), most creep deaths paid nobody at all. Presence pays; timing still
+ * pays more.
+ */
+export const CREEP_XP_SHARED_RATIO = 0.5
+export const CREEP_XP_SHARED = Math.floor(CREEP_XP * CREEP_XP_SHARED_RATIO)
+
+/**
  * Comeback XP: kill XP is multiplied by a factor based on the average team
  * LEVEL gap (see xpComebackMultiplier). A team behind in average level earns
  * bonus XP so a level lead can't compound without a catch-up mechanism — the
@@ -199,6 +212,64 @@ export const SIEGE_CREEP_HP = 700
 export const MELEE_CREEP_ATTACK = 20
 export const RANGED_CREEP_ATTACK = 30
 export const SIEGE_CREEP_ATTACK = 50
+
+/**
+ * Creep escalation — the match-length lever.
+ *
+ * Tower and Ancient HP are fixed while creep output never scaled, so a wave
+ * that could not break a T1 at minute 5 still could not break it at minute 45:
+ * `bun run sim 16` measured 31–73m, median 60m. Every
+ * CREEP_ESCALATION_INTERVAL_TICKS, creep HP and creep damage each gain one
+ * CREEP_ESCALATION_STEP of their base value, so lane pressure compounds and
+ * pushes eventually close the game. These values measured 14–38m (median 28m)
+ * over 16 matches and 9–35m (median 24m) over 24.
+ *
+ * HP and damage scale by the SAME factor on purpose: creep-vs-creep
+ * time-to-kill is then unchanged (waves still meet and trade at the old rate,
+ * so the laning texture survives) and only creep-vs-structure moves — which is
+ * the thing that actually ends a match. It touches neither the XP/gold economy
+ * nor hero stats.
+ *
+ * The cap exists so a stalled game does not degenerate into creeps that
+ * one-shot heroes. Tuning order: shorten the interval before growing the step —
+ * the step compounds against the cap, the interval front-loads the mid game.
+ */
+export const CREEP_ESCALATION_INTERVAL_TICKS = 50
+export const CREEP_ESCALATION_STEP = 0.35
+export const CREEP_ESCALATION_MAX_MULTIPLIER = 4
+
+const CREEP_BASE_HP: Record<CreepState['type'], number> = {
+  melee: MELEE_CREEP_HP,
+  ranged: RANGED_CREEP_HP,
+  siege: SIEGE_CREEP_HP,
+}
+
+const CREEP_BASE_ATTACK: Record<CreepState['type'], number> = {
+  melee: MELEE_CREEP_ATTACK,
+  ranged: RANGED_CREEP_ATTACK,
+  siege: SIEGE_CREEP_ATTACK,
+}
+
+/** Creep stat multiplier at `tick`. 1.0 for the whole first interval. */
+export function creepEscalationMultiplier(tick: number): number {
+  const steps = Math.max(0, Math.floor(tick / CREEP_ESCALATION_INTERVAL_TICKS))
+  return Math.min(CREEP_ESCALATION_MAX_MULTIPLIER, 1 + steps * CREEP_ESCALATION_STEP)
+}
+
+/**
+ * HP a creep of `type` spawns with at `tick` — and therefore its max HP, since
+ * lane creeps never heal. Any surface that renders a creep HP bar or a
+ * fraction-of-max threshold has to read this rather than MELEE_CREEP_HP &co,
+ * which are only the tick-0 values once escalation starts.
+ */
+export function creepMaxHp(type: CreepState['type'], tick: number): number {
+  return Math.round(CREEP_BASE_HP[type] * creepEscalationMultiplier(tick))
+}
+
+/** Damage a creep of `type` deals at `tick`. */
+export function creepAttack(type: CreepState['type'], tick: number): number {
+  return Math.round(CREEP_BASE_ATTACK[type] * creepEscalationMultiplier(tick))
+}
 
 // ── Neutral Creeps ─────────────────────────────────────────────────
 

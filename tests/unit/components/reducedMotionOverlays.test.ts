@@ -15,9 +15,14 @@ const CSS = readFileSync(resolve(process.cwd(), 'app/assets/css/terminal.css'), 
 
 const OVERLAYS = [
   { selector: '.anim-death-vignette', keyframes: 'death-vignette' },
+  { selector: '.anim-respawn-vignette', keyframes: 'death-vignette' },
   { selector: '.anim-end-victory', keyframes: 'end-flash' },
   { selector: '.anim-end-defeat', keyframes: 'end-flash' },
 ] as const
+
+/** The impact flare is `box-shadow`-driven and not `forwards`, so it rests at
+ *  the class's own declarations rather than at a held final frame. */
+const FLARES = ['.anim-impact', '.anim-impact-strong'] as const
 
 /** Body of the first block whose header matches, brace-matched so nested
     keyframe steps and media-query children come back intact. */
@@ -63,6 +68,38 @@ describe('terminal.css one-shot overlays under reduced motion', () => {
     expect(reduced).toMatch(/animation:\s*none/)
     for (const { selector } of OVERLAYS) {
       expect(reduced).toContain(selector)
+    }
+    for (const selector of FLARES) {
+      expect(reduced).toContain(selector)
+    }
+  })
+
+  it.each(FLARES)(
+    '%s paints nothing of its own, so a suppressed animation leaves a clean screen',
+    (selector) => {
+      // GameScreen keeps the flare overlay mounted for the rest of the match
+      // once the first hit lands — exactly the trap that left a permanent red
+      // vignette on screen under reduced motion (bug #9).
+      const body = ruleBody(selector)
+      expect(body).toMatch(/animation:/)
+      expect(body).not.toMatch(/box-shadow|background/)
+    },
+  )
+
+  it('flares the hit in team red, never a white wash', () => {
+    // The old .anim-flash was a 30% WHITE wash: the brightest thing that could
+    // appear on a near-black palette, on the most frequent event in the game.
+    for (const name of ['flash-damage', 'impact', 'impact-strong']) {
+      const frames = blockBody(new RegExp(`@keyframes ${name}\\s*\\{`))
+      expect(frames).toContain('--color-dire')
+      expect(frames).not.toMatch(/rgb\(\s*255\s+255\s+255/)
+    }
+  })
+
+  it('scales the hit flash and the light flare with --hit-intensity', () => {
+    // A creep chip and a full combo used to paint identically.
+    for (const name of ['flash-damage', 'impact']) {
+      expect(blockBody(new RegExp(`@keyframes ${name}\\s*\\{`))).toContain('var(--hit-intensity')
     }
   })
 

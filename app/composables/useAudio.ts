@@ -10,6 +10,8 @@ export type SoundName =
   | 'ready'
   | 'cast'
   | 'tower_fall'
+  | 'tower_lost'
+  | 'respawn'
   | 'victory'
   | 'defeat'
   | 'double_cast'
@@ -134,6 +136,26 @@ const SOUNDS: Record<SoundName, SoundDef> = {
     ],
     noise: { duration: 0.35, gain: 0.22, cutoff: 1400 },
   },
+  // Tower lost: the same collapse pitched into the basement with the bright
+  // crash stripped out, so "ours fell" never reads as "we broke theirs".
+  tower_lost: {
+    oscs: [
+      { type: 'sawtooth', freqStart: 55, freqEnd: 26, duration: 0.6, gain: 0.28, attack: 0.008 },
+      { type: 'sine', freqStart: 110, freqEnd: 38, duration: 0.55, gain: 0.2, attack: 0.008 },
+    ],
+    noise: { duration: 0.45, gain: 0.14, cutoff: 500 },
+    masterGain: 0.85,
+  },
+  // Respawn: `death`'s sweep run backwards, capped by a bright confirmation
+  // tone — the mirror that makes coming back audible, not just visual.
+  respawn: {
+    oscs: [
+      { type: 'sawtooth', freqStart: 90, freqEnd: 720, duration: 0.4, gain: 0.2, attack: 0.01 },
+      { type: 'sine', freqStart: 180, freqEnd: 900, duration: 0.45, gain: 0.16, attack: 0.01 },
+      { type: 'triangle', freqStart: 1046, duration: 0.24, gain: 0.14, attack: 0.004, delay: 0.34 },
+    ],
+    masterGain: 0.9,
+  },
   // Victory: triumphant rising major arpeggio (C5-E5-G5-C6) with an octave
   // shimmer on the held top note — the climax stinger the win screen lacked.
   victory: {
@@ -208,6 +230,24 @@ const SOUNDS: Record<SoundName, SoundDef> = {
   },
 }
 
+/* A tick resolves in a single JS task, so every effect for that tick calls
+ * playSound at the SAME ctx.currentTime. Identical waveforms starting perfectly
+ * phase-aligned sum into one clipped transient instead of reading as N hits, so
+ * the sounds that arrive in bursts get a minimum spacing (seconds) between
+ * repeats. Sounds absent from this map are unchanged — a lone cue must still
+ * fire exactly on the beat. */
+const MIN_GAP: Partial<Record<SoundName, number>> = {
+  damage: 0.06,
+  cast: 0.05,
+  gold: 0.04,
+}
+
+/** A repeat pushed further out than this would land under the NEXT tick's
+ * events, so it is dropped instead — which also bounds a runaway burst. */
+const MAX_STAGGER = 0.25
+
+const lastStart = new Map<SoundName, number>()
+
 function makeNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
   const sampleRate = ctx.sampleRate
   const length = Math.max(1, Math.floor(sampleRate * duration))
@@ -233,7 +273,16 @@ export function useAudio() {
         ctx.resume()
       }
 
-      const t0 = ctx.currentTime
+      const now = ctx.currentTime
+      // We never schedule beyond now + MAX_STAGGER, so a previous start past
+      // that can only mean the context clock restarted — ignore it rather than
+      // muting the sound forever.
+      const prev = lastStart.get(name) ?? -Infinity
+      const stale = prev > now + MAX_STAGGER
+      const t0 = stale ? now : Math.max(now, prev + (MIN_GAP[name] ?? 0))
+      if (t0 - now > MAX_STAGGER) return
+      lastStart.set(name, t0)
+
       const master = ctx.createGain()
       master.gain.value = (def.masterGain ?? 1) * settings.audioVolume
       master.connect(ctx.destination)

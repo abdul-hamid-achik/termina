@@ -10,6 +10,7 @@ import type {
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
+import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
 import { getTalentTree } from '~~/shared/constants/talents'
@@ -227,9 +228,15 @@ export function formatStatusReadout(player: PlayerState): string {
   )
 }
 
-/** Your zone + where you can move next, for the `map` command. */
-export function formatMapReadout(player: PlayerState): string {
-  const reachable = ZONE_MAP[player.zone]?.adjacentTo.map(zoneName).join(', ') ?? '—'
+/**
+ * Your zone + where you can move next, for the `map` command. Read from the
+ * GAME's zone set, not the global graph: on the one-lane tutorial map the
+ * global `adjacentTo` still lists rune and off-lane neighbours that the game
+ * does not contain, so the readout named zones the player could never reach.
+ */
+export function formatMapReadout(player: PlayerState, mapId?: string): string {
+  const zone = zonesForMap(mapId).find((z) => z.id === player.zone)
+  const reachable = zone?.adjacentTo.map(zoneName).join(', ') ?? '—'
   return `MAP · You are @ ${zoneName(player.zone)}. Reachable: ${reachable}`
 }
 

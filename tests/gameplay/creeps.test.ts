@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seedGame, HUMAN } from './harness'
+import { seedGame, HUMAN, ENEMY } from './harness'
 
 /**
  * Engine-truth coverage for lane creep combat (CreepAI). When opposing waves
@@ -112,6 +112,39 @@ describe('creeps: last-hit & deny economy', () => {
     expect(game.lastEvents.some((e) => e._tag === 'creep_deny')).toBe(false)
     const creep = (await game.state()).creeps.find((c) => c.id === 'ally_creep')
     expect(creep && creep.hp > 0).toBe(true)
+  })
+
+  it('a last-hit also pays lane-mates a share of the XP', async () => {
+    // XP used to come EXCLUSIVELY from last-hits, so a laner who mistimed their
+    // attacks earned literally zero and sat several levels behind. Presence in
+    // the lane now pays a fraction; the last-hitter still keeps the full amount,
+    // so timing is still worth more.
+    const game = await seedGame('fresh', {
+      players: [
+        { id: HUMAN, name: HUMAN, team: 'radiant', heroId: 'echo' },
+        { id: 'lanemate', name: 'lanemate', team: 'radiant', heroId: 'kernel' },
+        { id: ENEMY, name: ENEMY, team: 'dire', heroId: 'regex' },
+      ],
+    })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river', xp: 0 },
+        lanemate: { ...s.players['lanemate']!, zone: 'mid-river', alive: true, xp: 0 },
+      },
+      creeps: [{ id: 'enemy_creep', team: 'dire', zone: 'mid-river', hp: 10, type: 'melee' }],
+    }))
+
+    game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+    await game.tick()
+
+    const after = await game.state()
+    const mine = after.players[HUMAN]!.xp
+    const theirs = after.players['lanemate']!.xp
+    expect(theirs).toBeGreaterThan(0)
+    // ...but strictly less than the last-hitter's, or timing stops mattering.
+    expect(theirs).toBeLessThan(mine)
   })
 
   it('`attack` on your OWN creep is refused — no kill, no bounty, and the player is told why', async () => {

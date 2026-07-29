@@ -45,4 +45,31 @@ describe('item-active combat credit', () => {
       game.allEvents.some((e) => e._tag === 'kill' && e.killerId === HUMAN && e.victimId === ENEMY),
     ).toBe(true)
   })
+
+  it('a Scythe hex announces the disable — an item active with no HP delta was silent', async () => {
+    // Hex and Cyclone change nothing but the target's buff list, so the HP-diff
+    // synthesis above never saw them: the most decisive 5000g play in the game
+    // produced not one line of feedback.
+    const game = await seedGame('laning', { heroSelf: 'echo', heroEnemy: 'daemon' })
+
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          zone: 'mid-river',
+          items: ['scythe_of_vyse', null, null, null, null, null],
+        },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river', alive: true },
+      },
+    }))
+
+    game.submit({ type: 'use', item: 'scythe_of_vyse', target: { kind: 'hero', name: 'daemon' } })
+    await game.tick()
+
+    const statuses = game.lastEvents.filter((e) => e._tag === 'status_applied')
+    expect(statuses.map((e) => e.status).sort()).toEqual(['hex', 'silence'])
+    expect(statuses[0]).toMatchObject({ sourceId: HUMAN, targetId: ENEMY })
+  })
 })

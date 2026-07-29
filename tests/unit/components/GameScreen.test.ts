@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -37,12 +39,34 @@ vi.mock('~/composables/useGameSocket', () => ({
   useGameSocket: () => ({ ...socketRefs, ...socketSpies }),
 }))
 
-// requestAnimationFrame isn't in happy-dom by default; the screen-shake helper
-// schedules through it. A synchronous shim keeps any event-driven shake safe.
+// requestAnimationFrame isn't in happy-dom by default; keep a synchronous shim
+// for any child that schedules through it.
 vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
   cb(0)
   return 0
 })
+
+// ── audio + layout doubles ────────────────────────────────────────────
+// The real useAudio needs an AudioContext; record the cue names instead. The
+// tick loop says a great deal through sound, so several tests assert on it.
+const audio = vi.hoisted(() => ({ playSound: vi.fn() }))
+vi.mock('~/composables/useAudio', () => ({ useAudio: () => audio }))
+
+// GameScreen measures the HUD bar to anchor the kill-feed / toast lanes;
+// happy-dom ships no ResizeObserver, so capture the callback and drive it.
+type ResizeCb = (entries: Array<{ contentRect: { height: number } }>) => void
+let resizeCb: ResizeCb | null = null
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    constructor(cb: ResizeCb) {
+      resizeCb = cb
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+)
 
 const mockStorage = new Map<string, string>()
 vi.stubGlobal('localStorage', {
@@ -110,7 +134,7 @@ const stubs = {
   // forced compact AND ships its overview grid open; the center map is full).
   AsciiMap: {
     name: 'AsciiMap',
-    props: ['zones', 'playerZone', 'ancients', 'forceMode', 'mapId', 'overviewOpen'],
+    props: ['zones', 'playerZone', 'ancients', 'forceMode', 'mapId', 'overviewOpen', 'moveTarget'],
     template:
       '<div data-testid="ascii-map" :data-force-mode="forceMode" :data-overview-open="String(overviewOpen === true)" />',
   },
@@ -144,10 +168,19 @@ function rosterAt(zone: string) {
   return players
 }
 
+/** The human standing in `zone` mid-walk, still headed for `moveTarget`. */
+function rosterWalking(zone: string, moveTarget: string) {
+  const players = rosterAt(zone)
+  players.p1 = { ...players.p1!, moveTarget }
+  return players
+}
+
 beforeEach(() => {
   setActivePinia(createPinia())
   mockStorage.clear()
   for (const spy of Object.values(socketSpies)) spy.mockClear()
+  audio.playSound.mockClear()
+  resizeCb = null
   vi.mocked(localStorage.clear).mockClear()
 })
 
@@ -489,6 +522,36 @@ describe('GameScreen', () => {
       // attempted, reported failure → buffered for next-tick retry, not lost
       expect(socketSpies.send).toHaveBeenCalled()
       expect(store.bufferedCommand).toBe('surrender confirm')
+      wrapper.unmount()
+    })
+
+    // ── W2-10: death is not a blackout ────────────────────────────────
+    // Respawn runs up to 108 seconds. The overlay used to be a full-bleed scrim
+    // that also swallowed every click, so the map, log, war room and scoreboard
+    // were unreadable and unreachable for the duration.
+    it('renders as a centered card, not a full-height panel', () => {
+      seedDeadPlayer()
+      const wrapper = mountGameScreen()
+
+      const card = wrapper.get('[data-testid="death-overlay"] > div')
+      expect(card.classes()).not.toContain('h-full')
+      // The scrim is click-through (see the .death-overlay rule); the card puts
+      // pointer events back so buyback and surrender still work.
+      expect(card.classes()).toContain('pointer-events-auto')
+      wrapper.unmount()
+    })
+
+    it('tells a dead player the truth about why the shop is closed', async () => {
+      // `canBuy` is false while dead AND while out of a shop zone; the shop only
+      // ever named the zone, telling a corpse to walk somewhere it cannot walk.
+      seedDeadPlayer()
+      const wrapper = mountGameScreen()
+
+      await wrapper.get('[aria-label="Toggle shop"]').trigger('click')
+
+      const warn = wrapper.get('[data-testid="shop-blocked-reason"]').text()
+      expect(warn).toContain('cannot buy while dead')
+      expect(warn).not.toContain('fountain or base zone')
       wrapper.unmount()
     })
   })
@@ -948,5 +1011,567 @@ describe('GameScreen', () => {
       expect(shop?.attributes('title')).toContain('Esc then S')
       wrapper.unmount()
     })
+  })
+
+  describe('map affordances (W2-8)', () => {
+    /** The mid corridor plus a rune spot, so subset-map pruning is observable. */
+    const CORRIDOR = [
+      'radiant-base',
+      'mid-t3-rad',
+      'mid-t2-rad',
+      'mid-t1-rad',
+      'mid-river',
+      'rune-top',
+    ]
+
+    function seedMap(zone: string, overrides: Partial<GameState> = {}) {
+      const store = useGameStore()
+      store.gameId = 'game_map'
+      store.playerId = 'p1'
+      const players = makeRoster()
+      players.p1 = { ...players.p1!, zone, moveTarget: null }
+      const zones: Record<string, ZoneRuntimeState> = {}
+      for (const id of CORRIDOR) zones[id] = makeZone(id)
+      store.updateFromTick(makeTickMessage({ tick: 240, players, zones, ...overrides }))
+      return store
+    }
+
+    const mapZoneIds = (wrapper: ReturnType<typeof mountGameScreen>) =>
+      (wrapper.findComponent({ name: 'AsciiMap' }).props('zones') as { id: string }[]).map(
+        (z) => z.id,
+      )
+
+    it('feeds the map the full 32 zones by default', () => {
+      seedMap('mid-river')
+      const wrapper = mountGameScreen()
+      expect(mapZoneIds(wrapper)).toContain('bot-t1-dire')
+      expect(mapZoneIds(wrapper).length).toBe(32)
+      wrapper.unmount()
+    })
+
+    it('drops zones the game map does not contain, killing the phantom move targets', () => {
+      // REGRESSION: built from the global ZONES regardless of mapId, so on the
+      // one-lane tutorial map the compact map's tap-to-move cards — derived from
+      // this list — offered rune-top and rune-bot, which `move` would reject.
+      seedMap('mid-river', { mapId: 'one_lane' })
+      const wrapper = mountGameScreen()
+      const ids = mapZoneIds(wrapper)
+      expect(ids).toHaveLength(11)
+      expect(ids).toContain('mid-river')
+      expect(ids).not.toContain('rune-top')
+      expect(ids.some((id) => id.startsWith('top-') || id.startsWith('bot-'))).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('shows a live rune on the map even where the player has no vision', () => {
+      // Runes reach the client unfiltered and the War Room ticker already names
+      // the live one; gating the map marker on vision only made them disagree.
+      seedMap('mid-river', { runes: [{ zone: 'rune-bot', type: 'haste', tick: 240 }] })
+      const wrapper = mountGameScreen()
+      const zones = wrapper.findComponent({ name: 'AsciiMap' }).props('zones') as {
+        id: string
+        fogged: boolean
+        runeType?: string
+      }[]
+      const runeZone = zones.find((z) => z.id === 'rune-bot')!
+      expect(runeZone.fogged).toBe(true)
+      expect(runeZone.runeType).toBe('haste')
+      wrapper.unmount()
+    })
+
+    it('[MOVE] opens a picker of named adjacent zones instead of dumping slugs', async () => {
+      // REGRESSION: it printed "Adjacent zones: mid-t1-rad, rune-top, …" — raw
+      // identifiers that appear nowhere else in the UI, and no way to act on them.
+      seedMap('mid-t1-rad')
+      const wrapper = mountGameScreen()
+      const moveBtn = wrapper.findAll('button').find((b) => b.text() === 'MOVE')!
+
+      expect(wrapper.find('[data-testid="move-picker"]').exists()).toBe(false)
+      await moveBtn.trigger('click')
+
+      const picker = wrapper.find('[data-testid="move-picker"]')
+      expect(picker.exists()).toBe(true)
+      expect(picker.text()).toContain('Mid Lane T2 (Radiant)')
+      expect(picker.text()).toContain('Mid River Crossing')
+      expect(picker.text()).not.toContain('mid-t2-rad')
+      wrapper.unmount()
+    })
+
+    it('[MOVE] picker actually moves', async () => {
+      seedMap('mid-t1-rad')
+      const wrapper = mountGameScreen()
+      await wrapper
+        .findAll('button')
+        .find((b) => b.text() === 'MOVE')!
+        .trigger('click')
+
+      socketSpies.send.mockClear()
+      await wrapper.find('[data-testid="move-picker-mid-river"]').trigger('click')
+
+      expect(socketSpies.send).toHaveBeenCalledWith({
+        type: 'action',
+        command: { type: 'move', zone: 'mid-river' },
+      })
+      // The picker closes behind the order rather than covering the log.
+      expect(wrapper.find('[data-testid="move-picker"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('offers only on-map zones in the picker on a subset map', async () => {
+      seedMap('mid-river', { mapId: 'one_lane' })
+      const wrapper = mountGameScreen()
+      await wrapper
+        .findAll('button')
+        .find((b) => b.text() === 'MOVE')!
+        .trigger('click')
+
+      const picker = wrapper.find('[data-testid="move-picker"]')
+      // mid-river's GLOBAL neighbours are mid-t1-rad, mid-t1-dire, rune-top and
+      // rune-bot — half of them do not exist in a one-lane game.
+      expect(picker.findAll('button')).toHaveLength(2)
+      expect(picker.text()).not.toMatch(/Rune/i)
+      wrapper.unmount()
+    })
+
+    it('surfaces the queued walk with a live hop count and a stop control', async () => {
+      seedMap('radiant-base')
+      const wrapper = mountGameScreen()
+      expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(false)
+
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
+      await wrapper.vm.$nextTick()
+
+      // radiant-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
+      expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain(
+        'WALKING → Mid Lane T1 (Radiant) · 3t',
+      )
+      // The same destination is what the map draws its route from.
+      expect(wrapper.findComponent({ name: 'AsciiMap' }).props('moveTarget')).toBe('mid-t1-rad')
+
+      seedMap('mid-t3-rad', { players: rosterWalking('mid-t3-rad', 'mid-t1-rad') })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain('· 2t')
+      wrapper.unmount()
+    })
+
+    it('[stop] cancels the walk by re-ordering a move to where you stand', async () => {
+      seedMap('radiant-base')
+      const wrapper = mountGameScreen()
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
+      await wrapper.vm.$nextTick()
+
+      // One hop later, mid-walk — the tick that frees the player to act again.
+      seedMap('mid-t3-rad', { tick: 241, players: rosterWalking('mid-t3-rad', 'mid-t1-rad') })
+      await wrapper.vm.$nextTick()
+
+      socketSpies.send.mockClear()
+      await wrapper.find('[data-testid="walk-stop"]').trigger('click')
+
+      // Ordering a move to your own zone is the stop: the server's BFS finds no
+      // next hop and nulls moveTarget (resolveMovementPhase).
+      expect(socketSpies.send).toHaveBeenCalledWith({
+        type: 'action',
+        command: { type: 'move', zone: 'mid-t3-rad' },
+      })
+      wrapper.unmount()
+    })
+
+    it('a stop order does not leave the current zone queued as a destination', async () => {
+      // handleCommand remembers every move order locally (the server nulls
+      // moveTarget on the last hop). Remembering a stop would make the NEXT
+      // zone change narrate as progress back toward where you stopped.
+      seedMap('mid-t3-rad')
+      const wrapper = mountGameScreen()
+
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t3-rad')
+      await wrapper.vm.$nextTick()
+
+      seedMap('mid-t2-rad', { tick: 241 })
+      await wrapper.vm.$nextTick()
+
+      const feed = (
+        wrapper.findComponent({ name: 'TickTheater' }).props('events') as { text: string }[]
+      ).map((e) => e.text)
+      expect(feed.some((t) => t.includes('more to Mid Lane T3'))).toBe(false)
+      wrapper.unmount()
+    })
+  })
+
+  describe('effect cues (W2-1)', () => {
+    /** Feed the store a batch the way a tick_state would, then let watchers run. */
+    async function emit(
+      wrapper: ReturnType<typeof mountGameScreen>,
+      events: Array<{ tick: number; type: string; payload: Record<string, unknown> }>,
+    ) {
+      useGameStore().addEvents(events as never)
+      await wrapper.vm.$nextTick()
+    }
+
+    it('pays the farming loop a gold cue and an amber +Ng float', async () => {
+      // REGRESSION: the gold cue hung off `gold_change`, whose only emitter is a
+      // win sentinel carrying an empty playerId — so last-hitting, the core
+      // economic loop of the whole match, was completely silent.
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      await emit(wrapper, [
+        {
+          tick: 240,
+          type: 'creep_lasthit',
+          payload: { playerId: 'p1', creepId: 'c1', creepType: 'melee', goldAwarded: 41 },
+        },
+      ])
+
+      expect(audio.playSound).toHaveBeenCalledWith('gold')
+      const float = wrapper.find('[data-testid="damage-float-gold"]')
+      expect(float.exists()).toBe(true)
+      expect(float.text()).toBe('+41g')
+      wrapper.unmount()
+    })
+
+    it('pays a deny and a jungle camp the same cue', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      await emit(wrapper, [
+        {
+          tick: 240,
+          type: 'creep_deny',
+          payload: { playerId: 'p1', creepId: 'c2', creepType: 'ranged', goldAwarded: 12 },
+        },
+        {
+          tick: 240,
+          type: 'neutral_killed',
+          payload: { playerId: 'p1', neutralId: 'n0', neutralType: 'kobold', zone: 'jungle-rad' },
+        },
+      ])
+
+      expect(audio.playSound.mock.calls.filter(([n]) => n === 'gold')).toHaveLength(2)
+      // The camp's bounty isn't on the wire, so only the deny floats a number.
+      expect(wrapper.findAll('[data-testid="damage-float-gold"]')).toHaveLength(1)
+      wrapper.unmount()
+    })
+
+    it('stays silent when the gold is somebody else’s', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      await emit(wrapper, [
+        {
+          tick: 240,
+          type: 'creep_lasthit',
+          payload: { playerId: 'p2', creepId: 'c1', creepType: 'melee', goldAwarded: 41 },
+        },
+      ])
+
+      expect(audio.playSound).not.toHaveBeenCalledWith('gold')
+      expect(wrapper.find('[data-testid="damage-float-gold"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('tells your tower falling apart from your own push', async () => {
+      // REGRESSION: the branch tested `killerId`, a field TowerKillEvent has
+      // never carried, so every tower in the match read identically.
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+      const store = useGameStore()
+
+      await emit(wrapper, [
+        {
+          tick: 240,
+          type: 'tower_kill',
+          payload: { zone: 'mid-t1-rad', team: 'radiant', killerTeam: 'dire' },
+        },
+      ])
+      expect(audio.playSound).toHaveBeenCalledWith('tower_lost')
+      expect(audio.playSound).not.toHaveBeenCalledWith('tower_fall')
+      expect(store.announcements.at(-1)).toContain('Tower lost')
+
+      audio.playSound.mockClear()
+      await emit(wrapper, [
+        {
+          tick: 241,
+          type: 'tower_kill',
+          payload: { zone: 'mid-t1-dire', team: 'dire', killerTeam: 'radiant' },
+        },
+      ])
+      expect(audio.playSound).toHaveBeenCalledWith('tower_fall')
+      expect(audio.playSound).not.toHaveBeenCalledWith('tower_lost')
+      wrapper.unmount()
+    })
+
+    it('credits an assist with the kill cue and a KDA pop', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+      const bar = wrapper.findComponent({ name: 'GameStateBar' })
+      const before = bar.props('kdaPopKey')
+
+      await emit(wrapper, [
+        {
+          tick: 240,
+          type: 'kill',
+          payload: { killerId: 'p2', victimId: 'e1', assisters: ['p1', 'p3'] },
+        },
+      ])
+
+      expect(audio.playSound).toHaveBeenCalledWith('kill')
+      expect(bar.props('kdaPopKey')).not.toBe(before)
+      // You did not land it — no screen flare for an assist.
+      expect(wrapper.find('[data-testid="impact-overlay"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('announces coming back from the dead', async () => {
+      // Respawn was a UI element silently disappearing.
+      const store = seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      const dead = makeRoster()
+      dead.p1 = { ...dead.p1!, alive: false, hp: 0, respawnTick: 250 }
+      store.updateFromTick(makeTickMessage({ tick: 240, players: dead }))
+      await wrapper.vm.$nextTick()
+      audio.playSound.mockClear()
+
+      store.updateFromTick(makeTickMessage({ tick: 250 }))
+      await wrapper.vm.$nextTick()
+
+      expect(audio.playSound).toHaveBeenCalledWith('respawn')
+      expect(wrapper.find('[data-testid="respawn-vignette"]').exists()).toBe(true)
+      const feed = (
+        wrapper.findComponent({ name: 'TickTheater' }).props('events') as { text: string }[]
+      ).map((e) => e.text)
+      expect(feed.some((t) => t.includes('PROCESS RESTORED'))).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('does not mistake the first tick of a match for a respawn', async () => {
+      // The store reports "not alive" until a player exists, so an ungated
+      // rising edge fires the respawn cue on every single game load.
+      const store = useGameStore()
+      store.gameId = 'game_fresh'
+      store.playerId = 'p1'
+      const wrapper = mountGameScreen()
+
+      store.updateFromTick(makeTickMessage())
+      await wrapper.vm.$nextTick()
+
+      expect(audio.playSound).not.toHaveBeenCalledWith('respawn')
+      expect(wrapper.find('[data-testid="respawn-vignette"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('confirms a plain move, which used to send in total silence', async () => {
+      // The `submit` sound was fully designed with zero call sites: move, buy,
+      // ward and deny all went out with no confirmation at all.
+      const store = useGameStore()
+      store.gameId = 'game_submit'
+      store.playerId = 'p1'
+      const zones: Record<string, ZoneRuntimeState> = {}
+      for (const id of ['mid-river', 'mid-t1-rad']) zones[id] = makeZone(id)
+      store.updateFromTick(makeTickMessage({ tick: 240, zones }))
+      const wrapper = mountGameScreen()
+
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
+      await wrapper.vm.$nextTick()
+
+      expect(socketSpies.send).toHaveBeenCalled()
+      expect(audio.playSound).toHaveBeenCalledWith('submit')
+      wrapper.unmount()
+    })
+
+    it('keeps the meatier cast whoosh for offensive orders', async () => {
+      seedActiveGame({ players: rosterAt('roshan-pit') })
+      const wrapper = mountGameScreen()
+
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack roshan')
+      await wrapper.vm.$nextTick()
+
+      expect(audio.playSound).toHaveBeenCalledWith('cast')
+      expect(audio.playSound).not.toHaveBeenCalledWith('submit')
+      wrapper.unmount()
+    })
+  })
+
+  describe('rejection feedback (W2-3)', () => {
+    it('toasts a client-side rejection instead of burying it in grey [SYS]', () => {
+      // Rejections shared one look with chat, pings and readouts, so the one
+      // line the player MUST read was the easiest to scroll past.
+      const store = seedActiveGame() // in mid-river, no shop
+      const wrapper = mountGameScreen()
+
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'buy boots_of_speed')
+
+      expect(store.announcements.at(-1)).toContain('shop zone')
+      expect(store.lastAnnouncementLevel).toBe('warning')
+      expect(socketSpies.send).not.toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('toasts an unparseable command too', () => {
+      const store = seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'flibbertigibbet')
+
+      expect(store.announcements.at(-1)).toContain('Unknown command')
+      wrapper.unmount()
+    })
+
+    it('leaves genuine meta-chatter silent', () => {
+      const store = seedActiveGame()
+      const wrapper = mountGameScreen()
+      const before = store.announcements.length
+
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'status')
+
+      expect(store.announcements).toHaveLength(before)
+      wrapper.unmount()
+    })
+  })
+
+  describe('effects that used to hurt (W2-6)', () => {
+    async function hit(wrapper: ReturnType<typeof mountGameScreen>, tick: number, amount: number) {
+      useGameStore().addEvents([
+        { tick, type: 'damage', payload: { sourceId: 'e1', targetId: 'p1', amount } },
+      ] as never)
+      await wrapper.vm.$nextTick()
+    }
+
+    it('flashes the hero panel in team red, scaled by how hard the hit landed', async () => {
+      // REGRESSION: a 30% WHITE wash — the brightest thing that ever appears on
+      // a near-black palette — fired on the most frequent event in the game.
+      seedActiveGame() // fixture maxHp 620
+      const wrapper = mountGameScreen()
+      const flash = () => wrapper.find('[data-testid="hero-hit-flash"]')
+      expect(flash().classes()).toContain('anim-flash-damage')
+      expect(flash().classes()).not.toContain('anim-flash')
+
+      await hit(wrapper, 240, 31) // 5% of max HP → floored
+      expect(flash().attributes('style')).toContain('--hit-intensity: 0.25')
+
+      await hit(wrapper, 241, 400) // most of the bar → full strength
+      expect(flash().attributes('style')).toContain('--hit-intensity: 1')
+      wrapper.unmount()
+    })
+
+    it('punches with an overlay instead of translating the screen you are typing into', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      await hit(wrapper, 240, 120)
+
+      const root = wrapper.find('[data-testid="game-screen"]')
+      expect(root.classes().some((c) => c.startsWith('anim-shake'))).toBe(false)
+      const flare = wrapper.find('[data-testid="impact-overlay"]')
+      expect(flare.exists()).toBe(true)
+      expect(flare.classes()).toContain('anim-impact')
+      expect(flare.classes()).toContain('pointer-events-none')
+      wrapper.unmount()
+    })
+
+    it('does not restart the flare for every hit inside one burst', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      await hit(wrapper, 240, 60)
+      const first = wrapper.find('[data-testid="impact-overlay"]').element
+      await hit(wrapper, 240, 45)
+      expect(wrapper.find('[data-testid="impact-overlay"]').element).toBe(first)
+
+      // Dying is not a repeat of the same beat and must always land.
+      useGameStore().addEvents([
+        { tick: 240, type: 'death', payload: { playerId: 'p1', respawnTick: 270 } },
+      ] as never)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="impact-overlay"]').element).not.toBe(first)
+      wrapper.unmount()
+    })
+
+    it('rises damage taken and damage dealt in separate lanes', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      useGameStore().addEvents([
+        { tick: 240, type: 'damage', payload: { sourceId: 'e1', targetId: 'p1', amount: 90 } },
+        { tick: 240, type: 'damage', payload: { sourceId: 'p1', targetId: 'e1', amount: 70 } },
+      ] as never)
+      await wrapper.vm.$nextTick()
+
+      const self = wrapper.find('[data-anchor="self"]')
+      const target = wrapper.find('[data-anchor="target"]')
+      expect(self.find('[data-testid="damage-float-taken"]').exists()).toBe(true)
+      expect(self.find('[data-testid="damage-float-dealt"]').exists()).toBe(false)
+      expect(target.find('[data-testid="damage-float-dealt"]').exists()).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('anchors the overlay lanes to the measured HUD bar', async () => {
+      // The kill feed sat at a hardcoded 4.25rem — 59.5px at the 14px root —
+      // which lands squarely on the focus banner and the tick/gold/KDA row.
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+      expect(resizeCb).toBeTypeOf('function')
+
+      resizeCb!([{ contentRect: { height: 72 } }])
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="game-screen"]').attributes('style')).toContain(
+        '--hud-bar-h: 72px',
+      )
+      wrapper.unmount()
+    })
+  })
+})
+
+describe('GameScreen overlay lanes', () => {
+  const SFC = readFileSync(resolve(process.cwd(), 'app/components/game/GameScreen.vue'), 'utf8')
+
+  it('positions both floating overlays off the measured bar height', () => {
+    const killfeed = /\.game-grid__killfeed\s*\{([^}]*)\}/.exec(SFC)?.[1] ?? ''
+    expect(killfeed).toContain('var(--hud-bar-h')
+    expect(SFC).toMatch(/:deep\(\.announcement-toast\)\s*\{[^}]*var\(--hud-bar-h/)
+  })
+
+  // W2-10: the death scrim's own rule, which no mounted assertion can see —
+  // scoped <style> is not applied by @vue/test-utils.
+  it('lets the HUD show and work through the death scrim', () => {
+    const scrim = /\.death-overlay\s*\{([^}]*)\}/.exec(SFC)?.[1] ?? ''
+
+    expect(scrim).toMatch(/pointer-events:\s*none/)
+    const alpha = Number(/--bg-overlay\)\s*\/\s*(\d*\.?\d+)\)/.exec(scrim)?.[1])
+    expect(alpha).toBeLessThanOrEqual(0.4)
+  })
+})
+
+/**
+ * The responsive grid's content rows must stay collapsible. `.game-grid` is
+ * `overflow: hidden; height: 100dvh`, so a px floor on a content row is taken
+ * out of the LAST row — the command input, Q/W/E/R and the shop button — and on
+ * a 375x667 phone that row was pushed clean off the bottom of the screen.
+ * Anchored on the vitest root: under happy-dom `import.meta.url` is an http: URL.
+ */
+describe('GameScreen responsive grid', () => {
+  const SFC = readFileSync(resolve(process.cwd(), 'app/components/game/GameScreen.vue'), 'utf8')
+
+  const rowDecls = [...SFC.matchAll(/grid-template-rows:([^;]*);/g)].map((m) => m[1]!)
+
+  it('declares row templates for desktop, tablet and phone', () => {
+    expect(rowDecls).toHaveLength(3)
+  })
+
+  it.each([0, 1, 2])('template %i puts no px floor on any content row', (i) => {
+    const pxFloors = [...rowDecls[i]!.matchAll(/minmax\(\s*(\d+)px/g)].map((m) => Number(m[1]))
+    expect(pxFloors).toEqual([])
+  })
+
+  it('still lets every content row scroll internally, so nothing needs a floor', () => {
+    // The rail scrolls itself; the panel regions are TerminalPanels, whose body
+    // is `flex-1 overflow-auto`.
+    expect(SFC).toMatch(/game-grid__rail[^"]*overflow-y-auto/)
+    const panel = readFileSync(
+      resolve(process.cwd(), 'app/components/ui/TerminalPanel.vue'),
+      'utf8',
+    )
+    expect(panel).toMatch(/flex-1 overflow-auto/)
   })
 })

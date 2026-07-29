@@ -46,8 +46,14 @@ export interface CombatLine {
    * between heroes, kills, abilities, etc. leave it undefined so they never merge.
    */
   dedupKey?: string
-  /** Per-line damage amount, summed into the running total when collapsing. */
+  /** Damage this line represents. On a collapsed run it is the run's total, so
+   *  the per-tick recap never has to re-derive it from the rendered text. */
   dmgAmount?: number
+  /** Who dealt / who received the damage, as already-resolved display labels.
+   *  The recap groups by these; parsing them back out of `text` would break the
+   *  moment any narration wording changes. */
+  sourceLabel?: string
+  targetLabel?: string
   /**
    * Farm-noise tag: what kind of farming beat this line narrates. Story mode
    * (digestFarmNoise) folds all tagged lines of a tick into one dim summary
@@ -115,6 +121,9 @@ export function collapseStructureDamage(
       const total = (prev.total ?? 0) + (line.dmgAmount ?? 0)
       prev.count = count
       prev.total = total
+      // The surviving line now stands for the whole run, so its amount must be
+      // the run total — otherwise the tick recap counts only the first hit.
+      prev.dmgAmount = total
       prev.tick = line.tick
       prev.text = format({ baseText: prev.baseText ?? prev.text, count, total })
       continue
@@ -292,4 +301,94 @@ export function buildTickStoryView(lines: CombatLine[]): CombatLine[] {
     .map(({ line }) => line)
   // Fold bystander teamfight damage now that it sits contiguous per tick.
   return digestTeamfightNoise(sorted)
+}
+
+// ── Per-tick personal recap ────────────────────────────────────
+
+/** One tick's damage ledger for the local player. */
+export interface TickRecap {
+  tick: number
+  /** Damage that landed on the local player this tick. */
+  taken: number
+  /** Damage the local player dealt this tick. */
+  dealt: number
+  /** "You took 131 (Mutex 106, burn 25)", or null when nothing landed. */
+  takenText: string | null
+  /** "You dealt 62 to Thread", or null when the player dealt nothing. */
+  dealtText: string | null
+  /** Both clauses joined — the screen-reader / test-facing rendering. */
+  text: string
+}
+
+/** Contributors listed by name before the rest roll up into "+N more". */
+const RECAP_BREAKDOWN_LIMIT = 3
+
+/**
+ * "You took 131 (Mutex 106, burn 25)". A lone contributor reads better named
+ * inline ("You took 106 from Mutex") than as a one-item parenthetical.
+ */
+function recapClause(
+  lead: string,
+  total: number,
+  by: Map<string, number>,
+  preposition: string,
+): string {
+  const entries = [...by.entries()].sort((a, b) => b[1] - a[1])
+  if (entries.length === 0) return `${lead} ${total}`
+  if (entries.length === 1) return `${lead} ${total} ${preposition} ${entries[0]![0]}`
+  const shown = entries.slice(0, RECAP_BREAKDOWN_LIMIT).map(([label, n]) => `${label} ${n}`)
+  const rest = entries.length - shown.length
+  if (rest > 0) shown.push(`+${rest} more`)
+  return `${lead} ${total} (${shown.join(', ')})`
+}
+
+function bump(by: Map<string, number>, label: string, amount: number) {
+  by.set(label, (by.get(label) ?? 0) + amount)
+}
+
+/**
+ * Reduce a line stream to one damage ledger per tick, so a 4-second turn can be
+ * read as a single sentence instead of mentally summing six chip lines.
+ *
+ * Deliberately built from the RAW line list rather than the story view: the
+ * filter chips and the 120-line render cap must not change what the recap says
+ * happened to you.
+ */
+export function buildTickRecaps(lines: CombatLine[]): Map<number, TickRecap> {
+  const takenBy = new Map<number, Map<string, number>>()
+  const dealtTo = new Map<number, Map<string, number>>()
+
+  for (const line of lines) {
+    if (line.type !== 'damage') continue
+    const amount = line.dmgAmount ?? 0
+    if (amount <= 0) continue
+    if (line.salience === 'mine-in') {
+      const by = takenBy.get(line.tick) ?? new Map<string, number>()
+      bump(by, line.sourceLabel || 'unknown', amount)
+      takenBy.set(line.tick, by)
+    } else if (line.salience === 'mine-out') {
+      const by = dealtTo.get(line.tick) ?? new Map<string, number>()
+      bump(by, line.targetLabel || 'unknown', amount)
+      dealtTo.set(line.tick, by)
+    }
+  }
+
+  const out = new Map<number, TickRecap>()
+  for (const tick of new Set([...takenBy.keys(), ...dealtTo.keys()])) {
+    const inBy = takenBy.get(tick)
+    const outBy = dealtTo.get(tick)
+    const taken = inBy ? [...inBy.values()].reduce((s, n) => s + n, 0) : 0
+    const dealt = outBy ? [...outBy.values()].reduce((s, n) => s + n, 0) : 0
+    const takenText = inBy ? recapClause('You took', taken, inBy, 'from') : null
+    const dealtText = outBy ? recapClause('You dealt', dealt, outBy, 'to') : null
+    out.set(tick, {
+      tick,
+      taken,
+      dealt,
+      takenText,
+      dealtText,
+      text: [takenText, dealtText].filter(Boolean).join(' · '),
+    })
+  }
+  return out
 }

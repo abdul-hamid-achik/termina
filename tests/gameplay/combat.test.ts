@@ -440,6 +440,10 @@ describe('combat', () => {
     expect(state.ancients[enemyTeam].alive).toBe(false)
     expect(state.winner).toBe(me.team)
     expect(game.lastEvents.some((e) => e._tag === 'ancient_destroyed')).toBe(true)
+    // The win used to also push a playerless gold sentinel, which the feed
+    // rendered as the literal line "? earned 0g (game_over:radiant)" at the
+    // exact moment of victory. Nothing consumed it.
+    expect(game.lastEvents.filter((e) => e._tag === 'gold_change')).toEqual([])
   })
 
   it('the Ancient is firewalled until a T3 falls — attacks bounce off while invulnerable', async () => {

@@ -13,7 +13,10 @@ import {
   RANGED_CREEP_ATTACK,
   SIEGE_CREEP_ATTACK,
   CREEP_BASE_IDLE_DESPAWN_TICKS,
+  CREEP_ESCALATION_INTERVAL_TICKS,
+  CREEP_XP_SHARED,
   MAX_CREEPS_PER_ZONE_PER_TEAM,
+  creepAttack,
 } from '../../../shared/constants/balance'
 import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
 import { getEffectiveDefense } from '../../../server/game/engine/EffectiveStats'
@@ -165,6 +168,21 @@ describe('CreepAI', () => {
       const actions = runCreepAI(state)
       const c1Action = actions.find((a) => a.creepId === 'c1')
       expect(c1Action!.damage).toBe(SIEGE_CREEP_ATTACK)
+    })
+
+    it('escalates creep damage with the game tick', () => {
+      const lateTick = CREEP_ESCALATION_INTERVAL_TICKS * 2
+      const state = makeGameState({
+        tick: lateTick,
+        creeps: [
+          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river', type: 'melee' }),
+          makeCreep({ id: 'c2', team: 'dire', zone: 'mid-river' }),
+        ],
+      })
+
+      const damage = runCreepAI(state).find((a) => a.creepId === 'c1')!.damage
+      expect(damage).toBe(creepAttack('melee', lateTick))
+      expect(damage).toBeGreaterThan(MELEE_CREEP_ATTACK)
     })
 
     it('should attack enemy heroes when no enemy creeps in zone (priority 2)', () => {
@@ -331,6 +349,64 @@ describe('CreepAI', () => {
       const result = applyCreepActions(state, actions).state
       const c2 = result.creeps.find((c) => c.id === 'c2')
       expect(c2!.hp).toBe(400 - MELEE_CREEP_ATTACK)
+    })
+
+    it('shares XP with living lane-mates of the killing team when a creep dies', () => {
+      const laner = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', xp: 0 })
+      const state = makeGameState({
+        creeps: [
+          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river', hp: 400 }),
+          makeCreep({ id: 'c2', team: 'dire', zone: 'mid-river', hp: 10 }),
+        ],
+        players: { p1: laner },
+      })
+
+      const actions: CreepAction[] = [
+        { creepId: 'c1', action: 'attack_creep', targetId: 'c2', damage: MELEE_CREEP_ATTACK },
+      ]
+
+      const result = applyCreepActions(state, actions).state
+      expect(result.players.p1!.xp).toBe(CREEP_XP_SHARED)
+    })
+
+    it('pays no shared XP while the creep survives the hit', () => {
+      const laner = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', xp: 0 })
+      const state = makeGameState({
+        creeps: [
+          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river', hp: 400 }),
+          makeCreep({ id: 'c2', team: 'dire', zone: 'mid-river', hp: 400 }),
+        ],
+        players: { p1: laner },
+      })
+
+      const actions: CreepAction[] = [
+        { creepId: 'c1', action: 'attack_creep', targetId: 'c2', damage: MELEE_CREEP_ATTACK },
+      ]
+
+      const result = applyCreepActions(state, actions).state
+      expect(result.players.p1!.xp).toBe(0)
+    })
+
+    it('does not pay shared XP to the dying creep’s own team, the dead, or another zone', () => {
+      const owner = makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', xp: 0 })
+      const dead = makePlayer({ id: 'p2', team: 'radiant', zone: 'mid-river', xp: 0, alive: false })
+      const elsewhere = makePlayer({ id: 'p3', team: 'radiant', zone: 'mid-t1-rad', xp: 0 })
+      const state = makeGameState({
+        creeps: [
+          makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river', hp: 400 }),
+          makeCreep({ id: 'c2', team: 'dire', zone: 'mid-river', hp: 10 }),
+        ],
+        players: { p1: owner, p2: dead, p3: elsewhere },
+      })
+
+      const actions: CreepAction[] = [
+        { creepId: 'c1', action: 'attack_creep', targetId: 'c2', damage: MELEE_CREEP_ATTACK },
+      ]
+
+      const result = applyCreepActions(state, actions).state
+      expect(result.players.p1!.xp).toBe(0)
+      expect(result.players.p2!.xp).toBe(0)
+      expect(result.players.p3!.xp).toBe(0)
     })
 
     it('should remove dead creeps after applying actions', () => {

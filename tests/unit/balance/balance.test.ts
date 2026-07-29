@@ -35,6 +35,14 @@ import {
   MELEE_CREEP_ATTACK,
   RANGED_CREEP_ATTACK,
   SIEGE_CREEP_ATTACK,
+  CREEP_ESCALATION_INTERVAL_TICKS,
+  CREEP_ESCALATION_STEP,
+  CREEP_ESCALATION_MAX_MULTIPLIER,
+  creepEscalationMultiplier,
+  creepMaxHp,
+  creepAttack,
+  CREEP_XP_SHARED,
+  CREEP_XP_SHARED_RATIO,
   TOWER_HP_T1,
   TOWER_HP_T2,
   TOWER_HP_T3,
@@ -228,6 +236,61 @@ describe('Balance Constants', () => {
 
     it('ranged creep attack exceeds melee creep attack', () => {
       expect(RANGED_CREEP_ATTACK).toBeGreaterThan(MELEE_CREEP_ATTACK)
+    })
+  })
+
+  describe('creep escalation', () => {
+    it('is flat for the whole first interval', () => {
+      expect(creepEscalationMultiplier(0)).toBe(1)
+      expect(creepEscalationMultiplier(CREEP_ESCALATION_INTERVAL_TICKS - 1)).toBe(1)
+      expect(creepMaxHp('melee', CREEP_ESCALATION_INTERVAL_TICKS - 1)).toBe(MELEE_CREEP_HP)
+      expect(creepAttack('melee', CREEP_ESCALATION_INTERVAL_TICKS - 1)).toBe(MELEE_CREEP_ATTACK)
+    })
+
+    it('steps up once per interval', () => {
+      expect(creepEscalationMultiplier(CREEP_ESCALATION_INTERVAL_TICKS)).toBeCloseTo(
+        1 + CREEP_ESCALATION_STEP,
+      )
+      expect(creepEscalationMultiplier(CREEP_ESCALATION_INTERVAL_TICKS * 2)).toBeCloseTo(
+        1 + CREEP_ESCALATION_STEP * 2,
+      )
+    })
+
+    it('scales both HP and damage of every creep type', () => {
+      const tick = CREEP_ESCALATION_INTERVAL_TICKS * 2
+      const mult = creepEscalationMultiplier(tick)
+      expect(mult).toBeGreaterThan(1)
+      expect(creepMaxHp('melee', tick)).toBe(Math.round(MELEE_CREEP_HP * mult))
+      expect(creepMaxHp('ranged', tick)).toBe(Math.round(RANGED_CREEP_HP * mult))
+      expect(creepMaxHp('siege', tick)).toBe(Math.round(SIEGE_CREEP_HP * mult))
+      expect(creepAttack('melee', tick)).toBe(Math.round(MELEE_CREEP_ATTACK * mult))
+      expect(creepAttack('ranged', tick)).toBe(Math.round(RANGED_CREEP_ATTACK * mult))
+      expect(creepAttack('siege', tick)).toBe(Math.round(SIEGE_CREEP_ATTACK * mult))
+    })
+
+    it('caps so a stalled game does not produce one-shot creeps', () => {
+      expect(creepEscalationMultiplier(100_000)).toBe(CREEP_ESCALATION_MAX_MULTIPLIER)
+      expect(creepAttack('siege', 100_000)).toBe(
+        SIEGE_CREEP_ATTACK * CREEP_ESCALATION_MAX_MULTIPLIER,
+      )
+    })
+
+    it('scales HP and damage by the same factor, so creep-vs-creep trades are unchanged', () => {
+      const early = CREEP_ESCALATION_INTERVAL_TICKS - 1
+      const late = CREEP_ESCALATION_INTERVAL_TICKS * 4
+      const hitsEarly = creepMaxHp('melee', early) / creepAttack('melee', early)
+      const hitsLate = creepMaxHp('melee', late) / creepAttack('melee', late)
+      expect(hitsLate).toBeCloseTo(hitsEarly, 1)
+    })
+  })
+
+  describe('shared creep XP', () => {
+    it('is a fraction of the last-hit reward, so timing still pays more', () => {
+      expect(CREEP_XP_SHARED_RATIO).toBeGreaterThan(0)
+      expect(CREEP_XP_SHARED_RATIO).toBeLessThan(1)
+      expect(CREEP_XP_SHARED).toBe(Math.floor(CREEP_XP * CREEP_XP_SHARED_RATIO))
+      expect(CREEP_XP_SHARED).toBeGreaterThan(0)
+      expect(CREEP_XP_SHARED).toBeLessThan(CREEP_XP)
     })
   })
 

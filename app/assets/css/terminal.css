@@ -21,21 +21,42 @@
   --text-dim: 138 148 160;
   --text-muted: 90 100 115;
 
+  /* Semantic colors. The three pairs below used to sit within ~20 units of RGB
+     distance of each other, which put the log's most and least important lines
+     in visually identical paint: a hero death read as the same red as creep
+     chip, a heal as the same green as the team. Each pair is now separated on
+     BOTH hue and lightness, and palette.test.ts pins the minimum distance. */
   --color-radiant: 64 240 144;
   --color-radiant-deep: 24 180 100;
   --color-dire: 255 78 110;
   --color-dire-deep: 200 40 70;
-  --color-self: 80 192 255;
+  /* Azure, pushed off the ability cyan — the two sit side by side on every log
+     line (the ►YOU marker next to the [ABILITY] tag). */
+  --color-self: 108 164 255;
   --color-gold: 255 196 48;
   --color-mana: 178 110 240;
-  --color-damage: 255 90 80;
-  --color-healing: 80 240 160;
+  /* Chip damage: a duller, browner red than the dire alarm red, so bright red
+     means "someone died" and dim red means "someone is being worn down". */
+  --color-damage: 198 88 72;
+  /* Mint rather than a second team green. */
+  --color-healing: 120 246 214;
   --color-system: 138 148 160;
   --color-zone: 56 220 200;
   --color-ability: 64 224 255;
-  --color-warn: 255 168 56;
+  /* A hotter orange than gold, which it used to sit ~29 units from: the bank
+     balance and the "your Mainframe is exposed" alarm shared one amber. */
+  --color-warn: 255 138 24;
 
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* In-game type floor. Panel text used to be written as one-off sub-rem
+     arbitrary sizes (0.55rem–0.72rem), which against the old 14px root put most
+     of the HUD between 7.7px and 11.2px — the enemy cooldown chips, the single
+     highest-value readout in the game, landed at 8.1px. Two tiers, both above
+     12px, replace those one-offs; `data-density='compact'` on the game grid
+     overrides them for players who want the old density back. */
+  --hud-text-xs: 0.75rem;
+  --hud-text-sm: 0.8125rem;
 }
 
 /* Colorblind team palette — toggled by a `.palette-colorblind` class on <html>
@@ -49,6 +70,12 @@
   --color-dire: 230 159 0;
   --color-dire-deep: 185 125 0;
   --color-self: 150 235 255;
+  /* Dire becoming Okabe-Ito orange lands it on top of the untouched gold and
+     warn ambers — the enemy team, your bank balance and every alarm painted
+     the same color for exactly the players who need them separated. Both move
+     off orange: gold to the Okabe-Ito yellow, warn to its reddish purple. */
+  --color-gold: 240 228 66;
+  --color-warn: 204 121 167;
 }
 
 /* ── Base Layer ────────────────────────────────────────────────── */
@@ -63,7 +90,10 @@
   }
 
   html {
-    font-size: 14px;
+    /* The browser default. Every `rem` in the app scales off this, and at the
+       14px it used to be, the whole type ramp sat a step below what it reads
+       as: `t-caption` rendered at 10.5px and `t-body` at 12.25px. */
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -175,6 +205,19 @@
   .t-mono-num {
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum';
+  }
+
+  /* The two in-game tiers. Leading is tighter than the 1.6 body default so the
+     larger glyphs cost no extra vertical space in panels that are already
+     height-constrained; `-xs` is the floor, `-sm` the step above it that keeps
+     a row's label distinguishable from its value. */
+  .t-hud-xs {
+    font-size: var(--hud-text-xs);
+    line-height: 1.35;
+  }
+  .t-hud-sm {
+    font-size: var(--hud-text-sm);
+    line-height: 1.4;
   }
 
   .terminal-input {
@@ -306,6 +349,17 @@
   .anim-shake-strong {
     animation: shake-strong 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97);
   }
+  /* Impact flare — the hit punch for a full-screen overlay. Positional shake is
+     wrong for a screen made of text you are reading and typing into, so the
+     punch is light instead of motion. Alpha scales with --hit-intensity (set by
+     GameScreen from the fraction of max HP lost); everything is inside the
+     keyframes so a suppressed animation leaves the overlay painting nothing. */
+  .anim-impact {
+    animation: impact 0.3s ease-out;
+  }
+  .anim-impact-strong {
+    animation: impact-strong 0.55s ease-out;
+  }
   .anim-pop {
     animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
@@ -315,11 +369,14 @@
   .anim-glow-pulse {
     animation: glow-pulse 1.4s ease-in-out infinite;
   }
-  .anim-flash {
-    animation: flash 0.2s ease-out;
+  /* Damage flash on the hero panel. It used to be a 30% WHITE wash — the
+     brightest thing that ever appeared on a near-black palette, fired on the
+     most frequent event in the game and fighting the red critical-HP vignette
+     trying to say the same thing. Dire red, scaled by --hit-intensity. */
+  .anim-flash-damage {
+    animation: flash-damage 0.28s ease-out;
   }
-  /* Gentle tick-resolution pulse — a faint ability-blue wash that fades, much
-     softer than the white anim-flash (which strobes too hard every 4s). */
+  /* Gentle tick-resolution pulse — a faint ability-blue wash that fades. */
   .anim-tick-pulse {
     animation: tick-pulse 0.45s ease-out;
   }
@@ -341,6 +398,18 @@
       ellipse at center,
       transparent 45%,
       rgb(var(--color-dire) / 0.55) 100%
+    );
+  }
+
+  /* Respawn: the mirror of the death vignette, radiant instead of dire. Carries
+     the same resting-state opacity, for the same reduced-motion reason. */
+  .anim-respawn-vignette {
+    opacity: 0;
+    animation: death-vignette 0.6s ease-out forwards;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 45%,
+      rgb(var(--color-radiant) / 0.45) 100%
     );
   }
 
@@ -452,12 +521,36 @@
   }
 }
 
-@keyframes flash {
+@keyframes flash-damage {
   0% {
-    background-color: rgb(255 255 255 / 0.3);
+    background-color: rgb(var(--color-dire) / calc(0.3 * var(--hit-intensity, 1)));
   }
   100% {
     background-color: transparent;
+  }
+}
+
+@keyframes impact {
+  0% {
+    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
+  }
+  18% {
+    box-shadow: inset 0 0 70px rgb(var(--color-dire) / calc(0.55 * var(--hit-intensity, 1)));
+  }
+  100% {
+    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
+  }
+}
+
+@keyframes impact-strong {
+  0% {
+    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
+  }
+  12% {
+    box-shadow: inset 0 0 140px rgb(var(--color-dire) / 0.75);
+  }
+  100% {
+    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
   }
 }
 
@@ -515,12 +608,15 @@
   .anim-pop,
   .anim-fade-in-up,
   .anim-glow-pulse,
-  .anim-flash,
+  .anim-flash-damage,
+  .anim-impact,
+  .anim-impact-strong,
   .anim-tick-pulse,
   .anim-dmg-float,
   .anim-end-victory,
   .anim-end-defeat,
-  .anim-death-vignette {
+  .anim-death-vignette,
+  .anim-respawn-vignette {
     animation: none;
   }
 }

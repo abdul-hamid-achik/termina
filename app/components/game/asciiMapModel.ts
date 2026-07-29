@@ -1,5 +1,6 @@
 import type { AncientState } from '~~/shared/types/game'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { findPath } from '~~/shared/pathfinding'
 
 /** Per-zone display payload computed by GameScreen and rendered by AsciiMap. */
 export interface ZoneDisplay {
@@ -241,6 +242,34 @@ export function ancientLabel(ancient: AncientState | null | undefined): string |
 }
 
 /**
+ * The Mainframe readout a map surface shows: the HP percentage prefixed by
+ * whether the core can actually be attacked yet ('LOCKED' until one of that
+ * team's T3 towers falls). Whether the core is exposed decides whether a push
+ * can end the match, and it was previously carried only by a CSS pulse in the
+ * top bar — nothing named the state.
+ */
+export function ancientStatusLabel(ancient: AncientState | null | undefined): string | null {
+  const hp = ancientLabel(ancient)
+  if (!ancient || hp === null) return null
+  if (!ancient.alive) return hp
+  return `${ancient.vulnerable ? 'EXPOSED' : 'LOCKED'} ${hp}`
+}
+
+/**
+ * Tower state as three HP pips — '▲▲▲' full, '▲··' nearly down, '✗' razed.
+ * Towers reach every client unfiltered (VisionCalculator), so this is the one
+ * objective readout a player always has; a bare ✓ said "standing" but never
+ * "one push from falling", which is the whole decision.
+ */
+export function towerPips(tower: NonNullable<ZoneDisplay['tower']>): string {
+  if (!tower.alive) return '✗'
+  const { hp, maxHp } = tower
+  if (hp == null || maxHp == null || maxHp <= 0) return '▲▲▲'
+  const pips = Math.min(3, Math.max(1, Math.ceil((hp / maxHp) * 3)))
+  return '▲'.repeat(pips) + '·'.repeat(3 - pips)
+}
+
+/**
  * Adjacent-zone cards for the compact (mobile) map, in topology order.
  * Zones missing from the display list are skipped.
  */
@@ -252,6 +281,29 @@ export function buildAdjacentZones(playerZone: string, zones: ZoneDisplay[]): Zo
     const display = byId.get(id)
     return display ? [display] : []
   })
+}
+
+/**
+ * Per-zone markers for a queued auto-path walk: the destination carries ⌖ and
+ * every zone before it its 1-based hop number. An order to a zone four hops
+ * away used to leave no trace on the board at all — the only evidence the hero
+ * was walking was a log line that scrolled away.
+ *
+ * `hasZone` restricts the BFS to the game's own zone set, mirroring the
+ * server's route exactly (resolveMovementPhase paths over `zones`, not vision).
+ */
+export function buildRouteMarkers(
+  from: string,
+  to: string | null | undefined,
+  hasZone?: (id: string) => boolean,
+): Map<string, string> {
+  const markers = new Map<string, string>()
+  if (!from || !to || from === to) return markers
+  const path = findPath(from, to, hasZone)
+  for (let i = 1; i < path.length; i++) {
+    markers.set(path[i]!, i === path.length - 1 ? '⌖' : String(i))
+  }
+  return markers
 }
 
 /** Dense single-line cell text for the desktop 5x10 grid. */
@@ -277,20 +329,22 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     name = zone.id.slice(0, 8).toUpperCase()
   }
 
-  // Ancients are global info (like towers), so they show through fog too.
-  const aLabel = ancientLabel(ancient)
-
-  if (zone.fogged) return aLabel ? `${name} ◈${aLabel} ?` : `${name} ?`
-
+  // Ancients and towers are global info (the server sends both unfiltered), so
+  // they are built BEFORE the fog return — this grid used to be the only one of
+  // the three renderers that dropped the tower the moment a zone went dark,
+  // hiding exactly the objective a player is deciding whether to push.
   const indicators: string[] = []
 
+  const aLabel = ancientStatusLabel(ancient)
   if (aLabel) {
     indicators.push(`◈${aLabel}`)
   }
 
   if (zone.tower) {
-    indicators.push(zone.tower.alive ? '✓' : '✗')
+    indicators.push(towerPips(zone.tower))
   }
+
+  if (zone.fogged) return [name, ...indicators, '?'].join(' ')
 
   if (zone.playerHere) {
     indicators.push('►YOU')
@@ -348,7 +402,22 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
     parts.push(zone.roshan.alive ? 'Roshan alive' : `Roshan respawns in ${zone.roshan.respawnIn}t`)
   }
   if (ancient) {
-    parts.push(ancient.alive ? `ancient at ${ancientLabel(ancient)}` : 'ancient destroyed')
+    parts.push(
+      ancient.alive
+        ? `ancient ${ancient.vulnerable ? 'exposed' : 'locked'} at ${ancientLabel(ancient)}`
+        : 'ancient destroyed',
+    )
+  }
+  if (zone.tower) {
+    parts.push(
+      zone.tower.alive
+        ? `tier ${zone.tower.tier} tower standing${
+            zone.tower.hp != null && zone.tower.maxHp != null
+              ? ` at ${Math.round((zone.tower.hp / zone.tower.maxHp) * 100)} percent`
+              : ''
+          }`
+        : `tier ${zone.tower.tier} tower destroyed`,
+    )
   }
   if (zone.fogged) parts.push('fogged')
 
@@ -378,7 +447,7 @@ export function compactIndicators(
     }
   }
 
-  const aLabel = ancientLabel(ancient)
+  const aLabel = ancientStatusLabel(ancient)
   if (ancient && aLabel) {
     out.push({
       text: `◈ CORE ${aLabel}`,

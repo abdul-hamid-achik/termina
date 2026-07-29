@@ -278,6 +278,33 @@ describe('ZonePanel', () => {
 
       expect(wrapper.find('[data-testid="zone-tower"]').exists()).toBe(false)
     })
+
+    it('paints a tower in ITS team colour, not in "mine vs theirs"', () => {
+      // The row prints the team name — "Tower (dire)" in the Radiant green was
+      // the label and its colour contradicting each other inside one span, and
+      // it disagreed with the ▼ the map draws for the same tower.
+      const dire = mount(ZonePanel, {
+        props: { ...baseProps, playerTeam: 'dire' as const, tower: makeTower({ team: 'dire' }) },
+      })
+      const towerLabel = dire.find('[data-testid="zone-tower"] span')
+      expect(towerLabel.text()).toContain('dire')
+      expect(towerLabel.classes()).toContain('text-dire')
+      expect(towerLabel.classes()).not.toContain('text-radiant')
+
+      const radiant = mount(ZonePanel, {
+        props: { ...baseProps, playerTeam: 'dire' as const, tower: makeTower({ team: 'radiant' }) },
+      })
+      expect(radiant.find('[data-testid="zone-tower"] span').classes()).toContain('text-radiant')
+    })
+
+    it('paints the zone identity tag by the zone owner, matching the map', () => {
+      const wrapper = mount(ZonePanel, {
+        props: { ...baseProps, playerTeam: 'dire' as const, zoneId: 'dire-base' },
+      })
+      const tag = wrapper.find('[data-testid="zone-status"] span')
+      expect(tag.text()).toContain('ours')
+      expect(tag.classes()).toContain('text-dire')
+    })
   })
 
   describe('status header', () => {

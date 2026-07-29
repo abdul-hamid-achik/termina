@@ -425,13 +425,6 @@ export function processTick(
         : checkWinCondition(currentState)
     if (winner) {
       currentState = { ...currentState, phase: 'ended', winner }
-      allEvents.push({
-        _tag: 'gold_change',
-        tick: currentState.tick,
-        playerId: '',
-        amount: 0,
-        reason: `game_over:${winner}`,
-      })
       yield* Effect.logInfo('Win condition met').pipe(Effect.annotateLogs({ gameId, winner }))
     }
 
@@ -1371,6 +1364,12 @@ function handleDeaths(
       if (killerId && players[killerId]) {
         // Award kill gold
         const assisters = [...contributors].filter((id) => id !== killerId && players[id])
+        // The bounty is streak- and comeback-scaled, and the assist share is
+        // split N ways — so the reported amounts are read back off the gold diff
+        // rather than recomputed here, where they could drift from awardKill.
+        const goldBefore = new Map<string, number>(
+          [killerId, ...assisters].map((id): [string, number] => [id, players[id]?.gold ?? 0]),
+        )
         const tempState: GameState = { ...state, players }
         // `player` is the loop's original victim — its killStreak still holds the
         // pre-death value (players[pid] was reset to 0 above). Pass it so the
@@ -1462,6 +1461,22 @@ function handleDeaths(
           victimStreak: player.killStreak ?? 0,
           killerStreak: players[killerId]?.killStreak ?? 0,
         } as GameEngineEvent)
+
+        // …and what it paid. Pushed after the kill line so the feed reads
+        // "X terminated Y" then "You earned 240g". These reasons deliberately
+        // avoid the words the client suppresses as farming noise.
+        for (const [id, before] of goldBefore) {
+          const gained = (players[id]?.gold ?? 0) - before
+          if (gained > 0) {
+            events.push({
+              _tag: 'gold_change',
+              tick: state.tick,
+              playerId: id,
+              amount: gained,
+              reason: id === killerId ? 'hero kill' : 'assist',
+            })
+          }
+        }
       }
 
       changed = true

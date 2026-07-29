@@ -20,6 +20,7 @@ import {
   HERO_KILL_XP_PER_LEVEL,
   XP_PER_LEVEL,
   MKB_BONUS_DAMAGE,
+  PASSIVE_GOLD_PER_TICK,
 } from '~~/shared/constants/balance'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 
@@ -285,6 +286,50 @@ describe('Economy through resolution', () => {
       // keeps accumulated xp, so the raw delta holds.
       expect(r2.state.players['kx_r0']!.xp - killerXpBefore).toBe(killXp)
       expect(r2.state.players['kx_r1']!.xp - assistXpBefore).toBe(assistXp)
+    })
+
+    it('a hero kill emits gold_change for the killer AND each assister, matching the gold paid', async () => {
+      // The bounty was awarded but never announced: the ONLY gold_change the
+      // engine ever emitted was an empty win sentinel, so the biggest payout in
+      // the game — and every assist — landed in total silence.
+      const gameId = uid('killgold')
+      const sm = await startGame(gameId, makePlayers('kg', 2))
+
+      await arrange(sm, gameId, (s) => {
+        let next = setPlayer(s, 'kg_r0', { zone: 'mid-river' })
+        next = setPlayer(next, 'kg_r1', { zone: 'mid-river' })
+        return setPlayer(next, 'kg_d0', { zone: 'mid-river', buffs: [inCombatBuff()] })
+      })
+
+      submitAction(gameId, 'kg_r1', { type: 'attack', target: { kind: 'hero', name: 'kg_d0' } })
+      await runTick(sm, gameId)
+
+      await arrange(sm, gameId, (s) => setPlayer(s, 'kg_d0', { hp: 1, buffs: [inCombatBuff()] }))
+      const before = await Effect.runPromise(sm.getState(gameId))
+      const killerGoldBefore = before.players['kg_r0']!.gold
+      const assistGoldBefore = before.players['kg_r1']!.gold
+
+      submitAction(gameId, 'kg_r0', { type: 'attack', target: { kind: 'hero', name: 'kg_d0' } })
+      const r2 = await runTick(sm, gameId)
+      expect(r2.state.players['kg_d0']!.alive).toBe(false)
+
+      const gold = r2.events.filter(
+        (e): e is Extract<GameEngineEvent, { _tag: 'gold_change' }> => e._tag === 'gold_change',
+      )
+      const bounty = gold.find((e) => e.playerId === 'kg_r0')
+      const assist = gold.find((e) => e.playerId === 'kg_r1')
+      expect(bounty?.reason).toBe('hero kill')
+      expect(assist?.reason).toBe('assist')
+
+      // The reported amount must be the gold that actually moved (the only other
+      // income this tick is the passive trickle) — a hardcoded or stale bounty
+      // number would fail here even though the payout itself is correct.
+      expect(r2.state.players['kg_r0']!.gold - killerGoldBefore).toBe(
+        bounty!.amount + PASSIVE_GOLD_PER_TICK,
+      )
+      expect(r2.state.players['kg_r1']!.gold - assistGoldBefore).toBe(
+        assist!.amount + PASSIVE_GOLD_PER_TICK,
+      )
     })
   })
 

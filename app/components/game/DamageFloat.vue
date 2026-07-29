@@ -4,42 +4,79 @@
  * a 4s batched tick + a scrolling text log otherwise hides. Each entry rises and
  * fades once; the parent (GameScreen) pushes entries on `damage`/`heal` events
  * involving the local player and prunes them after the animation. Color-coded:
- * damage TAKEN is dire-red (-N), DEALT is radiant-green (N), HEALING is teal (+N).
+ * damage TAKEN is dire-red (-N), DEALT is radiant-green (N), HEALING is teal
+ * (+N), GOLD is amber (+Ng) — last-hit income is a reward, not a hit, so it
+ * carries the currency suffix to stay unmistakable next to a damage number.
+ *
+ * Numbers rise in two lanes: what happens TO you on the side the HUD keeps your
+ * vitals, what you do to someone else on the side it keeps the zone. GameScreen
+ * renders one instance per lane and splits the entries by `anchor`.
  */
 export interface DamageFloatEntry {
   id: number
   amount: number
-  kind: 'taken' | 'dealt' | 'heal'
+  kind: 'taken' | 'dealt' | 'heal' | 'gold'
+  /** Which lane this number belongs to (see the component's `anchor` prop). */
+  anchor?: 'self' | 'target'
 }
 
-defineProps<{ floats: DamageFloatEntry[] }>()
+withDefaults(defineProps<{ floats: DamageFloatEntry[]; anchor?: 'self' | 'target' }>(), {
+  anchor: 'target',
+})
+
+/* Roughly over the rail that holds Hero Status and the column that holds the
+   Zone panel on desktop. Anchoring to the panels themselves is not possible
+   without measuring them: they swap columns per layout mode and per breakpoint,
+   and both live inside `overflow: auto` bodies that would clip a float. */
+const LANE: Record<'self' | 'target', string> = {
+  self: 'right-[8%] top-[44%]',
+  target: 'left-[12%] top-[26%]',
+}
+
+/**
+ * Rendered as a flex column, pruning the oldest float made every surviving one
+ * jump upward mid-animation, so a number's position carried no information at
+ * all. Absolute placement plus an offset derived from the entry id keeps each
+ * float still from birth to death, whatever happens to its neighbours.
+ */
+function offsetStyle(id: number): Record<string, string> {
+  return { left: `${((id * 37) % 56) - 28}px`, top: `${(id * 23) % 40}px` }
+}
 
 function floatClass(kind: DamageFloatEntry['kind']): string {
   if (kind === 'taken') return 'text-dire text-glow-dire'
   if (kind === 'heal') return 'text-healing'
+  if (kind === 'gold') return 'text-gold text-glow-gold'
   return 'text-radiant text-glow-radiant' // dealt
 }
 
 function floatPrefix(kind: DamageFloatEntry['kind']): string {
   if (kind === 'taken') return '-'
-  if (kind === 'heal') return '+'
+  if (kind === 'heal' || kind === 'gold') return '+'
   return ''
+}
+
+function floatSuffix(kind: DamageFloatEntry['kind']): string {
+  return kind === 'gold' ? 'g' : ''
 }
 </script>
 
 <template>
   <div
-    class="pointer-events-none absolute inset-x-0 top-[28%] z-30 flex flex-col items-center gap-0.5"
+    class="pointer-events-none absolute z-30"
+    :class="LANE[anchor]"
     data-testid="damage-floats"
+    :data-anchor="anchor"
     aria-hidden="true"
   >
     <span
       v-for="f in floats"
       :key="f.id"
-      class="anim-dmg-float font-mono text-2xl font-bold tracking-tight"
+      class="anim-dmg-float absolute font-mono text-2xl font-bold tracking-tight whitespace-nowrap"
       :class="floatClass(f.kind)"
+      :style="offsetStyle(f.id)"
       :data-testid="`damage-float-${f.kind}`"
-      >{{ floatPrefix(f.kind) }}{{ f.amount }}</span
+      >{{ floatPrefix(f.kind) }}{{ f.amount }}{{ floatSuffix(f.kind) }}</span
     >
   </div>
 </template>

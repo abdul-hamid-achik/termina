@@ -55,9 +55,8 @@ import {
   type NeutralCreepType,
   CREEP_GOLD_MIN,
   CREEP_GOLD_MAX,
-  MELEE_CREEP_HP,
-  RANGED_CREEP_HP,
-  SIEGE_CREEP_HP,
+  creepMaxHp,
+  CREEP_XP_SHARED,
   GLYPH_COOLDOWN_TICKS,
   DENY_HP_THRESHOLD,
   DENY_GOLD_RATIO,
@@ -84,6 +83,7 @@ import type { ItemStats } from '~~/shared/types/items'
 import { runAntiCheatChecks, type CheatDetection } from '~~/server/utils/AntiCheat'
 import { wsLog } from '~~/server/utils/log'
 import { isRealProduction } from '~~/server/utils/testHooks'
+import { awardZoneXp } from './XpDistributor'
 
 /** Ticks before Linken's Sphere recharges its spell-block after spending one. */
 const LINKENS_RECHARGE_TICKS = 12
@@ -329,6 +329,48 @@ function hasDebuff(player: PlayerState, type: DebuffType): boolean {
   return player.buffs.some((b) => DEBUFF_ID_SETS[type].has(b.id))
 }
 
+/** Every action-gating debuff id, derived from the sets above so a new disable
+ *  is narrated the moment it is enforced — the two can never drift apart. */
+const NARRATED_STATUS_IDS: ReadonlySet<string> = new Set(
+  Object.values(DEBUFF_ID_SETS).flatMap((set) => [...set]),
+)
+
+/**
+ * Emit a `status_applied` event for every action-gating debuff that appears on
+ * a hero across a resolution step. Deliberately state-diffed rather than read
+ * off the hero resolvers' payloads: the payloads are wire-shaped and discarded,
+ * and a diff picks up AoE secondary targets, item actives and riders on a
+ * damage ability with no per-ability wiring.
+ *
+ * Slows/DoTs are out of scope — they are not action-gating and the damage line
+ * already narrates their effect, so narrating them would double every nuke.
+ * Only NEW ids fire: refreshing an existing stun is not news.
+ */
+function emitStatusApplied(
+  pre: Record<string, PlayerState>,
+  post: Record<string, PlayerState>,
+  sourceId: string,
+  tick: number,
+  events: GameEngineEvent[],
+): void {
+  for (const [pid, after] of Object.entries(post)) {
+    const before = pre[pid]
+    if (!before) continue
+    for (const buff of after.buffs) {
+      if (!NARRATED_STATUS_IDS.has(buff.id)) continue
+      if (before.buffs.some((b) => b.id === buff.id)) continue
+      events.push({
+        _tag: 'status_applied',
+        tick,
+        sourceId,
+        targetId: pid,
+        status: buff.id,
+        ticksRemaining: buff.ticksRemaining,
+      })
+    }
+  }
+}
+
 // ── Resolution Pipeline ────────────────────────────────────────
 
 /**
@@ -502,13 +544,10 @@ function resolveDenyPhase(
     if (creep.hp <= 0) continue
 
     if (creep.team !== denier.team) continue
-    const creepMaxHp =
-      creep.type === 'siege'
-        ? SIEGE_CREEP_HP
-        : creep.type === 'ranged'
-          ? RANGED_CREEP_HP
-          : MELEE_CREEP_HP
-    if (creep.hp > creepMaxHp * DENY_HP_THRESHOLD) continue
+    // Against the escalated max for THIS tick, not the level-1 constant: creeps
+    // gain HP as the match runs, so a fixed threshold would silently shrink the
+    // deny window until denying became impossible in the late game.
+    if (creep.hp > creepMaxHp(creep.type, tick) * DENY_HP_THRESHOLD) continue
 
     creeps[creepIdx] = { ...creep, hp: 0 }
 
@@ -798,6 +837,17 @@ function resolveAttackPhase(
         // ticksRemaining 2 = one gated action: reaped same-tick by tickAllBuffs
         // (see the applyBuff note), so 1 would never reach the next validateAction.
         newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 2, source: attacker.id })
+        // Emitted here rather than by a buff diff: the attack phase stages its
+        // changes in playerUpdates/pendingBuffs, so there is no post state to
+        // diff against until the whole phase has been folded in.
+        events.push({
+          _tag: 'status_applied',
+          tick: state.tick,
+          sourceId: action.playerId,
+          targetId,
+          status: 'stun',
+          ticksRemaining: 2,
+        })
       }
 
       if (newBuffs.some((b) => b.id === 'tp_channeling')) {
@@ -1351,6 +1401,10 @@ function resolveShopPhase(
           })
         }
       }
+
+      // Hex (Scythe of Vyse) and Cyclone (Eul's) are pure disables with no HP
+      // delta — without this diff they landed completely silently.
+      emitStatusApplied(prePlayers, players, action.playerId, state.tick, events)
     }
   }
 
@@ -1505,6 +1559,13 @@ function resolvePostShopPhases(
         creepType: kill.creepType,
         goldAwarded: killer.gold - goldBefore,
       })
+      // Lane-mates standing here share a fraction. XP used to come exclusively
+      // from last-hits, so a laner who mistimed their attacks earned literally
+      // nothing and fell five levels behind. The last-hitter still keeps the
+      // full CREEP_XP above, so timing is rewarded — presence just stops being
+      // worth zero. The mirror of this for creep-on-creep deaths lives in
+      // CreepAI, and that is the path most creeps actually die on.
+      players = awardZoneXp(players, killer.zone, killer.team, CREEP_XP_SHARED, kill.playerId)
     }
   }
 
@@ -1539,6 +1600,20 @@ function resolvePostShopPhases(
       .map(([id]) => id)
     const tempState: GameState = { ...state, players, creeps, towers }
     const awarded = awardTowerKill(tempState, kill.zone, nearbyAllies)
+    // Read the payout back off the diff rather than recomputing the split — the
+    // event can then never disagree with what the player's gold actually did.
+    for (const id of nearbyAllies) {
+      const gained = (awarded.players[id]?.gold ?? 0) - (players[id]?.gold ?? 0)
+      if (gained > 0) {
+        events.push({
+          _tag: 'gold_change',
+          tick: state.tick,
+          playerId: id,
+          amount: gained,
+          reason: 'tower kill',
+        })
+      }
+    }
     players = { ...awarded.players }
   }
 
@@ -2077,6 +2152,12 @@ function resolveHeroCast(
     targetId = findHero(cmd.target.name) ?? undefined
   }
 
+  // Where this cast's own events start. `ability_used` can only be built at the
+  // END (it carries the resolver-set cooldown), but the feed sorts a tick's
+  // lines by salience and falls back to emission order — so appending it after
+  // its own damage prints the effect before the cause. Spliced back in here.
+  const castEvtIdx = events.length
+
   // Linken's Sphere / Firewall item / Lotus Orb: a single-target ability on a
   // hero holding a charge fizzles — the caster still pays mana + cooldown, but
   // the target's effect is reverted and a charge consumed (shared with the
@@ -2273,12 +2354,16 @@ function resolveHeroCast(
     }
   }
 
+  // Crowd control the resolvers applied (root riders, AoE stuns, hexes) —
+  // recovered from the buff diff, since result.right.events are discarded.
+  emitStatusApplied(players, newPlayers, action.playerId, state.tick, events)
+
   // result.right.events are wire-format 'ability_cast' events the client
   // doesn't understand — discard them; ability_used/cooldown_used below
   // carry the resolver-set cooldown (the authoritative value).
   const actualCd = newPlayers[action.playerId]?.cooldowns[cmd.ability] ?? 0
 
-  events.push({
+  events.splice(castEvtIdx, 0, {
     _tag: 'ability_used',
     tick: state.tick,
     playerId: action.playerId,
