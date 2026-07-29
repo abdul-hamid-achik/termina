@@ -29,6 +29,31 @@ describe('useStartTutorial', () => {
     expect(starting.value).toBe(false) // reset in finally
   })
 
+  it('forwards a chosen hero as heroSelf', async () => {
+    mockFetch.mockResolvedValue({ url: '/play?gameId=g3&tutorial=1' })
+    const { start } = useStartTutorial()
+
+    await start('daemon')
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/game/tutorial', {
+      method: 'POST',
+      body: { heroSelf: 'daemon' },
+    })
+  })
+
+  it('ignores a non-string argument — the bare @click call sites pass a MouseEvent', async () => {
+    // `@click="startTutorial"` on five pages hands the handler its event. Without
+    // the typeof guard that event is posted as `heroSelf` and the server silently
+    // falls back to its default hero, so the bug would be invisible in the UI.
+    mockFetch.mockResolvedValue({ url: '/play?gameId=g4&tutorial=1' })
+    const { start } = useStartTutorial()
+
+    // A DOM-free stand-in for the event (this project runs unit tests in node).
+    await start({ type: 'click', isTrusted: true } as unknown as MouseEvent)
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/game/tutorial', { method: 'POST', body: {} })
+  })
+
   it('routes to /login when not signed in (401), explaining why', async () => {
     mockFetch.mockRejectedValue({ statusCode: 401 })
     const { start, error } = useStartTutorial()

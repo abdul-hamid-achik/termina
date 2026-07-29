@@ -9,7 +9,11 @@ import {
   convertToBot,
   isGameBot,
   cleanupGame,
+  difficultyForMmr,
+  parseBotDifficulty,
+  BOT_DIFFICULTY_CONFIGS,
 } from '../../../server/game/ai/BotManager'
+import type { BotDifficulty } from '../../../server/game/ai/BotManager'
 import * as BotAI from '../../../server/game/ai/BotAI'
 
 describe('BotManager', () => {
@@ -278,6 +282,60 @@ describe('BotManager', () => {
       expect(spy).toHaveBeenCalledWith('bot_a')
       expect(spy).toHaveBeenCalledWith('bot_b')
       spy.mockRestore()
+    })
+  })
+
+  describe('difficultyForMmr (production reaches hard/unfair at last)', () => {
+    it('maps the MMR bands onto the four difficulties', () => {
+      expect(difficultyForMmr(500)).toBe('easy')
+      expect(difficultyForMmr(899)).toBe('easy')
+      expect(difficultyForMmr(900)).toBe('medium')
+      expect(difficultyForMmr(1399)).toBe('medium')
+      expect(difficultyForMmr(1400)).toBe('hard')
+      expect(difficultyForMmr(1999)).toBe('hard')
+      expect(difficultyForMmr(2000)).toBe('unfair')
+      expect(difficultyForMmr(4000)).toBe('unfair')
+    })
+
+    it('reaches every configured difficulty — none of them is dead config', () => {
+      const reachable = new Set(
+        [400, 1000, 1600, 2500].map((mmr) => difficultyForMmr(mmr) as string),
+      )
+      expect(reachable).toEqual(new Set(Object.keys(BOT_DIFFICULTY_CONFIGS)))
+    })
+  })
+
+  describe('parseBotDifficulty (untrusted launcher input)', () => {
+    it('accepts each known difficulty', () => {
+      for (const d of Object.keys(BOT_DIFFICULTY_CONFIGS)) {
+        expect(parseBotDifficulty(d)).toBe(d)
+      }
+    })
+
+    it('rejects anything else, so garbage can never reach registerBots', () => {
+      for (const raw of ['EASY', 'impossible', '', 0, null, undefined, {}, ['hard']]) {
+        expect(parseBotDifficulty(raw)).toBeUndefined()
+      }
+    })
+  })
+
+  describe('difficulty configs', () => {
+    const order: BotDifficulty[] = ['easy', 'medium', 'hard', 'unfair']
+
+    it('every combat knob rises monotonically with difficulty', () => {
+      const chances = order.map((d) => BOT_DIFFICULTY_CONFIGS[d].abilityComboChance)
+      const accuracy = order.map((d) => BOT_DIFFICULTY_CONFIGS[d].lastHitAccuracy)
+      expect(chances).toEqual([...chances].sort((a, b) => a - b))
+      expect(accuracy).toEqual([...accuracy].sort((a, b) => a - b))
+      expect(new Set(chances).size).toBe(order.length)
+      expect(new Set(accuracy).size).toBe(order.length)
+    })
+
+    it('only easy skips denying', () => {
+      expect(BOT_DIFFICULTY_CONFIGS.easy.denyAwareness).toBe(false)
+      for (const d of ['medium', 'hard', 'unfair'] as const) {
+        expect(BOT_DIFFICULTY_CONFIGS[d].denyAwareness).toBe(true)
+      }
     })
   })
 

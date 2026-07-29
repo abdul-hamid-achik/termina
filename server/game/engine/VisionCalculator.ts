@@ -375,8 +375,9 @@ export function filterStateForPlayer(
         }
       } else {
         // A visible enemy shows full combat state, but never their queued
-        // auto-path destination — that would leak where they're rotating.
-        const { moveTarget: _moveTarget, ...publicState } = p
+        // orders — the auto-path destination leaks where they're rotating and
+        // the standing attack order leaks what they've committed to hitting.
+        const { moveTarget: _moveTarget, attackTarget: _attackTarget, ...publicState } = p
         filteredPlayers[pid] = publicState
       }
     } else {

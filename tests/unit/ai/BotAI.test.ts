@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import {
   decideBotAction,
   getAbilityTarget,
@@ -8,12 +8,15 @@ import {
   tryPanicDefensiveItem,
   tryPlaceWard,
 } from '../../../server/game/ai/BotAI'
-import type { BotDifficultyConfig } from '../../../server/game/ai/BotManager'
+import { cleanupBotState } from '../../../server/game/ai/BotAI'
+import { registerBots, cleanupGame } from '../../../server/game/ai/BotManager'
+import type { BotDifficultyConfig, BotDifficulty } from '../../../server/game/ai/BotManager'
 import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
 import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
 import { HEROES } from '../../../shared/constants/heroes'
 import { getItem } from '../../../shared/constants/items'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+import { findPath } from '../../../server/game/map/topology'
 import { initializeAncients } from '../../../server/game/engine/AncientSystem'
 
 /**
@@ -96,6 +99,32 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ...overrides,
   }
 }
+
+/**
+ * Register `botIds` at an explicit difficulty and hand back the game id to pass
+ * as decideBotAction's 4th argument. Casting and last-hitting are gated on
+ * per-tick difficulty rolls, so a test about ability/targeting LOGIC has to pin
+ * the difficulty rather than inherit the unregistered-game 'medium' default,
+ * whose rolls make the outcome depend on the fixture's tick.
+ */
+const TUNED_GAME = 'bot-ai-test-tuned'
+function atDifficulty(difficulty: BotDifficulty, ...botIds: string[]): string {
+  registerBots(
+    TUNED_GAME,
+    botIds.map((playerId) => ({ playerId, team: 'radiant' as const, heroId: null })),
+    difficulty,
+  )
+  return TUNED_GAME
+}
+/** `unfair` casts on every combat tick and never misses a last hit. */
+const alwaysCasts = (...botIds: string[]) => atDifficulty('unfair', ...botIds)
+
+afterEach(() => {
+  cleanupGame(TUNED_GAME)
+  // tryCombo parks a mid-combo cursor keyed by bot id; leaking it makes the NEXT
+  // test's first cast the second step of the previous test's rotation.
+  cleanupBotState('bot_alpha')
+})
 
 describe('BotAI - decideBotAction', () => {
   describe('dead bot', () => {
@@ -412,7 +441,7 @@ describe('BotAI - decideBotAction', () => {
         hp: 300,
       })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       // Should try to cast (r first in priority order)
       expect(action).not.toBeNull()
       expect(action!.type).toBe('cast')
@@ -471,11 +500,14 @@ describe('BotAI - decideBotAction', () => {
         maxHp: 500,
         mp: 300,
         maxMp: 300,
+        // W/E parked so the scripted combo can't open — this test is about the
+        // generic cast-priority path, which is where the resource guard lives.
+        cooldowns: { q: 0, w: 5, e: 5, r: 0 },
         buffs: [{ id: 'cachedEnergy', stacks: 10, ticksRemaining: 9999, source: 'bot_alpha' }],
       })
       const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action?.type).toBe('cast')
       expect((action as { ability: string }).ability).not.toBe('r')
     })
@@ -489,11 +521,12 @@ describe('BotAI - decideBotAction', () => {
         maxHp: 500,
         mp: 300,
         maxMp: 300,
+        cooldowns: { q: 0, w: 5, e: 5, r: 0 },
         buffs: [{ id: 'cachedEnergy', stacks: 120, ticksRemaining: 9999, source: 'bot_alpha' }],
       })
       const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toMatchObject({ type: 'cast', ability: 'r' })
     })
 
@@ -532,31 +565,57 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toMatchObject({ type: 'cast', ability: 'e' })
     })
   })
 
   describe('combat - creep targeting', () => {
-    it('attacks the lowest-HP enemy creep (deterministic — never a probabilistic miss)', () => {
-      // Targeting MUST stay deterministic-lowest. Gating creep targeting on a
-      // lastHitAccuracy roll (mis-targeting the tanky creep on a miss) slows
-      // wave-clear enough that bots stop out-clearing incoming waves and never
-      // reach the enemy tower — it breaks BotForwardProgress. Bot difficulty
-      // differentiates via the consumed config fields (combo rate, retreat HP,
-      // rune/jungle/threat awareness), NOT last-hitting.
+    it('aims at the lowest-HP enemy creep when the last-hit roll lands', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
         { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
         { id: 'creep-2', team: 'dire', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
-      const action = decideBotAction(state, bot, 'mid')
-      expect(action).not.toBeNull()
-      expect(action!.type).toBe('attack')
-      if (action!.type === 'attack') {
-        expect(action!.target).toEqual({ kind: 'creep', index: 1 })
-      }
+      // `unfair` is lastHitAccuracy 1.0 — the roll can never fail.
+      const action = decideBotAction(state, bot, 'mid', atDifficulty('unfair', bot.id))
+      expect(action).toEqual({ type: 'attack', target: { kind: 'creep', index: 1 } })
+    })
+
+    it('a missed last hit re-aims at the SECOND-lowest creep — never at nothing', () => {
+      // The miss must cost the gold, not the tick. Returning null on a failed
+      // roll was the original standstill bug: bots stopped out-clearing the
+      // incoming wave and never reached a tower (see BotForwardProgress).
+      // Tick 30's lasthit roll is 0.91, above every accuracy below `unfair`.
+      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const creeps: CreepState[] = [
+        { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+        { id: 'creep-2', team: 'dire', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
+        { id: 'creep-3', team: 'dire', zone: 'mid-t1-rad', hp: 120, type: 'melee' },
+      ]
+      const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
+      expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
+        type: 'attack',
+        target: { kind: 'creep', index: 2 },
+      })
+      // Same tick, perfect accuracy → the true lowest.
+      expect(decideBotAction(state, bot, 'mid', atDifficulty('unfair', bot.id))).toEqual({
+        type: 'attack',
+        target: { kind: 'creep', index: 1 },
+      })
+    })
+
+    it('still swings at a lone creep on a missed roll (no second-lowest to fall back to)', () => {
+      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const creeps: CreepState[] = [
+        { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+      ]
+      const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
+      expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
+        type: 'attack',
+        target: { kind: 'creep', index: 0 },
+      })
     })
 
     it('ignores friendly creeps', () => {
@@ -801,7 +860,7 @@ describe('BotAI - decideBotAction', () => {
         hp: 300,
       })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action!.type).toBe('cast')
     })
 
@@ -878,7 +937,7 @@ describe('BotAI - decideBotAction', () => {
       const state = makeGameState({
         players: { [bot.id]: bot, bot_ally: ally, enemy1: enemy },
       })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toEqual({
         type: 'cast',
         ability: 'q',
@@ -905,7 +964,7 @@ describe('BotAI - decideBotAction', () => {
         maxHp: 500,
       })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toEqual({
         type: 'cast',
         ability: 'q',
@@ -957,7 +1016,7 @@ describe('BotAI - decideBotAction', () => {
       const state = makeGameState({
         players: { [bot.id]: bot, bot_ally: ally, enemy1, enemy2 },
       })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toEqual({
         type: 'cast',
         ability: 'q',
@@ -1131,7 +1190,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
-      const action = decideBotAction(state, bot, 'mid')
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).not.toBeNull()
       expect(action!.type).toBe('cast')
       if (action!.type === 'cast') expect(action!.ability).toBe('r')
@@ -1637,5 +1696,340 @@ describe('BotAI - warding', () => {
     const bot = makePlayer({ heroId: 'sentry', zone: 'rune-top', items: inv('observer_ward') })
     const state = makeGameState({ players: { [bot.id]: bot } })
     expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'ward', zone: 'rune-top' })
+  })
+})
+
+describe('BotAI - difficulty actually bites (abilityComboChance)', () => {
+  it('easy right-clicks where hard casts, on the same tick', () => {
+    // The ability fallback used to take no config at all, so every difficulty
+    // fired its ultimate the tick it came off cooldown and abilityComboChance
+    // only changed WHICH ability came out. Tick 30's ability roll is 0.67:
+    // above easy's 0.2 and medium's 0.5, below hard's 0.8.
+    const bot = makePlayer({ zone: 'mid-river', level: 6, hp: 400, maxHp: 500, mp: 400 })
+    const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+    const state = makeGameState({ tick: 30, players: { [bot.id]: bot, enemy1: enemy } })
+
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
+      type: 'attack',
+      target: { kind: 'hero', name: 'enemy1' },
+    })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('hard', bot.id))?.type).toBe('cast')
+  })
+
+  it('a bot that fails the roll still acts — it never returns null in a fight', () => {
+    const bot = makePlayer({ zone: 'mid-river', level: 6, hp: 400, maxHp: 500, mp: 400 })
+    const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+    for (const tick of [0, 5, 12, 20, 30, 40, 50]) {
+      const state = makeGameState({ tick, players: { [bot.id]: bot, enemy1: enemy } })
+      expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).not.toBeNull()
+    }
+  })
+})
+
+describe('BotAI - denying (medium+)', () => {
+  const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-t1-rad', hp: 300 })
+  /** No mana and every ability parked, so the deny competes with a right-click. */
+  const denier = () =>
+    makePlayer({
+      zone: 'mid-t1-rad',
+      hp: 400,
+      maxHp: 500,
+      mp: 0,
+      cooldowns: { q: 5, w: 5, e: 5, r: 5 },
+    })
+
+  it('denies the allied creep inside the resolver window, by zone-local index', () => {
+    const bot = denier()
+    const creeps: CreepState[] = [
+      { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, maxHp: 200, type: 'melee' },
+      { id: 'creep-2', team: 'radiant', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+    ]
+    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
+      type: 'deny',
+      target: { kind: 'creep', index: 1 },
+    })
+  })
+
+  it('leaves a healthy allied creep alone (outside DENY_HP_THRESHOLD the deny would no-op)', () => {
+    const bot = denier()
+    const creeps: CreepState[] = [
+      { id: 'creep-1', team: 'radiant', zone: 'mid-t1-rad', hp: 150, maxHp: 200, type: 'melee' },
+    ]
+    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
+      type: 'attack',
+      target: { kind: 'hero', name: 'enemy1' },
+    })
+  })
+
+  it('easy bots do not deny (denyAwareness off)', () => {
+    const bot = denier()
+    const creeps: CreepState[] = [
+      { id: 'creep-1', team: 'radiant', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+    ]
+    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
+      type: 'attack',
+      target: { kind: 'hero', name: 'enemy1' },
+    })
+  })
+
+  it('never denies with no enemy hero around — that just throws away your own wave', () => {
+    const bot = denier()
+    const creeps: CreepState[] = [
+      { id: 'creep-1', team: 'radiant', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+    ]
+    const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+    const action = decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))
+    expect(action?.type).not.toBe('deny')
+  })
+})
+
+describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
+  const THREATENED = 'top-t1-rad'
+
+  function siege(defenderIds: string[], attackers: number, botZone = 'top-t2-rad') {
+    const bot = makePlayer({ id: 'bot_alpha', zone: botZone, level: 1, hp: 500, maxHp: 500 })
+    const players: Record<string, PlayerState> = { [bot.id]: bot }
+    for (const id of defenderIds) {
+      players[id] = makePlayer({ id, name: id, team: 'radiant', zone: THREATENED })
+    }
+    for (let i = 0; i < attackers; i++) {
+      const id = `enemy${i}`
+      players[id] = makePlayer({ id, name: id, team: 'dire', zone: THREATENED })
+    }
+    // Lane 'mid' so the bot's own lane push can't be confused for a rotation.
+    return { bot, state: makeGameState({ players }) }
+  }
+
+  it('rotates to a teammate who is outnumbered at the tower', () => {
+    const { bot, state } = siege(['bot_bravo'], 2)
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
+      type: 'move',
+      zone: THREATENED,
+    })
+  })
+
+  it('a HUMAN ally running back to defend still summons help', () => {
+    // The old predicate was "is any ally already there?", so a human doing the
+    // right thing was precisely what told the bots the tower was handled.
+    const { bot, state } = siege(['github_7379966'], 2)
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
+      type: 'move',
+      zone: THREATENED,
+    })
+  })
+
+  it('does not rotate into an even fight (defenders match attackers)', () => {
+    const { bot, state } = siege(['bot_bravo'], 1)
+    const action = decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))
+    expect(action).not.toEqual({ type: 'move', zone: THREATENED })
+  })
+
+  it('still answers an undefended tower (no ally present at all)', () => {
+    const { bot, state } = siege([], 1)
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
+      type: 'move',
+      zone: THREATENED,
+    })
+  })
+
+  it('will not cross the map for it — the rescue is distance-bounded', () => {
+    // top-t1-rad is 3 zones from mid-t1-rad (inside the bound) and 4 from
+    // bot-t1-rad (outside it): a rescue that lands in five ticks is a lane
+    // abandoned for a fight that is already over.
+    const near = siege(['bot_bravo'], 2, 'mid-t1-rad')
+    expect(
+      decideBotAction(near.state, near.bot, 'mid', atDifficulty('medium', near.bot.id)),
+    ).toEqual({ type: 'move', zone: findPath('mid-t1-rad', THREATENED)[1] })
+
+    // Assigned to its own lane so its ordinary lane push can't be mistaken for
+    // (or collide with) the first step of the rescue path.
+    const far = siege(['bot_bravo'], 2, 'bot-t1-rad')
+    expect(
+      decideBotAction(far.state, far.bot, 'bot', atDifficulty('medium', far.bot.id)),
+    ).not.toEqual({ type: 'move', zone: findPath('bot-t1-rad', THREATENED)[1] })
+  })
+})
+
+describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => {
+  const ROSH_MAX = 5000
+
+  function pitScene(
+    opts: {
+      tick?: number
+      roshanHp?: number
+      level?: number
+      allies?: number
+      botZone?: string
+    } = {},
+  ) {
+    const bot = makePlayer({
+      id: 'bot_alpha',
+      heroId: 'echo', // carry — a role that contests Roshan
+      level: opts.level ?? 8,
+      zone: opts.botZone ?? 'roshan-pit',
+      hp: 500,
+      maxHp: 500,
+    })
+    const players: Record<string, PlayerState> = { [bot.id]: bot }
+    for (let i = 0; i < (opts.allies ?? 2); i++) {
+      const id = `bot_ally${i}`
+      players[id] = makePlayer({ id, name: id, level: 8, zone: 'rune-top' })
+    }
+    return {
+      bot,
+      state: makeGameState({
+        tick: opts.tick ?? 40,
+        players,
+        roshan: { alive: true, hp: opts.roshanHp ?? ROSH_MAX, maxHp: ROSH_MAX, deathTick: null },
+      }),
+    }
+  }
+
+  const HIT_ROSHAN = { type: 'attack', target: { kind: 'roshan' } }
+
+  it('STARTS a full-HP Roshan with the squad assembled at level 8', () => {
+    // The old gate was `hp/maxHp > 0.4 → return null`. Nothing but a hero can
+    // damage Roshan, so in a bots-only match his HP never moved and the Aegis
+    // never dropped.
+    const { bot, state } = pitScene()
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_ROSHAN)
+  })
+
+  it('walks to the pit when the squad is assembled but the bot is not there yet', () => {
+    const { bot, state } = pitScene({ botZone: 'mid-river' })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
+      type: 'move',
+      zone: 'rune-top',
+    })
+  })
+
+  it('will not open one alone', () => {
+    const { bot, state } = pitScene({ allies: 1 })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).not.toEqual(
+      HIT_ROSHAN,
+    )
+  })
+
+  it('will not open one under level 8', () => {
+    const { bot, state } = pitScene({ level: 7 })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).not.toEqual(
+      HIT_ROSHAN,
+    )
+  })
+
+  it('will not open a Roshan already chewed to half — that fight belongs to whoever started it', () => {
+    const { bot, state } = pitScene({ roshanHp: ROSH_MAX * 0.5 })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).not.toEqual(
+      HIT_ROSHAN,
+    )
+  })
+
+  it('STEALS a Roshan under 40% with one ally at level 6 (the old opportunistic clause)', () => {
+    const { bot, state } = pitScene({ roshanHp: ROSH_MAX * 0.3, level: 6, allies: 1 })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_ROSHAN)
+  })
+
+  it('a committed team keeps hitting through no-mans-land HP for the whole window', () => {
+    const gameId = atDifficulty('medium', 'bot_alpha')
+    const opened = pitScene({ tick: 40 })
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    // Same attempt, 5 ticks later, Roshan now at 50% — no longer a legal START,
+    // but the team is already committed.
+    const midFight = pitScene({ tick: 45, roshanHp: ROSH_MAX * 0.5 })
+    expect(decideBotAction(midFight.state, midFight.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+  })
+
+  it('locks the team out after the attempt window so it does not camp the pit', () => {
+    const gameId = atDifficulty('medium', 'bot_alpha')
+    const opened = pitScene({ tick: 40 })
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+
+    // Window is 20 ticks, lockout 120 more.
+    const cooling = pitScene({ tick: 100 })
+    expect(decideBotAction(cooling.state, cooling.bot, 'mid', gameId)).not.toEqual(HIT_ROSHAN)
+
+    // ...and it expires.
+    const later = pitScene({ tick: 200 })
+    expect(decideBotAction(later.state, later.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+  })
+
+  it('a nearly-dead Roshan is still worth stealing during the lockout', () => {
+    const gameId = atDifficulty('medium', 'bot_alpha')
+    const opened = pitScene({ tick: 40 })
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+
+    const steal = pitScene({ tick: 100, roshanHp: ROSH_MAX * 0.2 })
+    expect(decideBotAction(steal.state, steal.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+  })
+
+  it('a committed bot keeps swinging below the START health floor', () => {
+    // Roshan hits for 150 a tick. Holding every bot to the 70% opening floor for
+    // the whole fight meant two swings each and a walk-out, and his HP crept but
+    // never fell — the Aegis still never dropped. The hold floor is only high
+    // enough that nobody dies in the pit.
+    const gameId = atDifficulty('medium', 'bot_alpha')
+    const opened = pitScene({ tick: 40 })
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+
+    const scene = pitScene({ tick: 46 })
+    const withHp = (hp: number) => {
+      const hurt = { ...scene.bot, hp }
+      return decideBotAction(
+        { ...scene.state, players: { ...scene.state.players, [hurt.id]: hurt } },
+        hurt,
+        'mid',
+        gameId,
+      )
+    }
+    expect(withHp(275)).toEqual(HIT_ROSHAN) // 55% — under the start floor, over the hold floor
+    expect(withHp(200)).not.toEqual(HIT_ROSHAN) // 40% — one more Roshan hit is a death
+  })
+
+  it('only a core role opens the pit — a support will not start one', () => {
+    const { bot, state } = pitScene()
+    const support = { ...bot, heroId: 'sentry' }
+    expect(
+      decideBotAction(
+        { ...state, players: { ...state.players, [support.id]: support } },
+        support,
+        'mid',
+        atDifficulty('medium', support.id),
+      ),
+    ).not.toEqual(HIT_ROSHAN)
+  })
+
+  it('but any role piles in once the team has committed', () => {
+    // Roshan focuses the lowest-HP hero in the pit, so extra bodies spread his
+    // damage — a squad that only ever fields cores gets two hits each and leaves.
+    const gameId = atDifficulty('medium', 'bot_alpha', 'bot_sentry')
+    const opened = pitScene({ tick: 40 })
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+
+    const joining = pitScene({ tick: 45 })
+    const support = { ...joining.bot, id: 'bot_sentry', name: 'bot_sentry', heroId: 'sentry' }
+    expect(
+      decideBotAction(
+        { ...joining.state, players: { ...joining.state.players, [support.id]: support } },
+        support,
+        'mid',
+        gameId,
+      ),
+    ).toEqual(HIT_ROSHAN)
+  })
+
+  it('easy bots never contest Roshan (threatAssessment off)', () => {
+    const { bot, state } = pitScene()
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).not.toEqual(HIT_ROSHAN)
+  })
+
+  it('never routes toward a pit the map does not have', () => {
+    const { bot, state } = pitScene({ botZone: 'mid-river' })
+    const zones = { ...state.zones }
+    delete zones['roshan-pit']
+    const action = decideBotAction({ ...state, zones }, bot, 'mid', atDifficulty('medium', bot.id))
+    expect(action).not.toEqual({ type: 'move', zone: 'rune-top' })
   })
 })

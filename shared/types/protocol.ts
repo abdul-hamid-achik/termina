@@ -45,16 +45,35 @@ export interface GameOverMessage {
   /** False when the match contained bots (practice / bot-filled) and therefore
    * did not affect MMR — the post-game screen shows "unranked" instead of a number. */
   ranked?: boolean
+  /** Length of the match in ticks. Without it the post-game screen can only show
+   * totals, and a total is unreadable as progress: 40 last hits is a good 10
+   * minutes and a poor 30. Everything rate-based on that screen derives from it. */
+  durationTicks?: number
 }
 
 export interface PlayerEndStats {
   kills: number
   deaths: number
   assists: number
+  /** Gold still UNSPENT at the final tick — a wallet balance, not earnings.
+   * Read `netWorth` for "how well did this player farm"; a player who converted
+   * every coin into items ends the match with the smallest `gold` on the board. */
   gold: number
   items: (string | null)[]
   heroDamage: number
   towerDamage: number
+  /**
+   * The four fields below are optional so the shared story/test fixtures and any
+   * client running against an older server keep type-checking; the server sets
+   * all of them on every game_over and the post-game screen falls back to 0.
+   */
+  /** Creep kills ("CS") — with `denies`, the pair of numbers a new MOBA player
+   * most needs to watch improve, and the only ones the old payload omitted. */
+  lastHits?: number
+  denies?: number
+  /** Unspent gold plus the full cost of every item owned. */
+  netWorth?: number
+  level?: number
 }
 
 export interface ErrorMessage {

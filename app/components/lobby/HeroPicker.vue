@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
+import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
 import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import type { TeamId } from '~~/shared/types/game'
+import type { HeroRole } from '~~/shared/types/hero'
 
 const props = withDefaults(
   defineProps<{
@@ -22,6 +24,11 @@ const props = withDefaults(
     myPlayerId?: string | null
     /** Inline error notice (e.g. server rejected the pick). */
     errorMessage?: string | null
+    /**
+     * Player has never finished the tutorial — pre-selects a beginner hero so a
+     * 15-second first draft can't end in an auto-random.
+     */
+    newPlayer?: boolean
   }>(),
   {
     mode: 'pick',
@@ -33,6 +40,7 @@ const props = withDefaults(
     pickDeadline: null,
     myPlayerId: null,
     errorMessage: null,
+    newPlayer: false,
   },
 )
 
@@ -81,6 +89,15 @@ onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
 
+/**
+ * Heroes whose whole kit is self- or single-target — no zone placement, no
+ * positional setup — so a first-timer can play them with the four keys they
+ * were just taught. Hand-authored here because `HeroDef` carries no difficulty
+ * rating; the criterion is the ability `targetType` set, which is checked by
+ * test rather than trusted.
+ */
+const BEGINNER_HERO_IDS: readonly string[] = ['kernel', 'echo', 'regex', 'mutex']
+
 const heroList = computed(() =>
   HERO_IDS.map((id) => {
     const hero = HEROES[id]!
@@ -90,8 +107,53 @@ const heroList = computed(() =>
       picked: !!pickedBy,
       pickedByName: pickedBy?.[0] ?? null,
       banned: props.bannedHeroes.includes(id),
+      beginner: BEGINNER_HERO_IDS.includes(id),
     }
   }),
+)
+
+const roleFilter = ref<HeroRole | 'all'>('all')
+const search = ref('')
+
+/** Role tabs, in the canonical order, limited to roles the roster actually has. */
+const roleTabs = computed(() =>
+  ROLE_ORDER.filter((role) => heroList.value.some((h) => h.role === role)).map((role) => ({
+    role,
+    label: ROLE_META[role].label,
+  })),
+)
+
+const filteredHeroes = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  return heroList.value.filter((h) => {
+    if (roleFilter.value !== 'all' && h.role !== roleFilter.value) return false
+    if (!q) return true
+    return h.name.toLowerCase().includes(q) || h.role.includes(q)
+  })
+})
+
+const availableHeroes = computed(() => heroList.value.filter((h) => !h.picked && !h.banned))
+
+/** First still-available beginner hero — the pre-selection for a new player. */
+const recommendedHeroId = computed(
+  () => availableHeroes.value.find((h) => h.beginner)?.id ?? availableHeroes.value[0]?.id ?? null,
+)
+
+// A first-timer facing 18 unfamiliar cards on a 15s clock usually times out into
+// an auto-random. Start them on a forgiving hero they can still change. Never
+// during the ban phase, where a pre-selection would arm a ban nobody chose —
+// and `immediate` rather than `onMounted` so the first paint already carries the
+// recommendation. The watch (not a one-off) matters because 10- and 6-player
+// lobbies open on bans: the same component instance is re-used for the pick
+// phase, so the only moment to seed it is that mode flip.
+watch(
+  isBanMode,
+  (banning) => {
+    if (!banning && props.newPlayer && !selectedHero.value) {
+      selectedHero.value = recommendedHeroId.value
+    }
+  },
+  { immediate: true },
 )
 
 const selectedHeroDef = computed(() => (selectedHero.value ? HEROES[selectedHero.value] : null))
@@ -144,6 +206,16 @@ watch(myPick, (val) => {
   if (!val) confirmed.value = false
 })
 
+// Someone else took the highlighted hero while we waited for our turn — drop it
+// so the detail panel stops describing a hero we can no longer have. Skipped
+// once we're locked in, where the "picked" hero is our own.
+watch(
+  () => heroList.value.find((h) => h.id === selectedHero.value),
+  (hero) => {
+    if (!lockedIn.value && hero && (hero.picked || hero.banned)) selectedHero.value = null
+  },
+)
+
 const ROLE_ICONS: Record<string, string> = {
   carry: '>>',
   support: '++',
@@ -159,6 +231,24 @@ function selectHero(id: string) {
   if (hero?.picked) return
   if (isBanMode.value && hero?.banned) return
   selectedHero.value = id
+}
+
+/**
+ * Highlight a random hero that is still legal to take. Prefers the filtered set
+ * so "random carry" works, but falls back to the whole pool rather than
+ * no-oping when the filter matches nothing available.
+ */
+function pickRandom() {
+  if (lockedIn.value) return
+  const fromFilter = filteredHeroes.value.filter((h) => !h.picked && !h.banned)
+  const pool = fromFilter.length ? fromFilter : availableHeroes.value
+  const hero = pool[Math.floor(Math.random() * pool.length)]
+  if (hero) selectedHero.value = hero.id
+}
+
+function clearFilters() {
+  roleFilter.value = 'all'
+  search.value = ''
 }
 
 function confirmPick() {
@@ -321,6 +411,27 @@ function initialOf(name: string | undefined | null): string {
       >
     </div>
 
+    <!-- The clock ends in an auto-random, which is invisible if all you see is a
+         number counting down. Only shown on our own turn — someone else's
+         deadline says nothing about ours. -->
+    <div
+      v-if="isMyTurn && !lockedIn"
+      class="mb-2 text-center text-[0.7rem] text-text-dim"
+      data-testid="auto-pick-hint"
+    >
+      auto-{{ isBanMode ? 'bans' : 'picks' }} a random hero in {{ countdown }}s
+    </div>
+
+    <!-- New players get a starting selection rather than a blank 18-card wall. -->
+    <div
+      v-if="newPlayer && !isBanMode && !lockedIn && recommendedHeroId"
+      class="mb-2 border border-gold/40 bg-gold/5 px-2 py-1 text-center text-[0.7rem] text-gold"
+      data-testid="beginner-recommendation"
+    >
+      first game? {{ heroNameById(recommendedHeroId) }} is a forgiving pick — confirm it, or choose
+      your own
+    </div>
+
     <!-- Inline error notice (server rejections, etc.) -->
     <div
       v-if="errorMessage"
@@ -332,11 +443,80 @@ function initialOf(name: string | undefined | null): string {
       [ERR] {{ errorMessage }}
     </div>
 
+    <!-- Filter bar: 18 cards on a 15s clock is unscannable without one. -->
+    <div class="mb-2 flex flex-wrap items-center gap-1" data-testid="picker-filters">
+      <button
+        type="button"
+        data-testid="role-tab-all"
+        :aria-pressed="roleFilter === 'all'"
+        class="border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
+        :class="
+          roleFilter === 'all'
+            ? 'border-ability bg-ability/10 text-ability'
+            : 'border-border text-text-dim hover:border-border-glow'
+        "
+        @click="roleFilter = 'all'"
+      >
+        All
+      </button>
+      <button
+        v-for="tab in roleTabs"
+        :key="tab.role"
+        type="button"
+        :data-testid="'role-tab-' + tab.role"
+        :aria-pressed="roleFilter === tab.role"
+        class="border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
+        :class="
+          roleFilter === tab.role
+            ? 'border-ability bg-ability/10 text-ability'
+            : 'border-border text-text-dim hover:border-border-glow'
+        "
+        @click="roleFilter = tab.role"
+      >
+        {{ tab.label }}
+      </button>
+      <input
+        v-model="search"
+        type="search"
+        data-testid="hero-search"
+        placeholder="filter…"
+        aria-label="Filter heroes by name or role"
+        class="min-w-0 flex-1 border border-border bg-bg-panel px-1.5 py-0.5 font-mono text-[0.7rem] text-text-primary placeholder:text-text-muted focus:border-ability focus:outline-none"
+      />
+      <button
+        type="button"
+        data-testid="hero-random"
+        :disabled="lockedIn"
+        class="border border-border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-text-dim transition-colors hover:border-border-glow hover:text-text-primary disabled:opacity-35"
+        @click="pickRandom"
+      >
+        [Random]
+      </button>
+      <span class="text-[0.6rem] tabular-nums text-text-muted" data-testid="hero-count">
+        {{ filteredHeroes.length }}/{{ heroList.length }}
+      </span>
+    </div>
+
     <!-- MIDDLE: Compact hero grid (scrolls internally) -->
     <div class="min-h-0 flex-1 overflow-auto">
+      <div
+        v-if="!filteredHeroes.length"
+        class="flex flex-col items-center gap-1 p-4 text-[0.75rem] text-text-dim"
+        data-testid="hero-empty"
+      >
+        <span>no hero matches that filter</span>
+        <button
+          type="button"
+          data-testid="hero-filter-clear"
+          class="border border-border px-1.5 py-0.5 text-[0.65rem] uppercase text-text-dim hover:border-border-glow"
+          @click="clearFilters"
+        >
+          [Clear]
+        </button>
+      </div>
       <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]">
         <div
-          v-for="hero in heroList"
+          v-for="hero in filteredHeroes"
           :key="hero.id"
           :data-testid="'hero-card-' + hero.id"
           role="button"
@@ -348,7 +528,7 @@ function initialOf(name: string | undefined | null): string {
               ? `${hero.name}, banned`
               : hero.picked
                 ? `${hero.name}, already picked`
-                : `${hero.name}, ${hero.role}`
+                : `${hero.name}, ${hero.role}${hero.beginner ? ', beginner friendly' : ''}`
           "
           class="relative cursor-pointer border border-border bg-bg-panel p-2 transition-all duration-150"
           :class="{
@@ -377,6 +557,13 @@ function initialOf(name: string | undefined | null): string {
                 <span>HP:{{ hero.baseStats.hp }}</span>
                 <span>ATK:{{ hero.baseStats.attack }}</span>
                 <span>DEF:{{ hero.baseStats.defense }}</span>
+              </div>
+              <div
+                v-if="hero.beginner"
+                class="mt-0.5 inline-block border border-gold/50 px-1 text-[0.55rem] uppercase tracking-wider text-gold"
+                :data-testid="'beginner-badge-' + hero.id"
+              >
+                easy to learn
               </div>
             </div>
           </div>

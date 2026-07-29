@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import HeroPicker from '../../../app/components/lobby/HeroPicker.vue'
+import { HEROES, HERO_IDS } from '../../../shared/constants/heroes'
 import type { TeamId } from '../../../shared/types/game'
 
 // Stubs for Nuxt auto-imported components
@@ -262,6 +263,257 @@ describe('HeroPicker', () => {
     it('shows no playstyle tags before a hero is chosen', () => {
       const wrapper = mountPicker()
       expect(wrapper.find('[data-testid="picker-playstyle"]').exists()).toBe(false)
+    })
+  })
+
+  describe('finding a hero in the grid', () => {
+    it('narrows the grid to one role when a role tab is active', async () => {
+      const wrapper = mountPicker()
+      expect(wrapper.find('[data-testid="hero-card-echo"]').exists()).toBe(true)
+
+      await wrapper.find('[data-testid="role-tab-support"]').trigger('click')
+
+      // sentry is a support; echo is a carry
+      expect(wrapper.find('[data-testid="hero-card-sentry"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="hero-card-echo"]').exists()).toBe(false)
+      const supports = HERO_IDS.filter((id) => HEROES[id]!.role === 'support').length
+      expect(wrapper.get('[data-testid="hero-count"]').text()).toBe(
+        `${supports}/${HERO_IDS.length}`,
+      )
+    })
+
+    it('filters by typed text, case-insensitively, and stacks with the role tab', async () => {
+      const wrapper = mountPicker()
+
+      await wrapper.find('[data-testid="hero-search"]').setValue('KERN')
+      expect(wrapper.find('[data-testid="hero-card-kernel"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="hero-card-echo"]').exists()).toBe(false)
+
+      // kernel is a tank, so a carry tab plus that text matches nothing
+      await wrapper.find('[data-testid="role-tab-carry"]').trigger('click')
+      expect(wrapper.find('[data-testid="hero-card-kernel"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="hero-empty"]').exists()).toBe(true)
+    })
+
+    it('restores the full grid from the empty state', async () => {
+      const wrapper = mountPicker()
+      await wrapper.find('[data-testid="hero-search"]').setValue('zzzz')
+      expect(wrapper.find('[data-testid="hero-empty"]').exists()).toBe(true)
+
+      await wrapper.find('[data-testid="hero-filter-clear"]').trigger('click')
+
+      expect(wrapper.find('[data-testid="hero-empty"]').exists()).toBe(false)
+      expect(wrapper.get('[data-testid="hero-count"]').text()).toBe(
+        `${HERO_IDS.length}/${HERO_IDS.length}`,
+      )
+    })
+  })
+
+  describe('[RANDOM]', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('never lands on a hero that is already taken', async () => {
+      // Only `echo` is left, and the roll is pinned at the TOP of the range —
+      // an unfiltered pool would land on the last card in the grid instead.
+      const taken = Object.fromEntries(
+        HERO_IDS.filter((id) => id !== 'echo' && id !== 'cache').map((id, i) => [`p${i}`, id]),
+      )
+      const wrapper = mountPicker({
+        currentPicker: { playerId: 'me', username: 'Me' },
+        pickedHeroes: taken,
+        bannedHeroes: ['cache'],
+      })
+
+      vi.spyOn(Math, 'random').mockReturnValue(0.999)
+      await wrapper.find('[data-testid="hero-random"]').trigger('click')
+
+      expect(wrapper.get('[data-testid="hero-card-echo"]').attributes('aria-pressed')).toBe('true')
+      await wrapper.find('[data-testid="ascii-button"]').trigger('click')
+      expect(wrapper.emitted('pick')).toEqual([['echo']])
+    })
+
+    it('rolls outside the filter rather than no-oping when nothing in it is left', async () => {
+      const tanks = HERO_IDS.filter((id) => HEROES[id]!.role === 'tank')
+      const taken = Object.fromEntries(tanks.map((id, i) => [`p${i}`, id]))
+      const wrapper = mountPicker({
+        currentPicker: { playerId: 'me', username: 'Me' },
+        pickedHeroes: taken,
+      })
+      await wrapper.find('[data-testid="role-tab-tank"]').trigger('click')
+
+      vi.spyOn(Math, 'random').mockReturnValue(0.999)
+      await wrapper.find('[data-testid="hero-random"]').trigger('click')
+      await wrapper.find('[data-testid="ascii-button"]').trigger('click')
+
+      const rolled = wrapper.emitted('pick')?.[0]?.[0] as string
+      expect(rolled).toBeDefined()
+      expect(tanks).not.toContain(rolled)
+    })
+
+    it('stops rolling once the pick is locked in', async () => {
+      const wrapper = mountPicker({
+        currentPicker: { playerId: 'me', username: 'Me' },
+        pickedHeroes: { me: 'echo' },
+      })
+
+      const btn = wrapper.get('[data-testid="hero-random"]')
+      expect(btn.attributes('disabled')).toBeDefined()
+
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+      await btn.trigger('click')
+
+      // A re-roll after locking in would show a hero the player cannot have.
+      expect(wrapper.find('[data-testid="hero-card-echo"]').attributes('aria-pressed')).toBe(
+        'false',
+      )
+    })
+
+    it('rolls within the active filter', async () => {
+      const wrapper = mountPicker({ currentPicker: { playerId: 'me', username: 'Me' } })
+      await wrapper.find('[data-testid="role-tab-tank"]').trigger('click')
+
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+      await wrapper.find('[data-testid="hero-random"]').trigger('click')
+      await wrapper.find('[data-testid="ascii-button"]').trigger('click')
+
+      const rolled = wrapper.emitted('pick')?.[0]?.[0] as string
+      expect(HEROES[rolled]!.role).toBe('tank')
+    })
+  })
+
+  describe('beginner guidance', () => {
+    it('badges only heroes whose whole kit is self- or single-target', () => {
+      const wrapper = mountPicker()
+      const badged = HERO_IDS.filter((id) =>
+        wrapper.find(`[data-testid="beginner-badge-${id}"]`).exists(),
+      )
+
+      expect(badged.length).toBeGreaterThanOrEqual(3)
+      expect(badged.length).toBeLessThanOrEqual(4)
+      // The badge claims "easy to learn"; the mechanical half of that claim is
+      // that nothing in the kit needs zone placement to aim.
+      for (const id of badged) {
+        const abilities = HEROES[id]!.abilities
+        for (const slot of ['q', 'w', 'e', 'r'] as const) {
+          expect(abilities[slot].targetType).not.toBe('zone')
+        }
+      }
+    })
+
+    it('pre-selects a badged hero for a player who has not finished the tutorial', () => {
+      const wrapper = mountPicker({ newPlayer: true })
+
+      const note = wrapper.find('[data-testid="beginner-recommendation"]')
+      expect(note.exists()).toBe(true)
+      const pressed = HERO_IDS.filter(
+        (id) =>
+          wrapper.find(`[data-testid="hero-card-${id}"]`).attributes('aria-pressed') === 'true',
+      )
+      expect(pressed).toHaveLength(1)
+      expect(wrapper.find(`[data-testid="beginner-badge-${pressed[0]}"]`).exists()).toBe(true)
+      expect(note.text()).toContain(HEROES[pressed[0]!]!.name)
+    })
+
+    it('leaves a returning player with an empty selection', () => {
+      const wrapper = mountPicker()
+      expect(wrapper.find('[data-testid="beginner-recommendation"]').exists()).toBe(false)
+      expect(
+        HERO_IDS.filter(
+          (id) =>
+            wrapper.find(`[data-testid="hero-card-${id}"]`).attributes('aria-pressed') === 'true',
+        ),
+      ).toHaveLength(0)
+    })
+
+    it('never pre-selects during the ban phase — that would arm a ban', () => {
+      const wrapper = mountPicker({ newPlayer: true, mode: 'ban' })
+      expect(wrapper.find('[data-testid="beginner-recommendation"]').exists()).toBe(false)
+      expect(
+        HERO_IDS.filter(
+          (id) =>
+            wrapper.find(`[data-testid="hero-card-${id}"]`).attributes('aria-pressed') === 'true',
+        ),
+      ).toHaveLength(0)
+    })
+
+    it('seeds the recommendation when the draft leaves the ban phase', async () => {
+      // 10- and 6-player lobbies open on bans and REUSE this component for the
+      // pick phase, so a mount-time-only seed would never fire for a ranked
+      // first game — the exact case it exists for.
+      const wrapper = mountPicker({ newPlayer: true, mode: 'ban' })
+
+      await wrapper.setProps({ mode: 'pick' })
+
+      const pressed = HERO_IDS.filter(
+        (id) =>
+          wrapper.find(`[data-testid="hero-card-${id}"]`).attributes('aria-pressed') === 'true',
+      )
+      expect(pressed).toHaveLength(1)
+      expect(wrapper.find(`[data-testid="beginner-badge-${pressed[0]}"]`).exists()).toBe(true)
+    })
+  })
+
+  describe('stale selection', () => {
+    it('drops the highlighted hero when another drafter takes it', async () => {
+      // The pre-selection is made at mount, potentially many turns before ours —
+      // confirming it after someone else picked it would burn the turn.
+      const wrapper = mountPicker({
+        newPlayer: true,
+        currentPicker: { playerId: 'p2', username: 'Ally' },
+      })
+      const mine = HERO_IDS.find(
+        (id) =>
+          wrapper.find(`[data-testid="hero-card-${id}"]`).attributes('aria-pressed') === 'true',
+      )!
+
+      await wrapper.setProps({
+        pickedHeroes: { p2: mine },
+        currentPicker: { playerId: 'me', username: 'Me' },
+      })
+
+      expect(wrapper.find(`[data-testid="hero-card-${mine}"]`).attributes('aria-pressed')).toBe(
+        'false',
+      )
+      expect(wrapper.find('[data-testid="ascii-button"]').attributes('disabled')).toBeDefined()
+      await wrapper.find('[data-testid="ascii-button"]').trigger('click')
+      expect(wrapper.emitted('pick')).toBeUndefined()
+    })
+  })
+
+  describe('auto-pick warning', () => {
+    it('states what the countdown actually does, on our turn only', async () => {
+      const wrapper = mountPicker({
+        currentPicker: { playerId: 'p2', username: 'Ally' },
+        pickDeadline: Date.now() + 11_500,
+      })
+      expect(wrapper.find('[data-testid="auto-pick-hint"]').exists()).toBe(false)
+
+      await wrapper.setProps({ currentPicker: { playerId: 'me', username: 'Me' } })
+
+      const hint = wrapper.get('[data-testid="auto-pick-hint"]')
+      expect(hint.text()).toContain('auto-picks a random hero')
+      // Derived from the server deadline, not a fixed 15 — a mid-turn reconnect
+      // lands on whatever is left.
+      expect(hint.text()).toContain('12s')
+    })
+
+    it('says bans during the ban phase', () => {
+      const wrapper = mountPicker({
+        mode: 'ban',
+        currentPicker: { playerId: 'me', username: 'Me' },
+      })
+      expect(wrapper.get('[data-testid="auto-pick-hint"]').text()).toContain('auto-bans')
+    })
+
+    it('drops the warning once our pick is locked in', async () => {
+      const wrapper = mountPicker({ currentPicker: { playerId: 'me', username: 'Me' } })
+      expect(wrapper.find('[data-testid="auto-pick-hint"]').exists()).toBe(true)
+
+      await wrapper.setProps({ pickedHeroes: { me: 'echo' } })
+
+      expect(wrapper.find('[data-testid="auto-pick-hint"]').exists()).toBe(false)
     })
   })
 })

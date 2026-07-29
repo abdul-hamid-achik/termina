@@ -426,4 +426,71 @@ describe('ZonePanel', () => {
       expect(wrapper.find('[data-testid="zone-roshan"]').exists()).toBe(false)
     })
   })
+
+  // A standing order re-swings every tick with no input, so the row it belongs
+  // to has to say so — otherwise repeat damage lines look like a bug.
+  describe('standing attack order', () => {
+    const enemyTower = makeTower({ team: 'dire', zone: 'mid-river' })
+
+    it('marks the tower row [hold] while it is the standing target', () => {
+      const wrapper = mount(ZonePanel, {
+        props: {
+          ...baseProps,
+          tower: enemyTower,
+          attackTarget: { kind: 'tower' as const, zone: 'mid-river' },
+        },
+      })
+
+      expect(wrapper.find('[data-testid="zone-tower-tag"]').text()).toBe('[hold]')
+    })
+
+    it('leaves the tower row [ATK] when the order names a different tower', () => {
+      const wrapper = mount(ZonePanel, {
+        props: {
+          ...baseProps,
+          tower: enemyTower,
+          attackTarget: { kind: 'tower' as const, zone: 'top-t1-dire' },
+        },
+      })
+
+      expect(wrapper.find('[data-testid="zone-tower-tag"]').text()).toBe('[ATK]')
+    })
+
+    it('marks the Roshan row [hold]', () => {
+      const wrapper = mount(ZonePanel, {
+        props: {
+          ...baseProps,
+          zoneId: 'roshan-pit',
+          roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
+          attackTarget: { kind: 'roshan' as const },
+        },
+      })
+
+      expect(wrapper.find('[data-testid="zone-roshan-tag"]').text()).toContain('[hold]')
+    })
+
+    it('marks the held enemy hero, resolving the order by heroId like the server', () => {
+      const held = makePlayer({ id: 'e1', name: 'Enemy', heroId: 'daemon', team: 'dire' })
+      const other = makePlayer({ id: 'e2', name: 'Other', heroId: 'cache', team: 'dire' })
+      const wrapper = mount(ZonePanel, {
+        props: {
+          ...baseProps,
+          enemies: [held, other],
+          attackTarget: { kind: 'hero' as const, name: 'daemon' },
+        },
+      })
+
+      expect(wrapper.find('[data-testid="zone-enemy-tag-e1"]').text()).toContain('[hold]')
+      expect(wrapper.find('[data-testid="zone-enemy-tag-e2"]').text()).toContain('[ATK]')
+    })
+
+    it('shows no hold anywhere without a standing order (the default)', () => {
+      const enemy = makePlayer({ id: 'e1', heroId: 'daemon', team: 'dire' })
+      const wrapper = mount(ZonePanel, {
+        props: { ...baseProps, enemies: [enemy], tower: enemyTower },
+      })
+
+      expect(wrapper.text()).not.toContain('[hold]')
+    })
+  })
 })

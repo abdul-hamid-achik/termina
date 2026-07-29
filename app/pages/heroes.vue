@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
 import { ROLE_META } from '~~/shared/constants/roles'
+import { getTalentTree, talentUnlockLevel, type TalentTier } from '~~/shared/constants/talents'
 import { heroPlaystyleTags, type PlaystyleTag } from '~~/shared/heroPlaystyle'
 import { filterHeroes, type RoleFilter, type PlaystyleFilter } from '~/utils/heroFilter'
-import type { HeroId, HeroRole } from '~~/shared/types/hero'
+import type { HeroId, HeroRole, HeroDifficulty } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
@@ -69,7 +70,10 @@ watch(filteredHeroes, (list) => {
 const {
   SLOTS,
   DUMMY_NAME,
+  CONSOLE_LEVELS,
   dummyMax,
+  level,
+  maxMana,
   mana,
   cooldowns,
   tick,
@@ -79,11 +83,39 @@ const {
   statuses,
   totalDamage,
   castCount,
+  rankOf,
+  isLocked,
+  maxRankFor,
+  unlockLevelFor,
   cast,
   castCombo,
   advanceTick,
   reset,
 } = useTrainingConsole(hero)
+
+// Pick guidance, authored per hero. `difficulty` rates how punishing the kit is
+// to misuse (conditional gates, stack economies, self-displacement) — not how
+// strong it is — so a newcomer can pick a hero that forgives a misclick.
+const DIFFICULTY_META: Record<HeroDifficulty, { label: string; class: string }> = {
+  easy: { label: 'BEGINNER', class: 'border-radiant/50 bg-radiant/10 text-radiant' },
+  medium: { label: 'MEDIUM', class: 'border-gold/50 bg-gold/10 text-gold' },
+  hard: { label: 'HARD', class: 'border-dire/50 bg-dire/10 text-dire' },
+}
+
+const openingCombo = computed(() =>
+  hero.value.openingCombo.map((s) => ({
+    slot: s,
+    name: hero.value.abilities[s].name,
+    locked: isLocked(s),
+  })),
+)
+
+// Talents are the only permanent build choice in a match, and until now they
+// existed nowhere outside one: the player met the pick mid-fight on the 4s
+// clock. Tier IDs (10/15/20/25) are NOT the levels they unlock at — read the
+// level from talentUnlockLevel so this can't drift from the engine's schedule.
+const TALENT_TIERS: readonly TalentTier[] = [10, 15, 20, 25]
+const talentTree = computed(() => getTalentTree(selectedId.value))
 
 function onKey(e: KeyboardEvent) {
   // Don't hijack browser/OS chords (Cmd/Ctrl/Alt + key) or typing in fields.
@@ -101,9 +133,7 @@ function onKey(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
-const manaPct = computed(() =>
-  hero.value.baseStats.mp ? Math.round((mana.value / hero.value.baseStats.mp) * 100) : 0,
-)
+const manaPct = computed(() => (maxMana.value ? Math.round((mana.value / maxMana.value) * 100) : 0))
 
 // Learn → play: shared practice-vs-bots launcher for the footer CTA.
 const {
@@ -206,6 +236,12 @@ const {
       >
         <span class="text-[0.78rem] font-bold">{{ h.name }}</span>
         <span class="text-[0.58rem] uppercase tracking-wider opacity-70">{{ h.role }}</span>
+        <span
+          v-if="h.difficulty === 'easy'"
+          class="text-[0.52rem] uppercase tracking-wider text-radiant"
+          data-testid="hero-beginner-badge"
+          >beginner</span
+        >
       </button>
     </div>
 
@@ -244,27 +280,129 @@ const {
         </div>
         <p class="text-[0.75rem] italic leading-relaxed text-text-dim">{{ hero.lore }}</p>
 
+        <!-- How to play — the decision content a pick screen never has room for -->
+        <div class="border border-border bg-bg-secondary p-2.5" data-testid="hero-how-to-play">
+          <div class="mb-1.5 flex flex-wrap items-center gap-2">
+            <span class="text-[0.75rem] font-bold tracking-wide text-gold">HOW TO PLAY</span>
+            <span
+              class="border px-1.5 py-0.5 text-[0.58rem] uppercase tracking-wider"
+              :class="DIFFICULTY_META[hero.difficulty].class"
+              data-testid="hero-difficulty"
+            >
+              {{ DIFFICULTY_META[hero.difficulty].label }}
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5" data-testid="hero-opening-combo">
+            <span class="text-[0.6rem] uppercase tracking-wider text-text-muted">opening</span>
+            <template v-for="(step, i) in openingCombo" :key="i">
+              <span v-if="i > 0" class="text-[0.7rem] text-text-dim">&rarr;</span>
+              <span
+                class="border px-1.5 py-0.5 text-[0.65rem]"
+                :class="
+                  step.locked
+                    ? 'border-border text-text-muted line-through'
+                    : 'border-ability/40 text-ability'
+                "
+              >
+                {{ step.slot.toUpperCase() }} {{ step.name }}
+              </span>
+            </template>
+          </div>
+          <p class="mt-1.5 text-[0.75rem] leading-relaxed text-text-dim" data-testid="hero-tip">
+            {{ hero.oneLineTip }}
+          </p>
+        </div>
+
         <AbilitySlot slot-key="◆" :ability="hero.passive" class="mt-1" />
-        <AbilitySlot
-          v-for="s in SLOTS"
-          :key="s"
-          :slot-key="s.toUpperCase()"
-          :ability="hero.abilities[s]"
-          :cooldown-remaining="cooldowns[s]"
-          :mana-available="mana"
-          interactive
-          @cast="cast(s)"
-        />
+        <div v-for="s in SLOTS" :key="s" :class="isLocked(s) ? 'opacity-60' : ''">
+          <!-- Rank/lock line sits ABOVE the slot: the console now simulates a
+               chosen hero level, and an ultimate the hero cannot cast yet has to
+               look locked rather than merely unaffordable. -->
+          <div class="flex items-baseline justify-between px-0.5 text-[0.58rem] tracking-wider">
+            <span class="uppercase text-text-muted">rank {{ rankOf(s) }}/{{ maxRankFor(s) }}</span>
+            <span v-if="isLocked(s)" class="uppercase text-warn" :data-testid="`ability-lock-${s}`"
+              >locked · level {{ unlockLevelFor(s) }}</span
+            >
+          </div>
+          <AbilitySlot
+            :slot-key="s.toUpperCase()"
+            :ability="hero.abilities[s]"
+            :cooldown-remaining="cooldowns[s]"
+            :mana-available="mana"
+            interactive
+            @cast="cast(s)"
+          />
+        </div>
         <p class="text-[0.6rem] text-text-dim">
-          Click a slot or press Q / W / E / R to cast — or C for the full combo.
+          Click a slot or press Q / W / E / R to cast — or C for the opening combo.
         </p>
+
+        <!-- Talents: the match's only permanent build choice, previously shown
+             for the first time mid-fight on the 4-second clock. -->
+        <div v-if="talentTree" class="mt-2 flex flex-col gap-2" data-testid="hero-talents">
+          <div class="border-b border-border pb-1">
+            <h3 class="text-[0.85rem] font-bold tracking-wide text-gold">TALENTS</h3>
+            <p class="text-[0.7rem] leading-relaxed text-text-dim">
+              Each tier is one permanent choice. Pick a side with
+              <span class="text-ability">talent &lt;tier&gt; &lt;left|right&gt;</span> and the other
+              side is gone for the rest of the match — there is no respec.
+            </p>
+          </div>
+          <div v-for="t in TALENT_TIERS" :key="t" class="flex flex-col gap-1">
+            <div class="text-[0.6rem] uppercase tracking-wider text-text-muted">
+              tier {{ t }} · unlocks at level {{ talentUnlockLevel(t) }}
+            </div>
+            <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <div
+                v-for="(talent, i) in talentTree.tiers[t]"
+                :key="talent.id"
+                class="border border-border bg-bg-secondary p-2"
+              >
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-[0.58rem] uppercase tracking-wider text-ability">{{
+                    i === 0 ? 'left' : 'right'
+                  }}</span>
+                  <span class="text-[0.75rem] font-bold text-text-primary">{{ talent.name }}</span>
+                </div>
+                <p class="text-[0.7rem] leading-snug text-text-dim">{{ talent.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Console -->
       <section class="flex flex-col gap-2">
+        <!-- Hero level drives what the console will even let you cast. Without
+             it the tool taught a rotation nobody can perform: R at level 1. -->
+        <div
+          class="flex flex-wrap items-center gap-1.5"
+          role="group"
+          aria-label="Simulate a hero level"
+        >
+          <span class="text-[0.6rem] uppercase tracking-wider text-text-muted">level</span>
+          <button
+            v-for="l in CONSOLE_LEVELS"
+            :key="l"
+            type="button"
+            :data-testid="`console-level-${l}`"
+            :aria-pressed="l === level"
+            class="border px-2 py-0.5 text-[0.65rem] tracking-wider transition-colors"
+            :class="
+              l === level
+                ? 'border-ability bg-ability/10 text-ability'
+                : 'border-border text-text-dim hover:border-border-glow hover:text-text-primary'
+            "
+            @click="level = l"
+          >
+            {{ l }}
+          </button>
+          <span class="text-[0.6rem] text-text-dim">changing level resets the console</span>
+        </div>
+
         <div class="flex flex-col gap-1 border border-border p-2.5">
           <div class="flex items-center justify-between text-[0.7rem] text-text-dim">
-            <span><span class="text-ability">mana</span> {{ mana }} / {{ hero.baseStats.mp }}</span>
+            <span><span class="text-ability">mana</span> {{ mana }} / {{ maxMana }}</span>
             <span>tick {{ tick }}</span>
           </div>
           <div class="h-1.5 w-full bg-bg-secondary">
@@ -280,6 +418,13 @@ const {
             <AsciiButton label="ADVANCE TICK (4s)" @click="advanceTick" />
             <AsciiButton label="RESET" variant="ghost" @click="reset" />
           </div>
+          <p class="text-[0.6rem] leading-snug text-text-dim" data-testid="console-refill-note">
+            Each tick refills mana so the sandbox can't lock up. Heroes have no innate regen in a
+            real match — the fountain, items and the regen rune are the only recovery.
+            <NuxtLink to="/learn" class="text-ability no-underline hover:underline"
+              >See Sustain</NuxtLink
+            >.
+          </p>
         </div>
 
         <TargetDummy
@@ -290,8 +435,8 @@ const {
           :statuses="statuses"
         />
         <p class="text-[0.6rem] leading-snug text-text-dim">
-          Impact shows base values — no armor, magic resist or amp. A feel for each kit, not a
-          combat sim.
+          Impact shows each ability's rank-1 base values — no armor, magic resist or amp, and no
+          per-rank scaling. A feel for each kit, not a combat sim.
         </p>
 
         <!-- Announce only the latest line to AT, not the whole 50-line buffer. -->
@@ -326,11 +471,11 @@ const {
       </p>
       <div class="flex flex-wrap justify-center gap-3">
         <AsciiButton
-          :label="startingTutorial ? 'STARTING…' : 'PRACTICE VS BOTS'"
+          :label="startingTutorial ? 'STARTING…' : `PRACTICE AS ${hero.name.toUpperCase()}`"
           :disabled="startingTutorial"
           variant="primary"
           data-testid="start-tutorial"
-          @click="startTutorial"
+          @click="() => startTutorial(selectedId)"
         />
         <NuxtLink to="/lobby" class="no-underline">
           <AsciiButton label="ENTER THE TERMINAL" variant="ghost" />

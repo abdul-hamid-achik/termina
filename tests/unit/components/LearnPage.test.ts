@@ -19,7 +19,21 @@ import {
   TOWER_ATTACK,
   BASIC_ABILITY_RANKS,
   ULTIMATE_UNLOCK_LEVEL,
+  FOUNTAIN_HEAL_PER_TICK_PERCENT,
+  FOUNTAIN_MANA_PER_TICK_PERCENT,
+  RING_OF_HEALTH_REGEN_PERCENT,
+  SOBI_MASK_REGEN_PERCENT,
+  REGEN_RUNE_HEAL_PERCENT,
+  DENY_HP_THRESHOLD,
+  DENY_GOLD_RATIO,
+  DENY_XP_RATIO,
+  CREEP_GOLD_MIN,
+  CREEP_GOLD_MAX,
+  CREEP_XP,
+  CREEP_XP_SHARED,
+  MELEE_CREEP_HP,
 } from '../../../shared/constants/balance'
+import { talentUnlockLevel } from '../../../shared/constants/talents'
 import { getAbilityLevel } from '../../../server/game/heroes/_base'
 import { useCommands } from '../../../app/composables/useCommands'
 import { routeGameKey } from '../../../app/utils/gameKeys'
@@ -255,6 +269,75 @@ describe('learn page', () => {
         expect(text).toContain(k.action)
       }
     })
+  })
+
+  /**
+   * Two rules the page stated a number for without ever stating what it means:
+   * a fountain heal rate with no "and nothing else regenerates", and one
+   * sentence about last-hitting for the mechanic the whole economy sits on.
+   */
+  describe('sustain and last-hitting concept cards', () => {
+    it('states the no-innate-regen corollary, not just the fountain rate', () => {
+      const text = mountLearn().text()
+      expect(text).toContain('Sustain')
+      expect(text).toContain('NO innate regeneration')
+      // The rate is already on the page; the card names every actual source.
+      expect(text).toContain(
+        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per tick`,
+      )
+      expect(text).toContain('out of combat')
+      for (const source of [
+        'Healing Salve',
+        'Mana Vial',
+        'Ring of Health',
+        "Sobi's Mask",
+        'regeneration rune',
+      ]) {
+        expect(text).toContain(source)
+      }
+    })
+
+    it('quotes live regen percentages rather than prose', () => {
+      const text = mountLearn().text()
+      expect(text).toContain(`${Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)}% max HP per tick`)
+      expect(text).toContain(`${Math.round(SOBI_MASK_REGEN_PERCENT * 100)}% max MP per tick`)
+      expect(text).toContain(`${Math.round(REGEN_RUNE_HEAL_PERCENT * 100)}% of both per tick`)
+    })
+
+    it('teaches last-hitting as its own concept, with the deny mirror', () => {
+      const text = mountLearn().text()
+      expect(text).toContain('Last-Hitting & Denying')
+      expect(text).toContain('Only the killing blow pays gold')
+      expect(text).toContain(`${MELEE_CREEP_HP} HP`)
+      expect(text).toContain(`${Math.round(DENY_HP_THRESHOLD * 100)}% HP`)
+      // Deny reward is derived, not asserted as prose.
+      const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
+      expect(text).toContain(`${denyGold}g and ${Math.floor(CREEP_XP * DENY_XP_RATIO)} XP`)
+    })
+
+    it('warns that creep indices are positional and shift each tick', () => {
+      const text = mountLearn().text()
+      expect(text).toContain('creep:N counts the living creeps in your zone')
+      expect(text).toMatch(/shifts every tick/)
+      expect(text).toContain('zone panel')
+    })
+
+    it('states lane presence still pays XP, so the advice is not "never miss"', () => {
+      const text = mountLearn().text()
+      expect(text).toContain(`share ${CREEP_XP_SHARED} XP`)
+    })
+  })
+
+  /**
+   * REGRESSION: the talent copy printed the TIER ids (10/15/20/25) as if they
+   * were the levels the tiers unlock at. They stopped being the same number
+   * when the tiers were pulled forward to match real match length.
+   */
+  it('states the levels talents unlock at, not the tier ids', () => {
+    const text = mountLearn().text()
+    const levels = ([10, 15, 20, 25] as const).map(talentUnlockLevel)
+    expect(text).toContain(`Reaching levels ${levels.slice(0, 3).join(', ')} and ${levels[3]}`)
+    expect(text).not.toContain('Reaching levels 10, 15, 20 and 25')
   })
 
   it('teaches the team-relative base/fountain shortcuts', () => {

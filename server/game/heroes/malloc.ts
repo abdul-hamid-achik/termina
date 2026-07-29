@@ -12,6 +12,7 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
+  damageEnemyNpcsInZone,
   deductMana,
   setCooldown,
   applyBuff,
@@ -252,7 +253,12 @@ function resolveR(
     const updatedEnemies = enemies.map((e) => dealDamage(e, damage, 'physical'))
 
     return {
-      state: updatePlayers(state, [caster, ...updatedEnemies]),
+      state: damageEnemyNpcsInZone(
+        updatePlayers(state, [caster, ...updatedEnemies]),
+        caster,
+        damage,
+        'physical',
+      ),
       events: [
         {
           tick: state.tick,

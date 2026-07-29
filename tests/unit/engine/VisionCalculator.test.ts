@@ -222,6 +222,36 @@ describe('VisionCalculator', () => {
       expect(ally.moveTarget).toBe('dire-base')
     })
 
+    it("strips a VISIBLE enemy's standing attack order (what they've committed to)", () => {
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          e1: makePlayer({
+            id: 'e1',
+            team: 'dire',
+            zone: 'mid-river',
+            name: 'Enemy',
+            attackTarget: { kind: 'tower', zone: 'mid-t1-rad' },
+          }),
+          p2: makePlayer({
+            id: 'p2',
+            team: 'radiant',
+            zone: 'mid-t1-rad',
+            name: 'Ally',
+            attackTarget: { kind: 'roshan' },
+          }),
+        },
+      })
+
+      const filtered = filterStateForPlayer(state, 'p1')
+      const enemy = filtered.players['e1'] as PlayerState
+      expect('fogged' in enemy).toBe(false)
+      expect('attackTarget' in enemy).toBe(false)
+      // Allies still see it — it drives the [hold] readout on their own panel.
+      const ally = filtered.players['p2'] as PlayerState
+      expect(ally.attackTarget).toEqual({ kind: 'roshan' })
+    })
+
     it('keeps a fogged enemy KDA + level public (scoreboard shows it even in fog)', () => {
       const state = makeGameState({
         players: {

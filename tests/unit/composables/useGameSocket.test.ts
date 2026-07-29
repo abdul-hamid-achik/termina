@@ -339,7 +339,21 @@ describe('useGameSocket', () => {
         stats: { foo: 1 },
         mmrChange: 25,
       })
-      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 }, 25, true)
+      // durationTicks rides along so PostGame can report match length; it is
+      // undefined on a payload that predates the field.
+      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 }, 25, true, undefined)
+    })
+
+    it('forwards durationTicks when the server sends it', async () => {
+      const store = await connectWithStore()
+      const spy = vi.spyOn(store, 'setGameOver')
+      MockWebSocket.last!._receive({
+        type: 'game_over',
+        winner: 'dire',
+        stats: {},
+        durationTicks: 360,
+      })
+      expect(spy).toHaveBeenCalledWith('dire', {}, undefined, true, 360)
     })
 
     it('routes full_state through updateFromTick', async () => {

@@ -12,6 +12,7 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
+  damageEnemyNpcsInZone,
   deductMana,
   setCooldown,
   applyBuff,
@@ -222,7 +223,14 @@ function resolveE(
     })
 
     return {
-      state: updatePlayers(state, [caster, ...updatedEnemies]),
+      // Creeps take all three hits at once — they have no slow to stack, so the
+      // per-hit loop above would be three identical subtractions.
+      state: damageEnemyNpcsInZone(
+        updatePlayers(state, [caster, ...updatedEnemies]),
+        caster,
+        damagePerHit * 3,
+        'physical',
+      ),
       events: [
         {
           tick: state.tick,
@@ -276,7 +284,12 @@ function resolveR(
     })
 
     return {
-      state: updatePlayers(state, [caster, ...updatedEnemies]),
+      state: damageEnemyNpcsInZone(
+        updatePlayers(state, [caster, ...updatedEnemies]),
+        caster,
+        totalDamage,
+        'physical',
+      ),
       events: [
         {
           tick: state.tick,

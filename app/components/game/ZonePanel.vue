@@ -8,6 +8,7 @@ import type {
   TowerState,
   TeamId,
 } from '~~/shared/types/game'
+import type { TargetRef } from '~~/shared/types/commands'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { creepMaxHp, DENY_HP_THRESHOLD } from '~~/shared/constants/balance'
@@ -34,6 +35,9 @@ const props = withDefaults(
     tower?: TowerState | null
     /** Roshan, passed only when the player stands in the pit and he is alive. */
     roshan?: RoshanState | null
+    /** The player's standing attack order, if any — the engine re-swings at it
+     *  every tick until it dies, leaves, or a new order lands. */
+    attackTarget?: TargetRef | null
   }>(),
   {
     zoneId: '',
@@ -43,6 +47,7 @@ const props = withDefaults(
     neutrals: () => [],
     tower: null,
     roshan: null,
+    attackTarget: null,
   },
 )
 
@@ -52,6 +57,26 @@ const emit = defineEmits<{
 
 function heroName(p: PlayerState): string {
   return (p.heroId && HEROES[p.heroId]?.name) || p.name
+}
+
+// ── Standing attack order ──────────────────────────────────────
+// The engine keeps swinging at a held target every tick, so the row that owns
+// it says so — otherwise repeated damage lines look like a bug. Lane creeps
+// never hold (last-hitting stays a manual, per-tick decision), so their rows
+// deliberately have no [hold] state to show.
+const heldTowerZone = computed(() =>
+  props.attackTarget?.kind === 'tower' ? props.attackTarget.zone : null,
+)
+const holdingRoshan = computed(() => props.attackTarget?.kind === 'roshan')
+
+/** Mirrors the server's hero lookup, which indexes name, id and heroId alike. */
+function isHeldHero(p: PlayerState): boolean {
+  const t = props.attackTarget
+  if (t?.kind !== 'hero') return false
+  const key = t.name.toLowerCase()
+  return (
+    key === p.id.toLowerCase() || key === p.name.toLowerCase() || key === p.heroId?.toLowerCase()
+  )
 }
 
 function attackHero(p: PlayerState) {
@@ -250,7 +275,9 @@ const isEmpty = computed(
     >
       <div class="flex items-baseline justify-between gap-2">
         <span class="truncate font-bold text-dire">{{ heroName(e) }}</span>
-        <span class="shrink-0 t-caption">Lv {{ e.level }} · [ATK]</span>
+        <span class="shrink-0 t-caption" :data-testid="`zone-enemy-tag-${e.id}`"
+          >Lv {{ e.level }} · {{ isHeldHero(e) ? '[hold]' : '[ATK]' }}</span
+        >
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">HP</span>
@@ -315,7 +342,9 @@ const isEmpty = computed(
     >
       <div class="flex items-baseline justify-between gap-2">
         <span :class="teamTextClass(towerHere.team)"> Tower ({{ towerHere.team }}) </span>
-        <span class="shrink-0 t-caption">{{ towerIsEnemy ? '[ATK]' : 'allied' }}</span>
+        <span class="shrink-0 t-caption" data-testid="zone-tower-tag">{{
+          towerIsEnemy ? (heldTowerZone === towerHere.zone ? '[hold]' : '[ATK]') : 'allied'
+        }}</span>
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">HP</span>
@@ -396,7 +425,9 @@ const isEmpty = computed(
     >
       <div class="flex items-baseline justify-between gap-2">
         <span class="font-bold text-gold">Roshan</span>
-        <span class="shrink-0 t-caption">drops Aegis · [ATK]</span>
+        <span class="shrink-0 t-caption" data-testid="zone-roshan-tag"
+          >drops Aegis · {{ holdingRoshan ? '[hold]' : '[ATK]' }}</span
+        >
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">HP</span>

@@ -13,7 +13,7 @@ import { isShopZoneFor, ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
-import { getTalentTree } from '~~/shared/constants/talents'
+import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
@@ -557,11 +557,16 @@ export function validateCommand(command: Command, context: GameContext): string 
     }
     case 'select_talent': {
       if (!player.heroId) return 'No hero selected'
-      if (player.level < command.tier) {
-        return `Reach level ${command.tier} to choose this talent (you are level ${player.level})`
+      // The tier NAME is an identifier, not a level requirement — mirror the
+      // server's talentUnlockLevel or this pre-flight refuses a command the
+      // engine would have accepted, and the retuned (earlier) tiers stay
+      // untypeable.
+      const required = talentUnlockLevel(command.tier)
+      if (player.level < required) {
+        return `Reach level ${required} to choose this talent (you are level ${player.level})`
       }
       const key = `tier${command.tier}` as const
-      if (player.talents[key]) return `You already chose your level ${command.tier} talent`
+      if (player.talents[key]) return `You already chose your tier-${command.tier} talent`
       return null
     }
     default:
@@ -834,7 +839,7 @@ export function useCommands() {
         missing: 'Alert your team an enemy is missing (alias: ss)',
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
-        talent: 'Choose a talent (levels 10/15/20/25)',
+        talent: 'Choose a talent (tiers 10/15/20/25)',
         deny: 'Last-hit your own creep below 50% HP to deny the enemy',
       }
       return all

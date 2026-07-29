@@ -12,7 +12,9 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   getEnemiesInZoneAndAdjacent,
+  zonesInAbilityRange,
   dealAbilityDamage,
+  damageEnemyNpcsInZone,
   deductMana,
   setCooldown,
   applyBuff,
@@ -258,7 +260,8 @@ function resolveR(
 
     // AOE+ exotic: the tier-25 talent widens Dereference to enemies in adjacent
     // zones too, not just the caster's own zone.
-    const enemies = hasTalentCastEffect(player, 'aoe_bonus', 'r')
+    const widened = hasTalentCastEffect(player, 'aoe_bonus', 'r')
+    const enemies = widened
       ? getEnemiesInZoneAndAdjacent(state, player)
       : getEnemiesInZone(state, player)
     const baseDamage = scaleValue(R_DAMAGE, level)
@@ -273,7 +276,15 @@ function resolveR(
     })
 
     return {
-      state: updatePlayers(state, [caster, ...updatedEnemies]),
+      // Creeps get the base damage: the execute bonus keys off a target's HP
+      // fraction, a hero-only notion (creeps have no respawn to shorten).
+      state: damageEnemyNpcsInZone(
+        updatePlayers(state, [caster, ...updatedEnemies]),
+        caster,
+        baseDamage,
+        'magical',
+        zonesInAbilityRange(player.zone, widened),
+      ),
       events: [
         {
           tick: state.tick,

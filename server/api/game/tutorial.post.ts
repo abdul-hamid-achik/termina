@@ -1,3 +1,4 @@
+import { parseBotDifficulty } from '~~/server/game/ai/BotManager'
 import { createTutorialGame, getGameRuntime, stopDevGame } from '~~/server/plugins/game-server'
 import { getPlayerGame, clearPlayerGame, sendToPeer } from '~~/server/services/PeerRegistry'
 import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
@@ -7,7 +8,8 @@ import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
  * one-lane map, in tutorial mode) and return the /play entry URL. This is a real
  * player feature, reachable in production — it is NOT gated by test hooks.
  *
- * Body: { heroSelf? }  →  { gameId, playerId, url }
+ * Body: { heroSelf?, difficulty? }  →  { gameId, playerId, url }
+ * Omitting `difficulty` keeps the gentle 'easy' tutorial roster.
  */
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -56,10 +58,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const body = await readBody<{ heroSelf?: string }>(event).catch(
-    () => ({}) as { heroSelf?: string },
+  const body = await readBody<{ heroSelf?: string; difficulty?: string }>(event).catch(
+    () => ({}) as { heroSelf?: string; difficulty?: string },
   )
-  const created = await createTutorialGame({ humanId, humanHeroId: body?.heroSelf })
+  const created = await createTutorialGame({
+    humanId,
+    humanHeroId: body?.heroSelf,
+    difficulty: parseBotDifficulty(body?.difficulty),
+  })
   if (!created) {
     throw createError({ statusCode: 503, message: 'Could not start tutorial game' })
   }

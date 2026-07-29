@@ -1,11 +1,20 @@
 /**
  * Talent Tree System
- * Binary choices at levels 10, 15, 20, 25
+ * Four binary choices per hero, one per tier — see TALENT_UNLOCK_LEVEL for the
+ * hero level each tier becomes available at.
  * Each hero has unique talent options per tier
  */
 
 import type { HeroId } from '~~/shared/constants/heroes'
 
+/**
+ * Tier identity, NOT the unlock level (those parted ways — see
+ * TALENT_UNLOCK_LEVEL). These four numbers are baked into talent IDs
+ * (`echo_10_left`), the `tier10`…`tier25` slots on PlayerState, the
+ * `select_talent` command and the `talent <tier>` the player types, so they stay
+ * as they are: renaming them would churn ~150 talent definitions and every
+ * consumer for zero player-visible gain.
+ */
 export type TalentTier = 10 | 15 | 20 | 25
 
 export type TalentType =
@@ -59,6 +68,43 @@ export interface TalentTree {
     20: [Talent, Talent]
     25: [Talent, Talent]
   }
+}
+
+/**
+ * Hero level at which each talent tier becomes selectable.
+ *
+ * Measured with `bun run sim 8 1200` after the Wave-2 pacing + shared-lane-XP
+ * changes: matches now end at a median of ~20 minutes (11–26m), and across 160
+ * finished hero-games the share of players who ever REACH a given level is
+ *
+ *   lvl 3 100% · lvl 6 94% · lvl 9 68% · lvl 12 23% · lvl 15 1% · lvl 20+ 0%
+ *
+ * Under the old level-equals-tier rule that meant 47% of players never made a
+ * single talent choice, the ones who did made it in the closing minutes, and the
+ * three upper tiers — including the four exotic cast effects — were unreachable
+ * content in every simulated match. Every player of a hero developed identically
+ * for the whole game.
+ *
+ * 3/6/9/12 reads straight off that curve: one choice for everybody around minute
+ * 4, a second for nearly everybody, a third for two thirds, and the capstone as
+ * a real reward for the fifth of players who get far enough ahead. The roadmap's
+ * 4/8/12/16 was written against the pre-Wave-2 51-minute game; against the
+ * measured one it is too LATE at the top, not too early, and would have left the
+ * last tier exactly as dead as it is today.
+ */
+export const TALENT_UNLOCK_LEVEL: Record<TalentTier, number> = {
+  10: 3,
+  15: 6,
+  20: 9,
+  25: 12,
+}
+
+/**
+ * The hero level required to choose from `tier`. Every `player.level >= tier`
+ * comparison is a bug — that reads the tier's NAME as a level requirement.
+ */
+export function talentUnlockLevel(tier: TalentTier): number {
+  return TALENT_UNLOCK_LEVEL[tier]
 }
 
 /**

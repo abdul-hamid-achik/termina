@@ -18,7 +18,13 @@ import {
 import { gameLoggerLive } from '~~/server/utils/logger'
 import { gameLog } from '~~/server/utils/log'
 import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
-import { startGameLoop, stopGameLoop, type GameCallbacks } from '~~/server/game/engine/GameLoop'
+import {
+  startGameLoop,
+  stopGameLoop,
+  type GameCallbacks,
+  type PlayerFarm,
+} from '~~/server/game/engine/GameLoop'
+import { playerNetWorth } from '~~/server/game/engine/GoldDistributor'
 import {
   deleteSnapshot,
   readSnapshot,
@@ -42,6 +48,8 @@ import {
   isBot,
   registerBots,
   cleanupGame,
+  difficultyForMmr,
+  type BotDifficulty,
   type RegisterBotsOptions,
 } from '~~/server/game/ai/BotManager'
 import { ONE_LANE_MAP_ID, TWO_LANE_MAP_ID, mapIdForMode } from '~~/shared/constants/maps'
@@ -158,6 +166,42 @@ export function isEventVisibleToPlayer(
  */
 export function isPracticeGame(gameId: string, mode?: GameMode): boolean {
   return mode === 'tutorial' || gameId.startsWith('dev_')
+}
+
+/**
+ * The end-of-game scoreboard payload. Uses the shared client-facing type so TS
+ * enforces that the server's game_over matches what the post-game screen reads —
+ * no silent drift.
+ *
+ * `farm` arrives from the loop rather than being read back out of it: the loop
+ * interrupts as soon as onGameOver returns and drops its per-game maps.
+ */
+export function buildEndStats(
+  playerIds: string[],
+  finalState: GameState,
+  farm: Record<string, PlayerFarm>,
+): Record<string, PlayerEndStats> {
+  const endStats: Record<string, PlayerEndStats> = {}
+  for (const playerId of playerIds) {
+    const ps = finalState.players[playerId]
+    endStats[playerId] = {
+      kills: ps?.kills ?? 0,
+      deaths: ps?.deaths ?? 0,
+      assists: ps?.assists ?? 0,
+      gold: ps?.gold ?? 0,
+      items: ps?.items ?? [],
+      heroDamage: ps?.damageDealt ?? 0,
+      towerDamage: ps?.towerDamageDealt ?? 0,
+      lastHits: farm[playerId]?.lastHits ?? 0,
+      denies: farm[playerId]?.denies ?? 0,
+      // Gold spent on items is still gold farmed. Ranking the board by the
+      // wallet balance puts the best farmer last, which is the opposite of the
+      // lesson the screen is supposed to teach.
+      netWorth: ps ? playerNetWorth(ps) : 0,
+      level: ps?.level ?? 1,
+    }
+  }
+  return endStats
 }
 
 interface GameRuntime {
@@ -314,6 +358,23 @@ export function forceEndGame(gameId: string, winner: TeamId): boolean {
 // `createTutorialGame` is the only entry point. (The dev/e2e `/api/test/*` seed
 // routes that also drove this were removed — e2e drives the real app now.)
 
+/**
+ * Bot difficulty for a matchmade game, from the HUMAN players' average MMR (bots
+ * inherit that average as their own, so counting them would just dilute it).
+ * Every production game used to register bots at registerBots' hardcoded
+ * 'medium' default, which is what made `hard` and `unfair` dead config.
+ * An all-bot roster falls back to the default seed MMR.
+ */
+export function botDifficultyForRoster(
+  players: { playerId: string; mmr: number }[],
+): BotDifficulty {
+  const humanMmrs = players.filter((p) => !isBot(p.playerId)).map((p) => p.mmr)
+  const averageMmr = humanMmrs.length
+    ? humanMmrs.reduce((sum, m) => sum + m, 0) / humanMmrs.length
+    : 1000
+  return difficultyForMmr(averageMmr)
+}
+
 interface DevGameOpts {
   /** The authenticated session user — becomes the human player. */
   humanId: string
@@ -322,6 +383,8 @@ interface DevGameOpts {
   mapId?: string
   /** Game mode (default 'normal'). 'tutorial' uses the small guided roster. */
   mode?: GameMode
+  /** Bot difficulty. Defaults to 'easy' in tutorial mode, 'medium' otherwise. */
+  difficulty?: BotDifficulty
 }
 
 let _createDevGame: ((opts: DevGameOpts) => Promise<{ gameId: string } | null>) | null = null
@@ -334,6 +397,7 @@ let _createDevGame: ((opts: DevGameOpts) => Promise<{ gameId: string } | null>) 
 export async function createTutorialGame(opts: {
   humanId: string
   humanHeroId?: string
+  difficulty?: BotDifficulty
 }): Promise<{ gameId: string } | null> {
   return _createDevGame
     ? _createDevGame({
@@ -341,6 +405,7 @@ export async function createTutorialGame(opts: {
         humanHeroId: opts.humanHeroId,
         mapId: 'one_lane',
         mode: 'tutorial',
+        difficulty: opts.difficulty,
       })
     : null
 }
@@ -579,7 +644,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         }
       },
 
-      onGameOver: async (gId, winner) => {
+      onGameOver: async (gId, winner, farm) => {
         let finalState: GameState
         try {
           finalState = await managedRuntime.runPromise(stateManager.getState(gId))
@@ -601,22 +666,11 @@ export default defineNitroPlugin(async (nitroApp) => {
         // Build the end-of-game stats (no DB needed) and broadcast game_over
         // FIRST. Players must reach the post-game screen even if DB persistence
         // fails — a database hiccup must never strand everyone in a dead game.
-        // Use the shared client-facing type so TS enforces the server's
-        // game_over payload matches exactly what the post-game screen reads —
-        // no silent server/client drift.
-        const endStats: Record<string, PlayerEndStats> = {}
-        for (const p of players) {
-          const ps = finalState.players[p.playerId]
-          endStats[p.playerId] = {
-            kills: ps?.kills ?? 0,
-            deaths: ps?.deaths ?? 0,
-            assists: ps?.assists ?? 0,
-            gold: ps?.gold ?? 0,
-            items: ps?.items ?? [],
-            heroDamage: ps?.damageDealt ?? 0,
-            towerDamage: ps?.towerDamageDealt ?? 0,
-          }
-        }
+        const endStats = buildEndStats(
+          players.map((p) => p.playerId),
+          finalState,
+          farm,
+        )
 
         // Elo change per real player vs the enemy team's average MMR. Computed
         // BEFORE the broadcast so each player sees their own change on the
@@ -646,6 +700,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             stats: endStats,
             mmrChange: mmrChanges.get(p.playerId) ?? 0,
             ranked: isRanked,
+            durationTicks: finalState.tick,
           })
         }
 
@@ -811,12 +866,14 @@ export default defineNitroPlugin(async (nitroApp) => {
         // map the role lanes (top/bot/jungle) may not exist; pin bots to the
         // lanes that do (mid-only for one-lane, top/mid for two-lane) so their
         // global-graph pathing can't walk them off the map.
-        let botOpts: RegisterBotsOptions | undefined
+        const botOpts: RegisterBotsOptions = {
+          difficulty: botDifficultyForRoster(gameData.players),
+        }
         if (mapId === ONE_LANE_MAP_ID) {
-          botOpts = { forceLane: 'mid' }
+          botOpts.forceLane = 'mid'
         } else if (mapId === TWO_LANE_MAP_ID) {
           // 3v3 two-lane map: top + mid only, no bot lane to path into.
-          botOpts = { availableLanes: ['top', 'mid'] }
+          botOpts.availableLanes = ['top', 'mid']
         }
         registerBots(
           gameId,
@@ -935,11 +992,11 @@ export default defineNitroPlugin(async (nitroApp) => {
         // On a subset map the role lanes (top/bot/jungle) don't exist; pin bots to
         // mid so their global-graph pathing can't walk them off the map.
         forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined,
-        // Tutorial bots play gently — the 'easy' config lowers their ability-combo
-        // rate, makes them retreat earlier, and drops rune/jungle/threat awareness —
-        // so a new player isn't punished while learning the verbs. (lastHitAccuracy
-        // and reactionDelayTicks are deliberately NOT wired; see BotAI's creep block.)
-        difficulty: opts.mode === 'tutorial' ? 'easy' : undefined,
+        // Tutorial bots play gently by default — 'easy' lowers their cast rate and
+        // last-hit accuracy, makes them retreat earlier and slower (reactionDelay),
+        // and drops rune/jungle/threat awareness — so a new player isn't punished
+        // while learning the verbs. An explicit difficulty overrides it.
+        difficulty: opts.difficulty ?? (opts.mode === 'tutorial' ? 'easy' : undefined),
       },
     )
     setPlayerGame(opts.humanId, gameId)

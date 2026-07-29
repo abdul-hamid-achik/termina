@@ -20,6 +20,8 @@ import {
   getEnemiesInZone,
   getAlliesInZone,
   getAllEnemyPlayers,
+  damageEnemyNpcsInZone,
+  zonesInAbilityRange,
   healPlayer,
   deductMana,
   setCooldown,
@@ -30,6 +32,7 @@ import {
   type HeroPassiveResolver,
 } from '../../../server/game/heroes/_base'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+import type { CreepState, NeutralCreepState } from '../../../shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -803,6 +806,138 @@ describe('_base hero utilities', () => {
 
       expect(result.players['p1']!.zone).toBe('mid-t1-rad')
       expect(result.players['p1']!.buffs).toHaveLength(0)
+    })
+  })
+
+  describe('damageEnemyNpcsInZone', () => {
+    const creep = (over: Partial<CreepState> = {}): CreepState => ({
+      id: 'c1',
+      team: 'dire',
+      zone: 'mid-t1-rad',
+      hp: 400,
+      maxHp: 400,
+      type: 'melee',
+      ...over,
+    })
+    const neutral = (over: Partial<NeutralCreepState> = {}): NeutralCreepState => ({
+      id: 'n1',
+      zone: 'jungle-rad-top',
+      hp: 250,
+      maxHp: 250,
+      type: 'kobold',
+      alive: true,
+      ...over,
+    })
+
+    it('damages enemy creeps standing in the caster’s zone', () => {
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const state = makeGameState({ creeps: [creep()] })
+
+      const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
+
+      expect(result.creeps[0]!.hp).toBe(250)
+    })
+
+    it('spares allied creeps and creeps in every other zone', () => {
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const state = makeGameState({
+        creeps: [
+          creep({ id: 'ally', team: 'radiant' }),
+          creep({ id: 'elsewhere', zone: 'top-river' }),
+        ],
+      })
+
+      const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
+
+      // Nothing was in range, so the same state object comes back untouched —
+      // the cast bridge reads that reference equality to skip its kill diff.
+      expect(result).toBe(state)
+    })
+
+    it('kills a creep to exactly 0 rather than negative HP', () => {
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const state = makeGameState({ creeps: [creep({ hp: 30 })] })
+
+      const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
+
+      expect(result.creeps[0]!.hp).toBe(0)
+    })
+
+    it('leaves a dead creep in the buffer so the caller can credit the kill', () => {
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const state = makeGameState({ creeps: [creep({ hp: 30 })] })
+
+      const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
+
+      expect(result.creeps).toHaveLength(1)
+      expect(result.creeps[0]!.id).toBe('c1')
+    })
+
+    it('does not re-damage a creep already at 0 HP', () => {
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const dead = creep({ hp: 0 })
+      const state = makeGameState({ creeps: [dead] })
+
+      const result = damageEnemyNpcsInZone(state, caster, 150, 'physical')
+
+      expect(result).toBe(state)
+    })
+
+    it('damages neutrals, which are hostile to both teams, and flips alive on death', () => {
+      const caster = makePlayer({ zone: 'jungle-rad-top', team: 'radiant' })
+      const state = makeGameState({ neutrals: [neutral({ hp: 100 })] })
+
+      const chipped = damageEnemyNpcsInZone(state, caster, 40, 'magical')
+      expect(chipped.neutrals[0]!.hp).toBe(60)
+      expect(chipped.neutrals[0]!.alive).toBe(true)
+
+      const killed = damageEnemyNpcsInZone(state, caster, 100, 'magical')
+      expect(killed.neutrals[0]!.hp).toBe(0)
+      expect(killed.neutrals[0]!.alive).toBe(false)
+    })
+
+    it('applies the caster’s Mystical Staff amp to magical damage only', () => {
+      const zone = 'mid-t1-rad'
+      const amped = makePlayer({ zone, items: ['mystical_staff', null, null, null, null, null] })
+      const plain = makePlayer({ zone })
+      const state = makeGameState({ creeps: [creep()] })
+
+      // 100 magical -> 115 with the +15% amp; physical is unamplified.
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'magical').creeps[0]!.hp).toBe(285)
+      expect(damageEnemyNpcsInZone(state, plain, 100, 'magical').creeps[0]!.hp).toBe(300)
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'physical').creeps[0]!.hp).toBe(300)
+    })
+
+    it('no-ops on a zero-damage cast (cache R with nothing banked)', () => {
+      const caster = makePlayer({ zone: 'mid-t1-rad' })
+      const state = makeGameState({ creeps: [creep()] })
+
+      expect(damageEnemyNpcsInZone(state, caster, 0, 'pure')).toBe(state)
+    })
+
+    it('reaches the widened zone list an AOE+ cast passes in', () => {
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const state = makeGameState({ creeps: [creep({ id: 'next-door', zone: 'mid-river' })] })
+
+      expect(damageEnemyNpcsInZone(state, caster, 150, 'magical')).toBe(state)
+      const widened = damageEnemyNpcsInZone(state, caster, 150, 'magical', [
+        'mid-t1-rad',
+        'mid-river',
+      ])
+      expect(widened.creeps[0]!.hp).toBe(250)
+    })
+  })
+
+  describe('zonesInAbilityRange', () => {
+    it('returns just the caster’s zone unless the reach is widened', () => {
+      expect(zonesInAbilityRange('mid-river', false)).toEqual(['mid-river'])
+    })
+
+    it('adds every adjacent zone when widened, with the caster’s zone first', () => {
+      const widened = zonesInAbilityRange('mid-river', true)
+      expect(widened[0]).toBe('mid-river')
+      expect(widened.length).toBeGreaterThan(1)
+      expect(new Set(widened).size).toBe(widened.length)
     })
   })
 })

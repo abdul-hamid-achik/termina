@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PlayerState } from '~~/shared/types/game'
-import { getTalentTree, type TalentTier } from '~~/shared/constants/talents'
+import { getTalentTree, talentUnlockLevel, type TalentTier } from '~~/shared/constants/talents'
 
 const props = defineProps<{ player: PlayerState | null }>()
 const emit = defineEmits<{ pick: [tier: TalentTier, side: 'left' | 'right'] }>()
@@ -20,7 +20,11 @@ const pending = computed(() => {
   const tree = getTalentTree(p.heroId)
   if (!tree) return null
   for (const tier of TIERS) {
-    if (p.level >= tier && !p.talents[`tier${tier}` as const]) {
+    // The tier NAME (10/15/20/25) is an identifier, not a level requirement —
+    // the levels they unlock at were retuned so the first identity choice lands
+    // inside the first few minutes. Comparing against the name would keep this
+    // prompt hidden until the old, much later levels.
+    if (p.level >= talentUnlockLevel(tier) && !p.talents[`tier${tier}` as const]) {
       return { tier, left: tree.tiers[tier][0], right: tree.tiers[tier][1] }
     }
   }

@@ -5,7 +5,7 @@ import type { HeroRole } from '~~/shared/types/hero'
 // Value import (function, used only at runtime in cleanupGame) — BotAI imports
 // getBotDifficultyConfig back from here, but the cycle is benign: neither side
 // invokes the other during module evaluation.
-import { cleanupBotState } from './BotAI'
+import { cleanupBotState, cleanupBotGameState } from './BotAI'
 
 const gameBots = new Map<string, Set<string>>()
 const gameBotLanes = new Map<string, Map<string, string>>()
@@ -73,7 +73,22 @@ export type BotDifficulty = 'easy' | 'medium' | 'hard' | 'unfair'
 export interface BotDifficultyConfig {
   retreatHpPercent: number
   reactionDelayTicks: number
+  /**
+   * Chance per combat tick that the bot spends its action on an ability at all —
+   * applied to BOTH the scripted combo opener and the generic cast fallback. It
+   * used to gate only the combo, which the fallback then rendered moot: every
+   * difficulty cast its ultimate the tick it came off cooldown.
+   */
   abilityComboChance: number
+  /**
+   * Chance the bot aims at the true lowest-HP creep in the wave. On a failed roll
+   * it takes the SECOND-lowest instead — never nothing. Returning null here was
+   * the original bot-standstill bug (bots idled in lane and never reached a
+   * tower), so the miss costs last-hit gold without costing an action.
+   */
+  lastHitAccuracy: number
+  /** Bot denies its own low creeps to starve the enemy laner of gold + XP. */
+  denyAwareness: boolean
   runeAwareness: boolean
   jungleFarming: boolean
   threatAssessment: boolean
@@ -84,6 +99,8 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     retreatHpPercent: 40,
     reactionDelayTicks: 3,
     abilityComboChance: 0.2,
+    lastHitAccuracy: 0.4,
+    denyAwareness: false,
     runeAwareness: false,
     jungleFarming: false,
     threatAssessment: false,
@@ -92,6 +109,8 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     retreatHpPercent: 30,
     reactionDelayTicks: 1,
     abilityComboChance: 0.5,
+    lastHitAccuracy: 0.7,
+    denyAwareness: true,
     runeAwareness: true,
     jungleFarming: true,
     threatAssessment: true,
@@ -100,6 +119,8 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     retreatHpPercent: 25,
     reactionDelayTicks: 0,
     abilityComboChance: 0.8,
+    lastHitAccuracy: 0.9,
+    denyAwareness: true,
     runeAwareness: true,
     jungleFarming: true,
     threatAssessment: true,
@@ -108,10 +129,30 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     retreatHpPercent: 20,
     reactionDelayTicks: 0,
     abilityComboChance: 1.0,
+    lastHitAccuracy: 1.0,
+    denyAwareness: true,
     runeAwareness: true,
     jungleFarming: true,
     threatAssessment: true,
   },
+}
+
+/**
+ * Pick a bot difficulty for a match from the human players' average MMR. Without
+ * this every production game registered bots at the hardcoded 'medium' default,
+ * so `hard` and `unfair` were unreachable config.
+ */
+export function difficultyForMmr(mmr: number): BotDifficulty {
+  if (mmr < 900) return 'easy'
+  if (mmr < 1400) return 'medium'
+  if (mmr < 2000) return 'hard'
+  return 'unfair'
+}
+
+/** Narrow untrusted request input (a practice-game launcher) to a real difficulty. */
+export function parseBotDifficulty(raw: unknown): BotDifficulty | undefined {
+  const known = Object.keys(BOT_DIFFICULTY_CONFIGS) as BotDifficulty[]
+  return known.find((d) => d === raw)
 }
 
 const LANE_PRIORITY_BY_ROLE: Record<HeroRole, string[]> = {
@@ -345,6 +386,7 @@ export function cleanupGame(gameId: string): void {
   for (const botId of gameBots.get(gameId) ?? []) {
     cleanupBotState(botId)
   }
+  cleanupBotGameState(gameId)
   gameBots.delete(gameId)
   gameBotLanes.delete(gameId)
   gameBotDifficulties.delete(gameId)

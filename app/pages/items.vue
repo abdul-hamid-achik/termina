@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ITEMS, ITEM_CATEGORIES } from '~~/shared/constants/items'
 import type { ItemCategoryId } from '~~/shared/types/items'
+import type { HeroRole } from '~~/shared/types/hero'
+import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
+import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { browseSections } from '~~/shared/itemFormat'
 import ItemCard from '~/components/items/ItemCard.vue'
 import LoadoutSummary from '~/components/items/LoadoutSummary.vue'
@@ -22,6 +25,26 @@ const query = computed(() => search.value.trim())
 const visibleSections = computed(() =>
   browseSections(ITEM_CATEGORIES, ITEMS, activeCategory.value, query.value),
 )
+
+// Build guidance, from the SAME ROLE_BUILD_ORDERS the bot AI buys from and the
+// in-match shop recommends — it was only ever readable mid-match, which is the
+// one moment a player has no time to read it. The list is cost-ascending, so
+// its order is the buy order and the running total is what you save toward.
+const buildRole = ref<HeroRole>(ROLE_ORDER[0]!)
+const recommendedBuild = computed(() => {
+  let running = 0
+  return recommendedItemsForRole(buildRole.value)
+    .map((id) => ITEMS[id])
+    .filter((it) => it !== undefined)
+    .map((it, i) => {
+      running += it.cost
+      return { step: i + 1, item: it, running }
+    })
+})
+/** Position in the build order (1-based), or 0 for items outside it. */
+function buildStep(itemId: string): number {
+  return recommendedBuild.value.find((s) => s.item.id === itemId)?.step ?? 0
+}
 
 // Loadout sandbox: click items to stack up to a full inventory and see what
 // stats, cost and actives the build adds up to — itemization, made tangible.
@@ -50,6 +73,51 @@ const {
         add up — learn what to buy before you queue.
       </p>
     </header>
+
+    <!-- Recommended build — the canonical per-role order, out of the match -->
+    <section class="flex flex-col gap-2 border border-border bg-bg-secondary p-2.5">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 class="text-[0.9rem] font-bold tracking-wide text-gold">RECOMMENDED BUILD</h2>
+        <p class="text-[0.7rem] text-text-dim">
+          What the bots buy and what the in-game shop recommends — buy in this order, saving for the
+          next core rather than filling slots.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-1.5" role="group" aria-label="Recommended build by role">
+        <button
+          v-for="r in ROLE_ORDER"
+          :key="r"
+          type="button"
+          class="border px-2 py-0.5 text-[0.68rem] uppercase tracking-wider transition-colors"
+          :class="
+            buildRole === r
+              ? 'border-gold bg-gold/10 text-gold'
+              : 'border-border text-text-dim hover:border-border-glow hover:text-text-primary'
+          "
+          :aria-pressed="buildRole === r"
+          :data-testid="`build-role-${r}`"
+          @click="buildRole = r"
+        >
+          {{ r }}
+        </button>
+      </div>
+      <p class="text-[0.72rem] text-text-dim" data-testid="build-role-blurb">
+        {{ ROLE_META[buildRole].blurb }}
+      </p>
+      <ol class="flex flex-wrap items-stretch gap-1.5" data-testid="build-order">
+        <li
+          v-for="s in recommendedBuild"
+          :key="s.item.id"
+          class="flex min-w-[8.5rem] flex-1 flex-col border border-border bg-bg-primary px-2 py-1"
+        >
+          <span class="text-[0.6rem] uppercase tracking-wider text-text-muted">
+            {{ s.step }}. {{ s.item.cost }}g
+          </span>
+          <span class="text-[0.75rem] font-bold text-text-primary">{{ s.item.name }}</span>
+          <span class="text-[0.62rem] text-gold">{{ s.running }}g total</span>
+        </li>
+      </ol>
+    </section>
 
     <!-- Controls: category filter + search -->
     <div class="flex flex-col gap-2">
@@ -107,15 +175,24 @@ const {
             <p class="text-[0.7rem] text-text-dim">{{ c.blurb }}</p>
           </div>
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <ItemCard
-              v-for="it in c.items"
-              :key="it.id"
-              :item="it"
-              interactive
-              :selected="isSelected(it.id)"
-              :disabled="isFull && !isSelected(it.id)"
-              @toggle="toggleItem(it)"
-            />
+            <div v-for="it in c.items" :key="it.id" class="flex flex-col">
+              <!-- Ties the catalogue back to the strip above: a card the chosen
+                   role should buy says so, and says when. -->
+              <span
+                v-if="buildStep(it.id)"
+                class="self-start border border-gold/50 bg-gold/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-wider text-gold"
+                :data-testid="`build-badge-${it.id}`"
+              >
+                {{ buildRole }} core #{{ buildStep(it.id) }}
+              </span>
+              <ItemCard
+                :item="it"
+                interactive
+                :selected="isSelected(it.id)"
+                :disabled="isFull && !isSelected(it.id)"
+                @toggle="toggleItem(it)"
+              />
+            </div>
           </div>
         </section>
         <p v-if="visibleSections.length === 0" class="text-[0.78rem] italic text-text-dim">

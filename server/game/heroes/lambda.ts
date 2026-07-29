@@ -12,6 +12,7 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   dealAbilityDamage,
+  damageEnemyNpcsInZone,
   deductMana,
   setCooldown,
   applyBuff,
@@ -222,7 +223,12 @@ function resolveE(
     })
 
     return {
-      state: updatePlayers(state, [caster, ...updatedEnemies]),
+      state: damageEnemyNpcsInZone(
+        updatePlayers(state, [caster, ...updatedEnemies]),
+        caster,
+        damage,
+        'magical',
+      ),
       events: [
         {
           tick: state.tick,

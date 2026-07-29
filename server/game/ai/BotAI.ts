@@ -18,6 +18,8 @@ import {
   WARD_LIMIT_PER_TEAM,
   GLYPH_COOLDOWN_TICKS,
   SELL_REFUND_RATIO,
+  DENY_HP_THRESHOLD,
+  creepMaxHp,
 } from '~~/shared/constants/balance'
 import { LANE_ROUTES } from '~~/shared/constants/lanes'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
@@ -589,7 +591,14 @@ function tryGetAbilityCommand(
   state: GameState,
   bot: PlayerState,
   enemiesInZone: PlayerState[],
+  config: BotDifficultyConfig,
 ): Command | null {
+  // Difficulty has to bite where a player can feel it. tryCombo already rolls
+  // abilityComboChance for the scripted opener, but this fallback took no config
+  // at all — so every bot, easy included, fired its ultimate the tick it came off
+  // cooldown and the combo roll only changed WHICH ability came out. Rolled on a
+  // separate salt so a bot that fails its combo roll can still cast.
+  if (deterministicRoll(`ability_${bot.id}`, state.tick) > config.abilityComboChance) return null
   const hero = bot.heroId ? HEROES[bot.heroId] : null
   if (!hero) return null
   const alliesInZone = getAlliedHeroesInZone(state, bot)
@@ -920,42 +929,113 @@ function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null 
   return null
 }
 
-/** Roshan awareness — when Roshan is alive and low HP, contest it.
- *  Only for carry/initiator roles at high HP with allies nearby. */
+/** Roshan is only worth STARTING at (near-)full HP; anything in between belongs
+ *  to whichever team is already on him. */
+const ROSHAN_START_HP_FRACTION = 0.7
+/** Below this he is a steal target — dive in even without the full squad. */
+const ROSHAN_SNIPE_HP_FRACTION = 0.4
+/** Minimum level to open a fresh Roshan (he hits for ROSHAN_ATTACK a tick). */
+const ROSHAN_START_MIN_LEVEL = 8
+/** Allies (excluding the bot) that must already be near the pit to open. */
+const ROSHAN_START_MIN_ALLIES = 2
+/** How far a bot will travel to join its team's attempt. */
+const ROSHAN_MAX_TRAVEL_DISTANCE = 3
+/** How long a team's commitment lasts before the attempt is written off. */
+const ROSHAN_ATTEMPT_WINDOW_TICKS = 30
+/** Lockout after an attempt window closes, so a team doesn't camp the pit. */
+const ROSHAN_TEAM_COOLDOWN_TICKS = 90
+/** Health to open on him with. */
+const ROSHAN_START_MIN_HP_PERCENT = 70
+/**
+ * Health to keep swinging at a Roshan the team already committed to. Held well
+ * clear of one ROSHAN_ATTACK so nobody dies to the pit, but far below the START
+ * floor — applying the opening floor for the whole fight let each bot land two
+ * hits and walk out, which chipped Roshan without ever killing him.
+ */
+const ROSHAN_HOLD_MIN_HP_PERCENT = 45
+
+/**
+ * Tick at which each team last committed to Roshan, keyed `${gameId}|${team}`.
+ * Without it the start condition re-fires every tick it holds, so the whole team
+ * abandons its lanes and lives in the pit. Cleared per game by `cleanupBotGameState`.
+ */
+const roshanAttempts = new Map<string, number>()
+
+type RoshanPhase = 'open' | 'committed' | 'cooling'
+
+function roshanAttemptPhase(key: string, tick: number): RoshanPhase {
+  const started = roshanAttempts.get(key)
+  // A tick BEHIND the recorded start means a different game reused the key
+  // (unit fixtures, a fresh match) — treat it as no attempt on record.
+  if (started === undefined || tick < started) return 'open'
+  const elapsed = tick - started
+  if (elapsed < ROSHAN_ATTEMPT_WINDOW_TICKS) return 'committed'
+  if (elapsed < ROSHAN_ATTEMPT_WINDOW_TICKS + ROSHAN_TEAM_COOLDOWN_TICKS) return 'cooling'
+  return 'open'
+}
+
+/**
+ * Roshan awareness. This used to be a pure LAST-HIT check ("only contest below
+ * 40% HP") — but Roshan takes damage from nothing except heroes, and no bot would
+ * open on him above 40%, so in a bots-only or human+bots match his HP never moved
+ * and the Aegis never dropped. It is now a START condition (near-full Roshan, a
+ * squad already near the pit, level 8+), with the old 40% clause kept as an
+ * opportunistic steal for whoever did NOT start him.
+ *
+ * Only a core role (carry/tank/assassin/mage) OPENS one, but any role within a
+ * few zones joins once the call is made: Roshan focuses the lowest-HP hero in
+ * the pit, so extra bodies spread his damage and the squad survives long enough
+ * to finish. Distance-bounded either way — a bot trekking across the map for
+ * Roshan is a lane thrown away.
+ */
 function tryRoshan(
   state: GameState,
   bot: PlayerState,
   config: BotDifficultyConfig,
+  gameId: string,
   hasZone?: (id: string) => boolean,
 ): Command | null {
   if (!config.threatAssessment) return null
   const roshan = state.roshan
   if (!roshan.alive) return null
-  // Only contest when Roshan is below 40% HP (last-hit window)
-  if (roshan.hp / roshan.maxHp > 0.4) return null
-  // Need to be healthy and level 6+
-  if (getHpPercent(bot) < 70 || bot.level < 6) return null
-  // Only carries and initiators contest Roshan
-  const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
-  if (role !== 'carry' && role !== 'tank' && role !== 'assassin' && role !== 'mage') return null
-  // Need at least one ally nearby for a safe contest
-  const alliesNear = Object.values(state.players).filter(
-    (p) =>
-      p.team === bot.team &&
-      p.alive &&
-      p.id !== bot.id &&
-      getDistance(p.zone, 'roshan-pit', hasZone) <= 2,
-  )
-  if (alliesNear.length === 0) return null
-  // If already in Roshan's pit, attack Roshan
+  // Subset maps (one-lane, two-lane) have no pit at all.
+  if (hasZone && !hasZone('roshan-pit')) return null
+  // Checked before the attempt is recorded: a bot that could never get there
+  // must not consume its team's one commitment window.
+  const distance = getDistance(bot.zone, 'roshan-pit', hasZone)
+  if (distance > ROSHAN_MAX_TRAVEL_DISTANCE) return null
+
+  const key = `${gameId}|${bot.team}`
+  const phase = roshanAttemptPhase(key, state.tick)
+  const hpFraction = roshan.maxHp > 0 ? roshan.hp / roshan.maxHp : 0
+  const snipe = hpFraction < ROSHAN_SNIPE_HP_FRACTION
+
+  if (phase === 'committed') {
+    if (getHpPercent(bot) < ROSHAN_HOLD_MIN_HP_PERCENT) return null
+  } else {
+    const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
+    if (role !== 'carry' && role !== 'tank' && role !== 'assassin' && role !== 'mage') return null
+    if (getHpPercent(bot) < ROSHAN_START_MIN_HP_PERCENT) return null
+    // A team inside its lockout only re-engages to steal a nearly-dead Roshan.
+    if (phase === 'cooling' && !snipe) return null
+    if (!snipe && hpFraction < ROSHAN_START_HP_FRACTION) return null
+    if (bot.level < (snipe ? 6 : ROSHAN_START_MIN_LEVEL)) return null
+    const alliesNear = Object.values(state.players).filter(
+      (p) =>
+        p.team === bot.team &&
+        p.alive &&
+        p.id !== bot.id &&
+        getDistance(p.zone, 'roshan-pit', hasZone) <= 2,
+    ).length
+    if (alliesNear < (snipe ? 1 : ROSHAN_START_MIN_ALLIES)) return null
+    roshanAttempts.set(key, state.tick)
+  }
+
   if (bot.zone === 'roshan-pit') {
     return { type: 'attack', target: { kind: 'roshan' } }
   }
-  // Move toward Roshan
-  if (!hasZone || hasZone('roshan-pit')) {
-    const path = findPath(bot.zone, 'roshan-pit', hasZone)
-    if (path.length > 1) return { type: 'move', zone: path[1]! }
-  }
+  const path = findPath(bot.zone, 'roshan-pit', hasZone)
+  if (path.length > 1) return { type: 'move', zone: path[1]! }
   return null
 }
 
@@ -1048,9 +1128,20 @@ function tryGlyph(state: GameState, bot: PlayerState): Command | null {
   return null
 }
 
-/** Defensive tower rotation — when an enemy hero is pushing a tower and no
- *  ally is there to defend, move to that tower. Prioritizes the nearest
- *  undefended tower under attack. */
+/** A rescue that takes five ticks to arrive is a lane abandoned for nothing —
+ *  the fight is over before the bot gets there. */
+const DEFEND_MAX_DISTANCE = 3
+
+/**
+ * Defensive tower rotation. The trigger is OUTNUMBERED, not undefended: the old
+ * "is any ally already at the tower?" test meant a single teammate caught 1-v-2
+ * counted as the tower being handled, so nobody ever rotated to a fight already
+ * in progress — and, perversely, a HUMAN doing the right thing (running back to
+ * defend) was the thing that told the bots to stay in lane.
+ *
+ * Deliberately still tower-anchored: an ally outnumbered mid-jungle gets nothing
+ * from this. Bounded by distance so a bot never crosses the map for it.
+ */
 function tryDefendTower(
   state: GameState,
   bot: PlayerState,
@@ -1061,13 +1152,11 @@ function tryDefendTower(
   const allies = Object.values(state.players).filter(
     (p) => p.team === bot.team && p.alive && p.id !== bot.id,
   )
-  // Find undefended towers under enemy hero pressure
   const threatened = ourTowers.filter((tower) => {
-    const enemyOnTower = enemyHeroes.some((e) => e.zone === tower.zone)
-    if (!enemyOnTower) return false
-    // Is any ally already defending?
-    const allyDefending = allies.some((a) => a.zone === tower.zone)
-    return !allyDefending
+    const enemiesHere = enemyHeroes.filter((e) => e.zone === tower.zone).length
+    if (enemiesHere === 0) return false
+    const alliesHere = allies.filter((a) => a.zone === tower.zone).length
+    return alliesHere < enemiesHere
   })
   if (threatened.length === 0) return null
   // Move to the nearest threatened tower
@@ -1080,6 +1169,7 @@ function tryDefendTower(
       closest = tower
     }
   }
+  if (minDist > DEFEND_MAX_DISTANCE) return null
   if (closest && closest.zone !== bot.zone) {
     const path = findPath(bot.zone, closest.zone, hasZone)
     if (path.length > 1) return { type: 'move', zone: path[1]! }
@@ -1129,6 +1219,55 @@ function tryFarmJungle(
     }
   }
   return null
+}
+
+/**
+ * Deny an allied creep out from under the enemy laner. Mirrors resolveDenyPhase's
+ * window exactly — own team, at or below DENY_HP_THRESHOLD of the HP it SPAWNED
+ * with — so the command resolves instead of silently burning the tick, and uses
+ * the zone-local index the resolver reads.
+ *
+ * Only fires with an enemy hero in the zone: with nobody to deny, killing your
+ * own creep for half gold just weakens your wave. Callers therefore place it in
+ * the combat branch, below abilities, as a better use of a tick than one more
+ * right-click on a hero.
+ */
+function tryDeny(state: GameState, bot: PlayerState, config: BotDifficultyConfig): Command | null {
+  if (!config.denyAwareness) return null
+  const zoneCreeps = state.creeps.filter((c) => c.zone === bot.zone)
+  let bestIdx = -1
+  let bestHp = Infinity
+  for (let i = 0; i < zoneCreeps.length; i++) {
+    const creep = zoneCreeps[i]!
+    if (creep.team !== bot.team || creep.hp <= 0) continue
+    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * DENY_HP_THRESHOLD) continue
+    if (creep.hp < bestHp) {
+      bestHp = creep.hp
+      bestIdx = i
+    }
+  }
+  if (bestIdx < 0) return null
+  return { type: 'deny', target: { kind: 'creep', index: bestIdx } }
+}
+
+/**
+ * The creep a bot swings at. On a failed last-hit roll it drops to the
+ * SECOND-lowest creep rather than to no action at all: same tick spent, same
+ * damage dealt into the wave, only the gold is missed. Returning null on a miss
+ * was the original standstill bug — bots stopped out-clearing the incoming wave
+ * and never reached a tower (pinned by BotForwardProgress).
+ */
+function pickCreepTarget(
+  enemyCreeps: CreepState[],
+  bot: PlayerState,
+  tick: number,
+  config: BotDifficultyConfig,
+): CreepState {
+  const byHp = [...enemyCreeps].sort((a, b) => a.hp - b.hp)
+  const lowest = byHp[0]!
+  if (byHp.length < 2) return lowest
+  if (deterministicRoll(`lasthit_${bot.id}`, tick) < config.lastHitAccuracy) return lowest
+  return byHp[1]!
 }
 
 /** Attack the enemy Ancient when in the enemy base and it is vulnerable. */
@@ -1372,11 +1511,11 @@ export function decideBotAction(
     // Place sentry wards for true-sight against invisible enemies
     const sentryWardCmd = tryPlaceSentryWard(state, bot)
     if (sentryWardCmd) return sentryWardCmd
-    // Defend an undefended tower under enemy pressure
+    // Rotate to a tower where the defenders are outnumbered
     const defendCmd = tryDefendTower(state, bot, hasZone)
     if (defendCmd) return defendCmd
-    // Contest Roshan when alive and low HP (carry/initiator only, with allies)
-    const roshanCmd = tryRoshan(state, bot, config, hasZone)
+    // Start (or steal) Roshan — carry/tank/assassin/mage only, squad nearby
+    const roshanCmd = tryRoshan(state, bot, config, gameId ?? '', hasZone)
     if (roshanCmd) return roshanCmd
     // Once Roshan is dead, grab the Aegis drop from the pit
     const aegisCmd = tryAegis(state, bot, config, hasZone)
@@ -1393,8 +1532,12 @@ export function decideBotAction(
     if (itemCmd) return itemCmd
     const comboCmd = tryCombo(state, bot, enemyHeroes, config)
     if (comboCmd) return comboCmd
-    const abilityCmd = tryGetAbilityCommand(state, bot, enemyHeroes)
+    const abilityCmd = tryGetAbilityCommand(state, bot, enemyHeroes, config)
     if (abilityCmd) return abilityCmd
+    // Below the burst, above the right-click: denying a dying allied creep
+    // starves the laner opposite of gold + XP for the same one action.
+    const denyCmd = tryDeny(state, bot, config)
+    if (denyCmd) return denyCmd
     const target = enemyHeroes.reduce((a, b) => (a.hp < b.hp ? a : b))
     return { type: 'attack', target: { kind: 'hero', name: target.id } }
   }
@@ -1432,15 +1575,13 @@ export function decideBotAction(
     if (advanceZone) return { type: 'move', zone: advanceZone }
   }
 
-  // Clear the creep wave: always attack the lowest-HP enemy creep in the zone.
-  // A failed last-hit roll used to return null here, which left production bots
-  // idling in lane instead of pushing — one half of the "bots look stuck"
-  // report. Gold for the kill is awarded engine-side to whoever lands the blow,
-  // so attacking unconditionally only changes whether the bot acts, not balance.
+  // Clear the creep wave. A failed last-hit roll re-aims at the second-lowest
+  // creep; it must never return null, which is what left production bots idling
+  // in lane instead of pushing — one half of the "bots look stuck" report.
   if (enemyCreeps.length > 0) {
-    const lowestCreep = enemyCreeps.reduce((a, b) => (a.hp < b.hp ? a : b))
+    const creepTarget = pickCreepTarget(enemyCreeps, bot, state.tick, config)
     // Creep targets use zone-local indices (Nth creep in the attacker's zone)
-    const creepIdx = state.creeps.filter((c) => c.zone === bot.zone).indexOf(lowestCreep)
+    const creepIdx = state.creeps.filter((c) => c.zone === bot.zone).indexOf(creepTarget)
     return { type: 'attack', target: { kind: 'creep', index: creepIdx } }
   }
   const enemyTower = getEnemyTowerInZone(state, bot)
@@ -1490,4 +1631,10 @@ function isOwnSide(zone: string, team: TeamId): boolean {
 
 export function cleanupBotState(playerId: string): void {
   comboStates.delete(playerId)
+}
+
+/** Drop per-GAME bot bookkeeping (currently the per-team Roshan commitment). */
+export function cleanupBotGameState(gameId: string): void {
+  roshanAttempts.delete(`${gameId}|radiant`)
+  roshanAttempts.delete(`${gameId}|dire`)
 }

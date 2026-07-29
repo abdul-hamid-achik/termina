@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { talentUnlockLevel } from '~~/shared/constants/talents'
 import {
   useCommands,
   validateCommand,
@@ -1584,9 +1585,12 @@ describe('validateCommand', () => {
     })
 
     it('rejects a tier above the current level', () => {
-      const ctx = makeContext({ player: makePlayer({ level: 9 }) })
+      // Derived from the shared schedule: the tier name is an identifier, not a
+      // level. Hardcoding 10 here would refuse a command the server accepts.
+      const required = talentUnlockLevel(10)
+      const ctx = makeContext({ player: makePlayer({ level: required - 1 }) })
       const err = validateCommand({ type: 'select_talent', tier: 10, talentId: 'x' }, ctx)
-      expect(err).toMatch(/reach level 10/i)
+      expect(err).toMatch(new RegExp(`reach level ${required}`, 'i'))
     })
 
     it('rejects a tier already chosen', () => {

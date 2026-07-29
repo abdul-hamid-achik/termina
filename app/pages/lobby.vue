@@ -5,7 +5,9 @@ import { useLobbyStore } from '~/stores/lobby'
 import { useGameStore } from '~/stores/game'
 import { useGameSocket } from '~/composables/useGameSocket'
 import { useAudio } from '~/composables/useAudio'
+import { useStartTutorial } from '~/composables/useStartTutorial'
 import { lobbyLog } from '~/utils/logger'
+import { mapIdForMode, zonesForMap } from '~~/shared/constants/maps'
 import type { ServerMessage } from '~~/shared/types/protocol'
 
 definePageMeta({ middleware: 'auth', ssr: false })
@@ -117,12 +119,43 @@ function handleServerMessage(msg: ServerMessage) {
 
 const joining = ref(false)
 
+/** Matches the modes `/api/queue/join` accepts (and `leaveQueue` mirrors). */
+type QueueMode = 'ranked_5v5' | 'quick_3v3' | '1v1'
+
+const queueMode = ref<QueueMode>('ranked_5v5')
+
+// Zone/lane counts are derived from the map each mode actually resolves to, so
+// the toggles can't advertise a map size that a zone-set edit has since changed.
+const modeOptions = (
+  [
+    { id: 'ranked_5v5', label: 'RANKED 5v5', players: 10, blurb: 'The full draft.' },
+    { id: 'quick_3v3', label: 'QUICK 3v3', players: 6, blurb: 'Smaller map, smaller team.' },
+    { id: '1v1', label: '1v1 DUEL', players: 2, blurb: 'One lane, one opponent.' },
+  ] as const satisfies readonly { id: QueueMode; label: string; players: number; blurb: string }[]
+).map((m) => {
+  const zones = zonesForMap(mapIdForMode(m.id))
+  return {
+    ...m,
+    zoneCount: zones.length,
+    laneCount: new Set(zones.map((z) => z.lane).filter(Boolean)).size,
+  }
+})
+
+// Practice vs bots — the same one-lane tutorial launcher the landing page uses.
+// Queueing is the wrong first move for someone who has never played; the lobby
+// is where they land from the header, so the escape hatch belongs here too.
+const {
+  starting: startingTutorial,
+  error: tutorialError,
+  start: startTutorial,
+} = useStartTutorial()
+
 async function handleJoinQueue() {
   if (joining.value) return
   joining.value = true
-  lobbyLog.info('Joining queue')
+  lobbyLog.info('Joining queue', { mode: queueMode.value })
   try {
-    await lobbyStore.joinQueue()
+    await lobbyStore.joinQueue(queueMode.value)
   } catch (err) {
     // Store already set lastError for the inline panel — just log here
     lobbyLog.error('Join queue failed', err)
@@ -357,6 +390,7 @@ onUnmounted(() => {
         "
         :my-player-id="authStore.user?.id ?? null"
         :error-message="lobbyStore.lastError"
+        :new-player="authStore.user?.tutorialCompleted === false"
         @pick="handleHeroPick"
         @ban="handleHeroBan"
       />
@@ -370,7 +404,44 @@ onUnmounted(() => {
           <TerminalPanel title="Matchmaking">
             <div class="flex flex-col items-center gap-4 p-6">
               <p class="text-base text-text-primary">&gt;_ ready to queue</p>
-              <p class="text-[0.8rem] text-text-dim">Find a match (5v5 — Radiant vs Dire)</p>
+              <!-- Mode picker: the small maps exist and are the gentler entry —
+                   without this the only reachable format is the 10-slot draft. -->
+              <div
+                class="flex w-full flex-col gap-1.5"
+                role="radiogroup"
+                aria-label="Game mode"
+                data-testid="mode-select"
+              >
+                <button
+                  v-for="m in modeOptions"
+                  :key="m.id"
+                  type="button"
+                  role="radio"
+                  :aria-checked="queueMode === m.id"
+                  :data-testid="'mode-' + m.id"
+                  :disabled="joining"
+                  class="flex items-baseline justify-between gap-2 border px-2.5 py-1.5 text-left transition-colors disabled:opacity-40"
+                  :class="
+                    queueMode === m.id
+                      ? 'border-radiant bg-radiant/10 text-radiant'
+                      : 'border-border text-text-dim hover:border-border-glow'
+                  "
+                  @click="queueMode = m.id"
+                >
+                  <span class="text-[0.8rem] font-bold uppercase tracking-wide">
+                    <span aria-hidden="true">{{ queueMode === m.id ? '>' : ' ' }}</span>
+                    {{ m.label }}
+                  </span>
+                  <span class="text-[0.65rem] tabular-nums text-text-dim">
+                    {{ m.players }} players · {{ m.laneCount }}
+                    {{ m.laneCount === 1 ? 'lane' : 'lanes' }} · {{ m.zoneCount }} zones
+                  </span>
+                </button>
+              </div>
+              <p class="text-[0.8rem] text-text-dim" data-testid="mode-blurb">
+                {{ modeOptions.find((m) => m.id === queueMode)?.blurb }}
+                Radiant vs Dire.
+              </p>
               <div
                 v-if="lobbyStore.lastError"
                 data-testid="queue-error"
@@ -382,8 +453,19 @@ onUnmounted(() => {
                 :label="joining ? 'SEARCHING…' : 'FIND MATCH'"
                 :disabled="joining"
                 variant="primary"
+                data-testid="find-match"
                 @click="handleJoinQueue"
               />
+              <div class="flex flex-col items-center gap-1">
+                <AsciiButton
+                  :label="startingTutorial ? 'STARTING…' : 'NEW? PRACTICE VS BOTS'"
+                  :disabled="startingTutorial"
+                  variant="ghost"
+                  data-testid="lobby-practice"
+                  @click="startTutorial"
+                />
+                <InlineError :message="tutorialError" />
+              </div>
             </div>
           </TerminalPanel>
           <!-- Co-op with friends: party up and play vs bots (no rating on the line).

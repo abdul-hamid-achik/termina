@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { talentUnlockLevel } from '~~/shared/constants/talents'
 import TalentPicker from '../../../app/components/game/TalentPicker.vue'
 import { TALENT_TREES } from '../../../shared/constants/talents'
 import type { PlayerState } from '../../../shared/types/game'
@@ -52,8 +53,19 @@ describe('TalentPicker', () => {
   })
 
   it('hides until the player has reached a talent level', () => {
-    const w = mount(TalentPicker, { props: { player: makePlayer({ level: 9 }) } })
+    // Derived, not hardcoded: the tier NAME (10) is an identifier, and the level
+    // it unlocks at was retuned so the first identity choice lands early. A test
+    // that assumed name === level kept passing while the picker stayed hidden.
+    const below = talentUnlockLevel(10) - 1
+    const w = mount(TalentPicker, { props: { player: makePlayer({ level: below }) } })
     expect(w.find('[data-testid="talent-picker"]').exists()).toBe(false)
+  })
+
+  it('appears as soon as the tier-10 unlock level is reached', () => {
+    const w = mount(TalentPicker, {
+      props: { player: makePlayer({ level: talentUnlockLevel(10) }) },
+    })
+    expect(w.find('[data-testid="talent-picker"]').exists()).toBe(true)
   })
 
   it('advances to the next unchosen tier', () => {

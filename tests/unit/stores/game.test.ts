@@ -217,6 +217,59 @@ describe('Game Store', () => {
       })
     })
 
+    // The server queues item actives in their own per-player slot, so the two
+    // client gates have to mirror it — otherwise the UI buffers the ability
+    // that the item was spent to set up, and the combo slips to the next tick.
+    describe('canAct / canUseItem (main + item slots)', () => {
+      function livePlayer() {
+        const store = useGameStore()
+        store.playerId = 'p1'
+        store.updateFromTick(
+          makeTickMessage({ tick: 12, players: { p1: makePlayer({ alive: true }) } }),
+        )
+        return store
+      }
+
+      it('an item active consumes only the item slot', () => {
+        const store = livePlayer()
+        store.markActionSent('use blink_module mid-river')
+
+        expect(store.canUseItem).toBe(false)
+        expect(store.canAct).toBe(true)
+      })
+
+      it('a main action consumes only the main slot', () => {
+        const store = livePlayer()
+        store.markActionSent('cast r')
+
+        expect(store.canAct).toBe(false)
+        expect(store.canUseItem).toBe(true)
+      })
+
+      it('both slots reopen on the next tick', () => {
+        const store = livePlayer()
+        store.markActionSent('use blink_module mid-river')
+        store.markActionSent('cast r')
+        expect(store.canAct).toBe(false)
+        expect(store.canUseItem).toBe(false)
+
+        store.updateFromTick(
+          makeTickMessage({ tick: 13, players: { p1: makePlayer({ alive: true }) } }),
+        )
+        expect(store.canAct).toBe(true)
+        expect(store.canUseItem).toBe(true)
+      })
+
+      it('is closed while dead', () => {
+        const store = useGameStore()
+        store.playerId = 'p1'
+        store.updateFromTick(
+          makeTickMessage({ tick: 12, players: { p1: makePlayer({ alive: false }) } }),
+        )
+        expect(store.canUseItem).toBe(false)
+      })
+    })
+
     describe('canBuy', () => {
       it('returns false when no player', () => {
         const store = useGameStore()

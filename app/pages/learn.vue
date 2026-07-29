@@ -23,6 +23,7 @@ import {
   OBSERVER_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
   CREEP_WAVE_INTERVAL_TICKS,
+  MELEE_CREEP_HP,
   MELEE_CREEPS_PER_WAVE,
   RANGED_CREEPS_PER_WAVE,
   SIEGE_CREEP_WAVE_INTERVAL,
@@ -40,7 +41,18 @@ import {
   RUNE_DURATION_TICKS,
   GLYPH_DURATION_TICKS,
   GLYPH_COOLDOWN_TICKS,
+  RING_OF_HEALTH_REGEN_PERCENT,
+  SOBI_MASK_REGEN_PERCENT,
+  REGEN_RUNE_HEAL_PERCENT,
+  DENY_HP_THRESHOLD,
+  DENY_GOLD_RATIO,
+  DENY_XP_RATIO,
+  CREEP_GOLD_MIN,
+  CREEP_GOLD_MAX,
+  CREEP_XP,
+  CREEP_XP_SHARED,
 } from '~~/shared/constants/balance'
+import { talentUnlockLevel } from '~~/shared/constants/talents'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 
 const {
@@ -66,6 +78,25 @@ const glyphCooldownMinutes = (GLYPH_COOLDOWN_TICKS * tickSeconds) / 60
 function respawnTicks(level: number): number {
   return RESPAWN_BASE_TICKS + RESPAWN_PER_LEVEL_TICKS * Math.max(0, level - RESPAWN_FREE_LEVELS)
 }
+
+// Talent TIER ids (10/15/20/25) are not the levels they unlock at — the two
+// parted ways when the tiers were pulled forward to match real match length.
+// Read the levels so this sentence can't drift back into stating the tier ids.
+const TALENT_TIER_IDS = [10, 15, 20, 25] as const
+const talentLevels = TALENT_TIER_IDS.map(talentUnlockLevel)
+const talentLevelList = `${talentLevels.slice(0, -1).join(', ')} and ${talentLevels[talentLevels.length - 1]}`
+// Only worth explaining while the two sets of numbers actually differ.
+const talentTierNote = talentLevels.some((lvl, i) => lvl !== TALENT_TIER_IDS[i])
+  ? ' — the tier names stay 10/15/20/25 regardless'
+  : ''
+
+// Sustain / last-hitting numbers, derived so the two cards below can't drift.
+const ringRegenPercent = Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)
+const sobiRegenPercent = Math.round(SOBI_MASK_REGEN_PERCENT * 100)
+const runeRegenPercent = Math.round(REGEN_RUNE_HEAL_PERCENT * 100)
+const denyHpPercent = Math.round(DENY_HP_THRESHOLD * 100)
+const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
+const denyXp = Math.floor(CREEP_XP * DENY_XP_RATIO)
 
 const quickStart = [
   {
@@ -306,12 +337,22 @@ const concepts = [
   {
     term: 'Levels & XP',
     icon: '^',
-    desc: `Gain XP from creep kills and hero kills, up to level ${MAX_LEVEL}. Q/W/E are usable from level 1 and get stronger at levels ${BASIC_ABILITY_RANKS.join(', ')}. Your ultimate (R) unlocks at level ${ULTIMATE_UNLOCK_LEVEL} and strengthens at ${ULTIMATE_RANKS.slice(1).join(' and ')}. Reaching levels 10, 15, 20 and 25 each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`.`,
+    desc: `Gain XP from creep kills and hero kills, up to level ${MAX_LEVEL}. Q/W/E are usable from level 1 and get stronger at levels ${BASIC_ABILITY_RANKS.join(', ')}. Your ultimate (R) unlocks at level ${ULTIMATE_UNLOCK_LEVEL} and strengthens at ${ULTIMATE_RANKS.slice(1).join(' and ')}. Reaching levels ${talentLevelList} each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`${talentTierNote}.`,
   },
   {
     term: 'Abilities',
     icon: '*',
     desc: 'Each hero has a passive + 4 active abilities (Q/W/E/R). Abilities cost mana and have cooldowns measured in ticks. Cast with: cast q [target]',
+  },
+  {
+    term: 'Sustain',
+    icon: '+',
+    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per tick, and only while out of combat), Healing Salve and Mana Vial (consumables you carry), Ring of Health (${ringRegenPercent}% max HP per tick) and Sobi's Mask (${sobiRegenPercent}% max MP per tick), and the regeneration rune (${runeRegenPercent}% of both per tick). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+  },
+  {
+    term: 'Last-Hitting & Denying',
+    icon: '/',
+    desc: `Only the killing blow pays gold: chip a creep to 1 HP and a lane-mate takes it, you get nothing. A melee creep has ${MELEE_CREEP_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack creep:0 for ${CREEP_GOLD}g and ${CREEP_XP} XP (allies in the zone share ${CREEP_XP_SHARED} XP, so standing in lane is never worth zero). Denying is the mirror: once one of YOUR creeps drops below ${denyHpPercent}% HP, deny creep:0 kills it so the enemy gets nothing — you keep ${denyGold}g and ${denyXp} XP. Prefer tapping the creep group in the zone panel over typing an index: creep:N counts the living creeps in your zone, so N shifts every tick as creeps die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',

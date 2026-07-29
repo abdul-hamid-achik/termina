@@ -1,3 +1,5 @@
+import type { TargetRef } from './commands'
+
 export type TeamId = 'radiant' | 'dire'
 
 export type GamePhase = 'waiting' | 'picking' | 'playing' | 'ended'
@@ -46,6 +48,11 @@ export interface PlayerState {
   // arrival or any new deliberate action. Stripped from enemy views in the
   // vision filter (it would leak intent).
   moveTarget?: string | null
+  // Standing attack order: the hero keeps swinging at it every tick until it
+  // dies, leaves the zone, or any new deliberate order lands. NEVER set for
+  // `kind: 'creep'` — last-hitting is a timing skill and stays a manual input.
+  // Stripped from enemy views alongside moveTarget (it leaks the same intent).
+  attackTarget?: TargetRef | null
   talents: {
     tier10: string | null // Talent ID chosen at level 10
     tier15: string | null // Talent ID chosen at level 15

@@ -375,10 +375,12 @@ function emitStatusApplied(
  * Resolve all player actions for a tick.
  *
  * Priority-ordered resolution:
+ * Phase 0: Item actives — blink/BKB/nukes, ahead of the ability they set up
  * Phase 1: Instant abilities (stuns, silences) — resolve simultaneously
  * Phase 2: Movement — all moves resolve at once
  * Phase 3: Attacks + targeted abilities — simultaneous
  * Phase 4: Passive effects, DoTs, regen, cooldown ticks
+ * Phase 5: Buy/sell
  *
  * Within each phase, all actions resolve simultaneously.
  */
@@ -481,13 +483,21 @@ function resolveInstantCastsPhase(
   zones: Record<string, ZoneRuntimeState>,
   creeps: CreepState[],
   towers: TowerState[],
+  neutrals: NeutralCreepState[],
   ancients: { radiant: AncientState; dire: AncientState },
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; tower: number }>,
+  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
-): { players: Record<string, PlayerState>; zones: Record<string, ZoneRuntimeState> } {
+): {
+  players: Record<string, PlayerState>
+  zones: Record<string, ZoneRuntimeState>
+  creeps: CreepState[]
+  neutrals: NeutralCreepState[]
+} {
   const instantCasts = validActions.filter(
     (a) =>
       a.command.type === 'cast' &&
@@ -503,18 +513,23 @@ function resolveInstantCastsPhase(
       zones,
       creeps,
       towers,
+      neutrals,
       ancients,
       action,
       events,
       heroAttackers,
       rejected,
       damageTracker,
+      creepKills,
+      neutralKills,
       findHero,
     )
     players = result.players
     zones = result.zones
+    creeps = result.creeps
+    neutrals = result.neutrals
   }
-  return { players, zones }
+  return { players, zones, creeps, neutrals }
 }
 
 /**
@@ -635,8 +650,33 @@ function resolveAttackPhase(
     // below reports; `rejected` is also what excludes the player from
     // succeededActions (no phantom on-attack passive for a swing that missed)
     // and from the tutorial's "you performed the taught verb" check.
+    //
+    // A GameLoop-synthesized re-swing is the exception: the player typed that
+    // order once, ticks ago. Its failure means the standing order has outlived
+    // its target, so end the order instead of repeating a warning every 4s
+    // (mirrors the silent-failure rule for auto-path continuations).
     const miss = (reason: string): void => {
+      if (action.synthesized) {
+        playerUpdates[action.playerId] = {
+          ...playerUpdates[action.playerId],
+          attackTarget: null,
+        }
+        return
+      }
       rejected.push({ playerId: action.playerId, reason })
+    }
+
+    // Remember a resolved attack so GameLoop re-issues it while it stays valid.
+    // EVERY resolved attack routes through here so the exclusion below is the
+    // single place the rule lives: creeps never hold, because last-hitting is an
+    // explicit timing decision (the contract the command parser documents), not
+    // a standing order.
+    const holdTarget = (): void => {
+      if (cmd.target.kind === 'creep') return
+      playerUpdates[action.playerId] = {
+        ...playerUpdates[action.playerId],
+        attackTarget: cmd.target,
+      }
     }
 
     if (cmd.target.kind === 'hero') {
@@ -658,7 +698,7 @@ function resolveAttackPhase(
         continue
       }
       if (target.zone !== attacker.zone) {
-        rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
+        miss('Target is not in your zone')
         continue
       }
 
@@ -886,6 +926,7 @@ function resolveAttackPhase(
         alive: newHp > 0,
         buffs: newBuffs,
       }
+      holdTarget()
 
       if (!dodged) {
         heroAttackers.set(action.playerId, targetId)
@@ -937,6 +978,7 @@ function resolveAttackPhase(
       const newHp = Math.max(0, creep.hp - attackDamage)
 
       creeps[creepIdx] = { ...creep, hp: newHp }
+      holdTarget()
 
       if (newHp <= 0) {
         creepKills.push({ playerId: action.playerId, creepId: creep.id, creepType: creep.type })
@@ -958,7 +1000,7 @@ function resolveAttackPhase(
         continue
       }
       if (tower.zone !== attacker.zone) {
-        rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
+        miss('Target is not in your zone')
         continue
       }
       if (tower.invulnerable) {
@@ -970,10 +1012,7 @@ function resolveAttackPhase(
         continue
       }
       if (!canAttackTower(towers, targetZone)) {
-        rejected.push({
-          playerId: action.playerId,
-          reason: 'That tower is protected — destroy the one in front of it first',
-        })
+        miss('That tower is protected — destroy the one in front of it first')
         continue
       }
 
@@ -992,6 +1031,7 @@ function resolveAttackPhase(
       const tdt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
       tdt.tower += attackDamage
       damageTracker.set(action.playerId, tdt)
+      holdTarget()
 
       events.push({
         _tag: 'damage',
@@ -1008,15 +1048,13 @@ function resolveAttackPhase(
         continue
       }
       if (attacker.zone !== 'roshan-pit') {
-        rejected.push({
-          playerId: action.playerId,
-          reason: 'Roshan can only be attacked from the pit',
-        })
+        miss('Roshan can only be attacked from the pit')
         continue
       }
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
+      holdTarget()
 
       events.push({
         _tag: 'damage',
@@ -1038,7 +1076,7 @@ function resolveAttackPhase(
         continue
       }
       if (neutral.zone !== attacker.zone) {
-        rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
+        miss('Target is not in your zone')
         continue
       }
 
@@ -1047,6 +1085,7 @@ function resolveAttackPhase(
       const newHp = Math.max(0, neutral.hp - attackDamage)
 
       neutrals[neutralIdx] = { ...neutral, hp: newHp, alive: newHp > 0 }
+      holdTarget()
 
       if (newHp <= 0) {
         neutralKills.push({ playerId: action.playerId, neutralId: neutral.id })
@@ -1063,10 +1102,7 @@ function resolveAttackPhase(
     } else if (cmd.target.kind === 'ancient') {
       const enemyTeam: TeamId = attacker.team === 'radiant' ? 'dire' : 'radiant'
       if (attacker.zone !== ANCIENT_ZONES[enemyTeam]) {
-        rejected.push({
-          playerId: action.playerId,
-          reason: 'You must be in the enemy base to attack the Ancient',
-        })
+        miss('You must be in the enemy base to attack the Ancient')
         continue
       }
 
@@ -1083,12 +1119,13 @@ function resolveAttackPhase(
           playerId: action.playerId,
           reason: result.rejected,
         })
-        rejected.push({ playerId: action.playerId, reason: result.rejected })
+        miss(result.rejected)
         continue
       }
 
       ancients = result.state.ancients
       events.push(...result.events)
+      holdTarget()
 
       const adt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
       adt.tower += attackDamage
@@ -1194,26 +1231,22 @@ function resolvePassivesPhase(
 }
 
 /**
- * Phase 5: Buy/Sell/Use — item shop operations + item active abilities.
- * Buy/sell failures surface as rejection events (InsufficientGold,
- * InventoryFull, NotSellable, etc.). Use failures surface similarly
- * (cooldown, invalid target, max stacks).
+ * Phase 5: Buy/Sell — item shop operations. Failures surface as rejection
+ * events (InsufficientGold, InventoryFull, NotSellable, etc.).
+ *
+ * Item ACTIVES are NOT here: they resolve in their own phase before everything
+ * else (see resolveItemActivesPhase).
  */
 function resolveShopPhase(
   state: GameState,
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
-  zones: Record<string, ZoneRuntimeState>,
   creeps: CreepState[],
   towers: TowerState[],
-  ancients: { radiant: AncientState; dire: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
-  heroAttackers: Map<string, string>,
-  damageTracker: Map<string, { hero: number; tower: number }>,
 ): {
   players: Record<string, PlayerState>
-  zones: Record<string, ZoneRuntimeState>
 } {
   // Buy
   const buys = validActions.filter((a) => a.command.type === 'buy')
@@ -1284,7 +1317,38 @@ function resolveShopPhase(
     }
   }
 
-  // Use item actives
+  return { players }
+}
+
+/**
+ * Phase 0: Item actives — Blink, BKB, Blade Mail, Dagon, Eul's, wards, TP.
+ *
+ * Runs BEFORE instant casts and movement, and is fed by its own per-player
+ * action slot (GameLoop keys the queue by main/item), so an item and an ability
+ * can land in the same 4s tick. The ORDER is the whole point: blink → stun →
+ * nuke only reads as a combo if the item resolves first. Resolving actives
+ * after the ability (where they used to sit, in the shop phase) reverses every
+ * such combo — you blink to where the fight WAS.
+ *
+ * Use failures surface through `rejected` the same as buy/sell (cooldown,
+ * invalid target, max stacks).
+ */
+function resolveItemActivesPhase(
+  state: GameState,
+  validActions: PlayerAction[],
+  players: Record<string, PlayerState>,
+  zones: Record<string, ZoneRuntimeState>,
+  creeps: CreepState[],
+  towers: TowerState[],
+  ancients: { radiant: AncientState; dire: AncientState },
+  events: GameEngineEvent[],
+  rejected: Array<{ playerId: string; reason: string }>,
+  heroAttackers: Map<string, string>,
+  damageTracker: Map<string, { hero: number; tower: number }>,
+): {
+  players: Record<string, PlayerState>
+  zones: Record<string, ZoneRuntimeState>
+} {
   const uses = validActions.filter((a) => a.command.type === 'use')
   for (const action of uses) {
     const cmd = action.command as { type: 'use'; item: string; target?: TargetRef | string }
@@ -1685,6 +1749,16 @@ export function resolveActions(
       command: Command
       violations: CheatDetection[]
     }> = []
+    // Item actives resolve first (Phase 0) and several of them MOVE the caster —
+    // blink, force staff, hurricane pike. Anti-cheat's vision check reads
+    // pre-tick zones, so it reads a hero attacking into the zone they are about
+    // to blink to as an attack on an "invisible" hero and drops it: exactly the
+    // item→attack combo the item slot exists to enable. The attack phase's own
+    // zone check still rejects a genuinely out-of-zone swing, with a message
+    // rather than in silence.
+    const repositioning = new Set(
+      actions.filter((a) => a.command.type === 'use').map((a) => a.playerId),
+    )
     let validActions = actions.filter((a) => {
       if (!isRealProduction()) {
         const validationError = validateAction(state, a)
@@ -1698,6 +1772,15 @@ export function resolveActions(
           return false
         }
       }
+
+      // Anti-cheat judges what a CLIENT sent. GameLoop's standing-order
+      // continuations are engine-generated from an order the player typed ticks
+      // ago, and a stale one — the held hero stepped out of the zone — reads as
+      // a VISION_BYPASS: it would be logged as an attempted cheat every 4s AND
+      // dropped here, before the attack phase could retire the order that keeps
+      // producing it.
+      if (a.synthesized) return true
+      if (a.command.type === 'attack' && repositioning.has(a.playerId)) return true
 
       // Anti-cheat checks
       const violations = runAntiCheatChecks(state, a.playerId, a.command)
@@ -1790,6 +1873,26 @@ export function resolveActions(
       return cached
     }
 
+    // Phase 0: Item actives — first, so a blink/BKB/Ethereal lands BEFORE the
+    // ability cast in the same tick rather than after it.
+    {
+      const result = resolveItemActivesPhase(
+        state,
+        validActions,
+        players,
+        zones,
+        creeps,
+        towers,
+        ancients,
+        events,
+        rejected,
+        heroAttackers,
+        damageTracker,
+      )
+      players = result.players
+      zones = result.zones
+    }
+
     // Phase 1: Instant abilities (stuns, silences)
     {
       const result = resolveInstantCastsPhase(
@@ -1799,15 +1902,20 @@ export function resolveActions(
         zones,
         creeps,
         towers,
+        neutrals,
         ancients,
         events,
         heroAttackers,
         rejected,
         damageTracker,
+        creepKills,
+        neutralKills,
         findHeroByNameCached,
       )
       players = result.players
       zones = result.zones
+      creeps = result.creeps
+      neutrals = result.neutrals
     }
 
     // Phase 2: Movement — all moves resolve simultaneously
@@ -1875,16 +1983,21 @@ export function resolveActions(
         zones,
         creeps,
         towers,
+        neutrals,
         ancients,
         action,
         events,
         heroAttackers,
         rejected,
         damageTracker,
+        creepKills,
+        neutralKills,
         findHeroByNameCached,
       )
       players = result.players
       zones = result.zones
+      creeps = result.creeps
+      neutrals = result.neutrals
     }
 
     // Phase 4: Passive effects, cooldown ticks, item passives
@@ -1893,23 +2006,18 @@ export function resolveActions(
       players = result.players
     }
 
-    // Phase 5: Buy/Sell/Use
+    // Phase 5: Buy/Sell
     {
       const result = resolveShopPhase(
         state,
         validActions,
         players,
-        zones,
         creeps,
         towers,
-        ancients,
         events,
         rejected,
-        heroAttackers,
-        damageTracker,
       )
       players = result.players
-      zones = result.zones
     }
 
     // Handle glyph commands + pickups + statRecalc + awards + wards
@@ -2077,17 +2185,25 @@ function resolveHeroCast(
   zones: GameState['zones'],
   creeps: CreepState[],
   towers: GameState['towers'],
+  neutrals: NeutralCreepState[],
   ancients: GameState['ancients'],
   action: PlayerAction,
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; tower: number }>,
+  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
-): { players: Record<string, PlayerState>; zones: GameState['zones'] } {
+): {
+  players: Record<string, PlayerState>
+  zones: GameState['zones']
+  creeps: CreepState[]
+  neutrals: NeutralCreepState[]
+} {
   const cmd = action.command as { type: 'cast'; ability: AbilitySlot; target?: TargetRef }
   const caster = players[action.playerId]
-  if (!caster?.heroId) return { players, zones }
+  if (!caster?.heroId) return { players, zones, creeps, neutrals }
 
   // Tier-25 exotic — global ultimate: the talented R can hit a hero in ANY zone.
   // The per-hero resolvers enforce a same-zone check, so we satisfy it by
@@ -2107,7 +2223,18 @@ function resolveHeroCast(
     }
   }
 
-  const tempState: GameState = { ...state, players: castPlayers, zones, creeps, towers, ancients }
+  // `neutrals` is the LIVE in-flight buffer. It used to fall through to
+  // `state.neutrals` — a pre-attack-phase snapshot — so the array this cast
+  // returned silently reverted every neutral the attack phase had just damaged.
+  const tempState: GameState = {
+    ...state,
+    players: castPlayers,
+    zones,
+    creeps,
+    towers,
+    neutrals,
+    ancients,
+  }
   // Effect.either keeps AbilityError failures as values — an uncaught defect
   // here would abort the entire tick (GameLoop recovers but loses actions).
   const result = Effect.runSync(
@@ -2131,7 +2258,7 @@ function resolveHeroCast(
       reason = err.reason
     }
     rejected.push({ playerId: action.playerId, reason })
-    return { players, zones }
+    return { players, zones, creeps, neutrals }
   }
 
   const newState = result.right.state
@@ -2255,6 +2382,27 @@ function resolveHeroCast(
     }
   }
 
+  // NPCs the cast hit (damageEnemyNpcsInZone). Credited from the HP diff for the
+  // same reason hero damage is: the resolvers' own wire events are discarded.
+  let castCreeps = collectNpcCastDamage(
+    state.tick,
+    action.playerId,
+    damageType,
+    creeps,
+    newState.creeps,
+    events,
+    creepKills,
+  )
+  let castNeutrals = collectNeutralCastDamage(
+    state.tick,
+    action.playerId,
+    damageType,
+    neutrals,
+    newState.neutrals,
+    events,
+    neutralKills,
+  )
+
   // Tier-25 exotic — double cast: a chance for the talented ability to fire a
   // second time. Re-runs the hero resolver on the post-first-cast state with the
   // just-set cooldown cleared (so the echo isn't rejected); mana is paid again,
@@ -2278,8 +2426,9 @@ function resolveHeroCast(
         ...state,
         players: echoPlayers,
         zones,
-        creeps,
+        creeps: castCreeps,
         towers,
+        neutrals: castNeutrals,
         ancients,
       }
       const echoResult = Effect.runSync(
@@ -2323,6 +2472,24 @@ function resolveHeroCast(
             })
           }
         }
+        castCreeps = collectNpcCastDamage(
+          state.tick,
+          action.playerId,
+          damageType,
+          castCreeps,
+          echoResult.right.state.creeps,
+          events,
+          creepKills,
+        )
+        castNeutrals = collectNeutralCastDamage(
+          state.tick,
+          action.playerId,
+          damageType,
+          castNeutrals,
+          echoResult.right.state.neutrals,
+          events,
+          neutralKills,
+        )
         newPlayers = echoNewPlayers
       }
     }
@@ -2380,5 +2547,74 @@ function resolveHeroCast(
     readyAtTick: state.tick + actualCd,
   })
 
-  return { players: newPlayers, zones: newState.zones }
+  return { players: newPlayers, zones: newState.zones, creeps: castCreeps, neutrals: castNeutrals }
+}
+
+/**
+ * Credit ability damage that landed on lane creeps: emit the same per-target
+ * `damage` events the attack phase emits, and queue any kill through the SAME
+ * `creepKills` accumulator a right-click uses, so an ability last hit pays
+ * exactly what a basic attack does — bounty, XP, and the lane-mate XP share in
+ * resolvePostShopPhases. Returns the post buffer so the caller can carry it on.
+ */
+function collectNpcCastDamage(
+  tick: number,
+  casterId: string,
+  damageType: DamageType,
+  pre: CreepState[],
+  post: CreepState[] | undefined,
+  events: GameEngineEvent[],
+  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+): CreepState[] {
+  // Resolvers that don't touch creeps return the buffer they were handed, so
+  // reference equality means "nothing to diff" for the overwhelming majority.
+  if (!post || post === pre) return pre
+  const preHp = new Map(pre.map((c) => [c.id, c.hp]))
+  for (const c of post) {
+    const was = preHp.get(c.id)
+    if (was === undefined || was <= c.hp) continue
+    events.push({
+      _tag: 'damage',
+      tick,
+      sourceId: casterId,
+      targetId: c.id,
+      amount: was - c.hp,
+      damageType,
+    })
+    if (c.hp <= 0 && was > 0) {
+      creepKills.push({ playerId: casterId, creepId: c.id, creepType: c.type })
+    }
+  }
+  return post
+}
+
+/** The neutral half of {@link collectNpcCastDamage} — same contract, and the
+ *  kill feeds the `neutralKills` path that pays the camp's gold + XP. */
+function collectNeutralCastDamage(
+  tick: number,
+  casterId: string,
+  damageType: DamageType,
+  pre: NeutralCreepState[],
+  post: NeutralCreepState[] | undefined,
+  events: GameEngineEvent[],
+  neutralKills: Array<{ playerId: string; neutralId: string }>,
+): NeutralCreepState[] {
+  if (!post || post === pre) return pre
+  const preHp = new Map(pre.map((n) => [n.id, n.hp]))
+  for (const n of post) {
+    const was = preHp.get(n.id)
+    if (was === undefined || was <= n.hp) continue
+    events.push({
+      _tag: 'damage',
+      tick,
+      sourceId: casterId,
+      targetId: n.id,
+      amount: was - n.hp,
+      damageType,
+    })
+    if (n.hp <= 0 && was > 0) {
+      neutralKills.push({ playerId: casterId, neutralId: n.id })
+    }
+  }
+  return post
 }

@@ -221,12 +221,21 @@ export function getEnemiesInZone(
 }
 
 /**
+ * The zones an ability reaches: the caster's own, plus every adjacent one when
+ * the AOE+ exotic talent is in play. Single source for the widened footprint so
+ * the hero-facing target list and the NPC damage pass can never disagree.
+ */
+export function zonesInAbilityRange(zone: string, includeAdjacent: boolean): string[] {
+  return includeAdjacent ? [zone, ...(ZONE_MAP[zone]?.adjacentTo ?? [])] : [zone]
+}
+
+/**
  * Alive enemies in the player's zone AND every adjacent zone — the AOE+ exotic
  * talent widens an ability's reach this way (deduped by id so a target is only
  * hit once even if it somehow appears in two listed zones).
  */
 export function getEnemiesInZoneAndAdjacent(state: GameState, player: PlayerState): PlayerState[] {
-  const zoneIds = [player.zone, ...(ZONE_MAP[player.zone]?.adjacentTo ?? [])]
+  const zoneIds = zonesInAbilityRange(player.zone, true)
   const seen = new Set<string>()
   const out: PlayerState[] = []
   for (const zoneId of zoneIds) {
@@ -355,6 +364,56 @@ export function dealAbilityDamage(
 ): PlayerState {
   const amped = damageType === 'magical' ? Math.round(rawDamage * getMagicAmp(caster)) : rawDamage
   return dealDamage(target, amped, damageType)
+}
+
+/**
+ * Ability damage to the NPCs standing in the caster's zone — enemy lane creeps
+ * and neutrals, which are hostile to both teams. Until this existed no ability
+ * could touch a creep, so standing in lane with a wave in front of you and no
+ * enemy hero present made all four of your abilities dead weight: no waveclear,
+ * no jungle clearing, no securing a last hit with a nuke.
+ *
+ * Creeps carry no defense or magic-resist stat, so the target-side mitigation
+ * in `dealDamage` has nothing to read — only the CASTER-side amplifier
+ * (Mystical Staff's +15% magical) applies, matching `dealAbilityDamage` so the
+ * two damage paths can't diverge on the same item.
+ *
+ * Dead NPCs are left in the array at 0 HP (`alive: false` for neutrals) rather
+ * than filtered out: the cast bridge credits the kill by diffing HP against the
+ * pre-cast buffer, and CreepAI reaps them at the end of the same tick. Towers,
+ * Roshan and the Ancient are deliberately untouched — a second pass.
+ */
+export function damageEnemyNpcsInZone(
+  state: GameState,
+  caster: PlayerState,
+  amount: number,
+  damageType: DamageType,
+  zones: readonly string[] = [caster.zone],
+): GameState {
+  const damage =
+    damageType === 'magical' ? Math.round(amount * getMagicAmp(caster)) : Math.round(amount)
+  if (damage <= 0) return state
+
+  const zoneIds = new Set(zones)
+  let hitAny = false
+
+  const creeps = (state.creeps ?? []).map((c) => {
+    if (c.team === caster.team || c.hp <= 0 || !zoneIds.has(c.zone)) return c
+    hitAny = true
+    return { ...c, hp: Math.max(0, c.hp - damage) }
+  })
+
+  const neutrals = (state.neutrals ?? []).map((n) => {
+    if (!n.alive || n.hp <= 0 || !zoneIds.has(n.zone)) return n
+    hitAny = true
+    const hp = Math.max(0, n.hp - damage)
+    return { ...n, hp, alive: hp > 0 }
+  })
+
+  // Preserve reference equality when nothing was in range — the cast bridge
+  // uses it to skip the diff, and StateDelta's field diff to skip a broadcast.
+  if (!hitAny) return state
+  return { ...state, creeps, neutrals }
 }
 
 export function healPlayer(target: PlayerState, amount: number): PlayerState {

@@ -858,11 +858,14 @@ describe('ActionResolver', () => {
             e.abilityId === 'healing_salve_active',
         ),
       ).toBe(true)
-      // Regen kicks in on subsequent ticks, not the cast tick
-      expect(p1.hp).toBe(300)
+      // Item actives resolve in Phase 0 now (ahead of the ability they set up),
+      // so the passives phase later in the SAME tick already sees the regen
+      // buff — drinking a salve heals on the tick you drink it. It used to
+      // resolve after passives, in the shop phase, and do nothing until tick 2.
+      expect(p1.hp).toBe(350)
 
       const tick2 = Effect.runSync(resolveActions(tick1.state, []))
-      expect(tick2.state.players['p1']!.hp).toBe(350)
+      expect(tick2.state.players['p1']!.hp).toBe(400)
     })
 
     it('town portal scroll channels and then teleports to the fountain', () => {

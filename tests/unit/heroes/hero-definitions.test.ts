@@ -40,6 +40,8 @@ describe('Hero Definitions', () => {
   })
 
   const VALID_ROLES = ['carry', 'support', 'assassin', 'tank', 'mage', 'offlaner'] as const
+  const VALID_DIFFICULTIES = ['easy', 'medium', 'hard'] as const
+  const VALID_SLOTS = ['q', 'w', 'e', 'r'] as const
 
   for (const [heroId, hero] of Object.entries(HEROES)) {
     describe(`${hero.name} (${heroId})`, () => {
@@ -85,6 +87,24 @@ describe('Hero Definitions', () => {
         expect(p.effects.length).toBeGreaterThan(0)
       })
 
+      it('has pick guidance a newcomer can act on', () => {
+        expect(VALID_DIFFICULTIES).toContain(hero.difficulty)
+        // A tip that just restates the role teaches nothing; the authored ones
+        // are a sentence about the kit's one non-obvious rule.
+        expect(hero.oneLineTip.length).toBeGreaterThan(40)
+        expect(hero.oneLineTip.trim()).toBe(hero.oneLineTip)
+      })
+
+      it('has an opening combo of real, non-repeating ability slots', () => {
+        const combo = hero.openingCombo
+        expect(combo.length).toBeGreaterThanOrEqual(2)
+        expect(combo.length).toBeLessThanOrEqual(4)
+        for (const slot of combo) expect(VALID_SLOTS).toContain(slot)
+        // Every slot in the rotation goes on cooldown when it fires, so a
+        // repeat is a step that can never resolve.
+        expect(new Set(combo).size).toBe(combo.length)
+      })
+
       it('has all 4 abilities (q, w, e, r)', () => {
         const a = hero.abilities
         expect(a.q).toBeDefined()
@@ -111,6 +131,17 @@ describe('Hero Definitions', () => {
     for (const role of VALID_ROLES) {
       expect(roleSet.has(role)).toBe(true)
     }
+  })
+
+  it('offers beginner heroes without labelling half the roster easy', () => {
+    const easy = Object.values(HEROES).filter((h: HeroDef) => h.difficulty === 'easy')
+    expect(easy.length).toBeGreaterThanOrEqual(3)
+    expect(easy.length).toBeLessThan(HERO_IDS.length / 2)
+  })
+
+  it('gives every hero a distinct one-line tip', () => {
+    const tips = Object.values(HEROES).map((h: HeroDef) => h.oneLineTip)
+    expect(new Set(tips).size).toBe(tips.length)
   })
 
   it('has at least 5 melee and 3 ranged heroes for team diversity', () => {

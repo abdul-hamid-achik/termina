@@ -4,7 +4,10 @@ import { ref, computed } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import IndexPage from '../../../app/pages/index.vue'
 import InlineError from '../../../app/components/ui/InlineError.vue'
-import { HERO_IDS } from '../../../shared/constants/heroes'
+import ParallaxLayer from '../../../app/components/ui/ParallaxLayer.vue'
+import ScrambleText from '../../../app/components/ui/ScrambleText.vue'
+import MarqueeStrip from '../../../app/components/ui/MarqueeStrip.vue'
+import { HERO_IDS, HEROES } from '../../../shared/constants/heroes'
 
 // index.vue uses Nuxt auto-imports ($fetch, navigateTo) in startTutorial; the
 // SFC compiler leaves these as globals under plain @vitejs/plugin-vue, so we
@@ -47,7 +50,10 @@ function mountIndex() {
       },
       // Real component (not a stub) — the point of the failure test below is
       // that the reason actually reaches the page.
-      components: { InlineError },
+      // Real components, not stubs — the landing page's content lives inside
+      // ParallaxLayer slots and MarqueeStrip items, so stubbing them would make
+      // every content assertion below pass vacuously.
+      components: { InlineError, ParallaxLayer, ScrambleText, MarqueeStrip },
     },
   })
 }
@@ -55,14 +61,28 @@ function mountIndex() {
 describe('index (landing) page', () => {
   it('shows the live hero count from the registry, not a hardcoded 6', () => {
     const text = mountIndex().text()
-    expect(text).toContain(`${HERO_IDS.length} unique heroes`)
-    expect(text).not.toContain('6 unique heroes')
+    expect(text).toContain(`${HERO_IDS.length} heroes`)
+    expect(text).not.toContain('6 heroes')
   })
 
   it('does not advertise the unimplemented scan command', () => {
     const text = mountIndex().text()
     expect(text).not.toContain('scan')
-    expect(text).toContain('place wards to reveal the unseen')
+  })
+
+  it('teaches fog of war and warding', () => {
+    // Reworded freely over time; assert the concept is present, not the phrasing.
+    expect(mountIndex().text().toLowerCase()).toMatch(/fog of war/)
+    expect(mountIndex().text().toLowerCase()).toMatch(/ward/)
+  })
+
+  it('names every hero in the roster ticker, straight from the registry', () => {
+    // The strip is the page's only breadth claim — if it drifts from the
+    // registry it advertises heroes that do not exist.
+    const text = mountIndex().text()
+    for (const id of HERO_IDS) {
+      expect(text).toContain(HEROES[id]!.name)
+    }
   })
 
   describe('Practice vs bots CTA', () => {

@@ -1512,14 +1512,15 @@ function handleReturnToMenu() {
 <template>
   <!-- Game Over Screen -->
   <PostGame
-    v-if="isGameOver && gameStore.winner && gameStore.gameOverStats"
+    v-if="isGameOver && gameStore.winner"
     :winner="gameStore.winner"
-    :stats="gameStore.gameOverStats"
+    :stats="gameStore.gameOverStats ?? {}"
     :players="postGamePlayers"
     :current-player-id="gameStore.playerId ?? ''"
     :game-id="gameStore.gameId ?? null"
     :mode="gameStore.mode"
     :tutorial-complete="isTutorialComplete(gameStore.tutorialStep ?? 0)"
+    :duration-ticks="gameStore.gameOverDurationTicks ?? undefined"
     :mmr-change="gameStore.gameOverMmrChange ?? undefined"
     :ranked="gameStore.gameOverRanked"
     @play-again="handlePlayAgain"

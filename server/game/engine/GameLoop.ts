@@ -46,6 +46,7 @@ import {
   resolvePassive,
   getTalentTree,
 } from '~~/server/game/heroes'
+import { talentUnlockLevel } from '~~/shared/constants/talents'
 import { toGameEvent, type GameEngineEvent } from '~~/server/game/protocol/events'
 import { getBotPlayerIds, getBotLane, isBot, convertToBot } from '~~/server/game/ai/BotManager'
 import { decideBotAction } from '~~/server/game/ai/BotAI'
@@ -70,6 +71,36 @@ import type { RedisServiceApi } from '~~/server/services/RedisService'
  *  replaces the destination in the resolver, and the out-of-band verbs resolve
  *  without expressing a new positional intent. */
 const KEEPS_AUTOPATH = new Set(['move', 'surrender', 'select_talent', 'buyback'])
+
+/** Command verbs that do NOT cancel a standing attack order: a new attack
+ *  replaces the target in the resolver, an item active is a free action from
+ *  its own slot, and the out-of-band verbs express no new target intent.
+ *  Keeping `attack` here is also what lets a last hit interrupt a siege without
+ *  ending it — a creep swing sets no order of its own, so the tower you were
+ *  hitting is still the one you resume on. */
+const KEEPS_ATTACK = new Set(['attack', 'use', 'surrender', 'select_talent', 'buyback'])
+
+/**
+ * Which per-player queue slot a command competes for. Three independent slots,
+ * so the tick's single "main" decision is never silently eaten:
+ *  - 'item': item actives, resolved in their own phase ahead of the ability
+ *    they set up (see resolveItemActivesPhase) — this is what makes
+ *    blink→stun→nuke reachable inside one 4s tick.
+ *  - the out-of-band verbs, one slot each: picking a talent used to overwrite a
+ *    queued cast, because everything shared a single latest-wins slot.
+ *  - 'main': move/attack/cast/buy/… — still exactly one per tick.
+ */
+function actionSlot(command: Command): string {
+  if (command.type === 'use') return 'item'
+  if (
+    command.type === 'buyback' ||
+    command.type === 'surrender' ||
+    command.type === 'select_talent'
+  ) {
+    return command.type
+  }
+  return 'main'
+}
 
 /** Pending actions collected during the action window. */
 const gameActionQueues = new Map<string, PlayerAction[]>()
@@ -114,6 +145,52 @@ function getDamageContributors(gameId: string, victimId: string): string[] {
   return [...(recentHeroDamage.get(gameId)?.get(victimId)?.keys() ?? [])]
 }
 
+// ── Farm tracking ──────────────────────────────────────────────
+// Last hits and denies — the two numbers a new MOBA player watches improve, and
+// the only scoreboard columns the engine never produced.
+
+export interface PlayerFarm {
+  lastHits: number
+  denies: number
+}
+
+/** gameId -> playerId -> farm tally for the whole match. */
+const gameFarm = new Map<string, Map<string, PlayerFarm>>()
+
+/**
+ * Tally farm off the emitted events rather than off a counter beside the gold
+ * award. The two `creep_*` events fire exactly where the reward lands (past the
+ * resolver's HP window, team and index checks), so a tally derived from them
+ * cannot disagree with the "+38g last-hit" lines the player actually watched go
+ * by — which is the whole point of showing them the number.
+ */
+function tallyFarm(gameId: string, events: GameEngineEvent[]): void {
+  let game = gameFarm.get(gameId)
+  for (const e of events) {
+    if (e._tag !== 'creep_lasthit' && e._tag !== 'creep_deny') continue
+    if (!game) {
+      game = new Map()
+      gameFarm.set(gameId, game)
+    }
+    let farm = game.get(e.playerId)
+    if (!farm) {
+      farm = { lastHits: 0, denies: 0 }
+      game.set(e.playerId, farm)
+    }
+    if (e._tag === 'creep_lasthit') farm.lastHits++
+    else farm.denies++
+  }
+}
+
+/** Match-to-date farm for every player who has landed one, keyed by playerId. */
+export function getFarmStats(gameId: string): Record<string, PlayerFarm> {
+  const out: Record<string, PlayerFarm> = {}
+  for (const [playerId, farm] of gameFarm.get(gameId) ?? []) {
+    out[playerId] = { ...farm }
+  }
+  return out
+}
+
 /** Submit an action for the current tick (single-instance, in-process queue). */
 export function submitAction(gameId: string, playerId: string, command: Command): void {
   let queue = gameActionQueues.get(gameId)
@@ -121,12 +198,14 @@ export function submitAction(gameId: string, playerId: string, command: Command)
     queue = []
     gameActionQueues.set(gameId, queue)
   }
-  const existing = queue.findIndex((a) => a.playerId === playerId)
+  const slot = actionSlot(command)
+  const existing = queue.findIndex((a) => a.playerId === playerId && actionSlot(a.command) === slot)
   if (existing >= 0) {
     const dropped = queue[existing]!.command.type
     engineLog.debug('Action overwritten in same tick', {
       gameId,
       playerId,
+      slot,
       dropped,
       replacedWith: command.type,
     })
@@ -136,10 +215,12 @@ export function submitAction(gameId: string, playerId: string, command: Command)
   }
 }
 
-/** The command type currently queued for a player this tick, if any. */
-function queuedCommandType(gameId: string, playerId: string): string | null {
-  const queued = gameActionQueues.get(gameId)?.find((a) => a.playerId === playerId)
-  return queued ? queued.command.type : null
+/** Whether a player already has a command of this type queued for the tick. */
+function hasQueuedCommand(gameId: string, playerId: string, type: Command['type']): boolean {
+  return (
+    gameActionQueues.get(gameId)?.some((a) => a.playerId === playerId && a.command.type === type) ??
+    false
+  )
 }
 
 /** Drain all queued actions for a game (single-instance, in-process queue). */
@@ -189,10 +270,10 @@ export function processTick(
       const bot = currentState.players[botId]
       if (bot && bot.alive) {
         // An AFK-converted human may have queued a surrender vote via WS this
-        // tick — the queue is latest-wins per player, so the bot's decision
-        // would clobber it. Skip the bot for one tick so the vote reaches
-        // processSpecialActions (the only input a converted human can send).
-        if (queuedCommandType(gameId, botId) === 'surrender') continue
+        // tick. The vote now holds its own queue slot, but the bot decision is
+        // still skipped: a hero being driven by AI while its human is voting to
+        // end the match should not also be charging into a fight.
+        if (hasQueuedCommand(gameId, botId, 'surrender')) continue
         const command = decideBotAction(currentState, bot, getBotLane(gameId, botId), gameId)
         if (command) {
           submitAction(gameId, botId, command)
@@ -207,12 +288,14 @@ export function processTick(
     // non-move order also cancels any queued auto-path walk (a new intent
     // replaces the old one); moves replace the destination inside the
     // resolver, and out-of-band verbs (surrender vote, talent pick, buyback)
-    // don't interrupt walking.
+    // don't interrupt walking. The standing attack order is dropped by the same
+    // rule, against its own exception set.
     for (const action of actions) {
       markPlayerActiveSafe(gameId, action.playerId)
       const actor = currentState.players[action.playerId]
       if (actor) {
         const cancelsWalk = !KEEPS_AUTOPATH.has(action.command.type) && actor.moveTarget != null
+        const cancelsAttack = !KEEPS_ATTACK.has(action.command.type) && actor.attackTarget != null
         currentState = {
           ...currentState,
           players: {
@@ -221,23 +304,43 @@ export function processTick(
               ...actor,
               lastActionTick: currentState.tick,
               ...(cancelsWalk ? { moveTarget: null } : {}),
+              ...(cancelsAttack ? { attackTarget: null } : {}),
             },
           },
         }
       }
     }
 
-    // 1.3. Auto-path continuation — players with a queued destination and no
-    // explicit order this tick keep walking, one hop per tick, through the
-    // normal validate/resolve pipeline (so root/stun/taunt still gate the hop).
-    // Added AFTER the activity stamping above: a continuation is not player
-    // activity, and AFK detection must still see an idle human as idle.
-    const actedThisTick = new Set(actions.map((a) => a.playerId))
+    // 1.3. Standing-order continuation — players with a queued destination or
+    // attack target and no explicit order this tick keep walking / keep
+    // swinging, through the normal validate/resolve pipeline (so root, stun and
+    // taunt still gate them). Added AFTER the activity stamping above: a
+    // continuation is not player activity, and AFK detection must still see an
+    // idle human as idle.
+    //
+    // An item active does NOT count as having acted: it resolves from its own
+    // slot, so spending it must not silently cost the walk or the auto-attack
+    // it was bought to enable.
+    const actedThisTick = new Set(
+      actions.filter((a) => a.command.type !== 'use').map((a) => a.playerId),
+    )
     for (const [pid, p] of Object.entries(currentState.players)) {
       if (!p.alive || !p.moveTarget || actedThisTick.has(pid)) continue
       actions.push({
         playerId: pid,
         command: { type: 'move', zone: p.moveTarget },
+        synthesized: true,
+      })
+      actedThisTick.add(pid)
+    }
+    // Walking wins over swinging: a hero mid-route is not standing in the zone
+    // its old target was in (and the two orders are mutually exclusive anyway —
+    // each cancels the other in 1.2).
+    for (const [pid, p] of Object.entries(currentState.players)) {
+      if (!p.alive || !p.attackTarget || actedThisTick.has(pid)) continue
+      actions.push({
+        playerId: pid,
+        command: { type: 'attack', target: p.attackTarget },
         synthesized: true,
       })
     }
@@ -501,6 +604,8 @@ export function processTick(
       Effect.annotateLogs({ gameId, tick: currentState.tick, actionCount: validActions.length }),
     )
 
+    tallyFarm(gameId, allEvents)
+
     return { state: currentState, events: allEvents, rejectedActions, notices, actions }
   })
 }
@@ -514,7 +619,13 @@ export interface GameCallbacks {
     state: ReturnType<typeof filterStateForPlayer>,
   ) => void
   onEvents: (gameId: string, events: GameEngineEvent[]) => void
-  onGameOver: (gameId: string, winner: TeamId) => void
+  /**
+   * `farm` is handed over rather than looked up by the callback: the loop
+   * interrupts (and its finalizer drops the per-game maps) the moment this
+   * returns, so an async consumer that read it after its first `await` would
+   * find nothing.
+   */
+  onGameOver: (gameId: string, winner: TeamId, farm: Record<string, PlayerFarm>) => void
   onActionRejected?: (gameId: string, playerId: string, reason: string) => void
   /**
    * Coaching line for one player — currently tutorial guidance (a step timing
@@ -566,7 +677,7 @@ function buildGameLoop(
       if (winner) {
         try {
           clearGameSentStates(gameId)
-          callbacks.onGameOver(gameId, winner)
+          callbacks.onGameOver(gameId, winner, getFarmStats(gameId))
         } catch (err) {
           engineLog.warn('onGameOver (out-of-band end) failed', { gameId, error: String(err) })
         }
@@ -705,8 +816,16 @@ function buildGameLoop(
     if (newState.phase === 'ended') {
       const winner = newState.winner ?? checkWinCondition(newState)
       if (winner) {
+        // Close the replay out. Snapshots are periodic, so 14 games in 15 ended
+        // between writes and the replay endpoint — which requires a snapshot
+        // with `phase === 'ended'` — 403'd on the [WATCH REPLAY] link this
+        // screen is about to offer. Awaited, not forked: the fiber is
+        // interrupted two lines down, and writeSnapshot swallows its own errors.
+        if (redis && newState.tick % SNAPSHOT_EVERY_N_TICKS !== 0) {
+          yield* writeSnapshot(redis, gameId, newState, snapshotMeta)
+        }
         clearGameSentStates(gameId)
-        callbacks.onGameOver(gameId, winner)
+        callbacks.onGameOver(gameId, winner, getFarmStats(gameId))
       }
       return yield* Effect.interrupt
     }
@@ -738,6 +857,7 @@ function buildGameLoop(
         gameActionQueues.delete(gameId)
         activeGames.delete(gameId)
         recentHeroDamage.delete(gameId)
+        gameFarm.delete(gameId)
       }),
     ),
   )
@@ -784,6 +904,7 @@ export function stopGameLoop(gameId: string): Effect.Effect<void> {
     }
     gameActionQueues.delete(gameId)
     recentHeroDamage.delete(gameId)
+    gameFarm.delete(gameId)
   })
 }
 
@@ -892,8 +1013,11 @@ export function processSpecialActions(
           const tierTalents = talentTree.tiers[action.command.tier]
           const isValidTalent = tierTalents.some((t) => t.id === selectedTalentId)
           const alreadySelected = player.talents[tierKey] !== null
+          // The tier NUMBER is an identity, not a level requirement — read the
+          // unlock level from the balance table (see TALENT_UNLOCK_LEVEL).
+          const requiredLevel = talentUnlockLevel(action.command.tier)
 
-          if (isValidTalent && !alreadySelected && player.level >= action.command.tier) {
+          if (isValidTalent && !alreadySelected && player.level >= requiredLevel) {
             const updatedPlayers = { ...currentState.players }
             updatedPlayers[action.playerId] = {
               ...player,
@@ -916,7 +1040,7 @@ export function processSpecialActions(
               reason: alreadySelected
                 ? 'Talent already selected for this tier'
                 : isValidTalent
-                  ? 'Level requirement not met'
+                  ? `Requires level ${requiredLevel}`
                   : 'Invalid talent',
             })
           }
@@ -1290,9 +1414,11 @@ function handleDeaths(
           hp: player.maxHp,
           mp: player.maxMp,
           buffs: player.buffs.filter((b) => b.id !== 'aegis'),
-          // Death cancels the auto-path walk on this branch too — an aegis
-          // revive must not resume marching into whoever just killed you.
+          // Death cancels the standing orders on this branch too — an aegis
+          // revive must not resume marching into, or swinging at, whoever just
+          // killed you.
           moveTarget: null,
+          attackTarget: null,
         }
         events.push({
           _tag: 'aegis_used',
@@ -1321,9 +1447,11 @@ function handleDeaths(
         deaths: newDeaths,
         killStreak: 0,
         buybackCost,
-        // Death cancels any queued auto-path walk — respawning at the fountain
-        // with a stale destination would march the hero straight back out.
+        // Death cancels any queued standing order — respawning at the fountain
+        // with a stale destination would march the hero straight back out, and
+        // a stale attack target would re-open the fight that just killed them.
         moveTarget: null,
+        attackTarget: null,
       }
       if (!alreadyCounted) {
         events.push({

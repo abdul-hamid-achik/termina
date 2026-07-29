@@ -18,12 +18,24 @@ export function useStartTutorial() {
    */
   const error = ref<string | null>(null)
 
-  async function start() {
+  /**
+   * `heroId` is optional and widened to include the event because most call
+   * sites are bare `@click="startTutorial"` handlers, which forward a MouseEvent
+   * as the first argument — a `string`-only parameter fails to typecheck against
+   * AsciiButton's `(e: MouseEvent)` click emit, and the `typeof` guard (not a
+   * truthiness check) is what keeps the event out of the request body. An
+   * unrecognised id is not rejected here: the server already falls back to a
+   * default hero.
+   */
+  async function start(heroId?: string | MouseEvent) {
     if (starting.value) return
     starting.value = true
     error.value = null
     try {
-      const res = await $fetch<{ url: string }>('/api/game/tutorial', { method: 'POST', body: {} })
+      const res = await $fetch<{ url: string }>('/api/game/tutorial', {
+        method: 'POST',
+        body: typeof heroId === 'string' ? { heroSelf: heroId } : {},
+      })
       await navigateTo(res.url)
     } catch (err: unknown) {
       const e = err as { statusCode?: number; data?: { message?: string }; message?: string }

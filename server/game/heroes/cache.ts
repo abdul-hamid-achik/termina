@@ -13,6 +13,7 @@ import {
   getEnemiesInZone,
   dealDamage,
   dealAbilityDamage,
+  damageEnemyNpcsInZone,
   deductMana,
   setCooldown,
   applyBuff,
@@ -262,7 +263,14 @@ function resolveR(
     })
 
     return {
-      state: updatePlayers(state, [caster, ...updatedEnemies]),
+      // Eviction only spends what Write-Back banked, so with no cached energy
+      // there is nothing to spill onto the wave (the helper no-ops at 0).
+      state: damageEnemyNpcsInZone(
+        updatePlayers(state, [caster, ...updatedEnemies]),
+        caster,
+        cached,
+        'pure',
+      ),
       events: [
         {
           tick: state.tick,

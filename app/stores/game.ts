@@ -111,6 +111,9 @@ export const useGameStore = defineStore('game', () => {
   // False when the finished match contained bots (practice / bot-filled) and so
   // did not affect MMR — the post-game screen shows "unranked" instead of a number.
   const gameOverRanked = ref<boolean>(true)
+  /** Match length, for the post-game summary. Null for any game_over that
+   *  predates the field (older snapshots, resumed games). */
+  const gameOverDurationTicks = ref<number | null>(null)
   const winner = ref<TeamId | null>(null)
   const timeOfDay = ref<'day' | 'night'>('day')
   /** Which map this game runs on (undefined = full 5v5); drives the ASCII layout. */
@@ -123,6 +126,10 @@ export const useGameStore = defineStore('game', () => {
 
   // Track if player has acted this tick (resets each tick)
   const lastActionTick = ref<number>(-1)
+  // The item slot is tracked separately: the server queues item actives in
+  // their own per-player slot (GameLoop.actionSlot), so spending one leaves the
+  // tick's main decision — the ability, the attack, the step — still available.
+  const lastItemActionTick = ref<number>(-1)
 
   // Human-readable description of the action queued for the next tick,
   // e.g. "move mid-river". Cleared when the tick resolves.
@@ -147,6 +154,12 @@ export const useGameStore = defineStore('game', () => {
     if (!player.value || !isAlive.value) return false
     // Can act if we haven't acted this tick yet
     return lastActionTick.value !== tick.value
+  })
+
+  /** Whether the free item-active slot is still open this tick. */
+  const canUseItem = computed(() => {
+    if (!player.value || !isAlive.value) return false
+    return lastItemActionTick.value !== tick.value
   })
 
   const canBuy = computed(() => {
@@ -396,16 +409,28 @@ export const useGameStore = defineStore('game', () => {
     stats: Record<string, PlayerEndStats>,
     mmrChange?: number,
     ranked = true,
+    durationTicks?: number,
   ) {
     winner.value = winnerTeam
     gameOverStats.value = stats
     gameOverMmrChange.value = mmrChange ?? null
     gameOverRanked.value = ranked
+    gameOverDurationTicks.value = durationTicks ?? null
     phase.value = 'ended'
   }
 
-  function markActionSent(description?: string) {
-    lastActionTick.value = tick.value
+  /**
+   * Record that a command went to the server this tick, against the slot it
+   * competes for. The slot is derived from the command line itself (the caller
+   * already passes the raw input) so the two client gates can never disagree
+   * with the server's queue: `use …` consumes only the item slot, everything
+   * else consumes the main one.
+   */
+  function markActionSent(description?: string, slot?: 'main' | 'item') {
+    const verb = description?.trim().split(/\s+/)[0]?.toLowerCase()
+    const resolved = slot ?? (verb === 'use' ? 'item' : 'main')
+    if (resolved === 'item') lastItemActionTick.value = tick.value
+    else lastActionTick.value = tick.value
     if (description) pendingCommand.value = description
   }
 
@@ -441,6 +466,7 @@ export const useGameStore = defineStore('game', () => {
     gameOverRanked.value = true
     winner.value = null
     lastActionTick.value = -1
+    lastItemActionTick.value = -1
     pendingCommand.value = null
     bufferedCommand.value = null
     timeOfDay.value = 'day'
@@ -485,8 +511,10 @@ export const useGameStore = defineStore('game', () => {
     gameOverStats,
     gameOverMmrChange,
     gameOverRanked,
+    gameOverDurationTicks,
     winner,
     lastActionTick,
+    lastItemActionTick,
     timeOfDay,
     dayNightTick,
     mapId,
@@ -496,6 +524,7 @@ export const useGameStore = defineStore('game', () => {
     currentZone,
     isAlive,
     canAct,
+    canUseItem,
     canBuy,
     kda,
     heroLevel,

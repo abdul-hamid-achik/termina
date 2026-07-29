@@ -21,7 +21,7 @@ import {
   hasTalentCastEffect,
 } from '../../../server/game/engine/EffectiveStats'
 import { filterStateForPlayer } from '../../../server/game/engine/VisionCalculator'
-import type { GameState, PlayerState } from '../../../shared/types/game'
+import type { CreepState, GameState, PlayerState } from '../../../shared/types/game'
 import { HEROES } from '../../../shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
 import { initializeRoshan } from '../../../server/game/map/spawner'
@@ -550,6 +550,159 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     // Above threshold: mana refunded, no cooldown
     expect(refused.state.players['p1']!.mp).toBe(daemon.maxMp)
     expect(refused.state.players['p1']!.cooldowns.e).toBe(0)
+  })
+})
+
+/**
+ * Abilities reaching lane creeps and neutrals. Before this the bridge returned
+ * only `{ players, zones }`, so a resolver could damage a creep all it liked and
+ * the result was thrown away on the way out — in lane with a wave in front of
+ * you and no enemy hero present, every AoE was dead weight.
+ */
+describe('cast bridge: abilities vs creeps and neutrals', () => {
+  const LANE = 'mid-t1-rad'
+
+  function creep(over: Partial<CreepState> = {}): CreepState {
+    return { id: 'c1', team: 'dire', zone: LANE, hp: 400, maxHp: 400, type: 'melee', ...over }
+  }
+
+  it('a zone AoE cast damages enemy creeps standing in the zone', () => {
+    // mutex E (Spinlock) at rank 1: three 40-damage hits.
+    const state = makeGameState({
+      players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
+      creeps: [creep()],
+    })
+
+    const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
+
+    expect(result.rejected).toHaveLength(0)
+    expect(result.state.creeps[0]!.hp).toBe(280)
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ _tag: 'damage', sourceId: 'p1', targetId: 'c1', amount: 120 }),
+    )
+  })
+
+  it('spares your own creeps and the wave one zone over', () => {
+    const state = makeGameState({
+      players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
+      creeps: [
+        creep({ id: 'mine', team: 'radiant' }),
+        creep({ id: 'theirs-elsewhere', zone: 'mid-river' }),
+      ],
+    })
+
+    const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
+
+    expect(result.state.creeps.map((c) => c.hp)).toEqual([400, 400])
+    expect(result.events.some((e) => e._tag === 'damage')).toBe(false)
+  })
+
+  it('an ability last hit pays the creep bounty through the same path a right-click does', () => {
+    const state = makeGameState({
+      players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
+      creeps: [creep({ hp: 30 })],
+    })
+    const goldBefore = state.players['p1']!.gold
+
+    const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
+
+    expect(result.state.creeps[0]!.hp).toBe(0)
+    const lastHit = result.events.find((e) => e._tag === 'creep_lasthit')
+    expect(lastHit).toMatchObject({ playerId: 'p1', creepId: 'c1', creepType: 'melee' })
+    expect(result.state.players['p1']!.gold).toBeGreaterThan(goldBefore)
+    expect(result.state.players['p1']!.xp).toBeGreaterThan(0)
+  })
+
+  it('shares the lane XP on an ability kill, exactly as a last-hit does', () => {
+    const state = makeGameState({
+      players: {
+        p1: makeHero('mutex', { id: 'p1', zone: LANE }),
+        p2: makeHero('kernel', { id: 'p2', name: 'Mate', zone: LANE }),
+      },
+      creeps: [creep({ hp: 30 })],
+    })
+
+    const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
+
+    const mine = result.state.players['p1']!.xp
+    const mates = result.state.players['p2']!.xp
+    expect(mates).toBeGreaterThan(0)
+    // The caster still keeps strictly more, or securing the kill stops mattering.
+    expect(mates).toBeLessThan(mine)
+  })
+
+  it('scales with the ability rank: the rank-1 ult chips the wave, the rank-3 ult clears it', () => {
+    // null_ref R (Dereference) is 240 / 360 / 480 at ranks 1-3, unlocked at
+    // levels 6 / 12 / 18. Every other fixture in this file sits at level 1 or 6,
+    // where a flat-damage implementation is indistinguishable from a scaled one.
+    const wave = () => [creep({ hp: 300 })]
+    const atRank1 = makeGameState({
+      players: { p1: makeHero('null_ref', { id: 'p1', zone: LANE }, 6) },
+      creeps: wave(),
+    })
+    const atRank3 = makeGameState({
+      players: { p1: makeHero('null_ref', { id: 'p1', zone: LANE }, 18) },
+      creeps: wave(),
+    })
+    const cast = { type: 'cast', ability: 'r' } as const
+
+    const chipped = run(atRank1, [{ playerId: 'p1', command: cast }])
+    expect(chipped.rejected).toHaveLength(0)
+    expect(chipped.state.creeps[0]!.hp).toBe(60)
+    expect(chipped.events.some((e) => e._tag === 'creep_lasthit')).toBe(false)
+
+    const cleared = run(atRank3, [{ playerId: 'p1', command: cast }])
+    expect(cleared.state.creeps[0]!.hp).toBe(0)
+    expect(cleared.events.some((e) => e._tag === 'creep_lasthit')).toBe(true)
+  })
+
+  it('clears a jungle camp and pays the neutral bounty', () => {
+    const camp = 'jungle-rad-top'
+    const state = makeGameState({
+      players: { p1: makeHero('mutex', { id: 'p1', zone: camp }) },
+      neutrals: [{ id: 'n1', zone: camp, hp: 100, maxHp: 250, type: 'kobold', alive: true }],
+    })
+    const goldBefore = state.players['p1']!.gold
+
+    const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
+
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ _tag: 'neutral_killed', playerId: 'p1', neutralId: 'n1' }),
+    )
+    expect(result.state.players['p1']!.gold).toBeGreaterThan(goldBefore)
+    // The dead neutral is swept out of the board by the award pass.
+    expect(result.state.neutrals).toHaveLength(0)
+  })
+
+  it('casts against the LIVE neutral buffer, not a stale copy from the tick start', () => {
+    // REGRESSION: the bridge built its temp state from `state.neutrals`, so a
+    // cast resolving after the attack phase handed the resolver a pre-attack
+    // jungle — and the array it returned silently reverted every neutral the
+    // attack phase had just damaged.
+    const camp = 'jungle-rad-top'
+    const state = makeGameState({
+      players: {
+        p1: makeHero('echo', { id: 'p1', name: 'Hitter', zone: camp }),
+        p2: makeHero('mutex', { id: 'p2', name: 'Caster', zone: camp }),
+      },
+      neutrals: [
+        { id: 'untouched', zone: camp, hp: 250, maxHp: 250, type: 'kobold', alive: true },
+        { id: 'attacked', zone: camp, hp: 250, maxHp: 250, type: 'kobold', alive: true },
+      ],
+    })
+
+    const result = run(state, [
+      { playerId: 'p1', command: { type: 'attack', target: { kind: 'neutral', index: 1 } } },
+      { playerId: 'p2', command: { type: 'cast', ability: 'e' } },
+    ])
+
+    expect(result.rejected).toHaveLength(0)
+    const untouched = result.state.neutrals.find((n) => n.id === 'untouched')!
+    const attacked = result.state.neutrals.find((n) => n.id === 'attacked')!
+    // Only the cast reached the first camp member: 250 - (40 x 3).
+    expect(untouched.hp).toBe(130)
+    // The second took the cast AND the basic attack — the attack is not undone.
+    expect(attacked.hp).toBeLessThan(untouched.hp)
   })
 })
 
