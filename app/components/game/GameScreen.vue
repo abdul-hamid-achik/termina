@@ -58,7 +58,7 @@ import {
   getAbilityLevel,
 } from '~~/shared/constants/balance'
 import { pathDistance } from '~~/shared/pathfinding'
-import { formatRoshan } from '~/utils/strategy'
+import { formatRoshan, ticksToClock } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
@@ -173,7 +173,7 @@ onMounted(() => {
         'Welcome to Termina — the game runs on 4s ticks; you queue ONE action per tick.',
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
         'Last-hit enemy creeps (≈<50% HP) for gold — tap the creep group in the Zone panel.',
-        'In the fountain/base press [S] (SHOP) to buy items; Q/W/E/R cast your abilities.',
+        'In the fountain/base click [SHOP] (or press Esc, then S) to buy; tap Q/W/E/R below to cast.',
         'Destroy the enemy Mainframe to win. Good luck!',
       ]
       for (const text of intro)
@@ -231,6 +231,14 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
+/** Arrows resolve against the drawn grid, so the miss is reported in its terms. */
+const ARROW_WORD: Record<'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight', string> = {
+  ArrowUp: 'above',
+  ArrowDown: 'below',
+  ArrowLeft: 'left of',
+  ArrowRight: 'right of',
+}
+
 function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight') {
   const p = gameStore.player
   if (!p) return
@@ -238,17 +246,24 @@ function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'Arr
   const playerZone = ZONE_MAP[p.zone]
   if (!playerZone || !playerZone.adjacentTo.length) return
 
-  // Pick the adjacent zone in the pressed direction — pure heuristic extracted
-  // to a unit-tested util (arrowTargetZone) so the keyboard mapping is covered
-  // independently of this component.
-  const targetZone = arrowTargetZone(direction, playerZone.adjacentTo)
+  // Pick the adjacent zone in the pressed direction. The map id matters: the
+  // util resolves against the layout the player is looking at, and the subset
+  // maps prune zones this adjacency list still names.
+  const targetZone = arrowTargetZone(direction, p.zone, playerZone.adjacentTo, gameStore.mapId)
 
   // No blind fallback: if no adjacent zone clearly lies in the pressed
   // direction, do nothing rather than shoving the hero into an arbitrary
   // adjacent zone (often the wrong way, into danger). The map click + `move
-  // <zone>` command remain the precise paths.
+  // <zone>` command remain the precise paths. Say so, though — silence is
+  // indistinguishable from the hotkey itself being dead, which it used to be.
   if (targetZone) {
     handleCommand(`move ${targetZone}`)
+  } else {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: `No zone ${ARROW_WORD[direction]} ${playerZone.name} — click a zone on the map or type move <zone>`,
+      type: 'system',
+    })
   }
 }
 
@@ -304,6 +319,13 @@ function triggerShake(level: 'light' | 'strong') {
   })
 }
 
+// The destination the player last ordered. The server nulls `moveTarget` on the
+// arriving hop (ActionResolver) and strips it from enemy views entirely, so the
+// last leg of a walk — and every single-hop move — is invisible without a local
+// memory of the order. It is also what gates the arrival line: narrating any
+// zone change would double-print teleports and fire on every respawn.
+const walkTarget = ref<string | null>(null)
+
 // On each new tick: play the tick sound and flush any command the player
 // pre-typed while waiting (buffered client-side, sent now that they can act).
 // Dying closes the shop/scoreboard overlays (z-30) that would otherwise hide
@@ -314,6 +336,10 @@ watch(
     if (!alive) {
       showShop.value = false
       showScoreboard.value = false
+      // Death cancels the walk server-side too (GameLoop nulls moveTarget), and
+      // respawn relocates you to the fountain — a surviving order would narrate
+      // that jump as progress toward a destination you abandoned.
+      walkTarget.value = null
     }
   },
 )
@@ -333,14 +359,26 @@ watch(
 )
 
 // Auto-path walk feedback: each hop prints where you are and how far is left,
-// so a multi-zone order reads as progress instead of silence.
+// so a multi-zone order reads as progress instead of silence, and arrival is
+// announced rather than the feed simply going quiet.
 watch(
   () => gameStore.player?.zone,
   (zone, oldZone) => {
     const p = gameStore.player
     if (!p || !zone || !oldZone || zone === oldZone) return
-    const target = p.moveTarget
+    const target = p.moveTarget ?? walkTarget.value
     if (!target) return
+    if (zone === target) {
+      walkTarget.value = null
+      localEvents.value.push({
+        tick: gameStore.tick,
+        text: `▸ You arrive at ${ZONE_MAP[zone]?.name ?? zone}`,
+        type: 'system',
+      })
+      return
+    }
+    // Fog can leave the destination unreachable through known zones (-1); say
+    // nothing then rather than inventing a distance.
     const remaining = pathDistance(zone, target, (id) => !!gameStore.visibleZones[id])
     if (remaining > 0) {
       localEvents.value.push({
@@ -747,13 +785,38 @@ const zoneCreeps = computed(() =>
   gameStore.creeps.filter((c) => c.zone === playerZone.value).map((c, index) => ({ ...c, index })),
 )
 
+// Neutrals in the player's zone, tagged with their GLOBAL index. Unlike creeps
+// the server resolves `attack neutral:<index>` against the whole neutrals array
+// (it reaches the client unfiltered), so the index must be taken before the
+// zone filter — re-indexing the survivors would attack a different camp.
 const zoneNeutrals = computed(() =>
-  gameStore.neutrals.filter((n) => n.zone === playerZone.value && n.alive),
+  gameStore.neutrals
+    .map((n, index) => ({ ...n, index }))
+    .filter((n) => n.zone === playerZone.value && n.alive),
+)
+
+/** Roshan, but only where he can actually be fought (and only while alive). */
+const zoneRoshan = computed(() =>
+  playerZone.value === 'roshan-pit' && gameStore.roshan?.alive ? gameStore.roshan : null,
 )
 
 const zoneTower = computed(() => towersByZone.value.get(playerZone.value) ?? null)
 
-// ── Buyback (death overlay) ───────────────────────────────────
+// ── Death overlay ─────────────────────────────────────────────
+
+/**
+ * Ticks are the engine's unit, but nothing in the HUD ever tells a player a
+ * tick is 4s — so the countdowns they have to act on carry wall time too.
+ * Under a minute the tick count is still the actionable number (you queue one
+ * action per tick), so both are shown; "0:12" reads worse than "12s" anyway.
+ * From a minute up the clock alone is enough.
+ */
+function countdownText(ticks: number): string {
+  const t = Math.max(0, ticks)
+  const seconds = (t * TICK_DURATION_MS) / 1000
+  return seconds < 60 ? `${t}t (${seconds}s)` : ticksToClock(t)
+}
+
 const buybackInfo = computed(() => {
   const p = gameStore.player
   if (!p || p.alive) return null
@@ -946,6 +1009,7 @@ function handleCommand(cmd: string) {
       visibleZones: gameStore.visibleZones,
       allPlayers: gameStore.allPlayers,
       items: ITEMS,
+      neutrals: gameStore.neutrals,
       tick: gameStore.tick,
       mode: gameStore.mode,
     })
@@ -972,6 +1036,11 @@ function handleCommand(cmd: string) {
     }
     uiLog.debug('Command sent', { type: command.type })
     gameStore.markActionSent(cmd)
+    // Remember (or drop) the walk order. `isSpecial` is exactly the server's
+    // KEEPS_AUTOPATH set minus `move`, so this mirrors GameLoop: a deliberate
+    // non-move order replaces the walk, and no arrival is owed any more.
+    if (command.type === 'move') walkTarget.value = command.zone
+    else if (!isSpecial) walkTarget.value = null
     // Immediate positive confirmation so the action feels registered NOW, not
     // only when the tick resolves ~4s later. Pre-flight validation already gated
     // out rejects above, so this fires only on actions that will resolve; the
@@ -1128,10 +1197,12 @@ const abilityButtonState = computed(() => {
     }
     const cd = p.cooldowns[slot]
     if (cd > 0) {
+      // The chip stays a bare tick count so the dense bar keeps its width; the
+      // seconds a player actually plans in go into the accessible name instead.
       result[upper] = {
         ready: false,
         label: `${upper}·${cd}`,
-        aria: `${upper} ${name}, on cooldown ${cd} ticks`,
+        aria: `${upper} ${name}, on cooldown ${cd} ticks, about ${(cd * TICK_DURATION_MS) / 1000} seconds`,
       }
       continue
     }
@@ -1182,22 +1253,48 @@ function handleItemUseBySlot(slotIndex: number) {
 
 const isGameOver = computed(() => gameStore.phase === 'ended')
 
-// Get the most recent death event for the player
-const lastDeathEvent = computed(() => {
+// The tick of the player's most recent death. `death` is emitted for EVERY
+// death — including one with no eligible killer — so it is the only reliable
+// anchor. Everything below is scoped to it: the events list is a 200-entry ring
+// buffer, and the overlay used to scan it unbounded, so a kill from ten minutes
+// ago could be reported as the cause of the death on screen right now.
+const lastDeathTick = computed<number | null>(() => {
   const pid = gameStore.playerId
   if (!pid) return null
-  // Find the most recent kill event where the player was the victim
-  const kills = gameStore.events.filter((e) => e.type === 'kill' && e.payload.victimId === pid)
-  return kills.length > 0 ? kills[kills.length - 1] : null
+  for (let i = gameStore.events.length - 1; i >= 0; i--) {
+    const e = gameStore.events[i]!
+    if (e.type === 'death' && e.payload.playerId === pid) return e.tick
+  }
+  return null
 })
 
 const killerName = computed(() => {
-  const death = lastDeathEvent.value
-  if (!death) return null
-  const killerId = death.payload.killerId as string | undefined
-  if (!killerId) return null
-  const killer = gameStore.allPlayers[killerId]
-  return (killer?.heroId && HEROES[killer.heroId]?.name) || killer?.name || killerId
+  const pid = gameStore.playerId
+  const deathTick = lastDeathTick.value
+  if (!pid || deathTick == null) return null
+
+  let attributed: string | null = null
+  let lastDamaged: string | null = null
+  for (let i = gameStore.events.length - 1; i >= 0; i--) {
+    const e = gameStore.events[i]!
+    if (e.tick < deathTick) break
+    if (e.type === 'kill' && e.payload.victimId === pid && e.payload.killerId) {
+      attributed = e.payload.killerId as string
+      break
+    }
+    // Towers, creeps and neutrals are not eligible killers (handleDeaths only
+    // accepts a killerId that resolves to a player), so an NPC kill produces a
+    // `death` with no `kill` at all. Since NPC hits now emit `damage`, the last
+    // thing that hit us on the death tick is the honest answer — without it the
+    // overlay simply said nothing after the most instructive death in the game,
+    // the tower dive.
+    if (lastDamaged === null && e.type === 'damage' && e.payload.targetId === pid) {
+      lastDamaged = e.payload.sourceId as string
+    }
+  }
+
+  const killerId = attributed ?? lastDamaged
+  return killerId ? entityLabel(killerId) : null
 })
 
 const postGamePlayers = computed(() => {
@@ -1302,9 +1399,8 @@ function handleReturnToMenu() {
         <p v-if="gameStore.player.respawnTick" class="mt-5 t-body text-text-dim">
           Respawning in
           <span class="text-radiant text-glow-radiant font-bold t-mono-num">{{
-            Math.max(0, gameStore.player.respawnTick - gameStore.tick)
+            countdownText(gameStore.player.respawnTick - gameStore.tick)
           }}</span>
-          ticks...
         </p>
         <div v-if="buybackInfo" class="mt-6 flex flex-col items-center gap-2">
           <button
@@ -1321,7 +1417,7 @@ function handleReturnToMenu() {
             [BUYBACK — {{ buybackInfo.cost }}g]
           </button>
           <p v-if="buybackInfo.cooldownTicks > 0" class="t-caption text-dire">
-            Buyback on cooldown ({{ buybackInfo.cooldownTicks }} ticks remaining)
+            Buyback on cooldown — {{ countdownText(buybackInfo.cooldownTicks) }} remaining
           </p>
           <p v-else-if="buybackInfo.shortfall > 0" class="t-caption text-text-dim">
             Need {{ buybackInfo.shortfall }}g more ({{ gameStore.player.gold }}g /
@@ -1417,6 +1513,7 @@ function handleReturnToMenu() {
           :creeps="zoneCreeps"
           :neutrals="zoneNeutrals"
           :tower="zoneTower"
+          :roshan="zoneRoshan"
           @command="handleCommand"
         />
       </TerminalPanel>
@@ -1454,9 +1551,29 @@ function handleReturnToMenu() {
       </div>
     </TerminalPanel>
 
-    <!-- Right rail: hero status + compact map (classic) or the
-         demoted combat-log ticker (map-centric). -->
+    <!-- Right rail: compact map + hero status (classic) or the
+         demoted combat-log ticker (map-centric).
+         The map leads the rail: it is the only spatial surface in the classic
+         layout, and the rail scrolls — behind Hero Status the overview grid
+         fell below the fold on short viewports. -->
     <div class="game-grid__rail flex min-h-0 flex-col gap-1 overflow-y-auto">
+      <!-- Classic: compact map in the rail. Map-centric: the map is in the
+           center, so the rail carries the demoted combat-log ticker.
+           overview-open: the whole-board grid is the map's actual payload, so
+           it ships expanded here rather than behind the toggle. Only this
+           instance — the component default stays collapsed for mobile. -->
+      <TerminalPanel v-if="layout === 'classic'" title="Map" class="shrink-0">
+        <AsciiMap
+          :zones="mapZones"
+          :player-zone="playerZone"
+          :ancients="ancients"
+          :map-id="gameStore.mapId"
+          force-mode="compact"
+          :overview-open="true"
+          @zone-click="handleZoneClick"
+        />
+      </TerminalPanel>
+
       <TerminalPanel
         title="Hero Status"
         :variant="heroDanger ? 'danger' : 'default'"
@@ -1480,19 +1597,12 @@ function handleReturnToMenu() {
         </div>
       </TerminalPanel>
 
-      <!-- Classic: compact map in the rail. Map-centric: the map is in the
-           center, so the rail carries the demoted combat-log ticker. -->
-      <TerminalPanel v-if="layout === 'classic'" title="Map" class="shrink-0">
-        <AsciiMap
-          :zones="mapZones"
-          :player-zone="playerZone"
-          :ancients="ancients"
-          :map-id="gameStore.mapId"
-          force-mode="compact"
-          @zone-click="handleZoneClick"
-        />
-      </TerminalPanel>
-      <TerminalPanel v-else title="Combat Log" class="min-h-[8rem] flex-1" data-testid="rail-log">
+      <TerminalPanel
+        v-if="layout === 'map-centric'"
+        title="Combat Log"
+        class="min-h-[8rem] flex-1"
+        data-testid="rail-log"
+      >
         <TickTheater
           :events="combatEvents"
           :status="theaterStatus"
@@ -1594,7 +1704,7 @@ function handleReturnToMenu() {
         <button
           class="ml-auto whitespace-nowrap border border-border bg-bg-secondary px-2 py-1 font-mono text-[0.7rem] text-gold hover:text-text-primary active:bg-border"
           :class="{ 'border-gold': gameStore.canBuy }"
-          title="Shop (S)"
+          title="Shop — click, or press Esc then S"
           aria-label="Toggle shop"
           :aria-pressed="showShop"
           @click="showShop = !showShop"

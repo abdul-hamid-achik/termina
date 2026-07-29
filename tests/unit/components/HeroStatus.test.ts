@@ -174,6 +174,57 @@ describe('HeroStatus ability chips', () => {
   })
 })
 
+describe('HeroStatus cooldown readability', () => {
+  it('spells a sub-minute ability cooldown out in seconds', async () => {
+    mockPointer(false)
+    const wrapper = mountHeroStatus()
+
+    await wrapper.find('[data-testid="ability-chip-q"]').trigger('mouseenter')
+
+    const cd = HEROES[HERO_ID]!.abilities.q.cooldownTicks
+    expect(wrapper.find('[data-testid="ability-tooltip-q"]').text()).toContain(
+      `${cd}t (${cd * 4}s)`,
+    )
+    wrapper.unmount()
+  })
+
+  it('renders a minute-plus ultimate cooldown as a clock', async () => {
+    mockPointer(false)
+    const wrapper = mountHeroStatus()
+
+    await wrapper.find('[data-testid="ability-chip-r"]').trigger('mouseenter')
+
+    // Echo's ultimate is 50 ticks — a number nobody can convert mid-fight.
+    const tooltip = wrapper.find('[data-testid="ability-tooltip-r"]')
+    expect(tooltip.text()).toContain('3:20')
+    expect(tooltip.text()).not.toContain('50t')
+    wrapper.unmount()
+  })
+
+  it('shows the remaining cooldown in seconds on the touch cast panel', async () => {
+    mockPointer(true)
+    const wrapper = mountHeroStatus()
+
+    await wrapper.find('[data-testid="ability-chip-e"]').trigger('click')
+
+    // The fixture has E on a 3-tick cooldown.
+    expect(wrapper.find('[data-testid="ability-tooltip-e"]').text()).toContain('3t (12s)')
+    wrapper.unmount()
+  })
+
+  it('leaves the chip itself a bare tick count', () => {
+    // Deliberate restraint: the chips are the dense part of the HUD, so the
+    // seconds live in the tooltip and never widen the row.
+    mockPointer(false)
+    const wrapper = mountHeroStatus()
+
+    const chip = wrapper.find('[data-testid="ability-chip-e"]')
+    expect(chip.text()).toContain('[3]')
+    expect(chip.text()).not.toContain('12s')
+    wrapper.unmount()
+  })
+})
+
 describe('HeroStatus buff strip', () => {
   it('renders readable labels, hides item-cooldown markers, and colours debuffs', () => {
     const wrapper = mountHeroStatus(

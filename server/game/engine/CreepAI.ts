@@ -196,7 +196,7 @@ function enemyTeam(team: TeamId): TeamId {
 
 /**
  * Apply creep actions to the game state. Returns updated state plus any
- * events to emit (Ancient damage / destruction).
+ * events to emit (hero damage, Ancient damage / destruction).
  */
 export function applyCreepActions(
   state: GameState,
@@ -241,6 +241,14 @@ export function applyCreepActions(
             ...players,
             [action.targetId]: hit.player,
           }
+          events.push({
+            _tag: 'damage',
+            tick: state.tick,
+            sourceId: creep.id,
+            targetId: action.targetId,
+            amount: hit.damageDealt,
+            damageType: 'physical',
+          })
         }
         break
       }

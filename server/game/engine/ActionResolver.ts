@@ -591,17 +591,37 @@ function resolveAttackPhase(
     const attacker = players[action.playerId]
     if (!attacker || !attacker.alive) continue
 
+    // One action per player per 4s tick: a mis-targeted attack that resolves to
+    // nothing must SAY so, otherwise the tick is eaten in silence. Every exit
+    // below reports; `rejected` is also what excludes the player from
+    // succeededActions (no phantom on-attack passive for a swing that missed)
+    // and from the tutorial's "you performed the taught verb" check.
+    const miss = (reason: string): void => {
+      rejected.push({ playerId: action.playerId, reason })
+    }
+
     if (cmd.target.kind === 'hero') {
       const targetId = findHeroByName(cmd.target.name)
-      if (!targetId) continue
+      if (!targetId) {
+        miss(`No hero named "${cmd.target.name}" in this game`)
+        continue
+      }
       const target = players[targetId]
-      if (!target || !target.alive) continue
+      if (!target || !target.alive) {
+        miss('Your target died before your attack landed')
+        continue
+      }
 
+      // Team before zone: "he's your ally" explains the whole failure, while
+      // "not in your zone" would send the player chasing a teammate.
+      if (target.team === attacker.team) {
+        miss(`${target.name} is on your team`)
+        continue
+      }
       if (target.zone !== attacker.zone) {
         rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
         continue
       }
-      if (target.team === attacker.team) continue
 
       const targetPendingHp = (playerUpdates[targetId]?.hp as number | undefined) ?? target.hp
       const targetPendingBuffs =
@@ -835,9 +855,32 @@ function resolveAttackPhase(
       }
     } else if (cmd.target.kind === 'creep') {
       const resolved = creepInZoneByIndex(creeps, attacker.zone, cmd.target.index)
-      if (!resolved) continue
+      if (!resolved) {
+        // Count the same index space creepInZoneByIndex walks (every creep in
+        // the zone, dead-but-unreaped included) so the quoted range is the one
+        // the player can actually type this tick.
+        const creepsInZone = creeps.filter((c) => c.zone === attacker.zone).length
+        miss(
+          creepsInZone === 0
+            ? 'No creeps in this zone to attack'
+            : creepsInZone === 1
+              ? 'Only 1 creep here — use creep:0'
+              : `Only ${creepsInZone} creeps here — use creep:0-${creepsInZone - 1}`,
+        )
+        continue
+      }
       const { creep, globalIdx: creepIdx } = resolved
-      if (creep.hp <= 0) continue
+      if (creep.hp <= 0) {
+        miss('That creep is already dead')
+        continue
+      }
+      // Without this guard an own-creep swing paid the FULL last-hit bounty,
+      // teaching the exact opposite of last-hitting. Killing your own creep is
+      // the `deny` command, which has its own HP window and reduced reward.
+      if (creep.team === attacker.team) {
+        miss('That is your own creep — use `deny` instead')
+        continue
+      }
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
@@ -860,7 +903,10 @@ function resolveAttackPhase(
     } else if (cmd.target.kind === 'tower') {
       const targetZone = cmd.target.zone
       const tower = towers.find((t) => t.zone === targetZone && t.alive)
-      if (!tower) continue
+      if (!tower) {
+        miss(`No standing tower in ${targetZone}`)
+        continue
+      }
       if (tower.zone !== attacker.zone) {
         rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
         continue
@@ -907,7 +953,10 @@ function resolveAttackPhase(
       })
     } else if (cmd.target.kind === 'roshan') {
       const roshan = state.roshan
-      if (!roshan.alive) continue
+      if (!roshan.alive) {
+        miss('Roshan is already dead')
+        continue
+      }
       if (attacker.zone !== 'roshan-pit') {
         rejected.push({
           playerId: action.playerId,
@@ -930,7 +979,14 @@ function resolveAttackPhase(
     } else if (cmd.target.kind === 'neutral') {
       const neutralIdx = cmd.target.index
       const neutral = neutrals[neutralIdx]
-      if (!neutral || !neutral.alive) continue
+      if (!neutral) {
+        miss('No neutral creep at that index')
+        continue
+      }
+      if (!neutral.alive) {
+        miss('That neutral is already dead')
+        continue
+      }
       if (neutral.zone !== attacker.zone) {
         rejected.push({ playerId: action.playerId, reason: 'Target is not in your zone' })
         continue
@@ -987,6 +1043,11 @@ function resolveAttackPhase(
       const adt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
       adt.tower += attackDamage
       damageTracker.set(action.playerId, adt)
+    } else {
+      // TargetRef also carries 'zone' and 'self', which the wire schema accepts
+      // for an attack but no branch above handles — without this they fall off
+      // the end of the chain and eat the tick in silence.
+      miss(`You cannot attack a ${cmd.target.kind}`)
     }
   }
 

@@ -156,6 +156,39 @@ describe('useCommands', () => {
           expect(parse('move mid', 'dire').command).toEqual({ type: 'move', zone: 'mid-river' })
         })
       })
+
+      describe('ambiguous zone words', () => {
+        // REGRESSION: `rune` was aliased to mid-river — a zone with no rune in
+        // it — so the command walked players straight past both rune spots.
+        it('names both rune spots instead of resolving `move rune` to mid-river', () => {
+          const { parse } = useCommands()
+          const result = parse('move rune')
+
+          expect(result.command).toBeNull()
+          expect(result.error).toContain('rune-top')
+          expect(result.error).toContain('rune-bot')
+        })
+
+        it('resolves the rt/rb shortcuts to the two rune spots', () => {
+          const { parse } = useCommands()
+          expect(parse('move rt').command).toEqual({ type: 'move', zone: 'rune-top' })
+          expect(parse('move rb').command).toEqual({ type: 'move', zone: 'rune-bot' })
+        })
+
+        it('reports the ambiguity for ward and ping too', () => {
+          const { parse } = useCommands()
+          expect(parse('ward rune').error).toContain('ambiguous')
+          expect(parse('ping rune').error).toContain('ambiguous')
+        })
+
+        it('summarises rather than listing when many zones match', () => {
+          const { parse } = useCommands()
+          const result = parse('move t')
+
+          expect(result.command).toBeNull()
+          expect(result.error).toContain('zones match')
+        })
+      })
     })
 
     describe('attack command', () => {
@@ -228,6 +261,55 @@ describe('useCommands', () => {
 
         expect(result.command).toBeNull()
         expect(result.error).toContain('Usage: attack')
+      })
+
+      // Roshan and the jungle camps are fully resolved server-side and farmed by
+      // bots every match; without these two branches a human could not express
+      // either intent at all.
+      it('parses attack roshan (and the rosh shorthand)', () => {
+        const { parse } = useCommands()
+
+        expect(parse('attack roshan')).toEqual({
+          command: { type: 'attack', target: { kind: 'roshan' } },
+          error: null,
+        })
+        expect(parse('attack rosh')).toEqual({
+          command: { type: 'attack', target: { kind: 'roshan' } },
+          error: null,
+        })
+      })
+
+      it('parses attack neutral:<index> as a global neutrals index', () => {
+        const { parse } = useCommands()
+        const result = parse('attack neutral:3')
+
+        expect(result.error).toBeNull()
+        expect(result.command).toEqual({
+          type: 'attack',
+          target: { kind: 'neutral', index: 3 },
+        })
+      })
+
+      it('rejects a non-numeric neutral index', () => {
+        const { parse } = useCommands()
+        const result = parse('attack neutral:abc')
+
+        expect(result.command).toBeNull()
+        expect(result.error).toContain('Invalid target')
+      })
+
+      it('advertises roshan and neutral in the usage and invalid-target hints', () => {
+        const { parse } = useCommands()
+
+        const usage = parse('attack').error!
+        expect(usage).toContain('roshan')
+        expect(usage).toContain('neutral:0')
+        // There is no hero `axe` in this game — the old example was unusable.
+        expect(usage).not.toContain('hero:axe')
+
+        const invalid = parse('attack xyz_invalid').error!
+        expect(invalid).toContain('roshan')
+        expect(invalid).toContain('neutral:<index>')
       })
     })
 
@@ -952,6 +1034,42 @@ describe('useCommands', () => {
         expect(texts).toContain('mid-t1-rad')
         expect(texts).toContain('mid-river')
       })
+
+      // REGRESSION: zone order put `mid-t3-rad` first, so accepting the top
+      // suggestion for `move mid` sent the player to their own tier-3 tower.
+      it('ranks an exact alias above every prefix match', () => {
+        const { autocomplete } = useCommands()
+        const suggestions = autocomplete('move mid', makeContext())
+
+        expect(suggestions[0]?.text).toBe('mid')
+        expect(suggestions[0]?.description).toContain('Mid River')
+        expect(suggestions.map((s) => s.text)).toContain('mid-t3-rad')
+      })
+
+      it('does not rank an alias first when its zone is not on this map', () => {
+        const { autocomplete } = useCommands()
+        // A cut-down map (the one-lane tutorial shape): `top` resolves to
+        // top-river, which does not exist here — the reachable zones win.
+        const context = makeContext({
+          visibleZones: {
+            'top-t1-rad': { id: 'top-t1-rad', wards: [], creeps: [] },
+            'top-t2-rad': { id: 'top-t2-rad', wards: [], creeps: [] },
+          },
+        })
+        const suggestions = autocomplete('move top', context)
+
+        expect(suggestions[0]?.text).not.toBe('top')
+      })
+
+      it('offers both rune spots and never mid-river for `move rune`', () => {
+        const { autocomplete } = useCommands()
+        const suggestions = autocomplete('move rune', makeContext())
+
+        expect(suggestions.map((s) => s.text)).toEqual(
+          expect.arrayContaining(['rune-top', 'rune-bot']),
+        )
+        expect(suggestions.every((s) => !(s.description ?? '').includes('Mid River'))).toBe(true)
+      })
     })
 
     describe('target completion for attack', () => {
@@ -989,6 +1107,36 @@ describe('useCommands', () => {
         const suggestions = autocomplete('attack h', context)
 
         expect(suggestions).toEqual([])
+      })
+
+      // The offered index must be the position in the whole neutrals array.
+      // Re-indexing the in-zone survivors would send the attack at the camp
+      // sitting at that position in some other jungle.
+      it('suggests in-zone neutrals by their global index', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          neutrals: [
+            { id: 'n0', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+            { id: 'n1', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+            { id: 'n2', zone: 'mid-t1-rad', hp: 140, maxHp: 200, type: 'centaur', alive: true },
+            { id: 'n3', zone: 'mid-t1-rad', hp: 0, maxHp: 200, type: 'centaur', alive: false },
+          ],
+        })
+        const suggestions = autocomplete('attack neutral', context)
+
+        expect(suggestions.map((s) => s.text)).toEqual(['neutral:2'])
+        expect(suggestions[0]!.description).toContain('centaur')
+      })
+
+      it('suggests roshan only from inside the pit', () => {
+        const { autocomplete } = useCommands()
+
+        expect(autocomplete('attack rosh', makeContext()).map((s) => s.text)).not.toContain(
+          'roshan',
+        )
+
+        const inPit = makeContext({ player: makePlayer({ zone: 'roshan-pit' }) })
+        expect(autocomplete('attack rosh', inPit).map((s) => s.text)).toContain('roshan')
       })
     })
 
@@ -1272,6 +1420,24 @@ describe('useCommands', () => {
         const texts = suggestions.map((s) => s.text)
         // mid-t1-rad is adjacent to mid-t2-rad and mid-river
         expect(texts.some((t) => t.includes('mid'))).toBe(true)
+      })
+
+      it('ranks an exact alias first when it resolves to an adjacent zone', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({ player: makePlayer({ zone: 'mid-t1-rad' }) })
+        const suggestions = autocomplete('ward mid', context)
+
+        expect(suggestions[0]?.text).toBe('mid')
+        expect(suggestions[0]?.description).toContain('Mid River')
+      })
+
+      it('omits an alias that resolves out of ward range', () => {
+        const { autocomplete } = useCommands()
+        // The fountain touches only the base — mid-river is not wardable here.
+        const context = makeContext({ player: makePlayer({ zone: 'radiant-fountain' }) })
+        const suggestions = autocomplete('ward mid', context)
+
+        expect(suggestions.map((s) => s.text)).not.toContain('mid')
       })
 
       it('falls back to all zones when no player', () => {
@@ -1641,6 +1807,50 @@ describe('validateCommand', () => {
   it('allows attacking a hero in your zone', () => {
     expect(
       validateCommand({ type: 'attack', target: { kind: 'hero', name: 'daemon' } }, makeContext()),
+    ).toBeNull()
+  })
+
+  it('rejects attacking Roshan from outside the pit', () => {
+    expect(validateCommand({ type: 'attack', target: { kind: 'roshan' } }, makeContext())).toMatch(
+      /roshan-pit/,
+    )
+  })
+
+  it('allows attacking Roshan from inside the pit', () => {
+    const ctx = makeContext({ player: makePlayer({ zone: 'roshan-pit' }) })
+    expect(validateCommand({ type: 'attack', target: { kind: 'roshan' } }, ctx)).toBeNull()
+  })
+
+  it('rejects a neutral index that names a camp in another zone', () => {
+    const ctx = makeContext({
+      neutrals: [
+        { id: 'n0', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+        { id: 'n1', zone: 'mid-t1-rad', hp: 150, maxHp: 200, type: 'kobold', alive: true },
+      ],
+    })
+    expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
+      /not in your zone/,
+    )
+    expect(
+      validateCommand({ type: 'attack', target: { kind: 'neutral', index: 1 } }, ctx),
+    ).toBeNull()
+  })
+
+  it('rejects a neutral index with no camp behind it', () => {
+    const ctx = makeContext({
+      neutrals: [{ id: 'n0', zone: 'mid-t1-rad', hp: 0, maxHp: 200, type: 'kobold', alive: false }],
+    })
+    expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
+      /No neutral creep at index 0/,
+    )
+    expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 7 } }, ctx)).toMatch(
+      /No neutral creep at index 7/,
+    )
+  })
+
+  it('leaves neutral targeting to the server when no neutrals array is supplied', () => {
+    expect(
+      validateCommand({ type: 'attack', target: { kind: 'neutral', index: 4 } }, makeContext()),
     ).toBeNull()
   })
 

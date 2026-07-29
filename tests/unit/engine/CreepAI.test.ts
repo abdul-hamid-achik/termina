@@ -391,6 +391,58 @@ describe('CreepAI', () => {
       expect(result.players['p1']!.alive).toBe(false)
     })
 
+    it('emits a damage event naming the creep that hit', () => {
+      const player = makePlayer({ id: 'p1', team: 'dire', zone: 'mid-river', hp: 500 })
+      const state = makeGameState({
+        tick: 12,
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
+        players: { p1: player },
+      })
+
+      const actions: CreepAction[] = [
+        { creepId: 'c1', action: 'attack_hero', targetId: 'p1', damage: MELEE_CREEP_ATTACK },
+      ]
+
+      const { state: after, events } = applyCreepActions(state, actions)
+      const expectedDamage = calculatePhysicalDamage(
+        MELEE_CREEP_ATTACK,
+        getEffectiveDefense(player),
+      )
+      expect(events).toEqual([
+        {
+          _tag: 'damage',
+          tick: 12,
+          sourceId: 'c1',
+          targetId: 'p1',
+          amount: expectedDamage,
+          damageType: 'physical',
+        },
+      ])
+      expect(500 - after.players['p1']!.hp).toBe(expectedDamage)
+    })
+
+    it('emits no damage event when a shield absorbs the whole hit', () => {
+      const state = makeGameState({
+        creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-river' })],
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            team: 'dire',
+            zone: 'mid-river',
+            hp: 500,
+            buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
+          }),
+        },
+      })
+
+      const result = applyCreepActions(state, [
+        { creepId: 'c1', action: 'attack_hero', targetId: 'p1', damage: MELEE_CREEP_ATTACK },
+      ])
+
+      expect(result.events).toEqual([])
+      expect(result.state.players['p1']!.hp).toBe(500)
+    })
+
     it('should apply damage to towers', () => {
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'radiant', zone: 'mid-t1-dire' })],

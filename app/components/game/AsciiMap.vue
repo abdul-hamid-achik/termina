@@ -183,22 +183,29 @@ function handleGridKeydown(e: KeyboardEvent) {
     return null
   }
 
+  // GameScreen listens for bare arrows on `window` and turns them into a move
+  // order, so every arrow consumed here must stop bubbling — browsing the grid
+  // with the keyboard would otherwise also walk the hero one zone per press.
   let next: string | null = null
   switch (e.key) {
     case 'ArrowRight':
       e.preventDefault()
+      e.stopPropagation()
       next = horiz(1)
       break
     case 'ArrowLeft':
       e.preventDefault()
+      e.stopPropagation()
       next = horiz(-1)
       break
     case 'ArrowDown':
       e.preventDefault()
+      e.stopPropagation()
       next = vert(1)
       break
     case 'ArrowUp':
       e.preventDefault()
+      e.stopPropagation()
       next = vert(-1)
       break
     case 'Enter':

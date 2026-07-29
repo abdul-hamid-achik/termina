@@ -113,4 +113,45 @@ describe('creeps: last-hit & deny economy', () => {
     const creep = (await game.state()).creeps.find((c) => c.id === 'ally_creep')
     expect(creep && creep.hp > 0).toBe(true)
   })
+
+  it('`attack` on your OWN creep is refused — no kill, no bounty, and the player is told why', async () => {
+    // Without the team guard the swing killed the ally creep and banked the
+    // FULL last-hit bounty, rewarding the exact opposite of last-hitting.
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    const me0 = await game.me()
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      creeps: [{ id: 'ally_creep', team: me0.team, zone: 'mid-river', hp: 10, type: 'melee' }],
+    }))
+
+    const goldBefore = (await game.me()).gold
+    game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+    await game.tick()
+
+    const creep = (await game.state()).creeps.find((c) => c.id === 'ally_creep')
+    expect(creep && creep.hp === 10).toBe(true)
+    // Passive income can still tick in, so assert no LAST-HIT reward specifically.
+    expect(game.lastEvents.some((e) => e._tag === 'creep_lasthit')).toBe(false)
+    expect((await game.me()).gold - goldBefore).toBeLessThan(20)
+    expect(game.lastRejected.some((r) => r.playerId === HUMAN && /own creep/i.test(r.reason))).toBe(
+      true,
+    )
+  })
+
+  it('`attack creep:0` in a creepless zone is refused instead of eating the tick', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
+      creeps: [],
+    }))
+
+    game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+    await game.tick()
+
+    expect(game.lastRejected.some((r) => r.playerId === HUMAN && /no creeps/i.test(r.reason))).toBe(
+      true,
+    )
+  })
 })

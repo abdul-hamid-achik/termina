@@ -5,6 +5,8 @@ import ProgressBar from '~/components/ui/ProgressBar.vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import { displayBuffs } from '~/utils/buffs'
+import { ticksToClock } from '~/utils/strategy'
+import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 import { useTapInspect } from '~/composables/useTapInspect'
 
 interface HeroData {
@@ -54,8 +56,18 @@ function getAbilityDef(key: 'q' | 'w' | 'e' | 'r') {
   return heroDef.value?.abilities[key] ?? null
 }
 
+// Deliberately a bare tick count: the chips are the dense part of the HUD and
+// must not widen. The seconds go in the tooltip instead.
 function cdLabel(cd: number): string {
   return cd <= 0 ? 'RDY' : `${cd}`
+}
+
+// Nothing else in the HUD tells a player a tick is 4s, and the tooltip has the
+// room to say it. Under a minute the bare seconds read better than a clock
+// ("12s", not "0:12"), and the tick count is still what you plan casts in.
+function cooldownText(ticks: number): string {
+  const seconds = (Math.max(0, ticks) * TICK_DURATION_MS) / 1000
+  return seconds < 60 ? `${ticks}t (${seconds}s)` : ticksToClock(ticks)
 }
 
 function onAbilityTap(key: 'q' | 'w' | 'e' | 'r') {
@@ -152,9 +164,9 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
               >
               <span
                 >CD:
-                <span class="text-text-primary"
-                  >{{ getAbilityDef(key)!.cooldownTicks }}t</span
-                ></span
+                <span class="text-text-primary">{{
+                  cooldownText(getAbilityDef(key)!.cooldownTicks)
+                }}</span></span
               >
             </div>
             <div class="mt-1 text-text-primary">{{ getAbilityDef(key)!.description }}</div>
@@ -182,7 +194,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
                 [CAST {{ key.toUpperCase() }} — {{ getAbilityDef(key)!.manaCost }}mp]
               </button>
               <span v-else class="block w-full px-2 py-1 text-center text-text-dim">
-                [ON COOLDOWN — {{ hero.cooldowns[key] }}t]
+                [ON COOLDOWN — {{ cooldownText(hero.cooldowns[key]) }}]
               </span>
             </div>
           </div>

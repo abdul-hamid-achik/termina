@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ObjectiveTicker from '../../../app/components/game/ObjectiveTicker.vue'
 import { ROSHAN_RESPAWN_TICKS } from '../../../shared/constants/balance'
+import { ticksToClock } from '../../../app/utils/strategy'
 
 function mountTicker(props: Record<string, unknown>) {
   return mount(ObjectiveTicker, {
@@ -16,13 +17,16 @@ describe('ObjectiveTicker', () => {
     expect(w.text()).toContain('80%')
   })
 
-  it('shows Roshan respawn countdown when dead', () => {
+  it('shows the Roshan respawn countdown as a clock, not a tick count', () => {
     const w = mountTicker({
       roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 100 },
       tick: 120,
     })
+    const ticksLeft = 100 + ROSHAN_RESPAWN_TICKS - 120
     expect(w.text()).toContain('dead')
-    expect(w.text()).toContain(`${100 + ROSHAN_RESPAWN_TICKS - 120}t`)
+    // Contesting the next Roshan is a wall-clock call — 70t means nothing.
+    expect(w.text()).toContain(ticksToClock(ticksLeft))
+    expect(w.text()).not.toContain(`${ticksLeft}t`)
   })
 
   it('shows a live rune and its expiry', () => {

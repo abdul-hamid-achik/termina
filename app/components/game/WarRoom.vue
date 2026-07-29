@@ -21,9 +21,10 @@ const settings = useSettingsStore()
 
 const tick = computed(() => store.tick)
 
-// The ally/enemy roster is a HUD setting (collapsed on the simplified default
-// preset). Toggling goes through setHud so hudPreset re-derives to 'custom'
-// when the player diverges from a named preset — and the choice persists.
+// The ally roster is a HUD setting (collapsed on the simplified default
+// preset; the enemy threat sheet is unconditional). Toggling goes through
+// setHud so hudPreset re-derives to 'custom' when the player diverges from a
+// named preset — and the choice persists.
 const rosterExpanded = computed(() => settings.hud.rosterExpanded)
 function toggleRoster() {
   settings.setHud('rosterExpanded', !settings.hud.rosterExpanded)
@@ -128,9 +129,23 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       </div>
     </section>
 
-    <!-- Allies + enemy threat (the scrolling region; readouts above stay pinned).
-         Collapsible behind the rosterExpanded HUD setting — collapsed is the
-         simplified default; net worth/objectives/day-night stay always on. -->
+    <!-- Enemy threat is always on: enemy cooldowns/respawn/last-seen is the one
+         readout a text MOBA shows better than a graphical one, so it must not
+         start hidden behind a toggle. Only the ally roster stays collapsible
+         behind the rosterExpanded HUD setting (collapsed on the simplified
+         default preset) — the readouts above it stay pinned. -->
+    <section
+      data-testid="war-room-enemy-threat"
+      class="flex min-h-0 flex-1 flex-col border-t border-border/50 pt-1.5"
+    >
+      <div class="mb-1 shrink-0 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
+        Enemy Threat
+      </div>
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <EnemyThreatSheet :enemies="store.enemyPlayers" :last-seen="store.lastSeen" :tick="tick" />
+      </div>
+    </section>
+
     <button
       v-if="!rosterExpanded"
       type="button"
@@ -139,7 +154,7 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       class="min-h-[2rem] w-full shrink-0 border-t border-border/50 pt-1.5 text-left text-[0.6rem] font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
       @click="toggleRoster"
     >
-      [+] Allies &amp; Enemy Threat
+      [+] Allies
     </button>
     <section
       v-else
@@ -153,20 +168,9 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
         class="min-h-[2rem] w-full shrink-0 text-left text-[0.6rem] font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
         @click="toggleRoster"
       >
-        [−] Allies &amp; Enemy Threat
+        [−] Allies
       </button>
-      <div>
-        <div class="mb-1 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
-          Allies
-        </div>
-        <AllyStatusSheet :allies="store.allyPlayers" :tick="tick" />
-      </div>
-      <div>
-        <div class="mb-1 text-[0.6rem] font-bold tracking-wider text-text-dim uppercase">
-          Enemy Threat
-        </div>
-        <EnemyThreatSheet :enemies="store.enemyPlayers" :last-seen="store.lastSeen" :tick="tick" />
-      </div>
+      <AllyStatusSheet :allies="store.allyPlayers" :tick="tick" />
     </section>
   </div>
 </template>

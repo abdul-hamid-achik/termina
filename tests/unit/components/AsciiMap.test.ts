@@ -122,6 +122,33 @@ describe('AsciiMap', () => {
       wrapper.unmount()
     })
 
+    it('keeps grid navigation from also walking the hero', async () => {
+      // GameScreen listens for bare arrows on `window` and turns each into a
+      // move order. Without stopPropagation, tabbing to the map and browsing it
+      // with the arrows would queue a move on every press.
+      const escaped: string[] = []
+      const spy = (e: Event) => escaped.push((e as KeyboardEvent).key)
+      window.addEventListener('keydown', spy)
+
+      const wrapper = mount(AsciiMap, {
+        attachTo: document.body,
+        props: { zones: [makeZone({ id: 'radiant-fountain' })], playerZone: 'radiant-fountain' },
+      })
+      const grid = wrapper.find('[role="grid"]')
+      for (const key of ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp']) {
+        await grid.trigger('keydown', { key })
+      }
+
+      expect(escaped).toEqual([])
+
+      // Unhandled keys still reach the page — the map only claims the arrows.
+      await grid.trigger('keydown', { key: 's' })
+      expect(escaped).toEqual(['s'])
+
+      window.removeEventListener('keydown', spy)
+      wrapper.unmount()
+    })
+
     it('should announce zone updates to screen readers', async () => {
       const zones = [makeZone({ id: 'mid-t1-rad', enemyCount: 0 })]
       const wrapper = mount(AsciiMap, {

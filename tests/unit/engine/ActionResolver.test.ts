@@ -6,6 +6,7 @@ import {
   type PlayerAction,
 } from '../../../server/game/engine/ActionResolver'
 import type { GameState, PlayerState } from '../../../shared/types/game'
+import type { TargetRef } from '../../../shared/types/commands'
 import { NEUTRAL_CREEPS } from '../../../shared/constants/balance'
 import { HEROES } from '../../../shared/constants/heroes'
 import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
@@ -1364,6 +1365,158 @@ describe('ActionResolver', () => {
       expect(result.rejected).toHaveLength(0)
       // Damage landed (hp dropped below 9999).
       expect(result.state.players['p2']!.hp).toBeLessThan(9999)
+    })
+  })
+
+  /**
+   * A player gets ONE action per 4-second tick. Every attack that resolves to
+   * nothing used to `continue` in silence — no damage, no message, and `canAct`
+   * false for the next four seconds. These pin the feedback for each mis-target
+   * class; `rejected` is also the channel GameLoop uses to keep a whiffed swing
+   * out of `succeededActions` (no phantom on-attack passive) and out of the
+   * tutorial's "the player performed the taught verb" check.
+   */
+  describe('attack mis-targets are reported, never swallowed', () => {
+    const attacker = () => makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+
+    const attack = (state: GameState, target: TargetRef) =>
+      Effect.runSync(
+        resolveActions(state, [{ playerId: 'p1', command: { type: 'attack', target } }]),
+      )
+
+    it('names an unknown hero instead of eating the tick', () => {
+      const state = makeGameState({ players: { p1: attacker() } })
+      const result = attack(state, { kind: 'hero', name: 'nosuchhero' })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]).toMatchObject({ playerId: 'p1' })
+      expect(result.rejected[0]!.reason).toContain('nosuchhero')
+    })
+
+    it('says the hero target died before the attack landed', () => {
+      const state = makeGameState({
+        players: {
+          p1: attacker(),
+          p2: makePlayer({
+            id: 'p2',
+            name: 'Enemy',
+            team: 'dire',
+            zone: 'mid-river',
+            alive: false,
+          }),
+        },
+      })
+      const result = attack(state, { kind: 'hero', name: 'p2' })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toMatch(/died/i)
+    })
+
+    it('says the hero target is an ally (and deals them no damage)', () => {
+      const state = makeGameState({
+        players: {
+          p1: attacker(),
+          p2: makePlayer({ id: 'p2', name: 'Buddy', team: 'radiant', zone: 'mid-river', hp: 500 }),
+        },
+      })
+      const result = attack(state, { kind: 'hero', name: 'p2' })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toContain('Buddy')
+      expect(result.rejected[0]!.reason).toMatch(/your team/i)
+      // Assert on the damage channel, not raw hp — the stat recalc rescales hp
+      // when maxHp is recomputed, so a raw hp comparison is confounded.
+      expect(result.events.some((e) => e._tag === 'damage' && e.targetId === 'p2')).toBe(false)
+    })
+
+    it('says there are no creeps here when the zone is empty', () => {
+      const state = makeGameState({ players: { p1: attacker() } })
+      const result = attack(state, { kind: 'creep', index: 0 })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toMatch(/no creeps/i)
+    })
+
+    it('quotes the usable creep index range when the index is out of bounds', () => {
+      const state = makeGameState({
+        players: { p1: attacker() },
+        creeps: [
+          { id: 'c0', team: 'dire', zone: 'mid-river', hp: 400, type: 'melee' },
+          { id: 'c1', team: 'dire', zone: 'mid-river', hp: 400, type: 'melee' },
+          // A creep in another zone must not widen the quoted range.
+          { id: 'c2', team: 'dire', zone: 'top-river', hp: 400, type: 'melee' },
+        ],
+      })
+      const result = attack(state, { kind: 'creep', index: 4 })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toContain('creep:0-1')
+    })
+
+    it('says the creep is already dead', () => {
+      const state = makeGameState({
+        players: { p1: attacker() },
+        creeps: [{ id: 'c0', team: 'dire', zone: 'mid-river', hp: 0, type: 'melee' }],
+      })
+      const result = attack(state, { kind: 'creep', index: 0 })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toMatch(/already dead/i)
+    })
+
+    it('refuses an own-team creep and pays no last-hit gold', () => {
+      // The bug this pins: with no team guard the swing killed the ally creep
+      // and banked the FULL last-hit bounty — the opposite of last-hitting.
+      const state = makeGameState({
+        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', gold: 600 }) },
+        creeps: [{ id: 'ally0', team: 'radiant', zone: 'mid-river', hp: 5, type: 'melee' }],
+      })
+      const result = attack(state, { kind: 'creep', index: 0 })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toMatch(/own creep/i)
+      expect(result.state.creeps[0]!.hp).toBe(5)
+      expect(result.state.players['p1']!.gold).toBe(600)
+      expect(result.state.players['p1']!.xp).toBe(0)
+    })
+
+    it('says there is no standing tower in the targeted zone', () => {
+      const state = makeGameState({ players: { p1: attacker() } })
+      const result = attack(state, { kind: 'tower', zone: 'mid-river' })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toContain('mid-river')
+    })
+
+    it('says Roshan is already dead', () => {
+      const state = makeGameState({
+        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'roshan-pit' }) },
+        roshan: { alive: false, hp: 0, maxHp: 2000, deathTick: 1 },
+      })
+      const result = attack(state, { kind: 'roshan' })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toMatch(/roshan/i)
+    })
+
+    it('reports a dead neutral and an out-of-range neutral index differently', () => {
+      const state = makeGameState({
+        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'jungle-rad-top' }) },
+        neutrals: [
+          {
+            id: 'n0',
+            zone: 'jungle-rad-top',
+            hp: 0,
+            maxHp: 100,
+            type: 'kobold',
+            alive: false,
+          },
+        ],
+      })
+      expect(attack(state, { kind: 'neutral', index: 0 }).rejected[0]!.reason).toMatch(
+        /already dead/i,
+      )
+      expect(attack(state, { kind: 'neutral', index: 7 }).rejected[0]!.reason).toMatch(/index/i)
+    })
+
+    it('rejects a target kind the attack phase has no branch for', () => {
+      // The wire schema accepts every TargetRef kind for `attack`, including
+      // 'zone' and 'self', which fell off the end of the branch chain.
+      const state = makeGameState({ players: { p1: attacker() } })
+      const result = attack(state, { kind: 'zone', zone: 'mid-river' })
+      expect(result.rejected).toHaveLength(1)
+      expect(result.rejected[0]!.reason).toMatch(/cannot attack/i)
     })
   })
 })

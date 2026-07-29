@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatRoshan, formatRunes, formatAegis } from '~/utils/strategy'
+import { formatRoshan, formatRunes, formatAegis, ticksToClock } from '~/utils/strategy'
 import { buffLabel } from '~/utils/buffs'
 import type { RoshanState, RuneState } from '~~/shared/types/game'
 
@@ -35,7 +35,11 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
         <template v-if="rosh.status === 'up'"
           >UP{{ rosh.hpPct != null ? ` ${rosh.hpPct}%` : '' }}</template
         >
-        <template v-else-if="rosh.status === 'dead'">dead · {{ rosh.respawnIn }}t</template>
+        <!-- Whether you can contest the next Roshan is a wall-clock decision;
+             "34t" only means something to someone who knows a tick is 4s. -->
+        <template v-else-if="rosh.status === 'dead'"
+          >dead · {{ ticksToClock(rosh.respawnIn) }}</template
+        >
         <template v-else>?</template>
       </span>
     </div>

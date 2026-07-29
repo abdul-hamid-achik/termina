@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ZonePanel from '../../../app/components/game/ZonePanel.vue'
-import type { PlayerState, CreepState, TowerState } from '../../../shared/types/game'
+import type {
+  PlayerState,
+  CreepState,
+  NeutralCreepState,
+  TowerState,
+} from '../../../shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -58,6 +63,19 @@ function makeTower(overrides: Partial<TowerState> = {}): TowerState {
     maxHp: 1500,
     alive: true,
     invulnerable: false,
+    ...overrides,
+  }
+}
+
+function makeNeutral(overrides: Partial<NeutralCreepState & { index: number }> = {}) {
+  return {
+    id: 'neutral_1',
+    zone: 'mid-river',
+    hp: 250,
+    maxHp: 250,
+    type: 'kobold',
+    alive: true,
+    index: 0,
     ...overrides,
   }
 }
@@ -313,9 +331,9 @@ describe('ZonePanel', () => {
   describe('neutrals', () => {
     it('shows alive neutral count with lowest HP', () => {
       const neutrals = [
-        { id: 'n1', zone: 'mid-river', hp: 250, maxHp: 250, type: 'kobold', alive: true },
-        { id: 'n2', zone: 'mid-river', hp: 100, maxHp: 250, type: 'kobold', alive: true },
-        { id: 'n3', zone: 'mid-river', hp: 0, maxHp: 250, type: 'kobold', alive: false },
+        makeNeutral({ id: 'n1', hp: 250, index: 4 }),
+        makeNeutral({ id: 'n2', hp: 100, index: 5 }),
+        makeNeutral({ id: 'n3', hp: 0, alive: false, index: 6 }),
       ]
       const wrapper = mount(ZonePanel, { props: { ...baseProps, neutrals } })
 
@@ -323,6 +341,62 @@ describe('ZonePanel', () => {
       expect(row.exists()).toBe(true)
       expect(row.text()).toContain('2× neutrals')
       expect(row.text()).toContain('lowest 100hp')
+    })
+
+    // The index carried on each neutral is its position in the GLOBAL neutrals
+    // array, not among the in-zone survivors — emitting a re-derived 0/1/2 here
+    // would attack a camp in a completely different jungle.
+    it('emits an attack on the lowest-HP camp member using its global index', async () => {
+      const neutrals = [
+        makeNeutral({ id: 'n1', hp: 250, index: 4 }),
+        makeNeutral({ id: 'n2', hp: 100, index: 5 }),
+        makeNeutral({ id: 'n3', hp: 20, alive: false, index: 6 }),
+      ]
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, neutrals } })
+
+      await wrapper.find('[data-testid="zone-neutrals"]').trigger('click')
+
+      expect(wrapper.emitted('command')).toEqual([['attack neutral:5']])
+    })
+  })
+
+  describe('roshan', () => {
+    it('renders no Roshan row when he is not passed (outside the pit)', () => {
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, zoneId: 'mid-river' } })
+
+      expect(wrapper.find('[data-testid="zone-roshan"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="zone-panel-empty"]').exists()).toBe(true)
+    })
+
+    it('renders a Roshan row with HP and emits attack roshan on click', async () => {
+      const wrapper = mount(ZonePanel, {
+        props: {
+          ...baseProps,
+          zoneId: 'roshan-pit',
+          roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
+        },
+      })
+
+      const row = wrapper.find('[data-testid="zone-roshan"]')
+      expect(row.exists()).toBe(true)
+      expect(row.text()).toContain('3200/5000')
+      // A pit holding Roshan is not an empty zone.
+      expect(wrapper.find('[data-testid="zone-panel-empty"]').exists()).toBe(false)
+
+      await row.trigger('click')
+      expect(wrapper.emitted('command')).toEqual([['attack roshan']])
+    })
+
+    it('hides the row once Roshan is dead', () => {
+      const wrapper = mount(ZonePanel, {
+        props: {
+          ...baseProps,
+          zoneId: 'roshan-pit',
+          roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 120 },
+        },
+      })
+
+      expect(wrapper.find('[data-testid="zone-roshan"]').exists()).toBe(false)
     })
   })
 })

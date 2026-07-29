@@ -201,12 +201,79 @@ describe('NeutralAI', () => {
       })
 
       const actions = [{ neutralId: 'neutral_1', targetId: 'p1', damage: 50 }]
-      const result = applyNeutralActions(state, actions)
+      const result = applyNeutralActions(state, actions).state
 
       // Damage now goes through resolvePhysicalHit (full mitigation chain),
       // not raw hp - damage. With defense 3: 50 * (100/(100+3)) ≈ 49 damage,
       // so 500 - 49 = 451.
       expect(result.players['p1']!.hp).toBe(451)
+    })
+
+    it('emits a damage event naming the neutral that hit', () => {
+      const state = makeGameState({
+        tick: 62,
+        neutrals: [
+          {
+            id: 'neutral_1',
+            zone: 'jungle-rad-top',
+            hp: 100,
+            maxHp: 100,
+            type: 'kobold',
+            alive: true,
+          },
+        ],
+        players: {
+          p1: makePlayer({ id: 'p1', zone: 'jungle-rad-top', hp: 500 }),
+        },
+      })
+
+      const { state: after, events } = applyNeutralActions(state, [
+        { neutralId: 'neutral_1', targetId: 'p1', damage: 50 },
+      ])
+
+      expect(events).toEqual([
+        {
+          _tag: 'damage',
+          tick: 62,
+          sourceId: 'neutral_1',
+          targetId: 'p1',
+          amount: 49,
+          damageType: 'physical',
+        },
+      ])
+      expect(500 - after.players['p1']!.hp).toBe(49)
+    })
+
+    it('emits no damage event when a shield absorbs the whole hit', () => {
+      // Not immune and not dodged — the hero simply loses no HP. Emitting here
+      // would paint a "0" damage float, which reads as a bug.
+      const state = makeGameState({
+        neutrals: [
+          {
+            id: 'neutral_1',
+            zone: 'jungle-rad-top',
+            hp: 100,
+            maxHp: 100,
+            type: 'kobold',
+            alive: true,
+          },
+        ],
+        players: {
+          p1: makePlayer({
+            id: 'p1',
+            zone: 'jungle-rad-top',
+            hp: 500,
+            buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
+          }),
+        },
+      })
+
+      const result = applyNeutralActions(state, [
+        { neutralId: 'neutral_1', targetId: 'p1', damage: 50 },
+      ])
+
+      expect(result.events).toEqual([])
+      expect(result.state.players['p1']!.hp).toBe(500)
     })
   })
 })

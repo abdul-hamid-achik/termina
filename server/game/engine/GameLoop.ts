@@ -334,6 +334,12 @@ export function processTick(
     currentState = npcResult.state
     allEvents.push(...npcResult.events)
 
+    // 5.65. Being shot by a tower, a creep wave or a jungle camp is combat too —
+    // it must gate fountain regen and the "out of combat" item passives exactly
+    // as a hero attack does. Runs a second time (step 3.6 only sees the hero
+    // phase, which resolves before NPCs act); the buff refresh is idempotent.
+    currentState = applyInCombatBuffs(currentState, npcResult.events)
+
     // 5.7. Recompute Ancient vulnerability after all tower damage this tick
     // (hero attacks in resolveActions + creep attacks in NPC AI).
     currentState = updateAncientVulnerability(currentState)
@@ -1072,10 +1078,14 @@ export function runNPCAI(
   events.push(...creepResult.events)
 
   // Neutrals
-  s = applyNeutralActions(s, runNeutralAI(s))
+  const neutralResult = applyNeutralActions(s, runNeutralAI(s))
+  s = neutralResult.state
+  events.push(...neutralResult.events)
 
   // Towers — priorEvents lets towers aggro heroes that attacked them this tick
-  s = applyTowerActions(s, runTowerAI(s, ctx.heroAttackers, ctx.priorEvents))
+  const towerResult = applyTowerActions(s, runTowerAI(s, ctx.heroAttackers, ctx.priorEvents))
+  s = towerResult.state
+  events.push(...towerResult.events)
 
   // Roshan attacks
   for (const action of runRoshanAI(s)) {

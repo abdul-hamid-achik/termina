@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import LearnPage from '../../../app/pages/learn.vue'
-import { HEROES, HERO_IDS } from '../../../shared/constants/heroes'
+import { HEROES, HERO_IDS, isHeroId } from '../../../shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
@@ -21,6 +21,8 @@ import {
   ULTIMATE_UNLOCK_LEVEL,
 } from '../../../shared/constants/balance'
 import { getAbilityLevel } from '../../../server/game/heroes/_base'
+import { useCommands } from '../../../app/composables/useCommands'
+import { routeGameKey } from '../../../app/utils/gameKeys'
 
 // TerminalPanel renders its default slot; NuxtLink/AsciiButton are
 // Nuxt auto-imports stubbed out for plain vitest mounting.
@@ -162,6 +164,97 @@ describe('learn page', () => {
     expect(text).toContain('move mid-river')
     expect(text).toContain('5 ticks (20 seconds)')
     expect(text).not.toContain('4 ticks to reach mid river')
+  })
+
+  it('documents the jungle and Roshan target forms the parser accepts', () => {
+    const text = mountLearn().text()
+    expect(text).toContain('neutral:<index>')
+    expect(text).toContain('attack neutral:0')
+    expect(text).toContain('attack roshan')
+    expect(text).toContain('Aegis')
+  })
+
+  // Divergence guard: the targeting table is the page a new player copies from,
+  // so every example it prints has to survive the real parser. `attack hero:axe`
+  // sat here for months naming a hero that does not exist.
+  it('only prints targeting examples that actually parse', () => {
+    const wrapper = mountLearn()
+    const table = wrapper
+      .findAll('table')
+      .find((t) => t.find('caption').text().includes('Targeting format reference'))
+    expect(table).toBeDefined()
+
+    const examples = table!.findAll('tbody tr').map((row) => row.findAll('td').at(-1)!.text())
+    expect(examples.length).toBeGreaterThanOrEqual(6)
+
+    const { parse } = useCommands()
+    for (const example of examples) {
+      const result = parse(example)
+      expect({ example, error: result.error }).toEqual({ example, error: null })
+      const target = result.command && 'target' in result.command ? result.command.target : null
+      if (target && typeof target === 'object' && target.kind === 'hero') {
+        expect({ example, real: isHeroId(target.name) }).toEqual({ example, real: true })
+      }
+    }
+  })
+
+  /**
+   * REGRESSION: the panel documented eight keys that do nothing in the state a
+   * player is in when they arrive — the command prompt auto-focuses and eats
+   * every keystroke. The copy now states the condition once, at panel level.
+   */
+  describe('keyboard shortcuts panel', () => {
+    it('states the unfocused-prompt condition and how to get there', () => {
+      const text = mountLearn().text()
+      expect(text).toContain('Esc')
+      expect(text).toContain('[KEYS]')
+      expect(text).toContain('empty prompt')
+      // The condition belongs to the whole panel, not to one row.
+      expect(text).not.toContain('Quick-cast ability (input unfocused)')
+    })
+
+    it('documents only keys the game screen actually routes', () => {
+      const wrapper = mountLearn()
+      const keybinds = wrapper.vm.keybinds as Array<{
+        key: string
+        probe: string | null
+        action: string
+      }>
+      const probed = keybinds.filter((k) => k.probe)
+      expect(probed.length).toBeGreaterThanOrEqual(5)
+
+      for (const k of probed) {
+        // Live: the documented key does something in the world.
+        const live = routeGameKey(k.probe!, {
+          isInputFocused: false,
+          overlayOpen: false,
+          inCmdInput: false,
+        }).type
+        expect({ key: k.key, live }).not.toEqual({ key: k.key, live: 'none' })
+
+        // Typing: it does not — which is exactly what the panel caveat claims.
+        const typing = routeGameKey(k.probe!, {
+          isInputFocused: true,
+          overlayOpen: false,
+          inCmdInput: false,
+        }).type
+        // Tab is the one that stays useful while typing — it autocompletes.
+        expect({ key: k.key, typing }).toEqual({
+          key: k.key,
+          typing: k.probe === 'Tab' ? 'autocomplete' : 'none',
+        })
+      }
+    })
+
+    it('renders every documented binding', () => {
+      const wrapper = mountLearn()
+      const keybinds = wrapper.vm.keybinds as Array<{ key: string; action: string }>
+      const text = wrapper.text()
+      for (const k of keybinds) {
+        expect(text).toContain(k.key)
+        expect(text).toContain(k.action)
+      }
+    })
   })
 
   it('teaches the team-relative base/fountain shortcuts', () => {

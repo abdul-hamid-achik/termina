@@ -115,11 +115,17 @@ function selectTowerTarget(
 }
 
 /**
- * Apply tower actions to the game state.
+ * Apply tower actions to the game state. Returns updated state plus the damage
+ * events for every hero shot — without them a tower can kill a player in total
+ * silence (no log line, no float, no shake, no kill attribution).
  */
-export function applyTowerActions(state: GameState, actions: TowerAction[]): GameState {
+export function applyTowerActions(
+  state: GameState,
+  actions: TowerAction[],
+): { state: GameState; events: GameEngineEvent[] } {
   let creeps = state.creeps.map((c) => ({ ...c }))
   let players = { ...state.players }
+  const events: GameEngineEvent[] = []
 
   for (const action of actions) {
     if (action.targetType === 'hero') {
@@ -135,6 +141,16 @@ export function applyTowerActions(state: GameState, actions: TowerAction[]): Gam
           ...players,
           [action.targetId]: hit.player,
         }
+        events.push({
+          _tag: 'damage',
+          tick: state.tick,
+          // Same id convention `selectTowerTarget` reads for hero→tower damage,
+          // so the client's entityLabel names the exact tower that shot you.
+          sourceId: `tower_${action.towerZone}`,
+          targetId: action.targetId,
+          amount: hit.damageDealt,
+          damageType: 'physical',
+        })
       }
     } else {
       const targetId = action.targetId
@@ -149,5 +165,5 @@ export function applyTowerActions(state: GameState, actions: TowerAction[]): Gam
   // Remove dead creeps
   creeps = creeps.filter((c) => c.hp > 0)
 
-  return { ...state, creeps, players }
+  return { state: { ...state, creeps, players }, events }
 }

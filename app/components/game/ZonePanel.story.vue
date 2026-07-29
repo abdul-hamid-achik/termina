@@ -18,7 +18,10 @@ function creep(overrides: Partial<IndexedCreep> = {}): IndexedCreep {
   }
 }
 
-function neutral(overrides: Partial<NeutralCreepState> = {}): NeutralCreepState {
+/** A neutral plus its index in the GLOBAL neutrals array. */
+type IndexedNeutral = NeutralCreepState & { index: number }
+
+function neutral(overrides: Partial<IndexedNeutral> = {}): IndexedNeutral {
   return {
     id: 'n0',
     zone: 'jungle-rad-top',
@@ -26,6 +29,7 @@ function neutral(overrides: Partial<NeutralCreepState> = {}): NeutralCreepState 
     maxHp: 250,
     type: 'kobold',
     alive: true,
+    index: 0,
     ...overrides,
   }
 }
@@ -116,10 +120,17 @@ const jungle = {
   zoneName: 'Radiant Jungle (Top)',
   zoneId: 'jungle-rad-top',
   neutrals: [
-    neutral({ id: 'n1', hp: 250 }),
-    neutral({ id: 'n2', hp: 90, type: 'ogre_mage' }),
-    neutral({ id: 'n3', hp: 0, alive: false }),
-  ] as NeutralCreepState[],
+    neutral({ id: 'n1', hp: 250, index: 3 }),
+    neutral({ id: 'n2', hp: 90, type: 'ogre_mage', index: 4 }),
+    neutral({ id: 'n3', hp: 0, alive: false, index: 5 }),
+  ] as IndexedNeutral[],
+}
+
+// The Roshan pit with him up — the one place the attack affordance appears.
+const roshanPit = {
+  zoneName: 'Roshan Pit',
+  zoneId: 'roshan-pit',
+  roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
 }
 </script>
 
@@ -170,6 +181,12 @@ const jungle = {
     <Variant title="jungle neutrals">
       <div class="bg-bg-primary p-2" style="width: 300px">
         <ZonePanel v-bind="jungle" player-team="radiant" />
+      </div>
+    </Variant>
+
+    <Variant title="roshan pit (alive)">
+      <div class="bg-bg-primary p-2" style="width: 300px">
+        <ZonePanel v-bind="roshanPit" player-team="radiant" />
       </div>
     </Variant>
   </Story>

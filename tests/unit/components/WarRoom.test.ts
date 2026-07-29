@@ -68,8 +68,8 @@ function seedStore(opts: Parameters<typeof makeTickMessage>[0] = {}) {
   return store
 }
 
-/** The roster is collapsed by default (simplified HUD); expand it for tests
- *  that assert the ally/enemy sheets. */
+/** The ally roster is collapsed by default (simplified HUD); expand it for
+ *  tests that assert the ally sheet. */
 function expandRoster() {
   useSettingsStore().setHud('rosterExpanded', true)
 }
@@ -103,22 +103,49 @@ describe('WarRoom', () => {
   })
 
   describe('collapsible roster', () => {
-    it('collapses the roster to a slim [+] row by default (standard preset)', () => {
+    it('collapses only the ally roster to a slim [+] row by default (standard preset)', () => {
       seedStore()
       const wrapper = mountWarRoom()
       // The always-on readouts stay.
       const text = wrapper.text()
       expect(text).toContain('Net Worth')
       expect(text).toContain('Objectives')
-      // The roster sheets are gone, replaced by the expand row.
+      // The ally sheet is gone, replaced by the expand row.
       expect(wrapper.find('[data-testid="war-room-roster"]').exists()).toBe(false)
       expect(wrapper.find('[data-testid="ally-status-stub"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="enemy-threat-stub"]').exists()).toBe(false)
       const toggle = wrapper.find('[data-testid="war-room-roster-toggle"]')
       expect(toggle.exists()).toBe(true)
       expect(toggle.text()).toContain('[+]')
-      expect(toggle.text()).toContain('Allies & Enemy Threat')
+      expect(toggle.text()).toContain('Allies')
+      expect(toggle.text()).not.toContain('Enemy Threat')
       expect(toggle.attributes('aria-expanded')).toBe('false')
+    })
+
+    it('keeps the enemy threat sheet on the default HUD, outside the roster toggle', () => {
+      seedStore()
+      const wrapper = mountWarRoom()
+      expect(wrapper.find('[data-testid="war-room-roster"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('Enemy Threat')
+      const sheet = wrapper.find('[data-testid="enemy-threat-stub"]')
+      expect(sheet.exists()).toBe(true)
+      expect(Number(sheet.attributes('data-enemy-count'))).toBe(5)
+      // It lives in its own always-rendered section, not inside the roster.
+      expect(
+        wrapper
+          .find('[data-testid="war-room-enemy-threat"] [data-testid="enemy-threat-stub"]')
+          .exists(),
+      ).toBe(true)
+    })
+
+    it('leaves the enemy threat sheet up when the ally roster is collapsed again', async () => {
+      seedStore()
+      expandRoster()
+      const wrapper = mountWarRoom()
+
+      await wrapper.find('[data-testid="war-room-roster-toggle"]').trigger('click')
+
+      expect(wrapper.find('[data-testid="ally-status-stub"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="enemy-threat-stub"]').exists()).toBe(true)
     })
 
     it('expands on click via the settings store (preset re-derives to custom)', async () => {
@@ -136,6 +163,7 @@ describe('WarRoom', () => {
       expect(wrapper.find('[data-testid="enemy-threat-stub"]').exists()).toBe(true)
       const toggle = wrapper.find('[data-testid="war-room-roster-toggle"]')
       expect(toggle.text()).toContain('[−]')
+      expect(toggle.text()).toContain('Allies')
       expect(toggle.attributes('aria-expanded')).toBe('true')
     })
 
@@ -300,7 +328,6 @@ describe('WarRoom', () => {
   describe('enemy threat wiring', () => {
     it('forwards the full enemy roster (5 dire players) to the EnemyThreatSheet', () => {
       seedStore()
-      expandRoster()
       const wrapper = mountWarRoom()
       const sheet = wrapper.find('[data-testid="enemy-threat-stub"]')
       expect(Number(sheet.attributes('data-enemy-count'))).toBe(5)

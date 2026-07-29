@@ -4,6 +4,7 @@ import type {
   PlayerState,
   CreepState,
   NeutralCreepState,
+  RoshanState,
   TowerState,
   TeamId,
 } from '~~/shared/types/game'
@@ -21,6 +22,10 @@ import ProgressBar from '~/components/ui/ProgressBar.vue'
 /** A visible creep plus its index in the client's creeps array (for `attack creep:<i>`). */
 type IndexedCreep = CreepState & { index: number }
 
+/** A neutral plus its index in the GLOBAL neutrals array — the index the server
+ *  resolves `attack neutral:<i>` against, so it must survive the zone filter. */
+type IndexedNeutral = NeutralCreepState & { index: number }
+
 const props = withDefaults(
   defineProps<{
     zoneName: string
@@ -30,8 +35,10 @@ const props = withDefaults(
     enemies?: PlayerState[]
     allies?: PlayerState[]
     creeps?: IndexedCreep[]
-    neutrals?: NeutralCreepState[]
+    neutrals?: IndexedNeutral[]
     tower?: TowerState | null
+    /** Roshan, passed only when the player stands in the pit and he is alive. */
+    roshan?: RoshanState | null
   }>(),
   {
     zoneId: '',
@@ -40,6 +47,7 @@ const props = withDefaults(
     creeps: () => [],
     neutrals: () => [],
     tower: null,
+    roshan: null,
   },
 )
 
@@ -114,6 +122,19 @@ function attackTower() {
 
 const aliveNeutrals = computed(() => props.neutrals.filter((n) => n.alive))
 
+const lowestNeutral = computed<IndexedNeutral | null>(() => {
+  if (aliveNeutrals.value.length === 0) return null
+  return aliveNeutrals.value.reduce((min, n) => (n.hp < min.hp ? n : min))
+})
+
+/** Farm helper: attack the lowest-HP camp member, so the row also last-hits. */
+function attackLowestNeutral() {
+  const target = lowestNeutral.value
+  if (target) emit('command', `attack neutral:${target.index}`)
+}
+
+const roshanHere = computed(() => (props.roshan?.alive ? props.roshan : null))
+
 // ── At-a-glance status header ──────────────────────────────────
 // Zone identity, a color-coded threat verdict, and a zone-local objective so
 // "what is this place / am I safe here / what do I do" is answerable without
@@ -173,7 +194,8 @@ const isEmpty = computed(
     enemyCreeps.value.length === 0 &&
     alliedCreeps.value.length === 0 &&
     aliveNeutrals.value.length === 0 &&
-    towerHere.value === null,
+    towerHere.value === null &&
+    roshanHere.value === null,
 )
 </script>
 
@@ -344,18 +366,44 @@ const isEmpty = computed(
       <span v-if="denyableAlliedCreep" class="t-caption text-gold"> · [deny]</span>
     </component>
 
-    <!-- Neutral creeps -->
-    <div
+    <!-- Neutral camp: tap to attack the lowest-HP member -->
+    <button
       v-if="aliveNeutrals.length > 0"
-      class="border border-border/40 px-2 py-1"
+      class="block w-full border border-gold/40 px-2 py-1 text-left transition-all hover:bg-gold/10 active:scale-[0.99]"
       data-testid="zone-neutrals"
+      title="Attack the lowest-HP neutral creep"
+      @click="attackLowestNeutral"
     >
       <span class="text-gold"
         >{{ aliveNeutrals.length }}× neutral{{ aliveNeutrals.length === 1 ? '' : 's' }}</span
       >
-      <span class="text-text-dim">
-        · lowest {{ Math.min(...aliveNeutrals.map((n) => n.hp)) }}hp</span
-      >
-    </div>
+      <span v-if="lowestNeutral" class="text-text-dim"> · lowest {{ lowestNeutral.hp }}hp</span>
+      <span class="t-caption"> · [farm]</span>
+    </button>
+
+    <!-- Roshan: only rendered in the pit while he is alive -->
+    <button
+      v-if="roshanHere"
+      class="block w-full border border-gold/60 bg-gold/5 px-2 py-1 text-left transition-all hover:bg-gold/15 active:scale-[0.99]"
+      data-testid="zone-roshan"
+      title="Attack Roshan"
+      @click="emit('command', 'attack roshan')"
+    >
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="font-bold text-gold">Roshan</span>
+        <span class="shrink-0 t-caption">drops Aegis · [ATK]</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <span class="w-5 shrink-0 t-caption">HP</span>
+        <ProgressBar
+          :value="roshanHere.hp"
+          :max="roshanHere.maxHp"
+          color="gold"
+          :width="10"
+          label="Roshan HP"
+        />
+        <span class="text-text-primary">{{ roshanHere.hp }}/{{ roshanHere.maxHp }}</span>
+      </div>
+    </button>
   </div>
 </template>

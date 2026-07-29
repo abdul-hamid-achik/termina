@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useCommands, validateCommand, buybackCostFor } from '~/composables/useCommands'
+import { useCommands, validateCommand, buybackCostFor, SHORTCUTS } from '~/composables/useCommands'
 import type { GameContext, Suggestion } from '~/composables/useCommands'
 import type { PlayerState, ZoneRuntimeState, GameMode } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
@@ -138,7 +138,16 @@ const preview = computed(() => {
     'buyback',
     'surrender',
   ]
-  if (parts.length === 1 && commands.some((c) => c.startsWith(cmd!)) && !commands.includes(cmd!)) {
+  // q/w/e/r are whole commands (`cast q`…), not a half-typed `ward`/`rune` —
+  // preview the cast they perform so the shortcut's effect is visible before
+  // Enter, rather than a hint pointing at the command that used to hijack it.
+  const isCastShortcut = SHORTCUTS[cmd!]?.startsWith('cast ') ?? false
+  if (
+    parts.length === 1 &&
+    !isCastShortcut &&
+    commands.some((c) => c.startsWith(cmd!)) &&
+    !commands.includes(cmd!)
+  ) {
     return { type: 'dim' as const, text: `-- typing: ${cmd}...` }
   }
 
@@ -255,10 +264,27 @@ function handleSubmit() {
   const cmd = input.value.trim()
   if (!cmd) return
 
-  // If dropdown open and item selected, accept it instead
   if (open.value && suggestions.value.length > 0) {
-    acceptSuggestion(suggestions.value[selectedIndex.value]!)
-    return
+    const typed = cmd.toLowerCase()
+    const isNoop = (s: Suggestion) => completionFor(s).toLowerCase() === typed
+    // Enter must never re-fill the input with what is already there: `cast q`
+    // (the tutorial's literal instruction), `talent 10 left` and `surrender
+    // confirm` are each their own only suggestion, so auto-accepting looped
+    // forever and they could never be submitted. And when the typed text IS a
+    // suggestion (`w`, `r`), the player meant that one — not the longer command
+    // that merely starts with it (`ward`, `rune`), which hijacked two ability
+    // shortcuts including the ultimate.
+    // An explicitly highlighted suggestion (arrow keys / hover) always wins:
+    // that is the only way to reach the neighbour the guard skips past.
+    const accept =
+      selectedIndex.value > 0
+        ? !isNoop(suggestions.value[selectedIndex.value]!)
+        : !suggestions.value.some(isNoop)
+    if (accept) {
+      acceptSuggestion(suggestions.value[selectedIndex.value]!)
+      return
+    }
+    open.value = false
   }
 
   // Block submission of commands that would be rejected — in a one-action-
@@ -284,23 +310,24 @@ function handleSubmit() {
   }
 }
 
-function acceptSuggestion(suggestion: Suggestion) {
+/**
+ * The input this suggestion would produce if accepted. Enter compares it
+ * against what is already typed, so a completion that changes nothing can be
+ * recognised as a no-op instead of being applied forever.
+ */
+function completionFor(suggestion: Suggestion): string {
   const parts = input.value.trim().split(/\s+/)
   const suggestionParts = suggestion.text.split(/\s+/)
+  // A multi-part suggestion is a complete command (e.g. "cast r" while typing
+  // "cast r"), and a single-part input is a command completion — both replace
+  // the whole input. Otherwise only the argument being typed is replaced.
+  if (suggestionParts.length > 1 || parts.length <= 1) return suggestion.text
+  parts[parts.length - 1] = suggestion.text
+  return parts.join(' ')
+}
 
-  // If suggestion is a complete command (multiple parts), replace entire input
-  // This handles shortcuts like "cast r" being suggested when typing "cast r"
-  if (suggestionParts.length > 1) {
-    input.value = suggestion.text + ' '
-  }
-  // If only one part in input, this is a command completion — add space to continue
-  else if (parts.length <= 1) {
-    input.value = suggestion.text + ' '
-  } else {
-    // Replace the argument part
-    parts[parts.length - 1] = suggestion.text
-    input.value = parts.join(' ') + ' '
-  }
+function acceptSuggestion(suggestion: Suggestion) {
+  input.value = completionFor(suggestion) + ' '
 
   selectedIndex.value = 0
   // Keep open for further argument completion
@@ -317,16 +344,6 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter') {
     e.preventDefault()
     e.stopImmediatePropagation()
-    if (open.value && suggestions.value.length === 1) {
-      // Single suggestion — only accept if it would actually change the input
-      const lastToken = input.value.trim().split(/\s+/).pop()?.toLowerCase() ?? ''
-      if (lastToken !== suggestions.value[0]!.text.toLowerCase()) {
-        acceptSuggestion(suggestions.value[0]!)
-        return
-      }
-      // Input already matches the suggestion — close dropdown and fall through to submit
-      open.value = false
-    }
     handleSubmit()
     return
   }
@@ -378,8 +395,14 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     if (open.value) {
       open.value = false
-    } else {
+    } else if (input.value) {
       input.value = ''
+    } else {
+      // Nothing left to clear, so hand the keyboard back to the game. Every
+      // advertised hotkey (S, Q/W/E/R, 1-6, arrows) is deliberately suppressed
+      // while this input has focus — and the prompt auto-focuses on mount and
+      // after every send — so without an explicit release they are unreachable.
+      inputEl.value?.blur()
     }
     return
   }
@@ -410,6 +433,20 @@ function handleSelect(suggestion: Suggestion) {
 function focusInput() {
   inputEl.value?.focus()
 }
+
+/**
+ * Typing mode vs keyboard mode. The two behave completely differently — while
+ * the prompt has focus every in-game hotkey is swallowed as text — so the
+ * prompt glyph names the mode the player is actually in instead of always
+ * showing `>_`.
+ */
+const focused = ref(false)
+const promptGlyph = computed(() => (focused.value ? '>_' : '[KEYS]'))
+const promptTitle = computed(() =>
+  focused.value
+    ? 'Typing — hotkeys are off. Press Esc on an empty prompt to release the keyboard.'
+    : 'Keyboard mode — S, Q/W/E/R, 1-6 and arrows act on the game. Click here to type.',
+)
 
 function handleClickOutside(e: MouseEvent) {
   const target = e.target as HTMLElement
@@ -519,7 +556,13 @@ onUnmounted(() => {
       class="flex items-center gap-2 border-t border-border bg-bg-primary px-3 py-2"
       :class="{ 'opacity-50': disabled }"
     >
-      <span class="shrink-0 font-bold text-radiant select-none">&gt;_</span>
+      <span
+        data-testid="prompt-glyph"
+        class="shrink-0 font-mono font-bold select-none"
+        :class="focused ? 'text-radiant' : 'text-text-dim'"
+        :title="promptTitle"
+        >{{ promptGlyph }}</span
+      >
       <input
         ref="inputEl"
         v-model="input"
@@ -543,9 +586,14 @@ onUnmounted(() => {
         spellcheck="false"
         autocomplete="off"
         @keydown="handleKeydown"
+        @focus="focused = true"
+        @blur="focused = false"
       />
+      <!-- The caret is drawn only in typing mode: in keyboard mode it would
+           promise that the next letter lands in the box, when S opens the shop.
+           It is also positioned for the narrow `>_` glyph. -->
       <span
-        v-if="!input && canAct"
+        v-if="!input && canAct && focused"
         class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"
         >&#x2588;</span
       >

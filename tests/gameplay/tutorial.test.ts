@@ -138,6 +138,29 @@ describe('tutorial mode', () => {
       expect((await game.state()).tutorialStep).toBe(2)
     })
 
+    it('does NOT advance the attack step when the attack hit nothing', async () => {
+      // The attack step used to tick green off a swing at an empty zone: the
+      // resolver swallowed the mis-target, so advanceTutorialAfterTick saw an
+      // accepted `attack` and taught the player that whiffing counts.
+      const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
+      await game.patch((s) => ({
+        ...s,
+        tutorialStep: 1,
+        // Refresh the deadline so the step can only advance on the action.
+        tutorialStepSince: s.tick,
+        creeps: [],
+      }))
+
+      game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+      await game.tick()
+
+      expect((await game.state()).tutorialStep).toBe(1)
+      expect(lockedThisTick(game.lastRejected)).toBe(false)
+      expect(game.lastRejected.some((r) => r.playerId === HUMAN && /creep/i.test(r.reason))).toBe(
+        true,
+      )
+    })
+
     it('lets informational commands through at any step (status at step 0)', async () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
       game.submit({ type: 'status' })

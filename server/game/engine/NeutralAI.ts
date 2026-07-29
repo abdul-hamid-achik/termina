@@ -6,6 +6,7 @@ import {
   type NeutralCreepType,
 } from '~~/shared/constants/balance'
 import { resolvePhysicalHit } from './CombatResolver'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 let neutralIdCounter = 0
 let gameInstanceSuffix = ''
@@ -129,10 +130,16 @@ export function runNeutralAI(state: GameState): NeutralAction[] {
 }
 
 /**
- * Apply neutral creep attacks to players
+ * Apply neutral creep attacks to players. Returns updated state plus a damage
+ * event per landed hit — jungling was previously silent, so a camp could chew
+ * a hero down with no log line, float or kill attribution.
  */
-export function applyNeutralActions(state: GameState, actions: NeutralAction[]): GameState {
+export function applyNeutralActions(
+  state: GameState,
+  actions: NeutralAction[],
+): { state: GameState; events: GameEngineEvent[] } {
   const players = { ...state.players }
+  const events: GameEngineEvent[] = []
 
   for (const action of actions) {
     const neutral = (state.neutrals ?? []).find((n) => n.id === action.neutralId)
@@ -146,12 +153,22 @@ export function applyNeutralActions(state: GameState, actions: NeutralAction[]):
     // an immunity check, bypassing armor items, shields, hardened reduction,
     // vulnerability amplifiers, and phase shift dodge.
     const hit = resolvePhysicalHit(target, action.damage)
-    if (hit.immune || hit.dodged) continue
+    // A fully-absorbed hit must not reach the event stream — a `0` damage float
+    // reads as a bug to the player.
+    if (hit.immune || hit.dodged || hit.damageDealt === 0) continue
 
     players[action.targetId] = hit.player
+    events.push({
+      _tag: 'damage',
+      tick: state.tick,
+      sourceId: action.neutralId,
+      targetId: action.targetId,
+      amount: hit.damageDealt,
+      damageType: 'physical',
+    })
   }
 
-  return { ...state, players }
+  return { state: { ...state, players }, events }
 }
 
 /**

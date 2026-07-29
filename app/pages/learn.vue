@@ -91,7 +91,7 @@ const quickStart = [
   {
     step: '5',
     title: 'Buy Items',
-    desc: `You start with ${STARTING_GOLD}g. Return to base and open the SHOP (press S). You have ${MAX_ITEMS} inventory slots.`,
+    desc: `You start with ${STARTING_GOLD}g. Return to base and open the SHOP (click it, or press Esc then S). You have ${MAX_ITEMS} inventory slots.`,
   },
   {
     step: '6',
@@ -231,23 +231,45 @@ const targeting = [
     example: 'attack creep:0',
   },
   {
+    format: 'neutral:<index>',
+    desc: 'Target a jungle camp creep standing in your zone',
+    example: 'attack neutral:0',
+  },
+  {
     format: 'tower:<zone>',
     desc: 'Target the tower in a zone',
     example: 'attack tower:mid-t1-dire',
+  },
+  {
+    format: 'roshan',
+    desc: 'Target Roshan — only from inside the pit. Killing him drops the Aegis',
+    example: 'attack roshan',
   },
   { format: 'self', desc: 'Target yourself (for self-cast abilities)', example: 'cast w self' },
   { format: '<hero-name>', desc: 'Shorthand for hero: prefix', example: 'attack daemon' },
 ]
 
-const keybinds = [
-  { key: 'Tab', action: 'Hold to show scoreboard' },
-  { key: 'Tab (in input)', action: 'Autocomplete command' },
-  { key: 'Q/W/E/R', action: 'Quick-cast ability (input unfocused)' },
-  { key: 'S', action: 'Toggle the shop' },
-  { key: '1-6', action: 'Use item in inventory slot 1-6' },
-  { key: 'Up/Down (in input)', action: 'Cycle through command history' },
-  { key: 'Arrows', action: 'Quick-move to an adjacent zone' },
-  { key: 'Esc', action: 'Close autocomplete suggestions' },
+/**
+ * `probe` is the literal KeyboardEvent.key a row stands for. A component test
+ * runs each one through routeGameKey — the router the game screen actually uses
+ * — so this panel can neither advertise a binding that does nothing nor keep
+ * one after it is dropped. Rows that belong to the command prompt rather than
+ * the game (autocomplete, history) have no probe: routeGameKey isn't their
+ * authority, CommandInput is.
+ */
+const keybinds: Array<{ key: string; probe: string | null; action: string }> = [
+  {
+    key: 'Esc',
+    probe: null,
+    action: 'Close suggestions → clear the prompt → release the keyboard',
+  },
+  { key: 'S', probe: 's', action: 'Toggle the shop' },
+  { key: 'Q/W/E/R', probe: 'q', action: 'Quick-cast that ability' },
+  { key: '1-6', probe: '1', action: 'Use the item in that inventory slot' },
+  { key: 'Arrows', probe: 'ArrowUp', action: 'Move one zone that way on the map' },
+  { key: 'Tab', probe: 'Tab', action: 'Hold to show the scoreboard' },
+  { key: 'Tab (typing)', probe: null, action: 'Autocomplete the command' },
+  { key: 'Up/Down (typing)', probe: null, action: 'Cycle through command history' },
 ]
 
 const concepts = [
@@ -594,6 +616,18 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
 
     <!-- Keyboard Shortcuts -->
     <TerminalPanel title="Keyboard Shortcuts" title-as="h2">
+      <!-- Stated once, at panel level: the game keys below are live only while
+           the command prompt does NOT have focus, and it takes focus by default.
+           Documenting them without this read as eight broken keys. -->
+      <p class="mb-2 border-b border-border pb-2 text-[0.75rem] leading-relaxed text-text-dim">
+        The command prompt takes focus first, and while it has focus it keeps every keystroke —
+        that's what lets you type <span class="text-ability">sell</span>,
+        <span class="text-ability">ward</span> or <span class="text-ability">surrender</span>. Press
+        <span class="text-ability">Esc</span> on an empty prompt to hand the keyboard to the game:
+        the prompt glyph changes from <span class="text-ability">&gt;_</span> to
+        <span class="text-ability">[KEYS]</span> and the keys below become live. Click the prompt to
+        type again.
+      </p>
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div
           v-for="k in keybinds"

@@ -95,14 +95,8 @@ describe('CommandInput', () => {
         props: { canAct: false },
       })
 
-      const vm = wrapper.vm as { input: string; open: boolean }
       const input = wrapper.find('input')
-
-      vm.input = 'move mid'
-      await wrapper.vm.$nextTick()
-      vm.open = false
-      await wrapper.vm.$nextTick()
-
+      await input.setValue('move mid')
       await input.trigger('keydown', { key: 'Enter' })
       await wrapper.vm.$nextTick()
 
@@ -135,15 +129,9 @@ describe('CommandInput', () => {
         props: { canAct: true },
       })
 
-      const vm = wrapper.vm as { input: string; open: boolean }
       const input = wrapper.find('input')
 
-      vm.input = 'move mid'
-      await wrapper.vm.$nextTick()
-
-      vm.open = false
-      await wrapper.vm.$nextTick()
-
+      await input.setValue('move mid')
       await input.trigger('keydown', { key: 'Enter' })
       await wrapper.vm.$nextTick()
 
@@ -273,6 +261,203 @@ describe('CommandInput', () => {
       await input.trigger('keydown', { key: 'ArrowUp' })
       await wrapper.vm.$nextTick()
       expect((input.element as HTMLInputElement).value).toBe('status')
+    })
+  })
+
+  /**
+   * REGRESSION: the Enter path used to re-fill the input with a completion that
+   * was byte-identical to what was already typed, so `cast q` — the tutorial's
+   * literal instruction — could never be submitted; and when the typed text was
+   * itself a suggestion it accepted a longer neighbour instead (`w` → `ward`,
+   * `r` → `rune`), hijacking two ability shortcuts including the ultimate.
+   *
+   * These drive the component the way a player does — `input.setValue()` and a
+   * real keydown, never `vm.open` — because hand-closing the dropdown first is
+   * exactly what hid all three bugs.
+   */
+  describe('Enter submits what the player typed', () => {
+    async function typeAndEnter(wrapper: ReturnType<typeof mount>, value: string) {
+      const input = wrapper.find('input')
+      await input.setValue(value)
+      await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      return input
+    }
+
+    it('submits `cast q` — the tutorial instructs this verbatim', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      await typeAndEnter(wrapper, 'cast q')
+      expect(wrapper.emitted('submit')?.[0]).toEqual(['cast q'])
+    })
+
+    it('submits `talent 10 left`', async () => {
+      const wrapper = mount(CommandInput, {
+        props: { canAct: true, player: makePlayer({ level: 10 }) },
+      })
+      await typeAndEnter(wrapper, 'talent 10 left')
+      expect(wrapper.emitted('submit')?.[0]).toEqual(['talent 10 left'])
+    })
+
+    it('submits `surrender confirm`', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      await typeAndEnter(wrapper, 'surrender confirm')
+      expect(wrapper.emitted('submit')?.[0]).toEqual(['surrender confirm'])
+    })
+
+    it('submits `w` as the W shortcut, not the `ward` suggestion above it', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      const input = await typeAndEnter(wrapper, 'w')
+      expect(wrapper.emitted('submit')?.[0]).toEqual(['w'])
+      expect((input.element as HTMLInputElement).value).toBe('')
+    })
+
+    it('submits `r` as the ultimate shortcut, not the `rune` suggestion above it', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      await typeAndEnter(wrapper, 'r')
+      expect(wrapper.emitted('submit')?.[0]).toEqual(['r'])
+    })
+
+    it('previews `w` as the cast it performs, not as a half-typed `ward`', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      await wrapper.find('input').setValue('w')
+      expect(wrapper.get('[data-testid="command-preview"]').text()).toContain('Cast W')
+    })
+
+    it('submits `move mid` instead of completing it to the tier-3 tower', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      const input = await typeAndEnter(wrapper, 'move mid')
+      expect(wrapper.emitted('submit')?.[0]).toEqual(['move mid'])
+      expect((input.element as HTMLInputElement).value).not.toContain('mid-t3-rad')
+    })
+
+    it('still completes a genuine prefix rather than submitting it', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true } })
+      const input = await typeAndEnter(wrapper, 'mov')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect((input.element as HTMLInputElement).value).toBe('move ')
+    })
+
+    it('takes an explicitly highlighted suggestion over the typed text', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      const input = wrapper.find('input')
+      await input.setValue('move mid')
+      await input.trigger('keydown', { key: 'ArrowDown' })
+      await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect((input.element as HTMLInputElement).value.trim()).not.toBe('move mid')
+      expect((input.element as HTMLInputElement).value).toContain('move mid-')
+    })
+
+    it('does not submit `chat team` — its "needs a message" error still gates it', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      await typeAndEnter(wrapper, 'chat team')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect(wrapper.get('[data-testid="command-preview"]').text()).toContain('chat <team|all>')
+    })
+  })
+
+  /**
+   * REGRESSION: the prompt auto-focuses and every in-game hotkey is suppressed
+   * while it has focus, so the whole advertised keyboard layer (S, Q/W/E/R, 1-6,
+   * arrows) was unreachable — pressing S typed an `s`. Escape is the release
+   * valve, and the glyph is how the player can tell which mode they are in.
+   */
+  describe('keyboard mode', () => {
+    function mountFocused() {
+      const wrapper = mount(CommandInput, { props: { canAct: true }, attachTo: document.body })
+      const input = wrapper.find('input')
+      ;(input.element as HTMLInputElement).focus()
+      return { wrapper, input }
+    }
+
+    it('releases focus on Escape once there is nothing left to clear', async () => {
+      const { wrapper, input } = mountFocused()
+      expect(document.activeElement).toBe(input.element)
+
+      await input.setValue('move')
+      await input.trigger('keydown', { key: 'Escape' }) // closes the dropdown
+      expect(document.activeElement).toBe(input.element)
+      await input.trigger('keydown', { key: 'Escape' }) // clears the text
+      expect((input.element as HTMLInputElement).value).toBe('')
+      expect(document.activeElement).toBe(input.element)
+
+      await input.trigger('keydown', { key: 'Escape' }) // hands over the keyboard
+      expect(document.activeElement).not.toBe(input.element)
+      wrapper.unmount()
+    })
+
+    it('keeps focus while Escape still has text to clear', async () => {
+      const { wrapper, input } = mountFocused()
+      await input.setValue('zzz') // matches nothing, so the dropdown is closed
+      await input.trigger('keydown', { key: 'Escape' })
+
+      expect((input.element as HTMLInputElement).value).toBe('')
+      expect(document.activeElement).toBe(input.element)
+      wrapper.unmount()
+    })
+
+    it('shows >_ while typing and [KEYS] once the keyboard belongs to the game', async () => {
+      const { wrapper, input } = mountFocused()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-testid="prompt-glyph"]').text()).toBe('>_')
+
+      await input.trigger('keydown', { key: 'Escape' })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-testid="prompt-glyph"]').text()).toBe('[KEYS]')
+
+      // And back: clicking the prompt is the documented way to resume typing.
+      await wrapper.find('.cmd-input-wrapper').trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-testid="prompt-glyph"]').text()).toBe('>_')
+      wrapper.unmount()
+    })
+
+    it('hides the blinking caret in keyboard mode — nothing there accepts letters', async () => {
+      const { wrapper, input } = mountFocused()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.animate-blink').exists()).toBe(true)
+
+      await input.trigger('keydown', { key: 'Escape' })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.animate-blink').exists()).toBe(false)
+      wrapper.unmount()
+    })
+  })
+
+  describe('unchanged deliberate behaviour', () => {
+    // Both of these are load-bearing, not oversights: the refocus is a
+    // pre-typing affordance, and swallowing single letters on an empty prompt
+    // would make `sell`, `ward`, `scan` and `surrender` untypable.
+    it('refocuses the prompt after a successful send', async () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true }, attachTo: document.body })
+      const input = wrapper.find('input')
+      ;(input.element as HTMLInputElement).focus()
+
+      await input.setValue('status')
+      await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('submit')).toBeTruthy()
+      expect(document.activeElement).toBe(input.element)
+      wrapper.unmount()
+    })
+
+    it('lets letters that collide with hotkeys through to the box, even when empty', () => {
+      const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
+      const input = wrapper.find('input').element
+
+      // `s` (shop), `w`/`r` (abilities) and `1` (item slot) must still type:
+      // `sell`, `ward`, `rune` and `1` as an argument all start with them.
+      for (const key of ['s', 'w', 'r', '1']) {
+        const event = new KeyboardEvent('keydown', { key, cancelable: true, bubbles: true })
+        input.dispatchEvent(event)
+        expect(event.defaultPrevented).toBe(false)
+      }
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      wrapper.unmount()
     })
   })
 })

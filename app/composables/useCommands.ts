@@ -1,6 +1,12 @@
 import { ref } from 'vue'
 import type { Command, TargetRef } from '~~/shared/types/commands'
-import type { PlayerState, ZoneRuntimeState, TeamId, CreepState } from '~~/shared/types/game'
+import type {
+  PlayerState,
+  ZoneRuntimeState,
+  TeamId,
+  CreepState,
+  NeutralCreepState,
+} from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
 import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
@@ -27,6 +33,9 @@ export interface GameContext {
   visibleZones: Record<string, ZoneRuntimeState>
   allPlayers: Record<string, PlayerState>
   items?: Record<string, ItemDef>
+  /** The whole global neutrals array, in server order — `attack neutral:<i>`
+   *  is resolved against that index, so it must not be pre-filtered here. */
+  neutrals?: NeutralCreepState[]
   /** Current game tick — enables cooldown/timing validation when provided. */
   tick?: number
   /** Game mode — the tutorial is exempt from the surrender tick gate. */
@@ -43,6 +52,9 @@ export function buybackCostFor(player: PlayerState): number {
   if (player.buybackCost && player.buybackCost > 0) return player.buybackCost
   return BUYBACK_BASE_COST + player.level * BUYBACK_COST_PER_LEVEL + player.deaths * 10
 }
+
+/** The one zone Roshan can be attacked from (mirrors ActionResolver's gate). */
+const ROSHAN_ZONE = 'roshan-pit'
 
 const SUPPORTIVE_EFFECTS = new Set(['heal', 'shield', 'buff'])
 const OFFENSIVE_EFFECTS = new Set([
@@ -257,7 +269,7 @@ export function formatHelpReadout(): string[] {
   ]
 }
 
-const SHORTCUTS: Record<string, string> = {
+export const SHORTCUTS: Record<string, string> = {
   mv: 'move',
   atk: 'attack',
   q: 'cast q',
@@ -289,10 +301,12 @@ const ZONE_ALIASES: Record<string, string> = {
   // Roshan
   roshan: 'roshan-pit',
   rosh: 'roshan-pit',
-  // Runes
+  // Runes. There is deliberately no bare `rune` alias: it used to point at
+  // mid-river, a zone with no rune in it, so `move rune` walked you past both.
   'rune-top': 'rune-top',
   'rune-bot': 'rune-bot',
-  rune: 'mid-river',
+  rt: 'rune-top',
+  rb: 'rune-bot',
 }
 
 function parseTarget(raw: string): TargetRef | null {
@@ -304,8 +318,16 @@ function parseTarget(raw: string): TargetRef | null {
     const idx = Number.parseInt(raw.slice(6), 10)
     if (!Number.isNaN(idx)) return { kind: 'creep', index: idx }
   }
+  // Unlike `creep:<i>` (zone-local), the index here is the position in the
+  // GLOBAL neutrals array — that is what the server resolves it against, and
+  // the array reaches the client unfiltered (neutrals are public info).
+  if (raw.startsWith('neutral:')) {
+    const idx = Number.parseInt(raw.slice(8), 10)
+    if (!Number.isNaN(idx)) return { kind: 'neutral', index: idx }
+  }
   if (raw.startsWith('tower:')) return { kind: 'tower', zone: raw.slice(6) }
   if (raw.startsWith('zone:')) return { kind: 'zone', zone: raw.slice(5) }
+  if (raw === 'roshan' || raw === 'rosh') return { kind: 'roshan' }
   // If it looks like a hero name without prefix, try hero
   if (isHeroId(raw)) return { kind: 'hero', name: raw }
   return null
@@ -440,6 +462,16 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (t.kind === 'tower' && t.zone !== player.zone) {
         return 'Must be in the tower’s zone to attack it'
       }
+      if (t.kind === 'roshan' && player.zone !== ROSHAN_ZONE) {
+        return `Must be in the ${ROSHAN_ZONE} to attack Roshan`
+      }
+      // Only checkable when the caller supplied the neutrals array; without it
+      // the server still enforces both rules, we just can't warn ahead of time.
+      if (t.kind === 'neutral' && context.neutrals) {
+        const neutral = context.neutrals[t.index]
+        if (!neutral || !neutral.alive) return `No neutral creep at index ${t.index}`
+        if (neutral.zone !== player.zone) return 'That neutral camp is not in your zone'
+      }
       if (t.kind === 'ancient') {
         const enemyBase = player.team === 'radiant' ? 'dire-base' : 'radiant-base'
         if (player.zone !== enemyBase) {
@@ -546,6 +578,21 @@ function resolveZoneAlias(zoneInput: string, team: TeamId = 'radiant'): string {
   return zoneInput
 }
 
+/**
+ * Zone words that match several zones and so resolve to nothing. Left
+ * unreported these reach the server as a raw prefix and are rejected there,
+ * costing the player their one action for the tick with no explanation.
+ */
+function ambiguousZoneError(zoneInput: string): string | null {
+  if (ZONE_IDS.includes(zoneInput) || zoneInput === 'base' || zoneInput === 'fountain') return null
+  if (ZONE_ALIASES[zoneInput]) return null
+  const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
+  if (matches.length < 2) return null
+  return matches.length > 3
+    ? `"${zoneInput}" is ambiguous — ${matches.length} zones match (${matches.slice(0, 3).join(', ')}, ...)`
+    : `"${zoneInput}" is ambiguous — did you mean ${matches.join(' or ')}?`
+}
+
 export function useCommands() {
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
@@ -568,6 +615,8 @@ export function useCommands() {
       case 'move': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: move <zone>' }
+        const ambiguous = ambiguousZoneError(zone)
+        if (ambiguous) return { command: null, error: ambiguous }
         const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'move', zone: resolvedZone }, error: null }
       }
@@ -578,13 +627,13 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:axe, attack creep:0, attack tower:mid-t1-rad, attack ancient)',
+              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack roshan, attack tower:mid-t1-rad, attack ancient)',
           }
         const target = parseTarget(targetStr)
         if (!target)
           return {
             command: null,
-            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, tower:<zone>, ancient, or self`,
+            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, neutral:<index>, tower:<zone>, roshan, ancient, or self`,
           }
         return { command: { type: 'attack', target }, error: null }
       }
@@ -638,6 +687,8 @@ export function useCommands() {
       case 'ward': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: ward <zone>' }
+        const ambiguous = ambiguousZoneError(zone)
+        if (ambiguous) return { command: null, error: ambiguous }
         const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'ward', zone: resolvedZone }, error: null }
       }
@@ -698,6 +749,8 @@ export function useCommands() {
       case 'ping': {
         const zone = tokens[1]
         if (!zone) return { command: null, error: 'Usage: ping <zone>' }
+        const ambiguous = ambiguousZoneError(zone)
+        if (ambiguous) return { command: null, error: ambiguous }
         const resolvedZone = resolveZoneAlias(zone, team)
         return { command: { type: 'ping', zone: resolvedZone }, error: null }
       }
@@ -902,6 +955,15 @@ export function useCommands() {
     const zonePool = visibleIds.length > 0 ? visibleIds : ZONE_IDS
 
     const suggestions: Suggestion[] = []
+    const team = context.player?.team ?? 'radiant'
+
+    // An exact alias outranks every prefix match: `mid` means the river, and
+    // burying it under `mid-t3-rad` (first in zone order) walked players into
+    // their OWN tier-3 tower the moment Enter accepted the top suggestion.
+    const exact = partial ? resolveZoneAlias(partial, team) : ''
+    if (exact !== partial && zonePool.includes(exact) && ZONE_MAP[exact]) {
+      suggestions.push({ text: partial, description: `→ ${ZONE_MAP[exact]!.name}` })
+    }
 
     // First add prefix matches (higher priority)
     const prefixMatches = zonePool.filter((id) => id.startsWith(partial))
@@ -919,7 +981,6 @@ export function useCommands() {
 
     // Also suggest aliases that match. base/fountain resolve to the player's
     // OWN side, so describe them team-relatively to match what they'll do.
-    const team = context.player?.team ?? 'radiant'
     const matchingAliases = Object.keys(ZONE_ALIASES).filter(
       (alias) => alias.startsWith(partial) || alias.includes(partial),
     )
@@ -943,6 +1004,13 @@ export function useCommands() {
 
     const suggestions: Suggestion[] = []
     const adjacent = zone.adjacentTo
+
+    // Same alias-first rule as _suggestZones, but only for a reachable zone —
+    // `ward mid` from a mid lane means the river, not the tower behind you.
+    const exact = partial ? resolveZoneAlias(partial, context.player.team) : ''
+    if (exact !== partial && adjacent.includes(exact) && ZONE_MAP[exact]) {
+      suggestions.push({ text: partial, description: `→ ${ZONE_MAP[exact]!.name}` })
+    }
 
     // Prefix matches first
     const prefixMatches = adjacent.filter((id) => id.startsWith(partial))
@@ -997,6 +1065,25 @@ export function useCommands() {
           suggestions.push({ text: ref, description: `Creep #${i}` })
         }
       }
+    }
+
+    // Suggest neutral camps standing in this zone. The offered index is the
+    // GLOBAL array position, not the position among the in-zone survivors —
+    // filtering first and re-indexing would point the attack at another camp.
+    if (context.neutrals) {
+      for (let i = 0; i < context.neutrals.length; i++) {
+        const n = context.neutrals[i]!
+        if (!n.alive || n.zone !== context.player.zone) continue
+        const ref = `neutral:${i}`
+        if (ref.includes(partial)) {
+          suggestions.push({ text: ref, description: `${n.type} (HP: ${n.hp}/${n.maxHp})` })
+        }
+      }
+    }
+
+    // Suggest Roshan from inside the pit
+    if (context.player.zone === ROSHAN_ZONE && 'roshan'.includes(partial)) {
+      suggestions.push({ text: 'roshan', description: 'Roshan (drops the Aegis)' })
     }
 
     // Suggest tower if present

@@ -327,8 +327,15 @@
   .anim-dmg-float {
     animation: dmg-float 0.75s ease-out forwards;
   }
-  /* Death: a one-shot red vignette pulse from the screen edges. */
+  /* Death: a one-shot red vignette pulse from the screen edges.
+     The base opacity IS the animation's resting state (0% and 100% are both
+     transparent, and `forwards` holds the last frame), so it never affects
+     playback — but it is load-bearing under prefers-reduced-motion, where the
+     animation is suppressed below. GameScreen keeps this overlay mounted for
+     the rest of the match once the first death fires, so without it the
+     vignette would paint permanently over the HUD. */
   .anim-death-vignette {
+    opacity: 0;
     animation: death-vignette 0.6s ease-out forwards;
     background: radial-gradient(
       ellipse at center,
@@ -339,8 +346,11 @@
 
   /* Game-end climax flash — a one-shot team-colored wash fired the instant the
      game ends (PostGame provides the screen; this is the instantaneous punch).
-     Victory blooms radiant green from the center; defeat closes in dire red. */
+     Victory blooms radiant green from the center; defeat closes in dire red.
+     Both carry the same resting-state opacity as .anim-death-vignette, for the
+     same reduced-motion reason. */
   .anim-end-victory {
+    opacity: 0;
     animation: end-flash 1s ease-out forwards;
     background: radial-gradient(
       ellipse at center,
@@ -349,6 +359,7 @@
     );
   }
   .anim-end-defeat {
+    opacity: 0;
     animation: end-flash 1s ease-out forwards;
     background: radial-gradient(
       ellipse at center,
