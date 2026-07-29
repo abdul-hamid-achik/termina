@@ -13,13 +13,31 @@ import {
 import { isBot } from '~~/server/game/ai/BotManager'
 import { ITEMS } from '~~/shared/constants/items'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
+import { TUTORIAL_STEP_DEADLINE_TICKS } from '~~/shared/constants/tutorial'
+import { ONE_LANE_ZONES } from '~~/shared/constants/maps'
+import { findPath } from '~~/shared/pathfinding'
+
+const ONE_LANE_ZONE_IDS = new Set(ONE_LANE_ZONES.map((z) => z.id))
+
+/** Resolve the short zone word a hint uses (`mid`) to a real one-lane zone id. */
+function resolveOneLaneZone(word: string): string | null {
+  if (ONE_LANE_ZONE_IDS.has(word)) return word
+  if (word === 'base') return 'radiant-base'
+  if (word === 'fountain') return 'radiant-fountain'
+  // Mirrors the client's `mid` → `mid-river` alias.
+  if (word === 'mid') return 'mid-river'
+  return null
+}
 
 /** Minimal tutorial-mode state for the pure advancement helper. The human's
- *  zone matters for the move step (it holds until they leave base/fountain). */
-function tutorialState(step: number, humanZone = 'mid-river'): GameState {
+ *  zone matters for the move step (it holds until they leave base/fountain).
+ *  `tick`/`tutorialStepSince` drive the step deadline. */
+function tutorialState(step: number, humanZone = 'mid-river', tick = 0): GameState {
   return {
     mode: 'tutorial',
     tutorialStep: step,
+    tutorialStepSince: 0,
+    tick,
     players: { p1: { id: 'p1', zone: humanZone } },
   } as unknown as GameState
 }
@@ -112,12 +130,12 @@ describe('tutorial flow', () => {
 
   describe('hints', () => {
     it('lock message points at the current step (what to do instead)', () => {
-      expect(tutorialLockMessage(0)).toContain('Walk down')
-      expect(tutorialLockMessage(1)).toContain('Last-hit')
+      expect(tutorialLockMessage(0)).toContain('move mid')
+      expect(tutorialLockMessage(1)).toContain('attack')
     })
 
     it('tutorialHint returns the current step hint, null once complete', () => {
-      expect(tutorialHint(0)).toContain('Walk down')
+      expect(tutorialHint(0)).toContain('move mid')
       expect(tutorialHint(TUTORIAL_STEP_COUNT)).toBeNull()
     })
 
@@ -128,19 +146,34 @@ describe('tutorial flow', () => {
       expect(tutorialHint(1)).not.toMatch(/type `attack` on/)
     })
 
-    it('the cast hint is hero-agnostic (some heroes have a supportive Q)', () => {
-      // `cast q` auto-targets per the ability — an ally/self for a supportive Q —
-      // so the hint must not promise it "hits an enemy".
+    it('the cast hint never promises the game will find a target for you', () => {
+      // REGRESSION: the hint used to read "(it auto-picks a target)". Client-side
+      // auto-targeting only works when a LEGAL target is already in your zone —
+      // for the many heroes whose Q needs an enemy hero, standing alone means the
+      // cast is refused. Players believed the game would handle it, sat still,
+      // and the step never completed. The hint must set the real precondition.
       expect(tutorialHint(2)).toContain('cast q')
-      expect(tutorialHint(2)!.toLowerCase()).not.toContain('enemy')
+      expect(tutorialHint(2)!.toLowerCase()).not.toContain('auto-pick')
+      expect(tutorialHint(2)!.toLowerCase()).toMatch(/enemy hero|in your zone/)
     })
 
-    it('the first move hint suggests a move reachable from the spawn fountain', () => {
-      // The player spawns in radiant-fountain (adjacent ONLY to radiant-base), so
-      // the first move must go there — any farther zone is a non-adjacent reject
-      // that would stall the tutorial on step one.
+    it('the first move hint names a zone the spawn fountain can actually path to', () => {
+      // The player spawns in radiant-fountain (adjacent ONLY to radiant-base).
+      // Movement auto-paths, so the hint may name any zone with a route — but it
+      // must NOT name one the step then refuses to accept. REGRESSION: the hint
+      // said `move base`, and advanceTutorialAfterTick deliberately holds the
+      // step while the player is still in base/fountain — so following the hint
+      // exactly produced no visible progress at all.
       const suggested = /move ([a-z-]+)/.exec(tutorialHint(0) ?? '')?.[1]
-      expect(['base', 'radiant-base']).toContain(suggested)
+      expect(suggested).toBeTruthy()
+      const target = resolveOneLaneZone(suggested!)
+      expect(target, `"${suggested}" is not a one-lane zone`).toBeTruthy()
+      // Reachable from spawn...
+      expect(
+        findPath('radiant-fountain', target!, (id) => ONE_LANE_ZONE_IDS.has(id)).length,
+      ).toBeGreaterThan(0)
+      // ...and outside home, so arriving there actually completes the step.
+      expect(target).not.toMatch(/fountain|base/)
     })
 
     it('the buy hint names a real, affordable item that actually does something', () => {
@@ -164,10 +197,19 @@ describe('tutorial flow', () => {
         [{ playerId: 'p1', command: { type: 'move', zone: 'mid-river' } }],
         [],
       )
-      expect(next.tutorialStep).toBe(1)
+      expect(next.state.tutorialStep).toBe(1)
     })
 
-    it('holds the move step while the human is still in base/fountain', () => {
+    it('stamps the step clock on advance so the next step gets a full deadline', () => {
+      const next = advanceTutorialAfterTick(
+        tutorialState(0, 'mid-river', 7),
+        [{ playerId: 'p1', command: { type: 'move', zone: 'mid-river' } }],
+        [],
+      )
+      expect(next.state.tutorialStepSince).toBe(7)
+    })
+
+    it('holds the move step while the human is still in base/fountain — but says why', () => {
       for (const zone of ['radiant-base', 'radiant-fountain']) {
         const state = tutorialState(0, zone)
         const next = advanceTutorialAfterTick(
@@ -175,7 +217,9 @@ describe('tutorial flow', () => {
           [{ playerId: 'p1', command: { type: 'move', zone } }],
           [],
         )
-        expect(next).toBe(state) // a hop within home doesn't complete the move step
+        expect(next.state).toBe(state) // a hop within home doesn't complete the step
+        // ...but the player must not be left wondering why nothing happened.
+        expect(next.notice).toBeTruthy()
       }
     })
 
@@ -186,7 +230,8 @@ describe('tutorial flow', () => {
         [{ playerId: 'p1', command: { type: 'status' } }],
         [],
       )
-      expect(next).toBe(state) // same reference — no change
+      expect(next.state).toBe(state) // same reference — no change
+      expect(next.notice).toBeNull()
     })
 
     it('does not advance if the taught action was rejected in resolution', () => {
@@ -195,7 +240,7 @@ describe('tutorial flow', () => {
         [{ playerId: 'p1', command: { type: 'cast', ability: 'q' } }],
         [{ playerId: 'p1', reason: 'Not enough mana' }],
       )
-      expect(next.tutorialStep).toBe(2)
+      expect(next.state.tutorialStep).toBe(2)
     })
 
     it('ignores bot actions (only the human drives the tutorial)', () => {
@@ -205,7 +250,7 @@ describe('tutorial flow', () => {
         [{ playerId: 'bot_r0_g', command: { type: 'move', zone: 'mid-river' } }],
         [],
       )
-      expect(next).toBe(state)
+      expect(next.state).toBe(state)
     })
 
     it('is a no-op in a normal game', () => {
@@ -215,7 +260,45 @@ describe('tutorial flow', () => {
         [{ playerId: 'p1', command: { type: 'move', zone: 'mid-river' } }],
         [],
       )
-      expect(next).toBe(normal)
+      expect(next.state).toBe(normal)
+      expect(next.notice).toBeNull()
+    })
+
+    describe('step deadline (the tutorial must never dead-end)', () => {
+      // REGRESSION: every step's success condition depends on the live match —
+      // "cast" needs a legal target, which for most heroes means an enemy hero in
+      // your zone. A player who never got one sat on step 2 forever, and because
+      // tutorial mode gates LATER commands behind the current step they had
+      // nothing legal left to do. The flow could not reach the final step, so
+      // tutorial completion never fired for anyone.
+      it('auto-advances a step the player cannot satisfy, and explains why', () => {
+        const stuck = tutorialState(2, 'mid-t3-rad', TUTORIAL_STEP_DEADLINE_TICKS)
+        const next = advanceTutorialAfterTick(stuck, [], [])
+        expect(next.state.tutorialStep).toBe(3)
+        expect(next.notice).toContain('Moving on')
+      })
+
+      it('does not auto-advance before the deadline', () => {
+        const waiting = tutorialState(2, 'mid-t3-rad', TUTORIAL_STEP_DEADLINE_TICKS - 1)
+        expect(advanceTutorialAfterTick(waiting, [], []).state.tutorialStep).toBe(2)
+      })
+
+      it('always reaches free play from a standing start, doing nothing at all', () => {
+        // The whole flow, driven only by the clock — this is the invariant that
+        // makes tutorial completion (and the returning-player funnel) reachable.
+        let state = tutorialState(0, 'radiant-fountain', 0)
+        for (let tick = 1; tick <= TUTORIAL_STEP_DEADLINE_TICKS * TUTORIAL_STEP_COUNT + 1; tick++) {
+          state = { ...state, tick }
+          state = advanceTutorialAfterTick(state, [], []).state
+        }
+        expect(state.tutorialStep).toBeGreaterThanOrEqual(TUTORIAL_STEP_COUNT)
+      })
+
+      it('every step carries a skipNote so an auto-advance still teaches', () => {
+        for (const step of TUTORIAL_FLOW) {
+          expect(step.skipNote, `${step.teaches} needs a skipNote`).toBeTruthy()
+        }
+      })
     })
   })
 

@@ -162,6 +162,8 @@ export function processTick(
   state: GameState
   events: GameEngineEvent[]
   rejectedActions: Array<{ playerId: string; reason: string }>
+  /** Coaching lines to push to a player this tick (tutorial guidance). */
+  notices: Array<{ playerId: string; message: string }>
   /** All actions drained this tick — exposed so callers can persist them. */
   actions: PlayerAction[]
 }> {
@@ -171,6 +173,7 @@ export function processTick(
     let currentState: GameState = ensureAncients({ ...state, tick: state.tick + 1, events: [] })
     const allEvents: GameEngineEvent[] = []
     const rejectedActions: Array<{ playerId: string; reason: string }> = []
+    const notices: Array<{ playerId: string; message: string }> = []
 
     // Zone snapshot for the passive hook's synthesized 'move' events (step
     // 11.5) — diffing covers normal moves AND resolver teleports, and
@@ -274,9 +277,17 @@ export function processTick(
     rejectedActions.push(...resolved.rejected)
 
     // 3.4. Advance the tutorial if the human performed the verb this step
-    // teaches (no-op in normal games). Uses validation-accepted actions minus
-    // any the resolver then rejected, so a failed cast doesn't count.
-    currentState = advanceTutorialAfterTick(currentState, validActions, resolved.rejected)
+    // teaches, or if the step outlasted its deadline (no-op in normal games).
+    // Uses validation-accepted actions minus any the resolver then rejected, so
+    // a failed cast doesn't count.
+    {
+      const advanced = advanceTutorialAfterTick(currentState, validActions, resolved.rejected)
+      currentState = advanced.state
+      if (advanced.notice) {
+        const humanId = Object.keys(currentState.players).find((id) => !isBot(id))
+        if (humanId) notices.push({ playerId: humanId, message: advanced.notice })
+      }
+    }
 
     // 3.5. Track tower kills and update team stats
     currentState = trackTowerKills(currentState, preTowers, allEvents)
@@ -469,7 +480,7 @@ export function processTick(
       Effect.annotateLogs({ gameId, tick: currentState.tick, actionCount: validActions.length }),
     )
 
-    return { state: currentState, events: allEvents, rejectedActions, actions }
+    return { state: currentState, events: allEvents, rejectedActions, notices, actions }
   })
 }
 
@@ -484,6 +495,12 @@ export interface GameCallbacks {
   onEvents: (gameId: string, events: GameEngineEvent[]) => void
   onGameOver: (gameId: string, winner: TeamId) => void
   onActionRejected?: (gameId: string, playerId: string, reason: string) => void
+  /**
+   * Coaching line for one player — currently tutorial guidance (a step timing
+   * out, or a step not yet satisfied). Distinct from onActionRejected: nothing
+   * went wrong, the game is teaching. Optional.
+   */
+  onNotice?: (gameId: string, playerId: string, message: string) => void
   /**
    * Fires once when the human player finishes the last tutorial step. Optional —
    * the plugin persists it (players.tutorialCompleted) so the client funnel can
@@ -541,6 +558,7 @@ function buildGameLoop(
       state: newState,
       events,
       rejectedActions,
+      notices,
       actions,
     } = yield* processTick(gameId, currentState)
     // Observability: warn when a tick's engine work eats into the schedule
@@ -588,6 +606,17 @@ function buildGameLoop(
           actions.map((a) => ({ tick: newState.tick, playerId: a.playerId, command: a.command })),
         ),
       )
+    }
+
+    // Send tutorial coaching lines
+    if (callbacks.onNotice) {
+      for (const notice of notices) {
+        try {
+          callbacks.onNotice(gameId, notice.playerId, notice.message)
+        } catch {
+          // Non-critical — don't let feedback failures affect the game loop
+        }
+      }
     }
 
     // Send feedback for rejected player actions

@@ -1,6 +1,10 @@
 import type { Command } from '~~/shared/types/commands'
 import type { GameState, TeamId } from '~~/shared/types/game'
-import { TUTORIAL_FLOW, TUTORIAL_STEP_COUNT } from '~~/shared/constants/tutorial'
+import {
+  TUTORIAL_FLOW,
+  TUTORIAL_STEP_COUNT,
+  TUTORIAL_STEP_DEADLINE_TICKS,
+} from '~~/shared/constants/tutorial'
 import { HERO_IDS } from '~~/shared/constants/heroes'
 
 /**
@@ -18,6 +22,7 @@ import { HERO_IDS } from '~~/shared/constants/heroes'
 export {
   TUTORIAL_FLOW,
   TUTORIAL_STEP_COUNT,
+  TUTORIAL_STEP_DEADLINE_TICKS,
   tutorialHint,
   isTutorialComplete,
   type TutorialStep,
@@ -99,36 +104,78 @@ export function buildTutorialRoster(
   ]
 }
 
+/** Outcome of a tutorial advance: the new state plus anything to tell the player. */
+export interface TutorialAdvance {
+  state: GameState
+  /** Announcement to push to the human this tick, or null. */
+  notice: string | null
+}
+
 /**
- * Advance the tutorial after a tick's actions resolve: if the human (any
- * non-bot player) performed — and the engine accepted — the command the current
- * step teaches, step forward. Pure: returns the same state reference unless the
- * step changed.
+ * Advance the tutorial after a tick's actions resolve.
+ *
+ * A step completes when the human (any non-bot player) performed — and the
+ * engine accepted — the command that step teaches. A step ALSO completes when it
+ * has been active longer than TUTORIAL_STEP_DEADLINE_TICKS.
+ *
+ * The deadline is the load-bearing part. Every step's success condition depends
+ * on the live match: "attack" wants a creep wave to have arrived, "cast" wants a
+ * legal target (most heroes' Q needs an enemy hero in your zone). Without a
+ * deadline a player whose zone never produced a legal target sat on the same
+ * step forever — and because tutorial mode gates the *later* commands behind the
+ * current step, they were left with nothing they were allowed to do. That was a
+ * true dead end: the flow could never reach the last step, so tutorial
+ * completion never fired for anyone.
+ *
+ * Pure: returns the same state reference unless the step changed.
  */
 export function advanceTutorialAfterTick(
   state: GameState,
   validActions: readonly { playerId: string; command: Command }[],
   rejected: readonly { playerId: string }[],
-): GameState {
-  if (state.mode !== 'tutorial') return state
+): TutorialAdvance {
+  if (state.mode !== 'tutorial') return { state, notice: null }
   const step = state.tutorialStep ?? 0
-  if (step >= TUTORIAL_FLOW.length) return state
+  if (step >= TUTORIAL_FLOW.length) return { state, notice: null }
 
-  const taught = TUTORIAL_FLOW[step]!.teaches
+  const current = TUTORIAL_FLOW[step]!
+  const taught = current.teaches
   const rejectedIds = new Set(rejected.map((r) => r.playerId))
   const actor = validActions.find(
     (a) =>
       !a.playerId.startsWith('bot_') && a.command.type === taught && !rejectedIds.has(a.playerId),
   )
-  if (!actor) return state
 
   // The move step teaches "walk to the lane", not "take one step": from the
   // fountain the first hop only reaches base, where the next steps (last-hit a
   // creep, cast on an enemy) have no targets. Hold the step until the human has
-  // actually left their base/fountain into the field.
-  if (taught === 'move' && /fountain|base/.test(state.players[actor.playerId]?.zone ?? '')) {
-    return state
+  // actually left their base/fountain into the field — but SAY so, otherwise the
+  // player who typed exactly what the hint said sees nothing happen at all.
+  const stalledInBase =
+    !!actor && taught === 'move' && /fountain|base/.test(state.players[actor.playerId]?.zone ?? '')
+
+  if (actor && !stalledInBase) return { state: advanceTo(state, step + 1), notice: null }
+
+  const since = state.tutorialStepSince ?? 0
+  const elapsed = state.tick - since
+  if (elapsed >= TUTORIAL_STEP_DEADLINE_TICKS) {
+    return {
+      state: advanceTo(state, step + 1),
+      notice: `🎓 Moving on — ${current.skipNote}`,
+    }
   }
 
-  return { ...state, tutorialStep: step + 1 }
+  if (stalledInBase) {
+    return {
+      state,
+      notice: '🎓 Still in your base — keep going with `move mid` to reach the lane.',
+    }
+  }
+
+  return { state, notice: null }
+}
+
+/** Step the flow forward, stamping the tick so the next step gets a fresh deadline. */
+function advanceTo(state: GameState, nextStep: number): GameState {
+  return { ...state, tutorialStep: nextStep, tutorialStepSince: state.tick }
 }

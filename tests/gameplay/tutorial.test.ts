@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
-import { TUTORIAL_STEP_COUNT } from '~~/server/game/modes/tutorial'
+import { TUTORIAL_STEP_COUNT, tutorialHint } from '~~/server/game/modes/tutorial'
 
 /** Did the human's action get rejected with a tutorial-lock hint this tick? */
 function lockedThisTick(rejected: Array<{ playerId: string; reason: string }>): boolean {
@@ -48,7 +48,9 @@ describe('tutorial mode', () => {
       game.attackHero('daemon')
       await game.tick()
       expect(lockedThisTick(game.lastRejected)).toBe(true)
-      expect(game.lastRejected.find((r) => r.playerId === HUMAN)?.reason).toContain('Walk down')
+      // The lock message IS the current step's hint — assert that relationship
+      // rather than the copy, which gets reworded as the teaching improves.
+      expect(game.lastRejected.find((r) => r.playerId === HUMAN)?.reason).toBe(tutorialHint(0))
 
       // Move itself is allowed at step 0.
       game.submit({ type: 'move', zone: 'radiant-base' })

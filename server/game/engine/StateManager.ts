@@ -147,6 +147,9 @@ function createInitialGameState(
     mode,
     // The tutorial starts at step 0 (gating + first hint); normal games omit it.
     tutorialStep: mode === 'tutorial' ? 0 : undefined,
+    // Stamp the step-0 deadline clock so a player who can never satisfy step 0
+    // still gets moved along (see advanceTutorialAfterTick).
+    tutorialStepSince: mode === 'tutorial' ? 0 : undefined,
   }
 }
 

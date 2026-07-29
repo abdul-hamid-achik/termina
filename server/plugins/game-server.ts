@@ -495,6 +495,11 @@ export default defineNitroPlugin(async (nitroApp) => {
         })
       },
 
+      onNotice: (_gId, playerId, message) => {
+        if (isBot(playerId)) return
+        sendToPeer(playerId, { type: 'announcement', message, level: 'info' })
+      },
+
       onTutorialCompleted: (_gId, playerId) => {
         if (isBot(playerId)) return
         // Persist best-effort: a DB hiccup must never block the game loop. The
