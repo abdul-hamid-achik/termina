@@ -161,7 +161,7 @@ const presetLabel = computed(() =>
       <span class="flex flex-col gap-0.5">
         <span class="text-[0.78rem] font-bold text-text-primary">Show team roster in War Room</span>
         <span class="text-[0.62rem] text-text-dim"
-          >Ally status + enemy threat sheets; off = a slim expand row</span
+          >Ally status sheet; off = a slim expand row (enemy threat is always shown)</span
         >
       </span>
       <span

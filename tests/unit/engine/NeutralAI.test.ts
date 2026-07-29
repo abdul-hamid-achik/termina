@@ -274,6 +274,13 @@ describe('NeutralAI', () => {
 
       expect(result.events).toEqual([])
       expect(result.state.players['p1']!.hp).toBe(500)
+      // ...but the shield MUST still have been spent. Suppressing the event by
+      // skipping the whole player write left the stacks untouched, so a shielded
+      // hero could stand in a camp indefinitely — the shield could never be worn
+      // down. Silence about the hit is a rendering decision; not applying the
+      // mitigation is a rules change.
+      const shield = result.state.players['p1']!.buffs.find((b) => b.id === 'shield')
+      expect(shield!.stacks).toBeLessThan(999)
     })
   })
 })

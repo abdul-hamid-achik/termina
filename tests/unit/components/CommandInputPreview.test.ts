@@ -189,6 +189,30 @@ describe('CommandInput preview line', () => {
   })
 })
 
+describe('CommandInput attack target labels', () => {
+  // REGRESSION: the preview's label chain fell through to 'self' for any kind it
+  // did not name, so once `roshan` and `neutral:<i>` became parseable the prompt
+  // confirmed them as a green ">> Attack self" — the most confident possible way
+  // to be wrong about what the player is about to do.
+  it('names Roshan rather than falling through to "self"', async () => {
+    const wrapper = mountInput(makeShopPlayer({ zone: 'roshan-pit' }))
+    const preview = await previewFor(wrapper, 'attack roshan')
+    expect(preview.text()).toContain('Roshan')
+    expect(preview.text()).not.toContain('self')
+  })
+
+  it('names a neutral camp by its index rather than "self"', async () => {
+    const wrapper = mountInput(makeShopPlayer({ zone: 'jungle-rad-top' }), {
+      neutrals: [
+        { id: 'n0', zone: 'jungle-rad-top', hp: 100, maxHp: 100, type: 'kobold', alive: true },
+      ],
+    })
+    const preview = await previewFor(wrapper, 'attack neutral:0')
+    expect(preview.text()).toContain('neutral #0')
+    expect(preview.text()).not.toContain('self')
+  })
+})
+
 describe('CommandInput surrender gate', () => {
   // REGRESSION: the tutorial surrender exemption was mirrored into
   // SurrenderSystem, useCommands.validateCommand and situationalActions — but

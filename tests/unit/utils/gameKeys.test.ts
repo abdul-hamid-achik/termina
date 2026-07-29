@@ -16,6 +16,23 @@ describe('routeGameKey', () => {
     })
   })
 
+  describe('/ (return to the prompt)', () => {
+    // Esc blurs the prompt — that is what makes every in-game hotkey reachable
+    // at all. Without a keyboard way back IN, a player with no mouse could never
+    // type another command: Tab is preventDefault'd into the scoreboard, and the
+    // only other refocus paths are a click and onMounted.
+    it('focuses the prompt when unfocused, and stays out of the way while typing', () => {
+      expect(routeGameKey('/', ctx())).toEqual({ type: 'focusPrompt' })
+      // While typing, '/' must reach the input as a character (zone ids and chat
+      // both contain it), not re-trigger focus.
+      expect(routeGameKey('/', ctx({ isInputFocused: true }))).toEqual({ type: 'none' })
+    })
+
+    it('works even while an overlay is open, so the shop cannot strand you', () => {
+      expect(routeGameKey('/', ctx({ overlayOpen: true }))).toEqual({ type: 'focusPrompt' })
+    })
+  })
+
   describe('Tab', () => {
     it('autocompletes while typing, shows scoreboard otherwise', () => {
       expect(routeGameKey('Tab', ctx({ isInputFocused: true }))).toEqual({ type: 'autocomplete' })

@@ -2,7 +2,13 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useCommands, validateCommand, buybackCostFor, SHORTCUTS } from '~/composables/useCommands'
 import type { GameContext, Suggestion } from '~/composables/useCommands'
-import type { PlayerState, ZoneRuntimeState, GameMode } from '~~/shared/types/game'
+import type {
+  PlayerState,
+  ZoneRuntimeState,
+  GameMode,
+  NeutralCreepState,
+} from '~~/shared/types/game'
+import type { TargetRef } from '~~/shared/types/commands'
 import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { pathDistance } from '~~/shared/pathfinding'
@@ -29,6 +35,13 @@ const props = withDefaults(
      * too, or the terminal silently swallows a command the server would accept.
      */
     mode?: GameMode
+    /**
+     * The GLOBAL neutrals array (not zone-filtered) — `neutral:<index>` is a
+     * global index. Deliberately has no default: validateCommand treats a
+     * PRESENT array as ground truth, and an empty one would make an unbound
+     * instance reject every legal neutral target.
+     */
+    neutrals?: NeutralCreepState[]
   }>(),
   {
     placeholder: 'Enter command...',
@@ -67,6 +80,7 @@ const gameContext = computed<GameContext>(() => ({
   items: props.items,
   tick: props.tick,
   mode: props.mode,
+  neutrals: props.neutrals,
 }))
 
 /**
@@ -109,6 +123,40 @@ const suggestions = computed<Suggestion[]>(() => {
   }
   return autocomplete(val, gameContext.value).slice(0, 8)
 })
+
+/**
+ * Human-readable name for an attack target in the preview line.
+ *
+ * Exhaustive on purpose: the previous ternary chain fell through to 'self' for
+ * anything it did not name, so when `roshan` and `neutral:<i>` became parseable
+ * the prompt confirmed them as ">> Attack self". The `never` assignment makes
+ * TypeScript fail the build if a new TargetRef kind is added without a label,
+ * rather than silently mislabelling it.
+ */
+function attackTargetLabel(t: TargetRef): string {
+  switch (t.kind) {
+    case 'hero':
+      return `hero ${t.name}`
+    case 'creep':
+      return `creep #${t.index}`
+    case 'neutral':
+      return `neutral #${t.index}`
+    case 'tower':
+      return `tower in ${t.zone}`
+    case 'roshan':
+      return 'Roshan'
+    case 'ancient':
+      return 'the enemy Mainframe'
+    case 'zone':
+      return `everything in ${t.zone}`
+    case 'self':
+      return 'self'
+    default: {
+      const exhaustive: never = t
+      return String((exhaustive as { kind?: string }).kind ?? 'target')
+    }
+  }
+}
 
 // Inline validation preview
 const preview = computed(() => {
@@ -191,16 +239,7 @@ const preview = computed(() => {
   }
 
   if (command.type === 'attack') {
-    const t = command.target
-    const label =
-      t.kind === 'hero'
-        ? `hero ${t.name}`
-        : t.kind === 'creep'
-          ? `creep #${t.index}`
-          : t.kind === 'tower'
-            ? `tower in ${t.zone}`
-            : 'self'
-    return { type: 'valid' as const, text: `>> Attack ${label}` }
+    return { type: 'valid' as const, text: `>> Attack ${attackTargetLabel(command.target)}` }
   }
 
   if (command.type === 'cast') {
@@ -433,6 +472,11 @@ function handleSelect(suggestion: Suggestion) {
 function focusInput() {
   inputEl.value?.focus()
 }
+
+// Esc blurs the prompt so the in-game hotkeys become reachable; this is the way
+// back in, so a player without a mouse is not locked out of typing. Routed from
+// GameScreen's '/' handler.
+defineExpose({ focus: focusInput })
 
 /**
  * Typing mode vs keyboard mode. The two behave completely differently — while

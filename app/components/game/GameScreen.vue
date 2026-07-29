@@ -228,8 +228,13 @@ function onKeyDown(e: KeyboardEvent) {
     case 'move':
       handleArrowMove(action.direction)
       break
+    case 'focusPrompt':
+      commandInputRef.value?.focus()
+      break
   }
 }
+
+const commandInputRef = ref<{ focus: () => void } | null>(null)
 
 /** Arrows resolve against the drawn grid, so the miss is reported in its terms. */
 const ARROW_WORD: Record<'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight', string> = {
@@ -1562,7 +1567,13 @@ function handleReturnToMenu() {
            overview-open: the whole-board grid is the map's actual payload, so
            it ships expanded here rather than behind the toggle. Only this
            instance — the component default stays collapsed for mobile. -->
-      <TerminalPanel v-if="layout === 'classic'" title="Map" class="shrink-0">
+      <!-- Capped: the overview is force-opened here so a new player sees the
+           board without a click, which makes this panel ~740px tall at every
+           breakpoint. Uncapped it pushed Hero Status — the only place the HUD
+           shows MP, level/XP and the ability tooltips — off the bottom of the
+           rail on phones and on a 1440x900 laptop. TerminalPanel's body already
+           scrolls internally, so the map scrolls instead of shoving. -->
+      <TerminalPanel v-if="layout === 'classic'" title="Map" class="max-h-[45%] shrink-0">
         <AsciiMap
           :zones="mapZones"
           :player-zone="playerZone"
@@ -1761,6 +1772,7 @@ function handleReturnToMenu() {
         @pick="(tier, side) => handleCommand(`talent ${tier} ${side}`)"
       />
       <CommandInput
+        ref="commandInputRef"
         placeholder="Enter command — type help for the list (Tab to autocomplete)"
         :player="gameStore.player"
         :visible-zones="gameStore.visibleZones"
@@ -1771,6 +1783,7 @@ function handleReturnToMenu() {
         :buffered-command="gameStore.bufferedCommand"
         :tick="gameStore.tick"
         :mode="gameStore.mode"
+        :neutrals="gameStore.neutrals"
         @submit="handleCommand"
       />
     </div>

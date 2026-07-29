@@ -23,7 +23,9 @@ export interface HudSettings {
   density: Density
   /** Direction C: bigger HP/mana + ability bar, recede secondary panels. */
   emphasizeVitals: boolean
-  /** War Room: show the ally + enemy-threat roster (collapsed to a slim row when off). */
+  /** War Room: show the ally roster (collapsed to a slim row when off). The
+   *  enemy-threat sheet is unconditional — a new player must be able to see
+   *  enemy cooldowns and last-seen zones without finding a toggle. */
   rosterExpanded: boolean
 }
 

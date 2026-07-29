@@ -10,6 +10,7 @@ export type GameKeyAction =
   | { type: 'quickAbility'; key: string }
   | { type: 'useItem'; index: number }
   | { type: 'move'; direction: ArrowDirection }
+  | { type: 'focusPrompt' } // '/' while unfocused — the way back INTO the prompt
 
 export interface GameKeyContext {
   /** Focus is in a text input/textarea (typing a command) — suppress hotkeys. */
@@ -33,6 +34,12 @@ export function routeGameKey(key: string, ctx: GameKeyContext): GameKeyAction {
   if (key === 'Escape') {
     return ctx.overlayOpen ? { type: 'closeOverlay' } : { type: 'none' }
   }
+
+  // '/' is the way back into the prompt. Esc blurs it (that is what makes the
+  // hotkeys reachable at all), so without a keyboard route back, a player with
+  // no mouse would be locked out of typing for the rest of the match. '/' and
+  // not Enter: Enter must stay free to activate whatever button has focus.
+  if (key === '/' && !ctx.isInputFocused) return { type: 'focusPrompt' }
 
   // Tab: autocomplete while typing, hold-to-view scoreboard otherwise.
   if (key === 'Tab') {

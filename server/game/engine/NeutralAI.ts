@@ -153,11 +153,19 @@ export function applyNeutralActions(
     // an immunity check, bypassing armor items, shields, hardened reduction,
     // vulnerability amplifiers, and phase shift dodge.
     const hit = resolvePhysicalHit(target, action.damage)
+    if (hit.immune || hit.dodged) continue
+
+    // Persist the mitigated hero BEFORE deciding whether to narrate it. A hit a
+    // shield fully absorbs deals 0 HP damage but still SPENDS shield stacks, and
+    // dealDamage returns them already decremented — dropping the write here
+    // meant a shielded hero could stand in a camp forever, because the shield
+    // could never be worn down.
+    players[action.targetId] = hit.player
+
     // A fully-absorbed hit must not reach the event stream — a `0` damage float
     // reads as a bug to the player.
-    if (hit.immune || hit.dodged || hit.damageDealt === 0) continue
+    if (hit.damageDealt === 0) continue
 
-    players[action.targetId] = hit.player
     events.push({
       _tag: 'damage',
       tick: state.tick,
