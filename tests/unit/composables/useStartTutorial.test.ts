@@ -29,22 +29,52 @@ describe('useStartTutorial', () => {
     expect(starting.value).toBe(false) // reset in finally
   })
 
-  it('routes to /login when not signed in (401)', async () => {
+  it('routes to /login when not signed in (401), explaining why', async () => {
     mockFetch.mockRejectedValue({ statusCode: 401 })
-    const { start } = useStartTutorial()
+    const { start, error } = useStartTutorial()
 
     await start()
 
     expect(mockNavigateTo).toHaveBeenCalledWith('/login')
+    expect(error.value).toBeTruthy()
   })
 
-  it('routes to /lobby on any other failure', async () => {
-    mockFetch.mockRejectedValue({ statusCode: 409 })
-    const { start } = useStartTutorial()
+  it('surfaces the failure instead of silently redirecting', async () => {
+    // REGRESSION: any non-401 failure used to navigateTo('/lobby') with no
+    // message. The common case was a 409 from a previous practice game the
+    // player had abandoned — they pressed "practice", landed on the lobby, and
+    // reasonably concluded the button was broken.
+    mockFetch.mockRejectedValue({ statusCode: 409, data: { message: "You're already in a match" } })
+    const { start, error } = useStartTutorial()
 
     await start()
 
-    expect(mockNavigateTo).toHaveBeenCalledWith('/lobby')
+    expect(error.value).toBe("You're already in a match")
+    expect(mockNavigateTo).not.toHaveBeenCalled()
+  })
+
+  it('falls back to a readable message when the server sends no reason', async () => {
+    mockFetch.mockRejectedValue({ statusCode: 503 })
+    const { start, error } = useStartTutorial()
+
+    await start()
+
+    expect(error.value).toBeTruthy()
+    expect(mockNavigateTo).not.toHaveBeenCalled()
+  })
+
+  it('clears a previous error when a later attempt succeeds', async () => {
+    mockFetch.mockRejectedValue({ statusCode: 503 })
+    const { start, error } = useStartTutorial()
+    await start()
+    expect(error.value).toBeTruthy()
+
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValue({ url: '/play?gameId=g9&tutorial=1' })
+    await start()
+
+    expect(error.value).toBeNull()
+    expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g9&tutorial=1')
   })
 
   it('ignores re-entrant calls while a start is already in flight', async () => {

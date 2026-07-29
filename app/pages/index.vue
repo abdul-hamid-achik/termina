@@ -7,7 +7,11 @@ import { useAuthStore } from '~/stores/auth'
 const heroCount = HERO_IDS.length
 
 // Practice vs bots: shared one-lane tutorial launcher (see useStartTutorial).
-const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
+const {
+  starting: startingTutorial,
+  error: tutorialError,
+  start: startTutorial,
+} = useStartTutorial()
 
 // Funnel: new players (no completed tutorial) are steered to practice as the
 // primary CTA; returning players who finished it get ranked as the primary.
@@ -102,6 +106,7 @@ const tutorialDone = computed(() => authStore.user?.tutorialCompleted === true)
         <AsciiButton label="ENTER THE TERMINAL" :variant="tutorialDone ? 'primary' : 'ghost'" />
       </NuxtLink>
     </div>
+    <InlineError :message="tutorialError" />
 
     <!-- New-player paths: learn the kit + the world before queueing. -->
     <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[0.8rem]">

@@ -106,7 +106,11 @@ const manaPct = computed(() =>
 )
 
 // Learn → play: shared practice-vs-bots launcher for the footer CTA.
-const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
+const {
+  starting: startingTutorial,
+  error: tutorialError,
+  start: startTutorial,
+} = useStartTutorial()
 </script>
 
 <template>
@@ -332,6 +336,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
           <AsciiButton label="ENTER THE TERMINAL" variant="ghost" />
         </NuxtLink>
       </div>
+      <InlineError :message="tutorialError" />
     </footer>
   </div>
 </template>

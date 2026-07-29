@@ -34,7 +34,11 @@ const {
   clear: clearLoadout,
 } = useLoadout(MAX_SLOTS)
 
-const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
+const {
+  starting: startingTutorial,
+  error: tutorialError,
+  start: startTutorial,
+} = useStartTutorial()
 </script>
 
 <template>
@@ -139,6 +143,7 @@ const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
             <AsciiButton label="MEET THE HEROES" variant="ghost" />
           </NuxtLink>
         </footer>
+        <InlineError :message="tutorialError" />
       </aside>
     </div>
   </div>

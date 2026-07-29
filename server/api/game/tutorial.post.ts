@@ -1,5 +1,5 @@
-import { createTutorialGame, getGameRuntime } from '~~/server/plugins/game-server'
-import { getPlayerGame } from '~~/server/services/PeerRegistry'
+import { createTutorialGame, getGameRuntime, stopDevGame } from '~~/server/plugins/game-server'
+import { getPlayerGame, clearPlayerGame } from '~~/server/services/PeerRegistry'
 import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 
 /**
@@ -24,9 +24,25 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 503, message: 'Game server not ready' })
   }
 
-  // Don't strand the player in two games at once.
-  if (getPlayerGame(humanId)) {
-    throw createError({ statusCode: 409, message: 'Already in an active game' })
+  // Don't strand the player in two games at once — but a previous PRACTICE game
+  // must never become a permanent lockout. Clicking "practice" and closing the
+  // tab before the WebSocket opens used to leave a dev_ game ticking with the
+  // player mapped to it forever: the WS close handler that calls stopDevGame
+  // never fired (no socket was ever opened), and the stale-game reaper skips it
+  // because the loop IS still ticking. Every later attempt 409'd and the client
+  // silently bounced to /lobby — indistinguishable from "the tutorial button is
+  // broken". Practice is disposable, so replace it rather than refuse.
+  const existing = getPlayerGame(humanId)
+  if (existing) {
+    if (existing.startsWith('dev_')) {
+      stopDevGame(existing)
+      clearPlayerGame(humanId)
+    } else {
+      throw createError({
+        statusCode: 409,
+        message: "You're already in a match — finish or leave it before starting practice",
+      })
+    }
   }
 
   const body = await readBody<{ heroSelf?: string }>(event).catch(

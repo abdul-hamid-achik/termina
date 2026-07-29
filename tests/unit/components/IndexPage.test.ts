@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { ref, computed } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import IndexPage from '../../../app/pages/index.vue'
+import InlineError from '../../../app/components/ui/InlineError.vue'
 import { HERO_IDS } from '../../../shared/constants/heroes'
 
 // index.vue uses Nuxt auto-imports ($fetch, navigateTo) in startTutorial; the
@@ -44,6 +45,9 @@ function mountIndex() {
             '<button :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>',
         },
       },
+      // Real component (not a stub) — the point of the failure test below is
+      // that the reason actually reaches the page.
+      components: { InlineError },
     },
   })
 }
@@ -83,14 +87,21 @@ describe('index (landing) page', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith('/login')
     })
 
-    it('routes to /lobby on any other failure (e.g. already in a game)', async () => {
-      mockFetch.mockRejectedValue({ statusCode: 409 })
+    it('shows the reason on the page instead of redirecting away', async () => {
+      // REGRESSION: this used to navigateTo('/lobby') on any non-401 failure.
+      // The player pressed PRACTICE, arrived somewhere they did not ask for with
+      // no message, and could only read that as "the button is broken".
+      mockFetch.mockRejectedValue({
+        statusCode: 409,
+        data: { message: "You're already in a match" },
+      })
       const wrapper = mountIndex()
 
       await wrapper.get('[data-testid="start-tutorial"]').trigger('click')
       await flushPromises()
 
-      expect(mockNavigateTo).toHaveBeenCalledWith('/lobby')
+      expect(mockNavigateTo).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-testid="inline-error"]').text()).toContain('already in a match')
     })
   })
 })

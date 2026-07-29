@@ -7,7 +7,11 @@ import { useStartTutorial } from '~/composables/useStartTutorial'
 
 useHead({ title: 'Lore · TERMINA' })
 
-const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
+const {
+  starting: startingTutorial,
+  error: tutorialError,
+  start: startTutorial,
+} = useStartTutorial()
 
 // Roster grouped by role — labels/blurbs from the shared ROLE_META, heroes
 // data-driven from HEROES, so neither can drift.
@@ -80,6 +84,7 @@ const roster = ROLE_ORDER.map((role) => ({
           <AsciiButton label="MEET THE HEROES" variant="ghost" />
         </NuxtLink>
       </div>
+      <InlineError :message="tutorialError" />
     </footer>
   </article>
 </template>

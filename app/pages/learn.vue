@@ -40,7 +40,11 @@ import {
 } from '~~/shared/constants/balance'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 
-const { starting: startingTutorial, start: startTutorial } = useStartTutorial()
+const {
+  starting: startingTutorial,
+  error: tutorialError,
+  start: startTutorial,
+} = useStartTutorial()
 
 // ── Derived display values ───────────────────────────────────────
 // Everything below is computed from the live engine constants so the
@@ -649,6 +653,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
             <AsciiButton label="ENTER THE TERMINAL" variant="ghost" />
           </NuxtLink>
         </div>
+        <InlineError :message="tutorialError" />
       </div>
     </TerminalPanel>
   </div>
