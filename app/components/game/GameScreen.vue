@@ -62,6 +62,7 @@ import { formatRoshan } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
+import { isTutorialComplete } from '~~/shared/constants/tutorial'
 
 const gameStore = useGameStore()
 const settings = useSettingsStore()
@@ -1233,6 +1234,7 @@ function handleReturnToMenu() {
     :current-player-id="gameStore.playerId ?? ''"
     :game-id="gameStore.gameId ?? null"
     :mode="gameStore.mode"
+    :tutorial-complete="isTutorialComplete(gameStore.tutorialStep ?? 0)"
     :mmr-change="gameStore.gameOverMmrChange ?? undefined"
     :ranked="gameStore.gameOverRanked"
     @play-again="handlePlayAgain"
@@ -1658,6 +1660,7 @@ function handleReturnToMenu() {
         :pending-command="gameStore.pendingCommand"
         :buffered-command="gameStore.bufferedCommand"
         :tick="gameStore.tick"
+        :mode="gameStore.mode"
         @submit="handleCommand"
       />
     </div>

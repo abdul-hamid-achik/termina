@@ -189,6 +189,28 @@ describe('CommandInput preview line', () => {
   })
 })
 
+describe('CommandInput surrender gate', () => {
+  // REGRESSION: the tutorial surrender exemption was mirrored into
+  // SurrenderSystem, useCommands.validateCommand and situationalActions — but
+  // NOT here. CommandInput builds its own GameContext and refuses to submit
+  // what its own pre-flight rejects, so typing `surrender confirm` in a
+  // practice game still failed with "Too early to surrender (available at tick
+  // 225)". That left the quick-action button as the only working way out of a
+  // graduated tutorial, which is exactly the dead end the exemption exists to
+  // remove.
+  it('blocks an early surrender in a NORMAL game', async () => {
+    const wrapper = mountInput(makeShopPlayer(), { tick: 10 })
+    const preview = await previewFor(wrapper, 'surrender confirm')
+    expect(preview.text()).toContain('Too early to surrender')
+  })
+
+  it('allows an early surrender in the tutorial', async () => {
+    const wrapper = mountInput(makeShopPlayer(), { tick: 10, mode: 'tutorial' })
+    const preview = await previewFor(wrapper, 'surrender confirm')
+    expect(preview.exists() ? preview.text() : '').not.toContain('Too early to surrender')
+  })
+})
+
 describe('CommandInput keyboard driving', () => {
   it('does not submit a command whose preview is an error', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))

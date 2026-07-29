@@ -23,6 +23,8 @@ const props = withDefaults(
     gameId?: string | null
     /** Mode of the concluded game; 'tutorial' swaps in a learn-the-ropes wrap-up. */
     mode?: GameMode
+    /** Did the player actually finish the tutorial drills (vs quitting early)? */
+    tutorialComplete?: boolean
   }>(),
   { ranked: true },
 )
@@ -30,6 +32,11 @@ const props = withDefaults(
 // After a tutorial we nudge the player toward a real match rather than framing
 // it as a ranked result — and 'PLAY AGAIN' (→ lobby) becomes 'FIND A REAL MATCH'.
 const isTutorial = computed(() => props.mode === 'tutorial')
+// Whether the player actually finished the drills. Practice is now quittable
+// from tick 0, so "tutorial game" no longer implies "tutorial completed" — a
+// learner who bails at tick 2 must not be congratulated for the basics they
+// never saw, nor read their own exit as a defeat.
+const finishedTutorial = computed(() => isTutorial.value && props.tutorialComplete === true)
 
 const emit = defineEmits<{
   playAgain: []
@@ -96,16 +103,29 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
       :class="winner === 'radiant' ? 'border-radiant bloom-radiant' : 'border-dire bloom-dire'"
     >
       <div class="t-caption mb-2 text-text-muted">
-        {{ isTutorial ? '// tutorial complete' : '// match concluded' }}
+        {{
+          isTutorial
+            ? finishedTutorial
+              ? '// tutorial complete'
+              : '// practice ended'
+            : '// match concluded'
+        }}
       </div>
       <span
         class="t-display tracking-[0.2em] anim-glow-pulse"
         :class="winner === 'radiant' ? 'text-radiant' : 'text-dire'"
       >
-        {{ winner === 'radiant' ? 'RADIANT VICTORY' : 'DIRE VICTORY' }}
+        <template v-if="isTutorial">{{
+          finishedTutorial ? 'PRACTICE COMPLETE' : 'PRACTICE ENDED'
+        }}</template>
+        <template v-else>{{ winner === 'radiant' ? 'RADIANT VICTORY' : 'DIRE VICTORY' }}</template>
       </span>
       <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
-        You've got the basics — move, last-hit, cast, and buy. Ready for a real match?
+        {{
+          finishedTutorial
+            ? "You've got the basics — move, last-hit, cast, and buy. Ready for a real match?"
+            : 'Practice ended early — the drills are still there whenever you want them.'
+        }}
       </p>
     </div>
 

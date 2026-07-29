@@ -46,7 +46,12 @@ import {
 } from '~~/server/game/ai/BotManager'
 import { ONE_LANE_MAP_ID, TWO_LANE_MAP_ID, mapIdForMode } from '~~/shared/constants/maps'
 import { buildTutorialRoster } from '~~/server/game/modes/tutorial'
-import { sendToPeer, setPlayerGame, clearPlayerGame } from '~~/server/services/PeerRegistry'
+import {
+  sendToPeer,
+  setPlayerGame,
+  clearPlayerGame,
+  getPlayerGame,
+} from '~~/server/services/PeerRegistry'
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -130,6 +135,23 @@ export function isEventVisibleToPlayer(
     default:
       return true
   }
+}
+
+/**
+ * Is this a throwaway practice game whose result must NOT be persisted?
+ *
+ * Tutorial games now END on graduation and are surrenderable from tick 0, so
+ * they reach onGameOver routinely — including for a player who issued no
+ * commands at all, since the tutorial step deadlines carry the flow on their
+ * own. Persisting those would write a bogus match row and credit a free win to
+ * players.wins + hero_stats, inflating the win rate on the profile and
+ * /api/player/stats. Practice is not a result.
+ *
+ * Both checks matter: `mode` covers a tutorial started through any path, and the
+ * `dev_` id prefix covers a practice game whose final state could not be read.
+ */
+export function isPracticeGame(gameId: string, mode?: GameMode): boolean {
+  return mode === 'tutorial' || gameId.startsWith('dev_')
 }
 
 interface GameRuntime {
@@ -604,7 +626,14 @@ export default defineNitroPlugin(async (nitroApp) => {
           }
         }
 
+        // Only tell a player about THIS game if they are still in it. An
+        // abandoned practice game keeps ticking and now reaches game-over on its
+        // own (the step deadlines carry the flow with zero input), so it can
+        // land minutes later — by which time the player may have moved on to a
+        // real match. Without this guard it would shove a stale post-game screen
+        // over their live game.
         for (const p of realPlayers) {
+          if (getPlayerGame(p.playerId) !== gId) continue
           sendToPeer(p.playerId, {
             type: 'game_over',
             winner,
@@ -614,91 +643,100 @@ export default defineNitroPlugin(async (nitroApp) => {
           })
         }
 
+        const practice = isPracticeGame(gId, finalState.mode)
+
         // Persist the match + MMR separately — failure is logged but never
         // blocks the broadcast above or the cleanup below.
-        try {
-          // Label the match by its format. Bot games are 'casual_5v5' (unranked);
-          // human games are labelled by team size (this also fixes the old
-          // hardcoded 'ranked_5v5' that mislabeled 3v3/1v1 history).
-          const teamSize = players.filter((p) => p.team === 'radiant').length
-          const matchMode: NewMatch['mode'] = hasBots
-            ? 'casual_5v5'
-            : teamSize <= 1
-              ? '1v1'
-              : teamSize <= 3
-                ? 'quick_3v3'
-                : 'ranked_5v5'
-          // Tag the match with the active season (creates Season 1 on first use).
-          const season = await managedRuntime.runPromise(db.getCurrentSeason())
-          const matchRecord: NewMatch = {
-            id: gId,
-            mode: matchMode,
-            winner,
-            durationTicks: finalState.tick,
-            seasonNumber: season.seasonNumber,
-            endedAt: new Date(),
-          }
-          const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
-            const ps = finalState.players[p.playerId]
-            const mmrChange = mmrChanges.get(p.playerId) ?? 0
-            return {
-              matchId: gId,
-              playerId: p.playerId,
-              team: p.team,
-              heroId: p.heroId,
-              kills: ps?.kills ?? 0,
-              deaths: ps?.deaths ?? 0,
-              assists: ps?.assists ?? 0,
-              goldEarned: ps?.gold ?? 0,
-              damageDealt: ps?.damageDealt ?? 0,
-              healingDone: 0,
-              finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
-              finalLevel: ps?.level ?? 1,
-              mmrChange,
+        if (!practice) {
+          try {
+            // Label the match by its format. Bot games are 'casual_5v5' (unranked);
+            // human games are labelled by team size (this also fixes the old
+            // hardcoded 'ranked_5v5' that mislabeled 3v3/1v1 history).
+            const teamSize = players.filter((p) => p.team === 'radiant').length
+            const matchMode: NewMatch['mode'] = hasBots
+              ? 'casual_5v5'
+              : teamSize <= 1
+                ? '1v1'
+                : teamSize <= 3
+                  ? 'quick_3v3'
+                  : 'ranked_5v5'
+            // Tag the match with the active season (creates Season 1 on first use).
+            const season = await managedRuntime.runPromise(db.getCurrentSeason())
+            const matchRecord: NewMatch = {
+              id: gId,
+              mode: matchMode,
+              winner,
+              durationTicks: finalState.tick,
+              seasonNumber: season.seasonNumber,
+              endedAt: new Date(),
             }
-          })
-
-          await managedRuntime.runPromise(
-            Effect.gen(function* () {
-              yield* db.recordMatch(matchRecord, matchPlayerRecords)
-
-              for (const p of realPlayers) {
-                const isWinner = p.team === winner
-                const ps = finalState.players[p.playerId]
-
-                // MMR only moves for ranked (no-bot) games — bot games record
-                // history/stats but leave the competitive ladder untouched.
-                if (isRanked) {
-                  const mmrChange = mmrChanges.get(p.playerId) ?? 0
-                  const newMmr = applyMmrChange(p.mmr, mmrChange)
-                  yield* db.updatePlayerMMR(p.playerId, newMmr)
-                  // Mirror the change onto the seasonal ladder + seasonal W/L.
-                  yield* db.applySeasonMmrChange(p.playerId, mmrChange)
-                  yield* db.incrementSeasonGamesPlayed(p.playerId)
-                  if (isWinner) {
-                    yield* db.incrementSeasonWins(p.playerId)
-                  }
-                }
-                yield* db.incrementGamesPlayed(p.playerId)
-                if (isWinner) {
-                  yield* db.incrementWins(p.playerId)
-                }
-                yield* db.updateHeroStats(p.playerId, p.heroId, {
-                  won: isWinner,
-                  kills: ps?.kills ?? 0,
-                  deaths: ps?.deaths ?? 0,
-                  assists: ps?.assists ?? 0,
-                })
+            const matchPlayerRecords: NewMatchPlayer[] = realPlayers.map((p) => {
+              const ps = finalState.players[p.playerId]
+              const mmrChange = mmrChanges.get(p.playerId) ?? 0
+              return {
+                matchId: gId,
+                playerId: p.playerId,
+                team: p.team,
+                heroId: p.heroId,
+                kills: ps?.kills ?? 0,
+                deaths: ps?.deaths ?? 0,
+                assists: ps?.assists ?? 0,
+                goldEarned: ps?.gold ?? 0,
+                damageDealt: ps?.damageDealt ?? 0,
+                healingDone: 0,
+                finalItems: (ps?.items ?? []).filter((i): i is string => i !== null),
+                finalLevel: ps?.level ?? 1,
+                mmrChange,
               }
-            }),
-          )
-        } catch (err) {
-          gameLog.error('Game over persistence failed', { gameId: gId, error: String(err) })
+            })
+
+            await managedRuntime.runPromise(
+              Effect.gen(function* () {
+                yield* db.recordMatch(matchRecord, matchPlayerRecords)
+
+                for (const p of realPlayers) {
+                  const isWinner = p.team === winner
+                  const ps = finalState.players[p.playerId]
+
+                  // MMR only moves for ranked (no-bot) games — bot games record
+                  // history/stats but leave the competitive ladder untouched.
+                  if (isRanked) {
+                    const mmrChange = mmrChanges.get(p.playerId) ?? 0
+                    const newMmr = applyMmrChange(p.mmr, mmrChange)
+                    yield* db.updatePlayerMMR(p.playerId, newMmr)
+                    // Mirror the change onto the seasonal ladder + seasonal W/L.
+                    yield* db.applySeasonMmrChange(p.playerId, mmrChange)
+                    yield* db.incrementSeasonGamesPlayed(p.playerId)
+                    if (isWinner) {
+                      yield* db.incrementSeasonWins(p.playerId)
+                    }
+                  }
+                  yield* db.incrementGamesPlayed(p.playerId)
+                  if (isWinner) {
+                    yield* db.incrementWins(p.playerId)
+                  }
+                  yield* db.updateHeroStats(p.playerId, p.heroId, {
+                    won: isWinner,
+                    kills: ps?.kills ?? 0,
+                    deaths: ps?.deaths ?? 0,
+                    assists: ps?.assists ?? 0,
+                  })
+                }
+              }),
+            )
+          } catch (err) {
+            gameLog.error('Game over persistence failed', { gameId: gId, error: String(err) })
+          }
         }
 
-        // Cleanup always runs, regardless of persistence outcome.
+        // Cleanup always runs, regardless of persistence outcome. The
+        // player->game unmapping is conditional for the same reason as the
+        // broadcast above: a late-finishing abandoned game must not evict the
+        // player from the game they are actually in now (which would stop
+        // presence being stamped, hand their hero to the AFK bot takeover, and
+        // make every reconnect answer NOT_ASSIGNED).
         for (const p of realPlayers) {
-          clearPlayerGame(p.playerId)
+          if (getPlayerGame(p.playerId) === gId) clearPlayerGame(p.playerId)
           clearSentState(gId, p.playerId)
         }
         cleanupGame(gId)

@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useCommands, validateCommand, buybackCostFor } from '~/composables/useCommands'
 import type { GameContext, Suggestion } from '~/composables/useCommands'
-import type { PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
+import type { PlayerState, ZoneRuntimeState, GameMode } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { pathDistance } from '~~/shared/pathfinding'
@@ -22,6 +22,13 @@ const props = withDefaults(
     bufferedCommand?: string | null
     /** Current game tick, for cooldown-aware validation (buyback etc.). */
     tick?: number
+    /**
+     * Game mode. Needed because this component runs its OWN pre-flight
+     * validation and refuses to submit what it judges invalid — so any rule that
+     * varies by mode (the tutorial's surrender exemption) must be visible here
+     * too, or the terminal silently swallows a command the server would accept.
+     */
+    mode?: GameMode
   }>(),
   {
     placeholder: 'Enter command...',
@@ -59,6 +66,7 @@ const gameContext = computed<GameContext>(() => ({
   allPlayers: props.allPlayers,
   items: props.items,
   tick: props.tick,
+  mode: props.mode,
 }))
 
 /**

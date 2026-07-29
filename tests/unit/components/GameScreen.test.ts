@@ -51,6 +51,7 @@ vi.stubGlobal('localStorage', {
 })
 
 import GameScreen from '../../../app/components/game/GameScreen.vue'
+import { ULTIMATE_UNLOCK_LEVEL } from '~~/shared/constants/balance'
 
 // Stubs for every Nuxt auto-imported child (vitest has no auto-import). The
 // data-testid-bearing markup the assertions care about (game-screen root,
@@ -395,6 +396,44 @@ describe('GameScreen', () => {
   })
 
   describe('in-game a11y', () => {
+    it('locks the ultimate button until it is actually learned', () => {
+      // REGRESSION: R rendered as READY from level 1, promising a cast the
+      // server always refused with "Ability not yet learned" (getAbilityLevel
+      // returns rank 0 for R below ULTIMATE_UNLOCK_LEVEL). Nothing on screen
+      // said why. Every other fixture seeds level 9, so this is the only test
+      // that exercises the locked branch.
+      const store = useGameStore()
+      store.gameId = 'game_test_1'
+      store.playerId = 'p1'
+      const roster = makeRoster()
+      roster.p1 = makePlayer({
+        id: 'p1',
+        name: 'you',
+        heroId: SAMPLE_HEROES.echo,
+        level: 1,
+      })
+      store.updateFromTick(makeTickMessage({ players: roster }))
+      const wrapper = mountGameScreen()
+
+      const r = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('R'))
+      expect(r?.text()).toBe(`R·L${ULTIMATE_UNLOCK_LEVEL}`)
+      expect(r?.attributes('aria-label')).toContain(`unlocks at level ${ULTIMATE_UNLOCK_LEVEL}`)
+      expect(r?.attributes('aria-disabled')).toBe('true')
+      wrapper.unmount()
+    })
+
+    it('shows the ultimate as available once the level requirement is met', () => {
+      // The mirror of the case above — the default fixture is level 9, so R must
+      // NOT be reported as locked (guards against an over-broad lock).
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+
+      const r = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('R'))
+      expect(r?.text()).not.toContain(`L${ULTIMATE_UNLOCK_LEVEL}`)
+      expect(r?.attributes('aria-label')).not.toContain('unlocks at level')
+      wrapper.unmount()
+    })
+
     it('exposes a11y state on the quick-action bar (aria-label + toggle aria-pressed)', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()

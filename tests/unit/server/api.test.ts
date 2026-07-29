@@ -86,6 +86,7 @@ const mockRuntime = {
 vi.mock('~~/server/plugins/game-server', () => ({
   getGameRuntime: vi.fn(() => mockRuntime),
   createTutorialGame: vi.fn(),
+  stopDevGame: vi.fn(),
 }))
 
 vi.mock('~~/server/game/matchmaking/queue', () => ({
@@ -97,6 +98,8 @@ vi.mock('~~/server/game/matchmaking/queue', () => ({
 
 vi.mock('~~/server/services/PeerRegistry', () => ({
   getPlayerGame: vi.fn(),
+  clearPlayerGame: vi.fn(),
+  sendToPeer: vi.fn(),
 }))
 
 vi.mock('~~/server/game/matchmaking/lobby', () => ({
@@ -129,9 +132,11 @@ const guildCreateHandler = (await import('../../../server/api/guild/create.post'
 const guildJoinHandler = (await import('../../../server/api/guild/join.post')).default
 const guildMyHandler = (await import('../../../server/api/guild/my.get')).default
 
-const { getGameRuntime, createTutorialGame } = await import('~~/server/plugins/game-server')
+const { getGameRuntime, createTutorialGame, stopDevGame } =
+  await import('~~/server/plugins/game-server')
 const { joinQueue, leaveQueue } = await import('~~/server/game/matchmaking/queue')
-const { getPlayerGame } = await import('~~/server/services/PeerRegistry')
+const { getPlayerGame, clearPlayerGame, sendToPeer } =
+  await import('~~/server/services/PeerRegistry')
 const { getPlayerLobby } = await import('~~/server/game/matchmaking/lobby')
 const { checkScopedRateLimit } = await import('~~/server/utils/RateLimiter')
 const { readSnapshot } = await import('~~/server/game/engine/StateSnapshot')
@@ -590,12 +595,38 @@ describe('API endpoints', () => {
       expect(thrownError?.statusCode).toBe(401)
     })
 
-    it('409 when already in a game', async () => {
+    it('409 when already in a REAL match', async () => {
       sessionUser = { user: { id: 'p1' } }
       vi.mocked(getPlayerGame).mockReturnValue('game-99')
       const tutorialHandler = (await import('../../../server/api/game/tutorial.post')).default
       await expect(tutorialHandler(makeEvent('POST', '/api/game/tutorial'))).rejects.toThrow()
       expect(thrownError?.statusCode).toBe(409)
+    })
+
+    it('replaces an abandoned PRACTICE game instead of locking the player out', async () => {
+      // REGRESSION: clicking PRACTICE and closing the tab before the WebSocket
+      // opened left a dev_ game ticking with the player mapped to it forever —
+      // the WS close handler that stops it never fired, and the stale-game
+      // reaper skips a game whose loop is still running. Every later attempt
+      // 409'd and the client silently redirected, so the button was broken for
+      // good. Practice is disposable: replace it.
+      sessionUser = { user: { id: 'p1' } }
+      vi.mocked(getPlayerGame).mockReturnValue('dev_abandoned')
+      vi.mocked(createTutorialGame).mockResolvedValue({ gameId: 'dev_fresh' } as never)
+
+      const tutorialHandler = (await import('../../../server/api/game/tutorial.post')).default
+      const res = await tutorialHandler(makeEvent('POST', '/api/game/tutorial'))
+
+      expect(stopDevGame).toHaveBeenCalledWith('dev_abandoned')
+      expect(clearPlayerGame).toHaveBeenCalledWith('p1')
+      expect((res as { gameId: string }).gameId).toBe('dev_fresh')
+      // A still-open tab on the replaced game is told why it stopped, rather
+      // than being left on a frozen board (stopDevGame interrupts the loop, it
+      // does not end the match).
+      expect(sendToPeer).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ code: 'PRACTICE_REPLACED' }),
+      )
     })
 
     it('429 when rate-limited', async () => {

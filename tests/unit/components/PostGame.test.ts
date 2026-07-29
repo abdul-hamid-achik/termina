@@ -228,12 +228,26 @@ describe('PostGame', () => {
     })
 
     it('celebrates a tutorial and nudges toward a real match', () => {
-      const wrapper = mountPostGame({ mode: 'tutorial' })
+      const wrapper = mountPostGame({ mode: 'tutorial', tutorialComplete: true })
       expect(wrapper.text()).toContain('tutorial complete')
       expect(wrapper.get('[data-testid="tutorial-wrapup"]').text()).toContain('Ready for a real')
       // The primary CTA (still the playAgain emit → lobby) is relabelled.
       const cta = wrapper.get('[data-testid="play-again-btn"]')
       expect(cta.text()).toBe('FIND A REAL MATCH')
+    })
+
+    it('does not claim completion when the player quit practice early', () => {
+      // REGRESSION: practice is now quittable from tick 0 (END PRACTICE), so
+      // `mode === 'tutorial'` no longer implies the drills were finished. A
+      // learner who bailed at tick 2 was congratulated for basics they never
+      // saw — under a red DIRE VICTORY headline reading like a defeat.
+      const wrapper = mountPostGame({ mode: 'tutorial', tutorialComplete: false })
+      expect(wrapper.text()).not.toContain('tutorial complete')
+      expect(wrapper.text()).toContain('practice ended')
+      expect(wrapper.get('[data-testid="tutorial-wrapup"]').text()).toContain('ended early')
+      // A self-initiated exit must not be framed as a win or a loss.
+      expect(wrapper.text()).not.toContain('DIRE VICTORY')
+      expect(wrapper.text()).not.toContain('RADIANT VICTORY')
     })
 
     it('still emits playAgain from the relabelled tutorial CTA', async () => {

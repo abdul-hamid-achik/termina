@@ -1,5 +1,5 @@
 import { createTutorialGame, getGameRuntime, stopDevGame } from '~~/server/plugins/game-server'
-import { getPlayerGame, clearPlayerGame } from '~~/server/services/PeerRegistry'
+import { getPlayerGame, clearPlayerGame, sendToPeer } from '~~/server/services/PeerRegistry'
 import { checkScopedRateLimit } from '~~/server/utils/RateLimiter'
 
 /**
@@ -35,6 +35,17 @@ export default defineEventHandler(async (event) => {
   const existing = getPlayerGame(humanId)
   if (existing) {
     if (existing.startsWith('dev_')) {
+      // The old game might still have a live client on it (a second tab). Tell
+      // that tab why its board is about to stop, since stopDevGame interrupts
+      // the loop without ending the match — it would otherwise just freeze.
+      // We notify rather than refuse-when-connected: peers are only removed by
+      // the WS close handler, so a half-open socket would make the player look
+      // permanently "connected" and reinstate the very lockout this fixes.
+      sendToPeer(humanId, {
+        type: 'error',
+        code: 'PRACTICE_REPLACED',
+        message: 'You started a new practice game elsewhere — this one has ended.',
+      })
       stopDevGame(existing)
       clearPlayerGame(humanId)
     } else {
