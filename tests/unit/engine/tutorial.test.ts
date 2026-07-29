@@ -15,6 +15,7 @@ import { ITEMS } from '~~/shared/constants/items'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { TUTORIAL_STEP_DEADLINE_TICKS } from '~~/shared/constants/tutorial'
 import { ONE_LANE_ZONES } from '~~/shared/constants/maps'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import { findPath } from '~~/shared/pathfinding'
 
 const ONE_LANE_ZONE_IDS = new Set(ONE_LANE_ZONES.map((z) => z.id))
@@ -157,23 +158,31 @@ describe('tutorial flow', () => {
       expect(tutorialHint(2)!.toLowerCase()).toMatch(/enemy hero|in your zone/)
     })
 
-    it('the first move hint names a zone the spawn fountain can actually path to', () => {
-      // The player spawns in radiant-fountain (adjacent ONLY to radiant-base).
-      // Movement auto-paths, so the hint may name any zone with a route — but it
-      // must NOT name one the step then refuses to accept. REGRESSION: the hint
-      // said `move base`, and advanceTutorialAfterTick deliberately holds the
-      // step while the player is still in base/fountain — so following the hint
-      // exactly produced no visible progress at all.
-      const suggested = /move ([a-z-]+)/.exec(tutorialHint(0) ?? '')?.[1]
+    it('the first move hint sends the player somewhere reachable, valid, and SAFE', () => {
+      const suggested = /move ([a-z0-9-]+)/.exec(tutorialHint(0) ?? '')?.[1]
       expect(suggested).toBeTruthy()
       const target = resolveOneLaneZone(suggested!)
       expect(target, `"${suggested}" is not a one-lane zone`).toBeTruthy()
-      // Reachable from spawn...
+
+      // Reachable: the player spawns in radiant-fountain, adjacent ONLY to
+      // radiant-base. Movement auto-paths, so any routed zone is fair game.
       expect(
         findPath('radiant-fountain', target!, (id) => ONE_LANE_ZONE_IDS.has(id)).length,
       ).toBeGreaterThan(0)
-      // ...and outside home, so arriving there actually completes the step.
+
+      // Valid: REGRESSION — the hint used to say `move base`, but the step
+      // deliberately holds while the player is still in base/fountain, so
+      // following it exactly produced no visible progress at all.
       expect(target).not.toMatch(/fountain|base/)
+
+      // Safe: REGRESSION — the hint then said `move mid`, which aliases to
+      // mid-river: neutral ground with no tower, bordering the DIRE T1. Both
+      // enemy bots are pinned to mid and arrive there before the first creep
+      // wave, so a level-1 player who obeyed the hint was killed in ~12 ticks
+      // having done nothing. Send them somewhere their own tower covers.
+      const zone = ZONE_MAP[target!]
+      expect(zone?.team, `${target} is not friendly ground`).toBe('radiant')
+      expect(zone?.tower, `${target} has no friendly tower cover`).toBe(true)
     })
 
     it('the buy hint names a real, affordable item that actually does something', () => {

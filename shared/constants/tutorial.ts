@@ -40,10 +40,19 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     // The player spawns in the fountain. `move base` only reaches the base, and
     // the step deliberately holds until they leave it (see
     // advanceTutorialAfterTick) — so the hint must name a destination that
-    // actually satisfies the step. Movement auto-paths one zone per tick, so
-    // `move mid` is a single command that walks the whole way.
-    hint: '🎓 Head to the lane — type `move mid`. You walk one zone per tick, so it takes a few ticks.',
-    skipNote: 'Movement: `move <zone>` walks you one zone per tick toward anywhere on the map.',
+    // actually satisfies the step. Movement auto-paths one zone per tick, so a
+    // single command walks the whole way.
+    //
+    // Send them to their OWN T1 tower, not `mid` (which aliases to mid-river).
+    // The river is neutral, has no tower, and borders the DIRE T1 — both enemy
+    // bots are pinned to mid, so they reach it before the first creep wave does.
+    // A level-1 newcomer who followed the old hint arrived alone, ahead of their
+    // own creeps, and was stunned and killed inside ~12 ticks having landed
+    // nothing. Standing behind your own tower is also just what the game wants
+    // you to learn.
+    hint: '🎓 Walk to your tower — type `move mid-t1-rad`. You move one zone per tick, so this takes a few.',
+    skipNote:
+      'Movement: `move <zone>` auto-paths one zone per tick. Stay behind your own tower — the river is contested.',
   },
   {
     teaches: 'attack',
