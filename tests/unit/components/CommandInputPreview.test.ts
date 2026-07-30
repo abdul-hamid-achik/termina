@@ -108,7 +108,7 @@ describe('CommandInput preview line', () => {
     const wrapper = mountInput()
     const preview = await previewFor(wrapper, 'buy healing_salve')
     expect(preview.text()).toContain('>> Buy Healing Salve')
-    expect(preview.text()).toContain('-150g')
+    expect(preview.text()).toContain('-150sc')
     wrapper.unmount()
   })
 
@@ -142,7 +142,7 @@ describe('CommandInput preview line', () => {
     )
     const preview = await previewFor(wrapper, 'buyback')
     expect(preview.text()).toContain('>> Buyback')
-    expect(preview.text()).toContain('-1200g')
+    expect(preview.text()).toContain('-1200sc')
     wrapper.unmount()
   })
 

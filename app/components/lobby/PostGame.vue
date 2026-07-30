@@ -176,7 +176,7 @@ const advice = computed((): Advice[] => {
       observation: `You last-hit ${cs} waves (${rate.toFixed(1)}/min)`,
       command: 'attack wave:0',
       detail:
-        'Only the killing blow pays gold, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
+        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
     })
   } else if (rate === null && cs < 20) {
     out.push({
@@ -184,7 +184,7 @@ const advice = computed((): Advice[] => {
       observation: `You last-hit ${cs} waves`,
       command: 'attack wave:0',
       detail:
-        'Only the killing blow pays gold, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
+        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
     })
   }
 
@@ -194,7 +194,7 @@ const advice = computed((): Advice[] => {
       observation: 'You burned 0 waves',
       command: 'burn wave:0',
       detail:
-        'When one of YOUR waves drops below half health you can finish it yourself. The enemy laner gets no gold and less experience for it — it is the cheapest lead in the game.',
+        'When one of YOUR waves drops below half health you can finish it yourself. The enemy laner gets no scrip and less experience for it — it is the cheapest lead in the game.',
     })
   }
 
@@ -204,7 +204,7 @@ const advice = computed((): Advice[] => {
       observation: `You finished holding ${s.gold.toLocaleString()} unspent gold`,
       command: 'buy blades_of_attack',
       detail:
-        'Gold in your pocket does nothing and half of it is lost when you die. Spend it the moment you can afford the next item in your build.',
+        'Scrip in your pocket does nothing and half of it is lost when you die. Spend it the moment you can afford the next item in your build.',
     })
   }
 
@@ -306,7 +306,7 @@ const advice = computed((): Advice[] => {
           <div class="flex flex-col gap-1" data-testid="my-net-worth">
             <span
               class="t-caption uppercase"
-              title="Unspent gold plus everything you bought with it"
+              title="Unspent scrip plus everything you bought with it"
             >
               Net Worth
             </span>
@@ -445,7 +445,7 @@ const advice = computed((): Advice[] => {
                 <th
                   scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Unspent gold plus everything bought with it"
+                  title="Unspent scrip plus everything bought with it"
                 >
                   Net Worth
                 </th>
@@ -559,7 +559,7 @@ const advice = computed((): Advice[] => {
                 <th
                   scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Unspent gold plus everything bought with it"
+                  title="Unspent scrip plus everything bought with it"
                 >
                   Net Worth
                 </th>

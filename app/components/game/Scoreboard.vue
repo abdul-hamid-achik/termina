@@ -107,7 +107,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
             <span class="scoreboard__col scoreboard__col--name">Player</span>
             <span class="scoreboard__col scoreboard__col--kda">K/D/A</span>
             <span class="scoreboard__col scoreboard__col--lv">Lv</span>
-            <span class="scoreboard__col scoreboard__col--gold">Gold</span>
+            <span class="scoreboard__col scoreboard__col--gold">Scrip</span>
             <span class="scoreboard__col scoreboard__col--items">Items</span>
             <span class="scoreboard__col scoreboard__col--status">ST</span>
           </div>
@@ -210,7 +210,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
       <div class="scoreboard__team-total scoreboard__team-total--chaff">
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-chaff">{{ teams.chaff.kills }}K</span>
-        <span class="text-gold">{{ formatGold(teamTotalGold('chaff')) }}g</span>
+        <span class="text-gold">{{ formatGold(teamTotalGold('chaff')) }}sc</span>
         <span class="text-text-dim">{{ teams.chaff.iceKills }}T</span>
       </div>
       <div class="scoreboard__footer-center">
@@ -221,7 +221,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
       <div class="scoreboard__team-total scoreboard__team-total--audit">
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-audit">{{ teams.audit.kills }}K</span>
-        <span class="text-gold">{{ formatGold(teamTotalGold('audit')) }}g</span>
+        <span class="text-gold">{{ formatGold(teamTotalGold('audit')) }}sc</span>
         <span class="text-text-dim">{{ teams.audit.iceKills }}T</span>
       </div>
     </div>

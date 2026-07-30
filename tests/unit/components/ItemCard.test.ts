@@ -26,7 +26,7 @@ describe('ItemCard', () => {
   it('renders name, cost and humanized stats', () => {
     const text = mountCard().text()
     expect(text).toContain('Dagon')
-    expect(text).toContain('2750g')
+    expect(text).toContain('2750sc')
     expect(text).toContain('+150 Mana')
     expect(text).toContain('+15 Attack')
   })

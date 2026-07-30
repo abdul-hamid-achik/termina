@@ -69,7 +69,7 @@ const {
     <header class="border-b border-border pb-2">
       <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ ITEM SHOP</h1>
       <p class="mt-1 text-[0.78rem] text-text-dim">
-        Every item, by category. Click items to stack a build and watch the stats, gold and actives
+        Every item, by category. Click items to stack a build and watch the stats, scrip and actives
         add up — learn what to buy before you queue.
       </p>
     </header>
@@ -111,10 +111,10 @@ const {
           class="flex min-w-[8.5rem] flex-1 flex-col border border-border bg-bg-primary px-2 py-1"
         >
           <span class="text-[0.6rem] uppercase tracking-wider text-text-muted">
-            {{ s.step }}. {{ s.item.cost }}g
+            {{ s.step }}. {{ s.item.cost }}sc
           </span>
           <span class="text-[0.75rem] font-bold text-text-primary">{{ s.item.name }}</span>
-          <span class="text-[0.62rem] text-gold">{{ s.running }}g total</span>
+          <span class="text-[0.62rem] text-gold">{{ s.running }}sc total</span>
         </li>
       </ol>
     </section>

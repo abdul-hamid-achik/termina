@@ -28,7 +28,7 @@ describe('LoadoutSummary', () => {
   it('shows an empty prompt and zero cost with no items', () => {
     const wrapper = mountSummary([])
     expect(wrapper.find('[data-testid="loadout-slots"]').text()).toBe('0 / 6')
-    expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('0g')
+    expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('0sc')
     expect(wrapper.text()).toContain('Pick items')
     // no clear button when empty
     expect(wrapper.find('[data-testid="loadout-clear"]').exists()).toBe(false)
@@ -46,7 +46,7 @@ describe('LoadoutSummary', () => {
   it('aggregates cost, stats and slot count across the build', () => {
     const wrapper = mountSummary([vanguard, dagon])
     expect(wrapper.find('[data-testid="loadout-slots"]').text()).toBe('2 / 6')
-    expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('5250g') // 2500 + 2750
+    expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('5250sc') // 2500 + 2750
     const text = wrapper.text()
     expect(text).toContain('+250 HP')
     expect(text).toContain('+150 Mana')

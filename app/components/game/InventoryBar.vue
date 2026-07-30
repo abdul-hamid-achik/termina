@@ -153,7 +153,7 @@ function formatStats(def: ItemDef): string[] {
         @click.stop
       >
         <div class="font-bold text-text-primary">{{ slot.def.name }}</div>
-        <div class="text-gold">{{ slot.def.cost }}g</div>
+        <div class="text-gold">{{ slot.def.cost }}sc</div>
         <div v-if="formatStats(slot.def).length" class="mt-1 flex flex-col gap-0.5">
           <span v-for="(stat, si) in formatStats(slot.def)" :key="si" class="text-chaff">{{
             stat

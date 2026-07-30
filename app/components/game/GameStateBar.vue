@@ -86,7 +86,7 @@ function corePct(a: AncientState | undefined): number {
       </span>
       <span class="text-border">|</span>
       <span class="inline-flex gap-1">
-        <span class="t-caption">Gold</span>
+        <span class="t-caption">Scrip</span>
         <span class="text-gold text-glow-gold font-bold">{{ formatGold(gold) }}</span>
       </span>
       <span class="text-border">|</span>

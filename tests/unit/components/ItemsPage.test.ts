@@ -52,7 +52,7 @@ describe('items page — build guidance', () => {
     let running = 0
     ids.forEach((id, i) => {
       running += ITEMS[id]!.cost
-      expect(steps[i]!.text()).toContain(`${running}g total`)
+      expect(steps[i]!.text()).toContain(`${running}sc total`)
     })
     // The last entry is the full build cost, not just the last item's price.
     expect(running).toBeGreaterThan(ITEMS[ids[ids.length - 1]!]!.cost)

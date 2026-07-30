@@ -48,7 +48,7 @@ defineProps<{
           <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
           <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
           <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
-          <th scope="col" class="px-2 py-1 text-left t-caption">Gold</th>
+          <th scope="col" class="px-2 py-1 text-left t-caption">Scrip</th>
           <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>
         </tr>
       </thead>

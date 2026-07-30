@@ -193,7 +193,7 @@ function formatStats(def: ItemDef): string[] {
 
         <!-- Footer -->
         <div class="mt-0.5 flex items-center justify-between">
-          <span class="text-gold">{{ item.cost }}g</span>
+          <span class="text-gold">{{ item.cost }}sc</span>
           <!-- touch-gap keeps the destructive [PINNED] (unpin) tap away from [BUY]
                when both are sized up to 44px on coarse pointers -->
           <div class="touch-gap flex items-center gap-1">
@@ -210,7 +210,7 @@ function formatStats(def: ItemDef): string[] {
               v-if="item.cost <= gold && !atStackCap(item)"
               class="touch-target text-[0.65rem] text-chaff hover:underline"
               :data-testid="`shop-buy-${item.id}`"
-              :aria-label="`Buy ${item.name} for ${item.cost} gold`"
+              :aria-label="`Buy ${item.name} for ${item.cost} scrip`"
               @click.stop="emit('buy', item.id)"
             >
               [BUY]

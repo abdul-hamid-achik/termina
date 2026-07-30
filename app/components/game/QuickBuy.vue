@@ -63,13 +63,13 @@ const entries = computed<PinnedEntry[]>(() => {
         :data-testid="`quickbuy-${entry.id}`"
       >
         <span class="font-bold">{{ entry.def.name }}</span>
-        <span v-if="entry.affordable" class="text-gold">{{ entry.def.cost }}g</span>
-        <span v-else class="text-audit">-{{ entry.goldNeeded }}g</span>
+        <span v-if="entry.affordable" class="text-gold">{{ entry.def.cost }}sc</span>
+        <span v-else class="text-audit">-{{ entry.goldNeeded }}sc</span>
         <button
           v-if="entry.affordable && canBuy"
           class="touch-target text-chaff hover:underline"
           :data-testid="`quickbuy-buy-${entry.id}`"
-          :aria-label="`Buy ${entry.def.name} for ${entry.def.cost} gold`"
+          :aria-label="`Buy ${entry.def.name} for ${entry.def.cost} scrip`"
           @click="emit('buy', entry.id)"
         >
           [BUY]

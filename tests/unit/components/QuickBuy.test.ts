@@ -46,7 +46,7 @@ describe('QuickBuy', () => {
 
     expect(wrapper.find('[data-testid="quickbuy-buy-healing_salve"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="quickbuy-unpin-healing_salve"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain(`-${SALVE_COST}g`)
+    expect(wrapper.text()).toContain(`-${SALVE_COST}sc`)
   })
 
   it('hides [BUY] when buying is unavailable (e.g. away from base)', () => {

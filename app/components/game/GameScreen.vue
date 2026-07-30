@@ -1633,14 +1633,14 @@ function handleReturnToMenu() {
             :disabled="!buybackInfo.canBuyback"
             @click="handleCommand('buyback')"
           >
-            [BUYBACK — {{ buybackInfo.cost }}g]
+            [BUYBACK — {{ buybackInfo.cost }}sc]
           </button>
           <p v-if="buybackInfo.cooldownTicks > 0" class="t-caption text-audit">
             Buyback on cooldown — {{ countdownText(buybackInfo.cooldownTicks) }} remaining
           </p>
           <p v-else-if="buybackInfo.shortfall > 0" class="t-caption text-text-dim">
-            Need {{ buybackInfo.shortfall }}g more ({{ gameStore.player.gold }}g /
-            {{ buybackInfo.cost }}g)
+            Need {{ buybackInfo.shortfall }}sc more ({{ gameStore.player.gold }}sc /
+            {{ buybackInfo.cost }}sc)
           </p>
         </div>
         <p class="mt-4 t-caption">Wait for respawn or buy back to return instantly</p>

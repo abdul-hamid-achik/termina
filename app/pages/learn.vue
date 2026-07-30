@@ -117,12 +117,12 @@ const quickStart = [
   {
     step: '4',
     title: 'Farm Waves',
-    desc: `Wave waves spawn every ${WAVE_INTERVAL_TICKS} cycles. Last-hit them with attack wave:0 to earn ${WAVE_GOLD}g and XP.`,
+    desc: `Wave waves spawn every ${WAVE_INTERVAL_TICKS} cycles. Last-hit them with attack wave:0 to earn ${WAVE_GOLD}sc and XP.`,
   },
   {
     step: '5',
     title: 'Buy Items',
-    desc: `You start with ${STARTING_GOLD}g. Return to base and open the SHOP (click it, or press Esc then S). You have ${MAX_ITEMS} inventory slots.`,
+    desc: `You start with ${STARTING_GOLD}sc. Return to base and open the SHOP (click it, or press Esc then S). You have ${MAX_ITEMS} inventory slots.`,
   },
   {
     step: '6',
@@ -179,7 +179,7 @@ const commands = [
   },
   {
     cmd: 'burn [wave:N]',
-    desc: 'Last-hit your OWN low-HP wave to burn the enemy its gold. Bare burn auto-picks one',
+    desc: 'Last-hit your OWN low-HP wave to burn the enemy its scrip. Bare burn auto-picks one',
     example: 'burn wave:0',
     shortcuts: '—',
   },
@@ -235,7 +235,7 @@ const commands = [
   { cmd: 'ping <zone>', desc: 'Ping a map zone', example: 'ping mid-river', shortcuts: '—' },
   {
     cmd: 'buyback',
-    desc: 'Pay gold to respawn instantly (while dead)',
+    desc: 'Pay scrip to respawn instantly (while dead)',
     example: 'buyback',
     shortcuts: '—',
   },
@@ -315,9 +315,9 @@ const concepts = [
     desc: `TERMINA commits every instruction at once, ${tickSeconds} seconds wide — one cycle. You queue ONE action per cycle. The action window is ${actionWindowSeconds} seconds; your command resolves when the cycle commits.`,
   },
   {
-    term: 'Gold & Items',
+    term: 'Scrip & Items',
     icon: '$',
-    desc: `Earn gold from wave last-hits (${WAVE_GOLD}g), hero kills (${KILL_BOUNTY_BASE}g base + streak and comeback bonuses), assists (${ASSIST_GOLD}g split), and passive income (${PASSIVE_GOLD_PER_TICK}g/cycle). Spend gold at the shop in your base. Max ${MAX_ITEMS} items.`,
+    desc: `Earn scrip from wave last-hits (${WAVE_GOLD}sc), hero kills (${KILL_BOUNTY_BASE}sc base + streak and comeback bonuses), assists (${ASSIST_GOLD}sc split), and passive income (${PASSIVE_GOLD_PER_TICK}sc/cycle). Spend scrip at the shop in your base. Max ${MAX_ITEMS} items.`,
   },
   {
     term: 'No Feed',
@@ -327,12 +327,12 @@ const concepts = [
   {
     term: 'Wave Waves',
     icon: '#',
-    desc: `AI waves spawn every ${WAVE_INTERVAL_TICKS} cycles in each lane. ${LINE_UNITS_PER_WAVE} line + ${SWEEP_UNITS_PER_WAVE} sweep per wave (breach every ${BREACH_WAVE_INTERVAL}th wave). Last-hit them for gold. They push lanes automatically.`,
+    desc: `AI waves spawn every ${WAVE_INTERVAL_TICKS} cycles in each lane. ${LINE_UNITS_PER_WAVE} line + ${SWEEP_UNITS_PER_WAVE} sweep per wave (breach every ${BREACH_WAVE_INTERVAL}th wave). Last-hit them for scrip. They push lanes automatically.`,
   },
   {
     term: 'ICE',
     icon: '!',
-    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_GOLD}g among allies in the zone.`,
+    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_GOLD}sc among allies in the zone.`,
   },
   {
     term: 'The Mainframe',
@@ -357,17 +357,17 @@ const concepts = [
   {
     term: 'Last-Hitting & Burning',
     icon: '/',
-    desc: `Only the killing blow pays gold: chip a wave to 1 HP and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}g and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% HP, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}g and ${burnXp} XP. Prefer tapping the wave group in the zone panel over typing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
+    desc: `Only the killing blow pays scrip: chip a wave to 1 HP and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% HP, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer tapping the wave group in the zone panel over typing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',
     icon: 'X',
-    desc: `When you die, you respawn at your fountain after ${RESPAWN_BASE_TICKS} cycles + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS} (${respawnTicks(1)} cycles at level 1, ${respawnTicks(10)} at level 10). Buyback with gold to return instantly (${buybackCooldownMinutes} min cooldown).`,
+    desc: `When you die, you respawn at your fountain after ${RESPAWN_BASE_TICKS} cycles + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS} (${respawnTicks(1)} cycles at level 1, ${respawnTicks(10)} at level 10). Buyback with scrip to return instantly (${buybackCooldownMinutes} min cooldown).`,
   },
   {
     term: 'Wards',
     icon: 'o',
-    desc: `Observer wards (${wardCost}g) grant vision of a zone for ${CAMTAP_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
+    desc: `CAMTAPs (${wardCost}sc) grant vision of a zone for ${CAMTAP_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
   },
   {
     term: 'Tenant & Caches',

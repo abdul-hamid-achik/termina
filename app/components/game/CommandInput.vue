@@ -261,7 +261,7 @@ const preview = computed(() => {
   if (command.type === 'buy') {
     const item = props.items?.[command.item]
     if (item) {
-      return { type: 'valid' as const, text: `>> Buy ${item.name} (-${item.cost}g)` }
+      return { type: 'valid' as const, text: `>> Buy ${item.name} (-${item.cost}sc)` }
     }
     return { type: 'valid' as const, text: `>> Buy ${command.item}` }
   }
@@ -282,7 +282,7 @@ const preview = computed(() => {
 
   if (command.type === 'buyback') {
     const cost = props.player ? buybackCostFor(props.player) : null
-    return { type: 'valid' as const, text: `>> Buyback${cost != null ? ` (-${cost}g)` : ''}` }
+    return { type: 'valid' as const, text: `>> Buyback${cost != null ? ` (-${cost}sc)` : ''}` }
   }
 
   if (command.type === 'surrender') {

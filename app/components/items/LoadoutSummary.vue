@@ -33,7 +33,7 @@ const actives = computed(() => props.items.filter((i) => i.active).map((i) => i.
 
     <div class="flex items-center justify-between text-[0.72rem]">
       <span class="text-text-dim">total cost</span>
-      <span class="text-gold" data-testid="loadout-cost">{{ cost }}g</span>
+      <span class="text-gold" data-testid="loadout-cost">{{ cost }}sc</span>
     </div>
 
     <!-- Tangible economy cue: how much last-hitting this build represents. -->

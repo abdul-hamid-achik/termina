@@ -15,7 +15,7 @@ const sections: { title: string; body?: string[]; bullets?: string[] }[] = [
       'Account: your username, an optional email address, and (for password accounts) a securely hashed password — we never store your password in plain text.',
       'Profile: your avatar image URL and chosen in-game avatar.',
       'Sign-in identity: if you use GitHub or Discord, the provider gives us your provider account ID, username, avatar, and email address. We never receive your GitHub or Discord password.',
-      'Gameplay: your skill rating (MMR), games played, wins, and per-match statistics (hero, kills/deaths/assists, gold, damage, healing, items, level) used for matchmaking, your profile, and leaderboards.',
+      'Gameplay: your skill rating (MMR), games played, wins, and per-match statistics (hero, kills/deaths/assists, scrip, damage, healing, items, level) used for matchmaking, your profile, and leaderboards.',
       'Technical: a single session cookie that keeps you signed in.',
       'Security: your IP address is processed transiently to rate-limit abuse and brute-force attempts. It is not stored in our database or shared.',
     ],

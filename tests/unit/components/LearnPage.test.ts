@@ -88,10 +88,10 @@ describe('learn page', () => {
 
   it('quotes live gold values from balance constants', () => {
     const text = mountLearn().text()
-    expect(text).toContain(`${PASSIVE_GOLD_PER_TICK}g/cycle`)
+    expect(text).toContain(`${PASSIVE_GOLD_PER_TICK}sc/cycle`)
     expect(text).not.toContain('2g/tick')
-    expect(text).toContain(`${WAVE_GOLD}g`)
-    expect(text).toContain(`${KILL_BOUNTY_BASE}g base`)
+    expect(text).toContain(`${WAVE_GOLD}sc`)
+    expect(text).toContain(`${KILL_BOUNTY_BASE}sc base`)
   })
 
   it('states the real respawn formula (base + per-level after free levels)', () => {
@@ -146,7 +146,7 @@ describe('learn page', () => {
 
   it('quotes live ward and ice numbers', () => {
     const text = mountLearn().text()
-    expect(text).toContain(`(${ITEMS.camtap!.cost}g)`)
+    expect(text).toContain(`(${ITEMS.camtap!.cost}sc)`)
     expect(text).toContain(`${CAMTAP_DURATION_TICKS} cycles`)
     expect(text).toContain(`Max ${WARD_LIMIT_PER_TEAM} active per team`)
     expect(text).toContain(`T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP`)
@@ -307,12 +307,12 @@ describe('learn page', () => {
     it('teaches last-hitting as its own concept, with the burn mirror', () => {
       const text = mountLearn().text()
       expect(text).toContain('Last-Hitting & Burning')
-      expect(text).toContain('Only the killing blow pays gold')
+      expect(text).toContain('Only the killing blow pays scrip')
       expect(text).toContain(`${LINE_UNIT_HP} HP`)
       expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% HP`)
       // Burn reward is derived, not asserted as prose.
       const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
-      expect(text).toContain(`${burnGold}g and ${Math.floor(WAVE_XP * BURN_XP_RATIO)} XP`)
+      expect(text).toContain(`${burnGold}sc and ${Math.floor(WAVE_XP * BURN_XP_RATIO)} XP`)
     })
 
     it('warns that wave indices are positional and shift each cycle', () => {

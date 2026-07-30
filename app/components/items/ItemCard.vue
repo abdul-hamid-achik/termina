@@ -45,7 +45,7 @@ function onClick() {
     <!-- Header: name + cost -->
     <div class="flex items-baseline justify-between gap-2">
       <span class="font-bold text-text-primary">{{ item.name }}</span>
-      <span class="shrink-0 text-gold">{{ item.cost }}g</span>
+      <span class="shrink-0 text-gold">{{ item.cost }}sc</span>
     </div>
 
     <!-- Consumable badge -->
