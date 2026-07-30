@@ -114,7 +114,7 @@ function formatDate(dateStr: string | null): string {
         <div class="mb-3 flex items-center justify-between border-b border-border pb-3">
           <div class="flex items-center gap-3">
             <ClientOnly>
-              <HeroAvatar
+              <HeroPortrait
                 v-if="player.selectedAvatar"
                 :hero-id="player.selectedAvatar"
                 :size="48"

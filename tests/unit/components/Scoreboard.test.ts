@@ -39,7 +39,7 @@ function mountScoreboard(players = defaultPlayers()) {
       currentTick: 30,
       currentPlayerId: 'r1',
     },
-    global: { stubs: { HeroAvatar: true } },
+    global: { stubs: { HeroPortrait: true } },
   })
 }
 

@@ -40,7 +40,7 @@ function mountHeroStatus(hero = makeHero()) {
   return mount(HeroStatus, {
     props: { hero, heroId: HERO_ID },
     attachTo: document.body,
-    global: { stubs: { HeroAvatar: true, ProgressBar: true } },
+    global: { stubs: { HeroPortrait: true, ProgressBar: true } },
   })
 }
 

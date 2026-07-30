@@ -22,7 +22,7 @@ const baseProps = {
 function mountBar(props: Record<string, unknown>) {
   return mount(GameStateBar, {
     props: { ...baseProps, ...props } as InstanceType<typeof GameStateBar>['$props'],
-    global: { stubs: { HeroAvatar: true } },
+    global: { stubs: { HeroPortrait: true } },
   })
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
-import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
+import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
 import { buildTickStoryView, buildTickRecaps } from '~/utils/combatLog'
 import type { CombatLine, CombatLineType, Salience } from '~/utils/combatLog'
 import { formatTickClock } from '~/utils/gameClock'
@@ -338,7 +338,7 @@ function eventAriaLabel(line: CombatLine): string {
             :style="{ color: typeColor(event.type) }"
             >{{ typePrefix(event.type) }}</span
           >
-          <HeroAvatar
+          <HeroPortrait
             v-if="event.type === 'kill' && event.killerHeroId"
             :hero-id="event.killerHeroId"
             :size="16"
@@ -347,7 +347,7 @@ function eventAriaLabel(line: CombatLine): string {
           <span :class="emphasisByType[event.type]" :style="{ color: typeColor(event.type) }">{{
             event.text
           }}</span>
-          <HeroAvatar
+          <HeroPortrait
             v-if="event.type === 'kill' && event.victimHeroId"
             :hero-id="event.victimHeroId"
             :size="16"

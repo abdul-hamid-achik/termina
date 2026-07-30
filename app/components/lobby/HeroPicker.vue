@@ -290,7 +290,7 @@ function initialOf(name: string | undefined | null): string {
             "
           >
             <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
-            <HeroAvatar
+            <HeroPortrait
               v-if="chaffRoster[i]?.heroId"
               :hero-id="chaffRoster[i]!.heroId!"
               :size="20"
@@ -335,7 +335,7 @@ function initialOf(name: string | undefined | null): string {
             "
           >
             <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
-            <HeroAvatar
+            <HeroPortrait
               v-if="auditRoster[i]?.heroId"
               :hero-id="auditRoster[i]!.heroId!"
               :size="20"
@@ -365,7 +365,7 @@ function initialOf(name: string | undefined | null): string {
         ]"
         :title="chaffRoster[i]?.name"
       >
-        <HeroAvatar v-if="chaffRoster[i]?.heroId" :hero-id="chaffRoster[i]!.heroId!" :size="22" />
+        <HeroPortrait v-if="chaffRoster[i]?.heroId" :hero-id="chaffRoster[i]!.heroId!" :size="22" />
         <span v-else>{{ initialOf(chaffRoster[i]?.name) }}</span>
       </div>
       <span class="shrink-0 px-1 text-[0.6rem] text-text-muted">vs</span>
@@ -381,7 +381,7 @@ function initialOf(name: string | undefined | null): string {
         ]"
         :title="auditRoster[i]?.name"
       >
-        <HeroAvatar v-if="auditRoster[i]?.heroId" :hero-id="auditRoster[i]!.heroId!" :size="22" />
+        <HeroPortrait v-if="auditRoster[i]?.heroId" :hero-id="auditRoster[i]!.heroId!" :size="22" />
         <span v-else>{{ initialOf(auditRoster[i]?.name) }}</span>
       </div>
     </div>
@@ -542,7 +542,7 @@ function initialOf(name: string | undefined | null): string {
           @keydown.space.prevent="selectHero(hero.id)"
         >
           <div class="flex items-center gap-1.5">
-            <HeroAvatar :hero-id="hero.id" :size="32" />
+            <HeroPortrait :hero-id="hero.id" :size="32" />
             <div class="min-w-0 flex-1">
               <div class="mb-0.5 flex items-center gap-1">
                 <span class="text-[0.65rem] font-bold uppercase tracking-wider text-chaff">{{

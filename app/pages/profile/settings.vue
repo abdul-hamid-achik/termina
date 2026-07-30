@@ -230,7 +230,7 @@ async function disconnectProvider(provider: string) {
           <div class="flex flex-col items-center gap-1">
             <span class="text-[0.7rem] uppercase tracking-wider text-text-dim">current</span>
             <ClientOnly>
-              <HeroAvatar
+              <HeroPortrait
                 v-if="selectedAvatar"
                 :hero-id="selectedAvatar"
                 :size="96"
@@ -267,7 +267,7 @@ async function disconnectProvider(provider: string) {
               "
               @click="selectedAvatar = hid"
             >
-              <HeroAvatar :hero-id="hid" :size="48" />
+              <HeroPortrait :hero-id="hid" :size="48" />
               <span
                 class="text-[0.6rem] uppercase"
                 :class="selectedAvatar === hid ? 'text-ability' : 'text-text-dim'"

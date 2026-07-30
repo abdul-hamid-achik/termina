@@ -87,7 +87,7 @@ async function mountProfile() {
           },
           NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
           ClientOnly: { template: '<slot />' },
-          HeroAvatar: { props: ['heroId', 'size'], template: '<span class="avatar" />' },
+          HeroPortrait: { props: ['heroId', 'size'], template: '<span class="avatar" />' },
         },
       },
     },

@@ -47,7 +47,7 @@ function stubNuxtGlobals() {
 
 const FIRST_HERO = Object.keys(HEROES)[0]!
 
-// HeroAvatar stub exposes its hero-id so we can assert selection.
+// HeroPortrait stub exposes its hero-id so we can assert selection.
 async function mountSettings() {
   const wrapper = mount(
     defineComponent({
@@ -62,7 +62,7 @@ async function mountSettings() {
           },
           NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
           ClientOnly: { template: '<div><slot /></div>' },
-          HeroAvatar: {
+          HeroPortrait: {
             props: ['heroId', 'size'],
             template: '<span class="hero-avatar" :data-hero="heroId" />',
           },

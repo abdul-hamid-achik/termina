@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
+import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
@@ -96,7 +96,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
 <template>
   <div class="flex flex-col gap-2 text-[0.8rem]" data-testid="hero-status">
     <div class="flex items-start gap-2">
-      <HeroAvatar
+      <HeroPortrait
         v-if="heroId"
         :hero-id="heroId"
         :size="48"

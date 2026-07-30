@@ -11,11 +11,11 @@ const baseProps = {
   assists: 5,
 }
 
-// HeroAvatar is Nuxt-auto-imported; stub it so resolution warnings stay quiet
+// HeroPortrait is Nuxt-auto-imported; stub it so resolution warnings stay quiet
 function mountBar(props: Record<string, unknown>) {
   return mount(GameStateBar, {
     props: props as InstanceType<typeof GameStateBar>['$props'],
-    global: { stubs: { HeroAvatar: true } },
+    global: { stubs: { HeroPortrait: true } },
   })
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
+import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
 import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '~~/shared/constants/balance'
 import type { TeamState, AncientState } from '~~/shared/types/game'
 import { goldLead, formatGoldShort, dayNightReadout } from '~/utils/strategy'
@@ -67,7 +67,7 @@ function corePct(a: AncientState | undefined): number {
     <div
       class="flex items-center gap-2 overflow-x-auto px-3 py-1.5 text-[0.8rem] whitespace-nowrap t-mono-num"
     >
-      <HeroAvatar v-if="heroId" :hero-id="heroId" :size="24" />
+      <HeroPortrait v-if="heroId" :hero-id="heroId" :size="24" />
       <span class="inline-flex gap-1">
         <span class="t-caption">Cycle</span>
         <span class="text-text-primary">{{ tick }}</span>

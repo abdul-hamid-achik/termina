@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import HeroAvatar from '~/components/avatars/HeroAvatar.vue'
+import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
 import type { KillFeedEntry, KillCategory } from '~/utils/combatNarrative'
 
 /**
@@ -53,14 +53,14 @@ function entryKey(e: KillFeedEntry): string {
       class="anim-pop flex items-center gap-2 border bg-bg-panel/90 px-3 py-1 font-mono text-sm font-bold tracking-wide whitespace-nowrap text-glow-sm"
       :class="categoryClass[e.category]"
     >
-      <HeroAvatar
+      <HeroPortrait
         v-if="e.killerHeroId"
         :hero-id="e.killerHeroId"
         :size="20"
         class="inline-flex shrink-0 align-middle"
       />
       <span>{{ e.text }}</span>
-      <HeroAvatar
+      <HeroPortrait
         v-if="e.victimHeroId"
         :hero-id="e.victimHeroId"
         :size="20"

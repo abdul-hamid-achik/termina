@@ -127,7 +127,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
               @keydown.enter="toggleRow(player.id)"
             >
               <div class="scoreboard__col scoreboard__col--hero">
-                <HeroAvatar v-if="player.heroId" :hero-id="player.heroId" :size="32" />
+                <HeroPortrait v-if="player.heroId" :hero-id="player.heroId" :size="32" />
                 <div v-else class="scoreboard__no-avatar">?</div>
               </div>
               <div class="scoreboard__col scoreboard__col--name" :title="player.name">

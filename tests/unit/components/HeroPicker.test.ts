@@ -10,7 +10,7 @@ const AsciiButtonStub = {
   emits: ['click'],
   template: `<button :disabled="disabled" data-testid="ascii-button" @click="$emit('click')">{{ label }}</button>`,
 }
-const HeroAvatarStub = {
+const HeroPortraitStub = {
   props: ['heroId', 'size'],
   template: `<span data-testid="hero-avatar" />`,
 }
@@ -25,7 +25,7 @@ function mountPicker(props: Record<string, unknown> = {}) {
     global: {
       stubs: {
         AsciiButton: AsciiButtonStub,
-        HeroAvatar: HeroAvatarStub,
+        HeroPortrait: HeroPortraitStub,
       },
     },
   })
