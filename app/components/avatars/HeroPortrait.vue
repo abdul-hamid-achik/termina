@@ -6,7 +6,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 /**
  * The operator portrait — an inked, monochrome-green render committed as an
  * asset (public/portraits/, generated once in the vault per R2-08). Same
- * public API HeroAvatar had: heroId + size. When the asset is missing the
+ * public API the old avatar had: heroId + size. When the asset is missing the
  * frame falls back to the handle glyph so a 404 never renders a blank box.
  */
 const props = withDefaults(defineProps<{ heroId: string; size?: number }>(), { size: 48 })

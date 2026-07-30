@@ -24,6 +24,9 @@ export default defineConfig({
   vite: {
     // @vitejs/plugin-vue is needed even though HstVue() handles rendering —
     // Histoire's separate story-COLLECTION Vite pass must transform .vue too.
+    // publicDir points at the repo public/ so /portraits/*.webp resolves in
+    // the workbench (Histoire runs outside Nuxt and would 404 them otherwise).
+    publicDir: path.resolve(__dirname, 'public'),
     plugins: [vue(), tailwindcss()],
     resolve: {
       alias: {

@@ -246,8 +246,19 @@ Expert in hero definitions, abilities, and game balance.
 **Key files**:
 
 - `shared/constants/heroes.ts` — `HEROES` registry, `HERO_IDS` list
+- `shared/constants/postures.ts` — `POSTURE_META` / `POSTURE_ORDER` (the player-facing axis)
+- `shared/constants/cast.ts` — `CAST` (the 18 operators as people: realName, origin, bio, handleRationale, kitReading)
 - `server/game/heroes/_base.ts` — `levelUpHero`, `processDoTs`, `tickAllBuffs`
 - `server/game/heroes/<name>.ts` — individual hero definitions (18 heroes)
+
+**Hero data model**: POSTURE (BREACH/HOLD/ROAM/HARDLINE) is the player-facing
+label everywhere a human reads (pick screen, /heroes, /lore). `role` survives
+ONLY because BotManager's lane priority and itemBuilds' ROLE_BUILD_ORDERS
+consume it — never surface it as the primary label. Operator portraits live in
+`public/portraits/` (36 webp + PROVENANCE.txt), generated ONCE from the vault
+(~/notes/projects/termina/Rewrite 2026-07/portrait-gen.py) — never from a repo
+script (the no-scripts/ rule stands). Hero ids never change (B1a); typed forms
+are normalised (`nullref`/`null-ref` resolve to `null_ref`).
 
 **Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6 (tanks up to 8), magicResist 12–25. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
 
