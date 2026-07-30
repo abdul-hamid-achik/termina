@@ -278,8 +278,11 @@ Expert in the Vue 3 game UI, stores, and WebSocket integration.
 - `stores/game.ts` — `updateFromTick`, player state, scoreboard, events
 - `stores/lobby.ts` — queue flow (idle → searching → found → picking → starting)
 - `stores/auth.ts` — session via `nuxt-auth-utils`; OAuth via `navigateTo('/api/auth/<provider>', { external: true })`
-- `components/game/GameScreen.vue` — main game layout, command handling, map/log/hero panels
-- `components/game/AsciiMap.vue` — zone grid with player/ally/enemy markers
+- `components/game/GameScreen.vue` — terminal shell: STREAM + TRACE + status lines + ActionRow + prompt
+- `components/game/TraceRail.vue` — route as hop depth, contacts, both terminals (replaces the 2D board)
+- `components/game/Stream.vue` — combat log / stream (full-height center column)
+- `components/game/StatusLines.vue` — always-on hop / net / cycle clock lines
+- `components/game/ActionRow.vue` — phone-first move/strip/burn + ability strip (hidden on fine pointer)
 - `pages/lobby.vue` — matchmaking + hero picker + polling fallback
 
 **Conventions**: Terminal-themed UI. CSS vars in `assets/css/terminal.css`. Tailwind 4 (wired via `@tailwindcss/vite` + an `@config` directive that keeps the v3-style `tailwind.config.ts` theme) utility classes using custom colors (`text-chaff`, `text-audit`, `text-self`, `bg-bg-primary`). `<ClientOnly>` required around auth-conditional rendering.
