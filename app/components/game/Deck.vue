@@ -128,7 +128,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
         <ProgressBar
           :value="hero.bw"
           :max="hero.maxBw"
-          color="mana"
+          color="BW"
           :width="16"
           :label="`${hero.name} BW`"
           show-label

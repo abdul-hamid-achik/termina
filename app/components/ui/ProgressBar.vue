@@ -23,7 +23,7 @@ const colorVars: Record<ProgressBarColor, string> = {
   'audit-deep': '--color-audit-deep',
   self: '--color-self',
   gold: '--color-gold',
-  mana: '--color-BW',
+  BW: '--color-BW',
   damage: '--color-damage',
   healing: '--color-healing',
   system: '--color-system',
