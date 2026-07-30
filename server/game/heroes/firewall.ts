@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
@@ -25,19 +25,19 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [95, 140, 185, 230] as const
-const Q_MANA = abilityManaTable('firewall', 'q')
+const Q_MANA = abilityBwTable('firewall', 'q')
 const Q_COOLDOWN = 8
 
 const W_SHIELD = [200, 300, 400, 500] as const
-const W_MANA = abilityManaTable('firewall', 'w')
+const W_MANA = abilityBwTable('firewall', 'w')
 const W_COOLDOWN = 14
 const W_EXPLOSION_DAMAGE = 80 // DMZ explodes for this code damage when it ends
 
-const E_MANA = abilityManaTable('firewall', 'e')
+const E_MANA = abilityBwTable('firewall', 'e')
 const E_COOLDOWN = 16
 
 const R_DOT_TOTAL = [120, 200, 280] as const
-const R_MANA = abilityManaTable('firewall', 'r')
+const R_MANA = abilityBwTable('firewall', 'r')
 const R_COOLDOWN = 55
 
 const PACKET_INSPECTION_REFLECT = 0.08 // 8%
@@ -77,11 +77,9 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -91,7 +89,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
@@ -132,14 +130,12 @@ function resolveW(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const shieldAmount = scaleValue(W_SHIELD, level)
@@ -184,14 +180,12 @@ function resolveE(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const enemies = getEnemiesInZone(state, player)
@@ -230,14 +224,12 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     const enemies = getEnemiesInZone(state, player)

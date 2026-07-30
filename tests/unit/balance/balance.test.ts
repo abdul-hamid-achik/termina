@@ -358,7 +358,7 @@ describe('Balance Constants', () => {
         it('ability BW costs are affordable at level 1', () => {
           for (const [slot, ability] of Object.entries(hero.abilities)) {
             if (slot === 'r') continue // ults can be expensive
-            expect(ability.manaCost).toBeLessThanOrEqual(hero.baseStats.bw)
+            expect(ability.bwCost).toBeLessThanOrEqual(hero.baseStats.bw)
           }
         })
 

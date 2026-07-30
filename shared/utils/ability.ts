@@ -6,7 +6,7 @@ import { getAbilityLevel } from '../constants/balance'
  * BW costs read straight off the hero registry, so every surface quotes the
  * number the engine will actually charge.
  *
- * The registry used to carry only the rank-1 `manaCost` while each hero
+ * The registry used to carry only the rank-1 `bwCost` while each hero
  * resolver kept a private per-rank table, so the HUD displayed — and the
  * command parser pre-validated — a cost up to 2.2x below the real one: a
  * player was told a cast was affordable and the server then refused it. The
@@ -22,26 +22,26 @@ import { getAbilityLevel } from '../constants/balance'
  * their own id at module scope, so a miss is a typo, and failing at load beats
  * a cast that silently costs nothing.
  */
-export function abilityManaTable(heroId: string, slot: AbilitySlot): readonly number[] {
+export function abilityBwTable(heroId: string, slot: AbilitySlot): readonly number[] {
   const def = HEROES[heroId]?.abilities[slot]
   if (!def) throw new Error(`Unknown hero ability: ${heroId}.${slot}`)
-  return def.manaCostByLevel ?? [def.manaCost]
+  return def.bwCostByLevel ?? [def.bwCost]
 }
 
 /**
  * What the engine will charge for `slot` at `playerLevel`.
  *
  * An unlearned ability (rank 0 — R below level 6) reports its rank-1 cost: the
- * level gate rejects that cast long before mana is checked, and previewing it
+ * level gate rejects that cast long before BW is checked, and previewing it
  * as free would read as castable.
  */
-export function getAbilityManaCost(
+export function getAbilityBwCost(
   ability: AbilityDef,
   slot: AbilitySlot,
   playerLevel: number,
 ): number {
-  const table = ability.manaCostByLevel
-  if (!table || table.length === 0) return ability.manaCost
+  const table = ability.bwCostByLevel
+  if (!table || table.length === 0) return ability.bwCost
   const rank = Math.max(1, getAbilityLevel(playerLevel, slot))
-  return table[Math.min(rank - 1, table.length - 1)] ?? ability.manaCost
+  return table[Math.min(rank - 1, table.length - 1)] ?? ability.bwCost
 }

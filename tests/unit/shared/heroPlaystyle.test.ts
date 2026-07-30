@@ -7,7 +7,7 @@ const ability = (effects: AbilityEffect[]): AbilityDef => ({
   id: 'x',
   name: 'X',
   description: '',
-  manaCost: 0,
+  bwCost: 0,
   cooldownTicks: 0,
   targetType: 'none',
   effects,

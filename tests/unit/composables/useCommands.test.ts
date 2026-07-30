@@ -1708,17 +1708,15 @@ describe('validateCommand', () => {
   })
 
   describe('cast mana pre-flight', () => {
-    // THE bug this pre-flight exists to prevent: the registry's flat manaCost is
+    // THE bug this pre-flight exists to prevent: the registry's flat bwCost is
     // the RANK-1 figure, while the engine charges the per-level cost (~2.2x by
     // late game). Validating against the flat number told the player a cast was
     // affordable and then the server refused it — burning their one action for
     // the tick and saying nothing useful.
     it('validates against the cost the engine will actually charge at this level', () => {
-      const hero = Object.values(HEROES).find(
-        (h) => (h.abilities.q.manaCostByLevel?.length ?? 0) > 1,
-      )
+      const hero = Object.values(HEROES).find((h) => (h.abilities.q.bwCostByLevel?.length ?? 0) > 1)
       expect(hero, 'need a hero with a scaling Q to test against').toBeTruthy()
-      const table = hero!.abilities.q.manaCostByLevel!
+      const table = hero!.abilities.q.bwCostByLevel!
       const lateCost = table[table.length - 1]!
       const rank1 = table[0]!
       expect(lateCost).toBeGreaterThan(rank1)
@@ -1734,10 +1732,8 @@ describe('validateCommand', () => {
     })
 
     it('still allows a cast the player can genuinely afford', () => {
-      const hero = Object.values(HEROES).find(
-        (h) => (h.abilities.q.manaCostByLevel?.length ?? 0) > 1,
-      )
-      const table = hero!.abilities.q.manaCostByLevel!
+      const hero = Object.values(HEROES).find((h) => (h.abilities.q.bwCostByLevel?.length ?? 0) > 1)
+      const table = hero!.abilities.q.bwCostByLevel!
       const ctx = makeContext({
         player: makePlayer({ heroId: hero!.id, level: 25, bw: table[table.length - 1]! + 10 }),
       })
@@ -2061,7 +2057,7 @@ describe('pickAbilityTargetString', () => {
       id: 'test-ability',
       name: 'Test Ability',
       description: '',
-      manaCost: 50,
+      bwCost: 50,
       cooldownTicks: 4,
       targetType: targetType as AbilityDef['targetType'],
       effects,

@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
@@ -24,21 +24,21 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = abilityManaTable('malloc', 'q')
+const Q_MANA = abilityBwTable('malloc', 'q')
 const Q_COOLDOWN = 8
 
 const W_DAMAGE = [110, 160, 210, 260] as const
-const W_MANA = abilityManaTable('malloc', 'w')
+const W_MANA = abilityBwTable('malloc', 'w')
 const W_COOLDOWN = 7
 const W_LOW_HP_BONUS = 0.4 // 40% bonus below 30% INTEG
 const W_THRESHOLD = 0.3
 
 const E_DAMAGE = [75, 115, 155, 195] as const
-const E_MANA = abilityManaTable('malloc', 'e')
+const E_MANA = abilityBwTable('malloc', 'e')
 const E_COOLDOWN = 12
 
 const R_DAMAGE = [280, 420, 560] as const
-const R_MANA = abilityManaTable('malloc', 'r')
+const R_MANA = abilityBwTable('malloc', 'r')
 const R_COOLDOWN = 50
 
 const HEAP_GROWTH_PER_100_GOLD = 1
@@ -72,14 +72,12 @@ function resolveQ(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
     caster = applyBuff(caster, {
       id: 'allocate',
@@ -121,11 +119,9 @@ function resolveW(
       )
     }
 
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -135,7 +131,7 @@ function resolveW(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     let damage = scaleValue(W_DAMAGE, level)
@@ -180,11 +176,9 @@ function resolveE(
       )
     }
 
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -194,7 +188,7 @@ function resolveE(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
@@ -235,14 +229,12 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
     // Stack Overflow is a self-sacrifice ult: it also burns 20% of current INTEG
     // (the standard BW cost above is its BW cost). 20% of current never kills.

@@ -15,7 +15,7 @@ import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
 import { goldLead, formatGoldShort, sparkline } from '~/utils/strategy'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
-import { getAbilityManaCost } from '~~/shared/utils/ability'
+import { getAbilityBwCost } from '~~/shared/utils/ability'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
@@ -633,7 +633,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       // registry. Validating against the flat cost told the player a cast was
       // affordable and then the server refused it — the pre-flight existed
       // precisely to stop that.
-      const cost = getAbilityManaCost(ability, command.ability, player.level)
+      const cost = getAbilityBwCost(ability, command.ability, player.level)
       if (player.bw < cost) {
         return `Not enough BW (need ${cost}, have ${player.bw})`
       }

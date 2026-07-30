@@ -177,7 +177,7 @@ describe('Echo Hero', () => {
       expect(result2.state.players['p1']!.cooldowns.q).toBe(3)
     })
 
-    it('fails with InsufficientManaError when no BW', () => {
+    it('fails with InsufficientBwError when no BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

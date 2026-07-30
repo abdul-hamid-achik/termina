@@ -2,7 +2,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { HeroDef } from '~~/shared/types/hero'
 import { abilitySummary, abilityImpact, abilityControls } from '~~/shared/abilityFormat'
-import { getAbilityManaCost } from '~~/shared/utils/ability'
+import { getAbilityBwCost } from '~~/shared/utils/ability'
 import {
   getAbilityLevel,
   BASIC_ABILITY_RANKS,
@@ -47,25 +47,25 @@ function maxRankFor(slot: ConsoleSlot): number {
 }
 
 /**
- * Max mana at a hero level — mirrors `levelUpHero`, which adds
+ * Max bw at a hero level — mirrors `levelUpHero`, which adds
  * `growthPerLevel.bw` once per level gained. The console used to budget every
- * cast against the level-1 pool, which made a 300-mana ultimate look
+ * cast against the level-1 pool, which made a 300-bw ultimate look
  * unaffordable for the whole match.
  */
-function maxManaAt(hero: HeroDef, level: number): number {
+function maxBwAt(hero: HeroDef, level: number): number {
   return hero.baseStats.bw + (hero.growthPerLevel.bw ?? 0) * Math.max(0, level - 1)
 }
 
 /**
  * The /heroes training-console state machine: a safe, offline dry-run of a kit
- * (real ability data, cooldowns + mana on the 4s scheduler) resolved against a
+ * (real ability data, cooldowns + bw on the 4s scheduler) resolved against a
  * practice dummy. Extracted from the page so the cast / advance-tick / DoT /
  * respawn rules are unit-tested — mirroring useLoadout. `hero` and the selected
  * `level` are reactive; changing either resets the console.
  */
 export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
   const level = ref<number>(CONSOLE_LEVELS[0]!)
-  const mana = ref(0)
+  const bw = ref(0)
   const cooldowns = reactive<Record<ConsoleSlot, number>>({ q: 0, w: 0, e: 0, r: 0 })
   const tick = ref(0)
   const log = ref<string[]>([])
@@ -79,7 +79,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
   const totalDamage = ref(0)
   const castCount = ref(0)
 
-  const maxMana = computed(() => maxManaAt(hero.value, level.value))
+  const maxBw = computed(() => maxBwAt(hero.value, level.value))
 
   /** Rank of a slot at the selected level; 0 = the engine refuses the cast. */
   function rankOf(slot: ConsoleSlot): number {
@@ -104,7 +104,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
   }
 
   function reset() {
-    mana.value = maxMana.value
+    bw.value = maxBw.value
     for (const s of SLOTS) cooldowns[s] = 0
     tick.value = 0
     dummyHp.value = dummyMax
@@ -132,12 +132,12 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     // The console has a level selector, so it must charge what a hero at THAT
     // level actually pays — otherwise it teaches a rotation that is unaffordable
     // in a real match.
-    const cost = getAbilityManaCost(ab, slot, level.value)
-    if (mana.value < cost) {
-      pushLog(`! not enough BW for ${ab.name} (need ${cost}, have ${mana.value})`)
+    const cost = getAbilityBwCost(ab, slot, level.value)
+    if (bw.value < cost) {
+      pushLog(`! not enough BW for ${ab.name} (need ${cost}, have ${bw.value})`)
       return
     }
-    mana.value -= cost
+    bw.value -= cost
     cooldowns[slot] = ab.cooldownTicks
     castCount.value++
     pushLog(`> cast ${slot}`, `  ${hero.value.name} casts ${ab.name} — ${abilitySummary(ab)}`)
@@ -181,14 +181,14 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     return (
       !isLocked(slot) &&
       cooldowns[slot] === 0 &&
-      mana.value >= getAbilityManaCost(hero.value.abilities[slot], slot, level.value)
+      bw.value >= getAbilityBwCost(hero.value.abilities[slot], slot, level.value)
     )
   }
 
   /**
    * Fire the hero's authored opening rotation in one go — every slot in
    * `openingCombo` that is unlocked at the selected level, off cooldown AND
-   * affordable (mana depletes as it goes). Following the authored order rather
+   * affordable (bw depletes as it goes). Following the authored order rather
    * than Q→W→E→R is the point: a learner sees the rotation the hero page
    * teaches, and sees the ultimate silently drop out of it below level 6.
    */
@@ -243,8 +243,8 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     // (the fountain and items are the only recovery). Without it the console
     // soft-locks on an empty pool, so it stays — labelled, so nobody learns a
     // regen rate that does not exist.
-    const refill = Math.max(2, Math.round(maxMana.value * 0.05))
-    mana.value = Math.min(maxMana.value, mana.value + refill)
+    const refill = Math.max(2, Math.round(maxBw.value * 0.05))
+    bw.value = Math.min(maxBw.value, bw.value + refill)
     pushLog(`— scheduler cycle ${tick.value}  (+${refill} bw sandbox refill · cooldowns −1)`)
   }
 
@@ -256,8 +256,8 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     CONSOLE_LEVELS,
     dummyMax,
     level,
-    maxMana,
-    mana,
+    maxBw,
+    bw,
     cooldowns,
     tick,
     log,

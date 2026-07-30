@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getEnemiesInZone,
   getEnemiesInZoneAndAdjacent,
@@ -27,22 +27,22 @@ import { hasTalentCastEffect } from '~~/server/game/engine/EffectiveStats'
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [90, 130, 170, 210] as const
-const Q_MANA = abilityManaTable('null_ref', 'q')
+const Q_MANA = abilityBwTable('null_ref', 'q')
 const Q_COOLDOWN = 5
 const Q_MR_SHRED = 5
 const Q_MR_SHRED_DURATION = 3
 
-const W_MANA = abilityManaTable('null_ref', 'w')
+const W_MANA = abilityBwTable('null_ref', 'w')
 const W_COOLDOWN = 12
 const W_SILENCE_DURATION = 2
 
 const E_DOT_DAMAGE = [40, 55, 70, 85] as const
-const E_MANA = abilityManaTable('null_ref', 'e')
+const E_MANA = abilityBwTable('null_ref', 'e')
 const E_COOLDOWN = 14
 const E_DOT_DURATION = 3
 
 const R_DAMAGE = [240, 360, 480] as const
-const R_MANA = abilityManaTable('null_ref', 'r')
+const R_MANA = abilityBwTable('null_ref', 'r')
 const R_COOLDOWN = 50
 const R_EXECUTE_THRESHOLD = 0.25
 const R_EXECUTE_BONUS = 0.5
@@ -82,11 +82,9 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -96,7 +94,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
@@ -143,11 +141,9 @@ function resolveW(
       )
     }
 
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -157,7 +153,7 @@ function resolveW(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const updatedTarget = applyBuff(targetPlayer, {
@@ -193,14 +189,12 @@ function resolveE(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const enemies = getEnemiesInZone(state, player)
@@ -249,14 +243,12 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     // AOE+ exotic: the tier-25 talent widens Dereference to enemies in adjacent

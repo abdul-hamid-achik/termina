@@ -6,11 +6,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getAllEnemyPlayers,
   deductBandwidth,
@@ -22,19 +22,19 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = abilityManaTable('socket', 'q')
+const Q_MANA = abilityBwTable('socket', 'q')
 const Q_COOLDOWN = 12
 
 const W_DAMAGE = [80, 120, 160, 200] as const
-const W_MANA = abilityManaTable('socket', 'w')
+const W_MANA = abilityBwTable('socket', 'w')
 const W_COOLDOWN = 16
 const W_TRAP_LIFETIME = 30 // ticks the armed trap persists before expiring
 const W_TRAP_REVEAL = 2 // ticks the triggering enemy is revealed
 
-const E_MANA = abilityManaTable('socket', 'e')
+const E_MANA = abilityBwTable('socket', 'e')
 const E_COOLDOWN = 20
 
-const R_MANA = abilityManaTable('socket', 'r')
+const R_MANA = abilityBwTable('socket', 'r')
 const R_COOLDOWN = 55
 // Global slow magnitude per rank: ActionResolver reads slow stacks as the
 // % chance an enemy's move fails each tick. (Was a flat stacks:1 = 1% — a
@@ -85,11 +85,9 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -99,7 +97,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const rooted = applyBuff(targetPlayer, {
@@ -135,14 +133,12 @@ function resolveW(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const damage = scaleValue(W_DAMAGE, level)
@@ -208,11 +204,9 @@ function resolveE(
       )
     }
 
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -229,7 +223,7 @@ function resolveE(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     // Pull target 1 zone toward caster (restrict to the live game's zones so
@@ -266,14 +260,12 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     const slowPercent = scaleValue(R_SLOW_PERCENT, level)

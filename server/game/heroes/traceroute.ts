@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getAlliesInZone,
   getAllEnemyPlayers,
@@ -25,19 +25,19 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [100, 145, 190, 235] as const
-const Q_MANA = abilityManaTable('traceroute', 'q')
+const Q_MANA = abilityBwTable('traceroute', 'q')
 const Q_COOLDOWN = 8
 const Q_ISOLATION_BONUS = 0.35
 
-const W_MANA = abilityManaTable('traceroute', 'w')
+const W_MANA = abilityBwTable('traceroute', 'w')
 const W_COOLDOWN = 12
 const W_ROOT_DURATION = 2
 
-const E_MANA = abilityManaTable('traceroute', 'e')
+const E_MANA = abilityBwTable('traceroute', 'e')
 const E_COOLDOWN = 12
 const E_SHADOW_DURATION = 2
 
-const R_MANA = abilityManaTable('traceroute', 'r')
+const R_MANA = abilityBwTable('traceroute', 'r')
 const R_COOLDOWN = 60
 const R_REVEAL_DURATION = 3
 const R_DAMAGE_BUFF_DURATION = 2
@@ -82,11 +82,9 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -96,7 +94,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     let damage = scaleValue(Q_DAMAGE, level)
@@ -148,11 +146,9 @@ function resolveW(
       )
     }
 
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -162,7 +158,7 @@ function resolveW(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const updatedTarget = applyBuff(targetPlayer, {
@@ -201,14 +197,12 @@ function resolveE(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
     caster = applyBuff(caster, {
       id: 'nextHopShadow',
@@ -245,14 +239,12 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     // Self damage buff

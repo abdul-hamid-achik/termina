@@ -335,11 +335,12 @@ export const HARDEN_COOLDOWN_TICKS = 300
 
 // ── BREACH (access state) ────────────────────────────────────────
 // Closed by default. `breach <target>` opens a crew-wide window so code
-// damage is full and hard control can land. Numbers are R4 placeholders
-// (D1a ~3 cycles); R4-13 tunes from sim.
-export const BREACH_DURATION_TICKS = 3
-export const BREACH_COOLDOWN_TICKS = 8
-export const BREACH_BW_COST = 40
+// damage is full and hard control can land. Kinetic never needs access.
+// Duration 5: room for breach + hard control + one follow-up. CD 10 / cost 50
+// keep it a deliberate spend, not free every cycle.
+export const BREACH_DURATION_TICKS = 5
+export const BREACH_COOLDOWN_TICKS = 10
+export const BREACH_BW_COST = 50
 
 // ── Day/Night Cycle ──────────────────────────────────────────────
 

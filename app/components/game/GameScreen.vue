@@ -76,7 +76,7 @@ import { computeThreat, recommendAction } from '~/utils/tactics'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
-import { getAbilityManaCost } from '~~/shared/utils/ability'
+import { getAbilityBwCost } from '~~/shared/utils/ability'
 import { isTutorialComplete } from '~~/shared/constants/tutorial'
 
 const gameStore = useGameStore()
@@ -1534,7 +1534,7 @@ const abilityButtonState = computed(() => {
       continue
     }
     const ability = HEROES[p.heroId]?.abilities[slot]
-    if (ability && p.bw < getAbilityManaCost(ability, slot, p.level)) {
+    if (ability && p.bw < getAbilityBwCost(ability, slot, p.level)) {
       result[upper] = { ready: false, label: upper, aria: `${upper} ${name}, not enough BW` }
       continue
     }

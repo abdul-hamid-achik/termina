@@ -174,7 +174,7 @@ describe('ActionResolver', () => {
 
     it('should reject casting without enough BW via the resolver rejected channel', () => {
       // BW is no longer validated in validateAction — per-hero scaled costs
-      // live in the resolver files, so the resolver's InsufficientManaError
+      // live in the resolver files, so the resolver's InsufficientBwError
       // is authoritative and surfaced through resolveActions' rejected list.
       const state = makeGameState({
         players: {
@@ -976,8 +976,8 @@ describe('ActionResolver', () => {
     it('ghost scepter buff blocks kinetic attack damage on later ticks', () => {
       const state = makeGameState({
         players: {
-          // daemon = kinetic AA so ghost_form (kinetic-immune) actually blocks it
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'daemon' }),
+          // kernel = kinetic AA so ghost_form (kinetic-immune) actually blocks it
+          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'kernel' }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
@@ -1014,7 +1014,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            heroId: 'daemon', // kinetic AA
+            heroId: 'kernel', // kinetic AA
           }),
           p2: makePlayer({
             id: 'p2',

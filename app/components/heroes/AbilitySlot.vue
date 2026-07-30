@@ -11,26 +11,26 @@ const props = defineProps<{
   /** Ticks of cooldown remaining; 0/undefined = ready. */
   cooldownRemaining?: number
   /** Current mana, to dim unaffordable casts; undefined = not tracked. */
-  manaAvailable?: number
+  bwAvailable?: number
   /** Render as a clickable button that emits `cast`. */
   interactive?: boolean
   /**
    * The cost at the CURRENT level, when the caller knows it. The registry's
-   * `manaCost` is the rank-1 headline, and the training console charges the
+   * `bwCost` is the rank-1 headline, and the training console charges the
    * per-level figure — quoting the headline here recreated the exact "told it
    * was affordable, then refused" contradiction on the teaching surface.
    * A resolved number rather than a level, because the passive card passes
    * slot-key '◆', which is not an ability slot.
    */
-  manaCost?: number
+  bwCost?: number
 }>()
 
 const emit = defineEmits<{ cast: [] }>()
 
 const onCooldown = computed(() => (props.cooldownRemaining ?? 0) > 0)
-const cost = computed(() => props.manaCost ?? props.ability.manaCost)
+const cost = computed(() => props.bwCost ?? props.ability.bwCost)
 const unaffordable = computed(
-  () => props.manaAvailable !== undefined && props.manaAvailable < cost.value,
+  () => props.bwAvailable !== undefined && props.bwAvailable < cost.value,
 )
 const disabled = computed(() => onCooldown.value || unaffordable.value)
 const cdSeconds = computed(() => cooldownSeconds(props.ability, TICK_DURATION_MS))

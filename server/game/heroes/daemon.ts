@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   dealDamage,
   deductBandwidth,
@@ -24,18 +24,18 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [60, 100, 140, 180] as const // total DoT damage
-const Q_MANA = abilityManaTable('daemon', 'q')
+const Q_MANA = abilityBwTable('daemon', 'q')
 const Q_COOLDOWN = 7
 
-const W_MANA = abilityManaTable('daemon', 'w')
+const W_MANA = abilityBwTable('daemon', 'w')
 const W_COOLDOWN = 18
 
 const E_DAMAGE = [300, 400, 500] as const
-const E_MANA = abilityManaTable('daemon', 'e')
+const E_MANA = abilityBwTable('daemon', 'e')
 const E_COOLDOWN = 20
 const E_THRESHOLD = 0.3 // 30% INTEG
 
-const R_MANA = abilityManaTable('daemon', 'r')
+const R_MANA = abilityBwTable('daemon', 'r')
 const R_COOLDOWN = 60
 
 const STEALTH_IDLE_TICKS = 2
@@ -75,11 +75,9 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -89,7 +87,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
     // Break stealth on action
     caster = removeBuff(caster, 'stealth')
@@ -131,11 +129,9 @@ function resolveW(
   target?: TargetRef,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const zoneId =
@@ -146,7 +142,7 @@ function resolveW(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
 
@@ -211,11 +207,9 @@ function resolveE(
       )
     }
 
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -245,7 +239,7 @@ function resolveE(
     }
 
     // Execute!
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
 
@@ -280,11 +274,9 @@ function resolveR(
   target?: TargetRef,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const zoneId =
@@ -295,7 +287,7 @@ function resolveR(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
     caster = { ...caster, zone: zoneId }

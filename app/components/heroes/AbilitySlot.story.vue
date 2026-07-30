@@ -14,7 +14,7 @@ const echo = HEROES.echo!
       <AbilitySlot slot-key="R" :ability="echo.abilities.r" :cooldown-remaining="3" interactive />
     </Variant>
     <Variant title="unaffordable">
-      <AbilitySlot slot-key="W" :ability="echo.abilities.w" :mana-available="0" interactive />
+      <AbilitySlot slot-key="W" :ability="echo.abilities.w" :bw-available="0" interactive />
     </Variant>
     <Variant title="passive (static)">
       <AbilitySlot slot-key="◆" :ability="echo.passive" />

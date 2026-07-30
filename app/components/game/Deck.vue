@@ -7,7 +7,7 @@ import { ITEMS } from '~~/shared/constants/items'
 import { displayBuffs } from '~/utils/buffs'
 import { ticksToClock } from '~/utils/strategy'
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
-import { getAbilityManaCost } from '~~/shared/utils/ability'
+import { getAbilityBwCost } from '~~/shared/utils/ability'
 import { useTapInspect } from '~/composables/useTapInspect'
 
 interface HeroData {
@@ -60,9 +60,9 @@ function getAbilityDef(key: 'q' | 'w' | 'e' | 'r') {
 // Ability costs scale with rank, and this panel is where a player decides
 // whether a cast is affordable — quoting the registry's rank-1 headline had
 // them reading up to 2.2x under what the engine charges.
-function manaCost(key: 'q' | 'w' | 'e' | 'r'): number {
+function bwCost(key: 'q' | 'w' | 'e' | 'r'): number {
   const def = getAbilityDef(key)
-  return def ? getAbilityManaCost(def, key, props.hero.level) : 0
+  return def ? getAbilityBwCost(def, key, props.hero.level) : 0
 }
 
 // Deliberately a bare tick count: the chips are the dense part of the HUD and
@@ -169,7 +169,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
             <div class="font-bold text-ability">{{ getAbilityDef(key)!.name }}</div>
             <div class="mt-0.5 flex gap-2 text-text-dim">
               <span
-                >BW: <span class="text-mana">{{ manaCost(key) }}</span></span
+                >BW: <span class="text-mana">{{ bwCost(key) }}</span></span
               >
               <span
                 >CD:
@@ -200,7 +200,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
                 :data-testid="`ability-cast-${key}`"
                 @click.stop="confirmCast(key)"
               >
-                [CAST {{ key.toUpperCase() }} — {{ manaCost(key) }}bw]
+                [CAST {{ key.toUpperCase() }} — {{ bwCost(key) }}bw]
               </button>
               <span v-else class="block w-full px-2 py-1 text-center text-text-dim">
                 [ON COOLDOWN — {{ cooldownText(hero.cooldowns[key]) }}]

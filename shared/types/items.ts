@@ -11,7 +11,7 @@ export interface ItemActiveDef {
   name: string
   description: string
   cooldownTicks: number
-  manaCost?: number
+  bwCost?: number
   /**
    * What this active targets, when it needs one. Drives client auto-targeting
    * for a bare `use <item>` (a click or shortcut) so an offensive item doesn't

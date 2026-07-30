@@ -48,7 +48,7 @@ export interface Talent {
   // Ability modifications
   abilityId?: 'q' | 'w' | 'e' | 'r'
   cooldownReduction?: number // ticks
-  manaCostReduction?: number // percentage
+  bwCostReduction?: number // percentage
   damageBoost?: number // percentage
   // Special effects
   specialEffect?: string // Description of unique effect
@@ -228,7 +228,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 15,
           abilityId: 'q',
-          manaCostReduction: 35,
+          bwCostReduction: 35,
         },
         {
           id: 'daemon_15_right',
@@ -312,7 +312,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 15,
           abilityId: 'q',
-          manaCostReduction: 40,
+          bwCostReduction: 40,
         },
         {
           id: 'kernel_15_right',
@@ -403,7 +403,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 15,
           abilityId: 'q',
-          manaCostReduction: 15,
+          bwCostReduction: 15,
         },
       ],
       20: [
@@ -480,7 +480,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 15,
           abilityId: 'q',
-          manaCostReduction: 30,
+          bwCostReduction: 30,
         },
         {
           id: 'firewall_15_right',
@@ -571,7 +571,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 15,
           abilityId: 'w',
-          manaCostReduction: 20,
+          bwCostReduction: 20,
         },
       ],
       20: [
@@ -826,7 +826,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 15,
           abilityId: 'w',
-          manaCostReduction: 35,
+          bwCostReduction: 35,
         },
       ],
       20: [
@@ -1275,7 +1275,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 20,
           abilityId: 'e',
-          manaCostReduction: 40,
+          bwCostReduction: 40,
         },
       ],
       25: [
@@ -1362,7 +1362,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           type: 'mana_cost_reduce',
           tier: 20,
           abilityId: 'q',
-          manaCostReduction: 40,
+          bwCostReduction: 40,
         },
       ],
       25: [

@@ -7,7 +7,7 @@ import { heroPlaystyleTags, type PlaystyleTag } from '~~/shared/heroPlaystyle'
 import { filterHeroes, type PostureFilter, type PlaystyleFilter } from '~/utils/heroFilter'
 import type { HeroId, HeroRole, HeroDifficulty, HeroPosture } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
-import { getAbilityManaCost } from '~~/shared/utils/ability'
+import { getAbilityBwCost } from '~~/shared/utils/ability'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useTrainingConsole } from '~/composables/useTrainingConsole'
@@ -75,8 +75,8 @@ const {
   CONSOLE_LEVELS,
   dummyMax,
   level,
-  maxMana,
-  mana,
+  maxBw,
+  bw,
   cooldowns,
   tick,
   log,
@@ -135,7 +135,7 @@ function onKey(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
-const manaPct = computed(() => (maxMana.value ? Math.round((mana.value / maxMana.value) * 100) : 0))
+const bwPct = computed(() => (maxBw.value ? Math.round((bw.value / maxBw.value) * 100) : 0))
 
 // Learn → play: shared practice-vs-bots launcher for the footer CTA.
 const {
@@ -356,8 +356,8 @@ const {
             :slot-key="s.toUpperCase()"
             :ability="hero.abilities[s]"
             :cooldown-remaining="cooldowns[s]"
-            :mana-available="mana"
-            :mana-cost="getAbilityManaCost(hero.abilities[s], s, level)"
+            :bw-available="bw"
+            :bw-cost="getAbilityBwCost(hero.abilities[s], s, level)"
             interactive
             @cast="cast(s)"
           />
@@ -431,11 +431,11 @@ const {
 
         <div class="flex flex-col gap-1 border border-border p-2.5">
           <div class="flex items-center justify-between text-[0.7rem] text-text-dim">
-            <span><span class="text-ability">bw</span> {{ mana }} / {{ maxMana }}</span>
+            <span><span class="text-ability">bw</span> {{ bw }} / {{ maxBw }}</span>
             <span>cycle {{ tick }}</span>
           </div>
           <div class="h-1.5 w-full bg-bg-secondary">
-            <div class="h-full bg-ability transition-all" :style="{ width: `${manaPct}%` }" />
+            <div class="h-full bg-ability transition-all" :style="{ width: `${bwPct}%` }" />
           </div>
           <!-- Output tally — lets a learner compare each kit's burst at a glance. -->
           <div class="flex items-center justify-between text-[0.7rem] text-text-dim">

@@ -3,7 +3,7 @@ import {
   decideBotAction,
   getAbilityTarget,
   isOwnSide,
-  sequenceManaCost,
+  sequenceBwCost,
   buildOrderForRole,
   tryUseCombatItem,
   tryPanicDefensiveItem,
@@ -36,7 +36,7 @@ function makeAbility(
     id: 'test-ability',
     name: 'Test Ability',
     description: '',
-    manaCost: 50,
+    bwCost: 50,
     cooldownTicks: 4,
     targetType: targetType as AbilityDef['targetType'],
     effects,
@@ -1352,28 +1352,28 @@ describe('BotAI - decideBotAction', () => {
   })
 })
 
-describe('sequenceManaCost (combo affordability)', () => {
+describe('sequenceBwCost (combo affordability)', () => {
   it('sums the BW cost of every ability in the sequence', () => {
     const echo = HEROES.echo!.abilities
-    expect(sequenceManaCost('echo', ['e', 'q'], 1)).toBe(echo.e.manaCost + echo.q.manaCost)
-    expect(sequenceManaCost('echo', ['q', 'w', 'r'], 1)).toBe(
-      echo.q.manaCost + echo.w.manaCost + echo.r.manaCost,
+    expect(sequenceBwCost('echo', ['e', 'q'], 1)).toBe(echo.e.bwCost + echo.q.bwCost)
+    expect(sequenceBwCost('echo', ['q', 'w', 'r'], 1)).toBe(
+      echo.q.bwCost + echo.w.bwCost + echo.r.bwCost,
     )
   })
 
   it('sums the RANK cost, not the rank-1 headline', () => {
     // Echo Q [40,50,60,70] + W [50,60,70,80]: 90 at rank 1, 150 at rank 4. A
     // level-7 bot summing the headline opens a rotation it cannot finish.
-    expect(sequenceManaCost('echo', ['q', 'w'], 1)).toBe(90)
-    expect(sequenceManaCost('echo', ['q', 'w'], 7)).toBe(150)
+    expect(sequenceBwCost('echo', ['q', 'w'], 1)).toBe(90)
+    expect(sequenceBwCost('echo', ['q', 'w'], 7)).toBe(150)
   })
 
   it('returns 0 for an unknown hero', () => {
-    expect(sequenceManaCost('not_a_hero', ['q', 'w'], 1)).toBe(0)
+    expect(sequenceBwCost('not_a_hero', ['q', 'w'], 1)).toBe(0)
   })
 
   it('is 0 for an empty sequence', () => {
-    expect(sequenceManaCost('echo', [], 1)).toBe(0)
+    expect(sequenceBwCost('echo', [], 1)).toBe(0)
   })
 })
 

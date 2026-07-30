@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getEnemiesInZone,
   getAlliesInZone,
@@ -24,20 +24,20 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_HEAL = [80, 120, 160, 200] as const
-const Q_MANA = abilityManaTable('sentry', 'q')
+const Q_MANA = abilityBwTable('sentry', 'q')
 const Q_COOLDOWN = [6, 5, 4, 3] as const
 
 const W_SHIELD = [100, 150, 200, 250] as const
-const W_MANA = abilityManaTable('sentry', 'w')
+const W_MANA = abilityBwTable('sentry', 'w')
 const W_COOLDOWN = [10, 9, 8, 7] as const
 const W_DURATION = 3
 
-const E_MANA = abilityManaTable('sentry', 'e')
+const E_MANA = abilityBwTable('sentry', 'e')
 const E_COOLDOWN = [12, 11, 10, 9] as const
 const E_SLOW_VALUE = 30
 const E_SLOW_DURATION = 2
 
-const R_MANA = abilityManaTable('sentry', 'r')
+const R_MANA = abilityBwTable('sentry', 'r')
 const R_COOLDOWN = [60, 55, 50] as const
 const R_SHIELD = 150
 const R_DEFENSE_BONUS = 3
@@ -78,11 +78,9 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
@@ -95,7 +93,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const healAmount = scaleValue(Q_HEAL, level)
@@ -138,11 +136,9 @@ function resolveW(
       )
     }
 
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
@@ -155,7 +151,7 @@ function resolveW(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', scaleValue(W_COOLDOWN, level))
 
     const shieldAmount = scaleValue(W_SHIELD, level)
@@ -218,14 +214,12 @@ function resolveE(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
 
     const enemies = getEnemiesInZone(state, player)
@@ -266,14 +260,12 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', scaleValue(R_COOLDOWN, level))
 
     const allies = getAlliesInZone(state, player)

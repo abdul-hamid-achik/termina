@@ -55,17 +55,17 @@ export interface AbilityDef {
   /**
    * Rank-1 cost — the headline number for surfaces with no player level (the
    * hero grid, the draft picker) and the whole cost for abilities that don't
-   * scale. Always equals `manaCostByLevel[0]` when a table is present.
+   * scale. Always equals `bwCostByLevel[0]` when a table is present.
    */
-  manaCost: number
+  bwCost: number
   /**
    * Cost per ability rank. The registry is the ONLY copy — the hero resolvers
-   * read it via `abilityManaTable` instead of keeping their own table. They
-   * used to keep one, and the client, which knows only `manaCost`, displayed
+   * read it via `abilityBwTable` instead of keeping their own table. They
+   * used to keep one, and the client, which knows only `bwCost`, displayed
    * and pre-validated the rank-1 cost of abilities the engine charged up to
    * 2.2x for. Absent means the cost is flat.
    */
-  manaCostByLevel?: readonly number[]
+  bwCostByLevel?: readonly number[]
   cooldownTicks: number
   targetType: TargetType
   damageType?: DamageType
@@ -98,8 +98,10 @@ export interface OperatorBio {
 }
 
 /** Basic-attack damage type. Kinetic is mitigated by plate; code by ice (and
- *  is halved into a closed target once BREACH is live). R4-08 interim mapping:
- *  former melee → kinetic, former ranged → code. */
+ *  is halved into a closed target under BREACH). Kit-based: kinetic = muscle /
+ *  firearms (echo, sentry, kernel, mutex, firewall, cron, socket, malloc);
+ *  code = net operators (daemon, regex, cipher, lambda, null_ref, proxy, ping,
+ *  traceroute, thread, cache). */
 export type AttackType = 'kinetic' | 'code'
 
 export interface HeroDef {

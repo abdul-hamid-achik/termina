@@ -171,8 +171,8 @@ describe('Disable enforcement (validateAction)', () => {
   })
 })
 
-describe('Talent: manaCostReduction refunds BW on the boosted ability', () => {
-  // regex_15_right: abilityId 'q', manaCostReduction 15.
+describe('Talent: bwCostReduction refunds BW on the boosted ability', () => {
+  // regex_15_right: abilityId 'q', bwCostReduction 15.
   // Q costs 60 mana → resolver deducts 60 → talent refunds round(60*15/100)=9.
   // Net mp delta = -60 + 9 = -51.
   const Q_MANA = 60

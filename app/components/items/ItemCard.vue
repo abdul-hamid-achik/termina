@@ -70,8 +70,8 @@ function onClick() {
       <span class="text-text-dim"> — {{ item.active.description }}</span>
       <div class="mt-0.5 flex flex-wrap gap-2 text-[0.62rem] text-text-dim">
         <span v-if="cdSeconds > 0"><span class="text-ability">cd</span> {{ cdSeconds }}s</span>
-        <span v-if="item.active.manaCost"
-          ><span class="text-ability">bw</span> {{ item.active.manaCost }}</span
+        <span v-if="item.active.bwCost"
+          ><span class="text-ability">bw</span> {{ item.active.bwCost }}</span
         >
         <span v-if="item.active.targetType" class="uppercase">{{ item.active.targetType }}</span>
       </div>

@@ -201,7 +201,7 @@ describe('Lambda Hero', () => {
       expect(hasBuff(result.state.players['p1']!, 'closureActive')).toBe(false)
     })
 
-    it('fails with InsufficientManaError when no BW', () => {
+    it('fails with InsufficientBwError when no BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

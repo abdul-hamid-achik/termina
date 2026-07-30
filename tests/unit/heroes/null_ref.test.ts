@@ -149,7 +149,7 @@ describe('Null (null_ref) Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('fails with InsufficientManaError when no BW', () => {
+    it('fails with InsufficientBwError when no BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

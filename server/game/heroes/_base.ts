@@ -11,14 +11,14 @@ import {
 import { getEffectivePlate, getEffectiveIce } from '~~/server/game/engine/EffectiveStats'
 import { getTalentTree } from '~~/shared/constants/talents'
 import { getAbilityLevel } from '~~/shared/constants/balance'
-import { abilityManaTable } from '~~/shared/utils/ability'
+import { abilityBwTable } from '~~/shared/utils/ability'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 // ── Typed Errors ──────────────────────────────────────────────────
 /* eslint-disable unicorn/throw-new-error */
 
-export class InsufficientManaError extends Data.TaggedError('InsufficientManaError')<{
+export class InsufficientBwError extends Data.TaggedError('InsufficientBwError')<{
   readonly required: number
   readonly current: number
 }> {}
@@ -34,7 +34,7 @@ export class InvalidTargetError extends Data.TaggedError('InvalidTargetError')<{
 }> {}
 /* eslint-enable unicorn/throw-new-error */
 
-export type AbilityError = InsufficientManaError | CooldownError | InvalidTargetError
+export type AbilityError = InsufficientBwError | CooldownError | InvalidTargetError
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -117,7 +117,7 @@ export { getAbilityLevel }
  * this path, and the client has to be able to quote the same number before the
  * cast is submitted. The resolvers kept private tables until the two diverged.
  */
-export { abilityManaTable }
+export { abilityBwTable }
 
 /** Pick a scaled value from an array based on ability level. */
 export function scaleValue(values: readonly number[], level: number): number {
@@ -753,7 +753,7 @@ export function resolveAbility(
  * Generic ability-talent application — runs after the hero resolver succeeds,
  * gated on talent.abilityId === cast slot. Never edits hero files:
  * - cooldownReduction: subtract ticks from the resolver-set cooldown (floor 1)
- * - manaCostReduction: refund a % of the mana the resolver actually spent
+ * - bwCostReduction: refund a % of the mana the resolver actually spent
  * - damageBoost: amplify the cast by an extra % of each enemy's INTEG lost
  *   (post-mitigation approximation, clamped at 0 with alive recomputed)
  * Talents of type 'special'/'ability_boost' carrying only specialEffect
@@ -800,10 +800,10 @@ function applyAbilityTalents(
         }
       }
     }
-    if (talent.manaCostReduction !== undefined && talent.manaCostReduction > 0) {
+    if (talent.bwCostReduction !== undefined && talent.bwCostReduction > 0) {
       const current = players[caster.id]!
       const manaSpent = Math.max(0, caster.bw - current.bw)
-      const refund = Math.round((manaSpent * talent.manaCostReduction) / 100)
+      const refund = Math.round((manaSpent * talent.bwCostReduction) / 100)
       if (refund > 0) {
         players = {
           ...players,

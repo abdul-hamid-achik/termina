@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealAbilityDamage,
@@ -27,20 +27,20 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [75, 110, 145, 180] as const
-const Q_MANA = abilityManaTable('lambda', 'q')
+const Q_MANA = abilityBwTable('lambda', 'q')
 const Q_COOLDOWN = 5
 
-const W_MANA = abilityManaTable('lambda', 'w')
+const W_MANA = abilityBwTable('lambda', 'w')
 const W_COOLDOWN = 14
 
 const E_DAMAGE = [70, 100, 130, 160] as const
-const E_MANA = abilityManaTable('lambda', 'e')
+const E_MANA = abilityBwTable('lambda', 'e')
 const E_COOLDOWN = 10
 const E_SLOW_PERCENT = 30
 const E_SLOW_DURATION = 2
 
 const R_DAMAGE = [300, 450, 600] as const
-const R_MANA = abilityManaTable('lambda', 'r')
+const R_MANA = abilityBwTable('lambda', 'r')
 const R_COOLDOWN = 50
 
 const CLOSURE_CASTS_REQUIRED = 3
@@ -83,11 +83,9 @@ function resolveQ(
     }
 
     const closureActive = hasBuff(player, 'closureActive')
-    const manaCost = closureActive ? 0 : scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = closureActive ? 0 : scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -97,7 +95,7 @@ function resolveQ(
       )
     }
 
-    let caster = manaCost > 0 ? deductBandwidth(player, manaCost) : player
+    let caster = bwCost > 0 ? deductBandwidth(player, bwCost) : player
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const baseDamage = scaleValue(Q_DAMAGE, level)
@@ -139,14 +137,12 @@ function resolveW(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const closureActive = hasBuff(player, 'closureActive')
-    const manaCost = closureActive ? 0 : scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = closureActive ? 0 : scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = manaCost > 0 ? deductBandwidth(player, manaCost) : player
+    let caster = bwCost > 0 ? deductBandwidth(player, bwCost) : player
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     // Consume closureActive after use
@@ -192,14 +188,12 @@ function resolveE(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const closureActive = hasBuff(player, 'closureActive')
-    const manaCost = closureActive ? 0 : scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = closureActive ? 0 : scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = manaCost > 0 ? deductBandwidth(player, manaCost) : player
+    let caster = bwCost > 0 ? deductBandwidth(player, bwCost) : player
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const enemies = getEnemiesInZone(state, player)
@@ -264,11 +258,9 @@ function resolveR(
     }
 
     const closureActive = hasBuff(player, 'closureActive')
-    const manaCost = closureActive ? 0 : scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = closureActive ? 0 : scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -278,7 +270,7 @@ function resolveR(
       )
     }
 
-    let caster = manaCost > 0 ? deductBandwidth(player, manaCost) : player
+    let caster = bwCost > 0 ? deductBandwidth(player, bwCost) : player
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     const baseDamage = scaleValue(R_DAMAGE, level)

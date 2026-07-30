@@ -5,11 +5,11 @@ import {
   type AbilitySlot,
   type AbilityResult,
   type AbilityError,
-  InsufficientManaError,
+  InsufficientBwError,
   InvalidTargetError,
   registerHero,
   scaleValue,
-  abilityManaTable,
+  abilityBwTable,
   findTargetPlayer,
   getAlliesInZone,
   dealDamage,
@@ -23,23 +23,23 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = abilityManaTable('cron', 'q')
+const Q_MANA = abilityBwTable('cron', 'q')
 const Q_COOLDOWN = 8
 const Q_ATK_BONUS = 15
 const Q_DEF_BONUS = 5
 const Q_DURATION = 3
 
 const W_SHIELD = [130, 170, 210, 250] as const
-const W_MANA = abilityManaTable('cron', 'w')
+const W_MANA = abilityBwTable('cron', 'w')
 const W_COOLDOWN = 12
 const W_SHIELD_DURATION = 2
 
 const E_DAMAGE = [75, 110, 145, 180] as const
-const E_MANA = abilityManaTable('cron', 'e')
+const E_MANA = abilityBwTable('cron', 'e')
 const E_COOLDOWN = 10
 
 const R_HEAL_PER_TICK = [75, 110, 145] as const
-const R_MANA = abilityManaTable('cron', 'r')
+const R_MANA = abilityBwTable('cron', 'r')
 const R_COOLDOWN = 55
 const R_DURATION = 4
 const R_MP_PER_TICK = 15
@@ -84,11 +84,9 @@ function resolveQ(
       )
     }
 
-    const manaCost = scaleValue(Q_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(Q_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -105,7 +103,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     let updatedTarget = applyBuff(targetPlayer, {
@@ -155,11 +153,9 @@ function resolveW(
       )
     }
 
-    const manaCost = scaleValue(W_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(W_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
@@ -172,7 +168,7 @@ function resolveW(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     // Remove all debuffs from target
@@ -228,11 +224,9 @@ function resolveE(
       )
     }
 
-    const manaCost = scaleValue(E_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(E_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -242,7 +236,7 @@ function resolveE(
       )
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
@@ -283,14 +277,12 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    const manaCost = scaleValue(R_MANA, level)
-    if (player.bw < manaCost) {
-      return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.bw }),
-      )
+    const bwCost = scaleValue(R_MANA, level)
+    if (player.bw < bwCost) {
+      return yield* Effect.fail(new InsufficientBwError({ required: bwCost, current: player.bw }))
     }
 
-    let caster = deductBandwidth(player, manaCost)
+    let caster = deductBandwidth(player, bwCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     const healPerTick = scaleValue(R_HEAL_PER_TICK, level)

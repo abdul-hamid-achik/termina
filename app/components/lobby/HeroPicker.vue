@@ -632,7 +632,7 @@ function initialOf(name: string | undefined | null): string {
             <div class="t-caption flex gap-2 t-mono-num">
               <span
                 >BW
-                <span class="text-mana">{{ selectedHeroDef.abilities[slot].manaCost }}</span></span
+                <span class="text-mana">{{ selectedHeroDef.abilities[slot].bwCost }}</span></span
               >
               <span
                 >CD

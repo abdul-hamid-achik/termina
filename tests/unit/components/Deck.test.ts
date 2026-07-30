@@ -8,10 +8,10 @@ import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 const HERO_ID = 'echo'
 // Echo Q costs [40, 50, 60, 70] across its four ranks; the fixture hero is
 // level 5, which is rank 3. The panel used to quote the registry's flat
-// rank-1 `manaCost` at every level — the number the engine stopped charging
+// rank-1 `bwCost` at every level — the number the engine stopped charging
 // the moment the ability ranked up.
-const Q_MANA_BY_RANK = HEROES[HERO_ID]!.abilities.q.manaCostByLevel!
-const Q_MANA_COST = Q_MANA_BY_RANK[2]!
+const Q_BW_BY_RANK = HEROES[HERO_ID]!.abilities.q.bwCostByLevel!
+const Q_BW_COST = Q_BW_BY_RANK[2]!
 
 interface HeroOverrides {
   cooldowns?: { q: number; w: number; e: number; r: number }
@@ -107,7 +107,7 @@ describe('Deck ability chips', () => {
       const castBtn = wrapper.find('[data-testid="ability-cast-q"]')
       expect(castBtn.exists()).toBe(true)
       expect(castBtn.text()).toContain('CAST Q')
-      expect(castBtn.text()).toContain(`${Q_MANA_COST}bw`)
+      expect(castBtn.text()).toContain(`${Q_BW_COST}bw`)
       wrapper.unmount()
     })
 

@@ -267,7 +267,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
         }
       }
       // No BW check here — per-hero scaled costs live in the resolver files;
-      // the resolver's InsufficientManaError is authoritative and surfaced
+      // the resolver's InsufficientBwError is authoritative and surfaced
       // through resolveActions' rejected channel.
       return null
     }
@@ -2387,7 +2387,7 @@ function resolveHeroCast(
     const abilityName =
       HEROES[caster.heroId]?.abilities[cmd.ability]?.name ?? cmd.ability.toUpperCase()
     let reason: string
-    if (err._tag === 'InsufficientManaError') {
+    if (err._tag === 'InsufficientBwError') {
       reason = `Not enough BW for ${abilityName}: need ${err.required}, have ${Math.floor(caster.bw)}`
     } else if (err._tag === 'CooldownError') {
       const cd = caster.cooldowns[cmd.ability] ?? 0

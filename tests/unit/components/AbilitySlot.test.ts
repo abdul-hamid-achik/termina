@@ -11,7 +11,7 @@ const ability: AbilityDef = {
   id: 'test_q',
   name: 'Packet Storm',
   description: 'Hurls a burst of packets at the target.',
-  manaCost: 50,
+  bwCost: 50,
   cooldownTicks: 3,
   targetType: 'hero',
   effects: [
@@ -46,7 +46,7 @@ describe('AbilitySlot', () => {
   })
 
   it('renders as a clickable button and emits cast when interactive + ready', async () => {
-    const wrapper = mountSlot({ interactive: true, manaAvailable: 100 })
+    const wrapper = mountSlot({ interactive: true, bwAvailable: 100 })
 
     expect(wrapper.element.tagName).toBe('BUTTON')
     expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
@@ -64,7 +64,7 @@ describe('AbilitySlot', () => {
 
   describe('on cooldown', () => {
     it('shows the remaining cooldown, disables the button and blocks casting', async () => {
-      const wrapper = mountSlot({ interactive: true, manaAvailable: 100, cooldownRemaining: 2 })
+      const wrapper = mountSlot({ interactive: true, bwAvailable: 100, cooldownRemaining: 2 })
 
       expect(wrapper.text()).toContain('CD 2t')
       expect(wrapper.find('button').attributes('disabled')).toBeDefined()
@@ -77,7 +77,7 @@ describe('AbilitySlot', () => {
 
   describe('unaffordable', () => {
     it('shows "no bw", disables the button and blocks casting', async () => {
-      const wrapper = mountSlot({ interactive: true, manaAvailable: 10 }) // < manaCost 50
+      const wrapper = mountSlot({ interactive: true, bwAvailable: 10 }) // < bwCost 50
 
       expect(wrapper.text()).toContain('no bw')
       expect(wrapper.find('button').attributes('disabled')).toBeDefined()
@@ -92,7 +92,7 @@ describe('AbilitySlot', () => {
       id: 'test_passive',
       name: 'Always On',
       description: 'A static passive bonus.',
-      manaCost: 0,
+      bwCost: 0,
       cooldownTicks: 0,
       targetType: 'self',
       effects: [],
@@ -109,7 +109,7 @@ describe('AbilitySlot', () => {
   })
 
   it('shows the cooldown (not "no bw") when both on cooldown and unaffordable', () => {
-    const wrapper = mountSlot({ interactive: true, manaAvailable: 0, cooldownRemaining: 3 })
+    const wrapper = mountSlot({ interactive: true, bwAvailable: 0, cooldownRemaining: 3 })
     expect(wrapper.text()).toContain('CD 3t')
     expect(wrapper.text()).not.toContain('no bw')
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()

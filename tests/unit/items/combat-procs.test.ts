@@ -13,6 +13,7 @@ import {
   getItemStatBonuses,
 } from '~~/server/game/engine/EffectiveStats'
 import { calculateKineticDamage, calculateCodeDamage } from '~~/server/game/engine/DamageCalculator'
+import { HEROES } from '~~/shared/constants/heroes'
 import {
   NULL_POINTER_CRIT_MULTIPLIER,
   FRACTURE_EDGE_CRIT_MULTIPLIER,
@@ -33,20 +34,25 @@ import {
 // from hero base + item HP/MP and rescales hp/mp by percent if they differ — so
 // we must set maxInteg/maxBw to the TRUE value (and hp/mp to full) or the recalc
 // silently mutates our deltas. This helper derives both from the chosen items.
-// daemon (kinetic attackType) — R4-08 made echo a code AA.
-const DAEMON_BASE_HP = 480
-const DAEMON_BASE_MP = 300
+// Harness uses kernel (kinetic AA) so plate shred / kinetic-immunity item procs
+// exercise the production path. Code-AA heroes would ignore plate deltas.
+const HARNESS_HERO = 'kernel' as const
+const HARNESS_BASE_INTEG = HEROES[HARNESS_HERO]!.baseStats.integ
+const HARNESS_BASE_BW = HEROES[HARNESS_HERO]!.baseStats.bw
+const HARNESS_ATTACK_TYPE = HEROES[HARNESS_HERO]!.attackType
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const items = overrides.items ?? [null, null, null, null, null, null]
   const itemStats = getItemStatBonuses(items)
-  const maxInteg = DAEMON_BASE_HP + itemStats.integ
-  const maxBw = DAEMON_BASE_MP + itemStats.bw
+  const heroId = overrides.heroId ?? HARNESS_HERO
+  const base = HEROES[heroId]?.baseStats
+  const maxInteg = (base?.integ ?? HARNESS_BASE_INTEG) + itemStats.integ
+  const maxBw = (base?.bw ?? HARNESS_BASE_BW) + itemStats.bw
   const player = {
     id: 'p1',
     name: 'Player1',
-    team: 'chaff',
-    heroId: 'daemon',
+    team: 'chaff' as const,
+    heroId,
     zone: 'mid-river',
     integ: maxInteg,
     maxInteg,
@@ -55,13 +61,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     level: 1,
     xp: 0,
     gold: 600,
-    items: [null, null, null, null, null, null],
+    items: [null, null, null, null, null, null] as PlayerState['items'],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
-    buffs: [],
+    buffs: [] as PlayerState['buffs'],
     alive: true,
     respawnTick: null,
-    plate: 2,
-    ice: 12,
+    plate: base?.plate ?? 2,
+    ice: base?.ice ?? 12,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -117,18 +123,22 @@ function run(state: GameState, actions: PlayerAction[]) {
   return Effect.runSync(resolveActions(state, actions))
 }
 
-/** Kinetic damage a duel attacker deals against a fixed-stat target. */
+/** Basic-attack damage a duel attacker deals against a fixed-stat target. */
 function expectedPhysical(
   attackerItems: (string | null)[],
   targetItems: (string | null)[],
   critMult = 1,
   defenseShred = 0,
 ): number {
-  const atk = makePlayer({ heroId: 'daemon', items: attackerItems })
-  const tgt = makePlayer({ heroId: 'daemon', items: targetItems })
+  const atk = makePlayer({ heroId: HARNESS_HERO, items: attackerItems })
+  const tgt = makePlayer({ heroId: HARNESS_HERO, items: targetItems })
   const attackDamage = Math.round(
     Math.round(getEffectiveAttack(atk, getItemStatBonuses(attackerItems)) * 1) * critMult,
   )
+  if (HARNESS_ATTACK_TYPE === 'code') {
+    const ice = Math.max(0, getEffectiveIce(tgt, getItemStatBonuses(targetItems)))
+    return calculateCodeDamage(attackDamage, ice)
+  }
   const plate = Math.max(0, getEffectivePlate(tgt, getItemStatBonuses(targetItems)) - defenseShred)
   return calculateKineticDamage(attackDamage, plate)
 }
@@ -216,8 +226,8 @@ describe('Item combat procs — on-hit effects', () => {
     const phys = events.find((e) => e._tag === 'damage' && e.damageType === 'kinetic')!
     expect(magic).toBeDefined()
     expect(phys).toBeDefined()
-    // MKB code = 50 reduced by the target's 15 MR.
-    const tgt = makePlayer({ heroId: 'daemon' })
+    // truestrike bonus code reduced by the target's ice (harness hero base).
+    const tgt = makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' })
     const expectedMagic = calculateCodeDamage(
       TRUESTRIKE_RIG_BONUS_DAMAGE,
       getEffectiveIce(tgt, getItemStatBonuses([])),
@@ -253,7 +263,7 @@ describe('Item combat procs — on-hit effects', () => {
   })
 
   it('arc_coil chain lightning hits a SECOND nearby enemy for code damage (loop-50)', () => {
-    const tgt = makePlayer({ heroId: 'daemon' })
+    const tgt = makePlayer({ id: 'p3', team: 'audit', name: 'Bystander' })
     const expectedChain = calculateCodeDamage(60, getEffectiveIce(tgt, getItemStatBonuses([])))
     let sawChain = false
     for (let i = 0; i < 50; i++) {
@@ -418,14 +428,15 @@ describe('Item actives — direct effects', () => {
     ])
     const lost = start - r.state.players['p2']!.integ
     // 300 code against echo's 15 MR.
-    const expected = calculateCodeDamage(300, getEffectiveIce(makePlayer({ heroId: 'daemon' })))
+    const expected = calculateCodeDamage(300, getEffectiveIce(makePlayer({ heroId: HARNESS_HERO })))
     expect(lost).toBe(expected)
-    expect(expected).toBeGreaterThan(250) // ~261 — close to 300 before reduction.
+    expect(expected).toBeGreaterThan(200) // ~261 — close to 300 before reduction.
     // caster gets the cooldown buff.
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_burnout')).toBe(true)
   })
 
   it('phase_shim end-to-end: target becomes kinetic-immune AND takes +40% code', () => {
+    // Harness hero is kinetic AA — ethereal zeroes basic attacks, code still lands.
     // Tick 1: cast phase_shim on the enemy.
     const s1 = makeGameState({
       players: {
@@ -460,7 +471,10 @@ describe('Item actives — direct effects', () => {
       },
     ])
     const lost = target1.integ - magResult.state.players['p2']!.integ
-    const baseMagic = calculateCodeDamage(300, getEffectiveIce(makePlayer({ heroId: 'daemon' })))
+    const baseMagic = calculateCodeDamage(
+      300,
+      getEffectiveIce(makePlayer({ heroId: HARNESS_HERO })),
+    )
     const amped = Math.round(baseMagic * 1.4)
     expect(lost).toBe(amped)
     expect(lost).toBeGreaterThan(baseMagic) // the +40% really landed
@@ -546,7 +560,7 @@ describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', 
       players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_hp', 150)] }) },
     })
     const r = run(state, [])
-    expect(r.state.players['p1']!.maxInteg).toBe(DAEMON_BASE_HP + 150)
+    expect(r.state.players['p1']!.maxInteg).toBe(HARNESS_BASE_INTEG + 150)
   })
 
   it('mp mode (gait_rig_mp) raises maxBw through the resolveActions recalc', () => {
@@ -554,7 +568,7 @@ describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', 
       players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_mp', 100)] }) },
     })
     const r = run(state, [])
-    expect(r.state.players['p1']!.maxBw).toBe(DAEMON_BASE_MP + 100)
+    expect(r.state.players['p1']!.maxBw).toBe(HARNESS_BASE_BW + 100)
   })
 })
 

@@ -15,7 +15,7 @@ const ability = (over: Partial<AbilityDef>): AbilityDef => ({
   id: 'x',
   name: 'X',
   description: '',
-  manaCost: 0,
+  bwCost: 0,
   cooldownTicks: 0,
   targetType: 'self',
   effects: [],
@@ -44,21 +44,21 @@ function makeHero(over: Partial<HeroDef> = {}): HeroDef {
       q: ability({
         id: 'q',
         name: 'Q',
-        manaCost: 50,
+        bwCost: 50,
         cooldownTicks: 2,
         effects: [{ type: 'damage', value: 100 }],
       }),
       w: ability({
         id: 'w',
         name: 'W',
-        manaCost: 30,
+        bwCost: 30,
         cooldownTicks: 3,
         effects: [{ type: 'dot', value: 60, duration: 3 }],
       }),
       e: ability({
         id: 'e',
         name: 'E',
-        manaCost: 500,
+        bwCost: 500,
         cooldownTicks: 1,
         effects: [{ type: 'heal', value: 40 }],
       }),
@@ -71,7 +71,7 @@ function makeHero(over: Partial<HeroDef> = {}): HeroDef {
 describe('useTrainingConsole', () => {
   it('initializes BW to the hero max and greets in the log', () => {
     const c = useTrainingConsole(ref(makeHero()))
-    expect(c.mana.value).toBe(200)
+    expect(c.bw.value).toBe(200)
     expect(c.dummyHp.value).toBe(1000)
     expect(c.log.value[0]).toContain('Tester at level 1')
   })
@@ -79,7 +79,7 @@ describe('useTrainingConsole', () => {
   it('cast Q spends BW, sets cooldown, and burst-damages the dummy', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('q')
-    expect(c.mana.value).toBe(150) // 200 - 50
+    expect(c.bw.value).toBe(150) // 200 - 50
     expect(c.cooldowns.q).toBe(2)
     expect(c.dummyHp.value).toBe(900) // 1000 - 100 burst
   })
@@ -87,16 +87,16 @@ describe('useTrainingConsole', () => {
   it('rejects a cast on cooldown', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('q')
-    const manaAfter = c.mana.value
+    const manaAfter = c.bw.value
     c.cast('q')
-    expect(c.mana.value).toBe(manaAfter)
+    expect(c.bw.value).toBe(manaAfter)
     expect(c.log.value.some((l) => l.includes('on cooldown'))).toBe(true)
   })
 
   it('rejects a cast with insufficient BW', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('e') // costs 500, have 200
-    expect(c.mana.value).toBe(200)
+    expect(c.bw.value).toBe(200)
     expect(c.log.value.some((l) => l.includes('not enough BW'))).toBe(true)
   })
 
@@ -115,10 +115,10 @@ describe('useTrainingConsole', () => {
 
   it('regenerates BW (≥2) and decrements cooldowns each tick', () => {
     const c = useTrainingConsole(ref(makeHero()))
-    c.cast('q') // mana 150, cd 2
+    c.cast('q') // bw 150, cd 2
     c.advanceTick()
     expect(c.cooldowns.q).toBe(1)
-    expect(c.mana.value).toBe(160) // +10 (5% of 200)
+    expect(c.bw.value).toBe(160) // +10 (5% of 200)
   })
 
   it('respawns the dummy at full hp when it dies', () => {
@@ -147,7 +147,7 @@ describe('useTrainingConsole', () => {
       baseStats: { ...makeHero().baseStats, bw: 100 },
     })
     await nextTick()
-    expect(c.mana.value).toBe(100)
+    expect(c.bw.value).toBe(100)
     expect(c.dummyHp.value).toBe(1000)
     expect(c.log.value[0]).toContain('Other at level 1')
   })
@@ -162,8 +162,8 @@ describe('useTrainingConsole', () => {
     it('fires every ready + affordable ability in one go, skipping the rest', async () => {
       const c = await atLevel(useTrainingConsole(ref(makeHero())), ULTIMATE_UNLOCK_LEVEL)
       c.castCombo()
-      // q (50) + w (30) + r (0) land; e (500) is unaffordable with 200 mana
-      expect(c.mana.value).toBe(120) // 200 - 50 - 30 - 0
+      // q (50) + w (30) + r (0) land; e (500) is unaffordable with 200 bw
+      expect(c.bw.value).toBe(120) // 200 - 50 - 30 - 0
       expect(c.castCount.value).toBe(3)
       expect(c.cooldowns.q).toBe(2)
       expect(c.cooldowns.w).toBe(3)
@@ -197,17 +197,17 @@ describe('useTrainingConsole', () => {
         ref(
           makeHero({
             abilities: {
-              q: ability({ id: 'q', name: 'Q', manaCost: 9999 }),
-              w: ability({ id: 'w', name: 'W', manaCost: 9999 }),
-              e: ability({ id: 'e', name: 'E', manaCost: 9999 }),
-              r: ability({ id: 'r', name: 'R', manaCost: 9999 }),
+              q: ability({ id: 'q', name: 'Q', bwCost: 9999 }),
+              w: ability({ id: 'w', name: 'W', bwCost: 9999 }),
+              e: ability({ id: 'e', name: 'E', bwCost: 9999 }),
+              r: ability({ id: 'r', name: 'R', bwCost: 9999 }),
             },
           }),
         ),
       )
       c.castCombo()
       expect(c.castCount.value).toBe(0)
-      expect(c.mana.value).toBe(200) // untouched
+      expect(c.bw.value).toBe(200) // untouched
       expect(c.log.value.some((l) => l.includes('nothing ready'))).toBe(true)
     })
   })
@@ -243,7 +243,7 @@ describe('useTrainingConsole', () => {
           q: ability({
             id: 'q',
             name: 'Q',
-            manaCost: 50,
+            bwCost: 50,
             cooldownTicks: 0,
             effects: [
               { type: 'damage', value: 100 },
@@ -253,7 +253,7 @@ describe('useTrainingConsole', () => {
           r: ability({
             id: 'r',
             name: 'R',
-            manaCost: 0,
+            bwCost: 0,
             cooldownTicks: 0,
             effects: [{ type: 'stun', duration: 2 }],
           }),
@@ -343,18 +343,18 @@ describe('useTrainingConsole', () => {
     it('grows the BW pool with growthPerLevel, mirroring levelUpHero', async () => {
       const hero = makeHero({ growthPerLevel: { bw: 40 } })
       const c = await atLevel(useTrainingConsole(ref(hero)), 11)
-      expect(c.maxMana.value).toBe(200 + 40 * 10)
-      expect(c.mana.value).toBe(600) // reset refills to the level-11 pool
+      expect(c.maxBw.value).toBe(200 + 40 * 10)
+      expect(c.bw.value).toBe(600) // reset refills to the level-11 pool
       c.advanceTick()
-      expect(c.mana.value).toBe(600) // already full — the refill can't overflow
+      expect(c.bw.value).toBe(600) // already full — the refill can't overflow
     })
 
-    it('refills mana per tick against the level pool, labelled as a sandbox aid', async () => {
+    it('refills bw per tick against the level pool, labelled as a sandbox aid', async () => {
       const hero = makeHero({ growthPerLevel: { bw: 40 } })
       const c = await atLevel(useTrainingConsole(ref(hero)), 11)
       c.cast('q') // −50 from a 600 pool
       c.advanceTick()
-      expect(c.mana.value).toBe(580) // +30 (5% of 600), not 5% of the base 200
+      expect(c.bw.value).toBe(580) // +30 (5% of 600), not 5% of the base 200
       expect(c.log.value.some((l) => l.includes('+30 bw sandbox refill'))).toBe(true)
     })
 

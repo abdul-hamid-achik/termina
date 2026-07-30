@@ -19,6 +19,7 @@ import {
   HARDEN_COOLDOWN_TICKS,
   SELL_REFUND_RATIO,
   BURN_HP_THRESHOLD,
+  BREACH_BW_COST,
   waveUnitMaxHp,
 } from '~~/shared/constants/balance'
 import { LANE_ROUTES } from '~~/shared/constants/lanes'
@@ -26,7 +27,7 @@ import { ZONE_MAP } from '~~/shared/constants/zones'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
-import { getAbilityManaCost } from '~~/shared/utils/ability'
+import { getAbilityBwCost } from '~~/shared/utils/ability'
 import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
 
 // Item build orders now live in shared/constants/itemBuilds (the SINGLE source
@@ -426,7 +427,7 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
   return (
     getAbilityLevel(bot.level, slot) >= 1 &&
     bot.cooldowns[slot] === 0 &&
-    bot.bw >= getAbilityManaCost(ability, slot, bot.level)
+    bot.bw >= getAbilityBwCost(ability, slot, bot.level)
   )
 }
 
@@ -462,7 +463,7 @@ function lacksResourceForCast(bot: PlayerState, slot: AbilitySlot): boolean {
  * Expected-DPS threat model. Sums the actual damage of off-cooldown abilities
  * (damage/stun/slow/dot/execute effects) plus auto-attack DPS, then adjusts
  * for the level delta and item actives. A 50-mana 300-damage nuke now outscores
- * a 200-mana utility buff — the old `manaCost * 0.3` formula had them reversed.
+ * a 200-mana utility buff — the old `bwCost * 0.3` formula had them reversed.
  *
  * Used by `shouldRetreatFromThreat` to decide whether a bot is outmatched in
  * its current zone. The score is intentionally a rough proxy (cooldowns and
@@ -526,7 +527,7 @@ function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: Game
           // Rank cost, not the rank-1 headline: an enemy who cannot pay for a
           // cast is not threatening with it, and reading the headline had bots
           // fleeing fights the enemy had no BW to win.
-          if (enemy.bw >= getAbilityManaCost(ability, slot, enemy.level)) {
+          if (enemy.bw >= getAbilityBwCost(ability, slot, enemy.level)) {
             score += abilityDamageValue(ability)
           }
         }
@@ -639,11 +640,7 @@ function tryGetAbilityCommand(
     }
     // R4-12: medium+ bots breach before hard control / code into a closed target.
     // Easy bots (threatAssessment off) stay naive — they cast and waste the cycle.
-    if (
-      config.threatAssessment &&
-      target.kind === 'hero' &&
-      bot.bw >= 40 // BREACH_BW_COST
-    ) {
+    if (config.threatAssessment && target.kind === 'hero' && bot.bw >= BREACH_BW_COST) {
       const enemy = enemiesInZone.find(
         (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
       )
@@ -766,7 +763,7 @@ export function getAbilityTarget(
  * complete. Costs are per-rank for the same reason `canCastAbility` uses them:
  * summing the rank-1 headline made every levelled combo look affordable.
  */
-export function sequenceManaCost(
+export function sequenceBwCost(
   heroId: string,
   slots: Array<'q' | 'w' | 'e' | 'r'>,
   playerLevel: number,
@@ -775,7 +772,7 @@ export function sequenceManaCost(
   if (!abilities) return 0
   return slots.reduce((sum, slot) => {
     const ability = abilities[slot]
-    return sum + (ability ? getAbilityManaCost(ability, slot, playerLevel) : 0)
+    return sum + (ability ? getAbilityBwCost(ability, slot, playerLevel) : 0)
   }, 0)
 }
 
@@ -821,7 +818,7 @@ function tryCombo(
           return { type: 'cast', ability: nextAbility.ability }
         }
         // R4-12: breach before the next combo step if the target is closed.
-        if (config.threatAssessment && target.kind === 'hero' && bot.bw >= 40) {
+        if (config.threatAssessment && target.kind === 'hero' && bot.bw >= BREACH_BW_COST) {
           const ability = HEROES[heroId]!.abilities[nextAbility.ability]
           const enemy = enemiesInZone.find(
             (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
@@ -864,7 +861,7 @@ function tryCombo(
     // opener's BW and leaves the bot mid-rotation with nothing.
     if (
       bot.bw <
-      sequenceManaCost(
+      sequenceBwCost(
         heroId,
         combo.sequence.map((s) => s.ability),
         bot.level,

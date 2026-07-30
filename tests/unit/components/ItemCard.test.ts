@@ -46,7 +46,7 @@ describe('ItemCard', () => {
         name: 'Cast',
         description: 'does a thing',
         cooldownTicks: 10,
-        manaCost: 75,
+        bwCost: 75,
       },
     }).text()
     expect(text).toContain('40s') // 10 ticks
