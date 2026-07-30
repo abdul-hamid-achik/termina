@@ -31,13 +31,13 @@ export default {
           dim: 'rgb(var(--text-dim) / <alpha-value>)',
           muted: 'rgb(var(--text-muted) / <alpha-value>)',
         },
-        radiant: {
-          DEFAULT: 'rgb(var(--color-radiant) / <alpha-value>)',
-          deep: 'rgb(var(--color-radiant-deep) / <alpha-value>)',
+        chaff: {
+          DEFAULT: 'rgb(var(--color-chaff) / <alpha-value>)',
+          deep: 'rgb(var(--color-chaff-deep) / <alpha-value>)',
         },
-        dire: {
-          DEFAULT: 'rgb(var(--color-dire) / <alpha-value>)',
-          deep: 'rgb(var(--color-dire-deep) / <alpha-value>)',
+        audit: {
+          DEFAULT: 'rgb(var(--color-audit) / <alpha-value>)',
+          deep: 'rgb(var(--color-audit-deep) / <alpha-value>)',
         },
         self: 'rgb(var(--color-self) / <alpha-value>)',
         gold: 'rgb(var(--color-gold) / <alpha-value>)',
@@ -47,7 +47,7 @@ export default {
         system: 'rgb(var(--color-system) / <alpha-value>)',
         zone: 'rgb(var(--color-zone) / <alpha-value>)',
         // River = the zone color (the river crossing is a neutral zone). Used
-        // by AsciiMap's river divider between the radiant/dire halves.
+        // by AsciiMap's river divider between the chaff/audit halves.
         river: 'rgb(var(--color-zone) / <alpha-value>)',
         ability: 'rgb(var(--color-ability) / <alpha-value>)',
         warn: 'rgb(var(--color-warn) / <alpha-value>)',
@@ -58,21 +58,21 @@ export default {
       boxShadow: {
         'glow-border':
           '0 0 6px rgb(var(--border-glow) / 0.6), inset 0 0 6px rgb(var(--border-glow) / 0.25)',
-        'glow-radiant':
-          '0 0 12px rgb(var(--color-radiant) / 0.55), 0 0 28px rgb(var(--color-radiant) / 0.25)',
-        'glow-dire':
-          '0 0 12px rgb(var(--color-dire) / 0.55), 0 0 28px rgb(var(--color-dire) / 0.25)',
-        'glow-dire-soft': '0 0 6px rgb(var(--color-dire) / 0.25)',
+        'glow-chaff':
+          '0 0 12px rgb(var(--color-chaff) / 0.55), 0 0 28px rgb(var(--color-chaff) / 0.25)',
+        'glow-audit':
+          '0 0 12px rgb(var(--color-audit) / 0.55), 0 0 28px rgb(var(--color-audit) / 0.25)',
+        'glow-audit-soft': '0 0 6px rgb(var(--color-audit) / 0.25)',
         'glow-ability':
           '0 0 12px rgb(var(--color-ability) / 0.55), 0 0 28px rgb(var(--color-ability) / 0.25)',
         'glow-ability-soft': '0 0 8px rgb(var(--color-ability) / 0.3)',
         'glow-gold':
           '0 0 12px rgb(var(--color-gold) / 0.55), 0 0 28px rgb(var(--color-gold) / 0.25)',
         'glow-highlight': '0 0 8px rgb(var(--border-glow) / 0.5)',
-        'glow-radiant-lg':
-          '0 0 18px rgb(var(--color-radiant) / 0.65), 0 0 44px rgb(var(--color-radiant) / 0.35)',
-        'glow-dire-lg':
-          '0 0 18px rgb(var(--color-dire) / 0.65), 0 0 44px rgb(var(--color-dire) / 0.35)',
+        'glow-chaff-lg':
+          '0 0 18px rgb(var(--color-chaff) / 0.65), 0 0 44px rgb(var(--color-chaff) / 0.35)',
+        'glow-audit-lg':
+          '0 0 18px rgb(var(--color-audit) / 0.65), 0 0 44px rgb(var(--color-audit) / 0.35)',
         'glow-ability-lg':
           '0 0 18px rgb(var(--color-ability) / 0.65), 0 0 44px rgb(var(--color-ability) / 0.35)',
         'inset-ability': 'inset 3px 0 0 rgb(var(--color-ability))',
