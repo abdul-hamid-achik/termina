@@ -86,8 +86,8 @@ outcomes:
 
           const t = cap ? cap.textContent : '';
 
-          return { ok: /Radiant Base/.test(t), evidence: 'caption after hop: ' +
-          JSON.stringify(t) };
+          return { ok: /Rookery Terminal/.test(t), evidence: 'caption after hop:
+          ' + JSON.stringify(t) };
 steps:
   - id: open_learn
     open: /learn
@@ -102,9 +102,9 @@ steps:
   - id: hop_to_base
     click:
       by: selector
-      selector: '[data-zone-cell="chaff-base"]'
+      selector: '[data-testid="primer-zone-chaff-base"]'
   - id: await_hop_caption
     wait:
       text: Standing in Rookery Terminal
       timeoutMs: 10000
-contractHash: sha256:71f1eb204e934e3172d31842399b6ed82c674416990210a57c71f25313b9758c
+contractHash: sha256:34f4b7d83ccde34c8f48e093236606e39f5cf4c4d43e16015b72f24402316466

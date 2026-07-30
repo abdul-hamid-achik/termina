@@ -376,7 +376,7 @@ export function formatHelpReadout(): string[] {
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
     '  Special: cache · backup · harden · buyback · talent <tier> <left|right>',
     '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · br = breach · b = buy · ss = missing · ? = help',
-    'Goal: push a lane, raze the enemy ice, then destroy their Mainframe.',
+    'Goal: push a lane, raze the enemy ice, then destroy their Terminal.',
   ]
 }
 
@@ -421,8 +421,9 @@ const ZONE_ALIASES: Record<string, string> = {
 
 function parseTarget(raw: string): TargetRef | null {
   if (raw === 'self') return { kind: 'self' }
-  // The enemy team's core structure ("the Mainframe")
-  if (raw === 'ancient' || raw === 'mainframe' || raw === 'core') return { kind: 'ancient' }
+  // The enemy team's core structure ("the Terminal"; typed as terminal/mainframe/ancient/core)
+  if (raw === 'ancient' || raw === 'mainframe' || raw === 'terminal' || raw === 'core')
+    return { kind: 'ancient' }
   if (raw.startsWith('hero:')) return { kind: 'hero', name: raw.slice(5) }
   if (raw.startsWith('wave:')) {
     const idx = Number.parseInt(raw.slice(5), 10)
@@ -590,7 +591,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (t.kind === 'ancient') {
         const enemyBase = player.team === 'chaff' ? 'audit-base' : 'chaff-base'
         if (player.zone !== enemyBase) {
-          return `Must be in the enemy base (${enemyBase}) to attack their Mainframe`
+          return `Must be in the enemy base (${enemyBase}) to attack their Terminal`
         }
       }
       return null
@@ -1311,10 +1312,13 @@ export function useCommands() {
       }
     }
 
-    // Suggest the enemy Mainframe when standing in the enemy base
+    // Suggest the enemy Terminal when standing in the enemy base
     const enemyBase = context.player.team === 'chaff' ? 'audit-base' : 'chaff-base'
-    if (context.player.zone === enemyBase && 'mainframe'.includes(partial)) {
-      suggestions.push({ text: 'mainframe', description: 'Enemy Mainframe (win the game!)' })
+    if (
+      context.player.zone === enemyBase &&
+      ('terminal'.includes(partial) || 'mainframe'.includes(partial))
+    ) {
+      suggestions.push({ text: 'terminal', description: 'Enemy Terminal (win the game!)' })
     }
 
     // Suggest self

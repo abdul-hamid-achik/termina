@@ -3,6 +3,7 @@ import { getGameRuntime } from '~~/server/plugins/game-server'
 import { authLog } from '~~/server/utils/log'
 import { sendEmail } from '~~/server/utils/email'
 import { welcomeTemplate } from '~~/shared/emailTemplates'
+import { safeRedirect, OAUTH_REDIRECT_COOKIE } from '~~/server/utils/safeRedirect'
 
 export default defineOAuthGitHubEventHandler({
   config: {
@@ -68,7 +69,9 @@ export default defineOAuthGitHubEventHandler({
         },
       })
 
-      return sendRedirect(event, '/')
+      const dest = safeRedirect(getCookie(event, OAUTH_REDIRECT_COOKIE))
+      deleteCookie(event, OAUTH_REDIRECT_COOKIE)
+      return sendRedirect(event, dest)
     } catch (err) {
       authLog.error('GitHub OAuth error', err)
       return sendRedirect(event, '/login?error=github')

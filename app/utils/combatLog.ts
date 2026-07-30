@@ -78,7 +78,7 @@ interface RunningLine extends CombatLine {
 
 /**
  * Resolve a raw target id to the readable name for a team's win structure —
- * the "Mainframe" in Termina's terminal world — or null when the id is not an
+ * the "Terminal" in Termina's terminal world — or null when the id is not an
  * ancient id. Mirrors the `ancient_<team>` ids produced by
  * AncientSystem.ancientTargetId (the internal name stays "ancient").
  */
@@ -86,9 +86,9 @@ export function ancientLabel(id: string): string | null {
   if (!id.startsWith('ancient_')) return null
   const team = id.slice('ancient_'.length)
   if (team === 'chaff' || team === 'audit') {
-    return `the ${FACTION_META[team as TeamId].label} Mainframe`
+    return `the ${FACTION_META[team as TeamId].label} Terminal`
   }
-  return `the ${team} Mainframe`
+  return `the ${team} Terminal`
 }
 
 /** True when a damage target id names a structure (ice or ancient). */

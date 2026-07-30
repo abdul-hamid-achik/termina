@@ -1,6 +1,6 @@
 /**
- * AncientSystem — each team's core structure (themed "the Mainframe" in the
- * terminal UI, field name `ancients` in state).
+ * AncientSystem — each team's core structure (player-facing: "the Terminal";
+ * field name `ancients` in state — not renamed until the identifier sweep).
  *
  * Rules:
  * - One Ancient per team, located in the team's base zone.
@@ -117,13 +117,13 @@ export function resolveAncientAttack(
   const ancient = state.ancients[targetTeam]
 
   if (!ancient.alive) {
-    return { state, events: [], rejected: 'The enemy Mainframe is already destroyed' }
+    return { state, events: [], rejected: 'The enemy Terminal is already destroyed' }
   }
   if (!ancient.vulnerable) {
     return {
       state,
       events: [],
-      rejected: 'The enemy Mainframe is firewalled — destroy a T3 ice first',
+      rejected: 'The enemy Terminal is firewalled — destroy a T3 ice first',
     }
   }
 

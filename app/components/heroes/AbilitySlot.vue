@@ -10,7 +10,7 @@ const props = defineProps<{
   ability: AbilityDef
   /** Ticks of cooldown remaining; 0/undefined = ready. */
   cooldownRemaining?: number
-  /** Current mana, to dim unaffordable casts; undefined = not tracked. */
+  /** Current BW, to dim unaffordable casts; undefined = not tracked. */
   bwAvailable?: number
   /** Render as a clickable button that emits `cast`. */
   interactive?: boolean

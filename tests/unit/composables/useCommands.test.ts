@@ -2249,7 +2249,7 @@ describe('informational readouts', () => {
       expect(all, `help should mention "${verb}"`).toContain(verb)
     }
     // It explains the objective so a new player knows what to do after the verbs.
-    expect(all.toLowerCase()).toMatch(/mainframe|destroy/)
+    expect(all.toLowerCase()).toMatch(/terminal|mainframe|destroy/)
     // The `ss` reflex shortcut for the missing callout is discoverable here.
     expect(all).toContain('ss = missing')
     // One log line per group, each non-empty.

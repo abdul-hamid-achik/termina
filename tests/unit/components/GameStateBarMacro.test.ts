@@ -74,16 +74,16 @@ describe('GameStateBar net-worth lead', () => {
     expect(w.find('[data-testid="networth-lead"]').text()).toContain('even')
   })
 
-  it('shows a AUDIT lead when audit is ahead', () => {
+  it('shows an AUD lead when audit is ahead', () => {
     const w = mountBar({ teams, netWorthChaff: 4000, netWorthAudit: 7500 })
     const lead = w.find('[data-testid="networth-lead"]')
-    expect(lead.text()).toContain('AUDIT')
+    expect(lead.text()).toContain('AUD')
     expect(lead.text()).toContain('+3.5k')
   })
 })
 
 describe('GameStateBar core INTEG', () => {
-  it('renders Core percentages from ancient INTEG, flagging the vulnerable team', () => {
+  it('renders Terminal percentages from ancient INTEG, flagging the vulnerable team', () => {
     const ancients = {
       chaff: makeAncient('chaff', { integ: 4500, maxInteg: 4500, vulnerable: false }),
       audit: makeAncient('audit', { integ: 2250, maxInteg: 4500, vulnerable: true }),
@@ -93,17 +93,17 @@ describe('GameStateBar core INTEG', () => {
       ancients,
     })
     const strip = w.find('[data-testid="macro-strip"]')
-    expect(strip.text()).toContain('R 100%')
-    expect(strip.text()).toContain('D 50%')
-    // vulnerable audit core gets the urgent class
+    expect(strip.text()).toContain('CHF 100%')
+    expect(strip.text()).toContain('AUD 50%')
+    // vulnerable audit Terminal gets the urgent class
     expect(w.html()).toContain('text-warn')
   })
 
-  it('omits the core readout when no ancients are supplied', () => {
+  it('omits the Terminal readout when no ancients are supplied', () => {
     const w = mountBar({
       teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },
     })
     expect(w.find('[data-testid="macro-strip"]').exists()).toBe(true)
-    expect(w.text()).not.toContain('CORE')
+    expect(w.text()).not.toContain('TERMINAL')
   })
 })

@@ -1,11 +1,11 @@
 version: 1
 name: game_feed_story
 intent: >
-  The combat feed's default "tick story" view in a live game: events group under
-  TICK beat headers, and everyone's farming folds into the dim per-tick "farm:"
-  digest line instead of a line-per-creep-hit firehose (the legibility
+  The combat feed's default "cycle story" view in a live game: events group
+  under CYCLE beat headers, and everyone's farming folds into the dim per-cycle
+  "farm:" digest line instead of a line-per-wave-hit firehose (the legibility
   overhaul's centerpiece). The engine mechanics that GENERATE those events (bot
-  AI, last-hit gold) are covered by `bun run test:gameplay`; this asserts what
+  AI, last-hit scrip) are covered by `bun run test:gameplay`; this asserts what
   the player actually reads.
 mode: normal
 metadata:
@@ -13,16 +13,16 @@ metadata:
   tags:
     - game
     - feed
-    - tick-story
+    - cycle-story
 imports:
   - ../actions/login.yml
 outcomes:
-  - id: feed_groups_into_tick_beats
-    description: the feed renders TICK beat headers (the per-tick grouping of the
+  - id: feed_groups_into_cycle_beats
+    description: the feed renders CYCLE beat headers (the per-cycle grouping of the
       story view)
     verify:
       text:
-        contains: TICK
+        contains: CYCLE
         region: '[data-testid="combat-log"]'
   - id: feed_narrates_the_live_game
     description: engine events reach the feed as readable combat lines (a
@@ -35,7 +35,7 @@ outcomes:
 
           const t = log ? log.textContent : '';
 
-          const beats = (t.match(/TICK \d+/g) || []).length;
+          const beats = (t.match(/CYCLE \d+/g) || []).length;
 
           const combat =
           /\[DAMAGE\]|\[KILL\]|\[ABILITY\]|\[GOLD\]|farm:/.test(t);
@@ -64,4 +64,4 @@ steps:
     wait:
       text: "[DAMAGE]"
       timeoutMs: 90000
-contractHash: sha256:eb8401e4c208aca1c6b800050b4b062b5d4365e16844d232843afe68bf91981b
+contractHash: sha256:e0f3cabd698c1a3c1f65480b066973200c8cb02dc6fce79f277cc04f7d734c37

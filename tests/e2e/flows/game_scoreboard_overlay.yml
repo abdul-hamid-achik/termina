@@ -39,10 +39,17 @@ steps:
     wait:
       selector: '[data-testid="game-screen"]'
       timeoutMs: 20000
+  # Desktop (pointer:fine) hides ActionRow — the prompt is primary (R3-09).
+  # Tab is hold-to-show / release-to-hide, so a single `press: Tab` would close
+  # on keyup. Dispatch a synthetic click on the (display:none) SCORE chip
+  # instead — it still fires the Vue handler.
   - id: open_scoreboard
-    click:
-      by: selector
-      selector: 'button[aria-label="Toggle scoreboard"]'
+    eval:
+      js: |
+        const el = document.querySelector('[data-testid="action-score"]');
+        if (!el) return { ok: false, reason: 'action-score missing' };
+        el.click();
+        return { ok: true };
   - id: await_scoreboard
     wait:
       selector: '[data-testid="scoreboard-overlay"]'

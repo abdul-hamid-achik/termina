@@ -451,7 +451,7 @@ const {
           </div>
           <p class="text-[0.6rem] leading-snug text-text-dim" data-testid="console-refill-note">
             Each cycle refills BW so the sandbox can't lock up. Heroes have no innate regen in a
-            real match — the cradle, items and the regen cache are the only recovery.
+            real match — the fountain, items and the regen cache are the only recovery.
             <NuxtLink to="/learn" class="text-ability no-underline hover:underline"
               >See Sustain</NuxtLink
             >.

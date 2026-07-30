@@ -82,7 +82,7 @@ describe('GameStateBar', () => {
       expect(strip.text()).toContain('12') // chaff kills
       expect(strip.text()).toContain('8') // audit kills
       const lead = w.find('[data-testid="networth-lead"]')
-      expect(lead.text()).toContain('RAD')
+      expect(lead.text()).toContain('CHF')
       expect(lead.text()).toContain('4.0k')
       expect(strip.text()).toContain('50%') // audit core at half
     })

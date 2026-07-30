@@ -1,8 +1,7 @@
 version: 1
 name: nav_lore
 intent: The public /lore page renders the worldbuilding intro (the Grid + the
-  Mainframe) and the role-grouped operative roster with at least one hero's
-  lore.
+  Terminal) and the role-grouped operative roster with at least one hero's lore.
 mode: normal
 metadata:
   feature: lore
@@ -12,10 +11,10 @@ metadata:
     - navigation
 outcomes:
   - id: worldbuilding_renders
-    description: the worldbuilding intro mentions the Mainframe
+    description: the worldbuilding intro mentions the Terminal
     verify:
       text:
-        contains: Mainframe
+        contains: Terminal
   - id: roster_groups_render
     description: the roster shows role groups
     verify:
@@ -33,4 +32,4 @@ steps:
     wait:
       text: TERMINA
       timeoutMs: 10000
-contractHash: sha256:200893b3f3fe1aa28f693c465ac4ea37e9aa30fb74f0698dd5021a23cfdb759d
+contractHash: sha256:953e8f2cc211d5f343b65eac1b52f0596ee8a264c03794d4eb722c661eecc4e1

@@ -64,7 +64,7 @@ const roster = POSTURE_ORDER.map((posture) => ({
       </p>
       <p>
         Each crew keeps one core alive: its
-        <span class="text-chaff">Mainframe</span>. Bring the other crew's Mainframe down and the
+        <span class="text-chaff">Terminal</span>. Bring the other crew's Terminal down and the
         ground is yours.
       </p>
       <p>

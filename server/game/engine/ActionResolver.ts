@@ -134,7 +134,7 @@ function applyPlayerUpdates(
 
 /**
  * Resolve a zone-local wave index to the wave and its global array index.
- * Clients (zone panel, autocomplete) count waves within the player's zone —
+ * Clients (look / ActionRow, autocomplete) count waves within the player's zone —
  * the global waves array is vision-filtered before broadcast, so global
  * indices mean different things on each side. Filtering preserves order, so
  * "Nth wave in this zone" is identical for client and server.

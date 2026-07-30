@@ -127,7 +127,7 @@ const quickStart = [
   {
     step: '6',
     title: 'Fight & Push',
-    desc: 'Use abilities on enemies and raze a lane to its T3 ice — that exposes the enemy Mainframe. Destroy it to win.',
+    desc: 'Use abilities on enemies and raze a lane to its T3 ice — that exposes the enemy Terminal. Destroy it to win.',
   },
 ]
 
@@ -335,9 +335,9 @@ const concepts = [
     desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_GOLD}sc among allies in the zone.`,
   },
   {
-    term: 'The Mainframe',
+    term: 'The Terminal',
     icon: '@',
-    desc: `Each base houses its team's core — the Mainframe (${ANCIENT_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
+    desc: `Each base houses its team's core — the Terminal (${ANCIENT_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
   },
   {
     term: 'Levels & XP',
@@ -377,7 +377,7 @@ const concepts = [
   {
     term: 'Win Condition',
     icon: 'W',
-    desc: `Destroying any of a team's T3 ice exposes their Mainframe (${ANCIENT_HP} INTEG) in their base. Destroy the enemy Mainframe to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
+    desc: `Destroying any of a team's T3 ice exposes their Terminal (${ANCIENT_HP} INTEG) in their base. Destroy the enemy Terminal to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
   },
   {
     term: 'Draft & Bans',

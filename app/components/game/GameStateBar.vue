@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import HeroPortrait from '~/components/avatars/HeroPortrait.vue'
 import { DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '~~/shared/constants/balance'
+import { FACTION_META } from '~~/shared/constants/world'
 import type { TeamState, AncientState } from '~~/shared/types/game'
 import { goldLead, formatGoldShort, dayNightReadout } from '~/utils/strategy'
 import { formatSeconds } from '~/utils/gameClock'
@@ -119,7 +120,9 @@ function corePct(a: AncientState | undefined): number {
         <span class="font-bold tracking-widest text-chaff text-glow-chaff">{{
           teams.chaff.kills
         }}</span>
-        <span class="text-[0.6rem] text-text-dim">RAD&nbsp;·&nbsp;AUDIT</span>
+        <span class="text-[0.6rem] text-text-dim"
+          >{{ FACTION_META.chaff.short }}&nbsp;·&nbsp;{{ FACTION_META.audit.short }}</span
+        >
         <span class="font-bold tracking-widest text-audit text-glow-audit">{{
           teams.audit.kills
         }}</span>
@@ -132,31 +135,31 @@ function corePct(a: AncientState | undefined): number {
           v-if="lead.leader"
           :class="lead.leader === 'chaff' ? 'text-chaff' : 'text-audit'"
           class="font-bold"
-          >{{ lead.leader === 'chaff' ? 'RAD' : 'AUDIT' }} +{{ formatGoldShort(lead.amount) }}</span
+          >{{ FACTION_META[lead.leader].short }} +{{ formatGoldShort(lead.amount) }}</span
         >
         <span v-else class="text-text-dim">even</span>
       </span>
       <span class="text-border">|</span>
       <!-- ICE destroyed -->
       <span class="inline-flex items-center gap-1">
-        <span class="t-caption">TWR</span>
+        <span class="t-caption">ICE</span>
         <span class="text-chaff">{{ teams.chaff.iceKills }}</span
         ><span class="text-text-muted">/</span
         ><span class="text-audit">{{ teams.audit.iceKills }}</span>
       </span>
       <template v-if="ancients">
         <span class="text-border">|</span>
-        <!-- Mainframe INTEG — turns urgent once vulnerable -->
+        <!-- Terminal INTEG — turns urgent once vulnerable -->
         <span class="inline-flex items-center gap-1">
-          <span class="t-caption">MAINFRAME</span>
+          <span class="t-caption">TERMINAL</span>
           <span
             :class="ancients.chaff.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-chaff'"
-            >R {{ corePct(ancients.chaff) }}%</span
+            >{{ FACTION_META.chaff.short }} {{ corePct(ancients.chaff) }}%</span
           >
           <span class="text-text-muted">/</span>
           <span
             :class="ancients.audit.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-audit'"
-            >D {{ corePct(ancients.audit) }}%</span
+            >{{ FACTION_META.audit.short }} {{ corePct(ancients.audit) }}%</span
           >
         </span>
       </template>

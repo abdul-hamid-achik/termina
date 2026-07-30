@@ -4,9 +4,9 @@ import { summarizeSimResults, type SimResult } from '~~/server/game/dev/simStats
 const r = (
   winner: SimResult['winner'],
   ticks: number,
-  rad: string[],
+  chaff: string[],
   audit: string[],
-): SimResult => ({ winner, ticks, chaffHeroes: rad, auditHeroes: audit })
+): SimResult => ({ winner, ticks, chaffHeroes: chaff, auditHeroes: audit })
 
 describe('summarizeSimResults', () => {
   it('tallies side wins and the decided-only win rate (stalls excluded)', () => {

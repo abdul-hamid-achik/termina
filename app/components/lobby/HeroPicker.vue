@@ -281,7 +281,7 @@ function initialOf(name: string | undefined | null): string {
         <div class="flex flex-col gap-0.5">
           <div
             v-for="(slot, i) in 5"
-            :key="'rad-' + i"
+            :key="'chaff-' + i"
             class="flex items-center gap-1.5 px-1.5 py-0.5 text-[0.75rem]"
             :class="
               chaffRoster[i]?.heroId
@@ -355,7 +355,7 @@ function initialOf(name: string | undefined | null): string {
     <div class="mb-2 flex items-center justify-center gap-1 sm:hidden" data-testid="roster-strip">
       <div
         v-for="(slot, i) in 5"
-        :key="'strip-rad-' + i"
+        :key="'strip-chaff-' + i"
         class="flex h-7 w-7 shrink-0 items-center justify-center border text-[0.65rem] font-bold uppercase"
         :class="[
           chaffRoster[i]?.heroId ? 'border-chaff text-chaff' : 'border-border text-text-dim',
@@ -631,8 +631,7 @@ function initialOf(name: string | undefined | null): string {
             </div>
             <div class="t-caption flex gap-2 t-mono-num">
               <span
-                >BW
-                <span class="text-mana">{{ selectedHeroDef.abilities[slot].bwCost }}</span></span
+                >BW <span class="text-bw">{{ selectedHeroDef.abilities[slot].bwCost }}</span></span
               >
               <span
                 >CD

@@ -66,7 +66,7 @@ export const useGameStore = defineStore('game', () => {
   const visibleZones = ref<Record<string, ZoneRuntimeState>>({})
   // The server's fog list — the ids of zones THIS player can actually see this
   // tick (own + adjacent + ward/ice vision). Distinct from the zones map
-  // (which carries all zones); drives map fog-dimming + the War Room vision %.
+  // (which carries all zones); drives map fog-dimming + the net readout vision %.
   const visibleZoneIds = ref<string[]>([])
   const allPlayers = ref<Record<string, PlayerState>>({})
   const teams = ref<{ chaff: TeamState; audit: TeamState } | null>(null)
@@ -75,7 +75,7 @@ export const useGameStore = defineStore('game', () => {
   const waves = ref<WaveUnitState[]>([])
   const neutrals = ref<SiltDwellerState[]>([])
   // Objective layer — streamed in every tick payload (PlayerVisibleState) but
-  // previously discarded by updateFromTick. Surfaced here for the War Room HUD.
+  // previously discarded by updateFromTick. Surfaced here for the net readout HUD.
   const tenant = ref<TenantState | null>(null)
   const caches = ref<CacheState[]>([])
   const backup = ref<{ zone: string; tick: number; holderId: string | null } | null>(null)
@@ -192,7 +192,7 @@ export const useGameStore = defineStore('game', () => {
     )
   })
 
-  // Full rosters (incl. dead + fogged) — drive the War Room enemy threat sheet
+  // Full rosters (incl. dead + fogged) — drive the net readout enemy threat sheet
   // and ally status, independent of the player's current zone.
   const enemyPlayers = computed<PlayerState[]>(() => {
     if (!player.value) return []

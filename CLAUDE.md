@@ -261,7 +261,7 @@ consume it — never surface it as the primary label. Operator portraits live in
 script (the no-scripts/ rule stands). Hero ids never change (B1a); typed forms
 are normalised (`nullref`/`null-ref` resolve to `null_ref`).
 
-**Balance ranges**: INTEG 400–800, BW 150–400, attack 30–70, plate 2–6 (tanks up to 8), ice 12–25. Each hero has `attackType: 'kinetic' | 'code'` (basic attack damage type). Abilities have cooldownTicks, manaCost (internal id; display BW), effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
+**Balance ranges**: INTEG 400–800, BW 150–400, attack 30–70, plate 2–6 (tanks up to 8), ice 12–25. Each hero has `attackType: 'kinetic' | 'code'` (basic attack damage type). Abilities have cooldownTicks, bwCost (BW cost per ability rank), effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
 
 **Mechanics constants** (balance.ts): HARDEN_DURATION_TICKS = 5, HARDEN_COOLDOWN_TICKS = 300, DAY_DURATION_TICKS = 300, NIGHT_DURATION_TICKS = 240, NIGHT_VISION_PENALTY = 1, SNIFFER_DURATION_TICKS = 30.
 

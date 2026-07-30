@@ -24,10 +24,10 @@ withDefaults(defineProps<{ floats: DamageFloatEntry[]; anchor?: 'self' | 'target
   anchor: 'target',
 })
 
-/* Roughly over the rail that holds Hero Status and the column that holds the
-   Zone panel on desktop. Anchoring to the panels themselves is not possible
-   without measuring them: they swap columns per layout mode and per breakpoint,
-   and both live inside `overflow: auto` bodies that would clip a float. */
+/* Roughly over the rail that holds Hero Status and the TRACE column on
+   desktop. Anchoring to the panels themselves is not possible without
+   measuring them: they swap columns per breakpoint, and both live inside
+   `overflow: auto` bodies that would clip a float. */
 const LANE: Record<'self' | 'target', string> = {
   self: 'right-[8%] top-[44%]',
   target: 'left-[12%] top-[26%]',

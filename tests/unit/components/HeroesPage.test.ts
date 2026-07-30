@@ -104,13 +104,13 @@ describe('heroes page — decision content', () => {
   it('scales the console BW pool with the selected level', async () => {
     const wrapper = mountHeroes()
     const echo = HEROES.echo!
-    expect(wrapper.text()).toContain(`mana ${echo.baseStats.bw} / ${echo.baseStats.bw}`)
+    expect(wrapper.text()).toContain(`bw ${echo.baseStats.bw} / ${echo.baseStats.bw}`)
 
     await wrapper.find('[data-testid="console-level-18"]').trigger('click')
     await flushPromises()
     const at18 = echo.baseStats.bw + (echo.growthPerLevel.bw ?? 0) * 17
     expect(at18).toBeGreaterThan(echo.baseStats.bw)
-    expect(wrapper.text()).toContain(`mana ${at18} / ${at18}`)
+    expect(wrapper.text()).toContain(`bw ${at18} / ${at18}`)
   })
 
   it('labels the per-tick refill as a sandbox aid, not innate regen', () => {

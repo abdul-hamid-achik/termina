@@ -59,10 +59,10 @@ describe('lore page — the TERMINA frame', () => {
     expect(text).toContain('Quorum')
   })
 
-  it('teaches the batch clock as a CYCLE and keeps the Mainframe', () => {
+  it('teaches the batch clock as a CYCLE and keeps the Terminal', () => {
     const text = mountLore().text()
     expect(text).toContain('CYCLE')
-    expect(text).toContain('Mainframe')
+    expect(text).toContain('Terminal')
   })
 
   it('no longer frames operatives as processes given form, nor the world as THE GRID', () => {

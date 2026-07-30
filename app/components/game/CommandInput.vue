@@ -159,7 +159,7 @@ function attackTargetLabel(t: TargetRef): string {
     case 'tenant':
       return 'Tenant'
     case 'ancient':
-      return 'the enemy Mainframe'
+      return 'the enemy Terminal'
     case 'zone':
       return `everything in ${t.zone}`
     case 'self':

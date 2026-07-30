@@ -305,7 +305,7 @@ export const ICE_DEFENSE = 20
 // ── Ancients (core structures) ───────────────────────────────────
 
 /**
- * The Ancient ("Mainframe") — each team's win-condition structure in its
+ * The Ancient ("Terminal") — each team's win-condition structure in its
  * base zone. Invulnerable until at least one of the owning team's T3
  * ice is destroyed; the game ends when an Ancient falls.
  */

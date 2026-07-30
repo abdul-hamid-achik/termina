@@ -62,7 +62,7 @@ const coreDown = [
     category: 'core',
     killerHeroId: undefined,
     victimHeroId: undefined,
-    text: 'CHAFF CORE DUMPED the AUDIT Mainframe',
+    text: 'CHAFF CORE DUMPED the AUDIT Terminal',
   }),
 ]
 </script>

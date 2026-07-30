@@ -24,7 +24,7 @@ import GameScreen from './GameScreen.vue'
 // State is seeded the canonical way: store.updateFromTick(makeTickMessage(...)),
 // which populates players, zones, teams, ice, ancients, tenant, scoreboard,
 // net-worth history and the live tick countdown. We add a few combat events so
-// the Tick Theater / combat log has content.
+// the STREAM header / combat log has content.
 
 // Seed an active game. Explicit reset so a prior selection can't leak via
 // localStorage.

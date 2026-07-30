@@ -366,7 +366,7 @@ describe('GameScreen overlays', () => {
 
     // ── W2-10: death is not a blackout ────────────────────────────────
     // Respawn runs up to 108 seconds. The overlay used to be a full-bleed scrim
-    // that also swallowed every click, so the map, log, war room and scoreboard
+    // that also swallowed every click, so the TRACE, stream, deck and scoreboard
     // were unreadable and unreachable for the duration.
     it('renders as a centered card, not a full-height panel', () => {
       seedDeadPlayer()

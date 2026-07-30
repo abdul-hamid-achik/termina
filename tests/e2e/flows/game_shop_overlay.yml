@@ -17,12 +17,12 @@ imports:
   - ../actions/login.yml
 outcomes:
   - id: pinned_item_reaches_quick_buy
-    description: after pinning Chainmail in the shop and closing the overlay, the
-      Chainmail chip sits in the quick-buy row (the only remaining on-screen
+    description: after pinning Plate Weave in the shop and closing the overlay, the
+      Plate Weave chip sits in the quick-buy row (the only remaining on-screen
       source of that name)
     verify:
       text:
-        contains: Chainmail
+        contains: Plate Weave
         region: '[data-testid="game-screen"]'
   - id: shop_overlay_closed
     description: the overlay is gone after [CLOSE]
@@ -48,22 +48,29 @@ steps:
     wait:
       selector: '[data-testid="game-screen"]'
       timeoutMs: 20000
+  # Inventory-strip [SHOP] (aria-label) — ActionRow's SCORE/SHOP can sit under
+  # the fold or under the command strip on the tutorial shell.
+  - id: scroll_to_shop
+    scroll:
+      to:
+        by: selector
+        selector: 'button[aria-label="Toggle shop"]'
   - id: open_shop
     click:
       by: selector
-      selector: 'button[title="Shop (S)"]'
+      selector: 'button[aria-label="Toggle shop"]'
   - id: await_shop
     wait:
       selector: '[data-testid="item-shop"]'
       timeoutMs: 10000
   - id: see_item_card
     wait:
-      selector: '[data-testid="shop-item-healing_salve"]'
+      selector: '[data-testid="shop-item-trauma_patch"]'
       timeoutMs: 5000
-  - id: pin_chainmail
+  - id: pin_plate_weave
     click:
       by: selector
-      selector: '[data-testid="shop-pin-chainmail"]'
+      selector: '[data-testid="shop-pin-plate_weave"]'
   - id: close_shop
     click:
       by: role
@@ -73,4 +80,4 @@ steps:
     wait:
       notText: search items
       timeoutMs: 5000
-contractHash: sha256:63531398a568a9f73be467fe52eb6df779f0f355e086bc53f37eb748303c56e0
+contractHash: sha256:67768701b60cf98b8d85a4198b2878f70058f3efa6f01f2aa4ee4df679d4de02

@@ -84,7 +84,7 @@ export interface WaveUnitState {
 }
 
 /**
- * A team's core structure — themed as "the Mainframe" in the terminal UI.
+ * A team's core structure — themed as "the Terminal" in the terminal UI.
  * Lives in the team's base zone. Invulnerable until at least one of the
  * team's own T3 ice has fallen; destroying it wins the game.
  */

@@ -194,9 +194,9 @@ onMounted(() => {
       const intro = [
         'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
-        'Last-hit enemy waves (≈<50% INTEG) for gold — tap the wave group in the Zone panel.',
+        'Last-hit enemy waves (≈<50% INTEG) for scrip — use STRIP on the ActionRow, or attack wave:N.',
         'In the fountain/base click [SHOP] (or press Esc, then S) to buy; tap Q/W/E/R below to cast.',
-        'Destroy the enemy Mainframe to win. Good luck!',
+        'Destroy the enemy Terminal to win. Good luck!',
       ]
       for (const text of intro)
         localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
@@ -367,7 +367,7 @@ function onKeyUp(e: KeyboardEvent) {
 // ── Game-feel: impact keys (bumped to replay one-shot animations) ──
 const heroFlashKey = ref(0) // I took damage → red flash on the hero panel
 const kdaPopKey = ref(0) // I got a kill → KDA pop
-const tickPulseKey = ref(0) // each tick → reveal flash in the Tick Theater
+const tickPulseKey = ref(0) // each tick → reveal flash in the STREAM header
 const deathVignetteKey = ref(0) // I died → instant red vignette pulse (on the event)
 const respawnKey = ref(0) // I respawned → one-shot chaff vignette
 let awaitingRespawn = false
@@ -709,9 +709,9 @@ function entityLabel(id: unknown): string {
   }
   if (id.startsWith('ancient_')) {
     const team = id.slice('ancient_'.length)
-    if (team === 'chaff') return 'the Chaff Mainframe'
-    if (team === 'audit') return 'the Audit Mainframe'
-    return `the ${team} Mainframe`
+    if (team === 'chaff') return 'the Chaff Terminal'
+    if (team === 'audit') return 'the Audit Terminal'
+    return `the ${team} Terminal`
   }
   if (id === 'tenant') return 'Tenant'
   if (id === 'buyback') return 'buyback'
@@ -763,7 +763,7 @@ const killFeed = computed<KillFeedEntry[]>(() =>
 // Ancients (team cores) live in the game store — shown on the base zones of the map.
 const ancients = computed(() => gameStore.ancients)
 
-// ── Tick Theater drama + low-INTEG danger framing ───────────────────
+// ── STREAM header drama + low-INTEG danger framing ───────────────────
 const THEATER_BAR_WIDTH = 24
 
 /** Wide countdown bar that drains over the 4s tick — the Theater heartbeat. */
@@ -788,7 +788,7 @@ const hpPct = computed(() => {
 })
 /** Hero panel turns to the danger variant under 30% INTEG. */
 const heroDanger = computed(() => gameStore.isAlive && hpPct.value <= 30)
-// Flag the Zone panel red when an enemy hero shares the player's zone.
+// Flag the deck / ActionRow red when an enemy hero shares the player's zone.
 const zoneDanger = computed(() => gameStore.nearbyEnemies.length > 0)
 /** A red vignette pulses over the whole screen under 15% INTEG. */
 const heroCritical = computed(() => gameStore.isAlive && hpPct.value <= 15)
@@ -854,7 +854,7 @@ const mapZones = computed(() => {
     if (r.tick + CACHE_DURATION_TICKS > gameStore.tick) liveCacheByZone.set(r.zone, r.type)
   }
 
-  // Tenant state for the pit (reuses the War Room's tested respawn readout).
+  // Tenant state for the pit (reuses the net readout's tested respawn readout).
   const tenantReadout = gameStore.tenant ? formatTenant(gameStore.tenant, gameStore.tick) : null
 
   // The GAME's zone set, not the global 32. On the one-lane tutorial map the
@@ -929,7 +929,7 @@ const mapZones = computed(() => {
       neutralCount,
       wardCount,
       // Global, not vision-gated: the server sends caches unfiltered (see
-      // VisionCalculator) and the War Room ticker already names the live one.
+      // VisionCalculator) and the net readout ticker already names the live one.
       // Hiding the map marker only made the two surfaces disagree — a cache spot
       // is unwarded almost by definition, so the fog gate hid it nearly always.
       cacheType: liveCacheByZone.get(zone.id),
@@ -969,7 +969,7 @@ function stopWalking() {
   handleCommand(`move ${p.zone}`)
 }
 
-// ── Zone panel data (who's in my zone) ────────────────────────
+// ── Zone unit list (who's in my zone — feeds look / ActionRow) ─
 const currentZoneName = computed(() => gameStore.currentZone?.name ?? playerZone.value)
 
 // Waves in the player's zone, tagged with their zone-local index (Nth wave
@@ -1451,7 +1451,7 @@ function handleQuickAction(cmd: string) {
         tick: gameStore.tick,
         text: inBase
           ? 'No targets here — move to a lane to fight (e.g.  move mid-river ).'
-          : 'No enemies in this zone — last-hit waves in the Zone panel, or  attack <target> .',
+          : 'No enemies in this zone — last-hit waves via STRIP / attack wave:N, or  attack <target> .',
         type: 'system',
       })
     }
@@ -1921,11 +1921,11 @@ function handleReturnToMenu() {
       <!-- Action-focus banner (HUD setting B): at-a-glance threat + what to do -->
     </div>
 
-    <!-- Left column: current-zone tactics (top) + strategic War Room (below).
+    <!-- Left column: current-zone tactics (top) + strategic net readout (below).
          Zone lives here — not the right rail — so it can't be squeezed to zero
          height between the fixed-size Hero Status and Map panels. It is capped
          (max-h) + shrink-0 so a busy zone scrolls internally instead of starving
-         the War Room, and a quiet zone stays compact. -->
+         the net readout, and a quiet zone stays compact. -->
     <!-- Status lines replaced the panel chrome (R3-08): hop + threat, net
          lead, the tick clock — no borders. -->
     <div class="game-grid__war">
@@ -2212,7 +2212,7 @@ function handleReturnToMenu() {
 /* ── HUD setting C: density + emphasize-vitals ────────────────────────────
    Both default to off (comfortable / vitals='off'), reproducing today's look.
    Compact tightens the gaps so more fits on screen (safe at every breakpoint).
-   Emphasize-vitals dims the strategic War Room and enlarges the action bar so
+   Emphasize-vitals dims the strategic net readout and enlarges the action bar so
    the eye lands on INTEG / abilities; the column-widening only applies on desktop
    (min-width:1025px) so it never fights the responsive mobile templates. */
 .game-grid[data-density='compact'] {
@@ -2245,7 +2245,7 @@ function handleReturnToMenu() {
 }
 
 /* Death is up to 108 seconds long. A 70%-opaque full-bleed scrim that also ate
-   every click turned that into a blackout: the map, the log, the war room and
+   every click turned that into a blackout: the TRACE, the stream, the deck and
    the scoreboard were all unreadable and unreachable for the duration. Only the
    card takes pointer events, so the HUD underneath keeps working — watching the
    fight you just lost is most of what there is to do while dead. */
@@ -2261,7 +2261,7 @@ function handleReturnToMenu() {
 }
 
 @media (max-width: 1024px) {
-  /* Tablet: combat log spans full width as the primary surface; Zone + War Room
+  /* Tablet: combat log spans full width as the primary surface; Zone + net readout
      share the left column beneath it, while hero/map live in the right rail. */
   /* The content rows must be free to shrink to nothing. `.game-grid` is
      `overflow: hidden; height: 100dvh`, so any px floor here is subtracted from
@@ -2297,7 +2297,7 @@ function handleReturnToMenu() {
 
 @media (max-width: 640px) {
   /* Phone: single column, log still primary directly under the bar; hero/map
-     rail stacks above the Zone + War Room column, each scrolling internally. */
+     rail stacks above the Zone + net readout column, each scrolling internally. */
   .game-grid {
     grid-template-columns: 1fr;
     grid-template-rows:

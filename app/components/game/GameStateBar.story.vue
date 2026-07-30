@@ -3,7 +3,7 @@ import { SAMPLE_HERO_ID, makeAncient, makeTeamState } from '~/stories/fixtures'
 import GameStateBar from './GameStateBar.vue'
 
 // The top bar: self state (tick number, gold, KDA, connection) plus an
-// always-on macro row (team kills, net-worth lead, ice, Mainframe INTEG).
+// always-on macro row (team kills, net-worth lead, ice, Terminal INTEG).
 // NOTE: the bar shows NO tick countdown — the status line is the game's
 // single clock (the countdown props were removed in the HUD declutter).
 const teams = { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') }
@@ -39,7 +39,7 @@ const base = {
       </div>
     </Variant>
 
-    <!-- Night, reconnecting banner, audit ahead, Mainframe under threat. -->
+    <!-- Night, reconnecting banner, audit ahead, Terminal under threat. -->
     <Variant title="reconnecting (night, core vulnerable)">
       <div class="bg-bg-primary" style="width: 820px">
         <GameStateBar

@@ -41,13 +41,13 @@ export default {
         },
         self: 'rgb(var(--color-self) / <alpha-value>)',
         gold: 'rgb(var(--color-gold) / <alpha-value>)',
-        mana: 'rgb(var(--color-mana) / <alpha-value>)',
+        bw: 'rgb(var(--color-bw) / <alpha-value>)',
         damage: 'rgb(var(--color-damage) / <alpha-value>)',
         healing: 'rgb(var(--color-healing) / <alpha-value>)',
         system: 'rgb(var(--color-system) / <alpha-value>)',
         zone: 'rgb(var(--color-zone) / <alpha-value>)',
         // River = the zone color (the river crossing is a neutral zone). Used
-        // by AsciiMap's river divider between the chaff/audit halves.
+        // by the TRACE river divider between the chaff/audit halves.
         river: 'rgb(var(--color-zone) / <alpha-value>)',
         ability: 'rgb(var(--color-ability) / <alpha-value>)',
         warn: 'rgb(var(--color-warn) / <alpha-value>)',

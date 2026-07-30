@@ -107,15 +107,15 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
     }
 
     if (checkpoints.includes(state.tick)) {
-      const rad = teamStats(state, 'chaff')
+      const chaff = teamStats(state, 'chaff')
       const audit = teamStats(state, 'audit')
       console.log(
-        `  [${fmtMin(state.tick)}] kills ${rad.kills}:${audit.kills} | ` +
-          `networth ${rad.netWorth}:${audit.netWorth} | ` +
-          `lvl ${rad.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
-          `ice ${rad.iceAlive}:${audit.iceAlive} | ` +
-          `waves ${rad.waves}:${audit.waves} | ` +
-          `ancient ${rad.ancientHp}:${audit.ancientHp}`,
+        `  [${fmtMin(state.tick)}] kills ${chaff.kills}:${audit.kills} | ` +
+          `networth ${chaff.netWorth}:${audit.netWorth} | ` +
+          `lvl ${chaff.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
+          `ice ${chaff.iceAlive}:${audit.iceAlive} | ` +
+          `waves ${chaff.waves}:${audit.waves} | ` +
+          `ancient ${chaff.ancientHp}:${audit.ancientHp}`,
       )
       if (process.env.SIM_DUMP_ZONES === '1') {
         for (const p of Object.values(state.players)) {
@@ -135,28 +135,28 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
     }
   }
 
-  const rad = teamStats(state, 'chaff')
+  const chaff = teamStats(state, 'chaff')
   const audit = teamStats(state, 'audit')
   const winner =
-    state.winner ?? (!rad.ancientAlive ? 'audit' : !audit.ancientAlive ? 'chaff' : null)
+    state.winner ?? (!chaff.ancientAlive ? 'audit' : !audit.ancientAlive ? 'chaff' : null)
 
   console.log(
     winner
-      ? `  RESULT: ${winner} wins at ${fmtMin(state.tick)} (tick ${state.tick}) — ancient destroyed: ${!rad.ancientAlive ? 'chaff' : !audit.ancientAlive ? 'audit' : 'none (surrender?)'}`
+      ? `  RESULT: ${winner} wins at ${fmtMin(state.tick)} (tick ${state.tick}) — ancient destroyed: ${!chaff.ancientAlive ? 'chaff' : !audit.ancientAlive ? 'audit' : 'none (surrender?)'}`
       : `  RESULT: NO WINNER after ${fmtMin(state.tick)} — game stalled`,
   )
   console.log(
-    `  final: kills ${rad.kills}:${audit.kills} (${totalKills} total) | ` +
-      `deaths ${rad.deaths + audit.deaths} total | ` +
-      `networth ${rad.netWorth}:${audit.netWorth} | ice ${rad.iceAlive}:${audit.iceAlive} | ` +
-      `waves ${rad.waves}:${audit.waves} | ancient ${rad.ancientHp}:${audit.ancientHp}`,
+    `  final: kills ${chaff.kills}:${audit.kills} (${totalKills} total) | ` +
+      `deaths ${chaff.deaths + audit.deaths} total | ` +
+      `networth ${chaff.netWorth}:${audit.netWorth} | ice ${chaff.iceAlive}:${audit.iceAlive} | ` +
+      `waves ${chaff.waves}:${audit.waves} | ancient ${chaff.ancientHp}:${audit.ancientHp}`,
   )
 
   // K/D/A spread per player
   for (const p of Object.values(state.players)) {
     const items = p.items.filter(Boolean).join(',') || '-'
     console.log(
-      `    ${p.team === 'chaff' ? 'R' : 'D'} ${p.heroId?.padEnd(10)} lvl ${String(p.level).padStart(2)} ` +
+      `    ${p.team === 'chaff' ? 'C' : 'A'} ${p.heroId?.padEnd(10)} lvl ${String(p.level).padStart(2)} ` +
         `${p.kills}/${p.deaths}/${p.assists} nw ${playerNetWorth(p)} [${items}]`,
     )
   }

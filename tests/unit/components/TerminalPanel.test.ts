@@ -16,9 +16,9 @@ describe('TerminalPanel', () => {
 
   describe('title header', () => {
     it('renders the title (uppercased) with the ASCII frame chars when provided', () => {
-      const wrapper = mountPanel({ title: 'War Room' })
+      const wrapper = mountPanel({ title: 'Deck' })
 
-      expect(wrapper.text()).toContain('War Room')
+      expect(wrapper.text()).toContain('Deck')
       // ASCII corner glyphs of the header frame
       expect(wrapper.text()).toContain('┌─')
       expect(wrapper.text()).toContain('─┐')

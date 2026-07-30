@@ -1,7 +1,8 @@
 version: 1
 name: nav_heroes
-intent: The public /heroes training console renders a hero's kit + the cast console, and casting the
-  Q ability (clicking the Q slot) prints the resolved outcome to the terminal log.
+intent: The public /heroes training console renders a hero's kit + the cast
+  console, and casting the Q ability (clicking the Q slot) prints the resolved
+  outcome to the terminal log.
 mode: normal
 metadata:
   feature: heroes
@@ -25,22 +26,22 @@ outcomes:
     verify:
       text:
         contains: combo landed
-  - id: role_filter_narrows_roster
-    description: the role filter narrows the hero grid to only that role
+  - id: posture_filter_narrows_roster
+    description: the posture filter narrows the hero grid to only that posture
     verify:
       script:
         run: |
           const picks = Array.from(document.querySelectorAll('[data-testid="hero-pick"]'));
-          const roles = [...new Set(picks.map((b) => b.getAttribute('data-role')))];
+          const postures = [...new Set(picks.map((b) => b.getAttribute('data-posture')))];
           return {
-            ok: picks.length > 0 && roles.length === 1 && roles[0] === 'support',
-            evidence: picks.length + ' heroes shown, roles: ' + JSON.stringify(roles),
+            ok: picks.length > 0 && postures.length === 1 && postures[0] === 'HOLD',
+            evidence: picks.length + ' heroes shown, postures: ' + JSON.stringify(postures),
           };
-  - id: role_filter_shows_blurb
-    description: filtering to a role shows that role's teaching blurb
+  - id: posture_filter_shows_blurb
+    description: filtering to a posture shows that posture's teaching blurb
     verify:
       text:
-        contains: Enable the team
+        contains: You keep what the crew already has
   - id: playstyle_tags_render
     description: the selected hero's kit-identity playstyle tags render
     verify:
@@ -48,10 +49,11 @@ outcomes:
         run: >
           const row = document.querySelector('[data-testid="hero-playstyle"]');
 
-          const chips = row ? Array.from(row.querySelectorAll('span')).map((s) =>
-          s.textContent.trim()).filter(Boolean) : [];
+          const chips = row ? Array.from(row.querySelectorAll('span')).map((s)
+          => s.textContent.trim()).filter(Boolean) : [];
 
-          return { ok: chips.length > 0, evidence: 'tags: ' + JSON.stringify(chips) };
+          return { ok: chips.length > 0, evidence: 'tags: ' +
+          JSON.stringify(chips) };
   - id: playstyle_filter_narrows_roster
     description: the playstyle filter further narrows the grid to heroes carrying that tag
     verify:
@@ -71,13 +73,13 @@ steps:
     wait:
       text: HERO TRAINING
       timeoutMs: 10000
-  - id: filter_support
+  - id: filter_hold
     click:
       by: selector
-      selector: '[data-testid="role-filter-support"]'
+      selector: '[data-testid="posture-filter-HOLD"]'
   - id: settle_filter
     wait:
-      text: SUPPORT
+      text: HOLD
       timeoutMs: 10000
   - id: filter_mobility
     click:
@@ -105,4 +107,4 @@ steps:
     wait:
       text: combo landed
       timeoutMs: 10000
-contractHash: sha256:6c72a82058956862ee27a7a4905960636368e672971974fe855e76bf11faf718
+contractHash: sha256:1ff3612aaf82724680a115518b124c439dc47d2b4e892ab383efe9efe9fa5d32

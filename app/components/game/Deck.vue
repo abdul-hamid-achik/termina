@@ -169,7 +169,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
             <div class="font-bold text-ability">{{ getAbilityDef(key)!.name }}</div>
             <div class="mt-0.5 flex gap-2 text-text-dim">
               <span
-                >BW: <span class="text-mana">{{ bwCost(key) }}</span></span
+                >BW: <span class="text-bw">{{ bwCost(key) }}</span></span
               >
               <span
                 >CD:

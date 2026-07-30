@@ -4,7 +4,7 @@ import { computed, ref, watch, onUnmounted } from 'vue'
 /**
  * A transient, MOBA-style action-feedback toast. The server forwards every
  * rejected action (out of range, juked target, firewalled Ancient, not enough
- * mana, …) as an `announcement`; this surfaces the latest one briefly near the
+ * BW, …) as an `announcement`; this surfaces the latest one briefly near the
  * top of the play area so the player learns WHY nothing happened, instead of the
  * message dying silently in the store.
  *

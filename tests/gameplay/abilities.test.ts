@@ -262,7 +262,7 @@ describe('abilities', () => {
     expect(r?.reason).toMatch(/ready T\d+/)
   })
 
-  it('a cast with too little mana is rejected with need-vs-have', async () => {
+  it('a cast with too little BW is rejected with need-vs-have', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -272,7 +272,7 @@ describe('abilities', () => {
       },
     }))
 
-    game.cast('q', { kind: 'hero', name: ENEMY }) // Inject costs 50 mana
+    game.cast('q', { kind: 'hero', name: ENEMY }) // Inject costs 50 BW
     await game.tick()
 
     const r = game.lastRejected.find((x) => x.playerId === HUMAN)

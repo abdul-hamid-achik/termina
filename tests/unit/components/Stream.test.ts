@@ -115,13 +115,13 @@ describe('Stream', () => {
 
 describe('combatLog helpers', () => {
   describe('ancientLabel', () => {
-    it('resolves ancient ids to readable Mainframe names', () => {
-      expect(ancientLabel('ancient_chaff')).toBe('the CHAFF Mainframe')
-      expect(ancientLabel('ancient_audit')).toBe('the AUDIT Mainframe')
+    it('resolves ancient ids to readable Terminal names', () => {
+      expect(ancientLabel('ancient_chaff')).toBe('the CHAFF Terminal')
+      expect(ancientLabel('ancient_audit')).toBe('the AUDIT Terminal')
     })
 
-    it('falls back to a generic Mainframe label for unknown teams', () => {
-      expect(ancientLabel('ancient_neutral')).toBe('the neutral Mainframe')
+    it('falls back to a generic Terminal label for unknown teams', () => {
+      expect(ancientLabel('ancient_neutral')).toBe('the neutral Terminal')
     })
 
     it('returns null for non-ancient ids', () => {

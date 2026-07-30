@@ -223,7 +223,7 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
 
-    it('renders the Tick Theater header showing AWAITING ORDERS when the player can act', () => {
+    it('renders the TraceRail header showing AWAITING ORDERS when the player can act', () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 

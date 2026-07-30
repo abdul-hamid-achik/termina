@@ -769,7 +769,8 @@ describe('combat', () => {
   })
 
   it('plate from an item reduces incoming basic-attack damage (plate applies)', async () => {
-    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    // kernel is kinetic AA — plate only mitigates kinetic (daemon is code).
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'kernel' })
 
     const dmgToHuman = () =>
       game.lastEvents.find(
@@ -874,7 +875,8 @@ describe('combat', () => {
   })
 
   it('kinetic immunity (Ghost) zeroes an incoming basic attack', async () => {
-    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    // Ghost only blocks kinetic — attacker must be a kinetic AA hero (not daemon/code).
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'kernel' })
 
     const physDmg = () =>
       game.lastEvents.find(
@@ -1043,7 +1045,7 @@ describe('BREACH access state', () => {
 
 describe('attackType basic-attack mitigation (R4-08)', () => {
   it('a code-attacking hero is mitigated by ice; a kinetic one by plate', async () => {
-    // ping = code AA, daemon = kinetic AA (interim mapping from old sweep/line).
+    // ping = code AA, kernel = kinetic AA (R4-08 registry mapping).
     // Seed both with identical attack and zero plate/ice on one target then
     // raise ice vs plate to prove the route.
     const codeGame = await seedGame('laning_combat', { heroSelf: 'ping', heroEnemy: 'daemon' })
@@ -1063,7 +1065,7 @@ describe('attackType basic-attack mitigation (R4-08)', () => {
     expect(codeDmg).toBeDefined()
     expect(codeDmg!.damageType).toBe('code')
 
-    const kineticGame = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
+    const kineticGame = await seedGame('laning_combat', { heroSelf: 'kernel', heroEnemy: 'echo' })
     await kineticGame.patch((s) => ({
       ...s,
       players: {

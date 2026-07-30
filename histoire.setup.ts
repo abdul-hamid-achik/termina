@@ -1,7 +1,7 @@
 // Histoire global setup.
 //  - loads the terminal theme (Tailwind 4 entry + :root CSS vars + JetBrains Mono
 //    fonts) so every story iframe is styled exactly like the app;
-//  - installs Pinia so store-coupled components (WarRoom, GameScreen) can call
+//  - installs Pinia so store-coupled components (GameScreen, Deck) can call
 //    useGameStore() — seed state in the story via direct ref assignment
 //    (store.tick = …, store.allPlayers = …) or the store's updateFromTick action;
 //  - provides a tiny Node-side localStorage shim for setup-time store access,

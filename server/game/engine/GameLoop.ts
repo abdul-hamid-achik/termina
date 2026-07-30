@@ -268,16 +268,15 @@ export function processTick(
     const botPlayerIds = getBotPlayerIds(gameId)
     for (const botId of botPlayerIds) {
       const bot = currentState.players[botId]
-      if (bot && bot.alive) {
-        // An AFK-converted human may have queued a surrender vote via WS this
-        // tick. The vote now holds its own queue slot, but the bot decision is
-        // still skipped: a hero being driven by AI while its human is voting to
-        // end the match should not also be charging into a fight.
-        if (hasQueuedCommand(gameId, botId, 'surrender')) continue
-        const command = decideBotAction(currentState, bot, getBotLane(gameId, botId), gameId)
-        if (command) {
-          submitAction(gameId, botId, command)
-        }
+      if (!bot) continue
+      // Alive bots skip the AI turn if a surrender vote is already queued for
+      // this tick (AFK-converted humans voting to end should not also charge).
+      // Dead bots still run decideBotAction so tryBuyback can fire — the old
+      // `if (bot.alive)` gate made buyback unreachable forever.
+      if (bot.alive && hasQueuedCommand(gameId, botId, 'surrender')) continue
+      const command = decideBotAction(currentState, bot, getBotLane(gameId, botId), gameId)
+      if (command) {
+        submitAction(gameId, botId, command)
       }
     }
 
@@ -1741,7 +1740,7 @@ function trackIceKills(
 }
 
 /**
- * A team wins by destroying the enemy Ancient ("the Mainframe"). The
+ * A team wins by destroying the enemy Ancient ("the Terminal"). The
  * Ancient becomes attackable once any of its team's T3 ice is down —
  * see AncientSystem for the vulnerability/attack rules.
  */

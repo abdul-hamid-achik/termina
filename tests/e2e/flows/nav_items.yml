@@ -1,7 +1,8 @@
 version: 1
 name: nav_items
-intent: The public /items reference renders the catalogue grouped by category, and clicking an item
-  adds it to the loadout build summary (the interactive learn-itemization flow).
+intent: The public /items reference renders the catalogue grouped by category,
+  and clicking an item adds it to the loadout build summary (the interactive
+  learn-itemization flow).
 mode: normal
 metadata:
   feature: items
@@ -35,7 +36,7 @@ steps:
   - id: add_item
     click:
       by: selector
-      selector: '[data-testid="item-card-iron_branch"]'
+      selector: '[data-testid="item-card-trauma_patch"]'
   - id: await_loadout
     wait:
       text: 1 / 6

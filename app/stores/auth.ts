@@ -12,6 +12,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function loginOAuth(provider: 'github' | 'discord' = 'github') {
+    // Carry ?redirect= across the OAuth round trip (provider handlers cannot
+    // see the originating page query). Cookie is short-lived and same-site.
+    if (import.meta.client) {
+      const route = useRoute()
+      const raw = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+      // Must start with a single slash — same guard as login.vue safeRedirect.
+      if (raw.startsWith('/') && !(raw.length > 1 && (raw[1] === '/' || raw[1] === '\\'))) {
+        const cookie = useCookie('termina_oauth_redirect', {
+          maxAge: 600,
+          sameSite: 'lax',
+          path: '/',
+        })
+        cookie.value = raw
+      }
+    }
     navigateTo(`/api/auth/${provider}`, { external: true })
   }
 

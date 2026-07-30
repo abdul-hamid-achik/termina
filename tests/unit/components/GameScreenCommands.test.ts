@@ -185,7 +185,7 @@ describe('GameScreen commands', () => {
    */
 
   async function order(wrapper: ReturnType<typeof mountGameScreen>, cmd: string) {
-    // The zone panel is gone (R3-08): orders go through the command input,
+    // The zone panel is gone (R3-08): orders go through ActionRow / command input,
     // the same path a typed command takes.
     wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', cmd)
     await wrapper.vm.$nextTick()

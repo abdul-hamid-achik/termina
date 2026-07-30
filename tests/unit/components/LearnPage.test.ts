@@ -59,9 +59,9 @@ describe('learn page', () => {
     expect(text).not.toContain('Choose from 10 heroes')
   })
 
-  it('describes the Mainframe (Ancient) win condition, not the old all-ice one', () => {
+  it('describes the Terminal (win structure) win condition, not the old all-ice one', () => {
     const text = mountLearn().text()
-    expect(text).toContain('Mainframe')
+    expect(text).toContain('Terminal')
     expect(text).toContain(`${ANCIENT_HP} INTEG`)
     expect(text).toContain('T3')
     expect(text).not.toContain('destroy the enemy base')
@@ -319,7 +319,7 @@ describe('learn page', () => {
       const text = mountLearn().text()
       expect(text).toContain('wave:N counts the living waves in your zone')
       expect(text).toMatch(/shifts every cycle/)
-      expect(text).toContain('zone panel')
+      expect(text).toContain('ActionRow')
     })
 
     it('states lane presence still pays XP, so the advice is not "never miss"', () => {
