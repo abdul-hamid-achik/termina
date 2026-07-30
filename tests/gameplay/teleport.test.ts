@@ -91,7 +91,7 @@ describe('teleport (town portal scroll)', () => {
               stacks: 1,
               ticksRemaining: 1,
               source: HUMAN,
-              destination: 'mid-t1-rad',
+              destination: 'mid-t1-chaff',
             },
           ],
         },
@@ -100,7 +100,7 @@ describe('teleport (town portal scroll)', () => {
 
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-rad') // snapped back
+    expect((await game.me()).zone).toBe('mid-t1-chaff') // snapped back
     expect(
       game.allEvents.some(
         (e) => e._tag === 'teleport_complete' && e.playerId === HUMAN && e.source === 'next_hop',

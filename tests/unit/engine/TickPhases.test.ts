@@ -237,17 +237,17 @@ describe('runNPCAI', () => {
     expect(Array.isArray(result.events)).toBe(true)
   })
 
-  it('damages a hero in roshan-pit when Roshan is alive', () => {
+  it('damages a hero in hollow when Roshan is alive', () => {
     const state = makeState({
       tick: 1,
-      roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null, zone: 'roshan-pit' } as never,
+      roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null, zone: 'hollow' } as never,
       players: {
         p1: {
           id: 'p1',
           name: 'p1',
           team: 'chaff',
           heroId: 'echo',
-          zone: 'roshan-pit',
+          zone: 'hollow',
           hp: 1000,
           maxHp: 1000,
           mp: 100,

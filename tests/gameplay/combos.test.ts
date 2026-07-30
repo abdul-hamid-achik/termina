@@ -49,7 +49,7 @@ describe('same-tick combos', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          zone: 'mid-t1-rad',
+          zone: 'mid-t1-chaff',
           items: ['blink_module', null, null, null, null, null],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river' },

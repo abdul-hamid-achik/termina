@@ -27,7 +27,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -181,11 +181,11 @@ describe('systems-gaps: TALENT stat-bonus effect', () => {
 })
 
 describe('systems-gaps: AEGIS ground pickup', () => {
-  it('pickupAegis in roshan-pit applies aegis buff, clears the ground aegis, emits aegis_picked', () => {
+  it('pickupAegis in hollow applies aegis buff, clears the ground aegis, emits aegis_picked', () => {
     const state = makeGameState({
       tick: 120,
-      aegis: { zone: 'roshan-pit', tick: 100, holderId: null },
-      players: { p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }) },
+      aegis: { zone: 'hollow', tick: 100, holderId: null },
+      players: { p1: makePlayer({ id: 'p1', zone: 'hollow' }) },
     })
 
     const { state: after, event } = pickupAegis(state, 'p1')
@@ -200,9 +200,9 @@ describe('systems-gaps: AEGIS ground pickup', () => {
     expect((event as { playerId?: string }).playerId).toBe('p1')
   })
 
-  it('pickupAegis is a no-op when the player is outside roshan-pit (in-pit guard)', () => {
+  it('pickupAegis is a no-op when the player is outside hollow (in-pit guard)', () => {
     const state = makeGameState({
-      aegis: { zone: 'roshan-pit', tick: 100, holderId: null },
+      aegis: { zone: 'hollow', tick: 100, holderId: null },
       players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },
     })
     const { state: after, event } = pickupAegis(state, 'p1')
@@ -274,7 +274,7 @@ describe('systems-gaps: VISION gaps', () => {
     const state = makeGameState({
       timeOfDay: 'day',
       players: {
-        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-rad' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
         e1: makePlayer({
           id: 'e1',
           team: 'audit',
@@ -297,7 +297,7 @@ describe('systems-gaps: VISION gaps', () => {
     const state = makeGameState({
       timeOfDay: 'day',
       players: {
-        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-rad' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
         e1: makePlayer({
           id: 'e1',
           team: 'audit',

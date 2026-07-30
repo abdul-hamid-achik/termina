@@ -215,7 +215,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
       eventToLine(ev('roshan_killed', { killerTeam: 'chaff', goldAwarded: 600 }), ctx)!.text,
     ).toContain('Roshan')
     expect(
-      eventToLine(ev('rune_picked', { playerId: 'me', zone: 'rune-top', runeType: 'haste' }), ctx)!
+      eventToLine(ev('rune_picked', { playerId: 'me', zone: 'cache-top', runeType: 'haste' }), ctx)!
         .text,
     ).toContain('rune')
     expect(eventToLine(ev('aegis_picked', { playerId: 'me' }), ctx)!.text).toContain('Aegis')
@@ -264,9 +264,9 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   it('explains the two failures that used to be emitted then silently dropped', () => {
     // Both are the server's answer to an action the player just spent a tick
     // on — swallowing them left the tick looking like it did nothing at all.
-    const invuln = eventToLine(ev('tower_invulnerable', { zone: 'mid-t1-rad' }), ctx)!
+    const invuln = eventToLine(ev('tower_invulnerable', { zone: 'mid-t1-chaff' }), ctx)!
     expect(invuln.text).toContain('Glyph')
-    expect(invuln.text).toContain('mid-t1-rad')
+    expect(invuln.text).toContain('mid-t1-chaff')
 
     const cd = eventToLine(ev('glyph_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx)!
     expect(cd.text).toContain('120c')

@@ -15,7 +15,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'regex',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 400,
@@ -77,12 +77,12 @@ const enemyTarget = makePlayer({
   name: 'Enemy',
   team: 'audit',
   heroId: 'echo',
-  zone: 'mid-t1-rad',
+  zone: 'mid-t1-chaff',
 })
 
 const moveAction: PlayerAction = {
   playerId: 'p1',
-  command: { type: 'move', zone: 'mid-t2-rad' },
+  command: { type: 'move', zone: 'mid-t2-chaff' },
 }
 const attackAction: PlayerAction = {
   playerId: 'p1',
@@ -182,7 +182,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
       name: 'Enemy',
       team: 'audit',
       heroId: 'echo',
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
     })
     const state = makeGameState({ players: { p1: caster, e1: enemy } })
 
@@ -199,7 +199,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
       name: 'Enemy',
       team: 'audit',
       heroId: 'echo',
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
     })
     const state = makeGameState({ players: { p1: caster, e1: enemy } })
 
@@ -215,7 +215,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
       name: 'Enemy',
       team: 'audit',
       heroId: 'echo',
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
     })
 
     const withTalent = makePlayer({
@@ -252,7 +252,7 @@ describe('Arcane rune refunds mana on cast (buff was applied but consumed nowher
       name: 'Enemy',
       team: 'audit',
       heroId: 'echo',
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
     })
     const state = makeGameState({ players: { p1: caster, e1: enemy } })
     return Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))

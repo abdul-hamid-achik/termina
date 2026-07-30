@@ -482,7 +482,7 @@ describe('Item actives — forced movement', () => {
     const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'force_staff' } }])
     const newZone = r.state.players['p1']!.zone
     expect(newZone).not.toBe('mid-river')
-    expect(['mid-t1-rad', 'mid-t1-audit', 'rune-top', 'rune-bot']).toContain(newZone)
+    expect(['mid-t1-chaff', 'mid-t1-audit', 'cache-top', 'cache-bot']).toContain(newZone)
     // Disengage, not random: the push lands strictly CLOSER to the chaff
     // fountain than mid-river was (an earlier version shoved a random direction).
     expect(getDistance(newZone, 'chaff-fountain')).toBeLessThan(
@@ -557,13 +557,13 @@ describe('Power Treads toggle (was cosmetic — the mode buffs were read nowhere
 })
 
 describe('Aegis pickup through resolveActions (was dropping ground-removal + event)', () => {
-  const aegisGround = { zone: 'roshan-pit', tick: 100, holderId: null }
+  const aegisGround = { zone: 'hollow', tick: 100, holderId: null }
 
-  it('picking up aegis in roshan-pit nulls state.aegis, emits aegis_picked, applies the buff', () => {
+  it('picking up aegis in hollow nulls state.aegis, emits aegis_picked, applies the buff', () => {
     const state = makeGameState({
       tick: 120,
       aegis: aegisGround,
-      players: { p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }) },
+      players: { p1: makePlayer({ id: 'p1', zone: 'hollow' }) },
     })
     const r = run(state, [{ playerId: 'p1', command: { type: 'aegis' } }])
     expect(r.state.aegis).toBeNull()
@@ -576,8 +576,8 @@ describe('Aegis pickup through resolveActions (was dropping ground-removal + eve
       tick: 120,
       aegis: aegisGround,
       players: {
-        p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }),
-        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'roshan-pit' }),
+        p1: makePlayer({ id: 'p1', zone: 'hollow' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'hollow' }),
       },
     })
     const r = run(state, [

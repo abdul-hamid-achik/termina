@@ -27,7 +27,7 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'bot_alpha',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 900,
     maxHp: 900,
     mp: 400,
@@ -113,12 +113,12 @@ describe('BotAI - integrated teamplay', () => {
       name: 'bot_foe',
       team: 'audit',
       heroId: 'kernel',
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
       mp: 0,
       cooldowns: { q: 9, w: 9, e: 9, r: 9 },
     })
     const creeps: CreepState[] = [
-      { id: 'creep-own', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-own', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
     ]
     registerBots(
       GAME_ID,
@@ -143,7 +143,7 @@ describe('BotAI - integrated teamplay', () => {
         id,
         name: id,
         heroId: ['echo', 'malloc', 'cipher'][i] ?? 'echo',
-        zone: i === 0 ? 'roshan-pit' : 'rune-top',
+        zone: i === 0 ? 'hollow' : 'cache-top',
       }),
     )
     const players: Record<string, PlayerState> = {}

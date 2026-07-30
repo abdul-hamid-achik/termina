@@ -30,7 +30,7 @@ describe('ObjectiveTicker', () => {
   })
 
   it('shows a live rune, WHERE it is, and its expiry', () => {
-    const w = mountTicker({ runes: [{ zone: 'rune-top', type: 'haste', tick: 50 }], tick: 60 })
+    const w = mountTicker({ runes: [{ zone: 'cache-top', type: 'haste', tick: 50 }], tick: 60 })
     // Rune type ids render through buffLabel ('haste' → 'Haste', 'dd' → 'Double Damage').
     expect(w.text()).toContain('Haste')
     // The zone is the whole decision — a rune you cannot reach before it expires
@@ -39,7 +39,7 @@ describe('ObjectiveTicker', () => {
   })
 
   it('names the zone of whichever rune is live, not a fixed spot', () => {
-    const w = mountTicker({ runes: [{ zone: 'rune-bot', type: 'dd', tick: 50 }], tick: 60 })
+    const w = mountTicker({ runes: [{ zone: 'cache-bot', type: 'dd', tick: 50 }], tick: 60 })
     expect(w.text()).toContain('Shallows Cache Drop')
     expect(w.text()).not.toContain('Seawall Cache Drop')
   })
@@ -55,7 +55,7 @@ describe('ObjectiveTicker', () => {
   })
 
   it('shows aegis waiting in the pit', () => {
-    const w = mountTicker({ aegis: { zone: 'roshan-pit', tick: 1, holderId: null } })
+    const w = mountTicker({ aegis: { zone: 'hollow', tick: 1, holderId: null } })
     expect(w.text()).toContain('in pit')
   })
 

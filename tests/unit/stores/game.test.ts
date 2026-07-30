@@ -12,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 550,
     mp: 200,
@@ -64,7 +64,7 @@ function makeTickMessage(
     state: {
       phase: overrides.phase ?? 'playing',
       players,
-      zones: overrides.zones ?? { 'mid-t1-rad': makeZone('mid-t1-rad') },
+      zones: overrides.zones ?? { 'mid-t1-chaff': makeZone('mid-t1-chaff') },
       teams: overrides.teams ?? makeTeams(),
     } as TickStateMessage['state'],
   }
@@ -115,7 +115,7 @@ describe('Game Store', () => {
         tick: 11,
         state: {
           players: { p1: makePlayer() },
-          zones: { 'mid-t1-rad': makeZone('mid-t1-rad') },
+          zones: { 'mid-t1-chaff': makeZone('mid-t1-chaff') },
         },
       } as never)
 
@@ -288,7 +288,7 @@ describe('Game Store', () => {
         store.playerId = 'p1'
         store.updateFromTick(
           makeTickMessage({
-            players: { p1: makePlayer({ zone: 'mid-t1-rad', alive: true }) },
+            players: { p1: makePlayer({ zone: 'mid-t1-chaff', alive: true }) },
           }),
         )
 
@@ -360,14 +360,14 @@ describe('Game Store', () => {
           id: 'e1',
           name: 'Enemy',
           team: 'audit',
-          zone: 'mid-t1-rad',
+          zone: 'mid-t1-chaff',
           alive: true,
         })
         const allyOther = makePlayer({
           id: 'a1',
           name: 'Ally',
           team: 'chaff',
-          zone: 'mid-t1-rad',
+          zone: 'mid-t1-chaff',
           alive: true,
         })
         const farEnemy = makePlayer({
@@ -397,7 +397,12 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
 
-        const deadEnemy = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-t1-rad', alive: false })
+        const deadEnemy = makePlayer({
+          id: 'e1',
+          team: 'audit',
+          zone: 'mid-t1-chaff',
+          alive: false,
+        })
 
         store.updateFromTick(
           makeTickMessage({
@@ -423,7 +428,7 @@ describe('Game Store', () => {
           id: 'a1',
           name: 'Ally',
           team: 'chaff',
-          zone: 'mid-t1-rad',
+          zone: 'mid-t1-chaff',
           alive: true,
         })
 
@@ -441,7 +446,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
 
-        const deadAlly = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-t1-rad', alive: false })
+        const deadAlly = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-t1-chaff', alive: false })
 
         store.updateFromTick(
           makeTickMessage({
@@ -491,8 +496,8 @@ describe('Game Store', () => {
         const p1 = makePlayer()
         const p2 = makePlayer({ id: 'p2', team: 'audit' })
         const zones = {
-          'mid-t1-rad': makeZone('mid-t1-rad'),
-          'top-t1-rad': makeZone('top-t1-rad'),
+          'mid-t1-chaff': makeZone('mid-t1-chaff'),
+          'top-t1-chaff': makeZone('top-t1-chaff'),
         }
         const teams = makeTeams()
 
@@ -508,10 +513,10 @@ describe('Game Store', () => {
 
         const msg = makeTickMessage()
         ;(msg.state as unknown as Record<string, unknown>).towers = [
-          { team: 'chaff', zone: 'mid-t1-rad', hp: 1500, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
         ]
         ;(msg.state as unknown as Record<string, unknown>).creeps = [
-          { id: 'c1', team: 'chaff', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+          { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
         ]
 
         store.updateFromTick(msg)
@@ -525,14 +530,14 @@ describe('Game Store', () => {
 
         const msg1 = makeTickMessage({ tick: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).towers = [
-          { team: 'chaff', zone: 'mid-t1-rad', hp: 1500, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
           { team: 'audit', zone: 'mid-t1-audit', hp: 2000, maxHp: 2000, alive: true },
         ]
 
         store.updateFromTick(msg1)
 
         expect(store.towers).toHaveLength(2)
-        expect(store.towers[0]!.zone).toBe('mid-t1-rad')
+        expect(store.towers[0]!.zone).toBe('mid-t1-chaff')
         expect(store.towers[1]!.zone).toBe('mid-t1-audit')
       })
 
@@ -541,7 +546,7 @@ describe('Game Store', () => {
 
         const msg1 = makeTickMessage({ tick: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).towers = [
-          { team: 'chaff', zone: 'mid-t1-rad', hp: 2000, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', hp: 2000, maxHp: 2000, alive: true },
         ]
 
         store.updateFromTick(msg1)
@@ -550,7 +555,7 @@ describe('Game Store', () => {
 
         const msg2 = makeTickMessage({ tick: 2 })
         ;(msg2.state as unknown as Record<string, unknown>).towers = [
-          { team: 'chaff', zone: 'mid-t1-rad', hp: 1500, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
         ]
 
         store.updateFromTick(msg2)
@@ -684,7 +689,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         const events: GameEvent[] = [
           { tick: 1, type: 'kill', payload: { killer: 'p1', victim: 'p2' } },
-          { tick: 2, type: 'tower_destroy', payload: { zone: 'mid-t1-rad' } },
+          { tick: 2, type: 'tower_destroy', payload: { zone: 'mid-t1-chaff' } },
         ]
 
         store.addEvents(events)
@@ -926,12 +931,12 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     const base = makeTickMessage({ tick: 10 })
     const s = base.state as unknown as Record<string, unknown>
     s.roshan = { alive: false, hp: 0, maxHp: 5000, deathTick: 10 }
-    s.runes = [{ zone: 'rune-top', type: 'haste', tick: 10 }]
-    s.aegis = { zone: 'roshan-pit', tick: 10, holderId: null }
+    s.runes = [{ zone: 'cache-top', type: 'haste', tick: 10 }]
+    s.aegis = { zone: 'hollow', tick: 10, holderId: null }
     store.updateFromTick(base)
     expect(store.roshan?.alive).toBe(false)
     expect(store.runes).toHaveLength(1)
-    expect(store.aegis?.zone).toBe('roshan-pit')
+    expect(store.aegis?.zone).toBe('hollow')
 
     const next = makeTickMessage({ tick: 14 })
     ;(next.state as unknown as Record<string, unknown>).aegis = null

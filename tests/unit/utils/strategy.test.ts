@@ -101,12 +101,12 @@ describe('strategy: roshan', () => {
 
 describe('strategy: runes', () => {
   it('lists live runes with expiry', () => {
-    const r = formatRunes([{ zone: 'rune-top', type: 'haste', tick: 50 }], 60)
+    const r = formatRunes([{ zone: 'cache-top', type: 'haste', tick: 50 }], 60)
     expect(r.live).toHaveLength(1)
     expect(r.live[0]!.expiresIn).toBe(50 + RUNE_DURATION_TICKS - 60)
   })
   it('drops expired runes and reports next spawn', () => {
-    const r = formatRunes([{ zone: 'rune-top', type: 'haste', tick: 0 }], 55)
+    const r = formatRunes([{ zone: 'cache-top', type: 'haste', tick: 0 }], 55)
     expect(r.live).toHaveLength(0)
     expect(r.nextIn).toBe(5) // 55 % 60 -> next at 60
     expect(r.label).toContain('next')
@@ -127,7 +127,7 @@ describe('strategy: aegis', () => {
     expect(a.label).toContain('Lina')
   })
   it('reports aegis waiting in the pit', () => {
-    const a = formatAegis({ zone: 'roshan-pit', tick: 1, holderId: null })
+    const a = formatAegis({ zone: 'hollow', tick: 1, holderId: null })
     expect(a.held).toBe(false)
     expect(a.inPit).toBe(true)
     expect(a.label).toContain('pit')
@@ -188,7 +188,7 @@ describe('strategy: sparkline', () => {
 
 describe('strategy: shortZone', () => {
   it('spaces out the id and upper-cases tower tiers', () => {
-    expect(shortZone('mid-t1-rad')).toBe('Coldstore T1 (CHAFF)')
+    expect(shortZone('mid-t1-chaff')).toBe('Coldstore T1 (CHAFF)')
     expect(shortZone('top-t2-audit')).toBe('Seawall T2 (AUDIT)')
   })
   it('leaves a plain zone id readable', () => {

@@ -89,7 +89,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     zones: {
       'mid-river': { id: 'mid-river', wards: [], creeps: [] },
       'top-river': { id: 'top-river', wards: [], creeps: [] },
-      'mid-t1-rad': { id: 'mid-t1-rad', wards: [], creeps: [] },
+      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], creeps: [] },
     },
     creeps: [],
     towers: [],
@@ -469,7 +469,7 @@ describe('Traceroute Hero', () => {
       const updated = resolvePassive(state, 'p1', {
         tick: 10,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-t1-rad', to: 'mid-river' },
+        payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
 
       expect(getBuffStacks(updated.players['p1']!, 'hopCount')).toBe(1)
@@ -488,7 +488,7 @@ describe('Traceroute Hero', () => {
       state = resolvePassive(state, 'p1', {
         tick: 10,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-t1-rad', to: 'mid-river' },
+        payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
 
       expect(getBuffStacks(state.players['p1']!, 'hopCount')).toBe(3)
@@ -510,7 +510,7 @@ describe('Traceroute Hero', () => {
       const updated = resolvePassive(state, 'p1', {
         tick: 10,
         type: 'move',
-        payload: { playerId: 'p1', from: 'mid-t1-rad', to: 'mid-river' },
+        payload: { playerId: 'p1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
 
       const buff = updated.players['p1']!.buffs.find((b) => b.id === 'hopCount')
@@ -525,7 +525,7 @@ describe('Traceroute Hero', () => {
       const updated = resolvePassive(state, 'p1', {
         tick: 10,
         type: 'move',
-        payload: { playerId: 'e1', from: 'mid-t1-rad', to: 'mid-river' },
+        payload: { playerId: 'e1', from: 'mid-t1-chaff', to: 'mid-river' },
       })
 
       expect(getBuffStacks(updated.players['p1']!, 'hopCount')).toBe(0)

@@ -21,7 +21,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 550,
     maxHp: 550,
     mp: 280,
@@ -112,7 +112,7 @@ describe('GameLoop', () => {
     it('should process submitted actions', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
@@ -246,13 +246,13 @@ describe('GameLoop', () => {
     it('should handle only one action per player per tick', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
       // Submit two actions for same player — second should override
-      submitAction('game-override', 'p1', { type: 'move', zone: 'mid-t2-rad' })
+      submitAction('game-override', 'p1', { type: 'move', zone: 'mid-t2-chaff' })
       submitAction('game-override', 'p1', { type: 'move', zone: 'mid-river' })
 
       const result = Effect.runSync(processTick('game-override', state))
@@ -367,18 +367,18 @@ describe('GameLoop', () => {
     it('auto-paths a distant move one hop per tick and stores the destination', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
       // Distant zone: a valid order now — the hero walks one hop per tick
-      submitAction('game-mixed', 'p1', { type: 'move', zone: 'bot-t1-rad' })
+      submitAction('game-mixed', 'p1', { type: 'move', zone: 'bot-t1-chaff' })
 
       const result = Effect.runSync(processTick('game-mixed', state))
       const p1 = result.state.players['p1']!
-      expect(p1.zone).not.toBe('mid-t1-rad') // took the first hop
-      expect(p1.moveTarget).toBe('bot-t1-rad') // still walking
+      expect(p1.zone).not.toBe('mid-t1-chaff') // took the first hop
+      expect(p1.moveTarget).toBe('bot-t1-chaff') // still walking
     })
 
     it('should not process actions when game is ended', () => {
@@ -389,7 +389,7 @@ describe('GameLoop', () => {
           audit: { ...ancients.audit, hp: 0, alive: false, vulnerable: true },
         },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
@@ -641,7 +641,7 @@ describe('GameLoop', () => {
       const creeps = Array.from({ length: 30 }, (_, i) => ({
         id: `stack_${i}`,
         team: 'chaff' as const,
-        zone: 'mid-t2-rad',
+        zone: 'mid-t2-chaff',
         hp: 400,
         type: 'melee' as const,
       }))

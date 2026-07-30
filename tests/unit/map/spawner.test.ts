@@ -123,9 +123,9 @@ describe('Spawner', () => {
       const chaffZones = new Set(creeps.filter((c) => c.team === 'chaff').map((c) => c.zone))
       const auditZones = new Set(creeps.filter((c) => c.team === 'audit').map((c) => c.zone))
 
-      expect(chaffZones).toContain('top-t3-rad')
-      expect(chaffZones).toContain('mid-t3-rad')
-      expect(chaffZones).toContain('bot-t3-rad')
+      expect(chaffZones).toContain('top-t3-chaff')
+      expect(chaffZones).toContain('mid-t3-chaff')
+      expect(chaffZones).toContain('bot-t3-chaff')
       expect(auditZones).toContain('top-t3-audit')
       expect(auditZones).toContain('mid-t3-audit')
       expect(auditZones).toContain('bot-t3-audit')
@@ -163,8 +163,8 @@ describe('Spawner', () => {
     it('spawns runes at correct zones', () => {
       const runes = spawnRunes(60)
       const zones = runes.map((r) => r.zone)
-      expect(zones).toContain('rune-top')
-      expect(zones).toContain('rune-bot')
+      expect(zones).toContain('cache-top')
+      expect(zones).toContain('cache-bot')
     })
 
     it('rune types are valid', () => {
@@ -193,15 +193,15 @@ describe('Spawner', () => {
     })
 
     it('does not spawn a rune on an occupied zone (occupancy check)', () => {
-      const active = new Set(['rune-top'])
+      const active = new Set(['cache-top'])
       const runes = spawnRunes(60, undefined, active)
-      // rune-top is occupied → only rune-bot should spawn
+      // cache-top is occupied → only cache-bot should spawn
       expect(runes).toHaveLength(1)
-      expect(runes[0]!.zone).toBe('rune-bot')
+      expect(runes[0]!.zone).toBe('cache-bot')
     })
 
     it('does not spawn runes when all spots are occupied', () => {
-      const active = new Set(['rune-top', 'rune-bot'])
+      const active = new Set(['cache-top', 'cache-bot'])
       const runes = spawnRunes(60, undefined, active)
       expect(runes).toEqual([])
     })
@@ -223,7 +223,7 @@ describe('Spawner', () => {
       // Only mid lane — 3 melee + 1 ranged per team = 8 creeps.
       expect(creeps).toHaveLength((MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE) * 2)
       for (const c of creeps) {
-        expect(c.zone).toMatch(/^mid-t3-(rad|audit)$/)
+        expect(c.zone).toMatch(/^mid-t3-(chaff|audit)$/)
       }
     })
 
@@ -243,11 +243,11 @@ describe('Spawner', () => {
       }
     })
 
-    it('two-lane map: spawns only rune-top (rune-bot is absent)', () => {
+    it('two-lane map: spawns only cache-top (cache-bot is absent)', () => {
       const hasZone = hasZoneFor(TWO_LANE_MAP_ID)
       const runes = spawnRunes(RUNE_INTERVAL_TICKS, hasZone)
       expect(runes).toHaveLength(1)
-      expect(runes[0]!.zone).toBe('rune-top')
+      expect(runes[0]!.zone).toBe('cache-top')
     })
   })
 

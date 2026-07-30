@@ -482,7 +482,7 @@ describe('combat', () => {
   it('attacking a tower from a different zone is rejected with feedback', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
-    const enemySuffix = me.team === 'chaff' ? 'audit' : 'rad'
+    const enemySuffix = me.team === 'chaff' ? 'audit' : 'chaff'
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
@@ -500,7 +500,7 @@ describe('combat', () => {
   it('a backdoor-protected tower (its front tower still up) tells the player it is protected', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
-    const enemySuffix = me.team === 'chaff' ? 'audit' : 'rad'
+    const enemySuffix = me.team === 'chaff' ? 'audit' : 'chaff'
     const t2Zone = `mid-t2-${enemySuffix}`
     await game.patch((s) => ({
       ...s,
@@ -646,7 +646,7 @@ describe('combat', () => {
     await game.tick()
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-rad'
+      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },
@@ -666,7 +666,7 @@ describe('combat', () => {
     await game.tick() // settle the maxHp recompute first
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-rad'
+      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },
@@ -758,7 +758,7 @@ describe('combat', () => {
 
     // Both act at once: the enemy juke-steps to an adjacent zone while the human
     // swings. By the attack phase the target has left.
-    game.submit({ type: 'move', zone: 'mid-t1-rad' }, ENEMY)
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' }, ENEMY)
     game.attackHero(ENEMY)
     await game.tick()
 

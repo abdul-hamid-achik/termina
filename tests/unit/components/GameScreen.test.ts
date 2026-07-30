@@ -726,8 +726,8 @@ describe('GameScreen', () => {
     it('passes in-zone neutrals to the Zone panel tagged with their global index', () => {
       seedActiveGame({
         neutrals: [
-          { id: 'n0', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-          { id: 'n1', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+          { id: 'n1', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
           { id: 'n2', zone: 'mid-river', hp: 140, maxHp: 200, type: 'centaur', alive: true },
           { id: 'n3', zone: 'mid-river', hp: 0, maxHp: 200, type: 'centaur', alive: false },
         ],
@@ -749,7 +749,7 @@ describe('GameScreen', () => {
       expect(outside.findComponent({ name: 'ZonePanel' }).props('roshan')).toBeNull()
       outside.unmount()
 
-      seedActiveGame({ players: rosterAt('roshan-pit') })
+      seedActiveGame({ players: rosterAt('hollow') })
       const inPit = mountGameScreen()
       expect(inPit.findComponent({ name: 'ZonePanel' }).props('roshan')).toMatchObject({
         alive: true,
@@ -759,7 +759,7 @@ describe('GameScreen', () => {
 
     it('withholds Roshan while he is dead, even standing in the pit', () => {
       seedActiveGame({
-        players: rosterAt('roshan-pit'),
+        players: rosterAt('hollow'),
         roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 200 },
       })
       const wrapper = mountGameScreen()
@@ -769,7 +769,7 @@ describe('GameScreen', () => {
     })
 
     it('sends attack roshan through the command path from the pit', async () => {
-      seedActiveGame({ players: rosterAt('roshan-pit') })
+      seedActiveGame({ players: rosterAt('hollow') })
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
@@ -786,7 +786,7 @@ describe('GameScreen', () => {
     it('refuses attack neutral:<i> that names a camp outside the zone before it costs a tick', async () => {
       seedActiveGame({
         neutrals: [
-          { id: 'n0', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
           { id: 'n1', zone: 'mid-river', hp: 140, maxHp: 200, type: 'centaur', alive: true },
         ],
       })
@@ -816,9 +816,9 @@ describe('GameScreen', () => {
     const CORRIDOR = [
       'chaff-fountain',
       'chaff-base',
-      'mid-t3-rad',
-      'mid-t2-rad',
-      'mid-t1-rad',
+      'mid-t3-chaff',
+      'mid-t2-chaff',
+      'mid-t1-chaff',
       'mid-river',
     ]
 
@@ -858,13 +858,13 @@ describe('GameScreen', () => {
       seedWalkTick('mid-river', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t1-rad')
+      await order(wrapper, 'move mid-t1-chaff')
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'move', zone: 'mid-t1-rad' },
+        command: { type: 'move', zone: 'mid-t1-chaff' },
       })
 
-      seedWalkTick('mid-t1-rad', 241)
+      seedWalkTick('mid-t1-chaff', 241)
       await wrapper.vm.$nextTick()
 
       expect(feed(wrapper)).toContain('▸ You arrive at Coldstore T1 (CHAFF)')
@@ -875,10 +875,10 @@ describe('GameScreen', () => {
       seedWalkTick('mid-river', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t2-rad')
+      await order(wrapper, 'move mid-t2-chaff')
 
       // Mid-walk: the server still reports the destination.
-      seedWalkTick('mid-t1-rad', 241, { moveTarget: 'mid-t2-rad' })
+      seedWalkTick('mid-t1-chaff', 241, { moveTarget: 'mid-t2-chaff' })
       await wrapper.vm.$nextTick()
       expect(feed(wrapper)).toContain(
         '▸ You reach Coldstore T1 (CHAFF) — 1 more to Coldstore T2 (CHAFF)',
@@ -886,7 +886,7 @@ describe('GameScreen', () => {
       expect(feed(wrapper).some((t) => t.includes('You arrive'))).toBe(false)
 
       // Final hop: moveTarget is already null, so only the local order knows.
-      seedWalkTick('mid-t2-rad', 242)
+      seedWalkTick('mid-t2-chaff', 242)
       await wrapper.vm.$nextTick()
       expect(feed(wrapper)).toContain('▸ You arrive at Coldstore T2 (CHAFF)')
       wrapper.unmount()
@@ -896,7 +896,7 @@ describe('GameScreen', () => {
       seedWalkTick('mid-river', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t2-rad')
+      await order(wrapper, 'move mid-t2-chaff')
 
       // Death cancels the walk server-side; the client must forget it too, or
       // the fountain respawn would read as reaching the abandoned destination.
@@ -914,13 +914,13 @@ describe('GameScreen', () => {
       seedWalkTick('mid-river', 240)
       const wrapper = mountGameScreen()
 
-      await order(wrapper, 'move mid-t2-rad')
+      await order(wrapper, 'move mid-t2-chaff')
       // Mirrors GameLoop's KEEPS_AUTOPATH: warding cancels the walk, so a later
       // relocation (a teleport, already narrated on its own) owes no arrival.
       seedWalkTick('mid-river', 241)
       await order(wrapper, 'ward mid-river')
 
-      seedWalkTick('mid-t2-rad', 242)
+      seedWalkTick('mid-t2-chaff', 242)
       await wrapper.vm.$nextTick()
 
       expect(feed(wrapper).some((t) => t.includes('You arrive'))).toBe(false)
@@ -930,7 +930,7 @@ describe('GameScreen', () => {
 
   describe('keyboard mode (W1-10)', () => {
     // The mid corridor, so an arrow order passes the pre-flight path check.
-    const CORRIDOR = ['chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']
+    const CORRIDOR = ['chaff-base', 'mid-t3-chaff', 'mid-t2-chaff', 'mid-t1-chaff', 'mid-river']
 
     function seedAt(zone: string) {
       const store = useGameStore()
@@ -960,9 +960,9 @@ describe('GameScreen', () => {
 
     it('walks the lane forward, resolving the arrow against the drawn map', async () => {
       // REGRESSION: resolved by zone-name substring, so a Chaff hero could not
-      // walk down mid at all — every forward neighbour is named `-rad`. The fix
+      // walk down mid at all — every forward neighbour is named `-chaff`. The fix
       // needs the origin zone AND the map id, so this fails if either is dropped.
-      seedAt('mid-t3-rad')
+      seedAt('mid-t3-chaff')
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
@@ -971,13 +971,13 @@ describe('GameScreen', () => {
 
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'move', zone: 'mid-t2-rad' },
+        command: { type: 'move', zone: 'mid-t2-chaff' },
       })
       wrapper.unmount()
     })
 
     it('says so when nothing lies that way instead of eating the press', async () => {
-      seedAt('mid-t1-rad')
+      seedAt('mid-t1-chaff')
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
@@ -1017,11 +1017,11 @@ describe('GameScreen', () => {
     /** The mid corridor plus a rune spot, so subset-map pruning is observable. */
     const CORRIDOR = [
       'chaff-base',
-      'mid-t3-rad',
-      'mid-t2-rad',
-      'mid-t1-rad',
+      'mid-t3-chaff',
+      'mid-t2-chaff',
+      'mid-t1-chaff',
       'mid-river',
-      'rune-top',
+      'cache-top',
     ]
 
     function seedMap(zone: string, overrides: Partial<GameState> = {}) {
@@ -1052,13 +1052,13 @@ describe('GameScreen', () => {
     it('drops zones the game map does not contain, killing the phantom move targets', () => {
       // REGRESSION: built from the global ZONES regardless of mapId, so on the
       // one-lane tutorial map the compact map's tap-to-move cards — derived from
-      // this list — offered rune-top and rune-bot, which `move` would reject.
+      // this list — offered cache-top and cache-bot, which `move` would reject.
       seedMap('mid-river', { mapId: 'one_lane' })
       const wrapper = mountGameScreen()
       const ids = mapZoneIds(wrapper)
       expect(ids).toHaveLength(11)
       expect(ids).toContain('mid-river')
-      expect(ids).not.toContain('rune-top')
+      expect(ids).not.toContain('cache-top')
       expect(ids.some((id) => id.startsWith('top-') || id.startsWith('bot-'))).toBe(false)
       wrapper.unmount()
     })
@@ -1066,23 +1066,23 @@ describe('GameScreen', () => {
     it('shows a live rune on the map even where the player has no vision', () => {
       // Runes reach the client unfiltered and the War Room ticker already names
       // the live one; gating the map marker on vision only made them disagree.
-      seedMap('mid-river', { runes: [{ zone: 'rune-bot', type: 'haste', tick: 240 }] })
+      seedMap('mid-river', { runes: [{ zone: 'cache-bot', type: 'haste', tick: 240 }] })
       const wrapper = mountGameScreen()
       const zones = wrapper.findComponent({ name: 'AsciiMap' }).props('zones') as {
         id: string
         fogged: boolean
         runeType?: string
       }[]
-      const runeZone = zones.find((z) => z.id === 'rune-bot')!
+      const runeZone = zones.find((z) => z.id === 'cache-bot')!
       expect(runeZone.fogged).toBe(true)
       expect(runeZone.runeType).toBe('haste')
       wrapper.unmount()
     })
 
     it('[MOVE] opens a picker of named adjacent zones instead of dumping slugs', async () => {
-      // REGRESSION: it printed "Adjacent zones: mid-t1-rad, rune-top, …" — raw
+      // REGRESSION: it printed "Adjacent zones: mid-t1-chaff, cache-top, …" — raw
       // identifiers that appear nowhere else in the UI, and no way to act on them.
-      seedMap('mid-t1-rad')
+      seedMap('mid-t1-chaff')
       const wrapper = mountGameScreen()
       const moveBtn = wrapper.findAll('button').find((b) => b.text() === 'MOVE')!
 
@@ -1093,12 +1093,12 @@ describe('GameScreen', () => {
       expect(picker.exists()).toBe(true)
       expect(picker.text()).toContain('Coldstore T2 (CHAFF)')
       expect(picker.text()).toContain('Coldstore Crossing')
-      expect(picker.text()).not.toContain('mid-t2-rad')
+      expect(picker.text()).not.toContain('mid-t2-chaff')
       wrapper.unmount()
     })
 
     it('[MOVE] picker actually moves', async () => {
-      seedMap('mid-t1-rad')
+      seedMap('mid-t1-chaff')
       const wrapper = mountGameScreen()
       await wrapper
         .findAll('button')
@@ -1126,8 +1126,8 @@ describe('GameScreen', () => {
         .trigger('click')
 
       const picker = wrapper.find('[data-testid="move-picker"]')
-      // mid-river's GLOBAL neighbours are mid-t1-rad, mid-t1-audit, rune-top and
-      // rune-bot — half of them do not exist in a one-lane game.
+      // mid-river's GLOBAL neighbours are mid-t1-chaff, mid-t1-audit, cache-top and
+      // cache-bot — half of them do not exist in a one-lane game.
       expect(picker.findAll('button')).toHaveLength(2)
       expect(picker.text()).not.toMatch(/Rune/i)
       wrapper.unmount()
@@ -1138,17 +1138,17 @@ describe('GameScreen', () => {
       const wrapper = mountGameScreen()
       expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(false)
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-chaff')
       await wrapper.vm.$nextTick()
 
-      // chaff-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
+      // chaff-base → mid-t3-chaff → mid-t2-chaff → mid-t1-chaff
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain(
         'WALKING → Coldstore T1 (CHAFF) · 3t',
       )
       // The same destination is what the map draws its route from.
-      expect(wrapper.findComponent({ name: 'AsciiMap' }).props('moveTarget')).toBe('mid-t1-rad')
+      expect(wrapper.findComponent({ name: 'AsciiMap' }).props('moveTarget')).toBe('mid-t1-chaff')
 
-      seedMap('mid-t3-rad', { players: rosterWalking('mid-t3-rad', 'mid-t1-rad') })
+      seedMap('mid-t3-chaff', { players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff') })
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain('· 2t')
       wrapper.unmount()
@@ -1157,11 +1157,11 @@ describe('GameScreen', () => {
     it('[stop] cancels the walk by re-ordering a move to where you stand', async () => {
       seedMap('chaff-base')
       const wrapper = mountGameScreen()
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-chaff')
       await wrapper.vm.$nextTick()
 
       // One hop later, mid-walk — the tick that frees the player to act again.
-      seedMap('mid-t3-rad', { tick: 241, players: rosterWalking('mid-t3-rad', 'mid-t1-rad') })
+      seedMap('mid-t3-chaff', { tick: 241, players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff') })
       await wrapper.vm.$nextTick()
 
       socketSpies.send.mockClear()
@@ -1171,7 +1171,7 @@ describe('GameScreen', () => {
       // next hop and nulls moveTarget (resolveMovementPhase).
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'move', zone: 'mid-t3-rad' },
+        command: { type: 'move', zone: 'mid-t3-chaff' },
       })
       wrapper.unmount()
     })
@@ -1180,13 +1180,13 @@ describe('GameScreen', () => {
       // handleCommand remembers every move order locally (the server nulls
       // moveTarget on the last hop). Remembering a stop would make the NEXT
       // zone change narrate as progress back toward where you stopped.
-      seedMap('mid-t3-rad')
+      seedMap('mid-t3-chaff')
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t3-rad')
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t3-chaff')
       await wrapper.vm.$nextTick()
 
-      seedMap('mid-t2-rad', { tick: 241 })
+      seedMap('mid-t2-chaff', { tick: 241 })
       await wrapper.vm.$nextTick()
 
       const feed = (
@@ -1242,7 +1242,7 @@ describe('GameScreen', () => {
         {
           tick: 240,
           type: 'neutral_killed',
-          payload: { playerId: 'p1', neutralId: 'n0', neutralType: 'kobold', zone: 'jungle-rad' },
+          payload: { playerId: 'p1', neutralId: 'n0', neutralType: 'kobold', zone: 'silt-chaff' },
         },
       ])
 
@@ -1280,7 +1280,7 @@ describe('GameScreen', () => {
         {
           tick: 240,
           type: 'tower_kill',
-          payload: { zone: 'mid-t1-rad', team: 'chaff', killerTeam: 'audit' },
+          payload: { zone: 'mid-t1-chaff', team: 'chaff', killerTeam: 'audit' },
         },
       ])
       expect(audio.playSound).toHaveBeenCalledWith('tower_lost')
@@ -1367,11 +1367,11 @@ describe('GameScreen', () => {
       store.gameId = 'game_submit'
       store.playerId = 'p1'
       const zones: Record<string, ZoneRuntimeState> = {}
-      for (const id of ['mid-river', 'mid-t1-rad']) zones[id] = makeZone(id)
+      for (const id of ['mid-river', 'mid-t1-chaff']) zones[id] = makeZone(id)
       store.updateFromTick(makeTickMessage({ tick: 240, zones }))
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-chaff')
       await wrapper.vm.$nextTick()
 
       expect(socketSpies.send).toHaveBeenCalled()
@@ -1380,7 +1380,7 @@ describe('GameScreen', () => {
     })
 
     it('keeps the meatier cast whoosh for offensive orders', async () => {
-      seedActiveGame({ players: rosterAt('roshan-pit') })
+      seedActiveGame({ players: rosterAt('hollow') })
       const wrapper = mountGameScreen()
 
       wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack roshan')

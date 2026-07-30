@@ -342,7 +342,7 @@ describe('ZonePanel', () => {
     it('tells a laner to push when they have creep support', () => {
       const creeps = [makeCreep({ id: 'c1', team: 'chaff', hp: 200, index: 0 })]
       const wrapper = mount(ZonePanel, {
-        props: { ...baseProps, zoneId: 'mid-t1-rad', creeps },
+        props: { ...baseProps, zoneId: 'mid-t1-chaff', creeps },
       })
       expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain(
         'Push with your creeps',
@@ -394,7 +394,7 @@ describe('ZonePanel', () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
-          zoneId: 'roshan-pit',
+          zoneId: 'hollow',
           roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
         },
       })
@@ -413,7 +413,7 @@ describe('ZonePanel', () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
-          zoneId: 'roshan-pit',
+          zoneId: 'hollow',
           roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 120 },
         },
       })
@@ -455,7 +455,7 @@ describe('ZonePanel', () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
-          zoneId: 'roshan-pit',
+          zoneId: 'hollow',
           roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
           attackTarget: { kind: 'roshan' as const },
         },

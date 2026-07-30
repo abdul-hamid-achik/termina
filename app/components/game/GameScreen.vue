@@ -654,7 +654,7 @@ const heroData = computed(() => {
   }
 })
 
-// Resolve raw entity IDs (github_*, bot_*, creep_3, tower_mid-t1-rad…) to
+// Resolve raw entity IDs (github_*, bot_*, creep_3, tower_mid-t1-chaff…) to
 // readable names: hero name for players ("You" for self), short labels for units.
 const abilityNameById: Record<string, string> = {}
 for (const hero of Object.values(HEROES)) {
@@ -901,7 +901,7 @@ const mapZones = computed(() => {
       // is unwarded almost by definition, so the fog gate hid it nearly always.
       runeType: liveRuneByZone.get(zone.id),
       roshan:
-        zone.id === 'roshan-pit' && !fogged && roshanReadout && roshanReadout.status !== 'unknown'
+        zone.id === 'hollow' && !fogged && roshanReadout && roshanReadout.status !== 'unknown'
           ? { alive: roshanReadout.status === 'up', respawnIn: roshanReadout.respawnIn }
           : undefined,
     }
@@ -959,7 +959,7 @@ const zoneNeutrals = computed(() =>
 
 /** Roshan, but only where he can actually be fought (and only while alive). */
 const zoneRoshan = computed(() =>
-  playerZone.value === 'roshan-pit' && gameStore.roshan?.alive ? gameStore.roshan : null,
+  playerZone.value === 'hollow' && gameStore.roshan?.alive ? gameStore.roshan : null,
 )
 
 const zoneTower = computed(() => towersByZone.value.get(playerZone.value) ?? null)
@@ -1280,7 +1280,7 @@ function handleQuickAction(cmd: string) {
   }
 
   if (cmd === 'MOVE') {
-    // Used to print the raw adjacency list ("mid-t1-rad, rune-top, …") — slugs
+    // Used to print the raw adjacency list ("mid-t1-chaff, cache-top, …") — slugs
     // that appear nowhere else in the UI, off this game's map half the time,
     // and not clickable. It is a MOVE button; it now moves.
     if (!movePickerZones.value.length) {

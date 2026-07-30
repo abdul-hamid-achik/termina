@@ -7,7 +7,7 @@ import type { AncientState } from '~~/shared/types/game'
 
 function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return {
-    id: 'mid-t1-rad',
+    id: 'mid-t1-chaff',
     name: 'Chaff Mid T1',
     playerHere: false,
     allies: [],
@@ -33,7 +33,7 @@ describe('AsciiMap', () => {
     it('should have role="grid" on map container', () => {
       const zones = [makeZone()]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       const grid = wrapper.find('[role="grid"]')
@@ -41,9 +41,9 @@ describe('AsciiMap', () => {
     })
 
     it('should have role="gridcell" on each zone cell', () => {
-      const zones = [makeZone({ id: 'mid-t1-rad' }), makeZone({ id: 'top-t1-rad' })]
+      const zones = [makeZone({ id: 'mid-t1-chaff' }), makeZone({ id: 'top-t1-chaff' })]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       const cells = wrapper.findAll('[role="gridcell"]')
@@ -52,10 +52,10 @@ describe('AsciiMap', () => {
 
     it('should have aria-label on each zone cell', () => {
       const zones = [
-        makeZone({ id: 'mid-t1-rad', name: 'Chaff Mid T1', allies: ['echo'], enemyCount: 1 }),
+        makeZone({ id: 'mid-t1-chaff', name: 'Chaff Mid T1', allies: ['echo'], enemyCount: 1 }),
       ]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       const cell = wrapper.find('[role="gridcell"]')
@@ -65,7 +65,7 @@ describe('AsciiMap', () => {
     it('should describe zone content in aria-label', () => {
       const zones = [
         makeZone({
-          id: 'mid-t1-rad',
+          id: 'mid-t1-chaff',
           name: 'Chaff Mid T1',
           allies: ['echo', 'sentry'],
           enemyCount: 2,
@@ -73,7 +73,7 @@ describe('AsciiMap', () => {
         }),
       ]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       const cell = wrapper.find('[role="gridcell"]')
@@ -84,7 +84,7 @@ describe('AsciiMap', () => {
     })
 
     it('navigates the visual grid with arrow keys, skipping null gaps', async () => {
-      const zones = [makeZone({ id: 'chaff-fountain' }), makeZone({ id: 'mid-t1-rad' })]
+      const zones = [makeZone({ id: 'chaff-fountain' }), makeZone({ id: 'mid-t1-chaff' })]
       const wrapper = mount(AsciiMap, {
         props: { zones, playerZone: 'chaff-fountain' },
       })
@@ -104,7 +104,7 @@ describe('AsciiMap', () => {
       // Down moves a row and lands on the nearest real zone to that column,
       // proving the step is grid-derived (not a hardcoded ±5).
       await grid.trigger('keydown', { key: 'ArrowDown' })
-      expect(wrapper.vm.focusedZoneId).toBe('mid-t3-rad')
+      expect(wrapper.vm.focusedZoneId).toBe('mid-t3-chaff')
     })
 
     it('moves real DOM focus to the navigated cell (so its aria-label is announced)', async () => {
@@ -150,13 +150,13 @@ describe('AsciiMap', () => {
     })
 
     it('should announce zone updates to screen readers', async () => {
-      const zones = [makeZone({ id: 'mid-t1-rad', enemyCount: 0 })]
+      const zones = [makeZone({ id: 'mid-t1-chaff', enemyCount: 0 })]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       await wrapper.setProps({
-        zones: [makeZone({ id: 'mid-t1-rad', enemyCount: 2 })],
+        zones: [makeZone({ id: 'mid-t1-chaff', enemyCount: 2 })],
       })
 
       const liveRegion = wrapper.find('[aria-live="polite"]')
@@ -168,7 +168,7 @@ describe('AsciiMap', () => {
     it('should show fogged zones with reduced opacity', () => {
       const zones = [makeZone({ fogged: true })]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       const cell = wrapper.find('[role="gridcell"]')
@@ -176,9 +176,9 @@ describe('AsciiMap', () => {
     })
 
     it('should highlight player zone', () => {
-      const zones = [makeZone({ id: 'mid-t1-rad', playerHere: true })]
+      const zones = [makeZone({ id: 'mid-t1-chaff', playerHere: true })]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       const cell = wrapper.find('[role="gridcell"]')
@@ -188,7 +188,7 @@ describe('AsciiMap', () => {
     it('should highlight zones with enemies', () => {
       const zones = [makeZone({ enemyCount: 2 })]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad' },
+        props: { zones, playerZone: 'mid-t1-chaff' },
       })
 
       const cell = wrapper.find('[role="gridcell"]')
@@ -199,8 +199,8 @@ describe('AsciiMap', () => {
   describe('compact mode (mobile)', () => {
     function compactZones(): ZoneDisplay[] {
       return [
-        makeZone({ id: 'mid-t1-rad', name: 'Mid Lane T1 (Chaff)', playerHere: true }),
-        makeZone({ id: 'mid-t2-rad', name: 'Mid Lane T2 (Chaff)', allies: ['echo'] }),
+        makeZone({ id: 'mid-t1-chaff', name: 'Mid Lane T1 (Chaff)', playerHere: true }),
+        makeZone({ id: 'mid-t2-chaff', name: 'Mid Lane T2 (Chaff)', allies: ['echo'] }),
         makeZone({ id: 'mid-river', name: 'Mid River Crossing', enemyCount: 1 }),
       ]
     }
@@ -209,7 +209,7 @@ describe('AsciiMap', () => {
       return mount(AsciiMap, {
         props: {
           zones: compactZones(),
-          playerZone: 'mid-t1-rad',
+          playerZone: 'mid-t1-chaff',
           forceMode: 'compact' as const,
         },
       })
@@ -229,7 +229,7 @@ describe('AsciiMap', () => {
       const wrapper = mountCompact()
 
       const cards = wrapper.findAll('[data-testid="compact-adjacent-zone"]')
-      // mid-t1-rad is adjacent to mid-t2-rad and mid-river
+      // mid-t1-chaff is adjacent to mid-t2-chaff and mid-river
       expect(cards.length).toBe(2)
       for (const card of cards) {
         expect(card.text()).toContain('TAP TO MOVE')
@@ -244,7 +244,7 @@ describe('AsciiMap', () => {
 
       await wrapper.find('[data-testid="compact-adjacent-zone"]').trigger('click')
 
-      expect(wrapper.emitted('zoneClick')).toEqual([['mid-t2-rad']])
+      expect(wrapper.emitted('zoneClick')).toEqual([['mid-t2-chaff']])
     })
 
     it('recenters on the player zone as they move', async () => {
@@ -253,7 +253,7 @@ describe('AsciiMap', () => {
       await wrapper.setProps({
         playerZone: 'mid-river',
         zones: [
-          makeZone({ id: 'mid-t1-rad', name: 'Mid Lane T1 (Chaff)' }),
+          makeZone({ id: 'mid-t1-chaff', name: 'Mid Lane T1 (Chaff)' }),
           makeZone({ id: 'mid-river', name: 'Mid River Crossing', playerHere: true }),
         ],
       })
@@ -262,7 +262,7 @@ describe('AsciiMap', () => {
         'Mid River Crossing',
       )
       const cards = wrapper.findAll('[data-testid="compact-adjacent-zone"]')
-      // Only mid-t1-rad of mid-river's neighbors is in the display list
+      // Only mid-t1-chaff of mid-river's neighbors is in the display list
       expect(cards.length).toBe(1)
       expect(cards[0]!.text()).toContain('Mid Lane T1 (Chaff)')
     })
@@ -309,14 +309,14 @@ describe('AsciiMap', () => {
     it('shows tower state glyphs in the mini overview lane cells', async () => {
       const zones = [
         makeZone({
-          id: 'mid-t1-rad',
+          id: 'mid-t1-chaff',
           playerHere: true,
           tower: { team: 'chaff', alive: false, tier: 1 },
         }),
         makeZone({ id: 'mid-t1-audit', tower: { team: 'audit', alive: true, tier: 1 } }),
       ]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'mid-t1-rad', forceMode: 'compact' as const },
+        props: { zones, playerZone: 'mid-t1-chaff', forceMode: 'compact' as const },
       })
       await wrapper.find('[data-testid="overview-toggle"]').trigger('click')
 
@@ -335,7 +335,7 @@ describe('AsciiMap', () => {
       const wrapper = mount(AsciiMap, {
         props: {
           zones: compactZones(),
-          playerZone: 'mid-t1-rad',
+          playerZone: 'mid-t1-chaff',
           forceMode: 'compact' as const,
           overviewOpen: true,
         },
@@ -347,7 +347,7 @@ describe('AsciiMap', () => {
       const wrapper = mount(AsciiMap, {
         props: {
           zones: compactZones(),
-          playerZone: 'mid-t1-rad',
+          playerZone: 'mid-t1-chaff',
           forceMode: 'full' as const,
         },
       })
@@ -406,11 +406,11 @@ describe('AsciiMap', () => {
       return mount(AsciiMap, {
         props: {
           zones: [
-            makeZone({ id: 'mid-t1-rad', name: 'Chaff Mid T1' }),
+            makeZone({ id: 'mid-t1-chaff', name: 'Chaff Mid T1' }),
             makeZone({ id: 'mid-river', name: 'Mid River' }),
             makeZone({ id: 'audit-base', name: 'Audit Base' }),
           ],
-          playerZone: 'mid-t1-rad',
+          playerZone: 'mid-t1-chaff',
           forceMode: 'full' as const,
           ...props,
         },
@@ -460,7 +460,7 @@ describe('AsciiMap', () => {
 
   describe('auto-path route (W2-8)', () => {
     // The full mid corridor, so the BFS has a real multi-hop route to draw.
-    const CORRIDOR = ['chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']
+    const CORRIDOR = ['chaff-base', 'mid-t3-chaff', 'mid-t2-chaff', 'mid-t1-chaff', 'mid-river']
 
     function mountRoute(props: Record<string, unknown> = {}) {
       return mount(AsciiMap, {
@@ -486,36 +486,36 @@ describe('AsciiMap', () => {
     it('numbers each hop and targets the destination cell', () => {
       // A queued walk was previously invisible on the board — the hero just
       // drifted one zone per tick with nothing showing where it was headed.
-      expect(markers(mountRoute({ moveTarget: 'mid-t1-rad' }))).toEqual({
-        'mid-t3-rad': '1',
-        'mid-t2-rad': '2',
-        'mid-t1-rad': '⌖',
+      expect(markers(mountRoute({ moveTarget: 'mid-t1-chaff' }))).toEqual({
+        'mid-t3-chaff': '1',
+        'mid-t2-chaff': '2',
+        'mid-t1-chaff': '⌖',
       })
     })
 
     it('routes only through the zones this game actually has', () => {
-      // From mid-t1-rad the GLOBAL graph reaches rune-top in two hops, the first
+      // From mid-t1-chaff the GLOBAL graph reaches cache-top in two hops, the first
       // of which (mid-river) IS on this board — so an unrestricted BFS would
       // draw a route toward a zone the game does not contain.
-      const w = mountRoute({ playerZone: 'mid-t1-rad', moveTarget: 'rune-top' })
+      const w = mountRoute({ playerZone: 'mid-t1-chaff', moveTarget: 'cache-top' })
       expect(markers(w)).toEqual({})
     })
 
     it('announces the route to screen readers on the destination cell', () => {
-      const w = mountRoute({ moveTarget: 'mid-t1-rad' })
+      const w = mountRoute({ moveTarget: 'mid-t1-chaff' })
       const label = (id: string) =>
         w.find(`[data-zone-cell="${id}"]`).attributes('aria-label') ?? ''
-      expect(label('mid-t1-rad')).toContain('walk destination')
-      expect(label('mid-t2-rad')).toContain('walk step 2')
+      expect(label('mid-t1-chaff')).toContain('walk destination')
+      expect(label('mid-t2-chaff')).toContain('walk step 2')
       expect(label('chaff-base')).not.toContain('walk')
     })
 
     it('marks the route on the compact cards too (the desktop rail map is compact)', () => {
-      const w = mountRoute({ forceMode: 'compact' as const, moveTarget: 'mid-t1-rad' })
-      expect(markers(w)).toEqual({ 'mid-t3-rad': '1' })
+      const w = mountRoute({ forceMode: 'compact' as const, moveTarget: 'mid-t1-chaff' })
+      expect(markers(w)).toEqual({ 'mid-t3-chaff': '1' })
       const card = w
         .findAll('[data-testid="compact-adjacent-zone"]')
-        .find((c) => c.text().includes('mid-t3-rad'))
+        .find((c) => c.text().includes('mid-t3-chaff'))
       expect(card?.attributes('aria-label')).toContain('walk step 1')
     })
   })
@@ -531,7 +531,7 @@ describe('compact overview cells expose a sizing hook', () => {
   it('renders .map-cell-compact cells the rail rule can target', () => {
     const wrapper = mount(AsciiMap, {
       props: {
-        zones: [makeZone({ id: 'mid-river' }), makeZone({ id: 'mid-t1-rad' })],
+        zones: [makeZone({ id: 'mid-river' }), makeZone({ id: 'mid-t1-chaff' })],
         playerZone: 'mid-river',
         forceMode: 'compact',
         overviewOpen: true,

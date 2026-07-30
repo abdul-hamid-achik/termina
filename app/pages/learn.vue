@@ -137,19 +137,19 @@ const movementGuide = [
     items: [
       'The map is divided into zones (fountain, base, lanes, jungle, river)',
       `You walk one zone per cycle (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, cycle by cycle`,
-      'Type move <zone-id> to move (e.g., move chaff-base, move mid-t3-rad), or tap any zone on the map',
+      'Type move <zone-id> to move (e.g., move chaff-base, move mid-t3-chaff), or tap any zone on the map',
       'Issuing any new action cancels the walk; a new move order redirects it',
-      'Shortcut: mv is the same as move (e.g., mv mid-t2-rad)',
+      'Shortcut: mv is the same as move (e.g., mv mid-t2-chaff)',
     ],
   },
   {
     title: 'Zone Naming Convention',
     items: [
-      'Lanes: top-t1-rad, mid-t2-audit, bot-t3-rad (lane-tier-team)',
+      'Lanes: top-t1-chaff, mid-t2-audit, bot-t3-chaff (lane-tier-team)',
       'River: top-river, mid-river, bot-river (neutral crossings)',
-      'Jungle: jungle-rad-top, jungle-audit-bot (jungle-team-side)',
+      'Jungle: silt-chaff-top, silt-audit-bot (jungle-team-side)',
       'Base & Fountain: chaff-base, chaff-fountain, audit-base, audit-fountain',
-      'Special: roshan-pit, rune-top, rune-bot',
+      'Special: hollow, cache-top, cache-bot',
     ],
   },
   {
@@ -159,7 +159,7 @@ const movementGuide = [
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_TICKS} cycles plus ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
-      'More aliases save typing: move mid → mid-river, move rosh → roshan-pit; unambiguous prefixes work too',
+      'More aliases save typing: move mid → mid-river, move rosh → hollow; unambiguous prefixes work too',
     ],
   },
 ]
@@ -168,7 +168,7 @@ const commands = [
   {
     cmd: 'move <zone>',
     desc: 'Walk to any zone — one zone per cycle, auto-pathing until you arrive',
-    example: 'move mid-t1-rad',
+    example: 'move mid-t1-chaff',
     shortcuts: 'mv',
   },
   {
@@ -367,7 +367,7 @@ const concepts = [
   {
     term: 'Roshan & Runes',
     icon: '%',
-    desc: `Roshan (${ROSHAN_BASE_HP}+ HP) lurks in roshan-pit and drops the Aegis when killed — grab it with aegis. Power-up runes spawn at rune-top/rune-bot every ${RUNE_INTERVAL_TICKS} cycles and expire after ${RUNE_DURATION_TICKS}; grab them with rune.`,
+    desc: `Roshan (${ROSHAN_BASE_HP}+ HP) lurks in hollow and drops the Aegis when killed — grab it with aegis. Power-up runes spawn at cache-top/cache-bot every ${RUNE_INTERVAL_TICKS} cycles and expire after ${RUNE_DURATION_TICKS}; grab them with rune.`,
   },
   {
     term: 'Win Condition',
@@ -522,15 +522,15 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move mid-t3-rad</span
+            >move mid-t3-chaff</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move mid-t2-rad</span
+            >move mid-t2-chaff</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move mid-t1-rad</span
+            >move mid-t1-chaff</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"

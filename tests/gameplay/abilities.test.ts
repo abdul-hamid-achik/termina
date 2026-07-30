@@ -67,7 +67,7 @@ describe('abilities', () => {
 
     // Rooted: a move to an adjacent zone is dropped — the hero stays put, and
     // the rejection reason reaches the player.
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
     expect((await game.me()).zone).toBe('mid-river')
     expect(game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('rooted'))).toBe(
@@ -101,9 +101,9 @@ describe('abilities', () => {
     expect((await game.me()).cooldowns.w).toBe(0)
 
     // But moving is unaffected by silence — the hero relocates to the adjacent zone.
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
-    expect((await game.me()).zone).toBe('mid-t1-rad')
+    expect((await game.me()).zone).toBe('mid-t1-chaff')
   })
 
   it('a rejected action surfaces a reason to the player (not a silent drop)', async () => {
@@ -228,7 +228,7 @@ describe('abilities', () => {
     }))
 
     // Move is blocked — the hero stays put — and the reason reaches the player.
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
     expect((await game.me()).zone).toBe('mid-river')
     expect(
@@ -540,7 +540,7 @@ describe('abilities', () => {
     }))
 
     // Move is blocked — the hero stays put — and the reason reaches the player.
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
     expect((await game.me()).zone).toBe('mid-river')
     expect(game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('hexed'))).toBe(
@@ -647,9 +647,9 @@ describe('abilities', () => {
         },
       },
     }))
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
-    expect((await game.me()).zone).toBe('mid-t1-rad')
+    expect((await game.me()).zone).toBe('mid-t1-chaff')
 
     // Stunned + BKB, co-located with the enemy → the attack still lands.
     await game.patch((s) => ({

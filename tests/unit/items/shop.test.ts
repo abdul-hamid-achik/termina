@@ -68,7 +68,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones: {
       'chaff-fountain': makeZone('chaff-fountain'),
       'chaff-base': makeZone('chaff-base'),
-      'mid-t1-rad': makeZone('mid-t1-rad'),
+      'mid-t1-chaff': makeZone('mid-t1-chaff'),
       'mid-river': makeZone('mid-river'),
       'mid-t1-audit': makeZone('mid-t1-audit'),
     },
@@ -115,7 +115,7 @@ describe('Shop', () => {
     })
 
     it('fails when player is not in a shop zone', async () => {
-      const player = makePlayer({ zone: 'mid-t1-rad' })
+      const player = makePlayer({ zone: 'mid-t1-chaff' })
       const state = makeGameState({ players: { player_1: player } })
 
       const exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
@@ -1063,7 +1063,7 @@ describe('Shop', () => {
         zones: {
           'chaff-fountain': makeZone('chaff-fountain'),
           'mid-river': makeZone('mid-river'),
-          'mid-t1-rad': makeZone('mid-t1-rad', {
+          'mid-t1-chaff': makeZone('mid-t1-chaff', {
             wards: [
               { team: 'chaff', placedTick: 1, expiryTick: 46, type: 'observer' },
               { team: 'chaff', placedTick: 2, expiryTick: 47, type: 'observer' },

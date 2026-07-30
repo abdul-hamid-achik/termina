@@ -185,7 +185,7 @@ export function makeRoshan(overrides: Partial<RoshanState> = {}): RoshanState {
 
 export function makeRune(overrides: Partial<RuneState> = {}): RuneState {
   return {
-    zone: 'rune-top',
+    zone: 'cache-top',
     type: 'dd',
     tick: 240,
     ...overrides,
@@ -251,7 +251,7 @@ export function makeRoster(): Record<string, PlayerState> {
       id: 'p4',
       name: 'proxy_jg',
       heroId: SAMPLE_HEROES.proxy,
-      zone: 'jungle-rad-top',
+      zone: 'silt-chaff-top',
       level: 7,
     }),
     makePlayer({
@@ -295,7 +295,7 @@ export function makeRoster(): Record<string, PlayerState> {
       name: 'firewall_tank',
       team: 'audit',
       heroId: SAMPLE_HEROES.firewall,
-      zone: 'jungle-audit-bot',
+      zone: 'silt-audit-bot',
       level: 7,
     }),
     makePlayer({
@@ -344,7 +344,7 @@ export const SAMPLE_NET_WORTH_HISTORY: { chaff: number[]; audit: number[] } = {
 export const SAMPLE_EVENTS: GameEvent[] = [
   { tick: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'mid-river' } },
   { tick: 239, type: 'tower_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
-  { tick: 240, type: 'rune_spawn', payload: { zone: 'rune-top', rune: 'dd' } },
+  { tick: 240, type: 'rune_spawn', payload: { zone: 'cache-top', rune: 'dd' } },
 ]
 
 /**
@@ -367,7 +367,7 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     towers: [
       makeTower('audit', 'mid-t1-audit', { alive: false, hp: 0 }),
       makeTower('audit', 'mid-t2-audit'),
-      makeTower('chaff', 'mid-t1-rad'),
+      makeTower('chaff', 'mid-t1-chaff'),
     ],
     ancients: { chaff: makeAncient('chaff'), audit: makeAncient('audit') },
     runes: [makeRune()],

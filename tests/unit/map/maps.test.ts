@@ -44,9 +44,9 @@ describe('maps', () => {
       for (const id of [
         'chaff-fountain',
         'chaff-base',
-        'mid-t3-rad',
-        'mid-t2-rad',
-        'mid-t1-rad',
+        'mid-t3-chaff',
+        'mid-t2-chaff',
+        'mid-t1-chaff',
         'mid-river',
         'mid-t1-audit',
         'mid-t2-audit',
@@ -62,15 +62,15 @@ describe('maps', () => {
       for (const id of [
         'top-river',
         'bot-river',
-        'rune-top',
-        'rune-bot',
-        'jungle-rad-top',
-        'jungle-rad-bot',
-        'jungle-audit-top',
-        'jungle-audit-bot',
-        'roshan-pit',
-        'top-t3-rad',
-        'bot-t3-rad',
+        'cache-top',
+        'cache-bot',
+        'silt-chaff-top',
+        'silt-chaff-bot',
+        'silt-audit-top',
+        'silt-audit-bot',
+        'hollow',
+        'top-t3-chaff',
+        'bot-t3-chaff',
       ]) {
         expect(ids.has(id), `${id} must NOT be in one_lane`).toBe(false)
       }
@@ -97,7 +97,7 @@ describe('maps', () => {
     const ids = new Set(TWO_LANE_ZONES.map((z) => z.id))
     const byId = new Map<string, Zone>(TWO_LANE_ZONES.map((z) => [z.id, z]))
 
-    it('contains exactly the top + mid lanes, their jungles, rune-top, and roshan', () => {
+    it('contains exactly the top + mid lanes, their jungles, cache-top, and roshan', () => {
       // 4 bases/fountains + 7 top lane + 7 mid lane + 2 jungles + 2 objectives = 22
       expect(TWO_LANE_ZONES).toHaveLength(22)
       for (const id of [
@@ -106,27 +106,27 @@ describe('maps', () => {
         'chaff-base',
         'audit-base',
         // Top lane chain
-        'top-t3-rad',
-        'top-t2-rad',
-        'top-t1-rad',
+        'top-t3-chaff',
+        'top-t2-chaff',
+        'top-t1-chaff',
         'top-river',
         'top-t1-audit',
         'top-t2-audit',
         'top-t3-audit',
         // Mid lane chain
-        'mid-t3-rad',
-        'mid-t2-rad',
-        'mid-t1-rad',
+        'mid-t3-chaff',
+        'mid-t2-chaff',
+        'mid-t1-chaff',
         'mid-river',
         'mid-t1-audit',
         'mid-t2-audit',
         'mid-t3-audit',
         // Top-side jungle
-        'jungle-rad-top',
-        'jungle-audit-top',
+        'silt-chaff-top',
+        'silt-audit-top',
         // Top-side river objectives
-        'rune-top',
-        'roshan-pit',
+        'cache-top',
+        'hollow',
       ]) {
         expect(ids.has(id), `expected ${id} in two_lane`).toBe(true)
       }
@@ -134,16 +134,16 @@ describe('maps', () => {
 
     it('excludes the entire bot lane and bot-side objectives', () => {
       for (const id of [
-        'bot-t3-rad',
-        'bot-t2-rad',
-        'bot-t1-rad',
+        'bot-t3-chaff',
+        'bot-t2-chaff',
+        'bot-t1-chaff',
         'bot-river',
         'bot-t1-audit',
         'bot-t2-audit',
         'bot-t3-audit',
-        'jungle-rad-bot',
-        'jungle-audit-bot',
-        'rune-bot',
+        'silt-chaff-bot',
+        'silt-audit-bot',
+        'cache-bot',
       ]) {
         expect(ids.has(id), `${id} must NOT be in two_lane`).toBe(false)
       }
@@ -183,9 +183,9 @@ describe('maps', () => {
 
     it('still allows a full mid-lane path from chaff-base to audit-base', () => {
       const mid = [
-        'mid-t3-rad',
-        'mid-t2-rad',
-        'mid-t1-rad',
+        'mid-t3-chaff',
+        'mid-t2-chaff',
+        'mid-t1-chaff',
         'mid-river',
         'mid-t1-audit',
         'mid-t2-audit',
@@ -198,9 +198,9 @@ describe('maps', () => {
 
     it('still allows a full top-lane path from chaff-base to audit-base', () => {
       const top = [
-        'top-t3-rad',
-        'top-t2-rad',
-        'top-t1-rad',
+        'top-t3-chaff',
+        'top-t2-chaff',
+        'top-t1-chaff',
         'top-river',
         'top-t1-audit',
         'top-t2-audit',

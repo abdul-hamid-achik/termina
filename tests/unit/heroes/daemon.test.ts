@@ -74,10 +74,10 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     zones: {
       'mid-river': { id: 'mid-river', wards: [], creeps: [] },
       'top-river': { id: 'top-river', wards: [], creeps: [] },
-      'mid-t1-rad': { id: 'mid-t1-rad', wards: [], creeps: [] },
+      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], creeps: [] },
       'mid-t1-audit': { id: 'mid-t1-audit', wards: [], creeps: [] },
-      'rune-top': { id: 'rune-top', wards: [], creeps: [] },
-      'rune-bot': { id: 'rune-bot', wards: [], creeps: [] },
+      'cache-top': { id: 'cache-top', wards: [], creeps: [] },
+      'cache-bot': { id: 'cache-bot', wards: [], creeps: [] },
     },
     creeps: [],
     towers: [],
@@ -325,10 +325,10 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'rune-top' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-top' }),
       )
 
-      expect(result.state.players['p1']!.zone).toBe('rune-top')
+      expect(result.state.players['p1']!.zone).toBe('cache-top')
     })
 
     it('requires level 6+ for R', () => {
@@ -336,7 +336,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSyncExit(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'rune-top' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-top' }),
       )
 
       expect(result._tag).toBe('Failure')
@@ -347,7 +347,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'rune-top' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-top' }),
       )
 
       const updated = result.state.players['p1']!
@@ -366,7 +366,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'rune-top' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-top' }),
       )
 
       expect(hasBuff(result.state.players['p1']!, 'stealth')).toBe(false)
@@ -383,7 +383,7 @@ describe('Daemon Hero', () => {
       const state = makeState([player])
 
       const result = Effect.runSync(
-        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'rune-top' }),
+        resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'cache-top' }),
       )
 
       // R_COOLDOWN (60) − 10

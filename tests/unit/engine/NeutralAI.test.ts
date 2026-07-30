@@ -15,7 +15,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -98,12 +98,7 @@ describe('NeutralAI', () => {
 
     it('should spawn neutrals in jungle zones', () => {
       const neutrals = spawnNeutralCreeps(60)
-      const jungleZones = [
-        'jungle-rad-top',
-        'jungle-rad-bot',
-        'jungle-audit-top',
-        'jungle-audit-bot',
-      ]
+      const jungleZones = ['silt-chaff-top', 'silt-chaff-bot', 'silt-audit-top', 'silt-audit-bot']
 
       for (const neutral of neutrals) {
         expect(jungleZones).toContain(neutral.zone)
@@ -126,7 +121,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
             type: 'kobold',
@@ -134,7 +129,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'jungle-rad-top', hp: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', hp: 500 }),
         },
       })
 
@@ -149,7 +144,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
             type: 'kobold',
@@ -170,7 +165,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 0,
             maxHp: 100,
             type: 'kobold',
@@ -178,7 +173,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'jungle-rad-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top' }),
         },
       })
 
@@ -193,7 +188,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
             type: 'kobold',
@@ -201,7 +196,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'jungle-rad-top', hp: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', hp: 500 }),
         },
       })
 
@@ -220,7 +215,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
             type: 'kobold',
@@ -228,7 +223,7 @@ describe('NeutralAI', () => {
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'jungle-rad-top', hp: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', hp: 500 }),
         },
       })
 
@@ -256,7 +251,7 @@ describe('NeutralAI', () => {
         neutrals: [
           {
             id: 'neutral_1',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
             type: 'kobold',
@@ -266,7 +261,7 @@ describe('NeutralAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 500,
             buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
           }),

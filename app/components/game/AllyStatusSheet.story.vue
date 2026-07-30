@@ -42,7 +42,7 @@ const allies: PlayerState[] = [
     name: 'socket_sup',
     team: 'chaff',
     heroId: SAMPLE_HEROES.socket,
-    zone: 'jungle-audit-bot',
+    zone: 'silt-audit-bot',
     hp: 90,
     maxHp: 520,
     level: 9,

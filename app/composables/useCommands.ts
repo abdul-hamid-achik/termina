@@ -58,7 +58,7 @@ export function buybackCostFor(player: PlayerState): number {
 }
 
 /** The one zone Roshan can be attacked from (mirrors ActionResolver's gate). */
-const ROSHAN_ZONE = 'roshan-pit'
+const ROSHAN_ZONE = 'hollow'
 
 const SUPPORTIVE_EFFECTS = new Set(['heal', 'shield', 'buff'])
 const OFFENSIVE_EFFECTS = new Set([
@@ -317,27 +317,25 @@ const ZONE_ALIASES: Record<string, string> = {
   top: 'top-river',
   bot: 'bot-river',
   // Full lane paths
-  'top-lane': 'top-t1-rad',
+  'top-lane': 'top-t1-chaff',
   'mid-lane': 'mid-river',
   'bot-lane': 'bot-river',
-  // Jungles
-  'jg-rad': 'jungle-rad-top',
-  'jg-chaff': 'jungle-rad-top',
-  'jg-audit': 'jungle-audit-top',
-  'jungle-rad': 'jungle-rad-top',
-  'jungle-audit': 'jungle-audit-top',
+  // Jungles — the Silt
+  'jg-chaff': 'silt-chaff-top',
+  'jg-audit': 'silt-audit-top',
+  'silt-chaff': 'silt-chaff-top',
+  'silt-audit': 'silt-audit-top',
   // Bases
   base: 'chaff-base',
   fountain: 'chaff-fountain',
-  // Roshan
-  roshan: 'roshan-pit',
-  rosh: 'roshan-pit',
-  // Runes. There is deliberately no bare `rune` alias: it used to point at
-  // mid-river, a zone with no rune in it, so `move rune` walked you past both.
-  'rune-top': 'rune-top',
-  'rune-bot': 'rune-bot',
-  rt: 'rune-top',
-  rb: 'rune-bot',
+  // The Tenant's pit
+  hollow: 'hollow',
+  // Cache drops. There is deliberately no bare `cache` alias: it used to point
+  // at mid-river, a zone with no cache in it, so `move cache` walked you past both.
+  'cache-top': 'cache-top',
+  'cache-bot': 'cache-bot',
+  rt: 'cache-top',
+  rb: 'cache-bot',
 }
 
 function parseTarget(raw: string): TargetRef | null {
@@ -627,6 +625,13 @@ function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
 function ambiguousZoneError(zoneInput: string): string | null {
   if (ZONE_IDS.includes(zoneInput) || zoneInput === 'base' || zoneInput === 'fountain') return null
   if (ZONE_ALIASES[zoneInput]) return null
+  // Legacy word from the old vocabulary: `rune` matched both rune spots. The
+  // spots are cache-top/cache-bot now, but a player who types `move rune` still
+  // means "a cache drop" — guide them to both rather than dumping a raw prefix
+  // on the server (which would burn their one action on a rejection).
+  if (zoneInput === 'rune') {
+    return `"rune" is ambiguous — did you mean cache-top or cache-bot?`
+  }
   const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
   if (matches.length < 2) return null
   return matches.length > 3
@@ -668,7 +673,7 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack roshan, attack tower:mid-t1-rad, attack ancient)',
+              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack roshan, attack tower:mid-t1-chaff, attack ancient)',
           }
         const target = parseTarget(targetStr)
         if (!target)
@@ -1008,7 +1013,7 @@ export function useCommands() {
     const team = context.player?.team ?? 'chaff'
 
     // An exact alias outranks every prefix match: `mid` means the river, and
-    // burying it under `mid-t3-rad` (first in zone order) walked players into
+    // burying it under `mid-t3-chaff` (first in zone order) walked players into
     // their OWN tier-3 tower the moment Enter accepted the top suggestion.
     const exact = partial ? resolveZoneAlias(partial, team) : ''
     if (exact !== partial && zonePool.includes(exact) && ZONE_MAP[exact]) {
@@ -1019,6 +1024,15 @@ export function useCommands() {
     const prefixMatches = zonePool.filter((id) => id.startsWith(partial))
     for (const id of prefixMatches) {
       suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
+    }
+
+    // Legacy word: `rune` matched both rune spots — offer the cache drops.
+    if (partial === 'rune') {
+      for (const id of zonePool.filter((z) => z.startsWith('cache-'))) {
+        if (!suggestions.some((s) => s.text === id)) {
+          suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
+        }
+      }
     }
 
     // Then add substring matches that aren't prefix matches

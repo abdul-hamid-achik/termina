@@ -32,7 +32,7 @@ export interface NarrativeContext {
   heroIdOf: (id: unknown) => string | undefined
   /** Item display name for an item id. */
   itemName: (id: string) => string
-  /** Human zone name for a zone id ("mid-t2-rad" → "Coldstore T2 (CHAFF)").
+  /** Human zone name for a zone id ("mid-t2-chaff" → "Coldstore T2 (CHAFF)").
    *  Optional — raw ids pass through when absent (older callers/tests). */
   zoneName?: (id: string) => string
 }

@@ -34,8 +34,8 @@ function zonePositions(mapId?: string): Map<string, [number, number]> {
  * A candidate must lie inside a 45° cone around the pressed axis (`perp <=
  * along`), so a press can never move backwards or sideways. Among candidates,
  * straight-ahead wins before nearest: ranking by distance first would answer
- * ArrowUp from `mid-river` with the diagonal `rune-top` instead of walking the
- * lane to `mid-t1-rad`.
+ * ArrowUp from `mid-river` with the diagonal `cache-top` instead of walking the
+ * lane to `mid-t1-chaff`.
  *
  * Returns null when nothing lies that way — the caller reports that rather than
  * shoving the hero into an arbitrary (often wrong) zone.

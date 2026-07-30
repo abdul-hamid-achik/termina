@@ -125,7 +125,7 @@ describe('combatLog helpers', () => {
     })
 
     it('returns null for non-ancient ids', () => {
-      expect(ancientLabel('tower_mid-t1-rad')).toBeNull()
+      expect(ancientLabel('tower_mid-t1-chaff')).toBeNull()
       expect(ancientLabel('github_7379966')).toBeNull()
       expect(ancientLabel('creep_3')).toBeNull()
     })

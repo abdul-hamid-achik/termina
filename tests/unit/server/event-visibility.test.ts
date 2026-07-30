@@ -80,17 +80,15 @@ const talentSelected = (playerId: string): GameEngineEvent =>
 
 describe('isEventVisibleToPlayer — enemy-info leaks', () => {
   it('hides an enemy jungle kill unless you can see the camp', () => {
-    const ev = neutralKilled('enemy', 'jungle-audit-bot')
+    const ev = neutralKilled('enemy', 'silt-audit-bot')
     expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(false)
-    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['jungle-audit-bot']), state)).toBe(
-      true,
-    )
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['silt-audit-bot']), state)).toBe(true)
   })
 
   it('always shows your own / allied jungle kills (own gold/xp + shared vision)', () => {
     expect(
       isEventVisibleToPlayer(
-        neutralKilled('me', 'jungle-rad-top'),
+        neutralKilled('me', 'silt-chaff-top'),
         'me',
         'chaff',
         new Set(),
@@ -99,7 +97,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
     ).toBe(true)
     expect(
       isEventVisibleToPlayer(
-        neutralKilled('ally', 'jungle-rad-bot'),
+        neutralKilled('ally', 'silt-chaff-bot'),
         'me',
         'chaff',
         new Set(),
@@ -207,7 +205,7 @@ describe('isEventVisibleToPlayer — ability / ward / rune', () => {
       vis(
         ev('ward_placed', {
           playerId: 'ally',
-          zone: 'rune-top',
+          zone: 'cache-top',
           team: 'chaff',
           wardType: 'observer',
         }),
@@ -217,31 +215,33 @@ describe('isEventVisibleToPlayer — ability / ward / rune', () => {
       vis(
         ev('ward_placed', {
           playerId: 'enemy',
-          zone: 'rune-bot',
+          zone: 'cache-bot',
           team: 'audit',
           wardType: 'observer',
         }),
-        ['rune-top'],
+        ['cache-top'],
       ),
     ).toBe(false)
     expect(
       vis(
         ev('ward_placed', {
           playerId: 'enemy',
-          zone: 'rune-bot',
+          zone: 'cache-bot',
           team: 'audit',
           wardType: 'observer',
         }),
-        ['rune-bot'],
+        ['cache-bot'],
       ),
     ).toBe(true)
   })
   it('rune_picked: own always, otherwise only when the rune zone is visible', () => {
-    expect(vis(ev('rune_picked', { playerId: 'me', zone: 'rune-top' }))).toBe(true)
-    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'rune-bot' }), ['rune-top'])).toBe(
+    expect(vis(ev('rune_picked', { playerId: 'me', zone: 'cache-top' }))).toBe(true)
+    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-top'])).toBe(
       false,
     )
-    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'rune-bot' }), ['rune-bot'])).toBe(true)
+    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-bot'])).toBe(
+      true,
+    )
   })
 })
 

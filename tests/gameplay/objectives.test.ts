@@ -12,7 +12,7 @@ describe('objectives: Roshan & aegis', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'roshan-pit' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'hollow' } },
       // Roshan alive at 1 HP — any basic attack finishes it.
       roshan: { ...s.roshan, alive: true, hp: 1 },
       aegis: null,
@@ -24,7 +24,7 @@ describe('objectives: Roshan & aegis', () => {
     const state = await game.state()
     expect(state.roshan.alive).toBe(false)
     expect(state.aegis).not.toBeNull()
-    expect(state.aegis?.zone).toBe('roshan-pit')
+    expect(state.aegis?.zone).toBe('hollow')
     expect(game.lastEvents.some((e) => e._tag === 'roshan_killed')).toBe(true)
   })
 
@@ -54,8 +54,8 @@ describe('objectives: Roshan & aegis', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'roshan-pit', buffs: [] } },
-      aegis: { zone: 'roshan-pit', tick: s.tick, holderId: null },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'hollow', buffs: [] } },
+      aegis: { zone: 'hollow', tick: s.tick, holderId: null },
     }))
 
     game.submit({ type: 'aegis' })
@@ -102,8 +102,8 @@ describe('objectives: runes', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'rune-top', buffs: [] } },
-      runes: [{ zone: 'rune-top', type: 'haste', tick: s.tick }],
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
+      runes: [{ zone: 'cache-top', type: 'haste', tick: s.tick }],
     }))
 
     game.submit({ type: 'rune' })
@@ -112,7 +112,7 @@ describe('objectives: runes', () => {
     const me = await game.me()
     expect(me.buffs.some((b) => b.id === 'haste')).toBe(true)
     const state = await game.state()
-    expect(state.runes.some((r) => r.zone === 'rune-top')).toBe(false) // consumed
+    expect(state.runes.some((r) => r.zone === 'cache-top')).toBe(false) // consumed
     expect(game.lastEvents.some((e) => e._tag === 'rune_picked' && e.playerId === HUMAN)).toBe(true)
   })
 
@@ -120,8 +120,8 @@ describe('objectives: runes', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'rune-top', buffs: [] } },
-      runes: [{ zone: 'rune-top', type: 'dd', tick: s.tick }],
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
+      runes: [{ zone: 'cache-top', type: 'dd', tick: s.tick }],
     }))
 
     game.submit({ type: 'rune' })
@@ -141,10 +141,10 @@ describe('objectives: jungle neutrals', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'jungle-rad-top' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
       // A kobold at 1 HP — one basic attack finishes it (bounty 20g / 25xp).
       neutrals: [
-        { id: 'camp0', zone: 'jungle-rad-top', hp: 1, maxHp: 250, type: 'kobold', alive: true },
+        { id: 'camp0', zone: 'silt-chaff-top', hp: 1, maxHp: 250, type: 'kobold', alive: true },
       ],
     }))
 
@@ -168,7 +168,7 @@ describe('objectives: jungle neutrals', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
       neutrals: [
-        { id: 'camp0', zone: 'jungle-rad-top', hp: 100, maxHp: 250, type: 'kobold', alive: true },
+        { id: 'camp0', zone: 'silt-chaff-top', hp: 100, maxHp: 250, type: 'kobold', alive: true },
       ],
     }))
 

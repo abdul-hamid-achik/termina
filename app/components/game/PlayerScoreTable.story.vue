@@ -53,7 +53,7 @@ const liveTeam: PlayerScoreRow[] = [
     deaths: 4,
     assists: 3,
     gold: 3110,
-    zone: 'top-t2-rad',
+    zone: 'top-t2-chaff',
     alive: true,
     aiControlled: true,
   },

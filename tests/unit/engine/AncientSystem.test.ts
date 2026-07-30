@@ -85,7 +85,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 
 /** State where the named team's mid T3 tower is destroyed. */
 function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
-  const zone = team === 'chaff' ? 'mid-t3-rad' : 'mid-t3-audit'
+  const zone = team === 'chaff' ? 'mid-t3-chaff' : 'mid-t3-audit'
   return {
     ...state,
     towers: state.towers.map((t) => (t.zone === zone ? { ...t, hp: 0, alive: false } : t)),
@@ -110,7 +110,7 @@ describe('AncientSystem', () => {
     it('round-trips ancient target ids', () => {
       expect(parseAncientTargetId(ancientTargetId('chaff'))).toBe('chaff')
       expect(parseAncientTargetId(ancientTargetId('audit'))).toBe('audit')
-      expect(parseAncientTargetId('tower_mid-t1-rad')).toBeNull()
+      expect(parseAncientTargetId('tower_mid-t1-chaff')).toBeNull()
       expect(parseAncientTargetId('p1')).toBeNull()
     })
 

@@ -14,8 +14,8 @@ describe('one-lane map', () => {
 
     expect(s.mapId).toBe('one_lane')
     expect(Object.keys(s.zones).length).toBe(11)
-    expect(s.zones['top-t3-rad']).toBeUndefined() // dropped lanes don't exist
-    expect(s.zones['roshan-pit']).toBeUndefined()
+    expect(s.zones['top-t3-chaff']).toBeUndefined() // dropped lanes don't exist
+    expect(s.zones['hollow']).toBeUndefined()
 
     expect(s.towers.length).toBe(6)
     expect(s.towers.every((t) => t.zone.startsWith('mid-'))).toBe(true)
@@ -26,7 +26,13 @@ describe('one-lane map', () => {
     expect((await game.me()).zone).toBe('chaff-fountain')
 
     // fountain → base → down the mid lane to the river, one hop per tick.
-    for (const zone of ['chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']) {
+    for (const zone of [
+      'chaff-base',
+      'mid-t3-chaff',
+      'mid-t2-chaff',
+      'mid-t1-chaff',
+      'mid-river',
+    ]) {
       game.submit({ type: 'move', zone })
       await game.tick()
       expect((await game.me()).zone).toBe(zone)
@@ -38,10 +44,10 @@ describe('one-lane map', () => {
     game.submit({ type: 'move', zone: 'chaff-base' })
     await game.tick()
 
-    // chaff-base is globally adjacent to top-t3-rad, but that zone isn't on the
+    // chaff-base is globally adjacent to top-t3-chaff, but that zone isn't on the
     // one-lane map — no path exists inside this map's zone set, so the move must
     // be refused (auto-path included), not step into an uninitialized zone.
-    game.submit({ type: 'move', zone: 'top-t3-rad' })
+    game.submit({ type: 'move', zone: 'top-t3-chaff' })
     await game.tick()
 
     expect((await game.me()).zone).toBe('chaff-base') // stayed put

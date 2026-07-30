@@ -52,10 +52,10 @@ describe('Zone Constants', () => {
       expect(rivers).toHaveLength(5)
     })
 
-    it('has exactly 1 objective zone (roshan-pit)', () => {
+    it('has exactly 1 objective zone (hollow)', () => {
       const objectives = ZONES.filter((z) => z.type === 'objective')
       expect(objectives).toHaveLength(1)
-      expect(objectives[0]!.id).toBe('roshan-pit')
+      expect(objectives[0]!.id).toBe('hollow')
     })
   })
 
@@ -89,7 +89,7 @@ describe('Zone Constants', () => {
     it('lane zones belong to correct team based on suffix', () => {
       const lanes = ZONES.filter((z) => z.type === 'lane')
       for (const l of lanes) {
-        if (l.id.endsWith('-rad')) expect(l.team).toBe('chaff')
+        if (l.id.endsWith('-chaff')) expect(l.team).toBe('chaff')
         else if (l.id.endsWith('-audit')) expect(l.team).toBe('audit')
       }
     })
@@ -168,23 +168,23 @@ describe('Zone Constants', () => {
   })
 
   describe('map layout validation', () => {
-    it('roshan pit is reachable only from rune-top', () => {
-      const rosh = ZONE_MAP['roshan-pit']!
-      expect(rosh.adjacentTo).toEqual(['rune-top'])
+    it('roshan pit is reachable only from cache-top', () => {
+      const rosh = ZONE_MAP['hollow']!
+      expect(rosh.adjacentTo).toEqual(['cache-top'])
     })
 
     it('rune spots connect to river crossings and jungles', () => {
-      const runeTop = ZONE_MAP['rune-top']!
+      const runeTop = ZONE_MAP['cache-top']!
       expect(runeTop.adjacentTo).toContain('top-river')
       expect(runeTop.adjacentTo).toContain('mid-river')
-      expect(runeTop.adjacentTo).toContain('jungle-rad-top')
-      expect(runeTop.adjacentTo).toContain('jungle-audit-top')
+      expect(runeTop.adjacentTo).toContain('silt-chaff-top')
+      expect(runeTop.adjacentTo).toContain('silt-audit-top')
 
-      const runeBot = ZONE_MAP['rune-bot']!
+      const runeBot = ZONE_MAP['cache-bot']!
       expect(runeBot.adjacentTo).toContain('bot-river')
       expect(runeBot.adjacentTo).toContain('mid-river')
-      expect(runeBot.adjacentTo).toContain('jungle-rad-bot')
-      expect(runeBot.adjacentTo).toContain('jungle-audit-bot')
+      expect(runeBot.adjacentTo).toContain('silt-chaff-bot')
+      expect(runeBot.adjacentTo).toContain('silt-audit-bot')
     })
 
     it('fountains connect only to their base', () => {
@@ -195,9 +195,9 @@ describe('Zone Constants', () => {
     it('bases connect to fountain and all three T3 zones', () => {
       const radBase = ZONE_MAP['chaff-base']!
       expect(radBase.adjacentTo).toContain('chaff-fountain')
-      expect(radBase.adjacentTo).toContain('top-t3-rad')
-      expect(radBase.adjacentTo).toContain('mid-t3-rad')
-      expect(radBase.adjacentTo).toContain('bot-t3-rad')
+      expect(radBase.adjacentTo).toContain('top-t3-chaff')
+      expect(radBase.adjacentTo).toContain('mid-t3-chaff')
+      expect(radBase.adjacentTo).toContain('bot-t3-chaff')
       expect(radBase.adjacentTo).toHaveLength(4)
 
       const auditBase = ZONE_MAP['audit-base']!

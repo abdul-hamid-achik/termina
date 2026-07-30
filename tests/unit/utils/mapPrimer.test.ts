@@ -33,6 +33,6 @@ describe('buildMapPrimerZones', () => {
   })
 
   it('marks Roshan alive on the pit', () => {
-    expect(zones.find((z) => z.id === 'roshan-pit')!.roshan).toEqual({ alive: true, respawnIn: 0 })
+    expect(zones.find((z) => z.id === 'hollow')!.roshan).toEqual({ alive: true, respawnIn: 0 })
   })
 })

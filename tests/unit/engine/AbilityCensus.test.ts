@@ -22,7 +22,7 @@ import { resolveAbility } from '~~/server/game/heroes'
 import { HEROES } from '~~/shared/constants/heroes'
 
 const ZONE = 'mid-river'
-const ADJ = 'mid-t1-rad'
+const ADJ = 'mid-t1-chaff'
 
 function mkPlayer(
   id: string,

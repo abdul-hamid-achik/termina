@@ -70,7 +70,7 @@ describe('standing attack orders', () => {
     await game.tick()
     expect((await game.me()).attackTarget).toEqual({ kind: 'hero', name: ENEMY })
 
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
     expect((await game.me()).attackTarget ?? null).toBeNull()
   })

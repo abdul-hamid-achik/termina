@@ -50,7 +50,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'bot_alpha',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -270,22 +270,22 @@ describe('BotAI - decideBotAction', () => {
 
   describe('retreat behavior', () => {
     it('retreats to fountain when HP is below 25%', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 100, maxHp: 500 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 100, maxHp: 500 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).not.toBeNull()
       expect(action!.type).toBe('move')
       if (action!.type === 'move') {
-        expect(action!.zone).toBe('mid-t2-rad')
+        expect(action!.zone).toBe('mid-t2-chaff')
       }
     })
 
     it('does not retreat when HP is above retreat threshold', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 180, maxHp: 500 }) // 36% HP
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 180, maxHp: 500 }) // 36% HP
       const allyCreep = {
         id: 'c1',
         team: 'chaff' as const,
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 300,
         type: 'melee' as const,
       }
@@ -296,12 +296,12 @@ describe('BotAI - decideBotAction', () => {
       expect(action!.type).toBe('move')
       // Should advance along lane (forward), not retreat (backward toward base)
       if (action!.type === 'move') {
-        expect(action!.zone).toBe('mid-river') // forward, not mid-t2-rad (backward)
+        expect(action!.zone).toBe('mid-river') // forward, not mid-t2-chaff (backward)
       }
     })
 
     it('holds position at the frontier without creep support', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       // Next zone is mid-river (neutral territory) and no allied creeps — wait
       expect(decideBotAction(state, bot, 'mid')).toBeNull()
@@ -311,7 +311,7 @@ describe('BotAI - decideBotAction', () => {
       // A slowed retreat-move has up to an 80% chance to fizzle, leaving the bot
       // to die. Blink ignores the slow, so it should escape with the item instead.
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
         items: ['blink_module', null, null, null, null, null],
@@ -319,14 +319,14 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-rad' })
+      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-chaff' })
     })
 
     it('walks (saving the Blink) when retreating unimpaired', () => {
       // No slow/root — a normal move is free and certain, so don't waste the
       // 12-tick Blink cooldown.
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
         items: ['blink_module', null, null, null, null, null],
@@ -334,14 +334,14 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'move', zone: 'mid-t2-rad' })
+      expect(action).toEqual({ type: 'move', zone: 'mid-t2-chaff' })
     })
 
     it('uses Force Staff to escape a slow when it has no Blink', () => {
       // Force Staff auto-disengages toward our fountain — a second escape tool
       // that, like Blink, ignores the slow. No target needed (it aims home).
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
         items: ['force_staff', null, null, null, null, null],
@@ -354,7 +354,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('prefers Blink over Force Staff when holding both (exact retreat zone)', () => {
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
         items: ['blink_module', 'force_staff', null, null, null, null],
@@ -362,7 +362,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-rad' })
+      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-chaff' })
     })
   })
 
@@ -613,10 +613,10 @@ describe('BotAI - decideBotAction', () => {
 
   describe('combat - creep targeting', () => {
     it('aims at the lowest-HP enemy creep when the last-hit roll lands', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
-        { id: 'creep-2', team: 'audit', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
+        { id: 'creep-2', team: 'audit', zone: 'mid-t1-chaff', hp: 50, type: 'ranged' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       // `unfair` is lastHitAccuracy 1.0 — the roll can never fail.
@@ -629,11 +629,11 @@ describe('BotAI - decideBotAction', () => {
       // roll was the original standstill bug: bots stopped out-clearing the
       // incoming wave and never reached a tower (see BotForwardProgress).
       // Tick 30's lasthit roll is 0.91, above every accuracy below `unfair`.
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
-        { id: 'creep-2', team: 'audit', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
-        { id: 'creep-3', team: 'audit', zone: 'mid-t1-rad', hp: 120, type: 'melee' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
+        { id: 'creep-2', team: 'audit', zone: 'mid-t1-chaff', hp: 50, type: 'ranged' },
+        { id: 'creep-3', team: 'audit', zone: 'mid-t1-chaff', hp: 120, type: 'melee' },
       ]
       const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
       expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
@@ -648,9 +648,9 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('still swings at a lone creep on a missed roll (no second-lowest to fall back to)', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
       ]
       const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
       expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
@@ -660,9 +660,9 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('ignores friendly creeps', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 100, type: 'melee' },
+        { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 100, type: 'melee' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       const action = decideBotAction(state, bot, 'mid')
@@ -674,9 +674,9 @@ describe('BotAI - decideBotAction', () => {
       // A high-HP enemy creep (no guaranteed last hit) must still draw an
       // attack — the old code returned null on a failed last-hit roll, leaving
       // bots idling in lane instead of pushing the wave.
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       const action = decideBotAction(state, bot, 'mid')
@@ -713,11 +713,11 @@ describe('BotAI - decideBotAction', () => {
 
   describe('movement - lane pathing', () => {
     it('moves forward along assigned lane with creep support', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const allyCreep = {
         id: 'c1',
         team: 'chaff' as const,
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 300,
         type: 'melee' as const,
       }
@@ -727,10 +727,10 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('advances freely on its own side of the map', () => {
-      const bot = makePlayer({ zone: 'mid-t3-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t3-chaff', hp: 400, maxHp: 500, mp: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'move', zone: 'mid-t2-rad' })
+      expect(action).toEqual({ type: 'move', zone: 'mid-t2-chaff' })
     })
 
     it('advances across the frontier to join a wave waiting one zone ahead', () => {
@@ -738,7 +738,7 @@ describe('BotAI - decideBotAction', () => {
       // but none co-located. The old standstill only checked the bot's CURRENT
       // zone for creep support, so it froze here; forward progress now follows
       // the wave ahead so the bot pushes out of its own half.
-      const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
         { id: 'wave-1', team: 'chaff', zone: 'mid-river', hp: 300, type: 'melee' },
       ]
@@ -748,10 +748,10 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('moves toward lane start when off-lane', () => {
-      const bot = makePlayer({ zone: 'jungle-rad-top', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'silt-chaff-top', hp: 400, maxHp: 500, mp: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      // Should pathfind toward mid-t3-rad (the first lane zone after fountain/base)
+      // Should pathfind toward mid-t3-chaff (the first lane zone after fountain/base)
       expect(action).not.toBeNull()
       expect(action!.type).toBe('move')
     })
@@ -843,15 +843,15 @@ describe('BotAI - decideBotAction', () => {
 
   describe('talent selection', () => {
     it('banks an unlocked talent during a lull (no enemy hero in zone)', () => {
-      // mid-t1-rad lane, level 10, no talents, full HP, no enemies → pick tier 10.
-      const bot = makePlayer({ zone: 'mid-t1-rad', level: 10 })
+      // mid-t1-chaff lane, level 10, no talents, full HP, no enemies → pick tier 10.
+      const bot = makePlayer({ zone: 'mid-t1-chaff', level: 10 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'select_talent', tier: 10, talentId: 'echo_10_left' })
     })
 
     it('does not pick a talent before reaching the tier', () => {
-      const bot = makePlayer({ zone: 'mid-t1-rad', level: 9 })
+      const bot = makePlayer({ zone: 'mid-t1-chaff', level: 9 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action?.type).not.toBe('select_talent')
@@ -859,7 +859,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('advances to the next unchosen tier', () => {
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         level: 16,
         talents: { tier10: 'echo_10_left', tier15: null, tier20: null, tier25: null },
       })
@@ -934,7 +934,7 @@ describe('BotAI - decideBotAction', () => {
   describe('rune pickup', () => {
     it('issues a rune command when standing on a rune (not a wasted Q cast)', () => {
       const bot = makePlayer({
-        zone: 'rune-top',
+        zone: 'cache-top',
         hp: 500,
         maxHp: 500,
         mp: 300,
@@ -942,7 +942,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({
         players: { [bot.id]: bot },
-        runes: [{ zone: 'rune-top', type: 'haste', tick: 5 }],
+        runes: [{ zone: 'cache-top', type: 'haste', tick: 5 }],
       })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'rune' })
@@ -1069,7 +1069,7 @@ describe('BotAI - decideBotAction', () => {
   describe('defensive consumables', () => {
     it('pops a healing salve when hurt and out of combat', () => {
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 250,
         maxHp: 500,
         items: ['healing_salve', null, null, null, null, null],
@@ -1081,7 +1081,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('does not re-pop a salve while regen is already active', () => {
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 250,
         maxHp: 500,
         items: ['healing_salve', null, null, null, null, null],
@@ -1121,7 +1121,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('walks home instead of TPing when already near the fountain', () => {
       const bot = makePlayer({
-        zone: 'mid-t3-rad',
+        zone: 'mid-t3-chaff',
         hp: 100,
         maxHp: 500,
         items: ['town_portal_scroll', null, null, null, null, null],
@@ -1133,7 +1133,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('stands still while channeling a teleport', () => {
       const bot = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
         buffs: [
@@ -1687,19 +1687,19 @@ describe('BotAI - panic survival items (retreat branch)', () => {
     // 20% HP (below the medium retreat threshold) with an enemy in zone → the
     // retreat branch runs; it can't TP through combat, so it pops the panic item.
     const bot = makePlayer({
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
       hp: 100,
       maxHp: 500,
       items: inv('black_king_bar'),
     })
-    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'audit', zone: 'mid-t1-rad' })
+    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'audit', zone: 'mid-t1-chaff' })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
   })
 
   it('decideBotAction: a chased bot with no panic item still walks toward the fountain', () => {
-    const bot = makePlayer({ zone: 'mid-t1-rad', hp: 100, maxHp: 500, items: inv() })
-    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'audit', zone: 'mid-t1-rad' })
+    const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 100, maxHp: 500, items: inv() })
+    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'audit', zone: 'mid-t1-chaff' })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     const action = decideBotAction(state, bot, 'mid')
     expect(action?.type).toBe('move')
@@ -1721,36 +1721,36 @@ describe('BotAI - warding', () => {
   }
 
   it('returns null without an Observer Ward in inventory', () => {
-    const bot = makePlayer({ zone: 'rune-top', items: inv() })
+    const bot = makePlayer({ zone: 'cache-top', items: inv() })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toBeNull()
   })
 
   it('wards the strategic zone the bot is standing in', () => {
-    const bot = makePlayer({ zone: 'rune-top', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'cache-top', items: inv('observer_ward') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
       type: 'ward',
-      zone: 'rune-top',
+      zone: 'cache-top',
     })
   })
 
-  it('wards an adjacent strategic zone (top-river → rune-top)', () => {
+  it('wards an adjacent strategic zone (top-river → cache-top)', () => {
     const bot = makePlayer({ zone: 'top-river', items: inv('observer_ward') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
       type: 'ward',
-      zone: 'rune-top',
+      zone: 'cache-top',
     })
   })
 
   it('does not re-ward a strategic zone the team already covers', () => {
-    const bot = makePlayer({ zone: 'rune-top', items: inv('observer_ward') })
-    const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('rune-top', 1) })
+    const bot = makePlayer({ zone: 'cache-top', items: inv('observer_ward') })
+    const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('cache-top', 1) })
     expect(tryPlaceWard(state, bot)).toBeNull()
   })
 
   it('holds the ward when the team is already at the ward limit', () => {
-    const bot = makePlayer({ zone: 'rune-top', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'cache-top', items: inv('observer_ward') })
     // 3 chaff wards parked elsewhere → at WARD_LIMIT_PER_TEAM.
-    const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('rune-bot', 3) })
+    const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('cache-bot', 3) })
     expect(tryPlaceWard(state, bot)).toBeNull()
   })
 
@@ -1784,9 +1784,9 @@ describe('BotAI - warding', () => {
   })
 
   it('decideBotAction wires warding into a calm tick', () => {
-    const bot = makePlayer({ heroId: 'sentry', zone: 'rune-top', items: inv('observer_ward') })
+    const bot = makePlayer({ heroId: 'sentry', zone: 'cache-top', items: inv('observer_ward') })
     const state = makeGameState({ players: { [bot.id]: bot } })
-    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'ward', zone: 'rune-top' })
+    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'ward', zone: 'cache-top' })
   })
 })
 
@@ -1818,11 +1818,11 @@ describe('BotAI - difficulty actually bites (abilityComboChance)', () => {
 })
 
 describe('BotAI - denying (medium+)', () => {
-  const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-t1-rad', hp: 300 })
+  const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-t1-chaff', hp: 300 })
   /** No mana and every ability parked, so the deny competes with a right-click. */
   const denier = () =>
     makePlayer({
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
       hp: 400,
       maxHp: 500,
       mp: 0,
@@ -1832,8 +1832,8 @@ describe('BotAI - denying (medium+)', () => {
   it('denies the allied creep inside the resolver window, by zone-local index', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, maxHp: 200, type: 'melee' },
-      { id: 'creep-2', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 200, type: 'melee' },
+      { id: 'creep-2', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
@@ -1845,7 +1845,7 @@ describe('BotAI - denying (medium+)', () => {
   it('leaves a healthy allied creep alone (outside DENY_HP_THRESHOLD the deny would no-op)', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 150, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
@@ -1857,7 +1857,7 @@ describe('BotAI - denying (medium+)', () => {
   it('easy bots do not deny (denyAwareness off)', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
@@ -1869,7 +1869,7 @@ describe('BotAI - denying (medium+)', () => {
   it('never denies with no enemy hero around — that just throws away your own wave', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot }, creeps })
     const action = decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))
@@ -1878,9 +1878,9 @@ describe('BotAI - denying (medium+)', () => {
 })
 
 describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
-  const THREATENED = 'top-t1-rad'
+  const THREATENED = 'top-t1-chaff'
 
-  function siege(defenderIds: string[], attackers: number, botZone = 'top-t2-rad') {
+  function siege(defenderIds: string[], attackers: number, botZone = 'top-t2-chaff') {
     const bot = makePlayer({ id: 'bot_alpha', zone: botZone, level: 1, hp: 500, maxHp: 500 })
     const players: Record<string, PlayerState> = { [bot.id]: bot }
     for (const id of defenderIds) {
@@ -1927,20 +1927,20 @@ describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
   })
 
   it('will not cross the map for it — the rescue is distance-bounded', () => {
-    // top-t1-rad is 3 zones from mid-t1-rad (inside the bound) and 4 from
-    // bot-t1-rad (outside it): a rescue that lands in five ticks is a lane
+    // top-t1-chaff is 3 zones from mid-t1-chaff (inside the bound) and 4 from
+    // bot-t1-chaff (outside it): a rescue that lands in five ticks is a lane
     // abandoned for a fight that is already over.
-    const near = siege(['bot_bravo'], 2, 'mid-t1-rad')
+    const near = siege(['bot_bravo'], 2, 'mid-t1-chaff')
     expect(
       decideBotAction(near.state, near.bot, 'mid', atDifficulty('medium', near.bot.id)),
-    ).toEqual({ type: 'move', zone: findPath('mid-t1-rad', THREATENED)[1] })
+    ).toEqual({ type: 'move', zone: findPath('mid-t1-chaff', THREATENED)[1] })
 
     // Assigned to its own lane so its ordinary lane push can't be mistaken for
     // (or collide with) the first step of the rescue path.
-    const far = siege(['bot_bravo'], 2, 'bot-t1-rad')
+    const far = siege(['bot_bravo'], 2, 'bot-t1-chaff')
     expect(
       decideBotAction(far.state, far.bot, 'bot', atDifficulty('medium', far.bot.id)),
-    ).not.toEqual({ type: 'move', zone: findPath('bot-t1-rad', THREATENED)[1] })
+    ).not.toEqual({ type: 'move', zone: findPath('bot-t1-chaff', THREATENED)[1] })
   })
 })
 
@@ -1960,14 +1960,14 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
       id: 'bot_alpha',
       heroId: 'echo', // carry — a role that contests Roshan
       level: opts.level ?? 8,
-      zone: opts.botZone ?? 'roshan-pit',
+      zone: opts.botZone ?? 'hollow',
       hp: 500,
       maxHp: 500,
     })
     const players: Record<string, PlayerState> = { [bot.id]: bot }
     for (let i = 0; i < (opts.allies ?? 2); i++) {
       const id = `bot_ally${i}`
-      players[id] = makePlayer({ id, name: id, level: 8, zone: 'rune-top' })
+      players[id] = makePlayer({ id, name: id, level: 8, zone: 'cache-top' })
     }
     return {
       bot,
@@ -1993,7 +1993,7 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
     const { bot, state } = pitScene({ botZone: 'mid-river' })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'move',
-      zone: 'rune-top',
+      zone: 'cache-top',
     })
   })
 
@@ -2119,28 +2119,28 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
   it('never routes toward a pit the map does not have', () => {
     const { bot, state } = pitScene({ botZone: 'mid-river' })
     const zones = { ...state.zones }
-    delete zones['roshan-pit']
+    delete zones['hollow']
     const action = decideBotAction({ ...state, zones }, bot, 'mid', atDifficulty('medium', bot.id))
-    expect(action).not.toEqual({ type: 'move', zone: 'rune-top' })
+    expect(action).not.toEqual({ type: 'move', zone: 'cache-top' })
   })
 })
 
 describe('isOwnSide — the rename guard', () => {
   it('reads the zone record team, never the id string', () => {
     // Regression for the substring-parser trap: side decisions must survive a
-    // full zone-id rename. The old endsWith('-rad')/startsWith('jungle-rad')
+    // full zone-id rename. The old endsWith('-chaff')/startsWith('silt-chaff')
     // ladder read every renamed zone as enemy-side and inverted the bots'
     // entire spatial model with no type error and no test failure.
     expect(isOwnSide('chaff-base', 'chaff')).toBe(true)
-    expect(isOwnSide('top-t1-rad', 'chaff')).toBe(true)
-    expect(isOwnSide('jungle-rad-top', 'chaff')).toBe(true)
-    expect(isOwnSide('top-t1-rad', 'audit')).toBe(false)
+    expect(isOwnSide('top-t1-chaff', 'chaff')).toBe(true)
+    expect(isOwnSide('silt-chaff-top', 'chaff')).toBe(true)
+    expect(isOwnSide('top-t1-chaff', 'audit')).toBe(false)
     expect(isOwnSide('audit-base', 'audit')).toBe(true)
-    expect(isOwnSide('jungle-audit-bot', 'audit')).toBe(true)
+    expect(isOwnSide('silt-audit-bot', 'audit')).toBe(true)
     // Rivers/runes/roshan are neutral — own for neither side.
     expect(isOwnSide('mid-river', 'chaff')).toBe(false)
     expect(isOwnSide('mid-river', 'audit')).toBe(false)
-    expect(isOwnSide('roshan-pit', 'chaff')).toBe(false)
+    expect(isOwnSide('hollow', 'chaff')).toBe(false)
     // An id the map does not know is own for NOBODY (never defaults to a side).
     expect(isOwnSide('seawall-ice-1-chf', 'chaff')).toBe(false)
     expect(isOwnSide('seawall-ice-1-chf', 'audit')).toBe(false)

@@ -17,12 +17,12 @@ describe('movement', () => {
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
     }))
 
-    // mid-river borders mid-t1-rad — a single legal step.
-    expect(areAdjacent('mid-river', 'mid-t1-rad')).toBe(true)
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    // mid-river borders mid-t1-chaff — a single legal step.
+    expect(areAdjacent('mid-river', 'mid-t1-chaff')).toBe(true)
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-rad')
+    expect((await game.me()).zone).toBe('mid-t1-chaff')
   })
 
   it('a distant order auto-paths: one hop per tick, never a teleport, arriving over N ticks', async () => {
@@ -78,14 +78,14 @@ describe('movement', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t3-rad' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t3-chaff' } },
     }))
 
     game.submit({ type: 'move', zone: 'mid-river' })
     await game.tick()
     expect((await game.me()).moveTarget).toBe('mid-river')
 
-    // Change of plans mid-walk: head home instead (3 hops from mid-t2-rad).
+    // Change of plans mid-walk: head home instead (3 hops from mid-t2-chaff).
     game.submit({ type: 'move', zone: 'chaff-fountain' })
     await game.tick(3)
     const me = await game.me()
@@ -100,19 +100,19 @@ describe('movement', () => {
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
     }))
 
-    // mid-river borders BOTH mid-t1-rad and rune-top, so each step is legal on
+    // mid-river borders BOTH mid-t1-chaff and cache-top, so each step is legal on
     // its own. Queue them back-to-back in one tick: the queue holds a single
     // action per player, so the later submission replaces the earlier one — the
     // hero ends up at the LAST-submitted zone, not the first.
-    expect(areAdjacent('mid-river', 'mid-t1-rad')).toBe(true)
-    expect(areAdjacent('mid-river', 'rune-top')).toBe(true)
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
-    game.submit({ type: 'move', zone: 'rune-top' })
+    expect(areAdjacent('mid-river', 'mid-t1-chaff')).toBe(true)
+    expect(areAdjacent('mid-river', 'cache-top')).toBe(true)
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
+    game.submit({ type: 'move', zone: 'cache-top' })
     await game.tick()
 
     const zoneAfter = (await game.me()).zone
-    expect(zoneAfter).toBe('rune-top')
-    expect(zoneAfter).not.toBe('mid-t1-rad')
+    expect(zoneAfter).toBe('cache-top')
+    expect(zoneAfter).not.toBe('mid-t1-chaff')
   })
 
   it('a move toward an enemy-held zone is not blocked by the enemy presence (zones are not owned)', async () => {
@@ -124,13 +124,13 @@ describe('movement', () => {
       players: {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-rad' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-chaff' },
       },
     }))
 
-    game.submit({ type: 'move', zone: 'mid-t1-rad' })
+    game.submit({ type: 'move', zone: 'mid-t1-chaff' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-rad')
+    expect((await game.me()).zone).toBe('mid-t1-chaff')
   })
 })

@@ -195,16 +195,16 @@ describe('CommandInput attack target labels', () => {
   // confirmed them as a green ">> Attack self" — the most confident possible way
   // to be wrong about what the player is about to do.
   it('names Roshan rather than falling through to "self"', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'roshan-pit' }))
+    const wrapper = mountInput(makeShopPlayer({ zone: 'hollow' }))
     const preview = await previewFor(wrapper, 'attack roshan')
     expect(preview.text()).toContain('Roshan')
     expect(preview.text()).not.toContain('self')
   })
 
   it('names a neutral camp by its index rather than "self"', async () => {
-    const wrapper = mountInput(makeShopPlayer({ zone: 'jungle-rad-top' }), {
+    const wrapper = mountInput(makeShopPlayer({ zone: 'silt-chaff-top' }), {
       neutrals: [
-        { id: 'n0', zone: 'jungle-rad-top', hp: 100, maxHp: 100, type: 'kobold', alive: true },
+        { id: 'n0', zone: 'silt-chaff-top', hp: 100, maxHp: 100, type: 'kobold', alive: true },
       ],
     })
     const preview = await previewFor(wrapper, 'attack neutral:0')

@@ -15,16 +15,16 @@ const zones: ZoneDisplay[] = [
   zone('mid-river', 'Mid River', { playerHere: true, allies: ['kernel_main'] }),
   zone('top-river', 'Top River', { enemyCount: 2, enemyNames: ['daemon_carry', 'regex_mid'] }),
   zone('bot-river', 'Bot River', { creepCount: 4, creepTypes: ['melee', 'ranged'] }),
-  zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
-  zone('roshan-pit', 'The Hollow', { neutralCount: 1, roshan: { alive: false, respawnIn: 48 } }),
+  zone('cache-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
+  zone('hollow', 'The Hollow', { neutralCount: 1, roshan: { alive: false, respawnIn: 48 } }),
   zone('mid-t1-audit', 'Audit Mid T1', {
     tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
   }),
-  zone('mid-t1-rad', 'Chaff Mid T1', {
+  zone('mid-t1-chaff', 'Chaff Mid T1', {
     tower: { team: 'chaff', alive: false, tier: 1 },
   }),
-  zone('jungle-rad-top', 'Chaff Jungle (Top)', { neutralCount: 3, allies: ['proxy_jg'] }),
-  zone('jungle-audit-bot', 'Audit Jungle (Bot)', { fogged: true, enemyCount: 1 }),
+  zone('silt-chaff-top', 'Chaff Jungle (Top)', { neutralCount: 3, allies: ['proxy_jg'] }),
+  zone('silt-audit-bot', 'Audit Jungle (Bot)', { fogged: true, enemyCount: 1 }),
   zone('chaff-base', 'Rookery Terminal', {}),
   zone('audit-base', 'Landing Terminal', {}),
 ]
@@ -39,13 +39,13 @@ const ancients = {
 const oneLaneZones: ZoneDisplay[] = [
   zone('chaff-fountain', 'Rookery Anchor', {}),
   zone('chaff-base', 'Rookery Terminal', {}),
-  zone('mid-t3-rad', 'Chaff Mid T3', {
+  zone('mid-t3-chaff', 'Chaff Mid T3', {
     tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
-  zone('mid-t2-rad', 'Chaff Mid T2', {
+  zone('mid-t2-chaff', 'Chaff Mid T2', {
     tower: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
   }),
-  zone('mid-t1-rad', 'Chaff Mid T1', {
+  zone('mid-t1-chaff', 'Chaff Mid T1', {
     tower: { team: 'chaff', alive: false, tier: 1 },
     allies: ['kernel_main'],
   }),
@@ -72,13 +72,13 @@ const oneLaneZones: ZoneDisplay[] = [
 const twoLaneZones: ZoneDisplay[] = [
   zone('chaff-fountain', 'Rookery Anchor', {}),
   zone('chaff-base', 'Rookery Terminal', {}),
-  zone('top-t3-rad', 'Chaff Top T3', {
+  zone('top-t3-chaff', 'Chaff Top T3', {
     tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
-  zone('top-t2-rad', 'Chaff Top T2', {
+  zone('top-t2-chaff', 'Chaff Top T2', {
     tower: { team: 'chaff', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
   }),
-  zone('top-t1-rad', 'Chaff Top T1', {
+  zone('top-t1-chaff', 'Chaff Top T1', {
     tower: { team: 'chaff', alive: false, tier: 1 },
     allies: ['proxy_jg'],
   }),
@@ -95,13 +95,13 @@ const twoLaneZones: ZoneDisplay[] = [
     tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
-  zone('mid-t3-rad', 'Chaff Mid T3', {
+  zone('mid-t3-chaff', 'Chaff Mid T3', {
     tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
-  zone('mid-t2-rad', 'Chaff Mid T2', {
+  zone('mid-t2-chaff', 'Chaff Mid T2', {
     tower: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
   }),
-  zone('mid-t1-rad', 'Chaff Mid T1', {
+  zone('mid-t1-chaff', 'Chaff Mid T1', {
     tower: { team: 'chaff', alive: true, tier: 1, hp: 1500, maxHp: 1800 },
   }),
   zone('mid-river', 'Mid River', { playerHere: true, allies: ['kernel_main'] }),
@@ -118,10 +118,10 @@ const twoLaneZones: ZoneDisplay[] = [
     tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
-  zone('jungle-rad-top', 'Chaff Jungle (Top)', { neutralCount: 2 }),
-  zone('jungle-audit-top', 'Audit Jungle (Top)', { fogged: true, enemyCount: 1 }),
-  zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
-  zone('roshan-pit', 'The Hollow', { neutralCount: 1, roshan: { alive: true, respawnIn: 0 } }),
+  zone('silt-chaff-top', 'Chaff Jungle (Top)', { neutralCount: 2 }),
+  zone('silt-audit-top', 'Audit Jungle (Top)', { fogged: true, enemyCount: 1 }),
+  zone('cache-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
+  zone('hollow', 'The Hollow', { neutralCount: 1, roshan: { alive: true, respawnIn: 0 } }),
   zone('audit-base', 'Landing Terminal', { fogged: true }),
   zone('audit-fountain', 'Audit Fountain', { fogged: true }),
 ]

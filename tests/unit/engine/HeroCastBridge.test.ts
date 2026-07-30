@@ -560,7 +560,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
  * you and no enemy hero present, every AoE was dead weight.
  */
 describe('cast bridge: abilities vs creeps and neutrals', () => {
-  const LANE = 'mid-t1-rad'
+  const LANE = 'mid-t1-chaff'
 
   function creep(over: Partial<CreepState> = {}): CreepState {
     return { id: 'c1', team: 'audit', zone: LANE, hp: 400, maxHp: 400, type: 'melee', ...over }
@@ -657,7 +657,7 @@ describe('cast bridge: abilities vs creeps and neutrals', () => {
   })
 
   it('clears a jungle camp and pays the neutral bounty', () => {
-    const camp = 'jungle-rad-top'
+    const camp = 'silt-chaff-top'
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: camp }) },
       neutrals: [{ id: 'n1', zone: camp, hp: 100, maxHp: 250, type: 'kobold', alive: true }],
@@ -679,7 +679,7 @@ describe('cast bridge: abilities vs creeps and neutrals', () => {
     // cast resolving after the attack phase handed the resolver a pre-attack
     // jungle — and the array it returned silently reverted every neutral the
     // attack phase had just damaged.
-    const camp = 'jungle-rad-top'
+    const camp = 'silt-chaff-top'
     const state = makeGameState({
       players: {
         p1: makeHero('echo', { id: 'p1', name: 'Hitter', zone: camp }),
@@ -780,7 +780,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
     ).toBe('Cannot cast while feared')
     // Fear allows fleeing
     expect(
-      validateAction(feared, { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-rad' } }),
+      validateAction(feared, { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }),
     ).toBeNull()
 
     const taunted = makeGameState({
@@ -793,7 +793,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
       },
     })
     expect(
-      validateAction(taunted, { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-rad' } }),
+      validateAction(taunted, { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }),
     ).toBe('Cannot move while taunted')
     expect(
       validateAction(taunted, { playerId: 'p1', command: { type: 'cast', ability: 'q' } }),
@@ -822,7 +822,7 @@ describe('slow mechanic (deterministic move-fail)', () => {
         }),
       },
     })
-    const result = run(state, [{ playerId: 'p1', command: { type: 'move', zone: 'mid-t1-rad' } }])
+    const result = run(state, [{ playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }])
     expect(result.state.players['p1']!.zone).toBe('mid-river')
     expect(result.rejected).toHaveLength(1)
     expect(result.rejected[0]!.reason).toMatch(/slow/i)
@@ -840,8 +840,8 @@ describe('slow mechanic (deterministic move-fail)', () => {
         }),
       },
     })
-    const result = run(state, [{ playerId: 'p1', command: { type: 'move', zone: 'mid-t1-rad' } }])
-    expect(result.state.players['p1']!.zone).toBe('mid-t1-rad')
+    const result = run(state, [{ playerId: 'p1', command: { type: 'move', zone: 'mid-t1-chaff' } }])
+    expect(result.state.players['p1']!.zone).toBe('mid-t1-chaff')
     expect(result.rejected).toHaveLength(0)
   })
 })
@@ -931,9 +931,9 @@ describe('passive hook (processTick step 11.5)', () => {
     expect(getBuffStacks(state.players['p1']!, 'deadlock')).toBe(2)
 
     // Moving resets the stacks (move event from the zone diff)
-    submitAction(gameId, 'p1', { type: 'move', zone: 'mid-t1-rad' })
+    submitAction(gameId, 'p1', { type: 'move', zone: 'mid-t1-chaff' })
     state = Effect.runSync(processTick(gameId, state)).state
-    expect(state.players['p1']!.zone).toBe('mid-t1-rad')
+    expect(state.players['p1']!.zone).toBe('mid-t1-chaff')
     expect(getBuffStacks(state.players['p1']!, 'deadlock')).toBe(0)
   })
 

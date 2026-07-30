@@ -38,9 +38,9 @@ describe('Topology', () => {
     it('returns adjacent zones for chaff-base', () => {
       const adj = getAdjacentZones('chaff-base')
       expect(adj).toContain('chaff-fountain')
-      expect(adj).toContain('top-t3-rad')
-      expect(adj).toContain('mid-t3-rad')
-      expect(adj).toContain('bot-t3-rad')
+      expect(adj).toContain('top-t3-chaff')
+      expect(adj).toContain('mid-t3-chaff')
+      expect(adj).toContain('bot-t3-chaff')
     })
 
     it('returns empty array for unknown zone', () => {
@@ -56,12 +56,12 @@ describe('Topology', () => {
   describe('areAdjacent', () => {
     it('returns true for adjacent zones', () => {
       expect(areAdjacent('chaff-base', 'chaff-fountain')).toBe(true)
-      expect(areAdjacent('top-t1-rad', 'top-river')).toBe(true)
+      expect(areAdjacent('top-t1-chaff', 'top-river')).toBe(true)
     })
 
     it('returns false for non-adjacent zones', () => {
       expect(areAdjacent('chaff-fountain', 'audit-fountain')).toBe(false)
-      expect(areAdjacent('top-t1-rad', 'bot-t1-rad')).toBe(false)
+      expect(areAdjacent('top-t1-chaff', 'bot-t1-chaff')).toBe(false)
     })
 
     it('returns false when either zone does not exist', () => {
@@ -86,8 +86,8 @@ describe('Topology', () => {
     })
 
     it('finds shortest path along mid lane', () => {
-      const path = findPath('mid-t3-rad', 'mid-river')
-      expect(path).toEqual(['mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river'])
+      const path = findPath('mid-t3-chaff', 'mid-river')
+      expect(path).toEqual(['mid-t3-chaff', 'mid-t2-chaff', 'mid-t1-chaff', 'mid-river'])
     })
 
     it('includes both endpoints in path', () => {
@@ -106,7 +106,7 @@ describe('Topology', () => {
     })
 
     it('finds a path through jungle', () => {
-      const path = findPath('jungle-rad-top', 'jungle-audit-top')
+      const path = findPath('silt-chaff-top', 'silt-audit-top')
       expect(path.length).toBeGreaterThan(0)
       for (let i = 0; i < path.length - 1; i++) {
         expect(areAdjacent(path[i]!, path[i + 1]!)).toBe(true)
@@ -128,8 +128,8 @@ describe('Topology', () => {
     })
 
     it('returns correct distance along mid lane', () => {
-      // mid-t3-rad -> mid-t2-rad -> mid-t1-rad -> mid-river = 3 edges
-      expect(getDistance('mid-t3-rad', 'mid-river')).toBe(3)
+      // mid-t3-chaff -> mid-t2-chaff -> mid-t1-chaff -> mid-river = 3 edges
+      expect(getDistance('mid-t3-chaff', 'mid-river')).toBe(3)
     })
   })
 
@@ -160,14 +160,14 @@ describe('Topology', () => {
 
     it('returns river zones', () => {
       const rivers = getZonesByType('river')
-      // top-river, mid-river, bot-river, rune-top, rune-bot = 5
+      // top-river, mid-river, bot-river, cache-top, cache-bot = 5
       expect(rivers).toHaveLength(5)
     })
 
     it('returns objective zones', () => {
       const objectives = getZonesByType('objective')
       expect(objectives).toHaveLength(1)
-      expect(objectives[0]!.id).toBe('roshan-pit')
+      expect(objectives[0]!.id).toBe('hollow')
     })
   })
 
@@ -199,7 +199,7 @@ describe('Topology', () => {
     for (const lane of ['top', 'mid', 'bot']) {
       describe(`${lane} lane`, () => {
         it('has 3 tower tiers per team', () => {
-          for (const team of ['rad', 'audit']) {
+          for (const team of ['chaff', 'audit']) {
             for (const tier of [1, 2, 3]) {
               const id = `${lane}-t${tier}-${team}`
               expect(getZone(id)).toBeDefined()
@@ -217,9 +217,9 @@ describe('Topology', () => {
 
         it('tower zones connect in correct order (T3 → T2 → T1 → river → T1 → T2 → T3)', () => {
           // Chaff side: t3 -> t2 -> t1 -> river
-          expect(areAdjacent(`${lane}-t3-rad`, `${lane}-t2-rad`)).toBe(true)
-          expect(areAdjacent(`${lane}-t2-rad`, `${lane}-t1-rad`)).toBe(true)
-          expect(areAdjacent(`${lane}-t1-rad`, `${lane}-river`)).toBe(true)
+          expect(areAdjacent(`${lane}-t3-chaff`, `${lane}-t2-chaff`)).toBe(true)
+          expect(areAdjacent(`${lane}-t2-chaff`, `${lane}-t1-chaff`)).toBe(true)
+          expect(areAdjacent(`${lane}-t1-chaff`, `${lane}-river`)).toBe(true)
           // Audit side: river -> t1 -> t2 -> t3
           expect(areAdjacent(`${lane}-river`, `${lane}-t1-audit`)).toBe(true)
           expect(areAdjacent(`${lane}-t1-audit`, `${lane}-t2-audit`)).toBe(true)
@@ -227,7 +227,7 @@ describe('Topology', () => {
         })
 
         it('T3 connects to its base', () => {
-          expect(areAdjacent(`${lane}-t3-rad`, 'chaff-base')).toBe(true)
+          expect(areAdjacent(`${lane}-t3-chaff`, 'chaff-base')).toBe(true)
           expect(areAdjacent(`${lane}-t3-audit`, 'audit-base')).toBe(true)
         })
       })
@@ -236,35 +236,35 @@ describe('Topology', () => {
 
   describe('jungle connectivity', () => {
     it('chaff top jungle connects to top lane and mid lane', () => {
-      const adj = getAdjacentZones('jungle-rad-top')
-      expect(adj).toContain('top-t2-rad')
-      expect(adj).toContain('top-t1-rad')
-      expect(adj).toContain('mid-t2-rad')
-      expect(adj).toContain('rune-top')
+      const adj = getAdjacentZones('silt-chaff-top')
+      expect(adj).toContain('top-t2-chaff')
+      expect(adj).toContain('top-t1-chaff')
+      expect(adj).toContain('mid-t2-chaff')
+      expect(adj).toContain('cache-top')
     })
 
     it('chaff bot jungle connects to bot lane and mid lane', () => {
-      const adj = getAdjacentZones('jungle-rad-bot')
-      expect(adj).toContain('bot-t2-rad')
-      expect(adj).toContain('bot-t1-rad')
-      expect(adj).toContain('mid-t2-rad')
-      expect(adj).toContain('rune-bot')
+      const adj = getAdjacentZones('silt-chaff-bot')
+      expect(adj).toContain('bot-t2-chaff')
+      expect(adj).toContain('bot-t1-chaff')
+      expect(adj).toContain('mid-t2-chaff')
+      expect(adj).toContain('cache-bot')
     })
 
     it('audit top jungle connects to top lane and mid lane', () => {
-      const adj = getAdjacentZones('jungle-audit-top')
+      const adj = getAdjacentZones('silt-audit-top')
       expect(adj).toContain('top-t1-audit')
       expect(adj).toContain('top-t2-audit')
       expect(adj).toContain('mid-t2-audit')
-      expect(adj).toContain('rune-top')
+      expect(adj).toContain('cache-top')
     })
 
     it('audit bot jungle connects to bot lane and mid lane', () => {
-      const adj = getAdjacentZones('jungle-audit-bot')
+      const adj = getAdjacentZones('silt-audit-bot')
       expect(adj).toContain('bot-t1-audit')
       expect(adj).toContain('bot-t2-audit')
       expect(adj).toContain('mid-t2-audit')
-      expect(adj).toContain('rune-bot')
+      expect(adj).toContain('cache-bot')
     })
   })
 
@@ -301,7 +301,7 @@ describe('Topology', () => {
       for (const id of ['chaff-fountain', 'mid-river', 'audit-fountain']) {
         expect(ids.has(id), `expected ${id} in the one-lane map`).toBe(true)
       }
-      for (const id of ['top-river', 'bot-river', 'rune-top', 'jungle-rad-top']) {
+      for (const id of ['top-river', 'bot-river', 'cache-top', 'silt-chaff-top']) {
         expect(ids.has(id), `${id} must NOT be in the one-lane map`).toBe(false)
       }
     })
@@ -350,29 +350,29 @@ describe('Topology', () => {
     const ids = new Set(twoLane.map((z) => z.id))
     const byId = new Map<string, Zone>(twoLane.map((z) => [z.id, z]))
 
-    it('is exactly 22 zones (bases + top + mid + top jungles + rune-top + roshan)', () => {
+    it('is exactly 22 zones (bases + top + mid + top jungles + cache-top + roshan)', () => {
       expect(twoLane).toHaveLength(22)
     })
 
     it('keeps the top and mid lanes but drops the bot lane', () => {
-      for (const id of ['top-t3-rad', 'top-river', 'top-t3-audit', 'mid-river', 'mid-t1-audit']) {
+      for (const id of ['top-t3-chaff', 'top-river', 'top-t3-audit', 'mid-river', 'mid-t1-audit']) {
         expect(ids.has(id), `expected ${id} in two_lane`).toBe(true)
       }
       for (const id of [
-        'bot-t3-rad',
+        'bot-t3-chaff',
         'bot-river',
         'bot-t3-audit',
-        'jungle-rad-bot',
-        'jungle-audit-bot',
-        'rune-bot',
+        'silt-chaff-bot',
+        'silt-audit-bot',
+        'cache-bot',
       ]) {
         expect(ids.has(id), `${id} must NOT be in two_lane`).toBe(false)
       }
     })
 
-    it('keeps the top-side river objectives (rune-top + roshan)', () => {
-      expect(ids.has('rune-top')).toBe(true)
-      expect(ids.has('roshan-pit')).toBe(true)
+    it('keeps the top-side river objectives (cache-top + roshan)', () => {
+      expect(ids.has('cache-top')).toBe(true)
+      expect(ids.has('hollow')).toBe(true)
     })
 
     it('is self-contained — no zone links outside the 22-zone subgraph', () => {
@@ -412,9 +412,9 @@ describe('Topology', () => {
 
     it('preserves a full mid-lane chain chaff-base → audit-base', () => {
       const chain = [
-        'mid-t3-rad',
-        'mid-t2-rad',
-        'mid-t1-rad',
+        'mid-t3-chaff',
+        'mid-t2-chaff',
+        'mid-t1-chaff',
         'mid-river',
         'mid-t1-audit',
         'mid-t2-audit',
@@ -427,9 +427,9 @@ describe('Topology', () => {
 
     it('preserves a full top-lane chain chaff-base → audit-base', () => {
       const chain = [
-        'top-t3-rad',
-        'top-t2-rad',
-        'top-t1-rad',
+        'top-t3-chaff',
+        'top-t2-chaff',
+        'top-t1-chaff',
         'top-river',
         'top-t1-audit',
         'top-t2-audit',

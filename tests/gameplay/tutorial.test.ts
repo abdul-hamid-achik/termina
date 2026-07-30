@@ -111,7 +111,7 @@ describe('tutorial mode', () => {
       expect((await game.state()).tutorialStep).toBe(0)
 
       // Stepping into the lane completes the move step → advances to attack.
-      game.submit({ type: 'move', zone: 'mid-t3-rad' })
+      game.submit({ type: 'move', zone: 'mid-t3-chaff' })
       await game.tick()
       expect((await game.state()).tutorialStep).toBe(1)
     })
@@ -122,14 +122,14 @@ describe('tutorial mode', () => {
       // Move into the lane to clear the move step.
       game.submit({ type: 'move', zone: 'chaff-base' })
       await game.tick()
-      game.submit({ type: 'move', zone: 'mid-t3-rad' })
+      game.submit({ type: 'move', zone: 'mid-t3-chaff' })
       await game.tick()
       expect((await game.state()).tutorialStep).toBe(1) // attack step
 
       // Put the enemy in the human's lane zone so the attack lands, then attack.
       await game.patch((s) => ({
         ...s,
-        players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t3-rad', hp: 800 } },
+        players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t3-chaff', hp: 800 } },
       }))
       game.attackHero(ENEMY)
       await game.tick()

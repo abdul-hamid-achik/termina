@@ -1047,7 +1047,7 @@ function resolveAttackPhase(
         miss('Roshan is already dead')
         continue
       }
-      if (attacker.zone !== 'roshan-pit') {
+      if (attacker.zone !== 'hollow') {
         miss('Roshan can only be attacked from the pit')
         continue
       }

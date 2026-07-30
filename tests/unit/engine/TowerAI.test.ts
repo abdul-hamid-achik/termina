@@ -14,7 +14,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -43,7 +43,7 @@ function makeCreep(overrides: Partial<CreepState> = {}): CreepState {
   return {
     id: 'c1',
     team: 'chaff',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 400,
     type: 'melee',
     ...overrides,
@@ -75,7 +75,7 @@ describe('TowerAI', () => {
       const state = makeGameState({
         towers,
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff' }),
         },
       })
 
@@ -86,7 +86,7 @@ describe('TowerAI', () => {
     it('should not generate actions when no enemies in tower zone', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
         },
       })
 
@@ -98,12 +98,12 @@ describe('TowerAI', () => {
     it('should target enemy heroes in tower zone', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff' }),
         },
       })
 
       const actions = runTowerAI(state)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action).toBeDefined()
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('p1')
@@ -112,11 +112,11 @@ describe('TowerAI', () => {
 
     it('should target enemy creeps in tower zone', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad' })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const actions = runTowerAI(state)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action).toBeDefined()
       expect(midT1Action!.targetType).toBe('creep')
       expect(midT1Action!.targetId).toBe('c1')
@@ -125,13 +125,13 @@ describe('TowerAI', () => {
     it('should prioritize creeps over a passive hero (MOBA aggro convention)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff' }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad' })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const actions = runTowerAI(state)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action!.targetType).toBe('creep')
       expect(midT1Action!.targetId).toBe('c1')
     })
@@ -139,22 +139,22 @@ describe('TowerAI', () => {
     it('should prioritize a hero attacking an allied hero above creeps', () => {
       const state = makeGameState({
         players: {
-          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-t1-rad' }),
+          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-t1-chaff' }),
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Attacker',
           }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad' })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const heroAttackers = new Map<string, string>()
       heroAttackers.set('attacker', 'ally')
 
       const actions = runTowerAI(state, heroAttackers)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
     })
@@ -165,11 +165,11 @@ describe('TowerAI', () => {
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Attacker',
           }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad' })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       // Hero→tower damage events carry targetId `tower_${zone}`
@@ -178,14 +178,14 @@ describe('TowerAI', () => {
           _tag: 'damage',
           tick: 1,
           sourceId: 'attacker',
-          targetId: 'tower_mid-t1-rad',
+          targetId: 'tower_mid-t1-chaff',
           amount: 60,
           damageType: 'physical',
         },
       ]
 
       const actions = runTowerAI(state, undefined, priorEvents)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
     })
@@ -196,11 +196,11 @@ describe('TowerAI', () => {
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Attacker',
           }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad' })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const priorEvents: GameEngineEvent[] = [
@@ -208,14 +208,14 @@ describe('TowerAI', () => {
           _tag: 'damage',
           tick: 1,
           sourceId: 'attacker',
-          targetId: 'tower_top-t1-rad',
+          targetId: 'tower_top-t1-chaff',
           amount: 60,
           damageType: 'physical',
         },
       ]
 
       const actions = runTowerAI(state, undefined, priorEvents)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       // Different tower attacked — creeps still tank this one
       expect(midT1Action!.targetType).toBe('creep')
     })
@@ -223,17 +223,17 @@ describe('TowerAI', () => {
     it('should prioritize hero attacking allied hero in tower zone (priority 1)', () => {
       const state = makeGameState({
         players: {
-          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-t1-rad' }),
+          ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-t1-chaff' }),
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Attacker',
           }),
           bystander: makePlayer({
             id: 'bystander',
             team: 'audit',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Bystander',
           }),
         },
@@ -244,7 +244,7 @@ describe('TowerAI', () => {
       heroAttackers.set('attacker', 'ally')
 
       const actions = runTowerAI(state, heroAttackers)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
     })
@@ -252,38 +252,38 @@ describe('TowerAI', () => {
     it('should not target dead enemy heroes', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad', alive: false, hp: 0 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', alive: false, hp: 0 }),
         },
       })
 
       const actions = runTowerAI(state)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action).toBeUndefined()
     })
 
     it('should not target dead creeps', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad', hp: 0 })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 0 })],
       })
 
       const actions = runTowerAI(state)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       expect(midT1Action).toBeUndefined()
     })
 
     it('should generate actions for multiple towers simultaneously', () => {
       const state = makeGameState({
         creeps: [
-          makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad' }),
-          makeCreep({ id: 'c2', team: 'audit', zone: 'top-t1-rad' }),
+          makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' }),
+          makeCreep({ id: 'c2', team: 'audit', zone: 'top-t1-chaff' }),
           makeCreep({ id: 'c3', team: 'chaff', zone: 'bot-t1-audit' }),
         ],
       })
 
       const actions = runTowerAI(state)
       // Mid T1 rad should target c1, Top T1 rad should target c2, Bot T1 audit should target c3
-      expect(actions.find((a) => a.towerZone === 'mid-t1-rad')!.targetId).toBe('c1')
-      expect(actions.find((a) => a.towerZone === 'top-t1-rad')!.targetId).toBe('c2')
+      expect(actions.find((a) => a.towerZone === 'mid-t1-chaff')!.targetId).toBe('c1')
+      expect(actions.find((a) => a.towerZone === 'top-t1-chaff')!.targetId).toBe('c2')
       expect(actions.find((a) => a.towerZone === 'bot-t1-audit')!.targetId).toBe('c3')
     })
 
@@ -293,7 +293,7 @@ describe('TowerAI', () => {
           attacker: makePlayer({
             id: 'attacker',
             team: 'audit',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Attacker',
           }),
         },
@@ -304,7 +304,7 @@ describe('TowerAI', () => {
       heroAttackers.set('attacker', 'someone-else')
 
       const actions = runTowerAI(state, heroAttackers)
-      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-rad')
+      const midT1Action = actions.find((a) => a.towerZone === 'mid-t1-chaff')
       // Should still target the enemy hero (priority 2 fallback)
       expect(midT1Action!.targetType).toBe('hero')
       expect(midT1Action!.targetId).toBe('attacker')
@@ -316,7 +316,7 @@ describe('TowerAI', () => {
       const player = makePlayer({
         id: 'p1',
         team: 'audit',
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         hp: 500,
         defense: 3,
       })
@@ -325,7 +325,7 @@ describe('TowerAI', () => {
       })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
       ]
 
       const result = applyTowerActions(state, actions).state
@@ -343,14 +343,14 @@ describe('TowerAI', () => {
             p1: makePlayer({
               id: 'p1',
               team: 'audit',
-              zone: 'mid-t1-rad',
+              zone: 'mid-t1-chaff',
               hp: 500,
               buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
             }),
           },
         })
         const actions: TowerAction[] = [
-          { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+          { towerZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
         ]
         const result = applyTowerActions(state, actions).state
         expect(result.players['p1']!.hp).toBe(500) // unscathed
@@ -358,11 +358,11 @@ describe('TowerAI', () => {
     })
 
     it('emits a damage event naming the tower that fired', () => {
-      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad', hp: 500 })
+      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 500 })
       const state = makeGameState({ tick: 7, players: { p1: player } })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
       ]
 
       const { state: after, events } = applyTowerActions(state, actions)
@@ -372,7 +372,7 @@ describe('TowerAI', () => {
           _tag: 'damage',
           tick: 7,
           // Same id convention selectTowerTarget reads for hero→tower damage.
-          sourceId: 'tower_mid-t1-rad',
+          sourceId: 'tower_mid-t1-chaff',
           targetId: 'p1',
           amount: expectedDamage,
           damageType: 'physical',
@@ -390,14 +390,14 @@ describe('TowerAI', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'audit',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             hp: 500,
             buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
           }),
         },
       })
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
       ]
 
       const result = applyTowerActions(state, actions)
@@ -407,10 +407,10 @@ describe('TowerAI', () => {
 
     it('emits no damage event for a creep shot — only hero damage is narrated', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad', hp: 400 })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
       })
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
       ]
 
       expect(applyTowerActions(state, actions).events).toEqual([])
@@ -419,12 +419,12 @@ describe('TowerAI', () => {
     it('should kill heroes when HP drops to 0', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad', hp: 50 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 50 }),
         },
       })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
       ]
 
       const result = applyTowerActions(state, actions).state
@@ -434,11 +434,11 @@ describe('TowerAI', () => {
 
     it('should apply damage to creeps', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad', hp: 400 })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
       })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
       ]
 
       const result = applyTowerActions(state, actions).state
@@ -448,11 +448,11 @@ describe('TowerAI', () => {
 
     it('should remove dead creeps after damage', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad', hp: 50 })],
+        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 50 })],
       })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
       ]
 
       const result = applyTowerActions(state, actions).state
@@ -462,12 +462,12 @@ describe('TowerAI', () => {
     it('should clamp hero HP to 0 (not negative)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad', hp: 1 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 1 }),
         },
       })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
       ]
 
       const result = applyTowerActions(state, actions).state
@@ -477,13 +477,13 @@ describe('TowerAI', () => {
     it('should handle multiple tower actions', () => {
       const state = makeGameState({
         creeps: [
-          makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-rad', hp: 400 }),
+          makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 }),
           makeCreep({ id: 'c2', team: 'chaff', zone: 'mid-t1-audit', hp: 400 }),
         ],
       })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: TOWER_ATTACK },
         { towerZone: 'mid-t1-audit', targetType: 'creep', targetId: 'c2', damage: TOWER_ATTACK },
       ]
 
@@ -497,12 +497,12 @@ describe('TowerAI', () => {
     it('should not damage already dead heroes', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-rad', hp: 0, alive: false }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 0, alive: false }),
         },
       })
 
       const actions: TowerAction[] = [
-        { towerZone: 'mid-t1-rad', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
+        { towerZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: TOWER_ATTACK },
       ]
 
       const result = applyTowerActions(state, actions).state

@@ -22,7 +22,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -83,22 +83,22 @@ describe('ActionResolver', () => {
   describe('validateAction', () => {
     it('should allow moving to adjacent zone', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ zone: 'mid-t1-rad' }) },
+        players: { p1: makePlayer({ zone: 'mid-t1-chaff' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'mid-t2-rad' },
+        command: { type: 'move', zone: 'mid-t2-chaff' },
       })
       expect(error).toBeNull()
     })
 
     it('should allow moving to a distant zone (auto-path walks one hop per tick)', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ zone: 'mid-t1-rad' }) },
+        players: { p1: makePlayer({ zone: 'mid-t1-chaff' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'bot-t1-rad' },
+        command: { type: 'move', zone: 'bot-t1-chaff' },
       })
       expect(error).toBeNull()
     })
@@ -109,16 +109,18 @@ describe('ActionResolver', () => {
       const allZones = initializeZoneStates()
       const subset = Object.fromEntries(
         Object.entries(allZones).filter(([id]) =>
-          ['chaff-fountain', 'chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad'].includes(id),
+          ['chaff-fountain', 'chaff-base', 'mid-t3-chaff', 'mid-t2-chaff', 'mid-t1-chaff'].includes(
+            id,
+          ),
         ),
       )
       const state = makeGameState({
         zones: subset,
-        players: { p1: makePlayer({ zone: 'mid-t1-rad' }) },
+        players: { p1: makePlayer({ zone: 'mid-t1-chaff' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'bot-t1-rad' },
+        command: { type: 'move', zone: 'bot-t1-chaff' },
       })
       expect(error).toBe('No path to that zone')
     })
@@ -129,7 +131,7 @@ describe('ActionResolver', () => {
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'mid-t2-rad' },
+        command: { type: 'move', zone: 'mid-t2-chaff' },
       })
       expect(error).toBe('Player is dead')
     })
@@ -138,13 +140,13 @@ describe('ActionResolver', () => {
       const cyclonedState = makeGameState({
         players: {
           p1: makePlayer({
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 2, source: 'euls_scepter' }],
           }),
         },
       })
       for (const command of [
-        { type: 'move', zone: 'mid-t2-rad' },
+        { type: 'move', zone: 'mid-t2-chaff' },
         { type: 'attack', target: { kind: 'hero', name: 'x' } },
         { type: 'cast', ability: 'q' },
       ] as const) {
@@ -248,7 +250,7 @@ describe('ActionResolver', () => {
       })
       const error = validateAction(state, {
         playerId: 'p1',
-        command: { type: 'move', zone: 'mid-t2-rad' },
+        command: { type: 'move', zone: 'mid-t2-chaff' },
       })
       expect(error).toBe('Cannot move while rooted or stunned')
     })
@@ -269,7 +271,7 @@ describe('ActionResolver', () => {
     it('should move players to new zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
         },
       })
 
@@ -284,7 +286,7 @@ describe('ActionResolver', () => {
     it('should resolve multiple moves simultaneously', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad', team: 'chaff' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff', team: 'chaff' }),
           p2: makePlayer({ id: 'p2', zone: 'mid-t1-audit', team: 'audit' }),
         },
       })
@@ -569,7 +571,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             buffs: [
               { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
               {
@@ -585,12 +587,12 @@ describe('ActionResolver', () => {
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-rad' } },
+        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-chaff' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      expect(result.state.players['p1']!.zone).toBe('mid-t2-rad')
+      expect(result.state.players['p1']!.zone).toBe('mid-t2-chaff')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
 
       const tpCancelEvents = result.events.filter((e) => e._tag === 'teleport_cancelled')
@@ -643,19 +645,19 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             buffs: [{ id: 'some_other_buff', stacks: 1, ticksRemaining: 2, source: 'test' }],
           }),
         },
       })
 
       const actions: PlayerAction[] = [
-        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-rad' } },
+        { playerId: 'p1', command: { type: 'move', zone: 'mid-t2-chaff' } },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      expect(result.state.players['p1']!.zone).toBe('mid-t2-rad')
+      expect(result.state.players['p1']!.zone).toBe('mid-t2-chaff')
       expect(result.state.players['p1']!.buffs).toHaveLength(1)
 
       const tpCancelEvents = result.events.filter((e) => e._tag === 'teleport_cancelled')
@@ -903,7 +905,7 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             items: ['blink_module', null, null, null, null, null],
           }),
         },
@@ -1038,13 +1040,13 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             items: ['blink_module', null, null, null, null, null],
           }),
         },
       })
 
-      // audit-fountain is not adjacent to mid-t1-rad — useItem fails
+      // audit-fountain is not adjacent to mid-t1-chaff — useItem fails
       const result = Effect.runSync(
         resolveActions(state, [
           {
@@ -1054,7 +1056,7 @@ describe('ActionResolver', () => {
         ]),
       )
       const p1 = result.state.players['p1']!
-      expect(p1.zone).toBe('mid-t1-rad')
+      expect(p1.zone).toBe('mid-t1-chaff')
       expect(p1.items[0]).toBe('blink_module')
       expect(result.events.filter((e) => e._tag === 'ability_used')).toHaveLength(0)
     })
@@ -1548,7 +1550,7 @@ describe('ActionResolver', () => {
 
     it('says Roshan is already dead', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'roshan-pit' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'hollow' }) },
         roshan: { alive: false, hp: 0, maxHp: 2000, deathTick: 1 },
       })
       const result = attack(state, { kind: 'roshan' })
@@ -1558,11 +1560,11 @@ describe('ActionResolver', () => {
 
     it('reports a dead neutral and an out-of-range neutral index differently', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'jungle-rad-top' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'silt-chaff-top' }) },
         neutrals: [
           {
             id: 'n0',
-            zone: 'jungle-rad-top',
+            zone: 'silt-chaff-top',
             hp: 0,
             maxHp: 100,
             type: 'kobold',

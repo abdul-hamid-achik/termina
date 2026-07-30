@@ -134,7 +134,7 @@ describe('LeaverSystem AFK detection', () => {
   it('processTick stamps lastActionTick when a player acts', () => {
     const state = makeGameState({
       players: {
-        p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+        p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
         p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
       },
     })

@@ -44,13 +44,13 @@ interface CompactIndicator {
 /** Static 5-column row layout of the map (also drives the mini overview). */
 export const MAP_ROWS: (string | null)[][] = [
   [null, 'chaff-fountain', null, 'chaff-base', null],
-  ['top-t3-rad', null, 'mid-t3-rad', null, 'bot-t3-rad'],
-  ['top-t2-rad', 'jungle-rad-top', 'mid-t2-rad', 'jungle-rad-bot', 'bot-t2-rad'],
-  ['top-t1-rad', null, 'mid-t1-rad', null, 'bot-t1-rad'],
-  ['top-river', 'rune-top', 'roshan-pit', 'rune-bot', 'bot-river'],
+  ['top-t3-chaff', null, 'mid-t3-chaff', null, 'bot-t3-chaff'],
+  ['top-t2-chaff', 'silt-chaff-top', 'mid-t2-chaff', 'silt-chaff-bot', 'bot-t2-chaff'],
+  ['top-t1-chaff', null, 'mid-t1-chaff', null, 'bot-t1-chaff'],
+  ['top-river', 'cache-top', 'hollow', 'cache-bot', 'bot-river'],
   [null, null, 'mid-river', null, null],
   ['top-t1-audit', null, 'mid-t1-audit', null, 'bot-t1-audit'],
-  ['top-t2-audit', 'jungle-audit-top', 'mid-t2-audit', 'jungle-audit-bot', 'bot-t2-audit'],
+  ['top-t2-audit', 'silt-audit-top', 'mid-t2-audit', 'silt-audit-bot', 'bot-t2-audit'],
   ['top-t3-audit', null, 'mid-t3-audit', null, 'bot-t3-audit'],
   [null, 'audit-base', null, 'audit-fountain', null],
 ]
@@ -62,9 +62,9 @@ const COL_HEADERS = ['SEAWALL', 'CHAFF SILT', 'COLDSTORE', 'AUDIT SILT', 'SHALLO
 export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
   ['chaff-fountain'],
   ['chaff-base'],
-  ['mid-t3-rad'],
-  ['mid-t2-rad'],
-  ['mid-t1-rad'],
+  ['mid-t3-chaff'],
+  ['mid-t2-chaff'],
+  ['mid-t1-chaff'],
   ['mid-river'],
   ['mid-t1-audit'],
   ['mid-t2-audit'],
@@ -79,12 +79,12 @@ const ONE_LANE_COL_HEADERS = ['COLDSTORE']
 export const TWO_LANE_MAP_ROWS: (string | null)[][] = [
   [null, null, 'chaff-fountain', null],
   [null, null, 'chaff-base', null],
-  ['top-t3-rad', null, 'mid-t3-rad', null],
-  ['top-t2-rad', 'jungle-rad-top', 'mid-t2-rad', null],
-  ['top-t1-rad', null, 'mid-t1-rad', null],
-  ['top-river', 'rune-top', 'mid-river', 'roshan-pit'],
+  ['top-t3-chaff', null, 'mid-t3-chaff', null],
+  ['top-t2-chaff', 'silt-chaff-top', 'mid-t2-chaff', null],
+  ['top-t1-chaff', null, 'mid-t1-chaff', null],
+  ['top-river', 'cache-top', 'mid-river', 'hollow'],
   ['top-t1-audit', null, 'mid-t1-audit', null],
-  ['top-t2-audit', null, 'mid-t2-audit', 'jungle-audit-top'],
+  ['top-t2-audit', null, 'mid-t2-audit', 'silt-audit-top'],
   ['top-t3-audit', null, 'mid-t3-audit', null],
   [null, null, 'audit-base', null],
   [null, null, 'audit-fountain', null],
@@ -166,9 +166,9 @@ export function zoneShortCode(zoneId: string): string {
   if (zoneId === 'chaff-base') return 'RB'
   if (zoneId === 'audit-fountain') return 'DF'
   if (zoneId === 'audit-base') return 'DB'
-  if (zoneId === 'roshan-pit') return 'ROS'
-  if (zoneId.startsWith('rune-')) return 'RN'
-  if (zoneId.includes('jungle')) return 'JG'
+  if (zoneId === 'hollow') return 'HLW'
+  if (zoneId.startsWith('cache-')) return 'RN'
+  if (zoneId.startsWith('silt-')) return 'JG'
   const lane = /^(top|mid|bot)-(t[123]|river)/.exec(zoneId)
   if (lane) {
     const laneChar = lane[1]!.charAt(0).toUpperCase()
@@ -338,10 +338,10 @@ export function zoneRecordLabel(z: {
   if (z.tower && z.tier !== undefined) return `${g?.arrow ?? '▼'} ${g?.side ?? '???'} T${z.tier}`
   // Objective/run spots outrank their zone type — rune spots are typed 'river'
   // in the data but must never render as the crossing.
-  if (z.id.includes('roshan')) return '☠ ROSHAN'
-  if (z.id.includes('rune')) return '◆ RUNE'
+  if (z.id === 'hollow') return '☠ HOLLOW'
+  if (z.id.startsWith('cache-')) return '◆ CACHE'
   if (z.type === 'river') return '≈ RIVER ≈'
-  if (z.type === 'jungle') return '☘ JUNGLE'
+  if (z.type === 'jungle') return '☘ SILT'
   return z.id.slice(0, 8).toUpperCase()
 }
 

@@ -52,12 +52,14 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ aegis: { zone: 'mid-river', holderId: 'someone' } }))).not.toContain(
       'aegis',
     )
-    expect(cmds(baseCtx({ aegis: { zone: 'top-t1-rad', holderId: null } }))).not.toContain('aegis')
+    expect(cmds(baseCtx({ aegis: { zone: 'top-t1-chaff', holderId: null } }))).not.toContain(
+      'aegis',
+    )
   })
 
   it('offers RUNE only when a rune is in the zone', () => {
     expect(cmds(baseCtx({ runes: [{ zone: 'mid-river' }] as never }))).toContain('rune')
-    expect(cmds(baseCtx({ runes: [{ zone: 'top-t1-rad' }] as never }))).not.toContain('rune')
+    expect(cmds(baseCtx({ runes: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('rune')
   })
 
   it('hides GLYPH while the team glyph is on cooldown', () => {

@@ -104,8 +104,8 @@ const SALVE_HP_PERCENT = 60
 /** TP home instead of walking when the fountain is further than this. */
 const TP_RETREAT_MIN_DISTANCE = 2
 
-const RUNE_ZONES = ['rune-top', 'rune-bot']
-const JUNGLE_ZONES = ['jungle-rad-top', 'jungle-rad-bot', 'jungle-audit-top', 'jungle-audit-bot']
+const RUNE_ZONES = ['cache-top', 'cache-bot']
+const JUNGLE_ZONES = ['silt-chaff-top', 'silt-chaff-bot', 'silt-audit-top', 'silt-audit-bot']
 
 interface ComboState {
   currentCombo: string[] | null
@@ -1019,10 +1019,10 @@ function tryRoshan(
   const roshan = state.roshan
   if (!roshan.alive) return null
   // Subset maps (one-lane, two-lane) have no pit at all.
-  if (hasZone && !hasZone('roshan-pit')) return null
+  if (hasZone && !hasZone('hollow')) return null
   // Checked before the attempt is recorded: a bot that could never get there
   // must not consume its team's one commitment window.
-  const distance = getDistance(bot.zone, 'roshan-pit', hasZone)
+  const distance = getDistance(bot.zone, 'hollow', hasZone)
   if (distance > ROSHAN_MAX_TRAVEL_DISTANCE) return null
 
   const key = `${gameId}|${bot.team}`
@@ -1045,22 +1045,22 @@ function tryRoshan(
         p.team === bot.team &&
         p.alive &&
         p.id !== bot.id &&
-        getDistance(p.zone, 'roshan-pit', hasZone) <= 2,
+        getDistance(p.zone, 'hollow', hasZone) <= 2,
     ).length
     if (alliesNear < (snipe ? 1 : ROSHAN_START_MIN_ALLIES)) return null
     roshanAttempts.set(key, state.tick)
   }
 
-  if (bot.zone === 'roshan-pit') {
+  if (bot.zone === 'hollow') {
     return { type: 'attack', target: { kind: 'roshan' } }
   }
-  const path = findPath(bot.zone, 'roshan-pit', hasZone)
+  const path = findPath(bot.zone, 'hollow', hasZone)
   if (path.length > 1) return { type: 'move', zone: path[1]! }
   return null
 }
 
 /** Grab the Aegis when it has dropped in the Roshan pit and is still unclaimed.
- *  The aegis only ever lands in roshan-pit, so a bot already there (e.g. the one
+ *  The aegis only ever lands in hollow, so a bot already there (e.g. the one
  *  that just contested Roshan) picks it up; otherwise it only diverts when the
  *  pit is adjacent — it never abandons its lane to trek across the map for it. */
 function tryAegis(
@@ -1072,10 +1072,10 @@ function tryAegis(
   if (!config.threatAssessment) return null
   const aegis = state.aegis
   if (!aegis || aegis.holderId) return null // none on the ground / already held
-  if (bot.zone === 'roshan-pit') return { type: 'aegis' }
+  if (bot.zone === 'hollow') return { type: 'aegis' }
   // Only divert when the pit is right next to us (don't cross the map for it).
-  if ((!hasZone || hasZone('roshan-pit')) && getDistance(bot.zone, 'roshan-pit', hasZone) <= 1) {
-    const path = findPath(bot.zone, 'roshan-pit', hasZone)
+  if ((!hasZone || hasZone('hollow')) && getDistance(bot.zone, 'hollow', hasZone) <= 1) {
+    const path = findPath(bot.zone, 'hollow', hasZone)
     if (path.length > 1) return { type: 'move', zone: path[1]! }
   }
   return null

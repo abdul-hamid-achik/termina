@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -66,12 +66,12 @@ describe('VisionCalculator', () => {
 
       const vision = calculateVision(state, 'p1')
 
-      // mid-river is adjacent to: mid-t1-rad, mid-t1-audit, rune-top, rune-bot
+      // mid-river is adjacent to: mid-t1-chaff, mid-t1-audit, cache-top, cache-bot
       expect(vision.has('mid-river')).toBe(true)
-      expect(vision.has('mid-t1-rad')).toBe(true)
+      expect(vision.has('mid-t1-chaff')).toBe(true)
       expect(vision.has('mid-t1-audit')).toBe(true)
-      expect(vision.has('rune-top')).toBe(true)
-      expect(vision.has('rune-bot')).toBe(true)
+      expect(vision.has('cache-top')).toBe(true)
+      expect(vision.has('cache-bot')).toBe(true)
     })
 
     it('should always include own base and fountain', () => {
@@ -105,7 +105,7 @@ describe('VisionCalculator', () => {
       const vision = calculateVision(state, 'p1')
       // Ward at bot-river should grant vision of bot-river + adjacent
       expect(vision.has('bot-river')).toBe(true)
-      expect(vision.has('bot-t1-rad')).toBe(true)
+      expect(vision.has('bot-t1-chaff')).toBe(true)
       expect(vision.has('bot-t1-audit')).toBe(true)
     })
 
@@ -117,22 +117,22 @@ describe('VisionCalculator', () => {
       })
 
       const vision = calculateVision(state, 'p1')
-      // Chaff T1 mid tower at mid-t1-rad should grant vision
-      expect(vision.has('mid-t1-rad')).toBe(true)
+      // Chaff T1 mid tower at mid-t1-chaff should grant vision
+      expect(vision.has('mid-t1-chaff')).toBe(true)
     })
 
     it('should not grant vision from dead player position', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ zone: 'roshan-pit', alive: false }),
+          p1: makePlayer({ zone: 'hollow', alive: false }),
         },
       })
 
       const vision = calculateVision(state, 'p1')
       // Dead player doesn't contribute base vision from their zone
       // (but still has tower/base vision)
-      // roshan-pit should not be visible unless a tower or ward covers it
-      // roshan-pit is adjacent to rune-top only, and rune-top isn't a chaff tower
+      // hollow should not be visible unless a tower or ward covers it
+      // hollow is adjacent to cache-top only, and cache-top isn't a chaff tower
       // However, base + fountain vision still applies
       expect(vision.has('chaff-base')).toBe(true)
     })
@@ -141,14 +141,14 @@ describe('VisionCalculator', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'chaff-fountain', team: 'chaff' }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', zone: 'hollow', team: 'chaff' }),
         },
       })
 
       const vision = calculateVision(state, 'p1')
-      // p2 is at roshan-pit, so p1 should see roshan-pit + adjacent
-      expect(vision.has('roshan-pit')).toBe(true)
-      expect(vision.has('rune-top')).toBe(true)
+      // p2 is at hollow, so p1 should see hollow + adjacent
+      expect(vision.has('hollow')).toBe(true)
+      expect(vision.has('cache-top')).toBe(true)
     })
 
     it('should return empty set for unknown player', () => {
@@ -162,14 +162,14 @@ describe('VisionCalculator', () => {
     it('should show full info for teammates', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-rad' }),
-          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'bot-t3-rad', name: 'Ally' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'bot-t3-chaff', name: 'Ally' }),
         },
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
       const ally = filtered.players['p2'] as PlayerState
-      expect(ally.zone).toBe('bot-t3-rad')
+      expect(ally.zone).toBe('bot-t3-chaff')
       expect(ally.hp).toBe(500)
       expect('fogged' in ally).toBe(false)
     })
@@ -206,7 +206,7 @@ describe('VisionCalculator', () => {
           p2: makePlayer({
             id: 'p2',
             team: 'chaff',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Ally',
             moveTarget: 'audit-base',
           }),
@@ -231,12 +231,12 @@ describe('VisionCalculator', () => {
             team: 'audit',
             zone: 'mid-river',
             name: 'Enemy',
-            attackTarget: { kind: 'tower', zone: 'mid-t1-rad' },
+            attackTarget: { kind: 'tower', zone: 'mid-t1-chaff' },
           }),
           p2: makePlayer({
             id: 'p2',
             team: 'chaff',
-            zone: 'mid-t1-rad',
+            zone: 'mid-t1-chaff',
             name: 'Ally',
             attackTarget: { kind: 'roshan' },
           }),
@@ -565,7 +565,7 @@ describe('VisionCalculator', () => {
   describe('night vision ordering', () => {
     it('drops the enemy-territory neighbor first, keeping own-team vision', () => {
       // A chaff hero in mid-river (neutral) at night. mid-river's neighbors
-      // include mid-t1-rad (chaff) and mid-t1-audit (audit). With PENALTY=1,
+      // include mid-t1-chaff (chaff) and mid-t1-audit (audit). With PENALTY=1,
       // the audit (enemy) neighbor should be dropped, keeping chaff-side vision.
       const state = makeGameState({
         timeOfDay: 'night',
@@ -578,7 +578,7 @@ describe('VisionCalculator', () => {
       // Own zone always visible
       expect(vision.has('mid-river')).toBe(true)
       // Chaff T1 (own territory) should still be visible at night
-      expect(vision.has('mid-t1-rad')).toBe(true)
+      expect(vision.has('mid-t1-chaff')).toBe(true)
       // Audit T1 (enemy territory) should be the dropped neighbor
       expect(vision.has('mid-t1-audit')).toBe(false)
     })
@@ -592,7 +592,7 @@ describe('VisionCalculator', () => {
       })
       const vision = calculateVision(state, 'p1', 'game-day-test')
       expect(vision.has('mid-river')).toBe(true)
-      expect(vision.has('mid-t1-rad')).toBe(true)
+      expect(vision.has('mid-t1-chaff')).toBe(true)
       expect(vision.has('mid-t1-audit')).toBe(true)
     })
   })
@@ -614,13 +614,13 @@ describe('VisionCalculator', () => {
       const visionB = calculateVision(stateB, 'p1', 'game-B')
 
       // mid-river is visible in A (player's zone) and is a neighbor of bot-river
-      // via rune-bot, so it MAY be visible in B too. Instead assert on the
+      // via cache-bot, so it MAY be visible in B too. Instead assert on the
       // player's own zone being the distinguishing factor: both river zones are
       // visible in their respective games.
       expect(visionA.has('mid-river')).toBe(true)
       expect(visionB.has('bot-river')).toBe(true)
       // bot-river is NOT visible in A (it's 2 hops from mid-river through
-      // rune-bot, but rune-bot's neighbors get the night treatment... at day
+      // cache-bot, but cache-bot's neighbors get the night treatment... at day
       // all are visible. Verify the cache didn't return A's set for B.)
       // The key assertion: the cache returned DIFFERENT sets for the two games.
       expect(visionA).not.toEqual(visionB)

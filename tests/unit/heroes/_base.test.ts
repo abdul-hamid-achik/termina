@@ -40,7 +40,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -724,7 +724,7 @@ describe('_base hero utilities', () => {
   describe('TP channeling completion', () => {
     it('should complete teleport after channeling duration', () => {
       const player = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         buffs: [
           { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
           {
@@ -749,7 +749,7 @@ describe('_base hero utilities', () => {
 
     it('should not teleport while channeling is in progress', () => {
       const player = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         buffs: [
           { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
           {
@@ -765,7 +765,7 @@ describe('_base hero utilities', () => {
 
       const result = tickAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('mid-t1-rad')
+      expect(result.players['p1']!.zone).toBe('mid-t1-chaff')
       expect(result.players['p1']!.buffs).toHaveLength(2)
       expect(result.events).toHaveLength(0)
     })
@@ -795,7 +795,7 @@ describe('_base hero utilities', () => {
 
     it('should handle missing destination buff gracefully', () => {
       const player = makePlayer({
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         buffs: [
           { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
         ],
@@ -804,7 +804,7 @@ describe('_base hero utilities', () => {
 
       const result = tickAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('mid-t1-rad')
+      expect(result.players['p1']!.zone).toBe('mid-t1-chaff')
       expect(result.players['p1']!.buffs).toHaveLength(0)
     })
   })
@@ -813,7 +813,7 @@ describe('_base hero utilities', () => {
     const creep = (over: Partial<CreepState> = {}): CreepState => ({
       id: 'c1',
       team: 'audit',
-      zone: 'mid-t1-rad',
+      zone: 'mid-t1-chaff',
       hp: 400,
       maxHp: 400,
       type: 'melee',
@@ -821,7 +821,7 @@ describe('_base hero utilities', () => {
     })
     const neutral = (over: Partial<NeutralCreepState> = {}): NeutralCreepState => ({
       id: 'n1',
-      zone: 'jungle-rad-top',
+      zone: 'silt-chaff-top',
       hp: 250,
       maxHp: 250,
       type: 'kobold',
@@ -830,7 +830,7 @@ describe('_base hero utilities', () => {
     })
 
     it('damages enemy creeps standing in the caster’s zone', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
+      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ creeps: [creep()] })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
@@ -839,7 +839,7 @@ describe('_base hero utilities', () => {
     })
 
     it('spares allied creeps and creeps in every other zone', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
+      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({
         creeps: [
           creep({ id: 'ally', team: 'chaff' }),
@@ -855,7 +855,7 @@ describe('_base hero utilities', () => {
     })
 
     it('kills a creep to exactly 0 rather than negative HP', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
+      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ creeps: [creep({ hp: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
@@ -864,7 +864,7 @@ describe('_base hero utilities', () => {
     })
 
     it('leaves a dead creep in the buffer so the caller can credit the kill', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
+      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ creeps: [creep({ hp: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
@@ -874,7 +874,7 @@ describe('_base hero utilities', () => {
     })
 
     it('does not re-damage a creep already at 0 HP', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
+      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const dead = creep({ hp: 0 })
       const state = makeGameState({ creeps: [dead] })
 
@@ -884,7 +884,7 @@ describe('_base hero utilities', () => {
     })
 
     it('damages neutrals, which are hostile to both teams, and flips alive on death', () => {
-      const caster = makePlayer({ zone: 'jungle-rad-top', team: 'chaff' })
+      const caster = makePlayer({ zone: 'silt-chaff-top', team: 'chaff' })
       const state = makeGameState({ neutrals: [neutral({ hp: 100 })] })
 
       const chipped = damageEnemyNpcsInZone(state, caster, 40, 'magical')
@@ -897,7 +897,7 @@ describe('_base hero utilities', () => {
     })
 
     it('applies the caster’s Mystical Staff amp to magical damage only', () => {
-      const zone = 'mid-t1-rad'
+      const zone = 'mid-t1-chaff'
       const amped = makePlayer({ zone, items: ['mystical_staff', null, null, null, null, null] })
       const plain = makePlayer({ zone })
       const state = makeGameState({ creeps: [creep()] })
@@ -909,19 +909,19 @@ describe('_base hero utilities', () => {
     })
 
     it('no-ops on a zero-damage cast (cache R with nothing banked)', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad' })
+      const caster = makePlayer({ zone: 'mid-t1-chaff' })
       const state = makeGameState({ creeps: [creep()] })
 
       expect(damageEnemyNpcsInZone(state, caster, 0, 'pure')).toBe(state)
     })
 
     it('reaches the widened zone list an AOE+ cast passes in', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
+      const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ creeps: [creep({ id: 'next-door', zone: 'mid-river' })] })
 
       expect(damageEnemyNpcsInZone(state, caster, 150, 'magical')).toBe(state)
       const widened = damageEnemyNpcsInZone(state, caster, 150, 'magical', [
-        'mid-t1-rad',
+        'mid-t1-chaff',
         'mid-river',
       ])
       expect(widened.creeps[0]!.hp).toBe(250)

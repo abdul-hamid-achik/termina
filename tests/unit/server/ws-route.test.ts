@@ -692,7 +692,7 @@ describe('ws route — chat / ping_map fan-out', () => {
 
   it('keeps map pings team-only — the enemy never sees where you looked', async () => {
     const peer = openTeamGame('s_ping')
-    sendMsg(peer, { type: 'ping_map', zone: 'roshan-pit' })
+    sendMsg(peer, { type: 'ping_map', zone: 'hollow' })
     await vi.waitFor(() => {
       expect(sendToPeer).toHaveBeenCalledWith('mate', expect.objectContaining({ type: 'ping_map' }))
     })

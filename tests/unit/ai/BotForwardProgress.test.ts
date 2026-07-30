@@ -58,7 +58,7 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
 
 /** A chaff zone is on chaff's own half (rivers/enemy side are not). */
 function isChaffOwnSide(zone: string): boolean {
-  return zone.endsWith('-rad') || zone.startsWith('chaff') || zone.startsWith('jungle-rad')
+  return zone.endsWith('-chaff') || zone.startsWith('chaff') || zone.startsWith('silt-chaff')
 }
 
 describe('BotAI - integrated forward progress', () => {

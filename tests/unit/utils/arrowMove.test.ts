@@ -109,9 +109,9 @@ describe.each(LAYOUTS)('arrowTargetZone geometry — $label', (layout) => {
 describe('arrowTargetZone walks lanes', () => {
   it('ArrowDown carries a Chaff hero from base to the Audit base down mid', () => {
     expect(walk('ArrowDown', 'chaff-base', LAYOUTS[0]!)).toEqual([
-      'mid-t3-rad',
-      'mid-t2-rad',
-      'mid-t1-rad',
+      'mid-t3-chaff',
+      'mid-t2-chaff',
+      'mid-t1-chaff',
       'mid-river',
       'mid-t1-audit',
       'mid-t2-audit',
@@ -128,9 +128,9 @@ describe('arrowTargetZone walks lanes', () => {
       'mid-t2-audit',
       'mid-t1-audit',
       'mid-river',
-      'mid-t1-rad',
-      'mid-t2-rad',
-      'mid-t3-rad',
+      'mid-t1-chaff',
+      'mid-t2-chaff',
+      'mid-t3-chaff',
       'chaff-base',
     ])
   })
@@ -139,9 +139,9 @@ describe('arrowTargetZone walks lanes', () => {
     const oneLane = LAYOUTS[2]!
     expect(walk('ArrowDown', 'chaff-fountain', oneLane)).toEqual([
       'chaff-base',
-      'mid-t3-rad',
-      'mid-t2-rad',
-      'mid-t1-rad',
+      'mid-t3-chaff',
+      'mid-t2-chaff',
+      'mid-t1-chaff',
       'mid-river',
       'mid-t1-audit',
       'mid-t2-audit',
@@ -157,8 +157,8 @@ describe('arrowTargetZone regressions the name-substring heuristic got wrong', (
   const adj = (id: string) => ZONE_MAP[id]!.adjacentTo
 
   it('moves a Chaff hero forward down mid (every forward neighbour is named -rad)', () => {
-    expect(arrowTargetZone('ArrowDown', 'mid-t3-rad', adj('mid-t3-rad'))).toBe('mid-t2-rad')
-    expect(arrowTargetZone('ArrowDown', 'mid-t2-rad', adj('mid-t2-rad'))).toBe('mid-t1-rad')
+    expect(arrowTargetZone('ArrowDown', 'mid-t3-chaff', adj('mid-t3-chaff'))).toBe('mid-t2-chaff')
+    expect(arrowTargetZone('ArrowDown', 'mid-t2-chaff', adj('mid-t2-chaff'))).toBe('mid-t1-chaff')
   })
 
   it('moves a Audit hero toward their own base instead of backwards up the lane', () => {
@@ -167,23 +167,21 @@ describe('arrowTargetZone regressions the name-substring heuristic got wrong', (
   })
 
   it('splits the two jungles a Audit mid zone touches by side, not by list order', () => {
-    expect(arrowTargetZone('ArrowLeft', 'mid-t2-audit', adj('mid-t2-audit'))).toBe(
-      'jungle-audit-top',
-    )
+    expect(arrowTargetZone('ArrowLeft', 'mid-t2-audit', adj('mid-t2-audit'))).toBe('silt-audit-top')
     expect(arrowTargetZone('ArrowRight', 'mid-t2-audit', adj('mid-t2-audit'))).toBe(
-      'jungle-audit-bot',
+      'silt-audit-bot',
     )
   })
 
   it('gives the Roshan pit its one direction back', () => {
-    expect(arrowTargetZone('ArrowLeft', 'roshan-pit', adj('roshan-pit'))).toBe('rune-top')
+    expect(arrowTargetZone('ArrowLeft', 'hollow', adj('hollow'))).toBe('cache-top')
   })
 
   it('prefers the zone straight ahead over a nearer diagonal one', () => {
-    // rune-top sits one row up and one column left of mid-river; mid-t1-rad is
+    // cache-top sits one row up and one column left of mid-river; mid-t1-chaff is
     // two rows up but dead ahead, and walking the lane is what Up means here.
-    expect(arrowTargetZone('ArrowUp', 'mid-river', adj('mid-river'))).toBe('mid-t1-rad')
-    expect(arrowTargetZone('ArrowLeft', 'mid-river', adj('mid-river'))).toBe('rune-top')
+    expect(arrowTargetZone('ArrowUp', 'mid-river', adj('mid-river'))).toBe('mid-t1-chaff')
+    expect(arrowTargetZone('ArrowLeft', 'mid-river', adj('mid-river'))).toBe('cache-top')
   })
 })
 
@@ -192,8 +190,8 @@ describe('arrowTargetZone declines to guess', () => {
 
   it('returns null when nothing adjacent lies that way', () => {
     expect(arrowTargetZone('ArrowUp', 'chaff-fountain', adj('chaff-fountain'))).toBe(null)
-    expect(arrowTargetZone('ArrowDown', 'roshan-pit', adj('roshan-pit'))).toBe(null)
-    expect(arrowTargetZone('ArrowLeft', 'mid-t1-rad', adj('mid-t1-rad'))).toBe(null)
+    expect(arrowTargetZone('ArrowDown', 'hollow', adj('hollow'))).toBe(null)
+    expect(arrowTargetZone('ArrowLeft', 'mid-t1-chaff', adj('mid-t1-chaff'))).toBe(null)
   })
 
   it('returns null for an empty adjacency list or an off-grid origin', () => {
@@ -201,21 +199,25 @@ describe('arrowTargetZone declines to guess', () => {
     // Every direction, since an origin defaulted to the grid's top-left corner
     // would still answer the downward ones.
     for (const direction of DIRECTIONS) {
-      expect(arrowTargetZone(direction, 'not-a-zone', ['mid-t1-rad', 'top-t2-audit'])).toBe(null)
+      expect(arrowTargetZone(direction, 'not-a-zone', ['mid-t1-chaff', 'top-t2-audit'])).toBe(null)
     }
   })
 
   it('ignores neighbours the active map does not draw', () => {
     // Callers pass the full topology's adjacency; the one-lane map has no jungle.
-    expect(arrowTargetZone('ArrowLeft', 'mid-t2-rad', adj('mid-t2-rad'), 'one_lane')).toBe(null)
-    expect(arrowTargetZone('ArrowRight', 'mid-t2-rad', adj('mid-t2-rad'), 'one_lane')).toBe(null)
-    expect(arrowTargetZone('ArrowUp', 'mid-t2-rad', adj('mid-t2-rad'), 'one_lane')).toBe(
-      'mid-t3-rad',
+    expect(arrowTargetZone('ArrowLeft', 'mid-t2-chaff', adj('mid-t2-chaff'), 'one_lane')).toBe(null)
+    expect(arrowTargetZone('ArrowRight', 'mid-t2-chaff', adj('mid-t2-chaff'), 'one_lane')).toBe(
+      null,
+    )
+    expect(arrowTargetZone('ArrowUp', 'mid-t2-chaff', adj('mid-t2-chaff'), 'one_lane')).toBe(
+      'mid-t3-chaff',
     )
     // The two-lane map keeps the top-side jungle but drops the bot-side one.
-    expect(arrowTargetZone('ArrowLeft', 'mid-t2-rad', adj('mid-t2-rad'), 'two_lane')).toBe(
-      'jungle-rad-top',
+    expect(arrowTargetZone('ArrowLeft', 'mid-t2-chaff', adj('mid-t2-chaff'), 'two_lane')).toBe(
+      'silt-chaff-top',
     )
-    expect(arrowTargetZone('ArrowRight', 'mid-t2-rad', adj('mid-t2-rad'), 'two_lane')).toBe(null)
+    expect(arrowTargetZone('ArrowRight', 'mid-t2-chaff', adj('mid-t2-chaff'), 'two_lane')).toBe(
+      null,
+    )
   })
 })

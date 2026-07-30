@@ -19,9 +19,9 @@ import { ZONES } from './zones'
 const ONE_LANE_IDS = new Set<string>([
   'chaff-base',
   'chaff-fountain',
-  'mid-t3-rad',
-  'mid-t2-rad',
-  'mid-t1-rad',
+  'mid-t3-chaff',
+  'mid-t2-chaff',
+  'mid-t1-chaff',
   'mid-river',
   'mid-t1-audit',
   'mid-t2-audit',
@@ -38,9 +38,9 @@ export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.
  * Two-lane map — top + mid lanes (no bot), for quick 3v3. Like one_lane it is a
  * strict, SELF-CONTAINED subgraph: same zone IDs as the full map, but each
  * zone's `adjacentTo` is pruned to only these (bases drop their bot-t3 edge,
- * mid-t2 drops its bot-jungle edge, mid-river drops rune-bot, etc.). Keeps the
- * top-side river objectives (rune-top + roshan-pit) so a 3v3 still has runes and
- * Roshan; rune-bot is dropped because it only reaches the removed bot lane.
+ * mid-t2 drops its bot-jungle edge, mid-river drops cache-bot, etc.). Keeps the
+ * top-side river objectives (cache-top + hollow) so a 3v3 still has runes and
+ * Roshan; cache-bot is dropped because it only reaches the removed bot lane.
  */
 const TWO_LANE_IDS = new Set<string>([
   // Bases + fountains
@@ -49,27 +49,27 @@ const TWO_LANE_IDS = new Set<string>([
   'audit-base',
   'audit-fountain',
   // Top lane (chaff → audit)
-  'top-t3-rad',
-  'top-t2-rad',
-  'top-t1-rad',
+  'top-t3-chaff',
+  'top-t2-chaff',
+  'top-t1-chaff',
   'top-river',
   'top-t1-audit',
   'top-t2-audit',
   'top-t3-audit',
   // Mid lane (chaff → audit)
-  'mid-t3-rad',
-  'mid-t2-rad',
-  'mid-t1-rad',
+  'mid-t3-chaff',
+  'mid-t2-chaff',
+  'mid-t1-chaff',
   'mid-river',
   'mid-t1-audit',
   'mid-t2-audit',
   'mid-t3-audit',
   // Top-side jungles (serve both surviving lanes)
-  'jungle-rad-top',
-  'jungle-audit-top',
+  'silt-chaff-top',
+  'silt-audit-top',
   // Top-side river objectives
-  'rune-top',
-  'roshan-pit',
+  'cache-top',
+  'hollow',
 ])
 
 export const TWO_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => TWO_LANE_IDS.has(z.id)).map(

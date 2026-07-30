@@ -19,7 +19,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'rune-top',
+    zone: 'cache-top',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -46,7 +46,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeRune(overrides: Partial<RuneState> = {}): RuneState {
   return {
-    zone: 'rune-top',
+    zone: 'cache-top',
     type: 'haste',
     tick: 60,
     ...overrides,
@@ -130,13 +130,13 @@ describe('RuneAI', () => {
     it('should add rune buff to player', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'rune-top', type: 'haste', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       const hasteBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'haste')
       expect(hasteBuff).toBeDefined()
     })
@@ -144,38 +144,38 @@ describe('RuneAI', () => {
     it('should remove rune from ground', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'rune-top', type: 'haste', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       expect(result.state.runes).toHaveLength(0)
     })
 
     it('should fail if player not in same zone', () => {
       const state = makeGameState({
-        runes: [makeRune({ zone: 'rune-top' })],
+        runes: [makeRune({ zone: 'cache-top' })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-bot' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-bot' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       expect(result.state.runes).toHaveLength(1)
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should fail if player is dead', () => {
       const state = makeGameState({
-        runes: [makeRune({ zone: 'rune-top' })],
+        runes: [makeRune({ zone: 'cache-top' })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top', alive: false }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top', alive: false }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       expect(result.state.runes).toHaveLength(1)
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
@@ -184,33 +184,33 @@ describe('RuneAI', () => {
       const state = makeGameState({
         runes: [],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should handle non-existent player', () => {
       const state = makeGameState({
-        runes: [makeRune({ zone: 'rune-top' })],
+        runes: [makeRune({ zone: 'cache-top' })],
       })
 
-      const result = pickupRune(state, 'nonexistent', 'rune-top')
+      const result = pickupRune(state, 'nonexistent', 'cache-top')
       expect(result.state.runes).toHaveLength(1)
     })
 
     it('should emit rune_picked event', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'rune-top', type: 'haste', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       expect(result.event).not.toBeNull()
       expect(result.event!._tag).toBe('rune_picked')
     })
@@ -218,13 +218,13 @@ describe('RuneAI', () => {
     it('should pickup dd rune correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'rune-top', type: 'dd', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', type: 'dd', tick: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       const ddBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'dd')
       expect(ddBuff).toBeDefined()
     })
@@ -232,13 +232,13 @@ describe('RuneAI', () => {
     it('should pickup regen rune correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'rune-top', type: 'regen', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', type: 'regen', tick: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       const regenBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'regen')
       expect(regenBuff).toBeDefined()
     })
@@ -246,13 +246,13 @@ describe('RuneAI', () => {
     it('should pickup arcane rune correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'rune-top', type: 'arcane', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', type: 'arcane', tick: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       const arcaneBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'arcane')
       expect(arcaneBuff).toBeDefined()
     })
@@ -260,13 +260,13 @@ describe('RuneAI', () => {
     it('should pickup invis rune correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'rune-top', type: 'invis', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', type: 'invis', tick: 60 })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       const invisBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'invis')
       expect(invisBuff).toBeDefined()
     })
@@ -275,11 +275,11 @@ describe('RuneAI', () => {
       const state = makeGameState({
         runes: undefined as unknown as RuneState[],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
   })
@@ -289,7 +289,7 @@ describe('RuneAI', () => {
       const spawnTick = 60
       const state = makeGameState({
         tick: spawnTick + RUNE_DURATION_TICKS,
-        runes: [makeRune({ zone: 'rune-top', tick: spawnTick })],
+        runes: [makeRune({ zone: 'cache-top', tick: spawnTick })],
       })
 
       const result = removeExpiredRunes(state)
@@ -300,7 +300,7 @@ describe('RuneAI', () => {
       const spawnTick = 60
       const state = makeGameState({
         tick: spawnTick + RUNE_DURATION_TICKS - 1,
-        runes: [makeRune({ zone: 'rune-top', tick: spawnTick })],
+        runes: [makeRune({ zone: 'cache-top', tick: spawnTick })],
       })
 
       const result = removeExpiredRunes(state)
@@ -310,7 +310,10 @@ describe('RuneAI', () => {
     it('should handle multiple runes with different ages', () => {
       const state = makeGameState({
         tick: 85,
-        runes: [makeRune({ zone: 'rune-top', tick: 60 }), makeRune({ zone: 'rune-bot', tick: 60 })],
+        runes: [
+          makeRune({ zone: 'cache-top', tick: 60 }),
+          makeRune({ zone: 'cache-bot', tick: 60 }),
+        ],
       })
 
       const result = removeExpiredRunes(state)
@@ -320,7 +323,7 @@ describe('RuneAI', () => {
     it('should return unchanged state if no runes expire', () => {
       const state = makeGameState({
         tick: 65,
-        runes: [makeRune({ zone: 'rune-top', tick: 60 })],
+        runes: [makeRune({ zone: 'cache-top', tick: 60 })],
       })
 
       const result = removeExpiredRunes(state)
@@ -622,13 +625,13 @@ describe('RuneAI', () => {
       const spawnTick = 60
       const state = makeGameState({
         tick: spawnTick + RUNE_DURATION_TICKS - 1,
-        runes: [makeRune({ zone: 'rune-top', type: 'haste', tick: spawnTick })],
+        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: spawnTick })],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'rune-top' }),
+          p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'rune-top')
+      const result = pickupRune(state, 'p1', 'cache-top')
       expect(result.state.players['p1']!.buffs).toHaveLength(1)
     })
 

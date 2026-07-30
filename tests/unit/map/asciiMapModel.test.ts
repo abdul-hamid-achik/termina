@@ -29,7 +29,7 @@ import { ZONE_IDS } from '~~/shared/constants/zones'
 
 function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return {
-    id: 'mid-t1-rad',
+    id: 'mid-t1-chaff',
     name: 'Mid Lane T1 (Chaff)',
     playerHere: false,
     allies: [],
@@ -67,19 +67,19 @@ describe('asciiMapModel', () => {
     })
 
     it('codes lanes as lane letter + tier', () => {
-      expect(zoneShortCode('top-t1-rad')).toBe('T1')
+      expect(zoneShortCode('top-t1-chaff')).toBe('T1')
       expect(zoneShortCode('mid-t2-audit')).toBe('M2')
-      expect(zoneShortCode('bot-t3-rad')).toBe('B3')
+      expect(zoneShortCode('bot-t3-chaff')).toBe('B3')
     })
 
     it('codes rivers, runes, jungle, and roshan', () => {
       expect(zoneShortCode('top-river')).toBe('TR')
       expect(zoneShortCode('mid-river')).toBe('MR')
       expect(zoneShortCode('bot-river')).toBe('BR')
-      expect(zoneShortCode('rune-top')).toBe('RN')
-      expect(zoneShortCode('rune-bot')).toBe('RN')
-      expect(zoneShortCode('jungle-audit-bot')).toBe('JG')
-      expect(zoneShortCode('roshan-pit')).toBe('ROS')
+      expect(zoneShortCode('cache-top')).toBe('RN')
+      expect(zoneShortCode('cache-bot')).toBe('RN')
+      expect(zoneShortCode('silt-audit-bot')).toBe('JG')
+      expect(zoneShortCode('hollow')).toBe('HLW')
     })
 
     it('produces 2-3 char codes for every mapped zone', () => {
@@ -97,7 +97,7 @@ describe('asciiMapModel', () => {
 
   describe('zoneTeam', () => {
     it('reads the territory owner from the zone graph', () => {
-      expect(zoneTeam('jungle-rad-top')).toBe('chaff')
+      expect(zoneTeam('silt-chaff-top')).toBe('chaff')
       expect(zoneTeam('bot-t1-audit')).toBe('audit')
       expect(zoneTeam('mid-river')).toBe('neutral')
     })
@@ -150,16 +150,16 @@ describe('asciiMapModel', () => {
     it('returns adjacent zone displays in topology order', () => {
       const zones = [
         makeZone({ id: 'mid-river' }),
-        makeZone({ id: 'mid-t2-rad' }),
-        makeZone({ id: 'top-t1-rad' }), // not adjacent to mid-t1-rad
+        makeZone({ id: 'mid-t2-chaff' }),
+        makeZone({ id: 'top-t1-chaff' }), // not adjacent to mid-t1-chaff
       ]
-      const result = buildAdjacentZones('mid-t1-rad', zones)
-      expect(result.map((z) => z.id)).toEqual(['mid-t2-rad', 'mid-river'])
+      const result = buildAdjacentZones('mid-t1-chaff', zones)
+      expect(result.map((z) => z.id)).toEqual(['mid-t2-chaff', 'mid-river'])
     })
 
     it('skips adjacent zones missing from the display list', () => {
       const zones = [makeZone({ id: 'mid-river' })]
-      const result = buildAdjacentZones('mid-t1-rad', zones)
+      const result = buildAdjacentZones('mid-t1-chaff', zones)
       expect(result.map((z) => z.id)).toEqual(['mid-river'])
     })
 
@@ -215,11 +215,11 @@ describe('asciiMapModel', () => {
 
     it('names visible enemies when few enough to fit the dense cell, else counts', () => {
       // 1-2 named enemies → "who is here" (parity with the mobile cards).
-      const named = makeZone({ id: 'mid-t1-rad', enemyCount: 2, enemyNames: ['Axe', 'Lina'] })
+      const named = makeZone({ id: 'mid-t1-chaff', enemyCount: 2, enemyNames: ['Axe', 'Lina'] })
       expect(cellText(named)).toContain('!Axe,Lina')
       // 3+ would overflow the single-line cell → fall back to a count.
       const many = makeZone({
-        id: 'mid-t1-rad',
+        id: 'mid-t1-chaff',
         enemyCount: 3,
         enemyNames: ['Axe', 'Lina', 'Dawn'],
       })
@@ -244,31 +244,31 @@ describe('asciiMapModel', () => {
     })
 
     it('flags a live rune with its type', () => {
-      expect(cellText(makeZone({ id: 'rune-top', runeType: 'haste' }))).toContain('✦haste')
-      expect(cellText(makeZone({ id: 'rune-top' }))).not.toContain('✦')
+      expect(cellText(makeZone({ id: 'cache-top', runeType: 'haste' }))).toContain('✦haste')
+      expect(cellText(makeZone({ id: 'cache-top' }))).not.toContain('✦')
     })
 
     it('flags Roshan up vs respawning', () => {
+      expect(cellText(makeZone({ id: 'hollow', roshan: { alive: true, respawnIn: 0 } }))).toContain(
+        'UP',
+      )
       expect(
-        cellText(makeZone({ id: 'roshan-pit', roshan: { alive: true, respawnIn: 0 } })),
-      ).toContain('UP')
-      expect(
-        cellText(makeZone({ id: 'roshan-pit', roshan: { alive: false, respawnIn: 45 } })),
+        cellText(makeZone({ id: 'hollow', roshan: { alive: false, respawnIn: 45 } })),
       ).toContain('↻45c')
     })
 
     it('labels each zone category with its glyphed name (a bare zone is just the name)', () => {
       const name = (id: string) => cellText(makeZone({ id }))
-      expect(name('mid-t3-rad')).toBe('▲ RAD T3')
+      expect(name('mid-t3-chaff')).toBe('▲ RAD T3')
       expect(name('mid-t3-audit')).toBe('▼ AUDIT T3')
-      expect(name('mid-t2-rad')).toBe('▲ RAD T2')
+      expect(name('mid-t2-chaff')).toBe('▲ RAD T2')
       expect(name('mid-t2-audit')).toBe('▼ AUDIT T2')
-      expect(name('mid-t1-rad')).toBe('▲ RAD T1')
+      expect(name('mid-t1-chaff')).toBe('▲ RAD T1')
       expect(name('mid-t1-audit')).toBe('▼ AUDIT T1')
       expect(name('top-river')).toBe('≈ RIVER ≈')
-      expect(name('roshan-pit')).toBe('☠ ROSHAN')
-      expect(name('rune-top')).toBe('◆ RUNE')
-      expect(name('jungle-rad-top')).toBe('☘ JUNGLE')
+      expect(name('hollow')).toBe('☠ HOLLOW')
+      expect(name('cache-top')).toBe('◆ CACHE')
+      expect(name('silt-chaff-top')).toBe('☘ SILT')
     })
 
     it('falls back to an 8-char uppercase slice for an uncategorized zone id', () => {
@@ -302,9 +302,7 @@ describe('asciiMapModel', () => {
       expect(zoneRecordLabel({ id: 'landing-terminal', type: 'base', team: 'audit' })).toBe(
         '★ AUDIT',
       )
-      expect(zoneRecordLabel({ id: 'silt-north', type: 'jungle', team: 'neutral' })).toBe(
-        '☘ JUNGLE',
-      )
+      expect(zoneRecordLabel({ id: 'silt-north', type: 'jungle', team: 'neutral' })).toBe('☘ SILT')
       expect(zoneRecordLabel({ id: 'the-crossing', type: 'river', team: 'neutral' })).toBe(
         '≈ RIVER ≈',
       )
@@ -312,7 +310,7 @@ describe('asciiMapModel', () => {
 
     it('marks a standing tower with HP pips', () => {
       const zone = makeZone({
-        id: 'mid-t1-rad',
+        id: 'mid-t1-chaff',
         tower: { team: 'chaff', alive: true, tier: 1, hp: 200, maxHp: 900 },
       })
       expect(cellText(zone)).toContain('▲··')
@@ -368,18 +366,18 @@ describe('asciiMapModel', () => {
 
   describe('buildRouteMarkers', () => {
     it('numbers every hop and flags the destination', () => {
-      const markers = buildRouteMarkers('chaff-fountain', 'mid-t1-rad')
-      // chaff-fountain → chaff-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
+      const markers = buildRouteMarkers('chaff-fountain', 'mid-t1-chaff')
+      // chaff-fountain → chaff-base → mid-t3-chaff → mid-t2-chaff → mid-t1-chaff
       expect(markers.get('chaff-base')).toBe('1')
-      expect(markers.get('mid-t3-rad')).toBe('2')
-      expect(markers.get('mid-t2-rad')).toBe('3')
-      expect(markers.get('mid-t1-rad')).toBe('⌖')
+      expect(markers.get('mid-t3-chaff')).toBe('2')
+      expect(markers.get('mid-t2-chaff')).toBe('3')
+      expect(markers.get('mid-t1-chaff')).toBe('⌖')
       // The zone you are standing in is never part of the drawn route.
       expect(markers.has('chaff-fountain')).toBe(false)
     })
 
     it('marks a single-hop walk as the destination outright', () => {
-      const markers = buildRouteMarkers('mid-t1-rad', 'mid-river')
+      const markers = buildRouteMarkers('mid-t1-chaff', 'mid-river')
       expect([...markers]).toEqual([['mid-river', '⌖']])
     })
 
@@ -392,10 +390,10 @@ describe('asciiMapModel', () => {
 
     it('routes through the game map only, matching the hops the server will take', () => {
       const oneLane = new Set(ONE_LANE_MAP_ROWS.flat().filter((id): id is string => id !== null))
-      // Off the one-lane map rune-top is unreachable, so no route is drawn at all
+      // Off the one-lane map cache-top is unreachable, so no route is drawn at all
       // rather than one running through zones this game does not contain.
-      expect(buildRouteMarkers('mid-river', 'rune-top', (id) => oneLane.has(id)).size).toBe(0)
-      expect(buildRouteMarkers('mid-river', 'rune-top').get('rune-top')).toBe('⌖')
+      expect(buildRouteMarkers('mid-river', 'cache-top', (id) => oneLane.has(id)).size).toBe(0)
+      expect(buildRouteMarkers('mid-river', 'cache-top').get('cache-top')).toBe('⌖')
     })
   })
 
@@ -535,20 +533,20 @@ describe('asciiMapModel', () => {
 
     it('shows a live-rune chip with its type', () => {
       expect(
-        compactIndicators(makeZone({ id: 'rune-top', runeType: 'haste' })).map((i) => i.text),
+        compactIndicators(makeZone({ id: 'cache-top', runeType: 'haste' })).map((i) => i.text),
       ).toContain('✦ haste rune')
     })
 
     it('shows a Roshan chip (up vs respawn countdown)', () => {
       expect(
-        compactIndicators(
-          makeZone({ id: 'roshan-pit', roshan: { alive: true, respawnIn: 0 } }),
-        ).map((i) => i.text),
+        compactIndicators(makeZone({ id: 'hollow', roshan: { alive: true, respawnIn: 0 } })).map(
+          (i) => i.text,
+        ),
       ).toContain('☠ Roshan UP')
       expect(
-        compactIndicators(
-          makeZone({ id: 'roshan-pit', roshan: { alive: false, respawnIn: 60 } }),
-        ).map((i) => i.text),
+        compactIndicators(makeZone({ id: 'hollow', roshan: { alive: false, respawnIn: 60 } })).map(
+          (i) => i.text,
+        ),
       ).toContain('☠ Roshan ↻ 60c')
     })
   })
@@ -591,15 +589,15 @@ describe('asciiMapModel', () => {
       expect(zones[0]).toBe('chaff-fountain')
       expect(zones[zones.length - 1]).toBe('audit-fountain')
       // Top + mid lanes present.
-      for (const id of ['top-t3-rad', 'top-river', 'top-t3-audit', 'mid-river', 'mid-t1-audit']) {
+      for (const id of ['top-t3-chaff', 'top-river', 'top-t3-audit', 'mid-river', 'mid-t1-audit']) {
         expect(zones, `expected ${id} in two_lane layout`).toContain(id)
       }
       // Objectives present.
-      expect(zones).toContain('rune-top')
-      expect(zones).toContain('roshan-pit')
+      expect(zones).toContain('cache-top')
+      expect(zones).toContain('hollow')
       // Bot lane entirely absent.
       expect(zones.some((z) => z.startsWith('bot-'))).toBe(false)
-      expect(zones.some((z) => z.startsWith('rune-bot'))).toBe(false)
+      expect(zones.some((z) => z.startsWith('cache-bot'))).toBe(false)
       expect(colHeadersFor('two_lane')).toEqual([
         'SEAWALL',
         'CHAFF SILT',
@@ -637,14 +635,14 @@ describe('asciiMapModel', () => {
     })
 
     it('prefixes ► and highlights the cell where the player is', () => {
-      const cell = miniOverviewCell('mid-t1-rad', makeZone({ playerHere: true }), null)
+      const cell = miniOverviewCell('mid-t1-chaff', makeZone({ playerHere: true }), null)
       expect(cell.code).toBe('►M1')
       expect(cell.classes).toEqual(expect.arrayContaining(['bg-self/30', 'font-bold']))
     })
 
     it('appends a team-colored ▲ for a standing tower', () => {
       const rad = miniOverviewCell(
-        'mid-t1-rad',
+        'mid-t1-chaff',
         makeZone({ tower: { team: 'chaff', alive: true, tier: 1 } }),
         null,
       )
@@ -659,7 +657,7 @@ describe('asciiMapModel', () => {
 
     it('appends a dim ✗ for a razed tower', () => {
       const cell = miniOverviewCell(
-        'mid-t1-rad',
+        'mid-t1-chaff',
         makeZone({ tower: { team: 'chaff', alive: false, tier: 1 } }),
         null,
       )
@@ -691,8 +689,8 @@ describe('asciiMapModel', () => {
     })
 
     it('handles zones missing from the display list', () => {
-      const cell = miniOverviewCell('roshan-pit', undefined, null)
-      expect(cell.code).toBe('ROS')
+      const cell = miniOverviewCell('hollow', undefined, null)
+      expect(cell.code).toBe('HLW')
       expect(cell.tower).toBeNull()
       expect(cell.marks).toBe('')
       expect(cell.classes).toContain('text-text-dim')

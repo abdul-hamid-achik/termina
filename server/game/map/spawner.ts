@@ -25,9 +25,9 @@ export function resetCreepIdCounter(): void {
 
 /** Lane spawn points for each team. */
 const LANE_SPAWN_ZONES: Record<string, { chaff: string; audit: string }> = {
-  top: { chaff: 'top-t3-rad', audit: 'top-t3-audit' },
-  mid: { chaff: 'mid-t3-rad', audit: 'mid-t3-audit' },
-  bot: { chaff: 'bot-t3-rad', audit: 'bot-t3-audit' },
+  top: { chaff: 'top-t3-chaff', audit: 'top-t3-audit' },
+  mid: { chaff: 'mid-t3-chaff', audit: 'mid-t3-audit' },
+  bot: { chaff: 'bot-t3-chaff', audit: 'bot-t3-audit' },
 }
 
 /**
@@ -110,7 +110,7 @@ export function spawnRunes(
   if (tick === 0 || tick % RUNE_INTERVAL_TICKS !== 0) return []
 
   const runes: RuneSpawn[] = []
-  for (const zone of ['rune-top', 'rune-bot']) {
+  for (const zone of ['cache-top', 'cache-bot']) {
     if (hasZone && !hasZone(zone)) continue
     if (activeRunes && activeRunes.has(zone)) continue // spot already occupied
     const type = RUNE_TYPES[Math.floor(Math.random() * RUNE_TYPES.length)]!

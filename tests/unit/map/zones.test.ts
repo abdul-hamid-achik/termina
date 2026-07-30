@@ -33,13 +33,13 @@ describe('Zones', () => {
       expect(byId['chaff-base']).toBe('Rookery Terminal')
       expect(byId['audit-base']).toBe('Landing Terminal')
       // The three routes.
-      expect(byId['top-t1-rad']).toBe('Seawall T1 (CHAFF)')
+      expect(byId['top-t1-chaff']).toBe('Seawall T1 (CHAFF)')
       expect(byId['mid-t1-audit']).toBe('Coldstore T1 (AUDIT)')
-      expect(byId['bot-t1-rad']).toBe('Shallows T1 (CHAFF)')
+      expect(byId['bot-t1-chaff']).toBe('Shallows T1 (CHAFF)')
       // Jungle is the Silt; the pit is the Hollow; rune spots are cache drops.
-      expect(byId['jungle-rad-top']).toBe('Chaff Upper Silt')
-      expect(byId['roshan-pit']).toBe('The Hollow')
-      expect(byId['rune-top']).toBe('Seawall Cache Drop')
+      expect(byId['silt-chaff-top']).toBe('Chaff Upper Silt')
+      expect(byId['hollow']).toBe('The Hollow')
+      expect(byId['cache-top']).toBe('Seawall Cache Drop')
     })
   })
 
@@ -106,7 +106,7 @@ describe('Zones', () => {
     it('assigns correct team to each tower', () => {
       const towers = initializeTowers()
       for (const t of towers) {
-        if (t.zone.endsWith('-rad')) expect(t.team).toBe('chaff')
+        if (t.zone.endsWith('-chaff')) expect(t.team).toBe('chaff')
         else if (t.zone.endsWith('-audit')) expect(t.team).toBe('audit')
       }
     })
@@ -186,45 +186,45 @@ describe('Zones', () => {
   describe('canAttackTower', () => {
     it('T1 towers can always be attacked', () => {
       const towers = initializeTowers()
-      expect(canAttackTower(towers, 'mid-t1-rad')).toBe(true)
+      expect(canAttackTower(towers, 'mid-t1-chaff')).toBe(true)
       expect(canAttackTower(towers, 'top-t1-audit')).toBe(true)
     })
 
     it('T2 cannot be attacked while T1 is alive', () => {
       const towers = initializeTowers()
-      expect(canAttackTower(towers, 'mid-t2-rad')).toBe(false)
+      expect(canAttackTower(towers, 'mid-t2-chaff')).toBe(false)
     })
 
     it('T2 can be attacked when T1 is destroyed', () => {
       const towers = initializeTowers()
-      const t1 = towers.find((t) => t.zone === 'mid-t1-rad')!
+      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
       t1.alive = false
       t1.hp = 0
-      expect(canAttackTower(towers, 'mid-t2-rad')).toBe(true)
+      expect(canAttackTower(towers, 'mid-t2-chaff')).toBe(true)
     })
 
     it('T3 cannot be attacked while T2 is alive', () => {
       const towers = initializeTowers()
       // Destroy T1
-      const t1 = towers.find((t) => t.zone === 'mid-t1-rad')!
+      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
       t1.alive = false
-      expect(canAttackTower(towers, 'mid-t3-rad')).toBe(false)
+      expect(canAttackTower(towers, 'mid-t3-chaff')).toBe(false)
     })
 
     it('T3 can be attacked when T2 is destroyed', () => {
       const towers = initializeTowers()
-      const t1 = towers.find((t) => t.zone === 'mid-t1-rad')!
-      const t2 = towers.find((t) => t.zone === 'mid-t2-rad')!
+      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
+      const t2 = towers.find((t) => t.zone === 'mid-t2-chaff')!
       t1.alive = false
       t2.alive = false
-      expect(canAttackTower(towers, 'mid-t3-rad')).toBe(true)
+      expect(canAttackTower(towers, 'mid-t3-chaff')).toBe(true)
     })
 
     it('returns false for a dead tower', () => {
       const towers = initializeTowers()
-      const t1 = towers.find((t) => t.zone === 'mid-t1-rad')!
+      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
       t1.alive = false
-      expect(canAttackTower(towers, 'mid-t1-rad')).toBe(false)
+      expect(canAttackTower(towers, 'mid-t1-chaff')).toBe(false)
     })
 
     it('returns false for zones without towers', () => {

@@ -166,7 +166,7 @@ export function advanceTutorialAfterTick(
   if (stalledInBase) {
     return {
       state,
-      notice: '🎓 Still in your base — keep going with `move mid-t1-rad` to reach the lane.',
+      notice: '🎓 Still in your base — keep going with `move mid-t1-chaff` to reach the lane.',
     }
   }
 

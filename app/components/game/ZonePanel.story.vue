@@ -24,7 +24,7 @@ type IndexedNeutral = NeutralCreepState & { index: number }
 function neutral(overrides: Partial<IndexedNeutral> = {}): IndexedNeutral {
   return {
     id: 'n0',
-    zone: 'jungle-rad-top',
+    zone: 'silt-chaff-top',
     hp: 250,
     maxHp: 250,
     type: 'kobold',
@@ -107,7 +107,7 @@ const laneSiege = {
 // denied (the allied-creep group becomes a tappable [deny] action).
 const denyWindow = {
   zoneName: 'Mid Lane (Chaff)',
-  zoneId: 'mid-t1-rad',
+  zoneId: 'mid-t1-chaff',
   creeps: [
     creep({ id: 'rc1', team: 'chaff', hp: 140, index: 0 }), // melee, denyable (<200)
     creep({ id: 'rc2', team: 'chaff', hp: 300, type: 'ranged', index: 1 }),
@@ -118,7 +118,7 @@ const denyWindow = {
 // A neutral jungle camp.
 const jungle = {
   zoneName: 'Chaff Jungle (Top)',
-  zoneId: 'jungle-rad-top',
+  zoneId: 'silt-chaff-top',
   neutrals: [
     neutral({ id: 'n1', hp: 250, index: 3 }),
     neutral({ id: 'n2', hp: 90, type: 'ogre_mage', index: 4 }),
@@ -129,7 +129,7 @@ const jungle = {
 // The Roshan pit with him up — the one place the attack affordance appears.
 const roshanPit = {
   zoneName: 'The Hollow',
-  zoneId: 'roshan-pit',
+  zoneId: 'hollow',
   roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
 }
 </script>

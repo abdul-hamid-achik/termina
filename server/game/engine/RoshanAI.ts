@@ -15,7 +15,7 @@ export interface RoshanAction {
 }
 
 /**
- * Roshan AI: attacks heroes in roshan-pit, handles death/respawn.
+ * Roshan AI: attacks heroes in hollow, handles death/respawn.
  */
 export function runRoshanAI(state: GameState): RoshanAction[] {
   const actions: RoshanAction[] = []
@@ -24,9 +24,9 @@ export function runRoshanAI(state: GameState): RoshanAction[] {
   // Roshan does nothing if dead or doesn't exist
   if (!roshan || !roshan.alive) return actions
 
-  // Find enemy heroes in roshan-pit (same zone)
+  // Find enemy heroes in hollow (same zone)
   const enemyHeroes = Object.values(state.players).filter(
-    (p) => p && p.zone === 'roshan-pit' && p.alive,
+    (p) => p && p.zone === 'hollow' && p.alive,
   )
 
   // Attack the lowest HP enemy hero in range
@@ -106,9 +106,9 @@ export function processRoshanDamage(
         deathTick: state.tick,
       }
 
-      // Drop aegis in roshan-pit
+      // Drop aegis in hollow
       const aegis = {
-        zone: 'roshan-pit',
+        zone: 'hollow',
         tick: state.tick,
         holderId: null as string | null,
       }
@@ -183,8 +183,8 @@ export function pickupAegis(
   const player = state.players[playerId]
   if (!player || !player.alive) return { state, event: null }
 
-  // Player must be in roshan-pit to pick up aegis
-  if (player.zone !== 'roshan-pit') return { state, event: null }
+  // Player must be in hollow to pick up aegis
+  if (player.zone !== 'hollow') return { state, event: null }
 
   // Add aegis buff to player (respawn speed)
   const aegisBuff = {

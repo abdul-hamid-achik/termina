@@ -39,7 +39,7 @@ const TICK = 240
         <ObjectiveTicker
           :roshan="makeRoshan({ alive: false, hp: 0, deathTick: TICK - 5 })"
           :runes="[makeRune({ type: 'haste', tick: TICK })]"
-          :aegis="{ zone: 'roshan-pit', tick: TICK - 5, holderId: 'p1' }"
+          :aegis="{ zone: 'hollow', tick: TICK - 5, holderId: 'p1' }"
           :aegis-holder="{ name: 'you', ticksRemaining: 18 }"
           :tick="TICK"
         />
@@ -52,7 +52,7 @@ const TICK = 240
         <ObjectiveTicker
           :roshan="makeRoshan({ alive: false, hp: 0, deathTick: TICK - 2 })"
           :runes="[]"
-          :aegis="{ zone: 'roshan-pit', tick: TICK - 2, holderId: null }"
+          :aegis="{ zone: 'hollow', tick: TICK - 2, holderId: null }"
           :tick="TICK"
         />
       </div>

@@ -131,7 +131,7 @@ export function canAttackTower(towers: TowerState[], zoneId: string): boolean {
     zone?.lane ?? (zoneId.startsWith('top-') ? 'top' : zoneId.startsWith('mid-') ? 'mid' : 'bot')
   const team = tower.team
   const precedingTier = tier - 1
-  const precedingZoneId = `${lane}-t${precedingTier}-${team === 'chaff' ? 'rad' : 'audit'}`
+  const precedingZoneId = `${lane}-t${precedingTier}-${team}`
 
   const precedingTower = towers.find((t) => t.zone === precedingZoneId)
   return !precedingTower || !precedingTower.alive

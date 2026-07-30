@@ -27,7 +27,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -56,7 +56,7 @@ function makeCreep(overrides: Partial<CreepState> = {}): CreepState {
   return {
     id: 'c1',
     team: 'chaff',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 400,
     type: 'melee',
     ...overrides,
@@ -91,14 +91,14 @@ describe('CreepAI', () => {
   describe('runCreepAI', () => {
     it('should move creeps forward along lane when no enemies present', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t3-rad' })],
+        creeps: [makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t3-chaff' })],
       })
 
       const actions = runCreepAI(state)
       expect(actions).toHaveLength(1)
       expect(actions[0]!.creepId).toBe('c1')
       expect(actions[0]!.action).toBe('move')
-      expect(actions[0]!.targetZone).toBe('mid-t2-rad')
+      expect(actions[0]!.targetZone).toBe('mid-t2-chaff')
     })
 
     it('should move audit creeps forward along their lane', () => {
@@ -278,17 +278,17 @@ describe('CreepAI', () => {
     it('should handle creeps on all three lanes', () => {
       const state = makeGameState({
         creeps: [
-          makeCreep({ id: 'c1', team: 'chaff', zone: 'top-t3-rad' }),
-          makeCreep({ id: 'c2', team: 'chaff', zone: 'mid-t3-rad' }),
-          makeCreep({ id: 'c3', team: 'chaff', zone: 'bot-t3-rad' }),
+          makeCreep({ id: 'c1', team: 'chaff', zone: 'top-t3-chaff' }),
+          makeCreep({ id: 'c2', team: 'chaff', zone: 'mid-t3-chaff' }),
+          makeCreep({ id: 'c3', team: 'chaff', zone: 'bot-t3-chaff' }),
         ],
       })
 
       const actions = runCreepAI(state)
       expect(actions).toHaveLength(3)
-      expect(actions[0]!.targetZone).toBe('top-t2-rad')
-      expect(actions[1]!.targetZone).toBe('mid-t2-rad')
-      expect(actions[2]!.targetZone).toBe('bot-t2-rad')
+      expect(actions[0]!.targetZone).toBe('top-t2-chaff')
+      expect(actions[1]!.targetZone).toBe('mid-t2-chaff')
+      expect(actions[2]!.targetZone).toBe('bot-t2-chaff')
     })
 
     it('should not attack dead enemy creeps', () => {
@@ -325,13 +325,13 @@ describe('CreepAI', () => {
   describe('applyCreepActions', () => {
     it('should move creeps to target zones', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', zone: 'mid-t3-rad' })],
+        creeps: [makeCreep({ id: 'c1', zone: 'mid-t3-chaff' })],
       })
 
-      const actions: CreepAction[] = [{ creepId: 'c1', action: 'move', targetZone: 'mid-t2-rad' }]
+      const actions: CreepAction[] = [{ creepId: 'c1', action: 'move', targetZone: 'mid-t2-chaff' }]
 
       const result = applyCreepActions(state, actions).state
-      expect(result.creeps[0]!.zone).toBe('mid-t2-rad')
+      expect(result.creeps[0]!.zone).toBe('mid-t2-chaff')
     })
 
     it('should apply damage to enemy creeps', () => {
@@ -390,7 +390,7 @@ describe('CreepAI', () => {
     it('does not pay shared XP to the dying creep’s own team, the dead, or another zone', () => {
       const owner = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', xp: 0 })
       const dead = makePlayer({ id: 'p2', team: 'chaff', zone: 'mid-river', xp: 0, alive: false })
-      const elsewhere = makePlayer({ id: 'p3', team: 'chaff', zone: 'mid-t1-rad', xp: 0 })
+      const elsewhere = makePlayer({ id: 'p3', team: 'chaff', zone: 'mid-t1-chaff', xp: 0 })
       const state = makeGameState({
         creeps: [
           makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 400 }),

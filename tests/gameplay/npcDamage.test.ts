@@ -63,14 +63,14 @@ describe('NPC damage is visible', () => {
       neutrals: [
         {
           id: 'neutral_camp_1',
-          zone: 'jungle-rad-top',
+          zone: 'silt-chaff-top',
           hp: 400,
           maxHp: 400,
           type: 'centaur',
           alive: true,
         },
       ],
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'jungle-rad-top' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
     }))
 
     await game.tick()

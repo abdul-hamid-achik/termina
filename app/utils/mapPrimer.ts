@@ -24,7 +24,7 @@ export function buildMapPrimerZones(): ZoneDisplay[] {
     if (z.tower && (z.team === 'chaff' || z.team === 'audit')) {
       display.tower = { team: z.team, alive: true, tier: z.tier ?? 1 }
     }
-    if (z.id === 'roshan-pit') {
+    if (z.id === 'hollow') {
       display.roshan = { alive: true, respawnIn: 0 }
     }
     return display

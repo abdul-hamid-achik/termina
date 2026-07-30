@@ -327,7 +327,7 @@ describe('CommandInput', () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       const input = await typeAndEnter(wrapper, 'move mid')
       expect(wrapper.emitted('submit')?.[0]).toEqual(['move mid'])
-      expect((input.element as HTMLInputElement).value).not.toContain('mid-t3-rad')
+      expect((input.element as HTMLInputElement).value).not.toContain('mid-t3-chaff')
     })
 
     it('still completes a genuine prefix rather than submitting it', async () => {

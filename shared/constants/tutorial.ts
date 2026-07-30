@@ -50,7 +50,7 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     // own creeps, and was stunned and killed inside ~12 ticks having landed
     // nothing. Standing behind your own tower is also just what the game wants
     // you to learn.
-    hint: '🎓 Walk to your tower — type `move mid-t1-rad`. You move one zone per cycle, so this takes a few.',
+    hint: '🎓 Walk to your tower — type `move mid-t1-chaff`. You move one zone per cycle, so this takes a few.',
     skipNote:
       'Movement: `move <zone>` auto-paths one zone per cycle. Stay behind your own tower — the river is contested.',
   },

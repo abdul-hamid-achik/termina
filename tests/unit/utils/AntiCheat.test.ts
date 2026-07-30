@@ -20,7 +20,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -75,11 +75,11 @@ describe('AntiCheat', () => {
     it('should allow movement to adjacent zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
         },
       })
 
-      const command: Command = { type: 'move', zone: 'mid-t2-rad' }
+      const command: Command = { type: 'move', zone: 'mid-t2-chaff' }
       const violation = validateVision(state, 'p1', command)
       expect(violation).toBeNull()
     })
@@ -87,7 +87,7 @@ describe('AntiCheat', () => {
     it('accepts a distant move (auto-path) but flags an off-map destination', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
         },
       })
 
@@ -96,9 +96,9 @@ describe('AntiCheat', () => {
 
       // A zone that doesn't exist in THIS game's zone set is still a violation.
       const zones = { ...state.zones }
-      delete zones['top-t3-rad']
+      delete zones['top-t3-chaff']
       const subsetState = { ...state, zones }
-      const violation = validateVision(subsetState, 'p1', { type: 'move', zone: 'top-t3-rad' })
+      const violation = validateVision(subsetState, 'p1', { type: 'move', zone: 'top-t3-chaff' })
       expect(violation).not.toBeNull()
       expect(violation?.violationType).toBe('INVALID_MOVE')
     })
@@ -106,7 +106,7 @@ describe('AntiCheat', () => {
     it('should detect ward placement in invisible zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
         },
       })
 
@@ -310,7 +310,7 @@ describe('AntiCheat', () => {
         },
       })
 
-      const command: Command = { type: 'move', zone: 'mid-t2-rad' }
+      const command: Command = { type: 'move', zone: 'mid-t2-chaff' }
       runAntiCheatChecks(state, 'p1', command)
 
       const playerViolations = getPlayerViolations('p1')
@@ -329,7 +329,7 @@ describe('AntiCheat', () => {
       })
 
       // Generate critical violation for p1
-      runAntiCheatChecks(state, 'p1', { type: 'move', zone: 'mid-t2-rad' })
+      runAntiCheatChecks(state, 'p1', { type: 'move', zone: 'mid-t2-chaff' })
 
       // Generate 3 high violations for p2 (vision bypass)
       for (let i = 0; i < 3; i++) {
@@ -337,7 +337,7 @@ describe('AntiCheat', () => {
       }
 
       // Generate 1 low violation for p3
-      const command: Command = { type: 'move', zone: 'mid-t2-rad' }
+      const command: Command = { type: 'move', zone: 'mid-t2-chaff' }
       runAntiCheatChecks(state, 'p3', command)
 
       const criticalViolators = getCriticalViolators()
@@ -368,8 +368,8 @@ describe('AntiCheat', () => {
         },
       })
 
-      runAntiCheatChecks(state, 'p1', { type: 'move', zone: 'mid-t2-rad' })
-      runAntiCheatChecks(state, 'p2', { type: 'move', zone: 'mid-t2-rad' })
+      runAntiCheatChecks(state, 'p1', { type: 'move', zone: 'mid-t2-chaff' })
+      runAntiCheatChecks(state, 'p2', { type: 'move', zone: 'mid-t2-chaff' })
 
       clearPlayerViolations('p1')
 
@@ -385,8 +385,8 @@ describe('AntiCheat', () => {
         },
       })
 
-      runAntiCheatChecks(state, 'p1', { type: 'move', zone: 'mid-t2-rad' })
-      runAntiCheatChecks(state, 'p2', { type: 'move', zone: 'mid-t2-rad' })
+      runAntiCheatChecks(state, 'p1', { type: 'move', zone: 'mid-t2-chaff' })
+      runAntiCheatChecks(state, 'p2', { type: 'move', zone: 'mid-t2-chaff' })
 
       cleanupAntiCheat()
 

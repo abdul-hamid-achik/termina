@@ -82,7 +82,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     zones: {
       'mid-river': { id: 'mid-river', wards: [], creeps: [] },
       'top-river': { id: 'top-river', wards: [], creeps: [] },
-      'mid-t1-rad': { id: 'mid-t1-rad', wards: [], creeps: [] },
+      'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], creeps: [] },
     },
     creeps: [],
     towers: [],

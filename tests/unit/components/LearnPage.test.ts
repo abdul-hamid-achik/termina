@@ -162,8 +162,8 @@ describe('learn page', () => {
 
   it('uses the real jungle zone naming (jungle-team-side)', () => {
     const text = mountLearn().text()
-    expect(text).toContain('jungle-rad-top')
-    expect(text).toContain('jungle-audit-bot')
+    expect(text).toContain('silt-chaff-top')
+    expect(text).toContain('silt-audit-bot')
     expect(text).not.toContain('rad-jungle-top')
   })
 

@@ -281,14 +281,14 @@ describe('tutorial flow', () => {
       // nothing legal left to do. The flow could not reach the final step, so
       // tutorial completion never fired for anyone.
       it('auto-advances a step the player cannot satisfy, and explains why', () => {
-        const stuck = tutorialState(2, 'mid-t3-rad', TUTORIAL_STEP_DEADLINE_TICKS)
+        const stuck = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_TICKS)
         const next = advanceTutorialAfterTick(stuck, [], [])
         expect(next.state.tutorialStep).toBe(3)
         expect(next.notice).toContain('Moving on')
       })
 
       it('does not auto-advance before the deadline', () => {
-        const waiting = tutorialState(2, 'mid-t3-rad', TUTORIAL_STEP_DEADLINE_TICKS - 1)
+        const waiting = tutorialState(2, 'mid-t3-chaff', TUTORIAL_STEP_DEADLINE_TICKS - 1)
         expect(advanceTutorialAfterTick(waiting, [], []).state.tutorialStep).toBe(2)
       })
 

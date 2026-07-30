@@ -80,11 +80,11 @@ describe('shop', () => {
       },
     }))
 
-    // mid-river is adjacent to mid-t1-rad; blink takes a zone-id string target.
-    game.submit({ type: 'use', item: 'blink_module', target: 'mid-t1-rad' })
+    // mid-river is adjacent to mid-t1-chaff; blink takes a zone-id string target.
+    game.submit({ type: 'use', item: 'blink_module', target: 'mid-t1-chaff' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('mid-t1-rad')
+    expect((await game.me()).zone).toBe('mid-t1-chaff')
   })
 
   it('using Dagon nukes a targeted enemy for magical damage (offensive item active)', async () => {

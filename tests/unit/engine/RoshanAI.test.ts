@@ -12,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -64,7 +64,7 @@ describe('RoshanAI', () => {
       const state = makeGameState({
         roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 10 },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow' }),
         },
       })
 
@@ -72,11 +72,11 @@ describe('RoshanAI', () => {
       expect(actions).toHaveLength(0)
     })
 
-    it('should attack heroes in roshan-pit', () => {
+    it('should attack heroes in hollow', () => {
       const state = makeGameState({
         roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'roshan-pit', hp: 300 }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow', hp: 300 }),
         },
       })
 
@@ -90,8 +90,8 @@ describe('RoshanAI', () => {
       const state = makeGameState({
         roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'roshan-pit', hp: 400 }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', hp: 100, team: 'chaff' }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow', hp: 400 }),
+          p2: makePlayer({ id: 'p2', zone: 'hollow', hp: 100, team: 'chaff' }),
         },
       })
 
@@ -100,7 +100,7 @@ describe('RoshanAI', () => {
       expect(actions[0]!.targetId).toBe('p2')
     })
 
-    it('should not attack heroes outside roshan-pit', () => {
+    it('should not attack heroes outside hollow', () => {
       const state = makeGameState({
         roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
         players: {
@@ -134,8 +134,8 @@ describe('RoshanAI', () => {
         tick: 100,
         roshan: { alive: true, hp: 500, maxHp: 5000, deathTick: null },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'audit' }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow' }),
+          p2: makePlayer({ id: 'p2', zone: 'hollow', team: 'audit' }),
         },
       })
 
@@ -156,8 +156,8 @@ describe('RoshanAI', () => {
         tick: 100,
         roshan: { alive: true, hp: 500, maxHp: 5000, deathTick: null },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'roshan-pit', gold: 0 }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'audit', gold: 0 }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow', gold: 0 }),
+          p2: makePlayer({ id: 'p2', zone: 'hollow', team: 'audit', gold: 0 }),
         },
       })
 
@@ -171,12 +171,12 @@ describe('RoshanAI', () => {
       expect(totalGold).toBeGreaterThan(0)
     })
 
-    it('should drop aegis in roshan-pit on death', () => {
+    it('should drop aegis in hollow on death', () => {
       const state = makeGameState({
         tick: 100,
         roshan: { alive: true, hp: 500, maxHp: 5000, deathTick: null },
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow' }),
         },
       })
 
@@ -187,7 +187,7 @@ describe('RoshanAI', () => {
 
       expect(result.aegisDropped).toBe(true)
       expect(result.state.aegis).not.toBeNull()
-      expect(result.state.aegis!.zone).toBe('roshan-pit')
+      expect(result.state.aegis!.zone).toBe('hollow')
     })
 
     it('should not apply damage when Roshan is dead', () => {
@@ -211,7 +211,7 @@ describe('RoshanAI', () => {
       const state = makeGameState({
         roshan: initialRoshan,
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'roshan-pit', heroId: 'echo' }),
+          p1: makePlayer({ id: 'p1', zone: 'hollow', heroId: 'echo' }),
         },
       })
 

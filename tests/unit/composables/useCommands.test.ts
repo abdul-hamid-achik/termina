@@ -36,7 +36,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'TestPlayer',
     team: 'chaff',
     heroId: 'echo',
-    zone: 'mid-t1-rad',
+    zone: 'mid-t1-chaff',
     hp: 500,
     maxHp: 550,
     mp: 200,
@@ -67,7 +67,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
  * A realistic slice of `state.creeps` as the client receives it: server order,
  * mixed zones, mixed teams, and one corpse that has not been reaped yet.
  *
- * Zone-local indices for mid-t1-rad are therefore 0=c0, 1=c1, 2=c2 (dead),
+ * Zone-local indices for mid-t1-chaff are therefore 0=c0, 1=c1, 2=c2 (dead),
  * 3=c3, 4=c4 — deliberately offset from the global positions so anything that
  * numbers creeps globally, or that renumbers after dropping the corpse, is
  * caught.
@@ -75,11 +75,11 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 function makeCreeps(): CreepState[] {
   return [
     { id: 'elsewhere', team: 'audit', zone: 'mid-river', hp: 400, maxHp: 400, type: 'melee' },
-    { id: 'c0', team: 'audit', zone: 'mid-t1-rad', hp: 320, maxHp: 400, type: 'melee' },
-    { id: 'c1', team: 'chaff', zone: 'mid-t1-rad', hp: 90, maxHp: 400, type: 'melee' },
-    { id: 'c2', team: 'audit', zone: 'mid-t1-rad', hp: 0, maxHp: 250, type: 'ranged' },
-    { id: 'c3', team: 'audit', zone: 'mid-t1-rad', hp: 200, maxHp: 250, type: 'ranged' },
-    { id: 'c4', team: 'chaff', zone: 'mid-t1-rad', hp: 380, maxHp: 400, type: 'melee' },
+    { id: 'c0', team: 'audit', zone: 'mid-t1-chaff', hp: 320, maxHp: 400, type: 'melee' },
+    { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 90, maxHp: 400, type: 'melee' },
+    { id: 'c2', team: 'audit', zone: 'mid-t1-chaff', hp: 0, maxHp: 250, type: 'ranged' },
+    { id: 'c3', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 250, type: 'ranged' },
+    { id: 'c4', team: 'chaff', zone: 'mid-t1-chaff', hp: 380, maxHp: 400, type: 'melee' },
   ]
 }
 
@@ -97,7 +97,7 @@ function makeContext(overrides: Partial<GameContext> = {}): GameContext {
         name: 'Enemy',
         heroId: 'daemon',
         team: 'audit',
-        zone: 'mid-t1-rad',
+        zone: 'mid-t1-chaff',
         alive: true,
       }),
     },
@@ -185,14 +185,14 @@ describe('useCommands', () => {
           const result = parse('move rune')
 
           expect(result.command).toBeNull()
-          expect(result.error).toContain('rune-top')
-          expect(result.error).toContain('rune-bot')
+          expect(result.error).toContain('cache-top')
+          expect(result.error).toContain('cache-bot')
         })
 
         it('resolves the rt/rb shortcuts to the two rune spots', () => {
           const { parse } = useCommands()
-          expect(parse('move rt').command).toEqual({ type: 'move', zone: 'rune-top' })
-          expect(parse('move rb').command).toEqual({ type: 'move', zone: 'rune-bot' })
+          expect(parse('move rt').command).toEqual({ type: 'move', zone: 'cache-top' })
+          expect(parse('move rb').command).toEqual({ type: 'move', zone: 'cache-bot' })
         })
 
         it('reports the ambiguity for ward and ping too', () => {
@@ -236,12 +236,12 @@ describe('useCommands', () => {
 
       it('parses attack tower target', () => {
         const { parse } = useCommands()
-        const result = parse('attack tower:mid-t1-rad')
+        const result = parse('attack tower:mid-t1-chaff')
 
         expect(result.error).toBeNull()
         expect(result.command).toEqual({
           type: 'attack',
-          target: { kind: 'tower', zone: 'mid-t1-rad' },
+          target: { kind: 'tower', zone: 'mid-t1-chaff' },
         })
       })
 
@@ -882,11 +882,11 @@ describe('useCommands', () => {
 
     it('parses tower:zone target', () => {
       const { parse } = useCommands()
-      const result = parse('attack tower:top-t1-rad')
+      const result = parse('attack tower:top-t1-chaff')
 
       expect(result.command).toEqual({
         type: 'attack',
-        target: { kind: 'tower', zone: 'top-t1-rad' },
+        target: { kind: 'tower', zone: 'top-t1-chaff' },
       })
     })
 
@@ -1043,7 +1043,7 @@ describe('useCommands', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           visibleZones: {
-            'mid-t1-rad': { id: 'mid-t1-rad', wards: [], creeps: [] },
+            'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], creeps: [] },
             'mid-river': { id: 'mid-river', wards: [], creeps: [] },
           },
         })
@@ -1051,11 +1051,11 @@ describe('useCommands', () => {
         const suggestions = autocomplete('move mid', context)
         const texts = suggestions.map((s) => s.text)
 
-        expect(texts).toContain('mid-t1-rad')
+        expect(texts).toContain('mid-t1-chaff')
         expect(texts).toContain('mid-river')
       })
 
-      // REGRESSION: zone order put `mid-t3-rad` first, so accepting the top
+      // REGRESSION: zone order put `mid-t3-chaff` first, so accepting the top
       // suggestion for `move mid` sent the player to their own tier-3 tower.
       it('ranks an exact alias above every prefix match', () => {
         const { autocomplete } = useCommands()
@@ -1063,7 +1063,7 @@ describe('useCommands', () => {
 
         expect(suggestions[0]?.text).toBe('mid')
         expect(suggestions[0]?.description).toContain('Coldstore Crossing')
-        expect(suggestions.map((s) => s.text)).toContain('mid-t3-rad')
+        expect(suggestions.map((s) => s.text)).toContain('mid-t3-chaff')
       })
 
       it('does not rank an alias first when its zone is not on this map', () => {
@@ -1072,8 +1072,8 @@ describe('useCommands', () => {
         // top-river, which does not exist here — the reachable zones win.
         const context = makeContext({
           visibleZones: {
-            'top-t1-rad': { id: 'top-t1-rad', wards: [], creeps: [] },
-            'top-t2-rad': { id: 'top-t2-rad', wards: [], creeps: [] },
+            'top-t1-chaff': { id: 'top-t1-chaff', wards: [], creeps: [] },
+            'top-t2-chaff': { id: 'top-t2-chaff', wards: [], creeps: [] },
           },
         })
         const suggestions = autocomplete('move top', context)
@@ -1086,7 +1086,7 @@ describe('useCommands', () => {
         const suggestions = autocomplete('move rune', makeContext())
 
         expect(suggestions.map((s) => s.text)).toEqual(
-          expect.arrayContaining(['rune-top', 'rune-bot']),
+          expect.arrayContaining(['cache-top', 'cache-bot']),
         )
         expect(
           suggestions.every((s) => !(s.description ?? '').includes('Coldstore Crossing')),
@@ -1150,7 +1150,7 @@ describe('useCommands', () => {
 
       it('offers no creeps when the zone is empty', () => {
         const { autocomplete } = useCommands()
-        const context = makeContext({ player: makePlayer({ zone: 'top-t1-rad' }) })
+        const context = makeContext({ player: makePlayer({ zone: 'top-t1-chaff' }) })
         const suggestions = autocomplete('attack creep', context)
 
         expect(suggestions).toEqual([])
@@ -1182,7 +1182,7 @@ describe('useCommands', () => {
           neutrals: [
             {
               id: 'n0',
-              zone: 'jungle-audit-top',
+              zone: 'silt-audit-top',
               hp: 200,
               maxHp: 200,
               type: 'kobold',
@@ -1190,14 +1190,14 @@ describe('useCommands', () => {
             },
             {
               id: 'n1',
-              zone: 'jungle-audit-top',
+              zone: 'silt-audit-top',
               hp: 200,
               maxHp: 200,
               type: 'kobold',
               alive: true,
             },
-            { id: 'n2', zone: 'mid-t1-rad', hp: 140, maxHp: 200, type: 'centaur', alive: true },
-            { id: 'n3', zone: 'mid-t1-rad', hp: 0, maxHp: 200, type: 'centaur', alive: false },
+            { id: 'n2', zone: 'mid-t1-chaff', hp: 140, maxHp: 200, type: 'centaur', alive: true },
+            { id: 'n3', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'centaur', alive: false },
           ],
         })
         const suggestions = autocomplete('attack neutral', context)
@@ -1213,7 +1213,7 @@ describe('useCommands', () => {
           'roshan',
         )
 
-        const inPit = makeContext({ player: makePlayer({ zone: 'roshan-pit' }) })
+        const inPit = makeContext({ player: makePlayer({ zone: 'hollow' }) })
         expect(autocomplete('attack rosh', inPit).map((s) => s.text)).toContain('roshan')
       })
     })
@@ -1528,18 +1528,18 @@ describe('useCommands', () => {
       it('suggests adjacent zones for ward', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ zone: 'mid-t1-rad' }),
+          player: makePlayer({ zone: 'mid-t1-chaff' }),
         })
         const suggestions = autocomplete('ward mid', context)
 
         const texts = suggestions.map((s) => s.text)
-        // mid-t1-rad is adjacent to mid-t2-rad and mid-river
+        // mid-t1-chaff is adjacent to mid-t2-chaff and mid-river
         expect(texts.some((t) => t.includes('mid'))).toBe(true)
       })
 
       it('ranks an exact alias first when it resolves to an adjacent zone', () => {
         const { autocomplete } = useCommands()
-        const context = makeContext({ player: makePlayer({ zone: 'mid-t1-rad' }) })
+        const context = makeContext({ player: makePlayer({ zone: 'mid-t1-chaff' }) })
         const suggestions = autocomplete('ward mid', context)
 
         expect(suggestions[0]?.text).toBe('mid')
@@ -1763,7 +1763,7 @@ describe('validateCommand', () => {
   })
 
   it('passes a valid adjacent move', () => {
-    // mid-t1-rad is adjacent to mid-river and mid-t2-rad
+    // mid-t1-chaff is adjacent to mid-river and mid-t2-chaff
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, makeContext())).toBeNull()
   })
 
@@ -1772,15 +1772,15 @@ describe('validateCommand', () => {
   })
 
   it('rejects a globally-adjacent zone that is not on THIS map (subset/one-lane)', () => {
-    // On the one-lane map chaff-base keeps only mid-t3-rad + chaff-fountain;
+    // On the one-lane map chaff-base keeps only mid-t3-chaff + chaff-fountain;
     // the top/bot T3s are globally adjacent but don't exist this game.
     const oneLaneZones: Record<string, ZoneRuntimeState> = {}
     for (const id of [
       'chaff-fountain',
       'chaff-base',
-      'mid-t3-rad',
-      'mid-t2-rad',
-      'mid-t1-rad',
+      'mid-t3-chaff',
+      'mid-t2-chaff',
+      'mid-t1-chaff',
       'mid-river',
       'mid-t1-audit',
       'mid-t2-audit',
@@ -1796,9 +1796,11 @@ describe('validateCommand', () => {
     })
 
     // Mirrors the server: off-map (but globally adjacent) is rejected...
-    expect(validateCommand({ type: 'move', zone: 'top-t3-rad' }, ctx)).toMatch(/isn.t on this map/i)
+    expect(validateCommand({ type: 'move', zone: 'top-t3-chaff' }, ctx)).toMatch(
+      /isn.t on this map/i,
+    )
     // ...while the on-map adjacent move is allowed.
-    expect(validateCommand({ type: 'move', zone: 'mid-t3-rad' }, ctx)).toBeNull()
+    expect(validateCommand({ type: 'move', zone: 'mid-t3-chaff' }, ctx)).toBeNull()
   })
 
   it('rejects move while rooted', () => {
@@ -1891,7 +1893,7 @@ describe('validateCommand', () => {
   })
 
   it('rejects buy outside a shop zone', () => {
-    // mid-t1-rad has no shop
+    // mid-t1-chaff has no shop
     const items: Record<string, ItemDef> = {
       boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
     }
@@ -1968,20 +1970,20 @@ describe('validateCommand', () => {
 
   it('rejects attacking Roshan from outside the pit', () => {
     expect(validateCommand({ type: 'attack', target: { kind: 'roshan' } }, makeContext())).toMatch(
-      /roshan-pit/,
+      /hollow/,
     )
   })
 
   it('allows attacking Roshan from inside the pit', () => {
-    const ctx = makeContext({ player: makePlayer({ zone: 'roshan-pit' }) })
+    const ctx = makeContext({ player: makePlayer({ zone: 'hollow' }) })
     expect(validateCommand({ type: 'attack', target: { kind: 'roshan' } }, ctx)).toBeNull()
   })
 
   it('rejects a neutral index that names a camp in another zone', () => {
     const ctx = makeContext({
       neutrals: [
-        { id: 'n0', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-        { id: 'n1', zone: 'mid-t1-rad', hp: 150, maxHp: 200, type: 'kobold', alive: true },
+        { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+        { id: 'n1', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'kobold', alive: true },
       ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
@@ -1994,7 +1996,9 @@ describe('validateCommand', () => {
 
   it('rejects a neutral index with no camp behind it', () => {
     const ctx = makeContext({
-      neutrals: [{ id: 'n0', zone: 'mid-t1-rad', hp: 0, maxHp: 200, type: 'kobold', alive: false }],
+      neutrals: [
+        { id: 'n0', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'kobold', alive: false },
+      ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
       /No neutral creep at index 0/,
@@ -2200,7 +2204,7 @@ describe('informational readouts', () => {
   })
 
   it('formatMapReadout falls back cleanly for a zone off the resolved map', () => {
-    const me = makePlayer({ zone: 'rune-top' })
+    const me = makePlayer({ zone: 'cache-top' })
     expect(formatMapReadout(me, 'one_lane')).toContain('Reachable: —')
   })
 
