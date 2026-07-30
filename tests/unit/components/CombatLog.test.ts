@@ -116,8 +116,8 @@ describe('CombatLog', () => {
 describe('combatLog helpers', () => {
   describe('ancientLabel', () => {
     it('resolves ancient ids to readable Mainframe names', () => {
-      expect(ancientLabel('ancient_radiant')).toBe('the Radiant Mainframe')
-      expect(ancientLabel('ancient_dire')).toBe('the Dire Mainframe')
+      expect(ancientLabel('ancient_radiant')).toBe('the CHAFF Mainframe')
+      expect(ancientLabel('ancient_dire')).toBe('the AUDIT Mainframe')
     })
 
     it('falls back to a generic Mainframe label for unknown teams', () => {

@@ -253,7 +253,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   it('keeps the exact victory phrasing for the core', () => {
     const line = eventToLine(ev('ancient_destroyed', { team: 'dire', killerTeam: 'radiant' }), ctx)!
     expect(line.type).toBe('victory')
-    expect(line.text).toBe('Radiant destroyed the Dire Mainframe!')
+    expect(line.text).toBe('CHAFF destroyed the AUDIT Mainframe!')
     expect(line.text).not.toContain('tower')
   })
   it('suppresses internal/non-narrative events', () => {
@@ -673,8 +673,8 @@ describe('narration drift guard', () => {
 
 describe('combatLog label helpers', () => {
   it('ancientLabel resolves the team Mainframe, or null for non-ancient ids', () => {
-    expect(ancientLabel('ancient_radiant')).toBe('the Radiant Mainframe')
-    expect(ancientLabel('ancient_dire')).toBe('the Dire Mainframe')
+    expect(ancientLabel('ancient_radiant')).toBe('the CHAFF Mainframe')
+    expect(ancientLabel('ancient_dire')).toBe('the AUDIT Mainframe')
     // Unknown team falls back to a readable label rather than null/crash.
     expect(ancientLabel('ancient_neutral')).toBe('the neutral Mainframe')
     expect(ancientLabel('tower_mid_t1_rad')).toBeNull()
@@ -692,9 +692,11 @@ describe('combatLog label helpers', () => {
     expect(isStructureTarget(42)).toBe(false)
   })
 
-  it('teamLabel title-cases a team id', () => {
-    expect(teamLabel('radiant')).toBe('Radiant')
-    expect(teamLabel('dire')).toBe('Dire')
+  it('teamLabel reads the faction label from the world lexicon', () => {
+    expect(teamLabel('radiant')).toBe('CHAFF')
+    expect(teamLabel('dire')).toBe('AUDIT')
+    // Unknown ids degrade loudly (uppercased), never silently title-cased.
+    expect(teamLabel('quorum')).toBe('QUORUM')
   })
 })
 

@@ -7,6 +7,9 @@
  * for a team's Ancient, and collapsing repeated structure-damage spam) here.
  */
 
+import { FACTION_META } from '~~/shared/constants/world'
+import type { TeamId } from '~~/shared/types/game'
+
 export type CombatLineType =
   | 'damage'
   | 'healing'
@@ -79,8 +82,9 @@ interface RunningLine extends CombatLine {
 export function ancientLabel(id: string): string | null {
   if (!id.startsWith('ancient_')) return null
   const team = id.slice('ancient_'.length)
-  if (team === 'radiant') return 'the Radiant Mainframe'
-  if (team === 'dire') return 'the Dire Mainframe'
+  if (team === 'radiant' || team === 'dire') {
+    return `the ${FACTION_META[team as TeamId].label} Mainframe`
+  }
   return `the ${team} Mainframe`
 }
 
@@ -92,9 +96,9 @@ export function isStructureTarget(targetId: unknown): boolean {
   )
 }
 
-/** Title-case a team id for display ("radiant" -> "Radiant"). */
+/** Faction display label from the world lexicon ("radiant" -> "CHAFF"). */
 export function teamLabel(team: string): string {
-  return team.charAt(0).toUpperCase() + team.slice(1)
+  return FACTION_META[team as TeamId]?.label ?? team.toUpperCase()
 }
 
 /**

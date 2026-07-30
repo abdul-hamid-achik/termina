@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { TeamState, TeamId } from '~~/shared/types/game'
 import type { ScoreboardEntry } from '~/stores/game'
 import { ITEMS } from '~~/shared/constants/items'
+import { FACTION_META } from '~~/shared/constants/world'
 import { usePointerCoarse } from '~/composables/useTapInspect'
 import { formatTickClock } from '~/utils/gameClock'
 
@@ -102,6 +103,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
           class="scoreboard__team-block"
           :class="`scoreboard__team-block--${block.team}`"
           :data-testid="`scoreboard-team-${block.team}`"
+          :data-faction-label="FACTION_META[block.team].label"
         >
           <!-- Column headers -->
           <div class="scoreboard__col-headers">
@@ -594,12 +596,12 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   }
 
   .scoreboard__team-block--radiant::before {
-    content: 'RADIANT';
+    content: attr(data-faction-label);
     color: rgb(var(--color-radiant));
   }
 
   .scoreboard__team-block--dire::before {
-    content: 'DIRE';
+    content: attr(data-faction-label);
     color: rgb(var(--color-dire));
     border-top: 1px solid rgb(var(--border-color));
   }
