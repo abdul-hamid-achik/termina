@@ -43,7 +43,7 @@ import { computeSpitePlateReflect } from './CombatResolver'
 import { placeWard, canAttackIce } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
-import { applyBuff, isBreached, hasBuff } from '~~/server/game/heroes/_base'
+import { applyBuff, isBreached, hasBuff, isHardControlBuffId } from '~~/server/game/heroes/_base'
 import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
 import { awardLastHit, awardIceKill } from './GoldDistributor'
 import { pickupBackup } from './TenantAI'
@@ -243,6 +243,28 @@ export function validateAction(state: GameState, action: PlayerAction): string |
         // Concrete rejection (design brief, quick win #1): name + ticks + ready tick.
         const cd = player.cooldowns[cmd.ability]
         return `${ability.name} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
+      }
+      // R4-11 teaching rejection: single-target hard control on a CLOSED enemy
+      // fails with a message that names the fix. AoE control cannot be
+      // pre-rejected — it fizzles per-target inside applyBuff.
+      // Effect types map to buff ids: fear → feared; the rest share names.
+      if (cmd.target?.kind === 'hero') {
+        const carriesHardControl = ability.effects.some((e) => {
+          const buffId = e.type === 'fear' ? 'feared' : e.type
+          return isHardControlBuffId(buffId)
+        })
+        if (carriesHardControl) {
+          const target = findTargetPlayer(state, cmd.target)
+          if (
+            target &&
+            target.team !== player.team &&
+            target.alive &&
+            !isBreached(target) &&
+            !hasBuff(target, 'airgap')
+          ) {
+            return `${target.name} is CLOSED — breach ${target.name} first`
+          }
+        }
       }
       // No BW check here — per-hero scaled costs live in the resolver files;
       // the resolver's InsufficientManaError is authoritative and surfaced

@@ -85,6 +85,14 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   if (glyphReady) {
     out.push({ cmd: 'harden', label: 'HARDEN', aria: 'Activate team harden (fortify structures)' })
   }
+  // R4-11: flush own BREACH early (same verb, self-target).
+  if (p.buffs?.some((b) => b.id === 'breached' && b.ticksRemaining > 0)) {
+    out.push({
+      cmd: 'breach self',
+      label: 'FLUSH',
+      aria: 'Flush your BREACH early (costs this cycle and BW)',
+    })
+  }
   // Mirrors SurrenderSystem.canSurrender: the tutorial has no tick gate, so a
   // learner always has a visible way out of a practice game.
   if (ctx.mode === 'tutorial' || ctx.tick >= SURRENDER_MIN_TICK) {

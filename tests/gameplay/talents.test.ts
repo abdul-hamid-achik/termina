@@ -126,7 +126,14 @@ describe('exotic tier-25 cast effects', () => {
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
           // top-river is NOT adjacent to mid-river → only a global ult can reach it.
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'top-river', bw: 100, maxBw: 500 },
+          // R4-11: silence is hard control — seed BREACHED so the cast is not teaching-rejected.
+          [ENEMY]: {
+            ...s.players[ENEMY]!,
+            zone: 'top-river',
+            bw: 100,
+            maxBw: 500,
+            buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 5, source: 'test' }],
+          },
         },
       }))
     const dmgFromMe = () =>

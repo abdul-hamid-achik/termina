@@ -1081,3 +1081,32 @@ describe('attackType basic-attack mitigation (R4-08)', () => {
     expect(kinDmg!.damageType).toBe('kinetic')
   })
 })
+
+describe('BREACH teaching rejection (R4-11)', () => {
+  it('casting a stun at a closed target names the target and the word breach', async () => {
+    // kernel Q = Interrupt stun
+    const game = await seedGame('laning_combat', { heroSelf: 'kernel', heroEnemy: 'echo' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+          bw: 300,
+          maxBw: 300,
+        },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          // closed — no breached
+          buffs: [],
+        },
+      },
+    }))
+    game.cast('q', { kind: 'hero', name: ENEMY })
+    await game.tick()
+    const rejected = game.lastRejected.find((r) => r.playerId === HUMAN)
+    expect(rejected?.reason).toMatch(/CLOSED/i)
+    expect(rejected?.reason).toMatch(/breach/i)
+  })
+})

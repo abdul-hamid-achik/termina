@@ -92,6 +92,23 @@ function isAirgapTarget(p: PlayerState): boolean {
   return p.buffs.some((b) => (b.id === 'airgap' || b.id === 'invulnerable') && b.ticksRemaining > 0)
 }
 
+const HARD_CONTROL_EFFECTS = new Set(['stun', 'silence', 'root', 'taunt', 'fear', 'hex', 'cyclone'])
+
+/**
+ * R4-12: true when the intended cast needs the target BREACHED first —
+ * hard control fails and code damage is halved into a closed target.
+ * Airgapped targets cannot be breached; skip.
+ */
+function needsBreach(target: PlayerState, ability: AbilityDef): boolean {
+  if (target.buffs.some((b) => b.id === 'breached' && b.ticksRemaining > 0)) return false
+  if (isAirgapTarget(target)) return false
+  const hardControl = ability.effects.some((e) => HARD_CONTROL_EFFECTS.has(e.type))
+  const primarilyCode =
+    ability.damageType === 'code' ||
+    ability.effects.some((e) => e.type === 'damage' && e.damageType === 'code')
+  return hardControl || primarilyCode
+}
+
 /** Canonical shop cost; an unknown item is treated as unaffordable (never bought). */
 function itemCost(id: string): number {
   return getItem(id)?.cost ?? Number.POSITIVE_INFINITY
@@ -620,6 +637,25 @@ function tryGetAbilityCommand(
     if (target === null) {
       return { type: 'cast', ability: slot }
     }
+    // R4-12: medium+ bots breach before hard control / code into a closed target.
+    // Easy bots (threatAssessment off) stay naive — they cast and waste the cycle.
+    if (
+      config.threatAssessment &&
+      target.kind === 'hero' &&
+      bot.bw >= 40 // BREACH_BW_COST
+    ) {
+      const enemy = enemiesInZone.find(
+        (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
+      )
+      if (enemy && needsBreach(enemy, ability)) {
+        if (bot.buffs.some((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)) {
+          // On cooldown — don't waste the cast into a closed target either;
+          // fall through to the next ability.
+          continue
+        }
+        return { type: 'breach', target }
+      }
+    }
     return { type: 'cast', ability: slot, target }
   }
   return null
@@ -781,9 +817,31 @@ function tryCombo(
           comboStates.delete(bot.id)
           return null
         }
-        return target === null
-          ? { type: 'cast', ability: nextAbility.ability }
-          : { type: 'cast', ability: nextAbility.ability, target }
+        if (target === null) {
+          return { type: 'cast', ability: nextAbility.ability }
+        }
+        // R4-12: breach before the next combo step if the target is closed.
+        if (config.threatAssessment && target.kind === 'hero' && bot.bw >= 40) {
+          const ability = HEROES[heroId]!.abilities[nextAbility.ability]
+          const enemy = enemiesInZone.find(
+            (e) => e.id === target.name || e.name === target.name || e.heroId === target.name,
+          )
+          if (
+            enemy &&
+            ability &&
+            needsBreach(enemy, ability) &&
+            !bot.buffs.some((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)
+          ) {
+            // Don't advance combo index — re-try this step next cycle after breach.
+            comboStates.set(bot.id, {
+              currentCombo: comboState.currentCombo,
+              comboIndex: comboState.comboIndex,
+              lastComboTick: state.tick,
+            })
+            return { type: 'breach', target }
+          }
+        }
+        return { type: 'cast', ability: nextAbility.ability, target }
       }
     }
     comboStates.delete(bot.id)

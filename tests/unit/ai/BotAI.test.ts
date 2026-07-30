@@ -2139,3 +2139,127 @@ describe('isOwnSide — the rename guard', () => {
     expect(isOwnSide('seawall-ice-1-chf', 'audit')).toBe(false)
   })
 })
+
+describe('BotAI — R4-12 breach-then-control', () => {
+  afterEach(() => {
+    cleanupBotState('bot_alpha')
+    cleanupBotState('bot_easy_kernel')
+  })
+
+  it('unfair bot breaches a closed enemy before casting hard control (kernel Q stun)', () => {
+    const bot = makePlayer({
+      id: 'bot_alpha',
+      heroId: 'kernel',
+      zone: 'mid-river',
+      level: 6,
+      bw: 300,
+      maxBw: 300,
+      // R is zone AoE (no single target) — leave it on CD so Q stun is the pick.
+      cooldowns: { q: 0, w: 99, e: 99, r: 99 },
+    })
+    const enemy = makePlayer({
+      id: 'enemy1',
+      team: 'audit',
+      name: 'Enemy',
+      heroId: 'echo',
+      zone: 'mid-river',
+      // closed — no breached buff
+      buffs: [],
+    })
+    const gameId = alwaysCasts(bot.id)
+    const state = makeGameState({
+      tick: 20,
+      players: { [bot.id]: bot, [enemy.id]: enemy },
+    })
+    const action = decideBotAction(state, bot, 'mid', gameId)
+    expect(action).toEqual({
+      type: 'breach',
+      target: { kind: 'hero', name: enemy.id },
+    })
+  })
+
+  it('unfair bot casts hard control once the target is already breached', () => {
+    const bot = makePlayer({
+      id: 'bot_alpha',
+      heroId: 'kernel',
+      zone: 'mid-river',
+      level: 6,
+      bw: 300,
+      maxBw: 300,
+      cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+    })
+    const enemy = makePlayer({
+      id: 'enemy1',
+      team: 'audit',
+      name: 'Enemy',
+      heroId: 'echo',
+      zone: 'mid-river',
+      buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 3, source: bot.id }],
+    })
+    const gameId = alwaysCasts(bot.id)
+    const state = makeGameState({
+      tick: 20,
+      players: { [bot.id]: bot, [enemy.id]: enemy },
+    })
+    const action = decideBotAction(state, bot, 'mid', gameId)
+    expect(action?.type).toBe('cast')
+  })
+
+  it('easy bot never emits breach (threatAssessment off)', () => {
+    const bot = makePlayer({
+      id: 'bot_easy_kernel',
+      heroId: 'kernel',
+      zone: 'mid-river',
+      level: 6,
+      bw: 300,
+      maxBw: 300,
+      cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+    })
+    const enemy = makePlayer({
+      id: 'enemy1',
+      team: 'audit',
+      name: 'Enemy',
+      heroId: 'echo',
+      zone: 'mid-river',
+      buffs: [],
+    })
+    const gameId = atDifficulty('easy', bot.id)
+    for (let tick = 1; tick < 50; tick++) {
+      const state = makeGameState({
+        tick,
+        players: { [bot.id]: bot, [enemy.id]: enemy },
+      })
+      const action = decideBotAction(state, bot, 'mid', gameId)
+      expect(action?.type).not.toBe('breach')
+    }
+  })
+
+  it('never breaches an airgapped target', () => {
+    const bot = makePlayer({
+      id: 'bot_alpha',
+      heroId: 'kernel',
+      zone: 'mid-river',
+      level: 6,
+      bw: 300,
+      maxBw: 300,
+      cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+    })
+    const enemy = makePlayer({
+      id: 'enemy1',
+      team: 'audit',
+      name: 'Enemy',
+      heroId: 'echo',
+      zone: 'mid-river',
+      buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
+    })
+    const gameId = alwaysCasts(bot.id)
+    for (let tick = 20; tick < 40; tick++) {
+      const state = makeGameState({
+        tick,
+        players: { [bot.id]: bot, [enemy.id]: enemy },
+      })
+      const action = decideBotAction(state, bot, 'mid', gameId)
+      expect(action?.type).not.toBe('breach')
+    }
+  })
+})

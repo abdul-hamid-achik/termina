@@ -62,6 +62,19 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ caches: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('cache')
   })
 
+  it('offers FLUSH only while the player carries a BREACHED buff', () => {
+    expect(cmds(baseCtx())).not.toContain('breach self')
+    expect(
+      cmds(
+        baseCtx({
+          player: player({
+            buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 2, source: 'enemy' }],
+          }),
+        }),
+      ),
+    ).toContain('breach self')
+  })
+
   it('hides HARDEN while the team harden is on cooldown', () => {
     const onCd = baseCtx({
       tick: 10,
