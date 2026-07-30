@@ -126,6 +126,22 @@ describe('DatabaseService (real Postgres)', () => {
       expect(await run((s) => s.getMatchHistory('p1', 2))).toHaveLength(2)
       expect(await run((s) => s.getMatchHistory('ghost'))).toHaveLength(0)
     })
+    it('round-trips BOTH faction values (R1-06: no row may be stuck on the old ids)', async () => {
+      await seedPlayer()
+      for (const [id, team, winner] of [
+        ['m-chaff', 'chaff', 'chaff'],
+        ['m-audit', 'audit', 'audit'],
+      ] as const) {
+        await run((s) =>
+          s.recordMatch({ id, mode: 'ranked_5v5', winner } as never, [
+            { matchId: id, playerId: 'p1', team, heroId: 'echo' } as never,
+          ]),
+        )
+      }
+      const hist = await run((s) => s.getMatchHistory('p1'))
+      expect(hist.map((h) => h.team).sort()).toEqual(['audit', 'chaff'])
+      expect(hist.map((h) => h.winner).sort()).toEqual(['audit', 'chaff'])
+    })
   })
 
   describe('getLeaderboard', () => {

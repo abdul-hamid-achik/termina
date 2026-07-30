@@ -219,6 +219,30 @@ GitHub secrets) — see tvault's Pulumi & CI/CD guides.
 > then the CLI reports `vault is locked by another tvault process` and you can
 > stop that process or read via `tvault agent start`.
 
+## Data migrations that `db:push` cannot do
+
+The DB is `drizzle-kit push`-managed, but two columns carry a drizzle
+*type-level* enum refinement over plain Postgres `text` (`matches.winner`,
+`match_players.team`). Changing the enum values in `server/db/schema.ts` emits
+**no DDL** — `db:push` reports "no changes" while every existing row keeps the
+old value, and reads then violate the new TS union at runtime with no error.
+
+The R1 faction rename (radiant/dire → chaff/audit) is the canonical case.
+After the rename deploys, run these four statements once against prod
+(`tvault -p termina run -- <your psql>`):
+
+```sql
+UPDATE matches SET winner = 'chaff' WHERE winner = 'radiant';
+UPDATE matches SET winner = 'audit' WHERE winner = 'dire';
+UPDATE match_players SET team = 'chaff' WHERE team = 'radiant';
+UPDATE match_players SET team = 'audit' WHERE team = 'dire';
+```
+
+Verify with `SELECT count(*) FROM matches WHERE winner IN ('radiant','dire')`
+(and the `match_players` equivalent) — both must return 0. If the row count is
+small and all of it is pre-launch testing, `TRUNCATE matches, match_players` is
+an acceptable substitute — decide after counting, do not assume.
+
 ## Deploy
 
 The backend is resolved from `Pulumi.yaml` (no `pulumi login` needed). Do the
