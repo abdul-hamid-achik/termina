@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 /**
  * One depth layer of a parallax scene. Place several inside a
  * `position: relative` section and give each a different `depth`.
@@ -22,7 +23,7 @@
  * Deliberately NOT `background-attachment: fixed` — iOS Safari ignores it by
  * design, which is why that classic technique looks broken on half of mobile.
  */
-withDefaults(
+const props = withDefaults(
   defineProps<{
     /**
      * 0 = pinned to the page (no parallax). 1 = full travel. Background layers
@@ -33,12 +34,55 @@ withDefaults(
     /** Total travel in px across the element's pass through the viewport. */
     distance?: number
   }>(),
-  { depth: 0.3, distance: 120 },
+  { depth: 0.3, distance: 320 },
 )
+
+const el = ref<HTMLElement | null>(null)
+
+/**
+ * Fallback for browsers without scroll-driven animations (Safari before 26,
+ * Firefox without the flag). There the CSS below simply never runs, so the
+ * effect was invisible for a large share of visitors — which is how it went
+ * unnoticed in review. rAF-throttled, transform-only, and never attached at all
+ * when the CSS path works or the user asked for reduced motion.
+ */
+onMounted(() => {
+  if (typeof window === 'undefined') return
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  if (window.CSS?.supports?.('animation-timeline: view()')) return
+
+  const node = el.value
+  if (!node) return
+  let queued = false
+
+  const apply = () => {
+    queued = false
+    const rect = node.getBoundingClientRect()
+    const vh = window.innerHeight || 1
+    // -1 fully below the fold, +1 fully above it.
+    const progress = 1 - (2 * (rect.top + rect.height / 2)) / (vh + rect.height)
+    const shift = -progress * props.depth * props.distance
+    node.style.transform = `translate3d(0, ${shift.toFixed(2)}px, 0)`
+  }
+  const onScroll = () => {
+    if (queued) return
+    queued = true
+    requestAnimationFrame(apply)
+  }
+
+  apply()
+  window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('resize', onScroll, { passive: true })
+  onUnmounted(() => {
+    window.removeEventListener('scroll', onScroll)
+    window.removeEventListener('resize', onScroll)
+  })
+})
 </script>
 
 <template>
   <div
+    ref="el"
     class="parallax-layer"
     :style="{ '--parallax-shift': `${depth * distance}px` }"
     v-bind="$attrs"

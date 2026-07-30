@@ -326,7 +326,7 @@ const miniRows = computed(() =>
                   zoneAriaLabel(getZone(zoneId)!, ancientForZone(zoneId, ancients)) +
                   routeAria(zoneId)
                 "
-                class="relative flex min-h-[70px] flex-col items-center justify-center px-1 py-2 text-center font-mono text-xs leading-tight transition-all"
+                class="map-cell relative flex min-h-[70px] flex-col items-center justify-center px-1 py-2 text-center font-mono text-xs leading-tight transition-all"
                 :class="[
                   cellClasses(getZone(zoneId)!),
                   !zoneClickable(zoneId)
@@ -359,7 +359,7 @@ const miniRows = computed(() =>
               </div>
               <div
                 v-else
-                class="flex min-h-[70px] items-center justify-center border border-dashed border-border/20 bg-bg-primary/30"
+                class="map-cell flex min-h-[70px] items-center justify-center border border-dashed border-border/20 bg-bg-primary/30"
               >
                 <span class="text-text-dim opacity-30">·</span>
               </div>

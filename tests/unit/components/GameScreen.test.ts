@@ -1553,25 +1553,40 @@ describe('GameScreen overlay lanes', () => {
 describe('GameScreen responsive grid', () => {
   const SFC = readFileSync(resolve(process.cwd(), 'app/components/game/GameScreen.vue'), 'utf8')
 
-  const rowDecls = [...SFC.matchAll(/grid-template-rows:([^;]*);/g)].map((m) => m[1]!)
+  // Every grid-template-rows in the file: the three .game-grid breakpoints plus
+  // the rail's own two-row grid.
+  const allRowDecls = [...SFC.matchAll(/grid-template-rows:([^;]*);/g)].map((m) => m[1]!)
 
   it('declares row templates for desktop, tablet and phone', () => {
-    expect(rowDecls).toHaveLength(3)
+    // Three .game-grid templates plus the rail's own.
+    expect(allRowDecls.length).toBeGreaterThanOrEqual(3)
   })
 
   it.each([0, 1, 2])('template %i puts no px floor on any content row', (i) => {
-    const pxFloors = [...rowDecls[i]!.matchAll(/minmax\(\s*(\d+)px/g)].map((m) => Number(m[1]))
+    const pxFloors = [...allRowDecls[i]!.matchAll(/minmax\(\s*(\d+)px/g)].map((m) => Number(m[1]))
     expect(pxFloors).toEqual([])
   })
 
-  it('still lets every content row scroll internally, so nothing needs a floor', () => {
-    // The rail scrolls itself; the panel regions are TerminalPanels, whose body
-    // is `flex-1 overflow-auto`.
-    expect(SFC).toMatch(/game-grid__rail[^"]*overflow-y-auto/)
+  it('still lets every content region scroll internally, so nothing needs a floor', () => {
+    // The rail's lower half scrolls; the panel regions are TerminalPanels, whose
+    // body is `flex-1 overflow-auto`.
+    expect(SFC).toMatch(/\.rail-scroll\s*\{[^}]*overflow-y:\s*auto/s)
     const panel = readFileSync(
       resolve(process.cwd(), 'app/components/ui/TerminalPanel.vue'),
       'utf8',
     )
     expect(panel).toMatch(/flex-1 overflow-auto/)
+  })
+
+  it('keeps the board on screen: it gets its own row and never scrolls', () => {
+    // Losing sight of the map costs the player all spatial sense of the match,
+    // so the board is the one region that must not be scrollable OR scrolled
+    // away. A plain max-height (what this used to be) makes it do both.
+    expect(SFC).toMatch(
+      /\.game-grid__rail\s*\{[^}]*grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)/s,
+    )
+    expect(SFC).toMatch(/\.rail-map\s*\{[^}]*overflow:\s*visible/s)
+    // ...and the board shrinks to fit rather than overflowing a short viewport.
+    expect(SFC).toMatch(/\.rail-map :deep\(\.map-cell\)\s*\{[^}]*min-height:\s*clamp\(/s)
   })
 })

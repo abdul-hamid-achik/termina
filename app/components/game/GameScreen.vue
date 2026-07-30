@@ -1767,19 +1767,18 @@ function handleReturnToMenu() {
          The map leads the rail: it is the only spatial surface in the classic
          layout, and the rail scrolls — behind Hero Status the overview grid
          fell below the fold on short viewports. -->
-    <div class="game-grid__rail flex min-h-0 flex-col gap-1 overflow-y-auto">
+    <div class="game-grid__rail">
       <!-- Classic: compact map in the rail. Map-centric: the map is in the
            center, so the rail carries the demoted combat-log ticker.
            overview-open: the whole-board grid is the map's actual payload, so
            it ships expanded here rather than behind the toggle. Only this
            instance — the component default stays collapsed for mobile. -->
-      <!-- Capped: the overview is force-opened here so a new player sees the
-           board without a click, which makes this panel ~740px tall at every
-           breakpoint. Uncapped it pushed Hero Status — the only place the HUD
-           shows MP, level/XP and the ability tooltips — off the bottom of the
-           rail on phones and on a 1440x900 laptop. TerminalPanel's body already
-           scrolls internally, so the map scrolls instead of shoving. -->
-      <TerminalPanel v-if="layout === 'classic'" title="Map" class="max-h-[45%] shrink-0">
+      <!-- The board is the one thing that must never leave the screen: without
+           it the player loses all spatial sense of the match. It gets its own
+           non-scrolling grid row (see .rail-map) and the panels beneath it share
+           what is left and scroll — rather than the map itself scrolling, which
+           is what a plain max-height produced. -->
+      <TerminalPanel v-if="layout === 'classic'" title="Map" class="rail-map">
         <AsciiMap
           :zones="mapZones"
           :player-zone="playerZone"
@@ -1792,48 +1791,52 @@ function handleReturnToMenu() {
         />
       </TerminalPanel>
 
-      <TerminalPanel
-        title="Hero Status"
-        :variant="heroDanger ? 'danger' : 'default'"
-        class="shrink-0"
-      >
-        <div class="relative">
-          <!-- Damage flash: a stateless keyed overlay so HeroStatus (and its
+      <!-- Everything below the board shares the remaining height and scrolls
+           together, so the board itself never has to. -->
+      <div class="rail-scroll">
+        <TerminalPanel
+          title="Hero Status"
+          :variant="heroDanger ? 'danger' : 'default'"
+          class="shrink-0"
+        >
+          <div class="relative">
+            <!-- Damage flash: a stateless keyed overlay so HeroStatus (and its
                canvas avatar + open tooltips) is NOT remounted on every hit. -->
-          <div
-            :key="heroFlashKey"
-            class="anim-flash-damage pointer-events-none absolute inset-0 z-10"
-            :style="{ '--hit-intensity': hitIntensity }"
-            data-testid="hero-hit-flash"
-            aria-hidden="true"
-          />
-          <HeroStatus
-            v-if="heroData"
-            :hero="heroData"
-            :hero-id="gameStore.player?.heroId ?? undefined"
-            @cast-ability="handleQuickAction"
-          />
-          <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
-        </div>
-      </TerminalPanel>
+            <div
+              :key="heroFlashKey"
+              class="anim-flash-damage pointer-events-none absolute inset-0 z-10"
+              :style="{ '--hit-intensity': hitIntensity }"
+              data-testid="hero-hit-flash"
+              aria-hidden="true"
+            />
+            <HeroStatus
+              v-if="heroData"
+              :hero="heroData"
+              :hero-id="gameStore.player?.heroId ?? undefined"
+              @cast-ability="handleQuickAction"
+            />
+            <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
+          </div>
+        </TerminalPanel>
 
-      <TerminalPanel
-        v-if="layout === 'map-centric'"
-        title="Combat Log"
-        class="min-h-[8rem] flex-1"
-        data-testid="rail-log"
-      >
-        <TickTheater
-          :events="combatEvents"
-          :status="theaterStatus"
-          :bar="theaterBar"
-          :tick-imminent="tickImminent"
-          :next-tick-in="gameStore.nextTickIn"
-          :is-alive="gameStore.isAlive"
-          :can-act="gameStore.canAct"
-          :pulse-key="tickPulseKey"
-        />
-      </TerminalPanel>
+        <TerminalPanel
+          v-if="layout === 'map-centric'"
+          title="Combat Log"
+          class="min-h-[8rem] flex-1"
+          data-testid="rail-log"
+        >
+          <TickTheater
+            :events="combatEvents"
+            :status="theaterStatus"
+            :bar="theaterBar"
+            :tick-imminent="tickImminent"
+            :next-tick-in="gameStore.nextTickIn"
+            :is-alive="gameStore.isAlive"
+            :can-act="gameStore.canAct"
+            :pulse-key="tickPulseKey"
+          />
+        </TerminalPanel>
+      </div>
     </div>
 
     <!-- Scoreboard overlay (Tab hold on desktop, SCORE button on mobile) -->
@@ -2083,7 +2086,44 @@ function handleReturnToMenu() {
 .game-grid__rail {
   grid-column: 3;
   grid-row: 2;
+  /* Two rows: the board (always visible, never scrolls) and everything else
+     (shares the remainder, scrolls). A plain flex column with overflow-y:auto
+     let the map scroll out of view, which costs the player their read of the
+     whole match. */
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.25rem;
+  min-height: 0;
 }
+
+/* The board sizes to its content and is never clipped or scrolled. It is capped
+   only so it cannot consume a short viewport outright; AsciiMap shrinks its own
+   cells to fit (see .rail-map :deep below). */
+.rail-map {
+  max-height: 60%;
+  overflow: visible;
+}
+
+/* Let the board scale down instead of overflowing on short screens: the cell
+   floor is what made the panel ~740px tall regardless of available space. */
+.rail-map :deep(.map-cell) {
+  /* Overrides Tailwind's min-h-[70px] on the cells. That floor is what made the
+     panel ~740px tall regardless of the space available, which is why it used to
+     need a max-height and a scrollbar. */
+  min-height: clamp(26px, 5.5vh, 70px) !important;
+}
+
+/* Everything below the board scrolls together. */
+/* Everything below the board shares the remaining height and scrolls together,
+   so the board itself never has to. */
+.rail-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .game-grid__cmd {
   grid-column: 1 / -1;
   grid-row: 3;
