@@ -269,7 +269,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(invuln.text).toContain('mid-t1-rad')
 
     const cd = eventToLine(ev('glyph_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx)!
-    expect(cd.text).toContain('120t')
+    expect(cd.text).toContain('120c')
     expect(cd.salience).toBe('mine-out')
   })
 })
@@ -493,7 +493,7 @@ describe('eventToLine: crowd control', () => {
       }),
       ctx,
     )!
-    expect(line.text).toBe('enemy1 ROOTED You (1t)')
+    expect(line.text).toBe('enemy1 ROOTED You (1c)')
     // mine-in is what the feed renders loudest and sorts to the top of the beat.
     expect(line.salience).toBe('mine-in')
   })

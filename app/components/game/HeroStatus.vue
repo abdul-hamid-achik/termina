@@ -76,7 +76,7 @@ function cdLabel(cd: number): string {
 // ("12s", not "0:12"), and the tick count is still what you plan casts in.
 function cooldownText(ticks: number): string {
   const seconds = (Math.max(0, ticks) * TICK_DURATION_MS) / 1000
-  return seconds < 60 ? `${ticks}t (${seconds}s)` : ticksToClock(ticks)
+  return seconds < 60 ? `${ticks}c (${seconds}s)` : ticksToClock(ticks)
 }
 
 function onAbilityTap(key: 'q' | 'w' | 'e' | 'r') {
@@ -187,7 +187,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
               >
                 <span class="text-gold">{{ effect.type }}</span
                 >: {{ effect.value }}<span v-if="effect.damageType"> ({{ effect.damageType }})</span
-                ><span v-if="effect.duration"> / {{ effect.duration }}t</span
+                ><span v-if="effect.duration"> / {{ effect.duration }}c</span
                 ><span v-if="effect.description"> - {{ effect.description }}</span>
               </div>
             </div>
@@ -241,7 +241,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
         >
           {{ buff.label
           }}<span v-if="buff.stacks > 1" class="ml-0.5 text-gold">x{{ buff.stacks }}</span>
-          <span v-if="buff.ticks !== null" class="ml-0.5 text-text-dim">({{ buff.ticks }}t)</span>
+          <span v-if="buff.ticks !== null" class="ml-0.5 text-text-dim">({{ buff.ticks }}c)</span>
         </span>
       </div>
     </div>

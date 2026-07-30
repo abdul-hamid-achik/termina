@@ -383,7 +383,7 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
   }
 
   if (zone.roshan) {
-    indicators.push(zone.roshan.alive ? 'UP' : `↻${zone.roshan.respawnIn}t`)
+    indicators.push(zone.roshan.alive ? 'UP' : `↻${zone.roshan.respawnIn}c`)
   }
 
   return indicators.length > 0 ? `${name} ${indicators.join(' ')}` : name
@@ -399,7 +399,7 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
   if (zone.wardCount && zone.wardCount > 0) parts.push('warded')
   if (zone.runeType) parts.push(`${zone.runeType} rune available`)
   if (zone.roshan) {
-    parts.push(zone.roshan.alive ? 'Roshan alive' : `Roshan respawns in ${zone.roshan.respawnIn}t`)
+    parts.push(zone.roshan.alive ? 'Roshan alive' : `Roshan respawns in ${zone.roshan.respawnIn}c`)
   }
   if (ancient) {
     parts.push(
@@ -506,7 +506,7 @@ export function compactIndicators(
     out.push(
       zone.roshan.alive
         ? { text: '☠ Roshan UP', cls: 'text-warn' }
-        : { text: `☠ Roshan ↻ ${zone.roshan.respawnIn}t`, cls: 'text-text-dim' },
+        : { text: `☠ Roshan ↻ ${zone.roshan.respawnIn}c`, cls: 'text-text-dim' },
     )
   }
 

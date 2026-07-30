@@ -34,7 +34,7 @@ describe('AllyStatusSheet', () => {
     const w = mount(AllyStatusSheet, {
       props: { allies: [ally({ alive: false, respawnTick: 40 })], tick: 25 },
     })
-    expect(w.get('[data-testid="ally-dead-a1"]').text()).toContain('respawn 15t')
+    expect(w.get('[data-testid="ally-dead-a1"]').text()).toContain('respawn 15c')
   })
 
   it('shows the solo state when there are no allies', () => {

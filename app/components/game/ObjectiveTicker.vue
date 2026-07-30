@@ -54,16 +54,16 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
         <template v-if="rune.live.length"
           ><!-- buffLabel: 'dd' → 'Double Damage', 'invis' → 'Invisible' -->
           {{ buffLabel(rune.live[0]!.type) }} @ {{ shortZone(rune.live[0]!.zone) }} ·
-          {{ rune.live[0]!.expiresIn }}t</template
+          {{ rune.live[0]!.expiresIn }}c</template
         >
-        <template v-else>next {{ rune.nextIn }}t</template>
+        <template v-else>next {{ rune.nextIn }}c</template>
       </span>
     </div>
     <!-- Aegis -->
     <div class="flex items-center justify-between gap-2">
       <span class="text-text-dim">AEGIS</span>
       <span :class="aeg.held || aeg.inPit ? 'text-gold text-glow-gold font-bold' : 'text-text-dim'">
-        <template v-if="aeg.held">{{ aeg.holderName }} · {{ aeg.expiresIn }}t</template>
+        <template v-if="aeg.held">{{ aeg.holderName }} · {{ aeg.expiresIn }}c</template>
         <template v-else-if="aeg.inPit">in pit</template>
         <template v-else>—</template>
       </span>

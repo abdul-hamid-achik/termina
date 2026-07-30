@@ -42,7 +42,7 @@ describe('EnemyThreatSheet', () => {
       },
     })
     const el = w.get('[data-testid="threat-dead-e1"]')
-    expect(el.text()).toContain('respawn 15t')
+    expect(el.text()).toContain('respawn 15c')
   })
 
   it('shows last-seen intel for a fogged enemy', () => {
@@ -62,7 +62,7 @@ describe('EnemyThreatSheet', () => {
     expect(el.text()).toContain('fogged')
     // Zone ids are humanized for the player ("top-river" → its display name).
     expect(el.text()).toContain('Top River Crossing')
-    expect(el.text()).toContain('4t')
+    expect(el.text()).toContain('4c')
   })
 
   it('shows an empty state with no enemies', () => {

@@ -430,7 +430,7 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
 
-    it('shows a sub-minute respawn as ticks AND seconds', () => {
+    it('shows a sub-minute respawn as cycles AND seconds', () => {
       // The common case: most respawns are well under a minute, where "0:12"
       // reads worse than the tick count plus the seconds it actually costs.
       const store = useGameStore()
@@ -449,7 +449,7 @@ describe('GameScreen', () => {
       const wrapper = mountGameScreen()
 
       // 12 ticks left → 48 seconds.
-      expect(wrapper.find('[data-testid="death-overlay"]').text()).toContain('12t (48s)')
+      expect(wrapper.find('[data-testid="death-overlay"]').text()).toContain('12c (48s)')
       wrapper.unmount()
     })
 
@@ -667,7 +667,7 @@ describe('GameScreen', () => {
       // The fixture hero has W on a 2-tick cooldown.
       const w = wrapper.findAll('.hud-action-btn').find((b) => b.text().startsWith('W'))
       expect(w?.text()).toBe('W·2')
-      expect(w?.attributes('aria-label')).toContain('on cooldown 2 ticks, about 8 seconds')
+      expect(w?.attributes('aria-label')).toContain('on cooldown 2 cycles, about 8 seconds')
       wrapper.unmount()
     })
 

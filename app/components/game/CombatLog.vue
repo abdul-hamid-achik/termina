@@ -213,7 +213,7 @@ function salienceClasses(s: Salience | undefined, type: CombatLineType): string[
 }
 
 function eventAriaLabel(line: CombatLine): string {
-  return `${typePrefix(line.type)} Tick ${line.tick}: ${line.text}`
+  return `${typePrefix(line.type)} Cycle ${line.tick}: ${line.text}`
 }
 </script>
 
@@ -290,7 +290,7 @@ function eventAriaLabel(line: CombatLine): string {
         <div class="sticky top-0 z-[1] bg-bg-panel/95 select-none">
           <div class="flex items-center gap-1 px-2 py-px t-hud-xs tracking-wider text-text-muted">
             <span class="text-border">──</span>
-            <span class="font-bold">TICK {{ beat.tick }}</span>
+            <span class="font-bold">CYCLE {{ beat.tick }}</span>
             <span class="text-text-dim">· {{ clock(beat.tick) }}</span>
             <span class="flex-1 truncate text-right text-border">{{ '─'.repeat(40) }}</span>
           </div>
@@ -298,7 +298,7 @@ function eventAriaLabel(line: CombatLine): string {
             v-if="recap && recapByTick.get(beat.tick)"
             class="flex flex-wrap items-baseline gap-x-2 px-2 pb-px t-hud-sm t-mono-num"
             data-testid="tick-recap"
-            :aria-label="`Tick ${beat.tick} recap: ${recapByTick.get(beat.tick)!.text}`"
+            :aria-label="`Cycle ${beat.tick} recap: ${recapByTick.get(beat.tick)!.text}`"
           >
             <span v-if="recapByTick.get(beat.tick)!.takenText" class="font-semibold text-dire">
               {{ recapByTick.get(beat.tick)!.takenText }}

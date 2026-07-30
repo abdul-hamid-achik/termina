@@ -129,7 +129,7 @@ describe('InventoryBar', () => {
 
       const tooltip = wrapper.find('[data-testid="inventory-tooltip-0"]')
       expect(tooltip.exists()).toBe(true)
-      expect(tooltip.text()).toContain('[Cooldown: 2t]')
+      expect(tooltip.text()).toContain('[Cooldown: 2c]')
       expect(wrapper.find('[data-testid="inventory-use-0"]').exists()).toBe(false)
       expect(wrapper.emitted('use')).toBeUndefined()
       wrapper.unmount()

@@ -162,7 +162,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
     case 'death': {
       const respawn =
-        p.respawnTick != null ? ` — respawn ${Math.max(0, num(p.respawnTick) - tick)}t` : ''
+        p.respawnTick != null ? ` — respawn ${Math.max(0, num(p.respawnTick) - tick)}c` : ''
       return {
         tick,
         // A hero dying is a headline, not chip damage: typed `kill` so it reads
@@ -249,7 +249,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       // thing that can happen to you in a teamfight, and it was un-narrated.
       const status = buffLabel(str(p.status)).toUpperCase()
       const ticks = num(p.ticksRemaining)
-      const dur = ticks > 0 ? ` (${ticks}t)` : ''
+      const dur = ticks > 0 ? ` (${ticks}c)` : ''
       // Several abilities disable their own caster (Regex's E roots itself while
       // channelling). Reading those out as "You STUNNED You" is nonsense, so a
       // self-application is phrased as a state the actor is in, not an act they
@@ -469,7 +469,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       const left = num(p.remainingTicks)
       return {
         tick,
-        text: `Glyph is not ready — ${left}t remaining`,
+        text: `Glyph is not ready — ${left}c remaining`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
       }

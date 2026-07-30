@@ -429,7 +429,7 @@ export function validateCommand(command: Command, context: GameContext): string 
         player.buybackCooldown &&
         context.tick < player.buybackCooldown
       ) {
-        return `Buyback on cooldown (${player.buybackCooldown - context.tick} ticks remaining)`
+        return `Buyback on cooldown (${player.buybackCooldown - context.tick} cycles remaining)`
       }
       const cost = buybackCostFor(player)
       if (player.gold < cost) {
@@ -446,7 +446,7 @@ export function validateCommand(command: Command, context: GameContext): string 
         context.tick !== undefined &&
         context.tick < SURRENDER_MIN_TICK
       ) {
-        return `Too early to surrender (available at tick ${SURRENDER_MIN_TICK})`
+        return `Too early to surrender (available at cycle ${SURRENDER_MIN_TICK})`
       }
       return null
     }
@@ -526,7 +526,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       // doesn't waste their one action this tick on a server-rejected cast.
       if (command.ability === 'r' && player.level < 6) return 'Ultimate unlocks at level 6'
       const cd = player.cooldowns[command.ability]
-      if (cd > 0) return `${ability.name} on cooldown (${cd} tick${cd === 1 ? '' : 's'})`
+      if (cd > 0) return `${ability.name} on cooldown (${cd} cycle${cd === 1 ? '' : 's'})`
       // What the ENGINE will charge at this level, not the rank-1 figure in the
       // registry. Validating against the flat cost told the player a cast was
       // affordable and then the server refused it — the pre-flight existed
@@ -568,7 +568,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (item && !item.active) return `${item.name} has no active ability`
       const cdBuff = player.buffs.find((b) => b.id === `item_cd_${command.item}`)
       if (cdBuff && cdBuff.ticksRemaining > 0) {
-        return `Item on cooldown (${cdBuff.ticksRemaining} ticks)`
+        return `Item on cooldown (${cdBuff.ticksRemaining} cycles)`
       }
       return null
     }

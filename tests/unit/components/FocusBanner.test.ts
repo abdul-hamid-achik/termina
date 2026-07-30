@@ -135,7 +135,7 @@ describe('FocusBanner', () => {
     expect(next.exists()).toBe(true)
     // The soonest is E at 1 tick.
     expect(next.text()).toContain('E')
-    expect(next.text()).toContain('1t')
+    expect(next.text()).toContain('1c')
     // No ready chips, and not the bare "—" placeholder.
     expect(wrapper.find('[data-testid="focus-ready-q"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="focus-ready-none"]').exists()).toBe(false)

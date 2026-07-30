@@ -70,7 +70,7 @@ describe('CombatLog', () => {
       const events = [makeEvent({ tick: 42 })]
       const wrapper = mount(CombatLog, { props: { events } })
 
-      expect(wrapper.text()).toContain('TICK 42')
+      expect(wrapper.text()).toContain('CYCLE 42')
     })
 
     it('groups consecutive same-tick events under one beat header', () => {
@@ -82,8 +82,8 @@ describe('CombatLog', () => {
       const wrapper = mount(CombatLog, { props: { events } })
       const text = wrapper.text()
       // one header per distinct tick
-      expect(text.match(/TICK 10/g)).toHaveLength(1)
-      expect(text.match(/TICK 11/g)).toHaveLength(1)
+      expect(text.match(/CYCLE 10/g)).toHaveLength(1)
+      expect(text.match(/CYCLE 11/g)).toHaveLength(1)
       // all three event lines still render
       expect(wrapper.findAll('[data-testid="log-event"]')).toHaveLength(3)
     })

@@ -118,7 +118,7 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
         <span v-if="vision.wardsActive"
           >wards {{ vision.wardsActive
           }}<template v-if="vision.nextWardExpiry != null">
-            · {{ vision.nextWardExpiry }}t</template
+            · {{ vision.nextWardExpiry }}c</template
           ></span
         >
         <span v-else>no wards</span>

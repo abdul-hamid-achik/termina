@@ -188,7 +188,7 @@ describe('HeroStatus cooldown readability', () => {
 
     const cd = HEROES[HERO_ID]!.abilities.q.cooldownTicks
     expect(wrapper.find('[data-testid="ability-tooltip-q"]').text()).toContain(
-      `${cd}t (${cd * 4}s)`,
+      `${cd}c (${cd * 4}s)`,
     )
     wrapper.unmount()
   })
@@ -213,7 +213,7 @@ describe('HeroStatus cooldown readability', () => {
     await wrapper.find('[data-testid="ability-chip-e"]').trigger('click')
 
     // The fixture has E on a 3-tick cooldown.
-    expect(wrapper.find('[data-testid="ability-tooltip-e"]').text()).toContain('3t (12s)')
+    expect(wrapper.find('[data-testid="ability-tooltip-e"]').text()).toContain('3c (12s)')
     wrapper.unmount()
   })
 

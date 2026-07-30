@@ -69,7 +69,7 @@ function corePct(a: AncientState | undefined): number {
     >
       <HeroAvatar v-if="heroId" :hero-id="heroId" :size="24" />
       <span class="inline-flex gap-1">
-        <span class="t-caption">Tick</span>
+        <span class="t-caption">Cycle</span>
         <span class="text-text-primary">{{ tick }}</span>
       </span>
       <span class="text-border">|</span>

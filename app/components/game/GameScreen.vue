@@ -184,7 +184,7 @@ onMounted(() => {
     if (typeof localStorage !== 'undefined' && !localStorage.getItem('termina_intro_seen')) {
       localStorage.setItem('termina_intro_seen', '1')
       const intro = [
-        'Welcome to Termina — the game runs on 4s ticks; you queue ONE action per tick.',
+        'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
         'Last-hit enemy creeps (≈<50% HP) for gold — tap the creep group in the Zone panel.',
         'In the fountain/base click [SHOP] (or press Esc, then S) to buy; tap Q/W/E/R below to cast.',
@@ -976,7 +976,7 @@ const zoneTower = computed(() => towersByZone.value.get(playerZone.value) ?? nul
 function countdownText(ticks: number): string {
   const t = Math.max(0, ticks)
   const seconds = (t * TICK_DURATION_MS) / 1000
-  return seconds < 60 ? `${t}t (${seconds}s)` : ticksToClock(t)
+  return seconds < 60 ? `${t}c (${seconds}s)` : ticksToClock(t)
 }
 
 const buybackInfo = computed(() => {
@@ -1391,7 +1391,7 @@ const abilityButtonState = computed(() => {
       result[upper] = {
         ready: false,
         label: `${upper}·${cd}`,
-        aria: `${upper} ${name}, on cooldown ${cd} ticks, about ${(cd * TICK_DURATION_MS) / 1000} seconds`,
+        aria: `${upper} ${name}, on cooldown ${cd} cycles, about ${(cd * TICK_DURATION_MS) / 1000} seconds`,
       }
       continue
     }

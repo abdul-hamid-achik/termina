@@ -57,7 +57,7 @@ const rows = computed<ThreatRow[]>(() =>
       // misleading "respawn 0t".
       respawnIn: full.respawnTick != null ? Math.max(0, full.respawnTick - props.tick) : -1,
       lastSeen: ls
-        ? `${ZONE_MAP[ls.zone]?.name ?? ls.zone} · ${Math.max(0, props.tick - ls.tick)}t`
+        ? `${ZONE_MAP[ls.zone]?.name ?? ls.zone} · ${Math.max(0, props.tick - ls.tick)}c`
         : null,
     }
   }),
@@ -78,7 +78,7 @@ const rows = computed<ThreatRow[]>(() =>
 
       <!-- Dead -->
       <div v-if="!r.alive" class="t-hud-xs text-text-dim" :data-testid="`threat-dead-${r.id}`">
-        DEAD<template v-if="r.respawnIn >= 0"> · respawn {{ r.respawnIn }}t</template>
+        DEAD<template v-if="r.respawnIn >= 0"> · respawn {{ r.respawnIn }}c</template>
       </div>
 
       <!-- Fogged (last-seen intel only) -->

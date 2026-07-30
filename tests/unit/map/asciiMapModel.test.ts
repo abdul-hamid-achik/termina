@@ -253,7 +253,7 @@ describe('asciiMapModel', () => {
       ).toContain('UP')
       expect(
         cellText(makeZone({ id: 'roshan-pit', roshan: { alive: false, respawnIn: 45 } })),
-      ).toContain('↻45t')
+      ).toContain('↻45c')
     })
 
     it('labels each zone category with its glyphed name (a bare zone is just the name)', () => {
@@ -420,7 +420,7 @@ describe('asciiMapModel', () => {
         'Roshan alive',
       )
       expect(zoneAriaLabel(makeZone({ roshan: { alive: false, respawnIn: 30 } }))).toContain(
-        'Roshan respawns in 30t',
+        'Roshan respawns in 30c',
       )
     })
   })
@@ -515,7 +515,7 @@ describe('asciiMapModel', () => {
         compactIndicators(
           makeZone({ id: 'roshan-pit', roshan: { alive: false, respawnIn: 60 } }),
         ).map((i) => i.text),
-      ).toContain('☠ Roshan ↻ 60t')
+      ).toContain('☠ Roshan ↻ 60c')
     })
   })
 

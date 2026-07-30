@@ -73,7 +73,7 @@ const rows = computed<AllyRow[]>(() =>
 
       <!-- Dead -->
       <div v-if="!r.alive" class="t-hud-xs text-text-dim" :data-testid="`ally-dead-${r.id}`">
-        DEAD<template v-if="r.respawnIn >= 0"> · respawn {{ r.respawnIn }}t</template>
+        DEAD<template v-if="r.respawnIn >= 0"> · respawn {{ r.respawnIn }}c</template>
       </div>
 
       <!-- Alive: HP + transient status -->

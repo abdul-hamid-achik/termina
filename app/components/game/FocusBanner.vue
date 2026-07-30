@@ -161,7 +161,7 @@ const telegraphs = computed<string[]>(() => {
         data-testid="focus-ready-next"
       >
         next <span class="font-bold text-warn">{{ nextAbility.key.toUpperCase() }}</span>
-        {{ nextAbility.cd }}t
+        {{ nextAbility.cd }}c
       </span>
       <span v-else class="text-[0.7rem] text-text-dim" data-testid="focus-ready-none">—</span>
     </span>

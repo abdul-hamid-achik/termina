@@ -77,7 +77,7 @@ function onSlotTap(slot: SlotView) {
 function slotLabel(slot: SlotView): string {
   if (!slot.def) return `Item slot ${slot.index + 1}, empty`
   const parts = [`Item slot ${slot.index + 1}: ${slot.def.name}`]
-  if (slot.cooldown > 0) parts.push(`on cooldown, ${slot.cooldown} ticks`)
+  if (slot.cooldown > 0) parts.push(`on cooldown, ${slot.cooldown} cycles`)
   else if (slot.def.active) parts.push('active ready')
   else if (slot.def.passive) parts.push('passive')
   return parts.join(', ')
@@ -137,7 +137,7 @@ function formatStats(def: ItemDef): string[] {
           v-if="slot.cooldown > 0"
           class="absolute inset-0 flex items-center justify-center bg-bg-overlay/60"
         >
-          <span class="text-xs font-bold text-dire">{{ slot.cooldown }}t</span>
+          <span class="text-xs font-bold text-dire">{{ slot.cooldown }}c</span>
         </div>
       </template>
 
@@ -163,7 +163,7 @@ function formatStats(def: ItemDef): string[] {
           <span class="text-ability">Active: {{ slot.def.active.name }}</span>
           <div class="text-text-dim">{{ slot.def.active.description }}</div>
           <div v-if="slot.def.active.cooldownTicks" class="text-text-dim">
-            CD: <span class="text-text-primary">{{ slot.def.active.cooldownTicks }}t</span>
+            CD: <span class="text-text-primary">{{ slot.def.active.cooldownTicks }}c</span>
           </div>
         </div>
         <div v-if="slot.def.passive" class="mt-1 border-t border-border pt-1">
@@ -187,7 +187,7 @@ function formatStats(def: ItemDef): string[] {
             >[Click or press {{ slot.index + 1 }}]</template
           >
           <template v-else-if="slot.def.active && slot.cooldown > 0"
-            >[Cooldown: {{ slot.cooldown }}t]</template
+            >[Cooldown: {{ slot.cooldown }}c]</template
           >
           <template v-else-if="!slot.def.active">[Passive]</template>
         </div>

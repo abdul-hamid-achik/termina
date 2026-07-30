@@ -94,7 +94,7 @@ export function formatRoshan(
   return {
     status: 'dead',
     respawnIn,
-    label: respawnIn > 0 ? `ROSHAN dead ${respawnIn}t` : 'ROSHAN respawning',
+    label: respawnIn > 0 ? `ROSHAN dead ${respawnIn}c` : 'ROSHAN respawning',
     hpPct: null,
   }
 }
@@ -126,9 +126,9 @@ export function formatRunes(runes: RuneState[] | undefined, currentTick: number)
   let label: string
   if (live.length > 0) {
     const r = live[0]!
-    label = `RUNE ${r.type} @ ${shortZone(r.zone)} ${r.expiresIn}t`
+    label = `RUNE ${r.type} @ ${shortZone(r.zone)} ${r.expiresIn}c`
   } else {
-    label = `RUNE next ${nextIn}t`
+    label = `RUNE next ${nextIn}c`
   }
   return { live, nextIn, label }
 }
@@ -161,7 +161,7 @@ export function formatAegis(
       inPit: false,
       holderName: holder.name,
       expiresIn,
-      label: `AEGIS ${holder.name} ${expiresIn}t`,
+      label: `AEGIS ${holder.name} ${expiresIn}c`,
     }
   }
   if (aegis) {

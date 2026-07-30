@@ -81,7 +81,7 @@ describe('strategy: roshan', () => {
     const r = formatRoshan({ alive: false, hp: 0, maxHp: 5000, deathTick: 100 }, 120)
     expect(r.status).toBe('dead')
     expect(r.respawnIn).toBe(100 + ROSHAN_RESPAWN_TICKS - 120)
-    expect(r.label).toContain(`${r.respawnIn}t`)
+    expect(r.label).toContain(`${r.respawnIn}c`)
   })
   it('handles unknown roshan', () => {
     expect(formatRoshan(null, 5).status).toBe('unknown')
