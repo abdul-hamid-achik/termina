@@ -16,6 +16,33 @@ import {
 } from '~~/shared/constants/balance'
 
 describe('Zones', () => {
+  describe('zone display names (R1 world lexicon)', () => {
+    it('all 32 names are unique, non-empty, and free of the old vocabulary', () => {
+      const names = ZONES.map((z) => z.name)
+      expect(new Set(names).size).toBe(ZONES.length)
+      for (const name of names) {
+        expect(name.length).toBeGreaterThan(0)
+        // Ids keep the old faction words until the R1-08 sweep — names never do.
+        expect(name).not.toMatch(/radiant|dire|jungle|roshan/i)
+      }
+    })
+
+    it('names are drawn from the lexicon: districts, routes, the Silt, the Hollow', () => {
+      const byId = Object.fromEntries(ZONES.map((z) => [z.id, z.name]))
+      // Districts host the two base+fountain pairs.
+      expect(byId['radiant-base']).toBe('Rookery Terminal')
+      expect(byId['dire-base']).toBe('Landing Terminal')
+      // The three routes.
+      expect(byId['top-t1-rad']).toBe('Seawall T1 (CHAFF)')
+      expect(byId['mid-t1-dire']).toBe('Coldstore T1 (AUDIT)')
+      expect(byId['bot-t1-rad']).toBe('Shallows T1 (CHAFF)')
+      // Jungle is the Silt; the pit is the Hollow; rune spots are cache drops.
+      expect(byId['jungle-rad-top']).toBe('Chaff Upper Silt')
+      expect(byId['roshan-pit']).toBe('The Hollow')
+      expect(byId['rune-top']).toBe('Seawall Cache Drop')
+    })
+  })
+
   describe('initializeZoneStates', () => {
     it('creates a runtime state for every defined zone', () => {
       const states = initializeZoneStates()

@@ -867,7 +867,7 @@ describe('GameScreen', () => {
       seedWalkTick('mid-t1-rad', 241)
       await wrapper.vm.$nextTick()
 
-      expect(feed(wrapper)).toContain('▸ You arrive at Mid Lane T1 (Radiant)')
+      expect(feed(wrapper)).toContain('▸ You arrive at Coldstore T1 (CHAFF)')
       wrapper.unmount()
     })
 
@@ -881,14 +881,14 @@ describe('GameScreen', () => {
       seedWalkTick('mid-t1-rad', 241, { moveTarget: 'mid-t2-rad' })
       await wrapper.vm.$nextTick()
       expect(feed(wrapper)).toContain(
-        '▸ You reach Mid Lane T1 (Radiant) — 1 more to Mid Lane T2 (Radiant)',
+        '▸ You reach Coldstore T1 (CHAFF) — 1 more to Coldstore T2 (CHAFF)',
       )
       expect(feed(wrapper).some((t) => t.includes('You arrive'))).toBe(false)
 
       // Final hop: moveTarget is already null, so only the local order knows.
       seedWalkTick('mid-t2-rad', 242)
       await wrapper.vm.$nextTick()
-      expect(feed(wrapper)).toContain('▸ You arrive at Mid Lane T2 (Radiant)')
+      expect(feed(wrapper)).toContain('▸ You arrive at Coldstore T2 (CHAFF)')
       wrapper.unmount()
     })
 
@@ -985,7 +985,7 @@ describe('GameScreen', () => {
       await wrapper.vm.$nextTick()
 
       expect(socketSpies.send).not.toHaveBeenCalled()
-      expect(lines(wrapper).some((t) => t.startsWith('No zone left of Mid Lane T1'))).toBe(true)
+      expect(lines(wrapper).some((t) => t.startsWith('No zone left of Coldstore T1'))).toBe(true)
       wrapper.unmount()
     })
 
@@ -1091,8 +1091,8 @@ describe('GameScreen', () => {
 
       const picker = wrapper.find('[data-testid="move-picker"]')
       expect(picker.exists()).toBe(true)
-      expect(picker.text()).toContain('Mid Lane T2 (Radiant)')
-      expect(picker.text()).toContain('Mid River Crossing')
+      expect(picker.text()).toContain('Coldstore T2 (CHAFF)')
+      expect(picker.text()).toContain('Coldstore Crossing')
       expect(picker.text()).not.toContain('mid-t2-rad')
       wrapper.unmount()
     })
@@ -1143,7 +1143,7 @@ describe('GameScreen', () => {
 
       // radiant-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain(
-        'WALKING → Mid Lane T1 (Radiant) · 3t',
+        'WALKING → Coldstore T1 (CHAFF) · 3t',
       )
       // The same destination is what the map draws its route from.
       expect(wrapper.findComponent({ name: 'AsciiMap' }).props('moveTarget')).toBe('mid-t1-rad')

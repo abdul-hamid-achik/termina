@@ -8,7 +8,7 @@
  * renderers over these.
  */
 import { ITEMS } from '~~/shared/constants/items'
-import { ZONES } from '~~/shared/constants/zones'
+import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { formatTickClock } from './gameClock'
 import {
   ROSHAN_RESPAWN_TICKS,
@@ -242,7 +242,8 @@ export function sparkline(values: number[]): string {
 
 // ── helpers ─────────────────────────────────────────────────────────
 
-/** Short, human zone label: "mid-river" -> "mid-river"; trims long ids. */
+/** Short, human zone label — the zone's display NAME from the record
+ *  ("mid-river" -> "Coldstore Crossing"), falling back to the raw id. */
 export function shortZone(zoneId: string): string {
-  return zoneId.replace(/-/g, ' ').replace(/\b(t1|t2|t3)\b/g, (m) => m.toUpperCase())
+  return ZONE_MAP[zoneId]?.name ?? zoneId
 }

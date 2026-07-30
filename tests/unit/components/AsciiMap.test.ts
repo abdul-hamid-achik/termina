@@ -289,11 +289,11 @@ describe('AsciiMap', () => {
       await wrapper.find('[data-testid="overview-toggle"]').trigger('click')
 
       const text = wrapper.find('[data-testid="mini-overview"]').text()
-      // Short column headers derived from the 5v5 layout (jungles collapse to JG).
-      expect(text).toContain('TOP')
-      expect(text).toContain('MID')
-      expect(text).toContain('BOT')
-      expect(text).toContain('JG')
+      // Short column headers derived from the 5v5 layout (silts collapse to SILT).
+      expect(text).toContain('SEA')
+      expect(text).toContain('COLD')
+      expect(text).toContain('SHA')
+      expect(text).toContain('SILT')
       // Side labels marking the two halves of the map.
       expect(text).toContain('RADIANT ▲')
       expect(text).toContain('DIRE ▼')

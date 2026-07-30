@@ -16,7 +16,7 @@ const zones: ZoneDisplay[] = [
   zone('top-river', 'Top River', { enemyCount: 2, enemyNames: ['daemon_carry', 'regex_mid'] }),
   zone('bot-river', 'Bot River', { creepCount: 4, creepTypes: ['melee', 'ranged'] }),
   zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
-  zone('roshan-pit', 'Roshan Pit', { neutralCount: 1, roshan: { alive: false, respawnIn: 48 } }),
+  zone('roshan-pit', 'The Hollow', { neutralCount: 1, roshan: { alive: false, respawnIn: 48 } }),
   zone('mid-t1-dire', 'Dire Mid T1', {
     tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
   }),
@@ -25,8 +25,8 @@ const zones: ZoneDisplay[] = [
   }),
   zone('jungle-rad-top', 'Radiant Jungle (Top)', { neutralCount: 3, allies: ['proxy_jg'] }),
   zone('jungle-dire-bot', 'Dire Jungle (Bot)', { fogged: true, enemyCount: 1 }),
-  zone('radiant-base', 'Radiant Base', {}),
-  zone('dire-base', 'Dire Base', {}),
+  zone('radiant-base', 'Rookery Terminal', {}),
+  zone('dire-base', 'Landing Terminal', {}),
 ]
 
 const ancients = {
@@ -37,8 +37,8 @@ const ancients = {
 // One-lane map (mapId='one_lane'): a single mid-lane column. Same ZoneDisplay
 // shape, but AsciiMap lays it out as 11 stacked cells instead of the 5x10 grid.
 const oneLaneZones: ZoneDisplay[] = [
-  zone('radiant-fountain', 'Radiant Fountain', {}),
-  zone('radiant-base', 'Radiant Base', {}),
+  zone('radiant-fountain', 'Rookery Anchor', {}),
+  zone('radiant-base', 'Rookery Terminal', {}),
   zone('mid-t3-rad', 'Radiant Mid T3', {
     tower: { team: 'radiant', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
@@ -63,15 +63,15 @@ const oneLaneZones: ZoneDisplay[] = [
     tower: { team: 'dire', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
-  zone('dire-base', 'Dire Base', { fogged: true }),
+  zone('dire-base', 'Landing Terminal', { fogged: true }),
   zone('dire-fountain', 'Dire Fountain', { fogged: true }),
 ]
 
 // Two-lane map (mapId='two_lane'): top + mid lanes with top-side jungle, rune,
 // and Roshan. AsciiMap lays it out as a 4-column grid. No bot lane zones.
 const twoLaneZones: ZoneDisplay[] = [
-  zone('radiant-fountain', 'Radiant Fountain', {}),
-  zone('radiant-base', 'Radiant Base', {}),
+  zone('radiant-fountain', 'Rookery Anchor', {}),
+  zone('radiant-base', 'Rookery Terminal', {}),
   zone('top-t3-rad', 'Radiant Top T3', {
     tower: { team: 'radiant', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
@@ -121,8 +121,8 @@ const twoLaneZones: ZoneDisplay[] = [
   zone('jungle-rad-top', 'Radiant Jungle (Top)', { neutralCount: 2 }),
   zone('jungle-dire-top', 'Dire Jungle (Top)', { fogged: true, enemyCount: 1 }),
   zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
-  zone('roshan-pit', 'Roshan Pit', { neutralCount: 1, roshan: { alive: true, respawnIn: 0 } }),
-  zone('dire-base', 'Dire Base', { fogged: true }),
+  zone('roshan-pit', 'The Hollow', { neutralCount: 1, roshan: { alive: true, respawnIn: 0 } }),
+  zone('dire-base', 'Landing Terminal', { fogged: true }),
   zone('dire-fountain', 'Dire Fountain', { fogged: true }),
 ]
 </script>

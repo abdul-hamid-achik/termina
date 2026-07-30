@@ -23,7 +23,7 @@ const caption = (w: ReturnType<typeof mountPrimer>) =>
 describe('MapPrimer', () => {
   it('starts the explorer at the radiant fountain with its (singular) adjacency', () => {
     const cap = caption(mountPrimer())
-    expect(cap).toContain('Radiant Fountain')
+    expect(cap).toContain('Rookery Anchor')
     expect(cap).toContain('1 adjacent zone arrives')
   })
 
@@ -31,7 +31,7 @@ describe('MapPrimer', () => {
     const w = mountPrimer()
     await w.find('[data-testid="hop"]').trigger('click')
     const cap = caption(w)
-    expect(cap).toContain('Radiant Base')
+    expect(cap).toContain('Rookery Terminal')
     expect(cap).toContain('4 adjacent zones arrive')
   })
 

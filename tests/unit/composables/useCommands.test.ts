@@ -975,7 +975,7 @@ describe('useCommands', () => {
           'move base',
           makeContext({ player: makePlayer({ team: 'radiant' }) }),
         )
-        expect(radiant.find((s) => s.text === 'base')?.description).toBe('→ Radiant Base')
+        expect(radiant.find((s) => s.text === 'base')?.description).toBe('→ Rookery Terminal')
 
         // A dire player's `base` suggestion must point at THEIR base, matching
         // how it resolves — not the enemy's.
@@ -983,7 +983,7 @@ describe('useCommands', () => {
           'move base',
           makeContext({ player: makePlayer({ team: 'dire' }) }),
         )
-        expect(dire.find((s) => s.text === 'base')?.description).toBe('→ Dire Base')
+        expect(dire.find((s) => s.text === 'base')?.description).toBe('→ Landing Terminal')
       })
 
       it('suggests buyback for "buy" prefix', () => {
@@ -1062,7 +1062,7 @@ describe('useCommands', () => {
         const suggestions = autocomplete('move mid', makeContext())
 
         expect(suggestions[0]?.text).toBe('mid')
-        expect(suggestions[0]?.description).toContain('Mid River')
+        expect(suggestions[0]?.description).toContain('Coldstore Crossing')
         expect(suggestions.map((s) => s.text)).toContain('mid-t3-rad')
       })
 
@@ -1088,7 +1088,9 @@ describe('useCommands', () => {
         expect(suggestions.map((s) => s.text)).toEqual(
           expect.arrayContaining(['rune-top', 'rune-bot']),
         )
-        expect(suggestions.every((s) => !(s.description ?? '').includes('Mid River'))).toBe(true)
+        expect(
+          suggestions.every((s) => !(s.description ?? '').includes('Coldstore Crossing')),
+        ).toBe(true)
       })
     })
 
@@ -1527,7 +1529,7 @@ describe('useCommands', () => {
         const suggestions = autocomplete('ward mid', context)
 
         expect(suggestions[0]?.text).toBe('mid')
-        expect(suggestions[0]?.description).toContain('Mid River')
+        expect(suggestions[0]?.description).toContain('Coldstore Crossing')
       })
 
       it('omits an alias that resolves out of ward range', () => {
@@ -2154,15 +2156,15 @@ describe('informational readouts', () => {
     expect(out).toContain('MP 240/400')
     expect(out).toContain('1850g')
     expect(out).toContain('KDA 4/1/6')
-    expect(out).toContain('Mid River')
+    expect(out).toContain('Coldstore Crossing')
   })
 
   it('formatMapReadout names your zone and reachable neighbours', () => {
     const me = makePlayer({ zone: 'radiant-base' })
     const out = formatMapReadout(me)
-    expect(out).toContain('Radiant Base')
+    expect(out).toContain('Rookery Terminal')
     expect(out).toMatch(/Reachable:/)
-    expect(out).toContain('Radiant Fountain') // radiant-base is adjacent to its fountain
+    expect(out).toContain('Rookery Anchor') // radiant-base is adjacent to its fountain
   })
 
   it('formatMapReadout lists only the neighbours this game map actually has', () => {
@@ -2171,8 +2173,8 @@ describe('informational readouts', () => {
     // contain and `move` would reject.
     const me = makePlayer({ zone: 'radiant-base' })
     const out = formatMapReadout(me, 'one_lane')
-    expect(out).toContain('Radiant Fountain')
-    expect(out).toContain('Mid Lane T3 (Radiant)')
+    expect(out).toContain('Rookery Anchor')
+    expect(out).toContain('Coldstore T3 (CHAFF)')
     expect(out).not.toContain('Top Lane T3')
     expect(out).not.toContain('Bot Lane T3')
   })

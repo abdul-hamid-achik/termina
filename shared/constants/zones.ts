@@ -2,10 +2,10 @@ import type { Zone } from '../types/map'
 import type { TeamId } from '../types/game'
 
 export const ZONES: readonly Zone[] = [
-  // ── Radiant Base ───────────────────────────────────────────────
+  // ── Rookery (CHAFF base) ───────────────────────────────────────────────
   {
     id: 'radiant-base',
-    name: 'Radiant Base',
+    name: 'Rookery Terminal',
     type: 'base',
     adjacentTo: ['radiant-fountain', 'top-t3-rad', 'mid-t3-rad', 'bot-t3-rad'],
     team: 'radiant',
@@ -18,7 +18,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'radiant-fountain',
-    name: 'Radiant Fountain',
+    name: 'Rookery Anchor',
     type: 'fountain',
     adjacentTo: ['radiant-base'],
     team: 'radiant',
@@ -26,10 +26,10 @@ export const ZONES: readonly Zone[] = [
     shop: true,
   },
 
-  // ── Dire Base ──────────────────────────────────────────────────
+  // ── Landing (AUDIT base) ──────────────────────────────────────────────────
   {
     id: 'dire-base',
-    name: 'Dire Base',
+    name: 'Landing Terminal',
     type: 'base',
     adjacentTo: ['dire-fountain', 'top-t3-dire', 'mid-t3-dire', 'bot-t3-dire'],
     team: 'dire',
@@ -38,7 +38,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'dire-fountain',
-    name: 'Dire Fountain',
+    name: 'Landing Anchor',
     type: 'fountain',
     adjacentTo: ['dire-base'],
     team: 'dire',
@@ -49,7 +49,7 @@ export const ZONES: readonly Zone[] = [
   // ── Top Lane (Radiant side → Dire side) ────────────────────────
   {
     id: 'top-t3-rad',
-    name: 'Top Lane T3 (Radiant)',
+    name: 'Seawall T3 (CHAFF)',
     type: 'lane',
     adjacentTo: ['radiant-base', 'top-t2-rad'],
     team: 'radiant',
@@ -60,7 +60,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'top-t2-rad',
-    name: 'Top Lane T2 (Radiant)',
+    name: 'Seawall T2 (CHAFF)',
     type: 'lane',
     adjacentTo: ['top-t3-rad', 'top-t1-rad', 'jungle-rad-top'],
     team: 'radiant',
@@ -71,7 +71,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'top-t1-rad',
-    name: 'Top Lane T1 (Radiant)',
+    name: 'Seawall T1 (CHAFF)',
     type: 'lane',
     adjacentTo: ['top-t2-rad', 'top-river', 'jungle-rad-top'],
     team: 'radiant',
@@ -82,7 +82,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'top-river',
-    name: 'Top River Crossing',
+    name: 'Seawall Crossing',
     type: 'river',
     adjacentTo: ['top-t1-rad', 'top-t1-dire', 'rune-top'],
     team: 'neutral',
@@ -92,7 +92,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'top-t1-dire',
-    name: 'Top Lane T1 (Dire)',
+    name: 'Seawall T1 (AUDIT)',
     type: 'lane',
     adjacentTo: ['top-river', 'top-t2-dire', 'jungle-dire-top'],
     team: 'dire',
@@ -103,7 +103,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'top-t2-dire',
-    name: 'Top Lane T2 (Dire)',
+    name: 'Seawall T2 (AUDIT)',
     type: 'lane',
     adjacentTo: ['top-t1-dire', 'top-t3-dire', 'jungle-dire-top'],
     team: 'dire',
@@ -114,7 +114,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'top-t3-dire',
-    name: 'Top Lane T3 (Dire)',
+    name: 'Seawall T3 (AUDIT)',
     type: 'lane',
     adjacentTo: ['top-t2-dire', 'dire-base'],
     team: 'dire',
@@ -127,7 +127,7 @@ export const ZONES: readonly Zone[] = [
   // ── Mid Lane (Radiant side → Dire side) ────────────────────────
   {
     id: 'mid-t3-rad',
-    name: 'Mid Lane T3 (Radiant)',
+    name: 'Coldstore T3 (CHAFF)',
     type: 'lane',
     adjacentTo: ['radiant-base', 'mid-t2-rad'],
     team: 'radiant',
@@ -138,7 +138,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'mid-t2-rad',
-    name: 'Mid Lane T2 (Radiant)',
+    name: 'Coldstore T2 (CHAFF)',
     type: 'lane',
     adjacentTo: ['mid-t3-rad', 'mid-t1-rad', 'jungle-rad-top', 'jungle-rad-bot'],
     team: 'radiant',
@@ -149,7 +149,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'mid-t1-rad',
-    name: 'Mid Lane T1 (Radiant)',
+    name: 'Coldstore T1 (CHAFF)',
     type: 'lane',
     adjacentTo: ['mid-t2-rad', 'mid-river'],
     team: 'radiant',
@@ -160,7 +160,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'mid-river',
-    name: 'Mid River Crossing',
+    name: 'Coldstore Crossing',
     type: 'river',
     adjacentTo: ['mid-t1-rad', 'mid-t1-dire', 'rune-top', 'rune-bot'],
     team: 'neutral',
@@ -170,7 +170,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'mid-t1-dire',
-    name: 'Mid Lane T1 (Dire)',
+    name: 'Coldstore T1 (AUDIT)',
     type: 'lane',
     adjacentTo: ['mid-river', 'mid-t2-dire'],
     team: 'dire',
@@ -181,7 +181,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'mid-t2-dire',
-    name: 'Mid Lane T2 (Dire)',
+    name: 'Coldstore T2 (AUDIT)',
     type: 'lane',
     adjacentTo: ['mid-t1-dire', 'mid-t3-dire', 'jungle-dire-top', 'jungle-dire-bot'],
     team: 'dire',
@@ -192,7 +192,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'mid-t3-dire',
-    name: 'Mid Lane T3 (Dire)',
+    name: 'Coldstore T3 (AUDIT)',
     type: 'lane',
     adjacentTo: ['mid-t2-dire', 'dire-base'],
     team: 'dire',
@@ -205,7 +205,7 @@ export const ZONES: readonly Zone[] = [
   // ── Bot Lane (Radiant side → Dire side) ────────────────────────
   {
     id: 'bot-t3-rad',
-    name: 'Bot Lane T3 (Radiant)',
+    name: 'Shallows T3 (CHAFF)',
     type: 'lane',
     adjacentTo: ['radiant-base', 'bot-t2-rad'],
     team: 'radiant',
@@ -216,7 +216,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'bot-t2-rad',
-    name: 'Bot Lane T2 (Radiant)',
+    name: 'Shallows T2 (CHAFF)',
     type: 'lane',
     adjacentTo: ['bot-t3-rad', 'bot-t1-rad', 'jungle-rad-bot'],
     team: 'radiant',
@@ -227,7 +227,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'bot-t1-rad',
-    name: 'Bot Lane T1 (Radiant)',
+    name: 'Shallows T1 (CHAFF)',
     type: 'lane',
     adjacentTo: ['bot-t2-rad', 'bot-river', 'jungle-rad-bot'],
     team: 'radiant',
@@ -238,7 +238,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'bot-river',
-    name: 'Bot River Crossing',
+    name: 'Shallows Crossing',
     type: 'river',
     adjacentTo: ['bot-t1-rad', 'bot-t1-dire', 'rune-bot'],
     team: 'neutral',
@@ -248,7 +248,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'bot-t1-dire',
-    name: 'Bot Lane T1 (Dire)',
+    name: 'Shallows T1 (AUDIT)',
     type: 'lane',
     adjacentTo: ['bot-river', 'bot-t2-dire', 'jungle-dire-bot'],
     team: 'dire',
@@ -259,7 +259,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'bot-t2-dire',
-    name: 'Bot Lane T2 (Dire)',
+    name: 'Shallows T2 (AUDIT)',
     type: 'lane',
     adjacentTo: ['bot-t1-dire', 'bot-t3-dire', 'jungle-dire-bot'],
     team: 'dire',
@@ -270,7 +270,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'bot-t3-dire',
-    name: 'Bot Lane T3 (Dire)',
+    name: 'Shallows T3 (AUDIT)',
     type: 'lane',
     adjacentTo: ['bot-t2-dire', 'dire-base'],
     team: 'dire',
@@ -283,7 +283,7 @@ export const ZONES: readonly Zone[] = [
   // ── Jungle ─────────────────────────────────────────────────────
   {
     id: 'jungle-rad-top',
-    name: 'Radiant Top Jungle',
+    name: 'Chaff Upper Silt',
     type: 'jungle',
     adjacentTo: ['top-t2-rad', 'top-t1-rad', 'mid-t2-rad', 'rune-top'],
     team: 'radiant',
@@ -292,7 +292,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'jungle-rad-bot',
-    name: 'Radiant Bot Jungle',
+    name: 'Chaff Lower Silt',
     type: 'jungle',
     adjacentTo: ['bot-t2-rad', 'bot-t1-rad', 'mid-t2-rad', 'rune-bot'],
     team: 'radiant',
@@ -301,7 +301,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'jungle-dire-top',
-    name: 'Dire Top Jungle',
+    name: 'Audit Upper Silt',
     type: 'jungle',
     adjacentTo: ['top-t1-dire', 'top-t2-dire', 'mid-t2-dire', 'rune-top'],
     team: 'dire',
@@ -310,7 +310,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'jungle-dire-bot',
-    name: 'Dire Bot Jungle',
+    name: 'Audit Lower Silt',
     type: 'jungle',
     adjacentTo: ['bot-t1-dire', 'bot-t2-dire', 'mid-t2-dire', 'rune-bot'],
     team: 'dire',
@@ -321,7 +321,7 @@ export const ZONES: readonly Zone[] = [
   // ── River Objectives ───────────────────────────────────────────
   {
     id: 'rune-top',
-    name: 'Top Rune Spot',
+    name: 'Seawall Cache Drop',
     type: 'river',
     adjacentTo: ['top-river', 'mid-river', 'jungle-rad-top', 'jungle-dire-top', 'roshan-pit'],
     team: 'neutral',
@@ -330,7 +330,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'rune-bot',
-    name: 'Bot Rune Spot',
+    name: 'Shallows Cache Drop',
     type: 'river',
     adjacentTo: ['bot-river', 'mid-river', 'jungle-rad-bot', 'jungle-dire-bot'],
     team: 'neutral',
@@ -339,7 +339,7 @@ export const ZONES: readonly Zone[] = [
   },
   {
     id: 'roshan-pit',
-    name: 'Roshan Pit',
+    name: 'The Hollow',
     type: 'objective',
     adjacentTo: ['rune-top'],
     team: 'neutral',

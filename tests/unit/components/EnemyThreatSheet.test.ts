@@ -61,7 +61,7 @@ describe('EnemyThreatSheet', () => {
     const el = w.get('[data-testid="threat-fogged-e2"]')
     expect(el.text()).toContain('fogged')
     // Zone ids are humanized for the player ("top-river" → its display name).
-    expect(el.text()).toContain('Top River Crossing')
+    expect(el.text()).toContain('Seawall Crossing')
     expect(el.text()).toContain('4c')
   })
 

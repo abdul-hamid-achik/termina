@@ -6,7 +6,7 @@ import EnemyThreatSheet from './EnemyThreatSheet.vue'
 // The sheet shows enemy intel: visible enemies get HP/MP bars + ability
 // cooldowns + status chips with readable labels from ~/utils/buffs (Magic
 // Immune, Haste, Stunned, Slowed); fogged enemies show only last-seen, with
-// the zone HUMANIZED to its display name ("Top River Crossing", not
+// the zone HUMANIZED to its display name ("Seawall Crossing", not
 // 'top-river'); dead enemies show a respawn timer. `lastSeen` is keyed by
 // player id.
 const TICK = 240
@@ -73,7 +73,7 @@ const dead: PlayerState = makePlayer({
   respawnTick: TICK + 18,
 })
 
-// Renders as "last Top River Crossing · 6t" — display name, not the raw id.
+// Renders as "last Seawall Crossing · 6c" — display name, not the raw id.
 const lastSeen: Record<string, { zone: string; tick: number }> = {
   e3: { zone: 'top-river', tick: TICK - 6 },
 }

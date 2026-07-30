@@ -165,7 +165,7 @@ describe('Game Store', () => {
 
         expect(store.currentZone).not.toBeNull()
         expect(store.currentZone!.id).toBe('radiant-fountain')
-        expect(store.currentZone!.name).toBe('Radiant Fountain')
+        expect(store.currentZone!.name).toBe('Rookery Anchor')
       })
 
       it('returns null for unknown zone', () => {

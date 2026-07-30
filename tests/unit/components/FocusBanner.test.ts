@@ -145,6 +145,6 @@ describe('FocusBanner', () => {
     seed({ enemies: 0 })
     const wrapper = mount(FocusBanner)
     // mid-river → "Mid River" via ZONE_MAP
-    expect(wrapper.find('[data-testid="focus-banner"]').text()).toContain('Mid River')
+    expect(wrapper.find('[data-testid="focus-banner"]').text()).toContain('Coldstore Crossing')
   })
 })

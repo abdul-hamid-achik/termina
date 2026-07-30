@@ -35,13 +35,13 @@ describe('ObjectiveTicker', () => {
     expect(w.text()).toContain('Haste')
     // The zone is the whole decision — a rune you cannot reach before it expires
     // is not an objective. formatRunes already returned it; the ticker dropped it.
-    expect(w.text()).toContain('rune top')
+    expect(w.text()).toContain('Seawall Cache Drop')
   })
 
   it('names the zone of whichever rune is live, not a fixed spot', () => {
     const w = mountTicker({ runes: [{ zone: 'rune-bot', type: 'dd', tick: 50 }], tick: 60 })
-    expect(w.text()).toContain('rune bot')
-    expect(w.text()).not.toContain('rune top')
+    expect(w.text()).toContain('Shallows Cache Drop')
+    expect(w.text()).not.toContain('Seawall Cache Drop')
   })
 
   it('shows next rune timer when none are live', () => {

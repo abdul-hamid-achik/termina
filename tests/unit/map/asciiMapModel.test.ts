@@ -559,11 +559,11 @@ describe('asciiMapModel', () => {
       expect(mapRowsFor(undefined)).toBe(MAP_ROWS)
       expect(mapRowsFor('default_5v5')).toBe(MAP_ROWS)
       expect(colHeadersFor(undefined)).toEqual([
-        'TOP LANE',
-        'RADIANT JUNGLE',
-        'MID LANE',
-        'DIRE JUNGLE',
-        'BOT LANE',
+        'SEAWALL',
+        'CHAFF SILT',
+        'COLDSTORE',
+        'AUDIT SILT',
+        'SHALLOWS',
       ])
     })
 
@@ -578,7 +578,7 @@ describe('asciiMapModel', () => {
       expect(zones).toContain('mid-river')
       // No off-lane zones leak into the layout.
       expect(zones.some((z) => z?.startsWith('top-') || z?.startsWith('bot-'))).toBe(false)
-      expect(colHeadersFor('one_lane')).toEqual(['MID LANE'])
+      expect(colHeadersFor('one_lane')).toEqual(['COLDSTORE'])
     })
 
     it('renders the two-lane map with top + mid lanes, jungle, rune, and roshan', () => {
@@ -602,22 +602,22 @@ describe('asciiMapModel', () => {
       expect(zones.some((z) => z.startsWith('bot-'))).toBe(false)
       expect(zones.some((z) => z.startsWith('rune-bot'))).toBe(false)
       expect(colHeadersFor('two_lane')).toEqual([
-        'TOP LANE',
-        'RADIANT JUNGLE',
-        'MID LANE',
-        'DIRE JUNGLE',
+        'SEAWALL',
+        'CHAFF SILT',
+        'COLDSTORE',
+        'AUDIT SILT',
       ])
     })
   })
 
   describe('shortColHeadersFor (mini-overview headers)', () => {
     it('shortens the 5v5 headers, collapsing both jungles to JG', () => {
-      expect(shortColHeadersFor(undefined)).toEqual(['TOP', 'JG', 'MID', 'JG', 'BOT'])
+      expect(shortColHeadersFor(undefined)).toEqual(['SEA', 'SILT', 'COLD', 'SILT', 'SHA'])
     })
 
     it('derives from the active layout for one_lane and two_lane', () => {
-      expect(shortColHeadersFor('one_lane')).toEqual(['MID'])
-      expect(shortColHeadersFor('two_lane')).toEqual(['TOP', 'JG', 'MID', 'JG'])
+      expect(shortColHeadersFor('one_lane')).toEqual(['COLD'])
+      expect(shortColHeadersFor('two_lane')).toEqual(['SEA', 'SILT', 'COLD', 'SILT'])
     })
 
     it('always matches the layout column count (never a hardcoded 5)', () => {

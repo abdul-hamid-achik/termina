@@ -128,7 +128,7 @@ const jungle = {
 
 // The Roshan pit with him up — the one place the attack affordance appears.
 const roshanPit = {
-  zoneName: 'Roshan Pit',
+  zoneName: 'The Hollow',
   zoneId: 'roshan-pit',
   roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
 }

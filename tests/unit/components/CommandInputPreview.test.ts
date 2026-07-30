@@ -64,11 +64,11 @@ describe('CommandInput preview line', () => {
   })
 
   it('renders a valid move preview with the resolved zone name', async () => {
-    // mid alias resolves to "Mid River Crossing"; fountain is adjacent to base only,
+    // mid alias resolves to "Coldstore Crossing"; fountain is adjacent to base only,
     // so move uses a player whose move target is reachable — preview reflects the dest name.
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const preview = await previewFor(wrapper, 'move mid')
-    expect(preview.text()).toContain('>> Move to Mid River Crossing')
+    expect(preview.text()).toContain('>> Move to Coldstore Crossing')
     expect(preview.classes()).toContain('text-radiant')
     wrapper.unmount()
   })
@@ -77,7 +77,7 @@ describe('CommandInput preview line', () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const preview = await previewFor(wrapper, 'move dire-base')
     // mid-river → mid-t1/2/3-dire → dire-base = 4 hops.
-    expect(preview.text()).toContain('>> Move to Dire Base (4 ticks)')
+    expect(preview.text()).toContain('>> Move to Landing Terminal (4 ticks)')
     expect(preview.classes()).toContain('text-radiant')
     wrapper.unmount()
   })

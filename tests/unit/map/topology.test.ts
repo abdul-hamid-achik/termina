@@ -18,7 +18,7 @@ describe('Topology', () => {
       const zone = getZone('radiant-base')
       expect(zone).toBeDefined()
       expect(zone!.id).toBe('radiant-base')
-      expect(zone!.name).toBe('Radiant Base')
+      expect(zone!.name).toBe('Rookery Terminal')
     })
 
     it('returns undefined for an unknown zone ID', () => {

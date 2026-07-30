@@ -188,10 +188,10 @@ describe('strategy: sparkline', () => {
 
 describe('strategy: shortZone', () => {
   it('spaces out the id and upper-cases tower tiers', () => {
-    expect(shortZone('mid-t1-rad')).toBe('mid T1 rad')
-    expect(shortZone('top-t2-dire')).toBe('top T2 dire')
+    expect(shortZone('mid-t1-rad')).toBe('Coldstore T1 (CHAFF)')
+    expect(shortZone('top-t2-dire')).toBe('Seawall T2 (AUDIT)')
   })
   it('leaves a plain zone id readable', () => {
-    expect(shortZone('mid-river')).toBe('mid river')
+    expect(shortZone('mid-river')).toBe('Coldstore Crossing')
   })
 })

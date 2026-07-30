@@ -146,9 +146,9 @@ describe('combatLog helpers', () => {
   })
 
   describe('teamLabel', () => {
-    it('title-cases team ids', () => {
-      expect(teamLabel('radiant')).toBe('Radiant')
-      expect(teamLabel('dire')).toBe('Dire')
+    it('reads faction labels from the world lexicon', () => {
+      expect(teamLabel('radiant')).toBe('CHAFF')
+      expect(teamLabel('dire')).toBe('AUDIT')
     })
   })
 

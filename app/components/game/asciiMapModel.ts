@@ -55,7 +55,7 @@ export const MAP_ROWS: (string | null)[][] = [
   [null, 'dire-base', null, 'dire-fountain', null],
 ]
 
-const COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE', 'BOT LANE']
+const COL_HEADERS = ['SEAWALL', 'CHAFF SILT', 'COLDSTORE', 'AUDIT SILT', 'SHALLOWS']
 
 /** One-lane map layout — a single mid-lane column (radiant fountain at top, dire
  *  at the bottom). Mirrors shared/constants/maps `ONE_LANE_ZONES`. */
@@ -72,7 +72,7 @@ export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
   ['dire-base'],
   ['dire-fountain'],
 ]
-const ONE_LANE_COL_HEADERS = ['MID LANE']
+const ONE_LANE_COL_HEADERS = ['COLDSTORE']
 
 /** Two-lane map layout — top + mid lanes with top-side jungle, top rune, and
  *  Roshan pit. Mirrors shared/constants/maps `TWO_LANE_ZONES` (3v3 map). */
@@ -89,7 +89,7 @@ export const TWO_LANE_MAP_ROWS: (string | null)[][] = [
   [null, null, 'dire-base', null],
   [null, null, 'dire-fountain', null],
 ]
-const TWO_LANE_COL_HEADERS = ['TOP LANE', 'RADIANT JUNGLE', 'MID LANE', 'DIRE JUNGLE']
+const TWO_LANE_COL_HEADERS = ['SEAWALL', 'CHAFF SILT', 'COLDSTORE', 'AUDIT SILT']
 
 /** Pick the grid layout + column headers for a game's map (full 5v5 by default). */
 export function mapRowsFor(mapId?: string): (string | null)[][] {
@@ -105,11 +105,17 @@ export function colHeadersFor(mapId?: string): string[] {
 
 /** Short column headers for the compact mini overview, derived from the active
  *  map's full headers so every layout (5v5 / two_lane / one_lane) stays aligned:
- *  'TOP LANE' → 'TOP', 'RADIANT JUNGLE'/'DIRE JUNGLE' → 'JG', 'MID LANE' → 'MID'. */
+ *  'SEAWALL' → 'SEA', 'CHAFF SILT'/'AUDIT SILT' → 'SILT', 'COLDSTORE' → 'COLD',
+ *  'SHALLOWS' → 'SHA'. */
 export function shortColHeadersFor(mapId?: string): string[] {
-  return colHeadersFor(mapId).map((h) =>
-    h.toUpperCase().includes('JUNGLE') ? 'JG' : h.split(' ')[0]!.toUpperCase(),
-  )
+  return colHeadersFor(mapId).map((h) => {
+    const u = h.toUpperCase()
+    if (u.includes('SILT')) return 'SILT'
+    if (u === 'COLDSTORE') return 'COLD'
+    if (u === 'SEAWALL') return 'SEA'
+    if (u === 'SHALLOWS') return 'SHA'
+    return u.split(' ')[0]!
+  })
 }
 
 /** Tailwind grid-cols class for a layout's column count. Static class strings so
