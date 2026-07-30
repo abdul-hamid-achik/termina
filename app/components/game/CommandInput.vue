@@ -586,8 +586,8 @@ onUnmounted(() => {
       aria-live="polite"
       class="border-t border-border/50 px-3 py-0.5 font-mono text-[0.7rem]"
       :class="{
-        'text-radiant': preview.type === 'valid',
-        'text-dire': preview.type === 'error',
+        'text-chaff': preview.type === 'valid',
+        'text-audit': preview.type === 'error',
         'text-text-dim': preview.type === 'dim',
       }"
     >
@@ -612,7 +612,7 @@ onUnmounted(() => {
       <span
         data-testid="prompt-glyph"
         class="shrink-0 font-mono font-bold select-none"
-        :class="focused ? 'text-radiant' : 'text-text-dim'"
+        :class="focused ? 'text-chaff' : 'text-text-dim'"
         :title="promptTitle"
         >{{ promptGlyph }}</span
       >
@@ -628,7 +628,7 @@ onUnmounted(() => {
         :aria-activedescendant="
           open && suggestions.length > 0 ? `cmd-opt-${selectedIndex}` : undefined
         "
-        class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-radiant outline-none placeholder:text-text-dim placeholder:opacity-40"
+        class="min-w-0 flex-1 border-none bg-transparent font-mono text-sm text-text-primary caret-chaff outline-none placeholder:text-text-dim placeholder:opacity-40"
         :placeholder="
           !canAct
             ? pendingCommand
@@ -647,7 +647,7 @@ onUnmounted(() => {
            It is also positioned for the narrow `>_` glyph. -->
       <span
         v-if="!input && canAct && focused"
-        class="pointer-events-none absolute left-11 animate-blink text-sm text-radiant"
+        class="pointer-events-none absolute left-11 animate-blink text-sm text-chaff"
         >&#x2588;</span
       >
       <!-- No countdown here — the combat log's theater header is the game's

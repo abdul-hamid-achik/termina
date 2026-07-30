@@ -23,10 +23,10 @@ describe('one-lane map', () => {
 
   it('spawns the human in its fountain and walks the lane one zone per tick', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
-    expect((await game.me()).zone).toBe('radiant-fountain')
+    expect((await game.me()).zone).toBe('chaff-fountain')
 
     // fountain → base → down the mid lane to the river, one hop per tick.
-    for (const zone of ['radiant-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']) {
+    for (const zone of ['chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']) {
       game.submit({ type: 'move', zone })
       await game.tick()
       expect((await game.me()).zone).toBe(zone)
@@ -35,16 +35,16 @@ describe('one-lane map', () => {
 
   it('refuses a move to a zone that is not on this map (a dropped lane)', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
-    game.submit({ type: 'move', zone: 'radiant-base' })
+    game.submit({ type: 'move', zone: 'chaff-base' })
     await game.tick()
 
-    // radiant-base is globally adjacent to top-t3-rad, but that zone isn't on the
+    // chaff-base is globally adjacent to top-t3-rad, but that zone isn't on the
     // one-lane map — no path exists inside this map's zone set, so the move must
     // be refused (auto-path included), not step into an uninitialized zone.
     game.submit({ type: 'move', zone: 'top-t3-rad' })
     await game.tick()
 
-    expect((await game.me()).zone).toBe('radiant-base') // stayed put
+    expect((await game.me()).zone).toBe('chaff-base') // stayed put
     expect(
       game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('No path')),
     ).toBe(true)

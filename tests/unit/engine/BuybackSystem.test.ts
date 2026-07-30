@@ -16,7 +16,7 @@ function makePlayer(o: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'P1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
     hp: 0,
@@ -82,7 +82,7 @@ describe('BuybackSystem', () => {
 
   describe('buyback (execution)', () => {
     it('instantly respawns at full HP/MP, deducts gold, sets cooldown, and sends to the fountain', () => {
-      const p = makePlayer({ alive: false, gold: 99999, hp: 0, mp: 0, team: 'radiant' })
+      const p = makePlayer({ alive: false, gold: 99999, hp: 0, mp: 0, team: 'chaff' })
       const res = buyback(makeState(p, 50), 'p1')
 
       expect(res.success).toBe(true)
@@ -93,12 +93,12 @@ describe('BuybackSystem', () => {
       expect(np.respawnTick).toBeNull()
       expect(np.gold).toBe(99999 - calculateBuybackCost(p))
       expect(np.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_TICKS)
-      expect(np.zone).toBe('radiant-fountain')
+      expect(np.zone).toBe('chaff-fountain')
     })
 
-    it('sends a dire buyback to the dire fountain', () => {
-      const p = makePlayer({ alive: false, gold: 99999, team: 'dire' })
-      expect(buyback(makeState(p), 'p1').newState!.players['p1']!.zone).toBe('dire-fountain')
+    it('sends a audit buyback to the audit fountain', () => {
+      const p = makePlayer({ alive: false, gold: 99999, team: 'audit' })
+      expect(buyback(makeState(p), 'p1').newState!.players['p1']!.zone).toBe('audit-fountain')
     })
 
     it('fails for a living player and leaves no state', () => {

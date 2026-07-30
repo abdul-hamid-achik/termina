@@ -335,7 +335,7 @@ describe('useGameSocket', () => {
       // blip on the post-game screen legitimately answers NOT_ASSIGNED. Bouncing
       // to the lobby there would eat the scoreboard the player is reading.
       const store = await connectWithStore()
-      store.setGameOver('radiant', {})
+      store.setGameOver('chaff', {})
       MockWebSocket.last!._receive({
         type: 'error',
         code: 'NOT_ASSIGNED',
@@ -375,13 +375,13 @@ describe('useGameSocket', () => {
       const spy = vi.spyOn(store, 'setGameOver')
       MockWebSocket.last!._receive({
         type: 'game_over',
-        winner: 'radiant',
+        winner: 'chaff',
         stats: { foo: 1 },
         mmrChange: 25,
       })
       // durationTicks rides along so PostGame can report match length; it is
       // undefined on a payload that predates the field.
-      expect(spy).toHaveBeenCalledWith('radiant', { foo: 1 }, 25, true, undefined)
+      expect(spy).toHaveBeenCalledWith('chaff', { foo: 1 }, 25, true, undefined)
     })
 
     it('forwards durationTicks when the server sends it', async () => {
@@ -389,11 +389,11 @@ describe('useGameSocket', () => {
       const spy = vi.spyOn(store, 'setGameOver')
       MockWebSocket.last!._receive({
         type: 'game_over',
-        winner: 'dire',
+        winner: 'audit',
         stats: {},
         durationTicks: 360,
       })
-      expect(spy).toHaveBeenCalledWith('dire', {}, undefined, true, 360)
+      expect(spy).toHaveBeenCalledWith('audit', {}, undefined, true, 360)
     })
 
     it('routes full_state through updateFromTick', async () => {

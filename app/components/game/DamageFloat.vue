@@ -4,7 +4,7 @@
  * a 4s batched tick + a scrolling text log otherwise hides. Each entry rises and
  * fades once; the parent (GameScreen) pushes entries on `damage`/`heal` events
  * involving the local player and prunes them after the animation. Color-coded:
- * damage TAKEN is dire-red (-N), DEALT is radiant-green (N), HEALING is teal
+ * damage TAKEN is audit-red (-N), DEALT is chaff-green (N), HEALING is teal
  * (+N), GOLD is amber (+Ng) — last-hit income is a reward, not a hit, so it
  * carries the currency suffix to stay unmistakable next to a damage number.
  *
@@ -49,10 +49,10 @@ function offsetStyle(id: number, anchor: 'self' | 'target'): Record<string, stri
 }
 
 function floatClass(kind: DamageFloatEntry['kind']): string {
-  if (kind === 'taken') return 'text-dire text-glow-dire'
+  if (kind === 'taken') return 'text-audit text-glow-audit'
   if (kind === 'heal') return 'text-healing'
   if (kind === 'gold') return 'text-gold text-glow-gold'
-  return 'text-radiant text-glow-radiant' // dealt
+  return 'text-chaff text-glow-chaff' // dealt
 }
 
 function floatPrefix(kind: DamageFloatEntry['kind']): string {

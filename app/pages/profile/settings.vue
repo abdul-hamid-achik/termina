@@ -201,11 +201,11 @@ async function disconnectProvider(provider: string) {
 <template>
   <div class="mx-auto mt-6 flex max-w-[600px] flex-col gap-4">
     <header class="border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ SETTINGS</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ SETTINGS</h1>
     </header>
     <div class="mb-2 flex items-center justify-between">
       <span class="text-[0.8rem] text-text-dim">&gt;_ /profile/settings</span>
-      <NuxtLink to="/profile/me" class="text-[0.8rem] text-ability no-underline hover:text-radiant">
+      <NuxtLink to="/profile/me" class="text-[0.8rem] text-ability no-underline hover:text-chaff">
         &lt; back to profile
       </NuxtLink>
     </div>
@@ -291,7 +291,7 @@ async function disconnectProvider(provider: string) {
             role="status"
             aria-live="polite"
             class="text-[0.75rem]"
-            :class="avatarMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
+            :class="avatarMsg.type === 'ok' ? 'text-chaff' : 'text-audit'"
           >
             {{ avatarMsg.text }}
           </span>
@@ -307,7 +307,7 @@ async function disconnectProvider(provider: string) {
             for="settings-username"
             class="font-mono text-xs uppercase tracking-wider text-text-dim"
           >
-            <span class="text-radiant">$</span> username
+            <span class="text-chaff">$</span> username
           </label>
           <input
             id="settings-username"
@@ -319,7 +319,7 @@ async function disconnectProvider(provider: string) {
             class="terminal-input"
           />
           <div v-if="usernameInput && usernameError" class="text-[0.7rem]">
-            <span class="text-dire">! {{ usernameError }}</span>
+            <span class="text-audit">! {{ usernameError }}</span>
           </div>
         </div>
 
@@ -337,7 +337,7 @@ async function disconnectProvider(provider: string) {
             role="status"
             aria-live="polite"
             class="text-[0.75rem]"
-            :class="usernameMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
+            :class="usernameMsg.type === 'ok' ? 'text-chaff' : 'text-audit'"
           >
             {{ usernameMsg.text }}
           </span>
@@ -354,7 +354,7 @@ async function disconnectProvider(provider: string) {
         >
           <div class="flex flex-col gap-0.5">
             <span class="text-[0.85rem] text-text-primary">{{ emailStatus.email }}</span>
-            <span v-if="emailStatus.verified" class="text-[0.75rem] text-radiant">✓ verified</span>
+            <span v-if="emailStatus.verified" class="text-[0.75rem] text-chaff">✓ verified</span>
             <span v-else class="text-[0.75rem] text-gold">! unverified</span>
           </div>
           <AsciiButton
@@ -373,7 +373,7 @@ async function disconnectProvider(provider: string) {
           role="status"
           aria-live="polite"
           class="text-[0.75rem]"
-          :class="emailMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
+          :class="emailMsg.type === 'ok' ? 'text-chaff' : 'text-audit'"
         >
           {{ emailMsg.text }}
         </span>
@@ -393,7 +393,7 @@ async function disconnectProvider(provider: string) {
             for="settings-current-password"
             class="font-mono text-xs uppercase tracking-wider text-text-dim"
           >
-            <span class="text-radiant">$</span> current password
+            <span class="text-chaff">$</span> current password
           </label>
           <input
             id="settings-current-password"
@@ -411,7 +411,7 @@ async function disconnectProvider(provider: string) {
             for="settings-new-password"
             class="font-mono text-xs uppercase tracking-wider text-text-dim"
           >
-            <span class="text-radiant">$</span> new password
+            <span class="text-chaff">$</span> new password
           </label>
           <input
             id="settings-new-password"
@@ -422,7 +422,7 @@ async function disconnectProvider(provider: string) {
             class="terminal-input"
           />
           <div v-if="newPassword && passwordError" class="text-[0.7rem]">
-            <span class="text-dire">! {{ passwordError }}</span>
+            <span class="text-audit">! {{ passwordError }}</span>
           </div>
         </div>
 
@@ -432,7 +432,7 @@ async function disconnectProvider(provider: string) {
             for="settings-confirm-password"
             class="font-mono text-xs uppercase tracking-wider text-text-dim"
           >
-            <span class="text-radiant">$</span> confirm password
+            <span class="text-chaff">$</span> confirm password
           </label>
           <input
             id="settings-confirm-password"
@@ -443,7 +443,7 @@ async function disconnectProvider(provider: string) {
             class="terminal-input"
           />
           <div v-if="confirmPassword && confirmError" class="text-[0.7rem]">
-            <span class="text-dire">! {{ confirmError }}</span>
+            <span class="text-audit">! {{ confirmError }}</span>
           </div>
         </div>
 
@@ -459,7 +459,7 @@ async function disconnectProvider(provider: string) {
             role="status"
             aria-live="polite"
             class="text-[0.75rem]"
-            :class="passwordMsg.type === 'ok' ? 'text-radiant' : 'text-dire'"
+            :class="passwordMsg.type === 'ok' ? 'text-chaff' : 'text-audit'"
           >
             {{ passwordMsg.text }}
           </span>
@@ -475,8 +475,8 @@ async function disconnectProvider(provider: string) {
           class="border px-3 py-2 text-xs"
           :class="
             providerMsg.type === 'ok'
-              ? 'border-radiant/30 bg-radiant/5 text-radiant'
-              : 'border-dire/30 bg-dire/5 text-dire'
+              ? 'border-chaff/30 bg-chaff/5 text-chaff'
+              : 'border-audit/30 bg-audit/5 text-audit'
           "
         >
           {{ providerMsg.text }}
@@ -486,7 +486,7 @@ async function disconnectProvider(provider: string) {
         <div class="flex items-center justify-between border border-border p-2.5">
           <div class="flex flex-col gap-0.5">
             <span class="text-[0.85rem] font-bold uppercase text-text-primary">GitHub</span>
-            <span v-if="isProviderLinked('github')" class="text-[0.75rem] text-radiant">
+            <span v-if="isProviderLinked('github')" class="text-[0.75rem] text-chaff">
               connected as {{ getProviderUsername('github') }}
             </span>
             <span v-else class="text-[0.75rem] text-text-dim">not connected</span>
@@ -510,7 +510,7 @@ async function disconnectProvider(provider: string) {
         <div class="flex items-center justify-between border border-border p-2.5">
           <div class="flex flex-col gap-0.5">
             <span class="text-[0.85rem] font-bold uppercase text-text-primary">Discord</span>
-            <span v-if="isProviderLinked('discord')" class="text-[0.75rem] text-radiant">
+            <span v-if="isProviderLinked('discord')" class="text-[0.75rem] text-chaff">
               connected as {{ getProviderUsername('discord') }}
             </span>
             <span v-else class="text-[0.75rem] text-text-dim">not connected</span>

@@ -7,12 +7,12 @@ import {
   type ReplayFrameLite,
 } from '~~/app/utils/replayView'
 
-// Build a frame stream from per-tick cumulative [radiantKills, direKills,
-// radiantTowers, direTowers] tuples — terse fixtures for the delta logic.
+// Build a frame stream from per-tick cumulative [chaffKills, auditKills,
+// chaffTowers, auditTowers] tuples — terse fixtures for the delta logic.
 function frames(rows: Array<[number, number, number, number, number]>): ReplayFrameLite[] {
   return rows.map(([tick, rk, dk, rt, dt]) => ({
     tick,
-    teams: { radiant: { kills: rk, towerKills: rt }, dire: { kills: dk, towerKills: dt } },
+    teams: { chaff: { kills: rk, towerKills: rt }, audit: { kills: dk, towerKills: dt } },
   }))
 }
 
@@ -142,7 +142,7 @@ describe('keyMoments', () => {
       frames([
         [0, 0, 0, 0, 0],
         [5, 1, 0, 0, 0], // kill
-        [12, 1, 0, 1, 0], // radiant takes a dire tower
+        [12, 1, 0, 1, 0], // chaff takes a audit tower
       ]),
     )
     expect(m).toEqual([

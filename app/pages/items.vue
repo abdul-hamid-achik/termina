@@ -67,7 +67,7 @@ const {
 <template>
   <div class="mx-auto mt-4 flex max-w-[1100px] flex-col gap-4 pb-10">
     <header class="border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ ITEM SHOP</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ ITEM SHOP</h1>
       <p class="mt-1 text-[0.78rem] text-text-dim">
         Every item, by category. Click items to stack a build and watch the stats, gold and actives
         add up — learn what to buy before you queue.

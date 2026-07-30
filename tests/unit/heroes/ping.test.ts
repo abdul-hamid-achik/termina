@@ -11,7 +11,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestPing',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'ping',
     zone: 'mid-river',
     hp: 580,
@@ -42,7 +42,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -63,8 +63,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -170,9 +170,9 @@ describe('Ping Hero', () => {
       const fullDmg = inZone.hp - full.state.players['e1']!.hp
       expect(fullDmg).toBeGreaterThan(0)
 
-      // mid-t1-dire is adjacent to the caster's mid-river → the Q reaches it but
+      // mid-t1-audit is adjacent to the caster's mid-river → the Q reaches it but
       // for reduced (60%) damage.
-      const adjacent = makeEnemy({ zone: 'mid-t1-dire' })
+      const adjacent = makeEnemy({ zone: 'mid-t1-audit' })
       const adj = Effect.runSync(
         resolveAbility(makeState([makePlayer({ level: 1 }), adjacent]), 'p1', 'q', {
           kind: 'hero',
@@ -361,7 +361,7 @@ describe('Ping Hero', () => {
 
     it('does not affect allies', () => {
       const player = makePlayer({ level: 6, mp: 500 })
-      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant' })
+      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
 

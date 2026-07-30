@@ -31,13 +31,13 @@ import { getAbilityManaCost } from '~~/shared/utils/ability'
 
 const SLOTS: AbilitySlot[] = ['q', 'w', 'e', 'r']
 const CASTER_ZONE = 'mid-river'
-const ADJACENT_ZONE = 'mid-t1-dire' // adjacent to mid-river per shared/constants/zones.ts
+const ADJACENT_ZONE = 'mid-t1-audit' // adjacent to mid-river per shared/constants/zones.ts
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Caster',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: CASTER_ZONE,
     hp: 5000,
@@ -71,8 +71,8 @@ function makeState(players: PlayerState[]): GameState {
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -108,7 +108,7 @@ function castAndMeasure(
   const enemy = makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'kernel',
     zone: CASTER_ZONE,
   })
@@ -116,7 +116,7 @@ function castAndMeasure(
   const ally = makePlayer({
     id: 'a1',
     name: 'Ally',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'sentry',
     zone: CASTER_ZONE,
   })
@@ -124,7 +124,7 @@ function castAndMeasure(
   const adjEnemy = makePlayer({
     id: 'e2',
     name: 'AdjEnemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'kernel',
     zone: ADJACENT_ZONE,
   })
@@ -323,14 +323,14 @@ describe('Echo Q bounce', () => {
     const primary = makePlayer({
       id: 'e1',
       name: 'Primary',
-      team: 'dire',
+      team: 'audit',
       heroId: 'kernel',
       zone: CASTER_ZONE,
     })
     const bounce = makePlayer({
       id: 'e2',
       name: 'Bounce',
-      team: 'dire',
+      team: 'audit',
       heroId: 'kernel',
       zone: CASTER_ZONE,
     })

@@ -3,7 +3,7 @@ import { impactScore, computeMvp, type MvpInput } from '~~/app/utils/postgame'
 
 const p = (o: Partial<MvpInput> = {}): MvpInput => ({
   id: 'x',
-  team: 'radiant',
+  team: 'chaff',
   kills: 0,
   deaths: 0,
   assists: 0,
@@ -43,15 +43,15 @@ describe('computeMvp', () => {
   })
 
   it('breaks a score tie in favour of the winning team', () => {
-    const radiant = p({ id: 'r', team: 'radiant', kills: 3 })
-    const dire = p({ id: 'd', team: 'dire', kills: 3 })
-    expect(computeMvp([dire, radiant], 'radiant')?.id).toBe('r')
-    expect(computeMvp([radiant, dire], 'dire')?.id).toBe('d')
+    const chaff = p({ id: 'r', team: 'chaff', kills: 3 })
+    const audit = p({ id: 'd', team: 'audit', kills: 3 })
+    expect(computeMvp([audit, chaff], 'chaff')?.id).toBe('r')
+    expect(computeMvp([chaff, audit], 'audit')?.id).toBe('d')
   })
 
   it('keeps the first leader when there is no winner to break a tie', () => {
     const a = p({ id: 'a', kills: 3 })
-    const b = p({ id: 'b', team: 'dire', kills: 3 })
+    const b = p({ id: 'b', team: 'audit', kills: 3 })
     expect(computeMvp([a, b])?.id).toBe('a')
   })
 })

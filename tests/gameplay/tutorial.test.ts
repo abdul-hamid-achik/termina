@@ -39,10 +39,10 @@ describe('tutorial mode', () => {
     expect(s.mapId).toBe('one_lane')
 
     // A tutorial game is still a real game: the player can walk the lane.
-    expect((await game.me()).zone).toBe('radiant-fountain')
-    game.submit({ type: 'move', zone: 'radiant-base' })
+    expect((await game.me()).zone).toBe('chaff-fountain')
+    game.submit({ type: 'move', zone: 'chaff-base' })
     await game.tick()
-    expect((await game.me()).zone).toBe('radiant-base')
+    expect((await game.me()).zone).toBe('chaff-base')
     expect(game.lastRejected.some((r) => r.playerId === HUMAN)).toBe(false)
   })
 
@@ -59,7 +59,7 @@ describe('tutorial mode', () => {
       expect(game.lastRejected.find((r) => r.playerId === HUMAN)?.reason).toBe(tutorialHint(0))
 
       // Move itself is allowed at step 0.
-      game.submit({ type: 'move', zone: 'radiant-base' })
+      game.submit({ type: 'move', zone: 'chaff-base' })
       await game.tick()
       expect(lockedThisTick(game.lastRejected)).toBe(false)
     })
@@ -74,16 +74,16 @@ describe('tutorial mode', () => {
         mode: 'tutorial',
         mapId: 'one_lane',
         players: [
-          { id: HUMAN, name: HUMAN, team: 'radiant', heroId: 'echo' },
-          { id: 'bot_ally', name: 'bot_ally', team: 'radiant', heroId: 'kernel' },
-          { id: 'bot_foe', name: 'bot_foe', team: 'dire', heroId: 'regex' },
+          { id: HUMAN, name: HUMAN, team: 'chaff', heroId: 'echo' },
+          { id: 'bot_ally', name: 'bot_ally', team: 'chaff', heroId: 'kernel' },
+          { id: 'bot_foe', name: 'bot_foe', team: 'audit', heroId: 'regex' },
         ],
       })
       registerBots(
         game.gameId,
         [
-          { playerId: 'bot_ally', team: 'radiant', heroId: 'kernel' },
-          { playerId: 'bot_foe', team: 'dire', heroId: 'regex' },
+          { playerId: 'bot_ally', team: 'chaff', heroId: 'kernel' },
+          { playerId: 'bot_foe', team: 'audit', heroId: 'regex' },
         ],
         { forceLane: 'mid', difficulty: 'easy' },
       )
@@ -92,7 +92,7 @@ describe('tutorial mode', () => {
         // Bots left their fountains (their moves/buys were NOT tutorial-locked)…
         const ally = await game.player('bot_ally')
         const foe = await game.player('bot_foe')
-        expect(ally.zone === 'radiant-fountain' && foe.zone === 'dire-fountain').toBe(false)
+        expect(ally.zone === 'chaff-fountain' && foe.zone === 'audit-fountain').toBe(false)
         // …and the world produced events by tick 30 (a frozen tutorial had none).
         expect(game.allEvents.length).toBeGreaterThan(0)
       } finally {
@@ -106,7 +106,7 @@ describe('tutorial mode', () => {
 
       // From the fountain the first hop only reaches base (still "home") — the
       // move step holds, since the attack/cast steps need lane targets.
-      game.submit({ type: 'move', zone: 'radiant-base' })
+      game.submit({ type: 'move', zone: 'chaff-base' })
       await game.tick()
       expect((await game.state()).tutorialStep).toBe(0)
 
@@ -120,7 +120,7 @@ describe('tutorial mode', () => {
       const game = await seedGame('fresh', { mode: 'tutorial', mapId: 'one_lane' })
 
       // Move into the lane to clear the move step.
-      game.submit({ type: 'move', zone: 'radiant-base' })
+      game.submit({ type: 'move', zone: 'chaff-base' })
       await game.tick()
       game.submit({ type: 'move', zone: 'mid-t3-rad' })
       await game.tick()
@@ -194,7 +194,7 @@ describe('tutorial mode', () => {
       for (const command of [
         { type: 'cast', ability: 'q' } as const,
         { type: 'buy', item: 'boots' } as const,
-        { type: 'move', zone: 'radiant-base' } as const,
+        { type: 'move', zone: 'chaff-base' } as const,
       ]) {
         game.submit(command)
         await game.tick()

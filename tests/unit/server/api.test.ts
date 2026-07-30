@@ -510,7 +510,7 @@ describe('API endpoints', () => {
           state: {
             tick: 9,
             phase: 'playing',
-            surrenderVotes: { radiant: new Set(), dire: new Set() },
+            surrenderVotes: { chaff: new Set(), audit: new Set() },
           },
           meta: { players: [] },
         } as never),
@@ -527,7 +527,7 @@ describe('API endpoints', () => {
           state: {
             tick: 9,
             phase: 'ended',
-            surrenderVotes: { radiant: new Set(['p1']), dire: new Set() },
+            surrenderVotes: { chaff: new Set(['p1']), audit: new Set() },
           },
           meta: { players: [] },
         } as never),
@@ -536,7 +536,7 @@ describe('API endpoints', () => {
       const result = await replayHandler(makeEvent('GET', '/api/replay/g1'))
       expect(result.gameId).toBe('g1')
       expect(result.savedAt).toBe(123)
-      expect(result.state.surrenderVotes).toEqual({ radiant: ['p1'], dire: [] })
+      expect(result.state.surrenderVotes).toEqual({ chaff: ['p1'], audit: [] })
       expect(result.actions).toEqual([{ tick: 1 }])
     })
   })

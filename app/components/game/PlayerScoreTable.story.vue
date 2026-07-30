@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import PlayerScoreTable, { type PlayerScoreRow } from './PlayerScoreTable.vue'
 
-// A typical live radiant team: a fed carry, a normal support, a dead player
+// A typical live chaff team: a fed carry, a normal support, a dead player
 // (dimmed), and an AFK player taken over by a bot ([AI] tag).
 const liveTeam: PlayerScoreRow[] = [
   {
@@ -40,7 +40,7 @@ const liveTeam: PlayerScoreRow[] = [
     deaths: 5,
     assists: 6,
     gold: 7320,
-    zone: 'radiant-base',
+    zone: 'chaff-base',
     alive: false,
   },
   {
@@ -71,14 +71,14 @@ const snapshotTeam: PlayerScoreRow[] = liveTeam.map((p) => ({
 <template>
   <Story title="Game/PlayerScoreTable" :layout="{ type: 'single' }">
     <Variant title="Live team (alive · dead · [AI])">
-      <div class="max-w-[480px] border border-radiant/40 bg-bg-panel p-1">
-        <PlayerScoreTable caption="Radiant players" :rows="liveTeam" />
+      <div class="max-w-[480px] border border-chaff/40 bg-bg-panel p-1">
+        <PlayerScoreTable caption="Chaff players" :rows="liveTeam" />
       </div>
     </Variant>
 
     <Variant title="Snapshot (no HP yet → ?)">
-      <div class="max-w-[480px] border border-dire/40 bg-bg-panel p-1">
-        <PlayerScoreTable caption="Dire players" :rows="snapshotTeam" />
+      <div class="max-w-[480px] border border-audit/40 bg-bg-panel p-1">
+        <PlayerScoreTable caption="Audit players" :rows="snapshotTeam" />
       </div>
     </Variant>
 

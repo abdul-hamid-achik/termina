@@ -85,9 +85,9 @@ describe('BotManager', () => {
 
     it('registers bots for a game', () => {
       const players = [
-        { playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' },
-        { playerId: 'bot_beta', team: 'dire' as const, heroId: 'sentry' },
-        { playerId: 'human1', team: 'radiant' as const, heroId: 'daemon' },
+        { playerId: 'bot_alpha', team: 'chaff' as const, heroId: 'echo' },
+        { playerId: 'bot_beta', team: 'audit' as const, heroId: 'sentry' },
+        { playerId: 'human1', team: 'chaff' as const, heroId: 'daemon' },
       ]
       registerBots('test-game', players)
 
@@ -109,11 +109,11 @@ describe('BotManager', () => {
 
     it('assigns lanes to bots based on hero roles', () => {
       const players = [
-        { playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' }, // carry -> bot
-        { playerId: 'bot_beta', team: 'radiant' as const, heroId: 'sentry' }, // support
-        { playerId: 'bot_gamma', team: 'radiant' as const, heroId: 'daemon' }, // assassin
-        { playerId: 'bot_delta', team: 'radiant' as const, heroId: 'kernel' }, // tank
-        { playerId: 'bot_epsilon', team: 'radiant' as const, heroId: 'regex' }, // mage
+        { playerId: 'bot_alpha', team: 'chaff' as const, heroId: 'echo' }, // carry -> bot
+        { playerId: 'bot_beta', team: 'chaff' as const, heroId: 'sentry' }, // support
+        { playerId: 'bot_gamma', team: 'chaff' as const, heroId: 'daemon' }, // assassin
+        { playerId: 'bot_delta', team: 'chaff' as const, heroId: 'kernel' }, // tank
+        { playerId: 'bot_epsilon', team: 'chaff' as const, heroId: 'regex' }, // mage
       ]
       registerBots('test-game', players)
 
@@ -146,8 +146,8 @@ describe('BotManager', () => {
     })
 
     const tutorialBots = [
-      { playerId: 'bot_ally', team: 'radiant' as const, heroId: 'echo' }, // carry → bot normally
-      { playerId: 'bot_enemy0', team: 'dire' as const, heroId: 'kernel' }, // tank → top normally
+      { playerId: 'bot_ally', team: 'chaff' as const, heroId: 'echo' }, // carry → bot normally
+      { playerId: 'bot_enemy0', team: 'audit' as const, heroId: 'kernel' }, // tank → top normally
     ]
 
     it('forceLane pins every bot to one lane regardless of role', () => {
@@ -177,9 +177,9 @@ describe('BotManager', () => {
     })
 
     const twoLaneBots = [
-      { playerId: 'bot_carry', team: 'radiant' as const, heroId: 'echo' }, // carry → bot normally
-      { playerId: 'bot_tank', team: 'radiant' as const, heroId: 'kernel' }, // tank → top normally
-      { playerId: 'bot_support', team: 'dire' as const, heroId: 'sentry' }, // support → mid/bot
+      { playerId: 'bot_carry', team: 'chaff' as const, heroId: 'echo' }, // carry → bot normally
+      { playerId: 'bot_tank', team: 'chaff' as const, heroId: 'kernel' }, // tank → top normally
+      { playerId: 'bot_support', team: 'audit' as const, heroId: 'sentry' }, // support → mid/bot
     ]
 
     it('restricts lane assignment to only the provided lanes', () => {
@@ -244,7 +244,7 @@ describe('BotManager', () => {
     })
 
     it('coexists with real bots already registered for the game', () => {
-      registerBots('afk-game', [{ playerId: 'bot_alpha', team: 'radiant', heroId: 'echo' }])
+      registerBots('afk-game', [{ playerId: 'bot_alpha', team: 'chaff', heroId: 'echo' }])
       convertToBot('afk-game', 'human4')
       const ids = getBotPlayerIds('afk-game')
       expect(ids).toContain('bot_alpha')
@@ -258,7 +258,7 @@ describe('BotManager', () => {
 
   describe('cleanupGame', () => {
     it('removes bot tracking for a game', () => {
-      const players = [{ playerId: 'bot_alpha', team: 'radiant' as const, heroId: 'echo' }]
+      const players = [{ playerId: 'bot_alpha', team: 'chaff' as const, heroId: 'echo' }]
       registerBots('test-game', players)
       expect(getBotPlayerIds('test-game')).toHaveLength(1)
 
@@ -275,8 +275,8 @@ describe('BotManager', () => {
       // leaked an entry per bot. cleanupGame must now clear it for every bot.
       const spy = vi.spyOn(BotAI, 'cleanupBotState')
       registerBots('leak-game', [
-        { playerId: 'bot_a', team: 'radiant', heroId: 'echo' },
-        { playerId: 'bot_b', team: 'dire', heroId: 'cron' },
+        { playerId: 'bot_a', team: 'chaff', heroId: 'echo' },
+        { playerId: 'bot_b', team: 'audit', heroId: 'cron' },
       ])
       cleanupGame('leak-game')
       expect(spy).toHaveBeenCalledWith('bot_a')

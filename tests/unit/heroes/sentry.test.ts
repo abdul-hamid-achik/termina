@@ -10,7 +10,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestSentry',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'sentry',
     zone: 'mid-river',
     hp: 600,
@@ -41,7 +41,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -57,7 +57,7 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'a1',
     name: 'Ally',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -78,8 +78,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -470,7 +470,7 @@ describe('Sentry Hero', () => {
 
     it('does not buff enemies in the zone', () => {
       const sentry = makePlayer({ id: 'p1', zone: 'mid-river' })
-      const enemy = makeAlly({ id: 'e1', team: 'dire', zone: 'mid-river' })
+      const enemy = makeAlly({ id: 'e1', team: 'audit', zone: 'mid-river' })
       const state = makeState([sentry, enemy])
 
       const updated = resolvePassive(state, 'p1', tickEnd)

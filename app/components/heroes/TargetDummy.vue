@@ -15,9 +15,9 @@ const pct = computed(() =>
   props.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((props.hp / props.maxHp) * 100))) : 0,
 )
 const destroyed = computed(() => props.hp <= 0)
-// Health colour shifts radiant → gold → dire as the bar drains.
+// Health colour shifts chaff → gold → audit as the bar drains.
 const barColor = computed(() =>
-  pct.value <= 25 ? 'bg-dire' : pct.value <= 50 ? 'bg-gold' : 'bg-radiant',
+  pct.value <= 25 ? 'bg-audit' : pct.value <= 50 ? 'bg-gold' : 'bg-chaff',
 )
 </script>
 
@@ -28,7 +28,7 @@ const barColor = computed(() =>
   >
     <div class="flex items-center justify-between text-[0.72rem]">
       <span class="font-bold text-text-primary">{{ name }}</span>
-      <span :class="destroyed ? 'text-dire' : 'text-text-dim'">
+      <span :class="destroyed ? 'text-audit' : 'text-text-dim'">
         {{ destroyed ? 'DESTROYED' : `${Math.max(0, hp)} / ${maxHp} hp` }}
       </span>
     </div>
@@ -40,7 +40,7 @@ const barColor = computed(() =>
         data-testid="target-dummy-bar"
       />
     </div>
-    <div v-if="dots && dots > 0" class="text-[0.62rem] text-dire">
+    <div v-if="dots && dots > 0" class="text-[0.62rem] text-audit">
       &gt; {{ dots }} damage-over-time stack{{ dots > 1 ? 's' : '' }} active
     </div>
     <div

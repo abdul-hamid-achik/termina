@@ -149,8 +149,8 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
     addZoneWithAdjacent(visible, player.zone, isNight, team)
   }
 
-  const baseZone = team === 'radiant' ? 'radiant-base' : 'dire-base'
-  const fountainZone = team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+  const baseZone = team === 'chaff' ? 'chaff-base' : 'audit-base'
+  const fountainZone = team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
   addZoneWithAdjacent(visible, baseZone, isNight, team)
   addZoneWithAdjacent(visible, fountainZone, isNight, team)
 
@@ -211,7 +211,7 @@ function addZoneWithAdjacent(
   // base while keeping vision toward the enemy. Sorting by "how enemy is this
   // zone" (ascending — own-team first, enemy last) and keeping the first
   // len-PENALTY makes the loss deterministic and geometrically meaningful.
-  const enemyTeam: TeamId = viewerTeam === 'radiant' ? 'dire' : 'radiant'
+  const enemyTeam: TeamId = viewerTeam === 'chaff' ? 'audit' : 'chaff'
   const threatRank = (z: string): number => {
     const team = ZONE_MAP[z]?.team
     if (team === enemyTeam) return 2 // enemy territory — drop first

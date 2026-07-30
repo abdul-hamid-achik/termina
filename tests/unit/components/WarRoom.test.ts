@@ -63,7 +63,7 @@ function mountWarRoom() {
 /** Seed the store as the WarRoom story does: pick a player id, feed ticks. */
 function seedStore(opts: Parameters<typeof makeTickMessage>[0] = {}) {
   const store = useGameStore()
-  store.playerId = 'p1' // p1 is radiant in makeRoster()
+  store.playerId = 'p1' // p1 is chaff in makeRoster()
   store.updateFromTick(makeTickMessage(opts))
   return store
 }
@@ -98,7 +98,7 @@ describe('WarRoom', () => {
     const wrapper = mountWarRoom()
     const ally = wrapper.find('[data-testid="ally-status-stub"]')
     expect(ally.exists()).toBe(true)
-    // makeRoster() seeds 5 radiant; p1 is the local player, so 4 allies remain.
+    // makeRoster() seeds 5 chaff; p1 is the local player, so 4 allies remain.
     expect(ally.attributes('data-ally-count')).toBe('4')
   })
 
@@ -191,8 +191,8 @@ describe('WarRoom', () => {
   })
 
   describe('net-worth lead', () => {
-    it('shows the radiant lead when radiant is ahead on net worth', () => {
-      // Hand radiant a huge gold pile so radiant net worth dominates.
+    it('shows the chaff lead when chaff is ahead on net worth', () => {
+      // Hand chaff a huge gold pile so chaff net worth dominates.
       const roster = makeRoster()
       for (const id of ['p1', 'p2', 'p3', 'p4', 'p5']) roster[id]!.gold = 50_000
       const zones: Record<string, ZoneRuntimeState> = {}
@@ -204,15 +204,15 @@ describe('WarRoom', () => {
       expect(text).not.toContain('even')
     })
 
-    it('shows the dire lead when dire is ahead', () => {
-      // Hand dire a huge gold pile so dire net worth dominates.
+    it('shows the audit lead when audit is ahead', () => {
+      // Hand audit a huge gold pile so audit net worth dominates.
       const roster = makeRoster()
       for (const id of ['e1', 'e2', 'e3', 'e4', 'e5']) roster[id]!.gold = 50_000
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const p of Object.values(roster)) zones[p.zone] ??= makeZone(p.zone)
       seedStore({ players: roster, zones })
       const wrapper = mountWarRoom()
-      expect(wrapper.text()).toContain('DIRE +')
+      expect(wrapper.text()).toContain('AUDIT +')
     })
 
     it('shows "even" with no leader colour when net worth is tied', () => {
@@ -228,10 +228,10 @@ describe('WarRoom', () => {
       const text = mountWarRoom().text()
       expect(text).toContain('even')
       expect(text).not.toContain('RAD +')
-      expect(text).not.toContain('DIRE +')
+      expect(text).not.toContain('AUDIT +')
     })
 
-    it('feeds the lead series (radiant-dire per tick) into the Sparkline', async () => {
+    it('feeds the lead series (chaff-audit per tick) into the Sparkline', async () => {
       const roster = makeRoster()
       for (const id of ['p1', 'p2', 'p3', 'p4', 'p5']) roster[id]!.gold = 50_000
       const zones: Record<string, ZoneRuntimeState> = {}
@@ -242,8 +242,8 @@ describe('WarRoom', () => {
       await nextTick()
       const spark = mountWarRoom().find('[data-testid="sparkline-stub"]')
       expect(Number(spark.attributes('data-count'))).toBeGreaterThanOrEqual(2)
-      // radiant leading → colour var should be the radiant token
-      expect(spark.attributes('data-color-var')).toBe('color-radiant')
+      // chaff leading → colour var should be the chaff token
+      expect(spark.attributes('data-color-var')).toBe('color-chaff')
     })
   })
 
@@ -312,11 +312,11 @@ describe('WarRoom', () => {
       const roster = makeRoster()
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const p of Object.values(roster)) zones[p.zone] ??= makeZone(p.zone)
-      // A radiant ward (the local player is radiant) in a visible zone, expiry
+      // A chaff ward (the local player is chaff) in a visible zone, expiry
       // well past the seeded tick (240).
       const firstZone = Object.keys(zones)[0]!
       zones[firstZone] = makeZone(firstZone, {
-        wards: [{ team: 'radiant', placedTick: 0, expiryTick: 9999, type: 'observer' }],
+        wards: [{ team: 'chaff', placedTick: 0, expiryTick: 9999, type: 'observer' }],
       })
       seedStore({ players: roster, zones })
       const text = mountWarRoom().text()
@@ -326,7 +326,7 @@ describe('WarRoom', () => {
   })
 
   describe('enemy threat wiring', () => {
-    it('forwards the full enemy roster (5 dire players) to the EnemyThreatSheet', () => {
+    it('forwards the full enemy roster (5 audit players) to the EnemyThreatSheet', () => {
       seedStore()
       const wrapper = mountWarRoom()
       const sheet = wrapper.find('[data-testid="enemy-threat-stub"]')

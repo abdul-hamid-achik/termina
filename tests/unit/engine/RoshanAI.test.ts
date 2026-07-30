@@ -10,7 +10,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -42,8 +42,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -91,7 +91,7 @@ describe('RoshanAI', () => {
         roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'roshan-pit', hp: 400 }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', hp: 100, team: 'radiant' }),
+          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', hp: 100, team: 'chaff' }),
         },
       })
 
@@ -135,7 +135,7 @@ describe('RoshanAI', () => {
         roshan: { alive: true, hp: 500, maxHp: 5000, deathTick: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'dire' }),
+          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'audit' }),
         },
       })
 
@@ -157,7 +157,7 @@ describe('RoshanAI', () => {
         roshan: { alive: true, hp: 500, maxHp: 5000, deathTick: null },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'roshan-pit', gold: 0 }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'dire', gold: 0 }),
+          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'audit', gold: 0 }),
         },
       })
 

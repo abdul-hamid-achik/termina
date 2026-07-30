@@ -45,7 +45,7 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId,
     zone: 'mid-river',
     hp: s.maxHp,
@@ -79,8 +79,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -92,7 +92,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -111,8 +111,8 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
   it('cast q emits a legacy-shape damage event and reduces target hp', () => {
     const state = makeGameState({
       players: {
-        p1: makeHero('mutex', { id: 'p1', team: 'radiant' }),
-        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+        p1: makeHero('mutex', { id: 'p1', team: 'chaff' }),
+        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
       },
     })
     const preHp = state.players['p2']!.hp
@@ -154,8 +154,8 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     // Priority Inversion on you". The push is spliced back to the cast's start.
     const state = makeGameState({
       players: {
-        p1: makeHero('mutex', { id: 'p1', team: 'radiant' }),
-        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+        p1: makeHero('mutex', { id: 'p1', team: 'chaff' }),
+        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
       },
     })
 
@@ -179,8 +179,8 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     // un-narrated. Recovered by diffing the target's buffs across the cast.
     const state = makeGameState({
       players: {
-        p1: makeHero('mutex', { id: 'p1', team: 'radiant' }),
-        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+        p1: makeHero('mutex', { id: 'p1', team: 'chaff' }),
+        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
       },
     })
 
@@ -207,11 +207,11 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
   it('does not re-announce a disable the target already had', () => {
     const state = makeGameState({
       players: {
-        p1: makeHero('mutex', { id: 'p1', team: 'radiant' }),
+        p1: makeHero('mutex', { id: 'p1', team: 'chaff' }),
         p2: makeHero('echo', {
           id: 'p2',
           name: 'Enemy',
-          team: 'dire',
+          team: 'audit',
           buffs: [{ id: 'root', stacks: 1, ticksRemaining: 3, source: 'someone' }],
         }),
       },
@@ -243,13 +243,13 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       const caster = () =>
         makeHero('echo', {
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           level: 5,
           mp: 2000,
           maxMp: 2000,
           talents: { tier10: null, tier15: null, tier20: null, tier25: 'echo_25_left' },
         })
-      const target = () => makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'dire' })
+      const target = () => makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'audit' })
       const castQ: PlayerAction[] = [
         {
           playerId: 'p1',
@@ -282,7 +282,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     // (rather than an absolute value) so the assertion is robust to any other
     // HP changes in the tick.
     const target = () =>
-      makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'dire', hp: 100, maxHp: 1000 })
+      makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'audit', hp: 100, maxHp: 1000 })
     const castE: PlayerAction[] = [
       {
         playerId: 'p1',
@@ -292,7 +292,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const daemon = (talent25: string | null) =>
       makeHero('daemon', {
         id: 'p1',
-        team: 'radiant',
+        team: 'chaff',
         level: 5,
         hp: 200,
         maxHp: 1000,
@@ -327,7 +327,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const regexCaster = (talent25: string | null) =>
       makeHero('regex', {
         id: 'p1',
-        team: 'radiant',
+        team: 'chaff',
         level: 6,
         zone: 'mid-river',
         mp: 2000,
@@ -339,7 +339,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       makeHero('mutex', {
         id: 'p2',
         name: 'Enemy',
-        team: 'dire',
+        team: 'audit',
         zone: 'top-river',
         mp: 100,
         maxMp: 500,
@@ -396,7 +396,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       const state = makeGameState({
         players: {
           p1: makeHero('mutex', { id: 'p1' }, level),
-          p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+          p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
         },
       })
       const pre = state.players['p2']!.hp
@@ -433,7 +433,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const atLevel6 = makeGameState({
       players: {
         p1: makeHero('mutex', { id: 'p1' }, 6),
-        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
       },
     })
     expect(
@@ -464,7 +464,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const state = makeGameState({
       players: {
         p1: makeHero('daemon', { id: 'p1' }),
-        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+        p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
       },
     })
     const result = run(state, [
@@ -495,11 +495,11 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     const result = run(state, [
       {
         playerId: 'p1',
-        command: { type: 'cast', ability: 'r', target: { kind: 'zone', zone: 'dire-base' } },
+        command: { type: 'cast', ability: 'r', target: { kind: 'zone', zone: 'audit-base' } },
       },
     ])
     expect(result.rejected).toHaveLength(0)
-    expect(result.state.players['p1']!.zone).toBe('dire-base')
+    expect(result.state.players['p1']!.zone).toBe('audit-base')
   })
 
   it('execute (daemon E) kills below the HP threshold and refuses above it', () => {
@@ -512,7 +512,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         p2: makeHero('echo', {
           id: 'p2',
           name: 'Enemy',
-          team: 'dire',
+          team: 'audit',
           hp: Math.floor(echo.maxHp * 0.2),
         }),
       },
@@ -534,7 +534,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         p2: makeHero('echo', {
           id: 'p2',
           name: 'Enemy',
-          team: 'dire',
+          team: 'audit',
           hp: Math.floor(echo.maxHp * 0.9),
         }),
       },
@@ -563,7 +563,7 @@ describe('cast bridge: abilities vs creeps and neutrals', () => {
   const LANE = 'mid-t1-rad'
 
   function creep(over: Partial<CreepState> = {}): CreepState {
-    return { id: 'c1', team: 'dire', zone: LANE, hp: 400, maxHp: 400, type: 'melee', ...over }
+    return { id: 'c1', team: 'audit', zone: LANE, hp: 400, maxHp: 400, type: 'melee', ...over }
   }
 
   it('a zone AoE cast damages enemy creeps standing in the zone', () => {
@@ -586,7 +586,7 @@ describe('cast bridge: abilities vs creeps and neutrals', () => {
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
       creeps: [
-        creep({ id: 'mine', team: 'radiant' }),
+        creep({ id: 'mine', team: 'chaff' }),
         creep({ id: 'theirs-elsewhere', zone: 'mid-river' }),
       ],
     })
@@ -715,7 +715,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
         p2: makeHero('echo', {
           id: 'p2',
           name: 'Enemy',
-          team: 'dire',
+          team: 'audit',
           buffs: [{ id: 'shield', stacks: 500, ticksRemaining: 3, source: 'ally' }],
         }),
       },
@@ -746,7 +746,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
         p2: makeHero('echo', {
           id: 'p2',
           name: 'Enemy',
-          team: 'dire',
+          team: 'audit',
           buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 2, source: 'p2' }],
         }),
       },
@@ -854,7 +854,7 @@ describe('reveal and stealth vision wiring', () => {
         enemy: makeHero('daemon', {
           id: 'enemy',
           name: 'Sneak',
-          team: 'dire',
+          team: 'audit',
           zone: 'mid-river',
           buffs: [{ id: 'stealth', stacks: 1, ticksRemaining: 5, source: 'enemy' }],
         }),
@@ -872,8 +872,8 @@ describe('reveal and stealth vision wiring', () => {
         enemy: makeHero('daemon', {
           id: 'enemy',
           name: 'Sneak',
-          team: 'dire',
-          zone: 'dire-base', // not normally visible from mid-river
+          team: 'audit',
+          zone: 'audit-base', // not normally visible from mid-river
           buffs: [
             { id: 'stealth', stacks: 1, ticksRemaining: 5, source: 'enemy' },
             { id: 'revealed', stacks: 1, ticksRemaining: 3, source: 'viewer' },
@@ -884,19 +884,24 @@ describe('reveal and stealth vision wiring', () => {
     const view = filterStateForPlayer(state, 'viewer')
     const seen = view.players['enemy']!
     expect('fogged' in seen).toBe(false)
-    expect(view.visibleZones).toContain('dire-base')
+    expect(view.visibleZones).toContain('audit-base')
   })
 
   it("an enemy-sourced 'revealed' buff does not reveal to this viewer", () => {
     const state = makeGameState({
       players: {
         viewer: makeHero('echo', { id: 'viewer', zone: 'mid-river' }),
-        ally2: makeHero('cron', { id: 'ally2', name: 'DireAlly', team: 'dire', zone: 'top-river' }),
+        ally2: makeHero('cron', {
+          id: 'ally2',
+          name: 'AuditAlly',
+          team: 'audit',
+          zone: 'top-river',
+        }),
         enemy: makeHero('daemon', {
           id: 'enemy',
           name: 'Sneak',
-          team: 'dire',
-          zone: 'dire-base',
+          team: 'audit',
+          zone: 'audit-base',
           buffs: [{ id: 'revealed', stacks: 1, ticksRemaining: 3, source: 'ally2' }],
         }),
       },
@@ -992,7 +997,7 @@ describe('talents', () => {
       const state = makeGameState({
         players: {
           p1: makeHero('mutex', { id: 'p1', talents }),
-          p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'dire' }),
+          p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
         },
       })
       const pre = state.players['p2']!.hp

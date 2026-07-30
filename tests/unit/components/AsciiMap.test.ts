@@ -8,7 +8,7 @@ import type { AncientState } from '~~/shared/types/game'
 function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return {
     id: 'mid-t1-rad',
-    name: 'Radiant Mid T1',
+    name: 'Chaff Mid T1',
     playerHere: false,
     allies: [],
     enemyCount: 0,
@@ -19,7 +19,7 @@ function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
 
 function makeAncient(overrides: Partial<AncientState> = {}): AncientState {
   return {
-    team: 'radiant',
+    team: 'chaff',
     hp: 6000,
     maxHp: 6000,
     alive: true,
@@ -52,21 +52,21 @@ describe('AsciiMap', () => {
 
     it('should have aria-label on each zone cell', () => {
       const zones = [
-        makeZone({ id: 'mid-t1-rad', name: 'Radiant Mid T1', allies: ['echo'], enemyCount: 1 }),
+        makeZone({ id: 'mid-t1-rad', name: 'Chaff Mid T1', allies: ['echo'], enemyCount: 1 }),
       ]
       const wrapper = mount(AsciiMap, {
         props: { zones, playerZone: 'mid-t1-rad' },
       })
 
       const cell = wrapper.find('[role="gridcell"]')
-      expect(cell.attributes('aria-label')).toContain('Radiant Mid T1')
+      expect(cell.attributes('aria-label')).toContain('Chaff Mid T1')
     })
 
     it('should describe zone content in aria-label', () => {
       const zones = [
         makeZone({
           id: 'mid-t1-rad',
-          name: 'Radiant Mid T1',
+          name: 'Chaff Mid T1',
           allies: ['echo', 'sentry'],
           enemyCount: 2,
           playerHere: true,
@@ -84,9 +84,9 @@ describe('AsciiMap', () => {
     })
 
     it('navigates the visual grid with arrow keys, skipping null gaps', async () => {
-      const zones = [makeZone({ id: 'radiant-fountain' }), makeZone({ id: 'mid-t1-rad' })]
+      const zones = [makeZone({ id: 'chaff-fountain' }), makeZone({ id: 'mid-t1-rad' })]
       const wrapper = mount(AsciiMap, {
-        props: { zones, playerZone: 'radiant-fountain' },
+        props: { zones, playerZone: 'chaff-fountain' },
       })
 
       expect(wrapper.vm.focusedZoneId).toBe(null)
@@ -94,12 +94,12 @@ describe('AsciiMap', () => {
       const grid = wrapper.find('[role="grid"]')
       // First arrow enters at the first real zone (the top row leads with a gap).
       await grid.trigger('keydown', { key: 'ArrowRight' })
-      expect(wrapper.vm.focusedZoneId).toBe('radiant-fountain')
+      expect(wrapper.vm.focusedZoneId).toBe('chaff-fountain')
 
-      // Top row is [_, radiant-fountain, _, radiant-base, _] — Right skips the
+      // Top row is [_, chaff-fountain, _, chaff-base, _] — Right skips the
       // null gap to the next real cell (grid order, not data order).
       await grid.trigger('keydown', { key: 'ArrowRight' })
-      expect(wrapper.vm.focusedZoneId).toBe('radiant-base')
+      expect(wrapper.vm.focusedZoneId).toBe('chaff-base')
 
       // Down moves a row and lands on the nearest real zone to that column,
       // proving the step is grid-derived (not a hardcoded ±5).
@@ -110,7 +110,7 @@ describe('AsciiMap', () => {
     it('moves real DOM focus to the navigated cell (so its aria-label is announced)', async () => {
       const wrapper = mount(AsciiMap, {
         attachTo: document.body,
-        props: { zones: [makeZone({ id: 'radiant-fountain' })], playerZone: 'radiant-fountain' },
+        props: { zones: [makeZone({ id: 'chaff-fountain' })], playerZone: 'chaff-fountain' },
       })
 
       const grid = wrapper.find('[role="grid"]')
@@ -118,7 +118,7 @@ describe('AsciiMap', () => {
       await nextTick() // the .focus() runs in a nextTick after focusedZoneId updates
 
       const active = document.activeElement as HTMLElement | null
-      expect(active?.getAttribute('data-zone-cell')).toBe('radiant-fountain')
+      expect(active?.getAttribute('data-zone-cell')).toBe('chaff-fountain')
       wrapper.unmount()
     })
 
@@ -132,7 +132,7 @@ describe('AsciiMap', () => {
 
       const wrapper = mount(AsciiMap, {
         attachTo: document.body,
-        props: { zones: [makeZone({ id: 'radiant-fountain' })], playerZone: 'radiant-fountain' },
+        props: { zones: [makeZone({ id: 'chaff-fountain' })], playerZone: 'chaff-fountain' },
       })
       const grid = wrapper.find('[role="grid"]')
       for (const key of ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp']) {
@@ -192,15 +192,15 @@ describe('AsciiMap', () => {
       })
 
       const cell = wrapper.find('[role="gridcell"]')
-      expect(cell.classes()).toContain('text-dire')
+      expect(cell.classes()).toContain('text-audit')
     })
   })
 
   describe('compact mode (mobile)', () => {
     function compactZones(): ZoneDisplay[] {
       return [
-        makeZone({ id: 'mid-t1-rad', name: 'Mid Lane T1 (Radiant)', playerHere: true }),
-        makeZone({ id: 'mid-t2-rad', name: 'Mid Lane T2 (Radiant)', allies: ['echo'] }),
+        makeZone({ id: 'mid-t1-rad', name: 'Mid Lane T1 (Chaff)', playerHere: true }),
+        makeZone({ id: 'mid-t2-rad', name: 'Mid Lane T2 (Chaff)', allies: ['echo'] }),
         makeZone({ id: 'mid-river', name: 'Mid River Crossing', enemyCount: 1 }),
       ]
     }
@@ -221,7 +221,7 @@ describe('AsciiMap', () => {
       expect(wrapper.find('[role="grid"]').exists()).toBe(false)
       const current = wrapper.find('[data-testid="compact-current-zone"]')
       expect(current.exists()).toBe(true)
-      expect(current.text()).toContain('Mid Lane T1 (Radiant)')
+      expect(current.text()).toContain('Mid Lane T1 (Chaff)')
       expect(current.text()).toContain('►YOU')
     })
 
@@ -235,7 +235,7 @@ describe('AsciiMap', () => {
         expect(card.text()).toContain('TAP TO MOVE')
         expect(card.attributes('aria-label')).toMatch(/^Move to /)
       }
-      expect(cards[0]!.text()).toContain('Mid Lane T2 (Radiant)')
+      expect(cards[0]!.text()).toContain('Mid Lane T2 (Chaff)')
       expect(cards[1]!.text()).toContain('Mid River Crossing')
     })
 
@@ -253,7 +253,7 @@ describe('AsciiMap', () => {
       await wrapper.setProps({
         playerZone: 'mid-river',
         zones: [
-          makeZone({ id: 'mid-t1-rad', name: 'Mid Lane T1 (Radiant)' }),
+          makeZone({ id: 'mid-t1-rad', name: 'Mid Lane T1 (Chaff)' }),
           makeZone({ id: 'mid-river', name: 'Mid River Crossing', playerHere: true }),
         ],
       })
@@ -264,7 +264,7 @@ describe('AsciiMap', () => {
       const cards = wrapper.findAll('[data-testid="compact-adjacent-zone"]')
       // Only mid-t1-rad of mid-river's neighbors is in the display list
       expect(cards.length).toBe(1)
-      expect(cards[0]!.text()).toContain('Mid Lane T1 (Radiant)')
+      expect(cards[0]!.text()).toContain('Mid Lane T1 (Chaff)')
     })
 
     it('toggles the mini overview grid with abbreviated zone codes', async () => {
@@ -295,8 +295,8 @@ describe('AsciiMap', () => {
       expect(text).toContain('SHA')
       expect(text).toContain('SILT')
       // Side labels marking the two halves of the map.
-      expect(text).toContain('RADIANT ▲')
-      expect(text).toContain('DIRE ▼')
+      expect(text).toContain('CHAFF ▲')
+      expect(text).toContain('AUDIT ▼')
       // The legend line explains the zone codes.
       expect(text).toContain('T1-3 tower zones')
       expect(text).toContain('JG jungle')
@@ -311,9 +311,9 @@ describe('AsciiMap', () => {
         makeZone({
           id: 'mid-t1-rad',
           playerHere: true,
-          tower: { team: 'radiant', alive: false, tier: 1 },
+          tower: { team: 'chaff', alive: false, tier: 1 },
         }),
-        makeZone({ id: 'mid-t1-dire', tower: { team: 'dire', alive: true, tier: 1 } }),
+        makeZone({ id: 'mid-t1-audit', tower: { team: 'audit', alive: true, tier: 1 } }),
       ]
       const wrapper = mount(AsciiMap, {
         props: { zones, playerZone: 'mid-t1-rad', forceMode: 'compact' as const },
@@ -321,14 +321,14 @@ describe('AsciiMap', () => {
       await wrapper.find('[data-testid="overview-toggle"]').trigger('click')
 
       const overview = wrapper.find('[data-testid="mini-overview"]')
-      // Razed radiant tower on the player's cell (✗ after the code), live dire tower (▲).
+      // Razed chaff tower on the player's cell (✗ after the code), live audit tower (▲).
       expect(overview.text()).toContain('►M1✗')
       expect(overview.text()).toContain('M1▲')
       // The standing tower's glyph is team-colored.
-      const direGlyph = overview
+      const auditGlyph = overview
         .findAll('span')
-        .find((s) => s.text() === '▲' && s.classes().includes('text-dire'))
-      expect(direGlyph).toBeTruthy()
+        .find((s) => s.text() === '▲' && s.classes().includes('text-audit'))
+      expect(auditGlyph).toBeTruthy()
     })
 
     it('starts with the overview expanded when overviewOpen is set (stories)', () => {
@@ -359,19 +359,19 @@ describe('AsciiMap', () => {
 
   describe('ancient (core) display', () => {
     const ancients = {
-      radiant: makeAncient({ team: 'radiant', hp: 3000, maxHp: 6000 }),
-      dire: makeAncient({ team: 'dire', hp: 0, alive: false }),
+      chaff: makeAncient({ team: 'chaff', hp: 3000, maxHp: 6000 }),
+      audit: makeAncient({ team: 'audit', hp: 0, alive: false }),
     }
     const baseZones = () => [
-      makeZone({ id: 'radiant-base', name: 'Radiant Base', playerHere: true }),
-      makeZone({ id: 'dire-base', name: 'Dire Base', fogged: true }),
+      makeZone({ id: 'chaff-base', name: 'Chaff Base', playerHere: true }),
+      makeZone({ id: 'audit-base', name: 'Audit Base', fogged: true }),
     ]
 
     it('shows ancient HP% and skull on base cells in the full grid', () => {
       const wrapper = mount(AsciiMap, {
         props: {
           zones: baseZones(),
-          playerZone: 'radiant-base',
+          playerZone: 'chaff-base',
           ancients,
           forceMode: 'full' as const,
         },
@@ -389,7 +389,7 @@ describe('AsciiMap', () => {
       const wrapper = mount(AsciiMap, {
         props: {
           zones: baseZones(),
-          playerZone: 'radiant-base',
+          playerZone: 'chaff-base',
           ancients,
           forceMode: 'compact' as const,
         },
@@ -406,9 +406,9 @@ describe('AsciiMap', () => {
       return mount(AsciiMap, {
         props: {
           zones: [
-            makeZone({ id: 'mid-t1-rad', name: 'Radiant Mid T1' }),
+            makeZone({ id: 'mid-t1-rad', name: 'Chaff Mid T1' }),
             makeZone({ id: 'mid-river', name: 'Mid River' }),
-            makeZone({ id: 'dire-base', name: 'Dire Base' }),
+            makeZone({ id: 'audit-base', name: 'Audit Base' }),
           ],
           playerZone: 'mid-t1-rad',
           forceMode: 'full' as const,
@@ -428,11 +428,11 @@ describe('AsciiMap', () => {
 
     it('emits for a distant zone too — auto-path makes every zone a travel order', async () => {
       const wrapper = mountFull()
-      const cell = wrapper.find('[title^="dire-base"]')
+      const cell = wrapper.find('[title^="audit-base"]')
       expect(cell.exists()).toBe(true)
       expect(cell.attributes('title')).toContain('click to travel')
       await cell.trigger('click')
-      expect(wrapper.emitted('zoneClick')).toEqual([['dire-base']])
+      expect(wrapper.emitted('zoneClick')).toEqual([['audit-base']])
     })
 
     it('makes nothing clickable when the player has no zone', async () => {
@@ -442,12 +442,12 @@ describe('AsciiMap', () => {
       expect(wrapper.emitted('zoneClick')).toBeUndefined()
     })
 
-    it('orients the grid: Radiant is the top of the board, Dire the bottom', () => {
-      // The banner reads left-to-right ("RADIANT [MAP] DIRE"), which says nothing
+    it('orients the grid: Chaff is the top of the board, Audit the bottom', () => {
+      // The banner reads left-to-right ("CHAFF [MAP] AUDIT"), which says nothing
       // about which END of the grid each team holds.
       const text = mountFull().text()
-      expect(text).toContain('RADIANT ▲')
-      expect(text).toContain('DIRE ▼')
+      expect(text).toContain('CHAFF ▲')
+      expect(text).toContain('AUDIT ▼')
     })
 
     it('decodes the fog glyph and the tower pips in the legend', () => {
@@ -460,13 +460,13 @@ describe('AsciiMap', () => {
 
   describe('auto-path route (W2-8)', () => {
     // The full mid corridor, so the BFS has a real multi-hop route to draw.
-    const CORRIDOR = ['radiant-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']
+    const CORRIDOR = ['chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']
 
     function mountRoute(props: Record<string, unknown> = {}) {
       return mount(AsciiMap, {
         props: {
           zones: CORRIDOR.map((id) => makeZone({ id, name: id })),
-          playerZone: 'radiant-base',
+          playerZone: 'chaff-base',
           forceMode: 'full' as const,
           ...props,
         },
@@ -507,7 +507,7 @@ describe('AsciiMap', () => {
         w.find(`[data-zone-cell="${id}"]`).attributes('aria-label') ?? ''
       expect(label('mid-t1-rad')).toContain('walk destination')
       expect(label('mid-t2-rad')).toContain('walk step 2')
-      expect(label('radiant-base')).not.toContain('walk')
+      expect(label('chaff-base')).not.toContain('walk')
     })
 
     it('marks the route on the compact cards too (the desktop rail map is compact)', () => {

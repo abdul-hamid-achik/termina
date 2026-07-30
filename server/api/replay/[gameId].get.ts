@@ -52,8 +52,8 @@ export default defineEventHandler(async (event) => {
       ...snap.state,
       // Sets aren't JSON-serializable; convert for transport
       surrenderVotes: {
-        radiant: [...snap.state.surrenderVotes.radiant],
-        dire: [...snap.state.surrenderVotes.dire],
+        chaff: [...snap.state.surrenderVotes.chaff],
+        audit: [...snap.state.surrenderVotes.audit],
       },
     },
     meta: snap.meta,

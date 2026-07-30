@@ -44,15 +44,15 @@ interface SnapshotPayload {
 }
 
 type SerializedGameState = Omit<GameState, 'surrenderVotes'> & {
-  surrenderVotes: { radiant: string[]; dire: string[] }
+  surrenderVotes: { chaff: string[]; audit: string[] }
 }
 
 function serialize(state: GameState): SerializedGameState {
   return {
     ...state,
     surrenderVotes: {
-      radiant: [...state.surrenderVotes.radiant],
-      dire: [...state.surrenderVotes.dire],
+      chaff: [...state.surrenderVotes.chaff],
+      audit: [...state.surrenderVotes.audit],
     },
   }
 }
@@ -61,8 +61,8 @@ function deserialize(serialized: SerializedGameState): GameState {
   return {
     ...serialized,
     surrenderVotes: {
-      radiant: new Set(serialized.surrenderVotes.radiant),
-      dire: new Set(serialized.surrenderVotes.dire),
+      chaff: new Set(serialized.surrenderVotes.chaff),
+      audit: new Set(serialized.surrenderVotes.audit),
     },
   }
 }

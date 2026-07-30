@@ -89,13 +89,13 @@ describe('ProgressBar', () => {
     // so we can't assert on the inline style; instead we assert the color prop
     // is accepted and never changes the bar geometry (it's purely cosmetic).
     it('accepts a custom color without altering the bar glyphs', () => {
-      const wrapper = mountBar({ value: 50, max: 100, width: 20, color: 'dire' })
+      const wrapper = mountBar({ value: 50, max: 100, width: 20, color: 'audit' })
 
       expect(barText(wrapper)).toBe(FILLED.repeat(10) + EMPTY.repeat(10))
     })
 
     it('renders identically regardless of the color prop', () => {
-      const a = barText(mountBar({ value: 30, max: 100, width: 10, color: 'radiant' }))
+      const a = barText(mountBar({ value: 30, max: 100, width: 10, color: 'chaff' }))
       const b = barText(mountBar({ value: 30, max: 100, width: 10, color: 'gold' }))
 
       expect(a).toBe(b)

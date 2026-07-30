@@ -31,9 +31,9 @@ describe('computeThreat', () => {
 
 describe('threatToneClass', () => {
   it('maps each tone to its color class', () => {
-    expect(threatToneClass('danger')).toBe('text-dire')
+    expect(threatToneClass('danger')).toBe('text-audit')
     expect(threatToneClass('warn')).toBe('text-gold')
-    expect(threatToneClass('safe')).toBe('text-radiant')
+    expect(threatToneClass('safe')).toBe('text-chaff')
   })
 })
 

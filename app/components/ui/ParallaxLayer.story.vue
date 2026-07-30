@@ -22,13 +22,13 @@ import ParallaxLayer from './ParallaxLayer.vue'
 
         <section class="relative flex h-[80vh] items-center justify-center overflow-hidden">
           <ParallaxLayer :depth="0.15" class="pointer-events-none absolute inset-0 -z-10">
-            <div class="grid h-full w-full grid-cols-8 place-items-center text-radiant/20">
+            <div class="grid h-full w-full grid-cols-8 place-items-center text-chaff/20">
               <span v-for="i in 64" :key="i">{{ ['0', '1', '·', '│'][i % 4] }}</span>
             </div>
           </ParallaxLayer>
 
           <ParallaxLayer :depth="0.35">
-            <p class="text-2xl text-radiant">MID — depth 0.35</p>
+            <p class="text-2xl text-chaff">MID — depth 0.35</p>
           </ParallaxLayer>
 
           <ParallaxLayer :depth="0.6" class="absolute bottom-8">

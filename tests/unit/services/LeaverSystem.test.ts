@@ -16,9 +16,9 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
-    zone: 'radiant-fountain',
+    zone: 'chaff-fountain',
     hp: 550,
     maxHp: 550,
     mp: 280,
@@ -50,12 +50,12 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {
       p1: makePlayer({ id: 'p1' }),
-      p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', name: 'Player2' }),
+      p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', name: 'Player2' }),
     },
     zones: initializeZoneStates(),
     creeps: [],
@@ -65,7 +65,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -90,7 +90,7 @@ describe('LeaverSystem AFK detection', () => {
       tick: 100,
       players: {
         p1: makePlayer({ id: 'p1', lastActionTick: 95 }),
-        p2: makePlayer({ id: 'p2', team: 'dire', lastActionTick: 50 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', lastActionTick: 50 }),
       },
     })
     const afk = detectAFKPlayers(state)
@@ -102,7 +102,7 @@ describe('LeaverSystem AFK detection', () => {
       tick: 100,
       players: {
         bot_1: makePlayer({ id: 'bot_1' }),
-        p2: makePlayer({ id: 'p2', team: 'dire', lastActionTick: 99 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', lastActionTick: 99 }),
       },
     })
     expect(detectAFKPlayers(state)).toEqual([])
@@ -125,7 +125,7 @@ describe('LeaverSystem AFK detection', () => {
       tick: 200,
       players: {
         p1: makePlayer({ id: 'p1', aiControlled: true }),
-        p2: makePlayer({ id: 'p2', team: 'dire', lastActionTick: 199 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', lastActionTick: 199 }),
       },
     })
     expect(detectAFKPlayers(state)).toEqual([])
@@ -135,7 +135,7 @@ describe('LeaverSystem AFK detection', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
-        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
       },
     })
     submitAction('afk-stamp-1', 'p1', { type: 'move', zone: 'mid-river' })
@@ -146,14 +146,14 @@ describe('LeaverSystem AFK detection', () => {
 })
 
 describe('shouldConvertAFK (presence gate)', () => {
-  // Two humans on radiant so the "human teammate benefits" clause can pass.
+  // Two humans on chaff so the "human teammate benefits" clause can pass.
   function twoHumanState(tick: number, p1: Partial<PlayerState> = {}): GameState {
     return makeGameState({
       tick,
       players: {
         p1: makePlayer({ id: 'p1', ...p1 }),
         p3: makePlayer({ id: 'p3', name: 'Player3', lastActionTick: tick }),
-        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', lastActionTick: tick }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionTick: tick }),
       },
     })
   }
@@ -175,7 +175,7 @@ describe('shouldConvertAFK (presence gate)', () => {
       players: {
         p1: makePlayer({ id: 'p1', lastActionTick: 0 }),
         bot_ally: makePlayer({ id: 'bot_ally', name: 'Bot' }),
-        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', lastActionTick: 600 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionTick: 600 }),
       },
     })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)
@@ -187,7 +187,7 @@ describe('shouldConvertAFK (presence gate)', () => {
       players: {
         p1: makePlayer({ id: 'p1', lastActionTick: 0 }),
         p3: makePlayer({ id: 'p3', name: 'Player3', aiControlled: true }),
-        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', lastActionTick: 600 }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', lastActionTick: 600 }),
       },
     })
     expect(shouldConvertAFK(state, 'p1', { isConnected: true, msSinceInput: null })).toBe(false)

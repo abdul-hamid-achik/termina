@@ -15,7 +15,7 @@ const allies: PlayerState[] = [
   makePlayer({
     id: 'a1',
     name: 'cipher_mid',
-    team: 'radiant',
+    team: 'chaff',
     heroId: SAMPLE_HEROES.cipher,
     zone: 'mid-river',
     hp: 720,
@@ -40,9 +40,9 @@ const allies: PlayerState[] = [
   makePlayer({
     id: 'a2',
     name: 'socket_sup',
-    team: 'radiant',
+    team: 'chaff',
     heroId: SAMPLE_HEROES.socket,
-    zone: 'jungle-dire-bot',
+    zone: 'jungle-audit-bot',
     hp: 90,
     maxHp: 520,
     level: 9,
@@ -56,9 +56,9 @@ const allies: PlayerState[] = [
   makePlayer({
     id: 'a3',
     name: 'firewall_off',
-    team: 'radiant',
+    team: 'chaff',
     heroId: SAMPLE_HEROES.firewall,
-    zone: 'radiant-base',
+    zone: 'chaff-base',
     level: 10,
     alive: false,
     hp: 0,

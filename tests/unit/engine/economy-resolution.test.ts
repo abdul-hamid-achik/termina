@@ -65,19 +65,19 @@ function setPlayer(state: GameState, id: string, patch: Partial<PlayerState>): G
 }
 
 function makePlayers(prefix: string, perTeam: number): PlayerSetup[] {
-  const radiant = Array.from({ length: perTeam }, (_, i) => ({
+  const chaff = Array.from({ length: perTeam }, (_, i) => ({
     id: `${prefix}_r${i}`,
     name: `${prefix}_r${i}`,
-    team: 'radiant' as const,
+    team: 'chaff' as const,
     heroId: HERO_IDS[i]!,
   }))
-  const dire = Array.from({ length: perTeam }, (_, i) => ({
+  const audit = Array.from({ length: perTeam }, (_, i) => ({
     id: `${prefix}_d${i}`,
     name: `${prefix}_d${i}`,
-    team: 'dire' as const,
+    team: 'audit' as const,
     heroId: HERO_IDS[perTeam + i]!,
   }))
-  return [...radiant, ...dire]
+  return [...chaff, ...audit]
 }
 
 /** inCombat freezes fountain regen so HP/MP stay put across the tick. */
@@ -103,10 +103,10 @@ describe('Economy through resolution', () => {
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'dn_r0', { zone: 'mid-river' })
-        // Allied (radiant) melee creep at 100/400 HP — well under the 50% deny gate.
+        // Allied (chaff) melee creep at 100/400 HP — well under the 50% deny gate.
         return withSoloCreep(moved, {
           id: 'deny_target',
-          team: 'radiant',
+          team: 'chaff',
           zone: 'mid-river',
           hp: 100,
           type: 'melee',
@@ -149,7 +149,7 @@ describe('Economy through resolution', () => {
         // 300/400 = 75% HP — above the 50% deny threshold; deny must no-op.
         return withSoloCreep(moved, {
           id: 'healthy_ally',
-          team: 'radiant',
+          team: 'chaff',
           zone: 'mid-river',
           hp: 300,
           type: 'melee',
@@ -176,11 +176,11 @@ describe('Economy through resolution', () => {
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'lh_r0', { zone: 'mid-river' })
-        // Enemy (dire) SIEGE creep at 1 HP — siege last-hit gold is the fixed
+        // Enemy (audit) SIEGE creep at 1 HP — siege last-hit gold is the fixed
         // SIEGE_CREEP_GOLD (melee/ranged is randomized; siege keeps it exact).
         return withSoloCreep(moved, {
           id: 'enemy_siege',
-          team: 'dire',
+          team: 'audit',
           zone: 'mid-river',
           hp: 1,
           type: 'siege',
@@ -210,7 +210,7 @@ describe('Economy through resolution', () => {
         const moved = setPlayer(s, 'lm_r0', { zone: 'mid-river' })
         return withSoloCreep(moved, {
           id: 'enemy_melee',
-          team: 'dire',
+          team: 'audit',
           zone: 'mid-river',
           hp: 1,
           type: 'melee',
@@ -347,7 +347,7 @@ describe('Economy through resolution', () => {
         const moved = setPlayer(s, 'lu_r0', { zone: 'mid-river', level: 1, xp: startXp })
         return withSoloCreep(moved, {
           id: 'levelup_creep',
-          team: 'dire',
+          team: 'audit',
           zone: 'mid-river',
           hp: 1,
           type: 'melee',
@@ -376,7 +376,7 @@ describe('Economy through resolution', () => {
         const moved = setPlayer(s, 'ps_r0', { zone: 'mid-river', level: 5, xp: startXp })
         return withSoloCreep(moved, {
           id: 'spike_creep',
-          team: 'dire',
+          team: 'audit',
           zone: 'mid-river',
           hp: 1,
           type: 'melee',

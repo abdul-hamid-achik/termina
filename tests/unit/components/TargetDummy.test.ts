@@ -34,9 +34,9 @@ describe('TargetDummy', () => {
   })
 
   describe('health colour', () => {
-    it('is radiant above 50%', () => {
+    it('is chaff above 50%', () => {
       expect(mountDummy({ hp: 800 }).find('[data-testid="target-dummy-bar"]').classes()).toContain(
-        'bg-radiant',
+        'bg-chaff',
       )
     })
     it('is gold between 26% and 50%', () => {
@@ -44,18 +44,18 @@ describe('TargetDummy', () => {
         'bg-gold',
       )
     })
-    it('is dire at 25% or below', () => {
+    it('is audit at 25% or below', () => {
       expect(mountDummy({ hp: 200 }).find('[data-testid="target-dummy-bar"]').classes()).toContain(
-        'bg-dire',
+        'bg-audit',
       )
     })
-    it('pins the boundaries: exactly 50% is gold, exactly 25% is dire', () => {
+    it('pins the boundaries: exactly 50% is gold, exactly 25% is audit', () => {
       expect(
         mountDummy({ hp: 500, maxHp: 1000 }).find('[data-testid="target-dummy-bar"]').classes(),
       ).toContain('bg-gold')
       expect(
         mountDummy({ hp: 250, maxHp: 1000 }).find('[data-testid="target-dummy-bar"]').classes(),
-      ).toContain('bg-dire')
+      ).toContain('bg-audit')
     })
   })
 

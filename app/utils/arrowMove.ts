@@ -25,9 +25,9 @@ function zonePositions(mapId?: string): Map<string, [number, number]> {
  * Pick the adjacent zone that lies in the pressed arrow direction, resolved
  * against the same grid the player is looking at (`mapRowsFor(mapId)`).
  *
- * This used to match zone-name substrings ('rad' = up, 'dire' = down, …), which
+ * This used to match zone-name substrings ('rad' = up, 'audit' = down, …), which
  * agreed with the drawn map only by coincidence: over the 32 zones x 4 arrows,
- * 37 presses moved correctly, 60 silently did nothing (a Radiant hero could not
+ * 37 presses moved correctly, 60 silently did nothing (a Chaff hero could not
  * walk down mid — every forward neighbour is named `-rad`) and 31 moved somewhere
  * other than forward, 9 of them straight backwards.
  *

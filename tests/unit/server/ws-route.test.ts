@@ -246,21 +246,21 @@ describe('ws route — open()', () => {
     vi.mocked(getPlayerLobby).mockReturnValue('lobby_9')
     vi.mocked(getLobby).mockReturnValue({
       players: [
-        { playerId: 'p_lobby', username: 'abdul', team: 'dire', heroId: 'axe' },
-        { playerId: 'p_other', username: 'mate', team: 'radiant', heroId: null },
+        { playerId: 'p_lobby', username: 'abdul', team: 'audit', heroId: 'axe' },
+        { playerId: 'p_other', username: 'mate', team: 'chaff', heroId: null },
       ],
     } as never)
     const peer = createPeer({ sessionPlayerId: 'p_lobby' })
     handler.open(peer)
     const lobbyMsg = sentMessages(peer).find((m) => m.type === 'lobby_state')
-    expect(lobbyMsg).toMatchObject({ lobbyId: 'lobby_9', team: 'dire' })
+    expect(lobbyMsg).toMatchObject({ lobbyId: 'lobby_9', team: 'audit' })
     expect((lobbyMsg as { players: unknown[] }).players).toHaveLength(2)
   })
 
   it('also re-sends pick_turn on reconnect so the client learns whose turn it is', () => {
     vi.mocked(getPlayerLobby).mockReturnValue('lobby_9')
     vi.mocked(getLobby).mockReturnValue({
-      players: [{ playerId: 'p_lobby', username: 'abdul', team: 'dire', heroId: null }],
+      players: [{ playerId: 'p_lobby', username: 'abdul', team: 'audit', heroId: null }],
     } as never)
     vi.mocked(currentPickTurn).mockReturnValue({
       type: 'pick_turn',
@@ -672,10 +672,10 @@ describe('ws route — chat / ping_map fan-out', () => {
         ]),
       ),
     )
-    // Mock the team cache: sender + mate are radiant, enemy is dire.
+    // Mock the team cache: sender + mate are chaff, enemy is audit.
     vi.mocked(getPlayerTeam).mockImplementation((id: string) => {
-      if (id === senderId || id === 'mate') return 'radiant'
-      if (id === 'enemy') return 'dire'
+      if (id === senderId || id === 'mate') return 'chaff'
+      if (id === 'enemy') return 'audit'
       return undefined
     })
     return peer

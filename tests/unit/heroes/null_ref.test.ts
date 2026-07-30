@@ -11,7 +11,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestNullRef',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'null_ref',
     zone: 'mid-river',
     hp: 440,
@@ -42,7 +42,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -63,8 +63,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -307,7 +307,7 @@ describe('Null (null_ref) Hero', () => {
 
     it('does not affect allies', () => {
       const player = makePlayer()
-      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant' })
+      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
 
@@ -356,11 +356,11 @@ describe('Null (null_ref) Hero', () => {
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'null_ref_25_right' },
       })
       const enemyInZone = makeEnemy({ hp: 800, maxHp: 800 })
-      // mid-t1-dire is adjacent to mid-river (the caster's zone).
+      // mid-t1-audit is adjacent to mid-river (the caster's zone).
       const enemyAdjacent = makeEnemy({
         id: 'e2',
         name: 'Enemy2',
-        zone: 'mid-t1-dire',
+        zone: 'mid-t1-audit',
         hp: 800,
         maxHp: 800,
       })
@@ -379,7 +379,7 @@ describe('Null (null_ref) Hero', () => {
       const enemyAdjacent = makeEnemy({
         id: 'e2',
         name: 'Enemy2',
-        zone: 'mid-t1-dire',
+        zone: 'mid-t1-audit',
         hp: 800,
         maxHp: 800,
       })
@@ -423,7 +423,7 @@ describe('Null (null_ref) Hero', () => {
 
     it('does not damage allies', () => {
       const player = makePlayer({ level: 6, mp: 500 })
-      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant' })
+      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
 

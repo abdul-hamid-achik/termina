@@ -130,7 +130,7 @@ if (route.query.error) {
       <!-- ASCII Art Header -->
       <pre
         aria-hidden="true"
-        class="m-0 mb-4 text-center text-[0.6rem] leading-tight text-radiant select-none"
+        class="m-0 mb-4 text-center text-[0.6rem] leading-tight text-chaff select-none"
       >
 ╔╦╗╔═╗╦═╗╔╦╗╦╔╗╔╔═╗
  ║ ║╣ ╠╦╝║║║║║║║╠═╣
@@ -145,7 +145,7 @@ if (route.query.error) {
             class="flex-1 py-2 text-center font-mono text-xs uppercase tracking-widest transition-colors"
             :class="
               mode === 'login'
-                ? 'border-b border-radiant bg-radiant/5 text-radiant'
+                ? 'border-b border-chaff bg-chaff/5 text-chaff'
                 : 'text-text-dim hover:text-text-primary'
             "
             @click="switchMode('login')"
@@ -156,7 +156,7 @@ if (route.query.error) {
             class="flex-1 border-l border-border py-2 text-center font-mono text-xs uppercase tracking-widest transition-colors"
             :class="
               mode === 'register'
-                ? 'border-b border-radiant bg-radiant/5 text-radiant'
+                ? 'border-b border-chaff bg-chaff/5 text-chaff'
                 : 'text-text-dim hover:text-text-primary'
             "
             @click="switchMode('register')"
@@ -170,9 +170,9 @@ if (route.query.error) {
           v-if="error"
           role="alert"
           aria-live="assertive"
-          class="mb-3 border border-dire/30 bg-dire/5 px-3 py-2 text-xs text-dire"
+          class="mb-3 border border-audit/30 bg-audit/5 px-3 py-2 text-xs text-audit"
         >
-          <span class="text-dire/60">[ERR]</span> {{ error }}
+          <span class="text-audit/60">[ERR]</span> {{ error }}
         </div>
 
         <!-- Credentials Form -->
@@ -183,7 +183,7 @@ if (route.query.error) {
               for="login-username"
               class="font-mono text-xs uppercase tracking-wider text-text-dim"
             >
-              <span class="text-radiant">$</span> username
+              <span class="text-chaff">$</span> username
             </label>
             <input
               id="login-username"
@@ -195,8 +195,8 @@ if (route.query.error) {
               class="terminal-input"
             />
             <div v-if="mode === 'register' && username" class="text-[0.7rem]">
-              <span v-if="usernameError" class="text-dire">! {{ usernameError }}</span>
-              <span v-else-if="usernameValid" class="text-radiant">ok</span>
+              <span v-if="usernameError" class="text-audit">! {{ usernameError }}</span>
+              <span v-else-if="usernameValid" class="text-chaff">ok</span>
             </div>
           </div>
 
@@ -206,7 +206,7 @@ if (route.query.error) {
               for="login-email"
               class="font-mono text-xs uppercase tracking-wider text-text-dim"
             >
-              <span class="text-radiant">$</span> email
+              <span class="text-chaff">$</span> email
               <span class="text-text-dim/60">(optional)</span>
             </label>
             <input
@@ -219,8 +219,8 @@ if (route.query.error) {
               class="terminal-input"
             />
             <div v-if="email" class="text-[0.7rem]">
-              <span v-if="emailError" class="text-dire">! {{ emailError }}</span>
-              <span v-else class="text-radiant">ok</span>
+              <span v-if="emailError" class="text-audit">! {{ emailError }}</span>
+              <span v-else class="text-chaff">ok</span>
             </div>
           </div>
 
@@ -230,7 +230,7 @@ if (route.query.error) {
               for="login-password"
               class="font-mono text-xs uppercase tracking-wider text-text-dim"
             >
-              <span class="text-radiant">$</span> password
+              <span class="text-chaff">$</span> password
             </label>
             <input
               id="login-password"
@@ -241,8 +241,8 @@ if (route.query.error) {
               class="terminal-input"
             />
             <div v-if="mode === 'register' && password" class="text-[0.7rem]">
-              <span v-if="passwordError" class="text-dire">! {{ passwordError }}</span>
-              <span v-else class="text-radiant">ok</span>
+              <span v-if="passwordError" class="text-audit">! {{ passwordError }}</span>
+              <span v-else class="text-chaff">ok</span>
             </div>
           </div>
 
@@ -261,7 +261,7 @@ if (route.query.error) {
               for="login-confirm-password"
               class="font-mono text-xs uppercase tracking-wider text-text-dim"
             >
-              <span class="text-radiant">$</span> confirm password
+              <span class="text-chaff">$</span> confirm password
             </label>
             <input
               id="login-confirm-password"
@@ -272,8 +272,8 @@ if (route.query.error) {
               class="terminal-input"
             />
             <div v-if="confirmPassword" class="text-[0.7rem]">
-              <span v-if="confirmError" class="text-dire">! {{ confirmError }}</span>
-              <span v-else-if="passwordsMatch" class="text-radiant">ok</span>
+              <span v-if="confirmError" class="text-audit">! {{ confirmError }}</span>
+              <span v-else-if="passwordsMatch" class="text-chaff">ok</span>
             </div>
           </div>
 

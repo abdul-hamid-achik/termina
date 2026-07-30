@@ -32,7 +32,7 @@ describe('digestFarmNoise', () => {
         goldAmount: 45,
       }),
       line({
-        text: 'Echo cleared a kobold camp in Radiant Jungle (North)',
+        text: 'Echo cleared a kobold camp in Chaff Jungle (North)',
         type: 'gold',
         salience: 'ally',
         farmKind: 'camp',
@@ -257,8 +257,8 @@ describe('buildTickRecaps', () => {
     // is collapsed before it ever reaches the recap; reading the surviving
     // line's original dmgAmount would report a fifth of the siege.
     const run = [1, 2, 3].map((tick) => ({
-      ...outgoing(tick, 'tower (mid-t1-dire)', 70),
-      dedupKey: 'dmg:me->tower_mid-t1-dire',
+      ...outgoing(tick, 'tower (mid-t1-audit)', 70),
+      dedupKey: 'dmg:me->tower_mid-t1-audit',
     }))
     const collapsed = collapseStructureDamage(
       run,

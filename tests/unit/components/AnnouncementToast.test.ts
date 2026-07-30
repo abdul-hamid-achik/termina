@@ -61,10 +61,10 @@ describe('AnnouncementToast', () => {
     expect(box.classes()).toContain('text-self')
     expect(box.classes()).not.toContain('text-warn')
 
-    // Errors read dire, with the synthetic [ERROR] prefix stripped from display.
+    // Errors read audit, with the synthetic [ERROR] prefix stripped from display.
     await wrapper.setProps({ text: '[ERROR] Connection lost', level: 'error', seq: 4 })
     box = wrapper.find('.announcement-toast > div')
-    expect(box.classes()).toContain('text-dire')
+    expect(box.classes()).toContain('text-audit')
     expect(wrapper.text()).toContain('Connection lost')
     expect(wrapper.text()).not.toContain('[ERROR]')
   })
@@ -81,13 +81,13 @@ describe('AnnouncementToast', () => {
     expect(wrapper.text()).toContain('Roshan has been slain!')
   })
 
-  it('renders the kill severity as dire with a ✕ icon', async () => {
+  it('renders the kill severity as audit with a ✕ icon', async () => {
     const wrapper = mount(AnnouncementToast, {
       props: { text: 'First Blood!', seq: 1, level: 'kill' },
     })
     await wrapper.setProps({ seq: 2 })
     const box = wrapper.find('.announcement-toast > div')
-    expect(box.classes()).toContain('text-dire')
+    expect(box.classes()).toContain('text-audit')
     expect(wrapper.text()).toContain('✕')
   })
 

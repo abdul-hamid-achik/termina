@@ -294,7 +294,7 @@ export interface SurrenderVoteEvent {
   readonly _tag: 'surrender_vote'
   readonly tick: number
   readonly playerId: string
-  readonly team: 'radiant' | 'dire'
+  readonly team: 'chaff' | 'audit'
   readonly votesFor: number
   readonly votesNeeded: number
 }
@@ -302,8 +302,8 @@ export interface SurrenderVoteEvent {
 export interface SurrenderedEvent {
   readonly _tag: 'surrendered'
   readonly tick: number
-  readonly team: 'radiant' | 'dire'
-  readonly winner: 'radiant' | 'dire'
+  readonly team: 'chaff' | 'audit'
+  readonly winner: 'chaff' | 'audit'
 }
 
 export interface AfkTakeoverEvent {
@@ -311,7 +311,7 @@ export interface AfkTakeoverEvent {
   readonly tick: number
   readonly playerId: string
   readonly heroId: string | null
-  readonly team: 'radiant' | 'dire'
+  readonly team: 'chaff' | 'audit'
   readonly message: string
 }
 

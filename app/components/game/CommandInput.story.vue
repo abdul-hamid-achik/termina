@@ -11,7 +11,7 @@ const visibleZones = {
   'mid-river': makeZone('mid-river'),
   'top-river': makeZone('top-river'),
   'bot-river': makeZone('bot-river'),
-  'mid-t1-dire': makeZone('mid-t1-dire'),
+  'mid-t1-audit': makeZone('mid-t1-audit'),
 }
 const TICK = 240
 </script>

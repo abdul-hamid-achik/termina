@@ -137,7 +137,7 @@ function formatStats(def: ItemDef): string[] {
           v-if="slot.cooldown > 0"
           class="absolute inset-0 flex items-center justify-center bg-bg-overlay/60"
         >
-          <span class="text-xs font-bold text-dire">{{ slot.cooldown }}c</span>
+          <span class="text-xs font-bold text-audit">{{ slot.cooldown }}c</span>
         </div>
       </template>
 
@@ -155,7 +155,7 @@ function formatStats(def: ItemDef): string[] {
         <div class="font-bold text-text-primary">{{ slot.def.name }}</div>
         <div class="text-gold">{{ slot.def.cost }}g</div>
         <div v-if="formatStats(slot.def).length" class="mt-1 flex flex-col gap-0.5">
-          <span v-for="(stat, si) in formatStats(slot.def)" :key="si" class="text-radiant">{{
+          <span v-for="(stat, si) in formatStats(slot.def)" :key="si" class="text-chaff">{{
             stat
           }}</span>
         </div>

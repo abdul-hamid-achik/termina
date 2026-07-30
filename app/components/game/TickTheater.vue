@@ -35,7 +35,7 @@ defineProps<{
         class="font-bold tracking-wider"
         :class="
           !isAlive
-            ? 'text-dire'
+            ? 'text-audit'
             : canAct
               ? tickImminent
                 ? 'text-warn anim-glow-pulse'

@@ -7,9 +7,9 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'me',
     name: 'Me',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
-    zone: 'radiant-fountain',
+    zone: 'chaff-fountain',
     hp: 500,
     maxHp: 500,
     mp: 300,
@@ -188,16 +188,16 @@ describe('CommandInput', () => {
       await wrapper.find('input').setValue('cast q')
       const preview = wrapper.get('[data-testid="command-preview"]')
       expect(preview.text()).toContain('Cast Q')
-      expect(preview.classes()).toContain('text-radiant') // valid (not an error/dim hint)
+      expect(preview.classes()).toContain('text-chaff') // valid (not an error/dim hint)
     })
 
     it('shows a valid MOVE preview to an adjacent zone, resolving its name', async () => {
-      // Caster in the fountain — adjacent only to radiant-base, the one legal move.
+      // Caster in the fountain — adjacent only to chaff-base, the one legal move.
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
-      await wrapper.find('input').setValue('move radiant-base')
+      await wrapper.find('input').setValue('move chaff-base')
       const preview = wrapper.get('[data-testid="command-preview"]')
       expect(preview.text()).toContain('Move to')
-      expect(preview.classes()).toContain('text-radiant')
+      expect(preview.classes()).toContain('text-chaff')
     })
   })
 

@@ -16,10 +16,10 @@ const { isEventVisibleToPlayer } = await import('~~/server/plugins/game-server')
 
 const state = {
   players: {
-    me: { id: 'me', team: 'radiant', zone: 'mid-river' },
-    ally: { id: 'ally', team: 'radiant', zone: 'top-river' },
-    enemy: { id: 'enemy', team: 'dire', zone: 'bot-river' },
-    enemy2: { id: 'enemy2', team: 'dire', zone: 'bot-river' },
+    me: { id: 'me', team: 'chaff', zone: 'mid-river' },
+    ally: { id: 'ally', team: 'chaff', zone: 'top-river' },
+    enemy: { id: 'enemy', team: 'audit', zone: 'bot-river' },
+    enemy2: { id: 'enemy2', team: 'audit', zone: 'bot-river' },
   },
 } as unknown as GameState
 
@@ -31,37 +31,31 @@ const tpCancelled = (playerId: string): GameEngineEvent =>
 describe('isEventVisibleToPlayer — teleport vision gating', () => {
   it('always shows your own and your allies teleports', () => {
     expect(
-      isEventVisibleToPlayer(
-        tpComplete('me', 'radiant-fountain'),
-        'me',
-        'radiant',
-        new Set(),
-        state,
-      ),
+      isEventVisibleToPlayer(tpComplete('me', 'chaff-fountain'), 'me', 'chaff', new Set(), state),
     ).toBe(true)
     expect(
-      isEventVisibleToPlayer(tpComplete('ally', 'dire-base'), 'me', 'radiant', new Set(), state),
+      isEventVisibleToPlayer(tpComplete('ally', 'audit-base'), 'me', 'chaff', new Set(), state),
     ).toBe(true)
   })
 
   it('hides an enemy teleport whose destination you cannot see (no rotation leak)', () => {
-    const ev = tpComplete('enemy', 'dire-base')
-    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['mid-river']), state)).toBe(false)
+    const ev = tpComplete('enemy', 'audit-base')
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(false)
   })
 
   it('reveals an enemy teleport when you can see where they arrive', () => {
     const ev = tpComplete('enemy', 'mid-river')
-    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['mid-river']), state)).toBe(true)
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(true)
   })
 
   it('hides an enemy teleport_cancelled unless you can see them', () => {
     const ev = tpCancelled('enemy') // enemy is at bot-river
-    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['mid-river']), state)).toBe(false)
-    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['bot-river']), state)).toBe(true)
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(false)
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['bot-river']), state)).toBe(true)
   })
 
   it('still always shows your own teleport_cancelled', () => {
-    expect(isEventVisibleToPlayer(tpCancelled('me'), 'me', 'radiant', new Set(), state)).toBe(true)
+    expect(isEventVisibleToPlayer(tpCancelled('me'), 'me', 'chaff', new Set(), state)).toBe(true)
   })
 })
 
@@ -86,9 +80,9 @@ const talentSelected = (playerId: string): GameEngineEvent =>
 
 describe('isEventVisibleToPlayer — enemy-info leaks', () => {
   it('hides an enemy jungle kill unless you can see the camp', () => {
-    const ev = neutralKilled('enemy', 'jungle-dire-bot')
-    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['mid-river']), state)).toBe(false)
-    expect(isEventVisibleToPlayer(ev, 'me', 'radiant', new Set(['jungle-dire-bot']), state)).toBe(
+    const ev = neutralKilled('enemy', 'jungle-audit-bot')
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['mid-river']), state)).toBe(false)
+    expect(isEventVisibleToPlayer(ev, 'me', 'chaff', new Set(['jungle-audit-bot']), state)).toBe(
       true,
     )
   })
@@ -98,7 +92,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
       isEventVisibleToPlayer(
         neutralKilled('me', 'jungle-rad-top'),
         'me',
-        'radiant',
+        'chaff',
         new Set(),
         state,
       ),
@@ -107,7 +101,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
       isEventVisibleToPlayer(
         neutralKilled('ally', 'jungle-rad-bot'),
         'me',
-        'radiant',
+        'chaff',
         new Set(),
         state,
       ),
@@ -115,13 +109,11 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
   })
 
   it('hides enemy talent picks (build is private), shows your own and allies', () => {
-    expect(isEventVisibleToPlayer(talentSelected('enemy'), 'me', 'radiant', new Set(), state)).toBe(
+    expect(isEventVisibleToPlayer(talentSelected('enemy'), 'me', 'chaff', new Set(), state)).toBe(
       false,
     )
-    expect(isEventVisibleToPlayer(talentSelected('me'), 'me', 'radiant', new Set(), state)).toBe(
-      true,
-    )
-    expect(isEventVisibleToPlayer(talentSelected('ally'), 'me', 'radiant', new Set(), state)).toBe(
+    expect(isEventVisibleToPlayer(talentSelected('me'), 'me', 'chaff', new Set(), state)).toBe(true)
+    expect(isEventVisibleToPlayer(talentSelected('ally'), 'me', 'chaff', new Set(), state)).toBe(
       true,
     )
   })
@@ -138,10 +130,10 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
     // Even with vision of the enemy's zone — a spike is build/level info, not a
     // sighting; it leaks only through scouting, never a broadcast.
     expect(
-      isEventVisibleToPlayer(spike('enemy'), 'me', 'radiant', new Set(['bot-river']), state),
+      isEventVisibleToPlayer(spike('enemy'), 'me', 'chaff', new Set(['bot-river']), state),
     ).toBe(false)
-    expect(isEventVisibleToPlayer(spike('me'), 'me', 'radiant', new Set(), state)).toBe(true)
-    expect(isEventVisibleToPlayer(spike('ally'), 'me', 'radiant', new Set(), state)).toBe(true)
+    expect(isEventVisibleToPlayer(spike('me'), 'me', 'chaff', new Set(), state)).toBe(true)
+    expect(isEventVisibleToPlayer(spike('ally'), 'me', 'chaff', new Set(), state)).toBe(true)
   })
 })
 
@@ -150,7 +142,7 @@ describe('isEventVisibleToPlayer — enemy-info leaks', () => {
 const ev = (tag: string, extra: Record<string, unknown>): GameEngineEvent =>
   ({ _tag: tag, tick: 1, ...extra }) as GameEngineEvent
 const vis = (e: GameEngineEvent, zones: string[] = []) =>
-  isEventVisibleToPlayer(e, 'me', 'radiant', new Set(zones), state)
+  isEventVisibleToPlayer(e, 'me', 'chaff', new Set(zones), state)
 
 describe('isEventVisibleToPlayer — global events', () => {
   it('always shows map-wide events regardless of vision', () => {
@@ -216,7 +208,7 @@ describe('isEventVisibleToPlayer — ability / ward / rune', () => {
         ev('ward_placed', {
           playerId: 'ally',
           zone: 'rune-top',
-          team: 'radiant',
+          team: 'chaff',
           wardType: 'observer',
         }),
       ),
@@ -226,7 +218,7 @@ describe('isEventVisibleToPlayer — ability / ward / rune', () => {
         ev('ward_placed', {
           playerId: 'enemy',
           zone: 'rune-bot',
-          team: 'dire',
+          team: 'audit',
           wardType: 'observer',
         }),
         ['rune-top'],
@@ -237,7 +229,7 @@ describe('isEventVisibleToPlayer — ability / ward / rune', () => {
         ev('ward_placed', {
           playerId: 'enemy',
           zone: 'rune-bot',
-          team: 'dire',
+          team: 'audit',
           wardType: 'observer',
         }),
         ['rune-bot'],
@@ -269,21 +261,19 @@ describe('status_applied obeys the same fog rule as damage', () => {
     }) as GameEngineEvent
 
   it('shows a disable involving me or my team', () => {
-    expect(isEventVisibleToPlayer(cc('enemy', 'me'), 'me', 'radiant', new Set(), state)).toBe(true)
-    expect(isEventVisibleToPlayer(cc('enemy', 'ally'), 'me', 'radiant', new Set(), state)).toBe(
-      true,
-    )
+    expect(isEventVisibleToPlayer(cc('enemy', 'me'), 'me', 'chaff', new Set(), state)).toBe(true)
+    expect(isEventVisibleToPlayer(cc('enemy', 'ally'), 'me', 'chaff', new Set(), state)).toBe(true)
   })
 
   it('hides an enemy-on-enemy disable I have no vision on', () => {
-    expect(isEventVisibleToPlayer(cc('enemy', 'enemy2'), 'me', 'radiant', new Set(), state)).toBe(
+    expect(isEventVisibleToPlayer(cc('enemy', 'enemy2'), 'me', 'chaff', new Set(), state)).toBe(
       false,
     )
   })
 
   it('shows an enemy-on-enemy disable in a zone I can see', () => {
     expect(
-      isEventVisibleToPlayer(cc('enemy', 'enemy2'), 'me', 'radiant', new Set(['bot-river']), state),
+      isEventVisibleToPlayer(cc('enemy', 'enemy2'), 'me', 'chaff', new Set(['bot-river']), state),
     ).toBe(true)
   })
 })

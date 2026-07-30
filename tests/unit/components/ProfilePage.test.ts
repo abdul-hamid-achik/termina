@@ -63,8 +63,8 @@ function matchesResult(): FetchResult {
         {
           id: 'm1',
           mode: 'ranked_5v5',
-          winner: 'radiant',
-          team: 'radiant',
+          winner: 'chaff',
+          team: 'chaff',
           durationTicks: 150,
           createdAt: '2026-01-02T00:00:00Z',
         },
@@ -137,7 +137,7 @@ describe('profile page', () => {
     const wrapper = await mountProfile()
     const text = wrapper.text()
     expect(text).toContain('Ranked 5v5') // formatGameMode
-    expect(text).toContain('Victory') // radiant winner + radiant team
+    expect(text).toContain('Victory') // chaff winner + chaff team
   })
 
   it('shows the [EDIT] link only on your own profile', async () => {

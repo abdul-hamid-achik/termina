@@ -38,7 +38,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestPlayer',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -77,8 +77,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -89,7 +89,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -568,13 +568,13 @@ describe('_base hero utilities', () => {
     it('should return enemies in zone', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'mid-river' }),
         },
       })
       const result = getEnemiesInZone(state, state.players['p1']!)
       expect(result).toHaveLength(1)
-      expect(result[0]!.team).toBe('dire')
+      expect(result[0]!.team).toBe('audit')
     })
   })
 
@@ -582,9 +582,9 @@ describe('_base hero utilities', () => {
     it('should return allies in zone excluding self', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
-          p2: makePlayer({ id: 'p2', team: 'radiant', zone: 'mid-river' }),
-          p3: makePlayer({ id: 'p3', team: 'dire', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'mid-river' }),
+          p3: makePlayer({ id: 'p3', team: 'audit', zone: 'mid-river' }),
         },
       })
       const result = getAlliesInZone(state, state.players['p1']!)
@@ -597,9 +597,9 @@ describe('_base hero utilities', () => {
     it('should return all enemy players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant' }),
-          p2: makePlayer({ id: 'p2', team: 'dire' }),
-          p3: makePlayer({ id: 'p3', team: 'dire' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'audit' }),
+          p3: makePlayer({ id: 'p3', team: 'audit' }),
         },
       })
       const result = getAllEnemyPlayers(state, state.players['p1']!)
@@ -609,8 +609,8 @@ describe('_base hero utilities', () => {
     it('should exclude dead enemies', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', alive: false }),
+          p1: makePlayer({ id: 'p1', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', alive: false }),
         },
       })
       const result = getAllEnemyPlayers(state, state.players['p1']!)
@@ -732,7 +732,7 @@ describe('_base hero utilities', () => {
             stacks: 1,
             ticksRemaining: 2,
             source: 'town_portal_scroll',
-            destination: 'radiant-fountain',
+            destination: 'chaff-fountain',
           },
         ],
       })
@@ -740,11 +740,11 @@ describe('_base hero utilities', () => {
 
       const result = tickAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('radiant-fountain')
+      expect(result.players['p1']!.zone).toBe('chaff-fountain')
       expect(result.players['p1']!.buffs).toHaveLength(0)
       expect(result.events).toHaveLength(1)
       expect(result.events[0]!.type).toBe('teleport_complete')
-      expect(result.events[0]!.payload.destination).toBe('radiant-fountain')
+      expect(result.events[0]!.payload.destination).toBe('chaff-fountain')
     })
 
     it('should not teleport while channeling is in progress', () => {
@@ -757,7 +757,7 @@ describe('_base hero utilities', () => {
             stacks: 1,
             ticksRemaining: 3,
             source: 'town_portal_scroll',
-            destination: 'radiant-fountain',
+            destination: 'chaff-fountain',
           },
         ],
       })
@@ -770,10 +770,10 @@ describe('_base hero utilities', () => {
       expect(result.events).toHaveLength(0)
     })
 
-    it('should teleport to dire fountain for dire player', () => {
+    it('should teleport to audit fountain for audit player', () => {
       const player = makePlayer({
-        team: 'dire',
-        zone: 'mid-t1-dire',
+        team: 'audit',
+        zone: 'mid-t1-audit',
         buffs: [
           { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
           {
@@ -781,7 +781,7 @@ describe('_base hero utilities', () => {
             stacks: 1,
             ticksRemaining: 2,
             source: 'town_portal_scroll',
-            destination: 'dire-fountain',
+            destination: 'audit-fountain',
           },
         ],
       })
@@ -789,7 +789,7 @@ describe('_base hero utilities', () => {
 
       const result = tickAllBuffs(state)
 
-      expect(result.players['p1']!.zone).toBe('dire-fountain')
+      expect(result.players['p1']!.zone).toBe('audit-fountain')
       expect(result.players['p1']!.buffs).toHaveLength(0)
     })
 
@@ -812,7 +812,7 @@ describe('_base hero utilities', () => {
   describe('damageEnemyNpcsInZone', () => {
     const creep = (over: Partial<CreepState> = {}): CreepState => ({
       id: 'c1',
-      team: 'dire',
+      team: 'audit',
       zone: 'mid-t1-rad',
       hp: 400,
       maxHp: 400,
@@ -830,7 +830,7 @@ describe('_base hero utilities', () => {
     })
 
     it('damages enemy creeps standing in the caster’s zone', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
       const state = makeGameState({ creeps: [creep()] })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
@@ -839,10 +839,10 @@ describe('_base hero utilities', () => {
     })
 
     it('spares allied creeps and creeps in every other zone', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
       const state = makeGameState({
         creeps: [
-          creep({ id: 'ally', team: 'radiant' }),
+          creep({ id: 'ally', team: 'chaff' }),
           creep({ id: 'elsewhere', zone: 'top-river' }),
         ],
       })
@@ -855,7 +855,7 @@ describe('_base hero utilities', () => {
     })
 
     it('kills a creep to exactly 0 rather than negative HP', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
       const state = makeGameState({ creeps: [creep({ hp: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
@@ -864,7 +864,7 @@ describe('_base hero utilities', () => {
     })
 
     it('leaves a dead creep in the buffer so the caller can credit the kill', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
       const state = makeGameState({ creeps: [creep({ hp: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
@@ -874,7 +874,7 @@ describe('_base hero utilities', () => {
     })
 
     it('does not re-damage a creep already at 0 HP', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
       const dead = creep({ hp: 0 })
       const state = makeGameState({ creeps: [dead] })
 
@@ -884,7 +884,7 @@ describe('_base hero utilities', () => {
     })
 
     it('damages neutrals, which are hostile to both teams, and flips alive on death', () => {
-      const caster = makePlayer({ zone: 'jungle-rad-top', team: 'radiant' })
+      const caster = makePlayer({ zone: 'jungle-rad-top', team: 'chaff' })
       const state = makeGameState({ neutrals: [neutral({ hp: 100 })] })
 
       const chipped = damageEnemyNpcsInZone(state, caster, 40, 'magical')
@@ -916,7 +916,7 @@ describe('_base hero utilities', () => {
     })
 
     it('reaches the widened zone list an AOE+ cast passes in', () => {
-      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'radiant' })
+      const caster = makePlayer({ zone: 'mid-t1-rad', team: 'chaff' })
       const state = makeGameState({ creeps: [creep({ id: 'next-door', zone: 'mid-river' })] })
 
       expect(damageEnemyNpcsInZone(state, caster, 150, 'magical')).toBe(state)

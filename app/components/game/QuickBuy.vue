@@ -64,10 +64,10 @@ const entries = computed<PinnedEntry[]>(() => {
       >
         <span class="font-bold">{{ entry.def.name }}</span>
         <span v-if="entry.affordable" class="text-gold">{{ entry.def.cost }}g</span>
-        <span v-else class="text-dire">-{{ entry.goldNeeded }}g</span>
+        <span v-else class="text-audit">-{{ entry.goldNeeded }}g</span>
         <button
           v-if="entry.affordable && canBuy"
-          class="touch-target text-radiant hover:underline"
+          class="touch-target text-chaff hover:underline"
           :data-testid="`quickbuy-buy-${entry.id}`"
           :aria-label="`Buy ${entry.def.name} for ${entry.def.cost} gold`"
           @click="emit('buy', entry.id)"
@@ -78,7 +78,7 @@ const entries = computed<PinnedEntry[]>(() => {
              missed [BUY] tap can't land on it. Hidden for suggestions (not pinned). -->
         <button
           v-if="!usingSuggestions"
-          class="touch-target text-text-dim hover:text-dire"
+          class="touch-target text-text-dim hover:text-audit"
           :data-testid="`quickbuy-unpin-${entry.id}`"
           :aria-label="`Unpin ${entry.def.name}`"
           @click="emit('unpin', entry.id)"

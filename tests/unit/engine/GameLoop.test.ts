@@ -19,7 +19,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 550,
@@ -53,12 +53,12 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {
-      p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'radiant-fountain' }),
-      p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain', name: 'Player2' }),
+      p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
+      p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', name: 'Player2' }),
     },
     zones: initializeZoneStates(),
     creeps: [],
@@ -69,7 +69,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -101,7 +101,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: 10 }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
       const result = Effect.runSync(processTick('game1', state))
@@ -113,7 +113,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -143,13 +143,13 @@ describe('GameLoop', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'radiant-fountain',
+            zone: 'chaff-fountain',
             hp: 100,
             maxHp: 550,
             mp: 50,
             maxMp: 280,
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -172,7 +172,7 @@ describe('GameLoop', () => {
             maxMp: 280,
             respawnTick: 10,
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -181,73 +181,73 @@ describe('GameLoop', () => {
       const p1 = result.state.players['p1']!
       expect(p1.alive).toBe(true)
       expect(p1.hp).toBe(550) // Full HP (echo base HP)
-      expect(p1.zone).toBe('radiant-fountain')
+      expect(p1.zone).toBe('chaff-fountain')
     })
 
-    it('should detect radiant win when the dire Ancient is destroyed', () => {
+    it('should detect chaff win when the audit Ancient is destroyed', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
-          radiant: ancients.radiant,
-          dire: { ...ancients.dire, hp: 0, alive: false, vulnerable: true },
+          chaff: ancients.chaff,
+          audit: { ...ancients.audit, hp: 0, alive: false, vulnerable: true },
         },
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
       const result = Effect.runSync(processTick('game6', state))
       expect(result.state.phase).toBe('ended')
-      expect(result.state.winner).toBe('radiant')
+      expect(result.state.winner).toBe('chaff')
     })
 
     it('should NOT end the game when all enemy towers are destroyed but the Ancient stands', () => {
       const towers = initializeTowers().map((t) =>
-        t.team === 'dire' ? { ...t, hp: 0, alive: false } : t,
+        t.team === 'audit' ? { ...t, hp: 0, alive: false } : t,
       )
 
       const state = makeGameState({
         towers,
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
       const result = Effect.runSync(processTick('game6b', state))
       expect(result.state.phase).toBe('playing')
-      // But the dire Ancient must now be vulnerable (its T3s are down)
-      expect(result.state.ancients.dire.vulnerable).toBe(true)
+      // But the audit Ancient must now be vulnerable (its T3s are down)
+      expect(result.state.ancients.audit.vulnerable).toBe(true)
     })
 
     it('should mark an Ancient vulnerable when one of its T3 towers falls', () => {
       const towers = initializeTowers().map((t) =>
-        t.zone === 'mid-t3-dire' ? { ...t, hp: 0, alive: false } : t,
+        t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
       )
 
       const state = makeGameState({ towers })
       const result = Effect.runSync(processTick('game6c', state))
-      expect(result.state.ancients.dire.vulnerable).toBe(true)
-      expect(result.state.ancients.radiant.vulnerable).toBe(false)
+      expect(result.state.ancients.audit.vulnerable).toBe(true)
+      expect(result.state.ancients.chaff.vulnerable).toBe(false)
     })
 
     it('should keep Ancients invulnerable while only T1/T2 towers are down', () => {
       const towers = initializeTowers().map((t) =>
-        t.zone === 'mid-t1-dire' || t.zone === 'mid-t2-dire' ? { ...t, hp: 0, alive: false } : t,
+        t.zone === 'mid-t1-audit' || t.zone === 'mid-t2-audit' ? { ...t, hp: 0, alive: false } : t,
       )
 
       const state = makeGameState({ towers })
       const result = Effect.runSync(processTick('game6d', state))
-      expect(result.state.ancients.dire.vulnerable).toBe(false)
-      expect(result.state.ancients.radiant.vulnerable).toBe(false)
+      expect(result.state.ancients.audit.vulnerable).toBe(false)
+      expect(result.state.ancients.chaff.vulnerable).toBe(false)
     })
 
     it('should handle only one action per player per tick', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -263,7 +263,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, hp: 0, level: 1, respawnTick: null }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -281,7 +281,7 @@ describe('GameLoop', () => {
         tick: 5,
         players: {
           p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: 10 }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -294,13 +294,13 @@ describe('GameLoop', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'radiant-fountain',
+            zone: 'chaff-fountain',
             mp: 50,
             maxMp: 280,
             hp: 550,
             maxHp: 550,
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -317,7 +317,7 @@ describe('GameLoop', () => {
             hp: 100,
             maxHp: 550,
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -326,17 +326,17 @@ describe('GameLoop', () => {
       expect(result.state.players['p1']!.hp).toBe(100)
     })
 
-    it('should not heal radiant player in dire fountain', () => {
+    it('should not heal chaff player in audit fountain', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
-            zone: 'dire-fountain',
+            team: 'chaff',
+            zone: 'audit-fountain',
             hp: 100,
             maxHp: 550,
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -349,13 +349,13 @@ describe('GameLoop', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'radiant-fountain',
+            zone: 'chaff-fountain',
             hp: 540,
             maxHp: 550,
             mp: 275,
             maxMp: 280,
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -368,7 +368,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -385,12 +385,12 @@ describe('GameLoop', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
-          radiant: ancients.radiant,
-          dire: { ...ancients.dire, hp: 0, alive: false, vulnerable: true },
+          chaff: ancients.chaff,
+          audit: { ...ancients.audit, hp: 0, alive: false, vulnerable: true },
         },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -398,29 +398,29 @@ describe('GameLoop', () => {
       expect(result.state.phase).toBe('ended')
     })
 
-    it('should detect dire win when the radiant Ancient is destroyed', () => {
+    it('should detect audit win when the chaff Ancient is destroyed', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
-          radiant: { ...ancients.radiant, hp: 0, alive: false, vulnerable: true },
-          dire: ancients.dire,
+          chaff: { ...ancients.chaff, hp: 0, alive: false, vulnerable: true },
+          audit: ancients.audit,
         },
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
-      const result = Effect.runSync(processTick('game-dire-win', state))
+      const result = Effect.runSync(processTick('game-audit-win', state))
       expect(result.state.phase).toBe('ended')
-      expect(result.state.winner).toBe('dire')
+      expect(result.state.winner).toBe('audit')
     })
 
     it('should not end game when both Ancients are alive', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1' }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -432,7 +432,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: null }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -455,10 +455,10 @@ describe('GameLoop', () => {
             respawnTick: null,
             // Died mid-walk: the aegis revive must ALSO cancel the auto-path
             // (or the hero resumes marching into whoever just killed them).
-            moveTarget: 'dire-base',
+            moveTarget: 'audit-base',
             buffs: [{ id: 'aegis', stacks: 1, ticksRemaining: 999, source: 'roshan' }],
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -481,7 +481,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: null }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -506,7 +506,7 @@ describe('GameLoop', () => {
               { id: 'regeneration', stacks: 1, ticksRemaining: 5, source: 'rune' },
             ],
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', zone: 'dire-fountain' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
@@ -582,25 +582,25 @@ describe('GameLoop', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
-          radiant: ancients.radiant,
-          dire: { ...ancients.dire, vulnerable: true },
+          chaff: ancients.chaff,
+          audit: { ...ancients.audit, vulnerable: true },
         },
-        // Keep dire T3 mid dead so vulnerability stays true after recompute
+        // Keep audit T3 mid dead so vulnerability stays true after recompute
         towers: initializeTowers().map((t) =>
-          t.zone === 'mid-t3-dire' ? { ...t, hp: 0, alive: false } : t,
+          t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
         ),
         creeps: [
-          { id: 'c1', team: 'radiant', zone: 'dire-base', hp: 400, type: 'melee' },
-          { id: 'c2', team: 'radiant', zone: 'dire-base', hp: 250, type: 'ranged' },
+          { id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' },
+          { id: 'c2', team: 'chaff', zone: 'audit-base', hp: 250, type: 'ranged' },
         ],
       })
 
       const result = Effect.runSync(processTick('game-ancient-siege', state))
-      const dire = result.state.ancients.dire
-      expect(dire.hp).toBeLessThan(dire.maxHp)
+      const audit = result.state.ancients.audit
+      expect(audit.hp).toBeLessThan(audit.maxHp)
       // Damage events against the ancient should be emitted
       const ancientDamage = result.events.filter(
-        (e) => e._tag === 'damage' && e.targetId === 'ancient_dire',
+        (e) => e._tag === 'damage' && e.targetId === 'ancient_audit',
       )
       expect(ancientDamage.length).toBe(2)
     })
@@ -609,24 +609,24 @@ describe('GameLoop', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
-          radiant: ancients.radiant,
-          dire: { ...ancients.dire, hp: 10, vulnerable: true },
+          chaff: ancients.chaff,
+          audit: { ...ancients.audit, hp: 10, vulnerable: true },
         },
         towers: initializeTowers().map((t) =>
-          t.zone === 'mid-t3-dire' ? { ...t, hp: 0, alive: false } : t,
+          t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
         ),
-        creeps: [{ id: 'c1', team: 'radiant', zone: 'dire-base', hp: 400, type: 'melee' }],
+        creeps: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' }],
       })
 
       const result = Effect.runSync(processTick('game-ancient-end', state))
-      expect(result.state.ancients.dire.alive).toBe(false)
+      expect(result.state.ancients.audit.alive).toBe(false)
       expect(result.state.phase).toBe('ended')
-      expect(result.state.winner).toBe('radiant')
+      expect(result.state.winner).toBe('chaff')
     })
 
     it('creeps idling in base with an invulnerable Ancient are garbage collected', () => {
       let state = makeGameState({
-        creeps: [{ id: 'c1', team: 'radiant', zone: 'dire-base', hp: 400, type: 'melee' }],
+        creeps: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' }],
       })
 
       // Ancient is invulnerable (all towers alive), no heroes in base.
@@ -640,7 +640,7 @@ describe('GameLoop', () => {
     it('per-zone creep cap is enforced during processTick', () => {
       const creeps = Array.from({ length: 30 }, (_, i) => ({
         id: `stack_${i}`,
-        team: 'radiant' as const,
+        team: 'chaff' as const,
         zone: 'mid-t2-rad',
         hp: 400,
         type: 'melee' as const,
@@ -667,8 +667,8 @@ describe('GameLoop', () => {
 
       const result = Effect.runSync(processTick('game-legacy', legacy as GameState))
       expect(result.state.ancients).toBeDefined()
-      expect(result.state.ancients.radiant.alive).toBe(true)
-      expect(result.state.ancients.dire.alive).toBe(true)
+      expect(result.state.ancients.chaff.alive).toBe(true)
+      expect(result.state.ancients.audit.alive).toBe(true)
     })
   })
 })

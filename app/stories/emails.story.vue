@@ -22,7 +22,7 @@ const emails = [
     tpl: passwordResetTemplate('https://terminamoba.com/reset-password?token=demo-token'),
   },
   { id: 'changed', label: 'Password changed', tpl: passwordChangedTemplate() },
-  { id: 'welcome', label: 'Welcome', tpl: welcomeTemplate('neo_radiant') },
+  { id: 'welcome', label: 'Welcome', tpl: welcomeTemplate('neo_chaff') },
 ]
 </script>
 
@@ -31,7 +31,7 @@ const emails = [
     <Variant v-for="e in emails" :key="e.id" :title="e.label">
       <div class="flex flex-col gap-2 p-3">
         <div class="font-mono text-xs text-text-dim">
-          <span class="text-radiant">subject:</span> {{ e.tpl.subject }}
+          <span class="text-chaff">subject:</span> {{ e.tpl.subject }}
         </div>
         <iframe
           :srcdoc="e.tpl.html"

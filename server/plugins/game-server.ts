@@ -740,7 +740,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             // Label the match by its format. Bot games are 'casual_5v5' (unranked);
             // human games are labelled by team size (this also fixes the old
             // hardcoded 'ranked_5v5' that mislabeled 3v3/1v1 history).
-            const teamSize = players.filter((p) => p.team === 'radiant').length
+            const teamSize = players.filter((p) => p.team === 'chaff').length
             const matchMode: NewMatch['mode'] = hasBots
               ? 'casual_5v5'
               : teamSize <= 1
@@ -963,7 +963,7 @@ export default defineNitroPlugin(async (nitroApp) => {
     const gameId = `dev_${seed}_${Math.random().toString(36).slice(2, 6)}`
 
     // Roster. Tutorial = a small guided 2v2 on the one-lane map; otherwise the
-    // human (radiant) + 4 radiant bots + 5 dire bots, all distinct heroes.
+    // human (chaff) + 4 chaff bots + 5 audit bots, all distinct heroes.
     const heroIds = Object.keys(HEROES)
     const humanHero = opts.humanHeroId && HEROES[opts.humanHeroId] ? opts.humanHeroId : heroIds[0]!
     let players: StartPlayer[]
@@ -979,18 +979,18 @@ export default defineNitroPlugin(async (nitroApp) => {
         used.add(h)
         return h
       }
-      players = [{ playerId: opts.humanId, team: 'radiant', heroId: humanHero, mmr: 1000 }]
+      players = [{ playerId: opts.humanId, team: 'chaff', heroId: humanHero, mmr: 1000 }]
       for (let i = 0; i < 4; i++)
         players.push({
           playerId: `bot_r${i}_${gameId}`,
-          team: 'radiant',
+          team: 'chaff',
           heroId: nextHero(),
           mmr: 1000,
         })
       for (let i = 0; i < 5; i++)
         players.push({
           playerId: `bot_d${i}_${gameId}`,
-          team: 'dire',
+          team: 'audit',
           heroId: nextHero(),
           mmr: 1000,
         })

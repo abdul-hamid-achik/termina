@@ -19,8 +19,8 @@ describe('replay frames reconstruction', () => {
     const sm = createInMemoryStateManager()
     const gameId = 'replay_test_1'
     const setup = [
-      { id: 'p1', name: 'p1', team: 'radiant' as const, heroId: 'echo' },
-      { id: 'p2', name: 'p2', team: 'dire' as const, heroId: 'daemon' },
+      { id: 'p1', name: 'p1', team: 'chaff' as const, heroId: 'echo' },
+      { id: 'p2', name: 'p2', team: 'audit' as const, heroId: 'daemon' },
     ]
     await Effect.runPromise(sm.createGame(gameId, setup))
     await Effect.runPromise(sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })))
@@ -58,8 +58,8 @@ describe('replay frames reconstruction', () => {
     const sm = createInMemoryStateManager()
     const gameId = 'replay_test_2'
     const setup = [
-      { id: 'human', name: 'human', team: 'radiant' as const, heroId: 'echo' },
-      { id: 'bot_x', name: 'bot_x', team: 'dire' as const, heroId: 'daemon' },
+      { id: 'human', name: 'human', team: 'chaff' as const, heroId: 'echo' },
+      { id: 'bot_x', name: 'bot_x', team: 'audit' as const, heroId: 'daemon' },
     ]
     await Effect.runPromise(sm.createGame(gameId, setup))
     await Effect.runPromise(sm.updateState(gameId, (s) => ({ ...s, phase: 'playing' as const })))

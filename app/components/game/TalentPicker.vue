@@ -50,7 +50,7 @@ const pending = computed(() => {
         class="rounded border border-border bg-bg-secondary px-2 py-1 text-left transition-colors hover:border-gold hover:bg-bg-tertiary"
         @click="emit('pick', pending.tier, side)"
       >
-        <div class="font-mono text-radiant">{{ pending[side].name }}</div>
+        <div class="font-mono text-chaff">{{ pending[side].name }}</div>
         <div class="text-text-dim">{{ pending[side].description }}</div>
       </button>
     </div>

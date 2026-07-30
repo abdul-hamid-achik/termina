@@ -58,7 +58,7 @@ const actives = computed(() => props.items.filter((i) => i.active).map((i) => i.
           <span
             v-for="(s, i) in statLines"
             :key="i"
-            class="border border-border bg-bg-primary px-1 py-0.5 text-[0.65rem] text-radiant"
+            class="border border-border bg-bg-primary px-1 py-0.5 text-[0.65rem] text-chaff"
           >
             {{ s }}
           </span>
@@ -75,7 +75,7 @@ const actives = computed(() => props.items.filter((i) => i.active).map((i) => i.
 
       <button
         type="button"
-        class="mt-1 self-start text-[0.62rem] uppercase tracking-wider text-text-dim transition-colors hover:text-dire"
+        class="mt-1 self-start text-[0.62rem] uppercase tracking-wider text-text-dim transition-colors hover:text-audit"
         data-testid="loadout-clear"
         @click="emit('clear')"
       >

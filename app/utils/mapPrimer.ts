@@ -21,7 +21,7 @@ export function buildMapPrimerZones(): ZoneDisplay[] {
       enemyCount: 0,
       fogged: false,
     }
-    if (z.tower && (z.team === 'radiant' || z.team === 'dire')) {
+    if (z.tower && (z.team === 'chaff' || z.team === 'audit')) {
       display.tower = { team: z.team, alive: true, tier: z.tier ?? 1 }
     }
     if (z.id === 'roshan-pit') {

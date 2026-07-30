@@ -81,10 +81,10 @@ function makeActiveGame(overrides: Record<string, unknown> = {}) {
   return {
     gameId: 'g1',
     tick: 90,
-    radiantKills: 12,
-    direKills: 8,
-    radiantHeroes: ['echo', 'kernel'],
-    direHeroes: ['daemon', 'regex'],
+    chaffKills: 12,
+    auditKills: 8,
+    chaffHeroes: ['echo', 'kernel'],
+    auditHeroes: ['daemon', 'regex'],
     ...overrides,
   }
 }
@@ -253,7 +253,7 @@ describe('leaderboard page', () => {
       fetchResults = [
         leaderboardResult([makeEntry()]),
         // tick 90 → 360s → 6:00
-        activeResult([makeActiveGame({ gameId: 'abc', tick: 90, radiantKills: 12, direKills: 8 })]),
+        activeResult([makeActiveGame({ gameId: 'abc', tick: 90, chaffKills: 12, auditKills: 8 })]),
       ]
       const wrapper = await mountLeaderboard()
 

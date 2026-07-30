@@ -15,7 +15,7 @@ const visible: PlayerState[] = [
   makePlayer({
     id: 'e1',
     name: 'daemon_carry',
-    team: 'dire',
+    team: 'audit',
     heroId: SAMPLE_HEROES.daemon,
     hp: 620,
     maxHp: 880,
@@ -32,7 +32,7 @@ const visible: PlayerState[] = [
   makePlayer({
     id: 'e2',
     name: 'regex_mid',
-    team: 'dire',
+    team: 'audit',
     heroId: SAMPLE_HEROES.regex,
     hp: 140,
     maxHp: 560,
@@ -52,7 +52,7 @@ const visible: PlayerState[] = [
 const fogged: FoggedPlayer = {
   id: 'e3',
   name: 'cache_sup',
-  team: 'dire',
+  team: 'audit',
   heroId: SAMPLE_HEROES.cache,
   level: 7,
   kills: 1,
@@ -65,7 +65,7 @@ const fogged: FoggedPlayer = {
 const dead: PlayerState = makePlayer({
   id: 'e4',
   name: 'firewall_tank',
-  team: 'dire',
+  team: 'audit',
   heroId: SAMPLE_HEROES.firewall,
   level: 8,
   alive: false,

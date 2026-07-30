@@ -12,7 +12,7 @@ import TerminalPanel from './TerminalPanel.vue'
     <Variant title="default + title">
       <div class="bg-bg-primary p-2" style="width: 320px">
         <TerminalPanel title="Scoreboard">
-          <p class="font-mono text-xs text-text-primary">Radiant 14 — 9 Dire</p>
+          <p class="font-mono text-xs text-text-primary">Chaff 14 — 9 Audit</p>
         </TerminalPanel>
       </div>
     </Variant>
@@ -36,7 +36,7 @@ import TerminalPanel from './TerminalPanel.vue'
     <Variant title="danger variant">
       <div class="bg-bg-primary p-2" style="width: 320px">
         <TerminalPanel title="Ancient Under Attack" variant="danger">
-          <p class="font-mono text-xs text-dire">Defend the base!</p>
+          <p class="font-mono text-xs text-audit">Defend the base!</p>
         </TerminalPanel>
       </div>
     </Variant>

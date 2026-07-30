@@ -7,8 +7,8 @@ function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleSt
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: {},
@@ -16,8 +16,8 @@ function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleSt
     neutrals: [],
     towers: [],
     ancients: {
-      radiant: { team: 'radiant', hp: 750, maxHp: 750, alive: true, vulnerable: false },
-      dire: { team: 'dire', hp: 750, maxHp: 750, alive: true, vulnerable: false },
+      chaff: { team: 'chaff', hp: 750, maxHp: 750, alive: true, vulnerable: false },
+      audit: { team: 'audit', hp: 750, maxHp: 750, alive: true, vulnerable: false },
     },
     runes: [],
     roshan: { alive: true, hp: 500, maxHp: 500, deathTick: null },
@@ -54,8 +54,8 @@ describe('StateDelta', () => {
 
     it('omits unchanged pass-through fields (teams, towers, ancients, roshan, etc.)', () => {
       const teams = {
-        radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-        dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+        chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+        audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
       }
       const towers = [] as PlayerVisibleState['towers']
       const roshan = { alive: true, hp: 500, maxHp: 500, deathTick: null }
@@ -72,8 +72,8 @@ describe('StateDelta', () => {
     it('includes changed pass-through fields (teams, towers, etc.)', () => {
       const prev = makeState({ tick: 1 })
       const newTeams = {
-        radiant: { id: 'radiant', kills: 1, towerKills: 0, gold: 0, glyphUsedTick: null },
-        dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+        chaff: { id: 'chaff', kills: 1, towerKills: 0, gold: 0, glyphUsedTick: null },
+        audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
       }
       const current = makeState({ tick: 2, teams: newTeams })
       const delta = computeDelta(current, prev) as Partial<PlayerVisibleState>

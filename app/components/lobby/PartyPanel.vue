@@ -102,7 +102,7 @@ onMounted(refresh)
   <TerminalPanel title="Play With Friends" title-as="h2">
     <div class="flex flex-col gap-3 p-4">
       <p class="text-[0.78rem] leading-relaxed text-text-dim">
-        Party up and play co-op vs bots — your group takes Radiant, bots fill the rest. No rating on
+        Party up and play co-op vs bots — your group takes Chaff, bots fill the rest. No rating on
         the line, just a game with friends.
       </p>
 
@@ -146,7 +146,7 @@ onMounted(refresh)
           >
             <span
               class="font-mono"
-              :class="m.playerId === myPlayerId ? 'text-radiant' : 'text-text-primary'"
+              :class="m.playerId === myPlayerId ? 'text-chaff' : 'text-text-primary'"
             >
               {{ m.username
               }}<span v-if="m.playerId === myPlayerId" class="ml-1 text-text-dim">(you)</span>
@@ -168,7 +168,7 @@ onMounted(refresh)
         <AsciiButton label="LEAVE PARTY" variant="ghost" :disabled="busy" @click="leaveParty" />
       </template>
 
-      <p v-if="error" class="text-[0.72rem] text-dire" data-testid="party-error" role="alert">
+      <p v-if="error" class="text-[0.72rem] text-audit" data-testid="party-error" role="alert">
         [ERR] {{ error }}
       </p>
     </div>

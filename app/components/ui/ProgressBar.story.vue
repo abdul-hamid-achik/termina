@@ -3,7 +3,7 @@ import ProgressBar from './ProgressBar.vue'
 </script>
 
 <!--
-  Pure props-driven ASCII bar. Covers the team-color theme tokens (radiant/dire/
+  Pure props-driven ASCII bar. Covers the team-color theme tokens (chaff/audit/
   ability/gold), the fill spectrum (empty → full + clamped over/under-flow), the
   optional value/percentage label, and custom widths.
 -->
@@ -22,17 +22,17 @@ import ProgressBar from './ProgressBar.vue'
       <ProgressBar :value="520" :max="620" show-label />
     </Variant>
 
-    <Variant title="hp — radiant">
-      <ProgressBar :value="520" :max="620" color="radiant" show-label />
+    <Variant title="hp — chaff">
+      <ProgressBar :value="520" :max="620" color="chaff" show-label />
     </Variant>
-    <Variant title="hp — dire (low)">
-      <ProgressBar :value="90" :max="980" color="dire" show-label />
+    <Variant title="hp — audit (low)">
+      <ProgressBar :value="90" :max="980" color="audit" show-label />
     </Variant>
     <Variant title="hp — danger threshold (reddens + pulses below 25%)">
-      <ProgressBar :value="110" :max="620" color="radiant" :danger-below="0.25" show-label />
+      <ProgressBar :value="110" :max="620" color="chaff" :danger-below="0.25" show-label />
     </Variant>
     <Variant title="hp — healthy (danger arm, above threshold)">
-      <ProgressBar :value="500" :max="620" color="radiant" :danger-below="0.25" show-label />
+      <ProgressBar :value="500" :max="620" color="chaff" :danger-below="0.25" show-label />
     </Variant>
     <Variant title="mana — ability">
       <ProgressBar :value="180" :max="300" color="ability" show-label />
@@ -52,14 +52,14 @@ import ProgressBar from './ProgressBar.vue'
     </Variant>
 
     <Variant title="clamp — overflow (>max)">
-      <ProgressBar :value="900" :max="620" color="radiant" show-label />
+      <ProgressBar :value="900" :max="620" color="chaff" show-label />
     </Variant>
     <Variant title="clamp — underflow (<0)">
-      <ProgressBar :value="-50" :max="620" color="dire" show-label />
+      <ProgressBar :value="-50" :max="620" color="audit" show-label />
     </Variant>
 
     <Variant title="playground">
-      <ProgressBar :value="50" :max="100" color="radiant" :width="20" :show-label="true" />
+      <ProgressBar :value="50" :max="100" color="chaff" :width="20" :show-label="true" />
     </Variant>
   </Story>
 </template>

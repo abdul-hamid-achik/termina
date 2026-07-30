@@ -63,7 +63,7 @@ function generateId(): string {
 }
 
 // Alternating pick order for 10 players (indices 0-9):
-// Team 1: indices 0-4 (radiant), Team 2: indices 5-9 (dire)
+// Team 1: indices 0-4 (chaff), Team 2: indices 5-9 (audit)
 // Pick order: R1, D1, D2, R2, R3, D3, D4, R4, R5, D5
 const PICK_SEQUENCE_10 = [0, 5, 6, 1, 2, 7, 8, 3, 4, 9]
 
@@ -71,7 +71,7 @@ const PICK_SEQUENCE_10 = [0, 5, 6, 1, 2, 7, 8, 3, 4, 9]
 // R={0,3,4}, D={1,2,5}, a snake draft is R1, D1, D2, R2, R3, D3 = 0,1,2,3,4,5.
 const PICK_SEQUENCE_6 = [0, 1, 2, 3, 4, 5]
 
-// Snake pick order for a 2-player draft (1v1): radiant = 0, dire = 1.
+// Snake pick order for a 2-player draft (1v1): chaff = 0, audit = 1.
 const PICK_SEQUENCE_2 = [0, 1]
 
 /** Resolve the snake pick order for a roster size. Falls back to a plain
@@ -86,10 +86,10 @@ function pickSequenceFor(playerCount: number): number[] {
 }
 
 // Ban order: player indices (into `players`) alternating teams. snakeDraftTeams
-// splits radiant={0,3,4,7,8} / dire={1,2,5,6,9} for 10 players, so these pick
+// splits chaff={0,3,4,7,8} / audit={1,2,5,6,9} for 10 players, so these pick
 // the first two of each team in an R,D,R,D rhythm (2 bans per side).
 const BAN_SEQUENCE_10 = [0, 1, 3, 2]
-// 3v3 (radiant={0,3,4}, dire={1,2,5}): one ban per side.
+// 3v3 (chaff={0,3,4}, audit={1,2,5}): one ban per side.
 const BAN_SEQUENCE_6 = [0, 1]
 // 1v1: no bans.
 const BAN_SEQUENCE_2: number[] = []
@@ -111,7 +111,7 @@ function snakeDraftTeams(sortedByMmr: QueueEntry[]): LobbyPlayer[] {
     playerId: entry.playerId,
     username: entry.username,
     mmr: entry.mmr,
-    team: snakeOrder[i] === 0 ? 'radiant' : ('dire' as TeamId),
+    team: snakeOrder[i] === 0 ? 'chaff' : ('audit' as TeamId),
     heroId: null,
     ready: false,
   }))
@@ -188,7 +188,7 @@ export function createLobby(
 
 /**
  * Create a co-op-vs-bots lobby for a party (or a solo player). The party members
- * take radiant; bots fill radiant up to 5 and all of dire, so it's always a 5v5
+ * take chaff; bots fill chaff up to 5 and all of audit, so it's always a 5v5
  * with the humans together on one team. Casual: no ban phase, and the resulting
  * match is labelled casual_5v5 at game-over (it contains bots → no MMR).
  */
@@ -207,15 +207,15 @@ export function createCoopLobby(
     playerId: m.playerId,
     username: m.username,
     mmr: m.mmr,
-    team: 'radiant' as TeamId,
+    team: 'chaff' as TeamId,
     heroId: null,
     ready: false,
   }))
 
-  const radiantBotsNeeded = Math.max(0, 5 - members.length)
-  const direBotsNeeded = 5
+  const chaffBotsNeeded = Math.max(0, 5 - members.length)
+  const auditBotsNeeded = 5
   const botEntries = createBotPlayers(
-    radiantBotsNeeded + direBotsNeeded,
+    chaffBotsNeeded + auditBotsNeeded,
     members.map((m) => m.playerId),
     avgMmr,
   )
@@ -224,7 +224,7 @@ export function createCoopLobby(
       playerId: b.playerId,
       username: b.username,
       mmr: b.mmr,
-      team: i < radiantBotsNeeded ? ('radiant' as TeamId) : ('dire' as TeamId),
+      team: i < chaffBotsNeeded ? ('chaff' as TeamId) : ('audit' as TeamId),
       heroId: null,
       ready: false,
     })

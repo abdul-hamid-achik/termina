@@ -47,10 +47,10 @@ describe('TickTheater', () => {
     expect(wrapper.find('[data-testid="combat-log-stub"]').attributes('data-count')).toBe('2')
   })
 
-  it('uses the dire color for the status when the hero is down', () => {
+  it('uses the audit color for the status when the hero is down', () => {
     const wrapper = mountTheater({ isAlive: false, status: 'DOWN' })
     const label = wrapper.find('[data-testid="theater-header"] span')
-    expect(label.classes()).toContain('text-dire')
+    expect(label.classes()).toContain('text-audit')
   })
 
   it('warns (text-warn) on the status label when a tick is imminent and the player can act', () => {

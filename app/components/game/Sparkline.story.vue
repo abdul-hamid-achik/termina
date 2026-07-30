@@ -9,14 +9,14 @@ const flat = [4000, 4000, 4000, 4000, 4000]
 
 <template>
   <Story title="Game/Sparkline" :layout="{ type: 'grid', width: 240 }">
-    <Variant title="radiant net worth (gold)">
+    <Variant title="chaff net worth (gold)">
       <div class="bg-bg-primary p-2 text-lg">
-        <Sparkline :values="SAMPLE_NET_WORTH_HISTORY.radiant" />
+        <Sparkline :values="SAMPLE_NET_WORTH_HISTORY.chaff" />
       </div>
     </Variant>
-    <Variant title="dire net worth (dire color)">
+    <Variant title="audit net worth (audit color)">
       <div class="bg-bg-primary p-2 text-lg">
-        <Sparkline :values="SAMPLE_NET_WORTH_HISTORY.dire" color-var="color-dire" />
+        <Sparkline :values="SAMPLE_NET_WORTH_HISTORY.audit" color-var="color-audit" />
       </div>
     </Variant>
     <Variant title="rise & dip (ability color)">
@@ -26,7 +26,7 @@ const flat = [4000, 4000, 4000, 4000, 4000]
     </Variant>
     <Variant title="flat trend">
       <div class="bg-bg-primary p-2 text-lg">
-        <Sparkline :values="flat" color-var="color-radiant" />
+        <Sparkline :values="flat" color-var="color-chaff" />
       </div>
     </Variant>
     <Variant title="single sample">

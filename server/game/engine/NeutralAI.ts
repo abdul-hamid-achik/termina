@@ -26,8 +26,8 @@ export function resetNeutralIdCounter(gameId?: string): void {
 const JUNGLE_ZONES = [
   'jungle-rad-top',
   'jungle-rad-bot',
-  'jungle-dire-top',
-  'jungle-dire-bot',
+  'jungle-audit-top',
+  'jungle-audit-bot',
 ] as const
 
 /** Spawn neutral creeps in jungle camps. `hasZone` skips camps a subset map

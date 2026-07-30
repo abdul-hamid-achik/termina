@@ -23,8 +23,8 @@ describe('TutorialHint', () => {
   it('marks past verbs done, the current verb active, and later verbs upcoming', () => {
     const wrapper = mount(TutorialHint, { props: { step: 2 } })
     // move + attack are behind us; cast is current; buy is upcoming.
-    expect(wrapper.get('[data-testid="tutorial-step-move"]').classes()).toContain('text-radiant')
-    expect(wrapper.get('[data-testid="tutorial-step-attack"]').classes()).toContain('text-radiant')
+    expect(wrapper.get('[data-testid="tutorial-step-move"]').classes()).toContain('text-chaff')
+    expect(wrapper.get('[data-testid="tutorial-step-attack"]').classes()).toContain('text-chaff')
     expect(wrapper.get('[data-testid="tutorial-step-cast"]').classes()).toContain('text-ability')
     expect(wrapper.get('[data-testid="tutorial-step-buy"]').classes()).toContain('text-text-dim')
   })

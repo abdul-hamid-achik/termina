@@ -43,8 +43,8 @@ interface ProfileGuild {
 interface MatchSummary {
   id: string
   mode: string
-  winner: 'radiant' | 'dire' | null
-  team: 'radiant' | 'dire' | null
+  winner: 'chaff' | 'audit' | null
+  team: 'chaff' | 'audit' | null
   durationTicks: number | null
   createdAt: string | null
 }
@@ -105,7 +105,7 @@ function formatDate(dateStr: string | null): string {
 
     <div v-else-if="!player" class="py-10 text-center">
       <TerminalPanel title="Error">
-        <p class="p-4 text-[0.85rem] text-dire">Player not found.</p>
+        <p class="p-4 text-[0.85rem] text-audit">Player not found.</p>
       </TerminalPanel>
     </div>
 
@@ -125,7 +125,7 @@ function formatDate(dateStr: string | null): string {
           <NuxtLink
             v-if="isOwnProfile"
             to="/profile/settings"
-            class="text-[0.75rem] text-ability no-underline hover:text-radiant"
+            class="text-[0.75rem] text-ability no-underline hover:text-chaff"
           >
             [EDIT]
           </NuxtLink>
@@ -159,9 +159,9 @@ function formatDate(dateStr: string | null): string {
           <div class="flex gap-2 text-[0.85rem]">
             <span class="min-w-[80px] text-text-dim">Record:</span>
             <span class="text-text-primary">
-              <span class="text-radiant">{{ player.wins ?? 0 }}W</span>
+              <span class="text-chaff">{{ player.wins ?? 0 }}W</span>
               /
-              <span class="text-dire">{{ (player.gamesPlayed ?? 0) - (player.wins ?? 0) }}L</span>
+              <span class="text-audit">{{ (player.gamesPlayed ?? 0) - (player.wins ?? 0) }}L</span>
               <template v-if="player.gamesPlayed > 0">
                 ({{ ((player.wins / player.gamesPlayed) * 100).toFixed(1) }}%)
               </template>
@@ -213,7 +213,7 @@ function formatDate(dateStr: string | null): string {
                 <!-- Funnel: a hero you play → train its kit on /heroes. -->
                 <NuxtLink
                   :to="`/heroes?hero=${h.heroId}`"
-                  class="text-ability no-underline hover:text-radiant"
+                  class="text-ability no-underline hover:text-chaff"
                   :aria-label="`Train ${heroName(h.heroId)} in the hero console`"
                 >
                   {{ heroName(h.heroId) }}
@@ -222,7 +222,7 @@ function formatDate(dateStr: string | null): string {
               <td class="border-b border-border/50 px-1.5 py-1 text-text-dim">{{ h.games }}</td>
               <td
                 class="border-b border-border/50 px-1.5 py-1"
-                :class="h.winRate >= 50 ? 'text-radiant' : 'text-dire'"
+                :class="h.winRate >= 50 ? 'text-chaff' : 'text-audit'"
               >
                 {{ h.winRate }}%
               </td>
@@ -285,8 +285,8 @@ function formatDate(dateStr: string | null): string {
               <td
                 class="border-b border-border/50 px-1.5 py-1 font-bold"
                 :class="{
-                  'text-radiant': m.result === 'Victory',
-                  'text-dire': m.result === 'Defeat',
+                  'text-chaff': m.result === 'Victory',
+                  'text-audit': m.result === 'Defeat',
                   'text-text-dim': m.result === 'In Progress',
                 }"
               >
@@ -302,13 +302,13 @@ function formatDate(dateStr: string | null): string {
                 <NuxtLink
                   v-if="m.winner"
                   :to="`/replay/${m.id}`"
-                  class="text-ability no-underline hover:text-radiant"
+                  class="text-ability no-underline hover:text-chaff"
                   >[replay]</NuxtLink
                 >
                 <NuxtLink
                   v-else
                   :to="`/spectate/${m.id}`"
-                  class="text-warn no-underline hover:text-radiant"
+                  class="text-warn no-underline hover:text-chaff"
                   >[spectate]</NuxtLink
                 >
               </td>

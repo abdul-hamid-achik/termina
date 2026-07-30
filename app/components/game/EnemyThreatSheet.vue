@@ -66,11 +66,11 @@ const rows = computed<ThreatRow[]>(() =>
 
 <template>
   <div data-testid="enemy-threat-sheet" class="flex flex-col gap-1.5 font-mono t-hud-sm">
-    <div v-for="r in rows" :key="r.id" class="border-l-2 border-dire/40 pl-1.5">
+    <div v-for="r in rows" :key="r.id" class="border-l-2 border-audit/40 pl-1.5">
       <div class="flex items-baseline justify-between gap-1">
         <span
           class="truncate font-bold"
-          :class="r.alive ? 'text-dire' : 'text-text-dim line-through'"
+          :class="r.alive ? 'text-audit' : 'text-text-dim line-through'"
           >{{ r.name }}</span
         >
         <span class="shrink-0 t-hud-xs text-text-dim">Lv{{ r.level }}</span>
@@ -98,7 +98,7 @@ const rows = computed<ThreatRow[]>(() =>
           <ProgressBar
             :value="r.hp ?? 0"
             :max="r.maxHp ?? 1"
-            color="dire"
+            color="audit"
             :width="8"
             :label="`${r.name} HP`"
           />
@@ -143,7 +143,7 @@ const rows = computed<ThreatRow[]>(() =>
             v-for="b in r.status"
             :key="b.id"
             class="t-hud-xs"
-            :class="b.kind === 'negative' ? 'text-radiant' : 'text-warn'"
+            :class="b.kind === 'negative' ? 'text-chaff' : 'text-warn'"
             >{{ b.label
             }}<span v-if="b.ticks !== null" class="opacity-70">·{{ b.ticks }}</span></span
           >

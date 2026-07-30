@@ -240,18 +240,18 @@ export function registerBots(
   const laneMap = new Map<string, string>()
   const difficultyMap = new Map<string, BotDifficulty>()
 
-  const radiantBots: { playerId: string; heroId: string | null; role: HeroRole }[] = []
-  const direBots: { playerId: string; heroId: string | null; role: HeroRole }[] = []
+  const chaffBots: { playerId: string; heroId: string | null; role: HeroRole }[] = []
+  const auditBots: { playerId: string; heroId: string | null; role: HeroRole }[] = []
 
   for (const p of players) {
     if (isBot(p.playerId)) {
       botIds.add(p.playerId)
       const role = getHeroRole(p.playerId, p.heroId)
       const botData = { playerId: p.playerId, heroId: p.heroId, role }
-      if (p.team === 'radiant') {
-        radiantBots.push(botData)
+      if (p.team === 'chaff') {
+        chaffBots.push(botData)
       } else {
-        direBots.push(botData)
+        auditBots.push(botData)
       }
       difficultyMap.set(p.playerId, difficulty)
     }
@@ -260,8 +260,8 @@ export function registerBots(
   if (opts.forceLane) {
     for (const id of botIds) laneMap.set(id, opts.forceLane)
   } else {
-    assignLanesByRole(radiantBots, laneMap, 'radiant', opts.availableLanes)
-    assignLanesByRole(direBots, laneMap, 'dire', opts.availableLanes)
+    assignLanesByRole(chaffBots, laneMap, 'chaff', opts.availableLanes)
+    assignLanesByRole(auditBots, laneMap, 'audit', opts.availableLanes)
   }
 
   gameBots.set(gameId, botIds)

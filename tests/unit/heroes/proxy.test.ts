@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestProxy',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'proxy',
     zone: 'mid-river',
     hp: 580,
@@ -44,7 +44,7 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'a1',
     name: 'Ally',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     hp: 400,
     maxHp: 550,
@@ -56,7 +56,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -77,8 +77,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -479,7 +479,7 @@ describe('Proxy Hero', () => {
     it('soaks 12% of an in-zone ally’s damage: ally healed back, Proxy loses it', () => {
       const proxy = makePlayer({
         id: 'p1',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         hp: 500,
         maxHp: 580,
@@ -500,7 +500,7 @@ describe('Proxy Hero', () => {
     it('does not redirect Proxy’s own damage', () => {
       const proxy = makePlayer({
         id: 'p1',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         hp: 500,
         maxHp: 580,
@@ -519,7 +519,7 @@ describe('Proxy Hero', () => {
     it('does not redirect an ally in a different zone', () => {
       const proxy = makePlayer({
         id: 'p1',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         hp: 500,
         maxHp: 580,

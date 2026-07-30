@@ -31,7 +31,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -63,8 +63,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -85,7 +85,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', gold: 100 }),
-          p2: makePlayer({ id: 'p2', gold: 200, team: 'dire' }),
+          p2: makePlayer({ id: 'p2', gold: 200, team: 'audit' }),
         },
       })
 
@@ -173,7 +173,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
         },
       })
 
@@ -184,11 +184,11 @@ describe('GoldDistributor', () => {
     it('applies the comeback BONUS to the bounty for a team far behind', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', team: 'radiant', gold: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 10_000 }),
+          killer: makePlayer({ id: 'killer', team: 'chaff', gold: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 10_000 }),
         },
       })
-      const mult = comebackMultiplier(state, 'radiant') // far behind → 1.5
+      const mult = comebackMultiplier(state, 'chaff') // far behind → 1.5
       expect(mult).toBeCloseTo(1.5, 5)
       const result = awardKill(state, 'killer', 'victim', [])
       expect(result.players['killer']!.gold).toBe(Math.round(KILL_BOUNTY_BASE * mult))
@@ -197,11 +197,11 @@ describe('GoldDistributor', () => {
     it('applies the comeback PENALTY to the bounty for a team far ahead', () => {
       const state = makeGameState({
         players: {
-          killer: makePlayer({ id: 'killer', team: 'radiant', gold: 10_000 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 0 }),
+          killer: makePlayer({ id: 'killer', team: 'chaff', gold: 10_000 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 0 }),
         },
       })
-      const mult = comebackMultiplier(state, 'radiant') // far ahead → 0.7
+      const mult = comebackMultiplier(state, 'chaff') // far ahead → 0.7
       expect(mult).toBeCloseTo(0.7, 5)
       const result = awardKill(state, 'killer', 'victim', [])
       expect(result.players['killer']!.gold).toBe(10_000 + Math.round(KILL_BOUNTY_BASE * mult))
@@ -211,7 +211,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100, killStreak: 3 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100, killStreak: 3 }),
         },
       })
 
@@ -224,7 +224,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100, killStreak: 15 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100, killStreak: 15 }),
         },
       })
 
@@ -237,7 +237,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100, kills: 8, killStreak: 8 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100, killStreak: 0 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100, killStreak: 0 }),
         },
       })
 
@@ -249,7 +249,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
           a1: makePlayer({ id: 'a1', gold: 100 }),
           a2: makePlayer({ id: 'a2', gold: 100 }),
         },
@@ -265,7 +265,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
           a1: makePlayer({ id: 'a1', gold: 100 }),
         },
       })
@@ -278,7 +278,7 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
         },
       })
 
@@ -290,16 +290,16 @@ describe('GoldDistributor', () => {
 
     it('should prevent killer from double-dipping assist gold', () => {
       // Balanced team net worth so the comeback multiplier is 1.
-      // Radiant: killer(100) + a1(100) + a2(100) = 300
-      // Dire: victim(100) + d1(100) + d2(100) = 300
+      // Chaff: killer(100) + a1(100) + a2(100) = 300
+      // Audit: victim(100) + d1(100) + d2(100) = 300
       const state = makeGameState({
         players: {
           killer: makePlayer({ id: 'killer', gold: 100, kills: 0 }),
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
           a1: makePlayer({ id: 'a1', gold: 100 }),
           a2: makePlayer({ id: 'a2', gold: 100 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', gold: 100 }),
-          d2: makePlayer({ id: 'd2', team: 'dire', gold: 100 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', gold: 100 }),
+          d2: makePlayer({ id: 'd2', team: 'audit', gold: 100 }),
         },
       })
 
@@ -318,7 +318,7 @@ describe('GoldDistributor', () => {
     it('should return state unchanged for unknown killer', () => {
       const state = makeGameState({
         players: {
-          victim: makePlayer({ id: 'victim', team: 'dire', gold: 100 }),
+          victim: makePlayer({ id: 'victim', team: 'audit', gold: 100 }),
         },
       })
 
@@ -347,7 +347,7 @@ describe('GoldDistributor', () => {
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-dire', ['p1', 'p2'])
+      const result = awardTowerKill(state, 'mid-t1-audit', ['p1', 'p2'])
       const goldEach = Math.floor(TOWER_GOLD / 2)
       expect(result.players['p1']!.gold).toBe(100 + goldEach)
       expect(result.players['p2']!.gold).toBe(200 + goldEach)
@@ -360,7 +360,7 @@ describe('GoldDistributor', () => {
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-dire', ['p1'])
+      const result = awardTowerKill(state, 'mid-t1-audit', ['p1'])
       expect(result.players['p1']!.gold).toBe(100 + TOWER_GOLD)
     })
 
@@ -371,7 +371,7 @@ describe('GoldDistributor', () => {
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-dire', [])
+      const result = awardTowerKill(state, 'mid-t1-audit', [])
       expect(result).toEqual(state)
     })
 
@@ -384,7 +384,7 @@ describe('GoldDistributor', () => {
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-dire', ['p1', 'p2', 'p3'])
+      const result = awardTowerKill(state, 'mid-t1-audit', ['p1', 'p2', 'p3'])
       const goldEach = Math.floor(TOWER_GOLD / 3)
       expect(result.players['p1']!.gold).toBe(goldEach)
       expect(result.players['p2']!.gold).toBe(goldEach)
@@ -397,32 +397,32 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', gold: 1000 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', gold: 1000 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', gold: 1000 }),
         },
       })
-      expect(comebackMultiplier(state, 'radiant')).toBe(1)
+      expect(comebackMultiplier(state, 'chaff')).toBe(1)
     })
 
     it('boosts kill gold for the team that is far behind', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', gold: 0 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', gold: 10_000 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', gold: 10_000 }),
         },
       })
-      // Radiant is 10k behind → ratio capped at 1, multiplier = 1 + 0.5 = 1.5
-      expect(comebackMultiplier(state, 'radiant')).toBeCloseTo(1.5, 5)
+      // Chaff is 10k behind → ratio capped at 1, multiplier = 1 + 0.5 = 1.5
+      expect(comebackMultiplier(state, 'chaff')).toBeCloseTo(1.5, 5)
     })
 
     it('penalizes kill gold for the team that is far ahead', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', gold: 10_000 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', gold: 0 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', gold: 0 }),
         },
       })
-      // Radiant is 10k ahead → ratio = -1, multiplier = 1 - 0.3 = 0.7
-      expect(comebackMultiplier(state, 'radiant')).toBeCloseTo(0.7, 5)
+      // Chaff is 10k ahead → ratio = -1, multiplier = 1 - 0.3 = 0.7
+      expect(comebackMultiplier(state, 'chaff')).toBeCloseTo(0.7, 5)
     })
 
     it('scales linearly with the gap below the full-gap cap', () => {
@@ -431,11 +431,11 @@ describe('GoldDistributor', () => {
       const behind = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', gold: 0 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', gold: half }),
+          d1: makePlayer({ id: 'd1', team: 'audit', gold: half }),
         },
       })
-      expect(comebackMultiplier(behind, 'radiant')).toBeCloseTo(1 + 0.5 * COMEBACK_BONUS_MAX, 5)
-      expect(comebackMultiplier(behind, 'dire')).toBeCloseTo(1 - 0.5 * COMEBACK_PENALTY_MAX, 5)
+      expect(comebackMultiplier(behind, 'chaff')).toBeCloseTo(1 + 0.5 * COMEBACK_BONUS_MAX, 5)
+      expect(comebackMultiplier(behind, 'audit')).toBeCloseTo(1 - 0.5 * COMEBACK_PENALTY_MAX, 5)
     })
 
     it('clamps at the cap beyond the full gap (no runaway)', () => {
@@ -443,11 +443,11 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', gold: 0 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', gold: COMEBACK_FULL_GAP * 2 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', gold: COMEBACK_FULL_GAP * 2 }),
         },
       })
-      expect(comebackMultiplier(state, 'radiant')).toBe(1 + COMEBACK_BONUS_MAX)
-      expect(comebackMultiplier(state, 'dire')).toBe(1 - COMEBACK_PENALTY_MAX)
+      expect(comebackMultiplier(state, 'chaff')).toBe(1 + COMEBACK_BONUS_MAX)
+      expect(comebackMultiplier(state, 'audit')).toBe(1 - COMEBACK_PENALTY_MAX)
     })
   })
 
@@ -456,45 +456,45 @@ describe('GoldDistributor', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', level: 10 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', level: 10 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', level: 10 }),
         },
       })
-      expect(xpComebackMultiplier(state, 'radiant')).toBe(1)
+      expect(xpComebackMultiplier(state, 'chaff')).toBe(1)
     })
 
     it('boosts kill XP for the team that is far behind in levels', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', level: 5 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', level: 5 + XP_COMEBACK_FULL_LEVEL_GAP }),
+          d1: makePlayer({ id: 'd1', team: 'audit', level: 5 + XP_COMEBACK_FULL_LEVEL_GAP }),
         },
       })
-      // Radiant is a full level-gap behind → ratio capped at 1 → 1 + bonus max
-      expect(xpComebackMultiplier(state, 'radiant')).toBeCloseTo(1 + XP_COMEBACK_BONUS_MAX, 5)
+      // Chaff is a full level-gap behind → ratio capped at 1 → 1 + bonus max
+      expect(xpComebackMultiplier(state, 'chaff')).toBeCloseTo(1 + XP_COMEBACK_BONUS_MAX, 5)
     })
 
     it('penalizes kill XP for the team that is far ahead in levels', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', level: 5 + XP_COMEBACK_FULL_LEVEL_GAP }),
-          d1: makePlayer({ id: 'd1', team: 'dire', level: 5 }),
+          d1: makePlayer({ id: 'd1', team: 'audit', level: 5 }),
         },
       })
-      // Radiant is a full level-gap ahead → ratio = -1 → 1 - penalty max
-      expect(xpComebackMultiplier(state, 'radiant')).toBeCloseTo(1 - XP_COMEBACK_PENALTY_MAX, 5)
+      // Chaff is a full level-gap ahead → ratio = -1 → 1 - penalty max
+      expect(xpComebackMultiplier(state, 'chaff')).toBeCloseTo(1 - XP_COMEBACK_PENALTY_MAX, 5)
     })
 
     it('uses the team AVERAGE level (multiple players per side)', () => {
       const state = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', level: 4 }),
-          r2: makePlayer({ id: 'r2', level: 6 }), // radiant avg = 5
-          d1: makePlayer({ id: 'd1', team: 'dire', level: 10 }),
-          d2: makePlayer({ id: 'd2', team: 'dire', level: 10 }), // dire avg = 10
+          r2: makePlayer({ id: 'r2', level: 6 }), // chaff avg = 5
+          d1: makePlayer({ id: 'd1', team: 'audit', level: 10 }),
+          d2: makePlayer({ id: 'd2', team: 'audit', level: 10 }), // audit avg = 10
         },
       })
-      // Radiant behind by 5 avg levels = full gap → full bonus
-      expect(xpComebackMultiplier(state, 'radiant')).toBeCloseTo(1 + XP_COMEBACK_BONUS_MAX, 5)
+      // Chaff behind by 5 avg levels = full gap → full bonus
+      expect(xpComebackMultiplier(state, 'chaff')).toBeCloseTo(1 + XP_COMEBACK_BONUS_MAX, 5)
     })
 
     it('scales linearly with the level gap below the full-gap cap', () => {
@@ -502,21 +502,21 @@ describe('GoldDistributor', () => {
       const behind = makeGameState({
         players: {
           r1: makePlayer({ id: 'r1', level: 10 }),
-          d1: makePlayer({ id: 'd1', team: 'dire', level: 10 + halfGap }),
+          d1: makePlayer({ id: 'd1', team: 'audit', level: 10 + halfGap }),
         },
       })
-      expect(xpComebackMultiplier(behind, 'radiant')).toBeCloseTo(
-        1 + 0.5 * XP_COMEBACK_BONUS_MAX,
+      expect(xpComebackMultiplier(behind, 'chaff')).toBeCloseTo(1 + 0.5 * XP_COMEBACK_BONUS_MAX, 5)
+      expect(xpComebackMultiplier(behind, 'audit')).toBeCloseTo(
+        1 - 0.5 * XP_COMEBACK_PENALTY_MAX,
         5,
       )
-      expect(xpComebackMultiplier(behind, 'dire')).toBeCloseTo(1 - 0.5 * XP_COMEBACK_PENALTY_MAX, 5)
     })
 
     it('returns 1 when a team has no players (degenerate)', () => {
       const state = makeGameState({
         players: { r1: makePlayer({ id: 'r1', level: 10 }) },
       })
-      expect(xpComebackMultiplier(state, 'radiant')).toBe(1)
+      expect(xpComebackMultiplier(state, 'chaff')).toBe(1)
     })
   })
 

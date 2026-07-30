@@ -484,7 +484,7 @@ function resolveInstantCastsPhase(
   creeps: CreepState[],
   towers: TowerState[],
   neutrals: NeutralCreepState[],
-  ancients: { radiant: AncientState; dire: AncientState },
+  ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
@@ -600,7 +600,7 @@ function resolveAttackPhase(
   creeps: CreepState[],
   towers: TowerState[],
   neutrals: NeutralCreepState[],
-  ancients: { radiant: AncientState; dire: AncientState },
+  ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
@@ -615,7 +615,7 @@ function resolveAttackPhase(
   creeps: CreepState[]
   towers: TowerState[]
   neutrals: NeutralCreepState[]
-  ancients: { radiant: AncientState; dire: AncientState }
+  ancients: { chaff: AncientState; audit: AncientState }
 } {
   let playerUpdates: PlayerUpdates = {}
 
@@ -632,11 +632,11 @@ function resolveAttackPhase(
     // Aura direction is relative to the TARGET, so we store both team flags.
     // ally = at least one cuirass holder is on the target's team (defense buff)
     // enemy = at least one holder is on the opposite team (armor shred)
-    // We use radiant/dire presence flags and resolve per-target below.
-    if (zonePlayer.team === 'radiant') {
-      entry.ally = true // radiant has cuirass in this zone
+    // We use chaff/audit presence flags and resolve per-target below.
+    if (zonePlayer.team === 'chaff') {
+      entry.ally = true // chaff has cuirass in this zone
     } else {
-      entry.enemy = true // dire has cuirass in this zone
+      entry.enemy = true // audit has cuirass in this zone
     }
   }
 
@@ -813,8 +813,8 @@ function resolveAttackPhase(
       if (cuirass) {
         // ally = target's team has a cuirass holder in zone → +armor
         // enemy = opposite team has a holder → -armor
-        const allyCuirass = target.team === 'radiant' ? cuirass.ally : cuirass.enemy
-        const enemyCuirass = target.team === 'radiant' ? cuirass.enemy : cuirass.ally
+        const allyCuirass = target.team === 'chaff' ? cuirass.ally : cuirass.enemy
+        const enemyCuirass = target.team === 'chaff' ? cuirass.enemy : cuirass.ally
         if (allyCuirass) defense += ASSAULT_CUIRASS_AURA_DEFENSE
         if (enemyCuirass) defense = Math.max(0, defense - ASSAULT_CUIRASS_AURA_DEFENSE)
       }
@@ -1100,7 +1100,7 @@ function resolveAttackPhase(
         damageType: 'physical',
       })
     } else if (cmd.target.kind === 'ancient') {
-      const enemyTeam: TeamId = attacker.team === 'radiant' ? 'dire' : 'radiant'
+      const enemyTeam: TeamId = attacker.team === 'chaff' ? 'audit' : 'chaff'
       if (attacker.zone !== ANCIENT_ZONES[enemyTeam]) {
         miss('You must be in the enemy base to attack the Ancient')
         continue
@@ -1340,7 +1340,7 @@ function resolveItemActivesPhase(
   zones: Record<string, ZoneRuntimeState>,
   creeps: CreepState[],
   towers: TowerState[],
-  ancients: { radiant: AncientState; dire: AncientState },
+  ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
@@ -1500,7 +1500,7 @@ function resolvePostShopPhases(
   zones: Record<string, ZoneRuntimeState>
   towers: TowerState[]
   neutrals: NeutralCreepState[]
-  teams: { radiant: TeamState; dire: TeamState }
+  teams: { chaff: TeamState; audit: TeamState }
   aegis: GameState['aegis']
   runes: RuneState[]
 } {

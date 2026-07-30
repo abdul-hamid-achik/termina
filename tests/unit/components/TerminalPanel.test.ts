@@ -40,7 +40,7 @@ describe('TerminalPanel', () => {
       const root = wrapper.find('div')
       expect(root.classes()).toContain('border-border')
       expect(root.classes()).not.toContain('border-border-glow')
-      expect(root.classes()).not.toContain('border-dire')
+      expect(root.classes()).not.toContain('border-audit')
     })
 
     it('applies the highlight glow for the highlight variant', () => {
@@ -51,10 +51,10 @@ describe('TerminalPanel', () => {
       expect(root.classes()).toContain('shadow-glow-highlight')
     })
 
-    it('applies the dire border for the danger variant', () => {
+    it('applies the audit border for the danger variant', () => {
       const wrapper = mountPanel({ variant: 'danger' })
 
-      expect(wrapper.find('div').classes()).toContain('border-dire')
+      expect(wrapper.find('div').classes()).toContain('border-audit')
     })
   })
 })

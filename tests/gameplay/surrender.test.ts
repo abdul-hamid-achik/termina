@@ -9,15 +9,15 @@ import { seedGame, HUMAN, ENEMY } from './harness'
  * the team's ALIVE HUMAN electorate, and once the 60% threshold is met the game
  * ends for the OTHER team with a `surrendered` event.
  *
- * A two-human radiant team makes the threshold meaningful: ceil(2 × 0.6) = 2,
+ * A two-human chaff team makes the threshold meaningful: ceil(2 × 0.6) = 2,
  * so one vote tallies and the second ends it. Tick is patched into the
  * surrender window (≥ SURRENDER_MIN_TICK = 225) rather than advanced 225× —
  * which also sidesteps the 60-tick AFK-takeover sweep.
  */
 const roster = [
-  { id: HUMAN, name: 'One', team: 'radiant' as const, heroId: 'echo' as const },
-  { id: 'r2', name: 'Two', team: 'radiant' as const, heroId: 'sentry' as const },
-  { id: ENEMY, name: 'Foe', team: 'dire' as const, heroId: 'daemon' as const },
+  { id: HUMAN, name: 'One', team: 'chaff' as const, heroId: 'echo' as const },
+  { id: 'r2', name: 'Two', team: 'chaff' as const, heroId: 'sentry' as const },
+  { id: ENEMY, name: 'Foe', team: 'audit' as const, heroId: 'daemon' as const },
 ]
 
 describe('surrender', () => {
@@ -50,8 +50,8 @@ describe('surrender', () => {
     await run.tick()
     const s = await run.state()
     expect(s.phase).toBe('ended')
-    expect(s.winner).toBe('dire') // radiant surrendered
-    expect(run.allEvents.some((e) => e._tag === 'surrendered' && e.team === 'radiant')).toBe(true)
+    expect(s.winner).toBe('audit') // chaff surrendered
+    expect(run.allEvents.some((e) => e._tag === 'surrendered' && e.team === 'chaff')).toBe(true)
   })
 
   it("an AFK-converted player's vote is not clobbered by the bot driver and still concedes", async () => {
@@ -63,7 +63,7 @@ describe('surrender', () => {
     const run = await seedGame('laning', { players: roster })
     await run.patch((s) => ({ ...s, tick: 224 }))
     try {
-      // Both radiant humans got converted (the electorate stays human-id based).
+      // Both chaff humans got converted (the electorate stays human-id based).
       convertToBot(run.gameId, HUMAN)
       convertToBot(run.gameId, 'r2')
       await run.patch((s) => ({
@@ -83,7 +83,7 @@ describe('surrender', () => {
       await run.tick()
       const s = await run.state()
       expect(s.phase).toBe('ended')
-      expect(s.winner).toBe('dire')
+      expect(s.winner).toBe('audit')
     } finally {
       cleanupGame(run.gameId)
     }

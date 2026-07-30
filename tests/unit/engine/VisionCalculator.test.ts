@@ -11,7 +11,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -43,8 +43,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -66,10 +66,10 @@ describe('VisionCalculator', () => {
 
       const vision = calculateVision(state, 'p1')
 
-      // mid-river is adjacent to: mid-t1-rad, mid-t1-dire, rune-top, rune-bot
+      // mid-river is adjacent to: mid-t1-rad, mid-t1-audit, rune-top, rune-bot
       expect(vision.has('mid-river')).toBe(true)
       expect(vision.has('mid-t1-rad')).toBe(true)
-      expect(vision.has('mid-t1-dire')).toBe(true)
+      expect(vision.has('mid-t1-audit')).toBe(true)
       expect(vision.has('rune-top')).toBe(true)
       expect(vision.has('rune-bot')).toBe(true)
     })
@@ -77,19 +77,19 @@ describe('VisionCalculator', () => {
     it('should always include own base and fountain', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ team: 'radiant', zone: 'mid-river' }),
+          p1: makePlayer({ team: 'chaff', zone: 'mid-river' }),
         },
       })
 
       const vision = calculateVision(state, 'p1')
-      expect(vision.has('radiant-base')).toBe(true)
-      expect(vision.has('radiant-fountain')).toBe(true)
+      expect(vision.has('chaff-base')).toBe(true)
+      expect(vision.has('chaff-fountain')).toBe(true)
     })
 
     it('should include ward vision', () => {
       const zones = initializeZoneStates()
       zones['bot-river']!.wards.push({
-        team: 'radiant',
+        team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
         type: 'observer',
@@ -97,7 +97,7 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ team: 'radiant', zone: 'radiant-fountain' }),
+          p1: makePlayer({ team: 'chaff', zone: 'chaff-fountain' }),
         },
         zones,
       })
@@ -106,18 +106,18 @@ describe('VisionCalculator', () => {
       // Ward at bot-river should grant vision of bot-river + adjacent
       expect(vision.has('bot-river')).toBe(true)
       expect(vision.has('bot-t1-rad')).toBe(true)
-      expect(vision.has('bot-t1-dire')).toBe(true)
+      expect(vision.has('bot-t1-audit')).toBe(true)
     })
 
     it('should include tower vision for alive team towers', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ team: 'radiant', zone: 'radiant-fountain' }),
+          p1: makePlayer({ team: 'chaff', zone: 'chaff-fountain' }),
         },
       })
 
       const vision = calculateVision(state, 'p1')
-      // Radiant T1 mid tower at mid-t1-rad should grant vision
+      // Chaff T1 mid tower at mid-t1-rad should grant vision
       expect(vision.has('mid-t1-rad')).toBe(true)
     })
 
@@ -132,16 +132,16 @@ describe('VisionCalculator', () => {
       // Dead player doesn't contribute base vision from their zone
       // (but still has tower/base vision)
       // roshan-pit should not be visible unless a tower or ward covers it
-      // roshan-pit is adjacent to rune-top only, and rune-top isn't a radiant tower
+      // roshan-pit is adjacent to rune-top only, and rune-top isn't a chaff tower
       // However, base + fountain vision still applies
-      expect(vision.has('radiant-base')).toBe(true)
+      expect(vision.has('chaff-base')).toBe(true)
     })
 
     it('should include allied hero vision', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'radiant-fountain', team: 'radiant' }),
-          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'radiant' }),
+          p1: makePlayer({ id: 'p1', zone: 'chaff-fountain', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', zone: 'roshan-pit', team: 'chaff' }),
         },
       })
 
@@ -162,8 +162,8 @@ describe('VisionCalculator', () => {
     it('should show full info for teammates', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-t1-rad' }),
-          p2: makePlayer({ id: 'p2', team: 'radiant', zone: 'bot-t3-rad', name: 'Ally' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-rad' }),
+          p2: makePlayer({ id: 'p2', team: 'chaff', zone: 'bot-t3-rad', name: 'Ally' }),
         },
       })
 
@@ -177,8 +177,8 @@ describe('VisionCalculator', () => {
     it('should fog enemies in non-visible zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'radiant-fountain' }),
-          e1: makePlayer({ id: 'e1', team: 'dire', zone: 'dire-fountain', name: 'Enemy' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
+          e1: makePlayer({ id: 'e1', team: 'audit', zone: 'audit-fountain', name: 'Enemy' }),
         },
       })
 
@@ -193,22 +193,22 @@ describe('VisionCalculator', () => {
     it("strips a VISIBLE enemy's queued auto-path destination (intent must not leak)", () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
-          // Same zone — fully visible enemy, mid-walk toward the radiant base.
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
+          // Same zone — fully visible enemy, mid-walk toward the chaff base.
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             name: 'Enemy',
-            moveTarget: 'radiant-base',
+            moveTarget: 'chaff-base',
           }),
           // Teammate mid-walk: allies DO see each other's destinations.
           p2: makePlayer({
             id: 'p2',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-t1-rad',
             name: 'Ally',
-            moveTarget: 'dire-base',
+            moveTarget: 'audit-base',
           }),
         },
       })
@@ -219,23 +219,23 @@ describe('VisionCalculator', () => {
       expect(enemy.hp).toBe(500)
       expect('moveTarget' in enemy).toBe(false) // ...but never their intent
       const ally = filtered.players['p2'] as PlayerState
-      expect(ally.moveTarget).toBe('dire-base')
+      expect(ally.moveTarget).toBe('audit-base')
     })
 
     it("strips a VISIBLE enemy's standing attack order (what they've committed to)", () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             name: 'Enemy',
             attackTarget: { kind: 'tower', zone: 'mid-t1-rad' },
           }),
           p2: makePlayer({
             id: 'p2',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-t1-rad',
             name: 'Ally',
             attackTarget: { kind: 'roshan' },
@@ -255,11 +255,11 @@ describe('VisionCalculator', () => {
     it('keeps a fogged enemy KDA + level public (scoreboard shows it even in fog)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'radiant-fountain' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
-            zone: 'dire-fountain',
+            team: 'audit',
+            zone: 'audit-fountain',
             name: 'Enemy',
             kills: 7,
             deaths: 2,
@@ -286,10 +286,10 @@ describe('VisionCalculator', () => {
     it('should show full info for enemies in visible zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             name: 'VisibleEnemy',
             hp: 300,
@@ -307,25 +307,25 @@ describe('VisionCalculator', () => {
     it('should not reveal creeps in fogged zones', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'radiant-fountain' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
         },
         creeps: [
-          { id: 'c1', team: 'dire', zone: 'dire-fountain', hp: 400, type: 'melee' },
-          { id: 'c2', team: 'radiant', zone: 'radiant-base', hp: 400, type: 'melee' },
+          { id: 'c1', team: 'audit', zone: 'audit-fountain', hp: 400, type: 'melee' },
+          { id: 'c2', team: 'chaff', zone: 'chaff-base', hp: 400, type: 'melee' },
         ],
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
-      // c1 in dire-fountain should be hidden
+      // c1 in audit-fountain should be hidden
       expect(filtered.creeps.find((c) => c.id === 'c1')).toBeUndefined()
-      // c2 in radiant-base should be visible
+      // c2 in chaff-base should be visible
       expect(filtered.creeps.find((c) => c.id === 'c2')).toBeDefined()
     })
 
     it('should not reveal enemy wards in fogged zones', () => {
       const zones = initializeZoneStates()
-      zones['dire-base']!.wards.push({
-        team: 'dire',
+      zones['audit-base']!.wards.push({
+        team: 'audit',
         placedTick: 0,
         expiryTick: 100,
         type: 'observer',
@@ -333,20 +333,20 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'radiant-fountain' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
         },
         zones,
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
-      const dZone = filtered.zones['dire-base']
+      const dZone = filtered.zones['audit-base']
       expect(dZone?.wards.length).toBe(0)
     })
 
     it('should reveal invisible enemies in true sight zones', () => {
       const zones = initializeZoneStates()
       zones['mid-river']!.wards.push({
-        team: 'radiant',
+        team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
         type: 'sentry',
@@ -354,10 +354,10 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             name: 'InvisEnemy',
             hp: 300,
@@ -376,7 +376,7 @@ describe('VisionCalculator', () => {
     it('should not reveal invisible enemies outside true sight zones', () => {
       const zones = initializeZoneStates()
       zones['mid-river']!.wards.push({
-        team: 'radiant',
+        team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
         type: 'observer',
@@ -384,10 +384,10 @@ describe('VisionCalculator', () => {
 
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             name: 'InvisEnemy',
             hp: 300,
@@ -407,13 +407,13 @@ describe('VisionCalculator', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-river',
             buffs: [{ id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' }],
           }),
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             name: 'InvisEnemy',
             hp: 300,
@@ -433,14 +433,14 @@ describe('VisionCalculator', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-river',
             buffs: [{ id: 'dust_reveal', stacks: 1, ticksRemaining: 2, source: 'p1' }],
           }),
           e1: makePlayer({
             id: 'e1',
-            team: 'dire',
-            zone: 'mid-t1-dire', // adjacent to mid-river
+            team: 'audit',
+            zone: 'mid-t1-audit', // adjacent to mid-river
             name: 'InvisEnemy',
             buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
           }),
@@ -454,10 +454,10 @@ describe('VisionCalculator', () => {
     it('Dust of Appearance truesight is team-scoped (does not reveal for the enemy team)', () => {
       const state = makeGameState({
         players: {
-          // Radiant carrier is itself invisible AND holds Dust.
+          // Chaff carrier is itself invisible AND holds Dust.
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-river',
             name: 'InvisCarrier',
             buffs: [
@@ -465,11 +465,11 @@ describe('VisionCalculator', () => {
               { id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'p1' },
             ],
           }),
-          e2: makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', name: 'DireViewer' }),
+          e2: makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', name: 'AuditViewer' }),
         },
       })
 
-      // Radiant's Dust adds truesight for radiant only — the dire viewer shares
+      // Chaff's Dust adds truesight for chaff only — the audit viewer shares
       // the zone but has no truesight, so the invisible carrier stays fogged.
       const filtered = filterStateForPlayer(state, 'e2')
       expect('fogged' in filtered.players['p1']!).toBe(true)
@@ -564,36 +564,36 @@ describe('VisionCalculator', () => {
 
   describe('night vision ordering', () => {
     it('drops the enemy-territory neighbor first, keeping own-team vision', () => {
-      // A radiant hero in mid-river (neutral) at night. mid-river's neighbors
-      // include mid-t1-rad (radiant) and mid-t1-dire (dire). With PENALTY=1,
-      // the dire (enemy) neighbor should be dropped, keeping radiant-side vision.
+      // A chaff hero in mid-river (neutral) at night. mid-river's neighbors
+      // include mid-t1-rad (chaff) and mid-t1-audit (audit). With PENALTY=1,
+      // the audit (enemy) neighbor should be dropped, keeping chaff-side vision.
       const state = makeGameState({
         timeOfDay: 'night',
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
         },
       })
       const vision = calculateVision(state, 'p1', 'game-night-test')
 
       // Own zone always visible
       expect(vision.has('mid-river')).toBe(true)
-      // Radiant T1 (own territory) should still be visible at night
+      // Chaff T1 (own territory) should still be visible at night
       expect(vision.has('mid-t1-rad')).toBe(true)
-      // Dire T1 (enemy territory) should be the dropped neighbor
-      expect(vision.has('mid-t1-dire')).toBe(false)
+      // Audit T1 (enemy territory) should be the dropped neighbor
+      expect(vision.has('mid-t1-audit')).toBe(false)
     })
 
     it('at day, sees all neighbors regardless of team', () => {
       const state = makeGameState({
         timeOfDay: 'day',
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
         },
       })
       const vision = calculateVision(state, 'p1', 'game-day-test')
       expect(vision.has('mid-river')).toBe(true)
       expect(vision.has('mid-t1-rad')).toBe(true)
-      expect(vision.has('mid-t1-dire')).toBe(true)
+      expect(vision.has('mid-t1-audit')).toBe(true)
     })
   })
 

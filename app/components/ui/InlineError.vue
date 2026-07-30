@@ -16,7 +16,7 @@ defineProps<{ message?: string | null }>()
 <template>
   <p
     v-if="message"
-    class="m-0 font-mono text-[0.78rem] text-dire"
+    class="m-0 font-mono text-[0.78rem] text-audit"
     role="alert"
     aria-live="assertive"
     data-testid="inline-error"

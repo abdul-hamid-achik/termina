@@ -30,7 +30,7 @@ async function submit() {
       <TerminalPanel title="password reset" title-as="h1">
         <div v-if="sent" class="flex flex-col gap-3 text-xs">
           <p class="leading-relaxed text-text-dim">
-            <span class="text-radiant">ok</span> — if an account with that username has an email on
+            <span class="text-chaff">ok</span> — if an account with that username has an email on
             file, a password reset link is on its way. Check your inbox (and spam).
           </p>
           <NuxtLink to="/login" class="text-ability no-underline hover:underline"
@@ -46,7 +46,7 @@ async function submit() {
               for="forgot-username"
               class="font-mono text-xs uppercase tracking-wider text-text-dim"
             >
-              <span class="text-radiant">$</span> username
+              <span class="text-chaff">$</span> username
             </label>
             <input
               id="forgot-username"

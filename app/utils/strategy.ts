@@ -48,10 +48,10 @@ export interface GoldLead {
 }
 
 /** Who's ahead on net worth and by how much (leader=null on a dead tie). */
-export function goldLead(radiantNetWorth: number, direNetWorth: number): GoldLead {
-  const diff = radiantNetWorth - direNetWorth
+export function goldLead(chaffNetWorth: number, auditNetWorth: number): GoldLead {
+  const diff = chaffNetWorth - auditNetWorth
   if (diff === 0) return { leader: null, amount: 0 }
-  return diff > 0 ? { leader: 'radiant', amount: diff } : { leader: 'dire', amount: -diff }
+  return diff > 0 ? { leader: 'chaff', amount: diff } : { leader: 'audit', amount: -diff }
 }
 
 /** Compact gold: 4200 -> "4.2k", 950 -> "950". */

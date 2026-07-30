@@ -69,7 +69,7 @@ const countdown = computed(() => {
 
 const countdownClass = computed(() =>
   countdown.value <= 10
-    ? 'text-dire text-glow-dire animate-pulse'
+    ? 'text-audit text-glow-audit animate-pulse'
     : countdown.value <= 20
       ? 'text-warn text-glow'
       : 'text-text-primary text-glow-sm',
@@ -163,8 +163,8 @@ const selectedPlaystyle = computed(() =>
   selectedHeroDef.value ? heroPlaystyleTags(selectedHeroDef.value) : [],
 )
 
-const radiantRoster = computed(() => props.teamRoster.filter((m) => m.team === 'radiant'))
-const direRoster = computed(() => props.teamRoster.filter((m) => m.team === 'dire'))
+const chaffRoster = computed(() => props.teamRoster.filter((m) => m.team === 'chaff'))
+const auditRoster = computed(() => props.teamRoster.filter((m) => m.team === 'audit'))
 
 /** Whether the local player is the one the server expects to pick right now. */
 const isMyTurn = computed(
@@ -277,31 +277,31 @@ function initialOf(name: string | undefined | null): string {
   <div class="flex min-h-0 flex-1 flex-col bg-bg-primary p-2 sm:p-3" data-testid="hero-picker">
     <!-- TOP (desktop): full team panels side-by-side with VS + countdown -->
     <div class="mb-2 hidden gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr]">
-      <!-- Radiant panel -->
-      <div class="border border-border bg-bg-panel p-2 shadow-glow-radiant">
-        <div class="t-h3 mb-1 text-center text-radiant text-glow-radiant">RADIANT</div>
+      <!-- Chaff panel -->
+      <div class="border border-border bg-bg-panel p-2 shadow-glow-chaff">
+        <div class="t-h3 mb-1 text-center text-chaff text-glow-chaff">CHAFF</div>
         <div class="flex flex-col gap-0.5">
           <div
             v-for="(slot, i) in 5"
             :key="'rad-' + i"
             class="flex items-center gap-1.5 px-1.5 py-0.5 text-[0.75rem]"
             :class="
-              radiantRoster[i]?.heroId
-                ? 'border-l-2 border-radiant text-radiant'
+              chaffRoster[i]?.heroId
+                ? 'border-l-2 border-chaff text-chaff'
                 : 'border-l-2 border-border text-text-dim'
             "
           >
             <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
             <HeroAvatar
-              v-if="radiantRoster[i]?.heroId"
-              :hero-id="radiantRoster[i]!.heroId!"
+              v-if="chaffRoster[i]?.heroId"
+              :hero-id="chaffRoster[i]!.heroId!"
               :size="20"
             />
             <span class="min-w-0 flex-1 truncate font-mono">
-              {{ radiantRoster[i]?.name ?? '---' }}
+              {{ chaffRoster[i]?.name ?? '---' }}
             </span>
             <span class="shrink-0 text-[0.65rem] font-bold uppercase">
-              {{ heroNameById(radiantRoster[i]?.heroId ?? null) }}
+              {{ heroNameById(chaffRoster[i]?.heroId ?? null) }}
             </span>
           </div>
         </div>
@@ -322,27 +322,31 @@ function initialOf(name: string | undefined | null): string {
         </span>
       </div>
 
-      <!-- Dire panel -->
-      <div class="border border-border bg-bg-panel p-2 shadow-glow-dire">
-        <div class="t-h3 mb-1 text-center text-dire text-glow-dire">DIRE</div>
+      <!-- Audit panel -->
+      <div class="border border-border bg-bg-panel p-2 shadow-glow-audit">
+        <div class="t-h3 mb-1 text-center text-audit text-glow-audit">AUDIT</div>
         <div class="flex flex-col gap-0.5">
           <div
             v-for="(slot, i) in 5"
-            :key="'dire-' + i"
+            :key="'audit-' + i"
             class="flex items-center gap-1.5 px-1.5 py-0.5 text-[0.75rem]"
             :class="
-              direRoster[i]?.heroId
-                ? 'border-l-2 border-dire text-dire'
+              auditRoster[i]?.heroId
+                ? 'border-l-2 border-audit text-audit'
                 : 'border-l-2 border-border text-text-dim'
             "
           >
             <span class="w-3 shrink-0 text-center font-bold opacity-50">{{ i + 1 }}</span>
-            <HeroAvatar v-if="direRoster[i]?.heroId" :hero-id="direRoster[i]!.heroId!" :size="20" />
+            <HeroAvatar
+              v-if="auditRoster[i]?.heroId"
+              :hero-id="auditRoster[i]!.heroId!"
+              :size="20"
+            />
             <span class="min-w-0 flex-1 truncate font-mono">
-              {{ direRoster[i]?.name ?? '---' }}
+              {{ auditRoster[i]?.name ?? '---' }}
             </span>
             <span class="shrink-0 text-[0.65rem] font-bold uppercase">
-              {{ heroNameById(direRoster[i]?.heroId ?? null) }}
+              {{ heroNameById(auditRoster[i]?.heroId ?? null) }}
             </span>
           </div>
         </div>
@@ -356,35 +360,31 @@ function initialOf(name: string | undefined | null): string {
         :key="'strip-rad-' + i"
         class="flex h-7 w-7 shrink-0 items-center justify-center border text-[0.65rem] font-bold uppercase"
         :class="[
-          radiantRoster[i]?.heroId ? 'border-radiant text-radiant' : 'border-border text-text-dim',
-          currentPicker && radiantRoster[i]?.playerId === currentPicker.playerId
+          chaffRoster[i]?.heroId ? 'border-chaff text-chaff' : 'border-border text-text-dim',
+          currentPicker && chaffRoster[i]?.playerId === currentPicker.playerId
             ? 'border-ability shadow-glow-highlight'
             : '',
         ]"
-        :title="radiantRoster[i]?.name"
+        :title="chaffRoster[i]?.name"
       >
-        <HeroAvatar
-          v-if="radiantRoster[i]?.heroId"
-          :hero-id="radiantRoster[i]!.heroId!"
-          :size="22"
-        />
-        <span v-else>{{ initialOf(radiantRoster[i]?.name) }}</span>
+        <HeroAvatar v-if="chaffRoster[i]?.heroId" :hero-id="chaffRoster[i]!.heroId!" :size="22" />
+        <span v-else>{{ initialOf(chaffRoster[i]?.name) }}</span>
       </div>
       <span class="shrink-0 px-1 text-[0.6rem] text-text-muted">vs</span>
       <div
         v-for="(slot, i) in 5"
-        :key="'strip-dire-' + i"
+        :key="'strip-audit-' + i"
         class="flex h-7 w-7 shrink-0 items-center justify-center border text-[0.65rem] font-bold uppercase"
         :class="[
-          direRoster[i]?.heroId ? 'border-dire text-dire' : 'border-border text-text-dim',
-          currentPicker && direRoster[i]?.playerId === currentPicker.playerId
+          auditRoster[i]?.heroId ? 'border-audit text-audit' : 'border-border text-text-dim',
+          currentPicker && auditRoster[i]?.playerId === currentPicker.playerId
             ? 'border-ability shadow-glow-highlight'
             : '',
         ]"
-        :title="direRoster[i]?.name"
+        :title="auditRoster[i]?.name"
       >
-        <HeroAvatar v-if="direRoster[i]?.heroId" :hero-id="direRoster[i]!.heroId!" :size="22" />
-        <span v-else>{{ initialOf(direRoster[i]?.name) }}</span>
+        <HeroAvatar v-if="auditRoster[i]?.heroId" :hero-id="auditRoster[i]!.heroId!" :size="22" />
+        <span v-else>{{ initialOf(auditRoster[i]?.name) }}</span>
       </div>
     </div>
 
@@ -394,7 +394,7 @@ function initialOf(name: string | undefined | null): string {
       class="mb-2 border px-2 py-1.5 text-center text-[0.8rem] font-bold uppercase tracking-wide"
       :class="
         isMyTurn && !myPick
-          ? 'border-radiant bg-radiant/10 text-radiant text-glow-radiant animate-pulse'
+          ? 'border-chaff bg-chaff/10 text-chaff text-glow-chaff animate-pulse'
           : 'border-border bg-bg-panel text-text-dim normal-case font-normal'
       "
       data-testid="turn-banner"
@@ -435,7 +435,7 @@ function initialOf(name: string | undefined | null): string {
     <!-- Inline error notice (server rejections, etc.) -->
     <div
       v-if="errorMessage"
-      class="mb-2 border border-dire bg-dire/10 px-2 py-1 text-center text-[0.75rem] text-dire"
+      class="mb-2 border border-audit bg-audit/10 px-2 py-1 text-center text-[0.75rem] text-audit"
       data-testid="pick-error"
       role="alert"
       aria-live="assertive"
@@ -533,7 +533,7 @@ function initialOf(name: string | undefined | null): string {
           class="relative cursor-pointer border border-border bg-bg-panel p-2 transition-all duration-150"
           :class="{
             'border-ability bloom-ability scale-[1.02]': selectedHero === hero.id && !lockedIn,
-            'border-radiant bloom-radiant': lockedIn && selectedHero === hero.id,
+            'border-chaff bloom-chaff': lockedIn && selectedHero === hero.id,
             'cursor-not-allowed opacity-30': hero.picked || hero.banned,
             'hover:border-border-glow hover:scale-[1.02] hover:shadow-glow-highlight':
               !hero.picked && !hero.banned && selectedHero !== hero.id,
@@ -569,7 +569,7 @@ function initialOf(name: string | undefined | null): string {
           </div>
           <div
             v-if="hero.picked"
-            class="t-h3 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-dire text-glow-dire"
+            class="t-h3 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-audit text-glow-audit"
           >
             PICKED
           </div>

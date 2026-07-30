@@ -20,7 +20,7 @@ vi.mock('~~/server/game/matchmaking/lobby', () => ({
       playerId: entry.playerId,
       username: entry.username,
       mmr: entry.mmr,
-      team: snakeOrder[i] === 0 ? 'radiant' : 'dire',
+      team: snakeOrder[i] === 0 ? 'chaff' : 'audit',
       heroId: null,
       ready: false,
     }))
@@ -479,13 +479,13 @@ describe('Queue', () => {
       const { createLobby, cleanupLobby } = await import('../../../server/game/matchmaking/lobby')
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
 
-      const radiant = lobby.players.filter((p) => p.team === 'radiant')
-      const dire = lobby.players.filter((p) => p.team === 'dire')
+      const chaff = lobby.players.filter((p) => p.team === 'chaff')
+      const audit = lobby.players.filter((p) => p.team === 'audit')
 
-      const radiantMmr = radiant.reduce((sum, p) => sum + p.mmr, 0)
-      const direMmr = dire.reduce((sum, p) => sum + p.mmr, 0)
+      const chaffMmr = chaff.reduce((sum, p) => sum + p.mmr, 0)
+      const auditMmr = audit.reduce((sum, p) => sum + p.mmr, 0)
 
-      expect(Math.abs(radiantMmr - direMmr)).toBeLessThan(200)
+      expect(Math.abs(chaffMmr - auditMmr)).toBeLessThan(200)
       cleanupLobby(lobby.id)
       vi.useRealTimers()
     })

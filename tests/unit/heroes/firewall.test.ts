@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestFirewall',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'firewall',
     zone: 'mid-river',
     hp: 720,
@@ -44,7 +44,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -65,8 +65,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -232,7 +232,7 @@ describe('Firewall Hero', () => {
 
     it('does not affect allies', () => {
       const player = makePlayer({ level: 1 })
-      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant' })
+      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
 
@@ -311,7 +311,7 @@ describe('Firewall Hero', () => {
 
     it('does not affect allies', () => {
       const player = makePlayer({ level: 6, mp: 500 })
-      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant' })
+      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
 

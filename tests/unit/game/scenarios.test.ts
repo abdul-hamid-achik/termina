@@ -7,8 +7,8 @@ function baseState(): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: {},
@@ -16,14 +16,14 @@ function baseState(): GameState {
     neutrals: [],
     towers: [],
     ancients: {
-      radiant: { team: 'radiant', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-      dire: { team: 'dire', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
     },
     runes: [],
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
   } as GameState
@@ -37,10 +37,10 @@ describe('applyScenario (dev seed scenarios)', () => {
     expect(s.roshan.deathTick).toBe(7)
   })
 
-  it('core_vulnerable marks only the Dire Ancient vulnerable', () => {
+  it('core_vulnerable marks only the Audit Ancient vulnerable', () => {
     const s = applyScenario(baseState(), 'core_vulnerable')
-    expect(s.ancients.dire.vulnerable).toBe(true)
-    expect(s.ancients.radiant.vulnerable).toBe(false)
+    expect(s.ancients.audit.vulnerable).toBe(true)
+    expect(s.ancients.chaff.vulnerable).toBe(false)
   })
 
   it('night flips timeOfDay', () => {
@@ -73,25 +73,25 @@ describe('applyScenario (dev seed scenarios)', () => {
       players: {
         human1: {
           id: 'human1',
-          team: 'radiant',
+          team: 'chaff',
           alive: true,
           hp: 300,
           maxHp: 600,
           mp: 100,
           maxMp: 300,
           level: 1,
-          zone: 'radiant-fountain',
+          zone: 'chaff-fountain',
         },
         enemy1: {
           id: 'enemy1',
-          team: 'dire',
+          team: 'audit',
           alive: true,
           hp: 200,
           maxHp: 500,
           mp: 50,
           maxMp: 250,
           level: 1,
-          zone: 'dire-fountain',
+          zone: 'audit-fountain',
         },
       },
     } as unknown as GameState
@@ -115,7 +115,7 @@ describe('applyScenario (dev seed scenarios)', () => {
       players: {
         human1: {
           id: 'human1',
-          team: 'radiant',
+          team: 'chaff',
           alive: true,
           hp: 300,
           maxHp: 600,

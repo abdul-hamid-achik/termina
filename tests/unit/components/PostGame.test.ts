@@ -31,10 +31,10 @@ const NuxtLinkStub = {
 /** A 4-player, 2v2 roster (drawn from the shared fixture) keyed for stats. */
 function smallRoster() {
   return [
-    { id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'radiant' as TeamId },
-    { id: 'p2', name: 'kernel_main', heroId: SAMPLE_HEROES.kernel, team: 'radiant' as TeamId },
-    { id: 'e1', name: 'daemon_carry', heroId: SAMPLE_HEROES.daemon, team: 'dire' as TeamId },
-    { id: 'e2', name: 'regex_mid', heroId: SAMPLE_HEROES.regex, team: 'dire' as TeamId },
+    { id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'chaff' as TeamId },
+    { id: 'p2', name: 'kernel_main', heroId: SAMPLE_HEROES.kernel, team: 'chaff' as TeamId },
+    { id: 'e1', name: 'daemon_carry', heroId: SAMPLE_HEROES.daemon, team: 'audit' as TeamId },
+    { id: 'e2', name: 'regex_mid', heroId: SAMPLE_HEROES.regex, team: 'audit' as TeamId },
   ]
 }
 
@@ -50,7 +50,7 @@ function smallStats(): Record<string, PlayerEndStats> {
 function mountPostGame(props: Partial<Parameters<typeof PostGame>[0]> = {}) {
   return mount(PostGame, {
     props: {
-      winner: 'radiant' as TeamId,
+      winner: 'chaff' as TeamId,
       stats: smallStats(),
       players: smallRoster(),
       currentPlayerId: 'p1',
@@ -68,17 +68,17 @@ function mountPostGame(props: Partial<Parameters<typeof PostGame>[0]> = {}) {
 
 describe('PostGame', () => {
   describe('victory banner', () => {
-    it('announces RADIANT VICTORY when radiant wins', () => {
-      const wrapper = mountPostGame({ winner: 'radiant' })
+    it('announces CHAFF VICTORY when chaff wins', () => {
+      const wrapper = mountPostGame({ winner: 'chaff' })
       const banner = wrapper.find('[data-testid="post-game"]')
-      expect(banner.text()).toContain('RADIANT VICTORY')
-      expect(banner.text()).not.toContain('DIRE VICTORY')
+      expect(banner.text()).toContain('CHAFF VICTORY')
+      expect(banner.text()).not.toContain('AUDIT VICTORY')
     })
 
-    it('announces DIRE VICTORY when dire wins', () => {
-      const wrapper = mountPostGame({ winner: 'dire' })
-      expect(wrapper.text()).toContain('DIRE VICTORY')
-      expect(wrapper.text()).not.toContain('RADIANT VICTORY')
+    it('announces AUDIT VICTORY when audit wins', () => {
+      const wrapper = mountPostGame({ winner: 'audit' })
+      expect(wrapper.text()).toContain('AUDIT VICTORY')
+      expect(wrapper.text()).not.toContain('CHAFF VICTORY')
     })
   })
 
@@ -127,11 +127,11 @@ describe('PostGame', () => {
   })
 
   describe('scoreboard', () => {
-    it('splits players into RADIANT and DIRE sections with hero + player names', () => {
+    it('splits players into CHAFF and AUDIT sections with hero + player names', () => {
       const wrapper = mountPostGame()
       const text = wrapper.text()
-      expect(text).toContain('RADIANT')
-      expect(text).toContain('DIRE')
+      expect(text).toContain('CHAFF')
+      expect(text).toContain('AUDIT')
       // hero names resolved from HEROES
       expect(text).toContain('Echo')
       expect(text).toContain('Daemon')
@@ -150,8 +150,8 @@ describe('PostGame', () => {
       const wrapper = mountPostGame()
       // Each team table is labelled for screen readers.
       const captions = wrapper.findAll('caption').map((c) => c.text())
-      expect(captions).toContain('Radiant team final scoreboard')
-      expect(captions).toContain('Dire team final scoreboard')
+      expect(captions).toContain('Chaff team final scoreboard')
+      expect(captions).toContain('Audit team final scoreboard')
       // Column headers are scoped (8 columns × 2 tables).
       expect(wrapper.findAll('th[scope="col"]').length).toBeGreaterThanOrEqual(16)
       // Each player's name cell is a row header (4 players → 4 row headers).
@@ -162,7 +162,7 @@ describe('PostGame', () => {
 
     it('resolves item ids to readable item names', () => {
       const players = [
-        { id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'radiant' as TeamId },
+        { id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'chaff' as TeamId },
       ]
       const stats: Record<string, PlayerEndStats> = {
         p1: makePlayerEndStats({
@@ -240,14 +240,14 @@ describe('PostGame', () => {
       // REGRESSION: practice is now quittable from tick 0 (END PRACTICE), so
       // `mode === 'tutorial'` no longer implies the drills were finished. A
       // learner who bailed at tick 2 was congratulated for basics they never
-      // saw — under a red DIRE VICTORY headline reading like a defeat.
+      // saw — under a red AUDIT VICTORY headline reading like a defeat.
       const wrapper = mountPostGame({ mode: 'tutorial', tutorialComplete: false })
       expect(wrapper.text()).not.toContain('tutorial complete')
       expect(wrapper.text()).toContain('practice ended')
       expect(wrapper.get('[data-testid="tutorial-wrapup"]').text()).toContain('ended early')
       // A self-initiated exit must not be framed as a win or a loss.
-      expect(wrapper.text()).not.toContain('DIRE VICTORY')
-      expect(wrapper.text()).not.toContain('RADIANT VICTORY')
+      expect(wrapper.text()).not.toContain('AUDIT VICTORY')
+      expect(wrapper.text()).not.toContain('CHAFF VICTORY')
     })
 
     it('still emits playAgain from the relabelled tutorial CTA', async () => {
@@ -274,7 +274,7 @@ describe('PostGame', () => {
         gold: 12_000,
         heroDamage: 50_000,
       })
-      const wrapper = mountPostGame({ stats, winner: 'radiant' })
+      const wrapper = mountPostGame({ stats, winner: 'chaff' })
       // MVP is the absolute best individual game, even on the losing side.
       expect(wrapper.get('[data-testid="mvp-name"]').text()).toContain('daemon_carry')
     })

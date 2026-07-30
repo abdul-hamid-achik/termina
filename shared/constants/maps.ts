@@ -17,17 +17,17 @@ import { ZONES } from './zones'
  * the global ZONE_MAP still carries the full edges.
  */
 const ONE_LANE_IDS = new Set<string>([
-  'radiant-base',
-  'radiant-fountain',
+  'chaff-base',
+  'chaff-fountain',
   'mid-t3-rad',
   'mid-t2-rad',
   'mid-t1-rad',
   'mid-river',
-  'mid-t1-dire',
-  'mid-t2-dire',
-  'mid-t3-dire',
-  'dire-base',
-  'dire-fountain',
+  'mid-t1-audit',
+  'mid-t2-audit',
+  'mid-t3-audit',
+  'audit-base',
+  'audit-fountain',
 ])
 
 export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.has(z.id)).map(
@@ -44,29 +44,29 @@ export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.
  */
 const TWO_LANE_IDS = new Set<string>([
   // Bases + fountains
-  'radiant-base',
-  'radiant-fountain',
-  'dire-base',
-  'dire-fountain',
-  // Top lane (radiant → dire)
+  'chaff-base',
+  'chaff-fountain',
+  'audit-base',
+  'audit-fountain',
+  // Top lane (chaff → audit)
   'top-t3-rad',
   'top-t2-rad',
   'top-t1-rad',
   'top-river',
-  'top-t1-dire',
-  'top-t2-dire',
-  'top-t3-dire',
-  // Mid lane (radiant → dire)
+  'top-t1-audit',
+  'top-t2-audit',
+  'top-t3-audit',
+  // Mid lane (chaff → audit)
   'mid-t3-rad',
   'mid-t2-rad',
   'mid-t1-rad',
   'mid-river',
-  'mid-t1-dire',
-  'mid-t2-dire',
-  'mid-t3-dire',
+  'mid-t1-audit',
+  'mid-t2-audit',
+  'mid-t3-audit',
   // Top-side jungles (serve both surviving lanes)
   'jungle-rad-top',
-  'jungle-dire-top',
+  'jungle-audit-top',
   // Top-side river objectives
   'rune-top',
   'roshan-pit',

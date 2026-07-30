@@ -34,7 +34,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestPlayer',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -74,12 +74,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
  */
 function makeCreeps(): CreepState[] {
   return [
-    { id: 'elsewhere', team: 'dire', zone: 'mid-river', hp: 400, maxHp: 400, type: 'melee' },
-    { id: 'c0', team: 'dire', zone: 'mid-t1-rad', hp: 320, maxHp: 400, type: 'melee' },
-    { id: 'c1', team: 'radiant', zone: 'mid-t1-rad', hp: 90, maxHp: 400, type: 'melee' },
-    { id: 'c2', team: 'dire', zone: 'mid-t1-rad', hp: 0, maxHp: 250, type: 'ranged' },
-    { id: 'c3', team: 'dire', zone: 'mid-t1-rad', hp: 200, maxHp: 250, type: 'ranged' },
-    { id: 'c4', team: 'radiant', zone: 'mid-t1-rad', hp: 380, maxHp: 400, type: 'melee' },
+    { id: 'elsewhere', team: 'audit', zone: 'mid-river', hp: 400, maxHp: 400, type: 'melee' },
+    { id: 'c0', team: 'audit', zone: 'mid-t1-rad', hp: 320, maxHp: 400, type: 'melee' },
+    { id: 'c1', team: 'chaff', zone: 'mid-t1-rad', hp: 90, maxHp: 400, type: 'melee' },
+    { id: 'c2', team: 'audit', zone: 'mid-t1-rad', hp: 0, maxHp: 250, type: 'ranged' },
+    { id: 'c3', team: 'audit', zone: 'mid-t1-rad', hp: 200, maxHp: 250, type: 'ranged' },
+    { id: 'c4', team: 'chaff', zone: 'mid-t1-rad', hp: 380, maxHp: 400, type: 'melee' },
   ]
 }
 
@@ -96,7 +96,7 @@ function makeContext(overrides: Partial<GameContext> = {}): GameContext {
         id: 'e1',
         name: 'Enemy',
         heroId: 'daemon',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-t1-rad',
         alive: true,
       }),
@@ -127,53 +127,53 @@ describe('useCommands', () => {
       })
 
       describe('team-relative base/fountain aliases', () => {
-        it('resolves base/fountain to radiant zones by default (no team)', () => {
+        it('resolves base/fountain to chaff zones by default (no team)', () => {
           const { parse } = useCommands()
-          expect(parse('move base').command).toEqual({ type: 'move', zone: 'radiant-base' })
+          expect(parse('move base').command).toEqual({ type: 'move', zone: 'chaff-base' })
           expect(parse('move fountain').command).toEqual({
             type: 'move',
-            zone: 'radiant-fountain',
+            zone: 'chaff-fountain',
           })
         })
 
-        it('resolves base/fountain to the radiant player’s own side', () => {
+        it('resolves base/fountain to the chaff player’s own side', () => {
           const { parse } = useCommands()
-          expect(parse('move base', 'radiant').command).toEqual({
+          expect(parse('move base', 'chaff').command).toEqual({
             type: 'move',
-            zone: 'radiant-base',
+            zone: 'chaff-base',
           })
-          expect(parse('move fountain', 'radiant').command).toEqual({
+          expect(parse('move fountain', 'chaff').command).toEqual({
             type: 'move',
-            zone: 'radiant-fountain',
+            zone: 'chaff-fountain',
           })
         })
 
-        it('resolves base/fountain to the dire player’s own side (regression)', () => {
-          // A dire player typing `move base` must NOT walk toward the enemy base.
+        it('resolves base/fountain to the audit player’s own side (regression)', () => {
+          // A audit player typing `move base` must NOT walk toward the enemy base.
           const { parse } = useCommands()
-          expect(parse('move base', 'dire').command).toEqual({ type: 'move', zone: 'dire-base' })
-          expect(parse('move fountain', 'dire').command).toEqual({
+          expect(parse('move base', 'audit').command).toEqual({ type: 'move', zone: 'audit-base' })
+          expect(parse('move fountain', 'audit').command).toEqual({
             type: 'move',
-            zone: 'dire-fountain',
+            zone: 'audit-fountain',
           })
         })
 
         it('applies team relativity to ward and ping too', () => {
           const { parse } = useCommands()
-          expect(parse('ward base', 'dire').command).toEqual({ type: 'ward', zone: 'dire-base' })
-          expect(parse('ping fountain', 'dire').command).toEqual({
+          expect(parse('ward base', 'audit').command).toEqual({ type: 'ward', zone: 'audit-base' })
+          expect(parse('ping fountain', 'audit').command).toEqual({
             type: 'ping',
-            zone: 'dire-fountain',
+            zone: 'audit-fountain',
           })
         })
 
         it('leaves explicit zone ids and other aliases untouched regardless of team', () => {
           const { parse } = useCommands()
-          expect(parse('move dire-base', 'radiant').command).toEqual({
+          expect(parse('move audit-base', 'chaff').command).toEqual({
             type: 'move',
-            zone: 'dire-base',
+            zone: 'audit-base',
           })
-          expect(parse('move mid', 'dire').command).toEqual({ type: 'move', zone: 'mid-river' })
+          expect(parse('move mid', 'audit').command).toEqual({ type: 'move', zone: 'mid-river' })
         })
       })
 
@@ -971,19 +971,19 @@ describe('useCommands', () => {
       it('describes the base alias team-relatively (matches what it resolves to)', () => {
         const { autocomplete } = useCommands()
 
-        const radiant = autocomplete(
+        const chaff = autocomplete(
           'move base',
-          makeContext({ player: makePlayer({ team: 'radiant' }) }),
+          makeContext({ player: makePlayer({ team: 'chaff' }) }),
         )
-        expect(radiant.find((s) => s.text === 'base')?.description).toBe('→ Rookery Terminal')
+        expect(chaff.find((s) => s.text === 'base')?.description).toBe('→ Rookery Terminal')
 
-        // A dire player's `base` suggestion must point at THEIR base, matching
+        // A audit player's `base` suggestion must point at THEIR base, matching
         // how it resolves — not the enemy's.
-        const dire = autocomplete(
+        const audit = autocomplete(
           'move base',
-          makeContext({ player: makePlayer({ team: 'dire' }) }),
+          makeContext({ player: makePlayer({ team: 'audit' }) }),
         )
-        expect(dire.find((s) => s.text === 'base')?.description).toBe('→ Landing Terminal')
+        expect(audit.find((s) => s.text === 'base')?.description).toBe('→ Landing Terminal')
       })
 
       it('suggests buyback for "buy" prefix', () => {
@@ -1180,8 +1180,22 @@ describe('useCommands', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           neutrals: [
-            { id: 'n0', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-            { id: 'n1', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+            {
+              id: 'n0',
+              zone: 'jungle-audit-top',
+              hp: 200,
+              maxHp: 200,
+              type: 'kobold',
+              alive: true,
+            },
+            {
+              id: 'n1',
+              zone: 'jungle-audit-top',
+              hp: 200,
+              maxHp: 200,
+              type: 'kobold',
+              alive: true,
+            },
             { id: 'n2', zone: 'mid-t1-rad', hp: 140, maxHp: 200, type: 'centaur', alive: true },
             { id: 'n3', zone: 'mid-t1-rad', hp: 0, maxHp: 200, type: 'centaur', alive: false },
           ],
@@ -1234,7 +1248,7 @@ describe('useCommands', () => {
       it('offers nothing when your creeps are all dead', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          creeps: makeCreeps().map((c) => (c.team === 'radiant' ? { ...c, hp: 0 } : c)),
+          creeps: makeCreeps().map((c) => (c.team === 'chaff' ? { ...c, hp: 0 } : c)),
         })
 
         expect(autocomplete('deny creep', context)).toEqual([])
@@ -1535,7 +1549,7 @@ describe('useCommands', () => {
       it('omits an alias that resolves out of ward range', () => {
         const { autocomplete } = useCommands()
         // The fountain touches only the base — mid-river is not wardable here.
-        const context = makeContext({ player: makePlayer({ zone: 'radiant-fountain' }) })
+        const context = makeContext({ player: makePlayer({ zone: 'chaff-fountain' }) })
         const suggestions = autocomplete('ward mid', context)
 
         expect(suggestions.map((s) => s.text)).not.toContain('mid')
@@ -1754,30 +1768,30 @@ describe('validateCommand', () => {
   })
 
   it('passes a distant move — auto-path walks it one zone per tick', () => {
-    expect(validateCommand({ type: 'move', zone: 'dire-fountain' }, makeContext())).toBeNull()
+    expect(validateCommand({ type: 'move', zone: 'audit-fountain' }, makeContext())).toBeNull()
   })
 
   it('rejects a globally-adjacent zone that is not on THIS map (subset/one-lane)', () => {
-    // On the one-lane map radiant-base keeps only mid-t3-rad + radiant-fountain;
+    // On the one-lane map chaff-base keeps only mid-t3-rad + chaff-fountain;
     // the top/bot T3s are globally adjacent but don't exist this game.
     const oneLaneZones: Record<string, ZoneRuntimeState> = {}
     for (const id of [
-      'radiant-fountain',
-      'radiant-base',
+      'chaff-fountain',
+      'chaff-base',
       'mid-t3-rad',
       'mid-t2-rad',
       'mid-t1-rad',
       'mid-river',
-      'mid-t1-dire',
-      'mid-t2-dire',
-      'mid-t3-dire',
-      'dire-base',
-      'dire-fountain',
+      'mid-t1-audit',
+      'mid-t2-audit',
+      'mid-t3-audit',
+      'audit-base',
+      'audit-fountain',
     ]) {
       oneLaneZones[id] = { id, wards: [], creeps: [] }
     }
     const ctx = makeContext({
-      player: makePlayer({ zone: 'radiant-base' }),
+      player: makePlayer({ zone: 'chaff-base' }),
       visibleZones: oneLaneZones,
     })
 
@@ -1891,7 +1905,7 @@ describe('validateCommand', () => {
     }
     const ctx = makeContext({
       player: makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         gold: 100,
         items: [null, null, null, null, null, null],
       }),
@@ -1907,7 +1921,7 @@ describe('validateCommand', () => {
       boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
     }
     const ctx = makeContext({
-      player: makePlayer({ zone: 'radiant-fountain', gold: 9999 }),
+      player: makePlayer({ zone: 'chaff-fountain', gold: 9999 }),
       items,
     })
     expect(validateCommand({ type: 'buy', item: 'boots' }, ctx)).toMatch(/Already own/)
@@ -1919,7 +1933,7 @@ describe('validateCommand', () => {
     }
     const ctx = makeContext({
       player: makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         gold: 9999,
         items: ['a', 'b', 'c', 'd', 'e', 'f'],
       }),
@@ -1936,7 +1950,7 @@ describe('validateCommand', () => {
           id: 'e1',
           name: 'Enemy',
           heroId: 'daemon',
-          team: 'dire',
+          team: 'audit',
           zone: 'mid-river',
         }),
       },
@@ -1966,7 +1980,7 @@ describe('validateCommand', () => {
   it('rejects a neutral index that names a camp in another zone', () => {
     const ctx = makeContext({
       neutrals: [
-        { id: 'n0', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+        { id: 'n0', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
         { id: 'n1', zone: 'mid-t1-rad', hp: 150, maxHp: 200, type: 'kobold', alive: true },
       ],
     })
@@ -1997,7 +2011,7 @@ describe('validateCommand', () => {
   })
 
   it('rejects ward placement in a non-adjacent zone', () => {
-    expect(validateCommand({ type: 'ward', zone: 'dire-base' }, makeContext())).toMatch(/adjacent/)
+    expect(validateCommand({ type: 'ward', zone: 'audit-base' }, makeContext())).toMatch(/adjacent/)
   })
 
   it('rejects use of an item the player does not own', () => {
@@ -2051,10 +2065,10 @@ describe('pickAbilityTargetString', () => {
   })
 
   it('targets the lowest-HP enemy in zone for an offensive hero/unit ability', () => {
-    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
-    const e1 = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 400 })
-    const e2 = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', hp: 120 })
-    const offZone = makePlayer({ id: 'e3', team: 'dire', zone: 'mid-t1-dire', hp: 10 })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', hp: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', hp: 120 })
+    const offZone = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-t1-audit', hp: 10 })
     const all = { p1: caster, e1, e2, e3: offZone }
     expect(pickAbilityTargetString(makeAbility('hero', dmg), caster, all)).toEqual({
       target: 'hero:e2',
@@ -2065,14 +2079,14 @@ describe('pickAbilityTargetString', () => {
   })
 
   it('errors (no silent reject) when an offensive ability has no enemy in zone', () => {
-    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const result = pickAbilityTargetString(makeAbility('hero', dmg), caster, { p1: caster })
     expect(result).toHaveProperty('error')
   })
 
   it('targets the lowest-HP ally for a supportive hero ability', () => {
-    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', hp: 500, maxHp: 500 })
-    const a1 = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river', hp: 100, maxHp: 500 })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', hp: 500, maxHp: 500 })
+    const a1 = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', hp: 100, maxHp: 500 })
     const all = { p1: caster, a1 }
     // Heal targetType 'hero' but supportive effects -> ally, not enemy
     expect(pickAbilityTargetString(makeAbility('hero', heal), caster, all)).toEqual({
@@ -2081,20 +2095,20 @@ describe('pickAbilityTargetString', () => {
   })
 
   it('falls back to self for a heal/shield ally ability when alone', () => {
-    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     expect(pickAbilityTargetString(makeAbility('ally', heal), caster, { p1: caster })).toEqual({
       target: 'hero:p1',
     })
   })
 
   it('errors for a pure-buff ally ability when no ally is present', () => {
-    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const result = pickAbilityTargetString(makeAbility('ally', buff), caster, { p1: caster })
     expect(result).toHaveProperty('error')
   })
 
   it('targets the current zone for an AoE zone ability', () => {
-    const caster = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     expect(pickAbilityTargetString(makeAbility('zone', dmg), caster, { p1: caster })).toEqual({
       target: 'zone:mid-river',
     })
@@ -2104,18 +2118,24 @@ describe('pickAbilityTargetString', () => {
 // ── pickAttackTargetString (bare `attack` auto-target) ────────────
 describe('pickAttackTargetString', () => {
   it('targets the lowest-HP alive enemy hero in the player’s zone', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
-    const e1 = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 400 })
-    const e2 = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', hp: 90 })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', hp: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', hp: 90 })
     expect(pickAttackTargetString(me, { p1: me, e1, e2 })).toEqual({ target: 'hero:e2' })
   })
 
   it('ignores allies, dead enemies, and enemies in other zones', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
-    const ally = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river', hp: 10 })
-    const deadEnemy = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 1, alive: false })
-    const offZone = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-t1-dire', hp: 5 })
-    const liveEnemy = makePlayer({ id: 'e3', team: 'dire', zone: 'mid-river', hp: 300 })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', hp: 10 })
+    const deadEnemy = makePlayer({
+      id: 'e1',
+      team: 'audit',
+      zone: 'mid-river',
+      hp: 1,
+      alive: false,
+    })
+    const offZone = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-t1-audit', hp: 5 })
+    const liveEnemy = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-river', hp: 300 })
     const result = pickAttackTargetString(me, {
       p1: me,
       a1: ally,
@@ -2127,7 +2147,7 @@ describe('pickAttackTargetString', () => {
   })
 
   it('errors with a creep/tower hint when no enemy hero is in the zone', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const result = pickAttackTargetString(me, { p1: me })
     expect('error' in result && result.error).toMatch(/no enemy hero/i)
     expect('error' in result && result.error).toMatch(/creep/i)
@@ -2160,18 +2180,18 @@ describe('informational readouts', () => {
   })
 
   it('formatMapReadout names your zone and reachable neighbours', () => {
-    const me = makePlayer({ zone: 'radiant-base' })
+    const me = makePlayer({ zone: 'chaff-base' })
     const out = formatMapReadout(me)
     expect(out).toContain('Rookery Terminal')
     expect(out).toMatch(/Reachable:/)
-    expect(out).toContain('Rookery Anchor') // radiant-base is adjacent to its fountain
+    expect(out).toContain('Rookery Anchor') // chaff-base is adjacent to its fountain
   })
 
   it('formatMapReadout lists only the neighbours this game map actually has', () => {
     // REGRESSION: read straight off the global 32-zone graph, so on the one-lane
     // tutorial map it named the top/bot T3 towers — zones the game does not
     // contain and `move` would reject.
-    const me = makePlayer({ zone: 'radiant-base' })
+    const me = makePlayer({ zone: 'chaff-base' })
     const out = formatMapReadout(me, 'one_lane')
     expect(out).toContain('Rookery Anchor')
     expect(out).toContain('Coldstore T3 (CHAFF)')
@@ -2185,11 +2205,11 @@ describe('informational readouts', () => {
   })
 
   it('formatScanReadout lists visible enemy heroes, ignoring allies/dead/fogged', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
-    const ally = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river' })
-    const enemy = makePlayer({ id: 'e1', team: 'dire', heroId: 'daemon', zone: 'mid-t1-dire' })
-    const dead = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', alive: false })
-    const fogged = { ...makePlayer({ id: 'e3', team: 'dire', zone: 'top-river' }), fogged: true }
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river' })
+    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'daemon', zone: 'mid-t1-audit' })
+    const dead = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', alive: false })
+    const fogged = { ...makePlayer({ id: 'e3', team: 'audit', zone: 'top-river' }), fogged: true }
     const out = formatScanReadout(me, { p1: me, a1: ally, e1: enemy, e2: dead, e3: fogged })
     expect(out).toContain('1 enemy hero visible')
     expect(out).toContain('Daemon')
@@ -2197,7 +2217,7 @@ describe('informational readouts', () => {
   })
 
   it('formatScanReadout reports an empty vision cleanly', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     expect(formatScanReadout(me, { p1: me })).toMatch(/no enemy heroes/i)
   })
 
@@ -2222,7 +2242,7 @@ describe('pickDenyTargetString', () => {
   // Melee creep max HP is 400; the deny threshold is 50% (200).
   const allied = (overrides: Partial<CreepState>): CreepState => ({
     id: 'c',
-    team: 'radiant' as const,
+    team: 'chaff' as const,
     zone: 'mid-river',
     hp: 100,
     type: 'melee' as const,
@@ -2230,7 +2250,7 @@ describe('pickDenyTargetString', () => {
   })
 
   it('targets the lowest-HP eligible allied creep, by zone index', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const creeps = [
       allied({ id: 'c0', hp: 180 }), // index 0 — eligible (<=200)
       allied({ id: 'c1', hp: 120 }), // index 1 — eligible, lowest HP
@@ -2240,7 +2260,7 @@ describe('pickDenyTargetString', () => {
   })
 
   it('indexes within the player’s zone only (matches the server convention)', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const creeps = [
       allied({ id: 'x', zone: 'top-river', hp: 50 }), // other zone — not counted
       allied({ id: 'c0', zone: 'mid-river', hp: 150 }), // zone index 0
@@ -2249,16 +2269,16 @@ describe('pickDenyTargetString', () => {
   })
 
   it('ignores enemy creeps and healthy allied creeps', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const creeps = [
-      allied({ id: 'e', team: 'dire', hp: 10 }), // enemy — you deny your OWN
+      allied({ id: 'e', team: 'audit', hp: 10 }), // enemy — you deny your OWN
       allied({ id: 'healthy', hp: 399 }), // above 50% — not denyable
     ]
     expect('error' in pickDenyTargetString(me, creeps)).toBe(true)
   })
 
   it('respects per-type max HP (ranged threshold is lower)', () => {
-    const me = makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     // Ranged max HP 250 → threshold 125. A ranged creep at 130 is NOT denyable,
     // but a melee creep (max 400, threshold 200) at 130 IS.
     const creeps = [
@@ -2271,11 +2291,11 @@ describe('pickDenyTargetString', () => {
 
 // ── pickItemTargetString (bare `use <item>` auto-target) ──────────
 describe('pickItemTargetString', () => {
-  const me = () => makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', hp: 200 })
+  const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', hp: 200 })
 
   it('enemy → lowest-HP enemy hero in the zone', () => {
-    const e1 = makePlayer({ id: 'e1', team: 'dire', zone: 'mid-river', hp: 500 })
-    const e2 = makePlayer({ id: 'e2', team: 'dire', zone: 'mid-river', hp: 120 })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', hp: 500 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', hp: 120 })
     expect(pickItemTargetString('enemy', me(), { p1: me(), e1, e2 })).toEqual({ target: 'hero:e2' })
   })
 
@@ -2285,7 +2305,7 @@ describe('pickItemTargetString', () => {
   })
 
   it('ally → lowest-HP ally, falling back to self', () => {
-    const ally = makePlayer({ id: 'a1', team: 'radiant', zone: 'mid-river', hp: 60 })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', hp: 60 })
     expect(pickItemTargetString('ally', me(), { p1: me(), a1: ally })).toEqual({
       target: 'hero:a1',
     })

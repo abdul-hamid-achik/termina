@@ -61,7 +61,7 @@ describe('sendToGamePeer', () => {
     const send = connect('p_moved', 'game_ranked')
     sendToGamePeer('dev_abandoned', 'p_moved', {
       type: 'game_over',
-      winner: 'radiant',
+      winner: 'chaff',
       stats: {},
       mmrChange: 0,
       ranked: false,

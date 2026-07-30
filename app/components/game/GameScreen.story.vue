@@ -55,7 +55,7 @@ function seedDead() {
     id: 'p1',
     name: 'you',
     heroId: SAMPLE_HEROES.echo,
-    zone: 'radiant-base',
+    zone: 'chaff-base',
     alive: false,
     hp: 0,
     respawnTick: 252,
@@ -65,7 +65,7 @@ function seedDead() {
   store.updateFromTick(makeTickMessage({ tick: 240, players }))
   store.addEvents([
     ...SAMPLE_EVENTS,
-    { tick: 240, type: 'kill', payload: { killerId: 'e1', victimId: 'p1', zone: 'radiant-base' } },
+    { tick: 240, type: 'kill', payload: { killerId: 'e1', victimId: 'p1', zone: 'chaff-base' } },
   ])
 }
 
@@ -85,7 +85,7 @@ function seedGameOver() {
       items: p.items.some(Boolean) ? p.items : SAMPLE_INVENTORY,
     })
   }
-  store.setGameOver('radiant', stats)
+  store.setGameOver('chaff', stats)
 }
 </script>
 

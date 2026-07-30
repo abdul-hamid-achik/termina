@@ -76,13 +76,13 @@ export const SAMPLE_INVENTORY: (string | null)[] = [
 
 /**
  * A fully-valid {@link PlayerState}. Override any field; sensible mid-game
- * radiant defaults otherwise (alive, level 9, a couple of items, some KDA).
+ * chaff defaults otherwise (alive, level 9, a couple of items, some KDA).
  */
 export function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'player_one',
-    team: 'radiant',
+    team: 'chaff',
     heroId: SAMPLE_HERO_ID,
     zone: 'mid-river',
     hp: 520,
@@ -119,7 +119,7 @@ export function makeScoreboardEntry(overrides: Partial<ScoreboardEntry> = {}): S
     id: 'p1',
     name: 'player_one',
     heroId: SAMPLE_HERO_ID,
-    team: 'radiant',
+    team: 'chaff',
     kills: 4,
     deaths: 1,
     assists: 6,
@@ -138,9 +138,9 @@ export function makeScoreboardEntry(overrides: Partial<ScoreboardEntry> = {}): S
 export function makeTeamState(id: TeamId, overrides: Partial<TeamState> = {}): TeamState {
   return {
     id,
-    kills: id === 'radiant' ? 14 : 9,
-    towerKills: id === 'radiant' ? 3 : 1,
-    gold: id === 'radiant' ? 5100 : 4150,
+    kills: id === 'chaff' ? 14 : 9,
+    towerKills: id === 'chaff' ? 3 : 1,
+    gold: id === 'chaff' ? 5100 : 4150,
     glyphUsedTick: null,
     ...overrides,
   }
@@ -219,12 +219,12 @@ export function makePlayerEndStats(overrides: Partial<PlayerEndStats> = {}): Pla
 // ── Rosters ──────────────────────────────────────────────────────────────
 
 /**
- * A realistic mid-game 5v5 roster keyed by player id (p1-p5 radiant, e1-e5
- * dire) — the shape the store keeps in `allPlayers`. `playerId` defaults to
- * `p1`, who is on radiant.
+ * A realistic mid-game 5v5 roster keyed by player id (p1-p5 chaff, e1-e5
+ * audit) — the shape the store keeps in `allPlayers`. `playerId` defaults to
+ * `p1`, who is on chaff.
  */
 export function makeRoster(): Record<string, PlayerState> {
-  const radiant: PlayerState[] = [
+  const chaff: PlayerState[] = [
     makePlayer({ id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, zone: 'mid-river' }),
     makePlayer({
       id: 'p2',
@@ -239,7 +239,7 @@ export function makeRoster(): Record<string, PlayerState> {
       id: 'p3',
       name: 'support_sock',
       heroId: SAMPLE_HEROES.socket,
-      zone: 'bot-t1-dire',
+      zone: 'bot-t1-audit',
       level: 6,
       gold: 600,
       kills: 1,
@@ -265,11 +265,11 @@ export function makeRoster(): Record<string, PlayerState> {
       hp: 0,
     }),
   ]
-  const dire: PlayerState[] = [
+  const audit: PlayerState[] = [
     makePlayer({
       id: 'e1',
       name: 'daemon_carry',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.daemon,
       zone: 'mid-river',
       level: 9,
@@ -277,7 +277,7 @@ export function makeRoster(): Record<string, PlayerState> {
     makePlayer({
       id: 'e2',
       name: 'regex_mid',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.regex,
       zone: 'bot-river',
       level: 8,
@@ -285,34 +285,34 @@ export function makeRoster(): Record<string, PlayerState> {
     makePlayer({
       id: 'e3',
       name: 'cache_sup',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.cache,
-      zone: 'dire-base',
+      zone: 'audit-base',
       level: 5,
     }),
     makePlayer({
       id: 'e4',
       name: 'firewall_tank',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.firewall,
-      zone: 'jungle-dire-bot',
+      zone: 'jungle-audit-bot',
       level: 7,
     }),
     makePlayer({
       id: 'e5',
       name: 'nullref_pos5',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.null_ref,
-      zone: 'dire-fountain',
+      zone: 'audit-fountain',
       level: 6,
     }),
   ]
   const all: Record<string, PlayerState> = {}
-  for (const p of [...radiant, ...dire]) all[p.id] = p
+  for (const p of [...chaff, ...audit]) all[p.id] = p
   return all
 }
 
-/** A ready scoreboard derived from {@link makeRoster}, sorted radiant-first. */
+/** A ready scoreboard derived from {@link makeRoster}, sorted chaff-first. */
 export function makeScoreboard(): ScoreboardEntry[] {
   return Object.values(makeRoster()).map((p) =>
     makeScoreboardEntry({
@@ -335,15 +335,15 @@ export function makeScoreboard(): ScoreboardEntry[] {
 // ── Full game state / tick message ───────────────────────────────────────
 
 /** Sample net-worth trend history (one sample per tick, per team). */
-export const SAMPLE_NET_WORTH_HISTORY: { radiant: number[]; dire: number[] } = {
-  radiant: [3200, 3400, 3800, 4200, 4600, 5100, 5400, 5900],
-  dire: [3100, 3300, 3500, 3700, 3900, 4150, 4300, 4500],
+export const SAMPLE_NET_WORTH_HISTORY: { chaff: number[]; audit: number[] } = {
+  chaff: [3200, 3400, 3800, 4200, 4600, 5100, 5400, 5900],
+  audit: [3100, 3300, 3500, 3700, 3900, 4150, 4300, 4500],
 }
 
 /** A few sample {@link GameEvent}s for combat-log / ticker stories. */
 export const SAMPLE_EVENTS: GameEvent[] = [
   { tick: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'mid-river' } },
-  { tick: 239, type: 'tower_destroyed', payload: { team: 'dire', zone: 'mid-t1-dire' } },
+  { tick: 239, type: 'tower_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
   { tick: 240, type: 'rune_spawn', payload: { zone: 'rune-top', rune: 'dd' } },
 ]
 
@@ -359,23 +359,23 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
     tick: 240,
     phase: 'playing',
-    teams: { radiant: makeTeamState('radiant'), dire: makeTeamState('dire') },
+    teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },
     players,
     zones,
     creeps: [],
     neutrals: [],
     towers: [
-      makeTower('dire', 'mid-t1-dire', { alive: false, hp: 0 }),
-      makeTower('dire', 'mid-t2-dire'),
-      makeTower('radiant', 'mid-t1-rad'),
+      makeTower('audit', 'mid-t1-audit', { alive: false, hp: 0 }),
+      makeTower('audit', 'mid-t2-audit'),
+      makeTower('chaff', 'mid-t1-rad'),
     ],
-    ancients: { radiant: makeAncient('radiant'), dire: makeAncient('dire') },
+    ancients: { chaff: makeAncient('chaff'), audit: makeAncient('audit') },
     runes: [makeRune()],
     roshan: makeRoshan(),
     aegis: null,
     events: SAMPLE_EVENTS,
     winner: null,
-    surrenderVotes: { radiant: new Set<string>(), dire: new Set<string>() },
+    surrenderVotes: { chaff: new Set<string>(), audit: new Set<string>() },
     timeOfDay: 'day',
     dayNightTick: 12,
     ...overrides,

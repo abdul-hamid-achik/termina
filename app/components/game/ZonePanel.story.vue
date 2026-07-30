@@ -9,7 +9,7 @@ type IndexedCreep = CreepState & { index: number }
 function creep(overrides: Partial<IndexedCreep> = {}): IndexedCreep {
   return {
     id: 'creep_0',
-    team: 'dire',
+    team: 'audit',
     zone: 'mid-river',
     hp: 300,
     type: 'melee',
@@ -48,7 +48,7 @@ const contested = {
     makePlayer({
       id: 'e1',
       name: 'daemon_carry',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.daemon,
       hp: 540,
       maxHp: 700,
@@ -63,7 +63,7 @@ const danger = {
     makePlayer({
       id: 'e1',
       name: 'daemon_carry',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.daemon,
       hp: 540,
       maxHp: 700,
@@ -71,7 +71,7 @@ const danger = {
     makePlayer({
       id: 'e2',
       name: 'regex_mid',
-      team: 'dire',
+      team: 'audit',
       heroId: SAMPLE_HEROES.regex,
       hp: 410,
       maxHp: 600,
@@ -92,32 +92,32 @@ const danger = {
 
 // Pushing a lane with creep support + an enemy tower to siege.
 const laneSiege = {
-  zoneName: 'Mid T1 (Dire)',
-  zoneId: 'mid-t1-dire',
-  tower: makeTower('dire', 'mid-t1-dire', { hp: 720, maxHp: 1800 }),
+  zoneName: 'Mid T1 (Audit)',
+  zoneId: 'mid-t1-audit',
+  tower: makeTower('audit', 'mid-t1-audit', { hp: 720, maxHp: 1800 }),
   creeps: [
-    creep({ id: 'rc1', team: 'radiant', hp: 240, index: 0 }),
-    creep({ id: 'rc2', team: 'radiant', hp: 300, type: 'ranged', index: 1 }),
-    creep({ id: 'dc1', team: 'dire', hp: 120, index: 2 }),
-    creep({ id: 'dc2', team: 'dire', hp: 55, type: 'siege', index: 3 }),
+    creep({ id: 'rc1', team: 'chaff', hp: 240, index: 0 }),
+    creep({ id: 'rc2', team: 'chaff', hp: 300, type: 'ranged', index: 1 }),
+    creep({ id: 'dc1', team: 'audit', hp: 120, index: 2 }),
+    creep({ id: 'dc2', team: 'audit', hp: 55, type: 'siege', index: 3 }),
   ] as IndexedCreep[],
 }
 
 // A deny window: an allied creep has dropped below 50% HP, so it can be
 // denied (the allied-creep group becomes a tappable [deny] action).
 const denyWindow = {
-  zoneName: 'Mid Lane (Radiant)',
+  zoneName: 'Mid Lane (Chaff)',
   zoneId: 'mid-t1-rad',
   creeps: [
-    creep({ id: 'rc1', team: 'radiant', hp: 140, index: 0 }), // melee, denyable (<200)
-    creep({ id: 'rc2', team: 'radiant', hp: 300, type: 'ranged', index: 1 }),
-    creep({ id: 'dc1', team: 'dire', hp: 110, index: 2 }),
+    creep({ id: 'rc1', team: 'chaff', hp: 140, index: 0 }), // melee, denyable (<200)
+    creep({ id: 'rc2', team: 'chaff', hp: 300, type: 'ranged', index: 1 }),
+    creep({ id: 'dc1', team: 'audit', hp: 110, index: 2 }),
   ] as IndexedCreep[],
 }
 
 // A neutral jungle camp.
 const jungle = {
-  zoneName: 'Radiant Jungle (Top)',
+  zoneName: 'Chaff Jungle (Top)',
   zoneId: 'jungle-rad-top',
   neutrals: [
     neutral({ id: 'n1', hp: 250, index: 3 }),
@@ -138,7 +138,7 @@ const roshanPit = {
   <Story title="Game/ZonePanel">
     <Variant title="clear (empty)">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="cleared" player-team="radiant" />
+        <ZonePanel v-bind="cleared" player-team="chaff" />
       </div>
     </Variant>
 
@@ -147,7 +147,7 @@ const roshanPit = {
         <ZonePanel
           zone-name="Mid River"
           zone-id="mid-river"
-          player-team="radiant"
+          player-team="chaff"
           :enemies="contested.enemies"
           :allies="contested.allies"
         />
@@ -159,7 +159,7 @@ const roshanPit = {
         <ZonePanel
           zone-name="Mid River"
           zone-id="mid-river"
-          player-team="radiant"
+          player-team="chaff"
           :enemies="danger.enemies"
           :allies="danger.allies"
         />
@@ -168,25 +168,25 @@ const roshanPit = {
 
     <Variant title="lane siege (tower + creeps)">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="laneSiege" player-team="radiant" />
+        <ZonePanel v-bind="laneSiege" player-team="chaff" />
       </div>
     </Variant>
 
     <Variant title="deny window (allied creep <50%)">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="denyWindow" player-team="radiant" />
+        <ZonePanel v-bind="denyWindow" player-team="chaff" />
       </div>
     </Variant>
 
     <Variant title="jungle neutrals">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="jungle" player-team="radiant" />
+        <ZonePanel v-bind="jungle" player-team="chaff" />
       </div>
     </Variant>
 
     <Variant title="roshan pit (alive)">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="roshanPit" player-team="radiant" />
+        <ZonePanel v-bind="roshanPit" player-team="chaff" />
       </div>
     </Variant>
   </Story>

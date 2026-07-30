@@ -337,7 +337,7 @@ const heroFlashKey = ref(0) // I took damage → red flash on the hero panel
 const kdaPopKey = ref(0) // I got a kill → KDA pop
 const tickPulseKey = ref(0) // each tick → reveal flash in the Tick Theater
 const deathVignetteKey = ref(0) // I died → instant red vignette pulse (on the event)
-const respawnKey = ref(0) // I respawned → one-shot radiant vignette
+const respawnKey = ref(0) // I respawned → one-shot chaff vignette
 let awaitingRespawn = false
 // Game-end climax: a one-shot team-colored flash + victory/defeat stinger.
 const endFlashKey = ref(0)
@@ -677,8 +677,8 @@ function entityLabel(id: unknown): string {
   }
   if (id.startsWith('ancient_')) {
     const team = id.slice('ancient_'.length)
-    if (team === 'radiant') return 'the Radiant Mainframe'
-    if (team === 'dire') return 'the Dire Mainframe'
+    if (team === 'chaff') return 'the Chaff Mainframe'
+    if (team === 'audit') return 'the Audit Mainframe'
     return `the ${team} Mainframe`
   }
   if (id === 'roshan') return 'Roshan'
@@ -819,7 +819,7 @@ const towersByZone = computed(() => {
 // Map zones for AsciiMap
 const mapZones = computed(() => {
   const playerZoneId = gameStore.player?.zone ?? ''
-  const playerTeam = gameStore.player?.team ?? 'radiant'
+  const playerTeam = gameStore.player?.team ?? 'chaff'
   const visibleZoneIds = new Set(gameStore.visibleZoneIds)
 
   // Currently-live runes by zone (spawned but not yet expired).
@@ -1600,16 +1600,16 @@ function handleReturnToMenu() {
       data-testid="death-overlay"
     >
       <div
-        class="anim-fade-in-up pointer-events-auto flex max-h-[90%] max-w-[min(92vw,26rem)] flex-col items-center justify-center overflow-y-auto rounded-lg border-2 border-dire bg-bg-panel p-6 text-center bloom-dire"
+        class="anim-fade-in-up pointer-events-auto flex max-h-[90%] max-w-[min(92vw,26rem)] flex-col items-center justify-center overflow-y-auto rounded-lg border-2 border-audit bg-bg-panel p-6 text-center bloom-audit"
       >
-        <div class="mb-4 text-6xl text-dire text-glow-dire anim-glow-pulse">☠</div>
-        <p class="t-display text-dire text-glow-dire tracking-widest">PROCESS TERMINATED</p>
+        <div class="mb-4 text-6xl text-audit text-glow-audit anim-glow-pulse">☠</div>
+        <p class="t-display text-audit text-glow-audit tracking-widest">PROCESS TERMINATED</p>
         <p v-if="killerName" class="t-h3 mt-5 text-text-primary">
-          Killed by <span class="text-dire text-glow-dire">{{ killerName }}</span>
+          Killed by <span class="text-audit text-glow-audit">{{ killerName }}</span>
         </p>
         <p v-if="gameStore.player.respawnTick" class="mt-5 t-body text-text-dim">
           Respawning in
-          <span class="text-radiant text-glow-radiant font-bold t-mono-num">{{
+          <span class="text-chaff text-glow-chaff font-bold t-mono-num">{{
             countdownText(gameStore.player.respawnTick - gameStore.tick)
           }}</span>
         </p>
@@ -1627,7 +1627,7 @@ function handleReturnToMenu() {
           >
             [BUYBACK — {{ buybackInfo.cost }}g]
           </button>
-          <p v-if="buybackInfo.cooldownTicks > 0" class="t-caption text-dire">
+          <p v-if="buybackInfo.cooldownTicks > 0" class="t-caption text-audit">
             Buyback on cooldown — {{ countdownText(buybackInfo.cooldownTicks) }} remaining
           </p>
           <p v-else-if="buybackInfo.shortfall > 0" class="t-caption text-text-dim">
@@ -1640,7 +1640,7 @@ function handleReturnToMenu() {
              otherwise covers the command input). Server validates timing/threshold. -->
         <button
           data-testid="death-surrender-button"
-          class="mt-5 border border-border px-4 py-1.5 font-mono text-xs text-text-dim transition-colors hover:border-dire hover:text-dire active:scale-95"
+          class="mt-5 border border-border px-4 py-1.5 font-mono text-xs text-text-dim transition-colors hover:border-audit hover:text-audit active:scale-95"
           @click="handleCommand('surrender confirm')"
         >
           [VOTE TO SURRENDER]
@@ -1653,13 +1653,13 @@ function handleReturnToMenu() {
       class="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg-primary/90"
       data-testid="connection-lost-overlay"
     >
-      <div class="text-4xl text-dire text-glow-dire">⚠ CONNECTION LOST</div>
+      <div class="text-4xl text-audit text-glow-audit">⚠ CONNECTION LOST</div>
       <p class="max-w-md text-center text-sm text-text-dim">
         Could not reach the game server after multiple attempts. The match may still be running —
         reload to try again.
       </p>
       <button
-        class="border border-dire px-4 py-2 font-mono text-dire transition-all hover:bg-dire/10 active:scale-95"
+        class="border border-audit px-4 py-2 font-mono text-audit transition-all hover:bg-audit/10 active:scale-95"
         @click="reloadPage"
       >
         [RELOAD]
@@ -1692,8 +1692,8 @@ function handleReturnToMenu() {
         :day-night-tick="gameStore.dayNightTick"
         :teams="gameStore.teams"
         :ancients="ancients"
-        :net-worth-radiant="gameStore.netWorth.radiant"
-        :net-worth-dire="gameStore.netWorth.dire"
+        :net-worth-chaff="gameStore.netWorth.chaff"
+        :net-worth-audit="gameStore.netWorth.audit"
         :kda-pop-key="kdaPopKey"
       />
 
@@ -1718,7 +1718,7 @@ function handleReturnToMenu() {
         <ZonePanel
           :zone-name="currentZoneName"
           :zone-id="playerZone"
-          :player-team="gameStore.player?.team ?? 'radiant'"
+          :player-team="gameStore.player?.team ?? 'chaff'"
           :enemies="gameStore.nearbyEnemies"
           :allies="gameStore.nearbyAllies"
           :creeps="zoneCreeps"
@@ -1889,7 +1889,7 @@ function handleReturnToMenu() {
         </div>
         <div
           v-if="!gameStore.canBuy"
-          class="mb-2 border border-dire/30 bg-dire/5 px-3 py-1.5 text-xs text-dire"
+          class="mb-2 border border-audit/30 bg-audit/5 px-3 py-1.5 text-xs text-audit"
           data-testid="shop-blocked-reason"
         >
           [WARN] {{ shopBlockedReason }}
@@ -1983,7 +1983,7 @@ function handleReturnToMenu() {
         <button
           v-for="z in movePickerZones"
           :key="z.id"
-          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-radiant/50 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-radiant transition-all active:bg-border active:scale-95"
+          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-chaff/50 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-chaff transition-all active:bg-border active:scale-95"
           :class="{ 'opacity-60': z.fogged }"
           :data-testid="`move-picker-${z.id}`"
           :aria-label="`Move to ${z.name}`"

@@ -98,9 +98,9 @@ const {
 // to misuse (conditional gates, stack economies, self-displacement) — not how
 // strong it is — so a newcomer can pick a hero that forgives a misclick.
 const DIFFICULTY_META: Record<HeroDifficulty, { label: string; class: string }> = {
-  easy: { label: 'BEGINNER', class: 'border-radiant/50 bg-radiant/10 text-radiant' },
+  easy: { label: 'BEGINNER', class: 'border-chaff/50 bg-chaff/10 text-chaff' },
   medium: { label: 'MEDIUM', class: 'border-gold/50 bg-gold/10 text-gold' },
-  hard: { label: 'HARD', class: 'border-dire/50 bg-dire/10 text-dire' },
+  hard: { label: 'HARD', class: 'border-audit/50 bg-audit/10 text-audit' },
 }
 
 const openingCombo = computed(() =>
@@ -147,7 +147,7 @@ const {
 <template>
   <div class="mx-auto mt-4 flex max-w-[980px] flex-col gap-4 pb-10">
     <header class="border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ HERO TRAINING</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ HERO TRAINING</h1>
       <p class="mt-1 text-[0.78rem] text-text-dim">
         A safe dry-run of every kit. Pick an operative, cast its abilities, and watch the real
         outcomes resolve on the 4-second scheduler — learn the heroes before you queue.
@@ -239,7 +239,7 @@ const {
         <span class="text-[0.58rem] uppercase tracking-wider opacity-70">{{ h.role }}</span>
         <span
           v-if="h.difficulty === 'easy'"
-          class="text-[0.52rem] uppercase tracking-wider text-radiant"
+          class="text-[0.52rem] uppercase tracking-wider text-chaff"
           data-testid="hero-beginner-badge"
           >beginner</span
         >
@@ -255,14 +255,14 @@ const {
           <!-- Reverse funnel: jump to this hero's lore card on /lore. -->
           <NuxtLink
             :to="`/lore#lore-${selectedId}`"
-            class="ml-auto text-[0.65rem] text-text-dim no-underline hover:text-radiant"
+            class="ml-auto text-[0.65rem] text-text-dim no-underline hover:text-chaff"
             :aria-label="`Read ${hero.name}'s lore`"
           >
             &gt; LORE
           </NuxtLink>
         </div>
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-text-dim">
-          <span><span class="text-radiant">hp</span> {{ hero.baseStats.hp }}</span>
+          <span><span class="text-chaff">hp</span> {{ hero.baseStats.hp }}</span>
           <span><span class="text-ability">mp</span> {{ hero.baseStats.mp }}</span>
           <span><span class="text-gold">atk</span> {{ hero.baseStats.attack }}</span>
           <span>def {{ hero.baseStats.defense }}</span>
@@ -412,7 +412,9 @@ const {
           </div>
           <!-- Output tally — lets a learner compare each kit's burst at a glance. -->
           <div class="flex items-center justify-between text-[0.7rem] text-text-dim">
-            <span><span class="text-dire">dmg dealt</span> {{ totalDamage.toLocaleString() }}</span>
+            <span
+              ><span class="text-audit">dmg dealt</span> {{ totalDamage.toLocaleString() }}</span
+            >
             <span>{{ castCount }} cast{{ castCount === 1 ? '' : 's' }}</span>
           </div>
           <div class="mt-1 flex flex-wrap gap-2">
@@ -453,11 +455,11 @@ const {
             class="whitespace-pre-wrap"
             :class="
               line.startsWith('!')
-                ? 'text-dire'
+                ? 'text-audit'
                 : line.startsWith('—')
                   ? 'text-text-dim'
                   : line.startsWith('>')
-                    ? 'text-radiant'
+                    ? 'text-chaff'
                     : 'text-text-primary'
             "
           >

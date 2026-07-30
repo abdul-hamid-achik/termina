@@ -10,7 +10,7 @@ export interface ZoneDisplay {
   allies: string[]
   enemyCount: number
   tower?: {
-    team: 'radiant' | 'dire'
+    team: 'chaff' | 'audit'
     alive: boolean
     tier: number
     hp?: number
@@ -31,8 +31,8 @@ export interface ZoneDisplay {
 }
 
 export interface AncientsDisplay {
-  radiant: AncientState
-  dire: AncientState
+  chaff: AncientState
+  audit: AncientState
 }
 
 /** Indicator chip rendered on the compact (mobile) zone cards. */
@@ -43,51 +43,51 @@ interface CompactIndicator {
 
 /** Static 5-column row layout of the map (also drives the mini overview). */
 export const MAP_ROWS: (string | null)[][] = [
-  [null, 'radiant-fountain', null, 'radiant-base', null],
+  [null, 'chaff-fountain', null, 'chaff-base', null],
   ['top-t3-rad', null, 'mid-t3-rad', null, 'bot-t3-rad'],
   ['top-t2-rad', 'jungle-rad-top', 'mid-t2-rad', 'jungle-rad-bot', 'bot-t2-rad'],
   ['top-t1-rad', null, 'mid-t1-rad', null, 'bot-t1-rad'],
   ['top-river', 'rune-top', 'roshan-pit', 'rune-bot', 'bot-river'],
   [null, null, 'mid-river', null, null],
-  ['top-t1-dire', null, 'mid-t1-dire', null, 'bot-t1-dire'],
-  ['top-t2-dire', 'jungle-dire-top', 'mid-t2-dire', 'jungle-dire-bot', 'bot-t2-dire'],
-  ['top-t3-dire', null, 'mid-t3-dire', null, 'bot-t3-dire'],
-  [null, 'dire-base', null, 'dire-fountain', null],
+  ['top-t1-audit', null, 'mid-t1-audit', null, 'bot-t1-audit'],
+  ['top-t2-audit', 'jungle-audit-top', 'mid-t2-audit', 'jungle-audit-bot', 'bot-t2-audit'],
+  ['top-t3-audit', null, 'mid-t3-audit', null, 'bot-t3-audit'],
+  [null, 'audit-base', null, 'audit-fountain', null],
 ]
 
 const COL_HEADERS = ['SEAWALL', 'CHAFF SILT', 'COLDSTORE', 'AUDIT SILT', 'SHALLOWS']
 
-/** One-lane map layout — a single mid-lane column (radiant fountain at top, dire
+/** One-lane map layout — a single mid-lane column (chaff fountain at top, audit
  *  at the bottom). Mirrors shared/constants/maps `ONE_LANE_ZONES`. */
 export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
-  ['radiant-fountain'],
-  ['radiant-base'],
+  ['chaff-fountain'],
+  ['chaff-base'],
   ['mid-t3-rad'],
   ['mid-t2-rad'],
   ['mid-t1-rad'],
   ['mid-river'],
-  ['mid-t1-dire'],
-  ['mid-t2-dire'],
-  ['mid-t3-dire'],
-  ['dire-base'],
-  ['dire-fountain'],
+  ['mid-t1-audit'],
+  ['mid-t2-audit'],
+  ['mid-t3-audit'],
+  ['audit-base'],
+  ['audit-fountain'],
 ]
 const ONE_LANE_COL_HEADERS = ['COLDSTORE']
 
 /** Two-lane map layout — top + mid lanes with top-side jungle, top rune, and
  *  Roshan pit. Mirrors shared/constants/maps `TWO_LANE_ZONES` (3v3 map). */
 export const TWO_LANE_MAP_ROWS: (string | null)[][] = [
-  [null, null, 'radiant-fountain', null],
-  [null, null, 'radiant-base', null],
+  [null, null, 'chaff-fountain', null],
+  [null, null, 'chaff-base', null],
   ['top-t3-rad', null, 'mid-t3-rad', null],
   ['top-t2-rad', 'jungle-rad-top', 'mid-t2-rad', null],
   ['top-t1-rad', null, 'mid-t1-rad', null],
   ['top-river', 'rune-top', 'mid-river', 'roshan-pit'],
-  ['top-t1-dire', null, 'mid-t1-dire', null],
-  ['top-t2-dire', null, 'mid-t2-dire', 'jungle-dire-top'],
-  ['top-t3-dire', null, 'mid-t3-dire', null],
-  [null, null, 'dire-base', null],
-  [null, null, 'dire-fountain', null],
+  ['top-t1-audit', null, 'mid-t1-audit', null],
+  ['top-t2-audit', null, 'mid-t2-audit', 'jungle-audit-top'],
+  ['top-t3-audit', null, 'mid-t3-audit', null],
+  [null, null, 'audit-base', null],
+  [null, null, 'audit-fountain', null],
 ]
 const TWO_LANE_COL_HEADERS = ['SEAWALL', 'CHAFF SILT', 'COLDSTORE', 'AUDIT SILT']
 
@@ -156,16 +156,16 @@ export function compactRiverDividerRow(rows: (string | null)[][]): number {
 }
 
 /** Territory owner of a zone (drives color-coding in the mini overview). */
-export function zoneTeam(zoneId: string): 'radiant' | 'dire' | 'neutral' {
+export function zoneTeam(zoneId: string): 'chaff' | 'audit' | 'neutral' {
   return ZONE_MAP[zoneId]?.team ?? 'neutral'
 }
 
 /** 2-3 char zone code for the mini overview grid. */
 export function zoneShortCode(zoneId: string): string {
-  if (zoneId === 'radiant-fountain') return 'RF'
-  if (zoneId === 'radiant-base') return 'RB'
-  if (zoneId === 'dire-fountain') return 'DF'
-  if (zoneId === 'dire-base') return 'DB'
+  if (zoneId === 'chaff-fountain') return 'RF'
+  if (zoneId === 'chaff-base') return 'RB'
+  if (zoneId === 'audit-fountain') return 'DF'
+  if (zoneId === 'audit-base') return 'DB'
   if (zoneId === 'roshan-pit') return 'ROS'
   if (zoneId.startsWith('rune-')) return 'RN'
   if (zoneId.includes('jungle')) return 'JG'
@@ -202,7 +202,7 @@ export function miniOverviewCell(
   let tower: MiniOverviewCell['tower'] = null
   if (zone?.tower) {
     tower = zone.tower.alive
-      ? { glyph: '▲', cls: zone.tower.team === 'radiant' ? 'text-radiant' : 'text-dire' }
+      ? { glyph: '▲', cls: zone.tower.team === 'chaff' ? 'text-chaff' : 'text-audit' }
       : { glyph: '✗', cls: 'text-text-dim' }
   }
 
@@ -212,7 +212,7 @@ export function miniOverviewCell(
 
   const team = zoneTeam(zoneId)
   const classes: string[] = [
-    team === 'radiant' ? 'text-radiant' : team === 'dire' ? 'text-dire' : 'text-text-dim',
+    team === 'chaff' ? 'text-chaff' : team === 'audit' ? 'text-audit' : 'text-text-dim',
   ]
   if (zone?.playerHere) {
     classes.push('bg-self/30', 'font-bold')
@@ -230,8 +230,8 @@ export function ancientForZone(
   ancients: AncientsDisplay | null | undefined,
 ): AncientState | null {
   if (!ancients) return null
-  if (zoneId === 'radiant-base') return ancients.radiant
-  if (zoneId === 'dire-base') return ancients.dire
+  if (zoneId === 'chaff-base') return ancients.chaff
+  if (zoneId === 'audit-base') return ancients.audit
   return null
 }
 
@@ -312,12 +312,12 @@ export function buildRouteMarkers(
   return markers
 }
 
-/** The side glyph pair for a zone record: RAD on top (▲), DIRE below (▼). */
+/** The side glyph pair for a zone record: RAD on top (▲), AUDIT below (▼). */
 function zoneSideGlyph(
-  team: 'radiant' | 'dire' | 'neutral',
+  team: 'chaff' | 'audit' | 'neutral',
 ): { side: string; arrow: string } | null {
-  if (team === 'radiant') return { side: 'RAD', arrow: '▲' }
-  if (team === 'dire') return { side: 'DIRE', arrow: '▼' }
+  if (team === 'chaff') return { side: 'RAD', arrow: '▲' }
+  if (team === 'audit') return { side: 'AUDIT', arrow: '▼' }
   return null
 }
 
@@ -329,7 +329,7 @@ function zoneSideGlyph(
 export function zoneRecordLabel(z: {
   id: string
   type: string
-  team: 'radiant' | 'dire' | 'neutral'
+  team: 'chaff' | 'audit' | 'neutral'
   tower?: boolean
   tier?: number
 }): string {
@@ -349,7 +349,7 @@ export function zoneRecordLabel(z: {
 export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): string {
   // Labels come from the zone RECORD (type/team/tier), never from id
   // substrings — a renamed id must not change what renders (the old
-  // includes('radiant') ladder fell through to DIRE for every zone).
+  // includes('chaff') ladder fell through to AUDIT for every zone).
   const z = ZONE_MAP[zone.id]
   const name = z ? zoneRecordLabel(z) : zone.id.slice(0, 8).toUpperCase()
 
@@ -463,8 +463,8 @@ export function compactIndicators(
           ? ` ${zone.tower.hp}/${zone.tower.maxHp}`
           : ''
       out.push({
-        text: `${zone.tower.team === 'radiant' ? '▲' : '▼'} T${zone.tower.tier}${hp}`,
-        cls: zone.tower.team === 'radiant' ? 'text-radiant' : 'text-dire',
+        text: `${zone.tower.team === 'chaff' ? '▲' : '▼'} T${zone.tower.tier}${hp}`,
+        cls: zone.tower.team === 'chaff' ? 'text-chaff' : 'text-audit',
       })
     } else {
       out.push({ text: `✗ T${zone.tower.tier} down`, cls: 'text-text-dim' })
@@ -475,7 +475,7 @@ export function compactIndicators(
   if (ancient && aLabel) {
     out.push({
       text: `◈ CORE ${aLabel}`,
-      cls: ancient.team === 'radiant' ? 'text-radiant' : 'text-dire',
+      cls: ancient.team === 'chaff' ? 'text-chaff' : 'text-audit',
     })
   }
 
@@ -487,17 +487,17 @@ export function compactIndicators(
   if (zone.allies.length > 0) {
     out.push({
       text: `+${zone.allies.length} ${zone.allies.length === 1 ? 'ally' : 'allies'}`,
-      cls: 'text-radiant',
+      cls: 'text-chaff',
     })
   }
 
   if (zone.enemyNames && zone.enemyNames.length > 0) {
     // Name the threats when we have them — "who is here" beats "how many".
-    out.push({ text: `! ${zone.enemyNames.join(', ')}`, cls: 'text-dire' })
+    out.push({ text: `! ${zone.enemyNames.join(', ')}`, cls: 'text-audit' })
   } else if (zone.enemyCount > 0) {
     out.push({
       text: `!${zone.enemyCount} ${zone.enemyCount === 1 ? 'enemy' : 'enemies'}`,
-      cls: 'text-dire',
+      cls: 'text-audit',
     })
   }
 

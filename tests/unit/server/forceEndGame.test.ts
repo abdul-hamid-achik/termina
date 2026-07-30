@@ -36,26 +36,26 @@ describe('forceEndGame', () => {
   })
 
   it('returns false for an unknown gameId', () => {
-    expect(forceEndGame('game_does_not_exist', 'radiant')).toBe(false)
+    expect(forceEndGame('game_does_not_exist', 'chaff')).toBe(false)
   })
 
   it('returns false for both winners when the game is unknown', () => {
-    expect(forceEndGame('game_nope', 'radiant')).toBe(false)
-    expect(forceEndGame('game_nope', 'dire')).toBe(false)
+    expect(forceEndGame('game_nope', 'chaff')).toBe(false)
+    expect(forceEndGame('game_nope', 'audit')).toBe(false)
   })
 
   it('is a no-op returning false in production (never ends real games)', () => {
     process.env.NODE_ENV = 'production'
     // Hard short-circuits before touching the live-game registry or runtime —
     // so even a gameId that "exists" could never be ended in production.
-    expect(forceEndGame('any_game', 'radiant')).toBe(false)
-    expect(forceEndGame('any_game', 'dire')).toBe(false)
+    expect(forceEndGame('any_game', 'chaff')).toBe(false)
+    expect(forceEndGame('any_game', 'audit')).toBe(false)
   })
 
   it('returns false when no game runtime is initialized (call path is safe)', () => {
     // No defineNitroPlugin body ran, so _runtime is null. Exercising the call
     // path proves it fails closed (false) rather than throwing.
-    expect(() => forceEndGame('game_x', 'radiant')).not.toThrow()
-    expect(forceEndGame('game_x', 'radiant')).toBe(false)
+    expect(() => forceEndGame('game_x', 'chaff')).not.toThrow()
+    expect(forceEndGame('game_x', 'chaff')).toBe(false)
   })
 })

@@ -2,10 +2,10 @@
 import { computed } from 'vue'
 
 type ProgressBarColor =
-  | 'radiant'
-  | 'radiant-deep'
-  | 'dire'
-  | 'dire-deep'
+  | 'chaff'
+  | 'chaff-deep'
+  | 'audit'
+  | 'audit-deep'
   | 'self'
   | 'gold'
   | 'mana'
@@ -17,10 +17,10 @@ type ProgressBarColor =
   | 'warn'
 
 const colorVars: Record<ProgressBarColor, string> = {
-  radiant: '--color-radiant',
-  'radiant-deep': '--color-radiant-deep',
-  dire: '--color-dire',
-  'dire-deep': '--color-dire-deep',
+  chaff: '--color-chaff',
+  'chaff-deep': '--color-chaff-deep',
+  audit: '--color-audit',
+  'audit-deep': '--color-audit-deep',
   self: '--color-self',
   gold: '--color-gold',
   mana: '--color-mana',
@@ -47,11 +47,11 @@ const props = withDefaults(
   }>(),
   {
     max: 100,
-    color: 'radiant',
+    color: 'chaff',
     width: 20,
     showLabel: false,
     dangerBelow: 0,
-    dangerColor: 'dire',
+    dangerColor: 'audit',
   },
 )
 

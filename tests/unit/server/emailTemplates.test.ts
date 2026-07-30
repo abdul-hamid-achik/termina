@@ -31,9 +31,9 @@ describe('email templates', () => {
   })
 
   it('welcome template includes the username', () => {
-    const t = welcomeTemplate('neo_radiant')
-    expect(t.html).toContain('neo_radiant')
-    expect(t.text).toContain('neo_radiant')
+    const t = welcomeTemplate('neo_chaff')
+    expect(t.html).toContain('neo_chaff')
+    expect(t.text).toContain('neo_chaff')
   })
 
   it('all templates produce subject/html/text', () => {

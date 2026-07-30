@@ -70,7 +70,7 @@ const sections: { title: string; body?: string[]; bullets?: string[] }[] = [
 <template>
   <article class="mx-auto mt-4 flex max-w-[850px] flex-col gap-4 pb-8">
     <header class="mb-2 border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ TERMS OF SERVICE</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ TERMS OF SERVICE</h1>
       <p class="mt-1 text-[0.75rem] text-text-dim">Last updated: {{ lastUpdated }}</p>
     </header>
 
@@ -89,7 +89,7 @@ const sections: { title: string; body?: string[]; bullets?: string[] }[] = [
         <li
           v-for="(b, i) in s.bullets"
           :key="i"
-          class="text-[0.8rem] leading-relaxed text-text-dim before:mr-1 before:text-dire before:content-['×']"
+          class="text-[0.8rem] leading-relaxed text-text-dim before:mr-1 before:text-audit before:content-['×']"
         >
           {{ b }}
         </li>

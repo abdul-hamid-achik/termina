@@ -229,7 +229,7 @@ export default defineWebSocketHandler({
         const lobby = getLobby(existingLobbyId)
         if (lobby) {
           const playerEntry = lobby.players.find((p) => p.playerId === playerId)
-          const teamId = playerEntry?.team ?? 'radiant'
+          const teamId = playerEntry?.team ?? 'chaff'
           peer.send(
             JSON.stringify({
               type: 'lobby_state',

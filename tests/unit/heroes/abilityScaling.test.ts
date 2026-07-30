@@ -20,13 +20,13 @@ import '../../../server/game/heroes/index'
 import { HEROES } from '~~/shared/constants/heroes'
 
 const CASTER_ZONE = 'mid-river'
-const ADJACENT_ZONE = 'mid-t1-dire'
+const ADJACENT_ZONE = 'mid-t1-audit'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Caster',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: CASTER_ZONE,
     hp: 5000,
@@ -60,8 +60,8 @@ function makeState(players: PlayerState[]): GameState {
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -100,14 +100,14 @@ function castAtLevel(
 
   const enemy = makePlayer({
     id: 'e1',
-    team: 'dire',
+    team: 'audit',
     heroId: 'kernel',
     zone: CASTER_ZONE,
     hp: 5000,
     maxHp: 5000,
   })
-  const ally = makePlayer({ id: 'a1', team: 'radiant', heroId: 'sentry', zone: CASTER_ZONE })
-  const adjEnemy = makePlayer({ id: 'e2', team: 'dire', heroId: 'kernel', zone: ADJACENT_ZONE })
+  const ally = makePlayer({ id: 'a1', team: 'chaff', heroId: 'sentry', zone: CASTER_ZONE })
+  const adjEnemy = makePlayer({ id: 'e2', team: 'audit', heroId: 'kernel', zone: ADJACENT_ZONE })
 
   let target: TargetRef | undefined
   switch (targetType) {

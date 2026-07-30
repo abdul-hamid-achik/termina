@@ -65,8 +65,8 @@ export function nextScrubTick(current: number, max: number): number {
 export interface ReplayFrameLite {
   tick: number
   teams: {
-    radiant: { kills: number; towerKills: number }
-    dire: { kills: number; towerKills: number }
+    chaff: { kills: number; towerKills: number }
+    audit: { kills: number; towerKills: number }
   }
 }
 
@@ -87,8 +87,8 @@ export interface KeyMoment {
  */
 export function keyMoments(frames: ReplayFrameLite[], coalesceGap = 3): KeyMoment[] {
   const moments: KeyMoment[] = []
-  const totalKills = (f: ReplayFrameLite) => f.teams.radiant.kills + f.teams.dire.kills
-  const totalTowers = (f: ReplayFrameLite) => f.teams.radiant.towerKills + f.teams.dire.towerKills
+  const totalKills = (f: ReplayFrameLite) => f.teams.chaff.kills + f.teams.audit.kills
+  const totalTowers = (f: ReplayFrameLite) => f.teams.chaff.towerKills + f.teams.audit.towerKills
 
   let fight: { tick: number; kills: number; lastTick: number } | null = null
   const flush = () => {

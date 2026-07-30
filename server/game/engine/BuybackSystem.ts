@@ -81,7 +81,7 @@ export function buyback(
     mp: player.maxMp,
     respawnTick: null,
     buybackCooldown: state.tick + BUYBACK_COOLDOWN_TICKS,
-    zone: player.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain',
+    zone: player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain',
   }
 
   updatedPlayers[playerId] = updatedPlayer

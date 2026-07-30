@@ -10,8 +10,8 @@ function makeGameState(): GameState {
     tick: 42,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 1, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 2, towerKills: 1, gold: 0 },
+      chaff: { id: 'chaff', kills: 1, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 2, towerKills: 1, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -22,7 +22,7 @@ function makeGameState(): GameState {
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(['p1', 'p2']), dire: new Set(['p3']) },
+    surrenderVotes: { chaff: new Set(['p1', 'p2']), audit: new Set(['p3']) },
     timeOfDay: 'day',
     dayNightTick: 0,
   }
@@ -75,7 +75,7 @@ describe('StateSnapshot', () => {
 
     expect(result).not.toBeNull()
     expect(result!.state.tick).toBe(42)
-    expect(result!.state.teams.dire.kills).toBe(2)
+    expect(result!.state.teams.audit.kills).toBe(2)
   })
 
   it('preserves Set fields (surrenderVotes) across serialization', async () => {
@@ -86,11 +86,11 @@ describe('StateSnapshot', () => {
     const result = await Effect.runPromise(readSnapshot(redis, 'g1'))
 
     expect(result).not.toBeNull()
-    expect(result!.state.surrenderVotes.radiant).toBeInstanceOf(Set)
-    expect(result!.state.surrenderVotes.dire).toBeInstanceOf(Set)
-    expect(result!.state.surrenderVotes.radiant.has('p1')).toBe(true)
-    expect(result!.state.surrenderVotes.radiant.has('p2')).toBe(true)
-    expect(result!.state.surrenderVotes.dire.has('p3')).toBe(true)
+    expect(result!.state.surrenderVotes.chaff).toBeInstanceOf(Set)
+    expect(result!.state.surrenderVotes.audit).toBeInstanceOf(Set)
+    expect(result!.state.surrenderVotes.chaff.has('p1')).toBe(true)
+    expect(result!.state.surrenderVotes.chaff.has('p2')).toBe(true)
+    expect(result!.state.surrenderVotes.audit.has('p3')).toBe(true)
   })
 
   it('returns null for a missing snapshot', async () => {

@@ -152,7 +152,7 @@ function mountGameScreen() {
   })
 }
 
-/** Seed the store into a live, playing game where `p1` (radiant) is the human. */
+/** Seed the store into a live, playing game where `p1` (chaff) is the human. */
 function seedActiveGame(overrides: Partial<GameState> = {}) {
   const store = useGameStore()
   store.gameId = 'game_test_1'
@@ -379,13 +379,13 @@ describe('GameScreen', () => {
         {
           tick: 240,
           type: 'damage',
-          payload: { sourceId: 'tower_mid-t1-dire', targetId: 'p1', amount: 110 },
+          payload: { sourceId: 'tower_mid-t1-audit', targetId: 'p1', amount: 110 },
         },
         { tick: 240, type: 'death', payload: { playerId: 'p1', respawnTick: 270 } },
       ] as never)
 
       const overlay = mountGameScreen().find('[data-testid="death-overlay"]')
-      expect(overlay.text()).toContain('tower (mid-t1-dire)')
+      expect(overlay.text()).toContain('tower (mid-t1-audit)')
       // ...and NOT the stale killer from the death 140 ticks ago.
       expect(overlay.text()).not.toContain('Daemon')
     })
@@ -557,7 +557,7 @@ describe('GameScreen', () => {
   })
 
   describe('game over (game_over oracle)', () => {
-    function seedGameOver(winner: 'radiant' | 'dire' = 'radiant') {
+    function seedGameOver(winner: 'chaff' | 'audit' = 'chaff') {
       const store = useGameStore()
       store.gameId = 'game_test_over'
       store.playerId = 'p1'
@@ -570,7 +570,7 @@ describe('GameScreen', () => {
     }
 
     it('renders the post-game screen and unmounts the active game screen on game over', () => {
-      seedGameOver('radiant')
+      seedGameOver('chaff')
       const wrapper = mountGameScreen()
 
       expect(wrapper.find('[data-testid="post-game-stub"]').exists()).toBe(true)
@@ -579,12 +579,12 @@ describe('GameScreen', () => {
     })
 
     it('passes the winner + stats through to PostGame so it can render', () => {
-      seedGameOver('dire')
+      seedGameOver('audit')
       const wrapper = mountGameScreen()
 
       const postGame = wrapper.findComponent({ name: 'PostGame' })
       expect(postGame.exists()).toBe(true)
-      expect(postGame.props('winner')).toBe('dire')
+      expect(postGame.props('winner')).toBe('audit')
       expect(postGame.props('currentPlayerId')).toBe('p1')
       // postGamePlayers is derived from the full roster (5v5).
       expect((postGame.props('players') as unknown[]).length).toBe(10)
@@ -726,8 +726,8 @@ describe('GameScreen', () => {
     it('passes in-zone neutrals to the Zone panel tagged with their global index', () => {
       seedActiveGame({
         neutrals: [
-          { id: 'n0', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-          { id: 'n1', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+          { id: 'n0', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+          { id: 'n1', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
           { id: 'n2', zone: 'mid-river', hp: 140, maxHp: 200, type: 'centaur', alive: true },
           { id: 'n3', zone: 'mid-river', hp: 0, maxHp: 200, type: 'centaur', alive: false },
         ],
@@ -786,7 +786,7 @@ describe('GameScreen', () => {
     it('refuses attack neutral:<i> that names a camp outside the zone before it costs a tick', async () => {
       seedActiveGame({
         neutrals: [
-          { id: 'n0', zone: 'jungle-dire-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
+          { id: 'n0', zone: 'jungle-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
           { id: 'n1', zone: 'mid-river', hp: 140, maxHp: 200, type: 'centaur', alive: true },
         ],
       })
@@ -809,13 +809,13 @@ describe('GameScreen', () => {
   })
 
   describe('movement narration (W1-7)', () => {
-    // The radiant mid corridor, fountain through the river. Seeding the whole
+    // The chaff mid corridor, fountain through the river. Seeding the whole
     // walkable chain (not just the hops under test) matters: the watcher's
     // distance BFS is restricted to known zones, so a gap would silence a line
     // for the wrong reason and hide a regression.
     const CORRIDOR = [
-      'radiant-fountain',
-      'radiant-base',
+      'chaff-fountain',
+      'chaff-base',
       'mid-t3-rad',
       'mid-t2-rad',
       'mid-t1-rad',
@@ -902,7 +902,7 @@ describe('GameScreen', () => {
       // the fountain respawn would read as reaching the abandoned destination.
       seedWalkTick('mid-river', 241, { alive: false, hp: 0, respawnTick: 250 })
       await wrapper.vm.$nextTick()
-      seedWalkTick('radiant-fountain', 250)
+      seedWalkTick('chaff-fountain', 250)
       await wrapper.vm.$nextTick()
 
       expect(feed(wrapper).some((t) => t.includes('You arrive'))).toBe(false)
@@ -930,7 +930,7 @@ describe('GameScreen', () => {
 
   describe('keyboard mode (W1-10)', () => {
     // The mid corridor, so an arrow order passes the pre-flight path check.
-    const CORRIDOR = ['radiant-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']
+    const CORRIDOR = ['chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad', 'mid-river']
 
     function seedAt(zone: string) {
       const store = useGameStore()
@@ -959,7 +959,7 @@ describe('GameScreen', () => {
     }
 
     it('walks the lane forward, resolving the arrow against the drawn map', async () => {
-      // REGRESSION: resolved by zone-name substring, so a Radiant hero could not
+      // REGRESSION: resolved by zone-name substring, so a Chaff hero could not
       // walk down mid at all — every forward neighbour is named `-rad`. The fix
       // needs the origin zone AND the map id, so this fails if either is dropped.
       seedAt('mid-t3-rad')
@@ -1016,7 +1016,7 @@ describe('GameScreen', () => {
   describe('map affordances (W2-8)', () => {
     /** The mid corridor plus a rune spot, so subset-map pruning is observable. */
     const CORRIDOR = [
-      'radiant-base',
+      'chaff-base',
       'mid-t3-rad',
       'mid-t2-rad',
       'mid-t1-rad',
@@ -1044,7 +1044,7 @@ describe('GameScreen', () => {
     it('feeds the map the full 32 zones by default', () => {
       seedMap('mid-river')
       const wrapper = mountGameScreen()
-      expect(mapZoneIds(wrapper)).toContain('bot-t1-dire')
+      expect(mapZoneIds(wrapper)).toContain('bot-t1-audit')
       expect(mapZoneIds(wrapper).length).toBe(32)
       wrapper.unmount()
     })
@@ -1126,7 +1126,7 @@ describe('GameScreen', () => {
         .trigger('click')
 
       const picker = wrapper.find('[data-testid="move-picker"]')
-      // mid-river's GLOBAL neighbours are mid-t1-rad, mid-t1-dire, rune-top and
+      // mid-river's GLOBAL neighbours are mid-t1-rad, mid-t1-audit, rune-top and
       // rune-bot — half of them do not exist in a one-lane game.
       expect(picker.findAll('button')).toHaveLength(2)
       expect(picker.text()).not.toMatch(/Rune/i)
@@ -1134,14 +1134,14 @@ describe('GameScreen', () => {
     })
 
     it('surfaces the queued walk with a live hop count and a stop control', async () => {
-      seedMap('radiant-base')
+      seedMap('chaff-base')
       const wrapper = mountGameScreen()
       expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(false)
 
       wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
       await wrapper.vm.$nextTick()
 
-      // radiant-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
+      // chaff-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain(
         'WALKING → Coldstore T1 (CHAFF) · 3t',
       )
@@ -1155,7 +1155,7 @@ describe('GameScreen', () => {
     })
 
     it('[stop] cancels the walk by re-ordering a move to where you stand', async () => {
-      seedMap('radiant-base')
+      seedMap('chaff-base')
       const wrapper = mountGameScreen()
       wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-rad')
       await wrapper.vm.$nextTick()
@@ -1280,7 +1280,7 @@ describe('GameScreen', () => {
         {
           tick: 240,
           type: 'tower_kill',
-          payload: { zone: 'mid-t1-rad', team: 'radiant', killerTeam: 'dire' },
+          payload: { zone: 'mid-t1-rad', team: 'chaff', killerTeam: 'audit' },
         },
       ])
       expect(audio.playSound).toHaveBeenCalledWith('tower_lost')
@@ -1292,7 +1292,7 @@ describe('GameScreen', () => {
         {
           tick: 241,
           type: 'tower_kill',
-          payload: { zone: 'mid-t1-dire', team: 'dire', killerTeam: 'radiant' },
+          payload: { zone: 'mid-t1-audit', team: 'audit', killerTeam: 'chaff' },
         },
       ])
       expect(audio.playSound).toHaveBeenCalledWith('tower_fall')

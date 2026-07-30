@@ -29,8 +29,8 @@ export type MatchResult = 'Victory' | 'Defeat' | 'In Progress'
  * also reads as in progress rather than guessing.
  */
 export function matchResult(
-  winner: 'radiant' | 'dire' | null | undefined,
-  playerTeam: 'radiant' | 'dire' | null | undefined,
+  winner: 'chaff' | 'audit' | null | undefined,
+  playerTeam: 'chaff' | 'audit' | null | undefined,
 ): MatchResult {
   if (!winner || !playerTeam) return 'In Progress'
   return winner === playerTeam ? 'Victory' : 'Defeat'

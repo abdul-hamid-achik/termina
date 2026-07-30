@@ -378,7 +378,7 @@ onUnmounted(() => {
     >
       <HeroPicker
         :mode="lobbyStore.queueStatus === 'banning' ? 'ban' : 'pick'"
-        :team="lobbyStore.team ?? 'radiant'"
+        :team="lobbyStore.team ?? 'chaff'"
         :picked-heroes="lobbyStore.pickedHeroes"
         :banned-heroes="lobbyStore.bannedHeroes"
         :team-roster="lobbyStore.teamRoster"
@@ -423,7 +423,7 @@ onUnmounted(() => {
                   class="flex items-baseline justify-between gap-2 border px-2.5 py-1.5 text-left transition-colors disabled:opacity-40"
                   :class="
                     queueMode === m.id
-                      ? 'border-radiant bg-radiant/10 text-radiant'
+                      ? 'border-chaff bg-chaff/10 text-chaff'
                       : 'border-border text-text-dim hover:border-border-glow'
                   "
                   @click="queueMode = m.id"
@@ -445,7 +445,7 @@ onUnmounted(() => {
               <div
                 v-if="lobbyStore.lastError"
                 data-testid="queue-error"
-                class="w-full border border-dire bg-dire/10 px-3 py-2 text-center text-[0.8rem] text-dire"
+                class="w-full border border-audit bg-audit/10 px-3 py-2 text-center text-[0.8rem] text-audit"
               >
                 [ERR] {{ lobbyStore.lastError }} — retry
               </div>
@@ -493,7 +493,7 @@ onUnmounted(() => {
       <template v-else-if="lobbyStore.queueStatus === 'found'">
         <TerminalPanel title="Matchmaking">
           <div class="flex flex-col items-center gap-4 p-6" role="status" aria-live="assertive">
-            <p class="text-base font-bold text-radiant text-glow">
+            <p class="text-base font-bold text-chaff text-glow">
               <span aria-hidden="true">&gt;_</span> MATCH FOUND
             </p>
             <p class="text-[0.8rem] text-text-dim">Opening the draft...</p>
@@ -505,11 +505,7 @@ onUnmounted(() => {
       <template v-else-if="lobbyStore.queueStatus === 'starting'">
         <TerminalPanel title="Game Starting">
           <div class="flex flex-col items-center gap-4 p-6">
-            <p
-              class="text-base font-bold text-radiant text-glow"
-              role="status"
-              aria-live="assertive"
-            >
+            <p class="text-base font-bold text-chaff text-glow" role="status" aria-live="assertive">
               <span aria-hidden="true">&gt;_</span> GAME STARTING
             </p>
             <!-- aria-hidden: the per-second countdown would otherwise spam a
@@ -522,15 +518,15 @@ onUnmounted(() => {
               :key="lobbyStore.countdown"
               data-testid="countdown-digit"
               aria-hidden="true"
-              class="anim-pop text-4xl font-bold tabular-nums text-radiant"
-              :class="{ 'text-dire': lobbyStore.countdown <= 3 }"
+              class="anim-pop text-4xl font-bold tabular-nums text-chaff"
+              :class="{ 'text-audit': lobbyStore.countdown <= 3 }"
             >
               {{ lobbyStore.countdown }}
             </span>
             <p class="text-[0.8rem] text-text-dim" role="status" aria-live="polite">
               {{ lobbyStore.countdown > 0 ? 'Syncing to the clock...' : 'Entering TERMINA...' }}
             </p>
-            <span aria-hidden="true" class="animate-blink text-2xl text-radiant">|</span>
+            <span aria-hidden="true" class="animate-blink text-2xl text-chaff">|</span>
           </div>
         </TerminalPanel>
       </template>

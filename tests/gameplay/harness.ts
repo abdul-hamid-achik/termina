@@ -73,12 +73,12 @@ let seq = 0
 
 /**
  * Seed a fresh `playing` game, shaped by a named scenario, and return a {@link Run}
- * you can drive. By default it spawns one human (radiant) + one enemy (dire).
+ * you can drive. By default it spawns one human (chaff) + one enemy (audit).
  */
 export async function seedGame(scenario: KnownScenario, opts: SeedOptions = {}): Promise<Run> {
   const setup: PlayerSetup[] = opts.players ?? [
-    { id: HUMAN, name: HUMAN, team: 'radiant', heroId: opts.heroSelf ?? 'echo' },
-    { id: ENEMY, name: ENEMY, team: 'dire', heroId: opts.heroEnemy ?? 'daemon' },
+    { id: HUMAN, name: HUMAN, team: 'chaff', heroId: opts.heroSelf ?? 'echo' },
+    { id: ENEMY, name: ENEMY, team: 'audit', heroId: opts.heroEnemy ?? 'daemon' },
   ]
   const gameId = `gp_${scenario}_${seq++}`
   const sm = createInMemoryStateManager()

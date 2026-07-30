@@ -26,16 +26,16 @@
      in visually identical paint: a hero death read as the same red as creep
      chip, a heal as the same green as the team. Each pair is now separated on
      BOTH hue and lightness, and palette.test.ts pins the minimum distance. */
-  --color-radiant: 64 240 144;
-  --color-radiant-deep: 24 180 100;
-  --color-dire: 255 78 110;
-  --color-dire-deep: 200 40 70;
+  --color-chaff: 64 240 144;
+  --color-chaff-deep: 24 180 100;
+  --color-audit: 255 78 110;
+  --color-audit-deep: 200 40 70;
   /* Azure, pushed off the ability cyan — the two sit side by side on every log
      line (the ►YOU marker next to the [ABILITY] tag). */
   --color-self: 108 164 255;
   --color-gold: 255 196 48;
   --color-mana: 178 110 240;
-  /* Chip damage: a duller, browner red than the dire alarm red, so bright red
+  /* Chip damage: a duller, browner red than the audit alarm red, so bright red
      means "someone died" and dim red means "someone is being worn down". */
   --color-damage: 198 88 72;
   /* Mint rather than a second team green. */
@@ -65,12 +65,12 @@
    after :root so it wins the equal-specificity override. Self stays a bright
    cyan (and is always symbol-marked ►YOU) so it reads distinct from team blue. */
 .palette-colorblind {
-  --color-radiant: 86 180 233;
-  --color-radiant-deep: 46 140 200;
-  --color-dire: 230 159 0;
-  --color-dire-deep: 185 125 0;
+  --color-chaff: 86 180 233;
+  --color-chaff-deep: 46 140 200;
+  --color-audit: 230 159 0;
+  --color-audit-deep: 185 125 0;
   --color-self: 150 235 255;
-  /* Dire becoming Okabe-Ito orange lands it on top of the untouched gold and
+  /* Audit becoming Okabe-Ito orange lands it on top of the untouched gold and
      warn ambers — the enemy team, your bank balance and every alarm painted
      the same color for exactly the players who need them separated. Both move
      off orange: gold to the Okabe-Ito yellow, warn to its reddish purple. */
@@ -101,8 +101,8 @@
   body {
     background-color: rgb(var(--bg-deep));
     background-image:
-      radial-gradient(ellipse at top, rgb(var(--color-radiant) / 0.04), transparent 60%),
-      radial-gradient(ellipse at bottom, rgb(var(--color-dire) / 0.04), transparent 60%);
+      radial-gradient(ellipse at top, rgb(var(--color-chaff) / 0.04), transparent 60%),
+      radial-gradient(ellipse at bottom, rgb(var(--color-audit) / 0.04), transparent 60%);
     color: rgb(var(--text-primary));
     font-family: var(--font-mono);
     line-height: 1.6;
@@ -112,13 +112,13 @@
   }
 
   ::selection {
-    background: rgb(var(--color-radiant));
+    background: rgb(var(--color-chaff));
     color: rgb(var(--bg-primary));
     text-shadow: none;
   }
 
   ::-moz-selection {
-    background: rgb(var(--color-radiant));
+    background: rgb(var(--color-chaff));
     color: rgb(var(--bg-primary));
   }
 
@@ -152,8 +152,8 @@
   }
 
   a:hover {
-    color: rgb(var(--color-radiant));
-    text-shadow: 0 0 8px rgb(var(--color-radiant) / 0.6);
+    color: rgb(var(--color-chaff));
+    text-shadow: 0 0 8px rgb(var(--color-chaff) / 0.6);
   }
 
   :focus-visible {
@@ -295,15 +295,15 @@
   }
 
   /* Text glow — colored (use when current color isn't the glow color) */
-  .text-glow-radiant {
+  .text-glow-chaff {
     text-shadow:
-      0 0 6px rgb(var(--color-radiant) / 0.9),
-      0 0 14px rgb(var(--color-radiant) / 0.5);
+      0 0 6px rgb(var(--color-chaff) / 0.9),
+      0 0 14px rgb(var(--color-chaff) / 0.5);
   }
-  .text-glow-dire {
+  .text-glow-audit {
     text-shadow:
-      0 0 6px rgb(var(--color-dire) / 0.9),
-      0 0 14px rgb(var(--color-dire) / 0.5);
+      0 0 6px rgb(var(--color-audit) / 0.9),
+      0 0 14px rgb(var(--color-audit) / 0.5);
   }
   .text-glow-gold {
     text-shadow:
@@ -317,17 +317,17 @@
   }
 
   /* Box bloom — layered halos */
-  .bloom-radiant {
+  .bloom-chaff {
     box-shadow:
-      0 0 12px rgb(var(--color-radiant) / 0.55),
-      0 0 32px rgb(var(--color-radiant) / 0.25),
-      inset 0 0 8px rgb(var(--color-radiant) / 0.15);
+      0 0 12px rgb(var(--color-chaff) / 0.55),
+      0 0 32px rgb(var(--color-chaff) / 0.25),
+      inset 0 0 8px rgb(var(--color-chaff) / 0.15);
   }
-  .bloom-dire {
+  .bloom-audit {
     box-shadow:
-      0 0 12px rgb(var(--color-dire) / 0.55),
-      0 0 32px rgb(var(--color-dire) / 0.25),
-      inset 0 0 8px rgb(var(--color-dire) / 0.15);
+      0 0 12px rgb(var(--color-audit) / 0.55),
+      0 0 32px rgb(var(--color-audit) / 0.25),
+      inset 0 0 8px rgb(var(--color-audit) / 0.15);
   }
   .bloom-ability {
     box-shadow:
@@ -372,7 +372,7 @@
   /* Damage flash on the hero panel. It used to be a 30% WHITE wash — the
      brightest thing that ever appeared on a near-black palette, fired on the
      most frequent event in the game and fighting the red critical-HP vignette
-     trying to say the same thing. Dire red, scaled by --hit-intensity. */
+     trying to say the same thing. Audit red, scaled by --hit-intensity. */
   .anim-flash-damage {
     animation: flash-damage 0.28s ease-out;
   }
@@ -397,11 +397,11 @@
     background: radial-gradient(
       ellipse at center,
       transparent 45%,
-      rgb(var(--color-dire) / 0.55) 100%
+      rgb(var(--color-audit) / 0.55) 100%
     );
   }
 
-  /* Respawn: the mirror of the death vignette, radiant instead of dire. Carries
+  /* Respawn: the mirror of the death vignette, chaff instead of audit. Carries
      the same resting-state opacity, for the same reduced-motion reason. */
   .anim-respawn-vignette {
     opacity: 0;
@@ -409,13 +409,13 @@
     background: radial-gradient(
       ellipse at center,
       transparent 45%,
-      rgb(var(--color-radiant) / 0.45) 100%
+      rgb(var(--color-chaff) / 0.45) 100%
     );
   }
 
   /* Game-end climax flash — a one-shot team-colored wash fired the instant the
      game ends (PostGame provides the screen; this is the instantaneous punch).
-     Victory blooms radiant green from the center; defeat closes in dire red.
+     Victory blooms chaff green from the center; defeat closes in audit red.
      Both carry the same resting-state opacity as .anim-death-vignette, for the
      same reduced-motion reason. */
   .anim-end-victory {
@@ -423,7 +423,7 @@
     animation: end-flash 1s ease-out forwards;
     background: radial-gradient(
       ellipse at center,
-      rgb(var(--color-radiant) / 0.45) 0%,
+      rgb(var(--color-chaff) / 0.45) 0%,
       transparent 70%
     );
   }
@@ -433,12 +433,12 @@
     background: radial-gradient(
       ellipse at center,
       transparent 30%,
-      rgb(var(--color-dire) / 0.6) 100%
+      rgb(var(--color-audit) / 0.6) 100%
     );
   }
 
   .critical-vignette {
-    box-shadow: inset 0 0 120px rgb(var(--color-dire) / 0.55);
+    box-shadow: inset 0 0 120px rgb(var(--color-audit) / 0.55);
   }
 }
 
@@ -523,7 +523,7 @@
 
 @keyframes flash-damage {
   0% {
-    background-color: rgb(var(--color-dire) / calc(0.3 * var(--hit-intensity, 1)));
+    background-color: rgb(var(--color-audit) / calc(0.3 * var(--hit-intensity, 1)));
   }
   100% {
     background-color: transparent;
@@ -532,25 +532,25 @@
 
 @keyframes impact {
   0% {
-    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
+    box-shadow: inset 0 0 0 rgb(var(--color-audit) / 0);
   }
   18% {
-    box-shadow: inset 0 0 70px rgb(var(--color-dire) / calc(0.55 * var(--hit-intensity, 1)));
+    box-shadow: inset 0 0 70px rgb(var(--color-audit) / calc(0.55 * var(--hit-intensity, 1)));
   }
   100% {
-    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
+    box-shadow: inset 0 0 0 rgb(var(--color-audit) / 0);
   }
 }
 
 @keyframes impact-strong {
   0% {
-    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
+    box-shadow: inset 0 0 0 rgb(var(--color-audit) / 0);
   }
   12% {
-    box-shadow: inset 0 0 140px rgb(var(--color-dire) / 0.75);
+    box-shadow: inset 0 0 140px rgb(var(--color-audit) / 0.75);
   }
   100% {
-    box-shadow: inset 0 0 0 rgb(var(--color-dire) / 0);
+    box-shadow: inset 0 0 0 rgb(var(--color-audit) / 0);
   }
 }
 

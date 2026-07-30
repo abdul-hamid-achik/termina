@@ -163,8 +163,8 @@ describe('exotic tier-25 cast effects', () => {
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
-          // mid-t1-dire IS adjacent to mid-river.
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-dire', mp: 500, maxMp: 500 },
+          // mid-t1-audit IS adjacent to mid-river.
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit', mp: 500, maxMp: 500 },
         },
       }))
     const dmgFromMe = () =>

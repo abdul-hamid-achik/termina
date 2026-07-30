@@ -14,8 +14,8 @@ describe('creeps: lane combat', () => {
     await game.patch((s) => ({
       ...s,
       creeps: [
-        { id: 'rc', team: 'radiant', zone: 'top-river', hp: 400, type: 'melee' },
-        { id: 'dc', team: 'dire', zone: 'top-river', hp: 400, type: 'melee' },
+        { id: 'rc', team: 'chaff', zone: 'top-river', hp: 400, type: 'melee' },
+        { id: 'dc', team: 'audit', zone: 'top-river', hp: 400, type: 'melee' },
       ],
     }))
 
@@ -34,14 +34,14 @@ describe('creeps: lane combat', () => {
     await game.patch((s) => ({
       ...s,
       creeps: [
-        { id: 'rc', team: 'radiant', zone: 'top-river', hp: 400, type: 'melee' },
-        { id: 'dc', team: 'dire', zone: 'top-river', hp: 1, type: 'melee' },
+        { id: 'rc', team: 'chaff', zone: 'top-river', hp: 400, type: 'melee' },
+        { id: 'dc', team: 'audit', zone: 'top-river', hp: 1, type: 'melee' },
       ],
     }))
 
     await game.tick()
 
-    // The 1-HP dire creep dies and is reaped from the board.
+    // The 1-HP audit creep dies and is reaped from the board.
     expect((await game.state()).creeps.find((c) => c.id === 'dc')).toBeUndefined()
   })
 })
@@ -56,7 +56,7 @@ describe('creeps: last-hit & deny economy', () => {
   it('last-hitting an enemy creep banks gold', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
-    const enemyTeam = me0.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me0.team === 'chaff' ? 'audit' : 'chaff'
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
@@ -122,9 +122,9 @@ describe('creeps: last-hit & deny economy', () => {
     // so timing is still worth more.
     const game = await seedGame('fresh', {
       players: [
-        { id: HUMAN, name: HUMAN, team: 'radiant', heroId: 'echo' },
-        { id: 'lanemate', name: 'lanemate', team: 'radiant', heroId: 'kernel' },
-        { id: ENEMY, name: ENEMY, team: 'dire', heroId: 'regex' },
+        { id: HUMAN, name: HUMAN, team: 'chaff', heroId: 'echo' },
+        { id: 'lanemate', name: 'lanemate', team: 'chaff', heroId: 'kernel' },
+        { id: ENEMY, name: ENEMY, team: 'audit', heroId: 'regex' },
       ],
     })
     await game.patch((s) => ({
@@ -134,7 +134,7 @@ describe('creeps: last-hit & deny economy', () => {
         [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river', xp: 0 },
         lanemate: { ...s.players['lanemate']!, zone: 'mid-river', alive: true, xp: 0 },
       },
-      creeps: [{ id: 'enemy_creep', team: 'dire', zone: 'mid-river', hp: 10, type: 'melee' }],
+      creeps: [{ id: 'enemy_creep', team: 'audit', zone: 'mid-river', hp: 10, type: 'melee' }],
     }))
 
     game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })

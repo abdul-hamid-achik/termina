@@ -42,13 +42,13 @@ export function applyScenario(
     }
 
     case 'core_vulnerable':
-      // As if a Dire T3 fell — the enemy Ancient is now attackable; the macro
+      // As if a Audit T3 fell — the enemy Ancient is now attackable; the macro
       // strip should flag it urgent.
       return {
         ...state,
         ancients: {
           ...state.ancients,
-          dire: { ...state.ancients.dire, vulnerable: true },
+          audit: { ...state.ancients.audit, vulnerable: true },
         },
       }
 

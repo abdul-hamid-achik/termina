@@ -21,7 +21,7 @@ describe('NPC damage is visible', () => {
     await game.patch((s) => ({
       ...s,
       creeps: [],
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-dire' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
     }))
 
     await game.tick(2)
@@ -31,7 +31,7 @@ describe('NPC damage is visible', () => {
     const hit = hits[0]!
     expect(hit).toMatchObject({
       _tag: 'damage',
-      sourceId: 'tower_mid-t1-dire',
+      sourceId: 'tower_mid-t1-audit',
       targetId: HUMAN,
       damageType: 'physical',
     })
@@ -45,7 +45,7 @@ describe('NPC damage is visible', () => {
     // its "a creep" label off that prefix.
     await game.patch((s) => ({
       ...s,
-      creeps: [{ id: 'creep-901', team: 'dire', zone: 'mid-river', hp: 400, type: 'melee' }],
+      creeps: [{ id: 'creep-901', team: 'audit', zone: 'mid-river', hp: 400, type: 'melee' }],
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
     }))
 
@@ -85,7 +85,7 @@ describe('NPC damage is visible', () => {
     await game.patch((s) => ({
       ...s,
       creeps: [],
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-dire' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
     }))
 
     await game.tick(2)

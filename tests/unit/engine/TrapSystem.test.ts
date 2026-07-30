@@ -8,7 +8,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Test',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'socket',
     zone: 'mid-river',
     hp: 650,
@@ -37,7 +37,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 const TRAP: TrapState = {
   owner: 'p1',
-  team: 'radiant',
+  team: 'chaff',
   damage: 160,
   revealDuration: 2,
   expiryTick: 40,
@@ -50,8 +50,8 @@ function makeState(players: PlayerState[], traps: TrapState[], overrides: Partia
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -69,8 +69,8 @@ function makeState(players: PlayerState[], traps: TrapState[], overrides: Partia
 
 describe('TrapSystem.processTraps', () => {
   it('detonates on the first enemy hero in the trapped zone', () => {
-    const owner = makePlayer({ id: 'p1', team: 'radiant', zone: 'top-river' })
-    const enemy = makePlayer({ id: 'e1', team: 'dire', heroId: 'echo', zone: 'mid-river' })
+    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'top-river' })
+    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'echo', zone: 'mid-river' })
     const state = makeState([owner, enemy], [TRAP])
 
     const { state: next, events } = processTraps(state)
@@ -94,7 +94,7 @@ describe('TrapSystem.processTraps', () => {
   })
 
   it('leaves the trap armed when no enemy is present', () => {
-    const owner = makePlayer({ id: 'p1', team: 'radiant', zone: 'top-river' })
+    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'top-river' })
     const state = makeState([owner], [TRAP])
 
     const { state: next, events } = processTraps(state)
@@ -104,8 +104,8 @@ describe('TrapSystem.processTraps', () => {
   })
 
   it('does not trigger on an allied hero', () => {
-    const owner = makePlayer({ id: 'p1', team: 'radiant', zone: 'top-river' })
-    const ally = makePlayer({ id: 'a1', team: 'radiant', heroId: 'echo', zone: 'mid-river' })
+    const owner = makePlayer({ id: 'p1', team: 'chaff', zone: 'top-river' })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', heroId: 'echo', zone: 'mid-river' })
     const state = makeState([owner, ally], [TRAP])
 
     const { state: next, events } = processTraps(state)
@@ -116,7 +116,7 @@ describe('TrapSystem.processTraps', () => {
   })
 
   it('disarms an expired trap without triggering, even with an enemy present', () => {
-    const enemy = makePlayer({ id: 'e1', team: 'dire', heroId: 'echo', zone: 'mid-river' })
+    const enemy = makePlayer({ id: 'e1', team: 'audit', heroId: 'echo', zone: 'mid-river' })
     const expired: TrapState = { ...TRAP, expiryTick: 10 } // tick === expiryTick → expired
     const state = makeState([enemy], [expired], { tick: 10 })
 

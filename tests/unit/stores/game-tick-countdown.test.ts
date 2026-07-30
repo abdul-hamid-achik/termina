@@ -7,10 +7,10 @@ import type { TeamState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-function makeTeams(): { radiant: TeamState; dire: TeamState } {
+function makeTeams(): { chaff: TeamState; audit: TeamState } {
   return {
-    radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-    dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+    chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+    audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
   }
 }
 

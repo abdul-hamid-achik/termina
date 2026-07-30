@@ -20,7 +20,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
     hp: 500,
@@ -54,8 +54,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -67,7 +67,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -86,7 +86,7 @@ describe('gameplay-fixes: Scythe of Vyse Hex is a hard disable', () => {
   })
 
   it('a hexed hero cannot MOVE', () => {
-    const action: PlayerAction = { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-dire' } }
+    const action: PlayerAction = { playerId: 'p1', command: { type: 'move', zone: 'mid-t1-audit' } }
     expect(validateAction(hexedState(), action)).toBe('Cannot act while hexed')
   })
 
@@ -109,10 +109,10 @@ describe('gameplay-fixes: invisibility items fog the holder from enemies', () =>
   function viewerSeesEnemyFogged(enemyBuffs: Buff[]): boolean {
     const state = makeGameState({
       players: {
-        r1: makePlayer({ id: 'r1', team: 'radiant', zone: 'mid-river' }),
+        r1: makePlayer({ id: 'r1', team: 'chaff', zone: 'mid-river' }),
         d1: makePlayer({
           id: 'd1',
-          team: 'dire',
+          team: 'audit',
           zone: 'mid-river',
           name: 'Enemy',
           buffs: enemyBuffs,

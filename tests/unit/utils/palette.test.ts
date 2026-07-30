@@ -42,8 +42,8 @@ const colorblind = { ...base, ...paletteOf('.palette-colorblind') }
  * not part of the set.
  */
 const SEMANTIC = [
-  'radiant',
-  'dire',
+  'chaff',
+  'audit',
   'self',
   'gold',
   'mana',
@@ -87,7 +87,7 @@ describe('terminal palette', () => {
   })
 
   it('keeps them distinguishable in the colorblind palette too', () => {
-    // The Okabe-Ito remap moves dire onto orange; gold and warn have to move
+    // The Okabe-Ito remap moves audit onto orange; gold and warn have to move
     // with it or the swap trades one collision for three.
     const worst = closestPair(colorblind)
     expect(worst.d, `closest pair: ${worst.pair}`).toBeGreaterThanOrEqual(MIN_DISTANCE)
@@ -96,8 +96,8 @@ describe('terminal palette', () => {
   it('separates the pairs the combat log renders next to each other', () => {
     // Chip damage vs a death, a heal vs the team, the ►YOU marker vs a spell.
     for (const [a, b] of [
-      ['damage', 'dire'],
-      ['healing', 'radiant'],
+      ['damage', 'audit'],
+      ['healing', 'chaff'],
       ['self', 'ability'],
       ['gold', 'warn'],
     ] as const) {

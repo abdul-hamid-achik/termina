@@ -60,8 +60,8 @@ async function seedGameEndingOffSnapshotBeat(gameId: string) {
   const sm = createInMemoryStateManager()
   await Effect.runPromise(
     sm.createGame(gameId, [
-      { id: 'p1', name: 'p1', team: 'radiant', heroId: 'echo' },
-      { id: 'p2', name: 'p2', team: 'dire', heroId: 'daemon' },
+      { id: 'p1', name: 'p1', team: 'chaff', heroId: 'echo' },
+      { id: 'p2', name: 'p2', team: 'audit', heroId: 'daemon' },
     ]),
   )
   // tick 41 → the loop's tick is 42, and 42 % 15 !== 0.
@@ -72,7 +72,7 @@ async function seedGameEndingOffSnapshotBeat(gameId: string) {
       ...s,
       tick: startTick,
       phase: 'playing' as const,
-      ancients: { ...s.ancients!, dire: { ...s.ancients!.dire, hp: 0, alive: false } },
+      ancients: { ...s.ancients!, audit: { ...s.ancients!.audit, hp: 0, alive: false } },
     })),
   )
   return sm
@@ -110,7 +110,7 @@ describe('game loop: final handoff', () => {
     )
 
     const { winner } = await done
-    expect(winner).toBe('radiant')
+    expect(winner).toBe('chaff')
 
     const snapshot = store.get(`gamesnap:${gameId}`)
     expect(snapshot).toBeDefined()
@@ -174,7 +174,7 @@ describe('game loop: final handoff', () => {
     )
 
     const { winner } = await done
-    expect(winner).toBe('radiant')
+    expect(winner).toBe('chaff')
   }, 3000)
 
   it('hands the farm tally to onGameOver rather than leaving it to be looked up', async () => {
@@ -192,7 +192,7 @@ describe('game loop: final handoff', () => {
       sm.updateState(gameId, (s) => ({
         ...s,
         players: { ...s.players, p1: { ...s.players.p1!, zone: 'mid-river' } },
-        creeps: [{ id: 'c1', team: 'dire', zone: 'mid-river', hp: 5, type: 'melee' as const }],
+        creeps: [{ id: 'c1', team: 'audit', zone: 'mid-river', hp: 5, type: 'melee' as const }],
       })),
     )
     submitAction(gameId, 'p1', { type: 'attack', target: { kind: 'creep', index: 0 } })

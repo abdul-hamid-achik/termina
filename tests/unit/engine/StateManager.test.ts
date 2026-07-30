@@ -11,7 +11,7 @@ function makePlayerSetup(overrides: Partial<PlayerSetup> = {}): PlayerSetup {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     ...overrides,
   }
@@ -27,8 +27,8 @@ describe('StateManager', () => {
   describe('createGame', () => {
     it('should create a new game with initial state', () => {
       const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', team: 'radiant', heroId: 'echo' }),
-        makePlayerSetup({ id: 'p2', team: 'dire', name: 'Player2', heroId: 'echo' }),
+        makePlayerSetup({ id: 'p1', team: 'chaff', heroId: 'echo' }),
+        makePlayerSetup({ id: 'p2', team: 'audit', name: 'Player2', heroId: 'echo' }),
       ]
 
       const state = Effect.runSync(sm.createGame('game1', players))
@@ -46,20 +46,18 @@ describe('StateManager', () => {
       expect(state.players['p1']!.gold).toBe(STARTING_GOLD)
     })
 
-    it('should place radiant players in radiant fountain', () => {
-      const players: PlayerSetup[] = [
-        makePlayerSetup({ id: 'p1', team: 'radiant', heroId: 'echo' }),
-      ]
+    it('should place chaff players in chaff fountain', () => {
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'chaff', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.players['p1']!.zone).toBe('radiant-fountain')
+      expect(state.players['p1']!.zone).toBe('chaff-fountain')
     })
 
-    it('should place dire players in dire fountain', () => {
-      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'dire', heroId: 'echo' })]
+    it('should place audit players in audit fountain', () => {
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'audit', heroId: 'echo' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.players['p1']!.zone).toBe('dire-fountain')
+      expect(state.players['p1']!.zone).toBe('audit-fountain')
     })
 
     it('should initialize players with hero base stats', () => {
@@ -114,18 +112,18 @@ describe('StateManager', () => {
     })
 
     it('should initialize team states', () => {
-      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'radiant' })]
+      const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1', team: 'chaff' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.teams.radiant).toEqual({
-        id: 'radiant',
+      expect(state.teams.chaff).toEqual({
+        id: 'chaff',
         kills: 0,
         towerKills: 0,
         gold: 0,
         glyphUsedTick: null,
       })
-      expect(state.teams.dire).toEqual({
-        id: 'dire',
+      expect(state.teams.audit).toEqual({
+        id: 'audit',
         kills: 0,
         towerKills: 0,
         gold: 0,

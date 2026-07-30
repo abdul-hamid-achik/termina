@@ -61,15 +61,15 @@ describe('Zone Constants', () => {
 
   describe('team assignment', () => {
     it('each base belongs to a team', () => {
-      const radiantBase = ZONE_MAP['radiant-base']
-      const direBase = ZONE_MAP['dire-base']
-      expect(radiantBase!.team).toBe('radiant')
-      expect(direBase!.team).toBe('dire')
+      const chaffBase = ZONE_MAP['chaff-base']
+      const auditBase = ZONE_MAP['audit-base']
+      expect(chaffBase!.team).toBe('chaff')
+      expect(auditBase!.team).toBe('audit')
     })
 
     it('each fountain belongs to a team', () => {
-      expect(ZONE_MAP['radiant-fountain']!.team).toBe('radiant')
-      expect(ZONE_MAP['dire-fountain']!.team).toBe('dire')
+      expect(ZONE_MAP['chaff-fountain']!.team).toBe('chaff')
+      expect(ZONE_MAP['audit-fountain']!.team).toBe('audit')
     })
 
     it('river zones are neutral', () => {
@@ -89,15 +89,15 @@ describe('Zone Constants', () => {
     it('lane zones belong to correct team based on suffix', () => {
       const lanes = ZONES.filter((z) => z.type === 'lane')
       for (const l of lanes) {
-        if (l.id.endsWith('-rad')) expect(l.team).toBe('radiant')
-        else if (l.id.endsWith('-dire')) expect(l.team).toBe('dire')
+        if (l.id.endsWith('-rad')) expect(l.team).toBe('chaff')
+        else if (l.id.endsWith('-audit')) expect(l.team).toBe('audit')
       }
     })
 
-    it('radiant and dire have same number of team zones', () => {
-      const radiantCount = ZONES.filter((z) => z.team === 'radiant').length
-      const direCount = ZONES.filter((z) => z.team === 'dire').length
-      expect(radiantCount).toBe(direCount)
+    it('chaff and audit have same number of team zones', () => {
+      const chaffCount = ZONES.filter((z) => z.team === 'chaff').length
+      const auditCount = ZONES.filter((z) => z.team === 'audit').length
+      expect(chaffCount).toBe(auditCount)
     })
   })
 
@@ -106,15 +106,15 @@ describe('Zone Constants', () => {
       const shops = ZONES.filter((z) => z.shop)
       expect(shops).toHaveLength(4)
       expect(shops.map((s) => s.id).sort()).toEqual([
-        'dire-base',
-        'dire-fountain',
-        'radiant-base',
-        'radiant-fountain',
+        'audit-base',
+        'audit-fountain',
+        'chaff-base',
+        'chaff-fountain',
       ])
     })
 
     it('both teams can shop without leaving their base', () => {
-      for (const id of ['radiant-base', 'dire-base']) {
+      for (const id of ['chaff-base', 'audit-base']) {
         expect(ZONES.find((z) => z.id === id)?.shop).toBe(true)
       }
     })
@@ -178,34 +178,34 @@ describe('Zone Constants', () => {
       expect(runeTop.adjacentTo).toContain('top-river')
       expect(runeTop.adjacentTo).toContain('mid-river')
       expect(runeTop.adjacentTo).toContain('jungle-rad-top')
-      expect(runeTop.adjacentTo).toContain('jungle-dire-top')
+      expect(runeTop.adjacentTo).toContain('jungle-audit-top')
 
       const runeBot = ZONE_MAP['rune-bot']!
       expect(runeBot.adjacentTo).toContain('bot-river')
       expect(runeBot.adjacentTo).toContain('mid-river')
       expect(runeBot.adjacentTo).toContain('jungle-rad-bot')
-      expect(runeBot.adjacentTo).toContain('jungle-dire-bot')
+      expect(runeBot.adjacentTo).toContain('jungle-audit-bot')
     })
 
     it('fountains connect only to their base', () => {
-      expect(ZONE_MAP['radiant-fountain']!.adjacentTo).toEqual(['radiant-base'])
-      expect(ZONE_MAP['dire-fountain']!.adjacentTo).toEqual(['dire-base'])
+      expect(ZONE_MAP['chaff-fountain']!.adjacentTo).toEqual(['chaff-base'])
+      expect(ZONE_MAP['audit-fountain']!.adjacentTo).toEqual(['audit-base'])
     })
 
     it('bases connect to fountain and all three T3 zones', () => {
-      const radBase = ZONE_MAP['radiant-base']!
-      expect(radBase.adjacentTo).toContain('radiant-fountain')
+      const radBase = ZONE_MAP['chaff-base']!
+      expect(radBase.adjacentTo).toContain('chaff-fountain')
       expect(radBase.adjacentTo).toContain('top-t3-rad')
       expect(radBase.adjacentTo).toContain('mid-t3-rad')
       expect(radBase.adjacentTo).toContain('bot-t3-rad')
       expect(radBase.adjacentTo).toHaveLength(4)
 
-      const direBase = ZONE_MAP['dire-base']!
-      expect(direBase.adjacentTo).toContain('dire-fountain')
-      expect(direBase.adjacentTo).toContain('top-t3-dire')
-      expect(direBase.adjacentTo).toContain('mid-t3-dire')
-      expect(direBase.adjacentTo).toContain('bot-t3-dire')
-      expect(direBase.adjacentTo).toHaveLength(4)
+      const auditBase = ZONE_MAP['audit-base']!
+      expect(auditBase.adjacentTo).toContain('audit-fountain')
+      expect(auditBase.adjacentTo).toContain('top-t3-audit')
+      expect(auditBase.adjacentTo).toContain('mid-t3-audit')
+      expect(auditBase.adjacentTo).toContain('bot-t3-audit')
+      expect(auditBase.adjacentTo).toHaveLength(4)
     })
   })
 
@@ -213,29 +213,29 @@ describe('Zone Constants', () => {
   // halves of the map are structurally identical. Lock that fairness invariant —
   // a missing tower, extra jungle, or lop-sided connection on one side would show
   // up as a real side bias in the simulator, so guard it deterministically here.
-  describe('radiant/dire structural symmetry (fairness)', () => {
-    const teamZones = (team: 'radiant' | 'dire') => ZONES.filter((z) => z.team === team)
+  describe('chaff/audit structural symmetry (fairness)', () => {
+    const teamZones = (team: 'chaff' | 'audit') => ZONES.filter((z) => z.team === team)
 
     it('each side has the same per-type zone counts', () => {
-      const byType = (team: 'radiant' | 'dire') => {
+      const byType = (team: 'chaff' | 'audit') => {
         const counts: Record<string, number> = {}
         for (const z of teamZones(team)) counts[z.type] = (counts[z.type] ?? 0) + 1
         return counts
       }
-      expect(byType('radiant')).toEqual(byType('dire'))
+      expect(byType('chaff')).toEqual(byType('audit'))
     })
 
     it('the two halves have a mirrored adjacency-degree distribution', () => {
-      const degrees = (team: 'radiant' | 'dire') =>
+      const degrees = (team: 'chaff' | 'audit') =>
         teamZones(team)
           .map((z) => z.adjacentTo.length)
           .sort((a, b) => a - b)
-      expect(degrees('radiant')).toEqual(degrees('dire'))
+      expect(degrees('chaff')).toEqual(degrees('audit'))
     })
 
-    it('every radiant zone has a same-(type, degree) mirror on the dire side', () => {
+    it('every chaff zone has a same-(type, degree) mirror on the audit side', () => {
       const sig = (z: (typeof ZONES)[number]) => `${z.type}:${z.adjacentTo.length}`
-      expect(teamZones('radiant').map(sig).sort()).toEqual(teamZones('dire').map(sig).sort())
+      expect(teamZones('chaff').map(sig).sort()).toEqual(teamZones('audit').map(sig).sort())
     })
   })
 })
@@ -246,18 +246,18 @@ describe('shop zones are team-gated', () => {
   // bare `zone.shop` test let the attacker restock from the DEFENDER's shop
   // mid-fight.
   it('lets a team shop in its own base and fountain', () => {
-    expect(isShopZoneFor('radiant-base', 'radiant')).toBe(true)
-    expect(isShopZoneFor('radiant-fountain', 'radiant')).toBe(true)
-    expect(isShopZoneFor('dire-base', 'dire')).toBe(true)
+    expect(isShopZoneFor('chaff-base', 'chaff')).toBe(true)
+    expect(isShopZoneFor('chaff-fountain', 'chaff')).toBe(true)
+    expect(isShopZoneFor('audit-base', 'audit')).toBe(true)
   })
 
   it('refuses the enemy shop', () => {
-    expect(isShopZoneFor('dire-base', 'radiant')).toBe(false)
-    expect(isShopZoneFor('radiant-base', 'dire')).toBe(false)
-    expect(isShopZoneFor('dire-fountain', 'radiant')).toBe(false)
+    expect(isShopZoneFor('audit-base', 'chaff')).toBe(false)
+    expect(isShopZoneFor('chaff-base', 'audit')).toBe(false)
+    expect(isShopZoneFor('audit-fountain', 'chaff')).toBe(false)
   })
 
   it('refuses a zone that is not a shop at all', () => {
-    expect(isShopZoneFor('mid-river', 'radiant')).toBe(false)
+    expect(isShopZoneFor('mid-river', 'chaff')).toBe(false)
   })
 })

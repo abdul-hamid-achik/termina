@@ -74,9 +74,9 @@ describe('HeroLoreCard', () => {
   const roleColors: Array<[HeroRole, string]> = [
     ['carry', 'text-gold'],
     ['mage', 'text-ability'],
-    ['assassin', 'text-dire'],
-    ['tank', 'text-radiant'],
-    ['support', 'text-radiant'],
+    ['assassin', 'text-audit'],
+    ['tank', 'text-chaff'],
+    ['support', 'text-chaff'],
     ['offlaner', 'text-ability'],
   ]
 

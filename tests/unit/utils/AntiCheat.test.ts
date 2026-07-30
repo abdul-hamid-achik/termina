@@ -18,7 +18,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'test_player',
     name: 'TestPlayer',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -50,8 +50,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -92,7 +92,7 @@ describe('AntiCheat', () => {
       })
 
       // Distant zone: a legal auto-path order now, not a violation.
-      expect(validateVision(state, 'p1', { type: 'move', zone: 'dire-fountain' })).toBeNull()
+      expect(validateVision(state, 'p1', { type: 'move', zone: 'audit-fountain' })).toBeNull()
 
       // A zone that doesn't exist in THIS game's zone set is still a violation.
       const zones = { ...state.zones }
@@ -110,7 +110,7 @@ describe('AntiCheat', () => {
         },
       })
 
-      const command: Command = { type: 'ward', zone: 'dire-fountain' }
+      const command: Command = { type: 'ward', zone: 'audit-fountain' }
       const violation = validateVision(state, 'p1', command)
       expect(violation).not.toBeNull()
       expect(violation?.violationType).toBe('VISION_BYPASS')
@@ -333,7 +333,7 @@ describe('AntiCheat', () => {
 
       // Generate 3 high violations for p2 (vision bypass)
       for (let i = 0; i < 3; i++) {
-        runAntiCheatChecks(state, 'p2', { type: 'ward', zone: 'dire-fountain' })
+        runAntiCheatChecks(state, 'p2', { type: 'ward', zone: 'audit-fountain' })
       }
 
       // Generate 1 low violation for p3

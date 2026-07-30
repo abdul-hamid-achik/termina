@@ -91,7 +91,7 @@ describe('terminal.css one-shot overlays under reduced motion', () => {
     // appear on a near-black palette, on the most frequent event in the game.
     for (const name of ['flash-damage', 'impact', 'impact-strong']) {
       const frames = blockBody(new RegExp(`@keyframes ${name}\\s*\\{`))
-      expect(frames).toContain('--color-dire')
+      expect(frames).toContain('--color-audit')
       expect(frames).not.toMatch(/rgb\(\s*255\s+255\s+255/)
     }
   })

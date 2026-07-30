@@ -112,23 +112,23 @@ describe('Spawner', () => {
 
     it('spawns creeps for both teams', () => {
       const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      const radiant = creeps.filter((c) => c.team === 'radiant')
-      const dire = creeps.filter((c) => c.team === 'dire')
-      expect(radiant.length).toBe(dire.length)
-      expect(radiant.length).toBeGreaterThan(0)
+      const chaff = creeps.filter((c) => c.team === 'chaff')
+      const audit = creeps.filter((c) => c.team === 'audit')
+      expect(chaff.length).toBe(audit.length)
+      expect(chaff.length).toBeGreaterThan(0)
     })
 
     it('spawns creeps in correct spawn zones', () => {
       const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      const radiantZones = new Set(creeps.filter((c) => c.team === 'radiant').map((c) => c.zone))
-      const direZones = new Set(creeps.filter((c) => c.team === 'dire').map((c) => c.zone))
+      const chaffZones = new Set(creeps.filter((c) => c.team === 'chaff').map((c) => c.zone))
+      const auditZones = new Set(creeps.filter((c) => c.team === 'audit').map((c) => c.zone))
 
-      expect(radiantZones).toContain('top-t3-rad')
-      expect(radiantZones).toContain('mid-t3-rad')
-      expect(radiantZones).toContain('bot-t3-rad')
-      expect(direZones).toContain('top-t3-dire')
-      expect(direZones).toContain('mid-t3-dire')
-      expect(direZones).toContain('bot-t3-dire')
+      expect(chaffZones).toContain('top-t3-rad')
+      expect(chaffZones).toContain('mid-t3-rad')
+      expect(chaffZones).toContain('bot-t3-rad')
+      expect(auditZones).toContain('top-t3-audit')
+      expect(auditZones).toContain('mid-t3-audit')
+      expect(auditZones).toContain('bot-t3-audit')
     })
 
     it('spawns creeps on consecutive wave ticks', () => {
@@ -223,7 +223,7 @@ describe('Spawner', () => {
       // Only mid lane — 3 melee + 1 ranged per team = 8 creeps.
       expect(creeps).toHaveLength((MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE) * 2)
       for (const c of creeps) {
-        expect(c.zone).toMatch(/^mid-t3-(rad|dire)$/)
+        expect(c.zone).toMatch(/^mid-t3-(rad|audit)$/)
       }
     })
 

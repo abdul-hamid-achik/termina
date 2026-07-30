@@ -53,17 +53,17 @@ const rows = computed<AllyRow[]>(() =>
 
 <template>
   <div data-testid="ally-status-sheet" class="flex flex-col gap-1.5 font-mono t-hud-sm">
-    <div v-for="r in rows" :key="r.id" class="border-l-2 border-radiant/40 pl-1.5">
+    <div v-for="r in rows" :key="r.id" class="border-l-2 border-chaff/40 pl-1.5">
       <div class="flex items-baseline justify-between gap-1">
         <span
           class="truncate font-bold"
-          :class="r.alive ? 'text-radiant' : 'text-text-dim line-through'"
+          :class="r.alive ? 'text-chaff' : 'text-text-dim line-through'"
           >{{ r.name }}</span
         >
         <span class="flex shrink-0 items-baseline gap-1 t-hud-xs">
           <span
             v-if="r.alive && r.ultReady"
-            class="font-bold text-radiant text-glow-sm"
+            class="font-bold text-chaff text-glow-sm"
             :data-testid="`ally-ult-${r.id}`"
             >ULT</span
           >
@@ -83,7 +83,7 @@ const rows = computed<AllyRow[]>(() =>
           <ProgressBar
             :value="r.hp"
             :max="r.maxHp"
-            color="radiant"
+            color="chaff"
             :width="8"
             :danger-below="0.25"
             :label="`${r.name} HP`"
@@ -100,8 +100,8 @@ const rows = computed<AllyRow[]>(() =>
             :key="b.id"
             class="t-hud-xs"
             :class="{
-              'text-radiant': b.kind === 'positive',
-              'text-dire': b.kind === 'negative',
+              'text-chaff': b.kind === 'positive',
+              'text-audit': b.kind === 'negative',
               'text-ability': b.kind === 'neutral',
             }"
             >{{ b.label

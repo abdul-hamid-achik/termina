@@ -19,10 +19,10 @@ interface LeaderboardEntry {
 interface ActiveGame {
   gameId: string
   tick: number
-  radiantKills: number
-  direKills: number
-  radiantHeroes: string[]
-  direHeroes: string[]
+  chaffKills: number
+  auditKills: number
+  chaffHeroes: string[]
+  auditHeroes: string[]
 }
 
 const {
@@ -69,7 +69,7 @@ function gameTime(tick: number): string {
 <template>
   <div class="mx-auto mt-6 flex max-w-[700px] flex-col gap-4">
     <header class="flex items-center justify-between gap-2 border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ LEADERBOARD</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ LEADERBOARD</h1>
       <span
         v-if="data?.season"
         class="border border-gold/40 bg-gold/10 px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider text-gold"
@@ -91,20 +91,20 @@ function gameTime(tick: number): string {
         >
           <div class="flex flex-col">
             <div class="t-mono-num">
-              <span class="text-radiant">{{ g.radiantKills }}</span>
+              <span class="text-chaff">{{ g.chaffKills }}</span>
               <span class="mx-1 text-text-muted">vs</span>
-              <span class="text-dire">{{ g.direKills }}</span>
+              <span class="text-audit">{{ g.auditKills }}</span>
               <span class="ml-3 text-text-dim">@ {{ gameTime(g.tick) }}</span>
             </div>
             <div class="text-[0.7rem] text-text-dim">
-              <span class="text-radiant">{{ g.radiantHeroes.join(', ') }}</span>
+              <span class="text-chaff">{{ g.chaffHeroes.join(', ') }}</span>
               <span class="mx-1">·</span>
-              <span class="text-dire">{{ g.direHeroes.join(', ') }}</span>
+              <span class="text-audit">{{ g.auditHeroes.join(', ') }}</span>
             </div>
           </div>
           <NuxtLink
             :to="`/spectate/${g.gameId}`"
-            class="border border-warn px-2 py-0.5 text-warn no-underline hover:bg-warn/10 hover:text-radiant"
+            class="border border-warn px-2 py-0.5 text-warn no-underline hover:bg-warn/10 hover:text-chaff"
           >
             [spectate]
           </NuxtLink>
@@ -121,9 +121,9 @@ function gameTime(tick: number): string {
         Loading leaderboard<span class="animate-blink">_</span>
       </div>
 
-      <div v-else-if="status === 'error'" class="py-6 text-center text-[0.85rem] text-dire">
+      <div v-else-if="status === 'error'" class="py-6 text-center text-[0.85rem] text-audit">
         Couldn't load the leaderboard.
-        <button type="button" class="text-ability hover:text-radiant" @click="refreshLeaderboard()">
+        <button type="button" class="text-ability hover:text-chaff" @click="refreshLeaderboard()">
           retry
         </button>
       </div>
@@ -198,7 +198,7 @@ function gameTime(tick: number): string {
                 >{{ p.guildTag }}</span
               >
               <NuxtLink :to="`/profile/${p.id}`" class="text-ability">{{ p.username }}</NuxtLink>
-              <span v-if="p.id === meId" class="ml-1 text-[0.65rem] text-radiant">
+              <span v-if="p.id === meId" class="ml-1 text-[0.65rem] text-chaff">
                 &lt; you<span class="sr-only"> (this is your rank)</span>
               </span>
             </th>
@@ -208,8 +208,8 @@ function gameTime(tick: number): string {
             >
               {{ p.rankName }}
             </td>
-            <td class="border-b border-border/50 px-1.5 py-1 text-radiant">{{ p.wins }}</td>
-            <td class="border-b border-border/50 px-1.5 py-1 text-dire">
+            <td class="border-b border-border/50 px-1.5 py-1 text-chaff">{{ p.wins }}</td>
+            <td class="border-b border-border/50 px-1.5 py-1 text-audit">
               {{ p.gamesPlayed - p.wins }}
             </td>
             <td class="border-b border-border/50 px-1.5 py-1">{{ p.winRate }}%</td>

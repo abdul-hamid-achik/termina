@@ -24,10 +24,10 @@ export function resetCreepIdCounter(): void {
 }
 
 /** Lane spawn points for each team. */
-const LANE_SPAWN_ZONES: Record<string, { radiant: string; dire: string }> = {
-  top: { radiant: 'top-t3-rad', dire: 'top-t3-dire' },
-  mid: { radiant: 'mid-t3-rad', dire: 'mid-t3-dire' },
-  bot: { radiant: 'bot-t3-rad', dire: 'bot-t3-dire' },
+const LANE_SPAWN_ZONES: Record<string, { chaff: string; audit: string }> = {
+  top: { chaff: 'top-t3-rad', audit: 'top-t3-audit' },
+  mid: { chaff: 'mid-t3-rad', audit: 'mid-t3-audit' },
+  bot: { chaff: 'bot-t3-rad', audit: 'bot-t3-audit' },
 }
 
 /**
@@ -36,7 +36,7 @@ const LANE_SPAWN_ZONES: Record<string, { radiant: string; dire: string }> = {
  * with for life, so a late wave is permanently tougher than an early one.
  */
 function spawnWave(
-  team: 'radiant' | 'dire',
+  team: 'chaff' | 'audit',
   lane: string,
   waveNumber: number,
   tick: number,
@@ -81,9 +81,9 @@ export function spawnCreepWaves(tick: number, hasZone?: (zoneId: string) => bool
 
   for (const lane of ['top', 'mid', 'bot']) {
     const spawn = LANE_SPAWN_ZONES[lane]
-    if (hasZone && spawn && (!hasZone(spawn.radiant) || !hasZone(spawn.dire))) continue
-    newCreeps.push(...spawnWave('radiant', lane, waveNumber, tick))
-    newCreeps.push(...spawnWave('dire', lane, waveNumber, tick))
+    if (hasZone && spawn && (!hasZone(spawn.chaff) || !hasZone(spawn.audit))) continue
+    newCreeps.push(...spawnWave('chaff', lane, waveNumber, tick))
+    newCreeps.push(...spawnWave('audit', lane, waveNumber, tick))
   }
 
   return newCreeps

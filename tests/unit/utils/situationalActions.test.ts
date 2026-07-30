@@ -4,7 +4,7 @@ import { SURRENDER_MIN_TICK, GLYPH_COOLDOWN_TICKS } from '~~/shared/constants/ba
 import type { PlayerState, CreepState } from '~~/shared/types/game'
 
 const player = (over: Partial<PlayerState> = {}): PlayerState =>
-  ({ items: [], zone: 'mid-river', team: 'radiant', ...over }) as unknown as PlayerState
+  ({ items: [], zone: 'mid-river', team: 'chaff', ...over }) as unknown as PlayerState
 
 const baseCtx = (over: Partial<SituationalContext> = {}): SituationalContext => ({
   player: player(),
@@ -39,7 +39,7 @@ describe('computeSituationalActions', () => {
   it('offers DENY only when a low-HP allied creep is in the zone', () => {
     const lowAllyCreep = {
       zone: 'mid-river',
-      team: 'radiant',
+      team: 'chaff',
       hp: 1,
       type: 'melee',
     } as unknown as CreepState
@@ -63,12 +63,12 @@ describe('computeSituationalActions', () => {
   it('hides GLYPH while the team glyph is on cooldown', () => {
     const onCd = baseCtx({
       tick: 10,
-      teams: { radiant: { glyphUsedTick: 10 }, dire: {} } as never,
+      teams: { chaff: { glyphUsedTick: 10 }, audit: {} } as never,
     })
     expect(cmds(onCd)).not.toContain('glyph')
     const offCd = baseCtx({
       tick: 10 + GLYPH_COOLDOWN_TICKS,
-      teams: { radiant: { glyphUsedTick: 10 }, dire: {} } as never,
+      teams: { chaff: { glyphUsedTick: 10 }, audit: {} } as never,
     })
     expect(cmds(offCd)).toContain('glyph')
   })

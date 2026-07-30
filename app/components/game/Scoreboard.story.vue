@@ -7,20 +7,20 @@ import {
 } from '~/stories/fixtures'
 import Scoreboard from './Scoreboard.vue'
 
-const teams = { radiant: makeTeamState('radiant'), dire: makeTeamState('dire') }
+const teams = { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') }
 
-// Full mid-game board (p1 is "you" / self-highlighted, one dire player dead).
+// Full mid-game board (p1 is "you" / self-highlighted, one audit player dead).
 const midGame = makeScoreboard()
 
-// Same board but every enemy (dire) is fogged: gold/items hidden as ???.
+// Same board but every enemy (audit) is fogged: gold/items hidden as ???.
 const fogged = makeScoreboard().map((p) =>
-  p.team === 'dire' ? makeScoreboardEntry({ ...p, fogged: true }) : p,
+  p.team === 'audit' ? makeScoreboardEntry({ ...p, fogged: true }) : p,
 )
 
 // Early game: everyone alive, low gold, no items yet, even kills.
 const earlyTeams = {
-  radiant: makeTeamState('radiant', { kills: 0, towerKills: 0, gold: 1800 }),
-  dire: makeTeamState('dire', { kills: 0, towerKills: 0, gold: 1800 }),
+  chaff: makeTeamState('chaff', { kills: 0, towerKills: 0, gold: 1800 }),
+  audit: makeTeamState('audit', { kills: 0, towerKills: 0, gold: 1800 }),
 }
 const earlyGame = makeScoreboard().map((p) =>
   makeScoreboardEntry({
@@ -37,10 +37,10 @@ const earlyGame = makeScoreboard().map((p) =>
   }),
 )
 
-// A blowout where dire is being closed out (dead, full builds on radiant).
+// A blowout where audit is being closed out (dead, full builds on chaff).
 const stompTeams = {
-  radiant: makeTeamState('radiant', { kills: 38, towerKills: 9, gold: 14_200 }),
-  dire: makeTeamState('dire', { kills: 7, towerKills: 0, gold: 4100 }),
+  chaff: makeTeamState('chaff', { kills: 38, towerKills: 9, gold: 14_200 }),
+  audit: makeTeamState('audit', { kills: 7, towerKills: 0, gold: 4100 }),
 }
 const fullBuild = [
   SAMPLE_ITEMS.daedalus,
@@ -51,14 +51,14 @@ const fullBuild = [
   SAMPLE_ITEMS.forceStaff,
 ]
 const stomp = makeScoreboard().map((p) =>
-  p.team === 'radiant'
+  p.team === 'chaff'
     ? makeScoreboardEntry({ ...p, kills: p.kills + 6, gold: 16_800, level: 25, items: fullBuild })
     : makeScoreboardEntry({ ...p, alive: false, respawnTick: 320, deaths: p.deaths + 4 }),
 )
 
 // One ally went AFK and was replaced by a bot — flagged with an [AI] tag.
 const afkTakeover = makeScoreboard().map((p, i) =>
-  p.team === 'radiant' && i === 1 ? makeScoreboardEntry({ ...p, aiControlled: true }) : p,
+  p.team === 'chaff' && i === 1 ? makeScoreboardEntry({ ...p, aiControlled: true }) : p,
 )
 </script>
 
@@ -87,7 +87,7 @@ const afkTakeover = makeScoreboard().map((p, i) =>
       </div>
     </Variant>
 
-    <Variant title="blowout (dire dead)">
+    <Variant title="blowout (audit dead)">
       <div class="bg-bg-primary" style="width: 760px">
         <Scoreboard
           :players="stomp"

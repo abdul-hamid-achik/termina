@@ -23,18 +23,18 @@ describe('Zones', () => {
       for (const name of names) {
         expect(name.length).toBeGreaterThan(0)
         // Ids keep the old faction words until the R1-08 sweep — names never do.
-        expect(name).not.toMatch(/radiant|dire|jungle|roshan/i)
+        expect(name).not.toMatch(/jungle|roshan|river crossing| lane t/i)
       }
     })
 
     it('names are drawn from the lexicon: districts, routes, the Silt, the Hollow', () => {
       const byId = Object.fromEntries(ZONES.map((z) => [z.id, z.name]))
       // Districts host the two base+fountain pairs.
-      expect(byId['radiant-base']).toBe('Rookery Terminal')
-      expect(byId['dire-base']).toBe('Landing Terminal')
+      expect(byId['chaff-base']).toBe('Rookery Terminal')
+      expect(byId['audit-base']).toBe('Landing Terminal')
       // The three routes.
       expect(byId['top-t1-rad']).toBe('Seawall T1 (CHAFF)')
-      expect(byId['mid-t1-dire']).toBe('Coldstore T1 (AUDIT)')
+      expect(byId['mid-t1-audit']).toBe('Coldstore T1 (AUDIT)')
       expect(byId['bot-t1-rad']).toBe('Shallows T1 (CHAFF)')
       // Jungle is the Silt; the pit is the Hollow; rune spots are cache drops.
       expect(byId['jungle-rad-top']).toBe('Chaff Upper Silt')
@@ -106,59 +106,59 @@ describe('Zones', () => {
     it('assigns correct team to each tower', () => {
       const towers = initializeTowers()
       for (const t of towers) {
-        if (t.zone.endsWith('-rad')) expect(t.team).toBe('radiant')
-        else if (t.zone.endsWith('-dire')) expect(t.team).toBe('dire')
+        if (t.zone.endsWith('-rad')) expect(t.team).toBe('chaff')
+        else if (t.zone.endsWith('-audit')) expect(t.team).toBe('audit')
       }
     })
 
     it('each team has 9 towers (3 lanes * 3 tiers)', () => {
       const towers = initializeTowers()
-      const radiant = towers.filter((t) => t.team === 'radiant')
-      const dire = towers.filter((t) => t.team === 'dire')
-      expect(radiant.length).toBe(9)
-      expect(dire.length).toBe(9)
+      const chaff = towers.filter((t) => t.team === 'chaff')
+      const audit = towers.filter((t) => t.team === 'audit')
+      expect(chaff.length).toBe(9)
+      expect(audit.length).toBe(9)
     })
   })
 
   describe('placeWard', () => {
     it('places a ward in a valid zone', () => {
       const zones = initializeZoneStates()
-      const result = placeWard(zones, 'mid-river', 'radiant', 10)
+      const result = placeWard(zones, 'mid-river', 'chaff', 10)
       expect(result).toBe(true)
       expect(zones['mid-river']!.wards).toHaveLength(1)
-      expect(zones['mid-river']!.wards[0]!.team).toBe('radiant')
+      expect(zones['mid-river']!.wards[0]!.team).toBe('chaff')
       expect(zones['mid-river']!.wards[0]!.placedTick).toBe(10)
       expect(zones['mid-river']!.wards[0]!.expiryTick).toBe(10 + OBSERVER_WARD_DURATION_TICKS)
     })
 
     it('returns false for unknown zone', () => {
       const zones = initializeZoneStates()
-      expect(placeWard(zones, 'nonexistent', 'radiant', 10)).toBe(false)
+      expect(placeWard(zones, 'nonexistent', 'chaff', 10)).toBe(false)
     })
 
     it('enforces ward limit per team', () => {
       const zones = initializeZoneStates()
       for (let i = 0; i < WARD_LIMIT_PER_TEAM; i++) {
-        expect(placeWard(zones, 'mid-river', 'radiant', 10)).toBe(true)
+        expect(placeWard(zones, 'mid-river', 'chaff', 10)).toBe(true)
       }
       // Next ward should fail
-      expect(placeWard(zones, 'top-river', 'radiant', 10)).toBe(false)
+      expect(placeWard(zones, 'top-river', 'chaff', 10)).toBe(false)
     })
 
     it('tracks ward limits independently per team', () => {
       const zones = initializeZoneStates()
       for (let i = 0; i < WARD_LIMIT_PER_TEAM; i++) {
-        expect(placeWard(zones, 'mid-river', 'radiant', 10)).toBe(true)
+        expect(placeWard(zones, 'mid-river', 'chaff', 10)).toBe(true)
       }
-      // Dire should still be able to place wards
-      expect(placeWard(zones, 'mid-river', 'dire', 10)).toBe(true)
+      // Audit should still be able to place wards
+      expect(placeWard(zones, 'mid-river', 'audit', 10)).toBe(true)
     })
   })
 
   describe('removeExpiredWards', () => {
     it('removes wards that have expired', () => {
       const zones = initializeZoneStates()
-      placeWard(zones, 'mid-river', 'radiant', 10)
+      placeWard(zones, 'mid-river', 'chaff', 10)
       expect(zones['mid-river']!.wards).toHaveLength(1)
 
       const updated = removeExpiredWards(zones, 10 + OBSERVER_WARD_DURATION_TICKS + 1)
@@ -167,7 +167,7 @@ describe('Zones', () => {
 
     it('keeps wards that have not expired', () => {
       const zones = initializeZoneStates()
-      placeWard(zones, 'mid-river', 'radiant', 10)
+      placeWard(zones, 'mid-river', 'chaff', 10)
 
       const updated = removeExpiredWards(zones, 10 + OBSERVER_WARD_DURATION_TICKS - 1)
       expect(updated['mid-river']!.wards).toHaveLength(1)
@@ -175,7 +175,7 @@ describe('Zones', () => {
 
     it('removes ward at exactly expiry tick', () => {
       const zones = initializeZoneStates()
-      placeWard(zones, 'mid-river', 'radiant', 10)
+      placeWard(zones, 'mid-river', 'chaff', 10)
 
       // expiryTick = 10 + OBSERVER_WARD_DURATION_TICKS. Filter keeps w.expiryTick > currentTick
       const updated = removeExpiredWards(zones, 10 + OBSERVER_WARD_DURATION_TICKS)
@@ -187,7 +187,7 @@ describe('Zones', () => {
     it('T1 towers can always be attacked', () => {
       const towers = initializeTowers()
       expect(canAttackTower(towers, 'mid-t1-rad')).toBe(true)
-      expect(canAttackTower(towers, 'top-t1-dire')).toBe(true)
+      expect(canAttackTower(towers, 'top-t1-audit')).toBe(true)
     })
 
     it('T2 cannot be attacked while T1 is alive', () => {
@@ -230,7 +230,7 @@ describe('Zones', () => {
     it('returns false for zones without towers', () => {
       const towers = initializeTowers()
       expect(canAttackTower(towers, 'mid-river')).toBe(false)
-      expect(canAttackTower(towers, 'radiant-base')).toBe(false)
+      expect(canAttackTower(towers, 'chaff-base')).toBe(false)
     })
   })
 

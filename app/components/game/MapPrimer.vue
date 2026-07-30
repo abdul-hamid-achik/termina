@@ -14,8 +14,8 @@ import { ZONE_MAP } from '~~/shared/constants/zones'
  */
 const zones = buildMapPrimerZones()
 
-// Start the explorer at the Radiant fountain (where a real game begins).
-const selected = ref('radiant-fountain')
+// Start the explorer at the Chaff fountain (where a real game begins).
+const selected = ref('chaff-fountain')
 // Mark the explorer's current zone so AsciiMap highlights it + opens its
 // adjacent zones as clickable move targets.
 const displayZones = computed(() =>
@@ -34,7 +34,7 @@ function onZoneClick(id: string) {
 <template>
   <div class="flex flex-col gap-2" data-testid="map-primer">
     <!-- The full desktop grid is ~740px of cells plus header/legend chrome, so a
-         fixed 460px box showed a new player the Radiant half and cut the map in
+         fixed 460px box showed a new player the Chaff half and cut the map in
          two — the one surface on /learn whose entire job is "here is the board".
          Viewport-relative with a ceiling so it still fits a laptop. -->
     <div
@@ -50,7 +50,7 @@ function onZoneClick(id: string) {
     </div>
     <p class="text-[0.75rem] text-text-dim" data-testid="map-primer-caption">
       Standing in <span class="text-self">{{ selectedName }}</span> —
-      <span class="text-radiant">{{ adjacentCount }}</span> adjacent zone{{
+      <span class="text-chaff">{{ adjacentCount }}</span> adjacent zone{{
         adjacentCount === 1 ? ' arrives' : 's arrive'
       }}
       next tick (bright dashed). In a game you can order a move to ANY zone — your hero walks there

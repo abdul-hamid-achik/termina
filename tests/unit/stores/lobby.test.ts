@@ -219,9 +219,9 @@ describe('Lobby Store', () => {
 
     it('updates team roster with hero', () => {
       const store = useLobbyStore()
-      store.setTeamInfo('radiant', [
-        { playerId: 'player-1', name: 'Player1', heroId: null, team: 'radiant' },
-        { playerId: 'player-2', name: 'Player2', heroId: null, team: 'radiant' },
+      store.setTeamInfo('chaff', [
+        { playerId: 'player-1', name: 'Player1', heroId: null, team: 'chaff' },
+        { playerId: 'player-2', name: 'Player2', heroId: null, team: 'chaff' },
       ])
 
       store.heroPicked('player-1', 'daemon')
@@ -247,7 +247,7 @@ describe('Lobby Store', () => {
   describe('optimisticPick / rollbackPendingPick', () => {
     it('applies the pick locally and tracks it as pending', () => {
       const store = useLobbyStore()
-      store.setTeamInfo('radiant', [{ playerId: 'me', name: 'Me', heroId: null, team: 'radiant' }])
+      store.setTeamInfo('chaff', [{ playerId: 'me', name: 'Me', heroId: null, team: 'chaff' }])
 
       store.optimisticPick('me', 'echo')
 
@@ -258,7 +258,7 @@ describe('Lobby Store', () => {
 
     it('rolls back a rejected optimistic pick', () => {
       const store = useLobbyStore()
-      store.setTeamInfo('radiant', [{ playerId: 'me', name: 'Me', heroId: null, team: 'radiant' }])
+      store.setTeamInfo('chaff', [{ playerId: 'me', name: 'Me', heroId: null, team: 'chaff' }])
       store.heroPicked('p2', 'kernel')
       store.optimisticPick('me', 'echo')
 
@@ -373,13 +373,13 @@ describe('Lobby Store', () => {
       const store = useLobbyStore()
 
       const roster = [
-        { playerId: 'p1', name: 'Player1', heroId: 'echo', team: 'radiant' as const },
-        { playerId: 'p2', name: 'Player2', heroId: null, team: 'radiant' as const },
+        { playerId: 'p1', name: 'Player1', heroId: 'echo', team: 'chaff' as const },
+        { playerId: 'p2', name: 'Player2', heroId: null, team: 'chaff' as const },
       ]
 
-      store.setTeamInfo('radiant', roster)
+      store.setTeamInfo('chaff', roster)
 
-      expect(store.team).toBe('radiant')
+      expect(store.team).toBe('chaff')
       expect(store.teamRoster).toEqual(roster)
     })
   })
@@ -464,8 +464,8 @@ describe('Lobby Store', () => {
       mockFetch.mockResolvedValue({
         status: 'lobby',
         lobbyId: 'lobby-abc',
-        team: 'dire',
-        players: [{ playerId: 'p1', team: 'dire', heroId: null }],
+        team: 'audit',
+        players: [{ playerId: 'p1', team: 'audit', heroId: null }],
         phase: 'picking',
       })
 
@@ -473,7 +473,7 @@ describe('Lobby Store', () => {
 
       expect(result).toBe('lobby')
       expect(store.lobbyId).toBe('lobby-abc')
-      expect(store.team).toBe('dire')
+      expect(store.team).toBe('audit')
       expect(store.queueStatus).toBe('found')
     })
 
@@ -483,11 +483,11 @@ describe('Lobby Store', () => {
       mockFetch.mockResolvedValue({
         status: 'lobby',
         lobbyId: 'lobby-abc',
-        team: 'radiant',
+        team: 'chaff',
         players: [
-          { playerId: 'github_7379966', username: 'alice', team: 'radiant', heroId: null },
+          { playerId: 'github_7379966', username: 'alice', team: 'chaff', heroId: null },
           // No username (e.g. a bot or pre-username record) → falls back to playerId
-          { playerId: 'bot_1', team: 'radiant', heroId: null },
+          { playerId: 'bot_1', team: 'chaff', heroId: null },
         ],
         phase: 'picking',
       })
@@ -638,8 +638,8 @@ describe('Lobby Store', () => {
       expect(store.queueStatus).toBe('picking')
 
       // Set team info
-      store.setTeamInfo('radiant', [{ playerId: 'p1', name: 'P1', heroId: null, team: 'radiant' }])
-      expect(store.team).toBe('radiant')
+      store.setTeamInfo('chaff', [{ playerId: 'p1', name: 'P1', heroId: null, team: 'chaff' }])
+      expect(store.team).toBe('chaff')
 
       // Hero picked
       store.heroPicked('p1', 'echo')
@@ -678,8 +678,8 @@ describe('Lobby Store', () => {
       mockFetch.mockResolvedValue({
         status: 'lobby',
         lobbyId: 'lobby_1',
-        team: 'radiant',
-        players: [{ playerId: 'p1', team: 'radiant', heroId: 'echo' }],
+        team: 'chaff',
+        players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo' }],
         phase: 'starting',
       })
       const store = useLobbyStore()
@@ -692,8 +692,8 @@ describe('Lobby Store', () => {
       mockFetch.mockResolvedValue({
         status: 'lobby',
         lobbyId: 'lobby_2',
-        team: 'dire',
-        players: [{ playerId: 'p2', team: 'dire', heroId: null }],
+        team: 'audit',
+        players: [{ playerId: 'p2', team: 'audit', heroId: null }],
         phase: 'picking',
       })
       const store = useLobbyStore()
@@ -706,8 +706,8 @@ describe('Lobby Store', () => {
       mockFetch.mockResolvedValue({
         status: 'lobby',
         lobbyId: 'lobby_3',
-        team: 'dire',
-        players: [{ playerId: 'p2', team: 'dire', heroId: null }],
+        team: 'audit',
+        players: [{ playerId: 'p2', team: 'audit', heroId: null }],
         phase: 'picking',
       })
       const store = useLobbyStore()

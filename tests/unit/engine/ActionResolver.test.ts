@@ -20,7 +20,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -59,8 +59,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -72,7 +72,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -109,9 +109,7 @@ describe('ActionResolver', () => {
       const allZones = initializeZoneStates()
       const subset = Object.fromEntries(
         Object.entries(allZones).filter(([id]) =>
-          ['radiant-fountain', 'radiant-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad'].includes(
-            id,
-          ),
+          ['chaff-fountain', 'chaff-base', 'mid-t3-rad', 'mid-t2-rad', 'mid-t1-rad'].includes(id),
         ),
       )
       const state = makeGameState({
@@ -185,13 +183,13 @@ describe('ActionResolver', () => {
             hp: 550,
             maxHp: 550,
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
           }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
             zone: 'mid-river',
-            team: 'dire',
+            team: 'audit',
             hp: 550,
             maxHp: 550,
           }),
@@ -231,7 +229,7 @@ describe('ActionResolver', () => {
 
     it('should allow buying in fountain (shop zone)', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ zone: 'radiant-fountain' }) },
+        players: { p1: makePlayer({ zone: 'chaff-fountain' }) },
       })
       const error = validateAction(state, {
         playerId: 'p1',
@@ -286,8 +284,8 @@ describe('ActionResolver', () => {
     it('should resolve multiple moves simultaneously', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad', team: 'radiant' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-t1-dire', team: 'dire' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-t1-rad', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', zone: 'mid-t1-audit', team: 'audit' }),
         },
       })
 
@@ -305,8 +303,8 @@ describe('ActionResolver', () => {
     it('should track hero attackers for tower AI', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'radiant' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'dire', name: 'Enemy' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff' }),
+          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy' }),
         },
       })
 
@@ -321,8 +319,8 @@ describe('ActionResolver', () => {
     it('should generate damage events on attack', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'radiant', heroId: 'echo' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'dire', name: 'Enemy', hp: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'echo' }),
+          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', hp: 500 }),
         },
       })
 
@@ -343,7 +341,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             heroId: 'echo',
             gold: 600,
             xp: 0,
@@ -411,7 +409,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             items: ['observer_ward', null, null, null, null, null],
           }),
         },
@@ -432,7 +430,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             items: ['sentry_ward', null, null, null, null, null],
           }),
         },
@@ -455,7 +453,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             items: ['observer_ward', null, null, null, null, null],
           }),
         },
@@ -475,7 +473,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             items: ['observer_ward', null, null, null, null, null],
           }),
         },
@@ -486,7 +484,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             items: ['sentry_ward', null, null, null, null, null],
           }),
         },
@@ -520,10 +518,10 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             items: ['skull_basher', null, null, null, null, null],
           }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'dire', name: 'Enemy', hp: 500 }),
+          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', hp: 500 }),
         },
       })
 
@@ -579,7 +577,7 @@ describe('ActionResolver', () => {
                 stacks: 1,
                 ticksRemaining: 3,
                 source: 'town_portal_scroll',
-                destination: 'radiant-fountain',
+                destination: 'chaff-fountain',
               },
             ],
           }),
@@ -606,7 +604,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             buffs: [
               { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
               {
@@ -614,14 +612,14 @@ describe('ActionResolver', () => {
                 stacks: 1,
                 ticksRemaining: 3,
                 source: 'town_portal_scroll',
-                destination: 'radiant-fountain',
+                destination: 'chaff-fountain',
               },
             ],
           }),
           p2: makePlayer({
             id: 'p2',
             zone: 'mid-river',
-            team: 'dire',
+            team: 'audit',
             name: 'Enemy',
           }),
         },
@@ -669,7 +667,7 @@ describe('ActionResolver', () => {
     it('should make all friendly towers invulnerable when glyph is used', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff' }),
         },
       })
 
@@ -677,22 +675,22 @@ describe('ActionResolver', () => {
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const radiantTowers = result.state.towers.filter((t) => t.team === 'radiant')
-      const direTowers = result.state.towers.filter((t) => t.team === 'dire')
+      const chaffTowers = result.state.towers.filter((t) => t.team === 'chaff')
+      const auditTowers = result.state.towers.filter((t) => t.team === 'audit')
 
-      for (const tower of radiantTowers) {
+      for (const tower of chaffTowers) {
         expect(tower.invulnerable).toBe(true)
       }
-      for (const tower of direTowers) {
+      for (const tower of auditTowers) {
         expect(tower.invulnerable).toBe(false)
       }
 
-      expect(result.state.teams.radiant.glyphUsedTick).toBe(state.tick)
-      expect(result.state.teams.dire.glyphUsedTick).toBeNull()
+      expect(result.state.teams.chaff.glyphUsedTick).toBe(state.tick)
+      expect(result.state.teams.audit.glyphUsedTick).toBeNull()
 
       const glyphEvents = result.events.filter((e) => e._tag === 'glyph_used')
       expect(glyphEvents.length).toBe(1)
-      expect(glyphEvents[0]!.team).toBe('radiant')
+      expect(glyphEvents[0]!.team).toBe('chaff')
     })
 
     it('should block attack on invulnerable tower', () => {
@@ -700,65 +698,65 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            zone: 'mid-t1-dire',
-            team: 'radiant',
+            zone: 'mid-t1-audit',
+            team: 'chaff',
           }),
         },
         towers: initializeTowers().map((t) =>
-          t.zone === 'mid-t1-dire' ? { ...t, invulnerable: true } : t,
+          t.zone === 'mid-t1-audit' ? { ...t, invulnerable: true } : t,
         ),
       })
 
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-dire' } },
+          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-dire')
+      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-audit')
       expect(tower?.hp).toBe(tower?.maxHp)
 
       const invulnEvents = result.events.filter((e) => e._tag === 'tower_invulnerable')
       expect(invulnEvents.length).toBe(1)
-      expect(invulnEvents[0]!.zone).toBe('mid-t1-dire')
+      expect(invulnEvents[0]!.zone).toBe('mid-t1-audit')
     })
 
     it('damages a vulnerable enemy tower on a basic attack and tracks tower damage', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-dire', team: 'radiant' }) },
+        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff' }) },
       })
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-dire' } },
+          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-dire')!
+      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-audit')!
       expect(tower.hp).toBeLessThan(tower.maxHp)
       expect(result.state.players['p1']!.towerDamageDealt).toBeGreaterThan(0)
     })
 
     it('destroys a low-HP enemy tower and awards the tower-kill bounty', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-dire', team: 'radiant', gold: 600 }) },
-        towers: initializeTowers().map((t) => (t.zone === 'mid-t1-dire' ? { ...t, hp: 1 } : t)),
+        players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff', gold: 600 }) },
+        towers: initializeTowers().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, hp: 1 } : t)),
       })
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-dire' } },
+          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-dire')!
+      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-audit')!
       expect(tower.alive).toBe(false)
       // awardTowerKill pays the in-zone attacker (tower_kill event itself is emitted by GameLoop)
       expect(result.state.players['p1']!.gold).toBeGreaterThan(600)
@@ -778,11 +776,11 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         tick: 100,
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff' }),
         },
         teams: {
-          radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 50 },
-          dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+          chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 50 },
+          audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
         },
       })
 
@@ -790,8 +788,8 @@ describe('ActionResolver', () => {
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const radiantTowers = result.state.towers.filter((t) => t.team === 'radiant')
-      for (const tower of radiantTowers) {
+      const chaffTowers = result.state.towers.filter((t) => t.team === 'chaff')
+      for (const tower of chaffTowers) {
         expect(tower.invulnerable).toBe(false)
       }
 
@@ -891,14 +889,14 @@ describe('ActionResolver', () => {
       expect(p1.items[0]).toBeNull()
       expect(p1.buffs.some((b) => b.id === 'tp_channeling')).toBe(true)
       const dest = p1.buffs.find((b) => b.id === 'tp_destination')
-      expect(dest?.destination).toBe('radiant-fountain')
+      expect(dest?.destination).toBe('chaff-fountain')
 
       // GameLoop ticks buffs each tick; teleport completes when channel finishes
       let channeled = result.state
       for (let i = 0; i < 3; i++) {
         channeled = tickAllBuffs(channeled)
       }
-      expect(channeled.players['p1']!.zone).toBe('radiant-fountain')
+      expect(channeled.players['p1']!.zone).toBe('chaff-fountain')
     })
 
     it('blink module moves the player to an adjacent zone', () => {
@@ -952,12 +950,12 @@ describe('ActionResolver', () => {
     it('ghost scepter buff blocks physical attack damage on later ticks', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'radiant' }),
+          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff' }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
             zone: 'mid-river',
-            team: 'dire',
+            team: 'audit',
             hp: 550,
             maxHp: 550,
             mp: 380,
@@ -990,7 +988,7 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            team: 'radiant',
+            team: 'chaff',
             hp: 550,
             maxHp: 550,
           }),
@@ -998,7 +996,7 @@ describe('ActionResolver', () => {
             id: 'p2',
             name: 'Enemy',
             zone: 'mid-river',
-            team: 'dire',
+            team: 'audit',
             hp: 650,
             maxHp: 650,
             items: ['blade_mail', null, null, null, null, null],
@@ -1046,12 +1044,12 @@ describe('ActionResolver', () => {
         },
       })
 
-      // dire-fountain is not adjacent to mid-t1-rad — useItem fails
+      // audit-fountain is not adjacent to mid-t1-rad — useItem fails
       const result = Effect.runSync(
         resolveActions(state, [
           {
             playerId: 'p1',
-            command: { type: 'use', item: 'blink_module', target: 'dire-fountain' },
+            command: { type: 'use', item: 'blink_module', target: 'audit-fountain' },
           },
         ]),
       )
@@ -1063,25 +1061,25 @@ describe('ActionResolver', () => {
   })
 
   describe('ancient attacks', () => {
-    function stateWithVulnerableDireAncient(playerZone: string, vulnerable = true): GameState {
+    function stateWithVulnerableAuditAncient(playerZone: string, vulnerable = true): GameState {
       const ancients = initializeAncients()
       return makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: playerZone }) },
-        ancients: { ...ancients, dire: { ...ancients.dire, vulnerable } },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: playerZone }) },
+        ancients: { ...ancients, audit: { ...ancients.audit, vulnerable } },
       })
     }
 
     it('damages the vulnerable enemy ancient from the enemy base', () => {
-      const state = stateWithVulnerableDireAncient('dire-base')
+      const state = stateWithVulnerableAuditAncient('audit-base')
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'ancient' } } },
         ]),
       )
 
-      expect(result.state.ancients.dire.hp).toBeLessThan(state.ancients.dire.hp)
+      expect(result.state.ancients.audit.hp).toBeLessThan(state.ancients.audit.hp)
       const dmg = result.events.find(
-        (e) => e._tag === 'damage' && e.targetId === 'ancient_dire' && e.sourceId === 'p1',
+        (e) => e._tag === 'damage' && e.targetId === 'ancient_audit' && e.sourceId === 'p1',
       )
       expect(dmg).toBeDefined()
       // Counts as structure damage on the scoreboard
@@ -1089,26 +1087,26 @@ describe('ActionResolver', () => {
     })
 
     it('does not damage an invulnerable ancient', () => {
-      const state = stateWithVulnerableDireAncient('dire-base', false)
+      const state = stateWithVulnerableAuditAncient('audit-base', false)
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'ancient' } } },
         ]),
       )
 
-      expect(result.state.ancients.dire.hp).toBe(state.ancients.dire.hp)
+      expect(result.state.ancients.audit.hp).toBe(state.ancients.audit.hp)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
     })
 
     it('requires the attacker to be in the enemy base zone', () => {
-      const state = stateWithVulnerableDireAncient('mid-river')
+      const state = stateWithVulnerableAuditAncient('mid-river')
       const result = Effect.runSync(
         resolveActions(state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'ancient' } } },
         ]),
       )
 
-      expect(result.state.ancients.dire.hp).toBe(state.ancients.dire.hp)
+      expect(result.state.ancients.audit.hp).toBe(state.ancients.audit.hp)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
     })
   })
@@ -1128,8 +1126,8 @@ describe('ActionResolver', () => {
       )
     const echoStats = { heroId: 'echo', hp: 550, maxHp: 550, mp: 280, maxMp: 280 } as const
     const enemy = (buffs: PlayerState['buffs']) =>
-      makePlayer({ id: 'p2', name: 'Enemy', team: 'dire', zone: 'mid-river', ...echoStats, buffs })
-    const caster = () => makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', ...echoStats })
+      makePlayer({ id: 'p2', name: 'Enemy', team: 'audit', zone: 'mid-river', ...echoStats, buffs })
+    const caster = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', ...echoStats })
 
     it('control: the spell lands on an unbuffed target', () => {
       const state = makeGameState({ players: { p1: caster(), p2: enemy([]) } })
@@ -1211,7 +1209,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-river',
             ...echoStats,
             buffs: casterBuffs,
@@ -1219,7 +1217,7 @@ describe('ActionResolver', () => {
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             ...echoStats,
           }),
@@ -1258,7 +1256,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-river',
             items: attackerItems,
             hp: maxHp,
@@ -1269,7 +1267,7 @@ describe('ActionResolver', () => {
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             hp: maxHp,
             maxHp,
@@ -1359,11 +1357,11 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-river',
             items: ['skull_basher', null, null, null, null, null],
           }),
-          p2: makePlayer({ id: 'p2', name: 'Enemy', team: 'dire', zone: 'mid-river' }),
+          p2: makePlayer({ id: 'p2', name: 'Enemy', team: 'audit', zone: 'mid-river' }),
         },
       })
     }
@@ -1411,14 +1409,14 @@ describe('ActionResolver', () => {
       // gates on the real 'stun' id.
       const immuneButNotStunned = makePlayer({
         id: 'p1',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         buffs: [{ id: 'stun_immune', stacks: 1, ticksRemaining: 2, source: 'x' }],
       })
       const enemy = makePlayer({
         id: 'p2',
         name: 'Enemy',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 9999,
         maxHp: 9999,
@@ -1445,7 +1443,7 @@ describe('ActionResolver', () => {
    * tutorial's "the player performed the taught verb" check.
    */
   describe('attack mis-targets are reported, never swallowed', () => {
-    const attacker = () => makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' })
+    const attacker = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
 
     const attack = (state: GameState, target: TargetRef) =>
       Effect.runSync(
@@ -1467,7 +1465,7 @@ describe('ActionResolver', () => {
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
-            team: 'dire',
+            team: 'audit',
             zone: 'mid-river',
             alive: false,
           }),
@@ -1482,7 +1480,7 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: attacker(),
-          p2: makePlayer({ id: 'p2', name: 'Buddy', team: 'radiant', zone: 'mid-river', hp: 500 }),
+          p2: makePlayer({ id: 'p2', name: 'Buddy', team: 'chaff', zone: 'mid-river', hp: 500 }),
         },
       })
       const result = attack(state, { kind: 'hero', name: 'p2' })
@@ -1505,10 +1503,10 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: { p1: attacker() },
         creeps: [
-          { id: 'c0', team: 'dire', zone: 'mid-river', hp: 400, type: 'melee' },
-          { id: 'c1', team: 'dire', zone: 'mid-river', hp: 400, type: 'melee' },
+          { id: 'c0', team: 'audit', zone: 'mid-river', hp: 400, type: 'melee' },
+          { id: 'c1', team: 'audit', zone: 'mid-river', hp: 400, type: 'melee' },
           // A creep in another zone must not widen the quoted range.
-          { id: 'c2', team: 'dire', zone: 'top-river', hp: 400, type: 'melee' },
+          { id: 'c2', team: 'audit', zone: 'top-river', hp: 400, type: 'melee' },
         ],
       })
       const result = attack(state, { kind: 'creep', index: 4 })
@@ -1519,7 +1517,7 @@ describe('ActionResolver', () => {
     it('says the creep is already dead', () => {
       const state = makeGameState({
         players: { p1: attacker() },
-        creeps: [{ id: 'c0', team: 'dire', zone: 'mid-river', hp: 0, type: 'melee' }],
+        creeps: [{ id: 'c0', team: 'audit', zone: 'mid-river', hp: 0, type: 'melee' }],
       })
       const result = attack(state, { kind: 'creep', index: 0 })
       expect(result.rejected).toHaveLength(1)
@@ -1530,8 +1528,8 @@ describe('ActionResolver', () => {
       // The bug this pins: with no team guard the swing killed the ally creep
       // and banked the FULL last-hit bounty — the opposite of last-hitting.
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river', gold: 600 }) },
-        creeps: [{ id: 'ally0', team: 'radiant', zone: 'mid-river', hp: 5, type: 'melee' }],
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', gold: 600 }) },
+        creeps: [{ id: 'ally0', team: 'chaff', zone: 'mid-river', hp: 5, type: 'melee' }],
       })
       const result = attack(state, { kind: 'creep', index: 0 })
       expect(result.rejected).toHaveLength(1)
@@ -1550,7 +1548,7 @@ describe('ActionResolver', () => {
 
     it('says Roshan is already dead', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'roshan-pit' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'roshan-pit' }) },
         roshan: { alive: false, hp: 0, maxHp: 2000, deathTick: 1 },
       })
       const result = attack(state, { kind: 'roshan' })
@@ -1560,7 +1558,7 @@ describe('ActionResolver', () => {
 
     it('reports a dead neutral and an out-of-range neutral index differently', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'jungle-rad-top' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'jungle-rad-top' }) },
         neutrals: [
           {
             id: 'n0',

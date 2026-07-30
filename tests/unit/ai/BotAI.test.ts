@@ -48,7 +48,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'bot_alpha',
     name: 'bot_alpha',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -82,8 +82,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -95,7 +95,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -113,7 +113,7 @@ const TUNED_GAME = 'bot-ai-test-tuned'
 function atDifficulty(difficulty: BotDifficulty, ...botIds: string[]): string {
   registerBots(
     TUNED_GAME,
-    botIds.map((playerId) => ({ playerId, team: 'radiant' as const, heroId: null })),
+    botIds.map((playerId) => ({ playerId, team: 'chaff' as const, heroId: null })),
     difficulty,
   )
   return TUNED_GAME
@@ -139,7 +139,7 @@ describe('BotAI - decideBotAction', () => {
 
   describe('fountain behavior', () => {
     it('buys items when at fountain with enough gold', () => {
-      const bot = makePlayer({ zone: 'radiant-fountain', gold: 600 })
+      const bot = makePlayer({ zone: 'chaff-fountain', gold: 600 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       // Defensive consumables are stocked first
@@ -159,7 +159,7 @@ describe('BotAI - decideBotAction', () => {
 
       // Exactly the real cost → buys the first build item.
       const rich = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         hp: 500,
         maxHp: 500,
         gold: bladesCost,
@@ -174,7 +174,7 @@ describe('BotAI - decideBotAction', () => {
 
       // One gold short → does not buy it (the build order stops, not skips).
       const poor = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         hp: 500,
         maxHp: 500,
         gold: bladesCost - 1,
@@ -228,7 +228,7 @@ describe('BotAI - decideBotAction', () => {
         ]
         const tank = makePlayer({
           heroId: 'kernel', // role: tank
-          zone: 'radiant-fountain',
+          zone: 'chaff-fountain',
           hp: 500,
           maxHp: 500,
           gold: getItem('ring_of_health')!.cost,
@@ -241,7 +241,7 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('stays at fountain to heal when HP is low', () => {
-      const bot = makePlayer({ zone: 'radiant-fountain', hp: 100, maxHp: 500, gold: 0 })
+      const bot = makePlayer({ zone: 'chaff-fountain', hp: 100, maxHp: 500, gold: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toBeNull()
@@ -249,7 +249,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('moves to lane when at fountain with full HP and nothing to buy', () => {
       const bot = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         hp: 500,
         maxHp: 500,
         gold: 0,
@@ -264,7 +264,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'move', zone: 'radiant-base' })
+      expect(action).toEqual({ type: 'move', zone: 'chaff-base' })
     })
   })
 
@@ -284,7 +284,7 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 180, maxHp: 500 }) // 36% HP
       const allyCreep = {
         id: 'c1',
-        team: 'radiant' as const,
+        team: 'chaff' as const,
         zone: 'mid-t1-rad',
         hp: 300,
         type: 'melee' as const,
@@ -377,7 +377,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
         maxHp: 500,
@@ -397,13 +397,13 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy1 = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
       })
       const enemy2 = makePlayer({
         id: 'enemy2',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 100,
       })
@@ -421,7 +421,7 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-river', hp: 400, maxHp: 500, mp: 0 })
       const deadEnemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 0,
         alive: false,
@@ -438,7 +438,7 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-river', hp: 400, maxHp: 500, mp: 300 })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
       })
@@ -459,7 +459,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
       })
@@ -480,7 +480,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
       })
@@ -506,7 +506,7 @@ describe('BotAI - decideBotAction', () => {
         maxMp: 300,
         cooldowns: { q: 0, w: 5, e: 5, r: 5 },
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
@@ -523,7 +523,7 @@ describe('BotAI - decideBotAction', () => {
         maxMp: 300,
         cooldowns: { q: 0, w: 5, e: 5, r: 5 },
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toMatchObject({ type: 'cast', ability: 'q' })
@@ -546,7 +546,7 @@ describe('BotAI - decideBotAction', () => {
         cooldowns: { q: 0, w: 5, e: 5, r: 0 },
         buffs: [{ id: 'cachedEnergy', stacks: 10, ticksRemaining: 9999, source: 'bot_alpha' }],
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action?.type).toBe('cast')
@@ -565,7 +565,7 @@ describe('BotAI - decideBotAction', () => {
         cooldowns: { q: 0, w: 5, e: 5, r: 0 },
         buffs: [{ id: 'cachedEnergy', stacks: 120, ticksRemaining: 9999, source: 'bot_alpha' }],
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toMatchObject({ type: 'cast', ability: 'r' })
@@ -586,7 +586,7 @@ describe('BotAI - decideBotAction', () => {
         cooldowns: { q: 5, w: 5, e: 0, r: 5 }, // only E is off cooldown
         buffs: [], // 0 feedback stacks → E would be rejected
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
@@ -604,7 +604,7 @@ describe('BotAI - decideBotAction', () => {
         cooldowns: { q: 5, w: 5, e: 0, r: 5 },
         buffs: [{ id: 'feedbackLoop', stacks: 40, ticksRemaining: 9999, source: 'bot_alpha' }],
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).toMatchObject({ type: 'cast', ability: 'e' })
@@ -615,8 +615,8 @@ describe('BotAI - decideBotAction', () => {
     it('aims at the lowest-HP enemy creep when the last-hit roll lands', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
-        { id: 'creep-2', team: 'dire', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+        { id: 'creep-2', team: 'audit', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       // `unfair` is lastHitAccuracy 1.0 — the roll can never fail.
@@ -631,9 +631,9 @@ describe('BotAI - decideBotAction', () => {
       // Tick 30's lasthit roll is 0.91, above every accuracy below `unfair`.
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
-        { id: 'creep-2', team: 'dire', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
-        { id: 'creep-3', team: 'dire', zone: 'mid-t1-rad', hp: 120, type: 'melee' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+        { id: 'creep-2', team: 'audit', zone: 'mid-t1-rad', hp: 50, type: 'ranged' },
+        { id: 'creep-3', team: 'audit', zone: 'mid-t1-rad', hp: 120, type: 'melee' },
       ]
       const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
       expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
@@ -650,7 +650,7 @@ describe('BotAI - decideBotAction', () => {
     it('still swings at a lone creep on a missed roll (no second-lowest to fall back to)', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
       ]
       const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
       expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
@@ -662,7 +662,7 @@ describe('BotAI - decideBotAction', () => {
     it('ignores friendly creeps', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'radiant', zone: 'mid-t1-rad', hp: 100, type: 'melee' },
+        { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 100, type: 'melee' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       const action = decideBotAction(state, bot, 'mid')
@@ -676,7 +676,7 @@ describe('BotAI - decideBotAction', () => {
       // bots idling in lane instead of pushing the wave.
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, type: 'melee' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       const action = decideBotAction(state, bot, 'mid')
@@ -686,9 +686,9 @@ describe('BotAI - decideBotAction', () => {
 
   describe('tower targeting', () => {
     it('attacks enemy tower when allied creeps are present', () => {
-      const bot = makePlayer({ zone: 'mid-t1-dire', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-audit', hp: 400, maxHp: 500, mp: 0 })
       const alliedCreeps: CreepState[] = [
-        { id: 'creep-1', team: 'radiant', zone: 'mid-t1-dire', hp: 400, type: 'melee' },
+        { id: 'creep-1', team: 'chaff', zone: 'mid-t1-audit', hp: 400, type: 'melee' },
       ]
       const state = makeGameState({
         players: { [bot.id]: bot },
@@ -698,12 +698,12 @@ describe('BotAI - decideBotAction', () => {
       expect(action).not.toBeNull()
       expect(action!.type).toBe('attack')
       if (action!.type === 'attack') {
-        expect(action!.target).toEqual({ kind: 'tower', zone: 'mid-t1-dire' })
+        expect(action!.target).toEqual({ kind: 'tower', zone: 'mid-t1-audit' })
       }
     })
 
     it('does not attack tower without allied creeps', () => {
-      const bot = makePlayer({ zone: 'mid-t1-dire', hp: 400, maxHp: 500, mp: 0 })
+      const bot = makePlayer({ zone: 'mid-t1-audit', hp: 400, maxHp: 500, mp: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       // No allied creeps -> holds position (deep in enemy territory, no support)
@@ -716,7 +716,7 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const allyCreep = {
         id: 'c1',
-        team: 'radiant' as const,
+        team: 'chaff' as const,
         zone: 'mid-t1-rad',
         hp: 300,
         type: 'melee' as const,
@@ -740,7 +740,7 @@ describe('BotAI - decideBotAction', () => {
       // the wave ahead so the bot pushes out of its own half.
       const bot = makePlayer({ zone: 'mid-t1-rad', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
-        { id: 'wave-1', team: 'radiant', zone: 'mid-river', hp: 300, type: 'melee' },
+        { id: 'wave-1', team: 'chaff', zone: 'mid-river', hp: 300, type: 'melee' },
       ]
       const state = makeGameState({ players: { [bot.id]: bot }, creeps })
       const action = decideBotAction(state, bot, 'mid')
@@ -759,12 +759,12 @@ describe('BotAI - decideBotAction', () => {
 
   describe('shopping', () => {
     it('stocks defensive consumables before core items', () => {
-      const bot = makePlayer({ zone: 'radiant-fountain', gold: 600 })
+      const bot = makePlayer({ zone: 'chaff-fountain', gold: 600 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'buy', item: 'healing_salve' })
 
       const withSalve = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         gold: 450,
         items: ['healing_salve', null, null, null, null, null],
       })
@@ -777,7 +777,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('buys first item in build order once consumables are stocked', () => {
       const bot = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         gold: 600,
         items: ['healing_salve', 'town_portal_scroll', null, null, null, null],
       })
@@ -789,7 +789,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('does not buy dead moveSpeed-only items (boots_of_speed)', () => {
       const bot = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         gold: 99999,
         items: ['healing_salve', 'town_portal_scroll', null, null, null, null],
       })
@@ -804,7 +804,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('skips items already owned', () => {
       const bot = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         gold: 1500,
         items: ['healing_salve', 'town_portal_scroll', 'blades_of_attack', null, null, null],
       })
@@ -815,7 +815,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('does not buy when inventory is full', () => {
       const bot = makePlayer({
-        zone: 'radiant-fountain',
+        zone: 'chaff-fountain',
         gold: 10000,
         items: [
           'boots_of_speed',
@@ -829,15 +829,15 @@ describe('BotAI - decideBotAction', () => {
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       // Can't buy, inventory full, should move to lane
-      expect(action).toEqual({ type: 'move', zone: 'radiant-base' })
+      expect(action).toEqual({ type: 'move', zone: 'chaff-base' })
     })
 
     it('does not buy when gold is insufficient', () => {
-      const bot = makePlayer({ zone: 'radiant-fountain', gold: 20 })
+      const bot = makePlayer({ zone: 'chaff-fountain', gold: 20 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       // Can't afford anything (cheapest consumable is 50g), hp is full so should move to lane
-      expect(action).toEqual({ type: 'move', zone: 'radiant-base' })
+      expect(action).toEqual({ type: 'move', zone: 'chaff-base' })
     })
   })
 
@@ -870,7 +870,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('fights instead of picking a talent when an enemy hero is in zone', () => {
       const bot = makePlayer({ zone: 'mid-river', level: 10, hp: 500, maxHp: 500, mp: 300 })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action?.type).not.toBe('select_talent')
@@ -882,7 +882,7 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-river', hp: 50, maxHp: 500, mp: 300 })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
       })
@@ -896,7 +896,7 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({ zone: 'mid-river', hp: 400, maxHp: 500, mp: 300 })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
       })
@@ -915,12 +915,12 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 300,
       })
       const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'dire', zone: 'mid-river', hp: 100, type: 'melee' },
+        { id: 'creep-1', team: 'audit', zone: 'mid-river', hp: 100, type: 'melee' },
       ]
       const state = makeGameState({
         players: { [bot.id]: bot, enemy1: enemy },
@@ -963,14 +963,14 @@ describe('BotAI - decideBotAction', () => {
       })
       const ally = makePlayer({
         id: 'bot_ally',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         hp: 150,
         maxHp: 600,
       })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 100, // lowest HP overall — the old code would heal-target this enemy
         maxHp: 500,
@@ -999,7 +999,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 100,
         maxHp: 500,
@@ -1026,7 +1026,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const enemy = makePlayer({
         id: 'enemy1',
-        team: 'dire',
+        team: 'audit',
         zone: 'mid-river',
         hp: 100,
         maxHp: 500,
@@ -1047,13 +1047,13 @@ describe('BotAI - decideBotAction', () => {
       })
       const ally = makePlayer({
         id: 'bot_ally',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         hp: 50,
         maxHp: 500,
       })
-      const enemy1 = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
-      const enemy2 = makePlayer({ id: 'enemy2', team: 'dire', zone: 'mid-river', hp: 100 })
+      const enemy1 = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
+      const enemy2 = makePlayer({ id: 'enemy2', team: 'audit', zone: 'mid-river', hp: 100 })
       const state = makeGameState({
         players: { [bot.id]: bot, bot_ally: ally, enemy1, enemy2 },
       })
@@ -1101,7 +1101,7 @@ describe('BotAI - decideBotAction', () => {
         maxHp: 500,
         items: ['healing_salve', null, null, null, null, null],
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 400 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 400 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action?.type).not.toBe('use')
@@ -1109,7 +1109,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('teleports home when retreating from deep map positions', () => {
       const bot = makePlayer({
-        zone: 'mid-t1-dire',
+        zone: 'mid-t1-audit',
         hp: 100,
         maxHp: 500,
         items: ['town_portal_scroll', null, null, null, null, null],
@@ -1128,7 +1128,7 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'move', zone: 'radiant-base' })
+      expect(action).toEqual({ type: 'move', zone: 'chaff-base' })
     })
 
     it('stands still while channeling a teleport', () => {
@@ -1148,7 +1148,7 @@ describe('BotAI - decideBotAction', () => {
   describe('ancient push', () => {
     it('attacks the enemy ancient when in the enemy base and it is vulnerable', () => {
       const bot = makePlayer({
-        zone: 'dire-base',
+        zone: 'audit-base',
         hp: 400,
         maxHp: 500,
         mp: 0,
@@ -1157,7 +1157,7 @@ describe('BotAI - decideBotAction', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         players: { [bot.id]: bot },
-        ancients: { ...ancients, dire: { ...ancients.dire, vulnerable: true } },
+        ancients: { ...ancients, audit: { ...ancients.audit, vulnerable: true } },
       })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'attack', target: { kind: 'ancient' } })
@@ -1165,7 +1165,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('does not attack the ancient while it is invulnerable', () => {
       const bot = makePlayer({
-        zone: 'dire-base',
+        zone: 'audit-base',
         hp: 400,
         maxHp: 500,
         mp: 0,
@@ -1178,17 +1178,17 @@ describe('BotAI - decideBotAction', () => {
 
     it('fights defending heroes before the ancient', () => {
       const bot = makePlayer({
-        zone: 'dire-base',
+        zone: 'audit-base',
         hp: 400,
         maxHp: 500,
         mp: 0,
         cooldowns: { q: 1, w: 1, e: 1, r: 1 },
       })
-      const defender = makePlayer({ id: 'enemy1', team: 'dire', zone: 'dire-base', hp: 300 })
+      const defender = makePlayer({ id: 'enemy1', team: 'audit', zone: 'audit-base', hp: 300 })
       const ancients = initializeAncients()
       const state = makeGameState({
         players: { [bot.id]: bot, enemy1: defender },
-        ancients: { ...ancients, dire: { ...ancients.dire, vulnerable: true } },
+        ancients: { ...ancients, audit: { ...ancients.audit, vulnerable: true } },
       })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
@@ -1210,7 +1210,7 @@ describe('BotAI - decideBotAction', () => {
         maxMp: 500,
         cooldowns: { q: 5, w: 5, e: 5, r: 0 },
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
@@ -1229,7 +1229,7 @@ describe('BotAI - decideBotAction', () => {
         maxMp: 500,
         cooldowns: { q: 5, w: 5, e: 5, r: 0 },
       })
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
       expect(action).not.toBeNull()
@@ -1241,7 +1241,7 @@ describe('BotAI - decideBotAction', () => {
       // Scan a low level where Q/W/E/R ranks differ and assert that any cast the
       // bot does emit is for a slot whose ability is actually learned. Level 1:
       // Q/W/E rank 1, R rank 0.
-      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
       for (let i = 0; i < 50; i++) {
         const bot = makePlayer({
           zone: 'mid-river',
@@ -1274,17 +1274,17 @@ describe('BotAI - decideBotAction', () => {
     function bot() {
       return makePlayer({
         id: 'bot_alpha',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         hp: 400,
         maxHp: 500,
       })
     }
     function ally(hp: number) {
-      return makePlayer({ id: 'bot_ally', team: 'radiant', zone: 'mid-river', hp, maxHp: 500 })
+      return makePlayer({ id: 'bot_ally', team: 'chaff', zone: 'mid-river', hp, maxHp: 500 })
     }
     function enemy(hp: number) {
-      return makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp, maxHp: 500 })
+      return makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp, maxHp: 500 })
     }
 
     it('routes a supportive ally buff to the lowest-HP ally, not an enemy', () => {
@@ -1318,7 +1318,7 @@ describe('BotAI - decideBotAction', () => {
       // bot 490/500, ally 500/500 — both >= 90%
       const healthyBot = makePlayer({
         id: 'bot_alpha',
-        team: 'radiant',
+        team: 'chaff',
         zone: 'mid-river',
         hp: 490,
         maxHp: 500,
@@ -1440,7 +1440,7 @@ describe('BotAI - threat assessment (shouldRetreatFromThreat)', () => {
     const enemy = makePlayer({
       id: 'enemy1',
       name: 'enemy1',
-      team: 'dire',
+      team: 'audit',
       heroId: 'echo',
       level: 7,
       zone: 'mid-river',
@@ -1471,7 +1471,7 @@ function inv(...ids: string[]): PlayerState['items'] {
 }
 
 describe('BotAI - combat item usage (tryUseCombatItem)', () => {
-  const enemy = makePlayer({ id: 'enemy', name: 'enemy', team: 'dire' })
+  const enemy = makePlayer({ id: 'enemy', name: 'enemy', team: 'audit' })
 
   it('returns null out of a fight (no enemy heroes in zone)', () => {
     const bot = makePlayer({ hp: 100, maxHp: 500, items: inv('black_king_bar') })
@@ -1506,7 +1506,7 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
 
   it('pops a defensive item when outnumbered even at full HP', () => {
     const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('blade_mail') })
-    const e2 = makePlayer({ id: 'enemy2', name: 'enemy2', team: 'dire' })
+    const e2 = makePlayer({ id: 'enemy2', name: 'enemy2', team: 'audit' })
     // 2 enemies vs (0 allies + self) → outnumbered.
     expect(tryUseCombatItem(bot, [enemy, e2], [], makeConfig())).toEqual({
       type: 'use',
@@ -1575,15 +1575,15 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
     // 60% HP avoids the retreat threshold yet is under the defensive-pressure
     // cutoff; default difficulty (medium) has threatAssessment on.
     const bot = makePlayer({ zone: 'mid-river', hp: 300, maxHp: 500, items: inv('black_king_bar') })
-    const foe = makePlayer({ id: 'foe', name: 'foe', team: 'dire', zone: 'mid-river' })
+    const foe = makePlayer({ id: 'foe', name: 'foe', team: 'audit', zone: 'mid-river' })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
   })
 })
 
 describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
-  const lowFoe = makePlayer({ id: 'low', name: 'low', team: 'dire', hp: 100, maxHp: 600 })
-  const highFoe = makePlayer({ id: 'high', name: 'high', team: 'dire', hp: 600, maxHp: 600 })
+  const lowFoe = makePlayer({ id: 'low', name: 'low', team: 'audit', hp: 100, maxHp: 600 })
+  const highFoe = makePlayer({ id: 'high', name: 'high', team: 'audit', hp: 600, maxHp: 600 })
 
   it('hexes the kill target (lowest-HP enemy)', () => {
     const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('scythe_of_vyse') })
@@ -1616,7 +1616,7 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
     const immune = makePlayer({
       id: 'bkb',
       name: 'bkb',
-      team: 'dire',
+      team: 'audit',
       hp: 100,
       maxHp: 600,
       buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'black_king_bar' }],
@@ -1649,7 +1649,7 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
 
   it('decideBotAction wires targeted items in: a mage bot dagons the low enemy', () => {
     const bot = makePlayer({ zone: 'mid-river', hp: 500, maxHp: 500, items: inv('dagon') })
-    const foe = makePlayer({ id: 'low', name: 'low', team: 'dire', zone: 'mid-river', hp: 100 })
+    const foe = makePlayer({ id: 'low', name: 'low', team: 'audit', zone: 'mid-river', hp: 100 })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     expect(decideBotAction(state, bot, 'mid')).toEqual({
       type: 'use',
@@ -1692,14 +1692,14 @@ describe('BotAI - panic survival items (retreat branch)', () => {
       maxHp: 500,
       items: inv('black_king_bar'),
     })
-    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'dire', zone: 'mid-t1-rad' })
+    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'audit', zone: 'mid-t1-rad' })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
   })
 
   it('decideBotAction: a chased bot with no panic item still walks toward the fountain', () => {
     const bot = makePlayer({ zone: 'mid-t1-rad', hp: 100, maxHp: 500, items: inv() })
-    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'dire', zone: 'mid-t1-rad' })
+    const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'audit', zone: 'mid-t1-rad' })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     const action = decideBotAction(state, bot, 'mid')
     expect(action?.type).toBe('move')
@@ -1708,7 +1708,7 @@ describe('BotAI - panic survival items (retreat branch)', () => {
 
 describe('BotAI - warding', () => {
   const aWard = {
-    team: 'radiant' as const,
+    team: 'chaff' as const,
     placedTick: 0,
     expiryTick: 100,
     type: 'observer' as const,
@@ -1749,20 +1749,20 @@ describe('BotAI - warding', () => {
 
   it('holds the ward when the team is already at the ward limit', () => {
     const bot = makePlayer({ zone: 'rune-top', items: inv('observer_ward') })
-    // 3 radiant wards parked elsewhere → at WARD_LIMIT_PER_TEAM.
+    // 3 chaff wards parked elsewhere → at WARD_LIMIT_PER_TEAM.
     const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('rune-bot', 3) })
     expect(tryPlaceWard(state, bot)).toBeNull()
   })
 
   it('returns null when not in or next to a strategic zone', () => {
-    const bot = makePlayer({ zone: 'radiant-fountain', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'chaff-fountain', items: inv('observer_ward') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toBeNull()
   })
 
   it('a support bot buys an Observer Ward at the fountain', () => {
     const bot = makePlayer({
       heroId: 'sentry', // role: support
-      zone: 'radiant-fountain',
+      zone: 'chaff-fountain',
       gold: 600,
       items: inv('healing_salve', 'town_portal_scroll'),
     })
@@ -1775,7 +1775,7 @@ describe('BotAI - warding', () => {
   it('a non-support bot does not buy wards', () => {
     const bot = makePlayer({
       heroId: 'echo', // not support
-      zone: 'radiant-fountain',
+      zone: 'chaff-fountain',
       gold: 600,
       items: inv('healing_salve', 'town_portal_scroll'),
     })
@@ -1797,7 +1797,7 @@ describe('BotAI - difficulty actually bites (abilityComboChance)', () => {
     // only changed WHICH ability came out. Tick 30's ability roll is 0.67:
     // above easy's 0.2 and medium's 0.5, below hard's 0.8.
     const bot = makePlayer({ zone: 'mid-river', level: 6, hp: 400, maxHp: 500, mp: 400 })
-    const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+    const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
     const state = makeGameState({ tick: 30, players: { [bot.id]: bot, enemy1: enemy } })
 
     expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
@@ -1809,7 +1809,7 @@ describe('BotAI - difficulty actually bites (abilityComboChance)', () => {
 
   it('a bot that fails the roll still acts — it never returns null in a fight', () => {
     const bot = makePlayer({ zone: 'mid-river', level: 6, hp: 400, maxHp: 500, mp: 400 })
-    const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+    const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 300 })
     for (const tick of [0, 5, 12, 20, 30, 40, 50]) {
       const state = makeGameState({ tick, players: { [bot.id]: bot, enemy1: enemy } })
       expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).not.toBeNull()
@@ -1818,7 +1818,7 @@ describe('BotAI - difficulty actually bites (abilityComboChance)', () => {
 })
 
 describe('BotAI - denying (medium+)', () => {
-  const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-t1-rad', hp: 300 })
+  const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-t1-rad', hp: 300 })
   /** No mana and every ability parked, so the deny competes with a right-click. */
   const denier = () =>
     makePlayer({
@@ -1832,8 +1832,8 @@ describe('BotAI - denying (medium+)', () => {
   it('denies the allied creep inside the resolver window, by zone-local index', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'dire', zone: 'mid-t1-rad', hp: 200, maxHp: 200, type: 'melee' },
-      { id: 'creep-2', team: 'radiant', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'audit', zone: 'mid-t1-rad', hp: 200, maxHp: 200, type: 'melee' },
+      { id: 'creep-2', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
@@ -1845,7 +1845,7 @@ describe('BotAI - denying (medium+)', () => {
   it('leaves a healthy allied creep alone (outside DENY_HP_THRESHOLD the deny would no-op)', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'radiant', zone: 'mid-t1-rad', hp: 150, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 150, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
@@ -1857,7 +1857,7 @@ describe('BotAI - denying (medium+)', () => {
   it('easy bots do not deny (denyAwareness off)', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'radiant', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
@@ -1869,7 +1869,7 @@ describe('BotAI - denying (medium+)', () => {
   it('never denies with no enemy hero around — that just throws away your own wave', () => {
     const bot = denier()
     const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'radiant', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot }, creeps })
     const action = decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))
@@ -1884,11 +1884,11 @@ describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
     const bot = makePlayer({ id: 'bot_alpha', zone: botZone, level: 1, hp: 500, maxHp: 500 })
     const players: Record<string, PlayerState> = { [bot.id]: bot }
     for (const id of defenderIds) {
-      players[id] = makePlayer({ id, name: id, team: 'radiant', zone: THREATENED })
+      players[id] = makePlayer({ id, name: id, team: 'chaff', zone: THREATENED })
     }
     for (let i = 0; i < attackers; i++) {
       const id = `enemy${i}`
-      players[id] = makePlayer({ id, name: id, team: 'dire', zone: THREATENED })
+      players[id] = makePlayer({ id, name: id, team: 'audit', zone: THREATENED })
     }
     // Lane 'mid' so the bot's own lane push can't be confused for a rotation.
     return { bot, state: makeGameState({ players }) }
@@ -2131,18 +2131,18 @@ describe('isOwnSide — the rename guard', () => {
     // full zone-id rename. The old endsWith('-rad')/startsWith('jungle-rad')
     // ladder read every renamed zone as enemy-side and inverted the bots'
     // entire spatial model with no type error and no test failure.
-    expect(isOwnSide('radiant-base', 'radiant')).toBe(true)
-    expect(isOwnSide('top-t1-rad', 'radiant')).toBe(true)
-    expect(isOwnSide('jungle-rad-top', 'radiant')).toBe(true)
-    expect(isOwnSide('top-t1-rad', 'dire')).toBe(false)
-    expect(isOwnSide('dire-base', 'dire')).toBe(true)
-    expect(isOwnSide('jungle-dire-bot', 'dire')).toBe(true)
+    expect(isOwnSide('chaff-base', 'chaff')).toBe(true)
+    expect(isOwnSide('top-t1-rad', 'chaff')).toBe(true)
+    expect(isOwnSide('jungle-rad-top', 'chaff')).toBe(true)
+    expect(isOwnSide('top-t1-rad', 'audit')).toBe(false)
+    expect(isOwnSide('audit-base', 'audit')).toBe(true)
+    expect(isOwnSide('jungle-audit-bot', 'audit')).toBe(true)
     // Rivers/runes/roshan are neutral — own for neither side.
-    expect(isOwnSide('mid-river', 'radiant')).toBe(false)
-    expect(isOwnSide('mid-river', 'dire')).toBe(false)
-    expect(isOwnSide('roshan-pit', 'radiant')).toBe(false)
+    expect(isOwnSide('mid-river', 'chaff')).toBe(false)
+    expect(isOwnSide('mid-river', 'audit')).toBe(false)
+    expect(isOwnSide('roshan-pit', 'chaff')).toBe(false)
     // An id the map does not know is own for NOBODY (never defaults to a side).
-    expect(isOwnSide('seawall-ice-1-chf', 'radiant')).toBe(false)
-    expect(isOwnSide('seawall-ice-1-chf', 'dire')).toBe(false)
+    expect(isOwnSide('seawall-ice-1-chf', 'chaff')).toBe(false)
+    expect(isOwnSide('seawall-ice-1-chf', 'audit')).toBe(false)
   })
 })

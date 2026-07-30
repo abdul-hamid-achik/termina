@@ -56,7 +56,7 @@ const items = computed(() =>
           :key="item.verb"
           class="text-[0.7rem]"
           :class="{
-            'font-bold text-radiant': item.state === 'done',
+            'font-bold text-chaff': item.state === 'done',
             'font-bold text-ability text-glow-sm': item.state === 'current',
             'text-text-dim': item.state === 'upcoming',
           }"
@@ -74,7 +74,7 @@ const items = computed(() =>
     <p v-if="!complete && hint" class="min-w-0 text-text-primary" data-testid="tutorial-hint-text">
       {{ hint }}
     </p>
-    <p v-else class="min-w-0 text-radiant" data-testid="tutorial-complete">
+    <p v-else class="min-w-0 text-chaff" data-testid="tutorial-complete">
       ✓ Tutorial complete — you're in free play. Push mid and destroy the enemy core!
     </p>
   </div>

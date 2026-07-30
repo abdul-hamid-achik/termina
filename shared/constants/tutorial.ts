@@ -44,7 +44,7 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     // single command walks the whole way.
     //
     // Send them to their OWN T1 tower, not `mid` (which aliases to mid-river).
-    // The river is neutral, has no tower, and borders the DIRE T1 — both enemy
+    // The river is neutral, has no tower, and borders the AUDIT T1 — both enemy
     // bots are pinned to mid, so they reach it before the first creep wave does.
     // A level-1 newcomer who followed the old hint arrived alone, ahead of their
     // own creeps, and was stunned and killed inside ~12 ticks having landed

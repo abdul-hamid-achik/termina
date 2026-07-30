@@ -27,7 +27,7 @@ const roster = ROLE_ORDER.map((role) => ({
 <template>
   <article class="mx-auto mt-4 flex max-w-[850px] flex-col gap-5 pb-10">
     <header class="mb-1 border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ {{ CITY }}</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ {{ CITY }}</h1>
       <p class="mt-1 text-[0.75rem] text-text-dim">
         A cable-landing city, and the clock it runs on.
       </p>
@@ -54,14 +54,14 @@ const roster = ROLE_ORDER.map((role) => ({
         you do leaves as one typed instruction, queued into the next cycle.
       </p>
       <p>
-        Two crews work the routes. <span class="text-radiant">{{ CREWS.chaff }}</span> came up off
-        the street and stayed there. <span class="text-radiant">{{ CREWS.audit }}</span> is Quorum's
+        Two crews work the routes. <span class="text-chaff">{{ CREWS.chaff }}</span> came up off the
+        street and stayed there. <span class="text-chaff">{{ CREWS.audit }}</span> is Quorum's
         corporate response division. Quorum is not just the other crew — it is the ground. The ICE
         on the routes is Quorum's. The traffic is Quorum's. The clock is Quorum's.
       </p>
       <p>
         Each crew keeps one core alive: its
-        <span class="text-radiant">Mainframe</span>. Bring the other crew's Mainframe down and the
+        <span class="text-chaff">Mainframe</span>. Bring the other crew's Mainframe down and the
         ground is yours.
       </p>
       <p>

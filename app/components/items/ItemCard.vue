@@ -36,7 +36,7 @@ function onClick() {
     :disabled="inert"
     class="flex w-full flex-col gap-1.5 border p-2.5 text-left text-xs transition-colors"
     :class="[
-      selected ? 'border-radiant bg-radiant/5' : 'border-border',
+      selected ? 'border-chaff bg-chaff/5' : 'border-border',
       interactive && !inert ? 'cursor-pointer hover:border-border-glow' : '',
       inert ? 'cursor-not-allowed opacity-50' : '',
     ]"
@@ -58,7 +58,7 @@ function onClick() {
       <span
         v-for="(s, i) in stats"
         :key="i"
-        class="border border-border bg-bg-secondary px-1 py-0.5 text-[0.65rem] text-radiant"
+        class="border border-border bg-bg-secondary px-1 py-0.5 text-[0.65rem] text-chaff"
       >
         {{ s }}
       </span>
@@ -86,7 +86,7 @@ function onClick() {
     <!-- Loadout marker -->
     <div
       v-if="selected"
-      class="text-[0.6rem] font-bold text-radiant"
+      class="text-[0.6rem] font-bold text-chaff"
       data-testid="item-card-selected"
     >
       ✓ in loadout

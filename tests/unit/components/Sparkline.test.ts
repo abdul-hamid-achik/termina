@@ -18,7 +18,7 @@ describe('Sparkline', () => {
   it('renders the series regardless of the colour variable', () => {
     // (happy-dom drops rgb(var(--x)) from the serialized style attribute, so we
     // assert on the rendered series rather than the cosmetic colour.)
-    const w = mount(Sparkline, { props: { values: [3, 1, 4, 1, 5], colorVar: 'color-dire' } })
+    const w = mount(Sparkline, { props: { values: [3, 1, 4, 1, 5], colorVar: 'color-audit' } })
     expect(w.get('[data-testid="sparkline"]').text()).toHaveLength(5)
   })
 })

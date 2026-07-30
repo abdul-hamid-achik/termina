@@ -25,7 +25,7 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'bot_alpha',
     name: 'bot_alpha',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 900,
@@ -62,8 +62,8 @@ function makeState(
     tick: 40,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players,
     zones: initializeZoneStates(),
@@ -75,7 +75,7 @@ function makeState(
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -111,14 +111,14 @@ describe('BotAI - integrated teamplay', () => {
     const foe = makeBot({
       id: 'bot_foe',
       name: 'bot_foe',
-      team: 'dire',
+      team: 'audit',
       heroId: 'kernel',
       zone: 'mid-t1-rad',
       mp: 0,
       cooldowns: { q: 9, w: 9, e: 9, r: 9 },
     })
     const creeps: CreepState[] = [
-      { id: 'creep-own', team: 'radiant', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
+      { id: 'creep-own', team: 'chaff', zone: 'mid-t1-rad', hp: 40, maxHp: 200, type: 'melee' },
     ]
     registerBots(
       GAME_ID,

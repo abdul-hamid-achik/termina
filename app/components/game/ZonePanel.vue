@@ -169,15 +169,15 @@ const identityTag = computed(() => {
 /**
  * Team-IDENTITY color, for the two rows that print a team's name next to the
  * swatch (the zone's owner, the tower's team). Painting those by allegiance —
- * green when they are mine — meant a Dire player read "Tower (dire)" in the
- * Radiant green while the map's ▼, the score header and the zone tag beside it
- * all said dire: the label and its color contradicted each other inside one
+ * green when they are mine — meant a Audit player read "Tower (audit)" in the
+ * Chaff green while the map's ▼, the score header and the zone tag beside it
+ * all said audit: the label and its color contradicted each other inside one
  * line. Hero rows below deliberately keep the allegiance convention (green =
  * with me, red = against me) shared with AllyStatusSheet, EnemyThreatSheet and
  * the map's ally/enemy counts.
  */
 function teamTextClass(team: TeamId): string {
-  return team === 'radiant' ? 'text-radiant' : 'text-dire'
+  return team === 'chaff' ? 'text-chaff' : 'text-audit'
 }
 
 const identityClass = computed(() => {
@@ -248,9 +248,9 @@ const isEmpty = computed(
       </div>
       <div class="flex items-baseline justify-between gap-2">
         <span>
-          <span class="text-radiant">{{ allyHeadcount }} allied</span>
+          <span class="text-chaff">{{ allyHeadcount }} allied</span>
           <span class="text-text-dim"> · </span>
-          <span :class="enemies.length > 0 ? 'text-dire' : 'text-text-dim'"
+          <span :class="enemies.length > 0 ? 'text-audit' : 'text-text-dim'"
             >{{ enemies.length }} hostile</span
           >
         </span>
@@ -268,13 +268,13 @@ const isEmpty = computed(
     <button
       v-for="e in enemies"
       :key="e.id"
-      class="block w-full border border-dire/40 bg-dire/5 px-2 py-1 text-left transition-all hover:bg-dire/15 active:scale-[0.99]"
+      class="block w-full border border-audit/40 bg-audit/5 px-2 py-1 text-left transition-all hover:bg-audit/15 active:scale-[0.99]"
       :data-testid="`zone-enemy-${e.id}`"
       :title="`Attack ${heroName(e)}`"
       @click="attackHero(e)"
     >
       <div class="flex items-baseline justify-between gap-2">
-        <span class="truncate font-bold text-dire">{{ heroName(e) }}</span>
+        <span class="truncate font-bold text-audit">{{ heroName(e) }}</span>
         <span class="shrink-0 t-caption" :data-testid="`zone-enemy-tag-${e.id}`"
           >Lv {{ e.level }} · {{ isHeldHero(e) ? '[hold]' : '[ATK]' }}</span
         >
@@ -284,7 +284,7 @@ const isEmpty = computed(
         <ProgressBar
           :value="e.hp"
           :max="e.maxHp"
-          color="dire"
+          color="audit"
           :width="10"
           :label="`${heroName(e)} HP`"
         />
@@ -311,7 +311,7 @@ const isEmpty = computed(
       :data-testid="`zone-ally-${a.id}`"
     >
       <div class="flex items-baseline justify-between gap-2">
-        <span class="truncate text-radiant">{{ heroName(a) }}</span>
+        <span class="truncate text-chaff">{{ heroName(a) }}</span>
         <span class="shrink-0 t-caption">Lv {{ a.level }} · ally</span>
       </div>
       <div class="flex items-center gap-1">
@@ -319,7 +319,7 @@ const isEmpty = computed(
         <ProgressBar
           :value="a.hp"
           :max="a.maxHp"
-          color="radiant"
+          color="chaff"
           :width="10"
           :label="`${heroName(a)} HP`"
         />
@@ -334,7 +334,7 @@ const isEmpty = computed(
       class="block w-full border px-2 py-1 text-left"
       :class="
         towerIsEnemy
-          ? 'border-dire/40 transition-all hover:bg-dire/15 active:scale-[0.99]'
+          ? 'border-audit/40 transition-all hover:bg-audit/15 active:scale-[0.99]'
           : 'border-border/60'
       "
       data-testid="zone-tower"
@@ -351,7 +351,7 @@ const isEmpty = computed(
         <ProgressBar
           :value="towerHere.hp"
           :max="towerHere.maxHp"
-          :color="towerHere.team === 'radiant' ? 'radiant' : 'dire'"
+          :color="towerHere.team === 'chaff' ? 'chaff' : 'audit'"
           :width="10"
           :label="`Tower ${towerHere.team} HP`"
         />
@@ -362,12 +362,12 @@ const isEmpty = computed(
     <!-- Enemy creep group: tap to last-hit the lowest-HP creep -->
     <button
       v-if="enemyCreeps.length > 0"
-      class="block w-full border border-dire/30 px-2 py-1 text-left transition-all hover:bg-dire/10 active:scale-[0.99]"
+      class="block w-full border border-audit/30 px-2 py-1 text-left transition-all hover:bg-audit/10 active:scale-[0.99]"
       data-testid="zone-creeps-enemy"
       title="Attack the lowest-HP enemy creep"
       @click="attackLowestCreep"
     >
-      <span class="text-dire"
+      <span class="text-audit"
         >{{ enemyCreeps.length }}× enemy creep{{ enemyCreeps.length === 1 ? '' : 's' }}</span
       >
       <span v-if="lowestEnemyCreep" class="text-text-dim">
@@ -391,7 +391,7 @@ const isEmpty = computed(
       :title="denyableAlliedCreep ? 'Deny the lowest-HP allied creep (below 50% HP)' : undefined"
       @click="denyLowestCreep"
     >
-      <span class="text-radiant"
+      <span class="text-chaff"
         >{{ alliedCreeps.length }}× allied creep{{ alliedCreeps.length === 1 ? '' : 's' }}</span
       >
       <span v-if="lowestAlliedCreep" class="text-text-dim">

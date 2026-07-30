@@ -8,7 +8,7 @@ interface EntryOverrides {
   [key: string]: unknown
 }
 
-function makePlayer(id: string, team: 'radiant' | 'dire', overrides: EntryOverrides = {}) {
+function makePlayer(id: string, team: 'chaff' | 'audit', overrides: EntryOverrides = {}) {
   return {
     id,
     name: `Player ${id}`,
@@ -27,7 +27,7 @@ function makePlayer(id: string, team: 'radiant' | 'dire', overrides: EntryOverri
   }
 }
 
-function makeTeam(id: 'radiant' | 'dire'): TeamState {
+function makeTeam(id: 'chaff' | 'audit'): TeamState {
   return { id, kills: 5, towerKills: 2, gold: 6000, glyphUsedTick: null }
 }
 
@@ -35,7 +35,7 @@ function mountScoreboard(players = defaultPlayers()) {
   return mount(Scoreboard, {
     props: {
       players,
-      teams: { radiant: makeTeam('radiant'), dire: makeTeam('dire') },
+      teams: { chaff: makeTeam('chaff'), audit: makeTeam('audit') },
       currentTick: 30,
       currentPlayerId: 'r1',
     },
@@ -45,10 +45,10 @@ function mountScoreboard(players = defaultPlayers()) {
 
 function defaultPlayers() {
   return [
-    makePlayer('r1', 'radiant'),
-    makePlayer('r2', 'radiant'),
-    makePlayer('d1', 'dire'),
-    makePlayer('d2', 'dire', { fogged: true, items: [] }),
+    makePlayer('r1', 'chaff'),
+    makePlayer('r2', 'chaff'),
+    makePlayer('d1', 'audit'),
+    makePlayer('d2', 'audit', { fogged: true, items: [] }),
   ]
 }
 
@@ -61,8 +61,8 @@ describe('Scoreboard', () => {
     mockPointer(false)
     const wrapper = mountScoreboard()
 
-    expect(wrapper.find('[data-testid="scoreboard-team-radiant"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="scoreboard-team-dire"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="scoreboard-team-chaff"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="scoreboard-team-audit"]').exists()).toBe(true)
     expect(wrapper.findAll('.scoreboard__player-row')).toHaveLength(4)
     expect(wrapper.find('.scoreboard__player-row--self').exists()).toBe(true)
   })
@@ -126,8 +126,8 @@ describe('Scoreboard', () => {
     it('a player without items expands to "No items"', async () => {
       mockPointer(true)
       const players = [
-        makePlayer('r1', 'radiant', { items: [null, null, null, null, null, null] }),
-        makePlayer('d1', 'dire'),
+        makePlayer('r1', 'chaff', { items: [null, null, null, null, null, null] }),
+        makePlayer('d1', 'audit'),
       ]
       const wrapper = mountScoreboard(players)
 
@@ -165,8 +165,8 @@ describe('Scoreboard', () => {
   describe('AFK bot-takeover badge', () => {
     it('shows an [AI] tag for a bot-controlled (AFK) player', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'radiant', { aiControlled: true }),
-        makePlayer('d1', 'dire'),
+        makePlayer('r1', 'chaff', { aiControlled: true }),
+        makePlayer('d1', 'audit'),
       ])
       const row = wrapper.get('[data-testid="scoreboard-row-r1"]')
       expect(row.find('.scoreboard__ai-tag').exists()).toBe(true)
@@ -174,7 +174,7 @@ describe('Scoreboard', () => {
     })
 
     it('does not show the tag for a normal player', () => {
-      const wrapper = mountScoreboard([makePlayer('r1', 'radiant'), makePlayer('d1', 'dire')])
+      const wrapper = mountScoreboard([makePlayer('r1', 'chaff'), makePlayer('d1', 'audit')])
       expect(
         wrapper.get('[data-testid="scoreboard-row-r1"]').find('.scoreboard__ai-tag').exists(),
       ).toBe(false)
@@ -184,8 +184,8 @@ describe('Scoreboard', () => {
   describe('dead players + gold formatting', () => {
     it('shows a respawn countdown and the dead row style for a dead player', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'radiant', { alive: false, respawnTick: 45 }), // tick 30 → 15t
-        makePlayer('d1', 'dire'),
+        makePlayer('r1', 'chaff', { alive: false, respawnTick: 45 }), // tick 30 → 15t
+        makePlayer('d1', 'audit'),
       ])
       const row = wrapper.get('[data-testid="scoreboard-row-r1"]')
       expect(row.classes()).toContain('scoreboard__player-row--dead')
@@ -194,16 +194,16 @@ describe('Scoreboard', () => {
 
     it('shows DEAD with no countdown when the respawn tick is unknown', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'radiant', { alive: false, respawnTick: null }),
-        makePlayer('d1', 'dire'),
+        makePlayer('r1', 'chaff', { alive: false, respawnTick: null }),
+        makePlayer('d1', 'audit'),
       ])
       expect(wrapper.get('[data-testid="scoreboard-row-r1"]').text()).toContain('DEAD')
     })
 
     it('abbreviates gold of 10k+ as k', () => {
       const wrapper = mountScoreboard([
-        makePlayer('r1', 'radiant', { gold: 15_000 }),
-        makePlayer('d1', 'dire'),
+        makePlayer('r1', 'chaff', { gold: 15_000 }),
+        makePlayer('d1', 'audit'),
       ])
       expect(wrapper.get('[data-testid="scoreboard-row-r1"]').text()).toContain('15.0k')
     })

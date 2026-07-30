@@ -116,8 +116,8 @@ const allPlayers = computed<PlayerState[]>(() => {
   if (!visibleState.value) return []
   return Object.values(visibleState.value.players) as PlayerState[]
 })
-const radiantPlayers = computed(() => allPlayers.value.filter((p) => p.team === 'radiant'))
-const direPlayers = computed(() => allPlayers.value.filter((p) => p.team === 'dire'))
+const chaffPlayers = computed(() => allPlayers.value.filter((p) => p.team === 'chaff'))
+const auditPlayers = computed(() => allPlayers.value.filter((p) => p.team === 'audit'))
 
 function heroName(id: string | null | undefined): string {
   if (!id) return '???'
@@ -143,8 +143,8 @@ function toRow(p: PlayerState): PlayerScoreRow {
     aiControlled: p.aiControlled,
   }
 }
-const radiantRows = computed(() => radiantPlayers.value.map(toRow))
-const direRows = computed(() => direPlayers.value.map(toRow))
+const chaffRows = computed(() => chaffPlayers.value.map(toRow))
+const auditRows = computed(() => auditPlayers.value.map(toRow))
 
 // Padded MM:SS game clock from a tick count (shared tick→clock helper).
 function gameTime(tick: number): string {
@@ -165,10 +165,10 @@ function gameTime(tick: number): string {
           <span
             :class="
               conn === 'connected'
-                ? 'text-radiant text-glow-sm'
+                ? 'text-chaff text-glow-sm'
                 : conn === 'connecting' || conn === 'reconnecting'
                   ? 'text-warn animate-pulse'
-                  : 'text-dire text-glow-dire'
+                  : 'text-audit text-glow-audit'
             "
           >
             [{{ conn.toUpperCase() }}]
@@ -201,8 +201,8 @@ function gameTime(tick: number): string {
         <div v-if="ackedGameId" class="mt-1">subscription confirmed for {{ ackedGameId }}</div>
       </div>
 
-      <div v-if="errorMessage" class="border border-dire bloom-dire p-4">
-        <div class="t-h3 text-dire text-glow-dire">SPECTATOR ERROR</div>
+      <div v-if="errorMessage" class="border border-audit bloom-audit p-4">
+        <div class="t-h3 text-audit text-glow-audit">SPECTATOR ERROR</div>
         <div class="t-caption mt-1">{{ errorMessage }}</div>
       </div>
 
@@ -210,14 +210,14 @@ function gameTime(tick: number): string {
         <!-- Score banner -->
         <div class="grid grid-cols-3 items-stretch border border-border bg-bg-panel">
           <div
-            class="border-r border-border p-3 text-center bloom-radiant"
-            data-testid="spectator-score-radiant"
+            class="border-r border-border p-3 text-center bloom-chaff"
+            data-testid="spectator-score-chaff"
           >
-            <div class="t-h3 text-radiant text-glow-radiant">RADIANT</div>
-            <div class="t-display t-mono-num text-radiant text-glow-radiant">
-              {{ visibleState.teams.radiant.kills }}
+            <div class="t-h3 text-chaff text-glow-chaff">CHAFF</div>
+            <div class="t-display t-mono-num text-chaff text-glow-chaff">
+              {{ visibleState.teams.chaff.kills }}
             </div>
-            <div class="t-caption">{{ visibleState.teams.radiant.towerKills }} towers</div>
+            <div class="t-caption">{{ visibleState.teams.chaff.towerKills }} towers</div>
           </div>
           <div class="flex flex-col items-center justify-center p-3">
             <div class="t-caption">cycle · {{ visibleState.timeOfDay }}</div>
@@ -227,35 +227,35 @@ function gameTime(tick: number): string {
             <div class="t-caption mt-1">{{ gameTime(lastTick) }}</div>
           </div>
           <div
-            class="border-l border-border p-3 text-center bloom-dire"
-            data-testid="spectator-score-dire"
+            class="border-l border-border p-3 text-center bloom-audit"
+            data-testid="spectator-score-audit"
           >
-            <div class="t-h3 text-dire text-glow-dire">DIRE</div>
-            <div class="t-display t-mono-num text-dire text-glow-dire">
-              {{ visibleState.teams.dire.kills }}
+            <div class="t-h3 text-audit text-glow-audit">AUDIT</div>
+            <div class="t-display t-mono-num text-audit text-glow-audit">
+              {{ visibleState.teams.audit.kills }}
             </div>
-            <div class="t-caption">{{ visibleState.teams.dire.towerKills }} towers</div>
+            <div class="t-caption">{{ visibleState.teams.audit.towerKills }} towers</div>
           </div>
         </div>
 
         <!-- Per-team breakdown -->
         <div class="grid gap-3 sm:grid-cols-2">
-          <div class="border border-radiant/40 bg-bg-panel">
+          <div class="border border-chaff/40 bg-bg-panel">
             <div
-              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-radiant text-glow-radiant"
+              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-chaff text-glow-chaff"
             >
-              RADIANT
+              CHAFF
             </div>
-            <PlayerScoreTable caption="Radiant players" :rows="radiantRows" />
+            <PlayerScoreTable caption="Chaff players" :rows="chaffRows" />
           </div>
 
-          <div class="border border-dire/40 bg-bg-panel">
+          <div class="border border-audit/40 bg-bg-panel">
             <div
-              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-dire text-glow-dire"
+              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-audit text-glow-audit"
             >
-              DIRE
+              AUDIT
             </div>
-            <PlayerScoreTable caption="Dire players" :rows="direRows" />
+            <PlayerScoreTable caption="Audit players" :rows="auditRows" />
           </div>
         </div>
       </template>

@@ -43,21 +43,21 @@ const aegisHolder = computed(() => {
   return null
 })
 
-// Net-worth lead + trend (lead series = radiant - dire over recent ticks).
-const lead = computed(() => goldLead(store.netWorth.radiant, store.netWorth.dire))
+// Net-worth lead + trend (lead series = chaff - audit over recent ticks).
+const lead = computed(() => goldLead(store.netWorth.chaff, store.netWorth.audit))
 const leadSeries = computed(() => {
-  const r = store.netWorthHistory.radiant
-  const d = store.netWorthHistory.dire
+  const r = store.netWorthHistory.chaff
+  const d = store.netWorthHistory.audit
   const n = Math.min(r.length, d.length)
   const out: number[] = []
   for (let i = 0; i < n; i++) out.push((r[i] ?? 0) - (d[i] ?? 0))
   return out
 })
 const leadColorVar = computed(() =>
-  lead.value.leader === 'radiant'
-    ? 'color-radiant'
-    : lead.value.leader === 'dire'
-      ? 'color-dire'
+  lead.value.leader === 'chaff'
+    ? 'color-chaff'
+    : lead.value.leader === 'audit'
+      ? 'color-audit'
       : 'text-dim',
 )
 
@@ -84,10 +84,10 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       <div class="flex items-baseline gap-1 font-mono">
         <span
           v-if="lead.leader"
-          :class="lead.leader === 'radiant' ? 'text-radiant' : 'text-dire'"
+          :class="lead.leader === 'chaff' ? 'text-chaff' : 'text-audit'"
           class="font-bold"
         >
-          {{ lead.leader === 'radiant' ? 'RAD' : 'DIRE' }} +{{ formatGoldShort(lead.amount) }}
+          {{ lead.leader === 'chaff' ? 'RAD' : 'AUDIT' }} +{{ formatGoldShort(lead.amount) }}
         </span>
         <span v-else class="text-text-dim">even</span>
       </div>

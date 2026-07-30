@@ -211,7 +211,7 @@ const filledCount = computed(() => {
             :key="slot.index"
             class="flex items-center gap-2 border-l-2 px-3 py-1"
             :class="{
-              'border-radiant bg-radiant/5': slot.type === 'player',
+              'border-chaff bg-chaff/5': slot.type === 'player',
               'border-gold bg-gold/5': slot.type === 'bot',
               'border-border bg-transparent': slot.type === 'empty',
               'border-ability bg-ability/5': slot.type === 'typing',
@@ -222,7 +222,7 @@ const filledCount = computed(() => {
               class="w-5 shrink-0 text-right font-mono text-[0.7rem]"
               :class="{
                 'text-text-dim': slot.type === 'empty',
-                'text-radiant': slot.type === 'player',
+                'text-chaff': slot.type === 'player',
                 'text-gold': slot.type === 'bot',
                 'text-ability': slot.type === 'typing',
               }"

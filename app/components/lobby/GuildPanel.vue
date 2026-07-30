@@ -129,7 +129,7 @@ onMounted(async () => {
           >
             <span
               class="font-mono"
-              :class="m.id === myPlayerId ? 'text-radiant' : 'text-text-primary'"
+              :class="m.id === myPlayerId ? 'text-chaff' : 'text-text-primary'"
             >
               {{ m.username
               }}<span v-if="m.id === myPlayerId" class="ml-1 text-text-dim">(you)</span>
@@ -191,7 +191,7 @@ onMounted(async () => {
         </div>
       </template>
 
-      <p v-if="error" class="text-[0.72rem] text-dire" data-testid="guild-error" role="alert">
+      <p v-if="error" class="text-[0.72rem] text-audit" data-testid="guild-error" role="alert">
         [ERR] {{ error }}
       </p>
     </div>

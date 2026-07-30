@@ -155,10 +155,10 @@ describe('Lobby', () => {
       const lobby = createLobby(entries, ws as never, redis as never, db as never)
       createdLobbyId = lobby.id
 
-      const radiant = lobby.players.filter((p) => p.team === 'radiant')
-      const dire = lobby.players.filter((p) => p.team === 'dire')
-      expect(radiant.length).toBe(2)
-      expect(dire.length).toBe(2)
+      const chaff = lobby.players.filter((p) => p.team === 'chaff')
+      const audit = lobby.players.filter((p) => p.team === 'audit')
+      expect(chaff.length).toBe(2)
+      expect(audit.length).toBe(2)
     })
 
     it('generates unique lobby IDs', () => {
@@ -541,10 +541,10 @@ describe('Lobby', () => {
       createdLobbyId = lobby.id
 
       // Bot replacement should maintain team balance
-      const radiantCount = lobby.players.filter((p) => p.team === 'radiant').length
-      const direCount = lobby.players.filter((p) => p.team === 'dire').length
-      expect(radiantCount).toBe(5)
-      expect(direCount).toBe(5)
+      const chaffCount = lobby.players.filter((p) => p.team === 'chaff').length
+      const auditCount = lobby.players.filter((p) => p.team === 'audit').length
+      expect(chaffCount).toBe(5)
+      expect(auditCount).toBe(5)
     })
   })
 

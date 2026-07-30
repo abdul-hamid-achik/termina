@@ -34,11 +34,11 @@ export function computeThreat(
 export function threatToneClass(tone: ThreatTone): string {
   switch (tone) {
     case 'danger':
-      return 'text-dire'
+      return 'text-audit'
     case 'warn':
       return 'text-gold'
     default:
-      return 'text-radiant'
+      return 'text-chaff'
   }
 }
 

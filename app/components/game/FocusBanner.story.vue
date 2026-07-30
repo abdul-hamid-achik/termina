@@ -17,7 +17,7 @@ function seed(opts: {
   const store = useGameStore()
   const me = makePlayer({
     id: 'me',
-    team: 'radiant',
+    team: 'chaff',
     heroId: SAMPLE_HEROES.echo,
     zone: 'mid-river',
     hp: opts.hp ?? 600,
@@ -27,9 +27,9 @@ function seed(opts: {
   })
   const all: Record<string, ReturnType<typeof makePlayer>> = { me }
   for (let i = 0; i < (opts.enemies ?? 0); i++)
-    all[`e${i}`] = makePlayer({ id: `e${i}`, team: 'dire', zone: 'mid-river' })
+    all[`e${i}`] = makePlayer({ id: `e${i}`, team: 'audit', zone: 'mid-river' })
   for (let i = 0; i < (opts.allies ?? 0); i++)
-    all[`a${i}`] = makePlayer({ id: `a${i}`, team: 'radiant', zone: 'mid-river' })
+    all[`a${i}`] = makePlayer({ id: `a${i}`, team: 'chaff', zone: 'mid-river' })
   store.playerId = 'me'
   store.player = me
   store.allPlayers = all

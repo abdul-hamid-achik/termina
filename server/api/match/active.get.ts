@@ -19,10 +19,10 @@ export default defineEventHandler(async () => {
   const games: Array<{
     gameId: string
     tick: number
-    radiantKills: number
-    direKills: number
-    radiantHeroes: string[]
-    direHeroes: string[]
+    chaffKills: number
+    auditKills: number
+    chaffHeroes: string[]
+    auditHeroes: string[]
   }> = []
 
   for (const gameId of ids) {
@@ -30,21 +30,21 @@ export default defineEventHandler(async () => {
     if (!snap) continue
     if (snap.state.phase !== 'playing') continue
 
-    const radiantHeroes: string[] = []
-    const direHeroes: string[] = []
+    const chaffHeroes: string[] = []
+    const auditHeroes: string[] = []
     for (const p of Object.values(snap.state.players)) {
       const heroName = p.heroId ? (HEROES[p.heroId]?.name ?? p.heroId) : '???'
-      if (p.team === 'radiant') radiantHeroes.push(heroName)
-      else direHeroes.push(heroName)
+      if (p.team === 'chaff') chaffHeroes.push(heroName)
+      else auditHeroes.push(heroName)
     }
 
     games.push({
       gameId,
       tick: snap.state.tick,
-      radiantKills: snap.state.teams.radiant.kills,
-      direKills: snap.state.teams.dire.kills,
-      radiantHeroes,
-      direHeroes,
+      chaffKills: snap.state.teams.chaff.kills,
+      auditKills: snap.state.teams.audit.kills,
+      chaffHeroes,
+      auditHeroes,
     })
   }
 

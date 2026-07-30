@@ -9,7 +9,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'me',
     name: 'me',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
     hp: 600,
@@ -44,9 +44,9 @@ function seed(opts: { me?: Partial<PlayerState>; enemies?: number; allies?: numb
   const me = makePlayer({ id: 'me', ...opts.me })
   const all: Record<string, PlayerState> = { me }
   for (let i = 0; i < (opts.enemies ?? 0); i++)
-    all[`e${i}`] = makePlayer({ id: `e${i}`, team: 'dire' })
+    all[`e${i}`] = makePlayer({ id: `e${i}`, team: 'audit' })
   for (let i = 0; i < (opts.allies ?? 0); i++)
-    all[`a${i}`] = makePlayer({ id: `a${i}`, team: 'radiant' })
+    all[`a${i}`] = makePlayer({ id: `a${i}`, team: 'chaff' })
   store.playerId = 'me'
   store.player = me
   store.allPlayers = all
@@ -100,7 +100,7 @@ describe('FocusBanner', () => {
     expect(hp.exists()).toBe(true)
     expect(hp.text()).toContain('90/600')
     expect(hp.text()).toContain('15%')
-    expect(hp.classes()).toContain('text-dire')
+    expect(hp.classes()).toContain('text-audit')
     expect(hp.classes()).toContain('animate-pulse')
   })
 
@@ -108,7 +108,7 @@ describe('FocusBanner', () => {
     seed({ me: { hp: 540, maxHp: 600 }, enemies: 0 })
     const hp = mount(FocusBanner).find('[data-testid="focus-hp"]')
     expect(hp.text()).toContain('540/600')
-    expect(hp.classes()).not.toContain('text-dire')
+    expect(hp.classes()).not.toContain('text-audit')
   })
 
   it('shows a dead recommendation when the hero is dead', () => {

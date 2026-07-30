@@ -23,8 +23,8 @@ const ONE_LANE_ZONE_IDS = new Set(ONE_LANE_ZONES.map((z) => z.id))
 /** Resolve the short zone word a hint uses (`mid`) to a real one-lane zone id. */
 function resolveOneLaneZone(word: string): string | null {
   if (ONE_LANE_ZONE_IDS.has(word)) return word
-  if (word === 'base') return 'radiant-base'
-  if (word === 'fountain') return 'radiant-fountain'
+  if (word === 'base') return 'chaff-base'
+  if (word === 'fountain') return 'chaff-fountain'
   // Mirrors the client's `mid` → `mid-river` alias.
   if (word === 'mid') return 'mid-river'
   return null
@@ -164,10 +164,10 @@ describe('tutorial flow', () => {
       const target = resolveOneLaneZone(suggested!)
       expect(target, `"${suggested}" is not a one-lane zone`).toBeTruthy()
 
-      // Reachable: the player spawns in radiant-fountain, adjacent ONLY to
-      // radiant-base. Movement auto-paths, so any routed zone is fair game.
+      // Reachable: the player spawns in chaff-fountain, adjacent ONLY to
+      // chaff-base. Movement auto-paths, so any routed zone is fair game.
       expect(
-        findPath('radiant-fountain', target!, (id) => ONE_LANE_ZONE_IDS.has(id)).length,
+        findPath('chaff-fountain', target!, (id) => ONE_LANE_ZONE_IDS.has(id)).length,
       ).toBeGreaterThan(0)
 
       // Valid: REGRESSION — the hint used to say `move base`, but the step
@@ -176,12 +176,12 @@ describe('tutorial flow', () => {
       expect(target).not.toMatch(/fountain|base/)
 
       // Safe: REGRESSION — the hint then said `move mid`, which aliases to
-      // mid-river: neutral ground with no tower, bordering the DIRE T1. Both
+      // mid-river: neutral ground with no tower, bordering the AUDIT T1. Both
       // enemy bots are pinned to mid and arrive there before the first creep
       // wave, so a level-1 player who obeyed the hint was killed in ~12 ticks
       // having done nothing. Send them somewhere their own tower covers.
       const zone = ZONE_MAP[target!]
-      expect(zone?.team, `${target} is not friendly ground`).toBe('radiant')
+      expect(zone?.team, `${target} is not friendly ground`).toBe('chaff')
       expect(zone?.tower, `${target} has no friendly tower cover`).toBe(true)
     })
 
@@ -219,7 +219,7 @@ describe('tutorial flow', () => {
     })
 
     it('holds the move step while the human is still in base/fountain — but says why', () => {
-      for (const zone of ['radiant-base', 'radiant-fountain']) {
+      for (const zone of ['chaff-base', 'chaff-fountain']) {
         const state = tutorialState(0, zone)
         const next = advanceTutorialAfterTick(
           state,
@@ -295,7 +295,7 @@ describe('tutorial flow', () => {
       it('always reaches free play from a standing start, doing nothing at all', () => {
         // The whole flow, driven only by the clock — this is the invariant that
         // makes tutorial completion (and the returning-player funnel) reachable.
-        let state = tutorialState(0, 'radiant-fountain', 0)
+        let state = tutorialState(0, 'chaff-fountain', 0)
         for (let tick = 1; tick <= TUTORIAL_STEP_DEADLINE_TICKS * TUTORIAL_STEP_COUNT + 1; tick++) {
           state = { ...state, tick }
           state = advanceTutorialAfterTick(state, [], []).state
@@ -316,16 +316,16 @@ describe('tutorial flow', () => {
 
     it('is a calm 2v2: the human + 1 ally vs 2 enemy bots', () => {
       expect(roster).toHaveLength(4)
-      const radiant = roster.filter((p) => p.team === 'radiant')
-      const dire = roster.filter((p) => p.team === 'dire')
-      expect(radiant).toHaveLength(2)
-      expect(dire).toHaveLength(2)
+      const chaff = roster.filter((p) => p.team === 'chaff')
+      const audit = roster.filter((p) => p.team === 'audit')
+      expect(chaff).toHaveLength(2)
+      expect(audit).toHaveLength(2)
     })
 
-    it('puts the human (only non-bot) on radiant with their chosen hero', () => {
+    it('puts the human (only non-bot) on chaff with their chosen hero', () => {
       const humans = roster.filter((p) => !isBot(p.playerId))
       expect(humans).toHaveLength(1)
-      expect(humans[0]).toMatchObject({ playerId: 'github_42', team: 'radiant', heroId: 'echo' })
+      expect(humans[0]).toMatchObject({ playerId: 'github_42', team: 'chaff', heroId: 'echo' })
     })
 
     it('gives every bot a distinct hero (none clashing with the human)', () => {

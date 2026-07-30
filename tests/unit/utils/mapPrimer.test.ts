@@ -29,7 +29,7 @@ describe('buildMapPrimerZones', () => {
   })
 
   it('leaves non-tower zones (fountain) without a tower', () => {
-    expect(zones.find((z) => z.id === 'radiant-fountain')!.tower).toBeUndefined()
+    expect(zones.find((z) => z.id === 'chaff-fountain')!.tower).toBeUndefined()
   })
 
   it('marks Roshan alive on the pit', () => {

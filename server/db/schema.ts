@@ -94,7 +94,7 @@ export const matches = pgTable(
     // casual_5v5 = a game that contained bots (bot-filled matchmaking or practice);
     // it is recorded for history but never affects MMR (see game-server onGameOver).
     mode: text('mode', { enum: ['ranked_5v5', 'quick_3v3', '1v1', 'casual_5v5'] }).notNull(),
-    winner: text('winner', { enum: ['radiant', 'dire'] }),
+    winner: text('winner', { enum: ['chaff', 'audit'] }),
     durationTicks: integer('duration_ticks'),
     // The season this match was played in (null for pre-seasons history).
     seasonNumber: integer('season_number'),
@@ -151,7 +151,7 @@ export const matchPlayers = pgTable(
     playerId: text('player_id')
       .notNull()
       .references(() => players.id),
-    team: text('team', { enum: ['radiant', 'dire'] }).notNull(),
+    team: text('team', { enum: ['chaff', 'audit'] }).notNull(),
     heroId: text('hero_id').notNull(),
     kills: integer('kills').notNull().default(0),
     deaths: integer('deaths').notNull().default(0),
@@ -210,7 +210,7 @@ export type NewPlayer = typeof players.$inferInsert
 export type Match = typeof matches.$inferSelect
 export type NewMatch = typeof matches.$inferInsert
 /** A match plus the queried player's team in it (returned by getMatchHistory). */
-export type MatchHistoryEntry = Match & { team: 'radiant' | 'dire' }
+export type MatchHistoryEntry = Match & { team: 'chaff' | 'audit' }
 export type MatchPlayer = typeof matchPlayers.$inferSelect
 export type NewMatchPlayer = typeof matchPlayers.$inferInsert
 export type HeroStat = typeof heroStats.$inferSelect

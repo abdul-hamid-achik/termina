@@ -69,9 +69,9 @@ export const useGameStore = defineStore('game', () => {
   // (which carries all zones); drives map fog-dimming + the War Room vision %.
   const visibleZoneIds = ref<string[]>([])
   const allPlayers = ref<Record<string, PlayerState>>({})
-  const teams = ref<{ radiant: TeamState; dire: TeamState } | null>(null)
+  const teams = ref<{ chaff: TeamState; audit: TeamState } | null>(null)
   const towers = ref<TowerState[]>([])
-  const ancients = ref<{ radiant: AncientState; dire: AncientState } | null>(null)
+  const ancients = ref<{ chaff: AncientState; audit: AncientState } | null>(null)
   const creeps = ref<CreepState[]>([])
   const neutrals = ref<NeutralCreepState[]>([])
   // Objective layer — streamed in every tick payload (PlayerVisibleState) but
@@ -87,7 +87,7 @@ export const useGameStore = defineStore('game', () => {
   // drop out of vision (you can't see a fogged enemy's gold).
   const knownNetWorth = ref<Record<string, number>>({})
   // Per-team net-worth history (one sample per tick) for the trend sparkline.
-  const netWorthHistory = ref<{ radiant: number[]; dire: number[] }>({ radiant: [], dire: [] })
+  const netWorthHistory = ref<{ chaff: number[]; audit: number[] }>({ chaff: [], audit: [] })
   const events = ref<GameEvent[]>([])
   // Monotonic counter + the most-recent batch. Consumers (audio/shake/flash/KDA)
   // react to `eventSeq` and read `latestEvents` instead of diffing `events.length`
@@ -208,8 +208,8 @@ export const useGameStore = defineStore('game', () => {
 
   /** Current team net worth (latest history sample). */
   const netWorth = computed(() => ({
-    radiant: netWorthHistory.value.radiant.at(-1) ?? 0,
-    dire: netWorthHistory.value.dire.at(-1) ?? 0,
+    chaff: netWorthHistory.value.chaff.at(-1) ?? 0,
+    audit: netWorthHistory.value.audit.at(-1) ?? 0,
   }))
 
   // ── Actions ─────────────────────────────────────────────────────
@@ -259,9 +259,9 @@ export const useGameStore = defineStore('game', () => {
       players: Record<string, PlayerState>
       zones: Record<string, ZoneRuntimeState>
       visibleZones?: string[]
-      teams: { radiant: TeamState; dire: TeamState }
+      teams: { chaff: TeamState; audit: TeamState }
       towers?: TowerState[]
-      ancients?: { radiant: AncientState; dire: AncientState }
+      ancients?: { chaff: AncientState; audit: AncientState }
       creeps?: CreepState[]
       neutrals?: NeutralCreepState[]
       roshan?: RoshanState
@@ -340,8 +340,8 @@ export const useGameStore = defineStore('game', () => {
         return next.length > NET_WORTH_HISTORY_MAX ? next.slice(-NET_WORTH_HISTORY_MAX) : next
       }
       netWorthHistory.value = {
-        radiant: push(netWorthHistory.value.radiant, teamWorth('radiant')),
-        dire: push(netWorthHistory.value.dire, teamWorth('dire')),
+        chaff: push(netWorthHistory.value.chaff, teamWorth('chaff')),
+        audit: push(netWorthHistory.value.audit, teamWorth('audit')),
       }
     }
     if (state.timeOfDay) timeOfDay.value = state.timeOfDay
@@ -452,7 +452,7 @@ export const useGameStore = defineStore('game', () => {
     aegis.value = null
     lastSeen.value = {}
     knownNetWorth.value = {}
-    netWorthHistory.value = { radiant: [], dire: [] }
+    netWorthHistory.value = { chaff: [], audit: [] }
     events.value = []
     eventSeq.value = 0
     latestEvents.value = []

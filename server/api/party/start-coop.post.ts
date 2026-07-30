@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Only the party leader can start the game' })
   }
 
-  // Build a co-op lobby: party on radiant, bots fill to a 5v5. The party is
+  // Build a co-op lobby: party on chaff, bots fill to a 5v5. The party is
   // disbanded once the lobby exists (its members are now in the lobby).
   const lobby = createCoopLobby(
     party.members.map((m) => ({ playerId: m.playerId, username: m.username, mmr: m.mmr })),

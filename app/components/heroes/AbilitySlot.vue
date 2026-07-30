@@ -64,7 +64,7 @@ function onClick() {
       <span v-if="onCooldown" class="ml-auto text-[0.7rem] text-gold"
         >CD {{ cooldownRemaining }}t</span
       >
-      <span v-else-if="unaffordable" class="ml-auto text-[0.7rem] text-dire">no mp</span>
+      <span v-else-if="unaffordable" class="ml-auto text-[0.7rem] text-audit">no mp</span>
     </div>
 
     <div v-if="ability.effects.length" class="flex flex-wrap gap-1">

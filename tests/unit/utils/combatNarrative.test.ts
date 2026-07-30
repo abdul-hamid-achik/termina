@@ -18,16 +18,16 @@ import {
 import type { GameEvent } from '~~/shared/types/game'
 
 const teams: Record<string, string> = {
-  me: 'radiant',
-  ally1: 'radiant',
-  enemy1: 'dire',
-  enemy2: 'dire',
+  me: 'chaff',
+  ally1: 'chaff',
+  enemy1: 'audit',
+  enemy2: 'audit',
 }
 const heroes: Record<string, string> = { me: 'thread', enemy1: 'null_ref', enemy2: 'regex' }
 
 const ctx: NarrativeContext = {
   playerId: 'me',
-  myTeam: 'radiant',
+  myTeam: 'chaff',
   entityLabel: (id) => (id === 'me' ? 'You' : String(id)),
   abilityLabel: (id) => `ability:${String(id)}`,
   teamOf: (id) => teams[String(id)],
@@ -94,13 +94,13 @@ describe('eventToLine: structure damage collapses', () => {
     const line = eventToLine(
       ev('damage', {
         sourceId: 'me',
-        targetId: 'tower_mid-t1-dire',
+        targetId: 'tower_mid-t1-audit',
         amount: 70,
         damageType: 'physical',
       }),
       ctx,
     )!
-    expect(line.dedupKey).toBe('dmg:me->tower_mid-t1-dire')
+    expect(line.dedupKey).toBe('dmg:me->tower_mid-t1-audit')
     expect(line.dmgAmount).toBe(70)
   })
 })
@@ -212,7 +212,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   })
   it('narrates roshan, runes, aegis, wards', () => {
     expect(
-      eventToLine(ev('roshan_killed', { killerTeam: 'radiant', goldAwarded: 600 }), ctx)!.text,
+      eventToLine(ev('roshan_killed', { killerTeam: 'chaff', goldAwarded: 600 }), ctx)!.text,
     ).toContain('Roshan')
     expect(
       eventToLine(ev('rune_picked', { playerId: 'me', zone: 'rune-top', runeType: 'haste' }), ctx)!
@@ -224,7 +224,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
         ev('ward_placed', {
           playerId: 'me',
           zone: 'mid-river',
-          team: 'radiant',
+          team: 'chaff',
           wardType: 'observer',
         }),
         ctx,
@@ -251,7 +251,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(sell.text).toContain('+25')
   })
   it('keeps the exact victory phrasing for the core', () => {
-    const line = eventToLine(ev('ancient_destroyed', { team: 'dire', killerTeam: 'radiant' }), ctx)!
+    const line = eventToLine(ev('ancient_destroyed', { team: 'audit', killerTeam: 'chaff' }), ctx)!
     expect(line.type).toBe('victory')
     expect(line.text).toBe('CHAFF destroyed the AUDIT Mainframe!')
     expect(line.text).not.toContain('tower')
@@ -279,12 +279,12 @@ describe('buildCombatLines', () => {
     const events: GameEvent[] = [
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'tower_mid-t1-dire', amount: 70, damageType: 'physical' },
+        { sourceId: 'me', targetId: 'tower_mid-t1-audit', amount: 70, damageType: 'physical' },
         1,
       ),
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'tower_mid-t1-dire', amount: 70, damageType: 'physical' },
+        { sourceId: 'me', targetId: 'tower_mid-t1-audit', amount: 70, damageType: 'physical' },
         2,
       ),
       ev('gold_change', { playerId: 'me', amount: 40, reason: 'creep last hit' }, 2),
@@ -348,9 +348,9 @@ describe('deriveKillFeed', () => {
   it('emits tower / roshan / core headline entries', () => {
     const feed = deriveKillFeed(
       [
-        ev('tower_kill', { killerTeam: 'radiant', team: 'dire', zone: 'mid-t1-dire' }, 1),
-        ev('roshan_killed', { killerTeam: 'radiant', goldAwarded: 600 }, 2),
-        ev('ancient_destroyed', { killerTeam: 'radiant', team: 'dire' }, 3),
+        ev('tower_kill', { killerTeam: 'chaff', team: 'audit', zone: 'mid-t1-audit' }, 1),
+        ev('roshan_killed', { killerTeam: 'chaff', goldAwarded: 600 }, 2),
+        ev('ancient_destroyed', { killerTeam: 'chaff', team: 'audit' }, 3),
       ],
       ctx,
     )
@@ -429,13 +429,13 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['teleport_complete', { playerId: 'me', destination: 'mid-river' }, 'teleported to mid-river'],
     ['trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 100 }, 'trap'],
     ['teleport_cancelled', { playerId: 'me', reason: 'stunned' }, 'cancelled'],
-    ['glyph_used', { team: 'radiant' }, 'Glyph'],
-    ['surrender_vote', { team: 'radiant', votesFor: 2, votesNeeded: 3 }, '2/3'],
-    ['surrendered', { team: 'dire', winner: 'radiant' }, 'surrendered'],
+    ['glyph_used', { team: 'chaff' }, 'Glyph'],
+    ['surrender_vote', { team: 'chaff', votesFor: 2, votesNeeded: 3 }, '2/3'],
+    ['surrendered', { team: 'audit', winner: 'chaff' }, 'surrendered'],
     ['roshan_respawn', {}, 'respawned'],
     [
       'afk_takeover',
-      { playerId: 'enemy1', team: 'dire', message: 'went AFK — a bot has taken over' },
+      { playerId: 'enemy1', team: 'audit', message: 'went AFK — a bot has taken over' },
       'a bot has taken over',
     ],
   ]
@@ -612,9 +612,9 @@ describe('narration drift guard', () => {
     victimId: 'enemy1',
     assisters: [],
     owner: 'enemy1',
-    team: 'radiant',
-    killerTeam: 'radiant',
-    winner: 'radiant',
+    team: 'chaff',
+    killerTeam: 'chaff',
+    winner: 'chaff',
     zone: 'mid-river',
     destination: 'mid-river',
     amount: 10,
@@ -673,8 +673,8 @@ describe('narration drift guard', () => {
 
 describe('combatLog label helpers', () => {
   it('ancientLabel resolves the team Mainframe, or null for non-ancient ids', () => {
-    expect(ancientLabel('ancient_radiant')).toBe('the CHAFF Mainframe')
-    expect(ancientLabel('ancient_dire')).toBe('the AUDIT Mainframe')
+    expect(ancientLabel('ancient_chaff')).toBe('the CHAFF Mainframe')
+    expect(ancientLabel('ancient_audit')).toBe('the AUDIT Mainframe')
     // Unknown team falls back to a readable label rather than null/crash.
     expect(ancientLabel('ancient_neutral')).toBe('the neutral Mainframe')
     expect(ancientLabel('tower_mid_t1_rad')).toBeNull()
@@ -683,7 +683,7 @@ describe('combatLog label helpers', () => {
 
   it('isStructureTarget is true only for tower/ancient string ids', () => {
     expect(isStructureTarget('tower_mid_t1_rad')).toBe(true)
-    expect(isStructureTarget('ancient_dire')).toBe(true)
+    expect(isStructureTarget('ancient_audit')).toBe(true)
     expect(isStructureTarget('hero_echo')).toBe(false)
     expect(isStructureTarget('creep_3')).toBe(false)
     // Non-string ids (null/undefined/number) are not structures.
@@ -693,8 +693,8 @@ describe('combatLog label helpers', () => {
   })
 
   it('teamLabel reads the faction label from the world lexicon', () => {
-    expect(teamLabel('radiant')).toBe('CHAFF')
-    expect(teamLabel('dire')).toBe('AUDIT')
+    expect(teamLabel('chaff')).toBe('CHAFF')
+    expect(teamLabel('audit')).toBe('AUDIT')
     // Unknown ids degrade loudly (uppercased), never silently title-cased.
     expect(teamLabel('quorum')).toBe('QUORUM')
   })
@@ -796,15 +796,15 @@ describe('eventToLine: remaining event-type lines', () => {
     )
   })
   it('glyph_used → glyph activated', () => {
-    expect(line('glyph_used', { team: 'radiant' })!.text).toContain('activated the Glyph')
+    expect(line('glyph_used', { team: 'chaff' })!.text).toContain('activated the Glyph')
   })
   it('surrender_vote → vote tally', () => {
-    expect(
-      line('surrender_vote', { team: 'radiant', votesFor: 2, votesNeeded: 3 })!.text,
-    ).toContain('surrender vote: 2/3')
+    expect(line('surrender_vote', { team: 'chaff', votesFor: 2, votesNeeded: 3 })!.text).toContain(
+      'surrender vote: 2/3',
+    )
   })
   it('surrendered → victory line', () => {
-    expect(line('surrendered', { team: 'dire', winner: 'radiant' })!.text).toContain('surrendered')
+    expect(line('surrendered', { team: 'audit', winner: 'chaff' })!.text).toContain('surrendered')
   })
   it('an internal event (cooldown_used) produces no line', () => {
     expect(line('cooldown_used', { playerId: 'me', abilityId: 'q' })).toBeNull()

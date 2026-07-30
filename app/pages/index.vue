@@ -34,7 +34,7 @@ const commandTicker = [
   'attack roshan',
   'cast r',
   'glyph',
-  'attack tower:mid-t1-dire',
+  'attack tower:mid-t1-audit',
 ]
 
 const pillars = [
@@ -64,7 +64,7 @@ const pillars = [
         class="pointer-events-none absolute inset-0 -z-10 select-none"
       >
         <div
-          class="grid h-full w-full grid-cols-8 place-items-center font-mono text-[0.6rem] leading-none text-radiant/[0.07] md:grid-cols-12"
+          class="grid h-full w-full grid-cols-8 place-items-center font-mono text-[0.6rem] leading-none text-chaff/[0.07] md:grid-cols-12"
         >
           <span v-for="i in 96" :key="i">{{ ['0', '1', '/', '>', '·', '│'][i % 6] }}</span>
         </div>
@@ -75,7 +75,7 @@ const pillars = [
         <h1 class="sr-only">TERMINA — a text-based MOBA</h1>
         <pre
           aria-hidden="true"
-          class="m-0 text-[0.5rem] leading-[1.15] text-radiant text-glow md:text-[0.7rem]"
+          class="m-0 text-[0.5rem] leading-[1.15] text-chaff text-glow md:text-[0.7rem]"
         >
 ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗
 ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗
@@ -87,7 +87,7 @@ const pillars = [
 
         <!-- The tagline decodes on arrival. The delays cascade the two lines so
              they resolve in reading order rather than racing each other. -->
-        <p class="text-base tracking-wide text-radiant">
+        <p class="text-base tracking-wide text-chaff">
           <ScrambleText text=">_ where every command is a kill" :speed="900" :delay="200" />
         </p>
         <p class="max-w-[460px] text-[0.8rem] leading-relaxed text-text-dim">
@@ -117,7 +117,7 @@ const pillars = [
         </div>
         <InlineError :message="tutorialError" />
         <p class="text-[0.75rem] text-text-dim/70">
-          <span class="font-bold text-radiant">&gt;</span>
+          <span class="font-bold text-chaff">&gt;</span>
           <span class="ml-1">ready_</span>
           <span aria-hidden="true" class="animate-blink">█</span>
         </p>
@@ -147,19 +147,17 @@ const pillars = [
         class="border border-border bg-bg-secondary p-3 text-left font-mono text-[0.72rem] leading-relaxed"
       >
         <p>
-          <span class="text-radiant">&gt;</span>
+          <span class="text-chaff">&gt;</span>
           <span class="text-ability">cast q hero:daemon</span>
         </p>
         <p class="text-text-dim">
           &nbsp;&nbsp;⤷ cycle 42 · Resonance hits Daemon — 80 dmg (+bounce)
         </p>
-        <p>
-          <span class="text-radiant">&gt;</span> <span class="text-ability">move mid-river</span>
-        </p>
+        <p><span class="text-chaff">&gt;</span> <span class="text-ability">move mid-river</span></p>
         <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 43 · you advance to mid-river</p>
         <p>
-          <span class="text-radiant">&gt;</span>
-          <span class="text-ability">attack tower:mid-t1-dire</span>
+          <span class="text-chaff">&gt;</span>
+          <span class="text-ability">attack tower:mid-t1-audit</span>
         </p>
         <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 44 · tower takes 55, your creeps pile in</p>
       </div>
@@ -171,7 +169,7 @@ const pillars = [
 
     <!-- ── Where to go ──────────────────────────────────────────── -->
     <section class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 px-8 text-[0.8rem]">
-      <NuxtLink to="/heroes" class="text-ability no-underline transition-colors hover:text-radiant">
+      <NuxtLink to="/heroes" class="text-ability no-underline transition-colors hover:text-chaff">
         &gt; meet the heroes
       </NuxtLink>
       <NuxtLink to="/items" class="text-text-dim no-underline transition-colors hover:text-ability">

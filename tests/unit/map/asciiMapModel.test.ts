@@ -30,7 +30,7 @@ import { ZONE_IDS } from '~~/shared/constants/zones'
 function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return {
     id: 'mid-t1-rad',
-    name: 'Mid Lane T1 (Radiant)',
+    name: 'Mid Lane T1 (Chaff)',
     playerHere: false,
     allies: [],
     enemyCount: 0,
@@ -41,7 +41,7 @@ function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
 
 function makeAncient(overrides: Partial<AncientState> = {}): AncientState {
   return {
-    team: 'radiant',
+    team: 'chaff',
     hp: 6000,
     maxHp: 6000,
     alive: true,
@@ -60,15 +60,15 @@ describe('asciiMapModel', () => {
 
   describe('zoneShortCode', () => {
     it('codes bases and fountains', () => {
-      expect(zoneShortCode('radiant-base')).toBe('RB')
-      expect(zoneShortCode('radiant-fountain')).toBe('RF')
-      expect(zoneShortCode('dire-base')).toBe('DB')
-      expect(zoneShortCode('dire-fountain')).toBe('DF')
+      expect(zoneShortCode('chaff-base')).toBe('RB')
+      expect(zoneShortCode('chaff-fountain')).toBe('RF')
+      expect(zoneShortCode('audit-base')).toBe('DB')
+      expect(zoneShortCode('audit-fountain')).toBe('DF')
     })
 
     it('codes lanes as lane letter + tier', () => {
       expect(zoneShortCode('top-t1-rad')).toBe('T1')
-      expect(zoneShortCode('mid-t2-dire')).toBe('M2')
+      expect(zoneShortCode('mid-t2-audit')).toBe('M2')
       expect(zoneShortCode('bot-t3-rad')).toBe('B3')
     })
 
@@ -78,7 +78,7 @@ describe('asciiMapModel', () => {
       expect(zoneShortCode('bot-river')).toBe('BR')
       expect(zoneShortCode('rune-top')).toBe('RN')
       expect(zoneShortCode('rune-bot')).toBe('RN')
-      expect(zoneShortCode('jungle-dire-bot')).toBe('JG')
+      expect(zoneShortCode('jungle-audit-bot')).toBe('JG')
       expect(zoneShortCode('roshan-pit')).toBe('ROS')
     })
 
@@ -97,8 +97,8 @@ describe('asciiMapModel', () => {
 
   describe('zoneTeam', () => {
     it('reads the territory owner from the zone graph', () => {
-      expect(zoneTeam('jungle-rad-top')).toBe('radiant')
-      expect(zoneTeam('bot-t1-dire')).toBe('dire')
+      expect(zoneTeam('jungle-rad-top')).toBe('chaff')
+      expect(zoneTeam('bot-t1-audit')).toBe('audit')
       expect(zoneTeam('mid-river')).toBe('neutral')
     })
 
@@ -109,19 +109,19 @@ describe('asciiMapModel', () => {
 
   describe('ancientForZone', () => {
     const ancients = {
-      radiant: makeAncient({ team: 'radiant' }),
-      dire: makeAncient({ team: 'dire' }),
+      chaff: makeAncient({ team: 'chaff' }),
+      audit: makeAncient({ team: 'audit' }),
     }
 
     it('maps base zones to their ancient', () => {
-      expect(ancientForZone('radiant-base', ancients)).toBe(ancients.radiant)
-      expect(ancientForZone('dire-base', ancients)).toBe(ancients.dire)
+      expect(ancientForZone('chaff-base', ancients)).toBe(ancients.chaff)
+      expect(ancientForZone('audit-base', ancients)).toBe(ancients.audit)
     })
 
     it('returns null for non-base zones and missing ancients', () => {
       expect(ancientForZone('mid-river', ancients)).toBeNull()
-      expect(ancientForZone('radiant-base', null)).toBeNull()
-      expect(ancientForZone('radiant-base', undefined)).toBeNull()
+      expect(ancientForZone('chaff-base', null)).toBeNull()
+      expect(ancientForZone('chaff-base', undefined)).toBeNull()
     })
   })
 
@@ -171,25 +171,25 @@ describe('asciiMapModel', () => {
 
   describe('cellText', () => {
     it('appends the ancient HP indicator on base zones', () => {
-      const zone = makeZone({ id: 'radiant-base', name: 'Radiant Base' })
+      const zone = makeZone({ id: 'chaff-base', name: 'Chaff Base' })
       expect(cellText(zone, makeAncient({ hp: 3000, maxHp: 6000 }))).toContain('◈LOCKED 50%')
     })
 
     it('names the core as EXPOSED once it can actually be attacked', () => {
-      const zone = makeZone({ id: 'radiant-base', name: 'Radiant Base' })
+      const zone = makeZone({ id: 'chaff-base', name: 'Chaff Base' })
       const text = cellText(zone, makeAncient({ hp: 6000, maxHp: 6000, vulnerable: true }))
       expect(text).toContain('◈EXPOSED 100%')
       expect(text).not.toContain('LOCKED')
     })
 
     it('shows a razed marker for a destroyed Mainframe', () => {
-      const zone = makeZone({ id: 'dire-base', name: 'Dire Base' })
-      expect(cellText(zone, makeAncient({ team: 'dire', hp: 0, alive: false }))).toContain('◈✗')
+      const zone = makeZone({ id: 'audit-base', name: 'Audit Base' })
+      expect(cellText(zone, makeAncient({ team: 'audit', hp: 0, alive: false }))).toContain('◈✗')
     })
 
     it('shows the ancient through fog (global info, like towers)', () => {
-      const zone = makeZone({ id: 'dire-base', name: 'Dire Base', fogged: true })
-      const text = cellText(zone, makeAncient({ team: 'dire', hp: 3000, maxHp: 6000 }))
+      const zone = makeZone({ id: 'audit-base', name: 'Audit Base', fogged: true })
+      const text = cellText(zone, makeAncient({ team: 'audit', hp: 3000, maxHp: 6000 }))
       expect(text).toContain('◈LOCKED 50%')
       expect(text).toContain('?')
     })
@@ -199,9 +199,9 @@ describe('asciiMapModel', () => {
       // the tower indicator, so the one renderer a desktop player looks at was
       // also the only one that hid the objective it was global information about.
       const zone = makeZone({
-        id: 'mid-t2-dire',
+        id: 'mid-t2-audit',
         fogged: true,
-        tower: { team: 'dire', alive: true, tier: 2, hp: 600, maxHp: 900 },
+        tower: { team: 'audit', alive: true, tier: 2, hp: 600, maxHp: 900 },
       })
       const text = cellText(zone)
       expect(text).toContain('▲▲·')
@@ -228,7 +228,7 @@ describe('asciiMapModel', () => {
 
     it('shows the dead-tower glyph, ally count, and neutral-camp count', () => {
       const zone = makeZone({
-        tower: { team: 'radiant', alive: false, tier: 1, hp: 0, maxHp: 600 },
+        tower: { team: 'chaff', alive: false, tier: 1, hp: 0, maxHp: 600 },
         allies: ['a1', 'a2'],
         neutralCount: 3,
       })
@@ -260,11 +260,11 @@ describe('asciiMapModel', () => {
     it('labels each zone category with its glyphed name (a bare zone is just the name)', () => {
       const name = (id: string) => cellText(makeZone({ id }))
       expect(name('mid-t3-rad')).toBe('▲ RAD T3')
-      expect(name('mid-t3-dire')).toBe('▼ DIRE T3')
+      expect(name('mid-t3-audit')).toBe('▼ AUDIT T3')
       expect(name('mid-t2-rad')).toBe('▲ RAD T2')
-      expect(name('mid-t2-dire')).toBe('▼ DIRE T2')
+      expect(name('mid-t2-audit')).toBe('▼ AUDIT T2')
       expect(name('mid-t1-rad')).toBe('▲ RAD T1')
-      expect(name('mid-t1-dire')).toBe('▼ DIRE T1')
+      expect(name('mid-t1-audit')).toBe('▼ AUDIT T1')
       expect(name('top-river')).toBe('≈ RIVER ≈')
       expect(name('roshan-pit')).toBe('☠ ROSHAN')
       expect(name('rune-top')).toBe('◆ RUNE')
@@ -279,12 +279,12 @@ describe('asciiMapModel', () => {
     it('RENAME GUARD: labels come from the zone record, never the id string', () => {
       // Regression for the substring-parser trap: a zone id carrying NO side
       // semantics (the renamed world) must still label by team/type/tier. The
-      // old includes('radiant') ladder rendered this whole column DIRE.
+      // old includes('chaff') ladder rendered this whole column AUDIT.
       expect(
         zoneRecordLabel({
           id: 'seawall-ice-1-chf',
           type: 'lane',
-          team: 'radiant',
+          team: 'chaff',
           tower: true,
           tier: 1,
         }),
@@ -293,15 +293,15 @@ describe('asciiMapModel', () => {
         zoneRecordLabel({
           id: 'coldstore-ice-3-aud',
           type: 'lane',
-          team: 'dire',
+          team: 'audit',
           tower: true,
           tier: 3,
         }),
-      ).toBe('▼ DIRE T3')
-      expect(zoneRecordLabel({ id: 'rookery-terminal', type: 'base', team: 'radiant' })).toBe(
-        '★ RAD',
+      ).toBe('▼ AUDIT T3')
+      expect(zoneRecordLabel({ id: 'rookery-terminal', type: 'base', team: 'chaff' })).toBe('★ RAD')
+      expect(zoneRecordLabel({ id: 'landing-terminal', type: 'base', team: 'audit' })).toBe(
+        '★ AUDIT',
       )
-      expect(zoneRecordLabel({ id: 'landing-terminal', type: 'base', team: 'dire' })).toBe('★ DIRE')
       expect(zoneRecordLabel({ id: 'silt-north', type: 'jungle', team: 'neutral' })).toBe(
         '☘ JUNGLE',
       )
@@ -313,7 +313,7 @@ describe('asciiMapModel', () => {
     it('marks a standing tower with HP pips', () => {
       const zone = makeZone({
         id: 'mid-t1-rad',
-        tower: { team: 'radiant', alive: true, tier: 1, hp: 200, maxHp: 900 },
+        tower: { team: 'chaff', alive: true, tier: 1, hp: 200, maxHp: 900 },
       })
       expect(cellText(zone)).toContain('▲··')
     })
@@ -321,8 +321,7 @@ describe('asciiMapModel', () => {
 
   describe('towerPips', () => {
     it('scales three pips with remaining HP', () => {
-      const at = (hp: number) =>
-        towerPips({ team: 'radiant', alive: true, tier: 1, hp, maxHp: 900 })
+      const at = (hp: number) => towerPips({ team: 'chaff', alive: true, tier: 1, hp, maxHp: 900 })
       expect(at(900)).toBe('▲▲▲')
       expect(at(700)).toBe('▲▲▲')
       expect(at(600)).toBe('▲▲·')
@@ -334,18 +333,18 @@ describe('asciiMapModel', () => {
     it('never empties the pips while the tower still stands', () => {
       // A standing tower must not render identically to a razed one — the whole
       // point of the readout is "can I take this now".
-      expect(towerPips({ team: 'dire', alive: true, tier: 3, hp: 0, maxHp: 900 })).toBe('▲··')
+      expect(towerPips({ team: 'audit', alive: true, tier: 3, hp: 0, maxHp: 900 })).toBe('▲··')
     })
 
     it('falls back to full pips when the server sent no usable HP', () => {
-      expect(towerPips({ team: 'dire', alive: true, tier: 3 })).toBe('▲▲▲')
+      expect(towerPips({ team: 'audit', alive: true, tier: 3 })).toBe('▲▲▲')
       // A zero maxHp would divide to NaN and render an EMPTY cell — worse than
       // saying nothing, since an empty slot reads as "no tower here".
-      expect(towerPips({ team: 'dire', alive: true, tier: 3, hp: 0, maxHp: 0 })).toBe('▲▲▲')
+      expect(towerPips({ team: 'audit', alive: true, tier: 3, hp: 0, maxHp: 0 })).toBe('▲▲▲')
     })
 
     it('marks a razed tower with the razed glyph, not pips', () => {
-      expect(towerPips({ team: 'radiant', alive: false, tier: 1, hp: 0, maxHp: 900 })).toBe('✗')
+      expect(towerPips({ team: 'chaff', alive: false, tier: 1, hp: 0, maxHp: 900 })).toBe('✗')
     })
   })
 
@@ -369,14 +368,14 @@ describe('asciiMapModel', () => {
 
   describe('buildRouteMarkers', () => {
     it('numbers every hop and flags the destination', () => {
-      const markers = buildRouteMarkers('radiant-fountain', 'mid-t1-rad')
-      // radiant-fountain → radiant-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
-      expect(markers.get('radiant-base')).toBe('1')
+      const markers = buildRouteMarkers('chaff-fountain', 'mid-t1-rad')
+      // chaff-fountain → chaff-base → mid-t3-rad → mid-t2-rad → mid-t1-rad
+      expect(markers.get('chaff-base')).toBe('1')
       expect(markers.get('mid-t3-rad')).toBe('2')
       expect(markers.get('mid-t2-rad')).toBe('3')
       expect(markers.get('mid-t1-rad')).toBe('⌖')
       // The zone you are standing in is never part of the drawn route.
-      expect(markers.has('radiant-fountain')).toBe(false)
+      expect(markers.has('chaff-fountain')).toBe(false)
     })
 
     it('marks a single-hop walk as the destination outright', () => {
@@ -402,7 +401,7 @@ describe('asciiMapModel', () => {
 
   describe('zoneAriaLabel', () => {
     it('describes a living ancient and whether it is attackable', () => {
-      const zone = makeZone({ id: 'radiant-base', name: 'Radiant Base' })
+      const zone = makeZone({ id: 'chaff-base', name: 'Chaff Base' })
       expect(zoneAriaLabel(zone, makeAncient({ hp: 3000, maxHp: 6000 }))).toContain(
         'ancient locked at 50%',
       )
@@ -416,18 +415,18 @@ describe('asciiMapModel', () => {
         zoneAriaLabel(
           makeZone({
             fogged: true,
-            tower: { team: 'dire', alive: true, tier: 2, hp: 450, maxHp: 900 },
+            tower: { team: 'audit', alive: true, tier: 2, hp: 450, maxHp: 900 },
           }),
         ),
       ).toContain('tier 2 tower standing at 50 percent')
-      expect(zoneAriaLabel(makeZone({ tower: { team: 'dire', alive: false, tier: 2 } }))).toContain(
-        'tier 2 tower destroyed',
-      )
+      expect(
+        zoneAriaLabel(makeZone({ tower: { team: 'audit', alive: false, tier: 2 } })),
+      ).toContain('tier 2 tower destroyed')
     })
 
     it('describes a destroyed ancient', () => {
-      const zone = makeZone({ id: 'dire-base', name: 'Dire Base' })
-      expect(zoneAriaLabel(zone, makeAncient({ team: 'dire', alive: false }))).toContain(
+      const zone = makeZone({ id: 'audit-base', name: 'Audit Base' })
+      expect(zoneAriaLabel(zone, makeAncient({ team: 'audit', alive: false }))).toContain(
         'ancient destroyed',
       )
     })
@@ -463,44 +462,44 @@ describe('asciiMapModel', () => {
   describe('compactIndicators', () => {
     it('shows tower HP and team glyph', () => {
       const zone = makeZone({
-        tower: { team: 'radiant', alive: true, tier: 2, hp: 340, maxHp: 600 },
+        tower: { team: 'chaff', alive: true, tier: 2, hp: 340, maxHp: 600 },
       })
       const inds = compactIndicators(zone)
-      expect(inds[0]).toEqual({ text: '▲ T2 340/600', cls: 'text-radiant' })
+      expect(inds[0]).toEqual({ text: '▲ T2 340/600', cls: 'text-chaff' })
     })
 
     it('shows destroyed towers as down', () => {
-      const zone = makeZone({ tower: { team: 'dire', alive: false, tier: 1 } })
+      const zone = makeZone({ tower: { team: 'audit', alive: false, tier: 1 } })
       const inds = compactIndicators(zone)
       expect(inds[0]).toEqual({ text: '✗ T1 down', cls: 'text-text-dim' })
     })
 
-    it('colors a live dire tower and uses plural/singular unit forms correctly', () => {
+    it('colors a live audit tower and uses plural/singular unit forms correctly', () => {
       const zone = makeZone({
-        tower: { team: 'dire', alive: true, tier: 3, hp: 500, maxHp: 1000 },
+        tower: { team: 'audit', alive: true, tier: 3, hp: 500, maxHp: 1000 },
         allies: ['a1', 'a2'], // plural → "allies"
         creepCount: 2, // plural → "creeps"
         neutralCount: 1, // singular → "neutral"
       })
       const inds = compactIndicators(zone)
       const texts = inds.map((i) => i.text)
-      expect(inds[0]).toEqual({ text: '▼ T3 500/1000', cls: 'text-dire' })
+      expect(inds[0]).toEqual({ text: '▼ T3 500/1000', cls: 'text-audit' })
       expect(texts).toContain('+2 allies')
       expect(texts).toContain('2 creeps')
       expect(texts).toContain('☘ 1 neutral')
     })
 
     it('shows the ancient core with team color', () => {
-      const zone = makeZone({ id: 'dire-base', name: 'Dire Base' })
-      const inds = compactIndicators(zone, makeAncient({ team: 'dire', hp: 3000, maxHp: 6000 }))
-      expect(inds).toContainEqual({ text: '◈ CORE LOCKED 50%', cls: 'text-dire' })
+      const zone = makeZone({ id: 'audit-base', name: 'Audit Base' })
+      const inds = compactIndicators(zone, makeAncient({ team: 'audit', hp: 3000, maxHp: 6000 }))
+      expect(inds).toContainEqual({ text: '◈ CORE LOCKED 50%', cls: 'text-audit' })
     })
 
     it('hides unit info for fogged zones but keeps global info', () => {
       const zone = makeZone({
         fogged: true,
         enemyCount: 3,
-        tower: { team: 'radiant', alive: true, tier: 1 },
+        tower: { team: 'chaff', alive: true, tier: 1 },
       })
       const inds = compactIndicators(zone)
       expect(inds.map((i) => i.text)).toEqual(['▲ T1', '? no vision'])
@@ -573,8 +572,8 @@ describe('asciiMapModel', () => {
       expect(rows).toHaveLength(11)
       expect(rows.every((r) => r.length === 1)).toBe(true) // single column
       const zones = rows.flat()
-      expect(zones[0]).toBe('radiant-fountain')
-      expect(zones[zones.length - 1]).toBe('dire-fountain')
+      expect(zones[0]).toBe('chaff-fountain')
+      expect(zones[zones.length - 1]).toBe('audit-fountain')
       expect(zones).toContain('mid-river')
       // No off-lane zones leak into the layout.
       expect(zones.some((z) => z?.startsWith('top-') || z?.startsWith('bot-'))).toBe(false)
@@ -589,10 +588,10 @@ describe('asciiMapModel', () => {
       expect(rows.every((r) => r.length === 4)).toBe(true)
       const zones = rows.flat().filter((z): z is string => z !== null)
       // Endpoints.
-      expect(zones[0]).toBe('radiant-fountain')
-      expect(zones[zones.length - 1]).toBe('dire-fountain')
+      expect(zones[0]).toBe('chaff-fountain')
+      expect(zones[zones.length - 1]).toBe('audit-fountain')
       // Top + mid lanes present.
-      for (const id of ['top-t3-rad', 'top-river', 'top-t3-dire', 'mid-river', 'mid-t1-dire']) {
+      for (const id of ['top-t3-rad', 'top-river', 'top-t3-audit', 'mid-river', 'mid-t1-audit']) {
         expect(zones, `expected ${id} in two_lane layout`).toContain(id)
       }
       // Objectives present.
@@ -629,11 +628,11 @@ describe('asciiMapModel', () => {
 
   describe('miniOverviewCell', () => {
     it('shows the bare short code with territory color for an empty zone', () => {
-      const cell = miniOverviewCell('mid-t2-dire', makeZone({ id: 'mid-t2-dire' }), null)
+      const cell = miniOverviewCell('mid-t2-audit', makeZone({ id: 'mid-t2-audit' }), null)
       expect(cell.code).toBe('M2')
       expect(cell.tower).toBeNull()
       expect(cell.marks).toBe('')
-      expect(cell.classes).toContain('text-dire')
+      expect(cell.classes).toContain('text-audit')
       expect(cell.classes).toContain('bg-bg-primary/60')
     })
 
@@ -646,22 +645,22 @@ describe('asciiMapModel', () => {
     it('appends a team-colored ▲ for a standing tower', () => {
       const rad = miniOverviewCell(
         'mid-t1-rad',
-        makeZone({ tower: { team: 'radiant', alive: true, tier: 1 } }),
+        makeZone({ tower: { team: 'chaff', alive: true, tier: 1 } }),
         null,
       )
-      expect(rad.tower).toEqual({ glyph: '▲', cls: 'text-radiant' })
-      const dire = miniOverviewCell(
-        'mid-t1-dire',
-        makeZone({ id: 'mid-t1-dire', tower: { team: 'dire', alive: true, tier: 1 } }),
+      expect(rad.tower).toEqual({ glyph: '▲', cls: 'text-chaff' })
+      const audit = miniOverviewCell(
+        'mid-t1-audit',
+        makeZone({ id: 'mid-t1-audit', tower: { team: 'audit', alive: true, tier: 1 } }),
         null,
       )
-      expect(dire.tower).toEqual({ glyph: '▲', cls: 'text-dire' })
+      expect(audit.tower).toEqual({ glyph: '▲', cls: 'text-audit' })
     })
 
     it('appends a dim ✗ for a razed tower', () => {
       const cell = miniOverviewCell(
         'mid-t1-rad',
-        makeZone({ tower: { team: 'radiant', alive: false, tier: 1 } }),
+        makeZone({ tower: { team: 'chaff', alive: false, tier: 1 } }),
         null,
       )
       expect(cell.tower).toEqual({ glyph: '✗', cls: 'text-text-dim' })
@@ -669,23 +668,23 @@ describe('asciiMapModel', () => {
 
     it('shows a standing tower through fog (global info)', () => {
       const cell = miniOverviewCell(
-        'mid-t2-dire',
+        'mid-t2-audit',
         makeZone({
-          id: 'mid-t2-dire',
+          id: 'mid-t2-audit',
           fogged: true,
-          tower: { team: 'dire', alive: true, tier: 2 },
+          tower: { team: 'audit', alive: true, tier: 2 },
         }),
         null,
       )
-      expect(cell.tower).toEqual({ glyph: '▲', cls: 'text-dire' })
+      expect(cell.tower).toEqual({ glyph: '▲', cls: 'text-audit' })
       expect(cell.classes).toContain('opacity-40')
     })
 
     it('marks enemies and a razed mainframe after the code', () => {
       const cell = miniOverviewCell(
-        'dire-base',
-        makeZone({ id: 'dire-base', enemyCount: 2 }),
-        makeAncient({ team: 'dire', alive: false }),
+        'audit-base',
+        makeZone({ id: 'audit-base', enemyCount: 2 }),
+        makeAncient({ team: 'audit', alive: false }),
       )
       expect(cell.code).toBe('DB')
       expect(cell.marks).toBe('◈✗!')

@@ -38,20 +38,20 @@ describe('strategy: net worth', () => {
 
   it('sums a team', () => {
     const players = [
-      { team: 'radiant', gold: 100, items: [] },
-      { team: 'radiant', gold: 200, items: [] },
-      { team: 'dire', gold: 999, items: [] },
+      { team: 'chaff', gold: 100, items: [] },
+      { team: 'chaff', gold: 200, items: [] },
+      { team: 'audit', gold: 999, items: [] },
     ]
-    expect(teamNetWorth(players, 'radiant')).toBe(300)
+    expect(teamNetWorth(players, 'chaff')).toBe(300)
   })
 })
 
 describe('strategy: gold lead', () => {
-  it('reports the radiant lead', () => {
-    expect(goldLead(5000, 3000)).toEqual({ leader: 'radiant', amount: 2000 })
+  it('reports the chaff lead', () => {
+    expect(goldLead(5000, 3000)).toEqual({ leader: 'chaff', amount: 2000 })
   })
-  it('reports the dire lead as a positive amount', () => {
-    expect(goldLead(3000, 5200)).toEqual({ leader: 'dire', amount: 2200 })
+  it('reports the audit lead as a positive amount', () => {
+    expect(goldLead(3000, 5200)).toEqual({ leader: 'audit', amount: 2200 })
   })
   it('reports a tie with no leader', () => {
     expect(goldLead(4000, 4000)).toEqual({ leader: null, amount: 0 })
@@ -189,7 +189,7 @@ describe('strategy: sparkline', () => {
 describe('strategy: shortZone', () => {
   it('spaces out the id and upper-cases tower tiers', () => {
     expect(shortZone('mid-t1-rad')).toBe('Coldstore T1 (CHAFF)')
-    expect(shortZone('top-t2-dire')).toBe('Seawall T2 (AUDIT)')
+    expect(shortZone('top-t2-audit')).toBe('Seawall T2 (AUDIT)')
   })
   it('leaves a plain zone id readable', () => {
     expect(shortZone('mid-river')).toBe('Coldstore Crossing')

@@ -28,7 +28,7 @@ export interface PlayerScoreRow {
 }
 
 defineProps<{
-  /** Screen-reader caption, e.g. "Radiant players". */
+  /** Screen-reader caption, e.g. "Chaff players". */
   caption: string
   rows: PlayerScoreRow[]
 }>()
@@ -76,8 +76,8 @@ defineProps<{
             <span v-else class="text-text-muted">?</span>
           </td>
           <td class="px-2 py-1">
-            <span class="text-radiant">{{ p.kills }}</span
-            ><span class="text-text-muted">/</span><span class="text-dire">{{ p.deaths }}</span
+            <span class="text-chaff">{{ p.kills }}</span
+            ><span class="text-text-muted">/</span><span class="text-audit">{{ p.deaths }}</span
             ><span class="text-text-muted">/</span
             ><span class="text-text-dim">{{ p.assists }}</span>
           </td>

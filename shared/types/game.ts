@@ -1,6 +1,6 @@
 import type { TargetRef } from './commands'
 
-export type TeamId = 'radiant' | 'dire'
+export type TeamId = 'chaff' | 'audit'
 
 export type GamePhase = 'waiting' | 'picking' | 'playing' | 'ended'
 
@@ -144,19 +144,19 @@ export interface RoshanState {
 export interface GameState {
   tick: number
   phase: GamePhase
-  teams: { radiant: TeamState; dire: TeamState }
+  teams: { chaff: TeamState; audit: TeamState }
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
   creeps: CreepState[]
   neutrals: NeutralCreepState[]
   towers: TowerState[]
-  ancients: { radiant: AncientState; dire: AncientState }
+  ancients: { chaff: AncientState; audit: AncientState }
   runes: RuneState[]
   roshan: RoshanState
   aegis: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
   winner?: TeamId | null // set when the game ends (Ancient destroyed or surrender)
-  surrenderVotes: { radiant: Set<string>; dire: Set<string> }
+  surrenderVotes: { chaff: Set<string>; audit: Set<string> }
   timeOfDay: 'day' | 'night'
   dayNightTick: number
   /** Which map this game runs on (see shared/constants/maps). Absent = full 5v5.

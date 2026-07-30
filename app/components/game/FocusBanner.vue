@@ -29,11 +29,11 @@ const threatClass = computed(() => threatToneClass(threat.value.tone))
 const toneBg = computed(() => {
   switch (threat.value.tone) {
     case 'danger':
-      return 'border-dire/50 bg-dire/10'
+      return 'border-audit/50 bg-audit/10'
     case 'warn':
       return 'border-gold/40 bg-gold/5'
     default:
-      return 'border-radiant/40 bg-radiant/5'
+      return 'border-chaff/40 bg-chaff/5'
   }
 })
 
@@ -124,7 +124,7 @@ const telegraphs = computed<string[]>(() => {
     <span
       v-if="hpReadout"
       class="shrink-0 t-mono-num"
-      :class="hpReadout.danger ? 'animate-pulse font-bold text-dire text-glow-sm' : 'text-radiant'"
+      :class="hpReadout.danger ? 'animate-pulse font-bold text-audit text-glow-sm' : 'text-chaff'"
       data-testid="focus-hp"
       >HP {{ hpReadout.hp }}/{{ hpReadout.maxHp }} ({{ hpReadout.pct }}%)</span
     >

@@ -190,7 +190,7 @@ describe('combat', () => {
           ...s.players,
           [HUMAN]: { ...h, zone: 'mid-river' },
           [ENEMY]: { ...e, zone: 'mid-river', hp: e.maxHp }, // healthy — survives the chip
-          // A second radiant hero co-located with the enemy (distinct id/name so
+          // A second chaff hero co-located with the enemy (distinct id/name so
           // attribution can't confuse it with the human).
           [ALLY]: {
             ...h,
@@ -310,7 +310,7 @@ describe('combat', () => {
     expect(me.alive).toBe(true)
     expect(me.hp).toBe(me.maxHp)
     expect(me.respawnTick).toBeNull()
-    expect(me.zone).toBe(me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain')
+    expect(me.zone).toBe(me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain')
   })
 
   it('handleDeaths sets a respawn timer that scales with hero level', async () => {
@@ -367,7 +367,7 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const fountain = me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+      const fountain = me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: fountain, hp: 50, mp: 0, buffs: [] } },
@@ -391,7 +391,7 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const fountain = me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+      const fountain = me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
       return {
         ...s,
         players: {
@@ -418,8 +418,8 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
-      const enemyBase = enemyTeam === 'radiant' ? 'radiant-base' : 'dire-base'
+      const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
+      const enemyBase = enemyTeam === 'chaff' ? 'chaff-base' : 'audit-base'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
@@ -435,13 +435,13 @@ describe('combat', () => {
     await game.tick()
 
     const me = await game.me()
-    const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
     const state = await game.state()
     expect(state.ancients[enemyTeam].alive).toBe(false)
     expect(state.winner).toBe(me.team)
     expect(game.lastEvents.some((e) => e._tag === 'ancient_destroyed')).toBe(true)
     // The win used to also push a playerless gold sentinel, which the feed
-    // rendered as the literal line "? earned 0g (game_over:radiant)" at the
+    // rendered as the literal line "? earned 0g (game_over:chaff)" at the
     // exact moment of victory. Nothing consumed it.
     expect(game.lastEvents.filter((e) => e._tag === 'gold_change')).toEqual([])
   })
@@ -450,8 +450,8 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
-      const enemyBase = enemyTeam === 'radiant' ? 'radiant-base' : 'dire-base'
+      const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
+      const enemyBase = enemyTeam === 'chaff' ? 'chaff-base' : 'audit-base'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
@@ -466,7 +466,7 @@ describe('combat', () => {
     await game.tick()
 
     const me = await game.me()
-    const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
     const ancient = (await game.state()).ancients[enemyTeam]
     // Firewalled: the attack is rejected, so the Ancient takes no damage and lives.
     expect(ancient.alive).toBe(true)
@@ -482,7 +482,7 @@ describe('combat', () => {
   it('attacking a tower from a different zone is rejected with feedback', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
-    const enemySuffix = me.team === 'radiant' ? 'dire' : 'rad'
+    const enemySuffix = me.team === 'chaff' ? 'audit' : 'rad'
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
@@ -500,7 +500,7 @@ describe('combat', () => {
   it('a backdoor-protected tower (its front tower still up) tells the player it is protected', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
-    const enemySuffix = me.team === 'radiant' ? 'dire' : 'rad'
+    const enemySuffix = me.team === 'chaff' ? 'audit' : 'rad'
     const t2Zone = `mid-t2-${enemySuffix}`
     await game.patch((s) => ({
       ...s,
@@ -527,7 +527,7 @@ describe('combat', () => {
   it('destroying a T3 tower lifts the enemy Ancient firewall (vulnerable flips true)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
-    const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
 
     // Precondition: with every T3 standing, the enemy Ancient is firewalled.
     expect((await game.state()).ancients[enemyTeam].vulnerable).toBe(false)
@@ -569,7 +569,7 @@ describe('combat', () => {
     expect(me.alive).toBe(true)
     expect(me.respawnTick).toBeNull()
     expect(me.gold).toBeLessThan(goldBefore) // paid the buyback cost
-    expect(me.zone).toBe(me.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain')
+    expect(me.zone).toBe(me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain')
   })
 
   it('buyback is refused with insufficient gold — the hero stays dead and keeps its gold', async () => {
@@ -646,7 +646,7 @@ describe('combat', () => {
     await game.tick()
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTowerZone = me.team === 'radiant' ? 'mid-t1-dire' : 'mid-t1-rad'
+      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-rad'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },
@@ -666,7 +666,7 @@ describe('combat', () => {
     await game.tick() // settle the maxHp recompute first
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTowerZone = me.team === 'radiant' ? 'mid-t1-dire' : 'mid-t1-rad'
+      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-rad'
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },

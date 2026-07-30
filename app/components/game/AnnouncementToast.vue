@@ -53,13 +53,13 @@ onUnmounted(() => {
   if (timer) clearTimeout(timer)
 })
 
-// error/kill read as dire, objective as gold, info as a neutral blue, and
+// error/kill read as audit, objective as gold, info as a neutral blue, and
 // ordinary rejections as amber warnings.
 const toneClass = computed(() => {
   switch (shownLevel.value) {
     case 'error':
     case 'kill':
-      return 'border-dire text-dire'
+      return 'border-audit text-audit'
     case 'objective':
       return 'border-gold text-gold'
     case 'info':

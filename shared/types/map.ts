@@ -11,7 +11,7 @@ export interface Zone {
   name: string
   type: ZoneType
   adjacentTo: string[]
-  team: 'radiant' | 'dire' | 'neutral'
+  team: 'chaff' | 'audit' | 'neutral'
   tower: boolean
   shop: boolean
   /** Tower tier — required when `tower` is true. Absent on non-tower zones. */

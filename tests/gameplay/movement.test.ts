@@ -32,20 +32,20 @@ describe('movement', () => {
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
     }))
 
-    // dire-base is across the map — 4 hops down mid lane.
-    expect(areAdjacent('mid-river', 'dire-base')).toBe(false)
-    game.submit({ type: 'move', zone: 'dire-base' })
+    // audit-base is across the map — 4 hops down mid lane.
+    expect(areAdjacent('mid-river', 'audit-base')).toBe(false)
+    game.submit({ type: 'move', zone: 'audit-base' })
     await game.tick()
 
     // First hop only, with the destination remembered.
     const afterOne = await game.me()
-    expect(afterOne.zone).toBe('mid-t1-dire')
-    expect(afterOne.moveTarget).toBe('dire-base')
+    expect(afterOne.zone).toBe('mid-t1-audit')
+    expect(afterOne.moveTarget).toBe('audit-base')
 
     // No further orders — the hero keeps walking and arrives, target cleared.
     await game.tick(3)
     const arrived = await game.me()
-    expect(arrived.zone).toBe('dire-base')
+    expect(arrived.zone).toBe('audit-base')
     expect(arrived.moveTarget ?? null).toBeNull()
   })
 
@@ -56,13 +56,13 @@ describe('movement', () => {
       players: {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-dire' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit' },
       },
     }))
 
-    game.submit({ type: 'move', zone: 'dire-base' })
+    game.submit({ type: 'move', zone: 'audit-base' })
     await game.tick()
-    expect((await game.me()).moveTarget).toBe('dire-base')
+    expect((await game.me()).moveTarget).toBe('audit-base')
 
     // The hero walked into the enemy's zone; attacking is a new intent — the
     // remaining walk is dropped and the hero holds position.
@@ -71,7 +71,7 @@ describe('movement', () => {
     const afterAttack = await game.me()
     expect(afterAttack.moveTarget ?? null).toBeNull()
     await game.tick(2)
-    expect((await game.me()).zone).toBe('mid-t1-dire')
+    expect((await game.me()).zone).toBe('mid-t1-audit')
   })
 
   it('a new move order redirects the walk (latest destination wins)', async () => {
@@ -86,10 +86,10 @@ describe('movement', () => {
     expect((await game.me()).moveTarget).toBe('mid-river')
 
     // Change of plans mid-walk: head home instead (3 hops from mid-t2-rad).
-    game.submit({ type: 'move', zone: 'radiant-fountain' })
+    game.submit({ type: 'move', zone: 'chaff-fountain' })
     await game.tick(3)
     const me = await game.me()
-    expect(me.zone).toBe('radiant-fountain')
+    expect(me.zone).toBe('chaff-fountain')
     expect(me.moveTarget ?? null).toBeNull()
   })
 

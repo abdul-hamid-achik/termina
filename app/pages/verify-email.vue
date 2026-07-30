@@ -39,8 +39,7 @@ onMounted(async () => {
 
           <template v-else-if="state === 'success'">
             <p class="leading-relaxed text-text-dim">
-              <span class="text-radiant">ok</span> — your email is verified. Your account is all
-              set.
+              <span class="text-chaff">ok</span> — your email is verified. Your account is all set.
             </p>
             <NuxtLink to="/lobby" class="text-ability no-underline hover:underline"
               >&gt; play now</NuxtLink
@@ -48,8 +47,8 @@ onMounted(async () => {
           </template>
 
           <template v-else>
-            <p class="leading-relaxed text-dire">
-              <span class="text-dire/60">[ERR]</span> {{ message }}
+            <p class="leading-relaxed text-audit">
+              <span class="text-audit/60">[ERR]</span> {{ message }}
             </p>
             <p class="text-text-dim">
               You can request a fresh link from your

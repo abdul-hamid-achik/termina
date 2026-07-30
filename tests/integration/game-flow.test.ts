@@ -87,19 +87,19 @@ function inCombatBuff() {
 }
 
 function makePlayers(prefix: string, perTeam: number): PlayerSetup[] {
-  const radiant = Array.from({ length: perTeam }, (_, i) => ({
+  const chaff = Array.from({ length: perTeam }, (_, i) => ({
     id: `${prefix}_r${i}`,
     name: `${prefix}_r${i}`,
-    team: 'radiant' as const,
+    team: 'chaff' as const,
     heroId: HERO_IDS[i]!,
   }))
-  const dire = Array.from({ length: perTeam }, (_, i) => ({
+  const audit = Array.from({ length: perTeam }, (_, i) => ({
     id: `${prefix}_d${i}`,
     name: `${prefix}_d${i}`,
-    team: 'dire' as const,
+    team: 'audit' as const,
     heroId: HERO_IDS[perTeam + i]!,
   }))
-  return [...radiant, ...dire]
+  return [...chaff, ...audit]
 }
 
 describe('Game Flow Integration', () => {
@@ -108,19 +108,19 @@ describe('Game Flow Integration', () => {
       const gameId = uid('full')
       const sm = await startGame(gameId, makePlayers('fg', 1))
 
-      // Arrange the end-game: a dire T3 tower is already down (which makes
-      // the dire Ancient vulnerable), the radiant hero has sieged into the
+      // Arrange the end-game: a audit T3 tower is already down (which makes
+      // the audit Ancient vulnerable), the chaff hero has sieged into the
       // enemy base, and the Ancient is low so the test stays fast.
       await arrange(sm, gameId, (s) => {
-        const sieged = setPlayer(s, 'fg_r0', { zone: 'dire-base' })
+        const sieged = setPlayer(s, 'fg_r0', { zone: 'audit-base' })
         return {
           ...sieged,
           towers: sieged.towers.map((t) =>
-            t.zone === 'mid-t3-dire' ? { ...t, alive: false, hp: 0 } : t,
+            t.zone === 'mid-t3-audit' ? { ...t, alive: false, hp: 0 } : t,
           ),
           ancients: {
             ...sieged.ancients,
-            dire: { ...sieged.ancients.dire, hp: 400 },
+            audit: { ...sieged.ancients.audit, hp: 400 },
           },
         }
       })
@@ -134,7 +134,7 @@ describe('Game Flow Integration', () => {
         final = result.state
         if (i === 0) {
           // The engine recomputed vulnerability from the dead T3 tower
-          expect(result.state.ancients.dire.vulnerable).toBe(true)
+          expect(result.state.ancients.audit.vulnerable).toBe(true)
         }
         if (result.state.phase === 'ended') break
       }
@@ -142,18 +142,20 @@ describe('Game Flow Integration', () => {
       expect(final).not.toBeNull()
       const endState = final!
       expect(endState.phase).toBe('ended')
-      expect(endState.winner).toBe('radiant')
-      expect(endState.ancients.dire.alive).toBe(false)
-      expect(endState.ancients.dire.hp).toBe(0)
-      expect(endState.ancients.radiant.alive).toBe(true)
+      expect(endState.winner).toBe('chaff')
+      expect(endState.ancients.audit.alive).toBe(false)
+      expect(endState.ancients.audit.hp).toBe(0)
+      expect(endState.ancients.chaff.alive).toBe(true)
 
       // Hero damage was routed to the Ancient and its destruction was
       // announced via the dedicated ancient_destroyed event (not a reused
       // tower_kill, which would render a misleading "tower in <base>" line).
-      expect(allEvents.some((e) => e._tag === 'damage' && e.targetId === 'ancient_dire')).toBe(true)
+      expect(allEvents.some((e) => e._tag === 'damage' && e.targetId === 'ancient_audit')).toBe(
+        true,
+      )
       expect(
         allEvents.some(
-          (e) => e._tag === 'ancient_destroyed' && e.team === 'dire' && e.killerTeam === 'radiant',
+          (e) => e._tag === 'ancient_destroyed' && e.team === 'audit' && e.killerTeam === 'chaff',
         ),
       ).toBe(true)
     })
@@ -170,20 +172,20 @@ describe('Game Flow Integration', () => {
       let result = await runTick(sm, gameId)
 
       expect(result.state.phase).toBe('playing')
-      expect(result.state.surrenderVotes.radiant.size).toBe(2)
+      expect(result.state.surrenderVotes.chaff.size).toBe(2)
       const voteEvents = result.events.filter((e) => e._tag === 'surrender_vote')
       expect(voteEvents).toHaveLength(2)
       expect(voteEvents.at(-1)).toMatchObject({ votesFor: 2, votesNeeded: 3 })
 
-      // Third vote tips it over the threshold — radiant forfeits, dire wins
+      // Third vote tips it over the threshold — chaff forfeits, audit wins
       submitAction(gameId, 'ff_r2', { type: 'surrender', vote: 'yes' })
       result = await runTick(sm, gameId)
 
       expect(result.state.phase).toBe('ended')
-      expect(result.state.winner).toBe('dire')
+      expect(result.state.winner).toBe('audit')
       expect(
         result.events.some(
-          (e) => e._tag === 'surrendered' && e.team === 'radiant' && e.winner === 'dire',
+          (e) => e._tag === 'surrendered' && e.team === 'chaff' && e.winner === 'audit',
         ),
       ).toBe(true)
     })
@@ -193,7 +195,7 @@ describe('Game Flow Integration', () => {
     it('distributes gold correctly in a team fight (killer bounty + assist pot, no double-dip)', async () => {
       const gameId = uid('tf')
       const sm = await startGame(gameId, makePlayers('tf', 2))
-      // killer + assister + victim share a zone; the 2nd dire player idles in
+      // killer + assister + victim share a zone; the 2nd audit player idles in
       // the fountain keeping team net-worths balanced (comeback multiplier ≈ 1)
       await arrange(sm, gameId, (s) => {
         let next = setPlayer(s, 'tf_r0', { zone: 'mid-river' })
@@ -223,7 +225,7 @@ describe('Game Flow Integration', () => {
       expect(after.players['tf_d0']!.deaths).toBe(1)
       expect(after.players['tf_r0']!.kills).toBe(1)
       expect(after.players['tf_r1']!.assists).toBe(1)
-      expect(after.teams.radiant.kills).toBe(1)
+      expect(after.teams.chaff.kills).toBe(1)
 
       // Kill event credits exactly one killer and one assister
       const killEvent = r2.events.find((e) => e._tag === 'kill')
@@ -296,7 +298,7 @@ describe('Game Flow Integration', () => {
       expect(killer.killStreak).toBe(2)
       expect(r2.state.players['mk_d0']!.deaths).toBe(1)
       expect(r2.state.players['mk_d1']!.deaths).toBe(1)
-      expect(r2.state.teams.radiant.kills).toBe(2)
+      expect(r2.state.teams.chaff.kills).toBe(2)
     })
   })
 
@@ -304,8 +306,8 @@ describe('Game Flow Integration', () => {
     it('buys and sells items round-trip with 50% sell refund', async () => {
       const sm = createInMemoryStateManager()
       const setup = [
-        { id: 'p1', name: 'p1', team: 'radiant' as const, heroId: 'echo' },
-        { id: 'p2', name: 'p2', team: 'dire' as const, heroId: 'daemon' },
+        { id: 'p1', name: 'p1', team: 'chaff' as const, heroId: 'echo' },
+        { id: 'p2', name: 'p2', team: 'audit' as const, heroId: 'daemon' },
       ]
       await Effect.runPromise(sm.createGame('g1', setup))
 
@@ -427,15 +429,15 @@ describe('Game Flow Integration', () => {
     it('only shows visible zones to players — enemies outside vision are fogged', async () => {
       const gameId = uid('vis')
       const sm = await startGame(gameId, makePlayers('vis', 1))
-      // An enemy creep deep in dire territory must not leak through the fog
+      // An enemy creep deep in audit territory must not leak through the fog
       await arrange(sm, gameId, (s) => ({
         ...s,
         creeps: [
           ...s.creeps,
           {
             id: 'creep_fog_probe',
-            team: 'dire' as const,
-            zone: 'dire-base',
+            team: 'audit' as const,
+            zone: 'audit-base',
             hp: 550,
             type: 'melee' as const,
           },
@@ -446,10 +448,10 @@ describe('Game Flow Integration', () => {
       const view = filterStateForPlayer(state, 'vis_r0')
 
       // Own surroundings are visible; the enemy side is not
-      expect(view.visibleZones).toContain('radiant-fountain')
-      expect(view.visibleZones).toContain('radiant-base')
-      expect(view.visibleZones).not.toContain('dire-fountain')
-      expect(view.visibleZones).not.toContain('dire-base')
+      expect(view.visibleZones).toContain('chaff-fountain')
+      expect(view.visibleZones).toContain('chaff-base')
+      expect(view.visibleZones).not.toContain('audit-fountain')
+      expect(view.visibleZones).not.toContain('audit-base')
 
       // The enemy hero appears only as a FoggedPlayer — no zone/gold leak
       const enemy = view.players['vis_d0']!
@@ -459,16 +461,16 @@ describe('Game Flow Integration', () => {
 
       // Creeps in fogged zones are stripped from the payload
       expect(view.creeps.some((c) => c.id === 'creep_fog_probe')).toBe(false)
-      expect(view.zones['dire-base']!.creeps).toEqual([])
+      expect(view.zones['audit-base']!.creeps).toEqual([])
 
-      // Once the enemy steps into radiant vision they are fully revealed
+      // Once the enemy steps into chaff vision they are fully revealed
       const revealed = filterStateForPlayer(
-        setPlayer(state, 'vis_d0', { zone: 'radiant-base' }),
+        setPlayer(state, 'vis_d0', { zone: 'chaff-base' }),
         'vis_r0',
       )
       const enemyVisible = revealed.players['vis_d0']!
       expect('fogged' in enemyVisible).toBe(false)
-      expect((enemyVisible as PlayerState).zone).toBe('radiant-base')
+      expect((enemyVisible as PlayerState).zone).toBe('chaff-base')
     })
 
     it('updates vision when wards are placed', async () => {
@@ -477,33 +479,33 @@ describe('Game Flow Integration', () => {
 
       const before = await Effect.runPromise(sm.getState(gameId))
       const viewBefore = filterStateForPlayer(before, 'ward_r0')
-      expect(viewBefore.visibleZones).not.toContain('mid-t2-dire')
+      expect(viewBefore.visibleZones).not.toContain('mid-t2-audit')
 
-      // Walk the warder deep into dire territory carrying an observer ward
+      // Walk the warder deep into audit territory carrying an observer ward
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'ward_r0', {
-          zone: 'mid-t1-dire',
+          zone: 'mid-t1-audit',
           items: ['observer_ward', null, null, null, null, null],
         }),
       )
 
-      submitAction(gameId, 'ward_r0', { type: 'ward', zone: 'mid-t2-dire' })
+      submitAction(gameId, 'ward_r0', { type: 'ward', zone: 'mid-t2-audit' })
       const result = await runTick(sm, gameId)
 
-      expect(result.events.some((e) => e._tag === 'ward_placed' && e.zone === 'mid-t2-dire')).toBe(
+      expect(result.events.some((e) => e._tag === 'ward_placed' && e.zone === 'mid-t2-audit')).toBe(
         true,
       )
-      const wards = result.state.zones['mid-t2-dire']!.wards
+      const wards = result.state.zones['mid-t2-audit']!.wards
       expect(wards).toHaveLength(1)
-      expect(wards[0]).toMatchObject({ team: 'radiant', type: 'observer' })
+      expect(wards[0]).toMatchObject({ team: 'chaff', type: 'observer' })
       // The ward was consumed from the inventory
       expect(result.state.players['ward_r0']!.items.filter(Boolean)).toHaveLength(0)
 
       // Send the warder home — the warded zone stays visible to the team
       // purely through the ward (no hero, tower, or ally anywhere near it)
-      const homeState = setPlayer(result.state, 'ward_r0', { zone: 'radiant-fountain' })
+      const homeState = setPlayer(result.state, 'ward_r0', { zone: 'chaff-fountain' })
       const viewAfter = filterStateForPlayer(homeState, 'ward_r0')
-      expect(viewAfter.visibleZones).toContain('mid-t2-dire')
+      expect(viewAfter.visibleZones).toContain('mid-t2-audit')
     })
   })
 })

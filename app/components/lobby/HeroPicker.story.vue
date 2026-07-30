@@ -10,16 +10,16 @@ import HeroPicker from './HeroPicker.vue'
 type RosterMember = { playerId: string; name: string; heroId: string | null; team: TeamId }
 
 const ROSTER: RosterMember[] = [
-  { playerId: 'me', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'radiant' },
-  { playerId: 'p2', name: 'kernel_main', heroId: SAMPLE_HEROES.kernel, team: 'radiant' },
-  { playerId: 'p3', name: 'support_sock', heroId: null, team: 'radiant' },
-  { playerId: 'p4', name: 'proxy_jg', heroId: null, team: 'radiant' },
-  { playerId: 'p5', name: 'cipher_off', heroId: null, team: 'radiant' },
-  { playerId: 'e1', name: 'daemon_carry', heroId: SAMPLE_HEROES.daemon, team: 'dire' },
-  { playerId: 'e2', name: 'regex_mid', heroId: SAMPLE_HEROES.regex, team: 'dire' },
-  { playerId: 'e3', name: 'cache_sup', heroId: null, team: 'dire' },
-  { playerId: 'e4', name: 'firewall_tank', heroId: null, team: 'dire' },
-  { playerId: 'e5', name: 'nullref_pos5', heroId: null, team: 'dire' },
+  { playerId: 'me', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'chaff' },
+  { playerId: 'p2', name: 'kernel_main', heroId: SAMPLE_HEROES.kernel, team: 'chaff' },
+  { playerId: 'p3', name: 'support_sock', heroId: null, team: 'chaff' },
+  { playerId: 'p4', name: 'proxy_jg', heroId: null, team: 'chaff' },
+  { playerId: 'p5', name: 'cipher_off', heroId: null, team: 'chaff' },
+  { playerId: 'e1', name: 'daemon_carry', heroId: SAMPLE_HEROES.daemon, team: 'audit' },
+  { playerId: 'e2', name: 'regex_mid', heroId: SAMPLE_HEROES.regex, team: 'audit' },
+  { playerId: 'e3', name: 'cache_sup', heroId: null, team: 'audit' },
+  { playerId: 'e4', name: 'firewall_tank', heroId: null, team: 'audit' },
+  { playerId: 'e5', name: 'nullref_pos5', heroId: null, team: 'audit' },
 ]
 
 // Heroes already taken across both teams (drives the dimmed "PICKED" cards).
@@ -41,7 +41,7 @@ const EMPTY_ROSTER: RosterMember[] = []
     <Variant title="my turn">
       <div class="bg-bg-primary" style="height: 620px">
         <HeroPicker
-          team="radiant"
+          team="chaff"
           my-player-id="me"
           :team-roster="ROSTER"
           :picked-heroes="PICKED"
@@ -56,7 +56,7 @@ const EMPTY_ROSTER: RosterMember[] = []
     <Variant title="waiting on ally">
       <div class="bg-bg-primary" style="height: 620px">
         <HeroPicker
-          team="radiant"
+          team="chaff"
           my-player-id="me"
           :team-roster="ROSTER"
           :picked-heroes="PICKED"
@@ -66,11 +66,11 @@ const EMPTY_ROSTER: RosterMember[] = []
       </div>
     </Variant>
 
-    <!-- Final seconds (<=10s): the countdown flips to the dire-glow pulse. -->
+    <!-- Final seconds (<=10s): the countdown flips to the audit-glow pulse. -->
     <Variant title="countdown danger">
       <div class="bg-bg-primary" style="height: 620px">
         <HeroPicker
-          team="radiant"
+          team="chaff"
           my-player-id="me"
           :team-roster="ROSTER"
           :picked-heroes="PICKED"
@@ -84,7 +84,7 @@ const EMPTY_ROSTER: RosterMember[] = []
     <Variant title="pick error">
       <div class="bg-bg-primary" style="height: 620px">
         <HeroPicker
-          team="radiant"
+          team="chaff"
           my-player-id="me"
           :team-roster="ROSTER"
           :picked-heroes="PICKED"
@@ -99,7 +99,7 @@ const EMPTY_ROSTER: RosterMember[] = []
     <Variant title="empty / pre-draft">
       <div class="bg-bg-primary" style="height: 620px">
         <HeroPicker
-          team="radiant"
+          team="chaff"
           my-player-id="me"
           :team-roster="EMPTY_ROSTER"
           :current-picker="null"

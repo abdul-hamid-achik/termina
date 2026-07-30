@@ -51,12 +51,12 @@ describe('wards', () => {
       },
     }))
 
-    // dire-base is across the map from mid-river — out of warding reach.
-    game.submit({ type: 'ward', zone: 'dire-base' })
+    // audit-base is across the map from mid-river — out of warding reach.
+    game.submit({ type: 'ward', zone: 'audit-base' })
     await game.tick()
 
     // No ward placed, the charge is NOT spent, and the player is told why.
-    expect((await game.state()).zones['dire-base']?.wards ?? []).toHaveLength(0)
+    expect((await game.state()).zones['audit-base']?.wards ?? []).toHaveLength(0)
     expect((await game.me()).items).toContain('observer_ward') // not consumed
     expect(
       game.lastRejected.some(

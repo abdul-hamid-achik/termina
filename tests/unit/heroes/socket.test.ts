@@ -11,7 +11,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestSocket',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'socket',
     zone: 'mid-river',
     hp: 650,
@@ -42,7 +42,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -63,18 +63,18 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
       'mid-river': { id: 'mid-river', wards: [], creeps: [] },
       'mid-t1-rad': { id: 'mid-t1-rad', wards: [], creeps: [] },
-      'mid-t1-dire': { id: 'mid-t1-dire', wards: [], creeps: [] },
+      'mid-t1-audit': { id: 'mid-t1-audit', wards: [], creeps: [] },
       'top-river': { id: 'top-river', wards: [], creeps: [] },
       'rune-top': { id: 'rune-top', wards: [], creeps: [] },
       'rune-bot': { id: 'rune-bot', wards: [], creeps: [] },
-      'dire-fountain': { id: 'dire-fountain', wards: [], creeps: [] },
+      'audit-fountain': { id: 'audit-fountain', wards: [], creeps: [] },
     },
     creeps: [],
     towers: [],
@@ -166,7 +166,7 @@ describe('Socket Hero', () => {
       const traps = result.state.zones['mid-river']!.traps
       expect(traps).toHaveLength(1)
       expect(traps![0]!.owner).toBe('p1')
-      expect(traps![0]!.team).toBe('radiant')
+      expect(traps![0]!.team).toBe('chaff')
       expect(traps![0]!.damage).toBe(80) // W_DAMAGE level 1
       expect(traps![0]!.expiryTick).toBe(40)
     })
@@ -195,7 +195,7 @@ describe('Socket Hero', () => {
     it('pulls target enemy into caster zone', () => {
       const player = makePlayer({ level: 1 })
       // Enemy in adjacent zone
-      const enemy = makeEnemy({ zone: 'mid-t1-dire' })
+      const enemy = makeEnemy({ zone: 'mid-t1-audit' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
@@ -207,7 +207,7 @@ describe('Socket Hero', () => {
 
     it('fails if target is not in adjacent zone', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ zone: 'dire-fountain' })
+      const enemy = makeEnemy({ zone: 'audit-fountain' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSyncExit(
@@ -218,7 +218,7 @@ describe('Socket Hero', () => {
 
     it('deducts mana and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
-      const enemy = makeEnemy({ zone: 'mid-t1-dire' })
+      const enemy = makeEnemy({ zone: 'mid-t1-audit' })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
@@ -276,7 +276,7 @@ describe('Socket Hero', () => {
 
     it('does not affect allies', () => {
       const player = makePlayer({ level: 6, mp: 500 })
-      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'radiant' })
+      const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
 

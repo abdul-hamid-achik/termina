@@ -13,7 +13,7 @@ describe('progression: last hits and denies', () => {
   it('counts a last hit against the player who landed it', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
-    const enemyTeam = me0.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me0.team === 'chaff' ? 'audit' : 'chaff'
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
@@ -47,7 +47,7 @@ describe('progression: last hits and denies', () => {
   it('accumulates across ticks rather than reporting only the last one', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
-    const enemyTeam = me0.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me0.team === 'chaff' ? 'audit' : 'chaff'
 
     for (let i = 0; i < 3; i++) {
       await game.patch((s) => ({
@@ -66,7 +66,7 @@ describe('progression: last hits and denies', () => {
     const a = await seedGame('laning_combat', { heroSelf: 'echo' })
     const b = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await a.me()
-    const enemyTeam = me0.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me0.team === 'chaff' ? 'audit' : 'chaff'
     await a.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },

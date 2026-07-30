@@ -29,8 +29,8 @@ const NuxtLinkStub = {
   template: `<a :href="to"><slot /></a>`,
 }
 
-const ME = { id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'radiant' as TeamId }
-const THEM = { id: 'e1', name: 'them', heroId: SAMPLE_HEROES.daemon, team: 'dire' as TeamId }
+const ME = { id: 'p1', name: 'you', heroId: SAMPLE_HEROES.echo, team: 'chaff' as TeamId }
+const THEM = { id: 'e1', name: 'them', heroId: SAMPLE_HEROES.daemon, team: 'audit' as TeamId }
 
 /** A stat line with nothing for the coach to complain about. */
 function cleanStats(over: Partial<PlayerEndStats> = {}): PlayerEndStats {
@@ -49,7 +49,7 @@ function cleanStats(over: Partial<PlayerEndStats> = {}): PlayerEndStats {
 function mountPostGame(props: Record<string, unknown> = {}) {
   return mount(PostGame, {
     props: {
-      winner: 'radiant' as TeamId,
+      winner: 'chaff' as TeamId,
       stats: { p1: cleanStats(), e1: cleanStats() },
       players: [ME, THEM],
       currentPlayerId: 'p1',
@@ -190,12 +190,12 @@ describe('PostGame — what to work on', () => {
     const wrapper = mountPostGame({ currentPlayerId: 'ghost' })
     expect(wrapper.find('[data-testid="what-to-work-on"]').exists()).toBe(false)
     // …but the result itself still renders rather than stranding the player.
-    expect(wrapper.text()).toContain('RADIANT VICTORY')
+    expect(wrapper.text()).toContain('CHAFF VICTORY')
   })
 
   it('renders a result with no stats payload at all', () => {
     const wrapper = mountPostGame({ stats: undefined })
-    expect(wrapper.text()).toContain('RADIANT VICTORY')
+    expect(wrapper.text()).toContain('CHAFF VICTORY')
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
   })
 })

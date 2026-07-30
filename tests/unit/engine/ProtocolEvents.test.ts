@@ -48,13 +48,13 @@ describe('toGameEvent', () => {
     const ev: GameEngineEvent = {
       _tag: 'ancient_destroyed',
       tick: 124,
-      team: 'radiant',
-      killerTeam: 'dire',
+      team: 'chaff',
+      killerTeam: 'audit',
     }
     expect(toGameEvent(ev)).toEqual({
       tick: 124,
       type: 'ancient_destroyed',
-      payload: { team: 'radiant', killerTeam: 'dire' },
+      payload: { team: 'chaff', killerTeam: 'audit' },
     })
   })
 

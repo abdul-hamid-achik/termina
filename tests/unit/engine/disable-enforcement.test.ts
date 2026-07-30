@@ -13,7 +13,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'regex',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -47,8 +47,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -60,7 +60,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -75,7 +75,7 @@ function debuff(id: string): Buff {
 const enemyTarget = makePlayer({
   id: 'e1',
   name: 'Enemy',
-  team: 'dire',
+  team: 'audit',
   heroId: 'echo',
   zone: 'mid-t1-rad',
 })
@@ -180,7 +180,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
     const enemy = makePlayer({
       id: 'e1',
       name: 'Enemy',
-      team: 'dire',
+      team: 'audit',
       heroId: 'echo',
       zone: 'mid-t1-rad',
     })
@@ -197,7 +197,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
     const enemy = makePlayer({
       id: 'e1',
       name: 'Enemy',
-      team: 'dire',
+      team: 'audit',
       heroId: 'echo',
       zone: 'mid-t1-rad',
     })
@@ -213,7 +213,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
     const enemy = makePlayer({
       id: 'e1',
       name: 'Enemy',
-      team: 'dire',
+      team: 'audit',
       heroId: 'echo',
       zone: 'mid-t1-rad',
     })
@@ -250,7 +250,7 @@ describe('Arcane rune refunds mana on cast (buff was applied but consumed nowher
     const enemy = makePlayer({
       id: 'e1',
       name: 'Enemy',
-      team: 'dire',
+      team: 'audit',
       heroId: 'echo',
       zone: 'mid-t1-rad',
     })

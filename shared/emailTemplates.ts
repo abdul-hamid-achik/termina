@@ -13,7 +13,7 @@ interface Email {
 const BG = '#0a0e0a'
 const FG = '#c8d6c8'
 const DIM = '#7a8a7a'
-const RADIANT = '#5ad95a'
+const CHAFF = '#5ad95a'
 const BORDER = '#1e2a1e'
 
 /** Wrap body HTML in the branded shell. `intro` is a short preheader line. */
@@ -23,7 +23,7 @@ function shell(bodyHtml: string): string {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:${BG};border:1px solid ${BORDER};border-radius:6px;overflow:hidden;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;">
         <tr><td style="padding:20px 24px;border-bottom:1px solid ${BORDER};">
-          <span style="color:${RADIANT};font-size:18px;font-weight:bold;letter-spacing:3px;">&gt;_ TERMINA</span>
+          <span style="color:${CHAFF};font-size:18px;font-weight:bold;letter-spacing:3px;">&gt;_ TERMINA</span>
         </td></tr>
         <tr><td style="padding:24px;color:${FG};font-size:14px;line-height:1.6;">
           ${bodyHtml}
@@ -39,7 +39,7 @@ function shell(bodyHtml: string): string {
 }
 
 function button(label: string, url: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td style="background:${RADIANT};border-radius:4px;">
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td style="background:${CHAFF};border-radius:4px;">
     <a href="${url}" style="display:inline-block;padding:10px 20px;color:${BG};font-weight:bold;text-decoration:none;font-size:14px;">${label}</a>
   </td></tr></table>`
 }
@@ -85,7 +85,7 @@ export function welcomeTemplate(username: string): Email {
   return {
     subject: 'Welcome to Termina',
     html: shell(
-      `<p style="margin:0 0 12px;">Welcome, <span style="color:${RADIANT};">${username}</span> — your terminal is live.</p>
+      `<p style="margin:0 0 12px;">Welcome, <span style="color:${CHAFF};">${username}</span> — your terminal is live.</p>
        <p style="margin:0 0 12px;">TERMINA is a cable-landing city that commits every instruction at once, four seconds wide. You are on a terminal, and the terminal is your deck. One instruction per cycle — same as everyone else.</p>
        ${button('PLAY NOW', 'https://terminamoba.com/lobby')}
        <p style="margin:0;color:${DIM};font-size:12px;">New here? Try Practice vs Bots from the home screen first.</p>`,

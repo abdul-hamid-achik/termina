@@ -142,7 +142,7 @@ function formatStats(def: ItemDef): string[] {
         class="flex flex-col gap-0.5 border p-1.5 text-xs transition-[border-color] duration-150"
         :class="[
           atStackCap(item)
-            ? 'border-radiant bg-radiant/5'
+            ? 'border-chaff bg-chaff/5'
             : item.cost <= gold
               ? 'border-border-glow cursor-pointer hover:border-gold'
               : 'border-border opacity-60',
@@ -160,8 +160,8 @@ function formatStats(def: ItemDef): string[] {
               >★</span
             >
           </span>
-          <span v-if="atStackCap(item)" class="text-[0.6rem] text-radiant">[OWNED]</span>
-          <span v-else-if="ownedCount(item.id) > 0" class="text-[0.6rem] text-radiant/70"
+          <span v-if="atStackCap(item)" class="text-[0.6rem] text-chaff">[OWNED]</span>
+          <span v-else-if="ownedCount(item.id) > 0" class="text-[0.6rem] text-chaff/70"
             >×{{ ownedCount(item.id) }}</span
           >
         </div>
@@ -171,7 +171,7 @@ function formatStats(def: ItemDef): string[] {
           <span
             v-for="(stat, si) in formatStats(item.def)"
             :key="si"
-            class="text-[0.65rem] text-radiant"
+            class="text-[0.65rem] text-chaff"
             >{{ stat }}</span
           >
         </div>
@@ -208,7 +208,7 @@ function formatStats(def: ItemDef): string[] {
             </button>
             <button
               v-if="item.cost <= gold && !atStackCap(item)"
-              class="touch-target text-[0.65rem] text-radiant hover:underline"
+              class="touch-target text-[0.65rem] text-chaff hover:underline"
               :data-testid="`shop-buy-${item.id}`"
               :aria-label="`Buy ${item.name} for ${item.cost} gold`"
               @click.stop="emit('buy', item.id)"

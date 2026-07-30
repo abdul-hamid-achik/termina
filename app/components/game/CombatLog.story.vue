@@ -33,7 +33,7 @@ const stream: CombatLine[] = [
   { tick: 238, text: 'you earned 240g (hero kill)', type: 'gold', salience: 'mine-out' },
   {
     tick: 239,
-    text: 'a creep hit the Dire tower for 60',
+    text: 'a creep hit the Audit tower for 60',
     type: 'damage',
     salience: 'world',
     dedupKey: 'dmg:t',
@@ -42,12 +42,12 @@ const stream: CombatLine[] = [
   },
   {
     tick: 239,
-    text: 'RADIANT razed the DIRE tower in mid-t1-dire',
+    text: 'CHAFF razed the AUDIT tower in mid-t1-audit',
     type: 'kill',
     salience: 'mine-out',
   },
   { tick: 240, text: 'you reached level 10', type: 'system', salience: 'mine-out' },
-  { tick: 240, text: 'RADIANT slew Roshan (+900g)', type: 'objective' },
+  { tick: 240, text: 'CHAFF slew Roshan (+900g)', type: 'objective' },
 ]
 
 // Story mode's farm digest: the ally/world farm-tagged lines below fold into

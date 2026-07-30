@@ -29,11 +29,11 @@ describe('world lexicon', () => {
     )
   })
 
-  it('covers every TeamId in FACTION_META (radiant/dire until the R1-05 sweep)', () => {
+  it('covers every TeamId in FACTION_META (chaff/audit until the R1-05 sweep)', () => {
     // Keyed on the union AS IT IS so the R1-05 sweep touches only this file.
-    expect(Object.keys(FACTION_META).sort()).toEqual(['dire', 'radiant'])
-    expect(FACTION_META.radiant.label).toBe('CHAFF')
-    expect(FACTION_META.dire.label).toBe('AUDIT')
+    expect(Object.keys(FACTION_META).sort()).toEqual(['audit', 'chaff'])
+    expect(FACTION_META.chaff.label).toBe('CHAFF')
+    expect(FACTION_META.audit.label).toBe('AUDIT')
     for (const meta of Object.values(FACTION_META)) {
       expect(meta.short.length).toBeGreaterThan(0)
       expect(meta.blurb.length).toBeGreaterThan(0)
@@ -42,14 +42,14 @@ describe('world lexicon', () => {
 
   it('covers every wave role for both crews, asymmetrically', () => {
     const roles = ['melee', 'ranged', 'siege'] as const
-    for (const team of ['radiant', 'dire'] as const) {
+    for (const team of ['chaff', 'audit'] as const) {
       for (const role of roles) {
         expect(WAVE_UNIT_LABELS[team][role].length).toBeGreaterThan(0)
       }
     }
     // The whole point of the mapping: the crews do NOT share unit names.
     for (const role of roles) {
-      expect(WAVE_UNIT_LABELS.radiant[role]).not.toBe(WAVE_UNIT_LABELS.dire[role])
+      expect(WAVE_UNIT_LABELS.chaff[role]).not.toBe(WAVE_UNIT_LABELS.audit[role])
     }
   })
 

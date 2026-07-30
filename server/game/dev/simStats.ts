@@ -3,17 +3,17 @@
  *
  * One game tells you little; balance lives in the DISTRIBUTION across many games.
  * This turns a batch of match outcomes into the numbers an owner actually needs
- * to make balance calls: side win-rate (is radiant/dire biased?), game-length
+ * to make balance calls: side win-rate (is chaff/audit biased?), game-length
  * spread (is pacing too fast/slow/stally?), and per-hero win-rate (which heroes
  * over/under-perform). Pure + unit-tested so the simulator stays a thin caller.
  */
 
 export interface SimResult {
-  winner: 'radiant' | 'dire' | null
+  winner: 'chaff' | 'audit' | null
   /** Game length in ticks (×4s = wall-clock). */
   ticks: number
-  radiantHeroes: string[]
-  direHeroes: string[]
+  chaffHeroes: string[]
+  auditHeroes: string[]
 }
 
 interface HeroWinRate {
@@ -33,9 +33,9 @@ interface HeroWinRate {
 
 export interface SimSummary {
   matches: number
-  wins: { radiant: number; dire: number; none: number }
+  wins: { chaff: number; audit: number; none: number }
   /** Percent of DECIDED games (excludes stalls/no-winner). */
-  winRate: { radiant: number; dire: number }
+  winRate: { chaff: number; audit: number }
   /**
    * True only when the side win-rate clears ~2 std devs of a fair coin for the
    * decided sample — i.e. the imbalance is unlikely to be noise. A small batch
@@ -49,14 +49,14 @@ export interface SimSummary {
 
 export function summarizeSimResults(results: SimResult[]): SimSummary {
   const matches = results.length
-  const wins = { radiant: 0, dire: 0, none: 0 }
+  const wins = { chaff: 0, audit: 0, none: 0 }
   const lengths: number[] = []
   const appearances = new Map<string, number>()
   const heroWins = new Map<string, number>()
 
   for (const r of results) {
-    if (r.winner === 'radiant') wins.radiant++
-    else if (r.winner === 'dire') wins.dire++
+    if (r.winner === 'chaff') wins.chaff++
+    else if (r.winner === 'audit') wins.audit++
     else wins.none++
     lengths.push(r.ticks)
 
@@ -66,15 +66,15 @@ export function summarizeSimResults(results: SimResult[]): SimSummary {
         if (won) heroWins.set(h, (heroWins.get(h) ?? 0) + 1)
       }
     }
-    tally(r.radiantHeroes, r.winner === 'radiant')
-    tally(r.direHeroes, r.winner === 'dire')
+    tally(r.chaffHeroes, r.winner === 'chaff')
+    tally(r.auditHeroes, r.winner === 'audit')
   }
 
-  const decided = wins.radiant + wins.dire
+  const decided = wins.chaff + wins.audit
   // 2σ test against a fair coin: only flag a side bias unlikely to be noise.
-  const radiantShare = decided > 0 ? wins.radiant / decided : 0.5
+  const chaffShare = decided > 0 ? wins.chaff / decided : 0.5
   const twoSigma = decided > 0 ? 2 * Math.sqrt(0.25 / decided) : Infinity
-  const sideBiasSignificant = decided > 0 && Math.abs(radiantShare - 0.5) > twoSigma
+  const sideBiasSignificant = decided > 0 && Math.abs(chaffShare - 0.5) > twoSigma
 
   const sorted = [...lengths].sort((a, b) => a - b)
   const total = lengths.reduce((s, t) => s + t, 0)
@@ -92,8 +92,8 @@ export function summarizeSimResults(results: SimResult[]): SimSummary {
     matches,
     wins,
     winRate: {
-      radiant: decided > 0 ? (wins.radiant / decided) * 100 : 0,
-      dire: decided > 0 ? (wins.dire / decided) * 100 : 0,
+      chaff: decided > 0 ? (wins.chaff / decided) * 100 : 0,
+      audit: decided > 0 ? (wins.audit / decided) * 100 : 0,
     },
     sideBiasSignificant,
     length: {

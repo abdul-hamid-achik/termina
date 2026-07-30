@@ -137,7 +137,7 @@ const movementGuide = [
     items: [
       'The map is divided into zones (fountain, base, lanes, jungle, river)',
       `You walk one zone per cycle (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, cycle by cycle`,
-      'Type move <zone-id> to move (e.g., move radiant-base, move mid-t3-rad), or tap any zone on the map',
+      'Type move <zone-id> to move (e.g., move chaff-base, move mid-t3-rad), or tap any zone on the map',
       'Issuing any new action cancels the walk; a new move order redirects it',
       'Shortcut: mv is the same as move (e.g., mv mid-t2-rad)',
     ],
@@ -145,10 +145,10 @@ const movementGuide = [
   {
     title: 'Zone Naming Convention',
     items: [
-      'Lanes: top-t1-rad, mid-t2-dire, bot-t3-rad (lane-tier-team)',
+      'Lanes: top-t1-rad, mid-t2-audit, bot-t3-rad (lane-tier-team)',
       'River: top-river, mid-river, bot-river (neutral crossings)',
-      'Jungle: jungle-rad-top, jungle-dire-bot (jungle-team-side)',
-      'Base & Fountain: radiant-base, radiant-fountain, dire-base, dire-fountain',
+      'Jungle: jungle-rad-top, jungle-audit-bot (jungle-team-side)',
+      'Base & Fountain: chaff-base, chaff-fountain, audit-base, audit-fountain',
       'Special: roshan-pit, rune-top, rune-bot',
     ],
   },
@@ -269,7 +269,7 @@ const targeting = [
   {
     format: 'tower:<zone>',
     desc: 'Target the tower in a zone',
-    example: 'attack tower:mid-t1-dire',
+    example: 'attack tower:mid-t1-audit',
   },
   {
     format: 'roshan',
@@ -387,7 +387,7 @@ const concepts = [
   {
     term: 'Parties & Co-op',
     icon: '&',
-    desc: "Create a party from the lobby and share the 5-letter code with friends (up to 5). The leader can start a co-op game: your party takes Radiant and bots fill the rest — a no-pressure way to play together (co-op games don't affect your rating).",
+    desc: "Create a party from the lobby and share the 5-letter code with friends (up to 5). The leader can start a co-op game: your party takes Chaff and bots fill the rest — a no-pressure way to play together (co-op games don't affect your rating).",
   },
   {
     term: 'Guilds',
@@ -450,7 +450,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
 <template>
   <div class="mx-auto mt-4 flex max-w-[850px] flex-col gap-4 pb-8">
     <header class="border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ HOW TO PLAY</h1>
+      <h1 class="text-lg font-bold tracking-widest text-chaff">&gt;_ HOW TO PLAY</h1>
       <p class="mt-1 text-[0.78rem] text-text-dim">
         Everything you need before your first match — movement, commands, targeting, and the
         concepts that win games on the 4-second scheduler.
@@ -468,7 +468,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
             s.step
           }}</span>
           <div class="min-w-0">
-            <span class="text-[0.85rem] font-bold text-radiant">{{ s.title }}</span>
+            <span class="text-[0.85rem] font-bold text-chaff">{{ s.title }}</span>
             <p class="text-[0.8rem] text-text-dim">{{ s.desc }}</p>
           </div>
         </div>
@@ -510,15 +510,15 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       <!-- Example movement path -->
       <div class="mt-3 border-t border-border pt-3">
         <div class="mb-1 text-[0.8rem] font-bold text-gold">
-          Example: Getting to Mid Lane (Radiant)
+          Example: Getting to Mid Lane (Chaff)
         </div>
         <div class="flex flex-wrap items-center gap-1 text-[0.75rem]">
-          <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-radiant"
-            >radiant-fountain</span
+          <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-chaff"
+            >chaff-fountain</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
-            >move radiant-base</span
+            >move chaff-base</span
           >
           <span class="text-text-dim">&rarr;</span>
           <span class="border border-border bg-bg-secondary px-1.5 py-0.5 text-ability"
@@ -718,7 +718,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
     <TerminalPanel title="Ready?" title-as="h2">
       <div class="flex flex-col items-center gap-4 py-4">
         <span class="text-[0.8rem] text-text-dim">&gt;_ tutorial_complete. deploy --force</span>
-        <span class="text-lg font-bold tracking-widest text-radiant">READY TO PLAY?</span>
+        <span class="text-lg font-bold tracking-widest text-chaff">READY TO PLAY?</span>
         <div class="flex flex-wrap justify-center gap-3">
           <AsciiButton
             :label="startingTutorial ? 'STARTING…' : 'PRACTICE VS BOTS'"

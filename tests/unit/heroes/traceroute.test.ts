@@ -18,7 +18,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestTraceroute',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'traceroute',
     zone: 'mid-river',
     hp: 470,
@@ -49,7 +49,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -65,7 +65,7 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'a1',
     name: 'Ally',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     hp: 400,
     maxHp: 550,
@@ -82,8 +82,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {

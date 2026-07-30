@@ -26,7 +26,7 @@ const ADJ = 'mid-t1-rad'
 
 function mkPlayer(
   id: string,
-  team: 'radiant' | 'dire',
+  team: 'chaff' | 'audit',
   over: Partial<PlayerState> = {},
 ): PlayerState {
   return {
@@ -62,29 +62,29 @@ function mkPlayer(
 }
 
 function baseState(heroId: string): GameState {
-  const caster = mkPlayer('caster', 'radiant', {
+  const caster = mkPlayer('caster', 'chaff', {
     heroId,
     buffs: [
       { id: 'feedbackLoop', stacks: 50, ticksRemaining: 999, source: 'caster' },
       { id: 'cachedEnergy', stacks: 100, ticksRemaining: 999, source: 'caster' },
     ],
   })
-  const efull = mkPlayer('efull', 'dire', { heroId: 'kernel' })
-  const elow = mkPlayer('elow', 'dire', { heroId: 'kernel', hp: 50 })
-  const eadj = mkPlayer('eadj', 'dire', { heroId: 'kernel', zone: ADJ })
-  const ally = mkPlayer('ally', 'radiant', { heroId: 'socket', hp: 1000 })
+  const efull = mkPlayer('efull', 'audit', { heroId: 'kernel' })
+  const elow = mkPlayer('elow', 'audit', { heroId: 'kernel', hp: 50 })
+  const eadj = mkPlayer('eadj', 'audit', { heroId: 'kernel', zone: ADJ })
+  const ally = mkPlayer('ally', 'chaff', { heroId: 'socket', hp: 1000 })
   const players: Record<string, PlayerState> = {}
   for (const p of [caster, efull, elow, eadj, ally]) players[p.id] = p
   const zones: GameState['zones'] = {}
-  for (const z of [ZONE, ADJ, 'mid-t1-dire', 'top-river', 'bot-river']) {
+  for (const z of [ZONE, ADJ, 'mid-t1-audit', 'top-river', 'bot-river']) {
     zones[z] = { id: z, wards: [], creeps: [] }
   }
   return {
     tick: 100,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players,
     zones,
@@ -92,14 +92,14 @@ function baseState(heroId: string): GameState {
     neutrals: [],
     towers: [],
     ancients: {
-      radiant: { team: 'radiant', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-      dire: { team: 'dire', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
     },
     runes: [],
     roshan: { alive: false, hp: 0, maxHp: 0, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
   }

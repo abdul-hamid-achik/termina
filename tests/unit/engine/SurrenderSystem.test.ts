@@ -17,9 +17,9 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
-    zone: 'radiant-fountain',
+    zone: 'chaff-fountain',
     hp: 550,
     maxHp: 550,
     mp: 280,
@@ -51,14 +51,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {
-      r1: makePlayer({ id: 'r1', name: 'R1', team: 'radiant' }),
-      r2: makePlayer({ id: 'r2', name: 'R2', team: 'radiant' }),
-      r3: makePlayer({ id: 'r3', name: 'R3', team: 'radiant' }),
-      d1: makePlayer({ id: 'd1', name: 'D1', team: 'dire', zone: 'dire-fountain' }),
+      r1: makePlayer({ id: 'r1', name: 'R1', team: 'chaff' }),
+      r2: makePlayer({ id: 'r2', name: 'R2', team: 'chaff' }),
+      r3: makePlayer({ id: 'r3', name: 'R3', team: 'chaff' }),
+      d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'audit-fountain' }),
     },
     zones: initializeZoneStates(),
     creeps: [],
@@ -68,7 +68,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -85,7 +85,7 @@ describe('SurrenderSystem', () => {
       const state = makeGameState({ tick: 0 })
       const result = voteSurrender(state, 'r1')
       expect(result.success).toBe(false)
-      expect(result.state.surrenderVotes.radiant.size).toBe(0)
+      expect(result.state.surrenderVotes.chaff.size).toBe(0)
     })
 
     it('records the vote in the returned state', () => {
@@ -93,7 +93,7 @@ describe('SurrenderSystem', () => {
       const result = voteSurrender(state, 'r1')
       expect(result.success).toBe(true)
       expect(result.surrendered).toBe(false) // 1 of ceil(3 * 0.6) = 2 needed
-      expect(result.state.surrenderVotes.radiant.has('r1')).toBe(true)
+      expect(result.state.surrenderVotes.chaff.has('r1')).toBe(true)
     })
 
     it('passes when the vote threshold is reached', () => {
@@ -107,7 +107,7 @@ describe('SurrenderSystem', () => {
       const state = makeGameState({ tick: SURRENDER_MIN_TICK })
       const voted = voteSurrender(state, 'r1').state
       const retracted = removeSurrenderVote(voted, 'r1')
-      expect(retracted.surrenderVotes.radiant.size).toBe(0)
+      expect(retracted.surrenderVotes.chaff.size).toBe(0)
     })
 
     it('rejects a vote from an unknown player', () => {
@@ -129,7 +129,7 @@ describe('SurrenderSystem', () => {
       }
       const result = voteSurrender(state, 'r1')
       expect(result.success).toBe(true)
-      expect(result.state.surrenderVotes.radiant.has('r1')).toBe(true)
+      expect(result.state.surrenderVotes.chaff.has('r1')).toBe(true)
     })
 
     it('a fully wiped team can still concede', () => {
@@ -164,7 +164,7 @@ describe('SurrenderSystem', () => {
           r3: { ...voted.state.players.r3!, alive: false },
         },
       }
-      const status = getSurrenderStatus(bereaved, 'radiant')
+      const status = getSurrenderStatus(bereaved, 'chaff')
       expect(status.electorate).toBe(3)
       expect(status.votesNeeded).toBe(2)
       expect(status.votesFor).toBe(1)
@@ -181,12 +181,12 @@ describe('SurrenderSystem', () => {
       const state = makeGameState({
         tick: SURRENDER_MIN_TICK,
         players: {
-          bot_a: makePlayer({ id: 'bot_a', name: 'bot_a', team: 'radiant' }),
-          bot_b: makePlayer({ id: 'bot_b', name: 'bot_b', team: 'radiant' }),
-          d1: makePlayer({ id: 'd1', name: 'D1', team: 'dire', zone: 'dire-fountain' }),
+          bot_a: makePlayer({ id: 'bot_a', name: 'bot_a', team: 'chaff' }),
+          bot_b: makePlayer({ id: 'bot_b', name: 'bot_b', team: 'chaff' }),
+          d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'audit-fountain' }),
         },
       })
-      const status = getSurrenderStatus(state, 'radiant')
+      const status = getSurrenderStatus(state, 'chaff')
       expect(status.electorate).toBe(0)
       expect(status.votesFor).toBe(0)
       expect(status.votesNeeded).toBe(0)
@@ -204,7 +204,7 @@ describe('SurrenderSystem', () => {
           r3: { ...base.players.r3!, alive: false },
         },
       }
-      const status = getSurrenderStatus(allDead, 'radiant')
+      const status = getSurrenderStatus(allDead, 'chaff')
       expect(status.electorate).toBe(3)
       expect(status.votesNeeded).toBe(2)
     })
@@ -218,10 +218,10 @@ describe('SurrenderSystem', () => {
       return makeGameState({
         tick: SURRENDER_MIN_TICK,
         players: {
-          human: makePlayer({ id: 'human', name: 'Human', team: 'radiant' }),
-          bot_alpha: makePlayer({ id: 'bot_alpha', name: 'bot_alpha', team: 'radiant' }),
-          bot_beta: makePlayer({ id: 'bot_beta', name: 'bot_beta', team: 'radiant' }),
-          d1: makePlayer({ id: 'd1', name: 'D1', team: 'dire', zone: 'dire-fountain' }),
+          human: makePlayer({ id: 'human', name: 'Human', team: 'chaff' }),
+          bot_alpha: makePlayer({ id: 'bot_alpha', name: 'bot_alpha', team: 'chaff' }),
+          bot_beta: makePlayer({ id: 'bot_beta', name: 'bot_beta', team: 'chaff' }),
+          d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'audit-fountain' }),
         },
       })
     }
@@ -234,7 +234,7 @@ describe('SurrenderSystem', () => {
     })
 
     it('excludes bots from the surrender status electorate', () => {
-      const status = getSurrenderStatus(soloWithBots(), 'radiant')
+      const status = getSurrenderStatus(soloWithBots(), 'chaff')
       expect(status.electorate).toBe(1) // only the human, not the two bots
       expect(status.votesNeeded).toBe(1)
     })
@@ -248,14 +248,14 @@ describe('SurrenderSystem', () => {
       submitAction('surr-solo-dead', 'human', { type: 'surrender', vote: 'yes' })
       const result = Effect.runSync(processTick('surr-solo-dead', dead))
       expect(result.state.phase).toBe('ended')
-      expect(result.state.winner).toBe('dire')
+      expect(result.state.winner).toBe('audit')
     })
 
     it('ends the game when the lone human concedes via processTick', () => {
       submitAction('surr-solo', 'human', { type: 'surrender', vote: 'yes' })
       const result = Effect.runSync(processTick('surr-solo', soloWithBots()))
       expect(result.state.phase).toBe('ended')
-      expect(result.state.winner).toBe('dire')
+      expect(result.state.winner).toBe('audit')
       expect(result.events.some((e) => e._tag === 'surrendered')).toBe(true)
     })
   })
@@ -265,7 +265,7 @@ describe('SurrenderSystem', () => {
       const state = makeGameState({ tick: SURRENDER_MIN_TICK })
       submitAction('surr-1', 'r1', { type: 'surrender', vote: 'yes' })
       const result = Effect.runSync(processTick('surr-1', state))
-      expect(result.state.surrenderVotes.radiant.has('r1')).toBe(true)
+      expect(result.state.surrenderVotes.chaff.has('r1')).toBe(true)
       expect(result.state.phase).toBe('playing')
     })
 
@@ -277,7 +277,7 @@ describe('SurrenderSystem', () => {
       const result = Effect.runSync(processTick('surr-2', mid.state))
 
       expect(result.state.phase).toBe('ended')
-      expect(result.state.winner).toBe('dire')
+      expect(result.state.winner).toBe('audit')
       expect(result.events.some((e) => e._tag === 'surrendered')).toBe(true)
     })
 
@@ -285,11 +285,11 @@ describe('SurrenderSystem', () => {
       const state = makeGameState({ tick: SURRENDER_MIN_TICK })
       submitAction('surr-3', 'r1', { type: 'surrender', vote: 'yes' })
       const mid = Effect.runSync(processTick('surr-3', state))
-      expect(mid.state.surrenderVotes.radiant.has('r1')).toBe(true)
+      expect(mid.state.surrenderVotes.chaff.has('r1')).toBe(true)
 
       submitAction('surr-3', 'r1', { type: 'surrender', vote: 'no' })
       const result = Effect.runSync(processTick('surr-3', mid.state))
-      expect(result.state.surrenderVotes.radiant.has('r1')).toBe(false)
+      expect(result.state.surrenderVotes.chaff.has('r1')).toBe(false)
     })
 
     it('emits a surrender_vote event for player feedback', () => {
@@ -304,14 +304,14 @@ describe('SurrenderSystem', () => {
       const state = makeGameState({ tick: 10 })
       submitAction('surr-5', 'r1', { type: 'surrender', vote: 'yes' })
       const result = Effect.runSync(processTick('surr-5', state))
-      expect(result.state.surrenderVotes.radiant.size).toBe(0)
+      expect(result.state.surrenderVotes.chaff.size).toBe(0)
       expect(result.rejectedActions.some((r) => r.playerId === 'r1')).toBe(true)
     })
   })
 
   describe('canSurrender', () => {
     it('is too early before SURRENDER_MIN_TICK', () => {
-      const res = canSurrender(makeGameState({ tick: 0 }), 'radiant')
+      const res = canSurrender(makeGameState({ tick: 0 }), 'chaff')
       expect(res.can).toBe(false)
       expect(res.reason).toMatch(/too early/i)
     })
@@ -320,12 +320,12 @@ describe('SurrenderSystem', () => {
       const state = makeGameState({
         tick: SURRENDER_MIN_TICK,
         players: {
-          bot_a: makePlayer({ id: 'bot_a', team: 'radiant' }),
-          bot_b: makePlayer({ id: 'bot_b', team: 'radiant' }),
-          d1: makePlayer({ id: 'd1', team: 'dire' }),
+          bot_a: makePlayer({ id: 'bot_a', team: 'chaff' }),
+          bot_b: makePlayer({ id: 'bot_b', team: 'chaff' }),
+          d1: makePlayer({ id: 'd1', team: 'audit' }),
         },
       })
-      const res = canSurrender(state, 'radiant')
+      const res = canSurrender(state, 'chaff')
       expect(res.can).toBe(false)
       expect(res.reason).toMatch(/no human/i)
     })
@@ -341,11 +341,11 @@ describe('SurrenderSystem', () => {
           r3: { ...base.players.r3!, alive: false },
         },
       }
-      expect(canSurrender(allDead, 'radiant').can).toBe(true)
+      expect(canSurrender(allDead, 'chaff').can).toBe(true)
     })
 
     it('allows a team with humans past the minimum tick', () => {
-      expect(canSurrender(makeGameState({ tick: SURRENDER_MIN_TICK }), 'radiant').can).toBe(true)
+      expect(canSurrender(makeGameState({ tick: SURRENDER_MIN_TICK }), 'chaff').can).toBe(true)
     })
   })
 
@@ -353,11 +353,11 @@ describe('SurrenderSystem', () => {
     it('empties both teams’ vote sets', () => {
       const state = makeGameState({
         tick: SURRENDER_MIN_TICK,
-        surrenderVotes: { radiant: new Set(['r1', 'r2']), dire: new Set(['d1']) },
+        surrenderVotes: { chaff: new Set(['r1', 'r2']), audit: new Set(['d1']) },
       })
       const cleared = clearSurrenderVotes(state)
-      expect(cleared.surrenderVotes.radiant.size).toBe(0)
-      expect(cleared.surrenderVotes.dire.size).toBe(0)
+      expect(cleared.surrenderVotes.chaff.size).toBe(0)
+      expect(cleared.surrenderVotes.audit.size).toBe(0)
     })
   })
 })

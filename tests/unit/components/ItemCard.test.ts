@@ -85,7 +85,7 @@ describe('ItemCard', () => {
   it('shows the loadout marker + selected styling when selected', () => {
     const wrapper = mountCard({}, { interactive: true, selected: true })
     expect(wrapper.find('[data-testid="item-card-selected"]').exists()).toBe(true)
-    expect(wrapper.classes()).toContain('border-radiant')
+    expect(wrapper.classes()).toContain('border-chaff')
   })
 
   it('reflects selected state via aria-pressed on the interactive button', () => {

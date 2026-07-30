@@ -6,8 +6,8 @@ import GameStateBar from './GameStateBar.vue'
 // always-on macro row (team kills, net-worth lead, towers, Mainframe HP).
 // NOTE: the bar shows NO tick countdown — the TickTheater header is the game's
 // single clock (the countdown props were removed in the HUD declutter).
-const teams = { radiant: makeTeamState('radiant'), dire: makeTeamState('dire') }
-const ancients = { radiant: makeAncient('radiant'), dire: makeAncient('dire') }
+const teams = { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') }
+const ancients = { chaff: makeAncient('chaff'), audit: makeAncient('audit') }
 
 const base = {
   tick: 240,
@@ -17,15 +17,15 @@ const base = {
   deaths: 2,
   assists: 9,
   heroId: SAMPLE_HERO_ID,
-  netWorthRadiant: 5400,
-  netWorthDire: 4500,
+  netWorthChaff: 5400,
+  netWorthAudit: 4500,
 }
 </script>
 
 <template>
   <Story title="Game/GameStateBar">
-    <!-- Online, day, radiant ahead. -->
-    <Variant title="online (day, radiant ahead)">
+    <!-- Online, day, chaff ahead. -->
+    <Variant title="online (day, chaff ahead)">
       <div class="bg-bg-primary" style="width: 820px">
         <GameStateBar
           v-bind="base"
@@ -39,7 +39,7 @@ const base = {
       </div>
     </Variant>
 
-    <!-- Night, reconnecting banner, dire ahead, Mainframe under threat. -->
+    <!-- Night, reconnecting banner, audit ahead, Mainframe under threat. -->
     <Variant title="reconnecting (night, core vulnerable)">
       <div class="bg-bg-primary" style="width: 820px">
         <GameStateBar
@@ -47,15 +47,15 @@ const base = {
           :reconnecting="true"
           time-of-day="night"
           :day-night-tick="6"
-          :net-worth-radiant="4200"
-          :net-worth-dire="6100"
+          :net-worth-chaff="4200"
+          :net-worth-audit="6100"
           :teams="{
-            radiant: makeTeamState('radiant', { kills: 9, towerKills: 1 }),
-            dire: makeTeamState('dire', { kills: 18, towerKills: 4 }),
+            chaff: makeTeamState('chaff', { kills: 9, towerKills: 1 }),
+            audit: makeTeamState('audit', { kills: 18, towerKills: 4 }),
           }"
           :ancients="{
-            radiant: makeAncient('radiant', { hp: 900, maxHp: 4500, vulnerable: true }),
-            dire: makeAncient('dire'),
+            chaff: makeAncient('chaff', { hp: 900, maxHp: 4500, vulnerable: true }),
+            audit: makeAncient('audit'),
           }"
         />
       </div>

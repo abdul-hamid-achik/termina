@@ -42,17 +42,17 @@ describe('maps', () => {
     it('is exactly the 11 mid-lane zones', () => {
       expect(ONE_LANE_ZONES).toHaveLength(11)
       for (const id of [
-        'radiant-fountain',
-        'radiant-base',
+        'chaff-fountain',
+        'chaff-base',
         'mid-t3-rad',
         'mid-t2-rad',
         'mid-t1-rad',
         'mid-river',
-        'mid-t1-dire',
-        'mid-t2-dire',
-        'mid-t3-dire',
-        'dire-base',
-        'dire-fountain',
+        'mid-t1-audit',
+        'mid-t2-audit',
+        'mid-t3-audit',
+        'audit-base',
+        'audit-fountain',
       ]) {
         expect(ids.has(id), `expected ${id} in one_lane`).toBe(true)
       }
@@ -66,8 +66,8 @@ describe('maps', () => {
         'rune-bot',
         'jungle-rad-top',
         'jungle-rad-bot',
-        'jungle-dire-top',
-        'jungle-dire-bot',
+        'jungle-audit-top',
+        'jungle-audit-bot',
         'roshan-pit',
         'top-t3-rad',
         'bot-t3-rad',
@@ -101,29 +101,29 @@ describe('maps', () => {
       // 4 bases/fountains + 7 top lane + 7 mid lane + 2 jungles + 2 objectives = 22
       expect(TWO_LANE_ZONES).toHaveLength(22)
       for (const id of [
-        'radiant-fountain',
-        'dire-fountain',
-        'radiant-base',
-        'dire-base',
+        'chaff-fountain',
+        'audit-fountain',
+        'chaff-base',
+        'audit-base',
         // Top lane chain
         'top-t3-rad',
         'top-t2-rad',
         'top-t1-rad',
         'top-river',
-        'top-t1-dire',
-        'top-t2-dire',
-        'top-t3-dire',
+        'top-t1-audit',
+        'top-t2-audit',
+        'top-t3-audit',
         // Mid lane chain
         'mid-t3-rad',
         'mid-t2-rad',
         'mid-t1-rad',
         'mid-river',
-        'mid-t1-dire',
-        'mid-t2-dire',
-        'mid-t3-dire',
+        'mid-t1-audit',
+        'mid-t2-audit',
+        'mid-t3-audit',
         // Top-side jungle
         'jungle-rad-top',
-        'jungle-dire-top',
+        'jungle-audit-top',
         // Top-side river objectives
         'rune-top',
         'roshan-pit',
@@ -138,11 +138,11 @@ describe('maps', () => {
         'bot-t2-rad',
         'bot-t1-rad',
         'bot-river',
-        'bot-t1-dire',
-        'bot-t2-dire',
-        'bot-t3-dire',
+        'bot-t1-audit',
+        'bot-t2-audit',
+        'bot-t3-audit',
         'jungle-rad-bot',
-        'jungle-dire-bot',
+        'jungle-audit-bot',
         'rune-bot',
       ]) {
         expect(ids.has(id), `${id} must NOT be in two_lane`).toBe(false)
@@ -165,9 +165,9 @@ describe('maps', () => {
       }
     })
 
-    it('forms one connected graph — every zone reachable from radiant-fountain', () => {
-      const seen = new Set<string>(['radiant-fountain'])
-      const queue: string[] = ['radiant-fountain']
+    it('forms one connected graph — every zone reachable from chaff-fountain', () => {
+      const seen = new Set<string>(['chaff-fountain'])
+      const queue: string[] = ['chaff-fountain']
       while (queue.length > 0) {
         const cur = queue.shift()!
         for (const n of byId.get(cur)!.adjacentTo) {
@@ -178,33 +178,33 @@ describe('maps', () => {
         }
       }
       expect(seen.size).toBe(TWO_LANE_ZONES.length)
-      expect(seen.has('dire-fountain')).toBe(true)
+      expect(seen.has('audit-fountain')).toBe(true)
     })
 
-    it('still allows a full mid-lane path from radiant-base to dire-base', () => {
+    it('still allows a full mid-lane path from chaff-base to audit-base', () => {
       const mid = [
         'mid-t3-rad',
         'mid-t2-rad',
         'mid-t1-rad',
         'mid-river',
-        'mid-t1-dire',
-        'mid-t2-dire',
-        'mid-t3-dire',
+        'mid-t1-audit',
+        'mid-t2-audit',
+        'mid-t3-audit',
       ]
       for (let i = 0; i < mid.length - 1; i++) {
         expect(byId.get(mid[i]!)!.adjacentTo).toContain(mid[i + 1])
       }
     })
 
-    it('still allows a full top-lane path from radiant-base to dire-base', () => {
+    it('still allows a full top-lane path from chaff-base to audit-base', () => {
       const top = [
         'top-t3-rad',
         'top-t2-rad',
         'top-t1-rad',
         'top-river',
-        'top-t1-dire',
-        'top-t2-dire',
-        'top-t3-dire',
+        'top-t1-audit',
+        'top-t2-audit',
+        'top-t3-audit',
       ]
       for (let i = 0; i < top.length - 1; i++) {
         expect(byId.get(top[i]!)!.adjacentTo).toContain(top[i + 1])

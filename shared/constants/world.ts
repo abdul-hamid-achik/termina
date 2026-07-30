@@ -22,7 +22,7 @@ export function cycleFrameLine(seconds: number): string {
 // union so adding a member is a compile error. Player-facing labels live
 // HERE, never spelled out ad hoc in components or the narrative layer.
 //
-// NOTE (R1 scope): the TeamId union still reads radiant/dire until R1-05
+// NOTE (R1 scope): the TeamId union still reads chaff/audit until R1-05
 // sweeps it. FACTION_META is keyed on the union AS IT IS so callers move to
 // the lexicon now and the id sweep later touches only this file.
 
@@ -36,12 +36,12 @@ export interface FactionMeta {
 }
 
 export const FACTION_META: Record<TeamId, FactionMeta> = {
-  radiant: {
+  chaff: {
     label: 'CHAFF',
     short: 'CHF',
     blurb: 'Came up off the street and stayed there.',
   },
-  dire: {
+  audit: {
     label: 'AUDIT',
     short: 'AUD',
     blurb: "Quorum's corporate response division.",
@@ -88,8 +88,8 @@ export type WaveRole = 'melee' | 'ranged' | 'siege'
  * (mule / script / picket).
  */
 export const WAVE_UNIT_LABELS: Record<TeamId, Record<WaveRole, string>> = {
-  radiant: { melee: 'mule', ranged: 'script', siege: 'picket' },
-  dire: { melee: 'guard', ranged: 'sweeper', siege: 'auditor' },
+  chaff: { melee: 'mule', ranged: 'script', siege: 'picket' },
+  audit: { melee: 'guard', ranged: 'sweeper', siege: 'auditor' },
 }
 
 export type NeutralCamp =

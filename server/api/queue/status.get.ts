@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
         return {
           status: 'lobby' as const,
           lobbyId,
-          team: player?.team ?? 'radiant',
+          team: player?.team ?? 'chaff',
           players: lobby.players.map((p) => ({
             playerId: p.playerId,
             // Include username so a page-refresh recovery shows real names, not

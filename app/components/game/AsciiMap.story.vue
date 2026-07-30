@@ -17,113 +17,113 @@ const zones: ZoneDisplay[] = [
   zone('bot-river', 'Bot River', { creepCount: 4, creepTypes: ['melee', 'ranged'] }),
   zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
   zone('roshan-pit', 'The Hollow', { neutralCount: 1, roshan: { alive: false, respawnIn: 48 } }),
-  zone('mid-t1-dire', 'Dire Mid T1', {
-    tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+  zone('mid-t1-audit', 'Audit Mid T1', {
+    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
   }),
-  zone('mid-t1-rad', 'Radiant Mid T1', {
-    tower: { team: 'radiant', alive: false, tier: 1 },
+  zone('mid-t1-rad', 'Chaff Mid T1', {
+    tower: { team: 'chaff', alive: false, tier: 1 },
   }),
-  zone('jungle-rad-top', 'Radiant Jungle (Top)', { neutralCount: 3, allies: ['proxy_jg'] }),
-  zone('jungle-dire-bot', 'Dire Jungle (Bot)', { fogged: true, enemyCount: 1 }),
-  zone('radiant-base', 'Rookery Terminal', {}),
-  zone('dire-base', 'Landing Terminal', {}),
+  zone('jungle-rad-top', 'Chaff Jungle (Top)', { neutralCount: 3, allies: ['proxy_jg'] }),
+  zone('jungle-audit-bot', 'Audit Jungle (Bot)', { fogged: true, enemyCount: 1 }),
+  zone('chaff-base', 'Rookery Terminal', {}),
+  zone('audit-base', 'Landing Terminal', {}),
 ]
 
 const ancients = {
-  radiant: makeAncient('radiant'),
-  dire: makeAncient('dire', { hp: 1800, maxHp: 4500, vulnerable: true }),
+  chaff: makeAncient('chaff'),
+  audit: makeAncient('audit', { hp: 1800, maxHp: 4500, vulnerable: true }),
 }
 
 // One-lane map (mapId='one_lane'): a single mid-lane column. Same ZoneDisplay
 // shape, but AsciiMap lays it out as 11 stacked cells instead of the 5x10 grid.
 const oneLaneZones: ZoneDisplay[] = [
-  zone('radiant-fountain', 'Rookery Anchor', {}),
-  zone('radiant-base', 'Rookery Terminal', {}),
-  zone('mid-t3-rad', 'Radiant Mid T3', {
-    tower: { team: 'radiant', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  zone('chaff-fountain', 'Rookery Anchor', {}),
+  zone('chaff-base', 'Rookery Terminal', {}),
+  zone('mid-t3-rad', 'Chaff Mid T3', {
+    tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
-  zone('mid-t2-rad', 'Radiant Mid T2', {
-    tower: { team: 'radiant', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
+  zone('mid-t2-rad', 'Chaff Mid T2', {
+    tower: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
   }),
-  zone('mid-t1-rad', 'Radiant Mid T1', {
-    tower: { team: 'radiant', alive: false, tier: 1 },
+  zone('mid-t1-rad', 'Chaff Mid T1', {
+    tower: { team: 'chaff', alive: false, tier: 1 },
     allies: ['kernel_main'],
   }),
   zone('mid-river', 'Mid River', { playerHere: true, creepCount: 4 }),
-  zone('mid-t1-dire', 'Dire Mid T1', {
-    tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+  zone('mid-t1-audit', 'Audit Mid T1', {
+    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 2,
     enemyNames: ['daemon_carry', 'regex_mid'],
   }),
-  zone('mid-t2-dire', 'Dire Mid T2', {
-    tower: { team: 'dire', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+  zone('mid-t2-audit', 'Audit Mid T2', {
+    tower: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
     fogged: true,
   }),
-  zone('mid-t3-dire', 'Dire Mid T3', {
-    tower: { team: 'dire', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  zone('mid-t3-audit', 'Audit Mid T3', {
+    tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
-  zone('dire-base', 'Landing Terminal', { fogged: true }),
-  zone('dire-fountain', 'Dire Fountain', { fogged: true }),
+  zone('audit-base', 'Landing Terminal', { fogged: true }),
+  zone('audit-fountain', 'Audit Fountain', { fogged: true }),
 ]
 
 // Two-lane map (mapId='two_lane'): top + mid lanes with top-side jungle, rune,
 // and Roshan. AsciiMap lays it out as a 4-column grid. No bot lane zones.
 const twoLaneZones: ZoneDisplay[] = [
-  zone('radiant-fountain', 'Rookery Anchor', {}),
-  zone('radiant-base', 'Rookery Terminal', {}),
-  zone('top-t3-rad', 'Radiant Top T3', {
-    tower: { team: 'radiant', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  zone('chaff-fountain', 'Rookery Anchor', {}),
+  zone('chaff-base', 'Rookery Terminal', {}),
+  zone('top-t3-rad', 'Chaff Top T3', {
+    tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
-  zone('top-t2-rad', 'Radiant Top T2', {
-    tower: { team: 'radiant', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+  zone('top-t2-rad', 'Chaff Top T2', {
+    tower: { team: 'chaff', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
   }),
-  zone('top-t1-rad', 'Radiant Top T1', {
-    tower: { team: 'radiant', alive: false, tier: 1 },
+  zone('top-t1-rad', 'Chaff Top T1', {
+    tower: { team: 'chaff', alive: false, tier: 1 },
     allies: ['proxy_jg'],
   }),
   zone('top-river', 'Top River', { creepCount: 4 }),
-  zone('top-t1-dire', 'Dire Top T1', {
-    tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+  zone('top-t1-audit', 'Audit Top T1', {
+    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 1,
   }),
-  zone('top-t2-dire', 'Dire Top T2', {
-    tower: { team: 'dire', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+  zone('top-t2-audit', 'Audit Top T2', {
+    tower: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
     fogged: true,
   }),
-  zone('top-t3-dire', 'Dire Top T3', {
-    tower: { team: 'dire', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  zone('top-t3-audit', 'Audit Top T3', {
+    tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
-  zone('mid-t3-rad', 'Radiant Mid T3', {
-    tower: { team: 'radiant', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  zone('mid-t3-rad', 'Chaff Mid T3', {
+    tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
-  zone('mid-t2-rad', 'Radiant Mid T2', {
-    tower: { team: 'radiant', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
+  zone('mid-t2-rad', 'Chaff Mid T2', {
+    tower: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
   }),
-  zone('mid-t1-rad', 'Radiant Mid T1', {
-    tower: { team: 'radiant', alive: true, tier: 1, hp: 1500, maxHp: 1800 },
+  zone('mid-t1-rad', 'Chaff Mid T1', {
+    tower: { team: 'chaff', alive: true, tier: 1, hp: 1500, maxHp: 1800 },
   }),
   zone('mid-river', 'Mid River', { playerHere: true, allies: ['kernel_main'] }),
-  zone('mid-t1-dire', 'Dire Mid T1', {
-    tower: { team: 'dire', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+  zone('mid-t1-audit', 'Audit Mid T1', {
+    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 1,
     enemyNames: ['regex_mid'],
   }),
-  zone('mid-t2-dire', 'Dire Mid T2', {
-    tower: { team: 'dire', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+  zone('mid-t2-audit', 'Audit Mid T2', {
+    tower: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
     fogged: true,
   }),
-  zone('mid-t3-dire', 'Dire Mid T3', {
-    tower: { team: 'dire', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+  zone('mid-t3-audit', 'Audit Mid T3', {
+    tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
-  zone('jungle-rad-top', 'Radiant Jungle (Top)', { neutralCount: 2 }),
-  zone('jungle-dire-top', 'Dire Jungle (Top)', { fogged: true, enemyCount: 1 }),
+  zone('jungle-rad-top', 'Chaff Jungle (Top)', { neutralCount: 2 }),
+  zone('jungle-audit-top', 'Audit Jungle (Top)', { fogged: true, enemyCount: 1 }),
   zone('rune-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
   zone('roshan-pit', 'The Hollow', { neutralCount: 1, roshan: { alive: true, respawnIn: 0 } }),
-  zone('dire-base', 'Landing Terminal', { fogged: true }),
-  zone('dire-fountain', 'Dire Fountain', { fogged: true }),
+  zone('audit-base', 'Landing Terminal', { fogged: true }),
+  zone('audit-fountain', 'Audit Fountain', { fogged: true }),
 ]
 </script>
 
@@ -148,7 +148,7 @@ const twoLaneZones: ZoneDisplay[] = [
       </div>
     </Variant>
 
-    <!-- Mini overview expanded: column headers, RADIANT/DIRE half labels, and
+    <!-- Mini overview expanded: column headers, CHAFF/AUDIT half labels, and
          tower-state glyphs (▲ standing team-colored, ✗ razed) in lane cells. -->
     <Variant title="mini overview (compact)">
       <div class="bg-bg-primary p-2" style="width: 360px; height: 860px">

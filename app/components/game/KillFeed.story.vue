@@ -46,14 +46,14 @@ const cluster = [
     category: 'tower',
     killerHeroId: undefined,
     victimHeroId: undefined,
-    text: 'RADIANT razed a DIRE tower',
+    text: 'CHAFF razed a AUDIT tower',
   }),
   entry({
     tick: CURRENT,
     category: 'roshan',
     killerHeroId: undefined,
     victimHeroId: undefined,
-    text: 'RADIANT slew ROSHAN',
+    text: 'CHAFF slew ROSHAN',
   }),
 ]
 
@@ -62,7 +62,7 @@ const coreDown = [
     category: 'core',
     killerHeroId: undefined,
     victimHeroId: undefined,
-    text: 'RADIANT CORE DUMPED the DIRE Mainframe',
+    text: 'CHAFF CORE DUMPED the AUDIT Mainframe',
   }),
 ]
 </script>

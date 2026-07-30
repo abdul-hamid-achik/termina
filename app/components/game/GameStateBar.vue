@@ -20,10 +20,10 @@ const props = defineProps<{
   timeOfDay?: 'day' | 'night'
   dayNightTick?: number
   /** Team-level macro state (renders the always-on macro row when present). */
-  teams?: { radiant: TeamState; dire: TeamState } | null
-  ancients?: { radiant: AncientState; dire: AncientState } | null
-  netWorthRadiant?: number
-  netWorthDire?: number
+  teams?: { chaff: TeamState; audit: TeamState } | null
+  ancients?: { chaff: AncientState; audit: AncientState } | null
+  netWorthChaff?: number
+  netWorthAudit?: number
   /** Bumped by the parent when the local player scores a kill → KDA pop. */
   kdaPopKey?: number
 }>()
@@ -53,7 +53,7 @@ function formatTimeRemaining(tick: number, timeOfDay: string): string {
 }
 
 // ── Macro row (team score / net worth / towers / Core HP) ──────
-const lead = computed(() => goldLead(props.netWorthRadiant ?? 0, props.netWorthDire ?? 0))
+const lead = computed(() => goldLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
 
 function corePct(a: AncientState | undefined): number {
   if (!a || a.maxHp <= 0) return 0
@@ -93,18 +93,18 @@ function corePct(a: AncientState | undefined): number {
       <span class="inline-flex gap-1">
         <span class="t-caption">KDA</span>
         <span :key="kdaPopKey" class="anim-pop inline-block">
-          <span class="text-radiant text-glow-radiant font-bold">{{ kills }}</span
+          <span class="text-chaff text-glow-chaff font-bold">{{ kills }}</span
           ><span class="text-text-muted">/</span
-          ><span class="text-dire text-glow-dire font-bold">{{ deaths }}</span
+          ><span class="text-audit text-glow-audit font-bold">{{ deaths }}</span
           ><span class="text-text-muted">/</span
           ><span class="text-text-dim font-bold">{{ assists }}</span>
         </span>
       </span>
       <span class="text-border">|</span>
-      <span v-if="reconnecting" class="text-dire text-glow-dire animate-pulse"
+      <span v-if="reconnecting" class="text-audit text-glow-audit animate-pulse"
         >[RECONNECTING...]</span
       >
-      <span v-else-if="connected" class="text-radiant text-glow-sm">[ONLINE {{ latency }}ms]</span>
+      <span v-else-if="connected" class="text-chaff text-glow-sm">[ONLINE {{ latency }}ms]</span>
       <span v-else class="text-text-muted">[OFFLINE]</span>
     </div>
 
@@ -116,12 +116,12 @@ function corePct(a: AncientState | undefined): number {
     >
       <!-- Team kill score -->
       <span class="inline-flex items-center gap-1.5">
-        <span class="font-bold tracking-widest text-radiant text-glow-radiant">{{
-          teams.radiant.kills
+        <span class="font-bold tracking-widest text-chaff text-glow-chaff">{{
+          teams.chaff.kills
         }}</span>
-        <span class="text-[0.6rem] text-text-dim">RAD&nbsp;·&nbsp;DIRE</span>
-        <span class="font-bold tracking-widest text-dire text-glow-dire">{{
-          teams.dire.kills
+        <span class="text-[0.6rem] text-text-dim">RAD&nbsp;·&nbsp;AUDIT</span>
+        <span class="font-bold tracking-widest text-audit text-glow-audit">{{
+          teams.audit.kills
         }}</span>
       </span>
       <span class="text-border">|</span>
@@ -130,11 +130,9 @@ function corePct(a: AncientState | undefined): number {
         <span class="t-caption">NET</span>
         <span
           v-if="lead.leader"
-          :class="lead.leader === 'radiant' ? 'text-radiant' : 'text-dire'"
+          :class="lead.leader === 'chaff' ? 'text-chaff' : 'text-audit'"
           class="font-bold"
-          >{{ lead.leader === 'radiant' ? 'RAD' : 'DIRE' }} +{{
-            formatGoldShort(lead.amount)
-          }}</span
+          >{{ lead.leader === 'chaff' ? 'RAD' : 'AUDIT' }} +{{ formatGoldShort(lead.amount) }}</span
         >
         <span v-else class="text-text-dim">even</span>
       </span>
@@ -142,9 +140,9 @@ function corePct(a: AncientState | undefined): number {
       <!-- Towers destroyed -->
       <span class="inline-flex items-center gap-1">
         <span class="t-caption">TWR</span>
-        <span class="text-radiant">{{ teams.radiant.towerKills }}</span
+        <span class="text-chaff">{{ teams.chaff.towerKills }}</span
         ><span class="text-text-muted">/</span
-        ><span class="text-dire">{{ teams.dire.towerKills }}</span>
+        ><span class="text-audit">{{ teams.audit.towerKills }}</span>
       </span>
       <template v-if="ancients">
         <span class="text-border">|</span>
@@ -152,15 +150,13 @@ function corePct(a: AncientState | undefined): number {
         <span class="inline-flex items-center gap-1">
           <span class="t-caption">MAINFRAME</span>
           <span
-            :class="
-              ancients.radiant.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-radiant'
-            "
-            >R {{ corePct(ancients.radiant) }}%</span
+            :class="ancients.chaff.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-chaff'"
+            >R {{ corePct(ancients.chaff) }}%</span
           >
           <span class="text-text-muted">/</span>
           <span
-            :class="ancients.dire.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-dire'"
-            >D {{ corePct(ancients.dire) }}%</span
+            :class="ancients.audit.vulnerable ? 'text-warn animate-pulse font-bold' : 'text-audit'"
+            >D {{ corePct(ancients.audit) }}%</span
           >
         </span>
       </template>

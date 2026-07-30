@@ -11,7 +11,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'TestThread',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'thread',
     zone: 'mid-river',
     hp: 530,
@@ -42,7 +42,7 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'e1',
     name: 'Enemy',
-    team: 'dire',
+    team: 'audit',
     heroId: 'echo',
     hp: 550,
     maxHp: 550,
@@ -63,8 +63,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -211,8 +211,8 @@ describe('Thread Hero', () => {
 
     it('increases shield per ally in zone', () => {
       const player = makePlayer({ level: 1 })
-      const ally1 = makePlayer({ id: 'a1', name: 'Ally1', team: 'radiant' })
-      const ally2 = makePlayer({ id: 'a2', name: 'Ally2', team: 'radiant' })
+      const ally1 = makePlayer({ id: 'a1', name: 'Ally1', team: 'chaff' })
+      const ally2 = makePlayer({ id: 'a2', name: 'Ally2', team: 'chaff' })
       const state = makeState([player, ally1, ally2])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))

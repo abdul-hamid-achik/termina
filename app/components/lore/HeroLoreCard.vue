@@ -12,9 +12,9 @@ defineProps<{
 const roleColor: Record<HeroRole, string> = {
   carry: 'text-gold',
   mage: 'text-ability',
-  assassin: 'text-dire',
-  tank: 'text-radiant',
-  support: 'text-radiant',
+  assassin: 'text-audit',
+  tank: 'text-chaff',
+  support: 'text-chaff',
   offlaner: 'text-ability',
 }
 </script>
@@ -50,7 +50,7 @@ const roleColor: Record<HeroRole, string> = {
          /heroes console to this operative via ?hero=). -->
     <NuxtLink
       :to="`/heroes?hero=${hero.id}`"
-      class="mt-auto pt-1 text-[0.7rem] text-ability no-underline hover:text-radiant"
+      class="mt-auto pt-1 text-[0.7rem] text-ability no-underline hover:text-chaff"
       :aria-label="`Train ${hero.name} in the hero console`"
     >
       &gt; TRAIN {{ hero.name }}

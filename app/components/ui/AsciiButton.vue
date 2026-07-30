@@ -17,9 +17,9 @@ defineEmits<{
     :class="[
       disabled ? 'pointer-events-none cursor-not-allowed opacity-35' : 'cursor-pointer',
       variant === 'primary'
-        ? 'border-radiant hover:bg-radiant/10 hover:shadow-glow-radiant active:bg-radiant active:text-bg-primary'
+        ? 'border-chaff hover:bg-chaff/10 hover:shadow-glow-chaff active:bg-chaff active:text-bg-primary'
         : variant === 'danger'
-          ? 'border-dire hover:bg-dire/10 hover:shadow-glow-dire active:bg-dire active:text-bg-primary'
+          ? 'border-audit hover:bg-audit/10 hover:shadow-glow-audit active:bg-audit active:text-bg-primary'
           : variant === 'ghost'
             ? 'border-transparent hover:border-border'
             : 'border-border bg-transparent text-text-primary hover:border-border-glow hover:bg-border-glow/20 active:bg-text-primary active:text-bg-primary',
@@ -30,11 +30,7 @@ defineEmits<{
     <span
       class="transition-colors duration-100"
       :class="
-        variant === 'primary'
-          ? 'text-radiant'
-          : variant === 'danger'
-            ? 'text-dire'
-            : 'text-text-dim'
+        variant === 'primary' ? 'text-chaff' : variant === 'danger' ? 'text-audit' : 'text-text-dim'
       "
       >[</span
     >
@@ -42,11 +38,7 @@ defineEmits<{
     <span
       class="transition-colors duration-100"
       :class="
-        variant === 'primary'
-          ? 'text-radiant'
-          : variant === 'danger'
-            ? 'text-dire'
-            : 'text-text-dim'
+        variant === 'primary' ? 'text-chaff' : variant === 'danger' ? 'text-audit' : 'text-text-dim'
       "
       >]</span
     >

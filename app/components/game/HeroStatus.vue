@@ -106,7 +106,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
         <span class="t-h2 text-self text-glow-sm t-mono-num">{{ hero.name }}</span>
         <span class="t-caption text-gold t-mono-num">Lv.{{ hero.level }}</span>
         <span class="t-caption text-zone">@ {{ hero.zone }}</span>
-        <span v-if="!hero.alive" class="t-h3 text-dire text-glow anim-glow-pulse">[DEAD]</span>
+        <span v-if="!hero.alive" class="t-h3 text-audit text-glow anim-glow-pulse">[DEAD]</span>
       </div>
     </div>
 
@@ -116,7 +116,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
         <ProgressBar
           :value="hero.hp"
           :max="hero.maxHp"
-          color="radiant"
+          color="chaff"
           :width="16"
           :danger-below="0.25"
           :label="`${hero.name} HP`"
@@ -233,8 +233,8 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
           :key="buff.id"
           class="text-xs"
           :class="{
-            'text-radiant': buff.kind === 'positive',
-            'text-dire': buff.kind === 'negative',
+            'text-chaff': buff.kind === 'positive',
+            'text-audit': buff.kind === 'negative',
             'text-ability': buff.kind === 'neutral',
           }"
           :data-testid="`buff-${buff.id}`"

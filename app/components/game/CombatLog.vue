@@ -131,7 +131,7 @@ function togglePin() {
 const borderColors: Record<CombatLineType, string> = {
   damage: 'border-l-damage',
   healing: 'border-l-healing',
-  kill: 'border-l-dire',
+  kill: 'border-l-audit',
   gold: 'border-l-gold',
   system: 'border-l-system',
   ability: 'border-l-ability',
@@ -144,7 +144,7 @@ function typeColor(type: CombatLineType): string {
   const map: Record<CombatLineType, string> = {
     damage: 'rgb(var(--color-damage))',
     healing: 'rgb(var(--color-healing))',
-    kill: 'rgb(var(--color-dire))',
+    kill: 'rgb(var(--color-audit))',
     gold: 'rgb(var(--color-gold))',
     system: 'rgb(var(--color-system))',
     ability: 'rgb(var(--color-ability))',
@@ -198,7 +198,7 @@ function salienceClasses(s: Salience | undefined, type: CombatLineType): string[
   else if (type === 'objective') out.push('font-semibold')
   switch (s) {
     case 'mine-in':
-      out.push('bg-dire/[0.07]', 'text-text-primary', 'font-semibold')
+      out.push('bg-audit/[0.07]', 'text-text-primary', 'font-semibold')
       break
     case 'mine-out':
       out.push('bg-self/[0.05]', 'text-text-primary')
@@ -300,7 +300,7 @@ function eventAriaLabel(line: CombatLine): string {
             data-testid="tick-recap"
             :aria-label="`Cycle ${beat.tick} recap: ${recapByTick.get(beat.tick)!.text}`"
           >
-            <span v-if="recapByTick.get(beat.tick)!.takenText" class="font-semibold text-dire">
+            <span v-if="recapByTick.get(beat.tick)!.takenText" class="font-semibold text-audit">
               {{ recapByTick.get(beat.tick)!.takenText }}
             </span>
             <span v-if="recapByTick.get(beat.tick)!.dealtText" class="text-self">
@@ -318,7 +318,7 @@ function eventAriaLabel(line: CombatLine): string {
           :class="[borderColors[event.type], ...salienceClasses(event.salience, event.type)]"
           :style="{ animationDelay: `${Math.min(i, 8) * 35}ms` }"
         >
-          <span v-if="event.salience === 'mine-in'" class="mr-1 t-hud-xs font-bold text-dire"
+          <span v-if="event.salience === 'mine-in'" class="mr-1 t-hud-xs font-bold text-audit"
             >&#9656;YOU</span
           >
           <span
@@ -330,7 +330,7 @@ function eventAriaLabel(line: CombatLine): string {
             class="mr-1 t-hud-xs font-bold"
             :class="
               event.type === 'kill'
-                ? 'text-glow-dire'
+                ? 'text-glow-audit'
                 : event.type === 'gold'
                   ? 'text-glow-gold'
                   : ''

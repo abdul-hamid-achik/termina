@@ -82,7 +82,7 @@ interface RunningLine extends CombatLine {
 export function ancientLabel(id: string): string | null {
   if (!id.startsWith('ancient_')) return null
   const team = id.slice('ancient_'.length)
-  if (team === 'radiant' || team === 'dire') {
+  if (team === 'chaff' || team === 'audit') {
     return `the ${FACTION_META[team as TeamId].label} Mainframe`
   }
   return `the ${team} Mainframe`
@@ -96,7 +96,7 @@ export function isStructureTarget(targetId: unknown): boolean {
   )
 }
 
-/** Faction display label from the world lexicon ("radiant" -> "CHAFF"). */
+/** Faction display label from the world lexicon ("chaff" -> "CHAFF"). */
 export function teamLabel(team: string): string {
   return FACTION_META[team as TeamId]?.label ?? team.toUpperCase()
 }

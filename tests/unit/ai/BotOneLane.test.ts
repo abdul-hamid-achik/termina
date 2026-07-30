@@ -23,9 +23,9 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'bot_alpha',
     name: 'bot_alpha',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
-    zone: 'radiant-fountain',
+    zone: 'chaff-fountain',
     hp: 550,
     maxHp: 550,
     mp: 280,
@@ -58,8 +58,8 @@ function oneLaneState(players: Record<string, PlayerState>): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players,
     zones: initializeZoneStates(zones),
@@ -71,7 +71,7 @@ function oneLaneState(players: Record<string, PlayerState>): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     mapId: 'one_lane',
@@ -100,8 +100,8 @@ describe('bots on the one-lane map', () => {
 
   it('forceLane pins every bot to the given lane', () => {
     const players: Record<string, PlayerState> = {
-      bot_alpha: makeBot({ id: 'bot_alpha', name: 'bot_alpha', team: 'radiant', heroId: 'kernel' }),
-      bot_bravo: makeBot({ id: 'bot_bravo', name: 'bot_bravo', team: 'dire', heroId: 'regex' }),
+      bot_alpha: makeBot({ id: 'bot_alpha', name: 'bot_alpha', team: 'chaff', heroId: 'kernel' }),
+      bot_bravo: makeBot({ id: 'bot_bravo', name: 'bot_bravo', team: 'audit', heroId: 'regex' }),
     }
     registerBots(
       GAME_ID,
@@ -113,30 +113,30 @@ describe('bots on the one-lane map', () => {
   })
 
   it('bots never step off the map and still push the lane', () => {
-    const radiantBots = ['bot_alpha', 'bot_bravo'].map((id, i) =>
+    const chaffBots = ['bot_alpha', 'bot_bravo'].map((id, i) =>
       makeBot({
         id,
         name: id,
-        team: 'radiant',
-        zone: 'radiant-fountain',
+        team: 'chaff',
+        zone: 'chaff-fountain',
         heroId: ['echo', 'kernel'][i] ?? 'echo',
       }),
     )
-    const direBots = ['bot_xray', 'bot_yankee'].map((id, i) =>
+    const auditBots = ['bot_xray', 'bot_yankee'].map((id, i) =>
       makeBot({
         id,
         name: id,
-        team: 'dire',
-        zone: 'dire-fountain',
+        team: 'audit',
+        zone: 'audit-fountain',
         heroId: ['regex', 'daemon'][i] ?? 'regex',
       }),
     )
     const players: Record<string, PlayerState> = {}
-    for (const b of [...radiantBots, ...direBots]) players[b.id] = b
+    for (const b of [...chaffBots, ...auditBots]) players[b.id] = b
 
     registerBots(
       GAME_ID,
-      [...radiantBots, ...direBots].map((b) => ({
+      [...chaffBots, ...auditBots].map((b) => ({
         playerId: b.id,
         team: b.team,
         heroId: b.heroId,
@@ -155,7 +155,7 @@ describe('bots on the one-lane map', () => {
       state = result.state
 
       // Invariant: no bot is ever standing in a zone this map doesn't have.
-      for (const b of [...radiantBots, ...direBots]) {
+      for (const b of [...chaffBots, ...auditBots]) {
         const p = state.players[b.id]
         if (p) expect(validZones.has(p.zone)).toBe(true)
       }
@@ -164,11 +164,11 @@ describe('bots on the one-lane map', () => {
       // from ever happening.
       offMapRejections += result.rejectedActions.filter((r) => r.reason.includes('No path')).length
 
-      // Forward progress: a radiant bot reaches the river or the enemy half.
+      // Forward progress: a chaff bot reaches the river or the enemy half.
       if (
-        radiantBots.some((b) => {
+        chaffBots.some((b) => {
           const z = state.players[b.id]?.zone
-          return z === 'mid-river' || z?.endsWith('-dire')
+          return z === 'mid-river' || z?.endsWith('-audit')
         })
       ) {
         crossedFrontier = true

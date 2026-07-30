@@ -18,8 +18,8 @@ import { scaledAncientHp } from './fastGame'
 
 /** The zone each team's Ancient occupies. */
 export const ANCIENT_ZONES: Record<TeamId, string> = {
-  radiant: 'radiant-base',
-  dire: 'dire-base',
+  chaff: 'chaff-base',
+  audit: 'audit-base',
 }
 
 /** Stable target id for an Ancient, used in damage events and targeting. */
@@ -29,19 +29,19 @@ export function ancientTargetId(team: TeamId): string {
 
 /** Parse an ancient target id back to a team, or null if it isn't one. */
 export function parseAncientTargetId(targetId: string): TeamId | null {
-  if (targetId === 'ancient_radiant') return 'radiant'
-  if (targetId === 'ancient_dire') return 'dire'
+  if (targetId === 'ancient_chaff') return 'chaff'
+  if (targetId === 'ancient_audit') return 'audit'
   return null
 }
 
 /** Fresh Ancients for game start. */
-export function initializeAncients(): { radiant: AncientState; dire: AncientState } {
+export function initializeAncients(): { chaff: AncientState; audit: AncientState } {
   // scaledAncientHp is a no-op (returns ANCIENT_HP) unless the dev/test-only
   // TERMINA_TEST_FAST_GAME accelerator is active — see fastGame.ts.
   const hp = scaledAncientHp(ANCIENT_HP)
   return {
-    radiant: { team: 'radiant', hp, maxHp: hp, alive: true, vulnerable: false },
-    dire: { team: 'dire', hp, maxHp: hp, alive: true, vulnerable: false },
+    chaff: { team: 'chaff', hp, maxHp: hp, alive: true, vulnerable: false },
+    audit: { team: 'audit', hp, maxHp: hp, alive: true, vulnerable: false },
   }
 }
 
@@ -65,12 +65,12 @@ export function isAncientVulnerable(state: GameState, team: TeamId): boolean {
  * cheap and self-correcting. Returns the same object when nothing changed.
  */
 export function updateAncientVulnerability(state: GameState): GameState {
-  const radiantVulnerable = isAncientVulnerable(state, 'radiant')
-  const direVulnerable = isAncientVulnerable(state, 'dire')
+  const chaffVulnerable = isAncientVulnerable(state, 'chaff')
+  const auditVulnerable = isAncientVulnerable(state, 'audit')
 
   if (
-    radiantVulnerable === state.ancients.radiant.vulnerable &&
-    direVulnerable === state.ancients.dire.vulnerable
+    chaffVulnerable === state.ancients.chaff.vulnerable &&
+    auditVulnerable === state.ancients.audit.vulnerable
   ) {
     return state
   }
@@ -78,8 +78,8 @@ export function updateAncientVulnerability(state: GameState): GameState {
   return {
     ...state,
     ancients: {
-      radiant: { ...state.ancients.radiant, vulnerable: radiantVulnerable },
-      dire: { ...state.ancients.dire, vulnerable: direVulnerable },
+      chaff: { ...state.ancients.chaff, vulnerable: chaffVulnerable },
+      audit: { ...state.ancients.audit, vulnerable: auditVulnerable },
     },
   }
 }
@@ -113,7 +113,7 @@ export function resolveAncientAttack(
     return { state, events: [], rejected: 'Unknown attacker' }
   }
 
-  const targetTeam: TeamId = attackerTeam === 'radiant' ? 'dire' : 'radiant'
+  const targetTeam: TeamId = attackerTeam === 'chaff' ? 'audit' : 'chaff'
   const ancient = state.ancients[targetTeam]
 
   if (!ancient.alive) {
@@ -167,8 +167,8 @@ export function resolveAncientAttack(
 /** A team wins when the enemy Ancient is destroyed. */
 export function checkAncientWin(state: GameState): TeamId | null {
   if (!state.ancients) return null
-  if (!state.ancients.radiant.alive) return 'dire'
-  if (!state.ancients.dire.alive) return 'radiant'
+  if (!state.ancients.chaff.alive) return 'audit'
+  if (!state.ancients.audit.alive) return 'chaff'
   return null
 }
 

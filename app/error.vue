@@ -33,12 +33,12 @@ function goHome() {
     <pre
       aria-hidden="true"
       class="m-0 text-[0.6rem] leading-[1.15] md:text-[0.85rem]"
-      :class="is404 ? 'text-radiant text-glow' : 'text-dire text-glow-dire'"
+      :class="is404 ? 'text-chaff text-glow' : 'text-audit text-glow-audit'"
       >{{ code }}</pre
     >
 
     <div class="flex flex-col items-center gap-2">
-      <p class="text-base font-bold tracking-widest" :class="is404 ? 'text-radiant' : 'text-dire'">
+      <p class="text-base font-bold tracking-widest" :class="is404 ? 'text-chaff' : 'text-audit'">
         <span aria-hidden="true">&gt;_</span> ERROR {{ code }} — {{ headline }}
       </p>
       <p class="max-w-[460px] text-[0.82rem] text-text-dim">{{ detail }}</p>
@@ -52,7 +52,7 @@ function goHome() {
     </div>
 
     <div class="text-[0.8rem]">
-      <span class="font-bold text-radiant">&gt;</span>
+      <span class="font-bold text-chaff">&gt;</span>
       <span class="ml-1 text-text-dim">retry_</span>
       <span aria-hidden="true" class="animate-blink">█</span>
     </div>

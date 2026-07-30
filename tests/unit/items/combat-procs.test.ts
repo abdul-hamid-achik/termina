@@ -47,7 +47,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
     hp: maxHp,
@@ -81,8 +81,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -94,7 +94,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: initializeRoshan(),
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -137,8 +137,8 @@ describe('Item combat procs — crit multipliers', () => {
   function duel(item: string) {
     return makeGameState({
       players: {
-        p1: makePlayer({ id: 'p1', team: 'radiant', items: [item, null, null, null, null, null] }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Enemy' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', items: [item, null, null, null, null, null] }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
   }
@@ -201,10 +201,10 @@ describe('Item combat procs — on-hit effects', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           items: ['monkey_king_bar', null, null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Enemy' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
     const start = state.players['p2']!.hp
@@ -235,10 +235,10 @@ describe('Item combat procs — on-hit effects', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           items: ['desolator', null, null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Enemy' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
     const start = state.players['p2']!.hp
@@ -262,11 +262,11 @@ describe('Item combat procs — on-hit effects', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             items: ['maelstrom', null, null, null, null, null],
           }),
-          p2: makePlayer({ id: 'p2', team: 'dire', name: 'Primary' }),
-          p3: makePlayer({ id: 'p3', team: 'dire', name: 'Bystander' }),
+          p2: makePlayer({ id: 'p2', team: 'audit', name: 'Primary' }),
+          p3: makePlayer({ id: 'p3', team: 'audit', name: 'Bystander' }),
         },
       })
       const startP3 = state.players['p3']!.hp
@@ -295,10 +295,10 @@ describe('Item combat procs — on-hit effects', () => {
     for (let i = 0; i < 50; i++) {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'radiant' }),
+          p1: makePlayer({ id: 'p1', team: 'chaff' }),
           p2: makePlayer({
             id: 'p2',
-            team: 'dire',
+            team: 'audit',
             name: 'Tank',
             items: ['vanguard', null, null, null, null, null],
           }),
@@ -322,10 +322,10 @@ describe('Item combat procs — on-hit effects', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           items: ['assault_cuirass', null, null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Enemy' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
     const start = withAura.players['p2']!.hp
@@ -345,11 +345,11 @@ describe('Item combat procs — on-hit effects', () => {
     // assault_cuirass — raising p2's defense by 5, so p2 takes LESS damage.
     const withAllyAura = makeGameState({
       players: {
-        p1: makePlayer({ id: 'p1', team: 'radiant', name: 'Attacker' }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Victim' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', name: 'Attacker' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Victim' }),
         p3: makePlayer({
           id: 'p3',
-          team: 'dire',
+          team: 'audit',
           name: 'AuraAlly',
           items: ['assault_cuirass', null, null, null, null, null],
         }),
@@ -372,14 +372,14 @@ describe('Item combat procs — on-hit effects', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           name: 'Attacker',
           items: ['assault_cuirass', null, null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Victim' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Victim' }),
         p3: makePlayer({
           id: 'p3',
-          team: 'dire',
+          team: 'audit',
           name: 'AuraAlly',
           items: ['assault_cuirass', null, null, null, null, null],
         }),
@@ -401,10 +401,10 @@ describe('Item actives — direct effects', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           items: ['dagon', null, null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Enemy' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
     const start = state.players['p2']!.hp
@@ -429,10 +429,10 @@ describe('Item actives — direct effects', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           items: ['ethereal_blade', 'dagon', null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Enemy' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
     const r1 = run(s1, [
@@ -473,7 +473,7 @@ describe('Item actives — forced movement', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           zone: 'mid-river',
           items: ['force_staff', null, null, null, null, null],
         }),
@@ -482,11 +482,11 @@ describe('Item actives — forced movement', () => {
     const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'force_staff' } }])
     const newZone = r.state.players['p1']!.zone
     expect(newZone).not.toBe('mid-river')
-    expect(['mid-t1-rad', 'mid-t1-dire', 'rune-top', 'rune-bot']).toContain(newZone)
-    // Disengage, not random: the push lands strictly CLOSER to the radiant
+    expect(['mid-t1-rad', 'mid-t1-audit', 'rune-top', 'rune-bot']).toContain(newZone)
+    // Disengage, not random: the push lands strictly CLOSER to the chaff
     // fountain than mid-river was (an earlier version shoved a random direction).
-    expect(getDistance(newZone, 'radiant-fountain')).toBeLessThan(
-      getDistance('mid-river', 'radiant-fountain'),
+    expect(getDistance(newZone, 'chaff-fountain')).toBeLessThan(
+      getDistance('mid-river', 'chaff-fountain'),
     )
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_force_staff')).toBe(true)
   })
@@ -496,11 +496,11 @@ describe('Item actives — forced movement', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           zone: 'mid-river',
           items: ['hurricane_pike', null, null, null, null, null],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'Enemy', zone: 'mid-river' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy', zone: 'mid-river' }),
       },
     })
     const r = run(state, [
@@ -512,9 +512,9 @@ describe('Item actives — forced movement', () => {
     const newZone = r.state.players['p1']!.zone
     expect(newZone).not.toBe('mid-river')
     // Disengage toward home, not a random direction: the push lands strictly
-    // CLOSER to the radiant fountain than mid-river (and never onto the target).
-    expect(getDistance(newZone, 'radiant-fountain')).toBeLessThan(
-      getDistance('mid-river', 'radiant-fountain'),
+    // CLOSER to the chaff fountain than mid-river (and never onto the target).
+    expect(getDistance(newZone, 'chaff-fountain')).toBeLessThan(
+      getDistance('mid-river', 'chaff-fountain'),
     )
     // target stays put (push self away).
     expect(r.state.players['p2']!.zone).toBe('mid-river')
@@ -577,7 +577,7 @@ describe('Aegis pickup through resolveActions (was dropping ground-removal + eve
       aegis: aegisGround,
       players: {
         p1: makePlayer({ id: 'p1', zone: 'roshan-pit' }),
-        p2: makePlayer({ id: 'p2', team: 'dire', zone: 'roshan-pit' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', zone: 'roshan-pit' }),
       },
     })
     const r = run(state, [
@@ -596,7 +596,7 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
   const shiva = (overrides = {}) =>
     makePlayer({
       id: 'p1',
-      team: 'radiant',
+      team: 'chaff',
       items: ['shivas_guard', null, null, null, null, null],
       ...overrides,
     })
@@ -606,8 +606,8 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
     const state = makeGameState({
       players: {
         p1: shiva(),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'E1', zone: 'mid-river' }),
-        p3: makePlayer({ id: 'p3', team: 'dire', name: 'E2', zone: 'mid-river' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'E1', zone: 'mid-river' }),
+        p3: makePlayer({ id: 'p3', team: 'audit', name: 'E2', zone: 'mid-river' }),
       },
     })
     const [s2, s3] = [state.players['p2']!.hp, state.players['p3']!.hp]
@@ -623,8 +623,8 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
     const state = makeGameState({
       players: {
         p1: shiva(),
-        ally: makePlayer({ id: 'ally', team: 'radiant', zone: 'mid-river' }),
-        far: makePlayer({ id: 'far', team: 'dire', zone: 'dire-base' }),
+        ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-river' }),
+        far: makePlayer({ id: 'far', team: 'audit', zone: 'audit-base' }),
       },
     })
     const [allyHp, farHp] = [state.players['ally']!.hp, state.players['far']!.hp]
@@ -639,7 +639,7 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
         p1: shiva(),
         bkb: makePlayer({
           id: 'bkb',
-          team: 'dire',
+          team: 'audit',
           name: 'Immune',
           zone: 'mid-river',
           buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'black_king_bar' }],
@@ -660,7 +660,7 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
       makeGameState({
         players: {
           p1: shiva(),
-          e: makePlayer({ id: 'e', team: 'dire', name: 'E', zone: 'mid-river', buffs }),
+          e: makePlayer({ id: 'e', team: 'audit', name: 'E', zone: 'mid-river', buffs }),
         },
       })
     const plain = mk([])
@@ -674,17 +674,17 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
 })
 
 describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
-  const moveDire = { playerId: 'p1', command: { type: 'move' as const, zone: 'mid-t1-dire' } }
+  const moveAudit = { playerId: 'p1', command: { type: 'move' as const, zone: 'mid-t1-audit' } }
 
   it('Double Damage rune (dd) doubles basic-attack damage', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 9999, source: 'rune_dd' }],
         }),
-        p2: makePlayer({ id: 'p2', team: 'dire', name: 'E' }),
+        p2: makePlayer({ id: 'p2', team: 'audit', name: 'E' }),
       },
     })
     const ddDmg = state.players['p2']!.hp - run(state, [attack('p1', 'E')]).state.players['p2']!.hp
@@ -698,7 +698,7 @@ describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           zone: 'mid-river',
           buffs: [
             { id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' },
@@ -708,7 +708,7 @@ describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
       },
     })
     for (let i = 0; i < 20; i++) {
-      expect(run(state, [moveDire]).state.players['p1']!.zone).toBe('mid-t1-dire')
+      expect(run(state, [moveAudit]).state.players['p1']!.zone).toBe('mid-t1-audit')
     }
   })
 
@@ -724,15 +724,15 @@ describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            team: 'radiant',
+            team: 'chaff',
             zone: 'mid-river',
             buffs: [{ id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' }],
           }),
         },
       })
-      const zone = run(state, [moveDire]).state.players['p1']!.zone
+      const zone = run(state, [moveAudit]).state.players['p1']!.zone
       if (zone === 'mid-river') failedAtLeastOnce = true
-      if (zone === 'mid-t1-dire') passedAtLeastOnce = true
+      if (zone === 'mid-t1-audit') passedAtLeastOnce = true
     }
     expect(failedAtLeastOnce).toBe(true)
     expect(passedAtLeastOnce).toBe(true)
@@ -745,7 +745,7 @@ describe('Refresher Orb active resets all ability cooldowns', () => {
       players: {
         p1: makePlayer({
           id: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           items: ['refresher_orb', null, null, null, null, null],
           cooldowns: { q: 5, w: 3, e: 8, r: 20 },
         }),

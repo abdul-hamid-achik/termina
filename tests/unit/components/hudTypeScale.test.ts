@@ -72,7 +72,7 @@ describe('HUD type floor (W2-7)', () => {
           {
             id: 'e1',
             name: 'enemy_one',
-            team: 'dire',
+            team: 'audit',
             heroId: 'null_ref',
             zone: 'mid-river',
             hp: 500,

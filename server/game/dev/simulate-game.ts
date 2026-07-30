@@ -56,16 +56,16 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
   const gameId = `sim_${matchIdx}_${Math.random().toString(36).slice(2, 8)}`
   const stateManager = createInMemoryStateManager()
 
-  const radiantHeroes = pickHeroes(5, new Set())
-  const direHeroes = pickHeroes(5, new Set(radiantHeroes))
+  const chaffHeroes = pickHeroes(5, new Set())
+  const auditHeroes = pickHeroes(5, new Set(chaffHeroes))
 
   const players = [
-    ...radiantHeroes.map((heroId, i) => ({
+    ...chaffHeroes.map((heroId, i) => ({
       playerId: `bot_r${i}`,
-      team: 'radiant' as TeamId,
+      team: 'chaff' as TeamId,
       heroId,
     })),
-    ...direHeroes.map((heroId, i) => ({ playerId: `bot_d${i}`, team: 'dire' as TeamId, heroId })),
+    ...auditHeroes.map((heroId, i) => ({ playerId: `bot_d${i}`, team: 'audit' as TeamId, heroId })),
   ]
 
   let state = Effect.runSync(
@@ -75,13 +75,13 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
     ),
   )
   state = { ...state, phase: 'playing' }
-  // SIM_IDLE_RADIANT=1 leaves the first radiant slot as an idle (non-bot)
+  // SIM_IDLE_CHAFF=1 leaves the first chaff slot as an idle (non-bot)
   // player who never submits actions — mirrors the e2e composition of one
   // AFK human + nine bots.
-  const idleRadiant = process.env.SIM_IDLE_RADIANT === '1'
-  registerBots(gameId, idleRadiant ? players.filter((p) => p.playerId !== 'bot_r0') : players)
+  const idleChaff = process.env.SIM_IDLE_CHAFF === '1'
+  registerBots(gameId, idleChaff ? players.filter((p) => p.playerId !== 'bot_r0') : players)
 
-  console.log(`\n=== Match ${matchIdx + 1}: ${radiantHeroes.join(',')} vs ${direHeroes.join(',')}`)
+  console.log(`\n=== Match ${matchIdx + 1}: ${chaffHeroes.join(',')} vs ${auditHeroes.join(',')}`)
 
   const checkpoints: number[] = [75, 150, 300, 450, 600, 900, 1200] // 5,10,20,30,40,60,80 min
   let totalKills = 0
@@ -89,7 +89,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
   while (state.tick < maxTicks && state.phase !== 'ended') {
     const result = Effect.runSync(processTick(gameId, state))
     state = result.state
-    totalKills = state.teams.radiant.kills + state.teams.dire.kills
+    totalKills = state.teams.chaff.kills + state.teams.audit.kills
 
     if (process.env.SIM_DUMP_ZONES === '1' && state.tick % 50 === 0) {
       console.log(
@@ -107,15 +107,15 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
     }
 
     if (checkpoints.includes(state.tick)) {
-      const rad = teamStats(state, 'radiant')
-      const dire = teamStats(state, 'dire')
+      const rad = teamStats(state, 'chaff')
+      const audit = teamStats(state, 'audit')
       console.log(
-        `  [${fmtMin(state.tick)}] kills ${rad.kills}:${dire.kills} | ` +
-          `networth ${rad.netWorth}:${dire.netWorth} | ` +
-          `lvl ${rad.avgLevel.toFixed(1)}:${dire.avgLevel.toFixed(1)} | ` +
-          `towers ${rad.towersAlive}:${dire.towersAlive} | ` +
-          `creeps ${rad.creeps}:${dire.creeps} | ` +
-          `ancient ${rad.ancientHp}:${dire.ancientHp}`,
+        `  [${fmtMin(state.tick)}] kills ${rad.kills}:${audit.kills} | ` +
+          `networth ${rad.netWorth}:${audit.netWorth} | ` +
+          `lvl ${rad.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
+          `towers ${rad.towersAlive}:${audit.towersAlive} | ` +
+          `creeps ${rad.creeps}:${audit.creeps} | ` +
+          `ancient ${rad.ancientHp}:${audit.ancientHp}`,
       )
       if (process.env.SIM_DUMP_ZONES === '1') {
         for (const p of Object.values(state.players)) {
@@ -135,28 +135,28 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
     }
   }
 
-  const rad = teamStats(state, 'radiant')
-  const dire = teamStats(state, 'dire')
+  const rad = teamStats(state, 'chaff')
+  const audit = teamStats(state, 'audit')
   const winner =
-    state.winner ?? (!rad.ancientAlive ? 'dire' : !dire.ancientAlive ? 'radiant' : null)
+    state.winner ?? (!rad.ancientAlive ? 'audit' : !audit.ancientAlive ? 'chaff' : null)
 
   console.log(
     winner
-      ? `  RESULT: ${winner} wins at ${fmtMin(state.tick)} (tick ${state.tick}) — ancient destroyed: ${!rad.ancientAlive ? 'radiant' : !dire.ancientAlive ? 'dire' : 'none (surrender?)'}`
+      ? `  RESULT: ${winner} wins at ${fmtMin(state.tick)} (tick ${state.tick}) — ancient destroyed: ${!rad.ancientAlive ? 'chaff' : !audit.ancientAlive ? 'audit' : 'none (surrender?)'}`
       : `  RESULT: NO WINNER after ${fmtMin(state.tick)} — game stalled`,
   )
   console.log(
-    `  final: kills ${rad.kills}:${dire.kills} (${totalKills} total) | ` +
-      `deaths ${rad.deaths + dire.deaths} total | ` +
-      `networth ${rad.netWorth}:${dire.netWorth} | towers ${rad.towersAlive}:${dire.towersAlive} | ` +
-      `creeps ${rad.creeps}:${dire.creeps} | ancient ${rad.ancientHp}:${dire.ancientHp}`,
+    `  final: kills ${rad.kills}:${audit.kills} (${totalKills} total) | ` +
+      `deaths ${rad.deaths + audit.deaths} total | ` +
+      `networth ${rad.netWorth}:${audit.netWorth} | towers ${rad.towersAlive}:${audit.towersAlive} | ` +
+      `creeps ${rad.creeps}:${audit.creeps} | ancient ${rad.ancientHp}:${audit.ancientHp}`,
   )
 
   // K/D/A spread per player
   for (const p of Object.values(state.players)) {
     const items = p.items.filter(Boolean).join(',') || '-'
     console.log(
-      `    ${p.team === 'radiant' ? 'R' : 'D'} ${p.heroId?.padEnd(10)} lvl ${String(p.level).padStart(2)} ` +
+      `    ${p.team === 'chaff' ? 'R' : 'D'} ${p.heroId?.padEnd(10)} lvl ${String(p.level).padStart(2)} ` +
         `${p.kills}/${p.deaths}/${p.assists} nw ${playerNetWorth(p)} [${items}]`,
     )
   }
@@ -164,7 +164,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
   cleanupGame(gameId)
   Effect.runSync(stateManager.deleteGame(gameId))
 
-  return { winner, ticks: state.tick, radiantHeroes, direHeroes }
+  return { winner, ticks: state.tick, chaffHeroes, auditHeroes }
 }
 
 const results: SimResult[] = []
@@ -177,8 +177,8 @@ if (matches > 1) {
   const s = summarizeSimResults(results)
   console.log(`\n══ BALANCE SUMMARY (${s.matches} matches) ══`)
   console.log(
-    `  side win-rate: radiant ${s.winRate.radiant.toFixed(0)}% / dire ${s.winRate.dire.toFixed(0)}%` +
-      `  (R ${s.wins.radiant} · D ${s.wins.dire} · stalled ${s.wins.none})` +
+    `  side win-rate: chaff ${s.winRate.chaff.toFixed(0)}% / audit ${s.winRate.audit.toFixed(0)}%` +
+      `  (R ${s.wins.chaff} · D ${s.wins.audit} · stalled ${s.wins.none})` +
       `  ${s.sideBiasSignificant ? '← SIGNIFICANT (likely real)' : '(within normal variance — run more)'}`,
   )
   console.log(

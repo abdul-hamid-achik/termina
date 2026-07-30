@@ -250,7 +250,7 @@ describe('HeroStatus buff strip', () => {
 
     // The enemy debuff renders in the danger colour, not the generic buff colour.
     const veil = wrapper.find('[data-testid="buff-veil_discord"]')
-    expect(veil.classes()).toContain('text-dire')
+    expect(veil.classes()).toContain('text-audit')
 
     // The item-cooldown bookkeeping marker never reaches the strip.
     expect(wrapper.find('[data-testid="buff-item_cd_black_king_bar"]').exists()).toBe(false)

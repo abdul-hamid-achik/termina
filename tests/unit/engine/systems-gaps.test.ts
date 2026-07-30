@@ -25,7 +25,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-rad',
     hp: 500,
@@ -57,8 +57,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -91,7 +91,7 @@ describe('systems-gaps: BUYBACK success', () => {
       hp: 0,
       mp: 0,
       gold: 2000,
-      zone: 'dire-base',
+      zone: 'audit-base',
     })
     const cost = calculateBuybackCost(player) // 100 + 125 + 20 = 245
     expect(cost).toBe(245)
@@ -106,7 +106,7 @@ describe('systems-gaps: BUYBACK success', () => {
     expect(after.hp).toBe(after.maxHp)
     expect(after.mp).toBe(after.maxMp)
     expect(after.respawnTick).toBeNull()
-    expect(after.zone).toBe('radiant-fountain')
+    expect(after.zone).toBe('chaff-fountain')
     expect(after.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_TICKS)
   })
 
@@ -269,16 +269,16 @@ describe('systems-gaps: VISION gaps', () => {
   })
 
   it("'revealed' buff pierces fog: an enemy in an unseen zone is shown unfogged", () => {
-    // enemy sits in dire-base (not in radiant viewer's vision), carries a
-    // 'revealed' buff sourced from a radiant teammate.
+    // enemy sits in audit-base (not in chaff viewer's vision), carries a
+    // 'revealed' buff sourced from a chaff teammate.
     const state = makeGameState({
       timeOfDay: 'day',
       players: {
-        p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-t1-rad' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-rad' }),
         e1: makePlayer({
           id: 'e1',
-          team: 'dire',
-          zone: 'dire-base',
+          team: 'audit',
+          zone: 'audit-base',
           name: 'RevealedEnemy',
           hp: 321,
           buffs: [{ id: 'revealed', stacks: 1, ticksRemaining: 5, source: 'p1' }],
@@ -290,15 +290,21 @@ describe('systems-gaps: VISION gaps', () => {
     const enemy = filtered.players['e1']!
     expect('fogged' in enemy).toBe(false)
     expect((enemy as PlayerState).hp).toBe(321)
-    expect(filtered.visibleZones).toContain('dire-base')
+    expect(filtered.visibleZones).toContain('audit-base')
   })
 
   it('without the revealed buff the same far enemy stays fogged', () => {
     const state = makeGameState({
       timeOfDay: 'day',
       players: {
-        p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-t1-rad' }),
-        e1: makePlayer({ id: 'e1', team: 'dire', zone: 'dire-base', name: 'HiddenEnemy', hp: 321 }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-t1-rad' }),
+        e1: makePlayer({
+          id: 'e1',
+          team: 'audit',
+          zone: 'audit-base',
+          name: 'HiddenEnemy',
+          hp: 321,
+        }),
       },
     })
     const filtered = filterStateForPlayer(state, 'p1')
@@ -311,9 +317,9 @@ describe('systems-gaps: VISION gaps', () => {
     const zones = initializeZoneStates()
     const adjacentZone = zones['mid-river']!.id
     // pick a real neighbor of mid-river
-    const neighbor = 'mid-t1-dire'
+    const neighbor = 'mid-t1-audit'
     zones[adjacentZone]!.wards.push({
-      team: 'radiant',
+      team: 'chaff',
       placedTick: 0,
       expiryTick: 100,
       type: 'sentry',
@@ -324,10 +330,10 @@ describe('systems-gaps: VISION gaps', () => {
       players: {
         // viewer adjacent so the enemy zone is in the visible set (true-sight only
         // strips the invis fog; it does not by itself add the zone to vision)
-        p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'mid-river' }),
+        p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' }),
         e1: makePlayer({
           id: 'e1',
-          team: 'dire',
+          team: 'audit',
           zone: neighbor,
           name: 'InvisAdj',
           hp: 277,

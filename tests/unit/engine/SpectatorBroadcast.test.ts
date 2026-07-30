@@ -15,16 +15,16 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: {
-        id: 'radiant',
+      chaff: {
+        id: 'chaff',
         kills: 0,
         towerKills: 0,
         gold: 0,
         glyphUsedTick: null,
         glyphCooldown: 0,
       },
-      dire: {
-        id: 'dire',
+      audit: {
+        id: 'audit',
         kills: 0,
         towerKills: 0,
         gold: 0,
@@ -41,7 +41,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -69,9 +69,9 @@ describe('filterStateForSpectator', () => {
         p1: {
           id: 'p1',
           name: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           heroId: 'echo',
-          zone: 'radiant-fountain',
+          zone: 'chaff-fountain',
           hp: 1000,
           maxHp: 1000,
           mp: 100,

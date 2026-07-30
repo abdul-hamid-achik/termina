@@ -6,7 +6,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Regex',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'regex',
     zone: 'mid-river',
     hp: 450,
@@ -40,8 +40,8 @@ function makeState(players: PlayerState[], tick: number): GameState {
     tick,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: map,
     zones: { 'mid-river': { id: 'mid-river', wards: [], creeps: [] } },
@@ -66,7 +66,7 @@ function castEvent(playerId: string, targetId: string, tick: number, damage: num
 describe('Regex passive: Pattern Cache', () => {
   it('FIRST cast on a target deals NO bonus and arms the cache', () => {
     const player = makePlayer()
-    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'dire', heroId: 'echo' })
+    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'audit', heroId: 'echo' })
     const state = makeState([player, enemy], 10)
 
     const after = resolveHeroPassive(state, 'p1', castEvent('p1', 'e1', 10, 100))
@@ -82,7 +82,7 @@ describe('Regex passive: Pattern Cache', () => {
   })
 
   it('SECOND cast on the SAME target within 3 ticks deals +15% bonus magical damage', () => {
-    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'dire', heroId: 'echo', level: 1 })
+    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'audit', heroId: 'echo', level: 1 })
 
     // First cast arms the cache at tick 10.
     const armed = resolveHeroPassive(
@@ -114,8 +114,8 @@ describe('Regex passive: Pattern Cache', () => {
   })
 
   it('does NOT bonus when the second cast targets a DIFFERENT hero', () => {
-    const e1 = makePlayer({ id: 'e1', name: 'E1', team: 'dire', heroId: 'echo' })
-    const e2 = makePlayer({ id: 'e2', name: 'E2', team: 'dire', heroId: 'echo' })
+    const e1 = makePlayer({ id: 'e1', name: 'E1', team: 'audit', heroId: 'echo' })
+    const e2 = makePlayer({ id: 'e2', name: 'E2', team: 'audit', heroId: 'echo' })
 
     const armed = resolveHeroPassive(
       makeState([makePlayer(), e1, e2], 10),
@@ -132,8 +132,8 @@ describe('Regex passive: Pattern Cache', () => {
     // 999, so after targeting a second hero the cache held two buffs and find()
     // read the stale first one — the +15% PERMANENTLY stopped firing. Now the
     // cache tracks the latest target, so repeating a target re-arms + bonuses.
-    const e1 = makePlayer({ id: 'e1', name: 'E1', team: 'dire', heroId: 'echo', level: 1 })
-    const e2 = makePlayer({ id: 'e2', name: 'E2', team: 'dire', heroId: 'echo', level: 1 })
+    const e1 = makePlayer({ id: 'e1', name: 'E1', team: 'audit', heroId: 'echo', level: 1 })
+    const e2 = makePlayer({ id: 'e2', name: 'E2', team: 'audit', heroId: 'echo', level: 1 })
 
     let state = makeState([makePlayer(), e1, e2], 10)
     state = resolveHeroPassive(state, 'p1', castEvent('p1', 'e1', 10, 100)) // arm on e1
@@ -148,7 +148,7 @@ describe('Regex passive: Pattern Cache', () => {
   })
 
   it('does NOT bonus when the second cast is MORE than 3 ticks later', () => {
-    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'dire', heroId: 'echo' })
+    const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'audit', heroId: 'echo' })
     const armed = resolveHeroPassive(
       makeState([makePlayer(), enemy], 10),
       'p1',

@@ -26,22 +26,22 @@ describe('formatGameMode', () => {
 
 describe('matchResult', () => {
   it('is a Victory when the winner is the player team', () => {
-    expect(matchResult('radiant', 'radiant')).toBe('Victory')
-    expect(matchResult('dire', 'dire')).toBe('Victory')
+    expect(matchResult('chaff', 'chaff')).toBe('Victory')
+    expect(matchResult('audit', 'audit')).toBe('Victory')
   })
 
   it('is a Defeat when the winner is the other team', () => {
-    expect(matchResult('radiant', 'dire')).toBe('Defeat')
-    expect(matchResult('dire', 'radiant')).toBe('Defeat')
+    expect(matchResult('chaff', 'audit')).toBe('Defeat')
+    expect(matchResult('audit', 'chaff')).toBe('Defeat')
   })
 
   it('is In Progress when there is no winner yet', () => {
-    expect(matchResult(null, 'radiant')).toBe('In Progress')
-    expect(matchResult(undefined, 'dire')).toBe('In Progress')
+    expect(matchResult(null, 'chaff')).toBe('In Progress')
+    expect(matchResult(undefined, 'audit')).toBe('In Progress')
   })
 
   it('does not guess a result when the player team is unknown', () => {
-    expect(matchResult('radiant', null)).toBe('In Progress')
-    expect(matchResult('dire', undefined)).toBe('In Progress')
+    expect(matchResult('chaff', null)).toBe('In Progress')
+    expect(matchResult('audit', undefined)).toBe('In Progress')
   })
 })

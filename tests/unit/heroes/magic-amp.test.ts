@@ -22,7 +22,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Test',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'ping',
     zone: 'mid-river',
     hp: 2000,
@@ -58,8 +58,8 @@ function makeState(players: PlayerState[]): GameState {
     tick: 10,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0 },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: { 'mid-river': { id: 'mid-river', wards: [], creeps: [] } },
@@ -109,8 +109,8 @@ describe('dealAbilityDamage', () => {
 
 describe('end-to-end: Ping ICMP Echo (magical Q)', () => {
   function damageDealtTo(casterItems: (string | null)[], targetItems: (string | null)[]): number {
-    const caster = makePlayer({ id: 'c', team: 'radiant', heroId: 'ping', items: casterItems })
-    const victim = makePlayer({ id: 'v', team: 'dire', heroId: 'echo', items: targetItems })
+    const caster = makePlayer({ id: 'c', team: 'chaff', heroId: 'ping', items: casterItems })
+    const victim = makePlayer({ id: 'v', team: 'audit', heroId: 'echo', items: targetItems })
     const state = makeState([caster, victim])
     const result = Effect.runSync(resolveAbility(state, 'c', 'q', { kind: 'hero', name: 'v' }))
     return victim.hp - result.state.players['v']!.hp

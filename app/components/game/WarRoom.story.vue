@@ -13,7 +13,7 @@ function player(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
     hp: 520,
@@ -53,43 +53,43 @@ function base(rosterExpanded = true) {
   store.allPlayers = {
     p1: player(),
     p2: player({ id: 'p2', name: 'Ally', heroId: 'kernel', zone: 'top-river' }),
-    e1: player({ id: 'e1', name: 'Enemy', team: 'dire', heroId: 'daemon', zone: 'mid-river' }),
+    e1: player({ id: 'e1', name: 'Enemy', team: 'audit', heroId: 'daemon', zone: 'mid-river' }),
   }
   return store
 }
 
-// Mid game, Radiant pulling ahead on net worth, Roshan up.
+// Mid game, Chaff pulling ahead on net worth, Roshan up.
 function seedAhead() {
   const store = base()
   store.tick = 240
   store.timeOfDay = 'day'
   store.netWorthHistory = reactive({
-    radiant: [3200, 3400, 3800, 4200, 4600, 5100],
-    dire: [3100, 3300, 3500, 3700, 3900, 4150],
+    chaff: [3200, 3400, 3800, 4200, 4600, 5100],
+    audit: [3100, 3300, 3500, 3700, 3900, 4150],
   })
   store.roshan = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
 }
 
-// Radiant losing the gold race, Roshan at full (uncontested by us).
+// Chaff losing the gold race, Roshan at full (uncontested by us).
 function seedBehind() {
   const store = base()
   store.tick = 360
   store.timeOfDay = 'day'
   store.netWorthHistory = reactive({
-    radiant: [3200, 3100, 2900, 2700, 2500, 2300],
-    dire: [3100, 3500, 4100, 4900, 5600, 6400],
+    chaff: [3200, 3100, 2900, 2700, 2500, 2300],
+    audit: [3100, 3500, 4100, 4900, 5600, 6400],
   })
   store.roshan = { alive: true, hp: 5000, maxHp: 5000, deathTick: null }
 }
 
-// Late game, night, big Radiant lead, Roshan already taken.
+// Late game, night, big Chaff lead, Roshan already taken.
 function seedLateGame() {
   const store = base()
   store.tick = 600
   store.timeOfDay = 'night'
   store.netWorthHistory = reactive({
-    radiant: [5100, 5600, 6200, 6900, 7500, 8200],
-    dire: [4150, 4400, 4700, 5000, 5300, 5600],
+    chaff: [5100, 5600, 6200, 6900, 7500, 8200],
+    audit: [4150, 4400, 4700, 5000, 5300, 5600],
   })
   store.roshan = { alive: false, hp: 0, maxHp: 5000, deathTick: 560 }
 }
@@ -100,8 +100,8 @@ function seedCollapsed() {
   store.tick = 240
   store.timeOfDay = 'day'
   store.netWorthHistory = reactive({
-    radiant: [3200, 3400, 3800, 4200, 4600, 5100],
-    dire: [3100, 3300, 3500, 3700, 3900, 4150],
+    chaff: [3200, 3400, 3800, 4200, 4600, 5100],
+    audit: [3100, 3300, 3500, 3700, 3900, 4150],
   })
   store.roshan = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
 }
@@ -109,13 +109,13 @@ function seedCollapsed() {
 
 <template>
   <Story title="Game/WarRoom">
-    <Variant title="radiant ahead" :setup-app="seedAhead">
+    <Variant title="chaff ahead" :setup-app="seedAhead">
       <div class="bg-bg-primary p-2" style="width: 320px">
         <WarRoom />
       </div>
     </Variant>
 
-    <Variant title="radiant behind" :setup-app="seedBehind">
+    <Variant title="chaff behind" :setup-app="seedBehind">
       <div class="bg-bg-primary p-2" style="width: 320px">
         <WarRoom />
       </div>

@@ -18,23 +18,23 @@ describe('standing attack orders', () => {
     await game.patch((s) => ({
       ...s,
       tick: 60,
-      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-dire' } },
+      players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
     }))
 
     const towerHits = () =>
       game.lastEvents.filter(
-        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === 'tower_mid-t1-dire',
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === 'tower_mid-t1-audit',
       ).length
 
-    game.submit({ type: 'attack', target: { kind: 'tower', zone: 'mid-t1-dire' } })
+    game.submit({ type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } })
     await game.tick()
     expect(towerHits()).toBe(1)
-    expect((await game.me()).attackTarget).toEqual({ kind: 'tower', zone: 'mid-t1-dire' })
+    expect((await game.me()).attackTarget).toEqual({ kind: 'tower', zone: 'mid-t1-audit' })
 
     // Nothing submitted this tick — the order carries itself.
     await game.tick()
     expect(towerHits()).toBe(1)
-    expect((await game.me()).attackTarget).toEqual({ kind: 'tower', zone: 'mid-t1-dire' })
+    expect((await game.me()).attackTarget).toEqual({ kind: 'tower', zone: 'mid-t1-audit' })
   })
 
   it('last-hitting stays manual — a creep attack sets no standing order', async () => {
@@ -44,7 +44,7 @@ describe('standing attack orders', () => {
       creeps: [
         {
           id: 'creep_hold_1',
-          team: 'dire' as const,
+          team: 'audit' as const,
           zone: 'mid-river',
           hp: 500,
           maxHp: 500,
@@ -84,7 +84,7 @@ describe('standing attack orders', () => {
 
     // The enemy walks out. The re-swing is an order the player typed a tick ago,
     // so its failure must not surface as a rejection they have to read.
-    game.submit({ type: 'move', zone: 'mid-t1-dire' }, ENEMY)
+    game.submit({ type: 'move', zone: 'mid-t1-audit' }, ENEMY)
     await game.tick()
 
     expect((await game.me()).attackTarget ?? null).toBeNull()
@@ -112,7 +112,7 @@ describe('standing attack orders', () => {
           ...s.players[HUMAN]!,
           buffs: [{ id: 'stun', stacks: 1, ticksRemaining: 3, source: ENEMY }],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-dire' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit' },
       },
     }))
 

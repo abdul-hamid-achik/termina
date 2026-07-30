@@ -19,7 +19,7 @@ function row(overrides: Partial<PlayerScoreRow> = {}): PlayerScoreRow {
   }
 }
 
-function mountTable(rows: PlayerScoreRow[], caption = 'Radiant players') {
+function mountTable(rows: PlayerScoreRow[], caption = 'Chaff players') {
   return mount(PlayerScoreTable, { props: { caption, rows } })
 }
 
@@ -29,7 +29,7 @@ describe('PlayerScoreTable', () => {
       row({ id: 'a', heroName: 'Daemon' }),
       row({ id: 'b', heroName: 'Socket' }),
     ])
-    expect(wrapper.find('caption').text()).toBe('Radiant players')
+    expect(wrapper.find('caption').text()).toBe('Chaff players')
     const bodyRows = wrapper.findAll('tbody tr')
     expect(bodyRows).toHaveLength(2)
     expect(wrapper.text()).toContain('Daemon')

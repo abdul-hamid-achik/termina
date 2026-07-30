@@ -35,7 +35,7 @@ function logout() {
     <header
       class="flex items-center justify-between border-b border-border bg-bg-secondary px-4 py-2 max-sm:flex-col max-sm:gap-2"
     >
-      <NuxtLink to="/" aria-label="Termina home" class="text-radiant no-underline">
+      <NuxtLink to="/" aria-label="Termina home" class="text-chaff no-underline">
         <pre aria-hidden="true" class="m-0 text-[0.55rem] leading-tight max-sm:text-[0.45rem]">
 ╔╦╗╔═╗╦═╗╔╦╗╦╔╗╔╔═╗
  ║ ║╣ ╠╦╝║║║║║║║╠═╣
@@ -54,7 +54,7 @@ function logout() {
         <ClientOnly>
           <button
             v-if="loggedIn"
-            class="cursor-pointer border-none bg-transparent px-1 py-1 text-[0.8rem] text-text-dim transition-colors duration-150 hover:text-dire"
+            class="cursor-pointer border-none bg-transparent px-1 py-1 text-[0.8rem] text-text-dim transition-colors duration-150 hover:text-audit"
             @click="logout"
           >
             [LOGOUT]
@@ -62,7 +62,7 @@ function logout() {
           <NuxtLink
             v-else
             to="/login"
-            class="px-1 py-1 text-[0.8rem] text-text-dim no-underline transition-colors duration-150 hover:text-radiant"
+            class="px-1 py-1 text-[0.8rem] text-text-dim no-underline transition-colors duration-150 hover:text-chaff"
           >
             [LOGIN]
           </NuxtLink>

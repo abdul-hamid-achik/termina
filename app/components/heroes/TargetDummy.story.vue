@@ -10,7 +10,7 @@ import TargetDummy from './TargetDummy.vue'
     <Variant title="Half (gold)">
       <TargetDummy name="Target Dummy" :hp="480" :max-hp="1000" />
     </Variant>
-    <Variant title="Low (dire) + DoT">
+    <Variant title="Low (audit) + DoT">
       <TargetDummy name="Target Dummy" :hp="180" :max-hp="1000" :dots="2" />
     </Variant>
     <Variant title="Under control (stun + slow)">

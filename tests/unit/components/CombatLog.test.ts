@@ -116,8 +116,8 @@ describe('CombatLog', () => {
 describe('combatLog helpers', () => {
   describe('ancientLabel', () => {
     it('resolves ancient ids to readable Mainframe names', () => {
-      expect(ancientLabel('ancient_radiant')).toBe('the CHAFF Mainframe')
-      expect(ancientLabel('ancient_dire')).toBe('the AUDIT Mainframe')
+      expect(ancientLabel('ancient_chaff')).toBe('the CHAFF Mainframe')
+      expect(ancientLabel('ancient_audit')).toBe('the AUDIT Mainframe')
     })
 
     it('falls back to a generic Mainframe label for unknown teams', () => {
@@ -133,8 +133,8 @@ describe('combatLog helpers', () => {
 
   describe('isStructureTarget', () => {
     it('flags towers and ancients', () => {
-      expect(isStructureTarget('tower_mid-t3-dire')).toBe(true)
-      expect(isStructureTarget('ancient_radiant')).toBe(true)
+      expect(isStructureTarget('tower_mid-t3-audit')).toBe(true)
+      expect(isStructureTarget('ancient_chaff')).toBe(true)
     })
 
     it('does not flag heroes, creeps, or non-strings', () => {
@@ -147,8 +147,8 @@ describe('combatLog helpers', () => {
 
   describe('teamLabel', () => {
     it('reads faction labels from the world lexicon', () => {
-      expect(teamLabel('radiant')).toBe('CHAFF')
-      expect(teamLabel('dire')).toBe('AUDIT')
+      expect(teamLabel('chaff')).toBe('CHAFF')
+      expect(teamLabel('audit')).toBe('AUDIT')
     })
   })
 
@@ -168,9 +168,9 @@ describe('combatLog helpers', () => {
 
     it('collapses consecutive identical structure-damage lines into one running line', () => {
       const lines: CombatLine[] = [
-        dmgLine(176, 'Thread', 'the Dire Core', 72),
-        dmgLine(177, 'Thread', 'the Dire Core', 72),
-        dmgLine(178, 'Thread', 'the Dire Core', 70),
+        dmgLine(176, 'Thread', 'the Audit Core', 72),
+        dmgLine(177, 'Thread', 'the Audit Core', 72),
+        dmgLine(178, 'Thread', 'the Audit Core', 70),
       ]
 
       const result = collapseStructureDamage(lines, fmt)
@@ -182,9 +182,9 @@ describe('combatLog helpers', () => {
 
     it('keeps a different source as its own line', () => {
       const lines: CombatLine[] = [
-        dmgLine(176, 'Thread', 'the Dire Core', 72),
-        dmgLine(177, 'Thread', 'the Dire Core', 72),
-        dmgLine(178, 'Echo', 'the Dire Core', 50),
+        dmgLine(176, 'Thread', 'the Audit Core', 72),
+        dmgLine(177, 'Thread', 'the Audit Core', 72),
+        dmgLine(178, 'Echo', 'the Audit Core', 50),
       ]
 
       const result = collapseStructureDamage(lines, fmt)
@@ -197,9 +197,9 @@ describe('combatLog helpers', () => {
     it('does not merge across an interrupting non-structure line', () => {
       const kill: CombatLine = { tick: 177, text: '[KILL] Thread eliminated Echo!', type: 'kill' }
       const lines: CombatLine[] = [
-        dmgLine(176, 'Thread', 'the Dire Core', 72),
+        dmgLine(176, 'Thread', 'the Audit Core', 72),
         kill,
-        dmgLine(178, 'Thread', 'the Dire Core', 72),
+        dmgLine(178, 'Thread', 'the Audit Core', 72),
       ]
 
       const result = collapseStructureDamage(lines, fmt)
@@ -220,7 +220,7 @@ describe('combatLog helpers', () => {
     })
 
     it('strips internal bookkeeping fields from the output', () => {
-      const result = collapseStructureDamage([dmgLine(1, 'Thread', 'the Dire Core', 10)], fmt)
+      const result = collapseStructureDamage([dmgLine(1, 'Thread', 'the Audit Core', 10)], fmt)
       expect(result[0]).not.toHaveProperty('total')
       expect(result[0]).not.toHaveProperty('baseText')
     })
@@ -283,14 +283,14 @@ describe('combatLog helpers', () => {
 describe('CombatLog victory line', () => {
   it('renders a single [VICTORY] tag for victory-type events (no doubled [KILL])', () => {
     const events = [
-      { tick: 200, text: 'Radiant destroyed the Dire Core!', type: 'victory' as const },
+      { tick: 200, text: 'Chaff destroyed the Audit Core!', type: 'victory' as const },
     ]
     const wrapper = mount(CombatLog, { props: { events } })
 
     const el = wrapper.find('[data-testid="log-event"]')
     const text = el.text()
     expect(text).toContain('[VICTORY]')
-    expect(text).toContain('Radiant destroyed the Dire Core!')
+    expect(text).toContain('Chaff destroyed the Audit Core!')
     // Exactly one bracket tag — no leftover [KILL] doubling, no "tower in base".
     expect(text).not.toContain('[KILL]')
     expect(text).not.toContain('tower')

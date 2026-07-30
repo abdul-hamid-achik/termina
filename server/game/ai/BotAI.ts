@@ -105,7 +105,7 @@ const SALVE_HP_PERCENT = 60
 const TP_RETREAT_MIN_DISTANCE = 2
 
 const RUNE_ZONES = ['rune-top', 'rune-bot']
-const JUNGLE_ZONES = ['jungle-rad-top', 'jungle-rad-bot', 'jungle-dire-top', 'jungle-dire-bot']
+const JUNGLE_ZONES = ['jungle-rad-top', 'jungle-rad-bot', 'jungle-audit-top', 'jungle-audit-bot']
 
 interface ComboState {
   currentCombo: string[] | null
@@ -318,7 +318,7 @@ function getRunesInZone(state: GameState, zone: string): RuneState[] {
 }
 
 function getFountainZone(team: TeamId): string {
-  return team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+  return team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
 }
 
 function isInFountain(bot: PlayerState): boolean {
@@ -1097,8 +1097,8 @@ function tryBuyback(
   // Don't buyback if respawn is imminent (within 2 ticks)
   if (bot.respawnTick - state.tick <= 2) return null
   // Buyback when the Ancient is under threat or allies are fighting near our base
-  const enemyTeam: TeamId = bot.team === 'radiant' ? 'dire' : 'radiant'
-  const ourBaseZone = bot.team === 'radiant' ? 'radiant-base' : 'dire-base'
+  const enemyTeam: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
+  const ourBaseZone = bot.team === 'chaff' ? 'chaff-base' : 'audit-base'
   const enemyNearBase = Object.values(state.players).some(
     (p) => p.team === enemyTeam && p.alive && getDistance(p.zone, ourBaseZone, hasZone) <= 2,
   )
@@ -1292,7 +1292,7 @@ function pickCreepTarget(
 
 /** Attack the enemy Ancient when in the enemy base and it is vulnerable. */
 function tryAttackAncient(state: GameState, bot: PlayerState): Command | null {
-  const enemyTeam: TeamId = bot.team === 'radiant' ? 'dire' : 'radiant'
+  const enemyTeam: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
   if (bot.zone !== ANCIENT_ZONES[enemyTeam]) return null
   // Optional chaining guards old snapshots/fixtures created before Ancients existed
   const ancient = state.ancients?.[enemyTeam]
@@ -1575,7 +1575,7 @@ export function decideBotAction(
   // Close out a won game: if the enemy Ancient is exposed, march straight to
   // their base to finish it. The retreat-from-threat check already ran above,
   // so a low-HP bot still backs off rather than feeding into base defenses.
-  const enemyTeamForClose: TeamId = bot.team === 'radiant' ? 'dire' : 'radiant'
+  const enemyTeamForClose: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
   const exposedAncient = state.ancients?.[enemyTeamForClose]
   if (exposedAncient?.alive && exposedAncient.vulnerable) {
     const baseZone = ANCIENT_ZONES[enemyTeamForClose]
@@ -1654,6 +1654,6 @@ export function cleanupBotState(playerId: string): void {
 
 /** Drop per-GAME bot bookkeeping (currently the per-team Roshan commitment). */
 export function cleanupBotGameState(gameId: string): void {
-  roshanAttempts.delete(`${gameId}|radiant`)
-  roshanAttempts.delete(`${gameId}|dire`)
+  roshanAttempts.delete(`${gameId}|chaff`)
+  roshanAttempts.delete(`${gameId}|audit`)
 }

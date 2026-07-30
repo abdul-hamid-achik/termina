@@ -90,13 +90,13 @@ onMounted(() => show('Target is not in your zone', 'warning'))
             objective
           </button>
           <button
-            class="t-mono rounded border border-dire px-2 py-1 text-xs text-dire"
+            class="t-mono rounded border border-audit px-2 py-1 text-xs text-audit"
             @click="show('First Blood!', 'kill')"
           >
             kill
           </button>
           <button
-            class="t-mono rounded border border-dire px-2 py-1 text-xs text-dire"
+            class="t-mono rounded border border-audit px-2 py-1 text-xs text-audit"
             @click="show('[ERROR] Connection lost. Reconnecting…', 'error')"
           >
             error

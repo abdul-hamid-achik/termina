@@ -80,12 +80,12 @@ interface ScoreRow {
 
 const TICK_SECONDS = 4
 
-const radiantPlayers = computed((): ScoreRow[] =>
-  props.players.filter((p) => p.team === 'radiant').map((p) => toRow(p)),
+const chaffPlayers = computed((): ScoreRow[] =>
+  props.players.filter((p) => p.team === 'chaff').map((p) => toRow(p)),
 )
 
-const direPlayers = computed((): ScoreRow[] =>
-  props.players.filter((p) => p.team === 'dire').map((p) => toRow(p)),
+const auditPlayers = computed((): ScoreRow[] =>
+  props.players.filter((p) => p.team === 'audit').map((p) => toRow(p)),
 )
 
 const myStats = computed(() => {
@@ -95,9 +95,7 @@ const myStats = computed(() => {
 })
 
 // The single standout performer across both teams (the "who carried" beat).
-const mvp = computed(() =>
-  computeMvp([...radiantPlayers.value, ...direPlayers.value], props.winner),
-)
+const mvp = computed(() => computeMvp([...chaffPlayers.value, ...auditPlayers.value], props.winner))
 
 function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): ScoreRow {
   const s = props.stats[p.id]
@@ -228,7 +226,7 @@ const advice = computed((): Advice[] => {
   <div class="flex min-h-screen flex-col gap-4 bg-bg-primary p-4" data-testid="post-game">
     <div
       class="anim-fade-in-up border-2 p-6 text-center"
-      :class="winner === 'radiant' ? 'border-radiant bloom-radiant' : 'border-dire bloom-dire'"
+      :class="winner === 'chaff' ? 'border-chaff bloom-chaff' : 'border-audit bloom-audit'"
     >
       <div class="t-caption mb-2 text-text-muted">
         {{
@@ -241,12 +239,12 @@ const advice = computed((): Advice[] => {
       </div>
       <span
         class="t-display tracking-[0.2em] anim-glow-pulse"
-        :class="winner === 'radiant' ? 'text-radiant' : 'text-dire'"
+        :class="winner === 'chaff' ? 'text-chaff' : 'text-audit'"
       >
         <template v-if="isTutorial">{{
           finishedTutorial ? 'PRACTICE COMPLETE' : 'PRACTICE ENDED'
         }}</template>
-        <template v-else>{{ winner === 'radiant' ? 'RADIANT VICTORY' : 'DIRE VICTORY' }}</template>
+        <template v-else>{{ winner === 'chaff' ? 'CHAFF VICTORY' : 'AUDIT VICTORY' }}</template>
       </span>
       <p v-if="isTutorial" class="mt-3 text-sm text-text-dim" data-testid="tutorial-wrapup">
         {{
@@ -261,7 +259,7 @@ const advice = computed((): Advice[] => {
     <div
       v-if="mvp"
       class="anim-fade-in-up flex items-center justify-center gap-3 border p-3"
-      :class="mvp.team === 'radiant' ? 'border-radiant/60' : 'border-dire/60'"
+      :class="mvp.team === 'chaff' ? 'border-chaff/60' : 'border-audit/60'"
       data-testid="post-game-mvp"
     >
       <span class="t-h1 text-gold text-glow-gold" aria-hidden="true">★</span>
@@ -269,7 +267,7 @@ const advice = computed((): Advice[] => {
         <span class="t-caption uppercase tracking-wider text-gold">Match MVP</span>
         <span
           class="t-h2"
-          :class="mvp.team === 'radiant' ? 'text-radiant' : 'text-dire'"
+          :class="mvp.team === 'chaff' ? 'text-chaff' : 'text-audit'"
           data-testid="mvp-name"
           >{{ mvp.name }}
           <span class="text-text-dim">({{ HEROES[mvp.heroId]?.name ?? mvp.heroId }})</span></span
@@ -287,9 +285,9 @@ const advice = computed((): Advice[] => {
           <div class="flex flex-col gap-1">
             <span class="t-caption uppercase">K/D/A</span>
             <span class="t-h1 t-mono-num">
-              <span class="text-radiant text-glow-radiant">{{ myStats.kills }}</span>
+              <span class="text-chaff text-glow-chaff">{{ myStats.kills }}</span>
               <span class="mx-0.5 text-text-muted">/</span>
-              <span class="text-dire text-glow-dire">{{ myStats.deaths }}</span>
+              <span class="text-audit text-glow-audit">{{ myStats.deaths }}</span>
               <span class="mx-0.5 text-text-muted">/</span>
               <span class="text-text-dim">{{ myStats.assists }}</span>
             </span>
@@ -341,9 +339,7 @@ const advice = computed((): Advice[] => {
             <span
               v-else
               class="t-h1 t-mono-num"
-              :class="
-                mmrChange >= 0 ? 'text-radiant text-glow-radiant' : 'text-dire text-glow-dire'
-              "
+              :class="mmrChange >= 0 ? 'text-chaff text-glow-chaff' : 'text-audit text-glow-audit'"
             >
               {{ mmrChange >= 0 ? '+' : '' }}{{ mmrChange }}
             </span>
@@ -387,7 +383,7 @@ const advice = computed((): Advice[] => {
             @click="startPractice"
           />
         </div>
-        <p v-if="practiceError" class="mt-2 text-xs text-dire" data-testid="practice-error">
+        <p v-if="practiceError" class="mt-2 text-xs text-audit" data-testid="practice-error">
           {{ practiceError }}
         </p>
       </TerminalPanel>
@@ -395,11 +391,11 @@ const advice = computed((): Advice[] => {
 
     <div>
       <TerminalPanel title="Scoreboard">
-        <div class="t-h3 pb-1 pt-1.5 text-radiant text-glow-radiant">RADIANT</div>
+        <div class="t-h3 pb-1 pt-1.5 text-chaff text-glow-chaff">CHAFF</div>
         <div class="mb-3 overflow-x-auto">
           <table class="w-full border-collapse text-xs">
             <caption class="sr-only">
-              Radiant team final scoreboard
+              Chaff team final scoreboard
             </caption>
             <thead>
               <tr>
@@ -463,7 +459,7 @@ const advice = computed((): Advice[] => {
             </thead>
             <tbody>
               <tr
-                v-for="p in radiantPlayers"
+                v-for="p in chaffPlayers"
                 :key="p.id"
                 class="anim-fade-in-up"
                 :class="{
@@ -479,10 +475,10 @@ const advice = computed((): Advice[] => {
                 >
                   {{ p.name }}
                 </th>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-chaff">
                   {{ p.kills }}
                 </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-dire">
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-audit">
                   {{ p.deaths }}
                 </td>
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
@@ -509,11 +505,11 @@ const advice = computed((): Advice[] => {
           </table>
         </div>
 
-        <div class="t-h3 pb-1 pt-1.5 text-dire text-glow-dire">DIRE</div>
+        <div class="t-h3 pb-1 pt-1.5 text-audit text-glow-audit">AUDIT</div>
         <div class="overflow-x-auto">
           <table class="w-full border-collapse text-xs">
             <caption class="sr-only">
-              Dire team final scoreboard
+              Audit team final scoreboard
             </caption>
             <thead>
               <tr>
@@ -577,7 +573,7 @@ const advice = computed((): Advice[] => {
             </thead>
             <tbody>
               <tr
-                v-for="p in direPlayers"
+                v-for="p in auditPlayers"
                 :key="p.id"
                 class="anim-fade-in-up"
                 :class="{
@@ -593,10 +589,10 @@ const advice = computed((): Advice[] => {
                 >
                   {{ p.name }}
                 </th>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-radiant">
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-chaff">
                   {{ p.kills }}
                 </td>
-                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-dire">
+                <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-audit">
                   {{ p.deaths }}
                 </td>
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">

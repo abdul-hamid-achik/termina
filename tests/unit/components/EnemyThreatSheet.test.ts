@@ -6,7 +6,7 @@ function visibleEnemy(overrides: Record<string, unknown> = {}) {
   return {
     id: 'e1',
     name: 'enemy_one',
-    team: 'dire',
+    team: 'audit',
     heroId: 'null_ref',
     zone: 'mid-river',
     hp: 500,
@@ -49,7 +49,7 @@ describe('EnemyThreatSheet', () => {
     const fogged = {
       id: 'e2',
       name: 'enemy_two',
-      team: 'dire',
+      team: 'audit',
       heroId: 'regex',
       level: 6,
       alive: true,
@@ -74,7 +74,7 @@ describe('EnemyThreatSheet', () => {
     const fogged = {
       id: 'e3',
       name: 'enemy_three',
-      team: 'dire',
+      team: 'audit',
       heroId: 'cache',
       level: 5,
       alive: true,
@@ -89,7 +89,7 @@ describe('EnemyThreatSheet', () => {
     const foggedDead = {
       id: 'e4',
       name: 'enemy_four',
-      team: 'dire',
+      team: 'audit',
       heroId: 'regex',
       level: 5,
       alive: false,
@@ -122,7 +122,7 @@ describe('EnemyThreatSheet', () => {
       expect(status.text()).toContain('Stunned')
       // A BKB up on THEM is a caution (amber); a stun on them is my opening (green).
       expect(status.html()).toContain('text-warn')
-      expect(status.html()).toContain('text-radiant')
+      expect(status.html()).toContain('text-chaff')
     })
 
     it('drops near-permanent stat auras from the threat status line', () => {
@@ -144,7 +144,7 @@ describe('EnemyThreatSheet', () => {
       const fogged = {
         id: 'e9',
         name: 'ghost',
-        team: 'dire',
+        team: 'audit',
         heroId: 'cache',
         level: 5,
         alive: true,

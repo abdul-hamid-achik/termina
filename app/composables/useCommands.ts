@@ -322,13 +322,13 @@ const ZONE_ALIASES: Record<string, string> = {
   'bot-lane': 'bot-river',
   // Jungles
   'jg-rad': 'jungle-rad-top',
-  'jg-radiant': 'jungle-rad-top',
-  'jg-dire': 'jungle-dire-top',
+  'jg-chaff': 'jungle-rad-top',
+  'jg-audit': 'jungle-audit-top',
   'jungle-rad': 'jungle-rad-top',
-  'jungle-dire': 'jungle-dire-top',
+  'jungle-audit': 'jungle-audit-top',
   // Bases
-  base: 'radiant-base',
-  fountain: 'radiant-fountain',
+  base: 'chaff-base',
+  fountain: 'chaff-fountain',
   // Roshan
   roshan: 'roshan-pit',
   rosh: 'roshan-pit',
@@ -504,7 +504,7 @@ export function validateCommand(command: Command, context: GameContext): string 
         if (neutral.zone !== player.zone) return 'That neutral camp is not in your zone'
       }
       if (t.kind === 'ancient') {
-        const enemyBase = player.team === 'radiant' ? 'dire-base' : 'radiant-base'
+        const enemyBase = player.team === 'chaff' ? 'audit-base' : 'chaff-base'
         if (player.zone !== enemyBase) {
           return `Must be in the enemy base (${enemyBase}) to attack their Mainframe`
         }
@@ -602,9 +602,9 @@ export function validateCommand(command: Command, context: GameContext): string 
 /**
  * Resolve a zone alias to the actual zone ID, or return the input if it's
  * already a valid zone. `base`/`fountain` are resolved relative to the player's
- * team — so a dire player typing `move base` heads to dire-base, not the enemy's.
+ * team — so a audit player typing `move base` heads to audit-base, not the enemy's.
  */
-function resolveZoneAlias(zoneInput: string, team: TeamId = 'radiant'): string {
+function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
   // Check if it's already a valid zone ID
   if (ZONE_IDS.includes(zoneInput)) return zoneInput
   // Team-relative "home" shortcuts resolve to YOUR side of the map.
@@ -638,7 +638,7 @@ export function useCommands() {
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
 
-  function parse(input: string, team: TeamId = 'radiant'): ParseResult {
+  function parse(input: string, team: TeamId = 'chaff'): ParseResult {
     let trimmed = input.trim().toLowerCase()
     if (!trimmed) return { command: null, error: null }
 
@@ -1005,7 +1005,7 @@ export function useCommands() {
     const zonePool = visibleIds.length > 0 ? visibleIds : ZONE_IDS
 
     const suggestions: Suggestion[] = []
-    const team = context.player?.team ?? 'radiant'
+    const team = context.player?.team ?? 'chaff'
 
     // An exact alias outranks every prefix match: `mid` means the river, and
     // burying it under `mid-t3-rad` (first in zone order) walked players into
@@ -1154,7 +1154,7 @@ export function useCommands() {
     }
 
     // Suggest the enemy Mainframe when standing in the enemy base
-    const enemyBase = context.player.team === 'radiant' ? 'dire-base' : 'radiant-base'
+    const enemyBase = context.player.team === 'chaff' ? 'audit-base' : 'chaff-base'
     if (context.player.zone === enemyBase && 'mainframe'.includes(partial)) {
       suggestions.push({ text: 'mainframe', description: 'Enemy Mainframe (win the game!)' })
     }

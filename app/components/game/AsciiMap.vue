@@ -118,7 +118,7 @@ function cellClasses(zone: ZoneDisplay): string[] {
   const classes: string[] = []
   if (zone.fogged) classes.push('opacity-40')
   if (zone.playerHere) classes.push('bg-self/20')
-  if (zone.enemyCount > 0) classes.push('text-dire')
+  if (zone.enemyCount > 0) classes.push('text-audit')
   return classes
 }
 
@@ -276,9 +276,9 @@ const miniRows = computed(() =>
     <div aria-live="polite" class="sr-only">{{ announcement }}</div>
 
     <div class="flex items-center justify-center gap-8 border-b-2 border-border pb-2">
-      <span class="text-lg font-bold tracking-[0.3em] text-radiant">RADIANT</span>
+      <span class="text-lg font-bold tracking-[0.3em] text-chaff">CHAFF</span>
       <span class="text-xs text-text-dim">[MAP]</span>
-      <span class="text-lg font-bold tracking-[0.3em] text-dire">DIRE</span>
+      <span class="text-lg font-bold tracking-[0.3em] text-audit">AUDIT</span>
     </div>
 
     <!-- Glyph key for new players (collapsed by default) -->
@@ -299,8 +299,8 @@ const miniRows = computed(() =>
       </div>
 
       <!-- The banner above reads left-to-right, which says nothing about which
-           END of the grid each team holds. Radiant is always the top row. -->
-      <div class="text-center t-hud-xs font-bold tracking-widest text-radiant">RADIANT ▲</div>
+           END of the grid each team holds. Chaff is always the top row. -->
+      <div class="text-center t-hud-xs font-bold tracking-widest text-chaff">CHAFF ▲</div>
 
       <div class="flex-1 overflow-auto p-2">
         <div
@@ -332,8 +332,8 @@ const miniRows = computed(() =>
                   !zoneClickable(zoneId)
                     ? 'cursor-default border-2 border-border/50 bg-bg-secondary/50'
                     : isAdjacent(zoneId)
-                      ? 'bg-radiant/10 cursor-pointer border-2 border-dashed border-radiant/60 hover:scale-105'
-                      : 'cursor-pointer border-2 border-border/60 bg-bg-secondary/50 hover:border-radiant/50 hover:scale-105',
+                      ? 'bg-chaff/10 cursor-pointer border-2 border-dashed border-chaff/60 hover:scale-105'
+                      : 'cursor-pointer border-2 border-border/60 bg-bg-secondary/50 hover:border-chaff/50 hover:scale-105',
                 ]"
                 :title="
                   zoneId +
@@ -368,13 +368,13 @@ const miniRows = computed(() =>
         </div>
       </div>
 
-      <div class="text-center t-hud-xs font-bold tracking-widest text-dire">DIRE ▼</div>
+      <div class="text-center t-hud-xs font-bold tracking-widest text-audit">AUDIT ▼</div>
 
       <div
         class="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-border pt-2 text-xs"
       >
-        <span class="text-radiant">+NA = N Allies</span>
-        <span class="text-dire">!NE = N Enemies</span>
+        <span class="text-chaff">+NA = N Allies</span>
+        <span class="text-audit">!NE = N Enemies</span>
         <span class="text-self">►YOU = You</span>
         <span class="text-text-dim">cN = N Creeps</span>
         <span class="text-text-dim">☘N = N Neutrals</span>
@@ -422,7 +422,7 @@ const miniRows = computed(() =>
           :key="zone.id"
           type="button"
           data-testid="compact-adjacent-zone"
-          class="bg-radiant/10 min-h-[56px] w-full border-2 border-dashed border-radiant/60 px-3 py-2 text-left font-mono transition-all active:scale-[0.98] active:bg-radiant/20"
+          class="bg-chaff/10 min-h-[56px] w-full border-2 border-dashed border-chaff/60 px-3 py-2 text-left font-mono transition-all active:scale-[0.98] active:bg-chaff/20"
           :class="{ 'opacity-50': zone.fogged }"
           :aria-label="moveAriaLabel(zone)"
           @click="handleZoneClick(zone.id)"
@@ -437,7 +437,7 @@ const miniRows = computed(() =>
               >
               {{ zone.name }}
             </span>
-            <span class="shrink-0 t-hud-xs font-bold tracking-wider text-radiant">
+            <span class="shrink-0 t-hud-xs font-bold tracking-wider text-chaff">
               TAP TO MOVE ▸
             </span>
           </div>
@@ -485,10 +485,8 @@ const miniRows = computed(() =>
             {{ hdr }}
           </span>
         </div>
-        <!-- Radiant half is always the top of the grid, Dire the bottom. -->
-        <div class="pb-0.5 text-center t-hud-xs font-bold tracking-widest text-radiant">
-          RADIANT ▲
-        </div>
+        <!-- Chaff half is always the top of the grid, Audit the bottom. -->
+        <div class="pb-0.5 text-center t-hud-xs font-bold tracking-widest text-chaff">CHAFF ▲</div>
         <div
           v-for="(row, ri) in miniRows"
           :key="ri"
@@ -508,7 +506,7 @@ const miniRows = computed(() =>
             <div v-else class="map-cell-compact h-7 bg-bg-primary/30" />
           </template>
         </div>
-        <div class="pt-0.5 text-center t-hud-xs font-bold tracking-widest text-dire">DIRE ▼</div>
+        <div class="pt-0.5 text-center t-hud-xs font-bold tracking-widest text-audit">AUDIT ▼</div>
         <div class="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 t-hud-xs text-text-dim">
           <span>T1-3 tower zones</span>
           <span>JG jungle</span>
@@ -516,12 +514,12 @@ const miniRows = computed(() =>
           <span>ROS Roshan</span>
           <span>RF/RB fountain/base</span>
           <span class="text-self">► you</span>
-          <span class="text-dire">! enemies</span>
+          <span class="text-audit">! enemies</span>
           <span>▲ tower up · ✗ razed</span>
           <span>◈✗ mainframe razed</span>
           <span>dimmed = no vision</span>
           <span
-            ><span class="text-radiant">rad</span>/<span class="text-dire">dire</span> ground</span
+            ><span class="text-chaff">rad</span>/<span class="text-audit">audit</span> ground</span
           >
         </div>
       </div>

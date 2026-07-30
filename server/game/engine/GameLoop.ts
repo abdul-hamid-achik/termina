@@ -542,9 +542,9 @@ export function processTick(
       engineLog.info('📊 Game progress', {
         gameId,
         tick: currentState.tick,
-        towers: `R${towersUp('radiant')}:D${towersUp('dire')}`,
-        radiantAncient: `${anc?.radiant.hp ?? '?'}${anc?.radiant.vulnerable ? '!' : ''}`,
-        direAncient: `${anc?.dire.hp ?? '?'}${anc?.dire.vulnerable ? '!' : ''}`,
+        towers: `R${towersUp('chaff')}:D${towersUp('audit')}`,
+        chaffAncient: `${anc?.chaff.hp ?? '?'}${anc?.chaff.vulnerable ? '!' : ''}`,
+        auditAncient: `${anc?.audit.hp ?? '?'}${anc?.audit.vulnerable ? '!' : ''}`,
         winner: winner ?? 'none',
       })
     }
@@ -977,7 +977,7 @@ export function processSpecialActions(
             votesNeeded: result.votes?.needed ?? 0,
           })
           if (result.surrendered) {
-            const winner = player.team === 'radiant' ? 'dire' : 'radiant'
+            const winner = player.team === 'chaff' ? 'audit' : 'chaff'
             currentState = { ...currentState, phase: 'ended', winner }
             events.push({
               _tag: 'surrendered',
@@ -1295,18 +1295,18 @@ export function runSpawning(state: GameState): GameState {
  * Pure: returns a new state if anything changed, the same state otherwise.
  */
 export function expireGlyph(state: GameState): GameState {
-  const radiantUsed = state.teams.radiant.glyphUsedTick
-  const direUsed = state.teams.dire.glyphUsedTick
-  const radiantExpired = radiantUsed !== null && state.tick - radiantUsed >= GLYPH_DURATION_TICKS
-  const direExpired = direUsed !== null && state.tick - direUsed >= GLYPH_DURATION_TICKS
+  const chaffUsed = state.teams.chaff.glyphUsedTick
+  const auditUsed = state.teams.audit.glyphUsedTick
+  const chaffExpired = chaffUsed !== null && state.tick - chaffUsed >= GLYPH_DURATION_TICKS
+  const auditExpired = auditUsed !== null && state.tick - auditUsed >= GLYPH_DURATION_TICKS
 
-  if (!radiantExpired && !direExpired) return state
+  if (!chaffExpired && !auditExpired) return state
 
   return {
     ...state,
     towers: state.towers.map((t) => {
-      if (t.team === 'radiant' && radiantExpired) return { ...t, invulnerable: false }
-      if (t.team === 'dire' && direExpired) return { ...t, invulnerable: false }
+      if (t.team === 'chaff' && chaffExpired) return { ...t, invulnerable: false }
+      if (t.team === 'audit' && auditExpired) return { ...t, invulnerable: false }
       return t
     }),
   }
@@ -1349,7 +1349,7 @@ function handleRespawns(state: GameState): GameState {
 
   for (const [pid, player] of Object.entries(players)) {
     if (!player.alive && player.respawnTick !== null && state.tick >= player.respawnTick) {
-      const spawnZone = player.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+      const spawnZone = player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
       players[pid] = {
         ...player,
         alive: true,
@@ -1374,8 +1374,8 @@ function applyFountainHealing(state: GameState): GameState {
     if (!player.alive) continue
 
     const isInFountain =
-      (player.team === 'radiant' && player.zone === 'radiant-fountain') ||
-      (player.team === 'dire' && player.zone === 'dire-fountain')
+      (player.team === 'chaff' && player.zone === 'chaff-fountain') ||
+      (player.team === 'audit' && player.zone === 'audit-fountain')
 
     // Skip healing if player is in combat (soft check — full combat tracking would need a separate system)
     const inCombat = player.buffs.some((b) => b.id === 'inCombat')
@@ -1718,7 +1718,7 @@ function trackTowerKills(
     const after = state.towers[i]
     if (before && after && before.alive && !after.alive) {
       // Tower was destroyed — the killing team is the opposing team
-      const killerTeam = after.team === 'radiant' ? 'dire' : 'radiant'
+      const killerTeam = after.team === 'chaff' ? 'audit' : 'chaff'
       const teamState = teams[killerTeam]
       teams = {
         ...teams,

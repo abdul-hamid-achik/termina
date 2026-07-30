@@ -16,69 +16,69 @@ import type { TeamId } from '~~/shared/types/game'
 /** Core lane routes: T3 → T2 → T1 → river → enemy T1 → T2 → T3 → enemy base. */
 export const LANE_ROUTES_CORE: Record<string, Record<TeamId, string[]>> = {
   top: {
-    radiant: [
+    chaff: [
       'top-t3-rad',
       'top-t2-rad',
       'top-t1-rad',
       'top-river',
-      'top-t1-dire',
-      'top-t2-dire',
-      'top-t3-dire',
-      'dire-base',
+      'top-t1-audit',
+      'top-t2-audit',
+      'top-t3-audit',
+      'audit-base',
     ],
-    dire: [
-      'top-t3-dire',
-      'top-t2-dire',
-      'top-t1-dire',
+    audit: [
+      'top-t3-audit',
+      'top-t2-audit',
+      'top-t1-audit',
       'top-river',
       'top-t1-rad',
       'top-t2-rad',
       'top-t3-rad',
-      'radiant-base',
+      'chaff-base',
     ],
   },
   mid: {
-    radiant: [
+    chaff: [
       'mid-t3-rad',
       'mid-t2-rad',
       'mid-t1-rad',
       'mid-river',
-      'mid-t1-dire',
-      'mid-t2-dire',
-      'mid-t3-dire',
-      'dire-base',
+      'mid-t1-audit',
+      'mid-t2-audit',
+      'mid-t3-audit',
+      'audit-base',
     ],
-    dire: [
-      'mid-t3-dire',
-      'mid-t2-dire',
-      'mid-t1-dire',
+    audit: [
+      'mid-t3-audit',
+      'mid-t2-audit',
+      'mid-t1-audit',
       'mid-river',
       'mid-t1-rad',
       'mid-t2-rad',
       'mid-t3-rad',
-      'radiant-base',
+      'chaff-base',
     ],
   },
   bot: {
-    radiant: [
+    chaff: [
       'bot-t3-rad',
       'bot-t2-rad',
       'bot-t1-rad',
       'bot-river',
-      'bot-t1-dire',
-      'bot-t2-dire',
-      'bot-t3-dire',
-      'dire-base',
+      'bot-t1-audit',
+      'bot-t2-audit',
+      'bot-t3-audit',
+      'audit-base',
     ],
-    dire: [
-      'bot-t3-dire',
-      'bot-t2-dire',
-      'bot-t1-dire',
+    audit: [
+      'bot-t3-audit',
+      'bot-t2-audit',
+      'bot-t1-audit',
       'bot-river',
       'bot-t1-rad',
       'bot-t2-rad',
       'bot-t3-rad',
-      'radiant-base',
+      'chaff-base',
     ],
   },
 }
@@ -87,19 +87,19 @@ export const LANE_ROUTES_CORE: Record<string, Record<TeamId, string[]>> = {
 const _core = LANE_ROUTES_CORE
 export const LANE_ROUTES: Record<string, Record<TeamId, string[]>> = {
   top: {
-    radiant: ['radiant-fountain', 'radiant-base', ..._core.top!.radiant],
-    dire: ['dire-fountain', 'dire-base', ..._core.top!.dire],
+    chaff: ['chaff-fountain', 'chaff-base', ..._core.top!.chaff],
+    audit: ['audit-fountain', 'audit-base', ..._core.top!.audit],
   },
   mid: {
-    radiant: ['radiant-fountain', 'radiant-base', ..._core.mid!.radiant],
-    dire: ['dire-fountain', 'dire-base', ..._core.mid!.dire],
+    chaff: ['chaff-fountain', 'chaff-base', ..._core.mid!.chaff],
+    audit: ['audit-fountain', 'audit-base', ..._core.mid!.audit],
   },
   bot: {
-    radiant: ['radiant-fountain', 'radiant-base', ..._core.bot!.radiant],
-    dire: ['dire-fountain', 'dire-base', ..._core.bot!.dire],
+    chaff: ['chaff-fountain', 'chaff-base', ..._core.bot!.chaff],
+    audit: ['audit-fountain', 'audit-base', ..._core.bot!.audit],
   },
   jungle: {
-    radiant: ['radiant-fountain', 'radiant-base', 'jungle-rad-top', 'jungle-rad-bot'],
-    dire: ['dire-fountain', 'dire-base', 'jungle-dire-top', 'jungle-dire-bot'],
+    chaff: ['chaff-fountain', 'chaff-base', 'jungle-rad-top', 'jungle-rad-bot'],
+    audit: ['audit-fountain', 'audit-base', 'jungle-audit-top', 'jungle-audit-bot'],
   },
 }

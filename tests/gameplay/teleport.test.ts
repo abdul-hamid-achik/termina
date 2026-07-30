@@ -12,7 +12,7 @@ describe('teleport (town portal scroll)', () => {
   it('a town portal scroll moves the hero home only after the channel completes', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
-    const fountain = me0.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+    const fountain = me0.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
     await game.patch((s) => ({
       ...s,
       players: {
@@ -23,7 +23,7 @@ describe('teleport (town portal scroll)', () => {
           items: ['town_portal_scroll', null, null, null, null, null],
           buffs: [],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'dire-base' }, // far off — can't interrupt
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' }, // far off — can't interrupt
       },
       creeps: [], // nothing to chip the channel and cancel it
     }))
@@ -46,7 +46,7 @@ describe('teleport (town portal scroll)', () => {
     // client never reads — processTick bridges it into the _tag channel.
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
-    const fountain = me0.team === 'radiant' ? 'radiant-fountain' : 'dire-fountain'
+    const fountain = me0.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
     await game.patch((s) => ({
       ...s,
       players: {
@@ -57,7 +57,7 @@ describe('teleport (town portal scroll)', () => {
           items: ['town_portal_scroll', null, null, null, null, null],
           buffs: [],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'dire-base' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' },
       },
       creeps: [],
     }))

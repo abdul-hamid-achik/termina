@@ -71,7 +71,7 @@ const presetLabel = computed(() =>
           class="flex flex-col gap-0.5 border px-2 py-1.5 text-left transition-all active:scale-[0.98]"
           :class="
             settings.hud.layoutMode === l.id
-              ? 'border-radiant bg-radiant/10 text-radiant'
+              ? 'border-chaff bg-chaff/10 text-chaff'
               : 'border-border text-text-primary hover:border-border-glow'
           "
           :data-testid="`hud-layout-${l.id}`"
@@ -116,7 +116,7 @@ const presetLabel = computed(() =>
           class="border px-2 py-1.5 text-[0.76rem] font-bold transition-all active:scale-[0.98]"
           :class="
             settings.hud.density === d.id
-              ? 'border-radiant bg-radiant/10 text-radiant'
+              ? 'border-chaff bg-chaff/10 text-chaff'
               : 'border-border text-text-primary hover:border-border-glow'
           "
           :data-testid="`hud-density-${d.id}`"

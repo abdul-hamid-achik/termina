@@ -18,9 +18,9 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
     name: 'Player1',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'echo',
-    zone: 'dire-base',
+    zone: 'audit-base',
     hp: 500,
     maxHp: 500,
     mp: 200,
@@ -50,8 +50,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 function makeCreep(overrides: Partial<CreepState> = {}): CreepState {
   return {
     id: 'c1',
-    team: 'radiant',
-    zone: 'dire-base',
+    team: 'chaff',
+    zone: 'audit-base',
     hp: 400,
     type: 'melee',
     ...overrides,
@@ -63,8 +63,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      radiant: { id: 'radiant', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -76,7 +76,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -84,8 +84,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 }
 
 /** State where the named team's mid T3 tower is destroyed. */
-function withDeadT3(state: GameState, team: 'radiant' | 'dire'): GameState {
-  const zone = team === 'radiant' ? 'mid-t3-rad' : 'mid-t3-dire'
+function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
+  const zone = team === 'chaff' ? 'mid-t3-rad' : 'mid-t3-audit'
   return {
     ...state,
     towers: state.towers.map((t) => (t.zone === zone ? { ...t, hp: 0, alive: false } : t)),
@@ -96,7 +96,7 @@ describe('AncientSystem', () => {
   describe('initializeAncients', () => {
     it('creates two full-HP, invulnerable, alive Ancients', () => {
       const ancients = initializeAncients()
-      for (const team of ['radiant', 'dire'] as const) {
+      for (const team of ['chaff', 'audit'] as const) {
         expect(ancients[team].team).toBe(team)
         expect(ancients[team].hp).toBe(ANCIENT_HP)
         expect(ancients[team].maxHp).toBe(ANCIENT_HP)
@@ -108,15 +108,15 @@ describe('AncientSystem', () => {
 
   describe('target ids', () => {
     it('round-trips ancient target ids', () => {
-      expect(parseAncientTargetId(ancientTargetId('radiant'))).toBe('radiant')
-      expect(parseAncientTargetId(ancientTargetId('dire'))).toBe('dire')
+      expect(parseAncientTargetId(ancientTargetId('chaff'))).toBe('chaff')
+      expect(parseAncientTargetId(ancientTargetId('audit'))).toBe('audit')
       expect(parseAncientTargetId('tower_mid-t1-rad')).toBeNull()
       expect(parseAncientTargetId('p1')).toBeNull()
     })
 
     it('places ancients in their base zones', () => {
-      expect(ANCIENT_ZONES.radiant).toBe('radiant-base')
-      expect(ANCIENT_ZONES.dire).toBe('dire-base')
+      expect(ANCIENT_ZONES.chaff).toBe('chaff-base')
+      expect(ANCIENT_ZONES.audit).toBe('audit-base')
     })
   })
 
@@ -132,118 +132,120 @@ describe('AncientSystem', () => {
       delete legacy.ancients
 
       const result = ensureAncients(legacy as GameState)
-      expect(result.ancients.radiant.alive).toBe(true)
-      expect(result.ancients.dire.alive).toBe(true)
+      expect(result.ancients.chaff.alive).toBe(true)
+      expect(result.ancients.audit.alive).toBe(true)
     })
   })
 
   describe('vulnerability', () => {
     it('is invulnerable while all own T3 towers stand', () => {
       const state = makeGameState()
-      expect(isAncientVulnerable(state, 'radiant')).toBe(false)
-      expect(isAncientVulnerable(state, 'dire')).toBe(false)
+      expect(isAncientVulnerable(state, 'chaff')).toBe(false)
+      expect(isAncientVulnerable(state, 'audit')).toBe(false)
     })
 
     it('becomes vulnerable when one own T3 tower is dead', () => {
-      const state = withDeadT3(makeGameState(), 'dire')
-      expect(isAncientVulnerable(state, 'dire')).toBe(true)
-      expect(isAncientVulnerable(state, 'radiant')).toBe(false)
+      const state = withDeadT3(makeGameState(), 'audit')
+      expect(isAncientVulnerable(state, 'audit')).toBe(true)
+      expect(isAncientVulnerable(state, 'chaff')).toBe(false)
     })
 
     it('is not made vulnerable by dead T1/T2 towers', () => {
       const state = makeGameState({
         towers: initializeTowers().map((t) =>
-          t.zone === 'mid-t1-dire' || t.zone === 'top-t2-dire' ? { ...t, hp: 0, alive: false } : t,
+          t.zone === 'mid-t1-audit' || t.zone === 'top-t2-audit'
+            ? { ...t, hp: 0, alive: false }
+            : t,
         ),
       })
-      expect(isAncientVulnerable(state, 'dire')).toBe(false)
+      expect(isAncientVulnerable(state, 'audit')).toBe(false)
     })
 
     it('updateAncientVulnerability flips the flag and is a no-op otherwise', () => {
       const unchanged = makeGameState()
       expect(updateAncientVulnerability(unchanged)).toBe(unchanged)
 
-      const state = withDeadT3(makeGameState(), 'dire')
+      const state = withDeadT3(makeGameState(), 'audit')
       const updated = updateAncientVulnerability(state)
       expect(updated).not.toBe(state)
-      expect(updated.ancients.dire.vulnerable).toBe(true)
-      expect(updated.ancients.radiant.vulnerable).toBe(false)
+      expect(updated.ancients.audit.vulnerable).toBe(true)
+      expect(updated.ancients.chaff.vulnerable).toBe(false)
     })
   })
 
   describe('resolveAncientAttack', () => {
     function vulnerableState(overrides: Partial<GameState> = {}): GameState {
-      return updateAncientVulnerability(withDeadT3(makeGameState(overrides), 'dire'))
+      return updateAncientVulnerability(withDeadT3(makeGameState(overrides), 'audit'))
     }
 
     it('rejects attacks while the Ancient is invulnerable', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'dire-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
 
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.rejected).toBeDefined()
-      expect(result.state.ancients.dire.hp).toBe(ANCIENT_HP)
+      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP)
       expect(result.events).toHaveLength(0)
     })
 
     it('applies hero damage to the enemy Ancient when vulnerable', () => {
       const state = vulnerableState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'dire-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
 
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.rejected).toBeUndefined()
-      expect(result.state.ancients.dire.hp).toBe(ANCIENT_HP - 100)
-      expect(result.state.ancients.dire.alive).toBe(true)
+      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP - 100)
+      expect(result.state.ancients.audit.alive).toBe(true)
       expect(result.events).toHaveLength(1)
       expect(result.events[0]!._tag).toBe('damage')
       expect(result.events[0]).toMatchObject({
         sourceId: 'p1',
-        targetId: 'ancient_dire',
+        targetId: 'ancient_audit',
         amount: 100,
       })
     })
 
     it('resolves creep attackers by creep team', () => {
       const state = vulnerableState({
-        creeps: [makeCreep({ id: 'c9', team: 'radiant', zone: 'dire-base' })],
+        creeps: [makeCreep({ id: 'c9', team: 'chaff', zone: 'audit-base' })],
       })
 
       const result = resolveAncientAttack(state, 'c9', 20)
       expect(result.rejected).toBeUndefined()
-      expect(result.state.ancients.dire.hp).toBe(ANCIENT_HP - 20)
+      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP - 20)
     })
 
     it('destroys the Ancient at 0 HP and emits a dedicated ancient_destroyed event', () => {
       const base = vulnerableState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'dire-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
       const state: GameState = {
         ...base,
-        ancients: { ...base.ancients, dire: { ...base.ancients.dire, hp: 50 } },
+        ancients: { ...base.ancients, audit: { ...base.ancients.audit, hp: 50 } },
       }
 
       const result = resolveAncientAttack(state, 'p1', 100)
-      expect(result.state.ancients.dire.hp).toBe(0)
-      expect(result.state.ancients.dire.alive).toBe(false)
+      expect(result.state.ancients.audit.hp).toBe(0)
+      expect(result.state.ancients.audit.alive).toBe(false)
       // No tower_kill reuse — the Ancient has its own event so the UI does not
       // render a misleading "destroyed tower in <base>" line.
       expect(result.events.some((e) => e._tag === 'tower_kill')).toBe(false)
       const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
       expect(killEvent).toBeDefined()
-      expect(killEvent).toMatchObject({ team: 'dire', killerTeam: 'radiant' })
+      expect(killEvent).toMatchObject({ team: 'audit', killerTeam: 'chaff' })
     })
 
     it('rejects attacks on an already-destroyed Ancient', () => {
       const base = vulnerableState({
-        players: { p1: makePlayer({ id: 'p1', team: 'radiant', zone: 'dire-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })
       const state: GameState = {
         ...base,
         ancients: {
           ...base.ancients,
-          dire: { ...base.ancients.dire, hp: 0, alive: false },
+          audit: { ...base.ancients.audit, hp: 0, alive: false },
         },
       }
 
@@ -259,15 +261,15 @@ describe('AncientSystem', () => {
       expect(result.state).toBe(state)
     })
 
-    it('dire attackers damage the radiant Ancient', () => {
+    it('audit attackers damage the chaff Ancient', () => {
       const base = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', team: 'dire', zone: 'radiant-base' }) },
+        players: { p1: makePlayer({ id: 'p1', team: 'audit', zone: 'chaff-base' }) },
       })
-      const state = updateAncientVulnerability(withDeadT3(base, 'radiant'))
+      const state = updateAncientVulnerability(withDeadT3(base, 'chaff'))
 
       const result = resolveAncientAttack(state, 'p1', 100)
-      expect(result.state.ancients.radiant.hp).toBe(ANCIENT_HP - 100)
-      expect(result.state.ancients.dire.hp).toBe(ANCIENT_HP)
+      expect(result.state.ancients.chaff.hp).toBe(ANCIENT_HP - 100)
+      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP)
     })
   })
 
@@ -278,23 +280,23 @@ describe('AncientSystem', () => {
 
     it('returns the winning team when an Ancient falls', () => {
       const state = makeGameState()
-      const direDown: GameState = {
+      const auditDown: GameState = {
         ...state,
         ancients: {
           ...state.ancients,
-          dire: { ...state.ancients.dire, hp: 0, alive: false },
+          audit: { ...state.ancients.audit, hp: 0, alive: false },
         },
       }
-      expect(checkAncientWin(direDown)).toBe('radiant')
+      expect(checkAncientWin(auditDown)).toBe('chaff')
 
-      const radiantDown: GameState = {
+      const chaffDown: GameState = {
         ...state,
         ancients: {
           ...state.ancients,
-          radiant: { ...state.ancients.radiant, hp: 0, alive: false },
+          chaff: { ...state.ancients.chaff, hp: 0, alive: false },
         },
       }
-      expect(checkAncientWin(radiantDown)).toBe('dire')
+      expect(checkAncientWin(chaffDown)).toBe('audit')
     })
 
     it('returns null for legacy states without ancients', () => {

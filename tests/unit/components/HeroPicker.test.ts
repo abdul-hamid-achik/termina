@@ -18,7 +18,7 @@ const HeroAvatarStub = {
 function mountPicker(props: Record<string, unknown> = {}) {
   return mount(HeroPicker, {
     props: {
-      team: 'radiant' as TeamId,
+      team: 'chaff' as TeamId,
       myPlayerId: 'me',
       ...props,
     },
@@ -32,9 +32,9 @@ function mountPicker(props: Record<string, unknown> = {}) {
 }
 
 const roster = [
-  { playerId: 'me', name: 'Me', heroId: null, team: 'radiant' as TeamId },
-  { playerId: 'p2', name: 'Ally', heroId: null, team: 'radiant' as TeamId },
-  { playerId: 'e1', name: 'Enemy', heroId: null, team: 'dire' as TeamId },
+  { playerId: 'me', name: 'Me', heroId: null, team: 'chaff' as TeamId },
+  { playerId: 'p2', name: 'Ally', heroId: null, team: 'chaff' as TeamId },
+  { playerId: 'e1', name: 'Enemy', heroId: null, team: 'audit' as TeamId },
 ]
 
 describe('HeroPicker', () => {
@@ -201,7 +201,7 @@ describe('HeroPicker', () => {
 
       const strip = wrapper.find('[data-testid="roster-strip"]')
       expect(strip.exists()).toBe(true)
-      // 5 radiant + 5 dire slots
+      // 5 chaff + 5 audit slots
       expect(strip.findAll('div').length).toBe(10)
       // Unpicked players show their initial
       expect(strip.text()).toContain('M')

@@ -36,14 +36,14 @@ function replayResult(): FetchResult {
         tick: 50,
         phase: 'ended',
         teams: {
-          radiant: { kills: 10, towerKills: 2, gold: 0 },
-          dire: { kills: 5, towerKills: 1, gold: 0 },
+          chaff: { kills: 10, towerKills: 2, gold: 0 },
+          audit: { kills: 5, towerKills: 1, gold: 0 },
         },
         players: {
           p1: {
             id: 'p1',
             name: 'alice',
-            team: 'radiant',
+            team: 'chaff',
             heroId: 'echo',
             level: 6,
             gold: 5000,
@@ -56,7 +56,7 @@ function replayResult(): FetchResult {
         },
         timeOfDay: 'day',
       },
-      meta: { players: [{ playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 }] },
+      meta: { players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1500 }] },
       actions: [{ tick: 10, playerId: 'p1', command: { type: 'cast', ability: 'q' } }],
     }),
     error: ref(null),
@@ -72,7 +72,7 @@ function framesResult(): FetchResult {
       frames: [
         {
           tick: 0,
-          teams: { radiant: { kills: 0, towerKills: 0 }, dire: { kills: 0, towerKills: 0 } },
+          teams: { chaff: { kills: 0, towerKills: 0 }, audit: { kills: 0, towerKills: 0 } },
           timeOfDay: 'day',
           players: {
             p1: {
@@ -87,13 +87,13 @@ function framesResult(): FetchResult {
               deaths: 0,
               assists: 0,
               alive: true,
-              zone: 'radiant-base',
+              zone: 'chaff-base',
               items: [],
             },
           },
         },
       ],
-      meta: { players: [{ playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 }] },
+      meta: { players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1500 }] },
     }),
   }
 }
@@ -160,8 +160,8 @@ describe('replay page', () => {
   it('renders the score banner + a player row from the replay data', async () => {
     const wrapper = await mountReplay()
     const text = wrapper.text()
-    expect(text).toContain('10') // radiant kills
-    expect(text).toContain('5') // dire kills
+    expect(text).toContain('10') // chaff kills
+    expect(text).toContain('5') // audit kills
     expect(text).toContain('Echo') // hero name resolved
   })
 
@@ -199,7 +199,7 @@ describe('replay page', () => {
     // A multi-frame replay with a kill (tick 5) and a tower fall (tick 12).
     const frame = (tick: number, rk: number, dk: number, rt: number, dt: number) => ({
       tick,
-      teams: { radiant: { kills: rk, towerKills: rt }, dire: { kills: dk, towerKills: dt } },
+      teams: { chaff: { kills: rk, towerKills: rt }, audit: { kills: dk, towerKills: dt } },
       timeOfDay: 'day' as const,
       players: {},
     })
@@ -210,7 +210,7 @@ describe('replay page', () => {
           gameId: 'g1',
           totalTicks: 12,
           frames: [frame(0, 0, 0, 0, 0), frame(5, 1, 0, 0, 0), frame(12, 1, 0, 1, 0)],
-          meta: { players: [{ playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 }] },
+          meta: { players: [{ playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1500 }] },
         }),
       },
     ]
@@ -247,8 +247,8 @@ describe('replay page', () => {
     const snapshot = replayResult()
     ;(snapshot.data.value as { meta: { players: unknown[] } }).meta = {
       players: [
-        { playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 },
-        { playerId: 'd1', team: 'dire', heroId: 'daemon', mmr: 1500 },
+        { playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1500 },
+        { playerId: 'd1', team: 'audit', heroId: 'daemon', mmr: 1500 },
       ],
     }
     fetchResults = [
@@ -260,16 +260,16 @@ describe('replay page', () => {
           frames: [
             {
               tick: 0,
-              teams: { radiant: { kills: 0, towerKills: 0 }, dire: { kills: 0, towerKills: 0 } },
+              teams: { chaff: { kills: 0, towerKills: 0 }, audit: { kills: 0, towerKills: 0 } },
               timeOfDay: 'day' as const,
-              // radiant 3000g vs dire 1000g → radiant +2000 net worth
+              // chaff 3000g vs audit 1000g → chaff +2000 net worth
               players: { p1: fp('p1', 3000), d1: fp('d1', 1000) },
             },
           ],
           meta: {
             players: [
-              { playerId: 'p1', team: 'radiant', heroId: 'echo', mmr: 1500 },
-              { playerId: 'd1', team: 'dire', heroId: 'daemon', mmr: 1500 },
+              { playerId: 'p1', team: 'chaff', heroId: 'echo', mmr: 1500 },
+              { playerId: 'd1', team: 'audit', heroId: 'daemon', mmr: 1500 },
             ],
           },
         }),
@@ -278,7 +278,7 @@ describe('replay page', () => {
     const wrapper = await mountReplay()
     const leadEl = wrapper.find('[data-testid="replay-gold-lead"]')
     expect(leadEl.exists()).toBe(true)
-    expect(leadEl.text()).toContain('RADIANT')
+    expect(leadEl.text()).toContain('CHAFF')
     expect(leadEl.text()).toContain('2.0k') // 3000 − 1000 = 2000
   })
 })

@@ -40,16 +40,16 @@ STATS.p1 = makePlayerEndStats({
   towerDamage: 6_100,
 })
 
-const RADIANT: TeamId = 'radiant'
-const DIRE: TeamId = 'dire'
+const CHAFF: TeamId = 'chaff'
+const AUDIT: TeamId = 'audit'
 </script>
 
 <template>
   <Story title="Lobby/PostGame">
-    <!-- Local player (radiant) won: green victory banner, +MMR, replay link. -->
-    <Variant title="radiant victory (+mmr)">
+    <!-- Local player (chaff) won: green victory banner, +MMR, replay link. -->
+    <Variant title="chaff victory (+mmr)">
       <PostGame
-        :winner="RADIANT"
+        :winner="CHAFF"
         :stats="STATS"
         :players="PLAYERS"
         current-player-id="p1"
@@ -60,10 +60,10 @@ const DIRE: TeamId = 'dire'
       />
     </Variant>
 
-    <!-- Local player lost: red DIRE VICTORY banner, -MMR. -->
-    <Variant title="dire victory (-mmr)">
+    <!-- Local player lost: red AUDIT VICTORY banner, -MMR. -->
+    <Variant title="audit victory (-mmr)">
       <PostGame
-        :winner="DIRE"
+        :winner="AUDIT"
         :stats="STATS"
         :players="PLAYERS"
         current-player-id="p1"
@@ -77,7 +77,7 @@ const DIRE: TeamId = 'dire'
     <!-- No MMR delta and no replay id: the MMR stat + WATCH REPLAY link are hidden. -->
     <Variant title="no mmr / no replay">
       <PostGame
-        :winner="RADIANT"
+        :winner="CHAFF"
         :stats="STATS"
         :players="PLAYERS"
         current-player-id="p1"
@@ -90,7 +90,7 @@ const DIRE: TeamId = 'dire'
     <!-- Tutorial wrap-up: 'tutorial complete' caption + a 'FIND A REAL MATCH' CTA. -->
     <Variant title="tutorial complete">
       <PostGame
-        :winner="RADIANT"
+        :winner="CHAFF"
         :stats="STATS"
         :players="PLAYERS"
         current-player-id="p1"

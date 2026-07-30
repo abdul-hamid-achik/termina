@@ -57,21 +57,21 @@ describe('AsciiButton', () => {
   })
 
   describe('variants', () => {
-    it('applies radiant border styling for the primary variant', () => {
+    it('applies chaff border styling for the primary variant', () => {
       const wrapper = mountButton({ variant: 'primary' })
 
       const button = wrapper.find('button')
-      expect(button.classes()).toContain('border-radiant')
-      // bracket spans pick up the radiant accent colour
-      expect(wrapper.findAll('span')[0]!.classes()).toContain('text-radiant')
+      expect(button.classes()).toContain('border-chaff')
+      // bracket spans pick up the chaff accent colour
+      expect(wrapper.findAll('span')[0]!.classes()).toContain('text-chaff')
     })
 
-    it('applies dire border styling for the danger variant', () => {
+    it('applies audit border styling for the danger variant', () => {
       const wrapper = mountButton({ variant: 'danger' })
 
       const button = wrapper.find('button')
-      expect(button.classes()).toContain('border-dire')
-      expect(wrapper.findAll('span')[0]!.classes()).toContain('text-dire')
+      expect(button.classes()).toContain('border-audit')
+      expect(wrapper.findAll('span')[0]!.classes()).toContain('text-audit')
     })
 
     it('applies transparent border for the ghost variant', () => {
@@ -85,7 +85,7 @@ describe('AsciiButton', () => {
 
       const button = wrapper.find('button')
       expect(button.classes()).toContain('border-border')
-      // default brackets use the dim accent rather than radiant/dire
+      // default brackets use the dim accent rather than chaff/audit
       expect(wrapper.findAll('span')[0]!.classes()).toContain('text-text-dim')
     })
   })

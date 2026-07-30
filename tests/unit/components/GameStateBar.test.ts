@@ -57,12 +57,12 @@ describe('GameStateBar', () => {
 
   describe('macro strip', () => {
     const teams = {
-      radiant: { id: 'radiant', kills: 12, towerKills: 3, gold: 0, glyphUsedTick: null },
-      dire: { id: 'dire', kills: 8, towerKills: 1, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 12, towerKills: 3, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 8, towerKills: 1, gold: 0, glyphUsedTick: null },
     }
     const ancients = {
-      radiant: { team: 'radiant', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-      dire: { team: 'dire', hp: 3000, maxHp: 6000, alive: true, vulnerable: true },
+      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', hp: 3000, maxHp: 6000, alive: true, vulnerable: true },
     }
 
     it('is hidden without team data', () => {
@@ -74,17 +74,17 @@ describe('GameStateBar', () => {
         ...baseProps,
         teams,
         ancients,
-        netWorthRadiant: 12000,
-        netWorthDire: 8000,
+        netWorthChaff: 12000,
+        netWorthAudit: 8000,
       })
       const strip = w.find('[data-testid="macro-strip"]')
       expect(strip.exists()).toBe(true)
-      expect(strip.text()).toContain('12') // radiant kills
-      expect(strip.text()).toContain('8') // dire kills
+      expect(strip.text()).toContain('12') // chaff kills
+      expect(strip.text()).toContain('8') // audit kills
       const lead = w.find('[data-testid="networth-lead"]')
       expect(lead.text()).toContain('RAD')
       expect(lead.text()).toContain('4.0k')
-      expect(strip.text()).toContain('50%') // dire core at half
+      expect(strip.text()).toContain('50%') // audit core at half
     })
   })
 })

@@ -82,7 +82,7 @@ describe('DatabaseService (real Postgres)', () => {
       await seedPlayer()
       return run((s) =>
         s.recordMatch({ id: matchId, mode: 'ranked_5v5' } as never, [
-          { matchId, playerId: 'p1', team: 'radiant', heroId: 'echo' } as never,
+          { matchId, playerId: 'p1', team: 'chaff', heroId: 'echo' } as never,
         ]),
       )
     }
@@ -115,14 +115,14 @@ describe('DatabaseService (real Postgres)', () => {
       for (const id of ['m1', 'm2', 'm3']) {
         await run((s) =>
           s.recordMatch({ id, mode: 'ranked_5v5' } as never, [
-            { matchId: id, playerId: 'p1', team: 'radiant', heroId: 'echo' } as never,
+            { matchId: id, playerId: 'p1', team: 'chaff', heroId: 'echo' } as never,
           ]),
         )
       }
       const hist = await run((s) => s.getMatchHistory('p1'))
       expect(hist).toHaveLength(3)
       // each entry carries the queried player's team (for Victory/Defeat display)
-      expect(hist[0]!.team).toBe('radiant')
+      expect(hist[0]!.team).toBe('chaff')
       expect(await run((s) => s.getMatchHistory('p1', 2))).toHaveLength(2)
       expect(await run((s) => s.getMatchHistory('ghost'))).toHaveLength(0)
     })

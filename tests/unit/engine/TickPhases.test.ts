@@ -21,15 +21,22 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      radiant: {
-        id: 'radiant',
+      chaff: {
+        id: 'chaff',
         kills: 0,
         towerKills: 0,
         gold: 0,
         glyphUsedTick: null,
         glyphCooldown: 0,
       },
-      dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null, glyphCooldown: 0 },
+      audit: {
+        id: 'audit',
+        kills: 0,
+        towerKills: 0,
+        gold: 0,
+        glyphUsedTick: null,
+        glyphCooldown: 0,
+      },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -41,7 +48,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
     aegis: null,
     events: [],
-    surrenderVotes: { radiant: new Set(), dire: new Set() },
+    surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
     dayNightTick: 0,
     ...overrides,
@@ -58,16 +65,16 @@ describe('expireGlyph', () => {
     const state = makeState({
       tick: 3,
       teams: {
-        radiant: {
-          id: 'radiant',
+        chaff: {
+          id: 'chaff',
           kills: 0,
           towerKills: 0,
           gold: 0,
           glyphUsedTick: 1,
           glyphCooldown: 0,
         },
-        dire: {
-          id: 'dire',
+        audit: {
+          id: 'audit',
           kills: 0,
           towerKills: 0,
           gold: 0,
@@ -76,28 +83,28 @@ describe('expireGlyph', () => {
         },
       },
       towers: initializeTowers().map((t) =>
-        t.team === 'radiant' ? { ...t, invulnerable: true } : t,
+        t.team === 'chaff' ? { ...t, invulnerable: true } : t,
       ),
     })
     const result = expireGlyph(state)
     // tick=3, used=1, GLYPH_DURATION_TICKS=5 → 2 < 5, still invulnerable
-    expect(result.towers.find((t) => t.team === 'radiant')!.invulnerable).toBe(true)
+    expect(result.towers.find((t) => t.team === 'chaff')!.invulnerable).toBe(true)
   })
 
-  it('drops radiant invulnerability when duration is up', () => {
+  it('drops chaff invulnerability when duration is up', () => {
     const state = makeState({
       tick: GLYPH_DURATION_TICKS + 5,
       teams: {
-        radiant: {
-          id: 'radiant',
+        chaff: {
+          id: 'chaff',
           kills: 0,
           towerKills: 0,
           gold: 0,
           glyphUsedTick: 5,
           glyphCooldown: 0,
         },
-        dire: {
-          id: 'dire',
+        audit: {
+          id: 'audit',
           kills: 0,
           towerKills: 0,
           gold: 0,
@@ -106,28 +113,35 @@ describe('expireGlyph', () => {
         },
       },
       towers: initializeTowers().map((t) =>
-        t.team === 'radiant' ? { ...t, invulnerable: true } : t,
+        t.team === 'chaff' ? { ...t, invulnerable: true } : t,
       ),
     })
     const result = expireGlyph(state)
-    expect(result.towers.find((t) => t.team === 'radiant')!.invulnerable).toBe(false)
-    // Dire towers untouched
-    expect(result.towers.find((t) => t.team === 'dire')!.invulnerable).toBe(false)
+    expect(result.towers.find((t) => t.team === 'chaff')!.invulnerable).toBe(false)
+    // Audit towers untouched
+    expect(result.towers.find((t) => t.team === 'audit')!.invulnerable).toBe(false)
   })
 
   it('expires both teams independently when both glyphs are up', () => {
     const state = makeState({
       tick: GLYPH_DURATION_TICKS + 1,
       teams: {
-        radiant: {
-          id: 'radiant',
+        chaff: {
+          id: 'chaff',
           kills: 0,
           towerKills: 0,
           gold: 0,
           glyphUsedTick: 1,
           glyphCooldown: 0,
         },
-        dire: { id: 'dire', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 1, glyphCooldown: 0 },
+        audit: {
+          id: 'audit',
+          kills: 0,
+          towerKills: 0,
+          gold: 0,
+          glyphUsedTick: 1,
+          glyphCooldown: 0,
+        },
       },
       towers: initializeTowers().map((t) => ({ ...t, invulnerable: true })),
     })
@@ -151,9 +165,9 @@ describe('processSpecialActions', () => {
         p1: {
           id: 'p1',
           name: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           heroId: 'echo',
-          zone: 'radiant-fountain',
+          zone: 'chaff-fountain',
           hp: 1000,
           maxHp: 1000,
           mp: 100,
@@ -231,7 +245,7 @@ describe('runNPCAI', () => {
         p1: {
           id: 'p1',
           name: 'p1',
-          team: 'radiant',
+          team: 'chaff',
           heroId: 'echo',
           zone: 'roshan-pit',
           hp: 1000,

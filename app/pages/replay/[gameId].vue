@@ -17,15 +17,15 @@ interface ReplayPayload {
     tick: number
     phase: string
     teams: {
-      radiant: { kills: number; towerKills: number; gold: number }
-      dire: { kills: number; towerKills: number; gold: number }
+      chaff: { kills: number; towerKills: number; gold: number }
+      audit: { kills: number; towerKills: number; gold: number }
     }
     players: Record<
       string,
       {
         id: string
         name: string
-        team: 'radiant' | 'dire'
+        team: 'chaff' | 'audit'
         heroId: string | null
         level: number
         gold: number
@@ -38,7 +38,7 @@ interface ReplayPayload {
     >
     timeOfDay: 'day' | 'night'
   }
-  meta?: { players: { playerId: string; team: 'radiant' | 'dire'; heroId: string; mmr: number }[] }
+  meta?: { players: { playerId: string; team: 'chaff' | 'audit'; heroId: string; mmr: number }[] }
   actions: { tick: number; playerId: string; command: { type: string; [k: string]: unknown } }[]
 }
 
@@ -61,8 +61,8 @@ interface FramePlayer {
 interface Frame {
   tick: number
   teams: {
-    radiant: { kills: number; towerKills: number }
-    dire: { kills: number; towerKills: number }
+    chaff: { kills: number; towerKills: number }
+    audit: { kills: number; towerKills: number }
   }
   timeOfDay: 'day' | 'night'
   players: Record<string, FramePlayer>
@@ -72,7 +72,7 @@ interface FramesPayload {
   gameId: string
   totalTicks: number
   frames: Frame[]
-  meta?: { players: { playerId: string; team: 'radiant' | 'dire'; heroId: string; mmr: number }[] }
+  meta?: { players: { playerId: string; team: 'chaff' | 'audit'; heroId: string; mmr: number }[] }
 }
 
 const { data, error, pending } = await useFetch<ReplayPayload>(`/api/replay/${gameId.value}`)
@@ -135,7 +135,7 @@ const currentFrame = computed<Frame | null>(() => {
   return idx < 0 ? null : (frames[idx] ?? null)
 })
 
-function frameTeam(team: 'radiant' | 'dire'): FramePlayer[] {
+function frameTeam(team: 'chaff' | 'audit'): FramePlayer[] {
   const f = currentFrame.value
   const meta = data.value?.meta?.players
   if (!f || !meta) return []
@@ -151,16 +151,16 @@ function heroIdForPlayer(playerId: string): string | null {
   return data.value?.state.players[playerId]?.heroId ?? null
 }
 
-const radiantPlayers = computed(() => {
-  if (currentFrame.value) return frameTeam('radiant')
+const chaffPlayers = computed(() => {
+  if (currentFrame.value) return frameTeam('chaff')
   if (!data.value) return []
   // Fall back to the snapshot's end-state if frames haven't loaded yet.
-  return Object.values(data.value.state.players).filter((p) => p.team === 'radiant')
+  return Object.values(data.value.state.players).filter((p) => p.team === 'chaff')
 })
-const direPlayers = computed(() => {
-  if (currentFrame.value) return frameTeam('dire')
+const auditPlayers = computed(() => {
+  if (currentFrame.value) return frameTeam('audit')
   if (!data.value) return []
-  return Object.values(data.value.state.players).filter((p) => p.team === 'dire')
+  return Object.values(data.value.state.players).filter((p) => p.team === 'audit')
 })
 
 // Normalise frame/snapshot players into the shared PlayerScoreTable row shape.
@@ -193,37 +193,37 @@ function toScoreRow(p: {
     alive: p.alive,
   }
 }
-const radiantRows = computed(() => radiantPlayers.value.map(toScoreRow))
-const direRows = computed(() => direPlayers.value.map(toScoreRow))
+const chaffRows = computed(() => chaffPlayers.value.map(toScoreRow))
+const auditRows = computed(() => auditPlayers.value.map(toScoreRow))
 
 // Net-worth gold lead at the scrub position — scrubs with the frame so a learner
 // can watch the lead swing. Net worth = liquid gold + carried item value (per
 // the tested strategy helpers); the snapshot fallback carries no items, so it's
 // gold-only until frames load.
-const radiantNetWorth = computed(() =>
-  radiantPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
+const chaffNetWorth = computed(() =>
+  chaffPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
 )
-const direNetWorth = computed(() =>
-  direPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
+const auditNetWorth = computed(() =>
+  auditPlayers.value.reduce((sum, p) => sum + playerNetWorth(p as NetWorthInput), 0),
 )
-const lead = computed(() => goldLead(radiantNetWorth.value, direNetWorth.value))
+const lead = computed(() => goldLead(chaffNetWorth.value, auditNetWorth.value))
 
 const teamScores = computed(() => {
   if (currentFrame.value) {
     return {
-      radiant: currentFrame.value.teams.radiant,
-      dire: currentFrame.value.teams.dire,
+      chaff: currentFrame.value.teams.chaff,
+      audit: currentFrame.value.teams.audit,
     }
   }
   if (!data.value) return null
   return {
-    radiant: {
-      kills: data.value.state.teams.radiant.kills,
-      towerKills: data.value.state.teams.radiant.towerKills,
+    chaff: {
+      kills: data.value.state.teams.chaff.kills,
+      towerKills: data.value.state.teams.chaff.towerKills,
     },
-    dire: {
-      kills: data.value.state.teams.dire.kills,
-      towerKills: data.value.state.teams.dire.towerKills,
+    audit: {
+      kills: data.value.state.teams.audit.kills,
+      towerKills: data.value.state.teams.audit.towerKills,
     },
   }
 })
@@ -292,8 +292,8 @@ watchEffect(() => {
         &gt;_ loading replay data...
       </div>
 
-      <div v-else-if="error" class="border border-dire bloom-dire p-4">
-        <div class="t-h3 text-dire text-glow-dire">REPLAY UNAVAILABLE</div>
+      <div v-else-if="error" class="border border-audit bloom-audit p-4">
+        <div class="t-h3 text-audit text-glow-audit">REPLAY UNAVAILABLE</div>
         <div class="t-caption mt-1" data-testid="replay-error-detail">
           {{ errorMessage }}
         </div>
@@ -306,12 +306,12 @@ watchEffect(() => {
       <template v-else-if="data">
         <!-- Score banner — driven by the current frame so it scrubs with the slider -->
         <div class="grid grid-cols-3 items-stretch border border-border bg-bg-panel">
-          <div class="border-r border-border p-3 text-center bloom-radiant">
-            <div class="t-h3 text-radiant text-glow-radiant">RADIANT</div>
-            <div class="t-display t-mono-num text-radiant text-glow-radiant">
-              {{ teamScores?.radiant.kills ?? 0 }}
+          <div class="border-r border-border p-3 text-center bloom-chaff">
+            <div class="t-h3 text-chaff text-glow-chaff">CHAFF</div>
+            <div class="t-display t-mono-num text-chaff text-glow-chaff">
+              {{ teamScores?.chaff.kills ?? 0 }}
             </div>
-            <div class="t-caption">{{ teamScores?.radiant.towerKills ?? 0 }} towers</div>
+            <div class="t-caption">{{ teamScores?.chaff.towerKills ?? 0 }} towers</div>
           </div>
           <div class="flex flex-col items-center justify-center p-3">
             <div class="t-caption">cycle</div>
@@ -323,45 +323,43 @@ watchEffect(() => {
             <div
               v-if="lead.leader"
               class="t-caption mt-1 t-mono-num"
-              :class="lead.leader === 'radiant' ? 'text-radiant' : 'text-dire'"
+              :class="lead.leader === 'chaff' ? 'text-chaff' : 'text-audit'"
               data-testid="replay-gold-lead"
             >
-              {{ lead.leader === 'radiant' ? 'RADIANT' : 'DIRE' }} +{{
-                formatGoldShort(lead.amount)
-              }}
+              {{ lead.leader === 'chaff' ? 'CHAFF' : 'AUDIT' }} +{{ formatGoldShort(lead.amount) }}
               net worth
             </div>
             <div v-else class="t-caption mt-1 text-text-dim" data-testid="replay-gold-lead">
               net worth even
             </div>
           </div>
-          <div class="border-l border-border p-3 text-center bloom-dire">
-            <div class="t-h3 text-dire text-glow-dire">DIRE</div>
-            <div class="t-display t-mono-num text-dire text-glow-dire">
-              {{ teamScores?.dire.kills ?? 0 }}
+          <div class="border-l border-border p-3 text-center bloom-audit">
+            <div class="t-h3 text-audit text-glow-audit">AUDIT</div>
+            <div class="t-display t-mono-num text-audit text-glow-audit">
+              {{ teamScores?.audit.kills ?? 0 }}
             </div>
-            <div class="t-caption">{{ teamScores?.dire.towerKills ?? 0 }} towers</div>
+            <div class="t-caption">{{ teamScores?.audit.towerKills ?? 0 }} towers</div>
           </div>
         </div>
 
         <!-- Per-player breakdown -->
         <div class="grid gap-3 sm:grid-cols-2">
-          <div class="border border-radiant/40 bg-bg-panel">
+          <div class="border border-chaff/40 bg-bg-panel">
             <div
-              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-radiant text-glow-radiant"
+              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-chaff text-glow-chaff"
             >
-              RADIANT
+              CHAFF
             </div>
-            <PlayerScoreTable caption="Radiant players" :rows="radiantRows" />
+            <PlayerScoreTable caption="Chaff players" :rows="chaffRows" />
           </div>
 
-          <div class="border border-dire/40 bg-bg-panel">
+          <div class="border border-audit/40 bg-bg-panel">
             <div
-              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-dire text-glow-dire"
+              class="t-h3 border-b border-border bg-bg-secondary px-3 py-1.5 text-audit text-glow-audit"
             >
-              DIRE
+              AUDIT
             </div>
-            <PlayerScoreTable caption="Dire players" :rows="direRows" />
+            <PlayerScoreTable caption="Audit players" :rows="auditRows" />
           </div>
         </div>
 
@@ -389,7 +387,7 @@ watchEffect(() => {
               :class="
                 m.kind === 'tower'
                   ? 'border-gold/50 text-gold hover:text-gold'
-                  : 'border-dire/50 text-dire hover:text-dire'
+                  : 'border-audit/50 text-audit hover:text-audit'
               "
               :data-testid="`key-moment-${m.kind}`"
               :aria-label="`Jump to ${m.label} at cycle ${m.tick}`"
@@ -408,7 +406,7 @@ watchEffect(() => {
             <div class="flex items-center gap-2">
               <button
                 type="button"
-                class="shrink-0 border border-border px-2 py-0.5 text-xs text-ability transition-colors hover:border-border-glow hover:text-radiant"
+                class="shrink-0 border border-border px-2 py-0.5 text-xs text-ability transition-colors hover:border-border-glow hover:text-chaff"
                 :aria-label="playing ? 'Pause replay playback' : 'Play replay'"
                 :aria-pressed="playing"
                 data-testid="replay-play"

@@ -9,19 +9,19 @@ import { formatTickClock } from '~/utils/gameClock'
 
 const props = defineProps<{
   players: ScoreboardEntry[]
-  teams: { radiant: TeamState; dire: TeamState }
+  teams: { chaff: TeamState; audit: TeamState }
   currentTick: number
   currentPlayerId: string
 }>()
 
 const isCoarsePointer = usePointerCoarse()
 
-const radiantPlayers = computed(() => props.players.filter((p) => p.team === 'radiant'))
-const direPlayers = computed(() => props.players.filter((p) => p.team === 'dire'))
+const chaffPlayers = computed(() => props.players.filter((p) => p.team === 'chaff'))
+const auditPlayers = computed(() => props.players.filter((p) => p.team === 'audit'))
 
 const teamBlocks = computed((): { team: TeamId; players: ScoreboardEntry[] }[] => [
-  { team: 'radiant', players: radiantPlayers.value },
-  { team: 'dire', players: direPlayers.value },
+  { team: 'chaff', players: chaffPlayers.value },
+  { team: 'audit', players: auditPlayers.value },
 ])
 
 // Tap/click a row to expand its items as readable text (replaces the old
@@ -73,25 +73,25 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   <div class="scoreboard" data-testid="scoreboard">
     <!-- Header -->
     <div class="scoreboard__header">
-      <div class="scoreboard__team-label scoreboard__team-label--radiant">RADIANT</div>
+      <div class="scoreboard__team-label scoreboard__team-label--chaff">CHAFF</div>
       <div class="scoreboard__match-info">
         <div class="scoreboard__time">{{ gameTimeFormatted }}</div>
         <div class="scoreboard__kills-summary">
-          <span class="text-radiant">{{ teams.radiant.kills }}</span>
+          <span class="text-chaff">{{ teams.chaff.kills }}</span>
           <span class="scoreboard__vs">vs</span>
-          <span class="text-dire">{{ teams.dire.kills }}</span>
+          <span class="text-audit">{{ teams.audit.kills }}</span>
         </div>
         <div class="scoreboard__tower-summary">
-          <span class="text-radiant" :title="`Radiant towers destroyed`"
-            >{{ teams.radiant.towerKills }}T</span
+          <span class="text-chaff" :title="`Chaff towers destroyed`"
+            >{{ teams.chaff.towerKills }}T</span
           >
           <span class="scoreboard__separator">/</span>
-          <span class="text-dire" :title="`Dire towers destroyed`"
-            >{{ teams.dire.towerKills }}T</span
+          <span class="text-audit" :title="`Audit towers destroyed`"
+            >{{ teams.audit.towerKills }}T</span
           >
         </div>
       </div>
-      <div class="scoreboard__team-label scoreboard__team-label--dire">DIRE</div>
+      <div class="scoreboard__team-label scoreboard__team-label--audit">AUDIT</div>
     </div>
 
     <!-- Team tables: side-by-side on desktop, stacked on narrow screens -->
@@ -149,8 +149,8 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
                 >
               </div>
               <div class="scoreboard__col scoreboard__col--kda">
-                <span class="text-radiant">{{ player.kills }}</span
-                >/<span class="text-dire">{{ player.deaths }}</span
+                <span class="text-chaff">{{ player.kills }}</span
+                >/<span class="text-audit">{{ player.deaths }}</span
                 >/<span class="text-text-dim">{{ player.assists }}</span>
               </div>
               <div class="scoreboard__col scoreboard__col--lv">
@@ -211,22 +211,22 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
 
     <!-- Team totals footer -->
     <div class="scoreboard__footer">
-      <div class="scoreboard__team-total scoreboard__team-total--radiant">
+      <div class="scoreboard__team-total scoreboard__team-total--chaff">
         <span class="scoreboard__total-label">TOTAL</span>
-        <span class="text-radiant">{{ teams.radiant.kills }}K</span>
-        <span class="text-gold">{{ formatGold(teamTotalGold('radiant')) }}g</span>
-        <span class="text-text-dim">{{ teams.radiant.towerKills }}T</span>
+        <span class="text-chaff">{{ teams.chaff.kills }}K</span>
+        <span class="text-gold">{{ formatGold(teamTotalGold('chaff')) }}g</span>
+        <span class="text-text-dim">{{ teams.chaff.towerKills }}T</span>
       </div>
       <div class="scoreboard__footer-center">
         <span class="text-text-dim text-[0.65rem]" data-testid="scoreboard-hint">{{
           isCoarsePointer ? 'tap outside to close' : 'Hold TAB'
         }}</span>
       </div>
-      <div class="scoreboard__team-total scoreboard__team-total--dire">
+      <div class="scoreboard__team-total scoreboard__team-total--audit">
         <span class="scoreboard__total-label">TOTAL</span>
-        <span class="text-dire">{{ teams.dire.kills }}K</span>
-        <span class="text-gold">{{ formatGold(teamTotalGold('dire')) }}g</span>
-        <span class="text-text-dim">{{ teams.dire.towerKills }}T</span>
+        <span class="text-audit">{{ teams.audit.kills }}K</span>
+        <span class="text-gold">{{ formatGold(teamTotalGold('audit')) }}g</span>
+        <span class="text-text-dim">{{ teams.audit.towerKills }}T</span>
       </div>
     </div>
   </div>
@@ -258,18 +258,18 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   text-transform: uppercase;
 }
 
-.scoreboard__team-label--radiant {
-  color: rgb(var(--color-radiant));
+.scoreboard__team-label--chaff {
+  color: rgb(var(--color-chaff));
   text-shadow:
-    0 0 6px rgb(var(--color-radiant) / 0.9),
-    0 0 16px rgb(var(--color-radiant) / 0.45);
+    0 0 6px rgb(var(--color-chaff) / 0.9),
+    0 0 16px rgb(var(--color-chaff) / 0.45);
 }
 
-.scoreboard__team-label--dire {
-  color: rgb(var(--color-dire));
+.scoreboard__team-label--audit {
+  color: rgb(var(--color-audit));
   text-shadow:
-    0 0 6px rgb(var(--color-dire) / 0.9),
-    0 0 16px rgb(var(--color-dire) / 0.45);
+    0 0 6px rgb(var(--color-audit) / 0.9),
+    0 0 16px rgb(var(--color-audit) / 0.45);
 }
 
 .scoreboard__match-info {
@@ -292,16 +292,16 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   font-variant-numeric: tabular-nums;
 }
 
-.scoreboard__kills-summary .text-radiant {
+.scoreboard__kills-summary .text-chaff {
   text-shadow:
-    0 0 6px rgb(var(--color-radiant) / 0.85),
-    0 0 14px rgb(var(--color-radiant) / 0.4);
+    0 0 6px rgb(var(--color-chaff) / 0.85),
+    0 0 14px rgb(var(--color-chaff) / 0.4);
 }
 
-.scoreboard__kills-summary .text-dire {
+.scoreboard__kills-summary .text-audit {
   text-shadow:
-    0 0 6px rgb(var(--color-dire) / 0.85),
-    0 0 14px rgb(var(--color-dire) / 0.4);
+    0 0 6px rgb(var(--color-audit) / 0.85),
+    0 0 14px rgb(var(--color-audit) / 0.4);
 }
 
 .scoreboard__vs {
@@ -511,25 +511,25 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   border-radius: 50%;
 }
 
-.scoreboard__alive-dot--radiant {
-  background: rgb(var(--color-radiant));
+.scoreboard__alive-dot--chaff {
+  background: rgb(var(--color-chaff));
   box-shadow:
-    0 0 6px rgb(var(--color-radiant) / 0.9),
-    0 0 14px rgb(var(--color-radiant) / 0.5);
+    0 0 6px rgb(var(--color-chaff) / 0.9),
+    0 0 14px rgb(var(--color-chaff) / 0.5);
   animation: glow-pulse 2.4s ease-in-out infinite;
 }
 
-.scoreboard__alive-dot--dire {
-  background: rgb(var(--color-dire));
+.scoreboard__alive-dot--audit {
+  background: rgb(var(--color-audit));
   box-shadow:
-    0 0 6px rgb(var(--color-dire) / 0.9),
-    0 0 14px rgb(var(--color-dire) / 0.5);
+    0 0 6px rgb(var(--color-audit) / 0.9),
+    0 0 14px rgb(var(--color-audit) / 0.5);
   animation: glow-pulse 2.4s ease-in-out infinite;
 }
 
 .scoreboard__dead-label {
   font-size: 0.6rem;
-  color: rgb(var(--color-dire));
+  color: rgb(var(--color-audit));
   font-weight: 700;
   letter-spacing: 0.05em;
 }
@@ -551,11 +551,11 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   font-size: 0.7rem;
 }
 
-.scoreboard__team-total--radiant {
+.scoreboard__team-total--chaff {
   justify-content: flex-start;
 }
 
-.scoreboard__team-total--dire {
+.scoreboard__team-total--audit {
   justify-content: flex-end;
 }
 
@@ -586,7 +586,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   }
 
   /* Team caption per stacked block (pseudo-element so it doesn't add
-     another RADIANT/DIRE text node to the DOM) */
+     another CHAFF/AUDIT text node to the DOM) */
   .scoreboard__team-block::before {
     display: block;
     padding: 4px 8px 0;
@@ -595,14 +595,14 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
     letter-spacing: 0.15em;
   }
 
-  .scoreboard__team-block--radiant::before {
+  .scoreboard__team-block--chaff::before {
     content: attr(data-faction-label);
-    color: rgb(var(--color-radiant));
+    color: rgb(var(--color-chaff));
   }
 
-  .scoreboard__team-block--dire::before {
+  .scoreboard__team-block--audit::before {
     content: attr(data-faction-label);
-    color: rgb(var(--color-dire));
+    color: rgb(var(--color-audit));
     border-top: 1px solid rgb(var(--border-color));
   }
 

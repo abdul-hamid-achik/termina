@@ -3,20 +3,20 @@ import { mount } from '@vue/test-utils'
 import DamageFloat from '~~/app/components/game/DamageFloat.vue'
 
 describe('DamageFloat', () => {
-  it('renders taken damage as a negative dire-red number', () => {
+  it('renders taken damage as a negative audit-red number', () => {
     const w = mount(DamageFloat, { props: { floats: [{ id: 1, amount: 120, kind: 'taken' }] } })
     const el = w.find('[data-testid="damage-float-taken"]')
     expect(el.exists()).toBe(true)
     expect(el.text()).toBe('-120')
-    expect(el.classes()).toContain('text-dire')
+    expect(el.classes()).toContain('text-audit')
   })
 
-  it('renders dealt damage as a positive radiant number', () => {
+  it('renders dealt damage as a positive chaff number', () => {
     const w = mount(DamageFloat, { props: { floats: [{ id: 2, amount: 80, kind: 'dealt' }] } })
     const el = w.find('[data-testid="damage-float-dealt"]')
     expect(el.exists()).toBe(true)
     expect(el.text()).toBe('80')
-    expect(el.classes()).toContain('text-radiant')
+    expect(el.classes()).toContain('text-chaff')
   })
 
   it('renders a heal as a positive teal number with a + prefix', () => {
@@ -25,8 +25,8 @@ describe('DamageFloat', () => {
     expect(el.exists()).toBe(true)
     expect(el.text()).toBe('+50')
     expect(el.classes()).toContain('text-healing')
-    // distinct from the radiant green used for dealt damage
-    expect(el.classes()).not.toContain('text-radiant')
+    // distinct from the chaff green used for dealt damage
+    expect(el.classes()).not.toContain('text-chaff')
   })
 
   it('renders gold income as an amber +Ng, never mistakable for damage', () => {
@@ -35,7 +35,7 @@ describe('DamageFloat', () => {
     expect(el.exists()).toBe(true)
     expect(el.text()).toBe('+41g')
     expect(el.classes()).toContain('text-gold')
-    expect(el.classes()).not.toContain('text-radiant')
+    expect(el.classes()).not.toContain('text-chaff')
   })
 
   it('only the gold float carries the currency suffix', () => {

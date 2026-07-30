@@ -13,13 +13,13 @@ import type { PlayerState } from '~~/shared/types/game'
  * were the component's largest uncovered surface.
  */
 
-// A radiant hero parked in the fountain (a shop zone) so buy/sell validate, with
+// A chaff hero parked in the fountain (a shop zone) so buy/sell validate, with
 // generous gold/mana and everything off cooldown. Override per-test as needed.
 function makeShopPlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return makePlayer({
     id: 'me',
     heroId: SAMPLE_HEROES.echo,
-    zone: 'radiant-fountain',
+    zone: 'chaff-fountain',
     gold: 5000,
     mp: 400,
     maxMp: 400,
@@ -69,16 +69,16 @@ describe('CommandInput preview line', () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const preview = await previewFor(wrapper, 'move mid')
     expect(preview.text()).toContain('>> Move to Coldstore Crossing')
-    expect(preview.classes()).toContain('text-radiant')
+    expect(preview.classes()).toContain('text-chaff')
     wrapper.unmount()
   })
 
   it('previews a distant move as a travel plan with its ETA (auto-path)', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
-    const preview = await previewFor(wrapper, 'move dire-base')
-    // mid-river → mid-t1/2/3-dire → dire-base = 4 hops.
+    const preview = await previewFor(wrapper, 'move audit-base')
+    // mid-river → mid-t1/2/3-audit → audit-base = 4 hops.
     expect(preview.text()).toContain('>> Move to Landing Terminal (4 ticks)')
-    expect(preview.classes()).toContain('text-radiant')
+    expect(preview.classes()).toContain('text-chaff')
     wrapper.unmount()
   })
 

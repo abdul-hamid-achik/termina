@@ -44,7 +44,7 @@ async function submit() {
       <TerminalPanel title="password reset" title-as="h1">
         <!-- Missing token -->
         <div v-if="!token" class="flex flex-col gap-3 text-xs">
-          <p class="text-dire">This reset link is missing its token. Request a new one.</p>
+          <p class="text-audit">This reset link is missing its token. Request a new one.</p>
           <NuxtLink to="/forgot-password" class="text-ability no-underline hover:underline"
             >request a new link &gt;</NuxtLink
           >
@@ -53,8 +53,8 @@ async function submit() {
         <!-- Success -->
         <div v-else-if="done" class="flex flex-col gap-3 text-xs">
           <p class="leading-relaxed text-text-dim">
-            <span class="text-radiant">ok</span> — your password has been updated. You can now log
-            in with your new password.
+            <span class="text-chaff">ok</span> — your password has been updated. You can now log in
+            with your new password.
           </p>
           <NuxtLink to="/login" class="text-ability no-underline hover:underline"
             >&gt; go to login</NuxtLink
@@ -67,16 +67,16 @@ async function submit() {
             v-if="error"
             role="alert"
             aria-live="assertive"
-            class="border border-dire/30 bg-dire/5 px-3 py-2 text-xs text-dire"
+            class="border border-audit/30 bg-audit/5 px-3 py-2 text-xs text-audit"
           >
-            <span class="text-dire/60">[ERR]</span> {{ error }}
+            <span class="text-audit/60">[ERR]</span> {{ error }}
           </div>
           <div class="flex flex-col gap-1">
             <label
               for="reset-password"
               class="font-mono text-xs uppercase tracking-wider text-text-dim"
             >
-              <span class="text-radiant">$</span> new password
+              <span class="text-chaff">$</span> new password
             </label>
             <input
               id="reset-password"
@@ -87,10 +87,10 @@ async function submit() {
               class="terminal-input"
             />
             <div v-if="password" class="text-[0.7rem]">
-              <span v-if="!passwordLongEnough" class="text-dire"
+              <span v-if="!passwordLongEnough" class="text-audit"
                 >! {{ password.length }}/8 chars required</span
               >
-              <span v-else class="text-radiant">ok</span>
+              <span v-else class="text-chaff">ok</span>
             </div>
           </div>
           <div class="flex flex-col gap-1">
@@ -98,7 +98,7 @@ async function submit() {
               for="reset-confirm-password"
               class="font-mono text-xs uppercase tracking-wider text-text-dim"
             >
-              <span class="text-radiant">$</span> confirm password
+              <span class="text-chaff">$</span> confirm password
             </label>
             <input
               id="reset-confirm-password"
@@ -109,8 +109,8 @@ async function submit() {
               class="terminal-input"
             />
             <div v-if="confirmPassword" class="text-[0.7rem]">
-              <span v-if="!passwordsMatch" class="text-dire">! passwords do not match</span>
-              <span v-else class="text-radiant">ok</span>
+              <span v-if="!passwordsMatch" class="text-audit">! passwords do not match</span>
+              <span v-else class="text-chaff">ok</span>
             </div>
           </div>
           <AsciiButton

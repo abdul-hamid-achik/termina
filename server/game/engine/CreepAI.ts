@@ -13,8 +13,8 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /** The enemy base zone for a creep team — the end of every lane route. */
 const ENEMY_BASE: Record<TeamId, string> = {
-  radiant: 'dire-base',
-  dire: 'radiant-base',
+  chaff: 'audit-base',
+  audit: 'chaff-base',
 }
 
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
@@ -22,7 +22,7 @@ const LANE_ROUTES = LANE_ROUTES_CORE
 
 /** Determine which lane a creep is on based on its zone. */
 function getCreepLane(zone: string): string | null {
-  if (zone === 'radiant-base' || zone === 'dire-base' || zone.includes('fountain')) return null
+  if (zone === 'chaff-base' || zone === 'audit-base' || zone.includes('fountain')) return null
   if (zone.startsWith('top-')) return 'top'
   if (zone.startsWith('mid-')) return 'mid'
   if (zone.startsWith('bot-')) return 'bot'
@@ -107,7 +107,7 @@ export function runCreepAI(state: GameState): CreepAction[] {
     // stronger together is also the readable rule for the player.
     const damage = creepAttack(creep.type, state.tick)
     const inEnemyBase = creep.zone === ENEMY_BASE[creep.team]
-    const enemyAncient = creep.team === 'radiant' ? state.ancients?.dire : state.ancients?.radiant
+    const enemyAncient = creep.team === 'chaff' ? state.ancients?.audit : state.ancients?.chaff
 
     // Priority 1: attack enemy creeps in same zone
     const enemyCreeps = getEnemyCreepsInZone(state.creeps, creep)
@@ -182,7 +182,7 @@ export function runCreepAI(state: GameState): CreepAction[] {
 }
 
 function enemyTeam(team: TeamId): TeamId {
-  return team === 'radiant' ? 'dire' : 'radiant'
+  return team === 'chaff' ? 'audit' : 'chaff'
 }
 
 /**

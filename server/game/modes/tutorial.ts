@@ -95,10 +95,10 @@ export function buildTutorialRoster(
     return h
   }
   return [
-    { playerId: humanId, team: 'radiant', heroId: humanHeroId },
-    { playerId: `bot_ally_${gameId}`, team: 'radiant', heroId: nextHero() },
-    { playerId: `bot_enemy0_${gameId}`, team: 'dire', heroId: nextHero() },
-    { playerId: `bot_enemy1_${gameId}`, team: 'dire', heroId: nextHero() },
+    { playerId: humanId, team: 'chaff', heroId: humanHeroId },
+    { playerId: `bot_ally_${gameId}`, team: 'chaff', heroId: nextHero() },
+    { playerId: `bot_enemy0_${gameId}`, team: 'audit', heroId: nextHero() },
+    { playerId: `bot_enemy1_${gameId}`, team: 'audit', heroId: nextHero() },
   ]
 }
 

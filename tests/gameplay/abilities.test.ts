@@ -826,7 +826,7 @@ describe('abilities vs creeps', () => {
   async function laneWithWave(heroSelf: 'mutex' | 'null_ref', creepHp: number[], level = 6) {
     const game = await seedGame('laning_combat', { heroSelf })
     const me = await game.me()
-    const enemyTeam = me.team === 'radiant' ? 'dire' : 'radiant'
+    const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
     await game.patch((s) => ({
       ...s,
       players: {
@@ -839,7 +839,7 @@ describe('abilities vs creeps', () => {
           maxMp: 900,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'dire-fountain' },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-fountain' },
       },
       creeps: creepHp.map((hp, i) => ({
         id: `wave_${i}`,
@@ -924,14 +924,14 @@ describe('abilities vs creeps', () => {
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'dire-fountain' },
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-fountain' },
         },
-        // mid-t1-dire IS adjacent to mid-river.
+        // mid-t1-audit IS adjacent to mid-river.
         creeps: [
           {
             id: 'next_lane',
-            team: 'dire',
-            zone: 'mid-t1-dire',
+            team: 'audit',
+            zone: 'mid-t1-audit',
             hp: 400,
             maxHp: 400,
             type: 'melee',

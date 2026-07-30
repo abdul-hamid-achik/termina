@@ -6,7 +6,7 @@ function ally(overrides: Record<string, unknown> = {}) {
   return {
     id: 'a1',
     name: 'ally_one',
-    team: 'radiant',
+    team: 'chaff',
     heroId: 'cipher',
     zone: 'mid-river',
     hp: 600,
@@ -50,7 +50,7 @@ describe('AllyStatusSheet', () => {
       const badge = w.find('[data-testid="ally-ult-a1"]')
       expect(badge.exists()).toBe(true)
       expect(badge.text()).toBe('ULT')
-      expect(badge.classes()).toContain('text-radiant')
+      expect(badge.classes()).toContain('text-chaff')
     })
 
     it('hides the ULT badge while the ultimate is on cooldown', () => {
@@ -90,8 +90,8 @@ describe('AllyStatusSheet', () => {
       expect(status.text()).toContain('Magic Immune')
       expect(status.text()).toContain('Stunned')
       // The ally's own buff is good (green); the debuff on them is bad (red).
-      expect(status.html()).toContain('text-radiant')
-      expect(status.html()).toContain('text-dire')
+      expect(status.html()).toContain('text-chaff')
+      expect(status.html()).toContain('text-audit')
     })
 
     it('drops near-permanent stat auras from the status line', () => {

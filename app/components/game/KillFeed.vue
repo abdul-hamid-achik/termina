@@ -29,7 +29,7 @@ const recent = computed(() => {
 })
 
 const categoryClass: Record<KillCategory, string> = {
-  hero: 'border-dire/60 text-dire bloom-dire',
+  hero: 'border-audit/60 text-audit bloom-audit',
   tower: 'border-gold/50 text-gold',
   roshan: 'border-gold/70 text-gold bloom-gold',
   core: 'border-gold/80 text-gold bloom-gold',

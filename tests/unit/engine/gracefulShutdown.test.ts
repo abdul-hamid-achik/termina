@@ -6,13 +6,13 @@ import type { SnapshotMeta } from '~~/server/game/engine/StateSnapshot'
 import { flushFinalSnapshots, type ShutdownGameEntry } from '~~/server/game/engine/gracefulShutdown'
 
 const META: SnapshotMeta = {
-  players: [{ playerId: 'p1', team: 'radiant', heroId: 'malloc', mmr: 1000 }],
+  players: [{ playerId: 'p1', team: 'chaff', heroId: 'malloc', mmr: 1000 }],
 }
 
 const mockState = (): GameState =>
   ({
     tick: 7,
-    surrenderVotes: { radiant: new Set<string>(), dire: new Set<string>() },
+    surrenderVotes: { chaff: new Set<string>(), audit: new Set<string>() },
   }) as unknown as GameState
 
 function mockRedis() {

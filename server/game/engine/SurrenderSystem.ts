@@ -165,8 +165,8 @@ export function clearSurrenderVotes(state: GameState): GameState {
   return {
     ...state,
     surrenderVotes: {
-      radiant: new Set(),
-      dire: new Set(),
+      chaff: new Set(),
+      audit: new Set(),
     },
   }
 }
