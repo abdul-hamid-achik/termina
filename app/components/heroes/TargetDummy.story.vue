@@ -4,7 +4,7 @@ import TargetDummy from './TargetDummy.vue'
 
 <template>
   <Story title="Heroes/TargetDummy" :layout="{ type: 'grid', width: 320 }">
-    <Variant title="Full HP">
+    <Variant title="Full INTEG">
       <TargetDummy name="Target Dummy" :integ="1000" :max-integ="1000" />
     </Variant>
     <Variant title="Half (gold)">

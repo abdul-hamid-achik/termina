@@ -3,7 +3,7 @@ import { SAMPLE_HERO_ID, makeAncient, makeTeamState } from '~/stories/fixtures'
 import GameStateBar from './GameStateBar.vue'
 
 // The top bar: self state (tick number, gold, KDA, connection) plus an
-// always-on macro row (team kills, net-worth lead, ice, Mainframe HP).
+// always-on macro row (team kills, net-worth lead, ice, Mainframe INTEG).
 // NOTE: the bar shows NO tick countdown — the status line is the game's
 // single clock (the countdown props were removed in the HUD declutter).
 const teams = { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') }

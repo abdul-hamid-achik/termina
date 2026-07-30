@@ -340,12 +340,12 @@ describe('Item Registry', () => {
       expect(item.stats.attack).toBe(65)
     })
 
-    it('bulk_lattice provides massive HP', () => {
+    it('bulk_lattice provides massive INTEG', () => {
       const item = getItem('bulk_lattice')!
       expect(item.stats.integ).toBe(500)
     })
 
-    it('siege_lattice provides armor and HP', () => {
+    it('siege_lattice provides armor and INTEG', () => {
       const item = getItem('siege_lattice')!
       expect(item.stats.plate).toBe(15)
       expect(item.stats.integ).toBe(200)
@@ -362,12 +362,12 @@ describe('Item Registry', () => {
       expect(item.stats.integ).toBe(200)
     })
 
-    it('clot_ring provides HP', () => {
+    it('clot_ring provides INTEG', () => {
       const item = getItem('clot_ring')!
       expect(item.stats.integ).toBe(100)
     })
 
-    it('amp_stack provides MP and ice', () => {
+    it('amp_stack provides BW and ice', () => {
       const item = getItem('amp_stack')!
       expect(item.stats.bw).toBe(200)
       expect(item.stats.ice).toBe(10)

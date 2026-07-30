@@ -244,7 +244,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
         const cd = player.cooldowns[cmd.ability]
         return `${ability.name} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
       }
-      // No mana check here — per-hero scaled costs live in the resolver files;
+      // No BW check here — per-hero scaled costs live in the resolver files;
       // the resolver's InsufficientManaError is authoritative and surfaced
       // through resolveActions' rejected channel.
       return null
@@ -565,7 +565,7 @@ function resolveInstantCastsPhase(
 }
 
 /**
- * Phase 3a: Burns — allied waves below 50% HP. The burner gets reduced gold
+ * Phase 3a: Burns — allied waves below 50% INTEG. The burner gets reduced gold
  * + XP for denying (preventing the enemy from last-hitting).
  */
 function resolveDenyPhase(
@@ -622,7 +622,7 @@ function resolveDenyPhase(
  * This is the largest phase (~440 lines): crit stacking, item on-hit effects
  * (MKB magic, Maelstrom chain, Skull Basher stun), plate mitigation (Desolator
  * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Spite Plate
- * reflect, TP channeling cancel. Reads pending HP/buffs so simultaneous
+ * reflect, TP channeling cancel. Reads pending INTEG/buffs so simultaneous
  * focus-fire isn't last-write-wins.
  */
 function resolveAttackPhase(
@@ -867,7 +867,7 @@ function resolveAttackPhase(
 
       // A phaseShift dodge nullifies the whole hit — compute once and reuse so
       // no damage event, magic proc, tracking, or attacker credit is emitted for
-      // a hit that deals 0 HP (mirrors the NPC path's damageDealt===0 skip).
+      // a hit that deals 0 INTEG (mirrors the NPC path's damageDealt===0 skip).
       const dodged = targetPendingBuffs.some((b) => b.id === 'phaseShift')
 
       let totalDamage = damage
@@ -999,7 +999,7 @@ function resolveAttackPhase(
       }
       // Without this guard an own-wave swing paid the FULL last-hit bounty,
       // teaching the exact opposite of last-hitting. Killing your own wave is
-      // the `burn` command, which has its own HP window and reduced reward.
+      // the `burn` command, which has its own INTEG window and reduced reward.
       if (wave.team === attacker.team) {
         miss('That is your own wave — use `burn` instead')
         continue
@@ -1449,11 +1449,11 @@ function resolveItemActivesPhase(
         )
       }
 
-      // Item actives that change HP (Burnout, Cryo Routine, …) mutate HP inside
+      // Item actives that change INTEG (Burnout, Cryo Routine, …) mutate INTEG inside
       // useItem but, historically, emitted NO damage/heal event — so an item
       // kill gave no killer credit/bounty/assist, never reflected Spite Plate,
       // and never fired the damage-taken passives (daemon stealth-break,
-      // cache/firewall/proxy). Diff pre→post HP and synthesise the same events
+      // cache/firewall/proxy). Diff pre→post INTEG and synthesise the same events
       // the cast path does (ActionResolver.resolveHeroCast), so item damage is a
       // first-class damage source. Magical is the item-nuke damage type.
       const user = players[action.playerId]
@@ -1476,7 +1476,7 @@ function resolveItemActivesPhase(
             dt.hero += delta
             damageTracker.set(action.playerId, dt)
 
-            // Spite Plate: an enemy hit by the item reflects the HP it lost back
+            // Spite Plate: an enemy hit by the item reflects the INTEG it lost back
             // at the user as black damage — same formula as the cast/attack path.
             if (post.buffs.some((b) => b.id === 'spite_plate')) {
               const userPost = players[action.playerId]
@@ -1696,7 +1696,7 @@ function resolvePostShopPhases(
       // talent, power-treads toggle): a full hero stays full, a half-hp hero
       // stays at half. Level-ups don't reach here — levelUpHero reconciles maxInteg
       // with a flat gain, so the guard above is false for them. A live player is
-      // never dropped to 0 by a max change (e.g. selling an HP item at low HP).
+      // never dropped to 0 by a max change (e.g. selling an INTEG item at low INTEG).
       const hpRatio = player.maxInteg > 0 ? player.integ / player.maxInteg : 1
       const mpRatio = player.maxBw > 0 ? player.bw / player.maxBw : 1
       const scaledHp = Math.min(newMaxHp, Math.floor(newMaxHp * hpRatio))
@@ -2200,7 +2200,7 @@ function isInstantAbility(
  * On an armed block charge the target is reverted to its pre-effect state
  * (undoing the damage/disable) and one charge is consumed (firewall_block is
  * removed; spellblock is spent to stacks 0 with a fresh recharge window). On
- * Mirror Shell the effect is negated on the holder and the HP it would have lost is
+ * Mirror Shell the effect is negated on the holder and the INTEG it would have lost is
  * reflected back at the caster (gated by the caster's own immunity). Emits
  * spell_blocked and returns the (possibly updated) players map.
  */
@@ -2280,7 +2280,7 @@ function applyTargetedSpellBlock(
  * The cast bridge — runs the per-hero registry resolver (`resolveAbility`)
  * against a temp GameState assembled from the in-flight resolution buffers,
  * then synthesizes backward-compatible damage/heal events by diffing
- * pre/post HP. Resolver failures (mana, target, cooldown) are surfaced via
+ * pre/post INTEG. Resolver failures (mana, target, cooldown) are surfaced via
  * the `rejected` channel instead of being silently dropped.
  *
  * The bridge must NOT deduct mana or set cooldowns itself — the hero
@@ -2357,7 +2357,7 @@ function resolveHeroCast(
       HEROES[caster.heroId]?.abilities[cmd.ability]?.name ?? cmd.ability.toUpperCase()
     let reason: string
     if (err._tag === 'InsufficientManaError') {
-      reason = `Not enough mana for ${abilityName}: need ${err.required}, have ${Math.floor(caster.bw)}`
+      reason = `Not enough BW for ${abilityName}: need ${err.required}, have ${Math.floor(caster.bw)}`
     } else if (err._tag === 'CooldownError') {
       const cd = caster.cooldowns[cmd.ability] ?? 0
       reason = `${abilityName} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
@@ -2408,13 +2408,13 @@ function resolveHeroCast(
     )
   }
 
-  // Synthesize legacy-shape damage/heal events from the HP diff. Amounts are
+  // Synthesize legacy-shape damage/heal events from the INTEG diff. Amounts are
   // post-mitigation AND post-shield: a fully shield-absorbed ability hit
   // emits no damage event (and grants no assist credit). Basic attacks keep
   // pre-shield amounts — see the attack phase. Don't "fix" one to match the
   // other without revisiting both.
   // Stack Overflow (Overclock): the caster's next ability deals 2x damage —
-  // double the HP lost by each enemy hit, then spend the charge after the loop.
+  // double the INTEG lost by each enemy hit, then spend the charge after the loop.
   const hasOverclock = !!newPlayers[action.playerId]?.buffs.some(
     (b) => b.id === 'stack_overflow_buff',
   )
@@ -2445,7 +2445,7 @@ function resolveHeroCast(
         damageTracker.set(action.playerId, dt)
         castDamageToEnemies += delta
 
-        // Spite Plate: an enemy hero hit by this cast reflects the HP it lost
+        // Spite Plate: an enemy hero hit by this cast reflects the INTEG it lost
         // back at the caster as black damage — the same computeSpitePlateReflect
         // formula as the basic-attack reflect, so the two paths can never
         // diverge.
@@ -2489,7 +2489,7 @@ function resolveHeroCast(
     }
   }
 
-  // NPCs the cast hit (damageEnemyNpcsInZone). Credited from the HP diff for the
+  // NPCs the cast hit (damageEnemyNpcsInZone). Credited from the INTEG diff for the
   // same reason hero damage is: the resolvers' own wire events are discarded.
   let castWaves = collectNpcCastDamage(
     state.tick,
@@ -2514,7 +2514,7 @@ function resolveHeroCast(
   // second time. Re-runs the hero resolver on the post-first-cast state with the
   // just-set cooldown cleared (so the echo isn't rejected); mana is paid again,
   // so the echo only happens if the caster can afford both casts. Emits plain
-  // damage/heal events from the echo's HP diff (no Spite Plate/Overclock recursion
+  // damage/heal events from the echo's INTEG diff (no Spite Plate/Overclock recursion
   // on the echo — deliberately simple).
   if (
     hasTalentCastEffect(caster, 'double_cast', cmd.ability) &&
@@ -2603,7 +2603,7 @@ function resolveHeroCast(
   }
 
   // Tier-25 exotic — spell lifesteal: heal the caster for a fraction of the
-  // damage this cast dealt to enemy heroes (capped at max HP). Applies to the
+  // damage this cast dealt to enemy heroes (capped at max INTEG). Applies to the
   // double-cast echo's damage too, since castDamageToEnemies spans both.
   if (hasTalentCastEffect(caster, 'spell_lifesteal') && castDamageToEnemies > 0) {
     const lc = newPlayers[action.playerId]

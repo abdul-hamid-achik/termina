@@ -102,7 +102,7 @@ describe('Ping Hero', () => {
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -114,7 +114,7 @@ describe('Ping Hero', () => {
       expect(updated.cooldowns.q).toBe(5)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // Q level 4
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -191,7 +191,7 @@ describe('Ping Hero', () => {
       expect(adjDmg).toBeLessThan(fullDmg)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -246,7 +246,7 @@ describe('Ping Hero', () => {
       expect(updated.cooldowns.w).toBe(12)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // W level 4
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -276,7 +276,7 @@ describe('Ping Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -314,7 +314,7 @@ describe('Ping Hero', () => {
       expect(updated.cooldowns.e).toBe(14)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // E level 4
       const state = makeState([player])
 
@@ -324,7 +324,7 @@ describe('Ping Hero', () => {
       expect(updated.bw).toBe(310 - 105) // Level 4 E costs 105
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 

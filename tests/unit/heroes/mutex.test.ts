@@ -110,7 +110,7 @@ describe('Mutex Hero', () => {
       expect(root!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -122,7 +122,7 @@ describe('Mutex Hero', () => {
       expect(updated.cooldowns.q).toBe(8)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // Q level 4
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -173,7 +173,7 @@ describe('Mutex Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -227,7 +227,7 @@ describe('Mutex Hero', () => {
       expect(shield!.stacks).toBe(360) // Level 4 shield = 360
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -238,7 +238,7 @@ describe('Mutex Hero', () => {
       expect(updated.cooldowns.w).toBe(12)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -286,7 +286,7 @@ describe('Mutex Hero', () => {
       expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -297,7 +297,7 @@ describe('Mutex Hero', () => {
       expect(updated.cooldowns.e).toBe(10)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // E level 4
       const state = makeState([player])
 
@@ -307,7 +307,7 @@ describe('Mutex Hero', () => {
       expect(updated.bw).toBe(260 - 95) // Level 4 E costs 95
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -387,7 +387,7 @@ describe('Mutex Hero', () => {
       expect(result.state.players['a1']!.integ).toBe(ally.integ)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 

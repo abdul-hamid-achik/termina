@@ -246,7 +246,7 @@ describe('tutorial flow', () => {
       const next = advanceTutorialAfterTick(
         tutorialState(2),
         [{ playerId: 'p1', command: { type: 'cast', ability: 'q' } }],
-        [{ playerId: 'p1', reason: 'Not enough mana' }],
+        [{ playerId: 'p1', reason: 'Not enough BW' }],
       )
       expect(next.state.tutorialStep).toBe(2)
     })

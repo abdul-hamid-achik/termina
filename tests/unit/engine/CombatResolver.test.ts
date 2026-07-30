@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 describe('CombatResolver', () => {
   describe('resolvePhysicalHit', () => {
-    it('applies full mitigation (effective plate) and reports the HP lost', () => {
+    it('applies full mitigation (effective plate) and reports the INTEG lost', () => {
       const player = makePlayer({ integ: 500 })
       const raw = 100
 
@@ -53,7 +53,7 @@ describe('CombatResolver', () => {
       expect(hit.player.alive).toBe(true)
     })
 
-    it('honors kinetic immunity (Ghost/Ethereal/invulnerable) — no HP lost', () => {
+    it('honors kinetic immunity (Ghost/Ethereal/invulnerable) — no INTEG lost', () => {
       for (const id of ['ghost_form', 'ethereal', 'invulnerable']) {
         const player = makePlayer({
           integ: 500,
@@ -66,7 +66,7 @@ describe('CombatResolver', () => {
       }
     })
 
-    it('reports a phaseShift dodge and consumes the buff (no HP lost)', () => {
+    it('reports a phaseShift dodge and consumes the buff (no INTEG lost)', () => {
       const player = makePlayer({
         integ: 500,
         buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 1, source: 'echo' }],
@@ -78,7 +78,7 @@ describe('CombatResolver', () => {
       expect(hit.player.buffs.some((b) => b.id === 'phaseShift')).toBe(false)
     })
 
-    it('absorbs damage through a shield buff, reporting only the unabsorbed HP loss', () => {
+    it('absorbs damage through a shield buff, reporting only the unabsorbed INTEG loss', () => {
       const player = makePlayer({
         integ: 500,
         buffs: [{ id: 'shield', stacks: 40, ticksRemaining: 3, source: 'x' }],
@@ -106,7 +106,7 @@ describe('CombatResolver', () => {
       expect(hardenedHit.damageDealt).toBe(Math.round(plainHit.damageDealt * 0.9))
     })
 
-    it('floors HP at 0 and marks the target dead on a lethal hit', () => {
+    it('floors INTEG at 0 and marks the target dead on a lethal hit', () => {
       const player = makePlayer({ integ: 1 })
       const hit = resolvePhysicalHit(player, 200)
       expect(hit.player.integ).toBe(0)
@@ -130,7 +130,7 @@ describe('CombatResolver', () => {
   })
 
   describe('computeSpitePlateReflect', () => {
-    it('returns the rounded HP loss as the reflect amount', () => {
+    it('returns the rounded INTEG loss as the reflect amount', () => {
       expect(computeSpitePlateReflect(0)).toBe(0)
       expect(computeSpitePlateReflect(47)).toBe(47)
       expect(computeSpitePlateReflect(47.6)).toBe(48)

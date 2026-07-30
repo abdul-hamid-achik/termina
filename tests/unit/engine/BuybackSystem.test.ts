@@ -81,7 +81,7 @@ describe('BuybackSystem', () => {
   })
 
   describe('buyback (execution)', () => {
-    it('instantly respawns at full HP/MP, deducts gold, sets cooldown, and sends to the fountain', () => {
+    it('instantly respawns at full INTEG/BW, deducts gold, sets cooldown, and sends to the fountain', () => {
       const p = makePlayer({ alive: false, gold: 99999, integ: 0, bw: 0, team: 'chaff' })
       const res = buyback(makeState(p, 50), 'p1')
 

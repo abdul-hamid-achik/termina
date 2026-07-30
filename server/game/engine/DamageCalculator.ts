@@ -64,7 +64,7 @@ export function getIncomingDamageMultiplier(target: PlayerState, damageType: Dam
 
 /**
  * True when `target` ignores an incoming hit of `damageType` outright — used as
- * an early-skip so no HP is lost. invulnerable (Proxy R / Eul's Cyclone) blocks
+ * an early-skip so no INTEG is lost. invulnerable (Proxy R / Eul's Cyclone) blocks
  * everything; Hardshell's airgap blocks code; ethereal (Ethereal
  * Blade) and ghost_form (Ghost Scepter) block kinetic.
  */
@@ -92,7 +92,7 @@ export function applyRawDamage(target: PlayerState, damage: number): PlayerState
 }
 
 /**
- * Heal a player. HP cannot exceed maxInteg.
+ * Heal a player. INTEG cannot exceed maxInteg.
  */
 export function applyHeal(target: PlayerState, amount: number): PlayerState {
   return {

@@ -14,13 +14,13 @@ describe('Stream — the rig voice (R3-06)', () => {
     const wrapper = mountStream([
       {
         tick: 12,
-        text: 'Low HP — retreat and heal · HP 120/550 · CONTESTED (2 hostile)',
+        text: 'Low INTEG — retreat and heal · INTEG 120/550 · CONTESTED (2 hostile)',
         type: 'rig',
       },
     ])
 
     const line = wrapper.get('[data-testid="log-event"]')
-    expect(line.text()).toContain('Low HP — retreat and heal')
+    expect(line.text()).toContain('Low INTEG — retreat and heal')
     expect(line.text()).toContain('>')
     // Its own prefix glyph (the rig talks in the scrollback, not a chrome bar).
     expect(line.html()).toContain('&gt;')
@@ -30,7 +30,7 @@ describe('Stream — the rig voice (R3-06)', () => {
     // The GameScreen watch only pushes on change — two identical recs never
     // reach the stream, so a stream with one rig line keeps exactly one.
     const events: CombatLine[] = [
-      { tick: 12, text: 'Clear — farm, push, or rotate · HP 550/550 · CLEAR', type: 'rig' },
+      { tick: 12, text: 'Clear — farm, push, or rotate · INTEG 550/550 · CLEAR', type: 'rig' },
       { tick: 13, text: 'something else happened', type: 'system' },
     ]
     const wrapper = mountStream(events)

@@ -113,7 +113,7 @@ describe('Echo Hero', () => {
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -177,7 +177,7 @@ describe('Echo Hero', () => {
       expect(result2.state.players['p1']!.cooldowns.q).toBe(3)
     })
 
-    it('fails with InsufficientManaError when no mana', () => {
+    it('fails with InsufficientManaError when no BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -234,7 +234,7 @@ describe('Echo Hero', () => {
       expect(buff?.ticksRemaining).toBe(1)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 })
       const state = makeState([player])
 

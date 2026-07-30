@@ -29,7 +29,7 @@ export interface SituationalContext {
 }
 
 /**
- * The lowest-HP hostile wave in the player's zone as a `wave:<index>` string —
+ * The lowest-INTEG hostile wave in the player's zone as a `wave:<index>` string —
  * the STRIP action (attack the easiest last-hit). Mirrors the server's
  * waveInZoneByIndex ordering (position among ALL waves in the zone, corpses
  * included, so the index matches what `attack wave:<i>` resolves to).
@@ -62,10 +62,14 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   }
   const strip = stripTargetString(p, ctx.waves)
   if (strip !== null) {
-    out.push({ cmd: `attack ${strip}`, label: 'STRIP', aria: 'Attack the lowest-HP hostile wave' })
+    out.push({
+      cmd: `attack ${strip}`,
+      label: 'STRIP',
+      aria: 'Attack the lowest-INTEG hostile wave',
+    })
   }
   if (!('error' in pickDenyTargetString(p, ctx.waves))) {
-    out.push({ cmd: 'burn', label: 'BURN', aria: 'Burn a low-HP allied wave' })
+    out.push({ cmd: 'burn', label: 'BURN', aria: 'Burn a low-INTEG allied wave' })
   }
   if (ctx.backup && ctx.backup.zone === p.zone && !ctx.backup.holderId) {
     out.push({ cmd: 'backup', label: 'BACKUP', aria: 'Pick up the Backup of the Immortal' })

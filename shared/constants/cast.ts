@@ -38,7 +38,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'A signal that repeats and builds. Her passive is Resonance — +8% per consecutive hit on the same target. The handle IS the count.',
     kitReading:
-      "Resonance's +8% per consecutive hit on the same target IS the count — it is why she will not switch. Feedback Loop storing HP off her own attacks and dumping it as burst IS the recoil-fed weapon charging. Phase Shift is a single-charge kinetic shunt in her hip: one dodge, then it needs a minute. Cascade is her emptying the magazine into a mark she has already counted to five on. HARDLINE because every single thing she owns punishes movement.",
+      "Resonance's +8% per consecutive hit on the same target IS the count — it is why she will not switch. Feedback Loop storing INTEG off her own attacks and dumping it as burst IS the recoil-fed weapon charging. Phase Shift is a single-charge kinetic shunt in her hip: one dodge, then it needs a minute. Cascade is her emptying the magazine into a mark she has already counted to five on. HARDLINE because every single thing she owns punishes movement.",
   },
   sentry: {
     realName: 'Mariam Sesay',
@@ -92,7 +92,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       "Something that takes the request on your behalf. Her passive routes 12% of a zone-mate's damage onto herself, unasked.",
     kitReading:
-      "Middleman routes 12% of a zone-mate's incoming damage onto her without being asked — the job, unlearned. Cache Shield and Load Balance spread harm across a group so that no single person carries the full weight, which is precisely what a liability structure is for. Reverse Proxy is the extraction: she and an ally trade places, both untouchable for exactly one beat, and then she is standing where the fire is. Her own HP bar is the team's real shield, which is why the tip already tells you to buy HP early — now you know why she is built that way.",
+      "Middleman routes 12% of a zone-mate's incoming damage onto her without being asked — the job, unlearned. Cache Shield and Load Balance spread harm across a group so that no single person carries the full weight, which is precisely what a liability structure is for. Reverse Proxy is the extraction: she and an ally trade places, both untouchable for exactly one beat, and then she is standing where the fire is. Her own INTEG bar is the team's real shield, which is why the tip already tells you to buy INTEG early — now you know why she is built that way.",
   },
   malloc: {
     realName: 'Tomas Iriarte',
@@ -101,7 +101,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Allocation you are holding and have not freed. His passive is +1 attack per 100 scrip HELD — and it drops the moment he spends.',
     kitReading:
-      'Heap Growth is the lease — +1 attack per 100 scrip HELD, to +40, and the number goes DOWN the instant he buys anything. Allocate is purchasing a burst of torque on the spot. Pointer Dereference is how an arm you do not own closes distance. Stack Overflow costs 20% of current HP because when the credit is gone the only thing left to spend is the body, which is exactly why it is a closer and never an opener.',
+      'Heap Growth is the lease — +1 attack per 100 scrip HELD, to +40, and the number goes DOWN the instant he buys anything. Allocate is purchasing a burst of torque on the spot. Pointer Dereference is how an arm you do not own closes distance. Stack Overflow costs 20% of current INTEG because when the credit is gone the only thing left to spend is the body, which is exactly why it is a closer and never an opener.',
   },
   cipher: {
     realName: 'Wen Jiaying',
@@ -128,7 +128,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'A pointer to nothing that crashes whatever dereferences it. Her implant is keyed to kills and does not negotiate.',
     kitReading:
-      "Void Drain is the dose — a kill restores 15% MP and cuts two ticks off every cooldown, so she is at her most capable in the moments immediately after a kill and degrading at all other times. Void Bolt shreds ice because the first thing the implant does is find what is thin. Null Pointer silences: it severs the target's link to their own body, which is precisely what she was built to do. Dereference's execute bonus is her finding the person in the room who is already dying.",
+      "Void Drain is the dose — a kill restores 15% BW and cuts two ticks off every cooldown, so she is at her most capable in the moments immediately after a kill and degrading at all other times. Void Bolt shreds ice because the first thing the implant does is find what is thin. Null Pointer silences: it severs the target's link to their own body, which is precisely what she was built to do. Dereference's execute bonus is her finding the person in the room who is already dying.",
   },
   lambda: {
     realName: 'Nadia Kaur',
@@ -191,6 +191,6 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Stored data, released later. His passive is Write-Back: 15% of all damage taken, logged. The logging WAS the product.',
     kitReading:
-      'Write-Back stores 15% of all damage taken up to 30% of max HP: the logging, still running, years after the contract ended. He cannot start a fight — an empty cache makes Cache Hit, Flush and Eviction all do nothing, so a full-HP Sump who opens is doing his opponent a favour. He has to be hit first. Flush turns the log into armour. Cache Hit spends it on one person. Eviction returns the entire ledger at once as black damage that nothing reduces, because the number was never negotiable.',
+      'Write-Back stores 15% of all damage taken up to 30% of max INTEG: the logging, still running, years after the contract ended. He cannot start a fight — an empty cache makes Cache Hit, Flush and Eviction all do nothing, so a full-INTEG Sump who opens is doing his opponent a favour. He has to be hit first. Flush turns the log into armour. Cache Hit spends it on one person. Eviction returns the entire ledger at once as black damage that nothing reduces, because the number was never negotiable.',
   },
 }

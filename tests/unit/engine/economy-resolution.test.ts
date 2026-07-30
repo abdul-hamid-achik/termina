@@ -97,13 +97,13 @@ function withSoloWave(state: GameState, wave: WaveUnitState): GameState {
 
 describe('Economy through resolution', () => {
   describe('Wave burn', () => {
-    it('burns an allied wave below 50% HP → wave hp→0, denier gets burn gold + floor(WAVE_XP*0.5), wave_burn event', async () => {
+    it('burns an allied wave below 50% INTEG → wave hp→0, denier gets burn gold + floor(WAVE_XP*0.5), wave_burn event', async () => {
       const gameId = uid('burn')
       const sm = await startGame(gameId, makePlayers('dn', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'dn_r0', { zone: 'mid-river' })
-        // Allied (chaff) line wave at 100/400 HP — well under the 50% burn gate.
+        // Allied (chaff) line wave at 100/400 INTEG — well under the 50% burn gate.
         return withSoloWave(moved, {
           id: 'deny_target',
           team: 'chaff',
@@ -140,13 +140,13 @@ describe('Economy through resolution', () => {
       })
     })
 
-    it('rejects denying a wave still above the 50% HP gate (no kill, no gold/xp)', async () => {
+    it('rejects denying a wave still above the 50% INTEG gate (no kill, no gold/xp)', async () => {
       const gameId = uid('denygate')
       const sm = await startGame(gameId, makePlayers('dg', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'dg_r0', { zone: 'mid-river' })
-        // 300/400 = 75% HP — above the 50% burn threshold; burn must no-op.
+        // 300/400 = 75% INTEG — above the 50% burn threshold; burn must no-op.
         return withSoloWave(moved, {
           id: 'healthy_ally',
           team: 'chaff',
@@ -176,7 +176,7 @@ describe('Economy through resolution', () => {
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'lh_r0', { zone: 'mid-river' })
-        // Enemy (audit) BREACH wave at 1 HP — breach last-hit gold is the fixed
+        // Enemy (audit) BREACH wave at 1 INTEG — breach last-hit gold is the fixed
         // BREACH_UNIT_GOLD (line/sweep is randomized; breach keeps it exact).
         return withSoloWave(moved, {
           id: 'enemy_breach',
@@ -240,7 +240,7 @@ describe('Economy through resolution', () => {
       const sm = await startGame(gameId, makePlayers('kx', 2))
 
       // killer + assister + victim co-located; victim level pinned so the XP
-      // formula is exact. Freeze the victim at 1 HP for a guaranteed lethal.
+      // formula is exact. Freeze the victim at 1 INTEG for a guaranteed lethal.
       const VICTIM_LEVEL = 3
       await arrange(sm, gameId, (s) => {
         // All four players share VICTIM_LEVEL so both teams' average level is
@@ -262,7 +262,7 @@ describe('Economy through resolution', () => {
       const r1 = await runTick(sm, gameId)
       expect(r1.state.players['kx_d0']!.integ).toBeLessThan(r1.state.players['kx_d0']!.maxInteg)
 
-      // Pin the victim to a lethal 1 HP, snapshot XP, then the killer finishes.
+      // Pin the victim to a lethal 1 INTEG, snapshot XP, then the killer finishes.
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'kx_d0', { integ: 1, level: VICTIM_LEVEL, buffs: [inCombatBuff()] }),
       )

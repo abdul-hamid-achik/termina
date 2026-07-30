@@ -82,7 +82,7 @@ describe('systems-gaps: BUYBACK success', () => {
     expect(expected).toBe(305)
   })
 
-  it('a dead player with enough gold buys back: gold deducted, full HP/MP, fountain, cooldown', () => {
+  it('a dead player with enough gold buys back: gold deducted, full INTEG/BW, fountain, cooldown', () => {
     const player = makePlayer({
       level: 5,
       deaths: 2,
@@ -351,7 +351,7 @@ describe('systems-gaps: VISION gaps', () => {
 })
 
 describe('systems-gaps: echo talents — dead specialEffect no-ops swapped for working effects', () => {
-  it('echo_25_right now grants +250 HP (was the dead "Double Echo" specialEffect)', () => {
+  it('echo_25_right now grants +250 INTEG (was the dead "Double Echo" specialEffect)', () => {
     const player = makePlayer({
       heroId: 'echo',
       talents: { tier10: null, tier15: null, tier20: null, tier25: 'echo_25_right' },

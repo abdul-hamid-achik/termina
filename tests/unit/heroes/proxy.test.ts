@@ -119,7 +119,7 @@ describe('Proxy Hero', () => {
       expect(slow!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -171,7 +171,7 @@ describe('Proxy Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -218,7 +218,7 @@ describe('Proxy Hero', () => {
       expect(hasBuff(result.state.players['p1']!, 'shield')).toBe(true)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -286,7 +286,7 @@ describe('Proxy Hero', () => {
       expect(result.state.players['a1']!.integ).toBe(300) // unchanged
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -297,7 +297,7 @@ describe('Proxy Hero', () => {
       expect(updated.cooldowns.e).toBe(10)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -342,7 +342,7 @@ describe('Proxy Hero', () => {
       expect(buff!.ticksRemaining).toBe(1)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
@@ -466,7 +466,7 @@ describe('Proxy Hero', () => {
       expect(result.state.players['p1']!.cooldowns.r).toBe(38)
     })
 
-    it('proxy_25_right grants +250 max MP via getTalentStatBonus (was the dead invisible_illusions no-op)', () => {
+    it('proxy_25_right grants +250 max BW via getTalentStatBonus (was the dead invisible_illusions no-op)', () => {
       const player = makePlayer({
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'proxy_25_right' },
       })

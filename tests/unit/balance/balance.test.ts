@@ -200,7 +200,7 @@ describe('Balance Constants', () => {
       expect(TENANT_RESPAWN_TICKS).toBeGreaterThan(30)
     })
 
-    it('Tenant has high base HP', () => {
+    it('Tenant has high base INTEG', () => {
       expect(TENANT_BASE_HP).toBeGreaterThan(1000)
     })
   })
@@ -224,7 +224,7 @@ describe('Balance Constants', () => {
       expect(BREACH_WAVE_INTERVAL).toBeGreaterThan(1)
     })
 
-    it('wave HP values are ordered: line < breach, sweep < line', () => {
+    it('wave INTEG values are ordered: line < breach, sweep < line', () => {
       expect(SWEEP_UNIT_HP).toBeLessThan(LINE_UNIT_HP)
       expect(LINE_UNIT_HP).toBeLessThan(BREACH_UNIT_HP)
     })
@@ -256,7 +256,7 @@ describe('Balance Constants', () => {
       )
     })
 
-    it('scales both HP and damage of every wave type', () => {
+    it('scales both INTEG and damage of every wave type', () => {
       const tick = WAVE_ESCALATION_INTERVAL_TICKS * 2
       const mult = waveEscalationMultiplier(tick)
       expect(mult).toBeGreaterThan(1)
@@ -275,7 +275,7 @@ describe('Balance Constants', () => {
       )
     })
 
-    it('scales HP and damage by the same factor, so wave-vs-wave trades are unchanged', () => {
+    it('scales INTEG and damage by the same factor, so wave-vs-wave trades are unchanged', () => {
       const early = WAVE_ESCALATION_INTERVAL_TICKS - 1
       const late = WAVE_ESCALATION_INTERVAL_TICKS * 4
       const hitsEarly = waveUnitMaxHp('line', early) / waveUnitAttack('line', early)
@@ -295,7 +295,7 @@ describe('Balance Constants', () => {
   })
 
   describe('ice', () => {
-    it('ice HP increases by tier', () => {
+    it('ice INTEG increases by tier', () => {
       expect(ICE_HP_T1).toBeLessThan(ICE_HP_T2)
       expect(ICE_HP_T2).toBeLessThan(ICE_HP_T3)
     })
@@ -315,7 +315,7 @@ describe('Balance Constants', () => {
       expect(FOUNTAIN_HEAL_PER_TICK_PERCENT).toBeLessThanOrEqual(100)
     })
 
-    it('fountain mana rate is reasonable', () => {
+    it('fountain BW rate is reasonable', () => {
       expect(FOUNTAIN_BW_PER_TICK_PERCENT).toBeGreaterThan(0)
       expect(FOUNTAIN_BW_PER_TICK_PERCENT).toBeLessThanOrEqual(100)
     })
@@ -330,12 +330,12 @@ describe('Balance Constants', () => {
   describe('hero stat ranges', () => {
     for (const [heroId, hero] of Object.entries(HEROES)) {
       describe(`${hero.name} (${heroId})`, () => {
-        it('has HP in valid range (400-800)', () => {
+        it('has INTEG in valid range (400-800)', () => {
           expect(hero.baseStats.integ).toBeGreaterThanOrEqual(400)
           expect(hero.baseStats.integ).toBeLessThanOrEqual(800)
         })
 
-        it('has MP in valid range (200-450)', () => {
+        it('has BW in valid range (200-450)', () => {
           expect(hero.baseStats.bw).toBeGreaterThanOrEqual(200)
           expect(hero.baseStats.bw).toBeLessThanOrEqual(450)
         })
@@ -355,14 +355,14 @@ describe('Balance Constants', () => {
           expect(hero.baseStats.ice).toBeLessThanOrEqual(30)
         })
 
-        it('ability mana costs are affordable at level 1', () => {
+        it('ability BW costs are affordable at level 1', () => {
           for (const [slot, ability] of Object.entries(hero.abilities)) {
             if (slot === 'r') continue // ults can be expensive
             expect(ability.manaCost).toBeLessThanOrEqual(hero.baseStats.bw)
           }
         })
 
-        it('has positive HP growth per level', () => {
+        it('has positive INTEG growth per level', () => {
           expect(hero.growthPerLevel.integ).toBeGreaterThan(0)
         })
 
@@ -370,7 +370,7 @@ describe('Balance Constants', () => {
           expect(hero.growthPerLevel.attack).toBeGreaterThan(0)
         })
 
-        it('tanks have higher base HP than carries/mages', () => {
+        it('tanks have higher base INTEG than carries/mages', () => {
           if (hero.role === 'tank') {
             expect(hero.baseStats.integ).toBeGreaterThanOrEqual(700)
           }

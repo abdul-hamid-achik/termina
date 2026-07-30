@@ -106,7 +106,7 @@ describe('Regex passive: Pattern Cache', () => {
     expect(integLost).toBeGreaterThan(0)
 
     // Bonus is round(200 * 0.15) = 30 raw code, then mitigated. Compare the
-    // realized HP loss to the HP loss the SAME mitigated path produces for a
+    // realized INTEG loss to the INTEG loss the SAME mitigated path produces for a
     // round(100*0.15)=15 raw bonus from a hypothetical damage=100 cast: the
     // ratio of realized losses must equal the ratio of raw bonuses (200 vs 100).
     const secondHalf = resolveHeroPassive(
@@ -116,7 +116,7 @@ describe('Regex passive: Pattern Cache', () => {
     )
     const hpLostHalf = enemy.integ - secondHalf.players['e1']!.integ
     expect(hpLostHalf).toBeGreaterThan(0)
-    // raw bonus 30 vs 15 → realized HP loss should be ~2x (mitigation is linear).
+    // raw bonus 30 vs 15 → realized INTEG loss should be ~2x (mitigation is linear).
     expect(integLost).toBe(hpLostHalf * 2)
   })
 
@@ -149,7 +149,7 @@ describe('Regex passive: Pattern Cache', () => {
     const targets = state.players['p1']!.buffs.filter((b) => b.id === 'patternCacheTarget')
     expect(targets).toHaveLength(1)
     expect(targets[0]!.destination).toBe('e2')
-    // Repeat e2 within the window → bonus fires (HP drops below the cast's normal hit).
+    // Repeat e2 within the window → bonus fires (INTEG drops below the cast's normal hit).
     const repeat = resolveHeroPassive({ ...state, tick: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
     expect(repeat.players['e2']!.integ).toBeLessThan(e2.integ)
   })

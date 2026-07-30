@@ -112,25 +112,25 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
 
     <div class="flex flex-col gap-0.5">
       <div class="flex items-center gap-1.5">
-        <span class="w-5 shrink-0 text-text-dim">HP</span>
+        <span class="w-5 shrink-0 text-text-dim">INTEG</span>
         <ProgressBar
           :value="hero.integ"
           :max="hero.maxInteg"
           color="chaff"
           :width="16"
           :danger-below="0.25"
-          :label="`${hero.name} HP`"
+          :label="`${hero.name} INTEG`"
           show-label
         />
       </div>
       <div class="flex items-center gap-1.5">
-        <span class="w-5 shrink-0 text-text-dim">MP</span>
+        <span class="w-5 shrink-0 text-text-dim">BW</span>
         <ProgressBar
           :value="hero.bw"
           :max="hero.maxBw"
           color="mana"
           :width="16"
-          :label="`${hero.name} MP`"
+          :label="`${hero.name} BW`"
           show-label
         />
       </div>
@@ -169,7 +169,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
             <div class="font-bold text-ability">{{ getAbilityDef(key)!.name }}</div>
             <div class="mt-0.5 flex gap-2 text-text-dim">
               <span
-                >Mana: <span class="text-mana">{{ manaCost(key) }}</span></span
+                >BW: <span class="text-mana">{{ manaCost(key) }}</span></span
               >
               <span
                 >CD:

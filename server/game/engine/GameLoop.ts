@@ -160,7 +160,7 @@ const gameFarm = new Map<string, Map<string, PlayerFarm>>()
 /**
  * Tally farm off the emitted events rather than off a counter beside the gold
  * award. The two `creep_*` events fire exactly where the reward lands (past the
- * resolver's HP window, team and index checks), so a tally derived from them
+ * resolver's INTEG window, team and index checks), so a tally derived from them
  * cannot disagree with the "+38g last-hit" lines the player actually watched go
  * by — which is the whole point of showing them the number.
  */
@@ -483,8 +483,8 @@ export function processTick(
           ...(e.payload.source ? { source: e.payload.source as 'return' | 'next_hop' } : {}),
         })
       } else if (e.type === 'ability_used' && e.payload.effect === 'dmz_explosion') {
-        // Firewall DMZ explosion mutates enemy HP inside tickAllBuffs but only
-        // authors a wire ability_used event. Bridge its per-victim HP loss into
+        // Firewall DMZ explosion mutates enemy INTEG inside tickAllBuffs but only
+        // authors a wire ability_used event. Bridge its per-victim INTEG loss into
         // the _tag/allEvents damage channel (BEFORE trackHeroDamage/handleDeaths
         // below) so the blast yields kill credit, assists, bounty, and triggers
         // the victims' damage_taken passives — same as any other damage source.

@@ -66,7 +66,7 @@ describe('Spawner', () => {
       expect(breachWaves.length).toBe(0)
     })
 
-    it('assigns correct HP to each wave type', () => {
+    it('assigns correct INTEG to each wave type', () => {
       const breachWaveTick = WAVE_INTERVAL_TICKS * BREACH_WAVE_INTERVAL
       const waves = spawnWaveUnits(breachWaveTick)
 
@@ -91,7 +91,7 @@ describe('Spawner', () => {
       expect(line.integ).toBeGreaterThan(LINE_UNIT_HP)
     })
 
-    it('waves keep the HP of the tick they spawned on, so late waves are tougher', () => {
+    it('waves keep the INTEG of the tick they spawned on, so late waves are tougher', () => {
       const earlyTick = WAVE_INTERVAL_TICKS
       const lateTick =
         Math.ceil((WAVE_ESCALATION_INTERVAL_TICKS * 3) / WAVE_INTERVAL_TICKS) * WAVE_INTERVAL_TICKS
@@ -251,7 +251,7 @@ describe('Spawner', () => {
 
   describe('Tenant', () => {
     describe('initializeTenant', () => {
-      it('starts alive with full HP', () => {
+      it('starts alive with full INTEG', () => {
         const rosh = initializeTenant()
         expect(rosh.alive).toBe(true)
         expect(rosh.integ).toBe(TENANT_BASE_HP)
@@ -288,7 +288,7 @@ describe('Spawner', () => {
     })
 
     describe('respawnTenant', () => {
-      it('restores alive status and full HP', () => {
+      it('restores alive status and full INTEG', () => {
         const dead = { alive: false, integ: 0, maxInteg: TENANT_BASE_HP, deathTick: 100 }
         const respawned = respawnTenant(dead, 0)
         expect(respawned.alive).toBe(true)

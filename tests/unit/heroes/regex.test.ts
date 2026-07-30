@@ -114,7 +114,7 @@ describe('Regex Hero', () => {
       expect(debuff!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -213,7 +213,7 @@ describe('Regex Hero', () => {
       expect(dot!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -283,7 +283,7 @@ describe('Regex Hero', () => {
       expect(targetStun!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -347,7 +347,7 @@ describe('Regex Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals damage based on missing mana', () => {
+    it('deals damage based on missing BW', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy({ bw: 100, maxBw: 280 })
       const state = makeState([player, enemy])
@@ -371,7 +371,7 @@ describe('Regex Hero', () => {
       expect(silence!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -383,7 +383,7 @@ describe('Regex Hero', () => {
       expect(updated.cooldowns.r).toBe(60)
     })
 
-    it('scales damage per missing mana with level', () => {
+    it('scales damage per missing BW with level', () => {
       const player6 = makePlayer({ level: 6, bw: 500 })
       const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy1 = makeEnemy({ bw: 100, maxBw: 280, integ: 1000, maxInteg: 1000 })

@@ -128,7 +128,7 @@ export function processCacheBuffs(state: GameState): GameState {
     // Check for active cache buffs
     const hasRegen = player.buffs.some((b) => b.id === 'regen')
 
-    // Regeneration cache: REGEN_CACHE_HEAL_PERCENT of max HP/MP per tick
+    // Regeneration cache: REGEN_CACHE_HEAL_PERCENT of max INTEG/MP per tick
     if (hasRegen) {
       integ = Math.min(
         player.maxInteg,
@@ -137,7 +137,7 @@ export function processCacheBuffs(state: GameState): GameState {
       bw = Math.min(player.maxBw, bw + Math.floor(player.maxBw * REGEN_CACHE_HEAL_PERCENT))
     }
 
-    // Cron's Crontab (R): heal + mana regen over time on self + allies; the
+    // Cron's Crontab (R): heal + BW regen over time on self + allies; the
     // per-tick amounts ride in the buff stacks. (Heal was applied but never
     // processed; the mana half was advertised by the ability but unimplemented.)
     const crontab = player.buffs.find((b) => b.id === 'crontabHeal')

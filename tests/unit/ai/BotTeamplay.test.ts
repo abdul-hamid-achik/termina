@@ -11,7 +11,7 @@ import { initializeAncients } from '~~/server/game/engine/AncientSystem'
  * Bot decisions driven through the REAL processTick → decideBotAction →
  * submitAction → resolveActions path, which BotAI.test.ts (decisions in
  * isolation) cannot reach. Both cases here are about a command the bot emits
- * actually LANDING: a `burn` outside the resolver's HP window and a Tenant
+ * actually LANDING: a `burn` outside the resolver's INTEG window and a Tenant
  * attempt nobody ever opens both look identical to a passing unit test — the
  * bot returns a command and the engine silently drops it.
  *
@@ -141,10 +141,10 @@ describe('BotAI - integrated teamplay', () => {
     expect(result.state.waves.find((c) => c.id === 'wave-own')?.integ ?? 0).toBe(0)
   })
 
-  it('a bot squad actually starts Tenant — his HP moves in a bots-only match', () => {
+  it('a bot squad actually starts Tenant — his INTEG moves in a bots-only match', () => {
     // The headline W3-9 regression: Tenant takes damage from nothing but heroes,
-    // and the old gate refused to engage above 40% HP, so in any bots-only or
-    // human+bots match his HP never moved and the Backup never dropped.
+    // and the old gate refused to engage above 40% INTEG, so in any bots-only or
+    // human+bots match his INTEG never moved and the Backup never dropped.
     const squad = ['bot_alpha', 'bot_bravo', 'bot_charlie'].map((id, i) =>
       makeBot({
         id,

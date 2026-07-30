@@ -155,7 +155,7 @@ const movementGuide = [
   {
     title: 'Movement Tips',
     items: [
-      `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_BW_PER_TICK_PERCENT}% MP per cycle — retreat there to recover`,
+      `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_TICK_PERCENT}% BW per cycle — retreat there to recover`,
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_TICKS} cycles plus ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
@@ -179,7 +179,7 @@ const commands = [
   },
   {
     cmd: 'burn [wave:N]',
-    desc: 'Last-hit your OWN low-HP wave to burn the enemy its scrip. Bare burn auto-picks one',
+    desc: 'Last-hit your OWN low-INTEG wave to burn the enemy its scrip. Bare burn auto-picks one',
     example: 'burn wave:0',
     shortcuts: '—',
   },
@@ -332,12 +332,12 @@ const concepts = [
   {
     term: 'ICE',
     icon: '!',
-    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_GOLD}sc among allies in the zone.`,
+    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_GOLD}sc among allies in the zone.`,
   },
   {
     term: 'The Mainframe',
     icon: '@',
-    desc: `Each base houses its team's core — the Mainframe (${ANCIENT_HP} HP). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
+    desc: `Each base houses its team's core — the Mainframe (${ANCIENT_HP} INTEG). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
   },
   {
     term: 'Levels & XP',
@@ -352,12 +352,12 @@ const concepts = [
   {
     term: 'Sustain',
     icon: '+',
-    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_BW_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max HP per cycle) and Drip Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+    desc: `There is NO innate regeneration — an INTEG or BW bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_TICK_PERCENT}% BW per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max INTEG per cycle) and Drip Mask (${sobiRegenPercent}% max BW per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
     term: 'Last-Hitting & Burning',
     icon: '/',
-    desc: `Only the killing blow pays scrip: chip a wave to 1 HP and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% HP, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer tapping the wave group in the zone panel over typing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
+    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} INTEG and your hero hits for 30–70, so wait until its remaining INTEG is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% INTEG, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer tapping the wave group in the zone panel over typing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',
@@ -372,12 +372,12 @@ const concepts = [
   {
     term: 'Tenant & Caches',
     icon: '%',
-    desc: `Tenant (${TENANT_BASE_HP}+ HP) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-top/cache-bot every ${CACHE_INTERVAL_TICKS} cycles and expire after ${CACHE_DURATION_TICKS}; grab them with cache.`,
+    desc: `Tenant (${TENANT_BASE_HP}+ INTEG) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-top/cache-bot every ${CACHE_INTERVAL_TICKS} cycles and expire after ${CACHE_DURATION_TICKS}; grab them with cache.`,
   },
   {
     term: 'Win Condition',
     icon: 'W',
-    desc: `Destroying any of a team's T3 ice exposes their Mainframe (${ANCIENT_HP} HP) in their base. Destroy the enemy Mainframe to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
+    desc: `Destroying any of a team's T3 ice exposes their Mainframe (${ANCIENT_HP} INTEG) in their base. Destroy the enemy Mainframe to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
   },
   {
     term: 'Draft & Bans',
@@ -424,7 +424,7 @@ const ROLE_DETAILS: ReadonlyArray<{ role: HeroRole; label: string; icon: string;
     role: 'tank',
     label: 'Tank',
     icon: '##',
-    desc: 'High HP and plate. Taunts enemies. Absorbs damage for the team.',
+    desc: 'High INTEG and plate. Taunts enemies. Absorbs damage for the team.',
   },
   {
     role: 'mage',

@@ -180,7 +180,7 @@ describe('GameLoop', () => {
       expect(result.state.tick).toBe(10)
       const p1 = result.state.players['p1']!
       expect(p1.alive).toBe(true)
-      expect(p1.integ).toBe(550) // Full HP (echo base HP)
+      expect(p1.integ).toBe(550) // Full INTEG (echo base INTEG)
       expect(p1.zone).toBe('chaff-fountain')
     })
 
@@ -291,7 +291,7 @@ describe('GameLoop', () => {
       expect(result.state.players['p1']!.alive).toBe(false)
     })
 
-    it('should heal mana in fountain', () => {
+    it('should heal BW in fountain', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -306,7 +306,7 @@ describe('GameLoop', () => {
         },
       })
 
-      const result = Effect.runSync(processTick('game-mana', state))
+      const result = Effect.runSync(processTick('game-BW', state))
       expect(result.state.players['p1']!.bw).toBeGreaterThan(50)
     })
 
@@ -346,7 +346,7 @@ describe('GameLoop', () => {
       expect(result.state.players['p1']!.integ).toBe(100)
     })
 
-    it('should cap fountain healing at max HP', () => {
+    it('should cap fountain healing at max INTEG', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({

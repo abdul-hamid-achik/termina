@@ -81,7 +81,7 @@ function setPlayer(state: GameState, id: string, patch: Partial<PlayerState>): G
   return { ...state, players: { ...state.players, [id]: { ...player, ...patch } } }
 }
 
-/** Fountain healing/regen is skipped while inCombat — used to freeze HP/MP. */
+/** Fountain healing/regen is skipped while inCombat — used to freeze INTEG/BW. */
 function inCombatBuff() {
   return { id: 'inCombat', stacks: 1, ticksRemaining: 3, source: 'system' }
 }
@@ -326,7 +326,7 @@ describe('Game Flow Integration', () => {
       expect(afterSell.players.p1!.items[slot]).toBeNull()
     })
 
-    it('preserves HP percentage when selling HP items', async () => {
+    it('preserves INTEG percentage when selling INTEG items', async () => {
       const gameId = uid('integ')
       const sm = await startGame(gameId, makePlayers('ihp', 1))
       const initial = await Effect.runPromise(sm.getState(gameId))
@@ -334,7 +334,7 @@ describe('Game Flow Integration', () => {
       const itemHp = getItem('bulwark_plate')!.stats.integ!
       expect(itemHp).toBeGreaterThan(0)
 
-      // Buy an HP item through the engine — maxInteg grows by the item bonus
+      // Buy an INTEG item through the engine — maxInteg grows by the item bonus
       await arrange(sm, gameId, (s) => setPlayer(s, 'ihp_r0', { gold: 5_000 }))
       submitAction(gameId, 'ihp_r0', { type: 'buy', item: 'bulwark_plate' })
       let result = await runTick(sm, gameId)
@@ -342,7 +342,7 @@ describe('Game Flow Integration', () => {
       expect(bought.items).toContain('bulwark_plate')
       expect(bought.maxInteg).toBe(baseMaxHp + itemHp)
 
-      // Wound to ~50% (inCombat blocks fountain regen so HP stays put)
+      // Wound to ~50% (inCombat blocks fountain regen so INTEG stays put)
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'ihp_r0', {
           integ: Math.floor((baseMaxHp + itemHp) / 2),
@@ -358,11 +358,11 @@ describe('Game Flow Integration', () => {
 
       expect(sold.items).not.toContain('bulwark_plate')
       expect(sold.maxInteg).toBe(baseMaxHp)
-      // The percentage — not the flat HP — carried over the max-HP drop
+      // The percentage — not the flat INTEG — carried over the max-HP drop
       expect(sold.integ).toBe(Math.floor(baseMaxHp * hpPercent))
     })
 
-    it('preserves MP percentage when buying MP items', async () => {
+    it('preserves BW percentage when buying BW items', async () => {
       const gameId = uid('bw')
       const sm = await startGame(gameId, makePlayers('imp', 1))
       const initial = await Effect.runPromise(sm.getState(gameId))
@@ -371,7 +371,7 @@ describe('Game Flow Integration', () => {
       const itemMp = getItem('clock_lens')!.stats.bw!
       expect(itemMp).toBeGreaterThan(0)
 
-      // Drain to ~50% MP first (inCombat blocks fountain mana regen)
+      // Drain to ~50% BW first (inCombat blocks fountain BW regen)
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'imp_r0', {
           gold: 5_000,
@@ -388,7 +388,7 @@ describe('Game Flow Integration', () => {
 
       expect(bought.items).toContain('clock_lens')
       expect(bought.maxBw).toBe(baseMaxMp + itemMp)
-      // The percentage — not the flat MP — carried over the max-MP increase
+      // The percentage — not the flat BW — carried over the max-MP increase
       expect(bought.bw).toBe(Math.floor((baseMaxMp + itemMp) * mpPercent))
     })
 

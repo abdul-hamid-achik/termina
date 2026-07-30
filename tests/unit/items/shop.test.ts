@@ -390,7 +390,7 @@ describe('Shop', () => {
       }
     })
 
-    it('uses mana vial and restores MP', async () => {
+    it('uses BW vial and restores BW', async () => {
       const player = makePlayer({
         items: ['charge_tab', null, null, null, null, null],
         bw: 100,
@@ -408,7 +408,7 @@ describe('Shop', () => {
       }
     })
 
-    it('mana vial does not exceed max MP', async () => {
+    it('BW vial does not exceed max BW', async () => {
       const player = makePlayer({
         items: ['charge_tab', null, null, null, null, null],
         bw: 250,
@@ -991,7 +991,7 @@ describe('Shop', () => {
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const s = exit.value
-        // In-zone enemy is blasted (HP down) and slowed.
+        // In-zone enemy is blasted (INTEG down) and slowed.
         expect(s.players['enemy_1']!.integ).toBeLessThan(600)
         expect(s.players['enemy_1']!.buffs.some((b) => b.id === 'slow')).toBe(true)
         // Out-of-zone enemy is untouched.
@@ -1002,7 +1002,7 @@ describe('Shop', () => {
       }
     })
 
-    it('Burnout burns HP on a non-immune target and can kill it', async () => {
+    it('Burnout burns INTEG on a non-immune target and can kill it', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',

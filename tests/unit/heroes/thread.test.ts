@@ -116,7 +116,7 @@ describe('Thread Hero', () => {
       expect(buff!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -149,7 +149,7 @@ describe('Thread Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // Q level 4
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -160,7 +160,7 @@ describe('Thread Hero', () => {
       expect(updated.bw).toBe(270 - 100) // Level 4 Q costs 100
     })
 
-    it('fails with InsufficientManaError when no mana', () => {
+    it('fails with InsufficientManaError when no BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -238,7 +238,7 @@ describe('Thread Hero', () => {
       expect(shield!.stacks).toBe(250) // Level 4 base shield, no allies
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -249,7 +249,7 @@ describe('Thread Hero', () => {
       expect(updated.cooldowns.w).toBe(12)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -281,7 +281,7 @@ describe('Thread Hero', () => {
       expect(debuff!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -293,7 +293,7 @@ describe('Thread Hero', () => {
       expect(updated.cooldowns.e).toBe(10)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // E level 4
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -323,7 +323,7 @@ describe('Thread Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -356,7 +356,7 @@ describe('Thread Hero', () => {
       expect(buff!.ticksRemaining).toBe(4)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
@@ -367,7 +367,7 @@ describe('Thread Hero', () => {
       expect(updated.cooldowns.r).toBe(55)
     })
 
-    it('scales mana cost with R level', () => {
+    it('scales BW cost with R level', () => {
       const player = makePlayer({ level: 18, bw: 500 })
       const state = makeState([player])
 
@@ -377,7 +377,7 @@ describe('Thread Hero', () => {
       expect(updated.bw).toBe(500 - 430) // R3 costs 430
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ level: 6, bw: 100 })
       const state = makeState([player])
 

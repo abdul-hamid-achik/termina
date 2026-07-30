@@ -134,7 +134,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     // in a real match.
     const cost = getAbilityManaCost(ab, slot, level.value)
     if (mana.value < cost) {
-      pushLog(`! not enough mana for ${ab.name} (need ${cost}, have ${mana.value})`)
+      pushLog(`! not enough BW for ${ab.name} (need ${cost}, have ${mana.value})`)
       return
     }
     mana.value -= cost
@@ -239,7 +239,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       for (const s of worn) pushLog(`— ${s.label} wore off`)
     }
     for (const s of SLOTS) if (cooldowns[s] > 0) cooldowns[s]--
-    // A sandbox convenience, NOT a game rule: heroes have no innate mana regen
+    // A sandbox convenience, NOT a game rule: heroes have no innate BW regen
     // (the fountain and items are the only recovery). Without it the console
     // soft-locks on an empty pool, so it stays — labelled, so nobody learns a
     // regen rate that does not exist.

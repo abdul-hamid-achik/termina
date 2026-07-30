@@ -94,7 +94,7 @@ function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
 
 describe('AncientSystem', () => {
   describe('initializeAncients', () => {
-    it('creates two full-HP, invulnerable, alive Ancients', () => {
+    it('creates two full-INTEG, invulnerable, alive Ancients', () => {
       const ancients = initializeAncients()
       for (const team of ['chaff', 'audit'] as const) {
         expect(ancients[team].team).toBe(team)
@@ -217,7 +217,7 @@ describe('AncientSystem', () => {
       expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP - 20)
     })
 
-    it('destroys the Ancient at 0 HP and emits a dedicated ancient_destroyed event', () => {
+    it('destroys the Ancient at 0 INTEG and emits a dedicated ancient_destroyed event', () => {
       const base = vulnerableState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'audit-base' }) },
       })

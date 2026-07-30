@@ -33,7 +33,7 @@ const W_COOLDOWN = 18
 const E_DAMAGE = [300, 400, 500] as const
 const E_MANA = abilityManaTable('daemon', 'e')
 const E_COOLDOWN = 20
-const E_THRESHOLD = 0.3 // 30% HP
+const E_THRESHOLD = 0.3 // 30% INTEG
 
 const R_MANA = abilityManaTable('daemon', 'r')
 const R_COOLDOWN = 60
@@ -197,7 +197,7 @@ function resolveW(
   })
 }
 
-// E: Sudo — execute below 30% HP with black damage; fail + refund if above
+// E: Sudo — execute below 30% INTEG with black damage; fail + refund if above
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -225,7 +225,7 @@ function resolveE(
       )
     }
 
-    // Check HP threshold — if above 30%, refund mana and don't set cooldown
+    // Check INTEG threshold — if above 30%, refund mana and don't set cooldown
     const hpPercent = targetPlayer.integ / targetPlayer.maxInteg
     if (hpPercent > E_THRESHOLD) {
       return {
@@ -237,7 +237,7 @@ function resolveE(
             payload: {
               playerId: player.id,
               ability: 'e',
-              reason: 'Target HP above execute threshold',
+              reason: 'Target INTEG above execute threshold',
             },
           },
         ],

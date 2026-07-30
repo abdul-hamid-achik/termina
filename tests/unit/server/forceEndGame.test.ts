@@ -7,7 +7,7 @@
  * auto-import global). We stub it to a no-op BEFORE dynamically importing the
  * module, so the plugin body never runs and we get the exported functions in
  * isolation — no dev server, no Effect runtime, no real game state. In this
- * harness there is no live game and no managed runtime, so forceEndGame's
+ * harness there is no live game and no BWged runtime, so forceEndGame's
  * "unknown game" / "no runtime" guards both apply, returning false.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'

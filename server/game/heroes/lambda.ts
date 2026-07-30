@@ -325,7 +325,7 @@ function resolveR(
 }
 
 // ── Passive: Closure ──────────────────────────────────────────────
-// Track casts. After 3 casts within 4 ticks, next ability costs no mana
+// Track casts. After 3 casts within 4 ticks, next ability costs no BW
 // and deals 30% bonus damage.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {

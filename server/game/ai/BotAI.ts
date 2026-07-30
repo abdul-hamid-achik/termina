@@ -97,7 +97,7 @@ function itemCost(id: string): number {
   return getItem(id)?.cost ?? Number.POSITIVE_INFINITY
 }
 
-/** Pop a salve when below this HP% (out of combat). */
+/** Pop a salve when below this INTEG% (out of combat). */
 const SALVE_HP_PERCENT = 60
 /** TP home instead of walking when the fountain is further than this. */
 const TP_RETREAT_MIN_DISTANCE = 2
@@ -508,7 +508,7 @@ function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: Game
           if (slot === 'r' && enemy.level < 6) continue
           // Rank cost, not the rank-1 headline: an enemy who cannot pay for a
           // cast is not threatening with it, and reading the headline had bots
-          // fleeing fights the enemy had no mana to win.
+          // fleeing fights the enemy had no BW to win.
           if (enemy.bw >= getAbilityManaCost(ability, slot, enemy.level)) {
             score += abilityDamageValue(ability)
           }
@@ -549,7 +549,7 @@ export function shouldRetreatFromThreat(
   const hpPercent = getHpPercent(bot)
   const enemyHeroes = getEnemyHeroesInZone(state, bot)
 
-  // Tier 1: Critical HP — always retreat below the configured floor.
+  // Tier 1: Critical INTEG — always retreat below the configured floor.
   // Slower bots (reactionDelayTicks > 0) have a per-tick chance to NOT react
   // yet, simulating slower reflexes. But a bot at <half the floor never delays.
   if (hpPercent < config.retreatHpPercent) {
@@ -561,7 +561,7 @@ export function shouldRetreatFromThreat(
   }
   if (!config.threatAssessment || enemyHeroes.length === 0) return false
 
-  // Graduated threat-based retreat — the lower the HP, the more cautious.
+  // Graduated threat-based retreat — the lower the INTEG, the more cautious.
   let totalEnemyThreat = 0
   for (const enemy of enemyHeroes) {
     totalEnemyThreat += calculateThreatScore(enemy, bot, state)
@@ -575,10 +575,10 @@ export function shouldRetreatFromThreat(
     totalAllyThreat += calculateThreatScore(ally, bot, state) * 0.7
   }
 
-  // Tier 2: Outnumbered at moderate HP — retreat when losing the fight badly.
-  // The HP threshold and the required threat ratio scale together: a hurt bot
-  // (30% HP) retreats at a modest disadvantage (1.3x), a healthy bot (50% HP)
-  // only retreats when badly outmatched (1.5x). Above 50% HP, hold ground.
+  // Tier 2: Outnumbered at moderate INTEG — retreat when losing the fight badly.
+  // The INTEG threshold and the required threat ratio scale together: a hurt bot
+  // (30% INTEG) retreats at a modest disadvantage (1.3x), a healthy bot (50% INTEG)
+  // only retreats when badly outmatched (1.5x). Above 50% INTEG, hold ground.
   if (hpPercent < 50) {
     // Interpolate: at retreatHpPercent → 1.3x ratio, at 50% → 1.5x ratio.
     const ratio =
@@ -586,7 +586,7 @@ export function shouldRetreatFromThreat(
     if (totalEnemyThreat > totalAllyThreat * ratio) return true
   }
 
-  // Tier 3: Gank awareness — even at high HP, retreat if severely outnumbered
+  // Tier 3: Gank awareness — even at high INTEG, retreat if severely outnumbered
   // (3+ enemies, alone) since a coordinated focus will burst through shields.
   if (enemyHeroes.length >= 3 && allies.length === 0 && hpPercent < 70) {
     return true
@@ -655,14 +655,14 @@ function isSelfCastViable(ability: AbilityDef): boolean {
 }
 
 /**
- * Pick the friendly target for an ally-only / supportive cast: the lowest-HP
+ * Pick the friendly target for an ally-only / supportive cast: the lowest-INTEG
  * ally in the zone, or the bot itself — NEVER an enemy. The per-hero resolvers
  * for these abilities (e.g. cron.q buff, proxy.r position swap, sentry heal)
  * reject any target whose team differs from the caster's, so a bot that aimed
  * one at an enemy would simply burn its one action for the tick.
  *
  * `skipIfHealthy` is set for heal/shield/buff abilities so we don't waste mana
- * topping off a full-HP team; otherwise the cast always lands on a friendly
+ * topping off a full-INTEG team; otherwise the cast always lands on a friendly
  * unit as long as one exists.
  *
  * When the bot is alone (no allies in zone) the only candidate is itself. Some
@@ -725,7 +725,7 @@ export function getAbilityTarget(
 
 /**
  * Total mana to cast a sequence of ability slots for a hero at `playerLevel`.
- * Mana regen between casts is ignored on purpose — a conservative "can I finish
+ * BW regen between casts is ignored on purpose — a conservative "can I finish
  * this combo?" check so a bot never burns its opener on a combo it can't
  * complete. Costs are per-rank for the same reason `canCastAbility` uses them:
  * summing the rank-1 headline made every levelled combo look affordable.
@@ -803,7 +803,7 @@ function tryCombo(
     })
     if (!conditionsMet) continue
     // Don't open a combo we can't afford to finish — a half-combo wastes the
-    // opener's mana and leaves the bot mid-rotation with nothing.
+    // opener's BW and leaves the bot mid-rotation with nothing.
     if (
       bot.bw <
       sequenceManaCost(
@@ -943,7 +943,7 @@ function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null 
   return null
 }
 
-/** Tenant is only worth STARTING at (near-)full HP; anything in between belongs
+/** Tenant is only worth STARTING at (near-)full INTEG; anything in between belongs
  *  to whichever team is already on him. */
 const TENANT_START_HP_FRACTION = 0.7
 /** Below this he is a steal target — dive in even without the full squad. */
@@ -990,14 +990,14 @@ function tenantAttemptPhase(key: string, tick: number): TenantPhase {
 
 /**
  * Tenant awareness. This used to be a pure LAST-HIT check ("only contest below
- * 40% HP") — but Tenant takes damage from nothing except heroes, and no bot would
- * open on him above 40%, so in a bots-only or human+bots match his HP never moved
+ * 40% INTEG") — but Tenant takes damage from nothing except heroes, and no bot would
+ * open on him above 40%, so in a bots-only or human+bots match his INTEG never moved
  * and the Backup never dropped. It is now a START condition (near-full Tenant, a
  * squad already near the pit, level 8+), with the old 40% clause kept as an
  * opportunistic steal for whoever did NOT start him.
  *
  * Only a core role (carry/tank/assassin/mage) OPENS one, but any role within a
- * few zones joins once the call is made: Tenant focuses the lowest-HP hero in
+ * few zones joins once the call is made: Tenant focuses the lowest-INTEG hero in
  * the pit, so extra bodies spread his damage and the squad survives long enough
  * to finish. Distance-bounded either way — a bot trekking across the map for
  * Tenant is a lane thrown away.
@@ -1237,7 +1237,7 @@ function tryFarmJungle(
 
 /**
  * Burn an allied wave out from under the enemy laner. Mirrors resolveDenyPhase's
- * window exactly — own team, at or below BURN_HP_THRESHOLD of the HP it SPAWNED
+ * window exactly — own team, at or below BURN_HP_THRESHOLD of the INTEG it SPAWNED
  * with — so the command resolves instead of silently burning the tick, and uses
  * the zone-local index the resolver reads.
  *
@@ -1329,7 +1329,7 @@ function tryPickTalent(bot: PlayerState): Command | null {
  *
  *  - Defensive (Hardshell magic-immunity, Spite Plate reflect) only when actually under
  *    pressure — hurt or outnumbered — not burned on a trivial skirmish.
- *  - Setup/control/burst on the kill target (lowest-HP enemy): Veil (zone magic-
+ *  - Setup/control/burst on the kill target (lowest-INTEG enemy): Veil (zone magic-
  *    vuln) → Ethereal (kinetic-immune + 40% magic-vuln) → Hex (hard disable,
  *    still killable) → Burnout (300 magic nuke). Ethereal/Burnout are held if that
  *    target is magic-immune (they'd fizzle).
@@ -1355,7 +1355,7 @@ export function tryUseCombatItem(
     }
   }
 
-  // Offensive setup → control → burst, aimed at the kill target (lowest HP).
+  // Offensive setup → control → burst, aimed at the kill target (lowest INTEG).
   const killTarget = enemiesInZone.reduce((a, b) => (a.integ < b.integ ? a : b))
   const killRef: TargetRef = { kind: 'hero', name: killTarget.id }
   const killImmune = isAirgapTarget(killTarget)
@@ -1393,7 +1393,7 @@ export function tryUseCombatItem(
 
 /**
  * A defensive panic item (Hardshell / Spite Plate) for a chased, RETREATING bot. The
- * retreat branch returns before the combat block, so without this a low-HP bot
+ * retreat branch returns before the combat block, so without this a low-INTEG bot
  * being chased flees to its death with its survival items unused. Gated on
  * threatAssessment; mirrors validateAction's `use` gates so it always resolves.
  */
@@ -1568,7 +1568,7 @@ export function decideBotAction(
 
   // Close out a won game: if the enemy Ancient is exposed, march straight to
   // their base to finish it. The retreat-from-threat check already ran above,
-  // so a low-HP bot still backs off rather than feeding into base defenses.
+  // so a low-INTEG bot still backs off rather than feeding into base defenses.
   const enemyTeamForClose: TeamId = bot.team === 'chaff' ? 'audit' : 'chaff'
   const exposedAncient = state.ancients?.[enemyTeamForClose]
   if (exposedAncient?.alive && exposedAncient.vulnerable) {

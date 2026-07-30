@@ -69,7 +69,7 @@ describe('GameStateBar', () => {
       expect(mountBar(baseProps).find('[data-testid="macro-strip"]').exists()).toBe(false)
     })
 
-    it('shows team score, net-worth lead, ice, and Core HP', () => {
+    it('shows team score, net-worth lead, ice, and Core INTEG', () => {
       const w = mountBar({
         ...baseProps,
         teams,

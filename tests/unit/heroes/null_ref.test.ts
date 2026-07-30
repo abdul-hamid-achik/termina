@@ -116,7 +116,7 @@ describe('Null (null_ref) Hero', () => {
       expect(shred!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -149,7 +149,7 @@ describe('Null (null_ref) Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('fails with InsufficientManaError when no mana', () => {
+    it('fails with InsufficientManaError when no BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -205,7 +205,7 @@ describe('Null (null_ref) Hero', () => {
       expect(silence!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -217,7 +217,7 @@ describe('Null (null_ref) Hero', () => {
       expect(updated.cooldowns.w).toBe(12)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // W level 4
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -228,7 +228,7 @@ describe('Null (null_ref) Hero', () => {
       expect(updated.bw).toBe(420 - 125) // Level 4 W costs 125
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -289,7 +289,7 @@ describe('Null (null_ref) Hero', () => {
       expect(hasBuff(updatedEnemy, 'revealed')).toBe(true)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -324,7 +324,7 @@ describe('Null (null_ref) Hero', () => {
       expect(hasBuff(updatedAlly, 'voidZone_dot')).toBe(false)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -399,25 +399,25 @@ describe('Null (null_ref) Hero', () => {
       expect(result.state.players['e2']!.integ).toBe(enemyAdjacent.integ)
     })
 
-    it('deals 50% bonus damage to enemies below 25% HP', () => {
+    it('deals 50% bonus damage to enemies below 25% INTEG', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      // Give both enemies high HP pools so neither dies, but set current HP differently
-      const healthyEnemy = makeEnemy({ integ: 800, maxInteg: 800 }) // 100% HP — above 25%
-      const lowEnemy = makeEnemy({ id: 'e2', name: 'Enemy2', integ: 800, maxInteg: 4000 }) // 20% HP — below 25%
+      // Give both enemies high INTEG pools so neither dies, but set current INTEG differently
+      const healthyEnemy = makeEnemy({ integ: 800, maxInteg: 800 }) // 100% INTEG — above 25%
+      const lowEnemy = makeEnemy({ id: 'e2', name: 'Enemy2', integ: 800, maxInteg: 4000 }) // 20% INTEG — below 25%
       const state = makeState([player, healthyEnemy, lowEnemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const healthyDmg = healthyEnemy.integ - result.state.players['e1']!.integ
       const lowDmg = lowEnemy.integ - result.state.players['e2']!.integ
-      // Low HP enemy should take more damage (50% bonus)
+      // Low INTEG enemy should take more damage (50% bonus)
       expect(lowDmg).toBeGreaterThan(healthyDmg)
     })
 
-    it('does not deal bonus to enemies above 25% HP', () => {
+    it('does not deal bonus to enemies above 25% INTEG', () => {
       const player = makePlayer({ level: 6, bw: 500 })
-      const enemy1 = makeEnemy({ integ: 400, maxInteg: 550 }) // ~73% HP
-      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', integ: 400, maxInteg: 550 }) // ~73% HP
+      const enemy1 = makeEnemy({ integ: 400, maxInteg: 550 }) // ~73% INTEG
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', integ: 400, maxInteg: 550 }) // ~73% INTEG
       const state = makeState([player, enemy1, enemy2])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
@@ -468,7 +468,7 @@ describe('Null (null_ref) Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ level: 6, bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -479,7 +479,7 @@ describe('Null (null_ref) Hero', () => {
   })
 
   describe('Passive: Void Drain', () => {
-    it('restores 15% max MP on kill', () => {
+    it('restores 15% max BW on kill', () => {
       const player = makePlayer({ bw: 200, maxBw: 420 }) // 15% of 420 = 63
       const state = makeState([player])
 
@@ -492,7 +492,7 @@ describe('Null (null_ref) Hero', () => {
       expect(updated.players['p1']!.bw).toBe(200 + 63) // 263
     })
 
-    it('caps MP at maxBw', () => {
+    it('caps BW at maxBw', () => {
       const player = makePlayer({ bw: 400, maxBw: 420 }) // 15% of 420 = 63, would exceed max
       const state = makeState([player])
 
@@ -545,7 +545,7 @@ describe('Null (null_ref) Hero', () => {
         payload: { killerId: 'e1', victimId: 'p1' },
       })
 
-      expect(updated.players['p1']!.bw).toBe(420) // No mana restored
+      expect(updated.players['p1']!.bw).toBe(420) // No BW restored
     })
 
     it('does not trigger on non-kill events', () => {

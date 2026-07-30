@@ -28,7 +28,7 @@ describe('formatEffect', () => {
     expect(formatEffect(effect({ type: 'heal', value: 50 }))).toBe('heal 50')
     expect(formatEffect(effect({ type: 'shield', value: 100 }))).toBe('shield 100')
     expect(formatEffect(effect({ type: 'dot', value: 90, duration: 3 }))).toBe('90 dmg over 3t')
-    expect(formatEffect(effect({ type: 'execute', value: 15 }))).toBe('execute < 15% hp')
+    expect(formatEffect(effect({ type: 'execute', value: 15 }))).toBe('execute < 15% integ')
   })
   it('prefers an authored description for buffs', () => {
     expect(formatEffect(effect({ type: 'buff', value: 8, description: 'amp per stack' }))).toBe(

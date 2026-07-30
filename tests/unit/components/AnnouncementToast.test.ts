@@ -34,7 +34,7 @@ describe('AnnouncementToast', () => {
 
   it('a repeated identical message re-shows the toast (monotonic seq, not text diff)', async () => {
     const wrapper = mount(AnnouncementToast, {
-      props: { text: 'Not enough mana', seq: 0, durationMs: 2000 },
+      props: { text: 'Not enough BW', seq: 0, durationMs: 2000 },
     })
 
     await wrapper.setProps({ seq: 1 })
@@ -93,7 +93,7 @@ describe('AnnouncementToast', () => {
 
   it('keeps the on-screen toast colour even if the level prop changes before the next seq', async () => {
     const wrapper = mount(AnnouncementToast, {
-      props: { text: 'Not enough mana', seq: 1, level: 'warning' },
+      props: { text: 'Not enough BW', seq: 1, level: 'warning' },
     })
     await wrapper.setProps({ seq: 2 }) // shows the warning
     // The parent updates level for the NEXT (not-yet-fired) announcement.

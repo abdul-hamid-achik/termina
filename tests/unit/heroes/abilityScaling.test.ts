@@ -232,9 +232,9 @@ describe('ability scaling', () => {
     })
   })
 
-  describe('mana cost scales (or stays flat) with level', () => {
+  describe('BW cost scales (or stays flat) with level', () => {
     // Cipher Q: Q_MANA is constant — should not decrease
-    it('cipher Q mana cost does not decrease with level', () => {
+    it('cipher Q BW cost does not decrease with level', () => {
       const spent1 = castAtLevel('cipher', 'q', 1).casterMpSpent
       const spent2 = castAtLevel('cipher', 'q', 3).casterMpSpent
       expect(spent2).toBeGreaterThanOrEqual(spent1)
@@ -242,7 +242,7 @@ describe('ability scaling', () => {
     })
 
     // Echo R: R_MANA = [150, 175, 200] — strictly increasing
-    it('echo R mana cost increases with ultimate level', () => {
+    it('echo R BW cost increases with ultimate level', () => {
       const spent1 = castAtLevel('echo', 'r', 6).casterMpSpent
       const spent2 = castAtLevel('echo', 'r', 12).casterMpSpent
       expect(spent2).toBeGreaterThan(spent1)

@@ -150,7 +150,7 @@ describe('_base hero utilities', () => {
       expect(result.state.players['p1']!.integ).toBe(0)
     })
 
-    it('should kill player if DoT damage exceeds HP', () => {
+    it('should kill player if DoT damage exceeds INTEG', () => {
       const player = makePlayer({
         integ: 5,
         buffs: [{ id: 'phys_dot', stacks: 100, ticksRemaining: 5, source: 'test' }],
@@ -217,25 +217,25 @@ describe('_base hero utilities', () => {
       expect(result.level).toBe(2)
     })
 
-    it('should increase max HP', () => {
+    it('should increase max INTEG', () => {
       const player = makePlayer({ level: 1, maxInteg: 500 })
       const result = levelUpHero(player)
       expect(result.maxInteg).toBeGreaterThan(500)
     })
 
-    it('should increase max MP', () => {
+    it('should increase max BW', () => {
       const player = makePlayer({ level: 1, maxBw: 200 })
       const result = levelUpHero(player)
       expect(result.maxBw).toBeGreaterThan(200)
     })
 
-    it('should heal HP on level up', () => {
+    it('should heal INTEG on level up', () => {
       const player = makePlayer({ level: 1, integ: 400, maxInteg: 500 })
       const result = levelUpHero(player)
       expect(result.integ).toBeGreaterThan(400)
     })
 
-    it('should not exceed max HP on level up', () => {
+    it('should not exceed max INTEG on level up', () => {
       const player = makePlayer({ level: 1, integ: 500, maxInteg: 500 })
       const result = levelUpHero(player)
       expect(result.integ).toBe(result.maxInteg)
@@ -249,13 +249,13 @@ describe('_base hero utilities', () => {
   })
 
   describe('dealDamage', () => {
-    it('should reduce HP', () => {
+    it('should reduce INTEG', () => {
       const player = makePlayer({ integ: 500 })
       const result = dealDamage(player, 50, 'black')
       expect(result.integ).toBe(450)
     })
 
-    it('should kill player when HP reaches 0', () => {
+    it('should kill player when INTEG reaches 0', () => {
       const player = makePlayer({ integ: 50 })
       const result = dealDamage(player, 100, 'black')
       expect(result.integ).toBe(0)
@@ -311,8 +311,8 @@ describe('_base hero utilities', () => {
 
     it('drains the first shield then the second across a two-shield pool (no leak/loss)', () => {
       // Regression: the partial-absorb branch filtered out ALL shields and leaked
-      // the overflow to HP — a 50 hit against a 30+40 pool wrongly deleted both
-      // shields AND dealt 20 to HP. It must keep the partially-spent second shield
+      // the overflow to INTEG — a 50 hit against a 30+40 pool wrongly deleted both
+      // shields AND dealt 20 to INTEG. It must keep the partially-spent second shield
       // and absorb the whole 50.
       const player = makePlayer({
         integ: 500,
@@ -723,7 +723,7 @@ describe('_base hero utilities', () => {
   })
 
   describe('deductBandwidth', () => {
-    it('should deduct mana', () => {
+    it('should deduct BW', () => {
       const player = makePlayer({ bw: 200 })
       const result = deductBandwidth(player, 50)
       expect(result.bw).toBe(150)
@@ -939,7 +939,7 @@ describe('_base hero utilities', () => {
       expect(result).toBe(state)
     })
 
-    it('kills a wave to exactly 0 rather than negative HP', () => {
+    it('kills a wave to exactly 0 rather than negative INTEG', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave({ integ: 30 })] })
 
@@ -958,7 +958,7 @@ describe('_base hero utilities', () => {
       expect(result.waves[0]!.id).toBe('c1')
     })
 
-    it('does not re-damage a wave already at 0 HP', () => {
+    it('does not re-damage a wave already at 0 INTEG', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const dead = wave({ integ: 0 })
       const state = makeGameState({ waves: [dead] })

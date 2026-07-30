@@ -62,7 +62,7 @@ describe('learn page', () => {
   it('describes the Mainframe (Ancient) win condition, not the old all-ice one', () => {
     const text = mountLearn().text()
     expect(text).toContain('Mainframe')
-    expect(text).toContain(`${ANCIENT_HP} HP`)
+    expect(text).toContain(`${ANCIENT_HP} INTEG`)
     expect(text).toContain('T3')
     expect(text).not.toContain('destroy the enemy base')
     expect(text).not.toContain('Destroy all 3 ice tiers in any lane to expose the enemy base')
@@ -149,7 +149,7 @@ describe('learn page', () => {
     expect(text).toContain(`(${ITEMS.camtap!.cost}sc)`)
     expect(text).toContain(`${CAMTAP_DURATION_TICKS} cycles`)
     expect(text).toContain(`Max ${WARD_LIMIT_PER_TEAM} active per team`)
-    expect(text).toContain(`T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP`)
+    expect(text).toContain(`T1 ${ICE_HP_T1} INTEG, T2 ${ICE_HP_T2} INTEG, T3 ${ICE_HP_T3} INTEG`)
     expect(text).toContain(`hit for ${ICE_ATTACK}`)
   })
 
@@ -283,7 +283,7 @@ describe('learn page', () => {
       expect(text).toContain('NO innate regeneration')
       // The rate is already on the page; the card names every actual source.
       expect(text).toContain(
-        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_BW_PER_TICK_PERCENT}% MP per cycle`,
+        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% INTEG / ${FOUNTAIN_BW_PER_TICK_PERCENT}% BW per cycle`,
       )
       expect(text).toContain('out of combat')
       for (const source of [
@@ -299,8 +299,8 @@ describe('learn page', () => {
 
     it('quotes live regen percentages rather than prose', () => {
       const text = mountLearn().text()
-      expect(text).toContain(`${Math.round(CLOT_RING_REGEN_PERCENT * 100)}% max HP per cycle`)
-      expect(text).toContain(`${Math.round(DRIP_MASK_REGEN_PERCENT * 100)}% max MP per cycle`)
+      expect(text).toContain(`${Math.round(CLOT_RING_REGEN_PERCENT * 100)}% max INTEG per cycle`)
+      expect(text).toContain(`${Math.round(DRIP_MASK_REGEN_PERCENT * 100)}% max BW per cycle`)
       expect(text).toContain(`${Math.round(REGEN_CACHE_HEAL_PERCENT * 100)}% of both per cycle`)
     })
 
@@ -308,8 +308,8 @@ describe('learn page', () => {
       const text = mountLearn().text()
       expect(text).toContain('Last-Hitting & Burning')
       expect(text).toContain('Only the killing blow pays scrip')
-      expect(text).toContain(`${LINE_UNIT_HP} HP`)
-      expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% HP`)
+      expect(text).toContain(`${LINE_UNIT_HP} INTEG`)
+      expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% INTEG`)
       // Burn reward is derived, not asserted as prose.
       const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
       expect(text).toContain(`${burnGold}sc and ${Math.floor(WAVE_XP * BURN_XP_RATIO)} XP`)

@@ -3,7 +3,7 @@ import { seedGame, HUMAN } from './harness'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /**
- * NPC damage used to mutate hero HP with zero events: a ice could kill you in
+ * NPC damage used to mutate hero INTEG with zero events: a ice could kill you in
  * total silence — no combat-log line, no damage float, no shake, no sound, and
  * no killer to name on the death overlay. These specs pin the whole-tick
  * contract (processTick's event stream), not just the per-AI unit return, since
@@ -35,7 +35,7 @@ describe('NPC damage is visible', () => {
       targetId: HUMAN,
       damageType: 'kinetic',
     })
-    // The reported amount is real HP lost, so the float never reads "0".
+    // The reported amount is real INTEG lost, so the float never reads "0".
     expect(hit._tag === 'damage' && hit.amount).toBeGreaterThan(0)
   })
 

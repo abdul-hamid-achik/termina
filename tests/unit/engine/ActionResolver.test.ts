@@ -172,8 +172,8 @@ describe('ActionResolver', () => {
       expect(error).toMatch(/ready T\d+/)
     })
 
-    it('should reject casting without enough mana via the resolver rejected channel', () => {
-      // Mana is no longer validated in validateAction — per-hero scaled costs
+    it('should reject casting without enough BW via the resolver rejected channel', () => {
+      // BW is no longer validated in validateAction — per-hero scaled costs
       // live in the resolver files, so the resolver's InsufficientManaError
       // is authoritative and surfaced through resolveActions' rejected list.
       const state = makeGameState({
@@ -211,8 +211,8 @@ describe('ActionResolver', () => {
       )
       expect(result.rejected).toHaveLength(1)
       expect(result.rejected[0]!.playerId).toBe('p1')
-      expect(result.rejected[0]!.reason).toMatch(/mana/i)
-      // Target untouched, no mana spent, no cooldown set
+      expect(result.rejected[0]!.reason).toMatch(/BW/i)
+      // Target untouched, no BW spent, no cooldown set
       expect(result.state.players['p2']!.integ).toBe(550)
       expect(result.state.players['p1']!.bw).toBe(10)
       expect(result.state.players['p1']!.cooldowns.q).toBe(0)
@@ -774,7 +774,7 @@ describe('ActionResolver', () => {
       expect(result.state.players['p1']!.iceDamageDealt).toBeGreaterThan(0)
     })
 
-    it('destroys a low-HP enemy ice and awards the ice-kill bounty', () => {
+    it('destroys a low-INTEG enemy ice and awards the ice-kill bounty', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff', gold: 600 }) },
         ice: initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, integ: 1 } : t)),
@@ -859,7 +859,7 @@ describe('ActionResolver', () => {
       ).toBe('Item on cooldown')
     })
 
-    it('consumes a healing salve and regenerates HP on following ticks', () => {
+    it('consumes a healing salve and regenerates INTEG on following ticks', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -1138,7 +1138,7 @@ describe('ActionResolver', () => {
   describe('spell block (Linken / Firewall)', () => {
     // echo Q is a single-target (targetType 'hero') damage spell. hp/maxInteg/mp are
     // set to echo's exact base (550/280) so the maxInteg-sync phase is a no-op and
-    // the spell's HP change isn't recomputed away.
+    // the spell's INTEG change isn't recomputed away.
     const castQ = (state: GameState) =>
       Effect.runSync(
         resolveActions(state, [
@@ -1274,7 +1274,7 @@ describe('ActionResolver', () => {
       attack: () => { rolledCrit: boolean; damage: number }
     } {
       // Use the hero's REAL stats so the per-tick maxInteg recalculation doesn't
-      // collapse an inflated HP pool mid-tick and mask the actual attack damage.
+      // collapse an inflated INTEG pool mid-tick and mask the actual attack damage.
       const echo = HEROES.echo!
       const maxInteg = echo.baseStats.integ
       const maxBw = echo.baseStats.bw

@@ -37,7 +37,7 @@ const healingSalve: ItemDef = {
   active: {
     id: 'trauma_patch_active',
     name: 'Heal',
-    description: 'Restore 200 HP over 4 cycles.',
+    description: 'Restore 200 INTEG over 4 cycles.',
     cooldownTicks: 0,
   },
 }
@@ -51,8 +51,8 @@ const manaVial: ItemDef = {
   maxStacks: 3,
   active: {
     id: 'charge_tab_active',
-    name: 'Restore Mana',
-    description: 'Instantly restore 150 MP.',
+    name: 'Restore BW',
+    description: 'Instantly restore 150 BW.',
     cooldownTicks: 0,
   },
 }
@@ -80,7 +80,7 @@ const powerTreads: ItemDef = {
   active: {
     id: 'gait_rig_active',
     name: 'Toggle',
-    description: 'Switch between +15 attack, +150 HP, or +100 MP.',
+    description: 'Switch between +15 attack, +150 INTEG, or +100 BW.',
     cooldownTicks: 0,
   },
 }
@@ -94,7 +94,7 @@ const ringOfHealth: ItemDef = {
   passive: {
     id: 'clot_ring_passive',
     name: 'Regeneration',
-    description: 'Restore 2% max HP per cycle.',
+    description: 'Restore 2% max INTEG per cycle.',
   },
 }
 
@@ -106,8 +106,8 @@ const sobiMask: ItemDef = {
   consumable: false,
   passive: {
     id: 'drip_mask_passive',
-    name: 'Mana Regen',
-    description: 'Restore 2% max MP per cycle.',
+    name: 'BW Regen',
+    description: 'Restore 2% max BW per cycle.',
   },
 }
 
@@ -379,7 +379,7 @@ const heartOfTarrasque: ItemDef = {
   passive: {
     id: 'bulk_lattice_passive',
     name: 'Regeneration',
-    description: 'Restore 5% max HP per cycle when out of combat for 3 cycles.',
+    description: 'Restore 5% max INTEG per cycle when out of combat for 3 cycles.',
   },
 }
 
@@ -551,7 +551,7 @@ const garbageCollector: ItemDef = {
   passive: {
     id: 'garbage_collector_passive',
     name: 'Recovery',
-    description: 'Regenerate 5% max HP per cycle when out of combat (no damage for 3 cycles).',
+    description: 'Regenerate 5% max INTEG per cycle when out of combat (no damage for 3 cycles).',
   },
 }
 

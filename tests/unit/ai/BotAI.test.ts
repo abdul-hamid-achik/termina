@@ -210,7 +210,7 @@ describe('BotAI - decideBotAction', () => {
         }
       })
 
-      it('a tank bot itemises toward HP (clot_ring, not edge_kit)', () => {
+      it('a tank bot itemises toward INTEG (clot_ring, not edge_kit)', () => {
         const stocked: (string | null)[] = ['trauma_patch', 'recall_token', null, null, null, null]
         const tank = makePlayer({
           heroId: 'kernel', // role: tank
@@ -226,14 +226,14 @@ describe('BotAI - decideBotAction', () => {
       })
     })
 
-    it('stays at fountain to heal when HP is low', () => {
+    it('stays at fountain to heal when INTEG is low', () => {
       const bot = makePlayer({ zone: 'chaff-fountain', integ: 100, maxInteg: 500, gold: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toBeNull()
     })
 
-    it('moves to lane when at fountain with full HP and nothing to buy', () => {
+    it('moves to lane when at fountain with full INTEG and nothing to buy', () => {
       const bot = makePlayer({
         zone: 'chaff-fountain',
         integ: 500,
@@ -255,7 +255,7 @@ describe('BotAI - decideBotAction', () => {
   })
 
   describe('retreat behavior', () => {
-    it('retreats to fountain when HP is below 25%', () => {
+    it('retreats to fountain when INTEG is below 25%', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', integ: 100, maxInteg: 500 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -266,8 +266,8 @@ describe('BotAI - decideBotAction', () => {
       }
     })
 
-    it('does not retreat when HP is above retreat threshold', () => {
-      const bot = makePlayer({ zone: 'mid-t1-chaff', integ: 180, maxInteg: 500 }) // 36% HP
+    it('does not retreat when INTEG is above retreat threshold', () => {
+      const bot = makePlayer({ zone: 'mid-t1-chaff', integ: 180, maxInteg: 500 }) // 36% INTEG
       const allyWave = {
         id: 'c1',
         team: 'chaff' as const,
@@ -373,7 +373,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
     })
 
-    it('targets lowest HP enemy hero', () => {
+    it('targets lowest INTEG enemy hero', () => {
       const bot = makePlayer({
         zone: 'mid-river',
         integ: 400,
@@ -455,7 +455,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
     })
 
-    it('does not cast when not enough mana', () => {
+    it('does not cast when not enough BW', () => {
       const bot = makePlayer({
         zone: 'mid-river',
         integ: 400,
@@ -472,14 +472,14 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
       const action = decideBotAction(state, bot, 'mid')
-      // No mana, should attack
+      // No BW, should attack
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
     })
 
     it('does not cast an ability it can only afford at rank 1', () => {
       // Echo Q costs 40 at rank 1 and 70 at rank 4 (level 7). A bot holding 55
       // mana used to read the registry's rank-1 headline, queue the cast, and
-      // have the resolver refuse it for insufficient mana — one wasted tick per
+      // have the resolver refuse it for insufficient BW — one wasted tick per
       // tick, for the rest of the game. W/E/R are parked so Q is the only
       // candidate and the outcome is unambiguous.
       const bot = makePlayer({
@@ -598,7 +598,7 @@ describe('BotAI - decideBotAction', () => {
   })
 
   describe('combat - wave targeting', () => {
-    it('aims at the lowest-HP enemy wave when the last-hit roll lands', () => {
+    it('aims at the lowest-INTEG enemy wave when the last-hit roll lands', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', integ: 400, maxInteg: 500, bw: 0 })
       const waves: WaveUnitState[] = [
         { id: 'wave-1', team: 'audit', zone: 'mid-t1-chaff', integ: 200, type: 'line' },
@@ -814,7 +814,7 @@ describe('BotAI - decideBotAction', () => {
 
   describe('talent selection', () => {
     it('banks an unlocked talent during a lull (no enemy hero in zone)', () => {
-      // mid-t1-chaff lane, level 10, no talents, full HP, no enemies → pick tier 10.
+      // mid-t1-chaff lane, level 10, no talents, full INTEG, no enemies → pick tier 10.
       const bot = makePlayer({ zone: 'mid-t1-chaff', level: 10 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -849,7 +849,7 @@ describe('BotAI - decideBotAction', () => {
   })
 
   describe('priority ordering', () => {
-    it('prioritizes retreat over combat when HP < 25%', () => {
+    it('prioritizes retreat over combat when INTEG < 25%', () => {
       const bot = makePlayer({ zone: 'mid-river', integ: 50, maxInteg: 500, bw: 300 })
       const enemy = makePlayer({
         id: 'enemy1',
@@ -921,7 +921,7 @@ describe('BotAI - decideBotAction', () => {
   })
 
   describe('support ability targeting', () => {
-    it('heals the most-hurt ally instead of the lowest-HP enemy', () => {
+    it('heals the most-hurt ally instead of the lowest-INTEG enemy', () => {
       const bot = makePlayer({
         id: 'bot_alpha',
         heroId: 'sentry',
@@ -943,7 +943,7 @@ describe('BotAI - decideBotAction', () => {
         id: 'enemy1',
         team: 'audit',
         zone: 'mid-river',
-        integ: 100, // lowest HP overall — the old code would heal-target this enemy
+        integ: 100, // lowest INTEG overall — the old code would heal-target this enemy
         maxInteg: 500,
       })
       const state = makeGameState({
@@ -1007,7 +1007,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
     })
 
-    it('still targets the lowest-HP enemy with damage abilities', () => {
+    it('still targets the lowest-INTEG enemy with damage abilities', () => {
       const bot = makePlayer({
         heroId: 'echo',
         zone: 'mid-river',
@@ -1256,7 +1256,7 @@ describe('BotAI - decideBotAction', () => {
       return makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', integ, maxInteg: 500 })
     }
 
-    it('routes a supportive ally buff to the lowest-HP ally, not an enemy', () => {
+    it('routes a supportive ally buff to the lowest-INTEG ally, not an enemy', () => {
       const ability = makeAbility('ally', buffEffects)
       const target = getAbilityTarget(ability, bot(), [enemy(50)], [ally(150), ally(450)])
       expect(target).toEqual({ kind: 'hero', name: 'bot_ally' })
@@ -1268,8 +1268,8 @@ describe('BotAI - decideBotAction', () => {
       expect(target).toEqual({ kind: 'hero', name: 'bot_alpha' })
     })
 
-    it('never resolves an ally ability to an enemy, even when the enemy is the lowest HP', () => {
-      // The lowest-HP unit on the board is the enemy — an enemy-target heuristic
+    it('never resolves an ally ability to an enemy, even when the enemy is the lowest INTEG', () => {
+      // The lowest-INTEG unit on the board is the enemy — an enemy-target heuristic
       // would aim here. The ally branch must ignore enemies entirely.
       for (const effects of [buffEffects, healEffects, swapEffects]) {
         const ability = makeAbility('ally', effects)
@@ -1296,7 +1296,7 @@ describe('BotAI - decideBotAction', () => {
       expect(target).toBeUndefined()
     })
 
-    it('routes a utility (teleport+buff) ally ability to the lowest-HP friendly, never an enemy', () => {
+    it('routes a utility (teleport+buff) ally ability to the lowest-INTEG friendly, never an enemy', () => {
       const ability = makeAbility('ally', swapEffects)
       // bot 400/500 (80%), ally 250/500 (50%) — ally is the most hurt friendly.
       const target = getAbilityTarget(ability, bot(), [enemy(50)], [ally(250)])
@@ -1305,7 +1305,7 @@ describe('BotAI - decideBotAction', () => {
 
     it('targets self for an ally ability when the bot is the most-hurt friendly', () => {
       const ability = makeAbility('ally', swapEffects)
-      // bot 400/500 (80%) is hurt; the only ally is full HP.
+      // bot 400/500 (80%) is hurt; the only ally is full INTEG.
       const target = getAbilityTarget(ability, bot(), [enemy(50)], [ally(500)])
       expect(target).toEqual({ kind: 'hero', name: 'bot_alpha' })
     })
@@ -1342,10 +1342,10 @@ describe('BotAI - decideBotAction', () => {
       expect(target).toEqual({ kind: 'hero', name: 'bot_ally' })
     })
 
-    it("still aims a single-target 'hero' damage ability at the lowest-HP enemy", () => {
+    it("still aims a single-target 'hero' damage ability at the lowest-INTEG enemy", () => {
       const ability = makeAbility('hero', [{ type: 'damage', value: 100, damageType: 'code' }])
       const target = getAbilityTarget(ability, bot(), [enemy(100), enemy(40)], [ally(120)])
-      // lowest-HP enemy is the 40-HP one; both share id 'enemy1' here so just
+      // lowest-INTEG enemy is the 40-HP one; both share id 'enemy1' here so just
       // assert it picked an enemy, not the ally.
       expect(target).toEqual({ kind: 'hero', name: 'enemy1' })
     })
@@ -1353,7 +1353,7 @@ describe('BotAI - decideBotAction', () => {
 })
 
 describe('sequenceManaCost (combo affordability)', () => {
-  it('sums the mana cost of every ability in the sequence', () => {
+  it('sums the BW cost of every ability in the sequence', () => {
     const echo = HEROES.echo!.abilities
     expect(sequenceManaCost('echo', ['e', 'q'], 1)).toBe(echo.e.manaCost + echo.q.manaCost)
     expect(sequenceManaCost('echo', ['q', 'w', 'r'], 1)).toBe(
@@ -1394,7 +1394,7 @@ describe('BotAI - threat assessment (shouldRetreatFromThreat)', () => {
   // Q — worth 120 threat if it can be paid for. Echo Q costs 40 at rank 1 and
   // 70 at rank 4 (level 7), so an enemy holding 55 mana scores 50 or 170
   // depending on which number the bot reads. The bot's own threat (50 attack,
-  // -25 for sitting under half HP, +50 for five kills = 75) puts the tier-2
+  // -25 for sitting under half INTEG, +50 for five kills = 75) puts the tier-2
   // boundary at 75 x 1.35 = 101 — squarely between the two.
   function scenario(enemyMp: number) {
     const bot = makePlayer({
@@ -1473,7 +1473,7 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
     })
   })
 
-  it('pops a defensive item when outnumbered even at full HP', () => {
+  it('pops a defensive item when outnumbered even at full INTEG', () => {
     const bot = makePlayer({ integ: 500, maxInteg: 500, items: inv('spite_plate') })
     const e2 = makePlayer({ id: 'enemy2', name: 'enemy2', team: 'audit' })
     // 2 enemies vs (0 allies + self) → outnumbered.
@@ -1484,7 +1484,7 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
   })
 
   it('does NOT burn a defensive item on a healthy, even fight', () => {
-    // Full HP, 1v1, only a defensive item → not under pressure, nothing offensive.
+    // Full INTEG, 1v1, only a defensive item → not under pressure, nothing offensive.
     const bot = makePlayer({ integ: 500, maxInteg: 500, items: inv('hardshell') })
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
   })
@@ -1541,7 +1541,7 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
   })
 
   it('decideBotAction wires it in: a hurt bot in a fight pops its Hardshell', () => {
-    // 60% HP avoids the retreat threshold yet is under the defensive-pressure
+    // 60% INTEG avoids the retreat threshold yet is under the defensive-pressure
     // cutoff; default difficulty (medium) has threatAssessment on.
     const bot = makePlayer({
       zone: 'mid-river',
@@ -1559,7 +1559,7 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
   const lowFoe = makePlayer({ id: 'low', name: 'low', team: 'audit', integ: 100, maxInteg: 600 })
   const highFoe = makePlayer({ id: 'high', name: 'high', team: 'audit', integ: 600, maxInteg: 600 })
 
-  it('hexes the kill target (lowest-HP enemy)', () => {
+  it('hexes the kill target (lowest-INTEG enemy)', () => {
     const bot = makePlayer({ integ: 500, maxInteg: 500, items: inv('lockout_shunt') })
     expect(tryUseCombatItem(bot, [highFoe, lowFoe], [], makeConfig())).toEqual({
       type: 'use',
@@ -1568,7 +1568,7 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
     })
   })
 
-  it('dagons the lowest-HP enemy', () => {
+  it('dagons the lowest-INTEG enemy', () => {
     const bot = makePlayer({ integ: 500, maxInteg: 500, items: inv('burnout') })
     expect(tryUseCombatItem(bot, [highFoe, lowFoe], [], makeConfig())).toEqual({
       type: 'use',
@@ -1657,8 +1657,8 @@ describe('BotAI - panic survival items (retreat branch)', () => {
     expect(tryPanicDefensiveItem(bot, makeConfig())).toBeNull()
   })
 
-  it('decideBotAction: a chased, low-HP bot pops Hardshell instead of fleeing to its death', () => {
-    // 20% HP (below the medium retreat threshold) with an enemy in zone → the
+  it('decideBotAction: a chased, low-INTEG bot pops Hardshell instead of fleeing to its death', () => {
+    // 20% INTEG (below the medium retreat threshold) with an enemy in zone → the
     // retreat branch runs; it can't TP through combat, so it pops the panic item.
     const bot = makePlayer({
       zone: 'mid-t1-chaff',
@@ -1793,7 +1793,7 @@ describe('BotAI - difficulty actually bites (abilityComboChance)', () => {
 
 describe('BotAI - denying (medium+)', () => {
   const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-t1-chaff', integ: 300 })
-  /** No mana and every ability parked, so the burn competes with a right-click. */
+  /** No BW and every ability parked, so the burn competes with a right-click. */
   const denier = () =>
     makePlayer({
       zone: 'mid-t1-chaff',
@@ -1974,9 +1974,9 @@ describe('BotAI - Tenant (start condition, steal window, team cooldown)', () => 
 
   const HIT_TENANT = { type: 'attack', target: { kind: 'tenant' } }
 
-  it('STARTS a full-HP Tenant with the squad assembled at level 8', () => {
+  it('STARTS a full-INTEG Tenant with the squad assembled at level 8', () => {
     // The old gate was `hp/maxInteg > 0.4 → return null`. Nothing but a hero can
-    // damage Tenant, so in a bots-only match his HP never moved and the Backup
+    // damage Tenant, so in a bots-only match his INTEG never moved and the Backup
     // never dropped.
     const { bot, state } = pitScene()
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_TENANT)
@@ -2016,7 +2016,7 @@ describe('BotAI - Tenant (start condition, steal window, team cooldown)', () => 
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_TENANT)
   })
 
-  it('a committed team keeps hitting through no-mans-land HP for the whole window', () => {
+  it('a committed team keeps hitting through no-mans-land INTEG for the whole window', () => {
     const gameId = atDifficulty('medium', 'bot_alpha')
     const opened = pitScene({ tick: 40 })
     expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_TENANT)
@@ -2051,7 +2051,7 @@ describe('BotAI - Tenant (start condition, steal window, team cooldown)', () => 
 
   it('a committed bot keeps swinging below the START health floor', () => {
     // Tenant hits for 150 a tick. Holding every bot to the 70% opening floor for
-    // the whole fight meant two swings each and a walk-out, and his HP crept but
+    // the whole fight meant two swings each and a walk-out, and his INTEG crept but
     // never fell — the Backup still never dropped. The hold floor is only high
     // enough that nobody dies in the pit.
     const gameId = atDifficulty('medium', 'bot_alpha')
@@ -2086,7 +2086,7 @@ describe('BotAI - Tenant (start condition, steal window, team cooldown)', () => 
   })
 
   it('but any role piles in once the team has committed', () => {
-    // Tenant focuses the lowest-HP hero in the pit, so extra bodies spread his
+    // Tenant focuses the lowest-INTEG hero in the pit, so extra bodies spread his
     // damage — a squad that only ever fields cores gets two hits each and leaves.
     const gameId = atDifficulty('medium', 'bot_alpha', 'bot_sentry')
     const opened = pitScene({ tick: 40 })

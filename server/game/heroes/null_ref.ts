@@ -242,7 +242,7 @@ function resolveE(
   })
 }
 
-// R: Dereference — AoE magic burst to all enemies. Execute bonus below 25% HP.
+// R: Dereference — AoE magic burst to all enemies. Execute bonus below 25% INTEG.
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -304,7 +304,7 @@ function resolveR(
 }
 
 // ── Passive: Void Drain ──────────────────────────────────────────
-// On kill event, restore 15% max MP + reduce all cooldowns by 2 ticks.
+// On kill event, restore 15% max BW + reduce all cooldowns by 2 ticks.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'kill' || event.payload['killerId'] !== playerId) return state
@@ -312,7 +312,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const player = state.players[playerId]
   if (!player || !player.alive) return state
 
-  // Restore 15% max MP
+  // Restore 15% max BW
   const manaRestore = Math.round(player.maxBw * 0.15)
   let updated: PlayerState = { ...player, bw: Math.min(player.maxBw, player.bw + manaRestore) }
 

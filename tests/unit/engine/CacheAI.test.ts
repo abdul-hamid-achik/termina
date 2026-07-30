@@ -388,7 +388,7 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.integ).toBe(510)
     })
 
-    it('restores mana from Cron’s crontabMana buff (the advertised MP half of Crontab)', () => {
+    it('restores BW from Cron’s crontabMana buff (the advertised BW half of Crontab)', () => {
       const state = makeGameState({
         tick: 60,
         players: {
@@ -403,11 +403,11 @@ describe('CacheAI', () => {
 
       const result = processCacheBuffs(state)
       // Crontab's mpPerTick (15) was advertised in the event + description but
-      // never applied; the crontabMana buff now restores `stacks` MP per tick.
+      // never applied; the crontabMana buff now restores `stacks` BW per tick.
       expect(result.players['p1']!.bw).toBe(215)
     })
 
-    it('should heal REGEN_CACHE_HEAL_PERCENT of max HP per tick with regen', () => {
+    it('should heal REGEN_CACHE_HEAL_PERCENT of max INTEG per tick with regen', () => {
       const maxInteg = 500
       const expectedHeal = Math.floor(maxInteg * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
@@ -426,7 +426,7 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.integ).toBe(400 + expectedHeal)
     })
 
-    it('should heal REGEN_CACHE_HEAL_PERCENT of max MP per tick with regen', () => {
+    it('should heal REGEN_CACHE_HEAL_PERCENT of max BW per tick with regen', () => {
       const maxBw = 200
       const expectedHeal = Math.floor(maxBw * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
@@ -445,7 +445,7 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.bw).toBe(100 + expectedHeal)
     })
 
-    it('should not exceed max HP with regen', () => {
+    it('should not exceed max INTEG with regen', () => {
       const state = makeGameState({
         tick: 60,
         players: {
@@ -462,7 +462,7 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.integ).toBe(500)
     })
 
-    it('should not exceed max MP with regen', () => {
+    it('should not exceed max BW with regen', () => {
       const state = makeGameState({
         tick: 60,
         players: {
@@ -635,7 +635,7 @@ describe('CacheAI', () => {
       expect(result.state.players['p1']!.buffs).toHaveLength(1)
     })
 
-    it('should handle regen at full HP and MP', () => {
+    it('should handle regen at full INTEG and MP', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -654,7 +654,7 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.bw).toBe(200)
     })
 
-    it('should handle player with only HP missing', () => {
+    it('should handle player with only INTEG missing', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -673,7 +673,7 @@ describe('CacheAI', () => {
       expect(result.players['p1']!.bw).toBe(200)
     })
 
-    it('should handle player with only MP missing', () => {
+    it('should handle player with only BW missing', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({

@@ -8,8 +8,8 @@
  *
  *   - runs the game loop at TICK_DURATION_MS / factor (engine logic is
  *     tick-based and deterministic, so nothing else changes),
- *   - divides Ancient HP by the factor, and
- *   - halves ice HP when the factor is >= 4,
+ *   - divides Ancient INTEG by the factor, and
+ *   - halves ice INTEG when the factor is >= 4,
  *
  * so a full bot game ends in ~2-4 minutes of real time. The hook is ignored
  * in production builds (NODE_ENV === 'production') and when the var is
@@ -36,13 +36,13 @@ export function scaledTickIntervalMs(baseMs: number): number {
   return Math.max(100, Math.round(baseMs / fastGameFactor()))
 }
 
-/** Effective Ancient max HP. */
+/** Effective Ancient max INTEG. */
 export function scaledAncientHp(baseHp: number): number {
   return Math.max(1, Math.ceil(baseHp / fastGameFactor()))
 }
 
 /**
- * Effective ice max HP. ICE gate the whole game — the enemy Ancient only
+ * Effective ice max INTEG. ICE gate the whole game — the enemy Ancient only
  * becomes vulnerable once a T3 falls, so slow sieging drags games out. In
  * dev/test the loop is CPU-bound (~1s/tick, not the nominal interval), so the
  * old flat /2 left games running 400-900 ticks (15-20 real minutes). We shrink

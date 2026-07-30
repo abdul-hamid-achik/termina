@@ -31,7 +31,7 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
     'hardshell',
     'killshot_coil',
   ],
-  // Max HP / armor to soak for the team.
+  // Max INTEG / armor to soak for the team.
   tank: [
     'clot_ring',
     'garbage_collector',
@@ -49,7 +49,7 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
     'siege_lattice',
     'bulk_lattice',
   ],
-  // Mana + ice + the spell-amp/control cores.
+  // BW + ice + the spell-amp/control cores.
   mage: ['clock_lens', 'discord_routine', 'amp_stack', 'hardshell', 'phase_shim', 'lockout_shunt'],
   // Cheap utility first, then team-saving items.
   support: [

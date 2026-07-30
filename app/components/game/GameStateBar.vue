@@ -52,7 +52,7 @@ function formatTimeRemaining(tick: number, timeOfDay: string): string {
   return formatSeconds(seconds)
 }
 
-// ── Macro row (team score / net worth / ice / Core HP) ──────
+// ── Macro row (team score / net worth / ice / Core INTEG) ──────
 const lead = computed(() => goldLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
 
 function corePct(a: AncientState | undefined): number {
@@ -146,7 +146,7 @@ function corePct(a: AncientState | undefined): number {
       </span>
       <template v-if="ancients">
         <span class="text-border">|</span>
-        <!-- Mainframe HP — turns urgent once vulnerable -->
+        <!-- Mainframe INTEG — turns urgent once vulnerable -->
         <span class="inline-flex items-center gap-1">
           <span class="t-caption">MAINFRAME</span>
           <span

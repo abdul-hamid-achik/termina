@@ -98,7 +98,7 @@ describe('Deck ability chips', () => {
       wrapper.unmount()
     })
 
-    it('tooltip contains an explicit [CAST] button with mana cost', async () => {
+    it('tooltip contains an explicit [CAST] button with BW cost', async () => {
       mockPointer(true)
       const wrapper = mountDeck()
 
@@ -285,7 +285,7 @@ describe('Deck buff strip', () => {
   })
 })
 
-describe('Deck ability mana cost', () => {
+describe('Deck ability BW cost', () => {
   const tooltipText = async (level: number) => {
     mockPointer(false)
     const wrapper = mountDeck(makeHero({ level }))
@@ -298,14 +298,14 @@ describe('Deck ability mana cost', () => {
   it('quotes the rank cost, which climbs with the hero level', async () => {
     // Literal numbers on purpose: deriving them from the same helper the
     // component uses would pass even if both agreed on the wrong rank.
-    expect(await tooltipText(1)).toContain('Mana: 40')
-    expect(await tooltipText(3)).toContain('Mana: 50')
-    expect(await tooltipText(7)).toContain('Mana: 70')
+    expect(await tooltipText(1)).toContain('BW: 40')
+    expect(await tooltipText(3)).toContain('BW: 50')
+    expect(await tooltipText(7)).toContain('BW: 70')
   })
 
   it('holds the cost flat across levels inside one rank', async () => {
-    expect(await tooltipText(3)).toContain('Mana: 50')
-    expect(await tooltipText(4)).toContain('Mana: 50')
+    expect(await tooltipText(3)).toContain('BW: 50')
+    expect(await tooltipText(4)).toContain('BW: 50')
   })
 })
 

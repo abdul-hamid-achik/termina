@@ -276,7 +276,7 @@ function resolveE(
   })
 }
 
-// R: Crontab — AoE heal to all allies in zone over time + MP restore
+// R: Crontab — AoE heal to all allies in zone over time + BW restore
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -337,7 +337,7 @@ function resolveR(
 }
 
 // ── Passive: Scheduled Task ──────────────────────────────────────
-// On tick_end, if tick % 4 === 0, heal the lowest HP ally in the zone for 40 HP.
+// On tick_end, if tick % 4 === 0, heal the lowest INTEG ally in the zone for 40 INTEG.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'tick_end') return state
@@ -350,7 +350,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const allies = getAlliesInZone(state, player)
   if (allies.length === 0) return state
 
-  // Find the lowest HP ally
+  // Find the lowest INTEG ally
   const lowestAlly = allies.reduce((lowest, ally) => (ally.integ < lowest.integ ? ally : lowest))
 
   const healed = healPlayer(lowestAlly, PASSIVE_HEAL)

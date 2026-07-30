@@ -5,7 +5,7 @@ import { WAVE_ESCALATION_INTERVAL_TICKS, waveUnitMaxHp } from '~~/shared/constan
 /**
  * Engine-truth coverage for lane wave combat (WaveAI). When opposing waves
  * meet in a zone they trade blows rather than walking past each other — the
- * basis of lane equilibrium. Waves don't regen, so any HP drop is combat.
+ * basis of lane equilibrium. Waves don't regen, so any INTEG drop is combat.
  * Placed in an empty river zone so no heroes/ice confound the trade.
  */
 describe('waves: lane combat', () => {
@@ -29,7 +29,7 @@ describe('waves: lane combat', () => {
     expect(dc && dc.integ < 400).toBe(true)
   })
 
-  it('a wave at 1 HP is finished off by the opposing wave', async () => {
+  it('a wave at 1 INTEG is finished off by the opposing wave', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -48,7 +48,7 @@ describe('waves: lane combat', () => {
 
 /**
  * The laning wave economy — the skill floor of any MOBA. Last-hitting an enemy
- * wave banks its full bounty; denying your own low-HP wave robs the enemy of
+ * wave banks its full bounty; denying your own low-INTEG wave robs the enemy of
  * that bounty for a reduced cut. Both run through the real processTick attack /
  * burn phases (LINE_UNIT_HP 400, BURN_HP_THRESHOLD 0.5, BURN_GOLD_RATIO 0.5).
  */
@@ -60,7 +60,7 @@ describe('waves: last-hit & burn economy', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      // One enemy wave at a sliver of HP, co-located — a single swing finishes it.
+      // One enemy wave at a sliver of INTEG, co-located — a single swing finishes it.
       waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
     }))
 
@@ -74,7 +74,7 @@ describe('waves: last-hit & burn economy', () => {
     expect(!wave || wave.integ <= 0).toBe(true)
   })
 
-  it('denying a low-HP allied wave kills it for a reduced bounty + a wave_burn event', async () => {
+  it('denying a low-INTEG allied wave kills it for a reduced bounty + a wave_burn event', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
     await game.patch((s) => ({
@@ -96,13 +96,13 @@ describe('waves: last-hit & burn economy', () => {
     expect(!wave || wave.integ <= 0).toBe(true)
   })
 
-  it('a healthy allied wave cannot be burned (above the HP threshold)', async () => {
+  it('a healthy allied wave cannot be burned (above the INTEG threshold)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      // 380 / 400 = 95% HP — well above the burn window.
+      // 380 / 400 = 95% INTEG — well above the burn window.
       waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', integ: 380, type: 'line' }],
     }))
 
@@ -148,7 +148,7 @@ describe('waves: last-hit & burn economy', () => {
     expect(theirs).toBeLessThan(mine)
   })
 
-  it("the burn window follows the wave's OWN max HP, not a level-1 constant", async () => {
+  it("the burn window follows the wave's OWN max INTEG, not a level-1 constant", async () => {
     // REGRESSION (survived mutation testing once already): waves escalate with
     // match time. Judging the 50% burn threshold against the level-1 constant
     // makes denying steadily impossible; judging it against the CURRENT tick's
@@ -182,7 +182,9 @@ describe('waves: last-hit & burn economy', () => {
     await game.tick()
 
     const wave = (await game.state()).waves.find((c) => c.id === 'ally_wave')
-    expect(!wave || wave.integ <= 0, 'an escalated wave under half HP must be deniable').toBe(true)
+    expect(!wave || wave.integ <= 0, 'an escalated wave under half INTEG must be deniable').toBe(
+      true,
+    )
   })
 
   it('an OLD wave at a late tick is judged by what IT spawned with, not the current tier', async () => {

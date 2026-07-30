@@ -116,7 +116,7 @@ describe('Sentry Hero', () => {
       expect(result.state.players['a1']!.integ).toBeGreaterThan(300)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -212,7 +212,7 @@ describe('Sentry Hero', () => {
       expect(shield!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -309,7 +309,7 @@ describe('Sentry Hero', () => {
       expect(slow).toBeUndefined()
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -394,7 +394,7 @@ describe('Sentry Hero', () => {
       expect(defBuff!.ticksRemaining).toBe(4)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 

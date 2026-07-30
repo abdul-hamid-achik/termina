@@ -65,7 +65,7 @@ describe('StateManager', () => {
 
       const state = Effect.runSync(sm.createGame('game1', players))
       const p1 = state.players['p1']!
-      // Echo has 550 HP, 280 MP base stats
+      // Echo has 550 INTEG, 280 BW base stats
       expect(p1.integ).toBe(550)
       expect(p1.maxInteg).toBe(550)
       expect(p1.bw).toBe(280)

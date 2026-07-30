@@ -114,7 +114,7 @@ function resolveQ(
   })
 }
 
-// W: Buffer — shield self for HP amount, lasts 3 ticks
+// W: Buffer — shield self for INTEG amount, lasts 3 ticks
 function resolveW(
   state: GameState,
   player: PlayerState,

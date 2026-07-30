@@ -1337,7 +1337,7 @@ describe('useCommands', () => {
           active: {
             id: 'trauma_patch_active',
             name: 'Heal',
-            description: 'Restore HP',
+            description: 'Restore INTEG',
             cooldownTicks: 0,
           },
         },
@@ -1428,7 +1428,7 @@ describe('useCommands', () => {
           active: {
             id: 'trauma_patch_active',
             name: 'Heal',
-            description: 'Restore HP',
+            description: 'Restore INTEG',
             cooldownTicks: 0,
           },
         },
@@ -1729,7 +1729,7 @@ describe('validateCommand', () => {
         player: makePlayer({ heroId: hero!.id, level: 25, bw }),
       })
       const err = validateCommand({ type: 'cast', ability: 'q' }, ctx)
-      expect(err).toMatch(/not enough mana/i)
+      expect(err).toMatch(/not enough BW/i)
       expect(err).toContain(String(lateCost))
     })
 
@@ -1880,7 +1880,7 @@ describe('validateCommand', () => {
     // check (not the level gate) is what rejects.
     const ctx = makeContext({ player: makePlayer({ bw: 100, level: 6 }) })
     const err = validateCommand({ type: 'cast', ability: 'r' }, ctx)
-    expect(err).toMatch(/mana/)
+    expect(err).toMatch(/BW/)
   })
 
   it('rejects casting the ultimate before level 6', () => {
@@ -2083,7 +2083,7 @@ describe('pickAbilityTargetString', () => {
     })
   })
 
-  it('targets the lowest-HP enemy in zone for an offensive hero/unit ability', () => {
+  it('targets the lowest-INTEG enemy in zone for an offensive hero/unit ability', () => {
     const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 400 })
     const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 120 })
@@ -2103,7 +2103,7 @@ describe('pickAbilityTargetString', () => {
     expect(result).toHaveProperty('error')
   })
 
-  it('targets the lowest-HP ally for a supportive hero ability', () => {
+  it('targets the lowest-INTEG ally for a supportive hero ability', () => {
     const caster = makePlayer({
       id: 'p1',
       team: 'chaff',
@@ -2142,7 +2142,7 @@ describe('pickAbilityTargetString', () => {
 
 // ── pickAttackTargetString (bare `attack` auto-target) ────────────
 describe('pickAttackTargetString', () => {
-  it('targets the lowest-HP alive enemy hero in the player’s zone', () => {
+  it('targets the lowest-INTEG alive enemy hero in the player’s zone', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 400 })
     const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 90 })
@@ -2197,8 +2197,8 @@ describe('informational readouts', () => {
     })
     const out = formatStatusReadout(me)
     expect(out).toContain('Lv7')
-    expect(out).toContain('HP 612/900') // floored, not rounded up
-    expect(out).toContain('MP 240/400')
+    expect(out).toContain('INTEG 612/900') // floored, not rounded up
+    expect(out).toContain('BW 240/400')
     expect(out).toContain('1850g')
     expect(out).toContain('KDA 4/1/6')
     expect(out).toContain('Coldstore Crossing')
@@ -2264,7 +2264,7 @@ describe('informational readouts', () => {
 
 // ── pickDenyTargetString (bare `burn` auto-target) ────────────────
 describe('pickDenyTargetString', () => {
-  // Line wave max HP is 400; the burn threshold is 50% (200).
+  // Line wave max INTEG is 400; the burn threshold is 50% (200).
   const allied = (overrides: Partial<WaveUnitState>): WaveUnitState => ({
     id: 'c',
     team: 'chaff' as const,
@@ -2274,7 +2274,7 @@ describe('pickDenyTargetString', () => {
     ...overrides,
   })
 
-  it('targets the lowest-HP eligible allied wave, by zone index', () => {
+  it('targets the lowest-INTEG eligible allied wave, by zone index', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const waves = [
       allied({ id: 'c0', integ: 180 }), // index 0 — eligible (<=200)
@@ -2302,9 +2302,9 @@ describe('pickDenyTargetString', () => {
     expect('error' in pickDenyTargetString(me, waves)).toBe(true)
   })
 
-  it('respects per-type max HP (sweep threshold is lower)', () => {
+  it('respects per-type max INTEG (sweep threshold is lower)', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    // Sweep max HP 250 → threshold 125. A sweep wave at 130 is NOT denyable,
+    // Sweep max INTEG 250 → threshold 125. A sweep wave at 130 is NOT denyable,
     // but a line wave (max 400, threshold 200) at 130 IS.
     const waves = [
       allied({ id: 'sweep', type: 'sweep', integ: 130 }),
@@ -2318,7 +2318,7 @@ describe('pickDenyTargetString', () => {
 describe('pickItemTargetString', () => {
   const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', integ: 200 })
 
-  it('enemy → lowest-HP enemy hero in the zone', () => {
+  it('enemy → lowest-INTEG enemy hero in the zone', () => {
     const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 500 })
     const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 120 })
     expect(pickItemTargetString('enemy', me(), { p1: me(), e1, e2 })).toEqual({ target: 'hero:e2' })
@@ -2329,7 +2329,7 @@ describe('pickItemTargetString', () => {
     expect('error' in result && result.error).toMatch(/no enemy hero/i)
   })
 
-  it('ally → lowest-HP ally, falling back to self', () => {
+  it('ally → lowest-INTEG ally, falling back to self', () => {
     const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', integ: 60 })
     expect(pickItemTargetString('ally', me(), { p1: me(), a1: ally })).toEqual({
       target: 'hero:a1',
@@ -2397,7 +2397,7 @@ describe('the R3-08 readouts (who / net / look)', () => {
     const lines = formatContactsReadout(player, all, { e2: { zone: 'top-river', tick: 100 } }, 140)
     expect(
       lines.some(
-        (l) => l.startsWith('WHO · ✕ Daemon') && l.includes('HP 300/500') && l.includes('Q·2c'),
+        (l) => l.startsWith('WHO · ✕ Daemon') && l.includes('INTEG 300/500') && l.includes('Q·2c'),
       ),
     ).toBe(true)
     expect(lines.some((l) => l.startsWith('WHO · ○ Kernel'))).toBe(true)

@@ -82,8 +82,8 @@ describe('GameStateBar net-worth lead', () => {
   })
 })
 
-describe('GameStateBar core HP', () => {
-  it('renders Core percentages from ancient HP, flagging the vulnerable team', () => {
+describe('GameStateBar core INTEG', () => {
+  it('renders Core percentages from ancient INTEG, flagging the vulnerable team', () => {
     const ancients = {
       chaff: makeAncient('chaff', { integ: 4500, maxInteg: 4500, vulnerable: false }),
       audit: makeAncient('audit', { integ: 2250, maxInteg: 4500, vulnerable: true }),

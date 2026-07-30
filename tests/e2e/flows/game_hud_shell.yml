@@ -82,4 +82,4 @@ steps:
     wait:
       selector: '[data-testid="combat-log"]'
       timeoutMs: 10000
-contractHash: sha256:PENDING_RESTAMP
+contractHash: sha256:abd5ab2e16fd17f6584cf6d2a3c6b40062106e1357a25af66800cfbb8d8a655d

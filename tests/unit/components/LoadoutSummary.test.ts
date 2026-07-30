@@ -49,9 +49,9 @@ describe('LoadoutSummary', () => {
     expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('5250sc') // 2500 + 2750
     const text = wrapper.text()
     expect(text).toContain('+250 INTEG')
-    expect(text).toContain('+150 Mana')
+    expect(text).toContain('+150 BW')
     expect(text).toContain('+15 Attack')
-    expect(text).toContain('+5 Defense')
+    expect(text).toContain('+5 Plate')
   })
 
   it('lists only the actives the build grants (passive-only items excluded)', () => {

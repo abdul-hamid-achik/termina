@@ -101,7 +101,7 @@ describe('heroes page — decision content', () => {
     expect(wrapper.find('[data-testid="ability-lock-r"]').exists()).toBe(false)
   })
 
-  it('scales the console mana pool with the selected level', async () => {
+  it('scales the console BW pool with the selected level', async () => {
     const wrapper = mountHeroes()
     const echo = HEROES.echo!
     expect(wrapper.text()).toContain(`mana ${echo.baseStats.bw} / ${echo.baseStats.bw}`)

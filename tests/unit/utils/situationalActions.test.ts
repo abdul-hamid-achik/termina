@@ -36,7 +36,7 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ player: player({ items: ['blink_dagger'] }) }))).not.toContain('ward')
   })
 
-  it('offers BURN only when a low-HP allied wave is in the zone', () => {
+  it('offers BURN only when a low-INTEG allied wave is in the zone', () => {
     const lowAllyWave = {
       zone: 'mid-river',
       team: 'chaff',

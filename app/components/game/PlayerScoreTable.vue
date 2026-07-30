@@ -14,7 +14,7 @@ export interface PlayerScoreRow {
   guildTag?: string
   level: number
   /** hp/maxInteg are optional — the replay end-state snapshot (shown before frames
-   *  load) carries no HP, so the cell renders "?" when either is absent. */
+   *  load) carries no INTEG, so the cell renders "?" when either is absent. */
   integ?: number
   maxInteg?: number
   kills: number
@@ -46,7 +46,7 @@ defineProps<{
         <tr class="text-text-muted">
           <th scope="col" class="px-2 py-1 text-left t-caption">Hero</th>
           <th scope="col" class="px-2 py-1 text-left t-caption">Lv</th>
-          <th scope="col" class="px-2 py-1 text-left t-caption">HP</th>
+          <th scope="col" class="px-2 py-1 text-left t-caption">INTEG</th>
           <th scope="col" class="px-2 py-1 text-left t-caption">K/D/A</th>
           <th scope="col" class="px-2 py-1 text-left t-caption">Scrip</th>
           <th scope="col" class="px-2 py-1 text-left t-caption">Zone</th>

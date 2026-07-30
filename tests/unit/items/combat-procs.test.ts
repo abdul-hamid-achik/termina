@@ -222,7 +222,7 @@ describe('Item combat procs — on-hit effects', () => {
       getEffectiveIce(tgt, getItemStatBonuses([])),
     )
     expect((magic as { amount: number }).amount).toBe(expectedMagic)
-    // Total HP lost = kinetic + code.
+    // Total INTEG lost = kinetic + code.
     const lost = start - r.state.players['p2']!.integ
     expect(lost).toBe((phys as { amount: number }).amount + (magic as { amount: number }).amount)
   })

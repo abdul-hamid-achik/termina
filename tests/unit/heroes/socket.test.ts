@@ -107,7 +107,7 @@ describe('Socket Hero', () => {
       expect(root!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -138,7 +138,7 @@ describe('Socket Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -178,7 +178,7 @@ describe('Socket Hero', () => {
       expect(traps![0]!.expiryTick).toBe(40)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -189,7 +189,7 @@ describe('Socket Hero', () => {
       expect(updated.cooldowns.w).toBe(16)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -223,7 +223,7 @@ describe('Socket Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy({ zone: 'mid-t1-audit' })
       const state = makeState([player, enemy])
@@ -292,7 +292,7 @@ describe('Socket Hero', () => {
       expect(hasBuff(result.state.players['a1']!, 'broadcast_slow')).toBe(false)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 

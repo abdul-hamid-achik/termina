@@ -81,7 +81,7 @@ export interface BotDifficultyConfig {
    */
   abilityComboChance: number
   /**
-   * Chance the bot aims at the true lowest-HP wave in the wave. On a failed roll
+   * Chance the bot aims at the true lowest-INTEG wave in the wave. On a failed roll
    * it takes the SECOND-lowest instead — never nothing. Returning null here was
    * the original bot-standstill bug (bots idled in lane and never reached a
    * ice), so the miss costs last-hit gold without costing an action.

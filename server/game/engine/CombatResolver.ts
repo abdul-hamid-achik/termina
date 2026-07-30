@@ -19,14 +19,14 @@ import { dealDamage, hasBuff } from '../heroes/_base'
  *
  * This wrapper routes every NPC→hero kinetic hit through `_base.dealDamage`
  * (the single canonical mitigation implementation, also used by hero
- * abilities/passives) and reports how much HP was actually lost so callers can
+ * abilities/passives) and reports how much INTEG was actually lost so callers can
  * emit accurate damage events. `_base.dealDamage` remains the lower-level
  * target-only primitive; this is the NPC-facing convenience.
  */
 export interface PhysicalHitResult {
-  /** The post-hit player state (updated HP/alive/buffs). */
+  /** The post-hit player state (updated INTEG/alive/buffs). */
   player: PlayerState
-  /** HP actually lost this hit (post-mitigation, post-shield). 0 if immune/dodged. */
+  /** INTEG actually lost this hit (post-mitigation, post-shield). 0 if immune/dodged. */
   damageDealt: number
   /** True when the target's immunity (Ghost/Ethereal/invulnerable) ignored the hit. */
   immune: boolean
@@ -61,8 +61,8 @@ export function resolvePhysicalHit(target: PlayerState, rawDamage: number): Phys
  * basic-attack reflect (ActionResolver attack phase) and the ability-cast
  * reflect (resolveHeroCast) so the two paths can never diverge.
  *
- * `damageDealt` is the HP the Blade Mail holder actually lost (from
- * `PhysicalHitResult.damageDealt` or the ability HP-delta). `fraction` defaults
+ * `damageDealt` is the INTEG the Blade Mail holder actually lost (from
+ * `PhysicalHitResult.damageDealt` or the ability INTEG-delta). `fraction` defaults
  * to 1.0 (100% return, the live value for both paths).
  */
 export function computeSpitePlateReflect(damageDealt: number, fraction = 1): number {

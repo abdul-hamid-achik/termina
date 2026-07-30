@@ -122,7 +122,7 @@ describe('Malloc Hero', () => {
       expect(getEffectiveAttack(withAllocate) - getEffectiveAttack(base)).toBe(25)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -133,7 +133,7 @@ describe('Malloc Hero', () => {
       expect(updated.cooldowns.q).toBe(8)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // Q level 4
       const state = makeState([player])
 
@@ -143,7 +143,7 @@ describe('Malloc Hero', () => {
       expect(updated.bw).toBe(300 - 120) // Level 4 Q costs 120
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -160,7 +160,7 @@ describe('Malloc Hero', () => {
     })
   })
 
-  describe('W: Free() (Physical Damage + Low HP Bonus)', () => {
+  describe('W: Free() (Physical Damage + Low INTEG Bonus)', () => {
     it('deals kinetic damage to target hero', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
@@ -172,10 +172,10 @@ describe('Malloc Hero', () => {
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
-    it('deals 40% bonus damage when target is below 30% HP', () => {
+    it('deals 40% bonus damage when target is below 30% INTEG', () => {
       const player = makePlayer({ level: 1 })
-      const enemy1 = makeEnemy({ integ: 550 }) // 100% HP - no bonus
-      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', integ: 160, maxInteg: 550 }) // ~29% HP - bonus
+      const enemy1 = makeEnemy({ integ: 550 }) // 100% INTEG - no bonus
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', integ: 160, maxInteg: 550 }) // ~29% INTEG - bonus
 
       const state1 = makeState([player, enemy1])
       const state2 = makeState([makePlayer({ level: 1 }), enemy2])
@@ -189,11 +189,11 @@ describe('Malloc Hero', () => {
 
       const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
       const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
-      // With low HP bonus the raw damage is 40% higher before mitigation
+      // With low INTEG bonus the raw damage is 40% higher before mitigation
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -241,7 +241,7 @@ describe('Malloc Hero', () => {
       expect(stun!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -282,7 +282,7 @@ describe('Malloc Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -327,17 +327,17 @@ describe('Malloc Hero', () => {
       expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
     })
 
-    it('costs the caster 20% of current HP (self-sacrifice)', () => {
+    it('costs the caster 20% of current INTEG (self-sacrifice)', () => {
       const player = makePlayer({ level: 6, bw: 500, integ: 1000, maxInteg: 1000 })
       const state = makeState([player, makeEnemy()])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
-      // 20% of 1000 current HP = 200 burned → 800 left.
+      // 20% of 1000 current INTEG = 200 burned → 800 left.
       expect(result.state.players['p1']!.integ).toBe(800)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 

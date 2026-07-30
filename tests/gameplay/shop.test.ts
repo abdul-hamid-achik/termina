@@ -233,7 +233,7 @@ describe('shop', () => {
     const baseline = dmgToEnemy()
     expect(baseline).toBeGreaterThan(0)
 
-    // Same cast under Overclock (same starting amp + full enemy HP) → exactly 2x.
+    // Same cast under Overclock (same starting amp + full enemy INTEG) → exactly 2x.
     await game.patch((s) => ({
       ...s,
       players: {
@@ -272,7 +272,7 @@ describe('shop', () => {
     await game.tick()
 
     const foe = await game.player(ENEMY)
-    // The nova both damages (HP cut below full) and slows the co-located enemy.
+    // The nova both damages (INTEG cut below full) and slows the co-located enemy.
     expect(foe.integ).toBeLessThan(foe.maxInteg)
     expect(foe.buffs.some((b) => b.id === 'slow')).toBe(true)
   })

@@ -217,7 +217,7 @@ const preview = computed(() => {
     const hints: Record<string, string> = {
       move: '-- move: specify a zone',
       attack: '-- attack: hits the nearest enemy, or specify a target',
-      burn: '-- burn: burns the lowest-HP allied wave, or specify wave:N',
+      burn: '-- burn: burns the lowest-INTEG allied wave, or specify wave:N',
       cast: '-- cast: specify ability (q/w/e/r)',
       buy: '-- buy: specify an item',
       sell: '-- sell: specify an item',

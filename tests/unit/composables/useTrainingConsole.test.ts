@@ -69,14 +69,14 @@ function makeHero(over: Partial<HeroDef> = {}): HeroDef {
 }
 
 describe('useTrainingConsole', () => {
-  it('initializes mana to the hero max and greets in the log', () => {
+  it('initializes BW to the hero max and greets in the log', () => {
     const c = useTrainingConsole(ref(makeHero()))
     expect(c.mana.value).toBe(200)
     expect(c.dummyHp.value).toBe(1000)
     expect(c.log.value[0]).toContain('Tester at level 1')
   })
 
-  it('cast Q spends mana, sets cooldown, and burst-damages the dummy', () => {
+  it('cast Q spends BW, sets cooldown, and burst-damages the dummy', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('q')
     expect(c.mana.value).toBe(150) // 200 - 50
@@ -93,11 +93,11 @@ describe('useTrainingConsole', () => {
     expect(c.log.value.some((l) => l.includes('on cooldown'))).toBe(true)
   })
 
-  it('rejects a cast with insufficient mana', () => {
+  it('rejects a cast with insufficient BW', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('e') // costs 500, have 200
     expect(c.mana.value).toBe(200)
-    expect(c.log.value.some((l) => l.includes('not enough mana'))).toBe(true)
+    expect(c.log.value.some((l) => l.includes('not enough BW'))).toBe(true)
   })
 
   it('applies a DoT that drains the dummy over ticks (total spread per tick)', () => {
@@ -113,7 +113,7 @@ describe('useTrainingConsole', () => {
     expect(c.dots.value).toHaveLength(0) // expired
   })
 
-  it('regenerates mana (≥2) and decrements cooldowns each tick', () => {
+  it('regenerates BW (≥2) and decrements cooldowns each tick', () => {
     const c = useTrainingConsole(ref(makeHero()))
     c.cast('q') // mana 150, cd 2
     c.advanceTick()
@@ -340,7 +340,7 @@ describe('useTrainingConsole', () => {
       expect(c.unlockLevelFor('r')).toBe(ULTIMATE_UNLOCK_LEVEL)
     })
 
-    it('grows the mana pool with growthPerLevel, mirroring levelUpHero', async () => {
+    it('grows the BW pool with growthPerLevel, mirroring levelUpHero', async () => {
       const hero = makeHero({ growthPerLevel: { bw: 40 } })
       const c = await atLevel(useTrainingConsole(ref(hero)), 11)
       expect(c.maxMana.value).toBe(200 + 40 * 10)

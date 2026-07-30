@@ -42,10 +42,10 @@ describe('progression: leveling up', () => {
     expect(game.lastEvents.some((e) => e._tag === 'power_spike' && e.playerId === HUMAN)).toBe(true)
   })
 
-  it('leveling up makes the hero stronger — max HP/MP grow, not just the level number', async () => {
+  it('leveling up makes the hero stronger — max INTEG/BW grow, not just the level number', async () => {
     // The other tests prove the level NUMBER ticks up; this proves the level is
     // APPLIED — levelUpHero folds the hero's growthPerLevel into maxInteg/maxBw, so
-    // a level-up makes the hero tankier with a deeper mana pool (echo: +55 / +25).
+    // a level-up makes the hero tankier with a deeper BW pool (echo: +55 / +25).
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -69,7 +69,7 @@ describe('progression: leveling up', () => {
 
     const atL2 = await game.me()
     expect(atL2.level).toBe(2)
-    // The growth is real, not cosmetic: a strictly larger HP and mana pool.
+    // The growth is real, not cosmetic: a strictly larger INTEG and BW pool.
     expect(atL2.maxInteg).toBeGreaterThan(atL1.maxInteg)
     expect(atL2.maxBw).toBeGreaterThan(atL1.maxBw)
   })

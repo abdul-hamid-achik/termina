@@ -171,14 +171,14 @@ describe('Disable enforcement (validateAction)', () => {
   })
 })
 
-describe('Talent: manaCostReduction refunds mana on the boosted ability', () => {
+describe('Talent: manaCostReduction refunds BW on the boosted ability', () => {
   // regex_15_right: abilityId 'q', manaCostReduction 15.
   // Q costs 60 mana → resolver deducts 60 → talent refunds round(60*15/100)=9.
   // Net mp delta = -60 + 9 = -51.
   const Q_MANA = 60
   const REFUND = Math.round((Q_MANA * 15) / 100) // 9
 
-  it('refunds exactly 15% of the mana spent on regex Q', () => {
+  it('refunds exactly 15% of the BW spent on regex Q', () => {
     const startMp = 400
     const caster = makePlayer({
       bw: startMp,
@@ -215,7 +215,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
     expect(result.state.players['p1']!.bw).toBe(startMp - Q_MANA)
   })
 
-  it('refund nets exactly REFUND mana above the un-talented cast', () => {
+  it('refund nets exactly REFUND BW above the un-talented cast', () => {
     const startMp = 400
     const enemy = makePlayer({
       id: 'e1',
@@ -248,7 +248,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
   })
 })
 
-describe('Arcane cache refunds mana on cast (buff was applied but consumed nowhere)', () => {
+describe('Arcane cache refunds BW on cast (buff was applied but consumed nowhere)', () => {
   const Q_MANA = 60
   const ARCANE_REFUND = Math.round(Q_MANA * 0.4) // 24
 
@@ -265,7 +265,7 @@ describe('Arcane cache refunds mana on cast (buff was applied but consumed nowhe
     return Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
   }
 
-  it('refunds 40% of the mana spent on a cast', () => {
+  it('refunds 40% of the BW spent on a cast', () => {
     const result = cast({
       buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 9999, source: 'cache_arcane' }],
     })

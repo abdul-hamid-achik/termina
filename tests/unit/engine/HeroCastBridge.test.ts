@@ -284,10 +284,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
   })
 
   describe('tier-25 exotic: spell lifesteal', () => {
-    // Daemon's E (Sudo) is an execute that only lands below 30% HP, so the
-    // target starts low. We compare the caster's HP with vs without the talent
+    // Daemon's E (Sudo) is an execute that only lands below 30% INTEG, so the
+    // target starts low. We compare the caster's INTEG with vs without the talent
     // (rather than an absolute value) so the assertion is robust to any other
-    // HP changes in the tick.
+    // INTEG changes in the tick.
     const target = () =>
       makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'audit', integ: 100, maxInteg: 1000 })
     const castE: PlayerAction[] = [
@@ -318,7 +318,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       expect((heal as { amount?: number }).amount).toBeGreaterThan(0)
     })
 
-    it('ends with more HP than an identical cast without the talent', () => {
+    it('ends with more INTEG than an identical cast without the talent', () => {
       const withTalent = run(
         makeGameState({ players: { p1: daemon('daemon_25_right'), p2: target() } }),
         castE,
@@ -511,7 +511,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     expect(result.state.players['p1']!.zone).toBe('audit-base')
   })
 
-  it('execute (daemon E) kills below the HP threshold and refuses above it', () => {
+  it('execute (daemon E) kills below the INTEG threshold and refuses above it', () => {
     const daemon = statsAtLevel('daemon', 1)
     const echo = statsAtLevel('echo', 1)
 
@@ -534,7 +534,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     ])
     expect(killed.state.players['p2']!.integ).toBe(0)
     expect(killed.state.players['p2']!.alive).toBe(false)
-    // Mana was spent on the successful execute
+    // BW was spent on the successful execute
     expect(killed.state.players['p1']!.bw).toBeLessThan(daemon.maxBw)
 
     const highHp = makeGameState({
@@ -716,7 +716,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
 })
 
 describe('basic-attack path: shield, phase shift, fear', () => {
-  it('shield buff stacks absorb basic-attack HP loss', () => {
+  it('shield buff stacks absorb basic-attack INTEG loss', () => {
     const echo = statsAtLevel('echo', 1)
     const state = makeGameState({
       players: {
@@ -968,7 +968,7 @@ describe('talents', () => {
     expect(getEffectiveAttack(talented)).toBe(getEffectiveAttack(plain) + 15)
   })
 
-  it('a selected +HP talent raises maxInteg through the per-tick recalc', () => {
+  it('a selected +INTEG talent raises maxInteg through the per-tick recalc', () => {
     const echo = statsAtLevel('echo', 1)
     const state = makeGameState({
       players: {
@@ -980,10 +980,10 @@ describe('talents', () => {
     })
     const result = run(state, [])
     expect(result.state.players['p1']!.maxInteg).toBe(echo.maxInteg + 200)
-    // Percentage-preserving: the per-tick recalc scales current HP to the same %
-    // of the new max for ANY max change. This hero was at full HP, so it stays
+    // Percentage-preserving: the per-tick recalc scales current INTEG to the same %
+    // of the new max for ANY max change. This hero was at full INTEG, so it stays
     // full when the talent raises the ceiling — the same rule that scales current
-    // HP when an HP item is bought/sold (see game-flow.test.ts).
+    // INTEG when an INTEG item is bought/sold (see game-flow.test.ts).
     expect(result.state.players['p1']!.integ).toBe(echo.maxInteg + 200)
   })
 

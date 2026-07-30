@@ -112,7 +112,7 @@ function passiveCaresAboutEvent(heroId: string, eventType: GameEvent['type']): b
 export { getAbilityLevel }
 
 /**
- * Per-rank mana costs, read from the hero registry. Re-exported here for the
+ * Per-rank BW costs, read from the hero registry. Re-exported here for the
  * same reason as getAbilityLevel: every hero module reads its costs through
  * this path, and the client has to be able to quote the same number before the
  * cast is submitted. The resolvers kept private tables until the two diverged.
@@ -354,7 +354,7 @@ export function dealDamage(
   damageType: DamageType,
 ): PlayerState {
   // Immunity (Proxy R / Eul's invulnerable; BKB airgap; Ethereal/Ghost
-  // kinetic) ignores the hit entirely — no HP lost, buff left for tickBuffs to
+  // kinetic) ignores the hit entirely — no INTEG lost, buff left for tickBuffs to
   // expire (NOT consumed like phaseShift).
   if (isDamageImmune(target, damageType)) return target
 
@@ -441,8 +441,8 @@ export function dealAbilityDamage(
  * (Amp Stack's +15% code) applies, matching `dealAbilityDamage` so the
  * two damage paths can't diverge on the same item.
  *
- * Dead NPCs are left in the array at 0 HP (`alive: false` for neutrals) rather
- * than filtered out: the cast bridge credits the kill by diffing HP against the
+ * Dead NPCs are left in the array at 0 INTEG (`alive: false` for neutrals) rather
+ * than filtered out: the cast bridge credits the kill by diffing INTEG against the
  * pre-cast buffer, and WaveAI reaps them at the end of the same tick. ICE,
  * Tenant and the Ancient are deliberately untouched — a second pass.
  */
@@ -486,7 +486,7 @@ export function healPlayer(target: PlayerState, amount: number): PlayerState {
   return { ...target, integ: Math.min(target.maxInteg, target.integ + effective) }
 }
 
-// ── Mana & Cooldown ───────────────────────────────────────────────
+// ── BW & Cooldown ───────────────────────────────────────────────
 
 export function deductBandwidth(player: PlayerState, amount: number): PlayerState {
   return { ...player, bw: Math.max(0, player.bw - amount) }
@@ -647,13 +647,13 @@ export function tickAllBuffs(state: GameState): GameState {
     }
   }
 
-  // Apply DMZ explosions after every player has ticked (so enemy HP loss sticks).
+  // Apply DMZ explosions after every player has ticked (so enemy INTEG loss sticks).
   for (const ex of explosions) {
     const caster = updated.players[ex.casterId]
     if (!caster) continue
     let hitAny = false
-    // Per-victim HP loss so GameLoop can bridge each into a _tag:'damage' engine
-    // event — without it the explosion mutates HP but emits no damage event, so
+    // Per-victim INTEG loss so GameLoop can bridge each into a _tag:'damage' engine
+    // event — without it the explosion mutates INTEG but emits no damage event, so
     // a lethal blast gives NO kill credit/bounty/XP and the victim's damage-taken
     // passives (cache energy, firewall/proxy reflect, daemon stealth-break) never
     // fire. Same fix shape as the item-active synthesize-from-HP-diff loop.
@@ -754,7 +754,7 @@ export function resolveAbility(
  * gated on talent.abilityId === cast slot. Never edits hero files:
  * - cooldownReduction: subtract ticks from the resolver-set cooldown (floor 1)
  * - manaCostReduction: refund a % of the mana the resolver actually spent
- * - damageBoost: amplify the cast by an extra % of each enemy's HP lost
+ * - damageBoost: amplify the cast by an extra % of each enemy's INTEG lost
  *   (post-mitigation approximation, clamped at 0 with alive recomputed)
  * Talents of type 'special'/'ability_boost' carrying only specialEffect
  * strings (e.g. double_cast_chance_25, global_ultimate) are explicit no-ops —

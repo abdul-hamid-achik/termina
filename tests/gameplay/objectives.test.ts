@@ -13,7 +13,7 @@ describe('objectives: Tenant & backup', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'hollow' } },
-      // Tenant alive at 1 HP — any basic attack finishes it.
+      // Tenant alive at 1 INTEG — any basic attack finishes it.
       tenant: { ...s.tenant, alive: true, integ: 1 },
       backup: null,
     }))
@@ -67,7 +67,7 @@ describe('objectives: Tenant & backup', () => {
     expect((await game.state()).backup).toBeNull()
   })
 
-  it('an backup holder who dies is reborn at full HP, consuming the backup (the payoff)', async () => {
+  it('an backup holder who dies is reborn at full INTEG, consuming the backup (the payoff)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
@@ -91,7 +91,7 @@ describe('objectives: Tenant & backup', () => {
     const me = await game.me()
     expect(me.alive).toBe(true) // reborn, not respawning
     expect(me.respawnTick).toBeNull()
-    expect(me.integ).toBe(me.maxInteg) // back at full HP
+    expect(me.integ).toBe(me.maxInteg) // back at full INTEG
     expect(me.buffs.some((b) => b.id === 'backup')).toBe(false) // backup consumed
     expect(game.lastEvents.some((e) => e._tag === 'backup_used' && e.playerId === HUMAN)).toBe(true)
   })
@@ -144,7 +144,7 @@ describe('objectives: jungle neutrals', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
-      // A stub at 1 HP — one basic attack finishes it (bounty 20g / 25xp).
+      // A stub at 1 INTEG — one basic attack finishes it (bounty 20g / 25xp).
       neutrals: [
         { id: 'camp0', zone: 'silt-chaff-top', integ: 1, maxInteg: 250, type: 'stub', alive: true },
       ],

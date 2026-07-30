@@ -350,7 +350,7 @@ const {
             :slot-key="s.toUpperCase()"
             :ability="hero.abilities[s]"
             :cooldown-remaining="cooldowns[s]"
-            :mana-available="mana"
+            :mana-available="BW"
             :mana-cost="getAbilityManaCost(hero.abilities[s], s, level)"
             interactive
             @cast="cast(s)"

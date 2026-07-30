@@ -3,7 +3,7 @@ import { HEROES } from '../constants/heroes'
 import { getAbilityLevel } from '../constants/balance'
 
 /**
- * Mana costs read straight off the hero registry, so every surface quotes the
+ * BW costs read straight off the hero registry, so every surface quotes the
  * number the engine will actually charge.
  *
  * The registry used to carry only the rank-1 `manaCost` while each hero

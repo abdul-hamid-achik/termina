@@ -156,7 +156,7 @@ export function applyNeutralActions(
     if (hit.immune || hit.dodged) continue
 
     // Persist the mitigated hero BEFORE deciding whether to narrate it. A hit a
-    // shield fully absorbs deals 0 HP damage but still SPENDS shield stacks, and
+    // shield fully absorbs deals 0 INTEG damage but still SPENDS shield stacks, and
     // dealDamage returns them already decremented — dropping the write here
     // meant a shielded hero could stand in a camp forever, because the shield
     // could never be worn down.

@@ -78,7 +78,7 @@ describe('Zones', () => {
       expect(ice.length).toBe(18)
     })
 
-    it('assigns correct HP by tier', () => {
+    it('assigns correct INTEG by tier', () => {
       const ice = initializeIce()
       const zoneMap = Object.fromEntries(ZONES.map((z) => [z.id, z]))
       for (const t of ice) {

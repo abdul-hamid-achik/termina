@@ -5,7 +5,7 @@ import { formatEffect, cooldownSeconds } from '~~/shared/abilityFormat'
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
 import type { AbilityDef } from '~~/shared/types/hero'
 
-// A representative targeted nuke with two effects, a mana cost and a cooldown —
+// A representative targeted nuke with two effects, a BW cost and a cooldown —
 // exercises every conditional branch the slot renders.
 const ability: AbilityDef = {
   id: 'test_q',
@@ -40,7 +40,7 @@ describe('AbilitySlot', () => {
     expect(text).toContain(formatEffect(ability.effects[0]!)) // "40 code dmg"
     expect(text).toContain(formatEffect(ability.effects[1]!)) // "30% slow for 2t"
     // costs + target line
-    expect(text).toContain('50') // mana cost
+    expect(text).toContain('50') // BW cost
     expect(text).toContain(`${cooldownSeconds(ability, TICK_DURATION_MS)}s`) // cooldown in seconds
     expect(text).toContain('hero') // targetType (CSS uppercases it visually)
   })
@@ -87,7 +87,7 @@ describe('AbilitySlot', () => {
     })
   })
 
-  it('hides the mana + cooldown lines for a zero-cost passive-style ability', () => {
+  it('hides the BW + cooldown lines for a zero-cost passive-style ability', () => {
     const passive: AbilityDef = {
       id: 'test_passive',
       name: 'Always On',
@@ -101,7 +101,7 @@ describe('AbilitySlot', () => {
 
     const text = wrapper.text()
     expect(text).toContain('Always On')
-    // no mana span and no cooldown span when both are zero
+    // no BW span and no cooldown span when both are zero
     expect(text).not.toContain('mp ')
     expect(text).not.toContain('cd ')
     // no effect chips when effects is empty

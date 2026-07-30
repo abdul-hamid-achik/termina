@@ -34,7 +34,7 @@ export function formatEffect(e: AbilityEffect): string {
     case 'fear':
       return `fear${dur}`
     case 'execute':
-      return `execute < ${e.value}% hp`
+      return `execute < ${e.value}% integ`
     case 'teleport':
       return 'teleport'
     case 'reveal':

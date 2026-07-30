@@ -208,7 +208,7 @@ describe('Daemon Hero', () => {
       expect(dot!.stacks).toBe(60) // 180 total / 3 ticks = 60 per tick at level 4
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -238,7 +238,7 @@ describe('Daemon Hero', () => {
   })
 
   describe('E: Sudo (Execute)', () => {
-    it('executes target below 30% HP with black damage', () => {
+    it('executes target below 30% INTEG with black damage', () => {
       const player = makePlayer({ level: 6, bw: 500 }) // E level 3 (at player level 5), R level 1
       // Actually E is at level 3 at player level 5, level 4 at player level 7
       // But E_DAMAGE is only [300, 400, 500] — that's R-style scaling
@@ -257,16 +257,16 @@ describe('Daemon Hero', () => {
       expect(result.state.players['e1']!.alive).toBe(false)
     })
 
-    it('fails (no mana/CD cost) when target above 30% HP', () => {
+    it('fails (no BW/CD cost) when target above 30% INTEG', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy({ integ: 400, maxInteg: 550 }) // 400/550 ≈ 73% — above 30%
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
-      // Ability fails but doesn't error — no mana deducted, no cooldown
+      // Ability fails but doesn't error — no BW deducted, no cooldown
       const updated = result.state.players['p1']!
-      expect(updated.bw).toBe(500) // Mana not deducted
+      expect(updated.bw).toBe(500) // BW not deducted
       expect(updated.cooldowns.e).toBe(0) // No cooldown set
       expect(result.events[0]!.type).toBe('ability_failed')
     })
@@ -349,7 +349,7 @@ describe('Daemon Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('sets cooldown and deducts mana', () => {
+    it('sets cooldown and deducts BW', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
@@ -412,7 +412,7 @@ describe('Daemon Hero', () => {
       expect(result.state.players['p1']!.cooldowns.e).toBe(17)
     })
 
-    it('daemon_15_left refunds 35% of Inject mana cost (was damage_boost on a DoT — a silent no-op)', () => {
+    it('daemon_15_left refunds 35% of Inject BW cost (was damage_boost on a DoT — a silent no-op)', () => {
       const player = makePlayer({
         level: 1,
         bw: 300,

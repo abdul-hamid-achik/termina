@@ -325,7 +325,7 @@ export function useItem(
 function useHealingSalve(state: GameState, player: PlayerState, slot: number): GameState {
   let updated = applyBuff(player, {
     id: 'trauma_patch_regen',
-    stacks: 50, // 200 HP / 4 ticks = 50 per tick
+    stacks: 50, // 200 INTEG / 4 ticks = 50 per tick
     ticksRemaining: 4,
     source: 'trauma_patch',
   })
@@ -1023,7 +1023,7 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
   let updated: PlayerState
   switch (currentMode) {
     case 'gait_rig_attack':
-      // Switch to HP mode
+      // Switch to INTEG mode
       updated = applyBuff(base, {
         id: 'gait_rig_hp',
         stacks: 150,
@@ -1032,7 +1032,7 @@ function usePowerTreads(state: GameState, player: PlayerState): GameState {
       })
       break
     case 'gait_rig_hp':
-      // Switch to MP mode
+      // Switch to BW mode
       updated = applyBuff(base, {
         id: 'gait_rig_mp',
         stacks: 100,

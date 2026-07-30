@@ -3,12 +3,12 @@
  *
  * Casts EVERY hero's q/w/e/r at max level through the live engine resolver
  * (`resolveAbility` from server/game/heroes) against dummy targets and asserts
- * each ability produces an observable effect (HP / MP / buff / position /
+ * each ability produces an observable effect (INTEG / BW / buff / position /
  * vision/ward change, or a meaningful event) beyond the caster's own
  * mana+cooldown bookkeeping.
  *
  * Every ability is tried against several target shapes (same-zone enemy,
- * low-HP enemy, adjacent-zone enemy, ally, zone, self, no-target) and the
+ * low-INTEG enemy, adjacent-zone enemy, ally, zone, self, no-target) and the
  * caster is pre-seeded with the resource stacks some abilities consume
  * (echo feedbackLoop, cache cachedEnergy). An ability is "inert" only if NO
  * target shape yields any delta — which would mean its effect array is being

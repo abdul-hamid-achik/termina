@@ -86,7 +86,7 @@ describe('TenantAI', () => {
       expect(actions[0]!.damage).toBeGreaterThan(0)
     })
 
-    it('should target lowest HP hero in pit', () => {
+    it('should target lowest INTEG hero in pit', () => {
       const state = makeGameState({
         tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
         players: {
@@ -114,7 +114,7 @@ describe('TenantAI', () => {
   })
 
   describe('processTenantDamage', () => {
-    it('should apply damage to Tenant HP when heroes attack Tenant', () => {
+    it('should apply damage to Tenant INTEG when heroes attack Tenant', () => {
       const state = makeGameState({
         tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
       })
@@ -129,7 +129,7 @@ describe('TenantAI', () => {
       expect(result.tenantKilled).toBe(false)
     })
 
-    it('should handle Tenant death when HP reaches 0', () => {
+    it('should handle Tenant death when INTEG reaches 0', () => {
       const state = makeGameState({
         tick: 100,
         tenant: { alive: true, integ: 500, maxInteg: 5000, deathTick: null },
@@ -206,7 +206,7 @@ describe('TenantAI', () => {
   })
 
   describe('resolveActions - Tenant attacks', () => {
-    it('should apply damage to Tenant HP when heroes attack Tenant via ActionResolver', () => {
+    it('should apply damage to Tenant INTEG when heroes attack Tenant via ActionResolver', () => {
       const initialTenant: TenantState = {
         alive: true,
         integ: 5000,

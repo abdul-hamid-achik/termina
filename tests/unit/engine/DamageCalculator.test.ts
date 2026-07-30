@@ -112,21 +112,21 @@ describe('DamageCalculator', () => {
   })
 
   describe('applyRawDamage', () => {
-    it('should reduce HP', () => {
+    it('should reduce INTEG', () => {
       const player = makePlayer({ integ: 500 })
       const result = applyRawDamage(player, 100)
       expect(result.integ).toBe(400)
       expect(result.alive).toBe(true)
     })
 
-    it('should not let HP go below 0', () => {
+    it('should not let INTEG go below 0', () => {
       const player = makePlayer({ integ: 50 })
       const result = applyRawDamage(player, 100)
       expect(result.integ).toBe(0)
       expect(result.alive).toBe(false)
     })
 
-    it('should mark player as dead when HP reaches 0', () => {
+    it('should mark player as dead when INTEG reaches 0', () => {
       const player = makePlayer({ integ: 100 })
       const result = applyRawDamage(player, 100)
       expect(result.integ).toBe(0)
@@ -142,7 +142,7 @@ describe('DamageCalculator', () => {
   })
 
   describe('applyHeal', () => {
-    it('should increase HP', () => {
+    it('should increase INTEG', () => {
       const player = makePlayer({ integ: 300, maxInteg: 500 })
       const result = applyHeal(player, 100)
       expect(result.integ).toBe(400)
@@ -154,7 +154,7 @@ describe('DamageCalculator', () => {
       expect(result.integ).toBe(500)
     })
 
-    it('should handle healing at full HP', () => {
+    it('should handle healing at full INTEG', () => {
       const player = makePlayer({ integ: 500, maxInteg: 500 })
       const result = applyHeal(player, 100)
       expect(result.integ).toBe(500)

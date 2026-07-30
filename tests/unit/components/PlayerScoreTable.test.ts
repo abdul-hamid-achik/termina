@@ -42,7 +42,7 @@ describe('PlayerScoreTable', () => {
     expect(withHp.text()).toContain('/1200')
 
     const noHp = mountTable([row({ integ: undefined, maxInteg: undefined })])
-    // No HP numbers, a literal "?" placeholder instead.
+    // No INTEG numbers, a literal "?" placeholder instead.
     expect(noHp.text()).toContain('?')
     expect(noHp.text()).not.toContain('/1200')
   })

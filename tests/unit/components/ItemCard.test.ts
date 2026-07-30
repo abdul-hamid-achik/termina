@@ -27,7 +27,7 @@ describe('ItemCard', () => {
     const text = mountCard().text()
     expect(text).toContain('Burnout')
     expect(text).toContain('2750sc')
-    expect(text).toContain('+150 Mana')
+    expect(text).toContain('+150 BW')
     expect(text).toContain('+15 Attack')
   })
 
@@ -39,7 +39,7 @@ describe('ItemCard', () => {
     expect(text.toLowerCase()).toContain('enemy')
   })
 
-  it('shows an active mana cost when the active declares one', () => {
+  it('shows an active BW cost when the active declares one', () => {
     const text = mountCard({
       active: {
         id: 'a',
@@ -50,7 +50,7 @@ describe('ItemCard', () => {
       },
     }).text()
     expect(text).toContain('40s') // 10 ticks
-    expect(text).toContain('75') // mana cost line
+    expect(text).toContain('75') // BW cost line
   })
 
   it('renders a passive with its name + description', () => {

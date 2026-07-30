@@ -108,7 +108,7 @@ describe('Lambda Hero', () => {
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -141,7 +141,7 @@ describe('Lambda Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('costs no mana with closureActive buff', () => {
+    it('costs no BW with closureActive buff', () => {
       let player = makePlayer({ level: 7 })
       player = applyBuff(player, {
         id: 'closureActive',
@@ -155,7 +155,7 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.bw).toBe(400) // No mana deducted
+      expect(updated.bw).toBe(400) // No BW deducted
     })
 
     it('deals 30% bonus damage with closureActive buff', () => {
@@ -201,7 +201,7 @@ describe('Lambda Hero', () => {
       expect(hasBuff(result.state.players['p1']!, 'closureActive')).toBe(false)
     })
 
-    it('fails with InsufficientManaError when no mana', () => {
+    it('fails with InsufficientManaError when no BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -285,7 +285,7 @@ describe('Lambda Hero', () => {
       expect(ev!.payload['source']).toBe('return')
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -296,7 +296,7 @@ describe('Lambda Hero', () => {
       expect(updated.cooldowns.w).toBe(14)
     })
 
-    it('costs no mana with closureActive', () => {
+    it('costs no BW with closureActive', () => {
       let player = makePlayer({ level: 7 })
       player = applyBuff(player, {
         id: 'closureActive',
@@ -309,11 +309,11 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.bw).toBe(400) // No mana deducted
+      expect(updated.bw).toBe(400) // No BW deducted
       expect(hasBuff(updated, 'closureActive')).toBe(false) // Consumed
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -360,7 +360,7 @@ describe('Lambda Hero', () => {
       expect(result.state.players['a1']!.integ).toBe(ally.integ)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -412,7 +412,7 @@ describe('Lambda Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -476,7 +476,7 @@ describe('Lambda Hero', () => {
       expect(hasBuff(updatedEnemy, 'stun')).toBe(false)
     })
 
-    it('costs no mana with closureActive', () => {
+    it('costs no BW with closureActive', () => {
       let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'closureActive',
@@ -490,7 +490,7 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.bw).toBe(500) // No mana deducted
+      expect(updated.bw).toBe(500) // No BW deducted
     })
 
     it('consumes closureActive after use', () => {
@@ -509,7 +509,7 @@ describe('Lambda Hero', () => {
       expect(hasBuff(result.state.players['p1']!, 'closureActive')).toBe(false)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -550,7 +550,7 @@ describe('Lambda Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ level: 6, bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

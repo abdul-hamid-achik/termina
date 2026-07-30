@@ -22,7 +22,7 @@ const moveZones: ZoneDisplay[] = [
 ]
 
 const situational = [
-  { cmd: 'attack wave:0', label: 'STRIP', aria: 'Attack the lowest-HP hostile wave' },
+  { cmd: 'attack wave:0', label: 'STRIP', aria: 'Attack the lowest-INTEG hostile wave' },
   { cmd: 'burn', label: 'BURN', aria: 'Burn a friendly wave' },
 ]
 </script>

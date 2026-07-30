@@ -29,7 +29,7 @@ export function runTenantAI(state: GameState): TenantAction[] {
     (p) => p && p.zone === 'hollow' && p.alive,
   )
 
-  // Attack the lowest HP enemy hero in range
+  // Attack the lowest INTEG enemy hero in range
   if (enemyHeroes.length > 0) {
     const target = enemyHeroes.reduce((lowest, hero) => (hero.integ < lowest.integ ? hero : lowest))
     actions.push({
@@ -127,7 +127,7 @@ export function processTenantDamage(
         }
       }
 
-      // Give remaining gold to lowest HP damage dealer
+      // Give remaining gold to lowest INTEG damage dealer
       if (remainingGold > 0) {
         let lowestDmgDealer = ''
         let lowestHp = Infinity

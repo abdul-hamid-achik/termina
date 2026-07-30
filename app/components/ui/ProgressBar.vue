@@ -8,7 +8,7 @@ type ProgressBarColor =
   | 'audit-deep'
   | 'self'
   | 'gold'
-  | 'mana'
+  | 'BW'
   | 'damage'
   | 'healing'
   | 'system'
@@ -23,7 +23,7 @@ const colorVars: Record<ProgressBarColor, string> = {
   'audit-deep': '--color-audit-deep',
   self: '--color-self',
   gold: '--color-gold',
-  mana: '--color-mana',
+  mana: '--color-BW',
   damage: '--color-damage',
   healing: '--color-healing',
   system: '--color-system',
@@ -39,7 +39,7 @@ const props = withDefaults(
     color?: ProgressBarColor
     width?: number
     showLabel?: boolean
-    /** Accessible name for the bar (e.g. "Echo HP"); exposed via aria-label. */
+    /** Accessible name for the bar (e.g. "Echo INTEG"); exposed via aria-label. */
     label?: string
     /** Ratio (0–1); at/below it the bar warns in `dangerColor` and pulses. 0 = off. */
     dangerBelow?: number
@@ -59,7 +59,7 @@ const ratio = computed(() => (props.max > 0 ? props.value / props.max : 0))
 
 // Low-resource warning: redden + pulse when alive (value > 0) but at/below the
 // danger ratio. Opt-in — dangerBelow defaults to 0 (off) so existing bars are
-// unchanged; HP bars pass e.g. 0.25 to flag "about to die" at a glance.
+// unchanged; INTEG bars pass e.g. 0.25 to flag "about to die" at a glance.
 const inDanger = computed(
   () => props.dangerBelow > 0 && props.value > 0 && ratio.value <= props.dangerBelow,
 )

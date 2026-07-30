@@ -34,7 +34,7 @@ import ProgressBar from './ProgressBar.vue'
     <Variant title="hp — healthy (danger arm, above threshold)">
       <ProgressBar :value="500" :max="620" color="chaff" :danger-below="0.25" show-label />
     </Variant>
-    <Variant title="mana — ability">
+    <Variant title="BW — ability">
       <ProgressBar :value="180" :max="300" color="ability" show-label />
     </Variant>
     <Variant title="gold">

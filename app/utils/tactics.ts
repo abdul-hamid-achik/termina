@@ -44,7 +44,7 @@ export function threatToneClass(tone: ThreatTone): string {
 
 export interface RecommendationContext {
   alive: boolean
-  /** Current HP as a fraction of max (0..1). */
+  /** Current INTEG as a fraction of max (0..1). */
   hpFraction: number
   threat: ZoneThreat
   /** At least one ability is off cooldown. */
@@ -53,12 +53,12 @@ export interface RecommendationContext {
 
 /**
  * A single "what do I do now" line for the focus banner. Priority order:
- * dead → low HP → the zone's threat verdict. Kept deliberately short so it
+ * dead → low INTEG → the zone's threat verdict. Kept deliberately short so it
  * reads at a glance on a 4-second tick.
  */
 export function recommendAction(ctx: RecommendationContext): string {
   if (!ctx.alive) return 'Dead — wait for respawn or buy back'
-  if (ctx.hpFraction <= 0.3) return 'Low HP — retreat and heal'
+  if (ctx.hpFraction <= 0.3) return 'Low INTEG — retreat and heal'
   switch (ctx.threat.label) {
     case 'DANGER':
       return 'Outnumbered — retreat to safety'

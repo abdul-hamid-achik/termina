@@ -54,14 +54,14 @@ describe('recommendAction', () => {
     expect(r).toContain('Dead')
   })
 
-  it('prioritises low HP over the threat verdict (when alive)', () => {
+  it('prioritises low INTEG over the threat verdict (when alive)', () => {
     const r = recommendAction({
       alive: true,
       hpFraction: 0.25,
       threat: threat('FAVORED'),
       hasReadyAbility: true,
     })
-    expect(r).toContain('Low HP')
+    expect(r).toContain('Low INTEG')
   })
 
   it('advises retreat when outnumbered', () => {

@@ -128,7 +128,7 @@ describe('displayBuffs', () => {
   })
 
   it('hides magnitude-encoding stacks (returns 1 so no count chip renders)', () => {
-    // veil_discord's 25 is an amp %, shield's 300 is shield HP — not counts.
+    // veil_discord's 25 is an amp %, shield's 300 is shield INTEG — not counts.
     const out = displayBuffs([buff('veil_discord', 25, 4), buff('shield', 300, 6)])
     expect(out.map((b) => b.stacks)).toEqual([1, 1])
   })

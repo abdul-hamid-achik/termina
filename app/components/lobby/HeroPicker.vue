@@ -553,7 +553,7 @@ function initialOf(name: string | undefined | null): string {
                 }}</span>
               </div>
               <div class="flex gap-1.5 text-[0.6rem] text-text-dim">
-                <span>HP:{{ hero.baseStats.integ }}</span>
+                <span>INTEG:{{ hero.baseStats.integ }}</span>
                 <span>ATK:{{ hero.baseStats.attack }}</span>
                 <span>DEF:{{ hero.baseStats.plate }}</span>
               </div>
@@ -631,7 +631,7 @@ function initialOf(name: string | undefined | null): string {
             </div>
             <div class="t-caption flex gap-2 t-mono-num">
               <span
-                >MP
+                >BW
                 <span class="text-mana">{{ selectedHeroDef.abilities[slot].manaCost }}</span></span
               >
               <span

@@ -65,13 +65,13 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'echo-e',
         name: 'Feedback Loop',
         description:
-          'Passive: Attacks store 10 HP as feedback stacks. Active: Consume stacks to deal 2x as burst damage.',
+          'Passive: Attacks store 10 INTEG as feedback stacks. Active: Consume stacks to deal 2x as burst damage.',
         manaCost: 0,
         cooldownTicks: 8,
         targetType: 'hero',
         damageType: 'kinetic',
         effects: [
-          { type: 'buff', value: 10, description: 'HP stored per attack' },
+          { type: 'buff', value: 10, description: 'INTEG stored per attack' },
           {
             type: 'damage',
             value: 20,
@@ -186,7 +186,7 @@ export const HEROES: Record<string, HeroDef> = {
     difficulty: 'hard',
     openingCombo: ['q', 'e'],
     oneLineTip:
-      "Sudo (E) fails outright above 30% HP: open with Inject's damage-over-time, watch the HP bar, and only then press E.",
+      "Sudo (E) fails outright above 30% INTEG: open with Inject's damage-over-time, watch the INTEG bar, and only then press E.",
     baseStats: {
       integ: 480,
       bw: 300,
@@ -248,14 +248,14 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'daemon-e',
         name: 'Sudo',
         description:
-          'Execute a target below 30% HP with black damage. Fails if target is above the threshold.',
+          'Execute a target below 30% INTEG with black damage. Fails if target is above the threshold.',
         manaCost: 150,
         manaCostByLevel: [150, 200, 250],
         cooldownTicks: 20,
         targetType: 'hero',
         damageType: 'black',
         effects: [
-          { type: 'execute', value: 30, description: 'HP threshold %' },
+          { type: 'execute', value: 30, description: 'INTEG threshold %' },
           { type: 'damage', value: 300, damageType: 'black' },
         ],
       },
@@ -302,7 +302,7 @@ export const HEROES: Record<string, HeroDef> = {
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
-      effects: [{ type: 'buff', value: 1, description: 'Defense per 5% HP missing' }],
+      effects: [{ type: 'buff', value: 1, description: 'Defense per 5% INTEG missing' }],
     },
     abilities: {
       q: {
@@ -435,13 +435,13 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'regex-r',
         name: 'Catastrophic Backtracking',
         description:
-          'Deal damage to a target based on their missing mana. Each 100 missing mana deals 50 damage. Also silences for 2 cycles.',
+          'Deal damage to a target based on their missing BW. Each 100 missing BW deals 50 damage. Also silences for 2 cycles.',
         manaCost: 300,
         cooldownTicks: 60,
         targetType: 'hero',
         damageType: 'code',
         effects: [
-          { type: 'damage', value: 50, damageType: 'code', description: 'Per 100 missing mana' },
+          { type: 'damage', value: 50, damageType: 'code', description: 'Per 100 missing BW' },
           { type: 'silence', value: 1, duration: 2 },
         ],
       },
@@ -549,7 +549,7 @@ export const HEROES: Record<string, HeroDef> = {
     difficulty: 'medium',
     openingCombo: ['w', 'q', 'e'],
     oneLineTip:
-      "The passive reroutes 12% of a zone-mate's incoming damage onto you, so buy HP early and treat your own HP bar as the team's shield.",
+      "The passive reroutes 12% of a zone-mate's incoming damage onto you, so buy INTEG early and treat your own INTEG bar as the team's shield.",
     baseStats: {
       integ: 580,
       bw: 380,
@@ -605,7 +605,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'proxy-e',
         name: 'Load Balance',
         description:
-          'Split healing evenly among all allied heroes in the zone, restoring HP to each.',
+          'Split healing evenly among all allied heroes in the zone, restoring INTEG to each.',
         manaCost: 100,
         manaCostByLevel: [100, 130, 160, 190],
         cooldownTicks: 10,
@@ -637,7 +637,7 @@ export const HEROES: Record<string, HeroDef> = {
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'w'],
     oneLineTip:
-      'Buff with Allocate before you dash: E closes the gap and stuns, W finishes. Stack Overflow costs 20% of your current HP, so it is a closer, never an opener.',
+      'Buff with Allocate before you dash: E closes the gap and stuns, W finishes. Stack Overflow costs 20% of your current INTEG, so it is a closer, never an opener.',
     baseStats: {
       integ: 520,
       bw: 300,
@@ -677,7 +677,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'malloc-w',
         name: 'Free()',
         description:
-          'Deallocate a target, dealing kinetic damage. Deals 40% bonus damage if the target is below 30% HP.',
+          'Deallocate a target, dealing kinetic damage. Deals 40% bonus damage if the target is below 30% INTEG.',
         manaCost: 70,
         manaCostByLevel: [70, 90, 110, 130],
         cooldownTicks: 7,
@@ -689,7 +689,7 @@ export const HEROES: Record<string, HeroDef> = {
             type: 'damage',
             value: 44,
             damageType: 'kinetic',
-            description: 'Bonus if target below 30% HP',
+            description: 'Bonus if target below 30% INTEG',
           },
         ],
       },
@@ -711,7 +711,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'malloc-r',
         name: 'Stack Overflow',
         description:
-          'Overflow the stack with raw power, dealing massive kinetic damage to all enemies in the zone. Costs 20% of current HP.',
+          'Overflow the stack with raw power, dealing massive kinetic damage to all enemies in the zone. Costs 20% of current INTEG.',
         manaCost: 150,
         manaCostByLevel: [150, 250, 350],
         cooldownTicks: 50,
@@ -920,7 +920,7 @@ export const HEROES: Record<string, HeroDef> = {
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'r'],
     oneLineTip:
-      'Lead with Void Bolt: its 5 magic-resist shred makes every spell after it hit harder, and Dereference adds 50% against anyone already under 25% HP.',
+      'Lead with Void Bolt: its 5 magic-resist shred makes every spell after it hit harder, and Dereference adds 50% against anyone already under 25% INTEG.',
     baseStats: {
       integ: 440,
       bw: 420,
@@ -938,12 +938,12 @@ export const HEROES: Record<string, HeroDef> = {
     passive: {
       id: 'null_ref-passive',
       name: 'Void Drain',
-      description: 'On kill, restore 15% max MP and reduce all ability cooldowns by 2 cycles.',
+      description: 'On kill, restore 15% max BW and reduce all ability cooldowns by 2 cycles.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
       effects: [
-        { type: 'heal', value: 15, description: 'MP restore % on kill' },
+        { type: 'heal', value: 15, description: 'BW restore % on kill' },
         { type: 'buff', value: 2, description: 'Cooldown reduction cycles' },
       ],
     },
@@ -999,7 +999,7 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'null_ref-r',
         name: 'Dereference',
         description:
-          'Unleash a devastating null dereference on all enemies in the zone, dealing massive code damage. Enemies below 25% HP take 50% bonus damage.',
+          'Unleash a devastating null dereference on all enemies in the zone, dealing massive code damage. Enemies below 25% INTEG take 50% bonus damage.',
         manaCost: 280,
         manaCostByLevel: [280, 360, 440],
         cooldownTicks: 50,
@@ -1021,7 +1021,7 @@ export const HEROES: Record<string, HeroDef> = {
     difficulty: 'hard',
     openingCombo: ['q', 'e', 'w', 'r'],
     oneLineTip:
-      'Three casts inside four cycles arms Closure — only then press Reduce, which costs no mana, hits 30% harder and stuns.',
+      'Three casts inside four cycles arms Closure — only then press Reduce, which costs no BW, hits 30% harder and stuns.',
     baseStats: {
       integ: 460,
       bw: 400,
@@ -1040,7 +1040,7 @@ export const HEROES: Record<string, HeroDef> = {
       id: 'lambda-passive',
       name: 'Closure',
       description:
-        'Casting 3 abilities within 4 cycles activates Closure: next ability costs no mana and deals 30% bonus damage.',
+        'Casting 3 abilities within 4 cycles activates Closure: next ability costs no BW and deals 30% bonus damage.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
@@ -1341,7 +1341,7 @@ export const HEROES: Record<string, HeroDef> = {
       id: 'cron-passive',
       name: 'Scheduled Task',
       description:
-        'Every 4th game cycle, automatically heal the lowest HP ally in the zone for 40 HP.',
+        'Every 4th game cycle, automatically heal the lowest INTEG ally in the zone for 40 INTEG.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
@@ -1398,14 +1398,14 @@ export const HEROES: Record<string, HeroDef> = {
         id: 'cron-r',
         name: 'Crontab',
         description:
-          'Install a healing crontab for all allies in the zone, restoring HP and MP over 4 cycles.',
+          'Install a healing crontab for all allies in the zone, restoring INTEG and BW over 4 cycles.',
         manaCost: 250,
         manaCostByLevel: [250, 340, 430],
         cooldownTicks: 55,
         targetType: 'none',
         effects: [
-          { type: 'heal', value: 300, description: 'Total HP restored over 4 cycles' },
-          { type: 'buff', value: 60, description: 'Total MP restored over 4 cycles' },
+          { type: 'heal', value: 300, description: 'Total INTEG restored over 4 cycles' },
+          { type: 'buff', value: 60, description: 'Total BW restored over 4 cycles' },
         ],
       },
     },
@@ -1600,7 +1600,7 @@ export const HEROES: Record<string, HeroDef> = {
     difficulty: 'hard',
     openingCombo: ['e', 'q', 'r'],
     oneLineTip:
-      'Cache has to take damage before it can deal any — Q, W and R all spend stored energy, so opening a fight at full HP with an empty cache does almost nothing.',
+      'Cache has to take damage before it can deal any — Q, W and R all spend stored energy, so opening a fight at full INTEG with an empty cache does almost nothing.',
     baseStats: {
       integ: 700,
       bw: 260,
@@ -1619,13 +1619,13 @@ export const HEROES: Record<string, HeroDef> = {
       id: 'cache-passive',
       name: 'Write-Back',
       description:
-        'Stores 15% of all damage taken as cached energy, up to 30% of max HP. Cached energy can be consumed by abilities.',
+        'Stores 15% of all damage taken as cached energy, up to 30% of max INTEG. Cached energy can be consumed by abilities.',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
       effects: [
         { type: 'buff', value: 15, description: 'Damage stored %' },
-        { type: 'buff', value: 30, description: 'Max stored % of max HP' },
+        { type: 'buff', value: 30, description: 'Max stored % of max INTEG' },
       ],
     },
     abilities: {

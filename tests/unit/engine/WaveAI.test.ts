@@ -450,7 +450,7 @@ describe('WaveAI', () => {
       expect(result.players['p1']!.alive).toBe(true)
     })
 
-    it('should kill heroes when HP reaches 0', () => {
+    it('should kill heroes when INTEG reaches 0', () => {
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
         players: {
@@ -567,7 +567,7 @@ describe('WaveAI', () => {
       expect(target.integ).toBe(initialHp) // unchanged — harden protects vs waves too
     })
 
-    it('should destroy ice when HP reaches 0', () => {
+    it('should destroy ice when INTEG reaches 0', () => {
       const ice = initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, integ: 10 } : t))
 
       const state = makeGameState({
@@ -608,7 +608,7 @@ describe('WaveAI', () => {
       expect(c2!.integ).toBe(400)
     })
 
-    it('should clamp wave HP to 0 (not negative)', () => {
+    it('should clamp wave INTEG to 0 (not negative)', () => {
       const state = makeGameState({
         waves: [
           makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 400 }),

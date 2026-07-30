@@ -30,7 +30,7 @@ const Q_COOLDOWN = 8
 const W_DAMAGE = [110, 160, 210, 260] as const
 const W_MANA = abilityManaTable('malloc', 'w')
 const W_COOLDOWN = 7
-const W_LOW_HP_BONUS = 0.4 // 40% bonus below 30% HP
+const W_LOW_HP_BONUS = 0.4 // 40% bonus below 30% INTEG
 const W_THRESHOLD = 0.3
 
 const E_DAMAGE = [75, 115, 155, 195] as const
@@ -107,7 +107,7 @@ function resolveQ(
   })
 }
 
-// W: Free() — kinetic damage, 40% bonus if target below 30% HP
+// W: Free() — kinetic damage, 40% bonus if target below 30% INTEG
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -244,8 +244,8 @@ function resolveR(
 
     let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
-    // Stack Overflow is a self-sacrifice ult: it also burns 20% of current HP
-    // (the standard mana cost above is its MP cost). 20% of current never kills.
+    // Stack Overflow is a self-sacrifice ult: it also burns 20% of current INTEG
+    // (the standard BW cost above is its BW cost). 20% of current never kills.
     const hpCost = Math.floor(player.integ * 0.2)
     caster = { ...caster, integ: Math.max(1, caster.integ - hpCost) }
 

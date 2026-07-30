@@ -59,7 +59,7 @@ const liveTeam: PlayerScoreRow[] = [
   },
 ]
 
-// The replay end-state snapshot shown before frames load carries no HP → "?".
+// The replay end-state snapshot shown before frames load carries no INTEG → "?".
 const snapshotTeam: PlayerScoreRow[] = liveTeam.map((p) => ({
   ...p,
   integ: undefined,
@@ -76,7 +76,7 @@ const snapshotTeam: PlayerScoreRow[] = liveTeam.map((p) => ({
       </div>
     </Variant>
 
-    <Variant title="Snapshot (no HP yet → ?)">
+    <Variant title="Snapshot (no INTEG yet → ?)">
       <div class="max-w-[480px] border border-audit/40 bg-bg-panel p-1">
         <PlayerScoreTable caption="Audit players" :rows="snapshotTeam" />
       </div>

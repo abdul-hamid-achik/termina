@@ -106,7 +106,7 @@ describe('Firewall Hero', () => {
       expect(stun!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -158,7 +158,7 @@ describe('Firewall Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -194,7 +194,7 @@ describe('Firewall Hero', () => {
       expect(shield!.stacks).toBe(500) // Level 4 shield
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -205,7 +205,7 @@ describe('Firewall Hero', () => {
       expect(updated.cooldowns.w).toBe(14)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -259,7 +259,7 @@ describe('Firewall Hero', () => {
       expect(hasBuff(result.state.players['e1']!, 'taunt')).toBe(false)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -270,7 +270,7 @@ describe('Firewall Hero', () => {
       expect(updated.cooldowns.e).toBe(16)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -328,7 +328,7 @@ describe('Firewall Hero', () => {
       expect(hasBuff(result.state.players['a1']!, 'dpi_dot')).toBe(false)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
@@ -477,7 +477,7 @@ describe('Firewall Hero', () => {
       expect(dmgBoosted).toBeGreaterThan(dmgPlain)
     })
 
-    it('firewall_15_left refunds 30% of Port Block mana cost (was the dead burn_plus_1 no-op)', () => {
+    it('firewall_15_left refunds 30% of Port Block BW cost (was the dead burn_plus_1 no-op)', () => {
       const player = makePlayer({
         level: 1,
         bw: 270,

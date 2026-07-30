@@ -96,8 +96,8 @@ function hpPct(p: PlayerState): number {
  * "I click Q and nothing happens" report). Mirrors the bot's getAbilityTarget:
  *
  *  - none/self           → no target (cast as-is)
- *  - ally / supportive   → lowest-HP ally in zone (or self for heal/shield)
- *  - hero/unit offensive → lowest-HP enemy in zone
+ *  - ally / supportive   → lowest-INTEG ally in zone (or self for heal/shield)
+ *  - hero/unit offensive → lowest-INTEG enemy in zone
  *  - zone                → the caster's current zone
  *
  * Returns `{ target: null }` to cast with no target, `{ target: 'hero:…' }`
@@ -139,7 +139,7 @@ export function pickAbilityTargetString(
 }
 
 /**
- * Pick a default target for a bare `attack` (no explicit target): the lowest-HP
+ * Pick a default target for a bare `attack` (no explicit target): the lowest-INTEG
  * alive enemy hero in the player's zone — a MOBA right-click on the obvious
  * threat. Returns `{ error }` with a hint when there's no enemy hero. We do NOT
  * auto-attack waves: last-hitting must stay explicit (attack wave:N) so the
@@ -163,7 +163,7 @@ export function pickAttackTargetString(
  * Pick a default target for a bare `use <item>` whose active declares a
  * targetType — so clicking an offensive item (Dagon, Hex, …) nukes the obvious
  * enemy instead of rejecting server-side. Mirrors pickAbilityTargetString:
- * enemy → lowest-HP enemy in zone, ally → lowest-HP ally (or self), self/zone →
+ * enemy → lowest-INTEG enemy in zone, ally → lowest-INTEG ally (or self), self/zone →
  * the player / their zone. Returns `{ error }` when there's no valid target.
  */
 export function pickItemTargetString(
@@ -189,7 +189,7 @@ export function pickItemTargetString(
 }
 
 /**
- * The HP a wave spawned with — mirrors the server's burn eligibility check.
+ * The INTEG a wave spawned with — mirrors the server's burn eligibility check.
  *
  * Reads the stamped value rather than a constant: waves escalate with match
  * time, so a fixed level-1 max made the burn affordance silently shrink every
@@ -215,8 +215,8 @@ function wavesInZoneWithIndex(
 }
 
 /**
- * Pick a default target for a bare `burn`: the lowest-HP ALLIED wave in your
- * zone that's eligible to burn (at/below the burn HP threshold). Returns the
+ * Pick a default target for a bare `burn`: the lowest-INTEG ALLIED wave in your
+ * zone that's eligible to burn (at/below the burn INTEG threshold). Returns the
  * server's `wave:<index>` form, where the index is the wave's position among
  * your zone's waves — the exact convention waveInZoneByIndex resolves.
  */
@@ -233,7 +233,7 @@ export function pickDenyTargetString(
     if (best === null || c.integ < best.integ) best = { integ: c.integ, index }
   }
   if (best === null) {
-    return { error: 'No denyable allied wave (below 50% HP) in your zone' }
+    return { error: 'No denyable allied wave (below 50% INTEG) in your zone' }
   }
   return { target: `wave:${best.index}` }
 }
@@ -251,7 +251,7 @@ export function formatStatusReadout(player: PlayerState): string {
   const kda = `${player.kills}/${player.deaths}/${player.assists}`
   return (
     `STATUS · ${hero} Lv${player.level} · ` +
-    `HP ${Math.floor(player.integ)}/${player.maxInteg} MP ${Math.floor(player.bw)}/${player.maxBw} · ` +
+    `INTEG ${Math.floor(player.integ)}/${player.maxInteg} BW ${Math.floor(player.bw)}/${player.maxBw} · ` +
     `${player.gold}g · KDA ${kda} · @ ${zoneName(player.zone)}`
   )
 }
@@ -308,7 +308,7 @@ export function formatContactsReadout(
       .join(' ')
     lines.push(
       `WHO · ${side === 'hostile' ? '✕' : '○'} ${hero} @ ${zoneName(p.zone)}` +
-        ` · HP ${Math.floor(p.integ)}/${p.maxInteg}${cds ? ` · cd ${cds}` : ''}`,
+        ` · INTEG ${Math.floor(p.integ)}/${p.maxInteg}${cds ? ` · cd ${cds}` : ''}`,
     )
   }
   for (const [id, ls] of fogged) {
@@ -635,7 +635,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       // precisely to stop that.
       const cost = getAbilityManaCost(ability, command.ability, player.level)
       if (player.bw < cost) {
-        return `Not enough mana (need ${cost}, have ${player.bw})`
+        return `Not enough BW (need ${cost}, have ${player.bw})`
       }
       return null
     }
@@ -814,7 +814,7 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: burn <wave:index>  (burn an allied wave below 50% HP to starve the enemy of gold/XP)',
+              'Usage: burn <wave:index>  (burn an allied wave below 50% INTEG to starve the enemy of gold/XP)',
           }
         const target = parseTarget(targetStr)
         if (!target || target.kind !== 'wave')
@@ -1008,7 +1008,7 @@ export function useCommands() {
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (tiers 10/15/20/25)',
-        burn: 'Last-hit your own wave below 50% HP to burn the enemy',
+        burn: 'Last-hit your own wave below 50% INTEG to burn the enemy',
         who: 'Contacts sheet — every visible hero, hostile and friendly',
         net: 'Macro line — net-worth lead, vision, day/night, objectives',
         look: 'Unit list of your current zone',
@@ -1037,7 +1037,7 @@ export function useCommands() {
 
     if (baseCmd === 'burn') {
       // Burn only targets allied waves in the current zone. The server enforces
-      // the HP rule, so healthy allies are still offered — with their HP, which
+      // the INTEG rule, so healthy allies are still offered — with their INTEG, which
       // is the number the player is waiting on.
       const partial = parts.slice(1).join(' ')
       const player = context.player
@@ -1050,7 +1050,7 @@ export function useCommands() {
           const denyable = wave.integ <= waveFullHp(wave) * BURN_HP_THRESHOLD
           out.push({
             text: ref,
-            description: `${wave.type} (HP: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})${
+            description: `${wave.type} (INTEG: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})${
               denyable ? ' — denyable' : ''
             }`,
           })
@@ -1257,7 +1257,7 @@ export function useCommands() {
     for (const e of enemies) {
       const ref = `hero:${e.heroId ?? e.name}`
       if (ref.includes(partial)) {
-        suggestions.push({ text: ref, description: `${e.name} (HP: ${e.integ}/${e.maxInteg})` })
+        suggestions.push({ text: ref, description: `${e.name} (INTEG: ${e.integ}/${e.maxInteg})` })
       }
     }
 
@@ -1276,7 +1276,7 @@ export function useCommands() {
         if (!ref.includes(partial)) continue
         suggestions.push({
           text: ref,
-          description: `${wave.type} enemy (HP: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})`,
+          description: `${wave.type} enemy (INTEG: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})`,
         })
       }
     }
@@ -1290,7 +1290,10 @@ export function useCommands() {
         if (!n.alive || n.zone !== context.player.zone) continue
         const ref = `neutral:${i}`
         if (ref.includes(partial)) {
-          suggestions.push({ text: ref, description: `${n.type} (HP: ${n.integ}/${n.maxInteg})` })
+          suggestions.push({
+            text: ref,
+            description: `${n.type} (INTEG: ${n.integ}/${n.maxInteg})`,
+          })
         }
       }
     }

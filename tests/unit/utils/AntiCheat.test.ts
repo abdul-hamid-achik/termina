@@ -214,7 +214,7 @@ describe('AntiCheat', () => {
       expect(violation).toBeNull()
     })
 
-    it('should detect HP exceeding max', () => {
+    it('should detect INTEG exceeding max', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', integ: 600, maxInteg: 500 }),
@@ -227,7 +227,7 @@ describe('AntiCheat', () => {
       expect(violation?.severity).toBe('critical')
     })
 
-    it('should detect MP exceeding max', () => {
+    it('should detect BW exceeding max', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', bw: 300, maxBw: 200 }),

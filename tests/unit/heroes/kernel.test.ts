@@ -106,7 +106,7 @@ describe('Kernel Hero', () => {
       expect(stun!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -118,7 +118,7 @@ describe('Kernel Hero', () => {
       expect(updated.cooldowns.q).toBe(10)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // Q level 4
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -148,7 +148,7 @@ describe('Kernel Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -184,7 +184,7 @@ describe('Kernel Hero', () => {
       expect(shield!.stacks).toBe(450) // Level 4 shield = 450
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -223,7 +223,7 @@ describe('Kernel Hero', () => {
       expect(hasBuff(result.state.players['e1']!, 'taunt')).toBe(true)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -257,7 +257,7 @@ describe('Kernel Hero', () => {
       expect(hasBuff(updatedEnemy, 'feared')).toBe(true)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
@@ -344,7 +344,7 @@ describe('Kernel Hero', () => {
       expect(result.state.players['p1']!.cooldowns.e).toBe(15)
     })
 
-    it('kernel_15_left refunds 40% of Interrupt mana cost (was the dead root_duration_plus_1 no-op)', () => {
+    it('kernel_15_left refunds 40% of Interrupt BW cost (was the dead root_duration_plus_1 no-op)', () => {
       const player = makePlayer({
         level: 1,
         bw: 250,

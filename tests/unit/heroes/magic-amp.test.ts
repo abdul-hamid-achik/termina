@@ -201,7 +201,7 @@ describe('dealDamage: immunity', () => {
     for (const type of ['kinetic', 'code', 'black'] as const) {
       const t = immune('invulnerable')
       const after = dealDamage(t, 500, type)
-      expect(after.integ).toBe(t.integ) // no HP lost
+      expect(after.integ).toBe(t.integ) // no INTEG lost
       expect(after.buffs.some((b) => b.id === 'invulnerable')).toBe(true) // not consumed
     }
   })

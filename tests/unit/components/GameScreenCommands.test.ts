@@ -49,12 +49,12 @@ const commandInputFocus = vi.hoisted(() => vi.fn())
 // GameScreen measures the HUD bar to anchor the kill-feed / toast lanes;
 // happy-dom ships no ResizeObserver, so capture the callback and drive it.
 type ResizeCb = (entries: Array<{ contentRect: { height: number } }>) => void
-let _resizeCb: ResizeCb | null = null
+let resizeCb: ResizeCb | null = null
 vi.stubGlobal(
   'ResizeObserver',
   class {
     constructor(cb: ResizeCb) {
-      _resizeCb = cb
+      resizeCb = cb
     }
     observe() {}
     unobserve() {}
@@ -154,7 +154,7 @@ beforeEach(() => {
   for (const spy of Object.values(socketSpies)) spy.mockClear()
   audio.playSound.mockClear()
   commandInputFocus.mockClear()
-  _resizeCb = null
+  resizeCb = null
   vi.mocked(localStorage.clear).mockClear()
   // Desktop default for R3-09: fine pointer so overlay-close reclaims the prompt.
   vi.stubGlobal(
@@ -189,6 +189,14 @@ describe('GameScreen commands', () => {
     // the same path a typed command takes.
     wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', cmd)
     await wrapper.vm.$nextTick()
+  }
+
+  /** The narrative lines the Stream is handed (engine + local events). */
+  function feed(wrapper: ReturnType<typeof mountGameScreen>): string[] {
+    const events = wrapper.findComponent({ name: 'Stream' }).props('events') as Array<{
+      text: string
+    }>
+    return events.map((e) => e.text)
   }
 
   describe('prompt-primary (R3-09)', () => {
@@ -599,7 +607,7 @@ describe('GameScreen commands', () => {
       expect(flash().classes()).toContain('anim-flash-damage')
       expect(flash().classes()).not.toContain('anim-flash')
 
-      await hit(wrapper, 240, 31) // 5% of max HP → floored
+      await hit(wrapper, 240, 31) // 5% of max INTEG → floored
       expect(flash().attributes('style')).toContain('--hit-intensity: 0.25')
 
       await hit(wrapper, 241, 400) // most of the bar → full strength

@@ -8,7 +8,7 @@ import type { SituationalAction } from '~/utils/situationalActions'
  * strip / burn / contextual verbs (R3-04). Absorbs the [ATK][Q][W][E][R][MOVE]
  * [SHOP][SCORE] strip, the [MOVE] picker and the situational-actions row that
  * GameScreen used to own separately, plus the two verbs that used to live only
- * in the zone panel: STRIP (lowest-HP hostile wave) and BURN (a deny-eligible
+ * in the zone panel: STRIP (lowest-INTEG hostile wave) and BURN (a deny-eligible
  * friendly wave). Emits command strings; GameScreen's handleCommand is the
  * only sender.
  *

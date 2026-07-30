@@ -17,7 +17,7 @@ function getIceTier(zoneId: string): number {
   return zone?.tier ?? 0
 }
 
-/** Get ice max HP by tier. */
+/** Get ice max INTEG by tier. */
 function getIceMaxHp(tier: number): number {
   // scaledIceHp is a no-op unless the dev/test-only TERMINA_TEST_FAST_GAME
   // accelerator is active — see ../engine/fastGame.ts.

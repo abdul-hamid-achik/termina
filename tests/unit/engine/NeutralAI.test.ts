@@ -245,7 +245,7 @@ describe('NeutralAI', () => {
     })
 
     it('emits no damage event when a shield absorbs the whole hit', () => {
-      // Not immune and not dodged — the hero simply loses no HP. Emitting here
+      // Not immune and not dodged — the hero simply loses no INTEG. Emitting here
       // would paint a "0" damage float, which reads as a bug.
       const state = makeGameState({
         neutrals: [

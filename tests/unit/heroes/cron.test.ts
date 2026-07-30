@@ -120,7 +120,7 @@ describe('Cron Hero', () => {
       expect(defBuff!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -132,7 +132,7 @@ describe('Cron Hero', () => {
       expect(updated.cooldowns.q).toBe(8)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // Q level 4
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -183,7 +183,7 @@ describe('Cron Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -263,7 +263,7 @@ describe('Cron Hero', () => {
       expect(hasBuff(updated, 'shield')).toBe(true)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -275,7 +275,7 @@ describe('Cron Hero', () => {
       expect(updated.cooldowns.w).toBe(12)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -324,7 +324,7 @@ describe('Cron Hero', () => {
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -355,7 +355,7 @@ describe('Cron Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -390,7 +390,7 @@ describe('Cron Hero', () => {
       expect(buff!.ticksRemaining).toBe(4)
     })
 
-    it('also applies the crontabMana buff (the MP-over-time half) to self and allies', () => {
+    it('also applies the crontabMana buff (the BW-over-time half) to self and allies', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -425,7 +425,7 @@ describe('Cron Hero', () => {
       expect(buff!.stacks).toBe(110) // Level 2 R heal per tick
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
@@ -436,7 +436,7 @@ describe('Cron Hero', () => {
       expect(updated.cooldowns.r).toBe(55)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ level: 6, bw: 100 })
       const state = makeState([player])
 
@@ -446,7 +446,7 @@ describe('Cron Hero', () => {
   })
 
   describe('Passive: Scheduled Task', () => {
-    it('heals lowest HP ally on tick divisible by 4', () => {
+    it('heals lowest INTEG ally on tick divisible by 4', () => {
       const player = makePlayer()
       const ally1 = makeAlly({ integ: 300, maxInteg: 550 })
       const ally2 = makeAlly({ id: 'a2', name: 'Ally2', integ: 200, maxInteg: 550 })
@@ -458,7 +458,7 @@ describe('Cron Hero', () => {
         payload: {},
       })
 
-      // Ally2 has lower HP so should be healed
+      // Ally2 has lower INTEG so should be healed
       expect(updated.players['a2']!.integ).toBe(240) // 200 + 40
       // Ally1 should not be healed
       expect(updated.players['a1']!.integ).toBe(300)

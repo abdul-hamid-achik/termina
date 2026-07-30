@@ -106,7 +106,7 @@ describe('talents', () => {
  */
 describe('exotic tier-25 cast effects', () => {
   // Assertions use the tick's damage/heal EVENTS (filtered to the caster as
-  // source) rather than absolute HP — heroes regen during a tick, so HP deltas
+  // source) rather than absolute INTEG — heroes regen during a tick, so INTEG deltas
   // are noisy. `dmgFromMe`/`healOnMe` read game.lastEvents after each tick.
 
   it('global_ultimate lets Regex R hit an enemy in a far zone', async () => {

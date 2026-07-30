@@ -32,7 +32,7 @@ const LANE_SPAWN_ZONES: Record<string, { chaff: string; audit: string }> = {
 
 /**
  * Spawn a wave of waves for one team on one lane. Throws on unknown lane.
- * `tick` fixes the wave's escalation tier: waves keep the HP they spawned
+ * `tick` fixes the wave's escalation tier: waves keep the INTEG they spawned
  * with for life, so a late wave is permanently tougher than an early one.
  */
 function spawnWave(
@@ -147,7 +147,7 @@ export function shouldTenantRespawn(tenant: TenantState, currentTick: number): b
   return currentTick - tenant.deathTick >= TENANT_RESPAWN_TICKS
 }
 
-/** Respawn Tenant with increased HP (+TENANT_HP_PER_MINUTE per game minute elapsed). */
+/** Respawn Tenant with increased INTEG (+TENANT_HP_PER_MINUTE per game minute elapsed). */
 export function respawnTenant(tenant: TenantState, currentTick: number): TenantState {
   const minutesElapsed = Math.floor((currentTick * TICK_DURATION_MS) / 60_000)
   const scaledMaxHp = TENANT_BASE_HP + minutesElapsed * TENANT_HP_PER_MINUTE

@@ -352,7 +352,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     const damage = (event.payload['damage'] as number) ?? 0
     const redirect = Math.round(damage * MIDDLEMAN_REDIRECT)
     if (redirect <= 0) return working
-    // Proxy soaks but never self-kills from the passive (floored at 1 HP).
+    // Proxy soaks but never self-kills from the passive (floored at 1 INTEG).
     const soaked = { ...proxy, integ: Math.max(1, proxy.integ - redirect) }
     const healed = { ...victim, integ: Math.min(victim.maxInteg, victim.integ + redirect) }
     return updatePlayers(working, [soaked, healed])

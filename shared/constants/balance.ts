@@ -216,15 +216,15 @@ export const BREACH_UNIT_ATTACK = 50
 /**
  * Wave escalation — the match-length lever.
  *
- * Ice and Ancient HP are fixed while wave output never scaled, so a wave
+ * Ice and Ancient INTEG are fixed while wave output never scaled, so a wave
  * that could not break a T1 at minute 5 still could not break it at minute 45:
  * `bun run sim 16` measured 31–73m, median 60m. Every
- * WAVE_ESCALATION_INTERVAL_TICKS, wave HP and wave damage each gain one
+ * WAVE_ESCALATION_INTERVAL_TICKS, wave INTEG and wave damage each gain one
  * WAVE_ESCALATION_STEP of their base value, so lane pressure compounds and
  * pushes eventually close the game. These values measured 14–38m (median 28m)
  * over 16 matches and 9–35m (median 24m) over 24.
  *
- * HP and damage scale by the SAME factor on purpose: wave-vs-wave
+ * INTEG and damage scale by the SAME factor on purpose: wave-vs-wave
  * time-to-kill is then unchanged (waves still meet and trade at the old rate,
  * so the laning texture survives) and only wave-vs-structure moves — which is
  * the thing that actually ends a match. It touches neither the XP/gold economy
@@ -257,8 +257,8 @@ export function waveEscalationMultiplier(tick: number): number {
 }
 
 /**
- * HP a wave of `type` spawns with at `tick` — and therefore its max HP, since
- * lane waves never heal. Any surface that renders a wave HP bar or a
+ * INTEG a wave of `type` spawns with at `tick` — and therefore its max INTEG, since
+ * lane waves never heal. Any surface that renders a wave INTEG bar or a
  * fraction-of-max threshold has to read this rather than LINE_UNIT_HP &co,
  * which are only the tick-0 values once escalation starts.
  */

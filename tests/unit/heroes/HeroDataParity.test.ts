@@ -178,7 +178,7 @@ function castAndMeasure(
     })
   }
   // Daemon E (Sudo) only spends mana / sets cooldown when the target is in
-  // execute range (below 30% HP); otherwise it refunds and no-ops.
+  // execute range (below 30% INTEG); otherwise it refunds and no-ops.
   const executeEnemy =
     heroId === 'daemon' && slot === 'e' ? { ...enemy, integ: 10, maxInteg: 1000 } : enemy
 
@@ -199,7 +199,7 @@ function castAndMeasure(
   const resultCaster = exit.value.state.players['p1']!
 
   // Damage verification: if the ability declares any instant damage effects,
-  // the primary target's HP must have dropped. This catches bugs like the Echo
+  // the primary target's INTEG must have dropped. This catches bugs like the Echo
   // Q bounce bug (primary damage silently discarded) — the constant says
   // "damage" but the resolver applied zero.
   const dmgTargetId = heroId === 'socket' && slot === 'e' ? 'e2' : 'e1'
@@ -217,7 +217,7 @@ function castAndMeasure(
  * Does this ability's constant declare any instant damage-type effects? DoT-only
  * and delayed-damage abilities are excluded — their damage is applied later
  * (by `processDoTs`, `TrapSystem`, or `tickAllBuffs`), not on the cast tick, so
- * HP won't drop here.
+ * INTEG won't drop here.
  */
 function declaresInstantDamage(heroId: string, slot: AbilitySlot): boolean {
   const ability = HEROES[heroId]!.abilities[slot]
@@ -272,7 +272,7 @@ describe('Hero data parity: resolver vs shared constants', () => {
 
         it(`${slot.toUpperCase()}: ${ability.name} — damage effects actually deal damage`, () => {
           // If the constant declares instant damage/execute effects, the resolver
-          // must actually reduce the target's HP. This catches the class of
+          // must actually reduce the target's INTEG. This catches the class of
           // bug where damage is computed but discarded (e.g. Echo Q bounce
           // overwrote the primary target).
           if (!declaresInstantDamage(heroId, slot)) return // DoT-only or non-damage, skip
@@ -322,7 +322,7 @@ describe('registry manaCostByLevel', () => {
 // The parity damage test above only ever has ONE enemy in the caster's zone
 // (the second is one zone away), so Echo Q's same-zone bounce never fires there
 // and the test would pass even with the old bug. This dedicated case puts a
-// SECOND enemy in the caster's zone and asserts BOTH lose HP — it FAILS on the
+// SECOND enemy in the caster's zone and asserts BOTH lose INTEG — it FAILS on the
 // old bug where the bounce target overwrote and discarded the primary's damage.
 describe('Echo Q bounce', () => {
   it('damages both the primary and the bounce target in the caster zone', () => {

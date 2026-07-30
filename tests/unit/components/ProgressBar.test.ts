@@ -135,13 +135,13 @@ describe('ProgressBar', () => {
 
   describe('accessibility', () => {
     it('exposes a progressbar role with value semantics + label', () => {
-      const w = mountBar({ value: 420, max: 620, label: 'Echo HP' })
+      const w = mountBar({ value: 420, max: 620, label: 'Echo INTEG' })
       const root = w.get('[role="progressbar"]')
       expect(root.attributes('aria-valuenow')).toBe('420')
       expect(root.attributes('aria-valuemin')).toBe('0')
       expect(root.attributes('aria-valuemax')).toBe('620')
       expect(root.attributes('aria-valuetext')).toBe('420 / 620')
-      expect(root.attributes('aria-label')).toBe('Echo HP')
+      expect(root.attributes('aria-label')).toBe('Echo INTEG')
     })
 
     it('hides the decorative bar harden from assistive tech', () => {

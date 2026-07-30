@@ -378,12 +378,12 @@ describe('IceAI', () => {
           damageType: 'kinetic',
         },
       ])
-      // The event amount is the HP actually lost, not the raw ICE_ATTACK.
+      // The event amount is the INTEG actually lost, not the raw ICE_ATTACK.
       expect(500 - after.players['p1']!.integ).toBe(expectedDamage)
     })
 
     it('emits no damage event when a shield absorbs the whole shot', () => {
-      // Not immune and not dodged — the hero simply loses no HP. Emitting here
+      // Not immune and not dodged — the hero simply loses no INTEG. Emitting here
       // would paint a "0" damage float, which reads as a bug.
       const state = makeGameState({
         players: {
@@ -416,7 +416,7 @@ describe('IceAI', () => {
       expect(applyIceActions(state, actions).events).toEqual([])
     })
 
-    it('should kill heroes when HP drops to 0', () => {
+    it('should kill heroes when INTEG drops to 0', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 50 }),
@@ -459,7 +459,7 @@ describe('IceAI', () => {
       expect(result.waves.find((c) => c.id === 'c1')).toBeUndefined()
     })
 
-    it('should clamp hero HP to 0 (not negative)', () => {
+    it('should clamp hero INTEG to 0 (not negative)', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 1 }),

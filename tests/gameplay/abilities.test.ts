@@ -144,7 +144,7 @@ describe('abilities', () => {
     await game.tick()
 
     // A caster→enemy damage event is the regen-independent "the spell landed"
-    // signal (raw enemy HP is confounded by regen + the level-6 maxInteg recompute).
+    // signal (raw enemy INTEG is confounded by regen + the level-6 maxInteg recompute).
     expect(
       game.lastEvents.some(
         (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
@@ -276,7 +276,7 @@ describe('abilities', () => {
     await game.tick()
 
     const r = game.lastRejected.find((x) => x.playerId === HUMAN)
-    expect(r?.reason).toContain('Not enough mana for Inject')
+    expect(r?.reason).toContain('Not enough BW for Inject')
     expect(r?.reason).toMatch(/need \d+/) // the exact cost is hero/level-scaled
     expect(r?.reason).toContain('have 1')
   })
@@ -404,7 +404,7 @@ describe('abilities', () => {
     game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
 
-    // The item nuke fizzles: spell_blocked(intercept_shell), no HP lost (reverted),
+    // The item nuke fizzles: spell_blocked(intercept_shell), no INTEG lost (reverted),
     // charge spent to 0. Before the fix the block path only covered ability casts.
     expect(
       game.lastEvents.some((e) => e._tag === 'spell_blocked' && e.source === 'intercept_shell'),
@@ -473,7 +473,7 @@ describe('abilities', () => {
     await game.tick()
 
     // The hex is fully negated — no hex buff lands, the charge is spent, and the
-    // reflect is 0 (a disable carries no HP loss to bounce).
+    // reflect is 0 (a disable carries no INTEG loss to bounce).
     const blocked = game.lastEvents.find(
       (e) => e._tag === 'spell_blocked' && e.source === 'intercept_shell',
     )
@@ -746,7 +746,7 @@ describe('abilities', () => {
     const enemyBefore = (await game.player(ENEMY)).integ
     await game.tick(3) // dmz expires → explosion
 
-    // Bug: the blast changed HP but emitted NO damage event, so a lethal blast
+    // Bug: the blast changed INTEG but emitted NO damage event, so a lethal blast
     // gave no kill credit/bounty/XP and the victim's damage_taken passives never
     // fired. The only HUMAN→ENEMY code damage this match is the explosion.
     expect((await game.player(ENEMY)).integ).toBeLessThan(enemyBefore)
@@ -779,7 +779,7 @@ describe('abilities', () => {
     game.attackHero(ENEMY)
     await game.tick()
 
-    // Dodge: no HP lost (regen only ever adds), the phaseShift is consumed, and —
+    // Dodge: no INTEG lost (regen only ever adds), the phaseShift is consumed, and —
     // the fix — NO damage event is emitted, so the attacker gets no false
     // kill/assist credit and the victim's damage_taken passives don't fire.
     expect((await game.player(ENEMY)).integ).toBeGreaterThanOrEqual(enemyBefore)
@@ -834,7 +834,7 @@ describe('abilities vs waves', () => {
   const LANE = 'mid-river'
 
   /** Seed the human alone in a lane with `hp`-strong enemy waves in front. The
-   *  mana pool is widened to the level being faked, since the per-tick recalc
+   *  BW pool is widened to the level being faked, since the per-tick recalc
    *  that would grow it only runs AFTER the cast phase. */
   async function laneWithWave(heroSelf: 'mutex' | 'null_ref', waveHp: number[], level = 6) {
     const game = await seedGame('laning_combat', { heroSelf })
@@ -891,7 +891,7 @@ describe('abilities vs waves', () => {
   })
 
   it('a wave that has escalated past the nuke survives it — the same cast, a later tick', async () => {
-    // Ability damage is flat while wave HP compounds with match time, so the
+    // Ability damage is flat while wave INTEG compounds with match time, so the
     // tick a cast lands on decides whether it clears the wave. Every other
     // ability fixture sits near tick 0 where the escalation multiplier is 1.0
     // and that relationship is invisible.

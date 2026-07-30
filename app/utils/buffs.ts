@@ -8,7 +8,7 @@
  * hurts its bearer.
  *
  * Magnitude vs count: for most effects the engine reuses `stacks` to encode a
- * MAGNITUDE (shield HP, slow %, DoT damage, treads bonus) — rendering that as
+ * MAGNITUDE (shield INTEG, slow %, DoT damage, treads bonus) — rendering that as
  * "x300" is misleading, so stack counts are hidden by default and only shown for
  * ids whose stacks are a true count (`showStacks: true`, e.g. Heap Growth).
  * Likewise `permanent: true` marks effects whose tick counter is bookkeeping
@@ -66,8 +66,8 @@ const BUFF_META: Record<string, BuffMeta> = {
   regen: { label: 'Regen', kind: 'positive' },
   trauma_patch_regen: { label: 'Trauma Patch', kind: 'positive' },
   gait_rig_attack: { label: 'Treads: Attack', kind: 'positive' },
-  gait_rig_hp: { label: 'Treads: HP', kind: 'positive' },
-  gait_rig_mp: { label: 'Treads: MP', kind: 'positive' },
+  gait_rig_hp: { label: 'Treads: INTEG', kind: 'positive' },
+  gait_rig_mp: { label: 'Treads: BW', kind: 'positive' },
   nextHopShadow: { label: 'Next Hop', kind: 'positive' },
   fullTraceDmg: { label: 'Full Trace', kind: 'positive' },
   hopCount: { label: 'Hop Count', kind: 'positive', showStacks: true },

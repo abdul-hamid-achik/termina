@@ -93,7 +93,7 @@ describe('ActionRow', () => {
     expect(wrapper.emitted('command')).toEqual([['ATK']])
   })
 
-  it('STRIP emits attack wave:<index> for the lowest-HP HOSTILE unit', () => {
+  it('STRIP emits attack wave:<index> for the lowest-INTEG HOSTILE unit', () => {
     const player = makePlayer()
     const waves = [
       wave({ id: 'w-ally-low', team: 'chaff', integ: 30 }),
@@ -162,7 +162,7 @@ describe('ActionRow', () => {
   it('emits the situational command string (STRIP) on tap', async () => {
     const wrapper = mountRow({
       situational: [
-        { cmd: 'attack wave:2', label: 'STRIP', aria: 'Attack the lowest-HP hostile wave' },
+        { cmd: 'attack wave:2', label: 'STRIP', aria: 'Attack the lowest-INTEG hostile wave' },
       ],
     })
     await wrapper.find('[data-testid="situational-attack wave:2"]').trigger('click')

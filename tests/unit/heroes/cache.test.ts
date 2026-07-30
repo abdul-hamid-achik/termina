@@ -239,7 +239,7 @@ describe('Cache Hero', () => {
       expect(getCachedEnergy(result.state.players['p1']!)).toBe(100)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -291,7 +291,7 @@ describe('Cache Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -347,7 +347,7 @@ describe('Cache Hero', () => {
       expect(hasBuff(updated, 'shield')).toBe(false)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -358,7 +358,7 @@ describe('Cache Hero', () => {
       expect(updated.cooldowns.w).toBe(12)
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -391,7 +391,7 @@ describe('Cache Hero', () => {
       expect(debuff!.ticksRemaining).toBe(3)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -443,7 +443,7 @@ describe('Cache Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -549,7 +549,7 @@ describe('Cache Hero', () => {
       expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
@@ -560,7 +560,7 @@ describe('Cache Hero', () => {
       expect(updated.cooldowns.r).toBe(50)
     })
 
-    it('scales mana cost with R level', () => {
+    it('scales BW cost with R level', () => {
       const player = makePlayer({ level: 18, bw: 500 })
       const state = makeState([player])
 
@@ -570,7 +570,7 @@ describe('Cache Hero', () => {
       expect(updated.bw).toBe(500 - 320) // R3 costs 320
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ level: 6, bw: 100 })
       const state = makeState([player])
 

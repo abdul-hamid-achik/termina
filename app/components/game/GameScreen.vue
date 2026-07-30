@@ -194,7 +194,7 @@ onMounted(() => {
       const intro = [
         'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
-        'Last-hit enemy waves (≈<50% HP) for gold — tap the wave group in the Zone panel.',
+        'Last-hit enemy waves (≈<50% INTEG) for gold — tap the wave group in the Zone panel.',
         'In the fountain/base click [SHOP] (or press Esc, then S) to buy; tap Q/W/E/R below to cast.',
         'Destroy the enemy Mainframe to win. Good luck!',
       ]
@@ -407,7 +407,7 @@ function pushDamageFloat(amount: number, kind: DamageFloatEntry['kind']) {
 const selfFloats = computed(() => damageFloats.value.filter((f) => f.anchor === 'self'))
 const targetFloats = computed(() => damageFloats.value.filter((f) => f.anchor !== 'self'))
 
-// How hard the last hit landed, as a fraction of max HP, driving the flash and
+// How hard the last hit landed, as a fraction of max INTEG, driving the flash and
 // impact alpha: a wave chip and a full combo used to paint identically.
 const hitIntensity = ref(1)
 
@@ -551,7 +551,7 @@ watch(
           break
         case 'heal':
           // Self-heals get a teal +N float so regen / lifesteal / heal abilities
-          // read as feedback, not just a silent HP bump.
+          // read as feedback, not just a silent INTEG bump.
           if (e.payload.targetId === pid) {
             pushDamageFloat(Number(e.payload.amount), 'heal')
           }
@@ -763,7 +763,7 @@ const killFeed = computed<KillFeedEntry[]>(() =>
 // Ancients (team cores) live in the game store — shown on the base zones of the map.
 const ancients = computed(() => gameStore.ancients)
 
-// ── Tick Theater drama + low-HP danger framing ───────────────────
+// ── Tick Theater drama + low-INTEG danger framing ───────────────────
 const THEATER_BAR_WIDTH = 24
 
 /** Wide countdown bar that drains over the 4s tick — the Theater heartbeat. */
@@ -786,11 +786,11 @@ const hpPct = computed(() => {
   const p = gameStore.player
   return p && p.maxInteg > 0 ? (p.integ / p.maxInteg) * 100 : 100
 })
-/** Hero panel turns to the danger variant under 30% HP. */
+/** Hero panel turns to the danger variant under 30% INTEG. */
 const heroDanger = computed(() => gameStore.isAlive && hpPct.value <= 30)
 // Flag the Zone panel red when an enemy hero shares the player's zone.
 const zoneDanger = computed(() => gameStore.nearbyEnemies.length > 0)
-/** A red vignette pulses over the whole screen under 15% HP. */
+/** A red vignette pulses over the whole screen under 15% INTEG. */
 const heroCritical = computed(() => gameStore.isAlive && hpPct.value <= 15)
 
 let firstTickLogged = false
@@ -1037,7 +1037,7 @@ function getIceTier(zoneId: string): number {
 // ── Command handling ───────────────────────────────────────────
 
 function handleCommand(cmd: string) {
-  // A bare `attack` / `atk` auto-targets the lowest-HP enemy hero in your zone
+  // A bare `attack` / `atk` auto-targets the lowest-INTEG enemy hero in your zone
   // (a MOBA right-click) so you don't have to type the full target. Waves stay
   // explicit (attack wave:N) so auto-target never steals a last-hit.
   const bareCmd = cmd.trim().toLowerCase()
@@ -1052,7 +1052,7 @@ function handleCommand(cmd: string) {
       cmd = `attack ${picked.target}`
     }
   }
-  // A bare `burn` targets the lowest-HP eligible allied wave in your zone, so
+  // A bare `burn` targets the lowest-INTEG eligible allied wave in your zone, so
   // you can snap-burn an about-to-die wave without hunting for its index.
   if (bareCmd === 'burn') {
     const me = gameStore.player
@@ -1070,8 +1070,8 @@ function handleCommand(cmd: string) {
   if (command) {
     // Auto-resolve a missing target for a targeted ability so clicking Q (or the
     // `q` shortcut, or chat `cast q`) doesn't silently reject server-side. We
-    // mirror the bot's target selection: lowest-HP enemy in zone for offensive
-    // casts, lowest-HP ally/self for supportive, the current zone for AoE.
+    // mirror the bot's target selection: lowest-INTEG enemy in zone for offensive
+    // casts, lowest-INTEG ally/self for supportive, the current zone for AoE.
     if (command.type === 'cast' && !command.target) {
       const caster = gameStore.player
       const ability = caster?.heroId ? HEROES[caster.heroId]?.abilities[command.ability] : undefined
@@ -1535,7 +1535,7 @@ const abilityButtonState = computed(() => {
     }
     const ability = HEROES[p.heroId]?.abilities[slot]
     if (ability && p.bw < getAbilityManaCost(ability, slot, p.level)) {
-      result[upper] = { ready: false, label: upper, aria: `${upper} ${name}, not enough mana` }
+      result[upper] = { ready: false, label: upper, aria: `${upper} ${name}, not enough BW` }
       continue
     }
     result[upper] = { ready: true, label: upper, aria: `${upper} ${name}, ready` }
@@ -1568,7 +1568,7 @@ const abilityArias = computed(() => {
 // ── The rig's voice (R3-06) ─────────────────────────────────────
 // The recommendation FocusBanner used to pin above the grid, printed into the
 // scrollback as a `> ` line WHEN IT CHANGES (a per-tick repeat is noise). The
-// HP readout and threat verdict ride in the same line so nothing the banner
+// INTEG readout and threat verdict ride in the same line so nothing the banner
 // showed is lost.
 const rigRecommendation = computed(() => {
   const p = gameStore.player
@@ -1587,7 +1587,7 @@ const rigRecommendation = computed(() => {
     hasReadyAbility,
   })
   const integ = `${p.integ}/${p.maxInteg}`
-  return `${action} · HP ${integ} · ${threat.label}${enemyCount ? ` (${enemyCount} hostile)` : ''}`
+  return `${action} · INTEG ${integ} · ${threat.label}${enemyCount ? ` (${enemyCount} hostile)` : ''}`
 })
 
 // The status-line helpers — the same values the rig line reads, exposed for
@@ -1775,7 +1775,7 @@ function handleReturnToMenu() {
     />
 
     <!-- Transient action-feedback toast: surfaces server rejections (out of
-         range, juked target, firewalled Ancient, not enough mana, …) that would
+         range, juked target, firewalled Ancient, not enough BW, …) that would
          otherwise die silently in the store -->
     <AnnouncementToast
       :text="latestAnnouncement"
@@ -1887,7 +1887,7 @@ function handleReturnToMenu() {
     <!-- Kill feed: cinematic headline plays overlaid near the top -->
     <KillFeed class="game-grid__killfeed" :entries="killFeed" :current-tick="currentTick" />
 
-    <!-- Critical-HP red vignette pulse over the whole screen -->
+    <!-- Critical-INTEG red vignette pulse over the whole screen -->
     <div
       v-if="heroCritical"
       class="critical-vignette anim-glow-pulse pointer-events-none absolute inset-0 z-[15]"
@@ -2213,7 +2213,7 @@ function handleReturnToMenu() {
    Both default to off (comfortable / vitals='off'), reproducing today's look.
    Compact tightens the gaps so more fits on screen (safe at every breakpoint).
    Emphasize-vitals dims the strategic War Room and enlarges the action bar so
-   the eye lands on HP / abilities; the column-widening only applies on desktop
+   the eye lands on INTEG / abilities; the column-widening only applies on desktop
    (min-width:1025px) so it never fights the responsive mobile templates. */
 .game-grid[data-density='compact'] {
   gap: 0;

@@ -6,7 +6,7 @@ import { HARDEN_DURATION_TICKS } from '~~/shared/constants/balance'
 /**
  * Replaces tests/e2e/flows/game_attack_lands.yml — a human basic attack on a
  * co-located enemy registers hero damage. damageDealt is the regen-independent
- * "the hit landed" signal the original flow used (raw enemy HP is confounded by
+ * "the hit landed" signal the original flow used (raw enemy INTEG is confounded by
  * per-tick regen + the level-6 maxInteg recompute).
  */
 describe('combat', () => {
@@ -210,7 +210,7 @@ describe('combat', () => {
     await game.tick()
     expect((await game.player(ENEMY)).alive).toBe(true) // not lethal, just a chip
 
-    // Tick 2 (within the window): drop the enemy to 1 HP and let the HUMAN finish it.
+    // Tick 2 (within the window): drop the enemy to 1 INTEG and let the HUMAN finish it.
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, integ: 1 } },
@@ -285,7 +285,7 @@ describe('combat', () => {
     expect(dotTicked()).toBe(false) // expired — no more DoT damage
   })
 
-  it('a dead hero respawns at full HP in the fountain once the respawn tick passes', async () => {
+  it('a dead hero respawns at full INTEG in the fountain once the respawn tick passes', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const startTick = (await game.state()).tick
     await game.patch((s) => ({
@@ -338,7 +338,7 @@ describe('combat', () => {
     expect(me.respawnTick!).toBeGreaterThan(enemy.respawnTick!)
   })
 
-  it('a shield buff absorbs an incoming attack before HP', async () => {
+  it('a shield buff absorbs an incoming attack before INTEG', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
@@ -356,14 +356,14 @@ describe('combat', () => {
     await game.tick()
 
     // The basic-attack path ran absorbShield: the shield ate the hit, so its
-    // stacks dropped. (Raw HP is confounded by the level-6 maxInteg recompute on the
+    // stacks dropped. (Raw INTEG is confounded by the level-6 maxInteg recompute on the
     // first tick, so the shield-stack delta is the clean "it absorbed" signal.)
     const shield = (await game.me()).buffs.find((b) => b.id === 'shield')
     expect(shield).toBeDefined()
     expect(shield!.stacks).toBeLessThan(400)
   })
 
-  it('a hero sitting in its own fountain heals rapidly to full HP and mana', async () => {
+  it('a hero sitting in its own fountain heals rapidly to full INTEG and BW', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
@@ -425,7 +425,7 @@ describe('combat', () => {
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
         ancients: {
           ...s.ancients,
-          // Vulnerable (a T3 has fallen) and at 1 HP — any hit finishes it.
+          // Vulnerable (a T3 has fallen) and at 1 INTEG — any hit finishes it.
           [enemyTeam]: { ...s.ancients[enemyTeam], integ: 1, alive: true, vulnerable: true },
         },
       }
@@ -642,7 +642,7 @@ describe('combat', () => {
   it('a ice fires on a lone enemy hero diving it (no waves to tank)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     // Tick once up front so the level-6 maxInteg recompute is already settled —
-    // otherwise the first-tick HP inflation masks the ice hit.
+    // otherwise the first-tick INTEG inflation masks the ice hit.
     await game.tick()
     await game.patch((s) => {
       const me = s.players[HUMAN]!
@@ -657,7 +657,7 @@ describe('combat', () => {
     const before = (await game.me()).integ
     await game.tick()
     // ICE_ATTACK (120, minus plate) far exceeds per-tick regen, so the
-    // exposed hero visibly loses HP.
+    // exposed hero visibly loses INTEG.
     expect((await game.me()).integ).toBeLessThan(before)
   })
 
@@ -678,7 +678,7 @@ describe('combat', () => {
     const before = (await game.me()).integ
     await game.tick()
 
-    // The hero is shielded — the ice shot the wave, not the hero (HP only
+    // The hero is shielded — the ice shot the wave, not the hero (INTEG only
     // moves up via regen, never down).
     expect((await game.me()).integ).toBeGreaterThanOrEqual(before)
     const wave = (await game.state()).waves.find((c) => c.id === 'shield0')
@@ -805,12 +805,12 @@ describe('combat', () => {
     expect(dmgToHuman()).toBeLessThan(before)
   })
 
-  it("the Kernel 'hardened' passive reduces incoming attack damage (keeps more HP)", async () => {
+  it("the Kernel 'hardened' passive reduces incoming attack damage (keeps more INTEG)", async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxInteg recompute
 
-    // Take one ENEMY swing at the HUMAN from full HP with the given HUMAN buffs,
-    // and report the HUMAN's HP afterwards. (The hardened reduction lands on HP
+    // Take one ENEMY swing at the HUMAN from full INTEG with the given HUMAN buffs,
+    // and report the HUMAN's INTEG afterwards. (The hardened reduction lands on HP
     // loss, not the damage event, so HP-retained is the clean signal.)
     const hpAfterSwing = async (
       humanBuffs: { id: string; stacks: number; ticksRemaining: number; source: string }[],
@@ -833,8 +833,8 @@ describe('combat', () => {
       { id: 'hardened', stacks: 1, ticksRemaining: 9999, source: HUMAN },
     ])
 
-    // Both started at full HP and took the same regen; hardened absorbs 10% of
-    // the swing, so the hardened human ends with strictly more HP.
+    // Both started at full INTEG and took the same regen; hardened absorbs 10% of
+    // the swing, so the hardened human ends with strictly more INTEG.
     expect(hpHardened).toBeGreaterThan(hpNoHardened)
   })
 
@@ -842,8 +842,8 @@ describe('combat', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
     await game.tick() // settle the level-6 maxInteg recompute
 
-    // One HUMAN(daemon) swing at the ENEMY from full enemy HP, with the given
-    // daemon buffs; report the enemy's HP afterwards (more damage → lower HP).
+    // One HUMAN(daemon) swing at the ENEMY from full enemy INTEG, with the given
+    // daemon buffs; report the enemy's INTEG afterwards (more damage → lower INTEG).
     const enemyHpAfterSwing = async (
       daemonBuffs: { id: string; stacks: number; ticksRemaining: number; source: string }[],
     ) => {
@@ -967,7 +967,7 @@ describe('combat', () => {
     expect(reflect()).toBeUndefined()
 
     // With a Spite Plate shell up, the attacker eats its own hit back as PURE
-    // damage (bypasses armor) and loses HP.
+    // damage (bypasses armor) and loses INTEG.
     await game.patch((s) => ({
       ...s,
       players: {

@@ -107,7 +107,7 @@ describe('Cipher Hero', () => {
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -175,7 +175,7 @@ describe('Cipher Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -200,7 +200,7 @@ describe('Cipher Hero', () => {
       expect(stealth!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -211,7 +211,7 @@ describe('Cipher Hero', () => {
       expect(updated.cooldowns.w).toBe(14)
     })
 
-    it('scales mana cost with level', () => {
+    it('scales BW cost with level', () => {
       const player = makePlayer({ level: 7 }) // W level 4
       const state = makeState([player])
 
@@ -221,7 +221,7 @@ describe('Cipher Hero', () => {
       expect(updated.bw).toBe(320 - 140) // Level 4 W costs 140
     })
 
-    it('fails with insufficient mana', () => {
+    it('fails with insufficient BW', () => {
       const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
@@ -248,7 +248,7 @@ describe('Cipher Hero', () => {
       expect(silence!.ticksRemaining).toBe(2)
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -332,7 +332,7 @@ describe('Cipher Hero', () => {
       expect(getEncryptionKeyReduction(updatedEnemy)).toBe(8) // 4 * 2
     })
 
-    it('deducts mana and sets cooldown', () => {
+    it('deducts BW and sets cooldown', () => {
       const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

@@ -11,7 +11,7 @@ import { formatTickClock } from '~/utils/gameClock'
  */
 const props = defineProps<{
   trace: TraceModel
-  /** Local player HP fraction (0..1). */
+  /** Local player INTEG fraction (0..1). */
   hpFraction: number
   alive: boolean
   /** Net lead text (e.g. "CHF +1.2k" or "even"). */
