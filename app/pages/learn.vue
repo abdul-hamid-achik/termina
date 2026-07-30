@@ -347,7 +347,7 @@ const concepts = [
   {
     term: 'Abilities',
     icon: '*',
-    desc: 'Each hero has a passive + 4 active abilities (Q/W/E/R). Abilities cost mana and have cooldowns measured in cycles. Cast with: cast q [target]',
+    desc: 'Each hero has a passive + 4 active abilities (Q/W/E/R). Abilities cost BW and have cooldowns measured in cycles. Cast with: cast q [target]',
   },
   {
     term: 'Sustain',
@@ -357,7 +357,7 @@ const concepts = [
   {
     term: 'Last-Hitting & Burning',
     icon: '/',
-    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} INTEG and your hero hits for 30–70, so wait until its remaining INTEG is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% INTEG, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer tapping the wave group in the zone panel over typing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
+    desc: `Only the killing blow pays scrip: chip a wave to 1 INTEG and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} INTEG and your hero hits for 30–70, so wait until its remaining INTEG is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}sc and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% INTEG, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}sc and ${burnXp} XP. Prefer STRIP / BURN on the ActionRow (or look then attack wave:N) over guessing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',

@@ -355,7 +355,7 @@ describe('useTrainingConsole', () => {
       c.cast('q') // −50 from a 600 pool
       c.advanceTick()
       expect(c.mana.value).toBe(580) // +30 (5% of 600), not 5% of the base 200
-      expect(c.log.value.some((l) => l.includes('+30 mp sandbox refill'))).toBe(true)
+      expect(c.log.value.some((l) => l.includes('+30 bw sandbox refill'))).toBe(true)
     })
 
     it('resets the console when the level changes', async () => {

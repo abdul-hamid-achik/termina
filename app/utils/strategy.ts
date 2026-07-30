@@ -4,7 +4,7 @@
  * glanceable macro readouts a MOBA player needs: net worth, scrip lead,
  * objective timers, vision coverage, day/night meaning, and sparkline trends.
  *
- * Everything here is pure and unit-tested; the War Room components are thin
+ * Everything here is pure and unit-tested; the `net` readout / status lines are thin
  * renderers over these.
  */
 import { ITEMS } from '~~/shared/constants/items'

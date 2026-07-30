@@ -176,7 +176,7 @@ const advice = computed((): Advice[] => {
       observation: `You last-hit ${cs} waves (${rate.toFixed(1)}/min)`,
       command: 'attack wave:0',
       detail:
-        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
+        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Use STRIP on the ActionRow or attack wave:N — the numbers shift each cycle.',
     })
   } else if (rate === null && cs < 20) {
     out.push({
@@ -184,7 +184,7 @@ const advice = computed((): Advice[] => {
       observation: `You last-hit ${cs} waves`,
       command: 'attack wave:0',
       detail:
-        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
+        'Only the killing blow pays scrip, so swing when a wave is nearly dead rather than every tick. Use STRIP on the ActionRow or attack wave:N — the numbers shift each cycle.',
     })
   }
 

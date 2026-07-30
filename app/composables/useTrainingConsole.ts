@@ -197,7 +197,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       ? (hero.value.openingCombo as ConsoleSlot[])
       : SLOTS
     if (!rotation.some(castable)) {
-      pushLog('! combo: nothing ready — advance ticks to refresh cooldowns/mana')
+      pushLog('! combo: nothing ready — advance cycles to refresh cooldowns/BW')
       return
     }
     const before = totalDamage.value
@@ -245,7 +245,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
     // regen rate that does not exist.
     const refill = Math.max(2, Math.round(maxMana.value * 0.05))
     mana.value = Math.min(maxMana.value, mana.value + refill)
-    pushLog(`— scheduler tick ${tick.value}  (+${refill} mp sandbox refill · cooldowns −1)`)
+    pushLog(`— scheduler cycle ${tick.value}  (+${refill} bw sandbox refill · cooldowns −1)`)
   }
 
   watch([hero, level], reset, { immediate: true })

@@ -431,7 +431,7 @@ const {
 
         <div class="flex flex-col gap-1 border border-border p-2.5">
           <div class="flex items-center justify-between text-[0.7rem] text-text-dim">
-            <span><span class="text-ability">mana</span> {{ mana }} / {{ maxMana }}</span>
+            <span><span class="text-ability">bw</span> {{ mana }} / {{ maxMana }}</span>
             <span>cycle {{ tick }}</span>
           </div>
           <div class="h-1.5 w-full bg-bg-secondary">
@@ -450,8 +450,8 @@ const {
             <AsciiButton label="RESET" variant="ghost" @click="reset" />
           </div>
           <p class="text-[0.6rem] leading-snug text-text-dim" data-testid="console-refill-note">
-            Each tick refills mana so the sandbox can't lock up. Heroes have no innate regen in a
-            real match — the fountain, items and the regen cache are the only recovery.
+            Each cycle refills BW so the sandbox can't lock up. Heroes have no innate regen in a
+            real match — the cradle, items and the regen cache are the only recovery.
             <NuxtLink to="/learn" class="text-ability no-underline hover:underline"
               >See Sustain</NuxtLink
             >.

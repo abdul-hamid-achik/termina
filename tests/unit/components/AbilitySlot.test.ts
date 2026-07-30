@@ -76,10 +76,10 @@ describe('AbilitySlot', () => {
   })
 
   describe('unaffordable', () => {
-    it('shows "no mp", disables the button and blocks casting', async () => {
+    it('shows "no bw", disables the button and blocks casting', async () => {
       const wrapper = mountSlot({ interactive: true, manaAvailable: 10 }) // < manaCost 50
 
-      expect(wrapper.text()).toContain('no mp')
+      expect(wrapper.text()).toContain('no bw')
       expect(wrapper.find('button').attributes('disabled')).toBeDefined()
 
       await wrapper.trigger('click')
@@ -108,10 +108,10 @@ describe('AbilitySlot', () => {
     expect(text).not.toContain('dmg')
   })
 
-  it('shows the cooldown (not "no mp") when both on cooldown and unaffordable', () => {
+  it('shows the cooldown (not "no bw") when both on cooldown and unaffordable', () => {
     const wrapper = mountSlot({ interactive: true, manaAvailable: 0, cooldownRemaining: 3 })
     expect(wrapper.text()).toContain('CD 3t')
-    expect(wrapper.text()).not.toContain('no mp')
+    expect(wrapper.text()).not.toContain('no bw')
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
   })
 

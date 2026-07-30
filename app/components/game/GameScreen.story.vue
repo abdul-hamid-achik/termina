@@ -83,7 +83,7 @@ function seedGameOver() {
 
 <template>
   <Story title="Game/GameScreen">
-    <!-- Full active-game layout: Zone + War Room (left), Tick Theater / combat log
+    <!-- Full active-game layout: status lines (left), STREAM center, TRACE + DECK
          (center), hero+map rail (right), command bar (bottom). -->
     <Variant title="active game" :setup-app="seedActive">
       <GameScreen />

@@ -64,7 +64,7 @@ function onClick() {
       <span v-if="onCooldown" class="ml-auto text-[0.7rem] text-gold"
         >CD {{ cooldownRemaining }}t</span
       >
-      <span v-else-if="unaffordable" class="ml-auto text-[0.7rem] text-audit">no mp</span>
+      <span v-else-if="unaffordable" class="ml-auto text-[0.7rem] text-audit">no bw</span>
     </div>
 
     <div v-if="ability.effects.length" class="flex flex-wrap gap-1">
@@ -80,7 +80,7 @@ function onClick() {
     <p class="text-[0.72rem] leading-snug text-text-dim">{{ ability.description }}</p>
 
     <div class="flex gap-3 text-[0.65rem] text-text-dim">
-      <span v-if="cost > 0"><span class="text-ability">mp</span> {{ cost }}</span>
+      <span v-if="cost > 0"><span class="text-ability">bw</span> {{ cost }}</span>
       <span v-if="ability.cooldownTicks > 0"
         ><span class="text-ability">cd</span> {{ cdSeconds }}s</span
       >
