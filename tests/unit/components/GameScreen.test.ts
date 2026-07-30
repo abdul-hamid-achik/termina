@@ -96,7 +96,7 @@ const stubs = {
   },
   GameStateBar: true,
   WarRoom: true,
-  CombatLog: true,
+  Stream: true,
   // TickTheater (extracted) owns the theater-header now; surface its `status`
   // prop so the header-text assertions still hold under shallow stubbing.
   TickTheater: {
@@ -114,7 +114,7 @@ const stubs = {
     template: '<div data-testid="theater-header">{{ status }}</div>',
   },
   KillFeed: true,
-  HeroStatus: true,
+  Deck: true,
   ZonePanel: {
     name: 'ZonePanel',
     props: [
@@ -267,14 +267,14 @@ describe('GameScreen', () => {
         wrapper.unmount()
       })
 
-      it('classic: the map leads the rail, above Hero Status', () => {
+      it('classic: the map leads the rail, above Deck', () => {
         localStorage.clear()
         seedActiveGame()
         const wrapper = mountGameScreen()
 
         const rail = wrapper.find('.game-grid__rail').element
         const map = rail.querySelector('[data-testid="ascii-map"]')
-        const hero = rail.querySelector('hero-status-stub')
+        const hero = rail.querySelector('deck-stub')
         expect(map).not.toBeNull()
         expect(hero).not.toBeNull()
         // DOCUMENT_POSITION_FOLLOWING = the hero panel comes after the map.

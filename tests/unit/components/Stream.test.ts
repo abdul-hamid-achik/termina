@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import CombatLog from '~~/app/components/game/CombatLog.vue'
+import Stream from '~~/app/components/game/Stream.vue'
 import {
   ancientLabel,
   isStructureTarget,
@@ -28,7 +28,7 @@ function makeEvent(overrides: Partial<LogEvent> = {}): LogEvent {
   }
 }
 
-describe('CombatLog', () => {
+describe('Stream', () => {
   describe('accessibility', () => {
     it('should have text prefix for event type (story mode leads with the kill)', () => {
       const events = [
@@ -37,7 +37,7 @@ describe('CombatLog', () => {
         makeEvent({ type: 'kill', text: 'Player1 killed Player2' }),
         makeEvent({ type: 'gold', text: 'Player1 earned 100g' }),
       ]
-      const wrapper = mount(CombatLog, { props: { events } })
+      const wrapper = mount(Stream, { props: { events } })
 
       // Default story view orders a tick's lines by salience: the kill leads,
       // the rest keep their original relative order.
@@ -50,7 +50,7 @@ describe('CombatLog', () => {
 
     it('should be readable by screen readers', () => {
       const events = [makeEvent({ type: 'kill', text: 'Player1 killed Player2' })]
-      const wrapper = mount(CombatLog, { props: { events } })
+      const wrapper = mount(Stream, { props: { events } })
 
       const event = wrapper.find('[data-testid="log-event"]')
       expect(event.attributes('aria-label')).toBeDefined()
@@ -58,7 +58,7 @@ describe('CombatLog', () => {
 
     it('should have aria-live region for new events', () => {
       const events = [makeEvent()]
-      const wrapper = mount(CombatLog, { props: { events } })
+      const wrapper = mount(Stream, { props: { events } })
 
       const liveRegion = wrapper.find('[aria-live="polite"]')
       expect(liveRegion.exists()).toBe(true)
@@ -68,7 +68,7 @@ describe('CombatLog', () => {
   describe('event display', () => {
     it('should display the tick as a beat header', () => {
       const events = [makeEvent({ tick: 42 })]
-      const wrapper = mount(CombatLog, { props: { events } })
+      const wrapper = mount(Stream, { props: { events } })
 
       expect(wrapper.text()).toContain('CYCLE 42')
     })
@@ -79,7 +79,7 @@ describe('CombatLog', () => {
         makeEvent({ tick: 10, type: 'damage', text: 'b' }),
         makeEvent({ tick: 11, type: 'kill', text: 'c' }),
       ]
-      const wrapper = mount(CombatLog, { props: { events } })
+      const wrapper = mount(Stream, { props: { events } })
       const text = wrapper.text()
       // one header per distinct tick
       expect(text.match(/CYCLE 10/g)).toHaveLength(1)
@@ -90,13 +90,13 @@ describe('CombatLog', () => {
 
     it('marks incoming-to-me damage with a YOU salience marker', () => {
       const events = [makeEvent({ type: 'damage', text: 'hit', salience: 'mine-in' })]
-      const wrapper = mount(CombatLog, { props: { events } })
+      const wrapper = mount(Stream, { props: { events } })
       expect(wrapper.text()).toContain('YOU')
     })
 
     it('should color events by type', () => {
       const events = [makeEvent({ type: 'damage' }), makeEvent({ type: 'healing' })]
-      const wrapper = mount(CombatLog, { props: { events } })
+      const wrapper = mount(Stream, { props: { events } })
 
       const damageEvent = wrapper.find('.border-l-damage')
       const healEvent = wrapper.find('.border-l-healing')
@@ -106,7 +106,7 @@ describe('CombatLog', () => {
     })
 
     it('should show empty state when no events', () => {
-      const wrapper = mount(CombatLog, { props: { events: [] } })
+      const wrapper = mount(Stream, { props: { events: [] } })
 
       expect(wrapper.text()).toContain('awaiting events')
     })
@@ -280,12 +280,12 @@ describe('combatLog helpers', () => {
   })
 })
 
-describe('CombatLog victory line', () => {
+describe('Stream victory line', () => {
   it('renders a single [VICTORY] tag for victory-type events (no doubled [KILL])', () => {
     const events = [
       { tick: 200, text: 'Chaff destroyed the Audit Core!', type: 'victory' as const },
     ]
-    const wrapper = mount(CombatLog, { props: { events } })
+    const wrapper = mount(Stream, { props: { events } })
 
     const el = wrapper.find('[data-testid="log-event"]')
     const text = el.text()
@@ -297,7 +297,7 @@ describe('CombatLog victory line', () => {
   })
 })
 
-describe('CombatLog filters + density', () => {
+describe('Stream filters + density', () => {
   const events: LogEvent[] = [
     { tick: 1, text: 'sys chat line', type: 'system' }, // salience-less → always shown
     { tick: 1, text: 'I hit them', type: 'damage', salience: 'mine-out' },
@@ -307,7 +307,7 @@ describe('CombatLog filters + density', () => {
   ]
 
   it('always keeps salience-less system/chat lines under non-ALL filters', async () => {
-    const wrapper = mount(CombatLog, { props: { events } })
+    const wrapper = mount(Stream, { props: { events } })
     await wrapper.get('[data-testid="log-filter-combat"]').trigger('click')
     expect(wrapper.text()).toContain('sys chat line') // system never filtered away
     expect(wrapper.text()).toContain('I hit them') // combat kept
@@ -315,14 +315,14 @@ describe('CombatLog filters + density', () => {
   })
 
   it('ME filter shows only my events (plus system)', async () => {
-    const wrapper = mount(CombatLog, { props: { events } })
+    const wrapper = mount(Stream, { props: { events } })
     await wrapper.get('[data-testid="log-filter-me"]').trigger('click')
     expect(wrapper.text()).toContain('I hit them')
     expect(wrapper.text()).not.toContain('bystander chip')
   })
 
   it('story mode (default) folds farm-tagged lines into one digest per tick', () => {
-    const wrapper = mount(CombatLog, {
+    const wrapper = mount(Stream, {
       props: {
         events: [
           {
@@ -368,7 +368,7 @@ describe('CombatLog filters + density', () => {
   })
 
   it('the verbose toggle restores the raw line-per-event stream', async () => {
-    const wrapper = mount(CombatLog, {
+    const wrapper = mount(Stream, {
       props: {
         events: [
           {
@@ -389,7 +389,7 @@ describe('CombatLog filters + density', () => {
   })
 
   it('OBJ filter shows objectives and kills (plus system), hiding plain damage', async () => {
-    const wrapper = mount(CombatLog, { props: { events } })
+    const wrapper = mount(Stream, { props: { events } })
     await wrapper.get('[data-testid="log-filter-obj"]').trigger('click')
     expect(wrapper.text()).toContain('night falls') // objective kept
     expect(wrapper.text()).toContain('a kill happened') // kill kept
@@ -400,7 +400,7 @@ describe('CombatLog filters + density', () => {
 
   it('shows the "no events match" notice when a filter excludes everything', async () => {
     // A lone world-salience damage line: dropped by ME, and no system line survives.
-    const wrapper = mount(CombatLog, {
+    const wrapper = mount(Stream, {
       props: { events: [{ tick: 1, text: 'far-away fight', type: 'damage', salience: 'world' }] },
     })
     await wrapper.get('[data-testid="log-filter-me"]').trigger('click')
@@ -408,7 +408,7 @@ describe('CombatLog filters + density', () => {
   })
 
   it('story mode keeps untagged lines (hero fights, gold) — only farm noise folds', () => {
-    const wrapper = mount(CombatLog, {
+    const wrapper = mount(Stream, {
       props: {
         events: [
           { tick: 1, text: 'someone banked gold', type: 'gold', salience: 'world' },
@@ -421,7 +421,7 @@ describe('CombatLog filters + density', () => {
   })
 })
 
-describe('CombatLog per-tick recap', () => {
+describe('Stream per-tick recap', () => {
   const fight: CombatLine[] = [
     {
       tick: 12,
@@ -453,7 +453,7 @@ describe('CombatLog per-tick recap', () => {
   ]
 
   it('sums the tick for the player, on by default', () => {
-    const wrapper = mount(CombatLog, { props: { events: fight } })
+    const wrapper = mount(Stream, { props: { events: fight } })
     const recap = wrapper.find('[data-testid="tick-recap"]')
     expect(recap.exists()).toBe(true)
     expect(recap.text()).toContain('You took 109 (Mutex 84, burn 25)')
@@ -461,7 +461,7 @@ describe('CombatLog per-tick recap', () => {
   })
 
   it('is dismissable from the toggle beside the density button', async () => {
-    const wrapper = mount(CombatLog, { props: { events: fight } })
+    const wrapper = mount(Stream, { props: { events: fight } })
     await wrapper.get('[data-testid="log-recap-toggle"]').trigger('click')
     expect(wrapper.find('[data-testid="tick-recap"]').exists()).toBe(false)
     await wrapper.get('[data-testid="log-recap-toggle"]').trigger('click')
@@ -473,7 +473,7 @@ describe('CombatLog per-tick recap', () => {
       ...fight,
       { tick: 12, text: 'Mutex terminated Kernel', type: 'kill', salience: 'ally' },
     ]
-    const wrapper = mount(CombatLog, { props: { events } })
+    const wrapper = mount(Stream, { props: { events } })
     await wrapper.get('[data-testid="log-filter-obj"]').trigger('click')
     // OBJ drops every damage line, but what the tick did to you is not a
     // function of which chip you are currently looking at.
@@ -482,7 +482,7 @@ describe('CombatLog per-tick recap', () => {
   })
 
   it('says nothing for a tick that did not touch the player', () => {
-    const wrapper = mount(CombatLog, {
+    const wrapper = mount(Stream, {
       props: {
         events: [
           {
@@ -499,10 +499,10 @@ describe('CombatLog per-tick recap', () => {
   })
 })
 
-describe('CombatLog semantic hierarchy', () => {
+describe('Stream semantic hierarchy', () => {
   /** Weight classes on the line row (the tag span is always bold). */
   function lineClasses(event: CombatLine): string[] {
-    const wrapper = mount(CombatLog, { props: { events: [event] } })
+    const wrapper = mount(Stream, { props: { events: [event] } })
     return wrapper.find('[data-testid="log-event"]').classes()
   }
 
@@ -520,7 +520,7 @@ describe('CombatLog semantic hierarchy', () => {
 
   it('glows the headline text itself, and only the headline', () => {
     const html = (event: CombatLine) =>
-      mount(CombatLog, { props: { events: [event] } })
+      mount(Stream, { props: { events: [event] } })
         .find('[data-testid="log-event"] span:last-child')
         .classes()
     expect(html({ tick: 1, text: 'the Core fell', type: 'victory' })).toContain('text-glow-sm')

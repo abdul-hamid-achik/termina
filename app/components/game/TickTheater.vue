@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CombatLog from '~/components/game/CombatLog.vue'
+import Stream from '~/components/game/Stream.vue'
 import type { CombatLine } from '~/utils/combatLog'
 
 // The combat narrative + its tick-heartbeat header. Extracted from GameScreen
@@ -52,6 +52,6 @@ defineProps<{
       >
       <span class="shrink-0 text-text-dim">T-{{ (nextTickIn / 1000).toFixed(1) }}s</span>
     </div>
-    <CombatLog class="min-h-0 flex-1" :events="events" />
+    <Stream class="min-h-0 flex-1" :events="events" />
   </div>
 </template>

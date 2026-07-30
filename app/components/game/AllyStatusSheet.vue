@@ -11,7 +11,7 @@ import type { PlayerState } from '~~/shared/types/game'
  * at-a-glance questions that matter for grouping: who's alive, WHERE they are,
  * how healthy, and whether they're disabled or holding a defensive cooldown.
  *
- * Status chips are coloured from the ALLY's own perspective (same as HeroStatus):
+ * Status chips are coloured from the ALLY's own perspective (same as Deck):
  * a buff they hold is good (green), a debuff on them is bad (red) — the inverse of
  * the EnemyThreatSheet, which colours the SAME shared `kind` from my perspective.
  */

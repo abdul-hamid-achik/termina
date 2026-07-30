@@ -101,7 +101,7 @@ describe('HUD type floor: no drift back below it', () => {
   // way, since re-introducing `text-[0.58rem]` is a one-word change.
   const SWEPT = [
     'app/components/game/GameScreen.vue',
-    'app/components/game/CombatLog.vue',
+    'app/components/game/Stream.vue',
     'app/components/game/WarRoom.vue',
     'app/components/game/EnemyThreatSheet.vue',
     'app/components/game/AllyStatusSheet.vue',

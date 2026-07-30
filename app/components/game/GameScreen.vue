@@ -7,7 +7,7 @@ import ActionRow from '~/components/game/ActionRow.vue'
 import CommandInput from '~/components/game/CommandInput.vue'
 import DamageFloat, { type DamageFloatEntry } from '~/components/game/DamageFloat.vue'
 import GameStateBar from '~/components/game/GameStateBar.vue'
-import HeroStatus from '~/components/game/HeroStatus.vue'
+import Deck from '~/components/game/Deck.vue'
 import InventoryBar from '~/components/game/InventoryBar.vue'
 import ItemShop from '~/components/game/ItemShop.vue'
 import KillFeed from '~/components/game/KillFeed.vue'
@@ -1751,7 +1751,7 @@ function handleReturnToMenu() {
          the War Room, and a quiet zone stays compact. -->
     <div class="game-grid__war flex min-h-0 flex-col gap-1">
       <TerminalPanel
-        :title="`Zone: ${currentZoneName}`"
+        :title="`HOP: ${currentZoneName}`"
         :variant="zoneDanger ? 'danger' : 'default'"
         class="max-h-[45%] shrink-0"
       >
@@ -1768,13 +1768,13 @@ function handleReturnToMenu() {
           @command="handleCommand"
         />
       </TerminalPanel>
-      <TerminalPanel title="War Room" class="game-grid__warroom min-h-0 flex-1">
+      <TerminalPanel title="NET" class="game-grid__warroom min-h-0 flex-1">
         <WarRoom />
       </TerminalPanel>
     </div>
 
     <!-- Center stage: the combat narrative is the centerpiece. -->
-    <TerminalPanel title="Combat Log" class="game-grid__log min-h-0">
+    <TerminalPanel title="STREAM" class="game-grid__log min-h-0">
       <TickTheater
         :events="combatEvents"
         :status="theaterStatus"
@@ -1803,7 +1803,7 @@ function handleReturnToMenu() {
            non-scrolling grid row (see .rail-map) and the panels beneath it share
            what is left and scroll — rather than the map itself scrolling, which
            is what a plain max-height produced. -->
-      <TerminalPanel title="Map" class="rail-map">
+      <TerminalPanel title="TRACE" class="rail-map">
         <AsciiMap
           :zones="mapZones"
           :player-zone="playerZone"
@@ -1819,13 +1819,9 @@ function handleReturnToMenu() {
       <!-- Everything below the board shares the remaining height and scrolls
            together, so the board itself never has to. -->
       <div class="rail-scroll">
-        <TerminalPanel
-          title="Hero Status"
-          :variant="heroDanger ? 'danger' : 'default'"
-          class="shrink-0"
-        >
+        <TerminalPanel title="DECK" :variant="heroDanger ? 'danger' : 'default'" class="shrink-0">
           <div class="relative">
-            <!-- Damage flash: a stateless keyed overlay so HeroStatus (and its
+            <!-- Damage flash: a stateless keyed overlay so Deck (and its
                canvas avatar + open tooltips) is NOT remounted on every hit. -->
             <div
               :key="heroFlashKey"
@@ -1834,7 +1830,7 @@ function handleReturnToMenu() {
               data-testid="hero-hit-flash"
               aria-hidden="true"
             />
-            <HeroStatus
+            <Deck
               v-if="heroData"
               :hero="heroData"
               :hero-id="gameStore.player?.heroId ?? undefined"

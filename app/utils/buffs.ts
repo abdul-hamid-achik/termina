@@ -15,7 +15,7 @@
  * noise (re-applied every tick, or a refresh window), so no countdown is shown.
  *
  * Kept pure + framework-free so it is trivially unit-testable and reusable by
- * any HUD surface (HeroStatus, War Room, tooltips).
+ * any HUD surface (Deck, NET, tooltips).
  */
 
 export type BuffKind = 'positive' | 'negative' | 'neutral'

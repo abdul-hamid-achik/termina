@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { CombatLine } from '~/utils/combatLog'
 import { SAMPLE_HEROES } from '~/stories/fixtures'
-import CombatLog from './CombatLog.vue'
+import Stream from './Stream.vue'
 
-// CombatLog renders a salience-tagged stream grouped into per-tick "beats" with
+// Stream renders a salience-tagged stream grouped into per-tick "beats" with
 // filter chips + a story/verbose toggle. STORY is the default view: every
 // farm-tagged line (`farmKind`) of a tick folds into ONE dim `farm` summary
 // line, and each tick's lines re-order by salience — incoming-to-me first, then
@@ -215,40 +215,40 @@ const sprees: CombatLine[] = [
 </script>
 
 <template>
-  <Story title="Game/CombatLog">
+  <Story title="Game/Stream">
     <Variant title="active fight (multi-tick beats)">
       <div class="bg-bg-panel" style="width: 460px; height: 360px">
-        <CombatLog :events="stream" />
+        <Stream :events="stream" />
       </div>
     </Variant>
 
     <Variant title="story mode: farm digest">
       <div class="bg-bg-panel" style="width: 460px; height: 300px">
-        <CombatLog :events="farmDigest" />
+        <Stream :events="farmDigest" />
       </div>
     </Variant>
 
     <Variant title="story mode: my rewards in the digest">
       <div class="bg-bg-panel" style="width: 460px; height: 300px">
-        <CombatLog :events="myRewards" />
+        <Stream :events="myRewards" />
       </div>
     </Variant>
 
     <Variant title="economy & pickups (buy / sell / cache / camp)">
       <div class="bg-bg-panel" style="width: 460px; height: 240px">
-        <CombatLog :events="economy" />
+        <Stream :events="economy" />
       </div>
     </Variant>
 
     <Variant title="sprees & shutdowns (kill-line flair)">
       <div class="bg-bg-panel" style="width: 460px; height: 240px">
-        <CombatLog :events="sprees" />
+        <Stream :events="sprees" />
       </div>
     </Variant>
 
     <Variant title="empty (awaiting events)">
       <div class="bg-bg-panel" style="width: 460px; height: 160px">
-        <CombatLog :events="[]" />
+        <Stream :events="[]" />
       </div>
     </Variant>
   </Story>

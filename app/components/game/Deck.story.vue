@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { PlayerState } from '~~/shared/types/game'
 import { SAMPLE_HERO_ID, SAMPLE_HEROES, SAMPLE_ITEMS, makePlayer } from '~/stories/fixtures'
-import HeroStatus from './HeroStatus.vue'
+import Deck from './Deck.vue'
 
-// HeroStatus takes a flattened `HeroData` view (a subset of PlayerState) plus a
+// Deck takes a flattened `HeroData` view (a subset of PlayerState) plus a
 // `heroId` for the avatar + ability defs. We derive that view from the shared
 // makePlayer() fixture so the numbers match what the live game produces.
 function heroFrom(p: PlayerState) {
@@ -147,46 +147,46 @@ const noBuild = heroFrom(
 </script>
 
 <template>
-  <Story title="Game/HeroStatus">
+  <Story title="Game/Deck">
     <Variant title="mid-game">
       <div class="bg-bg-primary p-3" style="width: 320px">
-        <HeroStatus :hero="midGame" :hero-id="SAMPLE_HERO_ID" />
+        <Deck :hero="midGame" :hero-id="SAMPLE_HERO_ID" />
       </div>
     </Variant>
 
     <Variant title="all abilities ready">
       <div class="bg-bg-primary p-3" style="width: 320px">
-        <HeroStatus :hero="allReady" :hero-id="SAMPLE_HERO_ID" />
+        <Deck :hero="allReady" :hero-id="SAMPLE_HERO_ID" />
       </div>
     </Variant>
 
     <Variant title="full build + buffs">
       <div class="bg-bg-primary p-3" style="width: 320px">
-        <HeroStatus :hero="fullBuild" :hero-id="SAMPLE_HEROES.daemon" />
+        <Deck :hero="fullBuild" :hero-id="SAMPLE_HEROES.daemon" />
       </div>
     </Variant>
 
     <Variant title="buffs (bookkeeping hidden)">
       <div class="bg-bg-primary p-3" style="width: 320px">
-        <HeroStatus :hero="buffShowcase" :hero-id="SAMPLE_HERO_ID" />
+        <Deck :hero="buffShowcase" :hero-id="SAMPLE_HERO_ID" />
       </div>
     </Variant>
 
     <Variant title="low hp / danger">
       <div class="bg-bg-primary p-3" style="width: 320px">
-        <HeroStatus :hero="lowHp" :hero-id="SAMPLE_HERO_ID" />
+        <Deck :hero="lowHp" :hero-id="SAMPLE_HERO_ID" />
       </div>
     </Variant>
 
     <Variant title="dead">
       <div class="bg-bg-primary p-3" style="width: 320px">
-        <HeroStatus :hero="dead" :hero-id="SAMPLE_HERO_ID" />
+        <Deck :hero="dead" :hero-id="SAMPLE_HERO_ID" />
       </div>
     </Variant>
 
     <Variant title="fresh spawn (empty)">
       <div class="bg-bg-primary p-3" style="width: 320px">
-        <HeroStatus :hero="noBuild" :hero-id="SAMPLE_HERO_ID" />
+        <Deck :hero="noBuild" :hero-id="SAMPLE_HERO_ID" />
       </div>
     </Variant>
   </Story>

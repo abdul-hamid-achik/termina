@@ -4,7 +4,7 @@ import TickTheater from '~~/app/components/game/TickTheater.vue'
 import type { CombatLine } from '~~/app/utils/combatLog'
 
 const CombatLogStub = {
-  name: 'CombatLog',
+  name: 'Stream',
   props: ['events'],
   template: '<div data-testid="combat-log-stub" :data-count="events.length" />',
 }
@@ -22,7 +22,7 @@ function mountTheater(props: Partial<Record<string, unknown>> = {}) {
       pulseKey: 0,
       ...props,
     },
-    global: { stubs: { CombatLog: CombatLogStub } },
+    global: { stubs: { Stream: CombatLogStub } },
   })
 }
 

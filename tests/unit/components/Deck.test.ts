@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import HeroStatus from '~~/app/components/game/HeroStatus.vue'
+import Deck from '~~/app/components/game/Deck.vue'
 import { HEROES } from '~~/shared/constants/heroes'
 import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 
@@ -36,8 +36,8 @@ function makeHero(overrides: HeroOverrides = {}) {
   }
 }
 
-function mountHeroStatus(hero = makeHero()) {
-  return mount(HeroStatus, {
+function mountDeck(hero = makeHero()) {
+  return mount(Deck, {
     props: { hero, heroId: HERO_ID },
     attachTo: document.body,
     global: { stubs: { HeroPortrait: true, ProgressBar: true } },
@@ -49,11 +49,11 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('HeroStatus ability chips', () => {
+describe('Deck ability chips', () => {
   describe('fine pointer (desktop)', () => {
     it('casts immediately on click when off cooldown', async () => {
       mockPointer(false)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
 
@@ -63,7 +63,7 @@ describe('HeroStatus ability chips', () => {
 
     it('does not cast on click when on cooldown', async () => {
       mockPointer(false)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-e"]').trigger('click')
 
@@ -73,7 +73,7 @@ describe('HeroStatus ability chips', () => {
 
     it('shows tooltip on hover without a cast button', async () => {
       mockPointer(false)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('mouseenter')
 
@@ -89,7 +89,7 @@ describe('HeroStatus ability chips', () => {
   describe('coarse pointer (touch)', () => {
     it('first tap opens the tooltip instead of casting', async () => {
       mockPointer(true)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
 
@@ -100,7 +100,7 @@ describe('HeroStatus ability chips', () => {
 
     it('tooltip contains an explicit [CAST] button with mana cost', async () => {
       mockPointer(true)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
 
@@ -113,7 +113,7 @@ describe('HeroStatus ability chips', () => {
 
     it('tapping the [CAST] button casts and dismisses the tooltip', async () => {
       mockPointer(true)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
       await wrapper.find('[data-testid="ability-cast-q"]').trigger('click')
@@ -125,7 +125,7 @@ describe('HeroStatus ability chips', () => {
 
     it('tapping the chip again closes the tooltip without casting', async () => {
       mockPointer(true)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
@@ -137,7 +137,7 @@ describe('HeroStatus ability chips', () => {
 
     it('ability on cooldown shows tooltip with no cast button', async () => {
       mockPointer(true)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-e"]').trigger('click')
 
@@ -151,7 +151,7 @@ describe('HeroStatus ability chips', () => {
 
     it('tap outside dismisses the tooltip', async () => {
       mockPointer(true)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
       expect(wrapper.find('[data-testid="ability-tooltip-q"]').exists()).toBe(true)
@@ -166,7 +166,7 @@ describe('HeroStatus ability chips', () => {
 
     it('tapping a different chip switches the tooltip', async () => {
       mockPointer(true)
-      const wrapper = mountHeroStatus()
+      const wrapper = mountDeck()
 
       await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
       await wrapper.find('[data-testid="ability-chip-w"]').trigger('click')
@@ -179,10 +179,10 @@ describe('HeroStatus ability chips', () => {
   })
 })
 
-describe('HeroStatus cooldown readability', () => {
+describe('Deck cooldown readability', () => {
   it('spells a sub-minute ability cooldown out in seconds', async () => {
     mockPointer(false)
-    const wrapper = mountHeroStatus()
+    const wrapper = mountDeck()
 
     await wrapper.find('[data-testid="ability-chip-q"]').trigger('mouseenter')
 
@@ -195,7 +195,7 @@ describe('HeroStatus cooldown readability', () => {
 
   it('renders a minute-plus ultimate cooldown as a clock', async () => {
     mockPointer(false)
-    const wrapper = mountHeroStatus()
+    const wrapper = mountDeck()
 
     await wrapper.find('[data-testid="ability-chip-r"]').trigger('mouseenter')
 
@@ -208,7 +208,7 @@ describe('HeroStatus cooldown readability', () => {
 
   it('shows the remaining cooldown in seconds on the touch cast panel', async () => {
     mockPointer(true)
-    const wrapper = mountHeroStatus()
+    const wrapper = mountDeck()
 
     await wrapper.find('[data-testid="ability-chip-e"]').trigger('click')
 
@@ -221,7 +221,7 @@ describe('HeroStatus cooldown readability', () => {
     // Deliberate restraint: the chips are the dense part of the HUD, so the
     // seconds live in the tooltip and never widen the row.
     mockPointer(false)
-    const wrapper = mountHeroStatus()
+    const wrapper = mountDeck()
 
     const chip = wrapper.find('[data-testid="ability-chip-e"]')
     expect(chip.text()).toContain('[3]')
@@ -230,9 +230,9 @@ describe('HeroStatus cooldown readability', () => {
   })
 })
 
-describe('HeroStatus buff strip', () => {
+describe('Deck buff strip', () => {
   it('renders readable labels, hides item-cooldown markers, and colours debuffs', () => {
-    const wrapper = mountHeroStatus(
+    const wrapper = mountDeck(
       makeHero({
         buffs: [
           { id: 'magic_immune', stacks: 1, ticksRemaining: 4 },
@@ -258,7 +258,7 @@ describe('HeroStatus buff strip', () => {
   })
 
   it('shows no Buffs section when every effect is an internal marker', () => {
-    const wrapper = mountHeroStatus(
+    const wrapper = mountDeck(
       makeHero({ buffs: [{ id: 'item_cd_dagon', stacks: 1, ticksRemaining: 18 }] }),
     )
     expect(wrapper.text()).not.toContain('Buffs')
@@ -266,7 +266,7 @@ describe('HeroStatus buff strip', () => {
   })
 
   it('colours a neutral buff with the ability colour and hides the countdown for permanent auras', () => {
-    const wrapper = mountHeroStatus(
+    const wrapper = mountDeck(
       makeHero({
         buffs: [
           { id: 'tp_channeling', stacks: 1, ticksRemaining: 3 }, // neutral → text-ability
@@ -285,10 +285,10 @@ describe('HeroStatus buff strip', () => {
   })
 })
 
-describe('HeroStatus ability mana cost', () => {
+describe('Deck ability mana cost', () => {
   const tooltipText = async (level: number) => {
     mockPointer(false)
-    const wrapper = mountHeroStatus(makeHero({ level }))
+    const wrapper = mountDeck(makeHero({ level }))
     await wrapper.find('[data-testid="ability-chip-q"]').trigger('mouseenter')
     const text = wrapper.find('[data-testid="ability-tooltip-q"]').text()
     wrapper.unmount()
@@ -309,9 +309,9 @@ describe('HeroStatus ability mana cost', () => {
   })
 })
 
-describe('HeroStatus dead state', () => {
+describe('Deck dead state', () => {
   it('marks a dead hero with a [DEAD] tag', () => {
-    const wrapper = mountHeroStatus(makeHero({ alive: false }))
+    const wrapper = mountDeck(makeHero({ alive: false }))
     expect(wrapper.text()).toContain('[DEAD]')
     wrapper.unmount()
   })
