@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { mount } from '@vue/test-utils'
 import ActionRow from '~~/app/components/game/ActionRow.vue'
 import type { ZoneDisplay } from '~~/app/components/game/traceModel'
@@ -173,5 +175,25 @@ describe('ActionRow', () => {
     })
     const q = wrapper.find('[data-testid="action-q"]')
     expect(q.attributes('aria-disabled')).toBe('true')
+  })
+
+  /**
+   * R3-09 — prompt-primary on desktop. The strip is a touch affordance; pure
+   * CSS hides it under (pointer: fine). happy-dom does not apply media-query
+   * styles, so the contract is asserted on the component source: the strip is
+   * always in the DOM (coarse / default) and the fine-pointer rule kills it.
+   */
+  it('keeps the button strip in the DOM by default (coarse / no media match)', () => {
+    const wrapper = mountRow()
+    expect(wrapper.find('[data-testid="action-row"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="action-atk"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('hides the strip under fine pointer via the R3-09 media query', () => {
+    const src = readFileSync(resolve(process.cwd(), 'app/components/game/ActionRow.vue'), 'utf8')
+    expect(src).toMatch(
+      /@media\s*\(\s*pointer:\s*fine\s*\)[\s\S]*?\.action-row\s*\{[\s\S]*?display:\s*none/,
+    )
   })
 })

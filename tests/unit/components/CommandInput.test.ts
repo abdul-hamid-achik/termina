@@ -459,5 +459,26 @@ describe('CommandInput', () => {
       expect(wrapper.emitted('submit')).toBeUndefined()
       wrapper.unmount()
     })
+
+    /**
+     * R3-09 — while the prompt owns focus, printable characters are text, not
+     * HUD shortcuts. gameKeys already returns `none` when isInputFocused; this
+     * asserts the input itself never preventDefaults those keys (so they type).
+     */
+    it('does not swallow printable characters that double as HUD shortcuts while focused', () => {
+      const wrapper = mount(CommandInput, {
+        props: { canAct: true, player: makePlayer() },
+        attachTo: document.body,
+      })
+      const input = wrapper.find('input')
+      ;(input.element as HTMLInputElement).focus()
+
+      for (const key of ['s', 'q', 'w', 'e', 'r', '1', 't', 'a']) {
+        const event = new KeyboardEvent('keydown', { key, cancelable: true, bubbles: true })
+        input.element.dispatchEvent(event)
+        expect(event.defaultPrevented).toBe(false)
+      }
+      wrapper.unmount()
+    })
   })
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { formatTickClock } from '~/utils/gameClock'
 import AnnouncementToast from '~/components/game/AnnouncementToast.vue'
 import TraceRail from '~/components/game/TraceRail.vue'
@@ -294,6 +294,31 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 const commandInputRef = ref<{ focus: () => void } | null>(null)
+
+/**
+ * R3-09 — prompt-primary on desktop only. Aggressive autofocus on a coarse
+ * pointer pops the soft keyboard over the game on every overlay close / tick;
+ * gate every reclaim of the prompt on (pointer: fine).
+ */
+function isFinePointer(): boolean {
+  if (typeof window === 'undefined') return false
+  if (window.matchMedia?.('(pointer: fine)')?.matches) return true
+  if (window.matchMedia?.('(pointer: coarse)')?.matches) return false
+  return (navigator.maxTouchPoints ?? 0) === 0
+}
+
+function focusPromptIfDesktop() {
+  if (!isFinePointer()) return
+  nextTick(() => commandInputRef.value?.focus())
+}
+
+// Reclaim the prompt when the last overlay closes (shop, scoreboard). The
+// close can come from Esc, the SHOP/SCORE toggle, the dialog backdrop, or
+// death clearing them — one watch covers all of them.
+watch([showShop, showScoreboard], ([shop, score], [wasShop, wasScore]) => {
+  const closedSomething = (wasShop && !shop) || (wasScore && !score)
+  if (closedSomething && !shop && !score) focusPromptIfDesktop()
+})
 
 /** Arrows resolve against the drawn grid, so the miss is reported in its terms. */
 const ARROW_WORD: Record<'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight', string> = {
@@ -756,11 +781,6 @@ const theaterStatus = computed(() => {
   if (!gameStore.isAlive) return 'DOWN'
   return gameStore.canAct ? 'AWAITING ORDERS' : 'RESOLVING'
 })
-
-// HUD setting A: 'classic' keeps the combat log in the center stage and the
-// map a compact rail widget; 'map-centric' promotes the map to center and
-// demotes the log into the rail. The big center grid column is unchanged —
-// only its CONTENTS swap — so no grid-template surgery is needed.
 
 const hpPct = computed(() => {
   const p = gameStore.player
@@ -1933,22 +1953,11 @@ function handleReturnToMenu() {
       <Stream :events="combatEvents" />
     </TerminalPanel>
 
-    <!-- Right rail: compact map + hero status (classic) or the
-         demoted combat-log ticker (map-centric).
-         The map leads the rail: it is the only spatial surface in the classic
-         layout, and the rail scrolls — behind Hero Status the overview grid
-         fell below the fold on short viewports. -->
+    <!-- Right rail: TRACE (route as hop depth) + DECK. One layout — no
+         classic / map-centric toggle (R3-10). -->
     <div class="game-grid__rail">
-      <!-- Classic: compact map in the rail. Map-centric: the map is in the
-           center, so the rail carries the demoted combat-log ticker.
-           overview-open: the whole-board grid is the map's actual payload, so
-           it ships expanded here rather than behind the toggle. Only this
-           instance — the component default stays collapsed for mobile. -->
-      <!-- The board is the one thing that must never leave the screen: without
-           it the player loses all spatial sense of the match. It gets its own
-           non-scrolling grid row (see .rail-map) and the panels beneath it share
-           what is left and scroll — rather than the map itself scrolling, which
-           is what a plain max-height produced. -->
+      <!-- TRACE never leaves the screen: own non-scrolling grid row
+           (.rail-map); DECK and the rest share what is left and scroll. -->
       <TerminalPanel title="TRACE" class="rail-map">
         <TraceRail :trace="traceModel" />
       </TerminalPanel>
@@ -2130,9 +2139,9 @@ function handleReturnToMenu() {
 </template>
 
 <style scoped>
-/* Desktop: three columns — Zone + War Room (left) | Tick Theater / combat log
-   (center, the focal surface) | hero+map/log rail (right). The log is now the
-   largest single panel; the near-static map is demoted to a compact rail widget. */
+/* Desktop: three columns — status lines (left) | STREAM (center) | TRACE + DECK
+   rail (right). Phone collapses to a single column with ActionRow above the
+   prompt (R3-04 / R3-08). */
 .game-grid {
   display: grid;
   grid-template-columns: minmax(190px, 2.4fr) minmax(0, 5fr) minmax(244px, 3.3fr);
@@ -2179,26 +2188,13 @@ function handleReturnToMenu() {
   min-height: 0;
 }
 
-/* Pinned to row 1 explicitly: the map is v-if'd out in the map-centric layout,
-   and without this the surviving child auto-places into row 1 and the empty
-   track absorbs the rail. `overflow: visible` let the board spill out and
-   intercept taps on the action bar, SHOP and the talent picker. */
+/* TRACE is pinned to row 1 so DECK cannot steal the spatial surface. */
 .rail-map {
   grid-row: 1;
   overflow: hidden;
 }
 
-/* The rail renders the trace, whose rows carry their own height —
-   so the board could not shrink to its track and had to be scrolled. A
-   min-height override cannot shrink a fixed height; this sets `height`, and
-   !important is required to beat the Tailwind utility. */
-.rail-map :deep(.map-cell-compact) {
-  height: clamp(16px, 2.8vh, 28px) !important;
-}
-
-/* Everything below the board scrolls together. */
-/* Everything below the board shares the remaining height and scrolls together,
-   so the board itself never has to. */
+/* Everything below TRACE shares the remaining height and scrolls together. */
 .rail-scroll {
   grid-row: 2;
   display: flex;

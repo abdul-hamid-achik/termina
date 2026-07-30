@@ -52,6 +52,10 @@ vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
 const audio = vi.hoisted(() => ({ playSound: vi.fn() }))
 vi.mock('~/composables/useAudio', () => ({ useAudio: () => audio }))
 
+// R3-09 — CommandInput is stubbed (no real input focus), but GameScreen still
+// holds a ref and calls `.focus()` after overlays close. Capture those calls.
+const commandInputFocus = vi.hoisted(() => vi.fn())
+
 // GameScreen measures the HUD bar to anchor the kill-feed / toast lanes;
 // happy-dom ships no ResizeObserver, so capture the callback and drive it.
 type ResizeCb = (entries: Array<{ contentRect: { height: number } }>) => void
@@ -120,7 +124,16 @@ const stubs = {
   ItemShop: true,
   InventoryBar: true,
   QuickBuy: true,
-  CommandInput: true,
+  // Expose focus() the way the real CommandInput does via defineExpose, so
+  // GameScreen's commandInputRef.focus() path is testable (R3-09).
+  CommandInput: {
+    name: 'CommandInput',
+    template: '<div data-testid="command-input" class="cmd-input-wrapper" />',
+    setup(_: unknown, { expose }: { expose: (api: { focus: () => void }) => void }) {
+      expose({ focus: () => commandInputFocus() })
+      return {}
+    },
+  },
 }
 
 function mountGameScreen() {
@@ -158,8 +171,24 @@ beforeEach(() => {
   mockStorage.clear()
   for (const spy of Object.values(socketSpies)) spy.mockClear()
   audio.playSound.mockClear()
+  commandInputFocus.mockClear()
   resizeCb = null
   vi.mocked(localStorage.clear).mockClear()
+  // Desktop default for R3-09: fine pointer so overlay-close reclaims the prompt.
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      matches: query.includes('pointer: fine'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  )
+  Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 0 })
 })
 
 afterEach(() => {
@@ -628,6 +657,86 @@ describe('GameScreen', () => {
       const dialog = wrapper.find('[role="dialog"][aria-label="Item shop"]')
       expect(dialog.exists()).toBe(true)
       expect(dialog.attributes('aria-modal')).toBe('true')
+      wrapper.unmount()
+    })
+  })
+
+  /**
+   * R3-09 — prompt-primary on desktop. The real CommandInput refocuses after
+   * its own submit; GameScreen reclaims the prompt after the last overlay
+   * closes, gated on (pointer: fine).
+   */
+  describe('prompt-primary (R3-09)', () => {
+    it('holds focus on the command input after a command submit', async () => {
+      // Real CommandInput (not the focus stub) so post-submit refocus is live.
+      seedActiveGame()
+      const wrapper = mount(GameScreen, {
+        attachTo: document.body,
+        global: { stubs: { ...stubs, CommandInput: false } },
+      })
+      const input = wrapper.find('[data-testid="command-input"] input')
+      expect(input.exists()).toBe(true)
+      ;(input.element as HTMLInputElement).focus()
+
+      await input.setValue('status')
+      await input.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      expect(document.activeElement).toBe(input.element)
+      expect(socketSpies.send).not.toHaveBeenCalled() // local readout
+      wrapper.unmount()
+    })
+
+    it('reclaims the prompt when the shop overlay closes (fine pointer)', async () => {
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+      commandInputFocus.mockClear()
+
+      const shopBtn = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
+      await shopBtn!.trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[role="dialog"][aria-label="Item shop"]').exists()).toBe(true)
+      commandInputFocus.mockClear()
+
+      // Close via the same toggle.
+      await shopBtn!.trigger('click')
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[role="dialog"][aria-label="Item shop"]').exists()).toBe(false)
+      expect(commandInputFocus).toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('does not reclaim the prompt on a coarse pointer (soft keyboard)', async () => {
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+          matches: query.includes('pointer: coarse'),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      )
+      Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 5 })
+
+      seedActiveGame()
+      const wrapper = mountGameScreen()
+      const shopBtn = wrapper.findAll('.hud-action-btn').find((b) => b.text() === 'SHOP')
+      await shopBtn!.trigger('click')
+      await wrapper.vm.$nextTick()
+      commandInputFocus.mockClear()
+
+      await shopBtn!.trigger('click')
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      expect(commandInputFocus).not.toHaveBeenCalled()
       wrapper.unmount()
     })
   })
@@ -1468,24 +1577,16 @@ describe('GameScreen responsive grid', () => {
     expect(panel).toMatch(/flex-1 overflow-auto/)
   })
 
-  it('keeps the board on screen: it gets its own row and never scrolls', () => {
-    // Losing sight of the map costs the player all spatial sense of the match,
-    // so the board is the one region that must not be scrollable OR scrolled
-    // away. A plain max-height (what this used to be) makes it do both.
-    // The cap lives on the TRACK. A percentage max-height on an `auto` track is
-    // cyclic and silently does nothing, and an `auto` track sized by the board's
-    // natural height ate the entire rail — Hero Status collapsed to 0px.
+  it('keeps TRACE on screen: it gets its own row and never scrolls', () => {
+    // Losing the route costs spatial sense; TRACE is pinned and does not scroll
+    // away. The cap lives on the TRACK so DECK cannot steal the rail.
     expect(SFC).toMatch(
       /\.game-grid__rail\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*60%\)\s+minmax\(0,\s*1fr\)/s,
     )
-    // Both children pinned, so the map being v-if'd out cannot shift the rows.
+    // Both children pinned so TRACE cannot shift DECK into the spatial slot.
     expect(SFC).toMatch(/\.rail-map\s*\{[^}]*grid-row:\s*1/s)
     expect(SFC).toMatch(/\.rail-scroll\s*\{[^}]*grid-row:\s*2/s)
-    // Clipped, not visible: spilling let the board intercept taps on the action
-    // bar, SHOP and the talent picker.
+    // Clipped: spilling would intercept taps on the action bar / SHOP / talents.
     expect(SFC).toMatch(/\.rail-map\s*\{[^}]*overflow:\s*hidden/s)
-    // ...and the board shrinks to fit. The hook must be the class the COMPACT
-    // overview renders (the trace rail test asserts it exists in the DOM).
-    expect(SFC).toMatch(/\.rail-map :deep\(\.map-cell-compact\)\s*\{[^}]*height:\s*clamp\(/s)
   })
 })

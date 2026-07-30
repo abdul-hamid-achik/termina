@@ -214,7 +214,7 @@ async function disconnectProvider(provider: string) {
     <TerminalPanel title="HUD & Display" title-as="h2">
       <div class="flex flex-col gap-2">
         <p class="text-[0.75rem] text-text-dim">
-          Tune the in-game HUD for a text MOBA. Stored on this device; takes effect next match.
+          Density for the in-game terminal. Stored on this device; takes effect next match.
         </p>
         <ClientOnly>
           <HudSettings />

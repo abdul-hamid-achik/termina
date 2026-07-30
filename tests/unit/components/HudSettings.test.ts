@@ -1,15 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import HudSettings from '~~/app/components/settings/HudSettings.vue'
 import { useSettingsStore } from '~~/app/stores/settings'
+
+const mockStorage = new Map<string, string>()
+vi.stubGlobal('localStorage', {
+  getItem: vi.fn((key: string) => mockStorage.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => void mockStorage.set(key, value)),
+  removeItem: vi.fn((key: string) => void mockStorage.delete(key)),
+  clear: vi.fn(() => void mockStorage.clear()),
+})
 
 function mountPanel() {
   return mount(HudSettings)
 }
 
 beforeEach(() => {
-  localStorage.clear()
+  mockStorage.clear()
   setActivePinia(createPinia())
 })
 

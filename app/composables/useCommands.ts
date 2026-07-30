@@ -354,7 +354,7 @@ export function formatLookReadout(
   if (hostile.length)
     lines.push(
       `LOOK · ${hostile.length} hostile wave${hostile.length === 1 ? '' : 's'}: ` +
-        hostile.map((c, i) => `wave:${inZone.indexOf(c)} ${Math.floor(c.hp)}hp`).join(', '),
+        hostile.map((c) => `wave:${inZone.indexOf(c)} ${Math.floor(c.hp)}hp`).join(', '),
     )
   if (friendly.length)
     lines.push(`LOOK · ${friendly.length} friendly wave${friendly.length === 1 ? '' : 's'}`)

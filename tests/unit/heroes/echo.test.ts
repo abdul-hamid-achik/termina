@@ -215,6 +215,12 @@ describe('Echo Hero', () => {
       // The moveSpeed stat is never consumed, so the W must not grant it — the
       // dodge is the whole effect, and the description no longer promises speed.
       // moveSpeed is deleted (inert in the fixed 1 zone/cycle movement).
+      const updated = result.state.players['p1']!
+      expect(
+        updated.buffs.every((b) => b.id !== 'moveSpeed' && !('moveSpeed' in (b as object))),
+      ).toBe(true)
+      // Only the phaseShift dodge remains — no speed rider.
+      expect(updated.buffs.map((b) => b.id)).toEqual(['phaseShift'])
     })
 
     it('phaseShift buff has 1 tick duration', () => {
