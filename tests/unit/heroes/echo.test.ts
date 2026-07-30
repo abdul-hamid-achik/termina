@@ -206,20 +206,14 @@ describe('Echo Hero', () => {
       expect(updated.buffs.some((b) => b.id === 'phaseShift')).toBe(true)
     })
 
-    it('does not apply a dead moveSpeed buff (movement is a fixed 1 zone/tick)', () => {
+    it('W applies only the phaseShift dodge buff', () => {
       const player = makePlayer()
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
-      // The moveSpeed stat is never consumed, so the W must not grant it — the
-      // dodge is the whole effect, and the description no longer promises speed.
-      // moveSpeed is deleted (inert in the fixed 1 zone/cycle movement).
+      // Dodge is the whole effect — no speed or secondary rider.
       const updated = result.state.players['p1']!
-      expect(
-        updated.buffs.every((b) => b.id !== 'moveSpeed' && !('moveSpeed' in (b as object))),
-      ).toBe(true)
-      // Only the phaseShift dodge remains — no speed rider.
       expect(updated.buffs.map((b) => b.id)).toEqual(['phaseShift'])
     })
 

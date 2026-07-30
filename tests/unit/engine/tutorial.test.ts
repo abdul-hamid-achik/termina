@@ -188,8 +188,7 @@ describe('tutorial flow', () => {
     it('the buy hint names a real, affordable item that actually does something', () => {
       // Every other hint gives a concrete command; the buy hint must name a real,
       // buyable item (not a `<item>` placeholder) the player can afford — AND one
-      // that does something. Termina movement is fixed (1 zone/tick), so a
-      // pure-moveSpeed item like Boots of Speed would be an inert suggestion.
+      // that does something (a real stat or an active).
       const itemId = /buy ([a-z_]+)/.exec(tutorialHint(3) ?? '')?.[1]
       expect(itemId && ITEMS[itemId]).toBeTruthy()
       const item = ITEMS[itemId!]!

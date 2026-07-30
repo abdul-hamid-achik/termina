@@ -212,8 +212,7 @@ function resolveE(
       ticksRemaining: 3,
       source: player.id,
     })
-    // (Removed a dead 'tracepath_speed' buff: moveSpeed is inert in the fixed
-    // 1-zone/tick model, so it did nothing. Tracepath is now a vision tool.)
+    // Tracepath is a vision tool only — movement is a fixed 1 zone/tick.
 
     return {
       state: updatePlayer(state, caster),

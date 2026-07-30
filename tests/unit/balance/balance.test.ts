@@ -387,9 +387,9 @@ describe('Balance Constants', () => {
 
   describe('talents — no dead stats', () => {
     it('every stat_bonus talent targets a stat the engine consumes', () => {
-      // getTalentStatBonus is only summed for these stats. moveSpeed/attackSpeed
-      // are inert in the tick model, so a stat_bonus talent granting them would
-      // do nothing (the daemon +12 "Attack Speed" talent was exactly that).
+      // getTalentStatBonus is only summed for these stats. attackSpeed is inert
+      // in the tick model, so a stat_bonus talent granting it would do nothing
+      // (the daemon +12 "Attack Speed" talent was exactly that).
       const CONSUMED = new Set(['hp', 'mp', 'attack', 'defense', 'magicResist'])
       for (const tree of Object.values(TALENT_TREES)) {
         for (const tier of Object.values(tree.tiers)) {

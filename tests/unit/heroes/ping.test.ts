@@ -290,7 +290,6 @@ describe('Ping Hero', () => {
 
       const updated = result.state.players['p1']!
       expect(hasBuff(updated, 'tracepath_vision')).toBe(true)
-      // tracepath_speed was a dead moveSpeed buff (inert) — removed.
       expect(hasBuff(updated, 'tracepath_speed')).toBe(false)
 
       const vision = updated.buffs.find((b) => b.id === 'tracepath_vision')

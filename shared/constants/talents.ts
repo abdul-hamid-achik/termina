@@ -201,9 +201,9 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       10: [
         {
           // Was '+12 Attack Speed' — attackSpeed is never consumed (tick-based
-          // combat, like moveSpeed), so the talent did nothing. Retargeted to
-          // +12 Attack (a functional, engine-consumed stat) to keep this the
-          // offensive choice opposite the +8 Magic Resistance option.
+          // combat), so the talent did nothing. Retargeted to +12 Attack (a
+          // functional, engine-consumed stat) to keep this the offensive choice
+          // opposite the +8 Magic Resistance option.
           id: 'daemon_10_left',
           name: '+12 Attack',
           description: 'Increases attack damage by 12',

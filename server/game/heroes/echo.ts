@@ -168,9 +168,7 @@ function resolveW(
       ticksRemaining: 1,
       source: player.id,
     })
-    // (Removed a dead 'moveSpeed' buff here: movement is a fixed 1 zone/tick, so
-    // the moveSpeed stat is never consumed — the buff did nothing. The W is the
-    // dodge; the description no longer promises move speed.)
+    // W is the phaseShift dodge only — movement is a fixed 1 zone/tick.
 
     return {
       state: updatePlayer(state, caster),

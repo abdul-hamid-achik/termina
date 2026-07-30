@@ -773,21 +773,6 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'buy', item: 'edge_kit' })
     })
 
-    it('does not buy dead moveSpeed-only items (deleted boots_of_speed precedent)', () => {
-      const bot = makePlayer({
-        zone: 'chaff-fountain',
-        gold: 99999,
-        items: ['trauma_patch', 'recall_token', null, null, null, null],
-      })
-      const state = makeGameState({ players: { [bot.id]: bot } })
-      const action = decideBotAction(state, bot, 'mid')
-      expect(action).not.toBeNull()
-      expect(action!.type).toBe('buy')
-      if (action!.type === 'buy') {
-        expect(action!.item).not.toBe('scrap_lot')
-      }
-    })
-
     it('skips items already owned', () => {
       const bot = makePlayer({
         zone: 'chaff-fountain',
