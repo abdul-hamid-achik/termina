@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import {
   decideBotAction,
   getAbilityTarget,
+  isOwnSide,
   sequenceManaCost,
   buildOrderForRole,
   tryUseCombatItem,
@@ -2121,5 +2122,27 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
     delete zones['roshan-pit']
     const action = decideBotAction({ ...state, zones }, bot, 'mid', atDifficulty('medium', bot.id))
     expect(action).not.toEqual({ type: 'move', zone: 'rune-top' })
+  })
+})
+
+describe('isOwnSide — the rename guard', () => {
+  it('reads the zone record team, never the id string', () => {
+    // Regression for the substring-parser trap: side decisions must survive a
+    // full zone-id rename. The old endsWith('-rad')/startsWith('jungle-rad')
+    // ladder read every renamed zone as enemy-side and inverted the bots'
+    // entire spatial model with no type error and no test failure.
+    expect(isOwnSide('radiant-base', 'radiant')).toBe(true)
+    expect(isOwnSide('top-t1-rad', 'radiant')).toBe(true)
+    expect(isOwnSide('jungle-rad-top', 'radiant')).toBe(true)
+    expect(isOwnSide('top-t1-rad', 'dire')).toBe(false)
+    expect(isOwnSide('dire-base', 'dire')).toBe(true)
+    expect(isOwnSide('jungle-dire-bot', 'dire')).toBe(true)
+    // Rivers/runes/roshan are neutral — own for neither side.
+    expect(isOwnSide('mid-river', 'radiant')).toBe(false)
+    expect(isOwnSide('mid-river', 'dire')).toBe(false)
+    expect(isOwnSide('roshan-pit', 'radiant')).toBe(false)
+    // An id the map does not know is own for NOBODY (never defaults to a side).
+    expect(isOwnSide('seawall-ice-1-chf', 'radiant')).toBe(false)
+    expect(isOwnSide('seawall-ice-1-chf', 'dire')).toBe(false)
   })
 })

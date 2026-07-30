@@ -306,28 +306,46 @@ export function buildRouteMarkers(
   return markers
 }
 
+/** The side glyph pair for a zone record: RAD on top (▲), DIRE below (▼). */
+function zoneSideGlyph(
+  team: 'radiant' | 'dire' | 'neutral',
+): { side: string; arrow: string } | null {
+  if (team === 'radiant') return { side: 'RAD', arrow: '▲' }
+  if (team === 'dire') return { side: 'DIRE', arrow: '▼' }
+  return null
+}
+
+/**
+ * Label for a zone from its RECORD fields only — type/team/tier — never from
+ * id substrings. Exported for the rename-guard regression test: a zone whose
+ * id is nonsense must still label correctly when its record fields are right.
+ */
+export function zoneRecordLabel(z: {
+  id: string
+  type: string
+  team: 'radiant' | 'dire' | 'neutral'
+  tower?: boolean
+  tier?: number
+}): string {
+  const g = zoneSideGlyph(z.team)
+  if (z.type === 'fountain' || z.type === 'base') return `★ ${g?.side ?? '???'}`
+  if (z.tower && z.tier !== undefined) return `${g?.arrow ?? '▼'} ${g?.side ?? '???'} T${z.tier}`
+  // Objective/run spots outrank their zone type — rune spots are typed 'river'
+  // in the data but must never render as the crossing.
+  if (z.id.includes('roshan')) return '☠ ROSHAN'
+  if (z.id.includes('rune')) return '◆ RUNE'
+  if (z.type === 'river') return '≈ RIVER ≈'
+  if (z.type === 'jungle') return '☘ JUNGLE'
+  return z.id.slice(0, 8).toUpperCase()
+}
+
 /** Dense single-line cell text for the desktop 5x10 grid. */
 export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): string {
-  let name = ''
-  if (zone.id.includes('fountain') || zone.id.includes('base')) {
-    name = zone.id.includes('radiant') ? '★ RAD' : '★ DIRE'
-  } else if (zone.id.includes('t3')) {
-    name = zone.id.includes('rad') ? '▲ RAD T3' : '▼ DIRE T3'
-  } else if (zone.id.includes('t2')) {
-    name = zone.id.includes('rad') ? '▲ RAD T2' : '▼ DIRE T2'
-  } else if (zone.id.includes('t1')) {
-    name = zone.id.includes('rad') ? '▲ RAD T1' : '▼ DIRE T1'
-  } else if (zone.id.includes('river') || zone.id === 'mid-river') {
-    name = '≈ RIVER ≈'
-  } else if (zone.id.includes('roshan')) {
-    name = '☠ ROSHAN'
-  } else if (zone.id.includes('rune')) {
-    name = '◆ RUNE'
-  } else if (zone.id.includes('jungle')) {
-    name = '☘ JUNGLE'
-  } else {
-    name = zone.id.slice(0, 8).toUpperCase()
-  }
+  // Labels come from the zone RECORD (type/team/tier), never from id
+  // substrings — a renamed id must not change what renders (the old
+  // includes('radiant') ladder fell through to DIRE for every zone).
+  const z = ZONE_MAP[zone.id]
+  const name = z ? zoneRecordLabel(z) : zone.id.slice(0, 8).toUpperCase()
 
   // Ancients and towers are global info (the server sends both unfiltered), so
   // they are built BEFORE the fog return — this grid used to be the only one of

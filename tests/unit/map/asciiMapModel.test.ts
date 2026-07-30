@@ -19,6 +19,7 @@ import {
   compactIndicators,
   miniOverviewCell,
   zoneAriaLabel,
+  zoneRecordLabel,
   zoneShortCode,
   zoneTeam,
 } from '~~/app/components/game/asciiMapModel'
@@ -273,6 +274,40 @@ describe('asciiMapModel', () => {
     it('falls back to an 8-char uppercase slice for an uncategorized zone id', () => {
       // No real zone reaches this branch (all categorize), but it guards the fallback.
       expect(cellText(makeZone({ id: 'mystery-zone' }))).toBe('MYSTERY-')
+    })
+
+    it('RENAME GUARD: labels come from the zone record, never the id string', () => {
+      // Regression for the substring-parser trap: a zone id carrying NO side
+      // semantics (the renamed world) must still label by team/type/tier. The
+      // old includes('radiant') ladder rendered this whole column DIRE.
+      expect(
+        zoneRecordLabel({
+          id: 'seawall-ice-1-chf',
+          type: 'lane',
+          team: 'radiant',
+          tower: true,
+          tier: 1,
+        }),
+      ).toBe('▲ RAD T1')
+      expect(
+        zoneRecordLabel({
+          id: 'coldstore-ice-3-aud',
+          type: 'lane',
+          team: 'dire',
+          tower: true,
+          tier: 3,
+        }),
+      ).toBe('▼ DIRE T3')
+      expect(zoneRecordLabel({ id: 'rookery-terminal', type: 'base', team: 'radiant' })).toBe(
+        '★ RAD',
+      )
+      expect(zoneRecordLabel({ id: 'landing-terminal', type: 'base', team: 'dire' })).toBe('★ DIRE')
+      expect(zoneRecordLabel({ id: 'silt-north', type: 'jungle', team: 'neutral' })).toBe(
+        '☘ JUNGLE',
+      )
+      expect(zoneRecordLabel({ id: 'the-crossing', type: 'river', team: 'neutral' })).toBe(
+        '≈ RIVER ≈',
+      )
     })
 
     it('marks a standing tower with HP pips', () => {

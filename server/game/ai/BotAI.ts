@@ -22,6 +22,7 @@ import {
   creepMaxHp,
 } from '~~/shared/constants/balance'
 import { LANE_ROUTES } from '~~/shared/constants/lanes'
+import { ZONE_MAP } from '~~/shared/constants/zones'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
@@ -1641,11 +1642,10 @@ export function decideBotAction(
 }
 
 /** Whether a zone is on the given team's half of the map (rivers/runes/roshan are neutral). */
-function isOwnSide(zone: string, team: TeamId): boolean {
-  if (team === 'radiant') {
-    return zone.endsWith('-rad') || zone.startsWith('radiant') || zone.startsWith('jungle-rad')
-  }
-  return zone.endsWith('-dire') || zone.startsWith('dire') || zone.startsWith('jungle-dire')
+export function isOwnSide(zone: string, team: TeamId): boolean {
+  // Data lookup, NOT an id substring test — zone ids carry no side semantics a
+  // rename must preserve (the old endsWith('-rad') check inverted silently).
+  return ZONE_MAP[zone]?.team === team
 }
 
 export function cleanupBotState(playerId: string): void {
