@@ -168,11 +168,11 @@ export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
 export function tickBuffs(player: PlayerState): PlayerState {
   const buffs = player.buffs
     .map((b) => ({ ...b, ticksRemaining: b.ticksRemaining - 1 }))
-    // Preserve the aegis buff at ticksRemaining === 0 so handleDeaths can proc
+    // Preserve the backup buff at ticksRemaining === 0 so handleDeaths can proc
     // the resurrection even if the buff would have expired this tick. If the
-    // player survives this tick, the aegis is removed as expired at the end of
-    // handleDeaths (see GameLoop.handleDeaths' aegis-expiry sweep).
-    .filter((b) => b.ticksRemaining > 0 || b.id === 'aegis')
+    // player survives this tick, the backup is removed as expired at the end of
+    // handleDeaths (see GameLoop.handleDeaths' backup-expiry sweep).
+    .filter((b) => b.ticksRemaining > 0 || b.id === 'backup')
   return { ...player, buffs }
 }
 
@@ -390,7 +390,7 @@ export function dealAbilityDamage(
  * Dead NPCs are left in the array at 0 HP (`alive: false` for neutrals) rather
  * than filtered out: the cast bridge credits the kill by diffing HP against the
  * pre-cast buffer, and CreepAI reaps them at the end of the same tick. ICE,
- * Roshan and the Ancient are deliberately untouched — a second pass.
+ * Tenant and the Ancient are deliberately untouched — a second pass.
  */
 export function damageEnemyNpcsInZone(
   state: GameState,

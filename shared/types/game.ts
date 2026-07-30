@@ -134,7 +134,7 @@ export interface RuneState {
   tick: number
 }
 
-export interface RoshanState {
+export interface TenantState {
   alive: boolean
   hp: number
   maxHp: number
@@ -152,8 +152,8 @@ export interface GameState {
   ice: IceState[]
   ancients: { chaff: AncientState; audit: AncientState }
   runes: RuneState[]
-  roshan: RoshanState
-  aegis: { zone: string; tick: number; holderId: string | null } | null
+  tenant: TenantState
+  backup: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
   winner?: TeamId | null // set when the game ends (Ancient destroyed or surrender)
   surrenderVotes: { chaff: Set<string>; audit: Set<string> }
@@ -247,8 +247,8 @@ export type VisibleStateBase = Pick<
   | 'ice'
   | 'ancients'
   | 'runes'
-  | 'roshan'
-  | 'aegis'
+  | 'tenant'
+  | 'backup'
   | 'events'
   | 'timeOfDay'
   | 'dayNightTick'

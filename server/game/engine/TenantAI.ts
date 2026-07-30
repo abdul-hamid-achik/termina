@@ -1,28 +1,28 @@
 import type { GameState } from '~~/shared/types/game'
 import type {
   GameEngineEvent,
-  RoshanDamageEvent,
-  RoshanRespawnEvent,
-  RoshanKilledInternalEvent,
-  AegisPickedEvent,
+  TenantDamageEvent,
+  TenantRespawnEvent,
+  TenantKilledInternalEvent,
+  BackupPickedEvent,
 } from '~~/server/game/protocol/events'
-import { ROSHAN_ATTACK, ROSHAN_AEGIS_TICKS, ROSHAN_GOLD } from '~~/shared/constants/balance'
-import { shouldRoshanRespawn, respawnRoshan } from '~~/server/game/map/spawner'
+import { TENANT_ATTACK, TENANT_BACKUP_TICKS, TENANT_GOLD } from '~~/shared/constants/balance'
+import { shouldTenantRespawn, respawnTenant } from '~~/server/game/map/spawner'
 
-export interface RoshanAction {
+export interface TenantAction {
   targetId: string
   damage: number
 }
 
 /**
- * Roshan AI: attacks heroes in hollow, handles death/respawn.
+ * Tenant AI: attacks heroes in hollow, handles death/respawn.
  */
-export function runRoshanAI(state: GameState): RoshanAction[] {
-  const actions: RoshanAction[] = []
-  const roshan = state.roshan
+export function runTenantAI(state: GameState): TenantAction[] {
+  const actions: TenantAction[] = []
+  const tenant = state.tenant
 
-  // Roshan does nothing if dead or doesn't exist
-  if (!roshan || !roshan.alive) return actions
+  // Tenant does nothing if dead or doesn't exist
+  if (!tenant || !tenant.alive) return actions
 
   // Find enemy heroes in hollow (same zone)
   const enemyHeroes = Object.values(state.players).filter(
@@ -34,7 +34,7 @@ export function runRoshanAI(state: GameState): RoshanAction[] {
     const target = enemyHeroes.reduce((lowest, hero) => (hero.hp < lowest.hp ? hero : lowest))
     actions.push({
       targetId: target.id,
-      damage: ROSHAN_ATTACK,
+      damage: TENANT_ATTACK,
     })
   }
 
@@ -42,72 +42,72 @@ export function runRoshanAI(state: GameState): RoshanAction[] {
 }
 
 /**
- * Process Roshan damage from player attacks and check for death.
+ * Process Tenant damage from player attacks and check for death.
  * Returns updated state (with events kept OFF state.events — callers merge the
  * returned events array into the tick's allEvents) plus the events to emit.
  */
-export function processRoshanDamage(
+export function processTenantDamage(
   state: GameState,
   damageDealt: Map<string, number>, // playerId -> damage
-): { state: GameState; roshanKilled: boolean; aegisDropped: boolean; events: GameEngineEvent[] } {
-  let roshan = { ...state.roshan }
+): { state: GameState; tenantKilled: boolean; backupDropped: boolean; events: GameEngineEvent[] } {
+  let tenant = { ...state.tenant }
   const events: GameEngineEvent[] = []
-  let roshanKilled = false
-  let aegisDropped = false
+  let tenantKilled = false
+  let backupDropped = false
 
-  // Only alive Roshan can take damage
-  if (!roshan.alive) {
+  // Only alive Tenant can take damage
+  if (!tenant.alive) {
     // Check for respawn
-    if (shouldRoshanRespawn(roshan, state.tick)) {
-      roshan = respawnRoshan(roshan, state.tick)
+    if (shouldTenantRespawn(tenant, state.tick)) {
+      tenant = respawnTenant(tenant, state.tick)
       events.push({
-        _tag: 'roshan_respawn',
+        _tag: 'tenant_respawn',
         tick: state.tick,
-        hp: roshan.hp,
-        maxHp: roshan.maxHp,
-      } satisfies RoshanRespawnEvent)
+        hp: tenant.hp,
+        maxHp: tenant.maxHp,
+      } satisfies TenantRespawnEvent)
     }
     return {
-      state: { ...state, roshan },
-      roshanKilled: false,
-      aegisDropped: false,
+      state: { ...state, tenant },
+      tenantKilled: false,
+      backupDropped: false,
       events,
     }
   }
 
-  // Calculate total damage to Roshan this tick
+  // Calculate total damage to Tenant this tick
   let totalDamage = 0
   for (const [, damage] of damageDealt) {
     totalDamage += damage
   }
 
   if (totalDamage > 0) {
-    const newHp = Math.max(0, roshan.hp - totalDamage)
-    roshan = { ...roshan, hp: newHp }
+    const newHp = Math.max(0, tenant.hp - totalDamage)
+    tenant = { ...tenant, hp: newHp }
 
     events.push({
-      _tag: 'roshan_damage',
+      _tag: 'tenant_damage',
       tick: state.tick,
       damage: totalDamage,
       hp: newHp,
-      maxHp: roshan.maxHp,
-    } satisfies RoshanDamageEvent)
+      maxHp: tenant.maxHp,
+    } satisfies TenantDamageEvent)
 
-    // Roshan died
+    // Tenant died
     if (newHp <= 0) {
-      roshanKilled = true
-      aegisDropped = true
+      tenantKilled = true
+      backupDropped = true
 
-      // Update Roshan state to dead
-      roshan = {
+      // Update Tenant state to dead
+      tenant = {
         alive: false,
         hp: 0,
-        maxHp: roshan.maxHp,
+        maxHp: tenant.maxHp,
         deathTick: state.tick,
       }
 
-      // Drop aegis in hollow
-      const aegis = {
+      // Drop backup in hollow
+      const backup = {
         zone: 'hollow',
         tick: state.tick,
         holderId: null as string | null,
@@ -116,7 +116,7 @@ export function processRoshanDamage(
       // Award gold to damaging players (distributed by damage dealt)
       const totalDmg = Array.from(damageDealt.values()).reduce((a, b) => a + b, 0)
       const players = { ...state.players }
-      let remainingGold = ROSHAN_GOLD
+      let remainingGold = TENANT_GOLD
 
       for (const [playerId, damage] of damageDealt) {
         const share = Math.floor((damage / totalDmg) * remainingGold)
@@ -147,63 +147,63 @@ export function processRoshanDamage(
       }
 
       events.push({
-        _tag: 'roshan_killed',
+        _tag: 'tenant_killed',
         tick: state.tick,
-      } satisfies RoshanKilledInternalEvent)
+      } satisfies TenantKilledInternalEvent)
 
       return {
-        state: { ...state, players, roshan, aegis },
-        roshanKilled: true,
-        aegisDropped: true,
+        state: { ...state, players, tenant, backup },
+        tenantKilled: true,
+        backupDropped: true,
         events,
       }
     }
   }
 
   return {
-    state: { ...state, roshan },
-    roshanKilled,
-    aegisDropped,
+    state: { ...state, tenant },
+    tenantKilled,
+    backupDropped,
     events,
   }
 }
 
 /**
- * Handle aegis pickup by a player. Returns the updated state; the aegis_picked
+ * Handle backup pickup by a player. Returns the updated state; the backup_picked
  * event is returned separately so the caller (ActionResolver) can merge it into
  * the tick's allEvents instead of mutating state.events.
  */
-export function pickupAegis(
+export function pickupBackup(
   state: GameState,
   playerId: string,
 ): { state: GameState; event: GameEngineEvent | null } {
-  const aegis = state.aegis
-  if (!aegis) return { state, event: null }
+  const backup = state.backup
+  if (!backup) return { state, event: null }
 
   const player = state.players[playerId]
   if (!player || !player.alive) return { state, event: null }
 
-  // Player must be in hollow to pick up aegis
+  // Player must be in hollow to pick up backup
   if (player.zone !== 'hollow') return { state, event: null }
 
-  // Add aegis buff to player (respawn speed)
-  const aegisBuff = {
-    id: 'aegis',
-    stacks: ROSHAN_AEGIS_TICKS,
-    ticksRemaining: ROSHAN_AEGIS_TICKS,
-    source: 'roshan',
+  // Add backup buff to player (respawn speed)
+  const backupBuff = {
+    id: 'backup',
+    stacks: TENANT_BACKUP_TICKS,
+    ticksRemaining: TENANT_BACKUP_TICKS,
+    source: 'tenant',
   }
 
   const players = {
     ...state.players,
     [playerId]: {
       ...player,
-      buffs: [...player.buffs, aegisBuff],
+      buffs: [...player.buffs, backupBuff],
     },
   }
 
   return {
-    state: { ...state, players, aegis: null },
-    event: { _tag: 'aegis_picked', tick: state.tick, playerId } satisfies AegisPickedEvent,
+    state: { ...state, players, backup: null },
+    event: { _tag: 'backup_picked', tick: state.tick, playerId } satisfies BackupPickedEvent,
   }
 }

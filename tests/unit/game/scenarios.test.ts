@@ -20,8 +20,8 @@ function baseState(): GameState {
       audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
     },
     runes: [],
-    roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
-    aegis: null,
+    tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
@@ -30,11 +30,11 @@ function baseState(): GameState {
 }
 
 describe('applyScenario (dev seed scenarios)', () => {
-  it('roshan_dead kills Roshan and stamps deathTick at the current tick', () => {
-    const s = applyScenario({ ...baseState(), tick: 7 }, 'roshan_dead')
-    expect(s.roshan.alive).toBe(false)
-    expect(s.roshan.hp).toBe(0)
-    expect(s.roshan.deathTick).toBe(7)
+  it('tenant_dead kills Tenant and stamps deathTick at the current tick', () => {
+    const s = applyScenario({ ...baseState(), tick: 7 }, 'tenant_dead')
+    expect(s.tenant.alive).toBe(false)
+    expect(s.tenant.hp).toBe(0)
+    expect(s.tenant.deathTick).toBe(7)
   })
 
   it('core_vulnerable marks only the Audit Ancient vulnerable', () => {
@@ -145,12 +145,12 @@ describe('applyScenario (dev seed scenarios)', () => {
 
   it('does not mutate the input state', () => {
     const base = baseState()
-    applyScenario(base, 'roshan_dead')
-    expect(base.roshan.alive).toBe(true) // original untouched
+    applyScenario(base, 'tenant_dead')
+    expect(base.tenant.alive).toBe(true) // original untouched
   })
 
   it('KNOWN_SCENARIOS lists the shapeable scenarios', () => {
-    expect(KNOWN_SCENARIOS).toContain('roshan_dead')
+    expect(KNOWN_SCENARIOS).toContain('tenant_dead')
     expect(KNOWN_SCENARIOS).toContain('core_vulnerable')
     expect(KNOWN_SCENARIOS).toContain('laning_combat')
   })

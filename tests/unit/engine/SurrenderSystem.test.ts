@@ -10,7 +10,7 @@ import {
 } from '~~/server/game/engine/SurrenderSystem'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -65,8 +65,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',

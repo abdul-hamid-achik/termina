@@ -41,7 +41,7 @@ const BUFF_META: Record<string, BuffMeta> = {
   shield: { label: 'Shield', kind: 'positive' },
   spellblock: { label: 'Spell Block', kind: 'positive' },
   hardened: { label: 'Hardened', kind: 'positive' },
-  aegis: { label: 'Aegis', kind: 'positive' },
+  backup: { label: 'Backup', kind: 'positive' },
   invulnerable: { label: 'Invulnerable', kind: 'positive' },
   stealth: { label: 'Stealth', kind: 'positive' },
   invis: { label: 'Invisible', kind: 'positive' },

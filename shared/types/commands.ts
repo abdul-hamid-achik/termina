@@ -3,7 +3,7 @@ export type TargetRef =
   | { kind: 'creep'; index: number }
   | { kind: 'neutral'; index: number }
   | { kind: 'ice'; zone: string }
-  | { kind: 'roshan' }
+  | { kind: 'tenant' }
   | { kind: 'ancient' }
   | { kind: 'zone'; zone: string }
   | { kind: 'self' }
@@ -16,7 +16,7 @@ export type Command =
   | { type: 'buy'; item: string }
   | { type: 'sell'; item: string }
   | { type: 'ward'; zone: string }
-  | { type: 'aegis' }
+  | { type: 'backup' }
   | { type: 'rune' }
   | { type: 'scan' }
   | { type: 'status' }

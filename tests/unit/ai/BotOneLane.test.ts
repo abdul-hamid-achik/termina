@@ -4,7 +4,7 @@ import { processTick } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame, getBotLane } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import { zonesForMap } from '~~/shared/constants/maps'
 
@@ -68,8 +68,8 @@ function oneLaneState(players: Record<string, PlayerState>): GameState {
     ice: initializeIce(zones),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',

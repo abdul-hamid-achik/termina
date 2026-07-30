@@ -168,7 +168,7 @@ describe('Zone Constants', () => {
   })
 
   describe('map layout validation', () => {
-    it('roshan pit is reachable only from cache-top', () => {
+    it('tenant pit is reachable only from cache-top', () => {
       const rosh = ZONE_MAP['hollow']!
       expect(rosh.adjacentTo).toEqual(['cache-top'])
     })

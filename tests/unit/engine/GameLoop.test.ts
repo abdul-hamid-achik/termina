@@ -3,7 +3,7 @@ import { Effect } from 'effect'
 import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
   DAY_DURATION_TICKS,
@@ -66,8 +66,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
@@ -442,7 +442,7 @@ describe('GameLoop', () => {
       expect(deathEvents.length).toBeGreaterThan(0)
     })
 
-    it('should resurrect player with aegis instead of setting respawn timer', () => {
+    it('should resurrect player with backup instead of setting respawn timer', () => {
       const state = makeGameState({
         tick: 10,
         players: {
@@ -453,16 +453,16 @@ describe('GameLoop', () => {
             mp: 0,
             zone: 'mid-river',
             respawnTick: null,
-            // Died mid-walk: the aegis revive must ALSO cancel the auto-path
+            // Died mid-walk: the backup revive must ALSO cancel the auto-path
             // (or the hero resumes marching into whoever just killed them).
             moveTarget: 'audit-base',
-            buffs: [{ id: 'aegis', stacks: 1, ticksRemaining: 999, source: 'roshan' }],
+            buffs: [{ id: 'backup', stacks: 1, ticksRemaining: 999, source: 'tenant' }],
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
-      const result = Effect.runSync(processTick('game-aegis', state))
+      const result = Effect.runSync(processTick('game-backup', state))
       const p1 = result.state.players['p1']!
 
       expect(p1.alive).toBe(true)
@@ -473,11 +473,11 @@ describe('GameLoop', () => {
       expect(p1.zone).toBe('mid-river')
       expect(p1.moveTarget ?? null).toBeNull()
 
-      const aegisEvents = result.events.filter((e) => e._tag === 'aegis_used')
-      expect(aegisEvents.length).toBe(1)
+      const backupEvents = result.events.filter((e) => e._tag === 'backup_used')
+      expect(backupEvents.length).toBe(1)
     })
 
-    it('should set respawn timer for player without aegis', () => {
+    it('should set respawn timer for player without backup', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: null }),
@@ -485,14 +485,14 @@ describe('GameLoop', () => {
         },
       })
 
-      const result = Effect.runSync(processTick('game-no-aegis', state))
+      const result = Effect.runSync(processTick('game-no-backup', state))
       const p1 = result.state.players['p1']!
 
       expect(p1.alive).toBe(false)
       expect(p1.respawnTick).not.toBeNull()
     })
 
-    it('should consume aegis buff on resurrection', () => {
+    it('should consume backup buff on resurrection', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -502,7 +502,7 @@ describe('GameLoop', () => {
             mp: 0,
             respawnTick: null,
             buffs: [
-              { id: 'aegis', stacks: 1, ticksRemaining: 999, source: 'roshan' },
+              { id: 'backup', stacks: 1, ticksRemaining: 999, source: 'tenant' },
               { id: 'regeneration', stacks: 1, ticksRemaining: 5, source: 'rune' },
             ],
           }),
@@ -510,11 +510,11 @@ describe('GameLoop', () => {
         },
       })
 
-      const result = Effect.runSync(processTick('game-aegis-consume', state))
+      const result = Effect.runSync(processTick('game-backup-consume', state))
       const p1 = result.state.players['p1']!
 
       expect(p1.alive).toBe(true)
-      expect(p1.buffs.some((b) => b.id === 'aegis')).toBe(false)
+      expect(p1.buffs.some((b) => b.id === 'backup')).toBe(false)
       expect(p1.buffs.some((b) => b.id === 'regeneration')).toBe(true)
     })
   })

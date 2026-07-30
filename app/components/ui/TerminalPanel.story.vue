@@ -28,7 +28,7 @@ import TerminalPanel from './TerminalPanel.vue'
     <Variant title="highlight variant">
       <div class="bg-bg-primary p-2" style="width: 320px">
         <TerminalPanel title="Objective" variant="highlight">
-          <p class="font-mono text-xs text-text-primary">Roshan is vulnerable — group mid.</p>
+          <p class="font-mono text-xs text-text-primary">Tenant is vulnerable — group mid.</p>
         </TerminalPanel>
       </div>
     </Variant>

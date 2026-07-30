@@ -31,7 +31,7 @@ const commandTicker = [
   'buy blades_of_attack',
   'ward mid-river',
   'deny creep:1',
-  'attack roshan',
+  'attack tenant',
   'cast r',
   'glyph',
   'attack ice:mid-t1-audit',

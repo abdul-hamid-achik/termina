@@ -283,18 +283,18 @@ describe('useCommands', () => {
         expect(result.error).toContain('Usage: attack')
       })
 
-      // Roshan and the jungle camps are fully resolved server-side and farmed by
+      // Tenant and the jungle camps are fully resolved server-side and farmed by
       // bots every match; without these two branches a human could not express
       // either intent at all.
-      it('parses attack roshan (and the rosh shorthand)', () => {
+      it('parses attack tenant (and the rosh shorthand)', () => {
         const { parse } = useCommands()
 
-        expect(parse('attack roshan')).toEqual({
-          command: { type: 'attack', target: { kind: 'roshan' } },
+        expect(parse('attack tenant')).toEqual({
+          command: { type: 'attack', target: { kind: 'tenant' } },
           error: null,
         })
         expect(parse('attack rosh')).toEqual({
-          command: { type: 'attack', target: { kind: 'roshan' } },
+          command: { type: 'attack', target: { kind: 'tenant' } },
           error: null,
         })
       })
@@ -318,17 +318,17 @@ describe('useCommands', () => {
         expect(result.error).toContain('Invalid target')
       })
 
-      it('advertises roshan and neutral in the usage and invalid-target hints', () => {
+      it('advertises tenant and neutral in the usage and invalid-target hints', () => {
         const { parse } = useCommands()
 
         const usage = parse('attack').error!
-        expect(usage).toContain('roshan')
+        expect(usage).toContain('tenant')
         expect(usage).toContain('neutral:0')
         // There is no hero `axe` in this game — the old example was unusable.
         expect(usage).not.toContain('hero:axe')
 
         const invalid = parse('attack xyz_invalid').error!
-        expect(invalid).toContain('roshan')
+        expect(invalid).toContain('tenant')
         expect(invalid).toContain('neutral:<index>')
       })
     })
@@ -1206,15 +1206,13 @@ describe('useCommands', () => {
         expect(suggestions[0]!.description).toContain('centaur')
       })
 
-      it('suggests roshan only from inside the pit', () => {
+      it('suggests tenant only from inside the pit', () => {
         const { autocomplete } = useCommands()
 
-        expect(autocomplete('attack rosh', makeContext()).map((s) => s.text)).not.toContain(
-          'roshan',
-        )
+        expect(autocomplete('attack ten', makeContext()).map((s) => s.text)).not.toContain('tenant')
 
         const inPit = makeContext({ player: makePlayer({ zone: 'hollow' }) })
-        expect(autocomplete('attack rosh', inPit).map((s) => s.text)).toContain('roshan')
+        expect(autocomplete('attack ten', inPit).map((s) => s.text)).toContain('tenant')
       })
     })
 
@@ -1968,15 +1966,15 @@ describe('validateCommand', () => {
     ).toBeNull()
   })
 
-  it('rejects attacking Roshan from outside the pit', () => {
-    expect(validateCommand({ type: 'attack', target: { kind: 'roshan' } }, makeContext())).toMatch(
+  it('rejects attacking Tenant from outside the pit', () => {
+    expect(validateCommand({ type: 'attack', target: { kind: 'tenant' } }, makeContext())).toMatch(
       /hollow/,
     )
   })
 
-  it('allows attacking Roshan from inside the pit', () => {
+  it('allows attacking Tenant from inside the pit', () => {
     const ctx = makeContext({ player: makePlayer({ zone: 'hollow' }) })
-    expect(validateCommand({ type: 'attack', target: { kind: 'roshan' } }, ctx)).toBeNull()
+    expect(validateCommand({ type: 'attack', target: { kind: 'tenant' } }, ctx)).toBeNull()
   })
 
   it('rejects a neutral index that names a camp in another zone', () => {

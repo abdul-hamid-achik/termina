@@ -2,72 +2,72 @@ import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN } from './harness'
 
 /**
- * Engine-truth coverage for the Roshan / aegis objective loop, driven through
- * the real processTick (no browser/server/DB). Roshan can only be hit from the
- * pit; killing it drops the aegis on the ground; a hero in the pit then claims
- * it with the `aegis` action and gains the respawn buff.
+ * Engine-truth coverage for the Tenant / backup objective loop, driven through
+ * the real processTick (no browser/server/DB). Tenant can only be hit from the
+ * pit; killing it drops the backup on the ground; a hero in the pit then claims
+ * it with the `backup` action and gains the respawn buff.
  */
-describe('objectives: Roshan & aegis', () => {
-  it('a hero in the pit kills Roshan — it dies and the aegis drops to the ground', async () => {
+describe('objectives: Tenant & backup', () => {
+  it('a hero in the pit kills Tenant — it dies and the backup drops to the ground', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'hollow' } },
-      // Roshan alive at 1 HP — any basic attack finishes it.
-      roshan: { ...s.roshan, alive: true, hp: 1 },
-      aegis: null,
+      // Tenant alive at 1 HP — any basic attack finishes it.
+      tenant: { ...s.tenant, alive: true, hp: 1 },
+      backup: null,
     }))
 
-    game.submit({ type: 'attack', target: { kind: 'roshan' } })
+    game.submit({ type: 'attack', target: { kind: 'tenant' } })
     await game.tick()
 
     const state = await game.state()
-    expect(state.roshan.alive).toBe(false)
-    expect(state.aegis).not.toBeNull()
-    expect(state.aegis?.zone).toBe('hollow')
-    expect(game.lastEvents.some((e) => e._tag === 'roshan_killed')).toBe(true)
+    expect(state.tenant.alive).toBe(false)
+    expect(state.backup).not.toBeNull()
+    expect(state.backup?.zone).toBe('hollow')
+    expect(game.lastEvents.some((e) => e._tag === 'tenant_killed')).toBe(true)
   })
 
-  it('Roshan cannot be hit from outside the pit (the zone gate holds)', async () => {
+  it('Tenant cannot be hit from outside the pit (the zone gate holds)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      roshan: { ...s.roshan, alive: true, hp: 100 },
-      aegis: null,
+      tenant: { ...s.tenant, alive: true, hp: 100 },
+      backup: null,
     }))
 
-    game.submit({ type: 'attack', target: { kind: 'roshan' } })
+    game.submit({ type: 'attack', target: { kind: 'tenant' } })
     await game.tick()
 
     const state = await game.state()
-    expect(state.roshan.alive).toBe(true)
-    expect(state.roshan.hp).toBe(100) // untouched from the wrong zone
-    expect(state.aegis).toBeNull()
+    expect(state.tenant.alive).toBe(true)
+    expect(state.tenant.hp).toBe(100) // untouched from the wrong zone
+    expect(state.backup).toBeNull()
     // ...and the player is told why, rather than the attack vanishing silently.
     expect(
       game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('from the pit')),
     ).toBe(true)
   })
 
-  it('a hero in the pit claims a grounded aegis and gains the aegis buff', async () => {
+  it('a hero in the pit claims a grounded backup and gains the backup buff', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'hollow', buffs: [] } },
-      aegis: { zone: 'hollow', tick: s.tick, holderId: null },
+      backup: { zone: 'hollow', tick: s.tick, holderId: null },
     }))
 
-    game.submit({ type: 'aegis' })
+    game.submit({ type: 'backup' })
     await game.tick()
 
     const me = await game.me()
-    expect(me.buffs.some((b) => b.id === 'aegis')).toBe(true)
-    // The ground aegis is consumed on pickup.
-    expect((await game.state()).aegis).toBeNull()
+    expect(me.buffs.some((b) => b.id === 'backup')).toBe(true)
+    // The ground backup is consumed on pickup.
+    expect((await game.state()).backup).toBeNull()
   })
 
-  it('an aegis holder who dies is reborn at full HP, consuming the aegis (the payoff)', async () => {
+  it('an backup holder who dies is reborn at full HP, consuming the backup (the payoff)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => {
       const me = s.players[HUMAN]!
@@ -80,7 +80,7 @@ describe('objectives: Roshan & aegis', () => {
             alive: false, // just died this tick…
             respawnTick: null, // …and not yet sent to the respawn queue
             hp: 0,
-            buffs: [{ id: 'aegis', stacks: 300, ticksRemaining: 300, source: 'roshan' }],
+            buffs: [{ id: 'backup', stacks: 300, ticksRemaining: 300, source: 'tenant' }],
           },
         },
       }
@@ -92,8 +92,8 @@ describe('objectives: Roshan & aegis', () => {
     expect(me.alive).toBe(true) // reborn, not respawning
     expect(me.respawnTick).toBeNull()
     expect(me.hp).toBe(me.maxHp) // back at full HP
-    expect(me.buffs.some((b) => b.id === 'aegis')).toBe(false) // aegis consumed
-    expect(game.lastEvents.some((e) => e._tag === 'aegis_used' && e.playerId === HUMAN)).toBe(true)
+    expect(me.buffs.some((b) => b.id === 'backup')).toBe(false) // backup consumed
+    expect(game.lastEvents.some((e) => e._tag === 'backup_used' && e.playerId === HUMAN)).toBe(true)
   })
 })
 

@@ -28,7 +28,7 @@ import { distributePassiveGold, awardKill, xpComebackMultiplier } from './GoldDi
 import { runCreepAI, applyCreepActions, enforceCreepZoneCap } from './CreepAI'
 import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
 import { runIceAI, applyIceActions } from './IceAI'
-import { runRoshanAI, processRoshanDamage } from './RoshanAI'
+import { runTenantAI, processTenantDamage } from './TenantAI'
 import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
 import { processTraps } from './TrapSystem'
 import { resolvePhysicalHit } from './CombatResolver'
@@ -429,7 +429,7 @@ export function processTick(
     // 3.7. Expire glyph invulnerability
     currentState = expireGlyph(currentState)
 
-    // 4–5.6. NPC AI (creeps, neutrals, ice, Roshan)
+    // 4–5.6. NPC AI (creeps, neutrals, ice, Tenant)
     const npcResult = runNPCAI(currentState, {
       heroAttackers: resolved.heroAttackers,
       priorEvents: allEvents,
@@ -1176,10 +1176,10 @@ export function runHeroPassives(
 }
 
 /**
- * Run all NPC AIs (creeps, neutrals, ice, Roshan) and apply their actions.
+ * Run all NPC AIs (creeps, neutrals, ice, Tenant) and apply their actions.
  *
  * Ice AI needs `heroAttackers` from the prior `resolveActions` step so it
- * can prioritize heroes that recently attacked allies. Roshan damage is
+ * can prioritize heroes that recently attacked allies. Tenant damage is
  * tallied by scanning the events emitted earlier in the tick.
  */
 export function runNPCAI(
@@ -1204,11 +1204,11 @@ export function runNPCAI(
   s = iceResult.state
   events.push(...iceResult.events)
 
-  // Roshan attacks
-  for (const action of runRoshanAI(s)) {
+  // Tenant attacks
+  for (const action of runTenantAI(s)) {
     const target = s.players[action.targetId]
     if (target && target.alive) {
-      // Route through the shared mitigation chain so Roshan hits honor item
+      // Route through the shared mitigation chain so Tenant hits honor item
       // defense, vuln amps, Kernel 'hardened', shields, and Echo phaseShift —
       // previously the inline path skipped everything but immunity and emitted
       // the RAW attack value as the damage amount.
@@ -1224,7 +1224,7 @@ export function runNPCAI(
       events.push({
         _tag: 'damage',
         tick: s.tick,
-        sourceId: 'roshan',
+        sourceId: 'tenant',
         targetId: action.targetId,
         amount: hit.damageDealt,
         damageType: 'physical',
@@ -1232,19 +1232,19 @@ export function runNPCAI(
     }
   }
 
-  // Roshan damage tally — sum hero damage on roshan from prior + new events.
-  const roshanDamage = new Map<string, number>()
+  // Tenant damage tally — sum hero damage on tenant from prior + new events.
+  const tenantDamage = new Map<string, number>()
   for (const event of [...ctx.priorEvents, ...events]) {
-    if (event._tag === 'damage' && event.targetId === 'roshan') {
-      roshanDamage.set(event.sourceId, (roshanDamage.get(event.sourceId) ?? 0) + event.amount)
+    if (event._tag === 'damage' && event.targetId === 'tenant') {
+      tenantDamage.set(event.sourceId, (tenantDamage.get(event.sourceId) ?? 0) + event.amount)
     }
   }
-  const roshanResult = processRoshanDamage(s, roshanDamage)
-  s = roshanResult.state
-  // processRoshanDamage keeps events OFF state.events — merge them here so they
+  const tenantResult = processTenantDamage(s, tenantDamage)
+  s = tenantResult.state
+  // processTenantDamage keeps events OFF state.events — merge them here so they
   // flow into allEvents via runNPCAI's return (single-source, no state.events
   // mutation, no as-unknown-as casts).
-  events.push(...roshanResult.events)
+  events.push(...tenantResult.events)
 
   return { state: s, events }
 }
@@ -1407,21 +1407,21 @@ function handleDeaths(
 
   for (const [pid, player] of Object.entries(players)) {
     if (!player.alive && player.respawnTick === null) {
-      if (player.buffs.some((b) => b.id === 'aegis')) {
+      if (player.buffs.some((b) => b.id === 'backup')) {
         players[pid] = {
           ...player,
           alive: true,
           hp: player.maxHp,
           mp: player.maxMp,
-          buffs: player.buffs.filter((b) => b.id !== 'aegis'),
-          // Death cancels the standing orders on this branch too — an aegis
+          buffs: player.buffs.filter((b) => b.id !== 'backup'),
+          // Death cancels the standing orders on this branch too — an backup
           // revive must not resume marching into, or swinging at, whoever just
           // killed you.
           moveTarget: null,
           attackTarget: null,
         }
         events.push({
-          _tag: 'aegis_used',
+          _tag: 'backup_used',
           tick: state.tick,
           playerId: pid,
         })
@@ -1611,15 +1611,15 @@ function handleDeaths(
     }
   }
 
-  // Aegis expiry sweep: tickBuffs preserves the aegis buff at ticksRemaining ===
+  // Backup expiry sweep: tickBuffs preserves the backup buff at ticksRemaining ===
   // 0 so the death loop above can proc it. If the player survived this tick
-  // (no death → no aegis consumption), remove the expired aegis now so it
+  // (no death → no backup consumption), remove the expired backup now so it
   // doesn't linger as a stale buff.
   for (const [pid, player] of Object.entries(players)) {
-    if (player.alive && player.buffs.some((b) => b.id === 'aegis' && b.ticksRemaining <= 0)) {
+    if (player.alive && player.buffs.some((b) => b.id === 'backup' && b.ticksRemaining <= 0)) {
       players[pid] = {
         ...player,
-        buffs: player.buffs.filter((b) => !(b.id === 'aegis' && b.ticksRemaining <= 0)),
+        buffs: player.buffs.filter((b) => !(b.id === 'backup' && b.ticksRemaining <= 0)),
       }
       changed = true
     }

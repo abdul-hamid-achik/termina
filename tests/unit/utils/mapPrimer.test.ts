@@ -32,7 +32,7 @@ describe('buildMapPrimerZones', () => {
     expect(zones.find((z) => z.id === 'chaff-fountain')!.ice).toBeUndefined()
   })
 
-  it('marks Roshan alive on the pit', () => {
-    expect(zones.find((z) => z.id === 'hollow')!.roshan).toEqual({ alive: true, respawnIn: 0 })
+  it('marks Tenant alive on the pit', () => {
+    expect(zones.find((z) => z.id === 'hollow')!.tenant).toEqual({ alive: true, respawnIn: 0 })
   })
 })

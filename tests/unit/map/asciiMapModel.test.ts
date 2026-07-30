@@ -72,7 +72,7 @@ describe('asciiMapModel', () => {
       expect(zoneShortCode('bot-t3-chaff')).toBe('B3')
     })
 
-    it('codes rivers, runes, jungle, and roshan', () => {
+    it('codes rivers, runes, jungle, and tenant', () => {
       expect(zoneShortCode('top-river')).toBe('TR')
       expect(zoneShortCode('mid-river')).toBe('MR')
       expect(zoneShortCode('bot-river')).toBe('BR')
@@ -131,7 +131,7 @@ describe('asciiMapModel', () => {
       expect(ancientLabel(makeAncient())).toBe('100%')
     })
 
-    it('shows a razed marker (not ☠ — that is Roshan) when destroyed', () => {
+    it('shows a razed marker (not ☠ — that is Tenant) when destroyed', () => {
       // bare ✗; callers prepend ◈ → ◈✗
       expect(ancientLabel(makeAncient({ hp: 0, alive: false }))).toBe('✗')
     })
@@ -248,12 +248,12 @@ describe('asciiMapModel', () => {
       expect(cellText(makeZone({ id: 'cache-top' }))).not.toContain('✦')
     })
 
-    it('flags Roshan up vs respawning', () => {
-      expect(cellText(makeZone({ id: 'hollow', roshan: { alive: true, respawnIn: 0 } }))).toContain(
+    it('flags Tenant up vs respawning', () => {
+      expect(cellText(makeZone({ id: 'hollow', tenant: { alive: true, respawnIn: 0 } }))).toContain(
         'UP',
       )
       expect(
-        cellText(makeZone({ id: 'hollow', roshan: { alive: false, respawnIn: 45 } })),
+        cellText(makeZone({ id: 'hollow', tenant: { alive: false, respawnIn: 45 } })),
       ).toContain('↻45c')
     })
 
@@ -447,12 +447,12 @@ describe('asciiMapModel', () => {
       expect(zoneAriaLabel(makeZone({ runeType: 'dd' }))).toContain('dd rune available')
     })
 
-    it('announces Roshan state for screen readers', () => {
-      expect(zoneAriaLabel(makeZone({ roshan: { alive: true, respawnIn: 0 } }))).toContain(
-        'Roshan alive',
+    it('announces Tenant state for screen readers', () => {
+      expect(zoneAriaLabel(makeZone({ tenant: { alive: true, respawnIn: 0 } }))).toContain(
+        'Tenant alive',
       )
-      expect(zoneAriaLabel(makeZone({ roshan: { alive: false, respawnIn: 30 } }))).toContain(
-        'Roshan respawns in 30c',
+      expect(zoneAriaLabel(makeZone({ tenant: { alive: false, respawnIn: 30 } }))).toContain(
+        'Tenant respawns in 30c',
       )
     })
   })
@@ -537,17 +537,17 @@ describe('asciiMapModel', () => {
       ).toContain('✦ haste rune')
     })
 
-    it('shows a Roshan chip (up vs respawn countdown)', () => {
+    it('shows a Tenant chip (up vs respawn countdown)', () => {
       expect(
-        compactIndicators(makeZone({ id: 'hollow', roshan: { alive: true, respawnIn: 0 } })).map(
+        compactIndicators(makeZone({ id: 'hollow', tenant: { alive: true, respawnIn: 0 } })).map(
           (i) => i.text,
         ),
-      ).toContain('☠ Roshan UP')
+      ).toContain('☠ Tenant UP')
       expect(
-        compactIndicators(makeZone({ id: 'hollow', roshan: { alive: false, respawnIn: 60 } })).map(
+        compactIndicators(makeZone({ id: 'hollow', tenant: { alive: false, respawnIn: 60 } })).map(
           (i) => i.text,
         ),
-      ).toContain('☠ Roshan ↻ 60c')
+      ).toContain('☠ Tenant ↻ 60c')
     })
   })
 
@@ -578,7 +578,7 @@ describe('asciiMapModel', () => {
       expect(colHeadersFor('one_lane')).toEqual(['COLDSTORE'])
     })
 
-    it('renders the two-lane map with top + mid lanes, jungle, rune, and roshan', () => {
+    it('renders the two-lane map with top + mid lanes, jungle, rune, and tenant', () => {
       const rows = mapRowsFor('two_lane')
       expect(rows).toBe(TWO_LANE_MAP_ROWS)
       expect(rows).toHaveLength(11)

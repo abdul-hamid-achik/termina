@@ -49,8 +49,8 @@ function makeState(players: PlayerState[], tick: number): GameState {
     neutrals: [],
     ice: [],
     runes: [],
-    roshan: { alive: false, hp: 0, maxHp: 0, deathTick: null },
-    aegis: null,
+    tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    backup: null,
     events: [],
   } as unknown as GameState
 }

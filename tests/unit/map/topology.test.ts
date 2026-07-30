@@ -350,7 +350,7 @@ describe('Topology', () => {
     const ids = new Set(twoLane.map((z) => z.id))
     const byId = new Map<string, Zone>(twoLane.map((z) => [z.id, z]))
 
-    it('is exactly 22 zones (bases + top + mid + top jungles + cache-top + roshan)', () => {
+    it('is exactly 22 zones (bases + top + mid + top jungles + cache-top + tenant)', () => {
       expect(twoLane).toHaveLength(22)
     })
 
@@ -370,7 +370,7 @@ describe('Topology', () => {
       }
     })
 
-    it('keeps the top-side river objectives (cache-top + roshan)', () => {
+    it('keeps the top-side river objectives (cache-top + tenant)', () => {
       expect(ids.has('cache-top')).toBe(true)
       expect(ids.has('hollow')).toBe(true)
     })

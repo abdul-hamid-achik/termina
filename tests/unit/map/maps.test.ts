@@ -58,7 +58,7 @@ describe('maps', () => {
       }
     })
 
-    it('excludes side lanes, jungle, runes, and roshan', () => {
+    it('excludes side lanes, jungle, runes, and tenant', () => {
       for (const id of [
         'top-river',
         'bot-river',
@@ -97,7 +97,7 @@ describe('maps', () => {
     const ids = new Set(TWO_LANE_ZONES.map((z) => z.id))
     const byId = new Map<string, Zone>(TWO_LANE_ZONES.map((z) => [z.id, z]))
 
-    it('contains exactly the top + mid lanes, their jungles, cache-top, and roshan', () => {
+    it('contains exactly the top + mid lanes, their jungles, cache-top, and tenant', () => {
       // 4 bases/fountains + 7 top lane + 7 mid lane + 2 jungles + 2 objectives = 22
       expect(TWO_LANE_ZONES).toHaveLength(22)
       for (const id of [

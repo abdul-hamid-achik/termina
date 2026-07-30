@@ -45,8 +45,8 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
-    aegis: null,
+    tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
@@ -233,10 +233,10 @@ describe('runNPCAI', () => {
     expect(Array.isArray(result.events)).toBe(true)
   })
 
-  it('damages a hero in hollow when Roshan is alive', () => {
+  it('damages a hero in hollow when Tenant is alive', () => {
     const state = makeState({
       tick: 1,
-      roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null, zone: 'hollow' } as never,
+      tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null, zone: 'hollow' } as never,
       players: {
         p1: {
           id: 'p1',
@@ -270,7 +270,7 @@ describe('runNPCAI', () => {
       },
     })
     const result = runNPCAI(state, { heroAttackers: new Set(), priorEvents: [] })
-    // Hero should have taken some damage from Roshan (or none, if roshan isn't in pit; just sanity check no throw)
+    // Hero should have taken some damage from Tenant (or none, if tenant isn't in pit; just sanity check no throw)
     expect(result.state.players['p1']!.hp).toBeLessThanOrEqual(1000)
   })
 })

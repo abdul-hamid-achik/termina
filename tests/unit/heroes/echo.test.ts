@@ -67,8 +67,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     neutrals: [],
     ice: [],
     runes: [],
-    roshan: { alive: false, hp: 0, maxHp: 0, deathTick: null },
-    aegis: null,
+    tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    backup: null,
     events: [],
     ...overrides,
   }

@@ -238,7 +238,7 @@ describe('VisionCalculator', () => {
             team: 'chaff',
             zone: 'mid-t1-chaff',
             name: 'Ally',
-            attackTarget: { kind: 'roshan' },
+            attackTarget: { kind: 'tenant' },
           }),
         },
       })
@@ -249,7 +249,7 @@ describe('VisionCalculator', () => {
       expect('attackTarget' in enemy).toBe(false)
       // Allies still see it — it drives the [hold] readout on their own panel.
       const ally = filtered.players['p2'] as PlayerState
-      expect(ally.attackTarget).toEqual({ kind: 'roshan' })
+      expect(ally.attackTarget).toEqual({ kind: 'tenant' })
     })
 
     it('keeps a fogged enemy KDA + level public (scoreboard shows it even in fog)', () => {

@@ -20,8 +20,8 @@ function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleSt
       audit: { team: 'audit', hp: 750, maxHp: 750, alive: true, vulnerable: false },
     },
     runes: [],
-    roshan: { alive: true, hp: 500, maxHp: 500, deathTick: null },
-    aegis: null,
+    tenant: { alive: true, hp: 500, maxHp: 500, deathTick: null },
+    backup: null,
     events: [],
     visibleZones: [],
     timeOfDay: 'day',
@@ -52,21 +52,21 @@ describe('StateDelta', () => {
       expect(delta).toHaveProperty('visibleZones')
     })
 
-    it('omits unchanged pass-through fields (teams, ice, ancients, roshan, etc.)', () => {
+    it('omits unchanged pass-through fields (teams, ice, ancients, tenant, etc.)', () => {
       const teams = {
         chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
         audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
       }
       const ice = [] as PlayerVisibleState['ice']
-      const roshan = { alive: true, hp: 500, maxHp: 500, deathTick: null }
-      const prev = makeState({ tick: 1, teams, ice, roshan })
-      const current = makeState({ tick: 2, teams, ice, roshan })
+      const tenant = { alive: true, hp: 500, maxHp: 500, deathTick: null }
+      const prev = makeState({ tick: 1, teams, ice, tenant })
+      const current = makeState({ tick: 2, teams, ice, tenant })
       const delta = computeDelta(current, prev) as Partial<PlayerVisibleState>
 
       // Same reference → omitted from delta.
       expect(delta).not.toHaveProperty('teams')
       expect(delta).not.toHaveProperty('ice')
-      expect(delta).not.toHaveProperty('roshan')
+      expect(delta).not.toHaveProperty('tenant')
     })
 
     it('includes changed pass-through fields (teams, ice, etc.)', () => {

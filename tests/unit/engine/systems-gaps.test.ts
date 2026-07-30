@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import type { GameState, PlayerState, RoshanState } from '~~/shared/types/game'
+import type { GameState, PlayerState, TenantState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeTenant } from '~~/server/game/map/spawner'
 import { buyback, calculateBuybackCost, canBuyback } from '~~/server/game/engine/BuybackSystem'
 import { processSpecialActions, type PlayerAction } from '~~/server/game/engine/GameLoop'
 import { getEffectiveAttack, getTalentStatBonus } from '~~/server/game/engine/EffectiveStats'
 import { TALENT_TREES } from '~~/shared/constants/talents'
-import { pickupAegis, processRoshanDamage } from '~~/server/game/engine/RoshanAI'
+import { pickupBackup, processTenantDamage } from '~~/server/game/engine/TenantAI'
 import {
   calculateVision,
   filterStateForPlayer,
@@ -16,8 +16,8 @@ import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
   BUYBACK_COOLDOWN_TICKS,
-  ROSHAN_AEGIS_TICKS,
-  ROSHAN_RESPAWN_TICKS,
+  TENANT_BACKUP_TICKS,
+  TENANT_RESPAWN_TICKS,
   NIGHT_VISION_PENALTY,
 } from '~~/shared/constants/balance'
 
@@ -66,8 +66,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     ...overrides,
   }
@@ -180,62 +180,62 @@ describe('systems-gaps: TALENT stat-bonus effect', () => {
   })
 })
 
-describe('systems-gaps: AEGIS ground pickup', () => {
-  it('pickupAegis in hollow applies aegis buff, clears the ground aegis, emits aegis_picked', () => {
+describe('systems-gaps: BACKUP ground pickup', () => {
+  it('pickupBackup in hollow applies backup buff, clears the ground backup, emits backup_picked', () => {
     const state = makeGameState({
       tick: 120,
-      aegis: { zone: 'hollow', tick: 100, holderId: null },
+      backup: { zone: 'hollow', tick: 100, holderId: null },
       players: { p1: makePlayer({ id: 'p1', zone: 'hollow' }) },
     })
 
-    const { state: after, event } = pickupAegis(state, 'p1')
+    const { state: after, event } = pickupBackup(state, 'p1')
 
-    const buff = after.players['p1']!.buffs.find((b) => b.id === 'aegis')!
+    const buff = after.players['p1']!.buffs.find((b) => b.id === 'backup')!
     expect(buff).toBeDefined()
-    expect(buff.stacks).toBe(ROSHAN_AEGIS_TICKS)
-    expect(buff.ticksRemaining).toBe(ROSHAN_AEGIS_TICKS)
-    expect(after.aegis).toBeNull()
+    expect(buff.stacks).toBe(TENANT_BACKUP_TICKS)
+    expect(buff.ticksRemaining).toBe(TENANT_BACKUP_TICKS)
+    expect(after.backup).toBeNull()
     expect(event).not.toBeNull()
-    expect(event!._tag).toBe('aegis_picked')
+    expect(event!._tag).toBe('backup_picked')
     expect((event as { playerId?: string }).playerId).toBe('p1')
   })
 
-  it('pickupAegis is a no-op when the player is outside hollow (in-pit guard)', () => {
+  it('pickupBackup is a no-op when the player is outside hollow (in-pit guard)', () => {
     const state = makeGameState({
-      aegis: { zone: 'hollow', tick: 100, holderId: null },
+      backup: { zone: 'hollow', tick: 100, holderId: null },
       players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },
     })
-    const { state: after, event } = pickupAegis(state, 'p1')
-    expect(after.players['p1']!.buffs.find((b) => b.id === 'aegis')).toBeUndefined()
-    expect(after.aegis).not.toBeNull()
+    const { state: after, event } = pickupBackup(state, 'p1')
+    expect(after.players['p1']!.buffs.find((b) => b.id === 'backup')).toBeUndefined()
+    expect(after.backup).not.toBeNull()
     expect(event).toBeNull()
   })
 })
 
-describe('systems-gaps: ROSHAN respawn path', () => {
-  it('processRoshanDamage revives a dead Roshan once ROSHAN_RESPAWN_TICKS have elapsed', () => {
+describe('systems-gaps: TENANT respawn path', () => {
+  it('processTenantDamage revives a dead Tenant once TENANT_RESPAWN_TICKS have elapsed', () => {
     const deathTick = 100
     const state = makeGameState({
-      tick: deathTick + ROSHAN_RESPAWN_TICKS,
-      roshan: { alive: false, hp: 0, maxHp: 5000, deathTick } as RoshanState,
+      tick: deathTick + TENANT_RESPAWN_TICKS,
+      tenant: { alive: false, hp: 0, maxHp: 5000, deathTick } as TenantState,
     })
-    const result = processRoshanDamage(state, new Map())
+    const result = processTenantDamage(state, new Map())
 
-    expect(result.state.roshan.alive).toBe(true)
-    expect(result.state.roshan.hp).toBeGreaterThan(0)
-    expect(result.state.roshan.deathTick).toBeNull()
-    const respawnEvt = result.events.find((e) => e._tag === 'roshan_respawn')
+    expect(result.state.tenant.alive).toBe(true)
+    expect(result.state.tenant.hp).toBeGreaterThan(0)
+    expect(result.state.tenant.deathTick).toBeNull()
+    const respawnEvt = result.events.find((e) => e._tag === 'tenant_respawn')
     expect(respawnEvt).toBeDefined()
   })
 
-  it('processRoshanDamage does NOT revive before the respawn timer', () => {
+  it('processTenantDamage does NOT revive before the respawn timer', () => {
     const deathTick = 100
     const state = makeGameState({
-      tick: deathTick + ROSHAN_RESPAWN_TICKS - 1,
-      roshan: { alive: false, hp: 0, maxHp: 5000, deathTick } as RoshanState,
+      tick: deathTick + TENANT_RESPAWN_TICKS - 1,
+      tenant: { alive: false, hp: 0, maxHp: 5000, deathTick } as TenantState,
     })
-    const result = processRoshanDamage(state, new Map())
-    expect(result.state.roshan.alive).toBe(false)
+    const result = processTenantDamage(state, new Map())
+    expect(result.state.tenant.alive).toBe(false)
   })
 })
 

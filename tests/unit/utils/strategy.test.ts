@@ -5,9 +5,9 @@ import {
   goldLead,
   formatGoldShort,
   ticksToClock,
-  formatRoshan,
+  formatTenant,
   formatRunes,
-  formatAegis,
+  formatBackup,
   visionSummary,
   dayNightReadout,
   sparkline,
@@ -15,7 +15,7 @@ import {
 } from '~~/app/utils/strategy'
 import { ITEMS } from '~~/shared/constants/items'
 import {
-  ROSHAN_RESPAWN_TICKS,
+  TENANT_RESPAWN_TICKS,
   RUNE_DURATION_TICKS,
   RUNE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
@@ -71,31 +71,31 @@ describe('strategy: formatting', () => {
   })
 })
 
-describe('strategy: roshan', () => {
+describe('strategy: tenant', () => {
   it('reports up with hp%', () => {
-    const r = formatRoshan({ alive: true, hp: 2500, maxHp: 5000, deathTick: null }, 10)
+    const r = formatTenant({ alive: true, hp: 2500, maxHp: 5000, deathTick: null }, 10)
     expect(r.status).toBe('up')
     expect(r.hpPct).toBe(50)
   })
   it('reports respawn countdown when dead', () => {
-    const r = formatRoshan({ alive: false, hp: 0, maxHp: 5000, deathTick: 100 }, 120)
+    const r = formatTenant({ alive: false, hp: 0, maxHp: 5000, deathTick: 100 }, 120)
     expect(r.status).toBe('dead')
-    expect(r.respawnIn).toBe(100 + ROSHAN_RESPAWN_TICKS - 120)
+    expect(r.respawnIn).toBe(100 + TENANT_RESPAWN_TICKS - 120)
     expect(r.label).toContain(`${r.respawnIn}c`)
   })
-  it('handles unknown roshan', () => {
-    expect(formatRoshan(null, 5).status).toBe('unknown')
+  it('handles unknown tenant', () => {
+    expect(formatTenant(null, 5).status).toBe('unknown')
   })
   it('falls back to 100% hp when maxHp is 0 (avoids divide-by-zero)', () => {
-    const r = formatRoshan({ alive: true, hp: 0, maxHp: 0, deathTick: null }, 5)
+    const r = formatTenant({ alive: true, hp: 0, maxHp: 0, deathTick: null }, 5)
     expect(r.status).toBe('up')
     expect(r.hpPct).toBe(100)
   })
-  it('shows "respawning" for a dead roshan with no known death tick', () => {
-    const r = formatRoshan({ alive: false, hp: 0, maxHp: 5000, deathTick: null }, 50)
+  it('shows "respawning" for a dead tenant with no known death tick', () => {
+    const r = formatTenant({ alive: false, hp: 0, maxHp: 5000, deathTick: null }, 50)
     expect(r.status).toBe('dead')
     expect(r.respawnIn).toBe(0)
-    expect(r.label).toBe('ROSHAN respawning')
+    expect(r.label).toBe('TENANT respawning')
   })
 })
 
@@ -118,22 +118,22 @@ describe('strategy: runes', () => {
   })
 })
 
-describe('strategy: aegis', () => {
-  it('reports the carrier (from the aegis buff) + countdown', () => {
-    const a = formatAegis(null, { name: 'Lina', ticksRemaining: 120 })
+describe('strategy: backup', () => {
+  it('reports the carrier (from the backup buff) + countdown', () => {
+    const a = formatBackup(null, { name: 'Lina', ticksRemaining: 120 })
     expect(a.held).toBe(true)
     expect(a.holderName).toBe('Lina')
     expect(a.expiresIn).toBe(120)
     expect(a.label).toContain('Lina')
   })
-  it('reports aegis waiting in the pit', () => {
-    const a = formatAegis({ zone: 'hollow', tick: 1, holderId: null })
+  it('reports backup waiting in the pit', () => {
+    const a = formatBackup({ zone: 'hollow', tick: 1, holderId: null })
     expect(a.held).toBe(false)
     expect(a.inPit).toBe(true)
     expect(a.label).toContain('pit')
   })
-  it('reports no aegis', () => {
-    const a = formatAegis(null)
+  it('reports no backup', () => {
+    const a = formatBackup(null)
     expect(a.held).toBe(false)
     expect(a.inPit).toBe(false)
   })

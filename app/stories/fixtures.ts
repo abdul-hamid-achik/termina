@@ -22,7 +22,7 @@ import type {
   ZoneRuntimeState,
   IceState,
   AncientState,
-  RoshanState,
+  TenantState,
   RuneState,
   GameEvent,
 } from '~~/shared/types/game'
@@ -169,7 +169,7 @@ export function makeAncient(team: TeamId, overrides: Partial<AncientState> = {})
   }
 }
 
-export function makeRoshan(overrides: Partial<RoshanState> = {}): RoshanState {
+export function makeTenant(overrides: Partial<TenantState> = {}): TenantState {
   return {
     alive: true,
     hp: 3500,
@@ -367,8 +367,8 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ],
     ancients: { chaff: makeAncient('chaff'), audit: makeAncient('audit') },
     runes: [makeRune()],
-    roshan: makeRoshan(),
-    aegis: null,
+    tenant: makeTenant(),
+    backup: null,
     events: SAMPLE_EVENTS,
     winner: null,
     surrenderVotes: { chaff: new Set<string>(), audit: new Set<string>() },

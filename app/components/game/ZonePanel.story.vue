@@ -126,11 +126,11 @@ const jungle = {
   ] as IndexedNeutral[],
 }
 
-// The Roshan pit with him up — the one place the attack affordance appears.
-const roshanPit = {
+// The Tenant pit with him up — the one place the attack affordance appears.
+const tenantPit = {
   zoneName: 'The Hollow',
   zoneId: 'hollow',
-  roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
+  tenant: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
 }
 </script>
 
@@ -184,9 +184,9 @@ const roshanPit = {
       </div>
     </Variant>
 
-    <Variant title="roshan pit (alive)">
+    <Variant title="tenant pit (alive)">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="roshanPit" player-team="chaff" />
+        <ZonePanel v-bind="tenantPit" player-team="chaff" />
       </div>
     </Variant>
   </Story>

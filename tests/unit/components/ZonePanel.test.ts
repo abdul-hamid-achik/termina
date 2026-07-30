@@ -382,43 +382,43 @@ describe('ZonePanel', () => {
     })
   })
 
-  describe('roshan', () => {
-    it('renders no Roshan row when he is not passed (outside the pit)', () => {
+  describe('tenant', () => {
+    it('renders no Tenant row when he is not passed (outside the pit)', () => {
       const wrapper = mount(ZonePanel, { props: { ...baseProps, zoneId: 'mid-river' } })
 
-      expect(wrapper.find('[data-testid="zone-roshan"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="zone-tenant"]').exists()).toBe(false)
       expect(wrapper.find('[data-testid="zone-panel-empty"]').exists()).toBe(true)
     })
 
-    it('renders a Roshan row with HP and emits attack roshan on click', async () => {
+    it('renders a Tenant row with HP and emits attack tenant on click', async () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
           zoneId: 'hollow',
-          roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
+          tenant: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
         },
       })
 
-      const row = wrapper.find('[data-testid="zone-roshan"]')
+      const row = wrapper.find('[data-testid="zone-tenant"]')
       expect(row.exists()).toBe(true)
       expect(row.text()).toContain('3200/5000')
-      // A pit holding Roshan is not an empty zone.
+      // A pit holding Tenant is not an empty zone.
       expect(wrapper.find('[data-testid="zone-panel-empty"]').exists()).toBe(false)
 
       await row.trigger('click')
-      expect(wrapper.emitted('command')).toEqual([['attack roshan']])
+      expect(wrapper.emitted('command')).toEqual([['attack tenant']])
     })
 
-    it('hides the row once Roshan is dead', () => {
+    it('hides the row once Tenant is dead', () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
           zoneId: 'hollow',
-          roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 120 },
+          tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: 120 },
         },
       })
 
-      expect(wrapper.find('[data-testid="zone-roshan"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="zone-tenant"]').exists()).toBe(false)
     })
   })
 
@@ -451,17 +451,17 @@ describe('ZonePanel', () => {
       expect(wrapper.find('[data-testid="zone-ice-tag"]').text()).toBe('[ATK]')
     })
 
-    it('marks the Roshan row [hold]', () => {
+    it('marks the Tenant row [hold]', () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
           zoneId: 'hollow',
-          roshan: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
-          attackTarget: { kind: 'roshan' as const },
+          tenant: { alive: true, hp: 3200, maxHp: 5000, deathTick: null },
+          attackTarget: { kind: 'tenant' as const },
         },
       })
 
-      expect(wrapper.find('[data-testid="zone-roshan-tag"]').text()).toContain('[hold]')
+      expect(wrapper.find('[data-testid="zone-tenant-tag"]').text()).toContain('[hold]')
     })
 
     it('marks the held enemy hero, resolving the order by heroId like the server', () => {

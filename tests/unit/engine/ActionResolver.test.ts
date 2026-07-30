@@ -10,7 +10,7 @@ import type { TargetRef } from '~~/shared/types/commands'
 import { NEUTRAL_CREEPS } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import { tickAllBuffs } from '~~/server/game/heroes/_base'
 // Register echo so its Q resolver runs (the spell-block tests cast a real spell).
@@ -69,8 +69,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
@@ -1548,14 +1548,14 @@ describe('ActionResolver', () => {
       expect(result.rejected[0]!.reason).toContain('mid-river')
     })
 
-    it('says Roshan is already dead', () => {
+    it('says Tenant is already dead', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'hollow' }) },
-        roshan: { alive: false, hp: 0, maxHp: 2000, deathTick: 1 },
+        tenant: { alive: false, hp: 0, maxHp: 2000, deathTick: 1 },
       })
-      const result = attack(state, { kind: 'roshan' })
+      const result = attack(state, { kind: 'tenant' })
       expect(result.rejected).toHaveLength(1)
-      expect(result.rejected[0]!.reason).toMatch(/roshan/i)
+      expect(result.rejected[0]!.reason).toMatch(/tenant/i)
     })
 
     it('reports a dead neutral and an out-of-range neutral index differently', () => {

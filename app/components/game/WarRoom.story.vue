@@ -58,7 +58,7 @@ function base(rosterExpanded = true) {
   return store
 }
 
-// Mid game, Chaff pulling ahead on net worth, Roshan up.
+// Mid game, Chaff pulling ahead on net worth, Tenant up.
 function seedAhead() {
   const store = base()
   store.tick = 240
@@ -67,10 +67,10 @@ function seedAhead() {
     chaff: [3200, 3400, 3800, 4200, 4600, 5100],
     audit: [3100, 3300, 3500, 3700, 3900, 4150],
   })
-  store.roshan = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
+  store.tenant = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
 }
 
-// Chaff losing the gold race, Roshan at full (uncontested by us).
+// Chaff losing the gold race, Tenant at full (uncontested by us).
 function seedBehind() {
   const store = base()
   store.tick = 360
@@ -79,10 +79,10 @@ function seedBehind() {
     chaff: [3200, 3100, 2900, 2700, 2500, 2300],
     audit: [3100, 3500, 4100, 4900, 5600, 6400],
   })
-  store.roshan = { alive: true, hp: 5000, maxHp: 5000, deathTick: null }
+  store.tenant = { alive: true, hp: 5000, maxHp: 5000, deathTick: null }
 }
 
-// Late game, night, big Chaff lead, Roshan already taken.
+// Late game, night, big Chaff lead, Tenant already taken.
 function seedLateGame() {
   const store = base()
   store.tick = 600
@@ -91,7 +91,7 @@ function seedLateGame() {
     chaff: [5100, 5600, 6200, 6900, 7500, 8200],
     audit: [4150, 4400, 4700, 5000, 5300, 5600],
   })
-  store.roshan = { alive: false, hp: 0, maxHp: 5000, deathTick: 560 }
+  store.tenant = { alive: false, hp: 0, maxHp: 5000, deathTick: 560 }
 }
 
 // The simplified default: roster collapsed to the slim [+] row (readouts stay).
@@ -103,7 +103,7 @@ function seedCollapsed() {
     chaff: [3200, 3400, 3800, 4200, 4600, 5100],
     audit: [3100, 3300, 3500, 3700, 3900, 4150],
   })
-  store.roshan = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
+  store.tenant = { alive: true, hp: 3500, maxHp: 5000, deathTick: null }
 }
 </script>
 
@@ -121,7 +121,7 @@ function seedCollapsed() {
       </div>
     </Variant>
 
-    <Variant title="late game · night · Roshan down" :setup-app="seedLateGame">
+    <Variant title="late game · night · Tenant down" :setup-app="seedLateGame">
       <div class="bg-bg-primary p-2" style="width: 320px">
         <WarRoom />
       </div>

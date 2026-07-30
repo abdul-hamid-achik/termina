@@ -20,7 +20,7 @@ export interface SituationalContext {
   player: PlayerState | null
   isAlive: boolean
   creeps: CreepState[]
-  aegis: { zone: string; holderId: string | null } | null
+  backup: { zone: string; holderId: string | null } | null
   runes: RuneState[]
   teams: Record<TeamId, TeamState> | null
   tick: number
@@ -29,7 +29,7 @@ export interface SituationalContext {
 }
 
 /**
- * Which situational commands (ward / deny / aegis / rune / glyph / surrender) a
+ * Which situational commands (ward / deny / backup / rune / glyph / surrender) a
  * living player can take right now, given their items, zone and the world state.
  * Pure — extracted from GameScreen so the availability rules are unit-tested
  * independently of the in-game component. Returns [] when dead or no player.
@@ -45,8 +45,8 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   if (!('error' in pickDenyTargetString(p, ctx.creeps))) {
     out.push({ cmd: 'deny', label: 'DENY', aria: 'Deny a low-HP allied creep' })
   }
-  if (ctx.aegis && ctx.aegis.zone === p.zone && !ctx.aegis.holderId) {
-    out.push({ cmd: 'aegis', label: 'AEGIS', aria: 'Pick up the Aegis of the Immortal' })
+  if (ctx.backup && ctx.backup.zone === p.zone && !ctx.backup.holderId) {
+    out.push({ cmd: 'backup', label: 'BACKUP', aria: 'Pick up the Backup of the Immortal' })
   }
   if (ctx.runes.some((r) => r.zone === p.zone)) {
     out.push({ cmd: 'rune', label: 'RUNE', aria: 'Grab the rune in your zone' })

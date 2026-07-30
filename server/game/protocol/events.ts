@@ -187,8 +187,8 @@ export interface SpellBlockedEvent {
   readonly reflected?: number
 }
 
-export interface RoshanKilledEvent {
-  readonly _tag: 'roshan_killed'
+export interface TenantKilledEvent {
+  readonly _tag: 'tenant_killed'
   readonly tick: number
   readonly killerTeam: TeamId
   readonly goldAwarded: number
@@ -203,34 +203,34 @@ export interface NeutralKilledEvent {
   readonly zone: string
 }
 
-export interface RoshanDamageEvent {
-  readonly _tag: 'roshan_damage'
+export interface TenantDamageEvent {
+  readonly _tag: 'tenant_damage'
   readonly tick: number
   readonly damage: number
   readonly hp: number
   readonly maxHp: number
 }
 
-export interface RoshanRespawnEvent {
-  readonly _tag: 'roshan_respawn'
+export interface TenantRespawnEvent {
+  readonly _tag: 'tenant_respawn'
   readonly tick: number
   readonly hp: number
   readonly maxHp: number
 }
 
-export interface RoshanKilledInternalEvent {
-  readonly _tag: 'roshan_killed'
+export interface TenantKilledInternalEvent {
+  readonly _tag: 'tenant_killed'
   readonly tick: number
 }
 
-export interface AegisPickedEvent {
-  readonly _tag: 'aegis_picked'
+export interface BackupPickedEvent {
+  readonly _tag: 'backup_picked'
   readonly tick: number
   readonly playerId: string
 }
 
-export interface AegisUsedEvent {
-  readonly _tag: 'aegis_used'
+export interface BackupUsedEvent {
+  readonly _tag: 'backup_used'
   readonly tick: number
   readonly playerId: string
 }
@@ -343,13 +343,13 @@ export type GameEngineEvent =
   | RunePickedEvent
   | TrapTriggeredEvent
   | SpellBlockedEvent
-  | RoshanKilledEvent
+  | TenantKilledEvent
   | NeutralKilledEvent
-  | RoshanDamageEvent
-  | RoshanRespawnEvent
-  | RoshanKilledInternalEvent
-  | AegisPickedEvent
-  | AegisUsedEvent
+  | TenantDamageEvent
+  | TenantRespawnEvent
+  | TenantKilledInternalEvent
+  | BackupPickedEvent
+  | BackupUsedEvent
   | TalentSelectedEvent
   | TeleportCompleteEvent
   | TeleportCancelledEvent

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { makeRoshan, makeRune } from '~/stories/fixtures'
+import { makeTenant, makeRune } from '~/stories/fixtures'
 
 import ObjectiveTicker from './ObjectiveTicker.vue'
 
@@ -8,51 +8,51 @@ const TICK = 240
 
 <template>
   <Story title="Game/ObjectiveTicker" :layout="{ type: 'grid', width: 240 }">
-    <!-- Rosh up, a live rune, no aegis. Rune types render through buffLabel:
+    <!-- Rosh up, a live rune, no backup. Rune types render through buffLabel:
          'dd' shows as "Double Damage", never the raw id. -->
     <Variant title="all live">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
-          :roshan="makeRoshan()"
+          :tenant="makeTenant()"
           :runes="[makeRune({ type: 'dd', tick: TICK })]"
-          :aegis="null"
+          :backup="null"
           :tick="TICK"
         />
       </div>
     </Variant>
 
-    <!-- Roshan dead → respawn countdown; rune still pending. -->
-    <Variant title="roshan dead, rune pending">
+    <!-- Tenant dead → respawn countdown; rune still pending. -->
+    <Variant title="tenant dead, rune pending">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
-          :roshan="makeRoshan({ alive: false, hp: 0, deathTick: TICK - 30 })"
+          :tenant="makeTenant({ alive: false, hp: 0, deathTick: TICK - 30 })"
           :runes="[]"
-          :aegis="null"
+          :backup="null"
           :tick="TICK"
         />
       </div>
     </Variant>
 
-    <!-- Aegis claimed by a carrier, ticking down; 'haste' rune → "Haste". -->
-    <Variant title="aegis held">
+    <!-- Backup claimed by a carrier, ticking down; 'haste' rune → "Haste". -->
+    <Variant title="backup held">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
-          :roshan="makeRoshan({ alive: false, hp: 0, deathTick: TICK - 5 })"
+          :tenant="makeTenant({ alive: false, hp: 0, deathTick: TICK - 5 })"
           :runes="[makeRune({ type: 'haste', tick: TICK })]"
-          :aegis="{ zone: 'hollow', tick: TICK - 5, holderId: 'p1' }"
-          :aegis-holder="{ name: 'you', ticksRemaining: 18 }"
+          :backup="{ zone: 'hollow', tick: TICK - 5, holderId: 'p1' }"
+          :backup-holder="{ name: 'you', ticksRemaining: 18 }"
           :tick="TICK"
         />
       </div>
     </Variant>
 
-    <!-- Aegis dropped in the pit (no carrier yet). -->
-    <Variant title="aegis in pit">
+    <!-- Backup dropped in the pit (no carrier yet). -->
+    <Variant title="backup in pit">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
-          :roshan="makeRoshan({ alive: false, hp: 0, deathTick: TICK - 2 })"
+          :tenant="makeTenant({ alive: false, hp: 0, deathTick: TICK - 2 })"
           :runes="[]"
-          :aegis="{ zone: 'hollow', tick: TICK - 2, holderId: null }"
+          :backup="{ zone: 'hollow', tick: TICK - 2, holderId: null }"
           :tick="TICK"
         />
       </div>

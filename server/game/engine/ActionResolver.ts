@@ -45,7 +45,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
 import { awardLastHit, awardIceKill } from './GoldDistributor'
-import { pickupAegis } from './RoshanAI'
+import { pickupBackup } from './TenantAI'
 import { pickupRune } from './RuneAI'
 import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
 import { ITEMS } from '~~/shared/constants/items'
@@ -277,7 +277,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'help':
     case 'chat':
     case 'ping':
-    case 'aegis':
+    case 'backup':
     case 'rune':
       return null
     case 'buyback':
@@ -586,7 +586,7 @@ function resolveDenyPhase(
 }
 
 /**
- * Phase 3b: Attacks — hero/creep/ice/Roshan/neutral/Ancient, all simultaneous.
+ * Phase 3b: Attacks — hero/creep/ice/Tenant/neutral/Ancient, all simultaneous.
  * This is the largest phase (~440 lines): crit stacking, item on-hit effects
  * (MKB magic, Maelstrom chain, Skull Basher stun), defense mitigation (Desolator
  * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Blade Mail
@@ -1043,14 +1043,14 @@ function resolveAttackPhase(
         amount: attackDamage,
         damageType: 'physical',
       })
-    } else if (cmd.target.kind === 'roshan') {
-      const roshan = state.roshan
-      if (!roshan.alive) {
-        miss('Roshan is already dead')
+    } else if (cmd.target.kind === 'tenant') {
+      const tenant = state.tenant
+      if (!tenant.alive) {
+        miss('Tenant is already dead')
         continue
       }
       if (attacker.zone !== 'hollow') {
-        miss('Roshan can only be attacked from the pit')
+        miss('Tenant can only be attacked from the pit')
         continue
       }
 
@@ -1062,7 +1062,7 @@ function resolveAttackPhase(
         _tag: 'damage',
         tick: state.tick,
         sourceId: action.playerId,
-        targetId: 'roshan',
+        targetId: 'tenant',
         amount: attackDamage,
         damageType: 'physical',
       })
@@ -1478,7 +1478,7 @@ function resolveItemActivesPhase(
 }
 
 /**
- * Post-shop phases: glyph, aegis/rune pickup, maxHp/maxMp recalc, gold/XP
+ * Post-shop phases: glyph, backup/rune pickup, maxHp/maxMp recalc, gold/XP
  * awards (creep/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
@@ -1503,7 +1503,7 @@ function resolvePostShopPhases(
   ice: IceState[]
   neutrals: NeutralCreepState[]
   teams: { chaff: TeamState; audit: TeamState }
-  aegis: GameState['aegis']
+  backup: GameState['backup']
   runes: RuneState[]
 } {
   let teams = { ...state.teams }
@@ -1532,23 +1532,23 @@ function resolvePostShopPhases(
     events.push({ _tag: 'glyph_used', tick: state.tick, team })
   }
 
-  // Aegis pickup
-  let aegisGround = state.aegis
-  const aegisPickups = validActions.filter((a) => a.command.type === 'aegis')
-  for (const action of aegisPickups) {
+  // Backup pickup
+  let backupGround = state.backup
+  const backupPickups = validActions.filter((a) => a.command.type === 'backup')
+  for (const action of backupPickups) {
     const tempState: GameState = {
       ...state,
       players,
       creeps,
       ice,
       runes: state.runes ?? [],
-      roshan: state.roshan,
-      aegis: aegisGround,
+      tenant: state.tenant,
+      backup: backupGround,
     }
-    const result = pickupAegis(tempState, action.playerId)
+    const result = pickupBackup(tempState, action.playerId)
     if (result.event) {
       players = { ...result.state.players }
-      aegisGround = result.state.aegis
+      backupGround = result.state.backup
       events.push(result.event)
     }
   }
@@ -1565,8 +1565,8 @@ function resolvePostShopPhases(
       creeps,
       ice,
       runes: runesGround,
-      roshan: state.roshan,
-      aegis: state.aegis,
+      tenant: state.tenant,
+      backup: state.backup,
     }
     const result = pickupRune(tempState, action.playerId, player.zone)
     if (result.event) {
@@ -1724,7 +1724,7 @@ function resolvePostShopPhases(
     }
   }
 
-  return { players, zones, ice, neutrals, teams, aegis: aegisGround, runes: runesGround }
+  return { players, zones, ice, neutrals, teams, backup: backupGround, runes: runesGround }
 }
 
 // ── Resolution Pipeline ────────────────────────────────────────────
@@ -2015,7 +2015,7 @@ export function resolveActions(
     }
 
     // Handle glyph commands + pickups + statRecalc + awards + wards
-    let aegisGround = state.aegis
+    let backupGround = state.backup
     let runesGround = state.runes ?? []
     {
       const result = resolvePostShopPhases(
@@ -2039,7 +2039,7 @@ export function resolveActions(
       ice = result.ice
       neutrals = result.neutrals
       teams = result.teams
-      aegisGround = result.aegis
+      backupGround = result.backup
       runesGround = result.runes
     }
 
@@ -2052,7 +2052,7 @@ export function resolveActions(
       ice,
       teams,
       ancients,
-      aegis: aegisGround,
+      backup: backupGround,
       runes: runesGround,
     }
 

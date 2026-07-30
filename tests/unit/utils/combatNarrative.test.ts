@@ -210,15 +210,15 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(eventToLine(ev('night_falls', {}), ctx)!.text).toContain('NIGHT')
     expect(eventToLine(ev('day_breaks', {}), ctx)!.text).toContain('DAY')
   })
-  it('narrates roshan, runes, aegis, wards', () => {
+  it('narrates tenant, runes, backup, wards', () => {
     expect(
-      eventToLine(ev('roshan_killed', { killerTeam: 'chaff', goldAwarded: 600 }), ctx)!.text,
-    ).toContain('Roshan')
+      eventToLine(ev('tenant_killed', { killerTeam: 'chaff', goldAwarded: 600 }), ctx)!.text,
+    ).toContain('Tenant')
     expect(
       eventToLine(ev('rune_picked', { playerId: 'me', zone: 'cache-top', runeType: 'haste' }), ctx)!
         .text,
     ).toContain('rune')
-    expect(eventToLine(ev('aegis_picked', { playerId: 'me' }), ctx)!.text).toContain('Aegis')
+    expect(eventToLine(ev('backup_picked', { playerId: 'me' }), ctx)!.text).toContain('Backup')
     expect(
       eventToLine(
         ev('ward_placed', {
@@ -345,16 +345,16 @@ describe('deriveKillFeed', () => {
     expect(feed.at(-1)!.text).toContain('SHUTDOWN')
   })
 
-  it('emits ice / roshan / core headline entries', () => {
+  it('emits ice / tenant / core headline entries', () => {
     const feed = deriveKillFeed(
       [
         ev('ice_kill', { killerTeam: 'chaff', team: 'audit', zone: 'mid-t1-audit' }, 1),
-        ev('roshan_killed', { killerTeam: 'chaff', goldAwarded: 600 }, 2),
+        ev('tenant_killed', { killerTeam: 'chaff', goldAwarded: 600 }, 2),
         ev('ancient_destroyed', { killerTeam: 'chaff', team: 'audit' }, 3),
       ],
       ctx,
     )
-    expect(feed.map((f) => f.category)).toEqual(['ice', 'roshan', 'core'])
+    expect(feed.map((f) => f.category)).toEqual(['ice', 'tenant', 'core'])
     expect(feed[2]!.text).toContain('CORE DUMPED')
   })
 
@@ -388,15 +388,15 @@ describe('deriveKillFeed', () => {
 })
 
 describe('eventToLine: more orphaned events', () => {
-  it('narrates roshan_killed without a killerTeam as a generic fall', () => {
-    const line = eventToLine(ev('roshan_killed', {}), ctx)!
-    expect(line.text).toContain('Roshan has fallen')
+  it('narrates tenant_killed without a killerTeam as a generic fall', () => {
+    const line = eventToLine(ev('tenant_killed', {}), ctx)!
+    expect(line.text).toContain('Tenant has fallen')
     expect(line.type).toBe('objective')
   })
 
-  it('dedups Roshan chip damage', () => {
-    const line = eventToLine(ev('roshan_damage', { damage: 120, hp: 4000, maxHp: 5000 }), ctx)!
-    expect(line.dedupKey).toBe('dmg:roshan')
+  it('dedups Tenant chip damage', () => {
+    const line = eventToLine(ev('tenant_damage', { damage: 120, hp: 4000, maxHp: 5000 }), ctx)!
+    expect(line.dedupKey).toBe('dmg:tenant')
     expect(line.dmgAmount).toBe(120)
   })
 })
@@ -424,7 +424,7 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
     ['item_purchased', { playerId: 'me', itemId: 'dagon', cost: 2700 }, 'acquired'],
     ['neutral_killed', { playerId: 'me', neutralType: 'kobold' }, 'kobold camp'],
-    ['aegis_used', { playerId: 'me' }, 'reincarnated'],
+    ['backup_used', { playerId: 'me' }, 'reincarnated'],
     ['talent_selected', { playerId: 'me', talentName: '+250 HP' }, 'learned +250 HP'],
     ['teleport_complete', { playerId: 'me', destination: 'mid-river' }, 'teleported to mid-river'],
     ['trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 100 }, 'trap'],
@@ -432,7 +432,7 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['glyph_used', { team: 'chaff' }, 'Glyph'],
     ['surrender_vote', { team: 'chaff', votesFor: 2, votesNeeded: 3 }, '2/3'],
     ['surrendered', { team: 'audit', winner: 'chaff' }, 'surrendered'],
-    ['roshan_respawn', {}, 'respawned'],
+    ['tenant_respawn', {}, 'respawned'],
     [
       'afk_takeover',
       { playerId: 'enemy1', team: 'audit', message: 'went AFK — a bot has taken over' },
@@ -770,14 +770,14 @@ describe('eventToLine: remaining event-type lines', () => {
       'cleared a kobold camp',
     )
   })
-  it('aegis_used → reincarnation', () => {
-    expect(line('aegis_used', { playerId: 'me' })!.text).toContain('reincarnated via the Aegis')
+  it('backup_used → reincarnation', () => {
+    expect(line('backup_used', { playerId: 'me' })!.text).toContain('reincarnated via the Backup')
   })
-  it('roshan_respawn → respawn line', () => {
-    expect(line('roshan_respawn', {})!.text).toContain('Roshan has respawned')
+  it('tenant_respawn → respawn line', () => {
+    expect(line('tenant_respawn', {})!.text).toContain('Tenant has respawned')
   })
-  it('roshan_killed with no killer team → generic fallen line', () => {
-    expect(line('roshan_killed', {})!.text).toContain('Roshan has fallen')
+  it('tenant_killed with no killer team → generic fallen line', () => {
+    expect(line('tenant_killed', {})!.text).toContain('Tenant has fallen')
   })
   it('talent_selected → learned line', () => {
     expect(line('talent_selected', { playerId: 'me', talentName: 'Sharp Edge' })!.text).toContain(

@@ -21,12 +21,12 @@ vi.stubGlobal('localStorage', {
 // WarRoom is a store-connected container; its leaf panels (ObjectiveTicker,
 // EnemyThreatSheet, Sparkline) are pure and tested elsewhere. We stub them with
 // probes that expose the props WarRoom wires in, so we assert the container's
-// own derivations (net-worth lead, aegis holder, day/night, vision) and that the
+// own derivations (net-worth lead, backup holder, day/night, vision) and that the
 // store state is forwarded to the right child.
 const ObjectiveTickerStub = {
   name: 'ObjectiveTicker',
-  props: ['roshan', 'runes', 'aegis', 'tick', 'aegisHolder'],
-  template: `<div data-testid="objective-ticker-stub" :data-aegis-holder="aegisHolder ? aegisHolder.name : ''" :data-tick="tick" :data-rune-count="runes ? runes.length : 0" />`,
+  props: ['tenant', 'runes', 'backup', 'tick', 'backupHolder'],
+  template: `<div data-testid="objective-ticker-stub" :data-backup-holder="backupHolder ? backupHolder.name : ''" :data-tick="tick" :data-rune-count="runes ? runes.length : 0" />`,
 }
 
 const EnemyThreatSheetStub = {
@@ -256,28 +256,28 @@ describe('WarRoom', () => {
       expect(Number(ticker.attributes('data-rune-count'))).toBe(1)
     })
 
-    it('resolves the aegis holder from the player carrying the aegis buff', () => {
+    it('resolves the backup holder from the player carrying the backup buff', () => {
       const roster = makeRoster()
-      // Give p2 (Kernel) the aegis buff — the engine models a carried aegis as a buff.
+      // Give p2 (Kernel) the backup buff — the engine models a carried backup as a buff.
       roster.p2 = makePlayer({
         ...roster.p2,
-        buffs: [{ id: 'aegis', stacks: 1, ticksRemaining: 30, source: 'roshan' }],
+        buffs: [{ id: 'backup', stacks: 1, ticksRemaining: 30, source: 'tenant' }],
       })
       const zones: Record<string, ZoneRuntimeState> = {}
       for (const p of Object.values(roster)) zones[p.zone] ??= makeZone(p.zone)
       seedStore({ players: roster, zones })
       const wrapper = mountWarRoom()
-      // aegisHolder resolves heroId 'kernel' → 'Kernel'
+      // backupHolder resolves heroId 'kernel' → 'Kernel'
       expect(
-        wrapper.find('[data-testid="objective-ticker-stub"]').attributes('data-aegis-holder'),
+        wrapper.find('[data-testid="objective-ticker-stub"]').attributes('data-backup-holder'),
       ).toBe('Kernel')
     })
 
-    it('passes no aegis holder when nobody carries the buff', () => {
+    it('passes no backup holder when nobody carries the buff', () => {
       seedStore()
       const wrapper = mountWarRoom()
       expect(
-        wrapper.find('[data-testid="objective-ticker-stub"]').attributes('data-aegis-holder'),
+        wrapper.find('[data-testid="objective-ticker-stub"]').attributes('data-backup-holder'),
       ).toBe('')
     })
   })

@@ -4,7 +4,7 @@ import { processTick } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 /**
@@ -129,8 +129,8 @@ describe('BotAI - integrated forward progress', () => {
       ice: initializeIce(),
       ancients: initializeAncients(),
       runes: [],
-      roshan: initializeRoshan(),
-      aegis: null,
+      tenant: initializeTenant(),
+      backup: null,
       events: [],
       surrenderVotes: { chaff: new Set(), audit: new Set() },
       timeOfDay: 'day',

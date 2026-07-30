@@ -137,7 +137,7 @@ const suggestions = computed<Suggestion[]>(() => {
  * Human-readable name for an attack target in the preview line.
  *
  * Exhaustive on purpose: the previous ternary chain fell through to 'self' for
- * anything it did not name, so when `roshan` and `neutral:<i>` became parseable
+ * anything it did not name, so when `tenant` and `neutral:<i>` became parseable
  * the prompt confirmed them as ">> Attack self". The `never` assignment makes
  * TypeScript fail the build if a new TargetRef kind is added without a label,
  * rather than silently mislabelling it.
@@ -152,8 +152,8 @@ function attackTargetLabel(t: TargetRef): string {
       return `neutral #${t.index}`
     case 'ice':
       return `ice in ${t.zone}`
-    case 'roshan':
-      return 'Roshan'
+    case 'tenant':
+      return 'Tenant'
     case 'ancient':
       return 'the enemy Mainframe'
     case 'zone':

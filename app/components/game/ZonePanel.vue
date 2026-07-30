@@ -4,7 +4,7 @@ import type {
   PlayerState,
   CreepState,
   NeutralCreepState,
-  RoshanState,
+  TenantState,
   IceState,
   TeamId,
 } from '~~/shared/types/game'
@@ -33,8 +33,8 @@ const props = withDefaults(
     creeps?: IndexedCreep[]
     neutrals?: IndexedNeutral[]
     ice?: IceState | null
-    /** Roshan, passed only when the player stands in the pit and he is alive. */
-    roshan?: RoshanState | null
+    /** Tenant, passed only when the player stands in the pit and he is alive. */
+    tenant?: TenantState | null
     /** The player's standing attack order, if any — the engine re-swings at it
      *  every tick until it dies, leaves, or a new order lands. */
     attackTarget?: TargetRef | null
@@ -46,7 +46,7 @@ const props = withDefaults(
     creeps: () => [],
     neutrals: () => [],
     ice: null,
-    roshan: null,
+    tenant: null,
     attackTarget: null,
   },
 )
@@ -67,7 +67,7 @@ function heroName(p: PlayerState): string {
 const heldIceZone = computed(() =>
   props.attackTarget?.kind === 'ice' ? props.attackTarget.zone : null,
 )
-const holdingRoshan = computed(() => props.attackTarget?.kind === 'roshan')
+const holdingTenant = computed(() => props.attackTarget?.kind === 'tenant')
 
 /** Mirrors the server's hero lookup, which indexes name, id and heroId alike. */
 function isHeldHero(p: PlayerState): boolean {
@@ -149,7 +149,7 @@ function attackLowestNeutral() {
   if (target) emit('command', `attack neutral:${target.index}`)
 }
 
-const roshanHere = computed(() => (props.roshan?.alive ? props.roshan : null))
+const tenantHere = computed(() => (props.tenant?.alive ? props.tenant : null))
 
 // ── At-a-glance status header ──────────────────────────────────
 // Zone identity, a color-coded threat verdict, and a zone-local objective so
@@ -225,7 +225,7 @@ const isEmpty = computed(
     alliedCreeps.value.length === 0 &&
     aliveNeutrals.value.length === 0 &&
     iceHere.value === null &&
-    roshanHere.value === null,
+    tenantHere.value === null,
 )
 </script>
 
@@ -413,30 +413,30 @@ const isEmpty = computed(
       <span class="t-caption"> · [farm]</span>
     </button>
 
-    <!-- Roshan: only rendered in the pit while he is alive -->
+    <!-- Tenant: only rendered in the pit while he is alive -->
     <button
-      v-if="roshanHere"
+      v-if="tenantHere"
       class="block w-full border border-gold/60 bg-gold/5 px-2 py-1 text-left transition-all hover:bg-gold/15 active:scale-[0.99]"
-      data-testid="zone-roshan"
-      title="Attack Roshan"
-      @click="emit('command', 'attack roshan')"
+      data-testid="zone-tenant"
+      title="Attack Tenant"
+      @click="emit('command', 'attack tenant')"
     >
       <div class="flex items-baseline justify-between gap-2">
-        <span class="font-bold text-gold">Roshan</span>
-        <span class="shrink-0 t-caption" data-testid="zone-roshan-tag"
-          >drops Aegis · {{ holdingRoshan ? '[hold]' : '[ATK]' }}</span
+        <span class="font-bold text-gold">Tenant</span>
+        <span class="shrink-0 t-caption" data-testid="zone-tenant-tag"
+          >drops Backup · {{ holdingTenant ? '[hold]' : '[ATK]' }}</span
         >
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">HP</span>
         <ProgressBar
-          :value="roshanHere.hp"
-          :max="roshanHere.maxHp"
+          :value="tenantHere.hp"
+          :max="tenantHere.maxHp"
           color="gold"
           :width="10"
-          label="Roshan HP"
+          label="Tenant HP"
         />
-        <span class="text-text-primary">{{ roshanHere.hp }}/{{ roshanHere.maxHp }}</span>
+        <span class="text-text-primary">{{ tenantHere.hp }}/{{ tenantHere.maxHp }}</span>
       </div>
     </button>
   </div>

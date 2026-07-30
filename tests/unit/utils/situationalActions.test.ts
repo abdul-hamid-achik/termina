@@ -10,7 +10,7 @@ const baseCtx = (over: Partial<SituationalContext> = {}): SituationalContext => 
   player: player(),
   isAlive: true,
   creeps: [],
-  aegis: null,
+  backup: null,
   runes: [],
   teams: null,
   tick: 0,
@@ -47,13 +47,13 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ creeps: [] }))).not.toContain('deny')
   })
 
-  it('offers AEGIS only when an unclaimed aegis is in the zone', () => {
-    expect(cmds(baseCtx({ aegis: { zone: 'mid-river', holderId: null } }))).toContain('aegis')
-    expect(cmds(baseCtx({ aegis: { zone: 'mid-river', holderId: 'someone' } }))).not.toContain(
-      'aegis',
+  it('offers BACKUP only when an unclaimed backup is in the zone', () => {
+    expect(cmds(baseCtx({ backup: { zone: 'mid-river', holderId: null } }))).toContain('backup')
+    expect(cmds(baseCtx({ backup: { zone: 'mid-river', holderId: 'someone' } }))).not.toContain(
+      'backup',
     )
-    expect(cmds(baseCtx({ aegis: { zone: 'top-t1-chaff', holderId: null } }))).not.toContain(
-      'aegis',
+    expect(cmds(baseCtx({ backup: { zone: 'top-t1-chaff', holderId: null } }))).not.toContain(
+      'backup',
     )
   })
 

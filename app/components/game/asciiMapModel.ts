@@ -26,8 +26,8 @@ export interface ZoneDisplay {
   wardCount?: number
   /** Type of a currently-live rune in this zone (e.g. 'haste'), if any. */
   runeType?: string
-  /** Roshan state, set only on the pit zone: up (killable) or dead + respawn. */
-  roshan?: { alive: boolean; respawnIn: number }
+  /** Tenant state, set only on the pit zone: up (killable) or dead + respawn. */
+  tenant?: { alive: boolean; respawnIn: number }
 }
 
 export interface AncientsDisplay {
@@ -75,7 +75,7 @@ export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
 const ONE_LANE_COL_HEADERS = ['COLDSTORE']
 
 /** Two-lane map layout — top + mid lanes with top-side jungle, top rune, and
- *  Roshan pit. Mirrors shared/constants/maps `TWO_LANE_ZONES` (3v3 map). */
+ *  Tenant pit. Mirrors shared/constants/maps `TWO_LANE_ZONES` (3v3 map). */
 export const TWO_LANE_MAP_ROWS: (string | null)[][] = [
   [null, null, 'chaff-fountain', null],
   [null, null, 'chaff-base', null],
@@ -238,7 +238,7 @@ export function ancientForZone(
 /**
  * Short HP readout for the Mainframe: '83%' while alive, '✗' once destroyed
  * (callers prepend the ◈ glyph → '◈✗'). Destroyed is ✗, NOT ☠ — ☠ is
- * reserved for the Roshan pit (see MapLegend), which previously collided.
+ * reserved for the Tenant pit (see MapLegend), which previously collided.
  */
 export function ancientLabel(ancient: AncientState | null | undefined): string | null {
   if (!ancient) return null
@@ -410,8 +410,8 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     indicators.push(`✦${zone.runeType}`)
   }
 
-  if (zone.roshan) {
-    indicators.push(zone.roshan.alive ? 'UP' : `↻${zone.roshan.respawnIn}c`)
+  if (zone.tenant) {
+    indicators.push(zone.tenant.alive ? 'UP' : `↻${zone.tenant.respawnIn}c`)
   }
 
   return indicators.length > 0 ? `${name} ${indicators.join(' ')}` : name
@@ -426,8 +426,8 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
   if (zone.enemyCount > 0) parts.push(`${zone.enemyCount} enemies`)
   if (zone.wardCount && zone.wardCount > 0) parts.push('warded')
   if (zone.runeType) parts.push(`${zone.runeType} rune available`)
-  if (zone.roshan) {
-    parts.push(zone.roshan.alive ? 'Roshan alive' : `Roshan respawns in ${zone.roshan.respawnIn}c`)
+  if (zone.tenant) {
+    parts.push(zone.tenant.alive ? 'Tenant alive' : `Tenant respawns in ${zone.tenant.respawnIn}c`)
   }
   if (ancient) {
     parts.push(
@@ -528,11 +528,11 @@ export function compactIndicators(
     out.push({ text: `✦ ${zone.runeType} rune`, cls: 'text-gold' })
   }
 
-  if (zone.roshan) {
+  if (zone.tenant) {
     out.push(
-      zone.roshan.alive
-        ? { text: '☠ Roshan UP', cls: 'text-warn' }
-        : { text: `☠ Roshan ↻ ${zone.roshan.respawnIn}c`, cls: 'text-text-dim' },
+      zone.tenant.alive
+        ? { text: '☠ Tenant UP', cls: 'text-warn' }
+        : { text: `☠ Tenant ↻ ${zone.tenant.respawnIn}c`, cls: 'text-text-dim' },
     )
   }
 

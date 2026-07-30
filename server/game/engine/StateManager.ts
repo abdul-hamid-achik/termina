@@ -3,7 +3,7 @@ import type { GameState, GameMode, PlayerState, TeamId } from '~~/shared/types/g
 import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from './AncientSystem'
 import { zonesForMap, DEFAULT_MAP_ID } from '~~/shared/constants/maps'
 
@@ -137,8 +137,8 @@ function createInitialGameState(
     ice: initializeIce(zones),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',

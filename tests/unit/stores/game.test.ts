@@ -926,22 +926,22 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     expect(store.netWorthHistory.chaff.length).toBe(40)
   })
 
-  it('ingests roshan/runes/aegis and clears aegis when null', () => {
+  it('ingests tenant/runes/backup and clears backup when null', () => {
     const store = useGameStore()
     const base = makeTickMessage({ tick: 10 })
     const s = base.state as unknown as Record<string, unknown>
-    s.roshan = { alive: false, hp: 0, maxHp: 5000, deathTick: 10 }
+    s.tenant = { alive: false, hp: 0, maxHp: 5000, deathTick: 10 }
     s.runes = [{ zone: 'cache-top', type: 'haste', tick: 10 }]
-    s.aegis = { zone: 'hollow', tick: 10, holderId: null }
+    s.backup = { zone: 'hollow', tick: 10, holderId: null }
     store.updateFromTick(base)
-    expect(store.roshan?.alive).toBe(false)
+    expect(store.tenant?.alive).toBe(false)
     expect(store.runes).toHaveLength(1)
-    expect(store.aegis?.zone).toBe('hollow')
+    expect(store.backup?.zone).toBe('hollow')
 
     const next = makeTickMessage({ tick: 14 })
-    ;(next.state as unknown as Record<string, unknown>).aegis = null
+    ;(next.state as unknown as Record<string, unknown>).backup = null
     store.updateFromTick(next)
-    expect(store.aegis).toBeNull()
+    expect(store.backup).toBeNull()
   })
 
   it('rosters: empty before player data; enemyPlayers includes fogged, allyPlayers excludes self', () => {

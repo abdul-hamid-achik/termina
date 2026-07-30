@@ -12,7 +12,7 @@ import Sparkline from '~/components/game/Sparkline.vue'
 /**
  * Store-connected War Room container — the strategic dashboard that surfaces
  * everything a text MOBA can uniquely show: net-worth lead + trend, the
- * objective layer (Roshan/runes/aegis), the enemy threat sheet (cooldowns,
+ * objective layer (Tenant/runes/backup), the enemy threat sheet (cooldowns,
  * respawns, last-seen), day/night meaning and vision coverage. Leaf panels are
  * pure/prop-based; this wires the store into them.
  */
@@ -30,11 +30,11 @@ function toggleRoster() {
   settings.setHud('rosterExpanded', !settings.hud.rosterExpanded)
 }
 
-// The aegis carrier is whoever holds the 'aegis' buff (the engine clears the
-// ground aegis to null on pickup), resolved to a readable name + countdown.
-const aegisHolder = computed(() => {
+// The backup carrier is whoever holds the 'backup' buff (the engine clears the
+// ground backup to null on pickup), resolved to a readable name + countdown.
+const backupHolder = computed(() => {
   for (const p of Object.values(store.allPlayers)) {
-    const buff = (p.buffs ?? []).find((b) => b.id === 'aegis')
+    const buff = (p.buffs ?? []).find((b) => b.id === 'backup')
     if (buff) {
       const name = (p.heroId && HEROES[p.heroId]?.name) || p.name
       return { name, ticksRemaining: buff.ticksRemaining }
@@ -97,11 +97,11 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
     <section class="shrink-0 border-t border-border/50 pt-1.5">
       <div class="mb-0.5 t-hud-xs font-bold tracking-wider text-text-dim uppercase">Objectives</div>
       <ObjectiveTicker
-        :roshan="store.roshan"
+        :tenant="store.tenant"
         :runes="store.runes"
-        :aegis="store.aegis"
+        :backup="store.backup"
         :tick="tick"
-        :aegis-holder="aegisHolder"
+        :backup-holder="backupHolder"
       />
     </section>
 

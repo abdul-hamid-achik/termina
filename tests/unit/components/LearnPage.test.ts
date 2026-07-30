@@ -125,7 +125,7 @@ describe('learn page', () => {
     // Newly documented verbs
     for (const cmd of [
       'rune',
-      'aegis',
+      'backup',
       'glyph',
       'chat <team|all> <msg>',
       'ping <zone>',
@@ -180,12 +180,12 @@ describe('learn page', () => {
     expect(text).not.toContain('4 ticks to reach mid river')
   })
 
-  it('documents the jungle and Roshan target forms the parser accepts', () => {
+  it('documents the jungle and Tenant target forms the parser accepts', () => {
     const text = mountLearn().text()
     expect(text).toContain('neutral:<index>')
     expect(text).toContain('attack neutral:0')
-    expect(text).toContain('attack roshan')
-    expect(text).toContain('Aegis')
+    expect(text).toContain('attack tenant')
+    expect(text).toContain('Backup')
   })
 
   // Divergence guard: the targeting table is the page a new player copies from,

@@ -276,7 +276,7 @@ describe('AsciiMap', () => {
 
       const overview = wrapper.find('[data-testid="mini-overview"]')
       expect(overview.exists()).toBe(true)
-      expect(overview.text()).toContain('ROS') // roshan pit code
+      expect(overview.text()).toContain('ROS') // tenant pit code
       expect(overview.text()).toContain('►M1') // player marker on current zone
       expect(overview.text()).toContain('MR!') // enemy marker on mid river
 
@@ -301,7 +301,7 @@ describe('AsciiMap', () => {
       expect(text).toContain('T1-3 ice zones')
       expect(text).toContain('JG jungle')
       expect(text).toContain('RN rune')
-      expect(text).toContain('ROS Roshan')
+      expect(text).toContain('ROS Tenant')
       expect(text).toContain('RF/RB fountain/base')
       expect(text).toContain('▲ ice up · ✗ razed')
     })

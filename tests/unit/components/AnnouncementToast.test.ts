@@ -49,7 +49,7 @@ describe('AnnouncementToast', () => {
 
   it('colours each severity from the level prop (info is NOT an amber warning)', async () => {
     const wrapper = mount(AnnouncementToast, {
-      props: { text: 'Roshan can only be attacked from the pit', seq: 1, level: 'warning' },
+      props: { text: 'Tenant can only be attacked from the pit', seq: 1, level: 'warning' },
     })
     await wrapper.setProps({ seq: 2 })
     let box = wrapper.find('.announcement-toast > div')
@@ -71,14 +71,14 @@ describe('AnnouncementToast', () => {
 
   it('renders the objective severity as gold with a ★ icon', async () => {
     const wrapper = mount(AnnouncementToast, {
-      props: { text: 'Roshan has been slain!', seq: 1, level: 'objective' },
+      props: { text: 'Tenant has been slain!', seq: 1, level: 'objective' },
     })
     await wrapper.setProps({ seq: 2 })
     const box = wrapper.find('.announcement-toast > div')
     expect(box.classes()).toContain('text-gold')
     expect(box.classes()).toContain('border-gold')
     expect(wrapper.text()).toContain('★')
-    expect(wrapper.text()).toContain('Roshan has been slain!')
+    expect(wrapper.text()).toContain('Tenant has been slain!')
   })
 
   it('renders the kill severity as audit with a ✕ icon', async () => {

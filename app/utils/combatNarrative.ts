@@ -318,27 +318,27 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
-    case 'roshan_killed':
+    case 'tenant_killed':
       // Two events share this tag: the public one carries killerTeam+gold.
       return p.killerTeam
         ? {
             tick,
-            text: `${teamLabel(str(p.killerTeam))} slew Roshan (+${num(p.goldAwarded)}g)`,
+            text: `${teamLabel(str(p.killerTeam))} slew Tenant (+${num(p.goldAwarded)}g)`,
             type: 'objective',
           }
-        : { tick, text: `Roshan has fallen`, type: 'objective' }
+        : { tick, text: `Tenant has fallen`, type: 'objective' }
 
-    case 'roshan_respawn':
-      return { tick, text: `Roshan has respawned`, type: 'objective' }
+    case 'tenant_respawn':
+      return { tick, text: `Tenant has respawned`, type: 'objective' }
 
-    case 'roshan_damage':
-      // Chip on Roshan repeats every tick — collapse like structure damage.
+    case 'tenant_damage':
+      // Chip on Tenant repeats every tick — collapse like structure damage.
       return {
         tick,
-        text: `Roshan takes ${num(p.damage)} (${num(p.hp)}/${num(p.maxHp)})`,
+        text: `Tenant takes ${num(p.damage)} (${num(p.hp)}/${num(p.maxHp)})`,
         type: 'damage',
         salience: 'world',
-        dedupKey: 'dmg:roshan',
+        dedupKey: 'dmg:tenant',
         dmgAmount: num(p.damage),
       }
 
@@ -351,18 +351,18 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         farmKind: 'camp',
       }
 
-    case 'aegis_picked':
+    case 'backup_picked':
       return {
         tick,
-        text: `${label(p.playerId)} claimed the Aegis`,
+        text: `${label(p.playerId)} claimed the Backup`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }
 
-    case 'aegis_used':
+    case 'backup_used':
       return {
         tick,
-        text: `${label(p.playerId)} reincarnated via the Aegis`,
+        text: `${label(p.playerId)} reincarnated via the Backup`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }
@@ -488,7 +488,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
 
 /**
  * Build the full line list from an event stream: map each event, drop the
- * suppressed ones, then collapse repeated structure/Roshan chip.
+ * suppressed ones, then collapse repeated structure/Tenant chip.
  */
 export function buildCombatLines(
   events: GameEvent[],
@@ -508,7 +508,7 @@ export function buildCombatLines(
 
 // ── Kill feed ───────────────────────────────────────────────────────
 
-export type KillCategory = 'hero' | 'ice' | 'roshan' | 'core'
+export type KillCategory = 'hero' | 'ice' | 'tenant' | 'core'
 
 export interface KillFeedEntry {
   tick: number
@@ -546,7 +546,7 @@ const MULTI_LABEL: Record<number, string> = {
 
 /**
  * Replay the event stream to derive kill-feed headlines: first blood, multi-
- * kills, shutdowns, and ongoing streaks for hero kills, plus ice/roshan/core
+ * kills, shutdowns, and ongoing streaks for hero kills, plus ice/tenant/core
  * headline events. Pure — no store access.
  */
 export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): KillFeedEntry[] {
@@ -613,12 +613,12 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
       continue
     }
 
-    if (e.type === 'roshan_killed' && p.killerTeam) {
+    if (e.type === 'tenant_killed' && p.killerTeam) {
       out.push({
         tick: e.tick,
-        category: 'roshan',
+        category: 'tenant',
         assisters: [],
-        text: `${teamLabel(str(p.killerTeam))} slew ROSHAN`,
+        text: `${teamLabel(str(p.killerTeam))} slew TENANT`,
       })
       continue
     }

@@ -5,9 +5,9 @@ import {
   RANGED_CREEPS_PER_WAVE,
   SIEGE_CREEP_WAVE_INTERVAL,
   creepMaxHp,
-  ROSHAN_RESPAWN_TICKS,
-  ROSHAN_BASE_HP,
-  ROSHAN_HP_PER_MINUTE,
+  TENANT_RESPAWN_TICKS,
+  TENANT_BASE_HP,
+  TENANT_HP_PER_MINUTE,
   TICK_DURATION_MS,
   RUNE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
@@ -119,35 +119,35 @@ export function spawnRunes(
   return runes
 }
 
-/** Roshan tracking state. */
-export interface RoshanState {
+/** Tenant tracking state. */
+export interface TenantState {
   alive: boolean
   hp: number
   maxHp: number
   deathTick: number | null
 }
 
-/** Initialize Roshan at tick 0. */
-export function initializeRoshan(): RoshanState {
+/** Initialize Tenant at tick 0. */
+export function initializeTenant(): TenantState {
   return {
     alive: true,
-    hp: ROSHAN_BASE_HP,
-    maxHp: ROSHAN_BASE_HP,
+    hp: TENANT_BASE_HP,
+    maxHp: TENANT_BASE_HP,
     deathTick: null,
   }
 }
 
-/** Check if Roshan should respawn. */
-export function shouldRoshanRespawn(roshan: RoshanState, currentTick: number): boolean {
-  if (roshan.alive) return false
-  if (roshan.deathTick === null) return false
-  return currentTick - roshan.deathTick >= ROSHAN_RESPAWN_TICKS
+/** Check if Tenant should respawn. */
+export function shouldTenantRespawn(tenant: TenantState, currentTick: number): boolean {
+  if (tenant.alive) return false
+  if (tenant.deathTick === null) return false
+  return currentTick - tenant.deathTick >= TENANT_RESPAWN_TICKS
 }
 
-/** Respawn Roshan with increased HP (+ROSHAN_HP_PER_MINUTE per game minute elapsed). */
-export function respawnRoshan(roshan: RoshanState, currentTick: number): RoshanState {
+/** Respawn Tenant with increased HP (+TENANT_HP_PER_MINUTE per game minute elapsed). */
+export function respawnTenant(tenant: TenantState, currentTick: number): TenantState {
   const minutesElapsed = Math.floor((currentTick * TICK_DURATION_MS) / 60_000)
-  const scaledMaxHp = ROSHAN_BASE_HP + minutesElapsed * ROSHAN_HP_PER_MINUTE
+  const scaledMaxHp = TENANT_BASE_HP + minutesElapsed * TENANT_HP_PER_MINUTE
   return {
     alive: true,
     hp: scaledMaxHp,

@@ -79,7 +79,7 @@ export function isEventVisibleToPlayer(
     case 'kill':
     case 'death':
     case 'ice_kill':
-    case 'roshan_killed':
+    case 'tenant_killed':
     case 'level_up':
       return true
   }
@@ -143,7 +143,7 @@ export function isEventVisibleToPlayer(
       // Enemy build/power-spike info is team-private — you learn an enemy spiked
       // by scouting them, not from a broadcast (publicly warning about a spike
       // you have no vision on is a fog leak in disguise). Own + allied spikes
-      // stay visible (clarity carve-out); genuinely global events (Aegis) are
+      // stay visible (clarity carve-out); genuinely global events (Backup) are
       // handled by their own always-visible cases.
       if (event.playerId === playerId) return true
       return state.players[event.playerId]?.team === playerTeam

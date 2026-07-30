@@ -1,28 +1,28 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatRoshan, formatRunes, formatAegis, ticksToClock, shortZone } from '~/utils/strategy'
+import { formatTenant, formatRunes, formatBackup, ticksToClock, shortZone } from '~/utils/strategy'
 import { buffLabel } from '~/utils/buffs'
-import type { RoshanState, RuneState } from '~~/shared/types/game'
+import type { TenantState, RuneState } from '~~/shared/types/game'
 
 const props = defineProps<{
-  roshan: RoshanState | null
+  tenant: TenantState | null
   runes: RuneState[]
-  aegis: { zone: string; tick: number; holderId: string | null } | null
+  backup: { zone: string; tick: number; holderId: string | null } | null
   tick: number
-  /** The aegis carrier (resolved from the 'aegis' buff by the parent), if any. */
-  aegisHolder?: { name: string; ticksRemaining: number } | null
+  /** The backup carrier (resolved from the 'backup' buff by the parent), if any. */
+  backupHolder?: { name: string; ticksRemaining: number } | null
 }>()
 
-const rosh = computed(() => formatRoshan(props.roshan, props.tick))
+const rosh = computed(() => formatTenant(props.tenant, props.tick))
 const rune = computed(() => formatRunes(props.runes, props.tick))
-const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
+const aeg = computed(() => formatBackup(props.backup, props.backupHolder))
 </script>
 
 <template>
   <div data-testid="objective-ticker" class="flex flex-col gap-1 font-mono text-[0.72rem]">
-    <!-- Roshan -->
+    <!-- Tenant -->
     <div class="flex items-center justify-between gap-2">
-      <span class="text-text-dim">ROSHAN</span>
+      <span class="text-text-dim">TENANT</span>
       <span
         :class="
           rosh.status === 'up'
@@ -35,7 +35,7 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
         <template v-if="rosh.status === 'up'"
           >UP{{ rosh.hpPct != null ? ` ${rosh.hpPct}%` : '' }}</template
         >
-        <!-- Whether you can contest the next Roshan is a wall-clock decision;
+        <!-- Whether you can contest the next Tenant is a wall-clock decision;
              "34t" only means something to someone who knows a tick is 4s. -->
         <template v-else-if="rosh.status === 'dead'"
           >dead · {{ ticksToClock(rosh.respawnIn) }}</template
@@ -59,9 +59,9 @@ const aeg = computed(() => formatAegis(props.aegis, props.aegisHolder))
         <template v-else>next {{ rune.nextIn }}c</template>
       </span>
     </div>
-    <!-- Aegis -->
+    <!-- Backup -->
     <div class="flex items-center justify-between gap-2">
-      <span class="text-text-dim">AEGIS</span>
+      <span class="text-text-dim">BACKUP</span>
       <span :class="aeg.held || aeg.inPit ? 'text-gold text-glow-gold font-bold' : 'text-text-dim'">
         <template v-if="aeg.held">{{ aeg.holderName }} · {{ aeg.expiresIn }}c</template>
         <template v-else-if="aeg.inPit">in pit</template>

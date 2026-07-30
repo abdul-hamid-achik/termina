@@ -47,7 +47,7 @@ const stream: CombatLine[] = [
     salience: 'mine-out',
   },
   { tick: 240, text: 'you reached level 10', type: 'system', salience: 'mine-out' },
-  { tick: 240, text: 'CHAFF slew Roshan (+900g)', type: 'objective' },
+  { tick: 240, text: 'CHAFF slew Tenant (+900g)', type: 'objective' },
 ]
 
 // Story mode's farm digest: the ally/world farm-tagged lines below fold into

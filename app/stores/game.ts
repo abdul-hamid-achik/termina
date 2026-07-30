@@ -12,7 +12,7 @@ import type {
   AncientState,
   CreepState,
   NeutralCreepState,
-  RoshanState,
+  TenantState,
   RuneState,
 } from '~~/shared/types/game'
 import type {
@@ -76,9 +76,9 @@ export const useGameStore = defineStore('game', () => {
   const neutrals = ref<NeutralCreepState[]>([])
   // Objective layer — streamed in every tick payload (PlayerVisibleState) but
   // previously discarded by updateFromTick. Surfaced here for the War Room HUD.
-  const roshan = ref<RoshanState | null>(null)
+  const tenant = ref<TenantState | null>(null)
   const runes = ref<RuneState[]>([])
-  const aegis = ref<{ zone: string; tick: number; holderId: string | null } | null>(null)
+  const backup = ref<{ zone: string; tick: number; holderId: string | null } | null>(null)
   // Last-seen position per player (zone + tick) — drives "last seen mid 4t ago"
   // for fogged enemies. Server only includes positions the team is allowed to know.
   const lastSeen = ref<Record<string, { zone: string; tick: number }>>({})
@@ -264,9 +264,9 @@ export const useGameStore = defineStore('game', () => {
       ancients?: { chaff: AncientState; audit: AncientState }
       creeps?: CreepState[]
       neutrals?: NeutralCreepState[]
-      roshan?: RoshanState
+      tenant?: TenantState
       runes?: RuneState[]
-      aegis?: { zone: string; tick: number; holderId: string | null } | null
+      backup?: { zone: string; tick: number; holderId: string | null } | null
       timeOfDay?: 'day' | 'night'
       dayNightTick?: number
       mapId?: string
@@ -304,9 +304,9 @@ export const useGameStore = defineStore('game', () => {
     if (state.ancients) ancients.value = state.ancients
     if (state.creeps) creeps.value = state.creeps
     if (state.neutrals) neutrals.value = state.neutrals
-    if (state.roshan) roshan.value = state.roshan
+    if (state.tenant) tenant.value = state.tenant
     if (state.runes) runes.value = state.runes
-    if ('aegis' in state) aegis.value = state.aegis ?? null
+    if ('backup' in state) backup.value = state.backup ?? null
     // Fog-safe last-seen tracking: record a player's position ONLY on the ticks
     // where they arrive un-fogged (fogged enemies come through as FoggedPlayer
     // with no `zone`). This can never leak a position the team didn't actually
@@ -447,9 +447,9 @@ export const useGameStore = defineStore('game', () => {
     ancients.value = null
     creeps.value = []
     neutrals.value = []
-    roshan.value = null
+    tenant.value = null
     runes.value = []
-    aegis.value = null
+    backup.value = null
     lastSeen.value = {}
     knownNetWorth.value = {}
     netWorthHistory.value = { chaff: [], audit: [] }
@@ -491,9 +491,9 @@ export const useGameStore = defineStore('game', () => {
     ancients,
     creeps,
     neutrals,
-    roshan,
+    tenant,
     runes,
-    aegis,
+    backup,
     lastSeen,
     knownNetWorth,
     netWorthHistory,

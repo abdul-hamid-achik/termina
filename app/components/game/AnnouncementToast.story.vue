@@ -55,7 +55,7 @@ onMounted(() => show('Target is not in your zone', 'warning'))
       <ToastDemo msg="Reconnected to game" lvl="info" />
     </Variant>
     <Variant title="objective">
-      <ToastDemo msg="Roshan has been slain!" lvl="objective" />
+      <ToastDemo msg="Tenant has been slain!" lvl="objective" />
     </Variant>
     <Variant title="kill">
       <ToastDemo msg="First Blood!" lvl="kill" />
@@ -85,7 +85,7 @@ onMounted(() => show('Target is not in your zone', 'warning'))
           </button>
           <button
             class="t-mono rounded border border-gold px-2 py-1 text-xs text-gold"
-            @click="show('Roshan has been slain!', 'objective')"
+            @click="show('Tenant has been slain!', 'objective')"
           >
             objective
           </button>

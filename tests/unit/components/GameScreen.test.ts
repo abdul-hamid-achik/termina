@@ -126,7 +126,7 @@ const stubs = {
       'creeps',
       'neutrals',
       'ice',
-      'roshan',
+      'tenant',
     ],
     template: '<div data-testid="zone-panel" />',
   },
@@ -718,7 +718,7 @@ describe('GameScreen', () => {
     })
   })
 
-  describe('jungle + Roshan targeting (W1-2)', () => {
+  describe('jungle + Tenant targeting (W1-2)', () => {
     // `attack neutral:<i>` resolves against the WHOLE neutrals array server-side
     // (it reaches the client unfiltered), unlike the zone-local creep index. If
     // the zone filter ran before the index was captured, the panel would send
@@ -743,42 +743,42 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
 
-    it('passes Roshan to the Zone panel only from inside the pit', () => {
+    it('passes Tenant to the Zone panel only from inside the pit', () => {
       seedActiveGame({ players: rosterAt('mid-river') })
       const outside = mountGameScreen()
-      expect(outside.findComponent({ name: 'ZonePanel' }).props('roshan')).toBeNull()
+      expect(outside.findComponent({ name: 'ZonePanel' }).props('tenant')).toBeNull()
       outside.unmount()
 
       seedActiveGame({ players: rosterAt('hollow') })
       const inPit = mountGameScreen()
-      expect(inPit.findComponent({ name: 'ZonePanel' }).props('roshan')).toMatchObject({
+      expect(inPit.findComponent({ name: 'ZonePanel' }).props('tenant')).toMatchObject({
         alive: true,
       })
       inPit.unmount()
     })
 
-    it('withholds Roshan while he is dead, even standing in the pit', () => {
+    it('withholds Tenant while he is dead, even standing in the pit', () => {
       seedActiveGame({
         players: rosterAt('hollow'),
-        roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 200 },
+        tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: 200 },
       })
       const wrapper = mountGameScreen()
 
-      expect(wrapper.findComponent({ name: 'ZonePanel' }).props('roshan')).toBeNull()
+      expect(wrapper.findComponent({ name: 'ZonePanel' }).props('tenant')).toBeNull()
       wrapper.unmount()
     })
 
-    it('sends attack roshan through the command path from the pit', async () => {
+    it('sends attack tenant through the command path from the pit', async () => {
       seedActiveGame({ players: rosterAt('hollow') })
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack roshan')
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack tenant')
       await wrapper.vm.$nextTick()
 
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
-        command: { type: 'attack', target: { kind: 'roshan' } },
+        command: { type: 'attack', target: { kind: 'tenant' } },
       })
       wrapper.unmount()
     })
@@ -1383,7 +1383,7 @@ describe('GameScreen', () => {
       seedActiveGame({ players: rosterAt('hollow') })
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack roshan')
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack tenant')
       await wrapper.vm.$nextTick()
 
       expect(audio.playSound).toHaveBeenCalledWith('cast')

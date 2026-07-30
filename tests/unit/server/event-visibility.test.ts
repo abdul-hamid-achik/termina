@@ -144,7 +144,7 @@ const vis = (e: GameEngineEvent, zones: string[] = []) =>
 
 describe('isEventVisibleToPlayer — global events', () => {
   it('always shows map-wide events regardless of vision', () => {
-    for (const tag of ['kill', 'death', 'ice_kill', 'roshan_killed', 'level_up']) {
+    for (const tag of ['kill', 'death', 'ice_kill', 'tenant_killed', 'level_up']) {
       expect(vis(ev(tag, {}))).toBe(true)
     }
   })

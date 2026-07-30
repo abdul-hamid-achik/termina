@@ -191,13 +191,13 @@ describe('CommandInput preview line', () => {
 
 describe('CommandInput attack target labels', () => {
   // REGRESSION: the preview's label chain fell through to 'self' for any kind it
-  // did not name, so once `roshan` and `neutral:<i>` became parseable the prompt
+  // did not name, so once `tenant` and `neutral:<i>` became parseable the prompt
   // confirmed them as a green ">> Attack self" — the most confident possible way
   // to be wrong about what the player is about to do.
-  it('names Roshan rather than falling through to "self"', async () => {
+  it('names Tenant rather than falling through to "self"', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'hollow' }))
-    const preview = await previewFor(wrapper, 'attack roshan')
-    expect(preview.text()).toContain('Roshan')
+    const preview = await previewFor(wrapper, 'attack tenant')
+    expect(preview.text()).toContain('Tenant')
     expect(preview.text()).not.toContain('self')
   })
 

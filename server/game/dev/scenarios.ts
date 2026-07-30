@@ -20,10 +20,10 @@ export function applyScenario(
   opts?: ScenarioOptions,
 ): GameState {
   switch (scenario) {
-    case 'roshan_dead':
-      // Roshan slain at the current tick → the objective ticker shows a respawn
-      // countdown (deathTick + ROSHAN_RESPAWN_TICKS).
-      return { ...state, roshan: { ...state.roshan, alive: false, hp: 0, deathTick: state.tick } }
+    case 'tenant_dead':
+      // Tenant slain at the current tick → the objective ticker shows a respawn
+      // countdown (deathTick + TENANT_RESPAWN_TICKS).
+      return { ...state, tenant: { ...state.tenant, alive: false, hp: 0, deathTick: state.tick } }
 
     case 'self_dead': {
       // The human player is dead with a pending respawn → GameScreen renders the
@@ -110,7 +110,7 @@ export const KNOWN_SCENARIOS = [
   'fresh',
   'laning',
   'laning_combat',
-  'roshan_dead',
+  'tenant_dead',
   'core_vulnerable',
   'night',
   'self_dead',

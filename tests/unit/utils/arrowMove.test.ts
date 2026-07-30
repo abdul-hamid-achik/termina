@@ -173,7 +173,7 @@ describe('arrowTargetZone regressions the name-substring heuristic got wrong', (
     )
   })
 
-  it('gives the Roshan pit its one direction back', () => {
+  it('gives the Tenant pit its one direction back', () => {
     expect(arrowTargetZone('ArrowLeft', 'hollow', adj('hollow'))).toBe('cache-top')
   })
 

@@ -18,7 +18,7 @@ export const KILL_BOUNTY_BASE = 200
 export const KILL_BOUNTY_PER_STREAK = 50
 export const ASSIST_GOLD = 100
 export const ICE_GOLD = 500
-export const ROSHAN_GOLD = 600
+export const TENANT_GOLD = 600
 export const STARTING_GOLD = 600
 /** Fraction of an item's cost refunded when sold. */
 export const SELL_REFUND_RATIO = 0.5
@@ -171,13 +171,13 @@ export const SENTRY_WARD_DURATION_TICKS = 30
 export const WARD_LIMIT_PER_TEAM = 3
 export const SENTRY_WARD_TRUE_SIGHT_RADIUS = 1
 
-// ── Roshan ───────────────────────────────────────────────────────
+// ── Tenant ───────────────────────────────────────────────────────
 
-export const ROSHAN_RESPAWN_TICKS = 90
-export const ROSHAN_BASE_HP = 5000
-export const ROSHAN_HP_PER_MINUTE = 100
-export const ROSHAN_ATTACK = 150
-export const ROSHAN_AEGIS_TICKS = 300 // 5 minutes at 4s/tick
+export const TENANT_RESPAWN_TICKS = 90
+export const TENANT_BASE_HP = 5000
+export const TENANT_HP_PER_MINUTE = 100
+export const TENANT_ATTACK = 150
+export const TENANT_BACKUP_TICKS = 300 // 5 minutes at 4s/tick
 
 // ── Runes ───────────────────────────────────────────────────────────
 

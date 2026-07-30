@@ -24,7 +24,7 @@ import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
 import type { CreepState, GameState, PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 function statsAtLevel(heroId: string, level: number) {
@@ -89,8 +89,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',

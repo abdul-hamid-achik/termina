@@ -60,7 +60,7 @@ import {
   getAbilityLevel,
 } from '~~/shared/constants/balance'
 import { pathDistance } from '~~/shared/pathfinding'
-import { formatRoshan, ticksToClock } from '~/utils/strategy'
+import { formatTenant, ticksToClock } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
@@ -681,7 +681,7 @@ function entityLabel(id: unknown): string {
     if (team === 'audit') return 'the Audit Mainframe'
     return `the ${team} Mainframe`
   }
-  if (id === 'roshan') return 'Roshan'
+  if (id === 'tenant') return 'Tenant'
   if (id === 'buyback') return 'buyback'
   if (id === 'fountain') return 'the fountain'
   return id
@@ -723,7 +723,7 @@ const combatEvents = computed<CombatLine[]>(() => {
   return [...lines, ...localEvents.value].sort((a, b) => a.tick - b.tick)
 })
 
-// Cinematic headline plays — first blood, multi-kills, shutdowns, ice/Roshan/Core.
+// Cinematic headline plays — first blood, multi-kills, shutdowns, ice/Tenant/Core.
 const killFeed = computed<KillFeedEntry[]>(() =>
   deriveKillFeed(gameStore.events, narrativeCtx.value),
 )
@@ -828,8 +828,8 @@ const mapZones = computed(() => {
     if (r.tick + RUNE_DURATION_TICKS > gameStore.tick) liveRuneByZone.set(r.zone, r.type)
   }
 
-  // Roshan state for the pit (reuses the War Room's tested respawn readout).
-  const roshanReadout = gameStore.roshan ? formatRoshan(gameStore.roshan, gameStore.tick) : null
+  // Tenant state for the pit (reuses the War Room's tested respawn readout).
+  const tenantReadout = gameStore.tenant ? formatTenant(gameStore.tenant, gameStore.tick) : null
 
   // The GAME's zone set, not the global 32. On the one-lane tutorial map the
   // full list put ~20 zones on the board that the game does not contain — and
@@ -900,9 +900,9 @@ const mapZones = computed(() => {
       // Hiding the map marker only made the two surfaces disagree — a rune spot
       // is unwarded almost by definition, so the fog gate hid it nearly always.
       runeType: liveRuneByZone.get(zone.id),
-      roshan:
-        zone.id === 'hollow' && !fogged && roshanReadout && roshanReadout.status !== 'unknown'
-          ? { alive: roshanReadout.status === 'up', respawnIn: roshanReadout.respawnIn }
+      tenant:
+        zone.id === 'hollow' && !fogged && tenantReadout && tenantReadout.status !== 'unknown'
+          ? { alive: tenantReadout.status === 'up', respawnIn: tenantReadout.respawnIn }
           : undefined,
     }
   })
@@ -957,9 +957,9 @@ const zoneNeutrals = computed(() =>
     .filter((n) => n.zone === playerZone.value && n.alive),
 )
 
-/** Roshan, but only where he can actually be fought (and only while alive). */
-const zoneRoshan = computed(() =>
-  playerZone.value === 'hollow' && gameStore.roshan?.alive ? gameStore.roshan : null,
+/** Tenant, but only where he can actually be fought (and only while alive). */
+const zoneTenant = computed(() =>
+  playerZone.value === 'hollow' && gameStore.tenant?.alive ? gameStore.tenant : null,
 )
 
 const zoneIce = computed(() => iceByZone.value.get(playerZone.value) ?? null)
@@ -1331,7 +1331,7 @@ function handleQuickAction(cmd: string) {
   handleCommand(cmd.toLowerCase())
 }
 
-// Situational actions (ward / deny / aegis / rune / glyph / surrender) were
+// Situational actions (ward / deny / backup / rune / glyph / surrender) were
 // command-line only — invisible + unusable on touch. Surface them as on-screen
 // buttons, shown only when actually available so the row stays contextual.
 // Which contextual actions the player can take now — pure rules extracted to a
@@ -1341,7 +1341,7 @@ const situationalActions = computed(() =>
     player: gameStore.player,
     isAlive: gameStore.isAlive,
     creeps: gameStore.creeps,
-    aegis: gameStore.aegis,
+    backup: gameStore.backup,
     runes: gameStore.runes,
     teams: gameStore.teams,
     tick: gameStore.tick,
@@ -1354,7 +1354,7 @@ function runSituational(cmd: string) {
   if (!p) return
   if (cmd === 'ward') handleCommand(`ward ${p.zone}`)
   else if (cmd === 'surrender') handleCommand('surrender confirm')
-  else handleCommand(cmd) // deny / aegis / rune / glyph — bare commands (auto-resolved)
+  else handleCommand(cmd) // deny / backup / rune / glyph — bare commands (auto-resolved)
 }
 
 // ── Quick action button availability ─────────────────────────
@@ -1724,7 +1724,7 @@ function handleReturnToMenu() {
           :creeps="zoneCreeps"
           :neutrals="zoneNeutrals"
           :ice="zoneIce"
-          :roshan="zoneRoshan"
+          :tenant="zoneTenant"
           @command="handleCommand"
         />
       </TerminalPanel>
@@ -2011,7 +2011,7 @@ function handleReturnToMenu() {
         </button>
       </div>
       <!-- Situational actions — surfaced as buttons only when available, so the
-           command-only verbs (ward/deny/aegis/rune/glyph/surrender) are usable
+           command-only verbs (ward/deny/backup/rune/glyph/surrender) are usable
            on touch and discoverable to new players. -->
       <div
         v-if="situationalActions.length"

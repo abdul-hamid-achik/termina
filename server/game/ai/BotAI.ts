@@ -949,66 +949,66 @@ function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null 
   return null
 }
 
-/** Roshan is only worth STARTING at (near-)full HP; anything in between belongs
+/** Tenant is only worth STARTING at (near-)full HP; anything in between belongs
  *  to whichever team is already on him. */
-const ROSHAN_START_HP_FRACTION = 0.7
+const TENANT_START_HP_FRACTION = 0.7
 /** Below this he is a steal target — dive in even without the full squad. */
-const ROSHAN_SNIPE_HP_FRACTION = 0.4
-/** Minimum level to open a fresh Roshan (he hits for ROSHAN_ATTACK a tick). */
-const ROSHAN_START_MIN_LEVEL = 8
+const TENANT_SNIPE_HP_FRACTION = 0.4
+/** Minimum level to open a fresh Tenant (he hits for TENANT_ATTACK a tick). */
+const TENANT_START_MIN_LEVEL = 8
 /** Allies (excluding the bot) that must already be near the pit to open. */
-const ROSHAN_START_MIN_ALLIES = 2
+const TENANT_START_MIN_ALLIES = 2
 /** How far a bot will travel to join its team's attempt. */
-const ROSHAN_MAX_TRAVEL_DISTANCE = 3
+const TENANT_MAX_TRAVEL_DISTANCE = 3
 /** How long a team's commitment lasts before the attempt is written off. */
-const ROSHAN_ATTEMPT_WINDOW_TICKS = 30
+const TENANT_ATTEMPT_WINDOW_TICKS = 30
 /** Lockout after an attempt window closes, so a team doesn't camp the pit. */
-const ROSHAN_TEAM_COOLDOWN_TICKS = 90
+const TENANT_TEAM_COOLDOWN_TICKS = 90
 /** Health to open on him with. */
-const ROSHAN_START_MIN_HP_PERCENT = 70
+const TENANT_START_MIN_HP_PERCENT = 70
 /**
- * Health to keep swinging at a Roshan the team already committed to. Held well
- * clear of one ROSHAN_ATTACK so nobody dies to the pit, but far below the START
+ * Health to keep swinging at a Tenant the team already committed to. Held well
+ * clear of one TENANT_ATTACK so nobody dies to the pit, but far below the START
  * floor — applying the opening floor for the whole fight let each bot land two
- * hits and walk out, which chipped Roshan without ever killing him.
+ * hits and walk out, which chipped Tenant without ever killing him.
  */
-const ROSHAN_HOLD_MIN_HP_PERCENT = 45
+const TENANT_HOLD_MIN_HP_PERCENT = 45
 
 /**
- * Tick at which each team last committed to Roshan, keyed `${gameId}|${team}`.
+ * Tick at which each team last committed to Tenant, keyed `${gameId}|${team}`.
  * Without it the start condition re-fires every tick it holds, so the whole team
  * abandons its lanes and lives in the pit. Cleared per game by `cleanupBotGameState`.
  */
-const roshanAttempts = new Map<string, number>()
+const tenantAttempts = new Map<string, number>()
 
-type RoshanPhase = 'open' | 'committed' | 'cooling'
+type TenantPhase = 'open' | 'committed' | 'cooling'
 
-function roshanAttemptPhase(key: string, tick: number): RoshanPhase {
-  const started = roshanAttempts.get(key)
+function tenantAttemptPhase(key: string, tick: number): TenantPhase {
+  const started = tenantAttempts.get(key)
   // A tick BEHIND the recorded start means a different game reused the key
   // (unit fixtures, a fresh match) — treat it as no attempt on record.
   if (started === undefined || tick < started) return 'open'
   const elapsed = tick - started
-  if (elapsed < ROSHAN_ATTEMPT_WINDOW_TICKS) return 'committed'
-  if (elapsed < ROSHAN_ATTEMPT_WINDOW_TICKS + ROSHAN_TEAM_COOLDOWN_TICKS) return 'cooling'
+  if (elapsed < TENANT_ATTEMPT_WINDOW_TICKS) return 'committed'
+  if (elapsed < TENANT_ATTEMPT_WINDOW_TICKS + TENANT_TEAM_COOLDOWN_TICKS) return 'cooling'
   return 'open'
 }
 
 /**
- * Roshan awareness. This used to be a pure LAST-HIT check ("only contest below
- * 40% HP") — but Roshan takes damage from nothing except heroes, and no bot would
+ * Tenant awareness. This used to be a pure LAST-HIT check ("only contest below
+ * 40% HP") — but Tenant takes damage from nothing except heroes, and no bot would
  * open on him above 40%, so in a bots-only or human+bots match his HP never moved
- * and the Aegis never dropped. It is now a START condition (near-full Roshan, a
+ * and the Backup never dropped. It is now a START condition (near-full Tenant, a
  * squad already near the pit, level 8+), with the old 40% clause kept as an
  * opportunistic steal for whoever did NOT start him.
  *
  * Only a core role (carry/tank/assassin/mage) OPENS one, but any role within a
- * few zones joins once the call is made: Roshan focuses the lowest-HP hero in
+ * few zones joins once the call is made: Tenant focuses the lowest-HP hero in
  * the pit, so extra bodies spread his damage and the squad survives long enough
  * to finish. Distance-bounded either way — a bot trekking across the map for
- * Roshan is a lane thrown away.
+ * Tenant is a lane thrown away.
  */
-function tryRoshan(
+function tryTenant(
   state: GameState,
   bot: PlayerState,
   config: BotDifficultyConfig,
@@ -1016,30 +1016,30 @@ function tryRoshan(
   hasZone?: (id: string) => boolean,
 ): Command | null {
   if (!config.threatAssessment) return null
-  const roshan = state.roshan
-  if (!roshan.alive) return null
+  const tenant = state.tenant
+  if (!tenant.alive) return null
   // Subset maps (one-lane, two-lane) have no pit at all.
   if (hasZone && !hasZone('hollow')) return null
   // Checked before the attempt is recorded: a bot that could never get there
   // must not consume its team's one commitment window.
   const distance = getDistance(bot.zone, 'hollow', hasZone)
-  if (distance > ROSHAN_MAX_TRAVEL_DISTANCE) return null
+  if (distance > TENANT_MAX_TRAVEL_DISTANCE) return null
 
   const key = `${gameId}|${bot.team}`
-  const phase = roshanAttemptPhase(key, state.tick)
-  const hpFraction = roshan.maxHp > 0 ? roshan.hp / roshan.maxHp : 0
-  const snipe = hpFraction < ROSHAN_SNIPE_HP_FRACTION
+  const phase = tenantAttemptPhase(key, state.tick)
+  const hpFraction = tenant.maxHp > 0 ? tenant.hp / tenant.maxHp : 0
+  const snipe = hpFraction < TENANT_SNIPE_HP_FRACTION
 
   if (phase === 'committed') {
-    if (getHpPercent(bot) < ROSHAN_HOLD_MIN_HP_PERCENT) return null
+    if (getHpPercent(bot) < TENANT_HOLD_MIN_HP_PERCENT) return null
   } else {
     const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
     if (role !== 'carry' && role !== 'tank' && role !== 'assassin' && role !== 'mage') return null
-    if (getHpPercent(bot) < ROSHAN_START_MIN_HP_PERCENT) return null
-    // A team inside its lockout only re-engages to steal a nearly-dead Roshan.
+    if (getHpPercent(bot) < TENANT_START_MIN_HP_PERCENT) return null
+    // A team inside its lockout only re-engages to steal a nearly-dead Tenant.
     if (phase === 'cooling' && !snipe) return null
-    if (!snipe && hpFraction < ROSHAN_START_HP_FRACTION) return null
-    if (bot.level < (snipe ? 6 : ROSHAN_START_MIN_LEVEL)) return null
+    if (!snipe && hpFraction < TENANT_START_HP_FRACTION) return null
+    if (bot.level < (snipe ? 6 : TENANT_START_MIN_LEVEL)) return null
     const alliesNear = Object.values(state.players).filter(
       (p) =>
         p.team === bot.team &&
@@ -1047,32 +1047,32 @@ function tryRoshan(
         p.id !== bot.id &&
         getDistance(p.zone, 'hollow', hasZone) <= 2,
     ).length
-    if (alliesNear < (snipe ? 1 : ROSHAN_START_MIN_ALLIES)) return null
-    roshanAttempts.set(key, state.tick)
+    if (alliesNear < (snipe ? 1 : TENANT_START_MIN_ALLIES)) return null
+    tenantAttempts.set(key, state.tick)
   }
 
   if (bot.zone === 'hollow') {
-    return { type: 'attack', target: { kind: 'roshan' } }
+    return { type: 'attack', target: { kind: 'tenant' } }
   }
   const path = findPath(bot.zone, 'hollow', hasZone)
   if (path.length > 1) return { type: 'move', zone: path[1]! }
   return null
 }
 
-/** Grab the Aegis when it has dropped in the Roshan pit and is still unclaimed.
- *  The aegis only ever lands in hollow, so a bot already there (e.g. the one
- *  that just contested Roshan) picks it up; otherwise it only diverts when the
+/** Grab the Backup when it has dropped in the Tenant pit and is still unclaimed.
+ *  The backup only ever lands in hollow, so a bot already there (e.g. the one
+ *  that just contested Tenant) picks it up; otherwise it only diverts when the
  *  pit is adjacent — it never abandons its lane to trek across the map for it. */
-function tryAegis(
+function tryBackup(
   state: GameState,
   bot: PlayerState,
   config: BotDifficultyConfig,
   hasZone?: (id: string) => boolean,
 ): Command | null {
   if (!config.threatAssessment) return null
-  const aegis = state.aegis
-  if (!aegis || aegis.holderId) return null // none on the ground / already held
-  if (bot.zone === 'hollow') return { type: 'aegis' }
+  const backup = state.backup
+  if (!backup || backup.holderId) return null // none on the ground / already held
+  if (bot.zone === 'hollow') return { type: 'backup' }
   // Only divert when the pit is right next to us (don't cross the map for it).
   if ((!hasZone || hasZone('hollow')) && getDistance(bot.zone, 'hollow', hasZone) <= 1) {
     const path = findPath(bot.zone, 'hollow', hasZone)
@@ -1534,12 +1534,12 @@ export function decideBotAction(
     // Rotate to a ice where the defenders are outnumbered
     const defendCmd = tryDefendIce(state, bot, hasZone)
     if (defendCmd) return defendCmd
-    // Start (or steal) Roshan — carry/tank/assassin/mage only, squad nearby
-    const roshanCmd = tryRoshan(state, bot, config, gameId ?? '', hasZone)
-    if (roshanCmd) return roshanCmd
-    // Once Roshan is dead, grab the Aegis drop from the pit
-    const aegisCmd = tryAegis(state, bot, config, hasZone)
-    if (aegisCmd) return aegisCmd
+    // Start (or steal) Tenant — carry/tank/assassin/mage only, squad nearby
+    const tenantCmd = tryTenant(state, bot, config, gameId ?? '', hasZone)
+    if (tenantCmd) return tenantCmd
+    // Once Tenant is dead, grab the Backup drop from the pit
+    const backupCmd = tryBackup(state, bot, config, hasZone)
+    if (backupCmd) return backupCmd
   }
   const enemyCreeps = getEnemyCreepsInZone(state, bot)
   if (enemyHeroes.length > 0) {
@@ -1641,7 +1641,7 @@ export function decideBotAction(
   return null
 }
 
-/** Whether a zone is on the given team's half of the map (rivers/runes/roshan are neutral). */
+/** Whether a zone is on the given team's half of the map (rivers/runes/tenant are neutral). */
 export function isOwnSide(zone: string, team: TeamId): boolean {
   // Data lookup, NOT an id substring test — zone ids carry no side semantics a
   // rename must preserve (the old endsWith('-rad') check inverted silently).
@@ -1652,8 +1652,8 @@ export function cleanupBotState(playerId: string): void {
   comboStates.delete(playerId)
 }
 
-/** Drop per-GAME bot bookkeeping (currently the per-team Roshan commitment). */
+/** Drop per-GAME bot bookkeeping (currently the per-team Tenant commitment). */
 export function cleanupBotGameState(gameId: string): void {
-  roshanAttempts.delete(`${gameId}|chaff`)
-  roshanAttempts.delete(`${gameId}|audit`)
+  tenantAttempts.delete(`${gameId}|chaff`)
+  tenantAttempts.delete(`${gameId}|audit`)
 }

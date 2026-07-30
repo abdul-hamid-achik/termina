@@ -3,7 +3,7 @@ import { isDamageImmune } from './DamageCalculator'
 import { dealDamage, hasBuff } from '../heroes/_base'
 
 /**
- * Unified physical-hit resolution for NPC attackers (ice, creeps, Roshan).
+ * Unified physical-hit resolution for NPC attackers (ice, creeps, Tenant).
  *
  * Heroes defend themselves with the SAME mitigation chain regardless of who
  * swings at them: immunity (Ghost/Ethereal/invulnerable) → effective defense
@@ -13,7 +13,7 @@ import { dealDamage, hasBuff } from '../heroes/_base'
  * Before this helper, each NPC site reimplemented a *slice* of that chain —
  * ice used raw `target.defense` (ignoring items, cuirass, vuln, hardened,
  * shield, phaseShift), creeps skipped the multiplier + hardened + shield +
- * phaseShift, and the inline Roshan path in GameLoop skipped everything but
+ * phaseShift, and the inline Tenant path in GameLoop skipped everything but
  * immunity. A hero with an armor item or a shield took more ice damage than
  * intended; a phaseShift hero couldn't dodge a ice shot.
  *

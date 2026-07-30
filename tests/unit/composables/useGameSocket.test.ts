@@ -293,11 +293,11 @@ describe('useGameSocket', () => {
       const spy = vi.spyOn(store, 'addAnnouncement')
       MockWebSocket.last!._receive({
         type: 'announcement',
-        message: 'Roshan is up',
+        message: 'Tenant is up',
         level: 'objective',
       })
       // The level must be forwarded so the toast can colour it (not assumed amber).
-      expect(spy).toHaveBeenCalledWith('Roshan is up', 'objective')
+      expect(spy).toHaveBeenCalledWith('Tenant is up', 'objective')
     })
 
     it('routes error to an [ERROR] announcement at error level', async () => {

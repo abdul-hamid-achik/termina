@@ -5,7 +5,7 @@ import type { PlayerVisibleState } from '~~/shared/types/game'
  *
  * The engine uses immutable spread updates — unchanged fields keep the same
  * object reference across ticks. `filterStateForPlayer` passes through several
- * fields by reference (teams, ice, ancients, roshan, aegis, runes, neutrals,
+ * fields by reference (teams, ice, ancients, tenant, backup, runes, neutrals,
  * timeOfDay, dayNightTick, mapId, mode, tutorialStep). By comparing each field
  * by reference (===, O(1)), we can skip re-sending fields that didn't change.
  *
@@ -58,12 +58,12 @@ export function computeDelta(
     delta.runes = current.runes
     hasChanges = true
   }
-  if (current.roshan !== lastSent.roshan) {
-    delta.roshan = current.roshan
+  if (current.tenant !== lastSent.tenant) {
+    delta.tenant = current.tenant
     hasChanges = true
   }
-  if (current.aegis !== lastSent.aegis) {
-    delta.aegis = current.aegis
+  if (current.backup !== lastSent.backup) {
+    delta.backup = current.backup
     hasChanges = true
   }
   if (current.timeOfDay !== lastSent.timeOfDay) {

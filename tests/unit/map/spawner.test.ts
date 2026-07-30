@@ -3,9 +3,9 @@ import {
   spawnCreepWaves,
   resetCreepIdCounter,
   spawnRunes,
-  initializeRoshan,
-  shouldRoshanRespawn,
-  respawnRoshan,
+  initializeTenant,
+  shouldTenantRespawn,
+  respawnTenant,
 } from '~~/server/game/map/spawner'
 import { zonesForMap, ONE_LANE_MAP_ID, TWO_LANE_MAP_ID } from '~~/shared/constants/maps'
 import {
@@ -18,8 +18,8 @@ import {
   SIEGE_CREEP_HP,
   CREEP_ESCALATION_INTERVAL_TICKS,
   creepMaxHp,
-  ROSHAN_RESPAWN_TICKS,
-  ROSHAN_BASE_HP,
+  TENANT_RESPAWN_TICKS,
+  TENANT_BASE_HP,
   RUNE_INTERVAL_TICKS,
   RUNE_DURATION_TICKS,
 } from '~~/shared/constants/balance'
@@ -251,59 +251,59 @@ describe('Spawner', () => {
     })
   })
 
-  describe('Roshan', () => {
-    describe('initializeRoshan', () => {
+  describe('Tenant', () => {
+    describe('initializeTenant', () => {
       it('starts alive with full HP', () => {
-        const rosh = initializeRoshan()
+        const rosh = initializeTenant()
         expect(rosh.alive).toBe(true)
-        expect(rosh.hp).toBe(ROSHAN_BASE_HP)
-        expect(rosh.maxHp).toBe(ROSHAN_BASE_HP)
+        expect(rosh.hp).toBe(TENANT_BASE_HP)
+        expect(rosh.maxHp).toBe(TENANT_BASE_HP)
         expect(rosh.deathTick).toBeNull()
       })
     })
 
-    describe('shouldRoshanRespawn', () => {
-      it('returns false when Roshan is alive', () => {
-        const rosh = initializeRoshan()
-        expect(shouldRoshanRespawn(rosh, 1000)).toBe(false)
+    describe('shouldTenantRespawn', () => {
+      it('returns false when Tenant is alive', () => {
+        const rosh = initializeTenant()
+        expect(shouldTenantRespawn(rosh, 1000)).toBe(false)
       })
 
       it('returns false when deathTick is null', () => {
-        const rosh = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: null }
-        expect(shouldRoshanRespawn(rosh, 1000)).toBe(false)
+        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: null }
+        expect(shouldTenantRespawn(rosh, 1000)).toBe(false)
       })
 
       it('returns false before respawn time', () => {
-        const rosh = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: 100 }
-        expect(shouldRoshanRespawn(rosh, 100 + ROSHAN_RESPAWN_TICKS - 1)).toBe(false)
+        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        expect(shouldTenantRespawn(rosh, 100 + TENANT_RESPAWN_TICKS - 1)).toBe(false)
       })
 
       it('returns true at exactly respawn time', () => {
-        const rosh = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: 100 }
-        expect(shouldRoshanRespawn(rosh, 100 + ROSHAN_RESPAWN_TICKS)).toBe(true)
+        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        expect(shouldTenantRespawn(rosh, 100 + TENANT_RESPAWN_TICKS)).toBe(true)
       })
 
       it('returns true after respawn time', () => {
-        const rosh = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: 100 }
-        expect(shouldRoshanRespawn(rosh, 100 + ROSHAN_RESPAWN_TICKS + 50)).toBe(true)
+        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        expect(shouldTenantRespawn(rosh, 100 + TENANT_RESPAWN_TICKS + 50)).toBe(true)
       })
     })
 
-    describe('respawnRoshan', () => {
+    describe('respawnTenant', () => {
       it('restores alive status and full HP', () => {
-        const dead = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: 100 }
-        const respawned = respawnRoshan(dead, 0)
+        const dead = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        const respawned = respawnTenant(dead, 0)
         expect(respawned.alive).toBe(true)
-        expect(respawned.hp).toBe(ROSHAN_BASE_HP)
+        expect(respawned.hp).toBe(TENANT_BASE_HP)
         expect(respawned.deathTick).toBeNull()
       })
 
       it('scales maxHp with minutes elapsed', () => {
-        const dead = { alive: false, hp: 0, maxHp: ROSHAN_BASE_HP, deathTick: 100 }
+        const dead = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
         // 150 ticks * 4s = 600s = 10 minutes
-        const respawned = respawnRoshan(dead, 150)
-        expect(respawned.hp).toBe(ROSHAN_BASE_HP + 10 * 100)
-        expect(respawned.maxHp).toBe(ROSHAN_BASE_HP + 10 * 100)
+        const respawned = respawnTenant(dead, 150)
+        expect(respawned.hp).toBe(TENANT_BASE_HP + 10 * 100)
+        expect(respawned.maxHp).toBe(TENANT_BASE_HP + 10 * 100)
       })
     })
   })

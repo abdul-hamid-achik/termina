@@ -92,8 +92,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
-    aegis: null,
+    tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
@@ -1944,13 +1944,13 @@ describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
   })
 })
 
-describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => {
+describe('BotAI - Tenant (start condition, steal window, team cooldown)', () => {
   const ROSH_MAX = 5000
 
   function pitScene(
     opts: {
       tick?: number
-      roshanHp?: number
+      tenantHp?: number
       level?: number
       allies?: number
       botZone?: string
@@ -1958,7 +1958,7 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
   ) {
     const bot = makePlayer({
       id: 'bot_alpha',
-      heroId: 'echo', // carry — a role that contests Roshan
+      heroId: 'echo', // carry — a role that contests Tenant
       level: opts.level ?? 8,
       zone: opts.botZone ?? 'hollow',
       hp: 500,
@@ -1974,19 +1974,19 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
       state: makeGameState({
         tick: opts.tick ?? 40,
         players,
-        roshan: { alive: true, hp: opts.roshanHp ?? ROSH_MAX, maxHp: ROSH_MAX, deathTick: null },
+        tenant: { alive: true, hp: opts.tenantHp ?? ROSH_MAX, maxHp: ROSH_MAX, deathTick: null },
       }),
     }
   }
 
-  const HIT_ROSHAN = { type: 'attack', target: { kind: 'roshan' } }
+  const HIT_TENANT = { type: 'attack', target: { kind: 'tenant' } }
 
-  it('STARTS a full-HP Roshan with the squad assembled at level 8', () => {
+  it('STARTS a full-HP Tenant with the squad assembled at level 8', () => {
     // The old gate was `hp/maxHp > 0.4 → return null`. Nothing but a hero can
-    // damage Roshan, so in a bots-only match his HP never moved and the Aegis
+    // damage Tenant, so in a bots-only match his HP never moved and the Backup
     // never dropped.
     const { bot, state } = pitScene()
-    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_ROSHAN)
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_TENANT)
   })
 
   it('walks to the pit when the squad is assembled but the bot is not there yet', () => {
@@ -2000,70 +2000,70 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
   it('will not open one alone', () => {
     const { bot, state } = pitScene({ allies: 1 })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).not.toEqual(
-      HIT_ROSHAN,
+      HIT_TENANT,
     )
   })
 
   it('will not open one under level 8', () => {
     const { bot, state } = pitScene({ level: 7 })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).not.toEqual(
-      HIT_ROSHAN,
+      HIT_TENANT,
     )
   })
 
-  it('will not open a Roshan already chewed to half — that fight belongs to whoever started it', () => {
-    const { bot, state } = pitScene({ roshanHp: ROSH_MAX * 0.5 })
+  it('will not open a Tenant already chewed to half — that fight belongs to whoever started it', () => {
+    const { bot, state } = pitScene({ tenantHp: ROSH_MAX * 0.5 })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).not.toEqual(
-      HIT_ROSHAN,
+      HIT_TENANT,
     )
   })
 
-  it('STEALS a Roshan under 40% with one ally at level 6 (the old opportunistic clause)', () => {
-    const { bot, state } = pitScene({ roshanHp: ROSH_MAX * 0.3, level: 6, allies: 1 })
-    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_ROSHAN)
+  it('STEALS a Tenant under 40% with one ally at level 6 (the old opportunistic clause)', () => {
+    const { bot, state } = pitScene({ tenantHp: ROSH_MAX * 0.3, level: 6, allies: 1 })
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual(HIT_TENANT)
   })
 
   it('a committed team keeps hitting through no-mans-land HP for the whole window', () => {
     const gameId = atDifficulty('medium', 'bot_alpha')
     const opened = pitScene({ tick: 40 })
-    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
-    // Same attempt, 5 ticks later, Roshan now at 50% — no longer a legal START,
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_TENANT)
+    // Same attempt, 5 ticks later, Tenant now at 50% — no longer a legal START,
     // but the team is already committed.
-    const midFight = pitScene({ tick: 45, roshanHp: ROSH_MAX * 0.5 })
-    expect(decideBotAction(midFight.state, midFight.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    const midFight = pitScene({ tick: 45, tenantHp: ROSH_MAX * 0.5 })
+    expect(decideBotAction(midFight.state, midFight.bot, 'mid', gameId)).toEqual(HIT_TENANT)
   })
 
   it('locks the team out after the attempt window so it does not camp the pit', () => {
     const gameId = atDifficulty('medium', 'bot_alpha')
     const opened = pitScene({ tick: 40 })
-    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_TENANT)
 
     // Window is 20 ticks, lockout 120 more.
     const cooling = pitScene({ tick: 100 })
-    expect(decideBotAction(cooling.state, cooling.bot, 'mid', gameId)).not.toEqual(HIT_ROSHAN)
+    expect(decideBotAction(cooling.state, cooling.bot, 'mid', gameId)).not.toEqual(HIT_TENANT)
 
     // ...and it expires.
     const later = pitScene({ tick: 200 })
-    expect(decideBotAction(later.state, later.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    expect(decideBotAction(later.state, later.bot, 'mid', gameId)).toEqual(HIT_TENANT)
   })
 
-  it('a nearly-dead Roshan is still worth stealing during the lockout', () => {
+  it('a nearly-dead Tenant is still worth stealing during the lockout', () => {
     const gameId = atDifficulty('medium', 'bot_alpha')
     const opened = pitScene({ tick: 40 })
-    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_TENANT)
 
-    const steal = pitScene({ tick: 100, roshanHp: ROSH_MAX * 0.2 })
-    expect(decideBotAction(steal.state, steal.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    const steal = pitScene({ tick: 100, tenantHp: ROSH_MAX * 0.2 })
+    expect(decideBotAction(steal.state, steal.bot, 'mid', gameId)).toEqual(HIT_TENANT)
   })
 
   it('a committed bot keeps swinging below the START health floor', () => {
-    // Roshan hits for 150 a tick. Holding every bot to the 70% opening floor for
+    // Tenant hits for 150 a tick. Holding every bot to the 70% opening floor for
     // the whole fight meant two swings each and a walk-out, and his HP crept but
-    // never fell — the Aegis still never dropped. The hold floor is only high
+    // never fell — the Backup still never dropped. The hold floor is only high
     // enough that nobody dies in the pit.
     const gameId = atDifficulty('medium', 'bot_alpha')
     const opened = pitScene({ tick: 40 })
-    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_TENANT)
 
     const scene = pitScene({ tick: 46 })
     const withHp = (hp: number) => {
@@ -2075,8 +2075,8 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
         gameId,
       )
     }
-    expect(withHp(275)).toEqual(HIT_ROSHAN) // 55% — under the start floor, over the hold floor
-    expect(withHp(200)).not.toEqual(HIT_ROSHAN) // 40% — one more Roshan hit is a death
+    expect(withHp(275)).toEqual(HIT_TENANT) // 55% — under the start floor, over the hold floor
+    expect(withHp(200)).not.toEqual(HIT_TENANT) // 40% — one more Tenant hit is a death
   })
 
   it('only a core role opens the pit — a support will not start one', () => {
@@ -2089,15 +2089,15 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
         'mid',
         atDifficulty('medium', support.id),
       ),
-    ).not.toEqual(HIT_ROSHAN)
+    ).not.toEqual(HIT_TENANT)
   })
 
   it('but any role piles in once the team has committed', () => {
-    // Roshan focuses the lowest-HP hero in the pit, so extra bodies spread his
+    // Tenant focuses the lowest-HP hero in the pit, so extra bodies spread his
     // damage — a squad that only ever fields cores gets two hits each and leaves.
     const gameId = atDifficulty('medium', 'bot_alpha', 'bot_sentry')
     const opened = pitScene({ tick: 40 })
-    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_ROSHAN)
+    expect(decideBotAction(opened.state, opened.bot, 'mid', gameId)).toEqual(HIT_TENANT)
 
     const joining = pitScene({ tick: 45 })
     const support = { ...joining.bot, id: 'bot_sentry', name: 'bot_sentry', heroId: 'sentry' }
@@ -2108,12 +2108,12 @@ describe('BotAI - Roshan (start condition, steal window, team cooldown)', () => 
         'mid',
         gameId,
       ),
-    ).toEqual(HIT_ROSHAN)
+    ).toEqual(HIT_TENANT)
   })
 
-  it('easy bots never contest Roshan (threatAssessment off)', () => {
+  it('easy bots never contest Tenant (threatAssessment off)', () => {
     const { bot, state } = pitScene()
-    expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).not.toEqual(HIT_ROSHAN)
+    expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).not.toEqual(HIT_TENANT)
   })
 
   it('never routes toward a pit the map does not have', () => {
@@ -2137,7 +2137,7 @@ describe('isOwnSide — the rename guard', () => {
     expect(isOwnSide('top-t1-chaff', 'audit')).toBe(false)
     expect(isOwnSide('audit-base', 'audit')).toBe(true)
     expect(isOwnSide('silt-audit-bot', 'audit')).toBe(true)
-    // Rivers/runes/roshan are neutral — own for neither side.
+    // Rivers/runes/tenant are neutral — own for neither side.
     expect(isOwnSide('mid-river', 'chaff')).toBe(false)
     expect(isOwnSide('mid-river', 'audit')).toBe(false)
     expect(isOwnSide('hollow', 'chaff')).toBe(false)

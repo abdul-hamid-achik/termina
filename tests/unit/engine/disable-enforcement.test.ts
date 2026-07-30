@@ -4,7 +4,7 @@ import { validateAction, type PlayerAction } from '~~/server/game/engine/ActionR
 import { resolveAbility } from '~~/server/game/heroes/_base'
 import type { GameState, PlayerState, Buff } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 // Register regex so its Q resolver runs for the talent mana-refund test.
 import '~~/server/game/heroes/regex'
@@ -57,8 +57,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',

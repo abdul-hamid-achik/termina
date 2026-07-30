@@ -32,7 +32,7 @@ import {
   ICE_HP_T3,
   ICE_ATTACK,
   ANCIENT_HP,
-  ROSHAN_BASE_HP,
+  TENANT_BASE_HP,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
   FOUNTAIN_MANA_PER_TICK_PERCENT,
   SURRENDER_MIN_TICK,
@@ -214,7 +214,12 @@ const commands = [
     shortcuts: '—',
   },
   { cmd: 'rune', desc: 'Pick up the rune in your zone', example: 'rune', shortcuts: '—' },
-  { cmd: 'aegis', desc: 'Pick up the Aegis in the Roshan pit', example: 'aegis', shortcuts: '—' },
+  {
+    cmd: 'backup',
+    desc: 'Pick up the Backup in the Tenant pit',
+    example: 'backup',
+    shortcuts: '—',
+  },
   {
     cmd: 'glyph',
     desc: `Make your ice invulnerable for ${GLYPH_DURATION_TICKS} cycles (one per team every ${glyphCooldownMinutes} min)`,
@@ -272,9 +277,9 @@ const targeting = [
     example: 'attack ice:mid-t1-audit',
   },
   {
-    format: 'roshan',
-    desc: 'Target Roshan — only from inside the pit. Killing him drops the Aegis',
-    example: 'attack roshan',
+    format: 'tenant',
+    desc: 'Target Tenant — only from inside the pit. Killing him drops the Backup',
+    example: 'attack tenant',
   },
   { format: 'self', desc: 'Target yourself (for self-cast abilities)', example: 'cast w self' },
   { format: '<hero-name>', desc: 'Shorthand for hero: prefix', example: 'attack daemon' },
@@ -365,9 +370,9 @@ const concepts = [
     desc: `Observer wards (${wardCost}g) grant vision of a zone for ${OBSERVER_WARD_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
   },
   {
-    term: 'Roshan & Runes',
+    term: 'Tenant & Runes',
     icon: '%',
-    desc: `Roshan (${ROSHAN_BASE_HP}+ HP) lurks in hollow and drops the Aegis when killed — grab it with aegis. Power-up runes spawn at cache-top/cache-bot every ${RUNE_INTERVAL_TICKS} cycles and expire after ${RUNE_DURATION_TICKS}; grab them with rune.`,
+    desc: `Tenant (${TENANT_BASE_HP}+ HP) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up runes spawn at cache-top/cache-bot every ${RUNE_INTERVAL_TICKS} cycles and expire after ${RUNE_DURATION_TICKS}; grab them with rune.`,
   },
   {
     term: 'Win Condition',

@@ -57,8 +57,8 @@ export function buybackCostFor(player: PlayerState): number {
   return BUYBACK_BASE_COST + player.level * BUYBACK_COST_PER_LEVEL + player.deaths * 10
 }
 
-/** The one zone Roshan can be attacked from (mirrors ActionResolver's gate). */
-const ROSHAN_ZONE = 'hollow'
+/** The one zone Tenant can be attacked from (mirrors ActionResolver's gate). */
+const TENANT_ZONE = 'hollow'
 
 const SUPPORTIVE_EFFECTS = new Set(['heal', 'shield', 'buff'])
 const OFFENSIVE_EFFECTS = new Set([
@@ -294,7 +294,7 @@ export function formatHelpReadout(): string[] {
     '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
     '  Info:    status · map · scan · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
-    '  Special: rune · aegis · glyph · buyback · talent <tier> <left|right>',
+    '  Special: rune · backup · glyph · buyback · talent <tier> <left|right>',
     '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ss = missing · ? = help',
     'Goal: push a lane, raze the enemy ice, then destroy their Mainframe.',
   ]
@@ -356,7 +356,7 @@ function parseTarget(raw: string): TargetRef | null {
   }
   if (raw.startsWith('ice:')) return { kind: 'ice', zone: raw.slice(4) }
   if (raw.startsWith('zone:')) return { kind: 'zone', zone: raw.slice(5) }
-  if (raw === 'roshan' || raw === 'rosh') return { kind: 'roshan' }
+  if (raw === 'tenant' || raw === 'rosh') return { kind: 'tenant' }
   // If it looks like a hero name without prefix, try hero
   if (isHeroId(raw)) return { kind: 'hero', name: raw }
   return null
@@ -491,8 +491,8 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (t.kind === 'ice' && t.zone !== player.zone) {
         return 'Must be in the ice’s zone to attack it'
       }
-      if (t.kind === 'roshan' && player.zone !== ROSHAN_ZONE) {
-        return `Must be in the ${ROSHAN_ZONE} to attack Roshan`
+      if (t.kind === 'tenant' && player.zone !== TENANT_ZONE) {
+        return `Must be in the ${TENANT_ZONE} to attack Tenant`
       }
       // Only checkable when the caller supplied the neutrals array; without it
       // the server still enforces both rules, we just can't warn ahead of time.
@@ -673,13 +673,13 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack roshan, attack ice:mid-t1-chaff, attack ancient)',
+              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack tenant, attack ice:mid-t1-chaff, attack ancient)',
           }
         const target = parseTarget(targetStr)
         if (!target)
           return {
             command: null,
-            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, neutral:<index>, ice:<zone>, roshan, ancient, or self`,
+            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, neutral:<index>, ice:<zone>, tenant, ancient, or self`,
           }
         return { command: { type: 'attack', target }, error: null }
       }
@@ -777,8 +777,8 @@ export function useCommands() {
         return { command: { type: 'missing', enemyId: enemy }, error: null }
       }
 
-      case 'aegis':
-        return { command: { type: 'aegis' }, error: null }
+      case 'backup':
+        return { command: { type: 'backup' }, error: null }
 
       case 'rune':
         return { command: { type: 'rune' }, error: null }
@@ -848,7 +848,7 @@ export function useCommands() {
         'buy',
         'sell',
         'ward',
-        'aegis',
+        'backup',
         'rune',
         'scan',
         'status',
@@ -1154,9 +1154,9 @@ export function useCommands() {
       }
     }
 
-    // Suggest Roshan from inside the pit
-    if (context.player.zone === ROSHAN_ZONE && 'roshan'.includes(partial)) {
-      suggestions.push({ text: 'roshan', description: 'Roshan (drops the Aegis)' })
+    // Suggest Tenant from inside the pit
+    if (context.player.zone === TENANT_ZONE && 'tenant'.includes(partial)) {
+      suggestions.push({ text: 'tenant', description: 'Tenant (drops the Backup)' })
     }
 
     // Suggest ice if present

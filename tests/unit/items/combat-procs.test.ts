@@ -4,7 +4,7 @@ import { resolveActions, type PlayerAction } from '~~/server/game/engine/ActionR
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { getDistance } from '~~/server/game/map/topology'
-import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
   getEffectiveAttack,
@@ -91,8 +91,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
@@ -556,39 +556,39 @@ describe('Power Treads toggle (was cosmetic — the mode buffs were read nowhere
   })
 })
 
-describe('Aegis pickup through resolveActions (was dropping ground-removal + event)', () => {
-  const aegisGround = { zone: 'hollow', tick: 100, holderId: null }
+describe('Backup pickup through resolveActions (was dropping ground-removal + event)', () => {
+  const backupGround = { zone: 'hollow', tick: 100, holderId: null }
 
-  it('picking up aegis in hollow nulls state.aegis, emits aegis_picked, applies the buff', () => {
+  it('picking up backup in hollow nulls state.backup, emits backup_picked, applies the buff', () => {
     const state = makeGameState({
       tick: 120,
-      aegis: aegisGround,
+      backup: backupGround,
       players: { p1: makePlayer({ id: 'p1', zone: 'hollow' }) },
     })
-    const r = run(state, [{ playerId: 'p1', command: { type: 'aegis' } }])
-    expect(r.state.aegis).toBeNull()
-    expect(r.events.some((e) => e._tag === 'aegis_picked' && e.playerId === 'p1')).toBe(true)
-    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'aegis')).toBe(true)
+    const r = run(state, [{ playerId: 'p1', command: { type: 'backup' } }])
+    expect(r.state.backup).toBeNull()
+    expect(r.events.some((e) => e._tag === 'backup_picked' && e.playerId === 'p1')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'backup')).toBe(true)
   })
 
-  it('two pickups the same tick cannot double-dip — only one player gets aegis', () => {
+  it('two pickups the same tick cannot double-dip — only one player gets backup', () => {
     const state = makeGameState({
       tick: 120,
-      aegis: aegisGround,
+      backup: backupGround,
       players: {
         p1: makePlayer({ id: 'p1', zone: 'hollow' }),
         p2: makePlayer({ id: 'p2', team: 'audit', zone: 'hollow' }),
       },
     })
     const r = run(state, [
-      { playerId: 'p1', command: { type: 'aegis' } },
-      { playerId: 'p2', command: { type: 'aegis' } },
+      { playerId: 'p1', command: { type: 'backup' } },
+      { playerId: 'p2', command: { type: 'backup' } },
     ])
-    expect(r.state.aegis).toBeNull()
-    const withAegis = ['p1', 'p2'].filter((id) =>
-      r.state.players[id]!.buffs.some((b) => b.id === 'aegis'),
+    expect(r.state.backup).toBeNull()
+    const withBackup = ['p1', 'p2'].filter((id) =>
+      r.state.players[id]!.buffs.some((b) => b.id === 'backup'),
     )
-    expect(withAegis).toHaveLength(1)
+    expect(withBackup).toHaveLength(1)
   })
 })
 

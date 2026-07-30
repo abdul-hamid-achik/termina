@@ -85,9 +85,9 @@ describe('targetRefSchema (via commandSchema attack)', () => {
     })
   })
 
-  describe('roshan', () => {
-    it('accepts a bare roshan target', () => {
-      ok(commandSchema, attack({ kind: 'roshan' }))
+  describe('tenant', () => {
+    it('accepts a bare tenant target', () => {
+      ok(commandSchema, attack({ kind: 'tenant' }))
     })
   })
 
@@ -234,7 +234,7 @@ describe('commandSchema', () => {
   })
 
   describe('bare commands', () => {
-    it.each(['aegis', 'rune', 'scan', 'status', 'map', 'buyback', 'glyph'] as const)(
+    it.each(['backup', 'rune', 'scan', 'status', 'map', 'buyback', 'glyph'] as const)(
       'accepts bare %s command',
       (type) => {
         ok(commandSchema, { type })

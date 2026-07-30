@@ -1,6 +1,6 @@
 /**
  * Strategic-legibility helpers — pure functions that turn the game state the
- * store already holds (team gold, items, roshan/runes/aegis, vision) into the
+ * store already holds (team gold, items, tenant/runes/backup, vision) into the
  * glanceable macro readouts a MOBA player needs: net worth, gold lead,
  * objective timers, vision coverage, day/night meaning, and sparkline trends.
  *
@@ -11,11 +11,11 @@ import { ITEMS } from '~~/shared/constants/items'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { formatTickClock } from './gameClock'
 import {
-  ROSHAN_RESPAWN_TICKS,
+  TENANT_RESPAWN_TICKS,
   RUNE_DURATION_TICKS,
   RUNE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
-import type { RoshanState, RuneState, TeamId } from '~~/shared/types/game'
+import type { TenantState, RuneState, TeamId } from '~~/shared/types/game'
 
 /** Minimal shape needed to value a player — works for PlayerState and fogged players. */
 export interface NetWorthInput {
@@ -66,35 +66,35 @@ export function ticksToClock(ticks: number): string {
   return formatTickClock(Math.max(0, ticks))
 }
 
-// ── Roshan ──────────────────────────────────────────────────────────
+// ── Tenant ──────────────────────────────────────────────────────────
 
-export type RoshanStatus = 'up' | 'dead' | 'unknown'
+export type TenantStatus = 'up' | 'dead' | 'unknown'
 
-export interface RoshanReadout {
-  status: RoshanStatus
+export interface TenantReadout {
+  status: TenantStatus
   /** Ticks until respawn when dead, else 0. */
   respawnIn: number
   label: string
   hpPct: number | null
 }
 
-export function formatRoshan(
-  roshan: RoshanState | null | undefined,
+export function formatTenant(
+  tenant: TenantState | null | undefined,
   currentTick: number,
-): RoshanReadout {
-  if (!roshan) return { status: 'unknown', respawnIn: 0, label: 'ROSHAN ?', hpPct: null }
-  if (roshan.alive) {
-    const hpPct = roshan.maxHp > 0 ? Math.round((roshan.hp / roshan.maxHp) * 100) : 100
-    return { status: 'up', respawnIn: 0, label: 'ROSHAN up', hpPct }
+): TenantReadout {
+  if (!tenant) return { status: 'unknown', respawnIn: 0, label: 'TENANT ?', hpPct: null }
+  if (tenant.alive) {
+    const hpPct = tenant.maxHp > 0 ? Math.round((tenant.hp / tenant.maxHp) * 100) : 100
+    return { status: 'up', respawnIn: 0, label: 'TENANT up', hpPct }
   }
   const respawnIn =
-    roshan.deathTick != null
-      ? Math.max(0, roshan.deathTick + ROSHAN_RESPAWN_TICKS - currentTick)
+    tenant.deathTick != null
+      ? Math.max(0, tenant.deathTick + TENANT_RESPAWN_TICKS - currentTick)
       : 0
   return {
     status: 'dead',
     respawnIn,
-    label: respawnIn > 0 ? `ROSHAN dead ${respawnIn}c` : 'ROSHAN respawning',
+    label: respawnIn > 0 ? `TENANT dead ${respawnIn}c` : 'TENANT respawning',
     hpPct: null,
   }
 }
@@ -133,11 +133,11 @@ export function formatRunes(runes: RuneState[] | undefined, currentTick: number)
   return { live, nextIn, label }
 }
 
-// ── Aegis ───────────────────────────────────────────────────────────
+// ── Backup ───────────────────────────────────────────────────────────
 
-export interface AegisReadout {
+export interface BackupReadout {
   held: boolean
-  /** Aegis is dropped and waiting in the Roshan pit (not yet picked up). */
+  /** Backup is dropped and waiting in the Tenant pit (not yet picked up). */
   inPit: boolean
   holderName: string | null
   expiresIn: number
@@ -145,15 +145,15 @@ export interface AegisReadout {
 }
 
 /**
- * The engine never sets `aegis.holderId` to a player — it clears the ground
- * aegis to `null` on pickup and gives the holder an `'aegis'` buff. So the
- * carried aegis is detected from that buff (passed in as `holder`), while a
- * non-null `aegis` object means it's sitting in the pit, available.
+ * The engine never sets `backup.holderId` to a player — it clears the ground
+ * backup to `null` on pickup and gives the holder an `'backup'` buff. So the
+ * carried backup is detected from that buff (passed in as `holder`), while a
+ * non-null `backup` object means it's sitting in the pit, available.
  */
-export function formatAegis(
-  aegis: { zone: string; tick: number; holderId: string | null } | null | undefined,
+export function formatBackup(
+  backup: { zone: string; tick: number; holderId: string | null } | null | undefined,
   holder?: { name: string; ticksRemaining: number } | null,
-): AegisReadout {
+): BackupReadout {
   if (holder) {
     const expiresIn = Math.max(0, holder.ticksRemaining)
     return {
@@ -161,13 +161,13 @@ export function formatAegis(
       inPit: false,
       holderName: holder.name,
       expiresIn,
-      label: `AEGIS ${holder.name} ${expiresIn}c`,
+      label: `BACKUP ${holder.name} ${expiresIn}c`,
     }
   }
-  if (aegis) {
-    return { held: false, inPit: true, holderName: null, expiresIn: 0, label: 'AEGIS in pit' }
+  if (backup) {
+    return { held: false, inPit: true, holderName: null, expiresIn: 0, label: 'BACKUP in pit' }
   }
-  return { held: false, inPit: false, holderName: null, expiresIn: 0, label: 'AEGIS —' }
+  return { held: false, inPit: false, holderName: null, expiresIn: 0, label: 'BACKUP —' }
 }
 
 // ── Vision ──────────────────────────────────────────────────────────

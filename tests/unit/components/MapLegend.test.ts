@@ -24,7 +24,7 @@ describe('MapLegend', () => {
     expect(text).toContain('your ward')
     expect(text).toContain('✦')
     expect(text).toContain('live rune')
-    expect(text).toContain('Roshan respawn')
+    expect(text).toContain('Tenant respawn')
   })
 
   it('decodes the mini-overview zone codes', () => {
@@ -36,7 +36,7 @@ describe('MapLegend', () => {
     expect(text).toContain('RN')
     expect(text).toContain('rune spot')
     expect(text).toContain('ROS')
-    expect(text).toContain('Roshan pit')
+    expect(text).toContain('Tenant pit')
     expect(text).toContain('RF/RB')
     expect(text).toContain('fountain / base')
     expect(text).toContain('TR/MR/BR')

@@ -7,7 +7,7 @@ const commands = [
   'cast q hero:daemon',
   'buy blades_of_attack',
   'ward mid-river',
-  'attack roshan',
+  'attack tenant',
 ]
 const short = ['alpha', 'beta', 'gamma']
 </script>

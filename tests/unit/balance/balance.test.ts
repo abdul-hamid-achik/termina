@@ -10,7 +10,7 @@ import {
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
   ICE_GOLD,
-  ROSHAN_GOLD,
+  TENANT_GOLD,
   STARTING_GOLD,
   MAX_LEVEL,
   XP_PER_LEVEL,
@@ -23,8 +23,8 @@ import {
   OBSERVER_WARD_DURATION_TICKS,
   SENTRY_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
-  ROSHAN_RESPAWN_TICKS,
-  ROSHAN_BASE_HP,
+  TENANT_RESPAWN_TICKS,
+  TENANT_BASE_HP,
   CREEP_WAVE_INTERVAL_TICKS,
   MELEE_CREEPS_PER_WAVE,
   RANGED_CREEPS_PER_WAVE,
@@ -102,8 +102,8 @@ describe('Balance Constants', () => {
       expect(ICE_GOLD).toBeGreaterThanOrEqual(200)
     })
 
-    it('roshan gold is the highest single-kill reward', () => {
-      expect(ROSHAN_GOLD).toBeGreaterThanOrEqual(ICE_GOLD)
+    it('tenant gold is the highest single-kill reward', () => {
+      expect(TENANT_GOLD).toBeGreaterThanOrEqual(ICE_GOLD)
     })
 
     it('starting gold is reasonable', () => {
@@ -195,13 +195,13 @@ describe('Balance Constants', () => {
     })
   })
 
-  describe('Roshan', () => {
-    it('Roshan respawn time is significant', () => {
-      expect(ROSHAN_RESPAWN_TICKS).toBeGreaterThan(30)
+  describe('Tenant', () => {
+    it('Tenant respawn time is significant', () => {
+      expect(TENANT_RESPAWN_TICKS).toBeGreaterThan(30)
     })
 
-    it('Roshan has high base HP', () => {
-      expect(ROSHAN_BASE_HP).toBeGreaterThan(1000)
+    it('Tenant has high base HP', () => {
+      expect(TENANT_BASE_HP).toBeGreaterThan(1000)
     })
   })
 

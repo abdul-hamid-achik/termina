@@ -1,30 +1,30 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ObjectiveTicker from '~~/app/components/game/ObjectiveTicker.vue'
-import { ROSHAN_RESPAWN_TICKS } from '~~/shared/constants/balance'
+import { TENANT_RESPAWN_TICKS } from '~~/shared/constants/balance'
 import { ticksToClock } from '~~/app/utils/strategy'
 
 function mountTicker(props: Record<string, unknown>) {
   return mount(ObjectiveTicker, {
-    props: { roshan: null, runes: [], aegis: null, tick: 0, ...props },
+    props: { tenant: null, runes: [], backup: null, tick: 0, ...props },
   })
 }
 
 describe('ObjectiveTicker', () => {
-  it('shows Roshan up with hp%', () => {
-    const w = mountTicker({ roshan: { alive: true, hp: 4000, maxHp: 5000, deathTick: null } })
+  it('shows Tenant up with hp%', () => {
+    const w = mountTicker({ tenant: { alive: true, hp: 4000, maxHp: 5000, deathTick: null } })
     expect(w.text()).toContain('UP')
     expect(w.text()).toContain('80%')
   })
 
-  it('shows the Roshan respawn countdown as a clock, not a tick count', () => {
+  it('shows the Tenant respawn countdown as a clock, not a tick count', () => {
     const w = mountTicker({
-      roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: 100 },
+      tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: 100 },
       tick: 120,
     })
-    const ticksLeft = 100 + ROSHAN_RESPAWN_TICKS - 120
+    const ticksLeft = 100 + TENANT_RESPAWN_TICKS - 120
     expect(w.text()).toContain('dead')
-    // Contesting the next Roshan is a wall-clock call — 70t means nothing.
+    // Contesting the next Tenant is a wall-clock call — 70t means nothing.
     expect(w.text()).toContain(ticksToClock(ticksLeft))
     expect(w.text()).not.toContain(`${ticksLeft}t`)
   })
@@ -49,18 +49,18 @@ describe('ObjectiveTicker', () => {
     expect(w.text()).toContain('next')
   })
 
-  it('shows the aegis carrier when held', () => {
-    const w = mountTicker({ aegis: null, aegisHolder: { name: 'Lina', ticksRemaining: 100 } })
+  it('shows the backup carrier when held', () => {
+    const w = mountTicker({ backup: null, backupHolder: { name: 'Lina', ticksRemaining: 100 } })
     expect(w.text()).toContain('Lina')
   })
 
-  it('shows aegis waiting in the pit', () => {
-    const w = mountTicker({ aegis: { zone: 'hollow', tick: 1, holderId: null } })
+  it('shows backup waiting in the pit', () => {
+    const w = mountTicker({ backup: { zone: 'hollow', tick: 1, holderId: null } })
     expect(w.text()).toContain('in pit')
   })
 
-  it('shows a dash when there is no aegis', () => {
-    const w = mountTicker({ aegis: null })
+  it('shows a dash when there is no backup', () => {
+    const w = mountTicker({ backup: null })
     expect(w.text()).toContain('—')
   })
 })

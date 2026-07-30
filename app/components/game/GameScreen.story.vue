@@ -23,7 +23,7 @@ import GameScreen from './GameScreen.vue'
 // noisy reconnect loop against a non-existent server.)
 //
 // State is seeded the canonical way: store.updateFromTick(makeTickMessage(...)),
-// which populates players, zones, teams, ice, ancients, roshan, scoreboard,
+// which populates players, zones, teams, ice, ancients, tenant, scoreboard,
 // net-worth history and the live tick countdown. We add a few combat events so
 // the Tick Theater / combat log has content.
 

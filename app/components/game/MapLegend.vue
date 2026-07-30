@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Collapsible key for the AsciiMap glyphs. The map packs a lot of meaning into
- * terse symbols (►YOU, ◉ ward, ✦ rune, ↻ Roshan respawn…) which a new player has
+ * terse symbols (►YOU, ◉ ward, ✦ rune, ↻ Tenant respawn…) which a new player has
  * no way to decode — this spells them out. Native <details> so it stays closed by
  * default (no clutter), needs no JS state, and is keyboard/screen-reader friendly.
  */
@@ -15,8 +15,8 @@ const LEGEND: { glyph: string; meaning: string }[] = [
   { glyph: '✓ / ✗', meaning: 'ice up / razed' },
   { glyph: '◈ %', meaning: 'Mainframe (HP)' },
   { glyph: '◈✗', meaning: 'Mainframe razed' },
-  { glyph: '☠', meaning: 'Roshan pit' },
-  { glyph: '↻ Nt', meaning: 'Roshan respawn' },
+  { glyph: '☠', meaning: 'Tenant pit' },
+  { glyph: '↻ Nt', meaning: 'Tenant respawn' },
   { glyph: '✦', meaning: 'live rune' },
   { glyph: '◉', meaning: 'your ward' },
   { glyph: '☘ N', meaning: 'neutral camp' },
@@ -28,7 +28,7 @@ const ZONE_CODES: { glyph: string; meaning: string }[] = [
   { glyph: 'T1-3', meaning: 'ice zones (T/M/B lane)' },
   { glyph: 'JG', meaning: 'jungle' },
   { glyph: 'RN', meaning: 'rune spot' },
-  { glyph: 'ROS', meaning: 'Roshan pit' },
+  { glyph: 'ROS', meaning: 'Tenant pit' },
   { glyph: 'RF/RB', meaning: 'fountain / base' },
   { glyph: 'TR/MR/BR', meaning: 'river crossings' },
 ]

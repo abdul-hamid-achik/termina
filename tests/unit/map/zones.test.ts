@@ -23,7 +23,7 @@ describe('Zones', () => {
       for (const name of names) {
         expect(name.length).toBeGreaterThan(0)
         // Ids keep the old faction words until the R1-08 sweep — names never do.
-        expect(name).not.toMatch(/jungle|roshan|river crossing| lane t/i)
+        expect(name).not.toMatch(/jungle|tenant|river crossing| lane t/i)
       }
     })
 

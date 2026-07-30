@@ -4,7 +4,7 @@ import { ZONES } from '~~/shared/constants/zones'
 /**
  * A static, fully-revealed `ZoneDisplay[]` for the /learn map primer — every
  * zone of the canonical 5v5 topology with no players/enemies/fog, ice shown
- * alive, and Roshan marked on its pit. It lets a newcomer explore the map and
+ * alive, and Tenant marked on its pit. It lets a newcomer explore the map and
  * its adjacency before ever queueing, reusing the in-game AsciiMap renderer.
  *
  * Pure + data-driven from `ZONES`, so the teaching map can't drift from the
@@ -25,7 +25,7 @@ export function buildMapPrimerZones(): ZoneDisplay[] {
       display.ice = { team: z.team, alive: true, tier: z.tier ?? 1 }
     }
     if (z.id === 'hollow') {
-      display.roshan = { alive: true, respawnIn: 0 }
+      display.tenant = { alive: true, respawnIn: 0 }
     }
     return display
   })

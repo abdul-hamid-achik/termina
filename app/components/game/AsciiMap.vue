@@ -511,7 +511,7 @@ const miniRows = computed(() =>
           <span>T1-3 ice zones</span>
           <span>JG jungle</span>
           <span>RN rune</span>
-          <span>ROS Roshan</span>
+          <span>ROS Tenant</span>
           <span>RF/RB fountain/base</span>
           <span class="text-self">► you</span>
           <span class="text-audit">! enemies</span>

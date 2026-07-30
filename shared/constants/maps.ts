@@ -40,7 +40,7 @@ export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.
  * zone's `adjacentTo` is pruned to only these (bases drop their bot-t3 edge,
  * mid-t2 drops its bot-jungle edge, mid-river drops cache-bot, etc.). Keeps the
  * top-side river objectives (cache-top + hollow) so a 3v3 still has runes and
- * Roshan; cache-bot is dropped because it only reaches the removed bot lane.
+ * Tenant; cache-bot is dropped because it only reaches the removed bot lane.
  */
 const TWO_LANE_IDS = new Set<string>([
   // Bases + fountains

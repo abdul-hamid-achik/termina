@@ -4,14 +4,14 @@ import { processTick } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 /**
  * Bot decisions driven through the REAL processTick → decideBotAction →
  * submitAction → resolveActions path, which BotAI.test.ts (decisions in
  * isolation) cannot reach. Both cases here are about a command the bot emits
- * actually LANDING: a `deny` outside the resolver's HP window and a Roshan
+ * actually LANDING: a `deny` outside the resolver's HP window and a Tenant
  * attempt nobody ever opens both look identical to a passing unit test — the
  * bot returns a command and the engine silently drops it.
  *
@@ -72,8 +72,8 @@ function makeState(
     ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
-    roshan: initializeRoshan(),
-    aegis: null,
+    tenant: initializeTenant(),
+    backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
     timeOfDay: 'day',
@@ -134,10 +134,10 @@ describe('BotAI - integrated teamplay', () => {
     expect(result.state.creeps.find((c) => c.id === 'creep-own')?.hp ?? 0).toBe(0)
   })
 
-  it('a bot squad actually starts Roshan — his HP moves in a bots-only match', () => {
-    // The headline W3-9 regression: Roshan takes damage from nothing but heroes,
+  it('a bot squad actually starts Tenant — his HP moves in a bots-only match', () => {
+    // The headline W3-9 regression: Tenant takes damage from nothing but heroes,
     // and the old gate refused to engage above 40% HP, so in any bots-only or
-    // human+bots match his HP never moved and the Aegis never dropped.
+    // human+bots match his HP never moved and the Backup never dropped.
     const squad = ['bot_alpha', 'bot_bravo', 'bot_charlie'].map((id, i) =>
       makeBot({
         id,
@@ -156,11 +156,11 @@ describe('BotAI - integrated teamplay', () => {
     )
 
     let state = makeState(players)
-    const startHp = state.roshan.hp
+    const startHp = state.tenant.hp
     for (let i = 0; i < 12; i++) {
       state = Effect.runSync(processTick(GAME_ID, state)).state
     }
 
-    expect(state.roshan.hp).toBeLessThan(startHp)
+    expect(state.tenant.hp).toBeLessThan(startHp)
   })
 })
