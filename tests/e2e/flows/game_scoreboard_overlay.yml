@@ -64,4 +64,4 @@ steps:
     wait:
       notText: tap outside or here to close
       timeoutMs: 5000
-contractHash: sha256:f3eed881420b77a7f4c11cf0df872204180ca0c596c37951c2b44f33ec2571b6
+contractHash: sha256:77e0205934ddf5c51ca13c50e3ab0ba2242341f326c75eb7ae7a7b8fb216342e

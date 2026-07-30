@@ -3,8 +3,8 @@ name: game_hud_shell
 intent: >
   The post-R3 terminal HUD: status lines carry the cycle clock and hop/threat
   readout, the TRACE rail shows hop depth and terminals, the STREAM is present,
-  and the ActionRow/command prompt are the input surface. UI shell only —
-  engine truth is `bun run test:gameplay`.
+  and the ActionRow/command prompt are the input surface. UI shell only — engine
+  truth is `bun run test:gameplay`.
 mode: normal
 metadata:
   feature: game-hud
@@ -21,8 +21,7 @@ outcomes:
     verify:
       script:
         run: >
-          const clock =
-          document.querySelector('[data-testid="status-clock"]');
+          const clock = document.querySelector('[data-testid="status-clock"]');
 
           const barCountdown =
           document.querySelector('[data-testid="tick-countdown"]');
@@ -34,11 +33,9 @@ outcomes:
     verify:
       script:
         run: >
-          const rail =
-          document.querySelector('[data-testid="trace-rail"]');
+          const rail = document.querySelector('[data-testid="trace-rail"]');
 
-          const hop =
-          document.querySelector('[data-testid="trace-current"]');
+          const hop = document.querySelector('[data-testid="trace-current"]');
 
           const terminals =
           document.querySelector('[data-testid="trace-terminals"]');
@@ -50,8 +47,7 @@ outcomes:
     verify:
       script:
         run: >
-          const stream =
-          document.querySelector('[data-testid="combat-log"]');
+          const stream = document.querySelector('[data-testid="combat-log"]');
 
           return { ok: !!stream, evidence: 'stream=' + !!stream };
 steps:
@@ -82,4 +78,4 @@ steps:
     wait:
       selector: '[data-testid="combat-log"]'
       timeoutMs: 10000
-contractHash: sha256:abd5ab2e16fd17f6584cf6d2a3c6b40062106e1357a25af66800cfbb8d8a655d
+contractHash: sha256:080d2984594b8ce93c4881f58ee69708b5c179d58eae87f81727be8242b0b832

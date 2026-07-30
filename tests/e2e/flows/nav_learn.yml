@@ -1,8 +1,8 @@
 version: 1
 name: nav_learn
-intent: The public /learn guide renders its core sections (Quick Start Guide, Command Reference,
-  Game Concepts), the command reference lists the key player commands, and the closing CTA buttons
-  link to /lobby and /leaderboard.
+intent: The public /learn guide renders its core sections (Quick Start Guide,
+  Command Reference, Game Concepts), the command reference lists the key player
+  commands, and the closing CTA buttons link to /lobby and /leaderboard.
 mode: normal
 metadata:
   feature: navigation
@@ -31,15 +31,17 @@ outcomes:
     verify:
       script:
         run: >
-          const want = ['move <zone>', 'attack [target]', 'cast <q|w|e|r> [target]', 'buy <item>'];
+          const want = ['move <zone>', 'attack [target]', 'cast <q|w|e|r>
+          [target]', 'buy <item>'];
 
           const cells = Array.from(document.querySelectorAll('th, td')).map(c =>
           c.textContent.trim());
 
           const missing = want.filter(t => !cells.includes(t));
 
-          return { ok: missing.length === 0, evidence: missing.length ? 'missing: ' +
-          missing.join(', ') : 'all present: ' + want.join(', ') };
+          return { ok: missing.length === 0, evidence: missing.length ?
+          'missing: ' + missing.join(', ') : 'all present: ' + want.join(', ')
+          };
   - id: command_table_has_caption
     description: the command reference table is captioned for screen readers
     verify:
@@ -52,16 +54,18 @@ outcomes:
 
           return { ok, evidence: 'captions: ' + JSON.stringify(caps) };
   - id: cta_links_play_and_practice
-    description: the closing CTA links to /lobby (ENTER THE TERMINAL) and offers PRACTICE VS BOTS
+    description: the closing CTA links to /lobby (ENTER THE TERMINAL) and offers
+      PRACTICE VS BOTS
     verify:
       script:
         run: >
-          const enter = Array.from(document.querySelectorAll('a')).find(a => /ENTER THE
-          TERMINAL/i.test(a.textContent));
+          const enter = Array.from(document.querySelectorAll('a')).find(a =>
+          /ENTER THE TERMINAL/i.test(a.textContent));
 
           const enterHref = enter && enter.getAttribute('href');
 
-          const practice = document.querySelector('[data-testid="start-tutorial"]');
+          const practice =
+          document.querySelector('[data-testid="start-tutorial"]');
 
           return {
             ok: enterHref === '/lobby' && !!practice,
@@ -77,12 +81,13 @@ outcomes:
     verify:
       script:
         run: >
-          const cap = document.querySelector('[data-testid="map-primer-caption"]');
+          const cap =
+          document.querySelector('[data-testid="map-primer-caption"]');
 
           const t = cap ? cap.textContent : '';
 
-          return { ok: /Radiant Base/.test(t), evidence: 'caption after hop: ' + JSON.stringify(t)
-          };
+          return { ok: /Radiant Base/.test(t), evidence: 'caption after hop: ' +
+          JSON.stringify(t) };
 steps:
   - id: open_learn
     open: /learn
@@ -102,4 +107,4 @@ steps:
     wait:
       text: Standing in Rookery Terminal
       timeoutMs: 10000
-contractHash: sha256:33b4ad5ebc4a010bfc628ecc85cd669c36b486baf528b69fa3cfe995976b840f
+contractHash: sha256:71f1eb204e934e3172d31842399b6ed82c674416990210a57c71f25313b9758c
