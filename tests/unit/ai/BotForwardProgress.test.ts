@@ -128,7 +128,7 @@ describe('BotAI - integrated forward progress', () => {
       neutrals: [],
       ice: initializeIce(),
       ancients: initializeAncients(),
-      runes: [],
+      caches: [],
       tenant: initializeTenant(),
       backup: null,
       events: [],

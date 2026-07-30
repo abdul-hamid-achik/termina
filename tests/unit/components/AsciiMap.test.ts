@@ -300,7 +300,7 @@ describe('AsciiMap', () => {
       // The legend line explains the zone codes.
       expect(text).toContain('T1-3 ice zones')
       expect(text).toContain('JG jungle')
-      expect(text).toContain('RN rune')
+      expect(text).toContain('RN cache')
       expect(text).toContain('ROS Tenant')
       expect(text).toContain('RF/RB fountain/base')
       expect(text).toContain('▲ ice up · ✗ razed')

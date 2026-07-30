@@ -12,7 +12,7 @@ import { seedGame, HUMAN, ENEMY } from './harness'
 describe('standing attack orders', () => {
   it('a ice siege keeps swinging with no further input', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    // Mid-match tick, not tick 0: creep escalation and the wave/rune spawners
+    // Mid-match tick, not tick 0: creep escalation and the wave/cache spawners
     // are all live here, so the re-swing is exercised in a real tick, not in
     // the quiet first frame of a match.
     await game.patch((s) => ({

@@ -23,7 +23,7 @@ import type {
   IceState,
   AncientState,
   TenantState,
-  RuneState,
+  CacheState,
   GameEvent,
 } from '~~/shared/types/game'
 import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
@@ -179,7 +179,7 @@ export function makeTenant(overrides: Partial<TenantState> = {}): TenantState {
   }
 }
 
-export function makeRune(overrides: Partial<RuneState> = {}): RuneState {
+export function makeCache(overrides: Partial<CacheState> = {}): CacheState {
   return {
     zone: 'cache-top',
     type: 'dd',
@@ -340,7 +340,7 @@ export const SAMPLE_NET_WORTH_HISTORY: { chaff: number[]; audit: number[] } = {
 export const SAMPLE_EVENTS: GameEvent[] = [
   { tick: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'mid-river' } },
   { tick: 239, type: 'ice_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
-  { tick: 240, type: 'rune_spawn', payload: { zone: 'cache-top', rune: 'dd' } },
+  { tick: 240, type: 'cache_spawn', payload: { zone: 'cache-top', cache: 'dd' } },
 ]
 
 /**
@@ -366,7 +366,7 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
       makeIce('chaff', 'mid-t1-chaff'),
     ],
     ancients: { chaff: makeAncient('chaff'), audit: makeAncient('audit') },
-    runes: [makeRune()],
+    caches: [makeCache()],
     tenant: makeTenant(),
     backup: null,
     events: SAMPLE_EVENTS,

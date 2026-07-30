@@ -1014,7 +1014,7 @@ describe('GameScreen', () => {
   })
 
   describe('map affordances (W2-8)', () => {
-    /** The mid corridor plus a rune spot, so subset-map pruning is observable. */
+    /** The mid corridor plus a cache spot, so subset-map pruning is observable. */
     const CORRIDOR = [
       'chaff-base',
       'mid-t3-chaff',
@@ -1063,19 +1063,19 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
 
-    it('shows a live rune on the map even where the player has no vision', () => {
-      // Runes reach the client unfiltered and the War Room ticker already names
+    it('shows a live cache on the map even where the player has no vision', () => {
+      // Caches reach the client unfiltered and the War Room ticker already names
       // the live one; gating the map marker on vision only made them disagree.
-      seedMap('mid-river', { runes: [{ zone: 'cache-bot', type: 'haste', tick: 240 }] })
+      seedMap('mid-river', { caches: [{ zone: 'cache-bot', type: 'haste', tick: 240 }] })
       const wrapper = mountGameScreen()
       const zones = wrapper.findComponent({ name: 'AsciiMap' }).props('zones') as {
         id: string
         fogged: boolean
-        runeType?: string
+        cacheType?: string
       }[]
-      const runeZone = zones.find((z) => z.id === 'cache-bot')!
-      expect(runeZone.fogged).toBe(true)
-      expect(runeZone.runeType).toBe('haste')
+      const cacheZone = zones.find((z) => z.id === 'cache-bot')!
+      expect(cacheZone.fogged).toBe(true)
+      expect(cacheZone.cacheType).toBe('haste')
       wrapper.unmount()
     })
 
@@ -1129,7 +1129,7 @@ describe('GameScreen', () => {
       // mid-river's GLOBAL neighbours are mid-t1-chaff, mid-t1-audit, cache-top and
       // cache-bot — half of them do not exist in a one-lane game.
       expect(picker.findAll('button')).toHaveLength(2)
-      expect(picker.text()).not.toMatch(/Rune/i)
+      expect(picker.text()).not.toMatch(/Cache/i)
       wrapper.unmount()
     })
 

@@ -23,10 +23,10 @@ const visible: PlayerState[] = [
     maxMp: 420,
     level: 11,
     cooldowns: { q: 0, w: 3, e: 0, r: 9 },
-    // BKB up + Haste rune — a CAUTION (rendered amber): don't blow nukes now.
+    // BKB up + Haste cache — a CAUTION (rendered amber): don't blow nukes now.
     buffs: [
       { id: 'magic_immune', stacks: 1, ticksRemaining: 3, source: 'item', destination: 'e1' },
-      { id: 'haste', stacks: 1, ticksRemaining: 3, source: 'rune', destination: 'e1' },
+      { id: 'haste', stacks: 1, ticksRemaining: 3, source: 'cache', destination: 'e1' },
     ],
   }),
   makePlayer({

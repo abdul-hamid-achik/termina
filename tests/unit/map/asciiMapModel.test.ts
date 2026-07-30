@@ -72,7 +72,7 @@ describe('asciiMapModel', () => {
       expect(zoneShortCode('bot-t3-chaff')).toBe('B3')
     })
 
-    it('codes rivers, runes, jungle, and tenant', () => {
+    it('codes rivers, caches, jungle, and tenant', () => {
       expect(zoneShortCode('top-river')).toBe('TR')
       expect(zoneShortCode('mid-river')).toBe('MR')
       expect(zoneShortCode('bot-river')).toBe('BR')
@@ -243,8 +243,8 @@ describe('asciiMapModel', () => {
       expect(cellText(makeZone({ wardCount: 0 }))).not.toContain('◉')
     })
 
-    it('flags a live rune with its type', () => {
-      expect(cellText(makeZone({ id: 'cache-top', runeType: 'haste' }))).toContain('✦haste')
+    it('flags a live cache with its type', () => {
+      expect(cellText(makeZone({ id: 'cache-top', cacheType: 'haste' }))).toContain('✦haste')
       expect(cellText(makeZone({ id: 'cache-top' }))).not.toContain('✦')
     })
 
@@ -443,8 +443,8 @@ describe('asciiMapModel', () => {
       expect(zoneAriaLabel(makeZone({ wardCount: 0 }))).not.toContain('warded')
     })
 
-    it('announces a live rune for screen readers', () => {
-      expect(zoneAriaLabel(makeZone({ runeType: 'dd' }))).toContain('dd rune available')
+    it('announces a live cache for screen readers', () => {
+      expect(zoneAriaLabel(makeZone({ cacheType: 'dd' }))).toContain('dd cache available')
     })
 
     it('announces Tenant state for screen readers', () => {
@@ -531,10 +531,10 @@ describe('asciiMapModel', () => {
       )
     })
 
-    it('shows a live-rune chip with its type', () => {
+    it('shows a live-cache chip with its type', () => {
       expect(
-        compactIndicators(makeZone({ id: 'cache-top', runeType: 'haste' })).map((i) => i.text),
-      ).toContain('✦ haste rune')
+        compactIndicators(makeZone({ id: 'cache-top', cacheType: 'haste' })).map((i) => i.text),
+      ).toContain('✦ haste cache')
     })
 
     it('shows a Tenant chip (up vs respawn countdown)', () => {
@@ -578,7 +578,7 @@ describe('asciiMapModel', () => {
       expect(colHeadersFor('one_lane')).toEqual(['COLDSTORE'])
     })
 
-    it('renders the two-lane map with top + mid lanes, jungle, rune, and tenant', () => {
+    it('renders the two-lane map with top + mid lanes, jungle, cache, and tenant', () => {
       const rows = mapRowsFor('two_lane')
       expect(rows).toBe(TWO_LANE_MAP_ROWS)
       expect(rows).toHaveLength(11)

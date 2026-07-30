@@ -173,18 +173,18 @@ describe('Zone Constants', () => {
       expect(rosh.adjacentTo).toEqual(['cache-top'])
     })
 
-    it('rune spots connect to river crossings and jungles', () => {
-      const runeTop = ZONE_MAP['cache-top']!
-      expect(runeTop.adjacentTo).toContain('top-river')
-      expect(runeTop.adjacentTo).toContain('mid-river')
-      expect(runeTop.adjacentTo).toContain('silt-chaff-top')
-      expect(runeTop.adjacentTo).toContain('silt-audit-top')
+    it('cache spots connect to river crossings and jungles', () => {
+      const cacheTop = ZONE_MAP['cache-top']!
+      expect(cacheTop.adjacentTo).toContain('top-river')
+      expect(cacheTop.adjacentTo).toContain('mid-river')
+      expect(cacheTop.adjacentTo).toContain('silt-chaff-top')
+      expect(cacheTop.adjacentTo).toContain('silt-audit-top')
 
-      const runeBot = ZONE_MAP['cache-bot']!
-      expect(runeBot.adjacentTo).toContain('bot-river')
-      expect(runeBot.adjacentTo).toContain('mid-river')
-      expect(runeBot.adjacentTo).toContain('silt-chaff-bot')
-      expect(runeBot.adjacentTo).toContain('silt-audit-bot')
+      const cacheBot = ZONE_MAP['cache-bot']!
+      expect(cacheBot.adjacentTo).toContain('bot-river')
+      expect(cacheBot.adjacentTo).toContain('mid-river')
+      expect(cacheBot.adjacentTo).toContain('silt-chaff-bot')
+      expect(cacheBot.adjacentTo).toContain('silt-audit-bot')
     })
 
     it('fountains connect only to their base', () => {

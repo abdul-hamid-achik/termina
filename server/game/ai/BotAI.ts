@@ -5,7 +5,7 @@ import type {
   CreepState,
   IceState,
   NeutralCreepState,
-  RuneState,
+  CacheState,
 } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
 import type { AbilityDef } from '~~/shared/types/hero'
@@ -104,7 +104,7 @@ const SALVE_HP_PERCENT = 60
 /** TP home instead of walking when the fountain is further than this. */
 const TP_RETREAT_MIN_DISTANCE = 2
 
-const RUNE_ZONES = ['cache-top', 'cache-bot']
+const CACHE_ZONES = ['cache-top', 'cache-bot']
 const JUNGLE_ZONES = ['silt-chaff-top', 'silt-chaff-bot', 'silt-audit-top', 'silt-audit-bot']
 
 interface ComboState {
@@ -313,8 +313,8 @@ function getNeutralsInZone(state: GameState, zone: string): NeutralCreepState[] 
   return state.neutrals.filter((n) => n.zone === zone && n.alive && n.hp > 0)
 }
 
-function getRunesInZone(state: GameState, zone: string): RuneState[] {
-  return state.runes.filter((r) => r.zone === zone)
+function getCachesInZone(state: GameState, zone: string): CacheState[] {
+  return state.caches.filter((r) => r.zone === zone)
 }
 
 function getFountainZone(team: TeamId): string {
@@ -357,16 +357,16 @@ function getNextLaneZone(
   return null
 }
 
-function getClosestRuneZone(
+function getClosestCacheZone(
   bot: PlayerState,
   state: GameState,
   hasZone?: (id: string) => boolean,
 ): string | null {
   let closest: string | null = null
   let minDist = Infinity
-  for (const zone of RUNE_ZONES) {
-    const runes = getRunesInZone(state, zone)
-    if (runes.length > 0) {
+  for (const zone of CACHE_ZONES) {
+    const caches = getCachesInZone(state, zone)
+    if (caches.length > 0) {
       const dist = getDistance(bot.zone, zone, hasZone)
       if (dist < minDist) {
         minDist = dist
@@ -873,8 +873,8 @@ function tryBuyItem(bot: PlayerState): Command | null {
   return null
 }
 
-// Strategic ward spots — the rune/river control points worth team vision.
-const STRATEGIC_WARD_ZONES = RUNE_ZONES
+// Strategic ward spots — the cache/river control points worth team vision.
+const STRATEGIC_WARD_ZONES = CACHE_ZONES
 
 function teamWardCount(state: GameState, team: TeamId): number {
   let count = 0
@@ -892,7 +892,7 @@ function teamHasWardInZone(state: GameState, zoneId: string, team: TeamId): bool
 
 /**
  * A ward-carrying bot (only supports buy Observer Wards) drops one on a
- * strategic rune/river zone it's standing in or next to — giving its team
+ * strategic cache/river zone it's standing in or next to — giving its team
  * (including any human ally) map vision where it matters. Mirrors placeWard's
  * gates (team under WARD_LIMIT, zone not already team-warded) and validateAction's
  * current-or-adjacent rule, so the `ward` lands instead of wasting the tick.
@@ -1203,14 +1203,14 @@ function tryPickupRune(
   config: BotDifficultyConfig,
   hasZone?: (id: string) => boolean,
 ): Command | null {
-  if (!config.runeAwareness) return null
-  const runesInZone = getRunesInZone(state, bot.zone)
-  if (runesInZone.length > 0) {
-    return { type: 'rune' }
+  if (!config.cacheAwareness) return null
+  const cachesInZone = getCachesInZone(state, bot.zone)
+  if (cachesInZone.length > 0) {
+    return { type: 'grab' }
   }
-  const closestRuneZone = getClosestRuneZone(bot, state, hasZone)
-  if (closestRuneZone && getDistance(bot.zone, closestRuneZone, hasZone) <= 2) {
-    const path = findPath(bot.zone, closestRuneZone, hasZone)
+  const closestCacheZone = getClosestCacheZone(bot, state, hasZone)
+  if (closestCacheZone && getDistance(bot.zone, closestCacheZone, hasZone) <= 2) {
+    const path = findPath(bot.zone, closestCacheZone, hasZone)
     if (path.length > 1) {
       return { type: 'move', zone: path[1]! }
     }
@@ -1608,8 +1608,8 @@ export function decideBotAction(
   if (enemyIce && getAlliedCreepsInZone(state, bot).length > 0) {
     return { type: 'attack', target: { kind: 'ice', zone: enemyIce.zone } }
   }
-  const runeCmd = tryPickupRune(state, bot, config, hasZone)
-  if (runeCmd) return runeCmd
+  const cacheCmd = tryPickupRune(state, bot, config, hasZone)
+  if (cacheCmd) return cacheCmd
   if (assignedLane === 'jungle' || (config.jungleFarming && getHpPercent(bot) > 60)) {
     const jungleCmd = tryFarmJungle(state, bot, config, hasZone)
     if (jungleCmd) return jungleCmd
@@ -1641,7 +1641,7 @@ export function decideBotAction(
   return null
 }
 
-/** Whether a zone is on the given team's half of the map (rivers/runes/tenant are neutral). */
+/** Whether a zone is on the given team's half of the map (rivers/caches/tenant are neutral). */
 export function isOwnSide(zone: string, team: TeamId): boolean {
   // Data lookup, NOT an id substring test — zone ids carry no side semantics a
   // rename must preserve (the old endsWith('-rad') check inverted silently).

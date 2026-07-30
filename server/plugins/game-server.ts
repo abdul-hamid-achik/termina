@@ -115,7 +115,7 @@ export function isEventVisibleToPlayer(
     case 'ward_placed':
       if (event.playerId === playerId) return true
       return event.team === playerTeam || visibleZones.has(event.zone)
-    case 'rune_picked':
+    case 'cache_picked':
       if (event.playerId === playerId) return true
       return visibleZones.has(event.zone)
     case 'teleport_complete': {
@@ -1021,7 +1021,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         forceLane: opts.mapId === 'one_lane' ? 'mid' : undefined,
         // Tutorial bots play gently by default — 'easy' lowers their cast rate and
         // last-hit accuracy, makes them retreat earlier and slower (reactionDelay),
-        // and drops rune/jungle/threat awareness — so a new player isn't punished
+        // and drops cache/jungle/threat awareness — so a new player isn't punished
         // while learning the verbs. An explicit difficulty overrides it.
         difficulty: opts.difficulty ?? (opts.mode === 'tutorial' ? 'easy' : undefined),
       },

@@ -296,7 +296,7 @@ describe('Topology', () => {
     const ids = new Set(oneLane.map((z) => z.id))
     const byId = new Map<string, Zone>(oneLane.map((z) => [z.id, z]))
 
-    it('is exactly the 11 mid-lane zones (no side lanes, jungle, or runes)', () => {
+    it('is exactly the 11 mid-lane zones (no side lanes, jungle, or caches)', () => {
       expect(oneLane).toHaveLength(11)
       for (const id of ['chaff-fountain', 'mid-river', 'audit-fountain']) {
         expect(ids.has(id), `expected ${id} in the one-lane map`).toBe(true)

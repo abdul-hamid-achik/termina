@@ -90,7 +90,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
-    runes: [],
+    caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
@@ -673,16 +673,16 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
   })
 })
 
-describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
+describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
   const moveAudit = { playerId: 'p1', command: { type: 'move' as const, zone: 'mid-t1-audit' } }
 
-  it('Double Damage rune (dd) doubles basic-attack damage', () => {
+  it('Double Damage cache (dd) doubles basic-attack damage', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 9999, source: 'rune_dd' }],
+          buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 9999, source: 'cache_dd' }],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'E' }),
       },
@@ -693,7 +693,7 @@ describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
     expect(ddDmg).toBeGreaterThan(expectedPhysical([], []))
   })
 
-  it('Haste rune makes movement immune to slow (an 80% slow never fails the move)', () => {
+  it('Haste cache makes movement immune to slow (an 80% slow never fails the move)', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
@@ -702,7 +702,7 @@ describe('Rune effects (dd / haste were applied but consumed nowhere)', () => {
           zone: 'mid-river',
           buffs: [
             { id: 'slow', stacks: 80, ticksRemaining: 9999, source: 'x' },
-            { id: 'haste', stacks: 1, ticksRemaining: 9999, source: 'rune_haste' },
+            { id: 'haste', stacks: 1, ticksRemaining: 9999, source: 'cache_haste' },
           ],
         }),
       },

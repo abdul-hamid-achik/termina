@@ -29,7 +29,7 @@ export {
 /**
  * Commands always available in tutorial mode, regardless of step: informational
  * readouts (status/map/scan), comms (chat/ping/missing), the player's own escape
- * hatch (surrender), grabbing a rune you're standing on, and — importantly —
+ * hatch (surrender), grabbing a cache you're standing on, and — importantly —
  * selecting a talent. Talent selection is essential hero progression gated by
  * its own level requirement, so the verb-learning sequence must never block a
  * leveled-up tutorial player from spending a talent point.
@@ -38,7 +38,7 @@ const TUTORIAL_ALWAYS_ALLOWED: ReadonlySet<Command['type']> = new Set([
   'status',
   'map',
   'scan',
-  'rune',
+  'grab',
   'chat',
   'ping',
   'missing',

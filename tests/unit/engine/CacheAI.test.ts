@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import {
-  getRuneBuff,
-  pickupRune,
-  removeExpiredRunes,
-  processRuneBuffs,
-} from '~~/server/game/engine/RuneAI'
-import type { GameState, PlayerState, RuneState } from '~~/shared/types/game'
+  getCacheBuff,
+  pickupCache,
+  removeExpiredCaches,
+  processCacheBuffs,
+} from '~~/server/game/engine/CacheAI'
+import type { GameState, PlayerState, CacheState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import {
-  RUNE_BUFF_TICKS,
-  RUNE_DURATION_TICKS,
-  REGEN_RUNE_HEAL_PERCENT,
+  CACHE_BUFF_TICKS,
+  CACHE_DURATION_TICKS,
+  REGEN_CACHE_HEAL_PERCENT,
 } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -44,7 +44,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   }
 }
 
-function makeRune(overrides: Partial<RuneState> = {}): RuneState {
+function makeCache(overrides: Partial<CacheState> = {}): CacheState {
   return {
     zone: 'cache-top',
     type: 'haste',
@@ -66,7 +66,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     creeps: [],
     neutrals: [],
     ice: initializeIce(),
-    runes: [],
+    caches: [],
     tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     backup: null,
     events: [],
@@ -74,282 +74,282 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-describe('RuneAI', () => {
-  describe('getRuneBuff', () => {
+describe('CacheAI', () => {
+  describe('getCacheBuff', () => {
     it('should return haste buff with correct duration', () => {
-      const buff = getRuneBuff('haste')
+      const buff = getCacheBuff('haste')
       expect(buff.id).toBe('haste')
-      expect(buff.ticksRemaining).toBe(RUNE_BUFF_TICKS.haste)
-      expect(buff.source).toBe('rune_haste')
+      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.haste)
+      expect(buff.source).toBe('cache_haste')
     })
 
     it('should return dd (double damage) buff', () => {
-      const buff = getRuneBuff('dd')
+      const buff = getCacheBuff('dd')
       expect(buff.id).toBe('dd')
-      expect(buff.ticksRemaining).toBe(RUNE_BUFF_TICKS.dd)
-      expect(buff.source).toBe('rune_dd')
+      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.dd)
+      expect(buff.source).toBe('cache_dd')
     })
 
     it('should return regen buff', () => {
-      const buff = getRuneBuff('regen')
+      const buff = getCacheBuff('regen')
       expect(buff.id).toBe('regen')
-      expect(buff.ticksRemaining).toBe(RUNE_BUFF_TICKS.regen)
-      expect(buff.source).toBe('rune_regen')
+      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.regen)
+      expect(buff.source).toBe('cache_regen')
     })
 
     it('should return arcane buff', () => {
-      const buff = getRuneBuff('arcane')
+      const buff = getCacheBuff('arcane')
       expect(buff.id).toBe('arcane')
-      expect(buff.ticksRemaining).toBe(RUNE_BUFF_TICKS.arcane)
-      expect(buff.source).toBe('rune_arcane')
+      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.arcane)
+      expect(buff.source).toBe('cache_arcane')
     })
 
     it('should return invis buff', () => {
-      const buff = getRuneBuff('invis')
+      const buff = getCacheBuff('invis')
       expect(buff.id).toBe('invis')
-      expect(buff.ticksRemaining).toBe(RUNE_BUFF_TICKS.invis)
-      expect(buff.source).toBe('rune_invis')
+      expect(buff.ticksRemaining).toBe(CACHE_BUFF_TICKS.invis)
+      expect(buff.source).toBe('cache_invis')
     })
 
-    it('should return stacks of 1 for all runes', () => {
-      const runeTypes: Array<'haste' | 'dd' | 'regen' | 'arcane' | 'invis'> = [
+    it('should return stacks of 1 for all caches', () => {
+      const cacheTypes: Array<'haste' | 'dd' | 'regen' | 'arcane' | 'invis'> = [
         'haste',
         'dd',
         'regen',
         'arcane',
         'invis',
       ]
-      for (const type of runeTypes) {
-        const buff = getRuneBuff(type)
+      for (const type of cacheTypes) {
+        const buff = getCacheBuff(type)
         expect(buff.stacks).toBe(1)
       }
     })
   })
 
-  describe('pickupRune', () => {
-    it('should add rune buff to player', () => {
+  describe('pickupCache', () => {
+    it('should add cache buff to player', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       const hasteBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'haste')
       expect(hasteBuff).toBeDefined()
     })
 
-    it('should remove rune from ground', () => {
+    it('should remove cache from ground', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
-      expect(result.state.runes).toHaveLength(0)
+      const result = pickupCache(state, 'p1', 'cache-top')
+      expect(result.state.caches).toHaveLength(0)
     })
 
     it('should fail if player not in same zone', () => {
       const state = makeGameState({
-        runes: [makeRune({ zone: 'cache-top' })],
+        caches: [makeCache({ zone: 'cache-top' })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-bot' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
-      expect(result.state.runes).toHaveLength(1)
+      const result = pickupCache(state, 'p1', 'cache-top')
+      expect(result.state.caches).toHaveLength(1)
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should fail if player is dead', () => {
       const state = makeGameState({
-        runes: [makeRune({ zone: 'cache-top' })],
+        caches: [makeCache({ zone: 'cache-top' })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top', alive: false }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
-      expect(result.state.runes).toHaveLength(1)
+      const result = pickupCache(state, 'p1', 'cache-top')
+      expect(result.state.caches).toHaveLength(1)
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
-    it('should fail if no rune in zone', () => {
+    it('should fail if no cache in zone', () => {
       const state = makeGameState({
-        runes: [],
+        caches: [],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
 
     it('should handle non-existent player', () => {
       const state = makeGameState({
-        runes: [makeRune({ zone: 'cache-top' })],
+        caches: [makeCache({ zone: 'cache-top' })],
       })
 
-      const result = pickupRune(state, 'nonexistent', 'cache-top')
-      expect(result.state.runes).toHaveLength(1)
+      const result = pickupCache(state, 'nonexistent', 'cache-top')
+      expect(result.state.caches).toHaveLength(1)
     })
 
-    it('should emit rune_picked event', () => {
+    it('should emit cache_picked event', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       expect(result.event).not.toBeNull()
-      expect(result.event!._tag).toBe('rune_picked')
+      expect(result.event!._tag).toBe('cache_picked')
     })
 
-    it('should pickup dd rune correctly', () => {
+    it('should pickup dd cache correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'cache-top', type: 'dd', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', type: 'dd', tick: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       const ddBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'dd')
       expect(ddBuff).toBeDefined()
     })
 
-    it('should pickup regen rune correctly', () => {
+    it('should pickup regen cache correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'cache-top', type: 'regen', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', type: 'regen', tick: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       const regenBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'regen')
       expect(regenBuff).toBeDefined()
     })
 
-    it('should pickup arcane rune correctly', () => {
+    it('should pickup arcane cache correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'cache-top', type: 'arcane', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', type: 'arcane', tick: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       const arcaneBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'arcane')
       expect(arcaneBuff).toBeDefined()
     })
 
-    it('should pickup invis rune correctly', () => {
+    it('should pickup invis cache correctly', () => {
       const state = makeGameState({
         tick: 60,
-        runes: [makeRune({ zone: 'cache-top', type: 'invis', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', type: 'invis', tick: 60 })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       const invisBuff = result.state.players['p1']!.buffs.find((b) => b.id === 'invis')
       expect(invisBuff).toBeDefined()
     })
 
-    it('should handle undefined runes array', () => {
+    it('should handle undefined caches array', () => {
       const state = makeGameState({
-        runes: undefined as unknown as RuneState[],
+        caches: undefined as unknown as CacheState[],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       expect(result.state.players['p1']!.buffs).toHaveLength(0)
     })
   })
 
-  describe('removeExpiredRunes', () => {
-    it('should remove expired runes', () => {
+  describe('removeExpiredCaches', () => {
+    it('should remove expired caches', () => {
       const spawnTick = 60
       const state = makeGameState({
-        tick: spawnTick + RUNE_DURATION_TICKS,
-        runes: [makeRune({ zone: 'cache-top', tick: spawnTick })],
+        tick: spawnTick + CACHE_DURATION_TICKS,
+        caches: [makeCache({ zone: 'cache-top', tick: spawnTick })],
       })
 
-      const result = removeExpiredRunes(state)
-      expect(result.runes).toHaveLength(0)
+      const result = removeExpiredCaches(state)
+      expect(result.caches).toHaveLength(0)
     })
 
-    it('should keep non-expired runes', () => {
+    it('should keep non-expired caches', () => {
       const spawnTick = 60
       const state = makeGameState({
-        tick: spawnTick + RUNE_DURATION_TICKS - 1,
-        runes: [makeRune({ zone: 'cache-top', tick: spawnTick })],
+        tick: spawnTick + CACHE_DURATION_TICKS - 1,
+        caches: [makeCache({ zone: 'cache-top', tick: spawnTick })],
       })
 
-      const result = removeExpiredRunes(state)
-      expect(result.runes).toHaveLength(1)
+      const result = removeExpiredCaches(state)
+      expect(result.caches).toHaveLength(1)
     })
 
-    it('should handle multiple runes with different ages', () => {
+    it('should handle multiple caches with different ages', () => {
       const state = makeGameState({
         tick: 85,
-        runes: [
-          makeRune({ zone: 'cache-top', tick: 60 }),
-          makeRune({ zone: 'cache-bot', tick: 60 }),
+        caches: [
+          makeCache({ zone: 'cache-top', tick: 60 }),
+          makeCache({ zone: 'cache-bot', tick: 60 }),
         ],
       })
 
-      const result = removeExpiredRunes(state)
-      expect(result.runes).toHaveLength(2)
+      const result = removeExpiredCaches(state)
+      expect(result.caches).toHaveLength(2)
     })
 
-    it('should return unchanged state if no runes expire', () => {
+    it('should return unchanged state if no caches expire', () => {
       const state = makeGameState({
         tick: 65,
-        runes: [makeRune({ zone: 'cache-top', tick: 60 })],
+        caches: [makeCache({ zone: 'cache-top', tick: 60 })],
       })
 
-      const result = removeExpiredRunes(state)
-      expect(result.runes).toHaveLength(1)
+      const result = removeExpiredCaches(state)
+      expect(result.caches).toHaveLength(1)
     })
 
-    it('should handle empty runes array', () => {
+    it('should handle empty caches array', () => {
       const state = makeGameState({
-        runes: [],
+        caches: [],
       })
 
-      const result = removeExpiredRunes(state)
-      expect(result.runes).toHaveLength(0)
+      const result = removeExpiredCaches(state)
+      expect(result.caches).toHaveLength(0)
     })
 
-    it('should handle undefined runes array', () => {
+    it('should handle undefined caches array', () => {
       const state = makeGameState({
-        runes: undefined as unknown as RuneState[],
+        caches: undefined as unknown as CacheState[],
       })
 
-      const result = removeExpiredRunes(state)
-      expect(result.runes).toHaveLength(0)
+      const result = removeExpiredCaches(state)
+      expect(result.caches).toHaveLength(0)
     })
   })
 
-  describe('processRuneBuffs', () => {
+  describe('processCacheBuffs', () => {
     it('should heal player with regen buff', () => {
       const state = makeGameState({
         tick: 60,
@@ -360,12 +360,12 @@ describe('RuneAI', () => {
             maxHp: 500,
             mp: 100,
             maxMp: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBeGreaterThan(400)
       expect(result.players['p1']!.mp).toBeGreaterThan(100)
     })
@@ -383,7 +383,7 @@ describe('RuneAI', () => {
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       // The buff was applied but never processed — now it heals `stacks` per tick.
       expect(result.players['p1']!.hp).toBe(510)
     })
@@ -401,15 +401,15 @@ describe('RuneAI', () => {
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       // Crontab's mpPerTick (15) was advertised in the event + description but
       // never applied; the crontabMana buff now restores `stacks` MP per tick.
       expect(result.players['p1']!.mp).toBe(215)
     })
 
-    it('should heal REGEN_RUNE_HEAL_PERCENT of max HP per tick with regen', () => {
+    it('should heal REGEN_CACHE_HEAL_PERCENT of max HP per tick with regen', () => {
       const maxHp = 500
-      const expectedHeal = Math.floor(maxHp * REGEN_RUNE_HEAL_PERCENT)
+      const expectedHeal = Math.floor(maxHp * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
         tick: 60,
         players: {
@@ -417,18 +417,18 @@ describe('RuneAI', () => {
             id: 'p1',
             hp: 400,
             maxHp,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(400 + expectedHeal)
     })
 
-    it('should heal REGEN_RUNE_HEAL_PERCENT of max MP per tick with regen', () => {
+    it('should heal REGEN_CACHE_HEAL_PERCENT of max MP per tick with regen', () => {
       const maxMp = 200
-      const expectedHeal = Math.floor(maxMp * REGEN_RUNE_HEAL_PERCENT)
+      const expectedHeal = Math.floor(maxMp * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
         tick: 60,
         players: {
@@ -436,12 +436,12 @@ describe('RuneAI', () => {
             id: 'p1',
             mp: 100,
             maxMp,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.mp).toBe(100 + expectedHeal)
     })
 
@@ -453,12 +453,12 @@ describe('RuneAI', () => {
             id: 'p1',
             hp: 490,
             maxHp: 500,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(500)
     })
 
@@ -470,12 +470,12 @@ describe('RuneAI', () => {
             id: 'p1',
             mp: 195,
             maxMp: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.mp).toBe(200)
     })
 
@@ -491,7 +491,7 @@ describe('RuneAI', () => {
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(400)
       expect(result.players['p1']!.mp).toBe(100)
     })
@@ -503,12 +503,12 @@ describe('RuneAI', () => {
             id: 'p1',
             hp: 0,
             alive: false,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(0)
     })
 
@@ -518,12 +518,12 @@ describe('RuneAI', () => {
           p1: makePlayer({
             id: 'p1',
             hp: 400,
-            buffs: [{ id: 'haste', stacks: 1, ticksRemaining: 15, source: 'rune_haste' }],
+            buffs: [{ id: 'haste', stacks: 1, ticksRemaining: 15, source: 'cache_haste' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(400)
     })
 
@@ -533,12 +533,12 @@ describe('RuneAI', () => {
           p1: makePlayer({
             id: 'p1',
             hp: 400,
-            buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 15, source: 'rune_dd' }],
+            buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 15, source: 'cache_dd' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(400)
     })
 
@@ -549,12 +549,12 @@ describe('RuneAI', () => {
             id: 'p1',
             hp: 400,
             mp: 100,
-            buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 15, source: 'rune_arcane' }],
+            buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 15, source: 'cache_arcane' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(400)
       expect(result.players['p1']!.mp).toBe(100)
     })
@@ -565,12 +565,12 @@ describe('RuneAI', () => {
           p1: makePlayer({
             id: 'p1',
             hp: 400,
-            buffs: [{ id: 'invis', stacks: 1, ticksRemaining: 15, source: 'rune_invis' }],
+            buffs: [{ id: 'invis', stacks: 1, ticksRemaining: 15, source: 'cache_invis' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(400)
     })
 
@@ -581,18 +581,18 @@ describe('RuneAI', () => {
             id: 'p1',
             hp: 400,
             maxHp: 500,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
           p2: makePlayer({
             id: 'p2',
             hp: 300,
             maxHp: 600,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBeGreaterThan(400)
       expect(result.players['p2']!.hp).toBeGreaterThan(300)
     })
@@ -607,31 +607,31 @@ describe('RuneAI', () => {
             mp: 100,
             maxMp: 200,
             buffs: [
-              { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'rune_haste' },
-              { id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' },
+              { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'cache_haste' },
+              { id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' },
             ],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBeGreaterThan(400)
       expect(result.players['p1']!.buffs).toHaveLength(2)
     })
   })
 
   describe('edge cases', () => {
-    it('should handle rune pickup at exact expiry tick', () => {
+    it('should handle cache pickup at exact expiry tick', () => {
       const spawnTick = 60
       const state = makeGameState({
-        tick: spawnTick + RUNE_DURATION_TICKS - 1,
-        runes: [makeRune({ zone: 'cache-top', type: 'haste', tick: spawnTick })],
+        tick: spawnTick + CACHE_DURATION_TICKS - 1,
+        caches: [makeCache({ zone: 'cache-top', type: 'haste', tick: spawnTick })],
         players: {
           p1: makePlayer({ id: 'p1', zone: 'cache-top' }),
         },
       })
 
-      const result = pickupRune(state, 'p1', 'cache-top')
+      const result = pickupCache(state, 'p1', 'cache-top')
       expect(result.state.players['p1']!.buffs).toHaveLength(1)
     })
 
@@ -644,12 +644,12 @@ describe('RuneAI', () => {
             maxHp: 500,
             mp: 200,
             maxMp: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(500)
       expect(result.players['p1']!.mp).toBe(200)
     })
@@ -663,12 +663,12 @@ describe('RuneAI', () => {
             maxHp: 500,
             mp: 200,
             maxMp: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBeGreaterThan(400)
       expect(result.players['p1']!.mp).toBe(200)
     })
@@ -682,12 +682,12 @@ describe('RuneAI', () => {
             maxHp: 500,
             mp: 100,
             maxMp: 200,
-            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'rune_regen' }],
+            buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
-      const result = processRuneBuffs(state)
+      const result = processCacheBuffs(state)
       expect(result.players['p1']!.hp).toBe(500)
       expect(result.players['p1']!.mp).toBeGreaterThan(100)
     })

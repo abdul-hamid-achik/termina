@@ -24,8 +24,8 @@ export interface ZoneDisplay {
   enemyNames?: string[]
   /** Own-team wards giving vision in this zone (spatial vision-coverage cue). */
   wardCount?: number
-  /** Type of a currently-live rune in this zone (e.g. 'haste'), if any. */
-  runeType?: string
+  /** Type of a currently-live cache in this zone (e.g. 'haste'), if any. */
+  cacheType?: string
   /** Tenant state, set only on the pit zone: up (killable) or dead + respawn. */
   tenant?: { alive: boolean; respawnIn: number }
 }
@@ -74,7 +74,7 @@ export const ONE_LANE_MAP_ROWS: (string | null)[][] = [
 ]
 const ONE_LANE_COL_HEADERS = ['COLDSTORE']
 
-/** Two-lane map layout — top + mid lanes with top-side jungle, top rune, and
+/** Two-lane map layout — top + mid lanes with top-side jungle, top cache, and
  *  Tenant pit. Mirrors shared/constants/maps `TWO_LANE_ZONES` (3v3 map). */
 export const TWO_LANE_MAP_ROWS: (string | null)[][] = [
   [null, null, 'chaff-fountain', null],
@@ -340,7 +340,7 @@ export function zoneRecordLabel(z: {
     const label = z.tier === 3 ? 'BLACK ICE' : `ICE T${z.tier}`
     return `${g?.arrow ?? '▼'} ${g?.side ?? '???'} ${label}`
   }
-  // Objective/run spots outrank their zone type — rune spots are typed 'river'
+  // Objective/run spots outrank their zone type — cache spots are typed 'river'
   // in the data but must never render as the crossing.
   if (z.id === 'hollow') return '☠ HOLLOW'
   if (z.id.startsWith('cache-')) return '◆ CACHE'
@@ -406,8 +406,8 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     indicators.push('◉')
   }
 
-  if (zone.runeType) {
-    indicators.push(`✦${zone.runeType}`)
+  if (zone.cacheType) {
+    indicators.push(`✦${zone.cacheType}`)
   }
 
   if (zone.tenant) {
@@ -425,7 +425,7 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
   if (zone.allies.length > 0) parts.push(`${zone.allies.length} allies`)
   if (zone.enemyCount > 0) parts.push(`${zone.enemyCount} enemies`)
   if (zone.wardCount && zone.wardCount > 0) parts.push('warded')
-  if (zone.runeType) parts.push(`${zone.runeType} rune available`)
+  if (zone.cacheType) parts.push(`${zone.cacheType} cache available`)
   if (zone.tenant) {
     parts.push(zone.tenant.alive ? 'Tenant alive' : `Tenant respawns in ${zone.tenant.respawnIn}c`)
   }
@@ -524,8 +524,8 @@ export function compactIndicators(
     })
   }
 
-  if (zone.runeType) {
-    out.push({ text: `✦ ${zone.runeType} rune`, cls: 'text-gold' })
+  if (zone.cacheType) {
+    out.push({ text: `✦ ${zone.cacheType} cache`, cls: 'text-gold' })
   }
 
   if (zone.tenant) {

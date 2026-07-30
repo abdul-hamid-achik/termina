@@ -58,7 +58,7 @@ describe('maps', () => {
       }
     })
 
-    it('excludes side lanes, jungle, runes, and tenant', () => {
+    it('excludes side lanes, jungle, caches, and tenant', () => {
       for (const id of [
         'top-river',
         'bot-river',

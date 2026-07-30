@@ -329,7 +329,7 @@ describe('ZonePanel', () => {
 
     it('shows a zone-local objective for a river zone', () => {
       const wrapper = mount(ZonePanel, { props: { ...baseProps, zoneId: 'mid-river' } })
-      expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('Contest runes')
+      expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('Contest caches')
     })
 
     it('prioritises destroying an enemy ice as the objective', () => {

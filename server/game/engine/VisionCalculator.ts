@@ -17,10 +17,10 @@ export type { FoggedPlayer, PlayerVisibleState }
  * Using a `ReadonlySet` with exact IDs avoids the fragile `b.id.includes('invis')`
  * substring match — a future buff like `not_invisible` or `invis_breaker` would
  * have wrongly matched the substring. Every ID here is a real buff applied by
- * production code (rune, Silver Edge, Smoke of Deceit, cipher/daemon stealth).
+ * production code (cache, Silver Edge, Smoke of Deceit, cipher/daemon stealth).
  */
 const INVISIBILITY_BUFF_IDS: ReadonlySet<string> = new Set([
-  'invis', // Invisibility rune
+  'invis', // Invisibility cache
   'invisible', // Legacy alias used in tests + some engine paths
   'silver_edge_invis', // Silver Edge active
   'smoke', // Smoke of Deceit
@@ -288,7 +288,7 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
     neutrals: state.neutrals ?? [],
     ice: state.ice,
     ancients: state.ancients,
-    runes: state.runes ?? [],
+    caches: state.caches ?? [],
     tenant: state.tenant,
     backup: state.backup,
     events: state.events,
@@ -323,7 +323,7 @@ export function filterStateForPlayer(
       neutrals: [],
       ice: state.ice,
       ancients: state.ancients,
-      runes: state.runes ?? [],
+      caches: state.caches ?? [],
       tenant: state.tenant,
       backup: state.backup,
       events: [],
@@ -440,7 +440,7 @@ export function filterStateForPlayer(
     neutrals: state.neutrals ?? [], // Neutrals are visible in their zones (public info)
     ice: state.ice, // ICE are always visible (global info)
     ancients: state.ancients, // Ancients are always visible (global info)
-    runes: state.runes ?? [],
+    caches: state.caches ?? [],
     tenant: state.tenant,
     backup: state.backup,
     events: filteredEvents,

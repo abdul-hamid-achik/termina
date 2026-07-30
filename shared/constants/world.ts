@@ -54,7 +54,7 @@ export const STRUCTURE_LABELS = {
   mainframe: 'Mainframe',
 } as const
 
-/** The five rune types as cache drops, plus the pit objectives. */
+/** The five cache types as cache drops, plus the pit objectives. */
 export const OBJECTIVE_LABELS = {
   tenant: 'THE TENANT',
   backup: 'BACKUP',

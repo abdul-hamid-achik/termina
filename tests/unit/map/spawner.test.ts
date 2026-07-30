@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   spawnCreepWaves,
   resetCreepIdCounter,
-  spawnRunes,
+  spawnCaches,
   initializeTenant,
   shouldTenantRespawn,
   respawnTenant,
@@ -20,8 +20,8 @@ import {
   creepMaxHp,
   TENANT_RESPAWN_TICKS,
   TENANT_BASE_HP,
-  RUNE_INTERVAL_TICKS,
-  RUNE_DURATION_TICKS,
+  CACHE_INTERVAL_TICKS,
+  CACHE_DURATION_TICKS,
 } from '~~/shared/constants/balance'
 
 describe('Spawner', () => {
@@ -144,70 +144,70 @@ describe('Spawner', () => {
     })
   })
 
-  describe('spawnRunes', () => {
-    it('does not spawn runes at tick 0', () => {
-      expect(spawnRunes(0)).toEqual([])
+  describe('spawnCaches', () => {
+    it('does not spawn caches at tick 0', () => {
+      expect(spawnCaches(0)).toEqual([])
     })
 
-    it('does not spawn runes on non-rune ticks', () => {
-      expect(spawnRunes(1)).toEqual([])
-      expect(spawnRunes(30)).toEqual([])
-      expect(spawnRunes(59)).toEqual([])
+    it('does not spawn caches on non-cache ticks', () => {
+      expect(spawnCaches(1)).toEqual([])
+      expect(spawnCaches(30)).toEqual([])
+      expect(spawnCaches(59)).toEqual([])
     })
 
-    it('spawns runes at rune interval (tick 60)', () => {
-      const runes = spawnRunes(60)
-      expect(runes).toHaveLength(2)
+    it('spawns caches at cache interval (tick 60)', () => {
+      const caches = spawnCaches(60)
+      expect(caches).toHaveLength(2)
     })
 
-    it('spawns runes at correct zones', () => {
-      const runes = spawnRunes(60)
-      const zones = runes.map((r) => r.zone)
+    it('spawns caches at correct zones', () => {
+      const caches = spawnCaches(60)
+      const zones = caches.map((r) => r.zone)
       expect(zones).toContain('cache-top')
       expect(zones).toContain('cache-bot')
     })
 
-    it('rune types are valid', () => {
+    it('cache types are valid', () => {
       const validTypes = ['haste', 'dd', 'regen', 'arcane', 'invis']
-      const runes = spawnRunes(60)
-      for (const r of runes) {
+      const caches = spawnCaches(60)
+      for (const r of caches) {
         expect(validTypes).toContain(r.type)
       }
     })
 
-    it('a rune always expires before the next spawn (no stacking at a zone)', () => {
-      // spawnRunes has a defensive occupancy check (activeRunes param) that skips
+    it('a cache always expires before the next spawn (no stacking at a zone)', () => {
+      // spawnCaches has a defensive occupancy check (activeCaches param) that skips
       // re-spawning on an occupied spot, but the primary no-stacking guarantee
-      // rests on this relationship: an unclaimed rune (lifetime RUNE_DURATION_TICKS)
-      // must be gone before the next spawn (RUNE_INTERVAL_TICKS). If a future
-      // balance change lifts the duration past the interval, runes would pile up
+      // rests on this relationship: an unclaimed cache (lifetime CACHE_DURATION_TICKS)
+      // must be gone before the next spawn (CACHE_INTERVAL_TICKS). If a future
+      // balance change lifts the duration past the interval, caches would pile up
       // at a zone — this test trips first.
-      expect(RUNE_DURATION_TICKS).toBeLessThan(RUNE_INTERVAL_TICKS)
+      expect(CACHE_DURATION_TICKS).toBeLessThan(CACHE_INTERVAL_TICKS)
     })
 
-    it('runes record the spawn tick', () => {
-      const runes = spawnRunes(120)
-      for (const r of runes) {
+    it('caches record the spawn tick', () => {
+      const caches = spawnCaches(120)
+      for (const r of caches) {
         expect(r.tick).toBe(120)
       }
     })
 
-    it('does not spawn a rune on an occupied zone (occupancy check)', () => {
+    it('does not spawn a cache on an occupied zone (occupancy check)', () => {
       const active = new Set(['cache-top'])
-      const runes = spawnRunes(60, undefined, active)
+      const caches = spawnCaches(60, undefined, active)
       // cache-top is occupied → only cache-bot should spawn
-      expect(runes).toHaveLength(1)
-      expect(runes[0]!.zone).toBe('cache-bot')
+      expect(caches).toHaveLength(1)
+      expect(caches[0]!.zone).toBe('cache-bot')
     })
 
-    it('does not spawn runes when all spots are occupied', () => {
+    it('does not spawn caches when all spots are occupied', () => {
       const active = new Set(['cache-top', 'cache-bot'])
-      const runes = spawnRunes(60, undefined, active)
-      expect(runes).toEqual([])
+      const caches = spawnCaches(60, undefined, active)
+      expect(caches).toEqual([])
     })
   })
 
-  // The spawner gates lane/rune spawns on a game's live zone set via the
+  // The spawner gates lane/cache spawns on a game's live zone set via the
   // `hasZone` callback. On a subset map (one-lane, two-lane) a lane whose spawn
   // zones aren't in the game must be skipped entirely, or creeps would be
   // placed in zones that don't exist on this map.
@@ -227,10 +227,10 @@ describe('Spawner', () => {
       }
     })
 
-    it('one-lane map: spawns no runes (both rune spots are absent)', () => {
+    it('one-lane map: spawns no caches (both cache spots are absent)', () => {
       const hasZone = hasZoneFor(ONE_LANE_MAP_ID)
-      const runes = spawnRunes(RUNE_INTERVAL_TICKS, hasZone)
-      expect(runes).toEqual([])
+      const caches = spawnCaches(CACHE_INTERVAL_TICKS, hasZone)
+      expect(caches).toEqual([])
     })
 
     it('two-lane map: spawns top + mid creeps (no bot)', () => {
@@ -245,9 +245,9 @@ describe('Spawner', () => {
 
     it('two-lane map: spawns only cache-top (cache-bot is absent)', () => {
       const hasZone = hasZoneFor(TWO_LANE_MAP_ID)
-      const runes = spawnRunes(RUNE_INTERVAL_TICKS, hasZone)
-      expect(runes).toHaveLength(1)
-      expect(runes[0]!.zone).toBe('cache-top')
+      const caches = spawnCaches(CACHE_INTERVAL_TICKS, hasZone)
+      expect(caches).toHaveLength(1)
+      expect(caches[0]!.zone).toBe('cache-top')
     })
   })
 

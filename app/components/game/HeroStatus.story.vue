@@ -60,7 +60,7 @@ const fullBuild = heroFrom(
     // enemy debuff on us (red), and an item-cooldown marker that the HUD hides.
     buffs: [
       { id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'item', destination: 'p1' },
-      { id: 'haste', stacks: 1, ticksRemaining: 3, source: 'rune', destination: 'p1' },
+      { id: 'haste', stacks: 1, ticksRemaining: 3, source: 'cache', destination: 'p1' },
       { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'enemy', destination: 'p1' },
       {
         id: 'item_cd_black_king_bar',

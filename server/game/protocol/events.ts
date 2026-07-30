@@ -159,12 +159,12 @@ export interface WardPlacedEvent {
   readonly wardType: 'observer' | 'sentry'
 }
 
-export interface RunePickedEvent {
-  readonly _tag: 'rune_picked'
+export interface CachePickedEvent {
+  readonly _tag: 'cache_picked'
   readonly tick: number
   readonly playerId: string
   readonly zone: string
-  readonly runeType: string
+  readonly cacheType: string
 }
 
 export interface TrapTriggeredEvent {
@@ -340,7 +340,7 @@ export type GameEngineEvent =
   | ItemPurchasedEvent
   | ItemSoldEvent
   | WardPlacedEvent
-  | RunePickedEvent
+  | CachePickedEvent
   | TrapTriggeredEvent
   | SpellBlockedEvent
   | TenantKilledEvent

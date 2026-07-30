@@ -89,7 +89,7 @@ export interface BotDifficultyConfig {
   lastHitAccuracy: number
   /** Bot denies its own low creeps to starve the enemy laner of gold + XP. */
   denyAwareness: boolean
-  runeAwareness: boolean
+  cacheAwareness: boolean
   jungleFarming: boolean
   threatAssessment: boolean
 }
@@ -101,7 +101,7 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     abilityComboChance: 0.2,
     lastHitAccuracy: 0.4,
     denyAwareness: false,
-    runeAwareness: false,
+    cacheAwareness: false,
     jungleFarming: false,
     threatAssessment: false,
   },
@@ -111,7 +111,7 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     abilityComboChance: 0.5,
     lastHitAccuracy: 0.7,
     denyAwareness: true,
-    runeAwareness: true,
+    cacheAwareness: true,
     jungleFarming: true,
     threatAssessment: true,
   },
@@ -121,7 +121,7 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     abilityComboChance: 0.8,
     lastHitAccuracy: 0.9,
     denyAwareness: true,
-    runeAwareness: true,
+    cacheAwareness: true,
     jungleFarming: true,
     threatAssessment: true,
   },
@@ -131,7 +131,7 @@ export const BOT_DIFFICULTY_CONFIGS: Record<BotDifficulty, BotDifficultyConfig> 
     abilityComboChance: 1.0,
     lastHitAccuracy: 1.0,
     denyAwareness: true,
-    runeAwareness: true,
+    cacheAwareness: true,
     jungleFarming: true,
     threatAssessment: true,
   },

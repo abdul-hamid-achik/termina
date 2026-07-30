@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { makeTenant, makeRune } from '~/stories/fixtures'
+import { makeTenant, makeCache } from '~/stories/fixtures'
 
 import ObjectiveTicker from './ObjectiveTicker.vue'
 
@@ -8,37 +8,37 @@ const TICK = 240
 
 <template>
   <Story title="Game/ObjectiveTicker" :layout="{ type: 'grid', width: 240 }">
-    <!-- Rosh up, a live rune, no backup. Rune types render through buffLabel:
+    <!-- Rosh up, a live cache, no backup. Cache types render through buffLabel:
          'dd' shows as "Double Damage", never the raw id. -->
     <Variant title="all live">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
           :tenant="makeTenant()"
-          :runes="[makeRune({ type: 'dd', tick: TICK })]"
+          :caches="[makeCache({ type: 'dd', tick: TICK })]"
           :backup="null"
           :tick="TICK"
         />
       </div>
     </Variant>
 
-    <!-- Tenant dead → respawn countdown; rune still pending. -->
-    <Variant title="tenant dead, rune pending">
+    <!-- Tenant dead → respawn countdown; cache still pending. -->
+    <Variant title="tenant dead, cache pending">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
           :tenant="makeTenant({ alive: false, hp: 0, deathTick: TICK - 30 })"
-          :runes="[]"
+          :caches="[]"
           :backup="null"
           :tick="TICK"
         />
       </div>
     </Variant>
 
-    <!-- Backup claimed by a carrier, ticking down; 'haste' rune → "Haste". -->
+    <!-- Backup claimed by a carrier, ticking down; 'haste' cache → "Haste". -->
     <Variant title="backup held">
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
           :tenant="makeTenant({ alive: false, hp: 0, deathTick: TICK - 5 })"
-          :runes="[makeRune({ type: 'haste', tick: TICK })]"
+          :caches="[makeCache({ type: 'haste', tick: TICK })]"
           :backup="{ zone: 'hollow', tick: TICK - 5, holderId: 'p1' }"
           :backup-holder="{ name: 'you', ticksRemaining: 18 }"
           :tick="TICK"
@@ -51,7 +51,7 @@ const TICK = 240
       <div class="bg-bg-primary p-2" style="width: 200px">
         <ObjectiveTicker
           :tenant="makeTenant({ alive: false, hp: 0, deathTick: TICK - 2 })"
-          :runes="[]"
+          :caches="[]"
           :backup="{ zone: 'hollow', tick: TICK - 2, holderId: null }"
           :tick="TICK"
         />

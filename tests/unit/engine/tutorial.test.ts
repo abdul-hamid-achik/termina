@@ -79,13 +79,13 @@ describe('tutorial flow', () => {
 
   describe('gating policy at step 0 (the strictest point)', () => {
     // Informational / comms / essential-progression commands are never gated —
-    // a learner can read state, talk, bail, grab a rune, or spend a talent point
+    // a learner can read state, talk, bail, grab a cache, or spend a talent point
     // even before they've been taught the combat verbs.
     const ALWAYS_ALLOWED = [
       'status',
       'map',
       'scan',
-      'rune',
+      'grab',
       'chat',
       'ping',
       'missing',

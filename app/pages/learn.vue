@@ -37,13 +37,13 @@ import {
   FOUNTAIN_MANA_PER_TICK_PERCENT,
   SURRENDER_MIN_TICK,
   SURRENDER_VOTE_THRESHOLD,
-  RUNE_INTERVAL_TICKS,
-  RUNE_DURATION_TICKS,
+  CACHE_INTERVAL_TICKS,
+  CACHE_DURATION_TICKS,
   GLYPH_DURATION_TICKS,
   GLYPH_COOLDOWN_TICKS,
   RING_OF_HEALTH_REGEN_PERCENT,
   SOBI_MASK_REGEN_PERCENT,
-  REGEN_RUNE_HEAL_PERCENT,
+  REGEN_CACHE_HEAL_PERCENT,
   DENY_HP_THRESHOLD,
   DENY_GOLD_RATIO,
   DENY_XP_RATIO,
@@ -93,7 +93,7 @@ const talentTierNote = talentLevels.some((lvl, i) => lvl !== TALENT_TIER_IDS[i])
 // Sustain / last-hitting numbers, derived so the two cards below can't drift.
 const ringRegenPercent = Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)
 const sobiRegenPercent = Math.round(SOBI_MASK_REGEN_PERCENT * 100)
-const runeRegenPercent = Math.round(REGEN_RUNE_HEAL_PERCENT * 100)
+const cacheRegenPercent = Math.round(REGEN_CACHE_HEAL_PERCENT * 100)
 const denyHpPercent = Math.round(DENY_HP_THRESHOLD * 100)
 const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
 const denyXp = Math.floor(CREEP_XP * DENY_XP_RATIO)
@@ -213,7 +213,7 @@ const commands = [
     example: 'ward mid-river',
     shortcuts: '—',
   },
-  { cmd: 'rune', desc: 'Pick up the rune in your zone', example: 'rune', shortcuts: '—' },
+  { cmd: 'cache', desc: 'Pick up the cache in your zone', example: 'cache', shortcuts: '—' },
   {
     cmd: 'backup',
     desc: 'Pick up the Backup in the Tenant pit',
@@ -352,7 +352,7 @@ const concepts = [
   {
     term: 'Sustain',
     icon: '+',
-    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Healing Salve and Mana Vial (consumables you carry), Ring of Health (${ringRegenPercent}% max HP per cycle) and Sobi's Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration rune (${runeRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Healing Salve and Mana Vial (consumables you carry), Ring of Health (${ringRegenPercent}% max HP per cycle) and Sobi's Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
     term: 'Last-Hitting & Denying',
@@ -370,9 +370,9 @@ const concepts = [
     desc: `Observer wards (${wardCost}g) grant vision of a zone for ${OBSERVER_WARD_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
   },
   {
-    term: 'Tenant & Runes',
+    term: 'Tenant & Caches',
     icon: '%',
-    desc: `Tenant (${TENANT_BASE_HP}+ HP) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up runes spawn at cache-top/cache-bot every ${RUNE_INTERVAL_TICKS} cycles and expire after ${RUNE_DURATION_TICKS}; grab them with rune.`,
+    desc: `Tenant (${TENANT_BASE_HP}+ HP) lurks in hollow and drops the Backup when killed — grab it with backup. Power-up caches spawn at cache-top/cache-bot every ${CACHE_INTERVAL_TICKS} cycles and expire after ${CACHE_DURATION_TICKS}; grab them with cache.`,
   },
   {
     term: 'Win Condition',

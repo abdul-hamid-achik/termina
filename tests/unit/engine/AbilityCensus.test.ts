@@ -95,7 +95,7 @@ function baseState(heroId: string): GameState {
       chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
       audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
     },
-    runes: [],
+    caches: [],
     tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
     backup: null,
     events: [],

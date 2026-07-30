@@ -136,7 +136,7 @@ export function getAttackMultiplier(player: PlayerState): number {
   const fullTrace = 1 + getBuffStacks(player, 'fullTraceDmg') / 100
   const hopCount = 1 + getBuffStacks(player, 'hopCount') * HOP_COUNT_DAMAGE_PER_STACK
   const resonance = 1 + getBuffStacks(player, 'resonance') * RESONANCE_BONUS_PER_STACK
-  // Double Damage rune: 2x basic-attack damage (the 'dd' buff was applied but
+  // Double Damage cache: 2x basic-attack damage (the 'dd' buff was applied but
   // consumed nowhere).
   const doubleDamage = player.buffs.some((b) => b.id === 'dd') ? 2 : 1
   return fullTrace * hopCount * resonance * doubleDamage

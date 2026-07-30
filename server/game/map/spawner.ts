@@ -9,7 +9,7 @@ import {
   TENANT_BASE_HP,
   TENANT_HP_PER_MINUTE,
   TICK_DURATION_MS,
-  RUNE_INTERVAL_TICKS,
+  CACHE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
 
 let creepIdCounter = 0
@@ -89,34 +89,34 @@ export function spawnCreepWaves(tick: number, hasZone?: (zoneId: string) => bool
   return newCreeps
 }
 
-/** Rune spawn state. */
-export interface RuneSpawn {
+/** Cache spawn state. */
+export interface CacheSpawn {
   zone: string
   type: 'haste' | 'dd' | 'regen' | 'arcane' | 'invis'
   tick: number
 }
 
-const RUNE_TYPES = ['haste', 'dd', 'regen', 'arcane', 'invis'] as const
+const CACHE_TYPES = ['haste', 'dd', 'regen', 'arcane', 'invis'] as const
 
-/** Spawn runes if the current tick is a rune tick. `hasZone` skips rune spots a
- *  subset map doesn't have (one-lane has no river runes). `activeRunes` prevents
- *  re-spawning a rune on an occupied spot (defensive — the timing invariant
+/** Spawn caches if the current tick is a cache tick. `hasZone` skips cache spots a
+ *  subset map doesn't have (one-lane has no river caches). `activeCaches` prevents
+ *  re-spawning a cache on an occupied spot (defensive — the timing invariant
  *  should prevent this, but occupancy check avoids stacking). */
-export function spawnRunes(
+export function spawnCaches(
   tick: number,
   hasZone?: (zoneId: string) => boolean,
-  activeRunes?: Set<string>,
-): RuneSpawn[] {
-  if (tick === 0 || tick % RUNE_INTERVAL_TICKS !== 0) return []
+  activeCaches?: Set<string>,
+): CacheSpawn[] {
+  if (tick === 0 || tick % CACHE_INTERVAL_TICKS !== 0) return []
 
-  const runes: RuneSpawn[] = []
+  const caches: CacheSpawn[] = []
   for (const zone of ['cache-top', 'cache-bot']) {
     if (hasZone && !hasZone(zone)) continue
-    if (activeRunes && activeRunes.has(zone)) continue // spot already occupied
-    const type = RUNE_TYPES[Math.floor(Math.random() * RUNE_TYPES.length)]!
-    runes.push({ zone, type, tick })
+    if (activeCaches && activeCaches.has(zone)) continue // spot already occupied
+    const type = CACHE_TYPES[Math.floor(Math.random() * CACHE_TYPES.length)]!
+    caches.push({ zone, type, tick })
   }
-  return runes
+  return caches
 }
 
 /** Tenant tracking state. */

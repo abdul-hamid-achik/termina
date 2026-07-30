@@ -65,7 +65,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     creeps: [],
     neutrals: [],
     ice: initializeIce(),
-    runes: [],
+    caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],

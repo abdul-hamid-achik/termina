@@ -13,7 +13,7 @@ import type {
   CreepState,
   NeutralCreepState,
   TenantState,
-  RuneState,
+  CacheState,
 } from '~~/shared/types/game'
 import type {
   TickStateMessage,
@@ -77,7 +77,7 @@ export const useGameStore = defineStore('game', () => {
   // Objective layer — streamed in every tick payload (PlayerVisibleState) but
   // previously discarded by updateFromTick. Surfaced here for the War Room HUD.
   const tenant = ref<TenantState | null>(null)
-  const runes = ref<RuneState[]>([])
+  const caches = ref<CacheState[]>([])
   const backup = ref<{ zone: string; tick: number; holderId: string | null } | null>(null)
   // Last-seen position per player (zone + tick) — drives "last seen mid 4t ago"
   // for fogged enemies. Server only includes positions the team is allowed to know.
@@ -265,7 +265,7 @@ export const useGameStore = defineStore('game', () => {
       creeps?: CreepState[]
       neutrals?: NeutralCreepState[]
       tenant?: TenantState
-      runes?: RuneState[]
+      caches?: CacheState[]
       backup?: { zone: string; tick: number; holderId: string | null } | null
       timeOfDay?: 'day' | 'night'
       dayNightTick?: number
@@ -305,7 +305,7 @@ export const useGameStore = defineStore('game', () => {
     if (state.creeps) creeps.value = state.creeps
     if (state.neutrals) neutrals.value = state.neutrals
     if (state.tenant) tenant.value = state.tenant
-    if (state.runes) runes.value = state.runes
+    if (state.caches) caches.value = state.caches
     if ('backup' in state) backup.value = state.backup ?? null
     // Fog-safe last-seen tracking: record a player's position ONLY on the ticks
     // where they arrive un-fogged (fogged enemies come through as FoggedPlayer
@@ -448,7 +448,7 @@ export const useGameStore = defineStore('game', () => {
     creeps.value = []
     neutrals.value = []
     tenant.value = null
-    runes.value = []
+    caches.value = []
     backup.value = null
     lastSeen.value = {}
     knownNetWorth.value = {}
@@ -492,7 +492,7 @@ export const useGameStore = defineStore('game', () => {
     creeps,
     neutrals,
     tenant,
-    runes,
+    caches,
     backup,
     lastSeen,
     knownNetWorth,

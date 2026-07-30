@@ -210,14 +210,16 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(eventToLine(ev('night_falls', {}), ctx)!.text).toContain('NIGHT')
     expect(eventToLine(ev('day_breaks', {}), ctx)!.text).toContain('DAY')
   })
-  it('narrates tenant, runes, backup, wards', () => {
+  it('narrates tenant, caches, backup, wards', () => {
     expect(
       eventToLine(ev('tenant_killed', { killerTeam: 'chaff', goldAwarded: 600 }), ctx)!.text,
     ).toContain('Tenant')
     expect(
-      eventToLine(ev('rune_picked', { playerId: 'me', zone: 'cache-top', runeType: 'haste' }), ctx)!
-        .text,
-    ).toContain('rune')
+      eventToLine(
+        ev('cache_picked', { playerId: 'me', zone: 'cache-top', cacheType: 'haste' }),
+        ctx,
+      )!.text,
+    ).toContain('cache')
     expect(eventToLine(ev('backup_picked', { playerId: 'me' }), ctx)!.text).toContain('Backup')
     expect(
       eventToLine(
@@ -635,7 +637,7 @@ describe('narration drift guard', () => {
     newLevel: 6,
     creepType: 'melee',
     neutralType: 'kobold',
-    runeType: 'haste',
+    cacheType: 'haste',
     wardType: 'observer',
     damageType: 'physical',
     hp: 100,

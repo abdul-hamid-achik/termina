@@ -1,6 +1,6 @@
 // ── Tick & Timing ────────────────────────────────────────────────
 
-import type { CreepState, RuneState } from '../types/game'
+import type { CreepState, CacheState } from '../types/game'
 
 export const TICK_DURATION_MS = 4000
 export const ACTION_WINDOW_MS = 3500
@@ -179,14 +179,14 @@ export const TENANT_HP_PER_MINUTE = 100
 export const TENANT_ATTACK = 150
 export const TENANT_BACKUP_TICKS = 300 // 5 minutes at 4s/tick
 
-// ── Runes ───────────────────────────────────────────────────────────
+// ── Caches ───────────────────────────────────────────────────────────
 
-export const RUNE_INTERVAL_TICKS = 60 // Spawn every 60 ticks (4 min)
-export const RUNE_DURATION_TICKS = 30 // Runes expire after 30 ticks (2 min)
+export const CACHE_INTERVAL_TICKS = 60 // Spawn every 60 ticks (4 min)
+export const CACHE_DURATION_TICKS = 30 // Caches expire after 30 ticks (2 min)
 
-// Rune buff durations (in ticks). Typed against RuneState['type'] so adding a
-// new rune type is a compile error here until the duration map is updated.
-export const RUNE_BUFF_TICKS: Record<RuneState['type'], number> = {
+// Cache buff durations (in ticks). Typed against CacheState['type'] so adding a
+// new cache type is a compile error here until the duration map is updated.
+export const CACHE_BUFF_TICKS: Record<CacheState['type'], number> = {
   haste: 15, // 60 seconds
   dd: 15, // 60 seconds
   regen: 15, // 60 seconds
@@ -372,7 +372,7 @@ export const MKB_BONUS_DAMAGE = 50
 export const RING_OF_HEALTH_REGEN_PERCENT = 0.02
 export const SOBI_MASK_REGEN_PERCENT = 0.02
 export const HEART_REGEN_PERCENT = 0.05
-export const REGEN_RUNE_HEAL_PERCENT = 0.05
+export const REGEN_CACHE_HEAL_PERCENT = 0.05
 
 // ── Combat ───────────────────────────────────────────────────────
 

@@ -23,7 +23,7 @@ import {
   FOUNTAIN_MANA_PER_TICK_PERCENT,
   RING_OF_HEALTH_REGEN_PERCENT,
   SOBI_MASK_REGEN_PERCENT,
-  REGEN_RUNE_HEAL_PERCENT,
+  REGEN_CACHE_HEAL_PERCENT,
   DENY_HP_THRESHOLD,
   DENY_GOLD_RATIO,
   DENY_XP_RATIO,
@@ -124,7 +124,7 @@ describe('learn page', () => {
     }
     // Newly documented verbs
     for (const cmd of [
-      'rune',
+      'cache',
       'backup',
       'glyph',
       'chat <team|all> <msg>',
@@ -291,7 +291,7 @@ describe('learn page', () => {
         'Mana Vial',
         'Ring of Health',
         "Sobi's Mask",
-        'regeneration rune',
+        'regeneration cache',
       ]) {
         expect(text).toContain(source)
       }
@@ -301,7 +301,7 @@ describe('learn page', () => {
       const text = mountLearn().text()
       expect(text).toContain(`${Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)}% max HP per cycle`)
       expect(text).toContain(`${Math.round(SOBI_MASK_REGEN_PERCENT * 100)}% max MP per cycle`)
-      expect(text).toContain(`${Math.round(REGEN_RUNE_HEAL_PERCENT * 100)}% of both per cycle`)
+      expect(text).toContain(`${Math.round(REGEN_CACHE_HEAL_PERCENT * 100)}% of both per cycle`)
     })
 
     it('teaches last-hitting as its own concept, with the deny mirror', () => {

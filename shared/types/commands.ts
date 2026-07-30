@@ -17,7 +17,7 @@ export type Command =
   | { type: 'sell'; item: string }
   | { type: 'ward'; zone: string }
   | { type: 'backup' }
-  | { type: 'rune' }
+  | { type: 'grab' }
   | { type: 'scan' }
   | { type: 'status' }
   | { type: 'map' }

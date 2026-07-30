@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatTenant, formatRunes, formatBackup, ticksToClock, shortZone } from '~/utils/strategy'
+import { formatTenant, formatCaches, formatBackup, ticksToClock, shortZone } from '~/utils/strategy'
 import { buffLabel } from '~/utils/buffs'
-import type { TenantState, RuneState } from '~~/shared/types/game'
+import type { TenantState, CacheState } from '~~/shared/types/game'
 
 const props = defineProps<{
   tenant: TenantState | null
-  runes: RuneState[]
+  caches: CacheState[]
   backup: { zone: string; tick: number; holderId: string | null } | null
   tick: number
   /** The backup carrier (resolved from the 'backup' buff by the parent), if any. */
@@ -14,7 +14,7 @@ const props = defineProps<{
 }>()
 
 const rosh = computed(() => formatTenant(props.tenant, props.tick))
-const rune = computed(() => formatRunes(props.runes, props.tick))
+const cache = computed(() => formatCaches(props.caches, props.tick))
 const aeg = computed(() => formatBackup(props.backup, props.backupHolder))
 </script>
 
@@ -43,20 +43,20 @@ const aeg = computed(() => formatBackup(props.backup, props.backupHolder))
         <template v-else>?</template>
       </span>
     </div>
-    <!-- Rune -->
+    <!-- Cache -->
     <div class="flex items-center justify-between gap-2">
-      <span class="text-text-dim">RUNE</span>
+      <span class="text-text-dim">CACHE</span>
       <span
-        :class="rune.live.length ? 'text-ability text-glow-ability font-bold' : 'text-text-dim'"
+        :class="cache.live.length ? 'text-ability text-glow-ability font-bold' : 'text-text-dim'"
       >
-        <!-- The zone is the whole decision: a rune you cannot reach before it
-             expires is not an objective. formatRunes already carried it. -->
-        <template v-if="rune.live.length"
+        <!-- The zone is the whole decision: a cache you cannot reach before it
+             expires is not an objective. formatCaches already carried it. -->
+        <template v-if="cache.live.length"
           ><!-- buffLabel: 'dd' → 'Double Damage', 'invis' → 'Invisible' -->
-          {{ buffLabel(rune.live[0]!.type) }} @ {{ shortZone(rune.live[0]!.zone) }} ·
-          {{ rune.live[0]!.expiresIn }}c</template
+          {{ buffLabel(cache.live[0]!.type) }} @ {{ shortZone(cache.live[0]!.zone) }} ·
+          {{ cache.live[0]!.expiresIn }}c</template
         >
-        <template v-else>next {{ rune.nextIn }}c</template>
+        <template v-else>next {{ cache.nextIn }}c</template>
       </span>
     </div>
     <!-- Backup -->

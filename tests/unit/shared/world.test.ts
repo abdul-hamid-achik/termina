@@ -53,7 +53,7 @@ describe('world lexicon', () => {
     }
   })
 
-  it('covers every rune type as a cache drop', () => {
+  it('covers every cache type as a cache drop', () => {
     expect(Object.keys(OBJECTIVE_LABELS.cache).sort()).toEqual([
       'arcane',
       'dd',

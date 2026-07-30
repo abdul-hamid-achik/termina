@@ -810,7 +810,7 @@ function applyLatencyPenalty(
 }
 
 /**
- * Arcane rune: refund 40% of the mana a cast spent. Runs in the cast pipeline
+ * Arcane cache: refund 40% of the mana a cast spent. Runs in the cast pipeline
  * (NOT applyAbilityTalents, which short-circuits when no talents are chosen).
  */
 function applyArcaneRefund(result: AbilityResult, caster: PlayerState): AbilityResult {

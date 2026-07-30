@@ -133,7 +133,7 @@ describe('buildTickStoryView', () => {
       line({ text: 'ally chip', salience: 'ally' }),
       line({ text: 'enemy farm', salience: 'world', farmKind: 'hit' }),
       line({ text: 'kill line', type: 'kill', salience: 'world' }),
-      line({ text: 'rune grabbed', type: 'objective', salience: 'ally' }),
+      line({ text: 'cache grabbed', type: 'objective', salience: 'ally' }),
       line({ text: 'hit ON me', salience: 'mine-in' }),
       line({ text: 'my hit', salience: 'mine-out' }),
     ])
@@ -141,7 +141,7 @@ describe('buildTickStoryView', () => {
       'hit ON me',
       'my hit',
       'kill line',
-      'rune grabbed',
+      'cache grabbed',
       'ally chip',
       'farm: enemy farming in sight',
     ])

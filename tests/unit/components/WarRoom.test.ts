@@ -25,8 +25,8 @@ vi.stubGlobal('localStorage', {
 // store state is forwarded to the right child.
 const ObjectiveTickerStub = {
   name: 'ObjectiveTicker',
-  props: ['tenant', 'runes', 'backup', 'tick', 'backupHolder'],
-  template: `<div data-testid="objective-ticker-stub" :data-backup-holder="backupHolder ? backupHolder.name : ''" :data-tick="tick" :data-rune-count="runes ? runes.length : 0" />`,
+  props: ['tenant', 'caches', 'backup', 'tick', 'backupHolder'],
+  template: `<div data-testid="objective-ticker-stub" :data-backup-holder="backupHolder ? backupHolder.name : ''" :data-tick="tick" :data-cache-count="caches ? caches.length : 0" />`,
 }
 
 const EnemyThreatSheetStub = {
@@ -248,12 +248,12 @@ describe('WarRoom', () => {
   })
 
   describe('objectives wiring', () => {
-    it('forwards the current tick and rune list to the ObjectiveTicker', () => {
-      seedStore() // makeGameState seeds tick 240 + one rune
+    it('forwards the current tick and cache list to the ObjectiveTicker', () => {
+      seedStore() // makeGameState seeds tick 240 + one cache
       const wrapper = mountWarRoom()
       const ticker = wrapper.find('[data-testid="objective-ticker-stub"]')
       expect(ticker.attributes('data-tick')).toBe('240')
-      expect(Number(ticker.attributes('data-rune-count'))).toBe(1)
+      expect(Number(ticker.attributes('data-cache-count'))).toBe(1)
     })
 
     it('resolves the backup holder from the player carrying the backup buff', () => {

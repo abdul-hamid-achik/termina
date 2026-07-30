@@ -178,18 +178,18 @@ describe('useCommands', () => {
       })
 
       describe('ambiguous zone words', () => {
-        // REGRESSION: `rune` was aliased to mid-river — a zone with no rune in
-        // it — so the command walked players straight past both rune spots.
-        it('names both rune spots instead of resolving `move rune` to mid-river', () => {
+        // REGRESSION: `cache` was aliased to mid-river — a zone with no cache in
+        // it — so the command walked players straight past both cache spots.
+        it('names both cache spots instead of resolving `move cache` to mid-river', () => {
           const { parse } = useCommands()
-          const result = parse('move rune')
+          const result = parse('move cache')
 
           expect(result.command).toBeNull()
           expect(result.error).toContain('cache-top')
           expect(result.error).toContain('cache-bot')
         })
 
-        it('resolves the rt/rb shortcuts to the two rune spots', () => {
+        it('resolves the rt/rb shortcuts to the two cache spots', () => {
           const { parse } = useCommands()
           expect(parse('move rt').command).toEqual({ type: 'move', zone: 'cache-top' })
           expect(parse('move rb').command).toEqual({ type: 'move', zone: 'cache-bot' })
@@ -197,8 +197,8 @@ describe('useCommands', () => {
 
         it('reports the ambiguity for ward and ping too', () => {
           const { parse } = useCommands()
-          expect(parse('ward rune').error).toContain('ambiguous')
-          expect(parse('ping rune').error).toContain('ambiguous')
+          expect(parse('ward cache').error).toContain('ambiguous')
+          expect(parse('ping cache').error).toContain('ambiguous')
         })
 
         it('summarises rather than listing when many zones match', () => {
@@ -1081,9 +1081,9 @@ describe('useCommands', () => {
         expect(suggestions[0]?.text).not.toBe('top')
       })
 
-      it('offers both rune spots and never mid-river for `move rune`', () => {
+      it('offers both cache spots and never mid-river for `move cache`', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('move rune', makeContext())
+        const suggestions = autocomplete('move cache', makeContext())
 
         expect(suggestions.map((s) => s.text)).toEqual(
           expect.arrayContaining(['cache-top', 'cache-bot']),

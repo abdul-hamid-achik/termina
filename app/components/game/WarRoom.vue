@@ -12,7 +12,7 @@ import Sparkline from '~/components/game/Sparkline.vue'
 /**
  * Store-connected War Room container — the strategic dashboard that surfaces
  * everything a text MOBA can uniquely show: net-worth lead + trend, the
- * objective layer (Tenant/runes/backup), the enemy threat sheet (cooldowns,
+ * objective layer (Tenant/caches/backup), the enemy threat sheet (cooldowns,
  * respawns, last-seen), day/night meaning and vision coverage. Leaf panels are
  * pure/prop-based; this wires the store into them.
  */
@@ -98,7 +98,7 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       <div class="mb-0.5 t-hud-xs font-bold tracking-wider text-text-dim uppercase">Objectives</div>
       <ObjectiveTicker
         :tenant="store.tenant"
-        :runes="store.runes"
+        :caches="store.caches"
         :backup="store.backup"
         :tick="tick"
         :backup-holder="backupHolder"

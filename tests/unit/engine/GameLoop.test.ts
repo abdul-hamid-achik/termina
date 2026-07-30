@@ -65,7 +65,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
-    runes: [],
+    caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
@@ -503,7 +503,7 @@ describe('GameLoop', () => {
             respawnTick: null,
             buffs: [
               { id: 'backup', stacks: 1, ticksRemaining: 999, source: 'tenant' },
-              { id: 'regeneration', stacks: 1, ticksRemaining: 5, source: 'rune' },
+              { id: 'regeneration', stacks: 1, ticksRemaining: 5, source: 'cache' },
             ],
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),

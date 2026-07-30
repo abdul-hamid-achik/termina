@@ -67,7 +67,7 @@ function oneLaneState(players: Record<string, PlayerState>): GameState {
     creeps: [],
     ice: initializeIce(zones),
     ancients: initializeAncients(),
-    runes: [],
+    caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],

@@ -44,7 +44,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
-    runes: [],
+    caches: [],
     tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
     backup: null,
     events: [],
@@ -213,9 +213,9 @@ describe('runSpawning', () => {
   it('returns the same state when nothing spawns and nothing expires', () => {
     const state = makeState({ tick: 1 })
     const result = runSpawning(state)
-    // tick=1 isn't a creep-wave or rune tick; no runes/wards exist to expire
+    // tick=1 isn't a creep-wave or cache tick; no caches/wards exist to expire
     expect(result.creeps).toEqual([])
-    expect(result.runes ?? []).toEqual([])
+    expect(result.caches ?? []).toEqual([])
   })
 
   it('spawns creeps on a wave tick', () => {

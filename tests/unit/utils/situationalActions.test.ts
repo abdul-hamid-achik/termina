@@ -11,7 +11,7 @@ const baseCtx = (over: Partial<SituationalContext> = {}): SituationalContext => 
   isAlive: true,
   creeps: [],
   backup: null,
-  runes: [],
+  caches: [],
   teams: null,
   tick: 0,
   ...over,
@@ -57,9 +57,9 @@ describe('computeSituationalActions', () => {
     )
   })
 
-  it('offers RUNE only when a rune is in the zone', () => {
-    expect(cmds(baseCtx({ runes: [{ zone: 'mid-river' }] as never }))).toContain('rune')
-    expect(cmds(baseCtx({ runes: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('rune')
+  it('offers CACHE only when a cache is in the zone', () => {
+    expect(cmds(baseCtx({ caches: [{ zone: 'mid-river' }] as never }))).toContain('cache')
+    expect(cmds(baseCtx({ caches: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('cache')
   })
 
   it('hides GLYPH while the team glyph is on cooldown', () => {

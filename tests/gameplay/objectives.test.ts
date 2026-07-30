@@ -97,40 +97,42 @@ describe('objectives: Tenant & backup', () => {
   })
 })
 
-describe('objectives: runes', () => {
-  it('a hero claims a rune: gains the buff, the rune leaves the ground, and rune_picked fires', async () => {
+describe('objectives: caches', () => {
+  it('a hero claims a cache: gains the buff, the cache leaves the ground, and cache_picked fires', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
-      runes: [{ zone: 'cache-top', type: 'haste', tick: s.tick }],
+      caches: [{ zone: 'cache-top', type: 'haste', tick: s.tick }],
     }))
 
-    game.submit({ type: 'rune' })
+    game.submit({ type: 'grab' })
     await game.tick()
 
     const me = await game.me()
     expect(me.buffs.some((b) => b.id === 'haste')).toBe(true)
     const state = await game.state()
-    expect(state.runes.some((r) => r.zone === 'cache-top')).toBe(false) // consumed
-    expect(game.lastEvents.some((e) => e._tag === 'rune_picked' && e.playerId === HUMAN)).toBe(true)
+    expect(state.caches.some((r) => r.zone === 'cache-top')).toBe(false) // consumed
+    expect(game.lastEvents.some((e) => e._tag === 'cache_picked' && e.playerId === HUMAN)).toBe(
+      true,
+    )
   })
 
-  it('a consumed rune cannot be claimed twice (no repeat buff)', async () => {
+  it('a consumed cache cannot be claimed twice (no repeat buff)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'cache-top', buffs: [] } },
-      runes: [{ zone: 'cache-top', type: 'dd', tick: s.tick }],
+      caches: [{ zone: 'cache-top', type: 'dd', tick: s.tick }],
     }))
 
-    game.submit({ type: 'rune' })
+    game.submit({ type: 'grab' })
     await game.tick()
     expect((await game.me()).buffs.filter((b) => b.id === 'dd')).toHaveLength(1)
 
-    // The rune left the ground on the first pickup, so a second attempt is a
+    // The cache left the ground on the first pickup, so a second attempt is a
     // no-op — no second Double Damage buff (the bug this fix closes).
-    game.submit({ type: 'rune' })
+    game.submit({ type: 'grab' })
     await game.tick()
     expect((await game.me()).buffs.filter((b) => b.id === 'dd')).toHaveLength(1)
   })

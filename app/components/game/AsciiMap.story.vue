@@ -15,7 +15,7 @@ const zones: ZoneDisplay[] = [
   zone('mid-river', 'Mid River', { playerHere: true, allies: ['kernel_main'] }),
   zone('top-river', 'Top River', { enemyCount: 2, enemyNames: ['daemon_carry', 'regex_mid'] }),
   zone('bot-river', 'Bot River', { creepCount: 4, creepTypes: ['melee', 'ranged'] }),
-  zone('cache-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
+  zone('cache-top', 'Top Cache', { wardCount: 1, cacheType: 'haste' }),
   zone('hollow', 'The Hollow', { neutralCount: 1, tenant: { alive: false, respawnIn: 48 } }),
   zone('mid-t1-audit', 'Audit Mid T1', {
     ice: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
@@ -67,7 +67,7 @@ const oneLaneZones: ZoneDisplay[] = [
   zone('audit-fountain', 'Audit Fountain', { fogged: true }),
 ]
 
-// Two-lane map (mapId='two_lane'): top + mid lanes with top-side jungle, rune,
+// Two-lane map (mapId='two_lane'): top + mid lanes with top-side jungle, cache,
 // and Tenant. AsciiMap lays it out as a 4-column grid. No bot lane zones.
 const twoLaneZones: ZoneDisplay[] = [
   zone('chaff-fountain', 'Rookery Anchor', {}),
@@ -120,7 +120,7 @@ const twoLaneZones: ZoneDisplay[] = [
   }),
   zone('silt-chaff-top', 'Chaff Jungle (Top)', { neutralCount: 2 }),
   zone('silt-audit-top', 'Audit Jungle (Top)', { fogged: true, enemyCount: 1 }),
-  zone('cache-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
+  zone('cache-top', 'Top Cache', { wardCount: 1, cacheType: 'haste' }),
   zone('hollow', 'The Hollow', { neutralCount: 1, tenant: { alive: true, respawnIn: 0 } }),
   zone('audit-base', 'Landing Terminal', { fogged: true }),
   zone('audit-fountain', 'Audit Fountain', { fogged: true }),

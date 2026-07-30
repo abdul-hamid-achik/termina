@@ -255,7 +255,7 @@ export function formatStatusReadout(player: PlayerState): string {
 /**
  * Your zone + where you can move next, for the `map` command. Read from the
  * GAME's zone set, not the global graph: on the one-lane tutorial map the
- * global `adjacentTo` still lists rune and off-lane neighbours that the game
+ * global `adjacentTo` still lists cache and off-lane neighbours that the game
  * does not contain, so the readout named zones the player could never reach.
  */
 export function formatMapReadout(player: PlayerState, mapId?: string): string {
@@ -294,7 +294,7 @@ export function formatHelpReadout(): string[] {
     '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
     '  Info:    status · map · scan · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
-    '  Special: rune · backup · glyph · buyback · talent <tier> <left|right>',
+    '  Special: cache · backup · glyph · buyback · talent <tier> <left|right>',
     '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ss = missing · ? = help',
     'Goal: push a lane, raze the enemy ice, then destroy their Mainframe.',
   ]
@@ -625,12 +625,12 @@ function resolveZoneAlias(zoneInput: string, team: TeamId = 'chaff'): string {
 function ambiguousZoneError(zoneInput: string): string | null {
   if (ZONE_IDS.includes(zoneInput) || zoneInput === 'base' || zoneInput === 'fountain') return null
   if (ZONE_ALIASES[zoneInput]) return null
-  // Legacy word from the old vocabulary: `rune` matched both rune spots. The
-  // spots are cache-top/cache-bot now, but a player who types `move rune` still
+  // Legacy word from the old vocabulary: `cache` matched both cache spots. The
+  // spots are cache-top/cache-bot now, but a player who types `move cache` still
   // means "a cache drop" — guide them to both rather than dumping a raw prefix
   // on the server (which would burn their one action on a rejection).
-  if (zoneInput === 'rune') {
-    return `"rune" is ambiguous — did you mean cache-top or cache-bot?`
+  if (zoneInput === 'cache') {
+    return `"cache" is ambiguous — did you mean cache-top or cache-bot?`
   }
   const matches = ZONE_IDS.filter((z) => z.startsWith(zoneInput))
   if (matches.length < 2) return null
@@ -780,8 +780,8 @@ export function useCommands() {
       case 'backup':
         return { command: { type: 'backup' }, error: null }
 
-      case 'rune':
-        return { command: { type: 'rune' }, error: null }
+      case 'grab':
+        return { command: { type: 'grab' }, error: null }
 
       case 'chat': {
         const channel = tokens[1] as 'team' | 'all'
@@ -849,7 +849,7 @@ export function useCommands() {
         'sell',
         'ward',
         'backup',
-        'rune',
+        'grab',
         'scan',
         'status',
         'map',
@@ -1026,8 +1026,8 @@ export function useCommands() {
       suggestions.push({ text: id, description: ZONE_MAP[id]?.name })
     }
 
-    // Legacy word: `rune` matched both rune spots — offer the cache drops.
-    if (partial === 'rune') {
+    // Legacy word: `cache` matched both cache spots — offer the cache drops.
+    if (partial === 'cache') {
       for (const id of zonePool.filter((z) => z.startsWith('cache-'))) {
         if (!suggestions.some((s) => s.text === id)) {
           suggestions.push({ text: id, description: ZONE_MAP[id]?.name })

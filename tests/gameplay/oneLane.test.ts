@@ -67,13 +67,13 @@ describe('one-lane map', () => {
     expect(s.creeps.some((c) => c.zone.startsWith('top-') || c.zone.startsWith('bot-'))).toBe(false)
   })
 
-  it('has no jungle neutrals or river runes, and ticks cleanly past their interval', async () => {
+  it('has no jungle neutrals or river caches, and ticks cleanly past their interval', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
-    await game.tick(64) // past the 60-tick neutral + rune interval — they must no-op
+    await game.tick(64) // past the 60-tick neutral + cache interval — they must no-op
     const s = await game.state()
 
     expect(s.neutrals.length).toBe(0)
-    expect(s.runes.length).toBe(0)
+    expect(s.caches.length).toBe(0)
     // And creeps stayed contained to the map the whole time.
     expect(s.creeps.every((c) => s.zones[c.zone] !== undefined)).toBe(true)
   })

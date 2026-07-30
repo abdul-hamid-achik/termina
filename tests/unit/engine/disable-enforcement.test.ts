@@ -56,7 +56,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
-    runes: [],
+    caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],
@@ -241,7 +241,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
   })
 })
 
-describe('Arcane rune refunds mana on cast (buff was applied but consumed nowhere)', () => {
+describe('Arcane cache refunds mana on cast (buff was applied but consumed nowhere)', () => {
   const Q_MANA = 60
   const ARCANE_REFUND = Math.round(Q_MANA * 0.4) // 24
 
@@ -260,7 +260,7 @@ describe('Arcane rune refunds mana on cast (buff was applied but consumed nowher
 
   it('refunds 40% of the mana spent on a cast', () => {
     const result = cast({
-      buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 9999, source: 'rune_arcane' }],
+      buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 9999, source: 'cache_arcane' }],
     })
     expect(result.state.players['p1']!.mp).toBe(400 - Q_MANA + ARCANE_REFUND)
   })

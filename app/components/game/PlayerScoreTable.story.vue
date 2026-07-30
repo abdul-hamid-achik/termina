@@ -27,7 +27,7 @@ const liveTeam: PlayerScoreRow[] = [
     deaths: 3,
     assists: 11,
     gold: 4980,
-    zone: 'bot-rune',
+    zone: 'bot-cache',
     alive: true,
   },
   {

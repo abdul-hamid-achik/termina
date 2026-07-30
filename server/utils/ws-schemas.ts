@@ -36,7 +36,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('sell'), item: shortId }),
   z.object({ type: z.literal('ward'), zone: zoneId }),
   z.object({ type: z.literal('backup') }),
-  z.object({ type: z.literal('rune') }),
+  z.object({ type: z.literal('grab') }),
   z.object({ type: z.literal('scan') }),
   z.object({ type: z.literal('status') }),
   z.object({ type: z.literal('map') }),

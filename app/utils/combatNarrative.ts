@@ -309,11 +309,11 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
-    case 'rune_picked':
+    case 'cache_picked':
       return {
         tick,
         // buffLabel: 'dd' → 'Double Damage', 'invis' → 'Invisible', etc.
-        text: `${label(p.playerId)} grabbed the ${buffLabel(str(p.runeType))} rune`,
+        text: `${label(p.playerId)} grabbed the ${buffLabel(str(p.cacheType))} cache`,
         type: 'objective',
         salience: actorSalience(p.playerId, ctx),
       }

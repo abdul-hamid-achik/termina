@@ -510,7 +510,7 @@ const miniRows = computed(() =>
         <div class="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 t-hud-xs text-text-dim">
           <span>T1-3 ice zones</span>
           <span>JG jungle</span>
-          <span>RN rune</span>
+          <span>RN cache</span>
           <span>ROS Tenant</span>
           <span>RF/RB fountain/base</span>
           <span class="text-self">► you</span>

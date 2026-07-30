@@ -79,7 +79,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-function runEffect<A, E>(effect: Effect.Effect<A, E>): Promise<Exit.Exit<A, E>> {
+function cacheEffect<A, E>(effect: Effect.Effect<A, E>): Promise<Exit.Exit<A, E>> {
   return Effect.runPromiseExit(effect)
 }
 
@@ -89,7 +89,7 @@ describe('Shop', () => {
   describe('buyItem', () => {
     it('purchases an item and deducts gold', async () => {
       const state = makeGameState()
-      const exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -104,7 +104,7 @@ describe('Shop', () => {
       const player = makePlayer({ items: ['healing_salve', null, null, null, null, null] })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -118,7 +118,7 @@ describe('Shop', () => {
       const player = makePlayer({ zone: 'mid-t1-chaff' })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -132,7 +132,7 @@ describe('Shop', () => {
       const player = makePlayer({ gold: 10 })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(buyItem(state, 'player_1', 'blink_module'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'blink_module'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -149,7 +149,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -166,7 +166,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -183,7 +183,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(buyItem(state, 'player_1', 'aether_lens'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'aether_lens'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -194,7 +194,7 @@ describe('Shop', () => {
 
     it('fails when item does not exist', async () => {
       const state = makeGameState()
-      const exit = await runEffect(buyItem(state, 'player_1', 'nonexistent_item'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'nonexistent_item'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -205,7 +205,7 @@ describe('Shop', () => {
 
     it('fails when player does not exist', async () => {
       const state = makeGameState()
-      const exit = await runEffect(buyItem(state, 'nonexistent_player', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'nonexistent_player', 'iron_branch'))
 
       expect(Exit.isFailure(exit)).toBe(true)
     })
@@ -216,12 +216,12 @@ describe('Shop', () => {
       })
 
       // Buy first item
-      let exit = await runEffect(buyItem(state, 'player_1', 'iron_branch'))
+      let exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
       expect(Exit.isSuccess(exit)).toBe(true)
       state = (exit as Exit.Success<GameState, never>).value
 
       // Buy second item
-      exit = await runEffect(buyItem(state, 'player_1', 'healing_salve'))
+      exit = await cacheEffect(buyItem(state, 'player_1', 'healing_salve'))
       expect(Exit.isSuccess(exit)).toBe(true)
       state = (exit as Exit.Success<GameState, never>).value
 
@@ -235,7 +235,7 @@ describe('Shop', () => {
       const player = makePlayer({ gold: 6000 })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(buyItem(state, 'player_1', 'segfault_blade'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'segfault_blade'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -252,7 +252,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(sellItem(state, 'player_1', 0))
+      const exit = await cacheEffect(sellItem(state, 'player_1', 0))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -270,12 +270,12 @@ describe('Shop', () => {
         gold: 500,
         buffs: [
           { id: 'power_treads_attack', stacks: 15, ticksRemaining: 999, source: 'power_treads' },
-          { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'rune_haste' },
+          { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'cache_haste' },
         ],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(sellItem(state, 'player_1', 0))
+      const exit = await cacheEffect(sellItem(state, 'player_1', 0))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -283,7 +283,7 @@ describe('Shop', () => {
         expect(newPlayer.items[0]).toBeNull()
         // The item's own buff is gone…
         expect(newPlayer.buffs.some((b) => b.id === 'power_treads_attack')).toBe(false)
-        // …but an unrelated buff (a rune) survives.
+        // …but an unrelated buff (a cache) survives.
         expect(newPlayer.buffs.some((b) => b.id === 'haste')).toBe(true)
       }
     })
@@ -295,7 +295,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(sellItem(state, 'player_1', 0))
+      const exit = await cacheEffect(sellItem(state, 'player_1', 0))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -312,7 +312,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(sellItem(state, 'player_1', 0))
+      const exit = await cacheEffect(sellItem(state, 'player_1', 0))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -323,7 +323,7 @@ describe('Shop', () => {
     it('fails when selling empty slot', async () => {
       const state = makeGameState()
 
-      const exit = await runEffect(sellItem(state, 'player_1', 0))
+      const exit = await cacheEffect(sellItem(state, 'player_1', 0))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -338,7 +338,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(sellItem(state, 'player_1', 0))
+      const exit = await cacheEffect(sellItem(state, 'player_1', 0))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -352,7 +352,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(sellItem(state, 'player_1', 1))
+      const exit = await cacheEffect(sellItem(state, 'player_1', 1))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -373,7 +373,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'healing_salve'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'healing_salve'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -391,7 +391,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'mana_vial'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'mana_vial'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -409,7 +409,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'mana_vial'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'mana_vial'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -423,7 +423,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'stack_overflow'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'stack_overflow'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -439,7 +439,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'firewall_item'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'firewall_item'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -451,7 +451,7 @@ describe('Shop', () => {
     it('fails when item is not in inventory', async () => {
       const state = makeGameState()
 
-      const exit = await runEffect(useItem(state, 'player_1', 'healing_salve'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'healing_salve'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -465,7 +465,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'boots_of_speed'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'boots_of_speed'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -482,7 +482,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'stack_overflow'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'stack_overflow'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -493,7 +493,7 @@ describe('Shop', () => {
     it('fails when player does not exist', async () => {
       const state = makeGameState()
 
-      const exit = await runEffect(useItem(state, 'nonexistent', 'healing_salve'))
+      const exit = await cacheEffect(useItem(state, 'nonexistent', 'healing_salve'))
 
       expect(Exit.isFailure(exit)).toBe(true)
     })
@@ -511,7 +511,7 @@ describe('Shop', () => {
         players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
       })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'veil_of_discord'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'veil_of_discord'))
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const s = exit.value
@@ -541,7 +541,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'dagon', { kind: 'hero', name: 'enemy_1' }),
       )
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -598,7 +598,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -632,7 +632,7 @@ describe('Shop', () => {
       const before = filterStateForPlayer(state, 'player_1')
       expect('fogged' in before.players['enemy_1']!).toBe(true)
 
-      const exit = await runEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         // After the sentry: true-sight in the zone reveals the enemy.
@@ -653,7 +653,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'black_king_bar'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'black_king_bar'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'magic_immune')).toBe(true)
@@ -666,7 +666,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'ghost_scepter'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'ghost_scepter'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'ghost_form')).toBe(true)
@@ -680,7 +680,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'refresher_orb'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'refresher_orb'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -698,7 +698,7 @@ describe('Shop', () => {
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'euls_scepter', { kind: 'hero', name: 'enemy_1' }),
       )
 
@@ -719,7 +719,7 @@ describe('Shop', () => {
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'scythe_of_vyse', { kind: 'hero', name: 'enemy_1' }),
       )
 
@@ -737,7 +737,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'blade_mail'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'blade_mail'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'blade_mail')).toBe(true)
@@ -750,7 +750,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'silver_edge'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'silver_edge'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit))
@@ -764,7 +764,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'power_treads'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'power_treads'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit))
@@ -790,7 +790,7 @@ describe('Shop', () => {
         'power_treads_attack',
       ]
       for (const expected of order) {
-        const exit = await runEffect(useItem(state, 'player_1', 'power_treads'))
+        const exit = await cacheEffect(useItem(state, 'player_1', 'power_treads'))
         expect(Exit.isSuccess(exit)).toBe(true)
         if (!Exit.isSuccess(exit)) return
         state = exit.value
@@ -809,7 +809,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'dust_of_appearance'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'dust_of_appearance'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'dust_reveal')).toBe(true)
@@ -825,7 +825,7 @@ describe('Shop', () => {
       const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'smoke_of_deceit'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'smoke_of_deceit'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -842,7 +842,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'force_staff'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'force_staff'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
@@ -856,7 +856,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'blink_module', 'chaff-base'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'blink_module', 'chaff-base'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
@@ -872,7 +872,7 @@ describe('Shop', () => {
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'ethereal_blade', { kind: 'hero', name: 'enemy_1' }),
       )
 
@@ -893,7 +893,7 @@ describe('Shop', () => {
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'hurricane_pike', { kind: 'hero', name: 'enemy_1' }),
       )
 
@@ -910,7 +910,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'town_portal_scroll'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'town_portal_scroll'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -928,7 +928,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'observer_ward', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'observer_ward', 'mid-river'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -948,7 +948,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'observer_ward', { kind: 'zone', zone: 'mid-river' }),
       )
 
@@ -985,7 +985,7 @@ describe('Shop', () => {
         players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
       })
 
-      const exit = await runEffect(useItem(state, 'player_1', 'shivas_guard'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'shivas_guard'))
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const s = exit.value
@@ -1017,7 +1017,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'dagon', { kind: 'hero', name: 'enemy_1' }),
       )
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -1038,7 +1038,7 @@ describe('Shop', () => {
       const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'lotus_orb', { kind: 'hero', name: 'ally_1' }),
       )
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -1073,7 +1073,7 @@ describe('Shop', () => {
         },
       })
 
-      const exit = await runEffect(
+      const exit = await cacheEffect(
         useItem(state, 'player_1', 'observer_ward', { kind: 'zone', zone: 'mid-river' }),
       )
       // Over the cap → rejected, and no 4th ward is placed.
@@ -1133,7 +1133,7 @@ describe('Shop', () => {
       })
     const fail = async (item: string, target: Parameters<typeof useItem>[3]) =>
       Exit.isFailure(
-        await runEffect(useItem(makeGameState({ players: state }), 'player_1', item, target)),
+        await cacheEffect(useItem(makeGameState({ players: state }), 'player_1', item, target)),
       )
     let state: Record<string, PlayerState>
 

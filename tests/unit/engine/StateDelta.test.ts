@@ -19,7 +19,7 @@ function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleSt
       chaff: { team: 'chaff', hp: 750, maxHp: 750, alive: true, vulnerable: false },
       audit: { team: 'audit', hp: 750, maxHp: 750, alive: true, vulnerable: false },
     },
-    runes: [],
+    caches: [],
     tenant: { alive: true, hp: 500, maxHp: 500, deathTick: null },
     backup: null,
     events: [],

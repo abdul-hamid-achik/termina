@@ -207,7 +207,7 @@ const objective = computed<string | null>(() => {
     case 'base':
       return m.team === props.playerTeam ? 'Defend the base' : 'Break into the base'
     case 'river':
-      return 'Contest runes & river'
+      return 'Contest caches & river'
     case 'jungle':
       return 'Farm neutral camps'
     case 'lane':

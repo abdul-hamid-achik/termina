@@ -926,16 +926,16 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     expect(store.netWorthHistory.chaff.length).toBe(40)
   })
 
-  it('ingests tenant/runes/backup and clears backup when null', () => {
+  it('ingests tenant/caches/backup and clears backup when null', () => {
     const store = useGameStore()
     const base = makeTickMessage({ tick: 10 })
     const s = base.state as unknown as Record<string, unknown>
     s.tenant = { alive: false, hp: 0, maxHp: 5000, deathTick: 10 }
-    s.runes = [{ zone: 'cache-top', type: 'haste', tick: 10 }]
+    s.caches = [{ zone: 'cache-top', type: 'haste', tick: 10 }]
     s.backup = { zone: 'hollow', tick: 10, holderId: null }
     store.updateFromTick(base)
     expect(store.tenant?.alive).toBe(false)
-    expect(store.runes).toHaveLength(1)
+    expect(store.caches).toHaveLength(1)
     expect(store.backup?.zone).toBe('hollow')
 
     const next = makeTickMessage({ tick: 14 })

@@ -269,7 +269,7 @@ describe('CommandInput', () => {
    * was byte-identical to what was already typed, so `cast q` — the tutorial's
    * literal instruction — could never be submitted; and when the typed text was
    * itself a suggestion it accepted a longer neighbour instead (`w` → `ward`,
-   * `r` → `rune`), hijacking two ability shortcuts including the ultimate.
+   * `r` → `cache`), hijacking two ability shortcuts including the ultimate.
    *
    * These drive the component the way a player does — `input.setValue()` and a
    * real keydown, never `vm.open` — because hand-closing the dropdown first is
@@ -311,7 +311,7 @@ describe('CommandInput', () => {
       expect((input.element as HTMLInputElement).value).toBe('')
     })
 
-    it('submits `r` as the ultimate shortcut, not the `rune` suggestion above it', async () => {
+    it('submits `r` as the ultimate shortcut, not the `cache` suggestion above it', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       await typeAndEnter(wrapper, 'r')
       expect(wrapper.emitted('submit')?.[0]).toEqual(['r'])
@@ -450,7 +450,7 @@ describe('CommandInput', () => {
       const input = wrapper.find('input').element
 
       // `s` (shop), `w`/`r` (abilities) and `1` (item slot) must still type:
-      // `sell`, `ward`, `rune` and `1` as an argument all start with them.
+      // `sell`, `ward`, `cache` and `1` as an argument all start with them.
       for (const key of ['s', 'w', 'r', '1']) {
         const event = new KeyboardEvent('keydown', { key, cancelable: true, bubbles: true })
         input.dispatchEvent(event)

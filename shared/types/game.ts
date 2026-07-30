@@ -128,7 +128,7 @@ export interface TeamState {
   glyphUsedTick: number | null
 }
 
-export interface RuneState {
+export interface CacheState {
   zone: string
   type: 'haste' | 'dd' | 'regen' | 'arcane' | 'invis'
   tick: number
@@ -151,7 +151,7 @@ export interface GameState {
   neutrals: NeutralCreepState[]
   ice: IceState[]
   ancients: { chaff: AncientState; audit: AncientState }
-  runes: RuneState[]
+  caches: CacheState[]
   tenant: TenantState
   backup: { zone: string; tick: number; holderId: string | null } | null
   events: GameEvent[]
@@ -246,7 +246,7 @@ export type VisibleStateBase = Pick<
   | 'neutrals'
   | 'ice'
   | 'ancients'
-  | 'runes'
+  | 'caches'
   | 'tenant'
   | 'backup'
   | 'events'

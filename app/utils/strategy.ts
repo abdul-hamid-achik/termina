@@ -1,6 +1,6 @@
 /**
  * Strategic-legibility helpers — pure functions that turn the game state the
- * store already holds (team gold, items, tenant/runes/backup, vision) into the
+ * store already holds (team gold, items, tenant/caches/backup, vision) into the
  * glanceable macro readouts a MOBA player needs: net worth, gold lead,
  * objective timers, vision coverage, day/night meaning, and sparkline trends.
  *
@@ -12,10 +12,10 @@ import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import { formatTickClock } from './gameClock'
 import {
   TENANT_RESPAWN_TICKS,
-  RUNE_DURATION_TICKS,
-  RUNE_INTERVAL_TICKS,
+  CACHE_DURATION_TICKS,
+  CACHE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
-import type { TenantState, RuneState, TeamId } from '~~/shared/types/game'
+import type { TenantState, CacheState, TeamId } from '~~/shared/types/game'
 
 /** Minimal shape needed to value a player — works for PlayerState and fogged players. */
 export interface NetWorthInput {
@@ -99,36 +99,36 @@ export function formatTenant(
   }
 }
 
-// ── Runes ───────────────────────────────────────────────────────────
+// ── Caches ───────────────────────────────────────────────────────────
 
-export interface RuneReadout {
-  /** Currently-live runes with ticks until they expire. */
+export interface CacheReadout {
+  /** Currently-live caches with ticks until they expire. */
   live: Array<{ zone: string; type: string; expiresIn: number }>
-  /** Ticks until the next rune spawn window. */
+  /** Ticks until the next cache spawn window. */
   nextIn: number
   label: string
 }
 
-export function formatRunes(runes: RuneState[] | undefined, currentTick: number): RuneReadout {
-  const live = (runes ?? [])
+export function formatCaches(caches: CacheState[] | undefined, currentTick: number): CacheReadout {
+  const live = (caches ?? [])
     .map((r) => ({
       zone: r.zone,
       type: r.type,
-      expiresIn: Math.max(0, r.tick + RUNE_DURATION_TICKS - currentTick),
+      expiresIn: Math.max(0, r.tick + CACHE_DURATION_TICKS - currentTick),
     }))
     .filter((r) => r.expiresIn > 0)
 
-  // Next spawn is the next multiple of RUNE_INTERVAL_TICKS from now. At an exact
+  // Next spawn is the next multiple of CACHE_INTERVAL_TICKS from now. At an exact
   // multiple (incl. tick 0) the next spawn is a full interval away — not 0.
-  const sinceLast = currentTick % RUNE_INTERVAL_TICKS
-  const nextIn = sinceLast === 0 ? RUNE_INTERVAL_TICKS : RUNE_INTERVAL_TICKS - sinceLast
+  const sinceLast = currentTick % CACHE_INTERVAL_TICKS
+  const nextIn = sinceLast === 0 ? CACHE_INTERVAL_TICKS : CACHE_INTERVAL_TICKS - sinceLast
 
   let label: string
   if (live.length > 0) {
     const r = live[0]!
-    label = `RUNE ${r.type} @ ${shortZone(r.zone)} ${r.expiresIn}c`
+    label = `CACHE ${r.type} @ ${shortZone(r.zone)} ${r.expiresIn}c`
   } else {
-    label = `RUNE next ${nextIn}c`
+    label = `CACHE next ${nextIn}c`
   }
   return { live, nextIn, label }
 }

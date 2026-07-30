@@ -189,7 +189,7 @@ describe('isEventVisibleToPlayer — economy is team-private', () => {
   })
 })
 
-describe('isEventVisibleToPlayer — ability / ward / rune', () => {
+describe('isEventVisibleToPlayer — ability / ward / cache', () => {
   it('ability_used: own/ally always, enemy only when their zone is visible', () => {
     expect(vis(ev('ability_used', { playerId: 'me', abilityId: 'q', cooldown: 5 }))).toBe(true)
     expect(vis(ev('ability_used', { playerId: 'ally', abilityId: 'q', cooldown: 5 }))).toBe(true)
@@ -234,12 +234,12 @@ describe('isEventVisibleToPlayer — ability / ward / rune', () => {
       ),
     ).toBe(true)
   })
-  it('rune_picked: own always, otherwise only when the rune zone is visible', () => {
-    expect(vis(ev('rune_picked', { playerId: 'me', zone: 'cache-top' }))).toBe(true)
-    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-top'])).toBe(
+  it('cache_picked: own always, otherwise only when the cache zone is visible', () => {
+    expect(vis(ev('cache_picked', { playerId: 'me', zone: 'cache-top' }))).toBe(true)
+    expect(vis(ev('cache_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-top'])).toBe(
       false,
     )
-    expect(vis(ev('rune_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-bot'])).toBe(
+    expect(vis(ev('cache_picked', { playerId: 'enemy', zone: 'cache-bot' }), ['cache-bot'])).toBe(
       true,
     )
   })

@@ -173,13 +173,13 @@ const myRewards: CombatLine[] = [
   },
 ]
 
-// The shop/pickup confirmation lines (item_purchased / item_sold / rune_picked /
+// The shop/pickup confirmation lines (item_purchased / item_sold / cache_picked /
 // neutral_killed) — text matched to combatNarrative so this is a faithful
 // preview of what those events render as in the log.
 const economy: CombatLine[] = [
   { tick: 245, text: 'you acquired Blink Module (-2,250g)', type: 'gold', salience: 'mine-out' },
   { tick: 246, text: 'you sold Iron Branch (+25g)', type: 'gold', salience: 'mine-out' },
-  { tick: 247, text: 'you grabbed the haste rune', type: 'objective', salience: 'mine-out' },
+  { tick: 247, text: 'you grabbed the haste cache', type: 'objective', salience: 'mine-out' },
   { tick: 248, text: 'you cleared a kobold camp', type: 'gold', salience: 'mine-out' },
   { tick: 248, text: 'daemon_carry sold Null Pointer (+700g)', type: 'gold', salience: 'world' },
 ]
@@ -234,7 +234,7 @@ const sprees: CombatLine[] = [
       </div>
     </Variant>
 
-    <Variant title="economy & pickups (buy / sell / rune / camp)">
+    <Variant title="economy & pickups (buy / sell / cache / camp)">
       <div class="bg-bg-panel" style="width: 460px; height: 240px">
         <CombatLog :events="economy" />
       </div>

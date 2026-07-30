@@ -6,7 +6,7 @@ import { ticksToClock } from '~~/app/utils/strategy'
 
 function mountTicker(props: Record<string, unknown>) {
   return mount(ObjectiveTicker, {
-    props: { tenant: null, runes: [], backup: null, tick: 0, ...props },
+    props: { tenant: null, caches: [], backup: null, tick: 0, ...props },
   })
 }
 
@@ -29,23 +29,23 @@ describe('ObjectiveTicker', () => {
     expect(w.text()).not.toContain(`${ticksLeft}t`)
   })
 
-  it('shows a live rune, WHERE it is, and its expiry', () => {
-    const w = mountTicker({ runes: [{ zone: 'cache-top', type: 'haste', tick: 50 }], tick: 60 })
-    // Rune type ids render through buffLabel ('haste' → 'Haste', 'dd' → 'Double Damage').
+  it('shows a live cache, WHERE it is, and its expiry', () => {
+    const w = mountTicker({ caches: [{ zone: 'cache-top', type: 'haste', tick: 50 }], tick: 60 })
+    // Cache type ids render through buffLabel ('haste' → 'Haste', 'dd' → 'Double Damage').
     expect(w.text()).toContain('Haste')
-    // The zone is the whole decision — a rune you cannot reach before it expires
-    // is not an objective. formatRunes already returned it; the ticker dropped it.
+    // The zone is the whole decision — a cache you cannot reach before it expires
+    // is not an objective. formatCaches already returned it; the ticker dropped it.
     expect(w.text()).toContain('Seawall Cache Drop')
   })
 
-  it('names the zone of whichever rune is live, not a fixed spot', () => {
-    const w = mountTicker({ runes: [{ zone: 'cache-bot', type: 'dd', tick: 50 }], tick: 60 })
+  it('names the zone of whichever cache is live, not a fixed spot', () => {
+    const w = mountTicker({ caches: [{ zone: 'cache-bot', type: 'dd', tick: 50 }], tick: 60 })
     expect(w.text()).toContain('Shallows Cache Drop')
     expect(w.text()).not.toContain('Seawall Cache Drop')
   })
 
-  it('shows next rune timer when none are live', () => {
-    const w = mountTicker({ runes: [], tick: 55 })
+  it('shows next cache timer when none are live', () => {
+    const w = mountTicker({ caches: [], tick: 55 })
     expect(w.text()).toContain('next')
   })
 

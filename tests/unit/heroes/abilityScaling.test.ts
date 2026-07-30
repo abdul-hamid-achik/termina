@@ -74,7 +74,7 @@ function makeState(players: PlayerState[]): GameState {
     neutralCreeps: {},
     tenant: undefined,
     backup: undefined,
-    runes: [],
+    caches: [],
     timeOfDay: 'day',
     tickRate: 1000,
     events: [],

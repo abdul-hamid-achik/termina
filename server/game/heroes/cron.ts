@@ -297,7 +297,7 @@ function resolveR(
 
     // Apply crontabHeal + crontabMana buffs to self and all allies in zone. Both
     // are over-time regen buffs whose per-tick amount rides in `stacks`; the heal
-    // is processed in processRuneBuffs (RuneAI). The mana half was advertised
+    // is processed in processCacheBuffs (CacheAI). The mana half was advertised
     // (R_MP_PER_TICK, the mpPerTick event payload, the ability description) but
     // never actually applied until the matching crontabMana buff + consumer.
     const allies = getAlliesInZone(state, player)

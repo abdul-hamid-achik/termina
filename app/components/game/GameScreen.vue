@@ -55,7 +55,7 @@ import {
 } from '~/utils/combatNarrative'
 import {
   TICK_DURATION_MS,
-  RUNE_DURATION_TICKS,
+  CACHE_DURATION_TICKS,
   ULTIMATE_UNLOCK_LEVEL,
   getAbilityLevel,
 } from '~~/shared/constants/balance'
@@ -822,10 +822,10 @@ const mapZones = computed(() => {
   const playerTeam = gameStore.player?.team ?? 'chaff'
   const visibleZoneIds = new Set(gameStore.visibleZoneIds)
 
-  // Currently-live runes by zone (spawned but not yet expired).
-  const liveRuneByZone = new Map<string, string>()
-  for (const r of gameStore.runes) {
-    if (r.tick + RUNE_DURATION_TICKS > gameStore.tick) liveRuneByZone.set(r.zone, r.type)
+  // Currently-live caches by zone (spawned but not yet expired).
+  const liveCacheByZone = new Map<string, string>()
+  for (const r of gameStore.caches) {
+    if (r.tick + CACHE_DURATION_TICKS > gameStore.tick) liveCacheByZone.set(r.zone, r.type)
   }
 
   // Tenant state for the pit (reuses the War Room's tested respawn readout).
@@ -895,11 +895,11 @@ const mapZones = computed(() => {
       creepTypes,
       neutralCount,
       wardCount,
-      // Global, not vision-gated: the server sends runes unfiltered (see
+      // Global, not vision-gated: the server sends caches unfiltered (see
       // VisionCalculator) and the War Room ticker already names the live one.
-      // Hiding the map marker only made the two surfaces disagree — a rune spot
+      // Hiding the map marker only made the two surfaces disagree — a cache spot
       // is unwarded almost by definition, so the fog gate hid it nearly always.
-      runeType: liveRuneByZone.get(zone.id),
+      cacheType: liveCacheByZone.get(zone.id),
       tenant:
         zone.id === 'hollow' && !fogged && tenantReadout && tenantReadout.status !== 'unknown'
           ? { alive: tenantReadout.status === 'up', respawnIn: tenantReadout.respawnIn }
@@ -1331,7 +1331,7 @@ function handleQuickAction(cmd: string) {
   handleCommand(cmd.toLowerCase())
 }
 
-// Situational actions (ward / deny / backup / rune / glyph / surrender) were
+// Situational actions (ward / deny / backup / cache / glyph / surrender) were
 // command-line only — invisible + unusable on touch. Surface them as on-screen
 // buttons, shown only when actually available so the row stays contextual.
 // Which contextual actions the player can take now — pure rules extracted to a
@@ -1342,7 +1342,7 @@ const situationalActions = computed(() =>
     isAlive: gameStore.isAlive,
     creeps: gameStore.creeps,
     backup: gameStore.backup,
-    runes: gameStore.runes,
+    caches: gameStore.caches,
     teams: gameStore.teams,
     tick: gameStore.tick,
     mode: gameStore.mode,
@@ -1354,7 +1354,7 @@ function runSituational(cmd: string) {
   if (!p) return
   if (cmd === 'ward') handleCommand(`ward ${p.zone}`)
   else if (cmd === 'surrender') handleCommand('surrender confirm')
-  else handleCommand(cmd) // deny / backup / rune / glyph — bare commands (auto-resolved)
+  else handleCommand(cmd) // deny / backup / cache / glyph — bare commands (auto-resolved)
 }
 
 // ── Quick action button availability ─────────────────────────
@@ -2011,7 +2011,7 @@ function handleReturnToMenu() {
         </button>
       </div>
       <!-- Situational actions — surfaced as buttons only when available, so the
-           command-only verbs (ward/deny/backup/rune/glyph/surrender) are usable
+           command-only verbs (ward/deny/backup/cache/glyph/surrender) are usable
            on touch and discoverable to new players. -->
       <div
         v-if="situationalActions.length"

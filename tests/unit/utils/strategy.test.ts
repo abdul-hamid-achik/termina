@@ -6,7 +6,7 @@ import {
   formatGoldShort,
   ticksToClock,
   formatTenant,
-  formatRunes,
+  formatCaches,
   formatBackup,
   visionSummary,
   dayNightReadout,
@@ -16,8 +16,8 @@ import {
 import { ITEMS } from '~~/shared/constants/items'
 import {
   TENANT_RESPAWN_TICKS,
-  RUNE_DURATION_TICKS,
-  RUNE_INTERVAL_TICKS,
+  CACHE_DURATION_TICKS,
+  CACHE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
 import { ZONES } from '~~/shared/constants/zones'
 
@@ -99,22 +99,22 @@ describe('strategy: tenant', () => {
   })
 })
 
-describe('strategy: runes', () => {
-  it('lists live runes with expiry', () => {
-    const r = formatRunes([{ zone: 'cache-top', type: 'haste', tick: 50 }], 60)
+describe('strategy: caches', () => {
+  it('lists live caches with expiry', () => {
+    const r = formatCaches([{ zone: 'cache-top', type: 'haste', tick: 50 }], 60)
     expect(r.live).toHaveLength(1)
-    expect(r.live[0]!.expiresIn).toBe(50 + RUNE_DURATION_TICKS - 60)
+    expect(r.live[0]!.expiresIn).toBe(50 + CACHE_DURATION_TICKS - 60)
   })
-  it('drops expired runes and reports next spawn', () => {
-    const r = formatRunes([{ zone: 'cache-top', type: 'haste', tick: 0 }], 55)
+  it('drops expired caches and reports next spawn', () => {
+    const r = formatCaches([{ zone: 'cache-top', type: 'haste', tick: 0 }], 55)
     expect(r.live).toHaveLength(0)
     expect(r.nextIn).toBe(5) // 55 % 60 -> next at 60
     expect(r.label).toContain('next')
   })
   it('reports a full interval until the next spawn at an exact multiple', () => {
     // At an exact interval boundary the next window is a FULL interval away, not 0.
-    const r = formatRunes([], RUNE_INTERVAL_TICKS)
-    expect(r.nextIn).toBe(RUNE_INTERVAL_TICKS)
+    const r = formatCaches([], CACHE_INTERVAL_TICKS)
+    expect(r.nextIn).toBe(CACHE_INTERVAL_TICKS)
   })
 })
 

@@ -91,7 +91,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
-    runes: [],
+    caches: [],
     tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     backup: null,
     events: [],
@@ -931,8 +931,8 @@ describe('BotAI - decideBotAction', () => {
     })
   })
 
-  describe('rune pickup', () => {
-    it('issues a rune command when standing on a rune (not a wasted Q cast)', () => {
+  describe('cache pickup', () => {
+    it('issues a cache command when standing on a cache (not a wasted Q cast)', () => {
       const bot = makePlayer({
         zone: 'cache-top',
         hp: 500,
@@ -942,10 +942,10 @@ describe('BotAI - decideBotAction', () => {
       })
       const state = makeGameState({
         players: { [bot.id]: bot },
-        runes: [{ zone: 'cache-top', type: 'haste', tick: 5 }],
+        caches: [{ zone: 'cache-top', type: 'haste', tick: 5 }],
       })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'rune' })
+      expect(action).toEqual({ type: 'grab' })
     })
   })
 
@@ -1413,7 +1413,7 @@ function makeConfig(overrides: Partial<BotDifficultyConfig> = {}): BotDifficulty
     retreatHpPercent: 30,
     reactionDelayTicks: 0,
     abilityComboChance: 0,
-    runeAwareness: false,
+    cacheAwareness: false,
     jungleFarming: false,
     threatAssessment: true,
     ...overrides,
@@ -2137,7 +2137,7 @@ describe('isOwnSide — the rename guard', () => {
     expect(isOwnSide('top-t1-chaff', 'audit')).toBe(false)
     expect(isOwnSide('audit-base', 'audit')).toBe(true)
     expect(isOwnSide('silt-audit-bot', 'audit')).toBe(true)
-    // Rivers/runes/tenant are neutral — own for neither side.
+    // Rivers/caches/tenant are neutral — own for neither side.
     expect(isOwnSide('mid-river', 'chaff')).toBe(false)
     expect(isOwnSide('mid-river', 'audit')).toBe(false)
     expect(isOwnSide('hollow', 'chaff')).toBe(false)

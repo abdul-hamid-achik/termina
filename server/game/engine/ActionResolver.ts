@@ -9,7 +9,7 @@ import type {
   AncientState,
   ZoneRuntimeState,
   NeutralCreepState,
-  RuneState,
+  CacheState,
 } from '~~/shared/types/game'
 import type { DamageType } from '~~/shared/types/hero'
 import type { Command, TargetRef } from '~~/shared/types/commands'
@@ -46,7 +46,7 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
 import { awardLastHit, awardIceKill } from './GoldDistributor'
 import { pickupBackup } from './TenantAI'
-import { pickupRune } from './RuneAI'
+import { pickupCache } from './CacheAI'
 import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
 import { ITEMS } from '~~/shared/constants/items'
 import {
@@ -278,7 +278,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'chat':
     case 'ping':
     case 'backup':
-    case 'rune':
+    case 'grab':
       return null
     case 'buyback':
       // Validation happens in GameLoop where we have access to buyback system
@@ -389,7 +389,7 @@ function emitStatusApplied(
 /**
  * Phase 2: Movement — all moves resolve simultaneously.
  * Slow deterministically blocks movement on a fixed fraction of ticks (no RNG);
- * Haste rune ignores slow.
+ * Haste cache ignores slow.
  * Moving cancels TP channeling.
  */
 function resolveMovementPhase(
@@ -1478,7 +1478,7 @@ function resolveItemActivesPhase(
 }
 
 /**
- * Post-shop phases: glyph, backup/rune pickup, maxHp/maxMp recalc, gold/XP
+ * Post-shop phases: glyph, backup/cache pickup, maxHp/maxMp recalc, gold/XP
  * awards (creep/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
@@ -1504,7 +1504,7 @@ function resolvePostShopPhases(
   neutrals: NeutralCreepState[]
   teams: { chaff: TeamState; audit: TeamState }
   backup: GameState['backup']
-  runes: RuneState[]
+  caches: CacheState[]
 } {
   let teams = { ...state.teams }
 
@@ -1541,7 +1541,7 @@ function resolvePostShopPhases(
       players,
       creeps,
       ice,
-      runes: state.runes ?? [],
+      caches: state.caches ?? [],
       tenant: state.tenant,
       backup: backupGround,
     }
@@ -1553,10 +1553,10 @@ function resolvePostShopPhases(
     }
   }
 
-  // Rune pickup
-  let runesGround = state.runes ?? []
-  const runePickups = validActions.filter((a) => a.command.type === 'rune')
-  for (const action of runePickups) {
+  // Cache pickup
+  let cachesGround = state.caches ?? []
+  const cachePickups = validActions.filter((a) => a.command.type === 'grab')
+  for (const action of cachePickups) {
     const player = players[action.playerId]
     if (!player) continue
     const tempState: GameState = {
@@ -1564,14 +1564,14 @@ function resolvePostShopPhases(
       players,
       creeps,
       ice,
-      runes: runesGround,
+      caches: cachesGround,
       tenant: state.tenant,
       backup: state.backup,
     }
-    const result = pickupRune(tempState, action.playerId, player.zone)
+    const result = pickupCache(tempState, action.playerId, player.zone)
     if (result.event) {
       players = { ...result.state.players }
-      runesGround = result.state.runes ?? []
+      cachesGround = result.state.caches ?? []
       events.push(result.event)
     }
   }
@@ -1724,7 +1724,7 @@ function resolvePostShopPhases(
     }
   }
 
-  return { players, zones, ice, neutrals, teams, backup: backupGround, runes: runesGround }
+  return { players, zones, ice, neutrals, teams, backup: backupGround, caches: cachesGround }
 }
 
 // ── Resolution Pipeline ────────────────────────────────────────────
@@ -2016,7 +2016,7 @@ export function resolveActions(
 
     // Handle glyph commands + pickups + statRecalc + awards + wards
     let backupGround = state.backup
-    let runesGround = state.runes ?? []
+    let cachesGround = state.caches ?? []
     {
       const result = resolvePostShopPhases(
         state,
@@ -2040,7 +2040,7 @@ export function resolveActions(
       neutrals = result.neutrals
       teams = result.teams
       backupGround = result.backup
-      runesGround = result.runes
+      cachesGround = result.caches
     }
 
     const updatedState: GameState = {
@@ -2053,7 +2053,7 @@ export function resolveActions(
       teams,
       ancients,
       backup: backupGround,
-      runes: runesGround,
+      caches: cachesGround,
     }
 
     return { state: updatedState, events, heroAttackers, rejected }

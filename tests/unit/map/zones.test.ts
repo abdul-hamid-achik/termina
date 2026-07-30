@@ -36,7 +36,7 @@ describe('Zones', () => {
       expect(byId['top-t1-chaff']).toBe('Seawall T1 (CHAFF)')
       expect(byId['mid-t1-audit']).toBe('Coldstore T1 (AUDIT)')
       expect(byId['bot-t1-chaff']).toBe('Shallows T1 (CHAFF)')
-      // Jungle is the Silt; the pit is the Hollow; rune spots are cache drops.
+      // Jungle is the Silt; the pit is the Hollow; cache spots are cache drops.
       expect(byId['silt-chaff-top']).toBe('Chaff Upper Silt')
       expect(byId['hollow']).toBe('The Hollow')
       expect(byId['cache-top']).toBe('Seawall Cache Drop')

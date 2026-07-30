@@ -12,7 +12,7 @@ import { ZONES } from './zones'
  * One-lane map — the mid lane only, for tutorials and fast games. It is a strict,
  * SELF-CONTAINED subgraph of the full 5v5 graph: same 11 zone IDs, but each
  * zone's `adjacentTo` is pruned to only these 11 (so e.g. mid-river no longer
- * links to the runes, and the bases no longer link to top/bot). Movement is
+ * links to the caches, and the bases no longer link to top/bot). Movement is
  * additionally gated on a game's actual zone set (see validateAction) because
  * the global ZONE_MAP still carries the full edges.
  */
@@ -39,7 +39,7 @@ export const ONE_LANE_ZONES: readonly Zone[] = ZONES.filter((z) => ONE_LANE_IDS.
  * strict, SELF-CONTAINED subgraph: same zone IDs as the full map, but each
  * zone's `adjacentTo` is pruned to only these (bases drop their bot-t3 edge,
  * mid-t2 drops its bot-jungle edge, mid-river drops cache-bot, etc.). Keeps the
- * top-side river objectives (cache-top + hollow) so a 3v3 still has runes and
+ * top-side river objectives (cache-top + hollow) so a 3v3 still has caches and
  * Tenant; cache-bot is dropped because it only reaches the removed bot lane.
  */
 const TWO_LANE_IDS = new Set<string>([

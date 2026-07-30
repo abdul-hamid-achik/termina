@@ -37,7 +37,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     creeps: [],
     neutrals: [],
     ice: initializeIce(),
-    runes: [],
+    caches: [],
     tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
     backup: null,
     events: [],

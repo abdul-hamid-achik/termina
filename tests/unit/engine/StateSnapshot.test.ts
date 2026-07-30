@@ -18,7 +18,7 @@ function makeGameState(): GameState {
     creeps: [],
     neutrals: [],
     ice: initializeIce(),
-    runes: [],
+    caches: [],
     tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     backup: null,
     events: [],

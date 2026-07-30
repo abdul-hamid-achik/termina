@@ -136,7 +136,7 @@ function createInitialGameState(
     neutrals: [],
     ice: initializeIce(zones),
     ancients: initializeAncients(),
-    runes: [],
+    caches: [],
     tenant: initializeTenant(),
     backup: null,
     events: [],

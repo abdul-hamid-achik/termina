@@ -195,7 +195,7 @@ const preview = computed(() => {
     'buyback',
     'surrender',
   ]
-  // q/w/e/r are whole commands (`cast q`…), not a half-typed `ward`/`rune` —
+  // q/w/e/r are whole commands (`cast q`…), not a half-typed `ward`/`cache` —
   // preview the cast they perform so the shortcut's effect is visible before
   // Enter, rather than a hint pointing at the command that used to hijack it.
   const isCastShortcut = SHORTCUTS[cmd!]?.startsWith('cast ') ?? false
@@ -320,7 +320,7 @@ function handleSubmit() {
     // confirm` are each their own only suggestion, so auto-accepting looped
     // forever and they could never be submitted. And when the typed text IS a
     // suggestion (`w`, `r`), the player meant that one — not the longer command
-    // that merely starts with it (`ward`, `rune`), which hijacked two ability
+    // that merely starts with it (`ward`, `cache`), which hijacked two ability
     // shortcuts including the ultimate.
     // An explicitly highlighted suggestion (arrow keys / hover) always wins:
     // that is the only way to reach the neighbour the guard skips past.

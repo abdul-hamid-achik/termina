@@ -29,10 +29,10 @@ import { runCreepAI, applyCreepActions, enforceCreepZoneCap } from './CreepAI'
 import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
 import { runIceAI, applyIceActions } from './IceAI'
 import { runTenantAI, processTenantDamage } from './TenantAI'
-import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
+import { removeExpiredCaches, processCacheBuffs } from './CacheAI'
 import { processTraps } from './TrapSystem'
 import { resolvePhysicalHit } from './CombatResolver'
-import { spawnCreepWaves, spawnRunes } from '~~/server/game/map/spawner'
+import { spawnCreepWaves, spawnCaches } from '~~/server/game/map/spawner'
 import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
 import { filterStateForPlayer } from './VisionCalculator'
@@ -447,7 +447,7 @@ export function processTick(
     // (hero attacks in resolveActions + creep attacks in NPC AI).
     currentState = updateAncientVulnerability(currentState)
 
-    // 6–7. Spawn waves / neutrals / runes; expire runes + wards
+    // 6–7. Spawn waves / neutrals / caches; expire caches + wards
     currentState = runSpawning(currentState)
 
     // 8. Distribute passive gold
@@ -1250,13 +1250,13 @@ export function runNPCAI(
 }
 
 /**
- * Spawn periodic content for the tick: creep waves, jungle neutrals, runes;
- * and clean up expired runes and wards. Pure: same state object if nothing
+ * Spawn periodic content for the tick: creep waves, jungle neutrals, caches;
+ * and clean up expired caches and wards. Pure: same state object if nothing
  * spawned and nothing expired.
  */
 export function runSpawning(state: GameState): GameState {
   let s = state
-  // Gate creep/neutral/rune spawning to the zones THIS game's map actually has,
+  // Gate creep/neutral/cache spawning to the zones THIS game's map actually has,
   // so subset maps (one-lane) don't spawn into uninitialized top/bot/jungle zones.
   const hasZone = (zoneId: string) => zoneId in s.zones
 
@@ -1273,14 +1273,14 @@ export function runSpawning(state: GameState): GameState {
     s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
   }
 
-  const activeRuneZones = new Set<string>((s.runes ?? []).map((r) => r.zone))
-  const newRunes = spawnRunes(s.tick, hasZone, activeRuneZones)
-  if (newRunes.length > 0) {
-    s = { ...s, runes: [...(s.runes ?? []), ...newRunes] }
+  const activeCacheZones = new Set<string>((s.caches ?? []).map((r) => r.zone))
+  const newCaches = spawnCaches(s.tick, hasZone, activeCacheZones)
+  if (newCaches.length > 0) {
+    s = { ...s, caches: [...(s.caches ?? []), ...newCaches] }
   }
 
-  s = removeExpiredRunes(s)
-  s = processRuneBuffs(s)
+  s = removeExpiredCaches(s)
+  s = processCacheBuffs(s)
 
   const updatedZones = removeExpiredWards(s.zones, s.tick)
   if (updatedZones !== s.zones) {

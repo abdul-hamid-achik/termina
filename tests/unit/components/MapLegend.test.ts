@@ -23,7 +23,7 @@ describe('MapLegend', () => {
     expect(text).toContain('◉')
     expect(text).toContain('your ward')
     expect(text).toContain('✦')
-    expect(text).toContain('live rune')
+    expect(text).toContain('live cache')
     expect(text).toContain('Tenant respawn')
   })
 
@@ -34,7 +34,7 @@ describe('MapLegend', () => {
     expect(text).toContain('JG')
     expect(text).toContain('jungle')
     expect(text).toContain('RN')
-    expect(text).toContain('rune spot')
+    expect(text).toContain('cache spot')
     expect(text).toContain('ROS')
     expect(text).toContain('Tenant pit')
     expect(text).toContain('RF/RB')
