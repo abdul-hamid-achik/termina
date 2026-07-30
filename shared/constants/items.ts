@@ -12,7 +12,7 @@ const healingSalve: ItemDef = {
   active: {
     id: 'healing_salve_active',
     name: 'Heal',
-    description: 'Restore 200 HP over 4 ticks.',
+    description: 'Restore 200 HP over 4 cycles.',
     cooldownTicks: 0,
   },
 }
@@ -69,7 +69,7 @@ const ringOfHealth: ItemDef = {
   passive: {
     id: 'ring_of_health_passive',
     name: 'Regeneration',
-    description: 'Restore 2% max HP per tick.',
+    description: 'Restore 2% max HP per cycle.',
   },
 }
 
@@ -82,7 +82,7 @@ const sobiMask: ItemDef = {
   passive: {
     id: 'sobi_mask_passive',
     name: 'Mana Regen',
-    description: 'Restore 2% max MP per tick.',
+    description: 'Restore 2% max MP per cycle.',
   },
 }
 
@@ -199,7 +199,7 @@ const silverEdge: ItemDef = {
   active: {
     id: 'silver_edge_active',
     name: 'Shadow Walk',
-    description: 'Become invisible for 3 ticks. Next attack from invis deals 150 bonus damage.',
+    description: 'Become invisible for 3 cycles. Next attack from invis deals 150 bonus damage.',
     cooldownTicks: 18,
   },
 }
@@ -213,7 +213,7 @@ const skullBasher: ItemDef = {
   passive: {
     id: 'skull_basher_passive',
     name: 'Bash',
-    description: '25% chance on attack to stun target for 1 tick.',
+    description: '25% chance on attack to stun target for 1 cycle.',
   },
 }
 
@@ -241,7 +241,7 @@ const veilOfDiscord: ItemDef = {
   active: {
     id: 'veil_of_discord_active',
     name: 'Discord',
-    description: 'Enemies in zone take 25% more magical damage for 4 ticks.',
+    description: 'Enemies in zone take 25% more magical damage for 4 cycles.',
     cooldownTicks: 15,
   },
 }
@@ -255,7 +255,7 @@ const shivasGuard: ItemDef = {
   active: {
     id: 'shivas_guard_active',
     name: 'Arctic Blast',
-    description: 'Deal 100 magical damage to enemies in zone and slow them for 2 ticks.',
+    description: 'Deal 100 magical damage to enemies in zone and slow them for 2 cycles.',
     cooldownTicks: 20,
   },
 }
@@ -269,7 +269,7 @@ const aetherLens: ItemDef = {
   passive: {
     id: 'aether_lens_passive',
     name: 'Ethereal',
-    description: 'Reduce all ability cooldowns by 1 tick.',
+    description: 'Reduce all ability cooldowns by 1 cycle.',
   },
 }
 
@@ -298,7 +298,7 @@ const etherealBlade: ItemDef = {
     id: 'ethereal_blade_active',
     name: 'Ether Blast',
     description:
-      'Target becomes ethereal for 2 ticks (immune to physical, vulnerable to magical +40%).',
+      'Target becomes ethereal for 2 cycles (immune to physical, vulnerable to magical +40%).',
     cooldownTicks: 15,
   },
 }
@@ -327,7 +327,7 @@ const linkensSphere: ItemDef = {
   passive: {
     id: 'linkens_sphere_passive',
     name: 'Spellblock',
-    description: 'Block one targeted ability every 12 ticks.',
+    description: 'Block one targeted ability every 12 cycles.',
   },
 }
 
@@ -340,7 +340,7 @@ const blackKingBar: ItemDef = {
   active: {
     id: 'black_king_bar_active',
     name: 'Avatar',
-    description: 'Become immune to magical damage and debuffs for 4 ticks.',
+    description: 'Become immune to magical damage and debuffs for 4 cycles.',
     cooldownTicks: 25,
   },
 }
@@ -354,7 +354,7 @@ const heartOfTarrasque: ItemDef = {
   passive: {
     id: 'heart_of_tarrasque_passive',
     name: 'Regeneration',
-    description: 'Restore 5% max HP per tick when out of combat for 3 ticks.',
+    description: 'Restore 5% max HP per cycle when out of combat for 3 cycles.',
   },
 }
 
@@ -394,7 +394,7 @@ const bladeMail: ItemDef = {
   active: {
     id: 'blade_mail_active',
     name: 'Blade Mail',
-    description: 'Return 100% of damage taken to attackers for 3 ticks.',
+    description: 'Return 100% of damage taken to attackers for 3 cycles.',
     cooldownTicks: 18,
   },
 }
@@ -425,7 +425,7 @@ const hurricanePike: ItemDef = {
     id: 'hurricane_pike_active',
     name: 'Hurricane Thrust',
     description:
-      'Push self to an adjacent zone away from a target enemy, gaining +30 attack for 2 ticks.',
+      'Push self to an adjacent zone away from a target enemy, gaining +30 attack for 2 cycles.',
     cooldownTicks: 14,
     targetType: 'enemy',
   },
@@ -440,7 +440,7 @@ const scytheOfVyse: ItemDef = {
   active: {
     id: 'scythe_of_vyse_active',
     name: 'Hex',
-    description: 'Transform target hero into a critter for 2 ticks (cannot attack or cast).',
+    description: 'Transform target hero into a critter for 2 cycles (cannot attack or cast).',
     cooldownTicks: 20,
     targetType: 'enemy',
   },
@@ -455,7 +455,7 @@ const eulsScepter: ItemDef = {
   active: {
     id: 'euls_scepter_active',
     name: 'Cyclone',
-    description: 'Target is invulnerable and disabled for 2 ticks.',
+    description: 'Target is invulnerable and disabled for 2 cycles.',
     cooldownTicks: 15,
   },
 }
@@ -483,7 +483,7 @@ const ghostScepter: ItemDef = {
   active: {
     id: 'ghost_scepter_active',
     name: 'Ghost Form',
-    description: 'Become immune to physical damage for 2 ticks. Cannot attack.',
+    description: 'Become immune to physical damage for 2 cycles. Cannot attack.',
     cooldownTicks: 20,
   },
 }
@@ -534,7 +534,7 @@ const garbageCollector: ItemDef = {
   passive: {
     id: 'garbage_collector_passive',
     name: 'Recovery',
-    description: 'Regenerate 5% max HP per tick when out of combat (no damage for 3 ticks).',
+    description: 'Regenerate 5% max HP per cycle when out of combat (no damage for 3 cycles).',
   },
 }
 
@@ -592,7 +592,7 @@ const observerWard: ItemDef = {
     id: 'observer_ward_active',
     name: 'Place Ward',
     description:
-      'Place in a zone for vision lasting 45 ticks. Max 3 wards per team (shared with sentries).',
+      'Place in a zone for vision lasting 45 cycles. Max 3 wards per team (shared with sentries).',
     cooldownTicks: 0,
     targetType: 'zone',
   },
@@ -609,7 +609,7 @@ const sentryWard: ItemDef = {
     id: 'sentry_ward_active',
     name: 'Place Sentry Ward',
     description:
-      'Reveals invisible units in the area. Lasts 30 ticks. Max 3 wards per team (shared with observers).',
+      'Reveals invisible units in the area. Lasts 30 cycles. Max 3 wards per team (shared with observers).',
     cooldownTicks: 0,
     targetType: 'zone',
   },
@@ -626,7 +626,7 @@ const smokeOfDeceit: ItemDef = {
     id: 'smoke_of_deceit_active',
     name: 'Smoke',
     description:
-      'Team becomes invisible to enemy wards for 3 ticks. Breaks on entering enemy zone with heroes.',
+      'Team becomes invisible to enemy wards for 3 cycles. Breaks on entering enemy zone with heroes.',
     cooldownTicks: 0,
   },
 }
@@ -641,7 +641,7 @@ const dustOfAppearance: ItemDef = {
   active: {
     id: 'dust_of_appearance_active',
     name: 'Reveal',
-    description: 'Reveal all invisible enemies in current and adjacent zones for 2 ticks.',
+    description: 'Reveal all invisible enemies in current and adjacent zones for 2 cycles.',
     cooldownTicks: 0,
   },
 }
@@ -656,7 +656,7 @@ const townPortalScroll: ItemDef = {
   active: {
     id: 'town_portal_scroll_active',
     name: 'Teleport',
-    description: 'Teleport to friendly fountain after 2 tick channel.',
+    description: 'Teleport to friendly fountain after 2 cycle channel.',
     cooldownTicks: 0,
   },
 }

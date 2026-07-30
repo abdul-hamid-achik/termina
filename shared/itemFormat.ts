@@ -70,7 +70,7 @@ export function lastHitsToAfford(gold: number): number {
   return Math.ceil(gold / AVG_CREEP_GOLD)
 }
 
-/** Item active cooldown in whole seconds (0 ⇒ no cooldown), given the tick ms. */
+/** Item active cooldown in whole seconds (0 ⇒ no cooldown), given the 4s batch clock ms. */
 export function activeCooldownSeconds(active: ItemActiveDef, tickMs: number): number {
   return Math.round((active.cooldownTicks * tickMs) / 1000)
 }

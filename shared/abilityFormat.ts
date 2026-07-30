@@ -19,7 +19,7 @@ export function formatEffect(e: AbilityEffect): string {
       return `shield ${e.value}`
     case 'dot':
       // `value` is the TOTAL damage dealt across the duration (the convention
-      // the engine + hero data use), not per-tick.
+      // the engine + hero data use), not per-cycle.
       return `${e.value} dmg${e.duration ? ` over ${e.duration}t` : ''}`
     case 'slow':
       return `${e.value}% slow${e.duration ? ` for ${e.duration}t` : ''}`
@@ -54,7 +54,7 @@ export function abilitySummary(a: AbilityDef): string {
   return parts.length > 0 ? parts.join(' · ') : 'utility'
 }
 
-/** Cooldown in whole seconds, given the 4s scheduler tick. */
+/** Cooldown in whole seconds, given the 4s batch clock. */
 export function cooldownSeconds(a: AbilityDef, tickMs: number): number {
   return Math.round((a.cooldownTicks * tickMs) / 1000)
 }
@@ -68,7 +68,7 @@ export function cooldownSeconds(a: AbilityDef, tickMs: number): number {
 export interface AbilityImpact {
   /** Immediate one-shot damage (sum of `damage` effects). */
   burst: number
-  /** Approx damage each scheduler tick (each DoT's total spread over its duration). */
+  /** Approx damage each cycle (each DoT's total spread over its duration). */
   dotPerTick: number
   /** Ticks the longest DoT lasts. */
   dotDuration: number
@@ -125,7 +125,7 @@ function controlLabel(e: AbilityEffect): string {
  * what a control-heavy kit actually DOES — not just its damage — and can watch
  * each control decay on the 4-second scheduler. BASE durations from the hero
  * data; a teaching view, not a combat sim. A control with no/zero declared
- * duration defaults to 1 tick (the engine's minimum disable window).
+ * duration defaults to 1 cycle (the engine's minimum disable window).
  */
 export function abilityControls(a: AbilityDef): AbilityControl[] {
   const out: AbilityControl[] = []
@@ -153,7 +153,7 @@ export function abilityImpact(a: AbilityDef): AbilityImpact {
         burst += e.value
         break
       case 'dot':
-        // `value` is TOTAL damage over the duration; derive the per-tick rate.
+        // `value` is TOTAL damage over the duration; derive the per-cycle rate.
         dotTotal += e.value
         dotPerTick += e.duration ? Math.round(e.value / e.duration) : e.value
         dotDuration = Math.max(dotDuration, e.duration ?? 0)
