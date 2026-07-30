@@ -88,7 +88,7 @@ describe('learn page', () => {
 
   it('quotes live gold values from balance constants', () => {
     const text = mountLearn().text()
-    expect(text).toContain(`${PASSIVE_GOLD_PER_TICK}g/tick`)
+    expect(text).toContain(`${PASSIVE_GOLD_PER_TICK}g/cycle`)
     expect(text).not.toContain('2g/tick')
     expect(text).toContain(`${CREEP_GOLD}g`)
     expect(text).toContain(`${KILL_BOUNTY_BASE}g base`)
@@ -97,7 +97,7 @@ describe('learn page', () => {
   it('states the real respawn formula (base + per-level after free levels)', () => {
     const text = mountLearn().text()
     expect(text).toContain(
-      `${RESPAWN_BASE_TICKS} ticks + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
+      `${RESPAWN_BASE_TICKS} cycles + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
     )
     // Old copy claimed "3 + (your level) ticks"
     expect(text).not.toContain('3 + (your level) ticks')
@@ -137,17 +137,17 @@ describe('learn page', () => {
     }
   })
 
-  it('documents status/map/scan as free informational readouts (no wasted tick)', () => {
+  it('documents status/map/scan as free informational readouts (no wasted cycle)', () => {
     const text = mountLearn().text()
     expect(text).toContain('status / map / scan')
-    expect(text).toMatch(/costs no tick/i)
+    expect(text).toMatch(/costs no cycle/i)
     expect(text).not.toContain('not implemented yet')
   })
 
   it('quotes live ward and tower numbers', () => {
     const text = mountLearn().text()
     expect(text).toContain(`(${ITEMS.observer_ward!.cost}g)`)
-    expect(text).toContain(`${OBSERVER_WARD_DURATION_TICKS} ticks`)
+    expect(text).toContain(`${OBSERVER_WARD_DURATION_TICKS} cycles`)
     expect(text).toContain(`Max ${WARD_LIMIT_PER_TEAM} active per team`)
     expect(text).toContain(`T1 ${TOWER_HP_T1} HP, T2 ${TOWER_HP_T2} HP, T3 ${TOWER_HP_T3} HP`)
     expect(text).toContain(`hit for ${TOWER_ATTACK}`)
@@ -173,10 +173,10 @@ describe('learn page', () => {
     expect(text).not.toContain('Boots of Speed (+1 move speed)')
   })
 
-  it('shows the corrected 5-tick fountain-to-mid-river example path', () => {
+  it('shows the corrected 5-cycle fountain-to-mid-river example path', () => {
     const text = mountLearn().text()
     expect(text).toContain('move mid-river')
-    expect(text).toContain('5 ticks (20 seconds)')
+    expect(text).toContain('5 cycles (20 seconds)')
     expect(text).not.toContain('4 ticks to reach mid river')
   })
 
@@ -283,7 +283,7 @@ describe('learn page', () => {
       expect(text).toContain('NO innate regeneration')
       // The rate is already on the page; the card names every actual source.
       expect(text).toContain(
-        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per tick`,
+        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle`,
       )
       expect(text).toContain('out of combat')
       for (const source of [
@@ -299,9 +299,9 @@ describe('learn page', () => {
 
     it('quotes live regen percentages rather than prose', () => {
       const text = mountLearn().text()
-      expect(text).toContain(`${Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)}% max HP per tick`)
-      expect(text).toContain(`${Math.round(SOBI_MASK_REGEN_PERCENT * 100)}% max MP per tick`)
-      expect(text).toContain(`${Math.round(REGEN_RUNE_HEAL_PERCENT * 100)}% of both per tick`)
+      expect(text).toContain(`${Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)}% max HP per cycle`)
+      expect(text).toContain(`${Math.round(SOBI_MASK_REGEN_PERCENT * 100)}% max MP per cycle`)
+      expect(text).toContain(`${Math.round(REGEN_RUNE_HEAL_PERCENT * 100)}% of both per cycle`)
     })
 
     it('teaches last-hitting as its own concept, with the deny mirror', () => {
@@ -315,10 +315,10 @@ describe('learn page', () => {
       expect(text).toContain(`${denyGold}g and ${Math.floor(CREEP_XP * DENY_XP_RATIO)} XP`)
     })
 
-    it('warns that creep indices are positional and shift each tick', () => {
+    it('warns that creep indices are positional and shift each cycle', () => {
       const text = mountLearn().text()
       expect(text).toContain('creep:N counts the living creeps in your zone')
-      expect(text).toMatch(/shifts every tick/)
+      expect(text).toMatch(/shifts every cycle/)
       expect(text).toContain('zone panel')
     })
 

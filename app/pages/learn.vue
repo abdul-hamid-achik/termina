@@ -117,7 +117,7 @@ const quickStart = [
   {
     step: '4',
     title: 'Farm Creeps',
-    desc: `Creep waves spawn every ${CREEP_WAVE_INTERVAL_TICKS} ticks. Last-hit them with attack creep:0 to earn ${CREEP_GOLD}g and XP.`,
+    desc: `Creep waves spawn every ${CREEP_WAVE_INTERVAL_TICKS} cycles. Last-hit them with attack creep:0 to earn ${CREEP_GOLD}g and XP.`,
   },
   {
     step: '5',
@@ -136,7 +136,7 @@ const movementGuide = [
     title: 'How Movement Works',
     items: [
       'The map is divided into zones (fountain, base, lanes, jungle, river)',
-      `You walk one zone per tick (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, tick by tick`,
+      `You walk one zone per cycle (${tickSeconds} seconds) — but you can order a move to ANY zone and your hero auto-paths there, cycle by cycle`,
       'Type move <zone-id> to move (e.g., move radiant-base, move mid-t3-rad), or tap any zone on the map',
       'Issuing any new action cancels the walk; a new move order redirects it',
       'Shortcut: mv is the same as move (e.g., mv mid-t2-rad)',
@@ -155,9 +155,9 @@ const movementGuide = [
   {
     title: 'Movement Tips',
     items: [
-      `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per tick — retreat there to recover`,
+      `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle — retreat there to recover`,
       'Fountain is only adjacent to your base (must go through base first)',
-      `You can't move while dead — respawn takes ${RESPAWN_BASE_TICKS} ticks plus ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
+      `You can't move while dead — respawn takes ${RESPAWN_BASE_TICKS} cycles plus ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
       'More aliases save typing: move mid → mid-river, move rosh → roshan-pit; unambiguous prefixes work too',
     ],
@@ -167,7 +167,7 @@ const movementGuide = [
 const commands = [
   {
     cmd: 'move <zone>',
-    desc: 'Walk to any zone — one zone per tick, auto-pathing until you arrive',
+    desc: 'Walk to any zone — one zone per cycle, auto-pathing until you arrive',
     example: 'move mid-t1-rad',
     shortcuts: 'mv',
   },
@@ -217,7 +217,7 @@ const commands = [
   { cmd: 'aegis', desc: 'Pick up the Aegis in the Roshan pit', example: 'aegis', shortcuts: '—' },
   {
     cmd: 'glyph',
-    desc: `Make your towers invulnerable for ${GLYPH_DURATION_TICKS} ticks (one per team every ${glyphCooldownMinutes} min)`,
+    desc: `Make your towers invulnerable for ${GLYPH_DURATION_TICKS} cycles (one per team every ${glyphCooldownMinutes} min)`,
     example: 'glyph',
     shortcuts: '—',
   },
@@ -248,7 +248,7 @@ const commands = [
   },
   {
     cmd: 'status / map / scan',
-    desc: 'Print a quick readout (your stats / reachable zones / visible enemies). Free — costs no tick',
+    desc: 'Print a quick readout (your stats / reachable zones / visible enemies). Free — costs no cycle',
     example: 'status',
     shortcuts: '—',
   },
@@ -305,24 +305,24 @@ const keybinds: Array<{ key: string; probe: string | null; action: string }> = [
 
 const concepts = [
   {
-    term: 'Ticks',
+    term: 'Cycles',
     icon: '>',
-    desc: `The game runs on ${tickSeconds}-second ticks. Each tick, you submit one action. The action window is ${actionWindowSeconds} seconds — your command is processed when the tick resolves.`,
+    desc: `TERMINA commits every instruction at once, ${tickSeconds} seconds wide — one cycle. You queue ONE action per cycle. The action window is ${actionWindowSeconds} seconds; your command resolves when the cycle commits.`,
   },
   {
     term: 'Gold & Items',
     icon: '$',
-    desc: `Earn gold from creep last-hits (${CREEP_GOLD}g), hero kills (${KILL_BOUNTY_BASE}g base + streak and comeback bonuses), assists (${ASSIST_GOLD}g split), and passive income (${PASSIVE_GOLD_PER_TICK}g/tick). Spend gold at the shop in your base. Max ${MAX_ITEMS} items.`,
+    desc: `Earn gold from creep last-hits (${CREEP_GOLD}g), hero kills (${KILL_BOUNTY_BASE}g base + streak and comeback bonuses), assists (${ASSIST_GOLD}g split), and passive income (${PASSIVE_GOLD_PER_TICK}g/cycle). Spend gold at the shop in your base. Max ${MAX_ITEMS} items.`,
   },
   {
-    term: 'Fog of War',
+    term: 'No Feed',
     icon: '?',
-    desc: 'You can only see zones where your team has vision: your zone + adjacent, ally positions, tower vision, and wards. Enemy positions outside vision are hidden.',
+    desc: 'You have no feed on ground you do not hold. You see your own zone and the zones next to it, your allies, your towers, and anywhere you have a ward. Enemies outside that are not on your screen at all.',
   },
   {
     term: 'Creep Waves',
     icon: '#',
-    desc: `AI creeps spawn every ${CREEP_WAVE_INTERVAL_TICKS} ticks in each lane. ${MELEE_CREEPS_PER_WAVE} melee + ${RANGED_CREEPS_PER_WAVE} ranged per wave (siege every ${SIEGE_CREEP_WAVE_INTERVAL}th wave). Last-hit them for gold. They push lanes automatically.`,
+    desc: `AI creeps spawn every ${CREEP_WAVE_INTERVAL_TICKS} cycles in each lane. ${MELEE_CREEPS_PER_WAVE} melee + ${RANGED_CREEPS_PER_WAVE} ranged per wave (siege every ${SIEGE_CREEP_WAVE_INTERVAL}th wave). Last-hit them for gold. They push lanes automatically.`,
   },
   {
     term: 'Towers',
@@ -342,32 +342,32 @@ const concepts = [
   {
     term: 'Abilities',
     icon: '*',
-    desc: 'Each hero has a passive + 4 active abilities (Q/W/E/R). Abilities cost mana and have cooldowns measured in ticks. Cast with: cast q [target]',
+    desc: 'Each hero has a passive + 4 active abilities (Q/W/E/R). Abilities cost mana and have cooldowns measured in cycles. Cast with: cast q [target]',
   },
   {
     term: 'Sustain',
     icon: '+',
-    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per tick, and only while out of combat), Healing Salve and Mana Vial (consumables you carry), Ring of Health (${ringRegenPercent}% max HP per tick) and Sobi's Mask (${sobiRegenPercent}% max MP per tick), and the regeneration rune (${runeRegenPercent}% of both per tick). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Healing Salve and Mana Vial (consumables you carry), Ring of Health (${ringRegenPercent}% max HP per cycle) and Sobi's Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration rune (${runeRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
     term: 'Last-Hitting & Denying',
     icon: '/',
-    desc: `Only the killing blow pays gold: chip a creep to 1 HP and a lane-mate takes it, you get nothing. A melee creep has ${MELEE_CREEP_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack creep:0 for ${CREEP_GOLD}g and ${CREEP_XP} XP (allies in the zone share ${CREEP_XP_SHARED} XP, so standing in lane is never worth zero). Denying is the mirror: once one of YOUR creeps drops below ${denyHpPercent}% HP, deny creep:0 kills it so the enemy gets nothing — you keep ${denyGold}g and ${denyXp} XP. Prefer tapping the creep group in the zone panel over typing an index: creep:N counts the living creeps in your zone, so N shifts every tick as creeps die and waves spawn.`,
+    desc: `Only the killing blow pays gold: chip a creep to 1 HP and a lane-mate takes it, you get nothing. A melee creep has ${MELEE_CREEP_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack creep:0 for ${CREEP_GOLD}g and ${CREEP_XP} XP (allies in the zone share ${CREEP_XP_SHARED} XP, so standing in lane is never worth zero). Denying is the mirror: once one of YOUR creeps drops below ${denyHpPercent}% HP, deny creep:0 kills it so the enemy gets nothing — you keep ${denyGold}g and ${denyXp} XP. Prefer tapping the creep group in the zone panel over typing an index: creep:N counts the living creeps in your zone, so N shifts every cycle as creeps die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',
     icon: 'X',
-    desc: `When you die, you respawn at your fountain after ${RESPAWN_BASE_TICKS} ticks + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS} (${respawnTicks(1)} ticks at level 1, ${respawnTicks(10)} at level 10). Buyback with gold to return instantly (${buybackCooldownMinutes} min cooldown).`,
+    desc: `When you die, you respawn at your fountain after ${RESPAWN_BASE_TICKS} cycles + ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS} (${respawnTicks(1)} cycles at level 1, ${respawnTicks(10)} at level 10). Buyback with gold to return instantly (${buybackCooldownMinutes} min cooldown).`,
   },
   {
     term: 'Wards',
     icon: 'o',
-    desc: `Observer wards (${wardCost}g) grant vision of a zone for ${OBSERVER_WARD_DURATION_TICKS} ticks. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
+    desc: `Observer wards (${wardCost}g) grant vision of a zone for ${OBSERVER_WARD_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
   },
   {
     term: 'Roshan & Runes',
     icon: '%',
-    desc: `Roshan (${ROSHAN_BASE_HP}+ HP) lurks in roshan-pit and drops the Aegis when killed — grab it with aegis. Power-up runes spawn at rune-top/rune-bot every ${RUNE_INTERVAL_TICKS} ticks and expire after ${RUNE_DURATION_TICKS}; grab them with rune.`,
+    desc: `Roshan (${ROSHAN_BASE_HP}+ HP) lurks in roshan-pit and drops the Aegis when killed — grab it with aegis. Power-up runes spawn at rune-top/rune-bot every ${RUNE_INTERVAL_TICKS} cycles and expire after ${RUNE_DURATION_TICKS}; grab them with rune.`,
   },
   {
     term: 'Win Condition',
@@ -482,7 +482,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
       </div>
 
       <!-- Interactive map primer: explore the real topology + feel adjacency
-           before a live game. Click a dashed zone to hop one zone per tick. -->
+           before a live game. Click a dashed zone to hop one zone per cycle. -->
       <div class="mb-4">
         <div class="mb-1.5 text-[0.85rem] font-bold text-gold">Explore the Map</div>
         <ClientOnly>
@@ -542,7 +542,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
           >
         </div>
         <p class="mt-1 text-[0.75rem] text-text-dim">
-          Each arrow = 1 tick ({{ tickSeconds }} seconds). This path takes 5 ticks ({{
+          Each arrow = 1 cycle ({{ tickSeconds }} seconds). This path takes 5 cycles ({{
             5 * tickSeconds
           }}
           seconds) to reach mid river from fountain.
