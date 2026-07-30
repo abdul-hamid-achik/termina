@@ -1589,13 +1589,14 @@ function resolvePostShopPhases(
   for (const [pid, player] of Object.entries(players)) {
     const hero = player.heroId ? HEROES[player.heroId] : null
     if (!hero) continue
-    const baseMaxHp = hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * (player.level - 1)
-    const baseMaxMp = hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * (player.level - 1)
+    const baseMaxHp = hero.baseStats.integ + (hero.growthPerLevel.integ ?? 0) * (player.level - 1)
+    const baseMaxMp = hero.baseStats.bw + (hero.growthPerLevel.bw ?? 0) * (player.level - 1)
     const itemBonuses = getCachedItemStats(pid, player.items)
     const treadsHp = player.buffs.find((b) => b.id === 'gait_rig_hp')?.stacks ?? 0
     const treadsMp = player.buffs.find((b) => b.id === 'gait_rig_mp')?.stacks ?? 0
-    const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp') + treadsHp
-    const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
+    const newMaxHp =
+      baseMaxHp + (itemBonuses.integ ?? 0) + getTalentStatBonus(player, 'integ') + treadsHp
+    const newMaxMp = baseMaxMp + (itemBonuses.bw ?? 0) + getTalentStatBonus(player, 'bw') + treadsMp
     if (newMaxHp !== player.maxInteg || newMaxMp !== player.maxBw) {
       // Preserve the hp/mp PERCENTAGE across any max change (item buy/sell,
       // talent, power-treads toggle): a full hero stays full, a half-hp hero

@@ -26,9 +26,9 @@ import type { GameState } from '~~/shared/types/game'
 
 interface FramePlayer {
   id: string
-  hp: number
+  integ: number
   maxInteg: number
-  mp: number
+  bw: number
   maxBw: number
   level: number
   gold: number

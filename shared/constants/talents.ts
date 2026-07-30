@@ -42,7 +42,7 @@ export interface Talent {
   tier: TalentTier
   // Stat bonuses
   statBonus?: {
-    stat: 'hp' | 'mp' | 'attack' | 'plate' | 'ice' | 'attackSpeed'
+    stat: 'integ' | 'bw' | 'attack' | 'plate' | 'ice' | 'attackSpeed'
     value: number
   }
   // Ability modifications
@@ -130,7 +130,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: 'Increases maximum HP by 200',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 200 },
+          statBonus: { stat: 'integ', value: 200 },
         },
       ],
       15: [
@@ -189,7 +189,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: 'Increases maximum HP by 250',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
       ],
     },
@@ -252,11 +252,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'daemon_20_right',
-          name: '+250 HP',
+          name: '+250 INTEG',
           description: 'Increases maximum HP by 250',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
       ],
       25: [
@@ -293,7 +293,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+200 HP',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 200 },
+          statBonus: { stat: 'integ', value: 200 },
         },
         {
           id: 'kernel_10_right',
@@ -340,7 +340,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 HP',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'hp', value: 300 },
+          statBonus: { stat: 'integ', value: 300 },
         },
       ],
       25: [
@@ -375,7 +375,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+150 MP',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'mp', value: 150 },
+          statBonus: { stat: 'bw', value: 150 },
         },
         {
           id: 'regex_10_right',
@@ -457,11 +457,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       10: [
         {
           id: 'firewall_10_left',
-          name: '+250 HP',
-          description: '+250 HP',
+          name: '+250 INTEG',
+          description: '+250 INTEG',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
         {
           id: 'firewall_10_right',
@@ -508,7 +508,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+400 HP',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'hp', value: 400 },
+          statBonus: { stat: 'integ', value: 400 },
         },
       ],
       25: [
@@ -543,7 +543,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+100 MP',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'mp', value: 100 },
+          statBonus: { stat: 'bw', value: 100 },
         },
         {
           id: 'proxy_10_right',
@@ -609,7 +609,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: 'Increases maximum MP by 250',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'mp', value: 250 },
+          statBonus: { stat: 'bw', value: 250 },
         },
       ],
     },
@@ -633,11 +633,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'malloc_10_right',
-          name: '+250 HP',
+          name: '+250 INTEG',
           description: '+250 HP for the line dive',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
       ],
       15: [
@@ -676,7 +676,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+350 HP',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'hp', value: 350 },
+          statBonus: { stat: 'integ', value: 350 },
         },
       ],
       25: [
@@ -721,7 +721,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+200 HP for the fragile assassin',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 200 },
+          statBonus: { stat: 'integ', value: 200 },
         },
       ],
       15: [
@@ -756,11 +756,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cipher_20_right',
-          name: '+250 HP',
-          description: '+250 HP',
+          name: '+250 INTEG',
+          description: '+250 INTEG',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
       ],
       25: [
@@ -794,11 +794,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       10: [
         {
           id: 'sentry_10_left',
-          name: '+250 HP',
+          name: '+250 INTEG',
           description: '+250 HP — survive while peeling for the team',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
         {
           id: 'sentry_10_right',
@@ -845,7 +845,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 Max Mana — a deeper pool for sustained support',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'mp', value: 300 },
+          statBonus: { stat: 'bw', value: 300 },
         },
       ],
       25: [
@@ -880,11 +880,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       10: [
         {
           id: 'socket_10_left',
-          name: '+250 HP',
+          name: '+250 INTEG',
           description: '+250 HP for the front-line offlaner',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
         {
           id: 'socket_10_right',
@@ -969,7 +969,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 HP — hold the line longer',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 300 },
+          statBonus: { stat: 'integ', value: 300 },
         },
         {
           id: 'mutex_10_right',
@@ -1062,7 +1062,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+200 HP for the fragile carry',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 200 },
+          statBonus: { stat: 'integ', value: 200 },
         },
       ],
       15: [
@@ -1139,15 +1139,15 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 Mana — fuel longer Closure combo chains',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'mp', value: 300 },
+          statBonus: { stat: 'bw', value: 300 },
         },
         {
           id: 'lambda_10_right',
-          name: '+250 HP',
+          name: '+250 INTEG',
           description: '+250 HP for the fragile mage',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
       ],
       15: [
@@ -1227,15 +1227,15 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 Mana — sustain the Crontab + Purge mana drain',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'mp', value: 300 },
+          statBonus: { stat: 'bw', value: 300 },
         },
         {
           id: 'cron_10_right',
-          name: '+250 HP',
+          name: '+250 INTEG',
           description: '+250 HP for the front-line line support',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 250 },
+          statBonus: { stat: 'integ', value: 250 },
         },
       ],
       15: [
@@ -1322,7 +1322,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+200 HP to survive the dive between hops',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 200 },
+          statBonus: { stat: 'integ', value: 200 },
         },
       ],
       15: [
@@ -1408,7 +1408,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 MP — fuels the void-drain caster through fights',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'mp', value: 300 },
+          statBonus: { stat: 'bw', value: 300 },
         },
       ],
       15: [
@@ -1497,7 +1497,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+200 HP to survive the offlane harass',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 200 },
+          statBonus: { stat: 'integ', value: 200 },
         },
       ],
       15: [
@@ -1536,7 +1536,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 MP to sustain endless probing and Flood',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'mp', value: 300 },
+          statBonus: { stat: 'bw', value: 300 },
         },
       ],
       25: [
@@ -1577,7 +1577,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+300 HP — absorb more punishment to store as cached energy',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'hp', value: 300 },
+          statBonus: { stat: 'integ', value: 300 },
         },
         {
           id: 'cache_10_right',

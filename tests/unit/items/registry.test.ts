@@ -318,8 +318,8 @@ describe('Item Registry', () => {
   describe('item stats', () => {
     it('scrap_lot provides all basic stats', () => {
       const item = getItem('scrap_lot')!
-      expect(item.stats.hp).toBe(30)
-      expect(item.stats.mp).toBe(30)
+      expect(item.stats.integ).toBe(30)
+      expect(item.stats.bw).toBe(30)
       expect(item.stats.attack).toBe(3)
       expect(item.stats.plate).toBe(3)
       expect(item.stats.ice).toBe(3)
@@ -342,34 +342,34 @@ describe('Item Registry', () => {
 
     it('bulk_lattice provides massive HP', () => {
       const item = getItem('bulk_lattice')!
-      expect(item.stats.hp).toBe(500)
+      expect(item.stats.integ).toBe(500)
     })
 
     it('siege_lattice provides armor and HP', () => {
       const item = getItem('siege_lattice')!
       expect(item.stats.plate).toBe(15)
-      expect(item.stats.hp).toBe(200)
+      expect(item.stats.integ).toBe(200)
     })
 
     it('ablative_shell provides hp and plate', () => {
       const item = getItem('ablative_shell')!
-      expect(item.stats.hp).toBe(300)
+      expect(item.stats.integ).toBe(300)
       expect(item.stats.plate).toBe(10)
     })
 
     it('garbage_collector provides hp', () => {
       const item = getItem('garbage_collector')!
-      expect(item.stats.hp).toBe(200)
+      expect(item.stats.integ).toBe(200)
     })
 
     it('clot_ring provides HP', () => {
       const item = getItem('clot_ring')!
-      expect(item.stats.hp).toBe(100)
+      expect(item.stats.integ).toBe(100)
     })
 
     it('amp_stack provides MP and ice', () => {
       const item = getItem('amp_stack')!
-      expect(item.stats.mp).toBe(200)
+      expect(item.stats.bw).toBe(200)
       expect(item.stats.ice).toBe(10)
     })
   })

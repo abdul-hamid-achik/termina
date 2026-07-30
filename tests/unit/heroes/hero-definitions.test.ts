@@ -56,10 +56,10 @@ describe('Hero Definitions', () => {
 
       it('has valid base stats', () => {
         const s = hero.baseStats
-        expect(s.hp).toBeGreaterThanOrEqual(400)
-        expect(s.hp).toBeLessThanOrEqual(800)
-        expect(s.mp).toBeGreaterThanOrEqual(200)
-        expect(s.mp).toBeLessThanOrEqual(450)
+        expect(s.integ).toBeGreaterThanOrEqual(400)
+        expect(s.integ).toBeLessThanOrEqual(800)
+        expect(s.bw).toBeGreaterThanOrEqual(200)
+        expect(s.bw).toBeLessThanOrEqual(450)
         expect(s.attack).toBeGreaterThanOrEqual(30)
         expect(s.attack).toBeLessThanOrEqual(70)
         expect(s.plate).toBeGreaterThanOrEqual(1)
@@ -70,7 +70,7 @@ describe('Hero Definitions', () => {
 
       it('has growth per level stats', () => {
         const g = hero.growthPerLevel
-        expect(g.hp).toBeGreaterThan(0)
+        expect(g.integ).toBeGreaterThan(0)
         expect(g.attack).toBeGreaterThan(0)
       })
 

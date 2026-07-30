@@ -15,7 +15,7 @@ export interface PlayerScoreRow {
   level: number
   /** hp/maxInteg are optional — the replay end-state snapshot (shown before frames
    *  load) carries no HP, so the cell renders "?" when either is absent. */
-  hp?: number
+  integ?: number
   maxInteg?: number
   kills: number
   deaths: number

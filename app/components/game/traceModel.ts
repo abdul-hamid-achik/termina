@@ -38,7 +38,7 @@ export interface TerminalState {
   team: TeamId
   alive: boolean
   vulnerable: boolean
-  hp: number
+  integ: number
   maxInteg: number
 }
 
@@ -149,7 +149,7 @@ export interface ZoneDisplay {
     team: 'chaff' | 'audit'
     alive: boolean
     tier: number
-    hp?: number
+    integ?: number
     maxInteg?: number
   }
   fogged: boolean

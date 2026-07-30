@@ -11,15 +11,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Lock onto one target and never switch: Resonance adds 8% per consecutive attack, and E only fires once your basic attacks have stored feedback stacks.',
     baseStats: {
-      hp: 550,
-      mp: 280,
+      integ: 550,
+      bw: 280,
       attack: 58,
       plate: 3,
       ice: 15,
     },
     growthPerLevel: {
-      hp: 55,
-      mp: 25,
+      integ: 55,
+      bw: 25,
       attack: 7,
       plate: 1,
       ice: 1,
@@ -106,15 +106,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       "Shield before the damage lands — Barrier absorbs it, Mend only heals what's left — and stand in your carry's zone so the passive's +5 plate reaches them.",
     baseStats: {
-      hp: 600,
-      mp: 350,
+      integ: 600,
+      bw: 350,
       attack: 40,
       plate: 4,
       ice: 20,
     },
     growthPerLevel: {
-      hp: 60,
-      mp: 35,
+      integ: 60,
+      bw: 35,
       attack: 3,
       plate: 1,
       ice: 1,
@@ -188,15 +188,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       "Sudo (E) fails outright above 30% HP: open with Inject's damage-over-time, watch the HP bar, and only then press E.",
     baseStats: {
-      hp: 480,
-      mp: 300,
+      integ: 480,
+      bw: 300,
       attack: 65,
       plate: 2,
       ice: 12,
     },
     growthPerLevel: {
-      hp: 45,
-      mp: 20,
+      integ: 45,
+      bw: 20,
       attack: 8,
       plate: 1,
       ice: 1,
@@ -282,15 +282,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Taunt first (Core Dump), then shield (Buffer): the buffer soaks exactly the hits you just pulled onto yourself.',
     baseStats: {
-      hp: 750,
-      mp: 250,
+      integ: 750,
+      bw: 250,
       attack: 48,
       plate: 8,
       ice: 25,
     },
     growthPerLevel: {
-      hp: 80,
-      mp: 15,
+      integ: 80,
+      bw: 15,
       attack: 4,
       plate: 2,
       ice: 2,
@@ -361,15 +361,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       "Everything keys off Match's mark — 15% magic vulnerability, plus another 15% from the passive if every follow-up lands on that same target within 3 cycles.",
     baseStats: {
-      hp: 450,
-      mp: 400,
+      integ: 450,
+      bw: 400,
       attack: 42,
       plate: 1,
       ice: 18,
     },
     growthPerLevel: {
-      hp: 40,
-      mp: 40,
+      integ: 40,
+      bw: 40,
       attack: 3,
       plate: 1,
       ice: 1,
@@ -458,15 +458,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Accept (E) drags a target out of position and Bind (Q) pins it there — pull first, root second, and let your team collapse.',
     baseStats: {
-      hp: 650,
-      mp: 300,
+      integ: 650,
+      bw: 300,
       attack: 52,
       plate: 5,
       ice: 18,
     },
     growthPerLevel: {
-      hp: 65,
-      mp: 25,
+      integ: 65,
+      bw: 25,
       attack: 5,
       plate: 2,
       ice: 1,
@@ -551,15 +551,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       "The passive reroutes 12% of a zone-mate's incoming damage onto you, so buy HP early and treat your own HP bar as the team's shield.",
     baseStats: {
-      hp: 580,
-      mp: 380,
+      integ: 580,
+      bw: 380,
       attack: 42,
       plate: 4,
       ice: 20,
     },
     growthPerLevel: {
-      hp: 55,
-      mp: 35,
+      integ: 55,
+      bw: 35,
       attack: 3,
       plate: 1,
       ice: 1,
@@ -639,15 +639,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Buff with Allocate before you dash: E closes the gap and stuns, W finishes. Stack Overflow costs 20% of your current HP, so it is a closer, never an opener.',
     baseStats: {
-      hp: 520,
-      mp: 300,
+      integ: 520,
+      bw: 300,
       attack: 62,
       plate: 2,
       ice: 14,
     },
     growthPerLevel: {
-      hp: 50,
-      mp: 25,
+      integ: 50,
+      bw: 25,
       attack: 8,
       plate: 1,
       ice: 1,
@@ -732,15 +732,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       "Land two basic attacks before you burst — each strips 2 plate, up to 4 stacks — and remember Encrypt's stealth breaks the instant you attack.",
     baseStats: {
-      hp: 480,
-      mp: 320,
+      integ: 480,
+      bw: 320,
       attack: 64,
       plate: 2,
       ice: 13,
     },
     growthPerLevel: {
-      hp: 45,
-      mp: 22,
+      integ: 45,
+      bw: 22,
       attack: 7,
       plate: 1,
       ice: 1,
@@ -826,15 +826,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'DMZ first, then taunt: the shield eats the damage Access Control pulls onto you, then explodes on everyone standing next to you.',
     baseStats: {
-      hp: 720,
-      mp: 270,
+      integ: 720,
+      bw: 270,
       attack: 48,
       plate: 7,
       ice: 22,
     },
     growthPerLevel: {
-      hp: 75,
-      mp: 18,
+      integ: 75,
+      bw: 18,
       attack: 4,
       plate: 2,
       ice: 2,
@@ -922,15 +922,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Lead with Void Bolt: its 5 magic-resist shred makes every spell after it hit harder, and Dereference adds 50% against anyone already under 25% HP.',
     baseStats: {
-      hp: 440,
-      mp: 420,
+      integ: 440,
+      bw: 420,
       attack: 38,
       plate: 1,
       ice: 16,
     },
     growthPerLevel: {
-      hp: 42,
-      mp: 40,
+      integ: 42,
+      bw: 40,
       attack: 3,
       plate: 1,
       ice: 1,
@@ -1023,15 +1023,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Three casts inside four cycles arms Closure — only then press Reduce, which costs no mana, hits 30% harder and stuns.',
     baseStats: {
-      hp: 460,
-      mp: 400,
+      integ: 460,
+      bw: 400,
       attack: 40,
       plate: 1,
       ice: 17,
     },
     growthPerLevel: {
-      hp: 38,
-      mp: 38,
+      integ: 38,
+      bw: 38,
       attack: 3,
       plate: 1,
       ice: 1,
@@ -1114,15 +1114,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Stop moving: five cycles parked in one zone is +5 plate, +15 attack and a far bigger Priority Inversion — one step resets all of it.',
     baseStats: {
-      hp: 680,
-      mp: 260,
+      integ: 680,
+      bw: 260,
       attack: 55,
       plate: 6,
       ice: 20,
     },
     growthPerLevel: {
-      hp: 70,
-      mp: 20,
+      integ: 70,
+      bw: 20,
       attack: 6,
       plate: 2,
       ice: 1,
@@ -1219,15 +1219,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'ICMP Echo reaches into an adjacent zone for 60% damage — harass from where they cannot answer, and only step in once Flood is up.',
     baseStats: {
-      hp: 580,
-      mp: 310,
+      integ: 580,
+      bw: 310,
       attack: 50,
       plate: 4,
       ice: 18,
     },
     growthPerLevel: {
-      hp: 55,
-      mp: 28,
+      integ: 55,
+      bw: 28,
       attack: 5,
       plate: 1,
       ice: 1,
@@ -1324,15 +1324,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Purge (W) is a cleanse, not just a shield — hold it for the stun or silence that would otherwise kill your carry.',
     baseStats: {
-      hp: 620,
-      mp: 380,
+      integ: 620,
+      bw: 380,
       attack: 42,
       plate: 5,
       ice: 22,
     },
     growthPerLevel: {
-      hp: 60,
-      mp: 30,
+      integ: 60,
+      bw: 30,
       attack: 3,
       plate: 1,
       ice: 1,
@@ -1421,15 +1421,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Arrive fresh: three zones of movement is +60% damage and it decays two cycles after you stop, so mark your escape with Next Hop, pin with TTL, then Probe.',
     baseStats: {
-      hp: 470,
-      mp: 290,
+      integ: 470,
+      bw: 290,
       attack: 62,
       plate: 2,
       ice: 14,
     },
     growthPerLevel: {
-      hp: 44,
-      mp: 22,
+      integ: 44,
+      bw: 22,
       attack: 7,
       plate: 1,
       ice: 1,
@@ -1512,15 +1512,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       "Mark with Yield first: the 25% bonus damage taken applies to your whole team's damage, and Thread Pool turns every basic attack into a zone-wide hit.",
     baseStats: {
-      hp: 530,
-      mp: 270,
+      integ: 530,
+      bw: 270,
       attack: 60,
       plate: 3,
       ice: 15,
     },
     growthPerLevel: {
-      hp: 52,
-      mp: 24,
+      integ: 52,
+      bw: 24,
       attack: 8,
       plate: 1,
       ice: 1,
@@ -1602,15 +1602,15 @@ export const HEROES: Record<string, HeroDef> = {
     oneLineTip:
       'Cache has to take damage before it can deal any — Q, W and R all spend stored energy, so opening a fight at full HP with an empty cache does almost nothing.',
     baseStats: {
-      hp: 700,
-      mp: 260,
+      integ: 700,
+      bw: 260,
       attack: 45,
       plate: 7,
       ice: 24,
     },
     growthPerLevel: {
-      hp: 72,
-      mp: 18,
+      integ: 72,
+      bw: 18,
       attack: 4,
       plate: 2,
       ice: 2,

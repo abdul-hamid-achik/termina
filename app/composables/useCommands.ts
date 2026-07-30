@@ -225,7 +225,7 @@ export function pickDenyTargetString(
   waves: WaveUnitState[],
 ): { target: string } | { error: string } {
   const inZone = waves.filter((c) => c.zone === player.zone) // same order the server indexes
-  let best: { hp: number; index: number } | null = null
+  let best: { integ: number; index: number } | null = null
   for (let index = 0; index < inZone.length; index++) {
     const c = inZone[index]!
     if (c.team !== player.team || c.integ <= 0) continue

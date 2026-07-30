@@ -17,15 +17,15 @@ import { WAVE_GOLD_MIN, WAVE_GOLD_MAX } from '~~/shared/constants/balance'
 
 /** Display labels for stat keys (raw camelCase → readable). */
 export const STAT_LABELS: Record<keyof ItemStats, string> = {
-  hp: 'HP',
-  mp: 'Mana',
+  integ: 'INTEG',
+  bw: 'BW',
   attack: 'Attack',
   plate: 'Plate',
   ice: 'Ice',
 }
 
 // Stable display order so stat lines read consistently across items.
-const STAT_ORDER: (keyof ItemStats)[] = ['hp', 'mp', 'attack', 'plate', 'ice']
+const STAT_ORDER: (keyof ItemStats)[] = ['integ', 'bw', 'attack', 'plate', 'ice']
 
 /** `["+250 HP", "+5 Plate"]` style stat lines; empty array if statless. */
 export function formatStats(stats: ItemStats): string[] {

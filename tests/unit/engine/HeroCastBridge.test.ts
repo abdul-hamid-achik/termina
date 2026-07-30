@@ -31,8 +31,8 @@ function statsAtLevel(heroId: string, level: number) {
   const hero = HEROES[heroId]!
   const lvl = level - 1
   return {
-    maxInteg: hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * lvl,
-    maxBw: hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * lvl,
+    maxInteg: hero.baseStats.integ + (hero.growthPerLevel.integ ?? 0) * lvl,
+    maxBw: hero.baseStats.bw + (hero.growthPerLevel.bw ?? 0) * lvl,
     plate: hero.baseStats.plate + (hero.growthPerLevel.plate ?? 0) * lvl,
     ice: hero.baseStats.ice + (hero.growthPerLevel.ice ?? 0) * lvl,
   }

@@ -164,19 +164,19 @@ describe('DamageCalculator', () => {
   describe('getHeroStatsAtLevel', () => {
     it('should return base stats at level 1', () => {
       // HeroBaseStats keys remain hp/mp until R4-06.
-      const base = { hp: 500, mp: 200, attack: 50, plate: 3, ice: 15 }
-      const growth = { hp: 50, mp: 20, attack: 5, plate: 1 }
+      const base = { integ: 500, bw: 200, attack: 50, plate: 3, ice: 15 }
+      const growth = { integ: 50, bw: 20, attack: 5, plate: 1 }
       const result = getHeroStatsAtLevel(base, growth, 1)
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
       expect(result.attack).toBe(50)
     })
 
     it('should apply growth per level', () => {
-      const base = { hp: 500, mp: 200, attack: 50, plate: 3, ice: 15 }
-      const growth = { hp: 50, mp: 20, attack: 5, plate: 1 }
+      const base = { integ: 500, bw: 200, attack: 50, plate: 3, ice: 15 }
+      const growth = { integ: 50, bw: 20, attack: 5, plate: 1 }
       const result = getHeroStatsAtLevel(base, growth, 5)
       // 4 levels of growth
-      expect(result.hp).toBe(700)
+      expect(result.integ).toBe(700)
       expect(result.attack).toBe(70)
       expect(result.plate).toBe(7)
       expect(result.ice).toBe(15) // no ice growth

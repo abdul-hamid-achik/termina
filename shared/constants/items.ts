@@ -62,8 +62,8 @@ const ironBranch: ItemDef = {
   name: 'Scrap Lot',
   cost: 50,
   stats: {
-    hp: 30,
-    mp: 30,
+    integ: 30,
+    bw: 30,
     attack: 3,
     plate: 3,
     ice: 3,
@@ -89,7 +89,7 @@ const ringOfHealth: ItemDef = {
   id: 'clot_ring',
   name: 'Clot Ring',
   cost: 450,
-  stats: { hp: 100 },
+  stats: { integ: 100 },
   consumable: false,
   passive: {
     id: 'clot_ring_passive',
@@ -102,7 +102,7 @@ const sobiMask: ItemDef = {
   id: 'drip_mask',
   name: 'Drip Mask',
   cost: 325,
-  stats: { mp: 75 },
+  stats: { bw: 75 },
   consumable: false,
   passive: {
     id: 'drip_mask_passive',
@@ -180,7 +180,7 @@ const arc_coil: ItemDef = {
   id: 'arc_coil',
   name: 'Arc Coil',
   cost: 2700,
-  stats: { attack: 30, mp: 50 },
+  stats: { attack: 30, bw: 50 },
   consumable: false,
   passive: {
     id: 'arc_coil_passive',
@@ -233,7 +233,7 @@ const skullBasher: ItemDef = {
   id: 'concussion_hammer',
   name: 'Concussion Hammer',
   cost: 2950,
-  stats: { attack: 30, hp: 100 },
+  stats: { attack: 30, integ: 100 },
   consumable: false,
   passive: {
     id: 'concussion_hammer_passive',
@@ -248,7 +248,7 @@ const mysticalStaff: ItemDef = {
   id: 'amp_stack',
   name: 'Amp Stack',
   cost: 2700,
-  stats: { mp: 200, ice: 10 },
+  stats: { bw: 200, ice: 10 },
   consumable: false,
   passive: {
     id: 'amp_stack_passive',
@@ -261,7 +261,7 @@ const veilOfDiscord: ItemDef = {
   id: 'discord_routine',
   name: 'Discord Routine',
   cost: 2500,
-  stats: { mp: 150, ice: 10 },
+  stats: { bw: 150, ice: 10 },
   consumable: false,
   active: {
     id: 'discord_routine_active',
@@ -275,7 +275,7 @@ const shivasGuard: ItemDef = {
   id: 'cryo_routine',
   name: 'Cryo Routine',
   cost: 4700,
-  stats: { plate: 15, mp: 150 },
+  stats: { plate: 15, bw: 150 },
   consumable: false,
   active: {
     id: 'cryo_routine_active',
@@ -289,7 +289,7 @@ const aetherLens: ItemDef = {
   id: 'clock_lens',
   name: 'Clock Lens',
   cost: 2300,
-  stats: { mp: 200, hp: 100 },
+  stats: { bw: 200, integ: 100 },
   consumable: false,
   passive: {
     id: 'clock_lens_passive',
@@ -302,7 +302,7 @@ const burnout: ItemDef = {
   id: 'burnout',
   name: 'Burnout',
   cost: 2750,
-  stats: { mp: 150, attack: 15 },
+  stats: { bw: 150, attack: 15 },
   consumable: false,
   active: {
     id: 'dagon_active',
@@ -317,7 +317,7 @@ const etherealBlade: ItemDef = {
   id: 'phase_shim',
   name: 'Phase Shim',
   cost: 4300,
-  stats: { attack: 30, mp: 150 },
+  stats: { attack: 30, bw: 150 },
   consumable: false,
   active: {
     id: 'phase_shim_active',
@@ -334,7 +334,7 @@ const bulwark_plate: ItemDef = {
   id: 'bulwark_plate',
   name: 'Bulwark Plate',
   cost: 2500,
-  stats: { hp: 250, plate: 5 },
+  stats: { integ: 250, plate: 5 },
   consumable: false,
   passive: {
     id: 'bulwark_plate_passive',
@@ -347,7 +347,7 @@ const linkensSphere: ItemDef = {
   id: 'intercept_shell',
   name: 'Intercept Shell',
   cost: 4600,
-  stats: { hp: 150, mp: 150, plate: 5, ice: 10 },
+  stats: { integ: 150, bw: 150, plate: 5, ice: 10 },
   consumable: false,
   passive: {
     id: 'intercept_shell_passive',
@@ -360,7 +360,7 @@ const blackKingBar: ItemDef = {
   id: 'hardshell',
   name: 'Hardshell',
   cost: 4050,
-  stats: { hp: 200, attack: 15 },
+  stats: { integ: 200, attack: 15 },
   consumable: false,
   active: {
     id: 'hardshell_active',
@@ -374,7 +374,7 @@ const heartOfTarrasque: ItemDef = {
   id: 'bulk_lattice',
   name: 'Bulk Lattice',
   cost: 4800,
-  stats: { hp: 500 },
+  stats: { integ: 500 },
   consumable: false,
   passive: {
     id: 'bulk_lattice_passive',
@@ -387,7 +387,7 @@ const assaultCuirass: ItemDef = {
   id: 'siege_lattice',
   name: 'Siege Lattice',
   cost: 4700,
-  stats: { plate: 15, hp: 200 },
+  stats: { plate: 15, integ: 200 },
   consumable: false,
   passive: {
     id: 'siege_lattice_passive',
@@ -400,7 +400,7 @@ const lotusOrb: ItemDef = {
   id: 'mirror_shell',
   name: 'Mirror Shell',
   cost: 4000,
-  stats: { hp: 200, mp: 100, plate: 10 },
+  stats: { integ: 200, bw: 100, plate: 10 },
   consumable: false,
   active: {
     id: 'mirror_shell_active',
@@ -414,7 +414,7 @@ const bladeMail: ItemDef = {
   id: 'spite_plate',
   name: 'Spite Plate',
   cost: 2200,
-  stats: { attack: 15, plate: 5, hp: 100 },
+  stats: { attack: 15, plate: 5, integ: 100 },
   consumable: false,
   active: {
     id: 'spite_plate_active',
@@ -430,7 +430,7 @@ const forceStaff: ItemDef = {
   id: 'shove_splice',
   name: 'Shove Splice',
   cost: 2250,
-  stats: { mp: 100, hp: 100 },
+  stats: { bw: 100, integ: 100 },
   consumable: false,
   active: {
     id: 'shove_splice_active',
@@ -444,7 +444,7 @@ const hurricanePike: ItemDef = {
   id: 'kickback_splice',
   name: 'Kickback Splice',
   cost: 4500,
-  stats: { attack: 20, mp: 150, hp: 150 },
+  stats: { attack: 20, bw: 150, integ: 150 },
   consumable: false,
   active: {
     id: 'kickback_splice_active',
@@ -460,7 +460,7 @@ const scytheOfVyse: ItemDef = {
   id: 'lockout_shunt',
   name: 'Lockout Shunt',
   cost: 5675,
-  stats: { mp: 250, hp: 150, ice: 10 },
+  stats: { bw: 250, integ: 150, ice: 10 },
   consumable: false,
   active: {
     id: 'lockout_shunt_active',
@@ -475,7 +475,7 @@ const eulsScepter: ItemDef = {
   id: 'stasis_shunt',
   name: 'Stasis Shunt',
   cost: 2750,
-  stats: { mp: 150 },
+  stats: { bw: 150 },
   consumable: false,
   active: {
     id: 'stasis_shunt_active',
@@ -489,7 +489,7 @@ const refresherOrb: ItemDef = {
   id: 'redline_splice',
   name: 'Redline Splice',
   cost: 5000,
-  stats: { hp: 150, mp: 200 },
+  stats: { integ: 150, bw: 200 },
   consumable: false,
   active: {
     id: 'redline_splice_active',
@@ -503,7 +503,7 @@ const ghostScepter: ItemDef = {
   id: 'phase_shunt',
   name: 'Phase Shunt',
   cost: 1500,
-  stats: { mp: 100 },
+  stats: { bw: 100 },
   consumable: false,
   active: {
     id: 'phase_shunt_active',
@@ -546,7 +546,7 @@ const garbageCollector: ItemDef = {
   id: 'garbage_collector',
   name: 'Garbage Collector',
   cost: 1800,
-  stats: { hp: 200 },
+  stats: { integ: 200 },
   consumable: false,
   passive: {
     id: 'garbage_collector_passive',
@@ -559,7 +559,7 @@ const stackOverflow: ItemDef = {
   id: 'stack_overflow',
   name: 'Stack Overflow',
   cost: 3200,
-  stats: { attack: 40, mp: 150 },
+  stats: { attack: 40, bw: 150 },
   consumable: false,
   active: {
     id: 'stack_overflow_active',
@@ -586,7 +586,7 @@ const firewallItem: ItemDef = {
   id: 'ablative_shell',
   name: 'Ablative Shell',
   cost: 2800,
-  stats: { hp: 300, plate: 10 },
+  stats: { integ: 300, plate: 10 },
   consumable: false,
   active: {
     id: 'ablative_shell_active',

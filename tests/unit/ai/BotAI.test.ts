@@ -184,10 +184,10 @@ describe('BotAI - decideBotAction', () => {
           (getItem(id)!.stats as Record<string, number>)[k] ?? 0
         expect(stat(buildOrderForRole('carry')[0]!, 'attack')).toBeGreaterThan(0)
         expect(stat(buildOrderForRole('assassin')[0]!, 'attack')).toBeGreaterThan(0)
-        expect(stat(buildOrderForRole('tank')[0]!, 'hp')).toBeGreaterThan(0)
-        expect(stat(buildOrderForRole('offlaner')[0]!, 'hp')).toBeGreaterThan(0)
-        expect(stat(buildOrderForRole('mage')[0]!, 'mp')).toBeGreaterThan(0)
-        expect(stat(buildOrderForRole('support')[0]!, 'mp')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('tank')[0]!, 'integ')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('offlaner')[0]!, 'integ')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('mage')[0]!, 'bw')).toBeGreaterThan(0)
+        expect(stat(buildOrderForRole('support')[0]!, 'bw')).toBeGreaterThan(0)
       })
 
       it('falls back to the shared core build for an unknown role', () => {
@@ -195,7 +195,7 @@ describe('BotAI - decideBotAction', () => {
       })
 
       it('every role-build item exists and grants an engine-consumed stat', () => {
-        const STAT_KEYS = ['hp', 'mp', 'attack', 'plate', 'ice']
+        const STAT_KEYS = ['integ', 'bw', 'attack', 'plate', 'ice']
         const roles = ['carry', 'assassin', 'tank', 'offlaner', 'mage', 'support'] as const
         for (const role of roles) {
           for (const id of buildOrderForRole(role)) {

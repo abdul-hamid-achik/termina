@@ -186,7 +186,7 @@ describe('VisionCalculator', () => {
       const enemy = filtered.players['e1'] as FoggedPlayer
       expect(enemy.fogged).toBe(true)
       expect('zone' in enemy).toBe(false)
-      expect('hp' in enemy).toBe(false)
+      expect('integ' in enemy).toBe(false)
       expect('items' in enemy).toBe(false)
     })
 

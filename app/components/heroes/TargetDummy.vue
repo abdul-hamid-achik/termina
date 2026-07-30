@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{
   name: string
-  hp: number
+  integ: number
   maxInteg: number
   /** Active damage-over-time stacks ticking on the dummy, for the status line. */
   dots?: number

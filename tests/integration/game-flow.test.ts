@@ -327,11 +327,11 @@ describe('Game Flow Integration', () => {
     })
 
     it('preserves HP percentage when selling HP items', async () => {
-      const gameId = uid('hp')
+      const gameId = uid('integ')
       const sm = await startGame(gameId, makePlayers('ihp', 1))
       const initial = await Effect.runPromise(sm.getState(gameId))
       const baseMaxHp = initial.players['ihp_r0']!.maxInteg
-      const itemHp = getItem('bulwark_plate')!.stats.hp!
+      const itemHp = getItem('bulwark_plate')!.stats.integ!
       expect(itemHp).toBeGreaterThan(0)
 
       // Buy an HP item through the engine — maxInteg grows by the item bonus
@@ -363,12 +363,12 @@ describe('Game Flow Integration', () => {
     })
 
     it('preserves MP percentage when buying MP items', async () => {
-      const gameId = uid('mp')
+      const gameId = uid('bw')
       const sm = await startGame(gameId, makePlayers('imp', 1))
       const initial = await Effect.runPromise(sm.getState(gameId))
       const baseMaxMp = initial.players['imp_r0']!.maxBw
       expect(baseMaxMp).toBeGreaterThan(0)
-      const itemMp = getItem('clock_lens')!.stats.mp!
+      const itemMp = getItem('clock_lens')!.stats.bw!
       expect(itemMp).toBeGreaterThan(0)
 
       // Drain to ~50% MP first (inCombat blocks fountain mana regen)

@@ -465,16 +465,15 @@ export function levelUpHero(player: PlayerState): PlayerState {
   const heroDef = HEROES[player.heroId ?? '']
   if (!heroDef) return player
   const g = heroDef.growthPerLevel
-  // growthPerLevel still uses hp/mp keys (HeroBaseStats) until R4-06.
-  const newMaxHp = player.maxInteg + (g.hp ?? 0)
-  const newMaxMp = player.maxBw + (g.mp ?? 0)
+  const newMaxHp = player.maxInteg + (g.integ ?? 0)
+  const newMaxMp = player.maxBw + (g.bw ?? 0)
   return {
     ...player,
     level: player.level + 1,
     maxInteg: newMaxHp,
-    integ: Math.min(player.integ + (g.hp ?? 0), newMaxHp),
+    integ: Math.min(player.integ + (g.integ ?? 0), newMaxHp),
     maxBw: newMaxMp,
-    bw: Math.min(player.bw + (g.mp ?? 0), newMaxMp),
+    bw: Math.min(player.bw + (g.bw ?? 0), newMaxMp),
   }
 }
 

@@ -331,13 +331,13 @@ describe('Balance Constants', () => {
     for (const [heroId, hero] of Object.entries(HEROES)) {
       describe(`${hero.name} (${heroId})`, () => {
         it('has HP in valid range (400-800)', () => {
-          expect(hero.baseStats.hp).toBeGreaterThanOrEqual(400)
-          expect(hero.baseStats.hp).toBeLessThanOrEqual(800)
+          expect(hero.baseStats.integ).toBeGreaterThanOrEqual(400)
+          expect(hero.baseStats.integ).toBeLessThanOrEqual(800)
         })
 
         it('has MP in valid range (200-450)', () => {
-          expect(hero.baseStats.mp).toBeGreaterThanOrEqual(200)
-          expect(hero.baseStats.mp).toBeLessThanOrEqual(450)
+          expect(hero.baseStats.bw).toBeGreaterThanOrEqual(200)
+          expect(hero.baseStats.bw).toBeLessThanOrEqual(450)
         })
 
         it('has attack in valid range (30-70)', () => {
@@ -358,12 +358,12 @@ describe('Balance Constants', () => {
         it('ability mana costs are affordable at level 1', () => {
           for (const [slot, ability] of Object.entries(hero.abilities)) {
             if (slot === 'r') continue // ults can be expensive
-            expect(ability.manaCost).toBeLessThanOrEqual(hero.baseStats.mp)
+            expect(ability.manaCost).toBeLessThanOrEqual(hero.baseStats.bw)
           }
         })
 
         it('has positive HP growth per level', () => {
-          expect(hero.growthPerLevel.hp).toBeGreaterThan(0)
+          expect(hero.growthPerLevel.integ).toBeGreaterThan(0)
         })
 
         it('has positive attack growth per level', () => {
@@ -372,7 +372,7 @@ describe('Balance Constants', () => {
 
         it('tanks have higher base HP than carries/mages', () => {
           if (hero.role === 'tank') {
-            expect(hero.baseStats.hp).toBeGreaterThanOrEqual(700)
+            expect(hero.baseStats.integ).toBeGreaterThanOrEqual(700)
           }
         })
 
@@ -390,7 +390,7 @@ describe('Balance Constants', () => {
       // getTalentStatBonus is only summed for these stats. attackSpeed is inert
       // in the tick model, so a stat_bonus talent granting it would do nothing
       // (the daemon +12 "Attack Speed" talent was exactly that).
-      const CONSUMED = new Set(['hp', 'mp', 'attack', 'plate', 'ice'])
+      const CONSUMED = new Set(['integ', 'bw', 'attack', 'plate', 'ice'])
       for (const tree of Object.values(TALENT_TREES)) {
         for (const tier of Object.values(tree.tiers)) {
           for (const talent of tier) {

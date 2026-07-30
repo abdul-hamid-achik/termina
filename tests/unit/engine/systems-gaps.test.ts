@@ -173,8 +173,8 @@ describe('systems-gaps: TALENT stat-bonus effect', () => {
       heroId: 'echo',
       talents: { tier10: 'echo_10_right', tier15: null, tier20: null, tier25: null },
     })
-    // ActionResolver recomputes maxInteg as baseMaxHp + itemHp + getTalentStatBonus(player, 'hp')
-    expect(getTalentStatBonus(withTalent, 'hp')).toBe(200)
+    // ActionResolver recomputes maxInteg as baseMaxHp + itemHp + getTalentStatBonus(player, 'integ')
+    expect(getTalentStatBonus(withTalent, 'integ')).toBe(200)
     // and that selecting the hp talent does NOT spill into attack
     expect(getTalentStatBonus(withTalent, 'attack')).toBe(0)
   })
@@ -356,7 +356,7 @@ describe('systems-gaps: echo talents — dead specialEffect no-ops swapped for w
       heroId: 'echo',
       talents: { tier10: null, tier15: null, tier20: null, tier25: 'echo_25_right' },
     })
-    expect(getTalentStatBonus(player, 'hp')).toBe(250)
+    expect(getTalentStatBonus(player, 'integ')).toBe(250)
   })
 
   it('no echo talent is a dead specialEffect no-op anymore', () => {

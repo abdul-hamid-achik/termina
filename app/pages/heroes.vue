@@ -271,8 +271,8 @@ const {
           </NuxtLink>
         </div>
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-text-dim">
-          <span><span class="text-chaff">hp</span> {{ hero.baseStats.hp }}</span>
-          <span><span class="text-ability">mp</span> {{ hero.baseStats.mp }}</span>
+          <span><span class="text-chaff">hp</span> {{ hero.baseStats.integ }}</span>
+          <span><span class="text-ability">mp</span> {{ hero.baseStats.bw }}</span>
           <span><span class="text-gold">atk</span> {{ hero.baseStats.attack }}</span>
           <span>def {{ hero.baseStats.plate }}</span>
           <span>mres {{ hero.baseStats.ice }}</span>

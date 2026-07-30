@@ -39,8 +39,8 @@ const ECHO_BASE_MP = 280
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const items = overrides.items ?? [null, null, null, null, null, null]
   const itemStats = getItemStatBonuses(items)
-  const maxInteg = ECHO_BASE_HP + itemStats.hp
-  const maxBw = ECHO_BASE_MP + itemStats.mp
+  const maxInteg = ECHO_BASE_HP + itemStats.integ
+  const maxBw = ECHO_BASE_MP + itemStats.bw
   return {
     id: 'p1',
     name: 'Player1',

@@ -1,6 +1,6 @@
 export interface ItemStats {
-  hp?: number
-  mp?: number
+  integ?: number
+  bw?: number
   attack?: number
   plate?: number
   ice?: number

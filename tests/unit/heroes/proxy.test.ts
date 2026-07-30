@@ -463,7 +463,7 @@ describe('Proxy Hero', () => {
       const player = makePlayer({
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'proxy_25_right' },
       })
-      expect(getTalentStatBonus(player, 'mp')).toBe(250)
+      expect(getTalentStatBonus(player, 'bw')).toBe(250)
     })
 
     it('no proxy talent is a dead specialEffect no-op anymore', () => {

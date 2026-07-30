@@ -1345,7 +1345,7 @@ describe('useCommands', () => {
           id: 'scrap_lot',
           name: 'Scrap Lot',
           cost: 100,
-          stats: { hp: 30, mp: 30, attack: 3, plate: 3, ice: 3 },
+          stats: { integ: 30, bw: 30, attack: 3, plate: 3, ice: 3 },
           consumable: false,
         },
         jump_shunt: {
@@ -1415,7 +1415,7 @@ describe('useCommands', () => {
           id: 'scrap_lot',
           name: 'Scrap Lot',
           cost: 100,
-          stats: { hp: 30, mp: 30, attack: 3, plate: 3, ice: 3 },
+          stats: { integ: 30, bw: 30, attack: 3, plate: 3, ice: 3 },
           consumable: false,
         },
         trauma_patch: {
@@ -1485,7 +1485,7 @@ describe('useCommands', () => {
           id: 'scrap_lot',
           name: 'Scrap Lot',
           cost: 100,
-          stats: { hp: 30, mp: 30, attack: 3, plate: 3, ice: 3 },
+          stats: { integ: 30, bw: 30, attack: 3, plate: 3, ice: 3 },
           consumable: false,
         },
         jump_shunt: {

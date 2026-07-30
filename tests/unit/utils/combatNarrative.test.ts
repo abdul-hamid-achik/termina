@@ -430,7 +430,7 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['item_purchased', { playerId: 'me', itemId: 'burnout', cost: 2700 }, 'acquired'],
     ['neutral_killed', { playerId: 'me', neutralType: 'stub' }, 'stub camp'],
     ['backup_used', { playerId: 'me' }, 'reincarnated'],
-    ['talent_selected', { playerId: 'me', talentName: '+250 HP' }, 'learned +250 HP'],
+    ['talent_selected', { playerId: 'me', talentName: '+250 INTEG' }, 'learned +250 INTEG'],
     ['teleport_complete', { playerId: 'me', destination: 'mid-river' }, 'teleported to mid-river'],
     ['trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 100 }, 'trap'],
     ['teleport_cancelled', { playerId: 'me', reason: 'stunned' }, 'cancelled'],
@@ -829,7 +829,7 @@ describe('eventToLine: semantic hierarchy', () => {
       'objective',
     )
     expect(
-      eventToLine(ev('talent_selected', { playerId: 'me', talentName: '+250 HP' }), ctx)!.type,
+      eventToLine(ev('talent_selected', { playerId: 'me', talentName: '+250 INTEG' }), ctx)!.type,
     ).toBe('objective')
   })
 

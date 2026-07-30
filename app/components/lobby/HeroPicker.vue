@@ -553,7 +553,7 @@ function initialOf(name: string | undefined | null): string {
                 }}</span>
               </div>
               <div class="flex gap-1.5 text-[0.6rem] text-text-dim">
-                <span>HP:{{ hero.baseStats.hp }}</span>
+                <span>HP:{{ hero.baseStats.integ }}</span>
                 <span>ATK:{{ hero.baseStats.attack }}</span>
                 <span>DEF:{{ hero.baseStats.plate }}</span>
               </div>

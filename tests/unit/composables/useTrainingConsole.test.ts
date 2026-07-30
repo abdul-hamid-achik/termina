@@ -32,8 +32,8 @@ function makeHero(over: Partial<HeroDef> = {}): HeroDef {
     openingCombo: ['q', 'w', 'e', 'r'],
     oneLineTip: 'tip',
     baseStats: {
-      hp: 600,
-      mp: 200,
+      integ: 600,
+      bw: 200,
       attack: 50,
       plate: 0,
       ice: 0,
@@ -144,7 +144,7 @@ describe('useTrainingConsole', () => {
     expect(c.dummyHp.value).toBe(900)
     heroRef.value = makeHero({
       name: 'Other',
-      baseStats: { ...makeHero().baseStats, mp: 100 },
+      baseStats: { ...makeHero().baseStats, bw: 100 },
     })
     await nextTick()
     expect(c.mana.value).toBe(100)
@@ -341,7 +341,7 @@ describe('useTrainingConsole', () => {
     })
 
     it('grows the mana pool with growthPerLevel, mirroring levelUpHero', async () => {
-      const hero = makeHero({ growthPerLevel: { mp: 40 } })
+      const hero = makeHero({ growthPerLevel: { bw: 40 } })
       const c = await atLevel(useTrainingConsole(ref(hero)), 11)
       expect(c.maxMana.value).toBe(200 + 40 * 10)
       expect(c.mana.value).toBe(600) // reset refills to the level-11 pool
@@ -350,7 +350,7 @@ describe('useTrainingConsole', () => {
     })
 
     it('refills mana per tick against the level pool, labelled as a sandbox aid', async () => {
-      const hero = makeHero({ growthPerLevel: { mp: 40 } })
+      const hero = makeHero({ growthPerLevel: { bw: 40 } })
       const c = await atLevel(useTrainingConsole(ref(hero)), 11)
       c.cast('q') // −50 from a 600 pool
       c.advanceTick()

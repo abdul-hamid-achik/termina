@@ -14,9 +14,9 @@ interface HeroData {
   name: string
   level: number
   zone: string
-  hp: number
+  integ: number
   maxInteg: number
-  mp: number
+  bw: number
   maxBw: number
   cooldowns: { q: number; w: number; e: number; r: number }
   items: (string | null)[]

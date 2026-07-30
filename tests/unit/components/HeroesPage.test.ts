@@ -104,12 +104,12 @@ describe('heroes page — decision content', () => {
   it('scales the console mana pool with the selected level', async () => {
     const wrapper = mountHeroes()
     const echo = HEROES.echo!
-    expect(wrapper.text()).toContain(`mana ${echo.baseStats.mp} / ${echo.baseStats.mp}`)
+    expect(wrapper.text()).toContain(`mana ${echo.baseStats.bw} / ${echo.baseStats.bw}`)
 
     await wrapper.find('[data-testid="console-level-18"]').trigger('click')
     await flushPromises()
-    const at18 = echo.baseStats.mp + (echo.growthPerLevel.mp ?? 0) * 17
-    expect(at18).toBeGreaterThan(echo.baseStats.mp)
+    const at18 = echo.baseStats.bw + (echo.growthPerLevel.bw ?? 0) * 17
+    expect(at18).toBeGreaterThan(echo.baseStats.bw)
     expect(wrapper.text()).toContain(`mana ${at18} / ${at18}`)
   })
 

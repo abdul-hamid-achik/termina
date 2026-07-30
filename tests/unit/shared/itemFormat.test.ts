@@ -23,12 +23,12 @@ const item = (over: Partial<ItemDef>): ItemDef => ({
 
 describe('formatStats', () => {
   it('humanizes stat keys and prefixes a +', () => {
-    expect(formatStats({ hp: 250, plate: 5 })).toEqual(['+250 HP', '+5 Plate'])
+    expect(formatStats({ integ: 250, plate: 5 })).toEqual(['+250 INTEG', '+5 Plate'])
     expect(formatStats({ ice: 15 })).toEqual(['+15 Ice'])
   })
   it('keeps a stable stat order regardless of input order', () => {
-    expect(formatStats({ plate: 5, hp: 100, attack: 10 })).toEqual([
-      '+100 HP',
+    expect(formatStats({ plate: 5, integ: 100, attack: 10 })).toEqual([
+      '+100 INTEG',
       '+10 Attack',
       '+5 Plate',
     ])
@@ -42,10 +42,10 @@ describe('formatStats', () => {
 describe('aggregateStats', () => {
   it('sums stat blocks across items', () => {
     const total = aggregateStats([
-      item({ stats: { hp: 100, attack: 10 } }),
-      item({ stats: { hp: 250, plate: 5 } }),
+      item({ stats: { integ: 100, attack: 10 } }),
+      item({ stats: { integ: 250, plate: 5 } }),
     ])
-    expect(total).toEqual({ hp: 350, attack: 10, plate: 5 })
+    expect(total).toEqual({ integ: 350, attack: 10, plate: 5 })
   })
   it('is empty for no items', () => {
     expect(aggregateStats([])).toEqual({})
@@ -136,7 +136,9 @@ describe('browseSections', () => {
 
 describe('STAT_LABELS', () => {
   it('has a label for every ItemStats key', () => {
-    expect(Object.keys(STAT_LABELS).sort()).toEqual(['attack', 'plate', 'hp', 'ice', 'mp'].sort())
+    expect(Object.keys(STAT_LABELS).sort()).toEqual(
+      ['attack', 'plate', 'integ', 'ice', 'bw'].sort(),
+    )
   })
 })
 

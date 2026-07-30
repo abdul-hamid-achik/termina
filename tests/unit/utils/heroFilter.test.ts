@@ -22,8 +22,8 @@ function makeHero(posture: HeroPosture, effects: AbilityEffect[][]): HeroDef {
     role: 'carry',
     posture,
     baseStats: {
-      hp: 600,
-      mp: 200,
+      integ: 600,
+      bw: 200,
       attack: 50,
       plate: 0,
       ice: 0,

@@ -105,15 +105,14 @@ export function applyHeal(target: PlayerState, amount: number): PlayerState {
  * Calculate hero stats at a given level using base stats + growth.
  */
 export function getHeroStatsAtLevel(
-  base: { hp: number; mp: number; attack: number; plate: number; ice: number },
-  growth: Partial<{ hp: number; mp: number; attack: number; plate: number; ice: number }>,
+  base: { integ: number; bw: number; attack: number; plate: number; ice: number },
+  growth: Partial<{ integ: number; bw: number; attack: number; plate: number; ice: number }>,
   level: number,
-): { hp: number; mp: number; attack: number; plate: number; ice: number } {
-  // Keys stay hp/mp until R4-06 renames HeroBaseStats/ItemStats bonuses to integ/bw.
+): { integ: number; bw: number; attack: number; plate: number; ice: number } {
   const levelsGained = level - 1
   return {
-    hp: base.hp + (growth.hp ?? 0) * levelsGained,
-    mp: base.mp + (growth.mp ?? 0) * levelsGained,
+    integ: base.integ + (growth.integ ?? 0) * levelsGained,
+    bw: base.bw + (growth.bw ?? 0) * levelsGained,
     attack: base.attack + (growth.attack ?? 0) * levelsGained,
     plate: base.plate + (growth.plate ?? 0) * levelsGained,
     ice: base.ice + (growth.ice ?? 0) * levelsGained,

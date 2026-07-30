@@ -66,8 +66,8 @@ export interface StateManagerApi {
 /** Create initial player state from setup. */
 function createPlayerState(setup: PlayerSetup): PlayerState {
   const hero = setup.heroId ? HEROES[setup.heroId] : null
-  const baseHp = hero?.baseStats.hp ?? 0
-  const baseMp = hero?.baseStats.mp ?? 0
+  const baseHp = hero?.baseStats.integ ?? 0
+  const baseMp = hero?.baseStats.bw ?? 0
 
   return {
     id: setup.id,

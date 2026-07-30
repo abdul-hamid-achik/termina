@@ -7,7 +7,7 @@ const base: ItemDef = {
   id: 'burnout',
   name: 'Burnout',
   cost: 2750,
-  stats: { mp: 150, attack: 15 },
+  stats: { bw: 150, attack: 15 },
   consumable: false,
   active: {
     id: 'dagon_active',

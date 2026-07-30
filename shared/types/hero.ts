@@ -75,8 +75,8 @@ export interface AbilityDef {
 }
 
 export interface HeroBaseStats {
-  hp: number
-  mp: number
+  integ: number
+  bw: number
   attack: number
   plate: number
   ice: number

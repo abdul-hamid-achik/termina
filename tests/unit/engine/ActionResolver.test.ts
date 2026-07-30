@@ -1276,8 +1276,8 @@ describe('ActionResolver', () => {
       // Use the hero's REAL stats so the per-tick maxInteg recalculation doesn't
       // collapse an inflated HP pool mid-tick and mask the actual attack damage.
       const echo = HEROES.echo!
-      const maxInteg = echo.baseStats.hp
-      const maxBw = echo.baseStats.mp
+      const maxInteg = echo.baseStats.integ
+      const maxBw = echo.baseStats.bw
       const state = makeGameState({
         players: {
           p1: makePlayer({

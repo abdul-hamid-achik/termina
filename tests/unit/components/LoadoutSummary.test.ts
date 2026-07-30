@@ -7,7 +7,7 @@ const bulwark_plate: ItemDef = {
   id: 'bulwark_plate',
   name: 'Bulwark Plate',
   cost: 2500,
-  stats: { hp: 250, plate: 5 },
+  stats: { integ: 250, plate: 5 },
   consumable: false,
   passive: { id: 'p', name: 'Damage Block', description: 'Block damage.' },
 }
@@ -15,7 +15,7 @@ const burnout: ItemDef = {
   id: 'burnout',
   name: 'Burnout',
   cost: 2750,
-  stats: { mp: 150, attack: 15 },
+  stats: { bw: 150, attack: 15 },
   consumable: false,
   active: { id: 'a', name: 'Energy Burst', description: 'Nuke.', cooldownTicks: 18 },
 }
@@ -48,7 +48,7 @@ describe('LoadoutSummary', () => {
     expect(wrapper.find('[data-testid="loadout-slots"]').text()).toBe('2 / 6')
     expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('5250sc') // 2500 + 2750
     const text = wrapper.text()
-    expect(text).toContain('+250 HP')
+    expect(text).toContain('+250 INTEG')
     expect(text).toContain('+150 Mana')
     expect(text).toContain('+15 Attack')
     expect(text).toContain('+5 Defense')

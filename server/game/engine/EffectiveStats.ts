@@ -31,8 +31,8 @@ const RESONANCE_BONUS_PER_STACK = 0.08
 /** Sum up all stat bonuses from a player's equipped items. */
 export function getItemStatBonuses(items: (string | null)[]): ItemStats {
   const totals: Required<ItemStats> = {
-    hp: 0,
-    mp: 0,
+    integ: 0,
+    bw: 0,
     attack: 0,
     plate: 0,
     ice: 0,
@@ -41,8 +41,8 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
     if (!itemId) continue
     const item = ITEMS[itemId]
     if (!item) continue
-    totals.hp += item.stats.hp ?? 0
-    totals.mp += item.stats.mp ?? 0
+    totals.integ += item.stats.integ ?? 0
+    totals.bw += item.stats.bw ?? 0
     totals.attack += item.stats.attack ?? 0
     totals.plate += item.stats.plate ?? 0
     totals.ice += item.stats.ice ?? 0
@@ -69,7 +69,7 @@ function getSelectedTalents(player: PlayerState): Talent[] {
 /** Sum the statBonus values of the player's selected talents for one stat. */
 export function getTalentStatBonus(
   player: PlayerState,
-  stat: 'hp' | 'mp' | 'attack' | 'plate' | 'ice' | 'attackSpeed',
+  stat: 'integ' | 'bw' | 'attack' | 'plate' | 'ice' | 'attackSpeed',
 ): number {
   let total = 0
   for (const talent of getSelectedTalents(player)) {

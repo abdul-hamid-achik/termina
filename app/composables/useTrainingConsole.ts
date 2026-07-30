@@ -48,12 +48,12 @@ function maxRankFor(slot: ConsoleSlot): number {
 
 /**
  * Max mana at a hero level — mirrors `levelUpHero`, which adds
- * `growthPerLevel.mp` once per level gained. The console used to budget every
+ * `growthPerLevel.bw` once per level gained. The console used to budget every
  * cast against the level-1 pool, which made a 300-mana ultimate look
  * unaffordable for the whole match.
  */
 function maxManaAt(hero: HeroDef, level: number): number {
-  return hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * Math.max(0, level - 1)
+  return hero.baseStats.bw + (hero.growthPerLevel.bw ?? 0) * Math.max(0, level - 1)
 }
 
 /**
