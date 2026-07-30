@@ -314,7 +314,7 @@ watchEffect(() => {
             <div class="t-caption">{{ teamScores?.radiant.towerKills ?? 0 }} towers</div>
           </div>
           <div class="flex flex-col items-center justify-center p-3">
-            <div class="t-caption">tick</div>
+            <div class="t-caption">cycle</div>
             <div class="t-h1 t-mono-num text-glow-sm">{{ scrubTick }}</div>
             <div class="t-caption mt-1">
               {{ currentFrame?.timeOfDay ?? data.state.timeOfDay }} · saved
@@ -392,7 +392,7 @@ watchEffect(() => {
                   : 'border-dire/50 text-dire hover:text-dire'
               "
               :data-testid="`key-moment-${m.kind}`"
-              :aria-label="`Jump to ${m.label} at tick ${m.tick}`"
+              :aria-label="`Jump to ${m.label} at cycle ${m.tick}`"
               @click="jumpTo(m.tick)"
             >
               {{ m.label }} · T{{ m.tick }}
@@ -401,9 +401,9 @@ watchEffect(() => {
 
           <div class="border-b border-border bg-bg-secondary px-3 py-2">
             <div class="t-caption mb-1 flex justify-between">
-              <span>tick 0</span>
-              <span>scrub: tick {{ scrubTick }}</span>
-              <span>tick {{ maxTick }}</span>
+              <span>cycle 0</span>
+              <span>scrub: cycle {{ scrubTick }}</span>
+              <span>cycle {{ maxTick }}</span>
             </div>
             <div class="flex items-center gap-2">
               <button
@@ -423,7 +423,7 @@ watchEffect(() => {
                 :max="maxTick"
                 step="1"
                 class="w-full accent-ability"
-                aria-label="Scrub replay tick"
+                aria-label="Scrub replay cycle"
               />
             </div>
           </div>
@@ -439,7 +439,7 @@ watchEffect(() => {
               <span class="text-text-primary">{{ formatReplayCommand(a.command) }}</span>
             </div>
             <div v-if="visibleActions.length === 0" class="t-caption px-2 py-2">
-              &gt;_ no actions yet at this tick
+              &gt;_ no actions yet at this cycle
             </div>
           </div>
         </div>

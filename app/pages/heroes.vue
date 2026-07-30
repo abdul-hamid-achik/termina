@@ -405,7 +405,7 @@ const {
         <div class="flex flex-col gap-1 border border-border p-2.5">
           <div class="flex items-center justify-between text-[0.7rem] text-text-dim">
             <span><span class="text-ability">mana</span> {{ mana }} / {{ maxMana }}</span>
-            <span>tick {{ tick }}</span>
+            <span>cycle {{ tick }}</span>
           </div>
           <div class="h-1.5 w-full bg-bg-secondary">
             <div class="h-full bg-ability transition-all" :style="{ width: `${manaPct}%` }" />

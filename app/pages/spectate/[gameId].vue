@@ -220,7 +220,7 @@ function gameTime(tick: number): string {
             <div class="t-caption">{{ visibleState.teams.radiant.towerKills }} towers</div>
           </div>
           <div class="flex flex-col items-center justify-center p-3">
-            <div class="t-caption">tick · {{ visibleState.timeOfDay }}</div>
+            <div class="t-caption">cycle · {{ visibleState.timeOfDay }}</div>
             <div class="t-h1 t-mono-num text-glow-sm" data-testid="spectator-tick">
               {{ lastTick }}
             </div>

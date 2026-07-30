@@ -167,7 +167,7 @@ describe('replay page', () => {
 
   it('initialises the scrubber to the final tick', async () => {
     const wrapper = await mountReplay()
-    expect(wrapper.text()).toContain('scrub: tick 50')
+    expect(wrapper.text()).toContain('scrub: cycle 50')
   })
 
   it('PLAY restarts from the top and auto-advances the scrubber, then PAUSE stops it', async () => {
@@ -178,21 +178,21 @@ describe('replay page', () => {
 
     await play.trigger('click') // at the end (50) → restarts to 0 and plays
     expect(play.text()).toContain('PAUSE')
-    expect(wrapper.text()).toContain('scrub: tick 0')
+    expect(wrapper.text()).toContain('scrub: cycle 0')
 
     vi.advanceTimersByTime(600)
     await nextTick()
-    expect(wrapper.text()).toContain('scrub: tick 1')
+    expect(wrapper.text()).toContain('scrub: cycle 1')
 
     vi.advanceTimersByTime(600)
     await nextTick()
-    expect(wrapper.text()).toContain('scrub: tick 2')
+    expect(wrapper.text()).toContain('scrub: cycle 2')
 
     await play.trigger('click') // pause
     expect(play.text()).toContain('PLAY')
     vi.advanceTimersByTime(600 * 5)
     await nextTick()
-    expect(wrapper.text()).toContain('scrub: tick 2') // frozen after pause
+    expect(wrapper.text()).toContain('scrub: cycle 2') // frozen after pause
   })
 
   it('renders key-moment markers and jumps the scrubber when one is clicked', async () => {
@@ -222,9 +222,9 @@ describe('replay page', () => {
     expect(wrapper.find('[data-testid="key-moment-tower"]').exists()).toBe(true)
 
     // scrubber initialises to the final tick (12); clicking the fight jumps to 5
-    expect(wrapper.text()).toContain('scrub: tick 12')
+    expect(wrapper.text()).toContain('scrub: cycle 12')
     await wrapper.find('[data-testid="key-moment-fight"]').trigger('click')
-    expect(wrapper.text()).toContain('scrub: tick 5')
+    expect(wrapper.text()).toContain('scrub: cycle 5')
   })
 
   it('shows the net-worth gold lead derived from the current frame', async () => {

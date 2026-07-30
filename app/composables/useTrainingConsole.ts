@@ -126,7 +126,7 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       return
     }
     if (cooldowns[slot] > 0) {
-      pushLog(`! ${ab.name} on cooldown (${cooldowns[slot]}t left)`)
+      pushLog(`! ${ab.name} on cooldown (${cooldowns[slot]}c left)`)
       return
     }
     // The console has a level selector, so it must charge what a hero at THAT
