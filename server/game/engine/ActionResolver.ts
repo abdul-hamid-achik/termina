@@ -1823,13 +1823,22 @@ export function resolveActions(
 
     // Build hero lookup index (once per resolveActions)
     const heroIndex = new Map<string, string>()
+    // Normalised form alongside each exact key: the id stays `null_ref` (B1a),
+    // the TYPED form is convenience — `null_ref`, `nullref` and `null-ref`
+    // resolve alike. Exact matches win; the normalised map is only a fallback
+    // so two players literally named 'A_B' and 'AB' never collide.
+    const heroIndexNormalised = new Map<string, string>()
+    const normalise = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
     for (const [id, p] of Object.entries(players)) {
       heroIndex.set(p.name.toLowerCase(), id)
       heroIndex.set(p.id.toLowerCase(), id)
       if (p.heroId) heroIndex.set(p.heroId.toLowerCase(), id)
+      heroIndexNormalised.set(normalise(p.name), id)
+      heroIndexNormalised.set(normalise(p.id), id)
+      if (p.heroId) heroIndexNormalised.set(normalise(p.heroId), id)
     }
     const findHeroByNameCached = (name: string): string | null => {
-      return heroIndex.get(name.toLowerCase()) ?? null
+      return heroIndex.get(name.toLowerCase()) ?? heroIndexNormalised.get(normalise(name)) ?? null
     }
 
     // Taunt forces every taunted hero to attack the taunter (Kernel/Firewall E

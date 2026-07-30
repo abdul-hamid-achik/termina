@@ -337,6 +337,34 @@ describe('ActionResolver', () => {
       expect(dmgEvents[0]!.targetId).toBe('p2')
     })
 
+    it('resolves nullref / null-ref to the same player as null_ref (typed-form normalisation)', () => {
+      // R2-04: the id stays `null_ref` (B1a); the typed forms are convenience,
+      // exact matches still win and the normalised map is only a fallback.
+      const state = makeGameState({
+        players: {
+          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'echo' }),
+          p2: makePlayer({
+            id: 'p2',
+            zone: 'mid-river',
+            team: 'audit',
+            heroId: 'null_ref',
+            hp: 500,
+          }),
+        },
+      })
+
+      for (const typed of ['null_ref', 'nullref', 'null-ref']) {
+        const result = Effect.runSync(
+          resolveActions(state, [
+            { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: typed } } },
+          ]),
+        )
+        const dmg = result.events.filter((e) => e._tag === 'damage')
+        expect(dmg.length, `hero:${typed} should resolve to p2`).toBeGreaterThan(0)
+        expect(dmg[0]!.targetId).toBe('p2')
+      }
+    })
+
     it('awards the neutral bounty (gold + xp) and emits neutral_killed on a jungle kill', () => {
       const state = makeGameState({
         players: {
