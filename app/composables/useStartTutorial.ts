@@ -42,7 +42,10 @@ export function useStartTutorial() {
       const status = e?.statusCode
       if (status === 401) {
         error.value = 'Sign in first — practice games are saved to your profile.'
-        await navigateTo('/login')
+        // `next` rather than `redirect`: there is no URL that starts a practice
+        // game (the launcher POSTs), so login re-fires this call once the
+        // session exists instead of dropping the player on a page.
+        await navigateTo({ path: '/login', query: { next: 'practice' } })
         return
       }
       // Surface the server's reason (already in a match, rate limited, server

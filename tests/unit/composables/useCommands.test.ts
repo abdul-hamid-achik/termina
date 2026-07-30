@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
+import { HEROES } from '~~/shared/constants/heroes'
 import {
   useCommands,
   validateCommand,
@@ -62,15 +63,33 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   }
 }
 
+/**
+ * A realistic slice of `state.creeps` as the client receives it: server order,
+ * mixed zones, mixed teams, and one corpse that has not been reaped yet.
+ *
+ * Zone-local indices for mid-t1-rad are therefore 0=c0, 1=c1, 2=c2 (dead),
+ * 3=c3, 4=c4 — deliberately offset from the global positions so anything that
+ * numbers creeps globally, or that renumbers after dropping the corpse, is
+ * caught.
+ */
+function makeCreeps(): CreepState[] {
+  return [
+    { id: 'elsewhere', team: 'dire', zone: 'mid-river', hp: 400, maxHp: 400, type: 'melee' },
+    { id: 'c0', team: 'dire', zone: 'mid-t1-rad', hp: 320, maxHp: 400, type: 'melee' },
+    { id: 'c1', team: 'radiant', zone: 'mid-t1-rad', hp: 90, maxHp: 400, type: 'melee' },
+    { id: 'c2', team: 'dire', zone: 'mid-t1-rad', hp: 0, maxHp: 250, type: 'ranged' },
+    { id: 'c3', team: 'dire', zone: 'mid-t1-rad', hp: 200, maxHp: 250, type: 'ranged' },
+    { id: 'c4', team: 'radiant', zone: 'mid-t1-rad', hp: 380, maxHp: 400, type: 'melee' },
+  ]
+}
+
 function makeContext(overrides: Partial<GameContext> = {}): GameContext {
   return {
     player: makePlayer(),
     // The client receives the full game zone set (state.zones), not just the
     // vision-visible ones — reflect that so move validation behaves realistically.
-    visibleZones: {
-      ...allZones(),
-      'mid-t1-rad': { id: 'mid-t1-rad', wards: [], creeps: ['c0', 'c1'] },
-    },
+    visibleZones: allZones(),
+    creeps: makeCreeps(),
     allPlayers: {
       p1: makePlayer(),
       e1: makePlayer({
@@ -1083,14 +1102,52 @@ describe('useCommands', () => {
         expect(texts.some((t) => t.includes('daemon'))).toBe(true)
       })
 
-      it('suggests creep targets', () => {
+      // REGRESSION: these read ZoneRuntimeState.creeps, a field the server
+      // initialises to [] and never writes — the suggestion list had never once
+      // been non-empty in a real game.
+      it('suggests the creeps standing in your zone', () => {
         const { autocomplete } = useCommands()
-        const context = makeContext()
-        const suggestions = autocomplete('attack creep', context)
+        const suggestions = autocomplete('attack creep', makeContext())
 
         const texts = suggestions.map((s) => s.text)
-        expect(texts).toContain('creep:0')
-        expect(texts).toContain('creep:1')
+        expect(texts).toEqual(['creep:0', 'creep:1', 'creep:3', 'creep:4'])
+      })
+
+      it('numbers creeps within the zone, not globally', () => {
+        const { autocomplete } = useCommands()
+        // `elsewhere` sits at global index 0 but in another zone; if it counted,
+        // every suggestion here would be one too high and the attack would land
+        // on the wrong creep.
+        const suggestions = autocomplete('attack creep', makeContext())
+
+        expect(suggestions[0]!.text).toBe('creep:0')
+        expect(suggestions[0]!.description).toContain('320/400')
+      })
+
+      it('skips a dead-but-unreaped creep without renumbering the rest', () => {
+        const { autocomplete } = useCommands()
+        const suggestions = autocomplete('attack creep', makeContext())
+
+        const texts = suggestions.map((s) => s.text)
+        expect(texts).not.toContain('creep:2') // c2 is the corpse
+        expect(texts).toContain('creep:3') // c3 keeps its slot behind it
+      })
+
+      it('marks whose creep it is, so a last-hit is not mistaken for a deny', () => {
+        const { autocomplete } = useCommands()
+        const suggestions = autocomplete('attack creep', makeContext())
+
+        const byRef = new Map(suggestions.map((s) => [s.text, s.description]))
+        expect(byRef.get('creep:0')).toContain('enemy')
+        expect(byRef.get('creep:1')).toContain('ally')
+      })
+
+      it('offers no creeps when the zone is empty', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({ player: makePlayer({ zone: 'top-t1-rad' }) })
+        const suggestions = autocomplete('attack creep', context)
+
+        expect(suggestions).toEqual([])
       })
 
       it('suggests self target', () => {
@@ -1138,6 +1195,43 @@ describe('useCommands', () => {
 
         const inPit = makeContext({ player: makePlayer({ zone: 'roshan-pit' }) })
         expect(autocomplete('attack rosh', inPit).map((s) => s.text)).toContain('roshan')
+      })
+    })
+
+    describe('target completion for deny', () => {
+      it('offers only your own creeps, at the index the server resolves', () => {
+        const { autocomplete } = useCommands()
+        const suggestions = autocomplete('deny creep', makeContext())
+
+        expect(suggestions.map((s) => s.text)).toEqual(['creep:1', 'creep:4'])
+      })
+
+      it('flags which allied creep is actually low enough to deny', () => {
+        const { autocomplete } = useCommands()
+        const suggestions = autocomplete('deny creep', makeContext())
+
+        const byRef = new Map(suggestions.map((s) => [s.text, s.description]))
+        expect(byRef.get('creep:1')).toContain('denyable') // 90/400
+        expect(byRef.get('creep:4')).not.toContain('denyable') // 380/400
+      })
+
+      it('agrees with the bare-deny auto-target', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext()
+        const suggested = autocomplete('deny creep', context).map((s) => s.text)
+
+        expect(suggested).toContain(
+          (pickDenyTargetString(context.player!, context.creeps!) as { target: string }).target,
+        )
+      })
+
+      it('offers nothing when your creeps are all dead', () => {
+        const { autocomplete } = useCommands()
+        const context = makeContext({
+          creeps: makeCreeps().map((c) => (c.team === 'radiant' ? { ...c, hp: 0 } : c)),
+        })
+
+        expect(autocomplete('deny creep', context)).toEqual([])
       })
     })
 
@@ -1575,6 +1669,44 @@ describe('validateCommand', () => {
 
     it('skips the timing check when tick is unknown', () => {
       expect(validateCommand({ type: 'surrender', vote: 'yes' }, makeContext())).toBeNull()
+    })
+  })
+
+  describe('cast mana pre-flight', () => {
+    // THE bug this pre-flight exists to prevent: the registry's flat manaCost is
+    // the RANK-1 figure, while the engine charges the per-level cost (~2.2x by
+    // late game). Validating against the flat number told the player a cast was
+    // affordable and then the server refused it — burning their one action for
+    // the tick and saying nothing useful.
+    it('validates against the cost the engine will actually charge at this level', () => {
+      const hero = Object.values(HEROES).find(
+        (h) => (h.abilities.q.manaCostByLevel?.length ?? 0) > 1,
+      )
+      expect(hero, 'need a hero with a scaling Q to test against').toBeTruthy()
+      const table = hero!.abilities.q.manaCostByLevel!
+      const lateCost = table[table.length - 1]!
+      const rank1 = table[0]!
+      expect(lateCost).toBeGreaterThan(rank1)
+
+      // Enough mana for the rank-1 cost, NOT for what a level-25 hero pays.
+      const mp = Math.floor((rank1 + lateCost) / 2)
+      const ctx = makeContext({
+        player: makePlayer({ heroId: hero!.id, level: 25, mp }),
+      })
+      const err = validateCommand({ type: 'cast', ability: 'q' }, ctx)
+      expect(err).toMatch(/not enough mana/i)
+      expect(err).toContain(String(lateCost))
+    })
+
+    it('still allows a cast the player can genuinely afford', () => {
+      const hero = Object.values(HEROES).find(
+        (h) => (h.abilities.q.manaCostByLevel?.length ?? 0) > 1,
+      )
+      const table = hero!.abilities.q.manaCostByLevel!
+      const ctx = makeContext({
+        player: makePlayer({ heroId: hero!.id, level: 25, mp: table[table.length - 1]! + 10 }),
+      })
+      expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toBeNull()
     })
   })
 

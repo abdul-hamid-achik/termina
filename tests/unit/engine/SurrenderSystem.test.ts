@@ -118,15 +118,56 @@ describe('SurrenderSystem', () => {
       expect(result.state).toBe(state) // unchanged
     })
 
-    it('rejects a vote from a dead player', () => {
+    // Death is the moment a player most wants to concede, and the death overlay
+    // covers the command input — its [VOTE TO SURRENDER] button used to be
+    // rejected 100% of the time.
+    it('accepts a vote from a dead player', () => {
       const base = makeGameState({ tick: SURRENDER_MIN_TICK })
       const state = {
         ...base,
         players: { ...base.players, r1: { ...base.players.r1!, alive: false } },
       }
       const result = voteSurrender(state, 'r1')
-      expect(result.success).toBe(false)
-      expect(result.reason).toContain('Dead')
+      expect(result.success).toBe(true)
+      expect(result.state.surrenderVotes.radiant.has('r1')).toBe(true)
+    })
+
+    it('a fully wiped team can still concede', () => {
+      const base = makeGameState({ tick: SURRENDER_MIN_TICK })
+      const wiped = {
+        ...base,
+        players: {
+          ...base.players,
+          r1: { ...base.players.r1!, alive: false },
+          r2: { ...base.players.r2!, alive: false },
+          r3: { ...base.players.r3!, alive: false },
+        },
+      }
+      const afterFirst = voteSurrender(wiped, 'r1')
+      expect(afterFirst.votes).toEqual({ for: 1, against: 2, total: 3, needed: 2 })
+      expect(voteSurrender(afterFirst.state, 'r2').surrendered).toBe(true)
+    })
+
+    // The electorate must not move under the vote: if dying removed a player
+    // from the denominator, r1's lone vote would retroactively pass (ceil(2*0.6)
+    // = 2 → ceil(1*0.6) = 1) the instant its two teammates were killed.
+    it('keeps the denominator stable when voters die mid-vote', () => {
+      const base = makeGameState({ tick: SURRENDER_MIN_TICK })
+      const voted = voteSurrender(base, 'r1')
+      expect(voted.votes!.needed).toBe(2)
+
+      const bereaved = {
+        ...voted.state,
+        players: {
+          ...voted.state.players,
+          r2: { ...voted.state.players.r2!, alive: false },
+          r3: { ...voted.state.players.r3!, alive: false },
+        },
+      }
+      const status = getSurrenderStatus(bereaved, 'radiant')
+      expect(status.electorate).toBe(3)
+      expect(status.votesNeeded).toBe(2)
+      expect(status.votesFor).toBe(1)
     })
 
     it('removeSurrenderVote is a no-op for an unknown player', () => {
@@ -136,7 +177,23 @@ describe('SurrenderSystem', () => {
   })
 
   describe('getSurrenderStatus edge cases', () => {
-    it('reports 0% with 0 needed when the whole team is dead', () => {
+    it('reports 0% with 0 needed when the team has no humans', () => {
+      const state = makeGameState({
+        tick: SURRENDER_MIN_TICK,
+        players: {
+          bot_a: makePlayer({ id: 'bot_a', name: 'bot_a', team: 'radiant' }),
+          bot_b: makePlayer({ id: 'bot_b', name: 'bot_b', team: 'radiant' }),
+          d1: makePlayer({ id: 'd1', name: 'D1', team: 'dire', zone: 'dire-fountain' }),
+        },
+      })
+      const status = getSurrenderStatus(state, 'radiant')
+      expect(status.electorate).toBe(0)
+      expect(status.votesFor).toBe(0)
+      expect(status.votesNeeded).toBe(0)
+      expect(status.percentage).toBe(0)
+    })
+
+    it('counts dead humans in the electorate', () => {
       const base = makeGameState({ tick: SURRENDER_MIN_TICK })
       const allDead = {
         ...base,
@@ -148,10 +205,8 @@ describe('SurrenderSystem', () => {
         },
       }
       const status = getSurrenderStatus(allDead, 'radiant')
-      expect(status.totalAlive).toBe(0)
-      expect(status.votesFor).toBe(0)
-      expect(status.votesNeeded).toBe(0)
-      expect(status.percentage).toBe(0)
+      expect(status.electorate).toBe(3)
+      expect(status.votesNeeded).toBe(2)
     })
   })
 
@@ -180,8 +235,20 @@ describe('SurrenderSystem', () => {
 
     it('excludes bots from the surrender status electorate', () => {
       const status = getSurrenderStatus(soloWithBots(), 'radiant')
-      expect(status.totalAlive).toBe(1) // only the human, not the two bots
+      expect(status.electorate).toBe(1) // only the human, not the two bots
       expect(status.votesNeeded).toBe(1)
+    })
+
+    it('a dead lone human concedes from the death overlay', () => {
+      const base = soloWithBots()
+      const dead = {
+        ...base,
+        players: { ...base.players, human: { ...base.players.human!, alive: false } },
+      }
+      submitAction('surr-solo-dead', 'human', { type: 'surrender', vote: 'yes' })
+      const result = Effect.runSync(processTick('surr-solo-dead', dead))
+      expect(result.state.phase).toBe('ended')
+      expect(result.state.winner).toBe('dire')
     })
 
     it('ends the game when the lone human concedes via processTick', () => {
@@ -249,22 +316,35 @@ describe('SurrenderSystem', () => {
       expect(res.reason).toMatch(/too early/i)
     })
 
-    it('rejects when the team has no alive humans to vote', () => {
+    it('rejects when the team is all bots', () => {
       const state = makeGameState({
         tick: SURRENDER_MIN_TICK,
         players: {
-          r1: makePlayer({ id: 'r1', team: 'radiant', alive: false }),
-          r2: makePlayer({ id: 'r2', team: 'radiant', alive: false }),
-          r3: makePlayer({ id: 'r3', team: 'radiant', alive: false }),
+          bot_a: makePlayer({ id: 'bot_a', team: 'radiant' }),
+          bot_b: makePlayer({ id: 'bot_b', team: 'radiant' }),
           d1: makePlayer({ id: 'd1', team: 'dire' }),
         },
       })
       const res = canSurrender(state, 'radiant')
       expect(res.can).toBe(false)
-      expect(res.reason).toMatch(/no alive/i)
+      expect(res.reason).toMatch(/no human/i)
     })
 
-    it('allows a team with alive humans past the minimum tick', () => {
+    it('allows a team of dead humans past the minimum tick', () => {
+      const base = makeGameState({ tick: SURRENDER_MIN_TICK })
+      const allDead = {
+        ...base,
+        players: {
+          ...base.players,
+          r1: { ...base.players.r1!, alive: false },
+          r2: { ...base.players.r2!, alive: false },
+          r3: { ...base.players.r3!, alive: false },
+        },
+      }
+      expect(canSurrender(allDead, 'radiant').can).toBe(true)
+    })
+
+    it('allows a team with humans past the minimum tick', () => {
       expect(canSurrender(makeGameState({ tick: SURRENDER_MIN_TICK }), 'radiant').can).toBe(true)
     })
   })

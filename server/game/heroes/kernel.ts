@@ -10,6 +10,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   deductMana,
@@ -21,17 +22,17 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = [80, 90, 100, 110] as const
+const Q_MANA = abilityManaTable('kernel', 'q')
 const Q_COOLDOWN = 10
 
 const W_SHIELD = [150, 250, 350, 450] as const
-const W_MANA = [100, 120, 140, 160] as const
+const W_MANA = abilityManaTable('kernel', 'w')
 const W_COOLDOWN = 14
 
-const E_MANA = [120, 140, 160, 180] as const
+const E_MANA = abilityManaTable('kernel', 'e')
 const E_COOLDOWN = 18
 
-const R_MANA = [200, 300, 400] as const
+const R_MANA = abilityManaTable('kernel', 'r')
 const R_COOLDOWN = 50
 
 // ── Ability Resolver ──────────────────────────────────────────────

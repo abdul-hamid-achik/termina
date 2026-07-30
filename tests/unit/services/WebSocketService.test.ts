@@ -120,18 +120,33 @@ describe('WebSocketService', () => {
   })
 
   describe('removeConnection', () => {
-    it('removes a connection and cleans up empty game maps', async () => {
+    it('drops the peer but KEEPS the player→game assignment', async () => {
+      // REGRESSION: clearing the assignment here turned any disconnect longer
+      // than the WS route's 60s grace window into a permanent lockout. Both
+      // recovery paths (`reconnect` and `join_game`) refuse a game the player is
+      // no longer mapped to, so the player could never re-enter a match that was
+      // still running. Releasing the assignment belongs to whoever ends the
+      // match (onGameOver / stopDevGame / the stale-game reaper).
       const ws = makeTestWs()
+      const warnSpy = vi.spyOn(peerLog, 'warn').mockImplementation(() => {})
       await runWithService((svc) =>
         Effect.gen(function* () {
           yield* svc.addConnection('game_6', 'player_6', ws)
           yield* svc.removeConnection('player_6')
-          const gameId = yield* svc.getPlayerGame('player_6')
-          expect(gameId).toBeNull()
+
+          // The socket is gone: no connection, and sends no longer reach it.
           const connections = yield* svc.getConnections('game_6')
           expect(connections.size).toBe(0)
+          yield* svc.sendToPlayer('player_6', { type: 'test' })
+          expect(ws.send).not.toHaveBeenCalled()
+
+          // …but the match assignment survives, so a late reconnect is still
+          // authorised for the game the player actually belongs to.
+          const gameId = yield* svc.getPlayerGame('player_6')
+          expect(gameId).toBe('game_6')
         }),
       )
+      warnSpy.mockRestore()
     })
   })
 

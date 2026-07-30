@@ -27,6 +27,7 @@ import { resolveAbility, applyBuff } from '../../../server/game/heroes/_base'
 // Importing the barrel runs every registerHero() side effect.
 import '../../../server/game/heroes/index'
 import { HEROES } from '../../../shared/constants/heroes'
+import { getAbilityManaCost } from '../../../shared/utils/ability'
 
 const SLOTS: AbilitySlot[] = ['q', 'w', 'e', 'r']
 const CASTER_ZONE = 'mid-river'
@@ -94,11 +95,12 @@ function makeState(players: PlayerState[]): GameState {
 function castAndMeasure(
   heroId: string,
   slot: AbilitySlot,
+  levelOverride?: number,
 ): { manaSpent: number; cooldownSet: number; damageDealt: number } {
   const targetType = HEROES[heroId]!.abilities[slot].targetType as string
 
   // R needs level 6 (R rank 1); Q/W/E use level 1 (ability rank 1 = base values).
-  const casterLevel = slot === 'r' ? 6 : 1
+  const casterLevel = levelOverride ?? (slot === 'r' ? 6 : 1)
 
   let caster = makePlayer({ id: 'p1', heroId, level: casterLevel })
 
@@ -238,6 +240,17 @@ describe('Hero data parity: resolver vs shared constants', () => {
           expect(manaSpent).toBe(ability.manaCost)
         })
 
+        it(`${slot.toUpperCase()}: ${ability.name} — manaCostByLevel matches resolver at max rank`, () => {
+          // Rank 1 is where every other assertion in this file casts, and it is
+          // exactly where the registry and the resolvers agreed while the
+          // per-rank costs diverged by up to 2.2x — the client quoted rank 1
+          // for a cast the engine charged rank 4 for. Cast at max rank so the
+          // number under test is the one that used to be wrong.
+          const maxRankLevel = slot === 'r' ? 18 : 7
+          const { manaSpent } = castAndMeasure(heroId, slot, maxRankLevel)
+          expect(manaSpent).toBe(getAbilityManaCost(ability, slot, maxRankLevel))
+        })
+
         it(`${slot.toUpperCase()}: ${ability.name} — constant cooldownTicks matches resolver`, () => {
           const { cooldownSet } = castAndMeasure(heroId, slot)
           expect(cooldownSet).toBe(ability.cooldownTicks)
@@ -261,6 +274,40 @@ describe('Hero data parity: resolver vs shared constants', () => {
         })
       }
     })
+  }
+})
+
+// ── manaCostByLevel shape ──────────────────────────────────────────
+// The resolvers read these tables, so the numbers cannot drift from the engine
+// any more. What can still drift is the SHAPE: a table one entry short clamps
+// the top rank to the one below it, and a `manaCost` edited without its table
+// (or the reverse) puts a different number on the hero grid than in the HUD.
+describe('registry manaCostByLevel', () => {
+  const RANKS: Record<AbilitySlot, number> = { q: 4, w: 4, e: 4, r: 3 }
+  // Daemon's Sudo is authored as a three-rank ability throughout — its damage
+  // table is [300, 400, 500] as well — so ranks 3 and 4 are deliberately
+  // identical and scaleValue clamps. Pinned at 3 rather than waived so a
+  // fourth entry (a balance change) has to be a conscious edit here.
+  const SHORT_TABLES: Record<string, number> = { 'daemon.e': 3 }
+
+  for (const heroId of Object.keys(HEROES)) {
+    for (const slot of SLOTS) {
+      const ability = HEROES[heroId]!.abilities[slot]
+      const table = ability.manaCostByLevel
+      if (!table) continue // flat cost — manaCost is the whole story
+
+      it(`${heroId}.${slot}: table has one entry per rank and starts at manaCost`, () => {
+        expect(table).toHaveLength(SHORT_TABLES[`${heroId}.${slot}`] ?? RANKS[slot])
+        expect(table[0]).toBe(ability.manaCost)
+        for (const cost of table) expect(Number.isInteger(cost) && cost > 0).toBe(true)
+      })
+
+      it(`${heroId}.${slot}: cost never drops as the ability ranks up`, () => {
+        for (let i = 1; i < table.length; i++) {
+          expect(table[i]!).toBeGreaterThanOrEqual(table[i - 1]!)
+        }
+      })
+    }
   }
 })
 

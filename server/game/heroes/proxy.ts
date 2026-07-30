@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getAlliesInZone,
   healPlayer,
@@ -23,18 +24,18 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [85, 125, 165, 205] as const
-const Q_MANA = [70, 90, 110, 130] as const
+const Q_MANA = abilityManaTable('proxy', 'q')
 const Q_COOLDOWN = 8
 
 const W_SHIELD = [140, 200, 260, 320] as const
-const W_MANA = [90, 110, 130, 150] as const
+const W_MANA = abilityManaTable('proxy', 'w')
 const W_COOLDOWN = 12
 
 const E_HEAL = [180, 260, 340, 420] as const
-const E_MANA = [100, 130, 160, 190] as const
+const E_MANA = abilityManaTable('proxy', 'e')
 const E_COOLDOWN = 10
 
-const R_MANA = [200, 300, 400] as const
+const R_MANA = abilityManaTable('proxy', 'r')
 const R_COOLDOWN = 50
 
 const MIDDLEMAN_REDIRECT = 0.12 // 12%

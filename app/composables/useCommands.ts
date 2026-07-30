@@ -14,6 +14,7 @@ import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
+import { getAbilityManaCost } from '~~/shared/utils/ability'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
@@ -35,6 +36,10 @@ export interface GameContext {
   /** The whole global neutrals array, in server order — `attack neutral:<i>`
    *  is resolved against that index, so it must not be pre-filtered here. */
   neutrals?: NeutralCreepState[]
+  /** The whole global (vision-filtered) creeps array, in server order.
+   *  `creep:<i>` is ZONE-local, but the index is derived by counting within
+   *  server order — so this must arrive unsorted and unfiltered. */
+  creeps?: CreepState[]
   /** Current game tick — enables cooldown/timing validation when provided. */
   tick?: number
   /** Game mode — the tutorial is exempt from the surrender tick gate. */
@@ -188,6 +193,21 @@ export function pickItemTargetString(
  */
 function creepFullHp(c: CreepState): number {
   return c.maxHp ?? creepMaxHp(c.type, 0)
+}
+
+/**
+ * The creeps standing in a zone, paired with the index `creep:<i>` resolves to.
+ *
+ * Mirrors the server's creepInZoneByIndex: the index counts EVERY creep in the
+ * zone in server order — dead-but-unreaped ones included. Dropping corpses
+ * before numbering would shift every later suggestion onto a different creep,
+ * so callers skip what they don't want to offer and keep the position.
+ */
+function creepsInZoneWithIndex(
+  creeps: CreepState[],
+  zone: string,
+): Array<{ creep: CreepState; index: number }> {
+  return creeps.filter((c) => c.zone === zone).map((creep, index) => ({ creep, index }))
 }
 
 /**
@@ -507,8 +527,13 @@ export function validateCommand(command: Command, context: GameContext): string 
       if (command.ability === 'r' && player.level < 6) return 'Ultimate unlocks at level 6'
       const cd = player.cooldowns[command.ability]
       if (cd > 0) return `${ability.name} on cooldown (${cd} tick${cd === 1 ? '' : 's'})`
-      if (player.mp < ability.manaCost) {
-        return `Not enough mana (need ${ability.manaCost}, have ${player.mp})`
+      // What the ENGINE will charge at this level, not the rank-1 figure in the
+      // registry. Validating against the flat cost told the player a cast was
+      // affordable and then the server refused it — the pre-flight existed
+      // precisely to stop that.
+      const cost = getAbilityManaCost(ability, command.ability, player.level)
+      if (player.mp < cost) {
+        return `Not enough mana (need ${cost}, have ${player.mp})`
       }
       return null
     }
@@ -865,15 +890,24 @@ export function useCommands() {
     }
 
     if (baseCmd === 'deny') {
-      // Deny only targets allied creeps in the current zone; the server enforces
-      // the <50% HP rule, so here we just surface the creep:index forms.
+      // Deny only targets allied creeps in the current zone. The server enforces
+      // the HP rule, so healthy allies are still offered — with their HP, which
+      // is the number the player is waiting on.
       const partial = parts.slice(1).join(' ')
-      const zoneData = context.player ? context.visibleZones[context.player.zone] : undefined
+      const player = context.player
       const out: Suggestion[] = []
-      if (zoneData) {
-        for (let i = 0; i < zoneData.creeps.length; i++) {
-          const ref = `creep:${i}`
-          if (ref.includes(partial)) out.push({ text: ref, description: `Creep #${i}` })
+      if (player && context.creeps) {
+        for (const { creep, index } of creepsInZoneWithIndex(context.creeps, player.zone)) {
+          if (creep.team !== player.team || creep.hp <= 0) continue
+          const ref = `creep:${index}`
+          if (!ref.includes(partial)) continue
+          const denyable = creep.hp <= creepFullHp(creep) * DENY_HP_THRESHOLD
+          out.push({
+            text: ref,
+            description: `${creep.type} (HP: ${Math.ceil(creep.hp)}/${creepFullHp(creep)})${
+              denyable ? ' — denyable' : ''
+            }`,
+          })
         }
       }
       return out.slice(0, 10)
@@ -1072,14 +1106,18 @@ export function useCommands() {
       }
     }
 
-    // Suggest creep targets
-    const zoneData = context.visibleZones[context.player.zone]
-    if (zoneData) {
-      for (let i = 0; i < zoneData.creeps.length; i++) {
-        const ref = `creep:${i}`
-        if (ref.includes(partial)) {
-          suggestions.push({ text: ref, description: `Creep #${i}` })
-        }
+    // Suggest creep targets. Corpses keep their slot in the numbering (see
+    // creepsInZoneWithIndex) but are never offered — the server rejects them.
+    if (context.creeps) {
+      for (const { creep, index } of creepsInZoneWithIndex(context.creeps, context.player.zone)) {
+        if (creep.hp <= 0) continue
+        const ref = `creep:${index}`
+        if (!ref.includes(partial)) continue
+        const side = creep.team === context.player.team ? 'ally' : 'enemy'
+        suggestions.push({
+          text: ref,
+          description: `${creep.type} ${side} (HP: ${Math.ceil(creep.hp)}/${creepFullHp(creep)})`,
+        })
       }
     }
 

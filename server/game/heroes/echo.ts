@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
@@ -25,20 +26,20 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [80, 120, 160, 200] as const
-const Q_MANA = [40, 50, 60, 70] as const
+const Q_MANA = abilityManaTable('echo', 'q')
 const Q_COOLDOWN = [6, 5, 4, 3] as const
 const Q_BOUNCE_MULTIPLIER = 0.5
 
-const W_MANA = [50, 60, 70, 80] as const
+const W_MANA = abilityManaTable('echo', 'w')
 const W_COOLDOWN = [12, 11, 10, 9] as const
 
 const E_STACK_VALUE = [10, 15, 20, 25] as const
-const E_MANA = 0
+const E_MANA = abilityManaTable('echo', 'e')
 const E_COOLDOWN = [8, 7, 6, 5] as const
 const E_DAMAGE_MULTIPLIER = 2
 
 const R_DAMAGE = [60, 80, 100] as const
-const R_MANA = [150, 175, 200] as const
+const R_MANA = abilityManaTable('echo', 'r')
 const R_COOLDOWN = [50, 45, 40] as const
 const R_HITS = 6
 
@@ -212,7 +213,7 @@ function resolveE(
       )
     }
 
-    let caster = deductMana(player, E_MANA)
+    let caster = deductMana(player, scaleValue(E_MANA, level))
     caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
     caster = applyBuff(caster, {
       id: 'feedbackLoop',

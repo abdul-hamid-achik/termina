@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   dealAbilityDamage,
   deductMana,
@@ -22,23 +23,23 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [70, 100, 130, 160] as const
-const Q_MANA = 60
+const Q_MANA = abilityManaTable('regex', 'q')
 const Q_COOLDOWN = [5, 4, 3, 2] as const
 const Q_VULNERABILITY = 15
 
-const W_MANA = 90
+const W_MANA = abilityManaTable('regex', 'w')
 const W_COOLDOWN = [10, 9, 8, 7] as const
 const W_ROOT_DURATION = 2
 const W_DOT_DAMAGE = [30, 40, 50, 60] as const
 const W_DOT_DURATION = 3
 
-const E_MANA = 100
+const E_MANA = abilityManaTable('regex', 'e')
 const E_COOLDOWN = [15, 14, 13, 12] as const
 // 2 = one gated action: a cast-applied stun is reaped same-tick by tickAllBuffs
 // (see the applyBuff note in _base), so it needs 2 ticks to gate one action.
 const E_STUN_DURATION = 2
 
-const R_MANA = 300
+const R_MANA = abilityManaTable('regex', 'r')
 const R_COOLDOWN = [60, 55, 50] as const
 const R_DAMAGE_PER_MANA = [50, 75, 100] as const
 const R_SILENCE_DURATION = 2
@@ -80,8 +81,11 @@ function resolveQ(
       )
     }
 
-    if (player.mp < Q_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: Q_MANA, current: player.mp }))
+    const manaCost = scaleValue(Q_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -91,7 +95,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, Q_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const damage = scaleValue(Q_DAMAGE, level)
@@ -137,8 +141,11 @@ function resolveW(
       )
     }
 
-    if (player.mp < W_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
+    const manaCost = scaleValue(W_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -148,7 +155,7 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, W_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'w', scaleValue(W_COOLDOWN, level))
 
     const dotDamage = scaleValue(W_DOT_DAMAGE, level)
@@ -200,8 +207,11 @@ function resolveE(
       )
     }
 
-    if (player.mp < E_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: E_MANA, current: player.mp }))
+    const manaCost = scaleValue(E_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -211,7 +221,7 @@ function resolveE(
       )
     }
 
-    let caster = deductMana(player, E_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
 
     const casterZone = caster.zone
@@ -268,8 +278,11 @@ function resolveR(
       )
     }
 
-    if (player.mp < R_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: R_MANA, current: player.mp }))
+    const manaCost = scaleValue(R_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
     const targetPlayer = findTargetPlayer(state, target)
@@ -279,7 +292,7 @@ function resolveR(
       )
     }
 
-    let caster = deductMana(player, R_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'r', scaleValue(R_COOLDOWN, level))
 
     const missingMana = targetPlayer.maxMp - targetPlayer.mp

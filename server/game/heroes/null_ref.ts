@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   getEnemiesInZoneAndAdjacent,
@@ -26,22 +27,22 @@ import { hasTalentCastEffect } from '~~/server/game/engine/EffectiveStats'
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [90, 130, 170, 210] as const
-const Q_MANA = [55, 70, 85, 100] as const
+const Q_MANA = abilityManaTable('null_ref', 'q')
 const Q_COOLDOWN = 5
 const Q_MR_SHRED = 5
 const Q_MR_SHRED_DURATION = 3
 
-const W_MANA = [80, 95, 110, 125] as const
+const W_MANA = abilityManaTable('null_ref', 'w')
 const W_COOLDOWN = 12
 const W_SILENCE_DURATION = 2
 
 const E_DOT_DAMAGE = [40, 55, 70, 85] as const
-const E_MANA = [90, 105, 120, 135] as const
+const E_MANA = abilityManaTable('null_ref', 'e')
 const E_COOLDOWN = 14
 const E_DOT_DURATION = 3
 
 const R_DAMAGE = [240, 360, 480] as const
-const R_MANA = [280, 360, 440] as const
+const R_MANA = abilityManaTable('null_ref', 'r')
 const R_COOLDOWN = 50
 const R_EXECUTE_THRESHOLD = 0.25
 const R_EXECUTE_BONUS = 0.5

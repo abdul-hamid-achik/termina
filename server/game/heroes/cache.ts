@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
@@ -26,19 +27,19 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [80, 120, 160, 200] as const
-const Q_MANA = [55, 70, 85, 100] as const
+const Q_MANA = abilityManaTable('cache', 'q')
 const Q_COOLDOWN = 8
 const Q_CACHED_BONUS = 0.5
 
-const W_MANA = [60, 75, 90, 105] as const
+const W_MANA = abilityManaTable('cache', 'w')
 const W_COOLDOWN = 12
 
 const E_DAMAGE = [70, 105, 140, 175] as const
-const E_MANA = [65, 80, 95, 110] as const
+const E_MANA = abilityManaTable('cache', 'e')
 const E_COOLDOWN = 10
 const E_ANTIHEAL_DURATION = 3
 
-const R_MANA = [180, 250, 320] as const
+const R_MANA = abilityManaTable('cache', 'r')
 const R_COOLDOWN = 50
 const R_SLOW_DURATION = 2
 

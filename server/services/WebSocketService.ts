@@ -5,7 +5,6 @@ import {
   registerPeer as peerRegister,
   removePeer as peerRemovePeer,
   setPlayerGame as peerSetPlayerGame,
-  clearPlayerGame as peerClearPlayerGame,
   getPlayerGame as peerGetGame,
   getGamePlayers as peerGetGamePlayers,
   getPeer as peerGetPeer,
@@ -37,9 +36,10 @@ export class WebSocketService extends Context.Tag('WebSocketService')<
  * and playerToGame maps are gone — PeerRegistry now maintains a reverse
  * gamePlayers index that this service queries.
  *
- * `addConnection` / `removeConnection` register/unregister the raw WS with
- * PeerRegistry (so sendToPeer works for game broadcasts) and track the
- * player→game association via setPlayerGame/clearPlayerGame.
+ * `addConnection` registers the raw WS with PeerRegistry (so sendToPeer works
+ * for game broadcasts) and records the player→game association;
+ * `removeConnection` drops only the peer, leaving the association to the
+ * game-lifecycle owners (see the comment on removeConnection).
  */
 export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
   addConnection: (gameId, playerId, ws) =>
@@ -67,13 +67,20 @@ export const WebSocketServiceLive = Layer.succeed(WebSocketService, {
 
   removeConnection: (playerId) =>
     Effect.sync(() => {
-      // Drop the player completely: remove the peer entry so direct sendToPeer
-      // sends stop reaching them (sendToPeer routes via the peers map, not the
-      // game association), AND clear the player→game association so broadcasts
-      // skip them. The WS-route grace timer guarantees this only fires for a
-      // player who did not reconnect, so the unconditional removal is safe.
+      // Remove the peer entry so direct sendToPeer sends stop reaching a socket
+      // that is gone (sendToPeer routes via the peers map, not the game
+      // association).
+      //
+      // The player→game assignment deliberately SURVIVES. It is the only record
+      // of "this player belongs to this match", and both recovery paths in the
+      // WS route (`reconnect` and `join_game`) refuse to serve a game it doesn't
+      // name. Clearing it here turned any disconnect longer than the grace
+      // window into a permanent lockout from a match that was still running:
+      // every subsequent attempt answered NOT_ASSIGNED. Releasing the assignment
+      // is the job of whoever decides the match is over for this player —
+      // onGameOver, stopDevGame and the stale-game reaper — all of which already
+      // scope it to the game they are ending.
       peerRemovePeer(playerId)
-      peerClearPlayerGame(playerId)
       wsLog.debug('removeConnection', { playerId })
     }).pipe(
       Effect.tap(() => Effect.logDebug('WS removed').pipe(Effect.annotateLogs({ playerId }))),

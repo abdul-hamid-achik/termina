@@ -10,6 +10,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealAbilityDamage,
@@ -23,18 +24,18 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [80, 115, 150, 185] as const
-const Q_MANA = [45, 60, 75, 90] as const
+const Q_MANA = abilityManaTable('ping', 'q')
 const Q_COOLDOWN = 5
 
-const W_MANA = [75, 90, 105, 120] as const
+const W_MANA = abilityManaTable('ping', 'w')
 const W_COOLDOWN = 12
 
-const E_MANA = [60, 75, 90, 105] as const
+const E_MANA = abilityManaTable('ping', 'e')
 const E_COOLDOWN = 14
 
 const R_TOTAL_DAMAGE = [180, 270, 360] as const
 const R_SLOW_PERCENT = 40
-const R_MANA = [200, 280, 360] as const
+const R_MANA = abilityManaTable('ping', 'r')
 const R_COOLDOWN = 50
 
 // ── Ability Resolver ──────────────────────────────────────────────

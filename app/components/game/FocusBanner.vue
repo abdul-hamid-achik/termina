@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useGameStore } from '~/stores/game'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { HEROES } from '~~/shared/constants/heroes'
+import { getAbilityManaCost } from '~~/shared/utils/ability'
 import { computeThreat, threatToneClass, recommendAction } from '~/utils/tactics'
 
 // Direction B of the HUD-settings system: an at-a-glance "what do I do now"
@@ -91,7 +92,10 @@ const telegraphs = computed<string[]>(() => {
   const out: string[] = []
   for (const e of store.nearbyEnemies) {
     if (!('cooldowns' in e) || !e.cooldowns) continue
-    const ultCost = e.heroId ? (HEROES[e.heroId]?.abilities.r.manaCost ?? 0) : 0
+    // At the enemy's level: the flat registry cost is the rank-1 figure, so the
+    // telegraph fired for enemies who could not actually pay for their ultimate.
+    const ult = e.heroId ? HEROES[e.heroId]?.abilities.r : undefined
+    const ultCost = ult ? getAbilityManaCost(ult, 'r', e.level ?? 1) : 0
     if (ultCost > 0 && (e.cooldowns.r ?? 0) <= 0 && (e.mp ?? 0) >= ultCost) {
       out.push(`⚠ ${e.name} ult ready`)
     }

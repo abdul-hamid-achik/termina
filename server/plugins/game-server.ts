@@ -42,7 +42,7 @@ import { recordSentState, clearSentState } from '~~/server/game/engine/StateDelt
 import { getSpectatorsOfGame, clearGameSpectators } from '~~/server/services/SpectatorRegistry'
 import { clearClientInput } from '~~/server/services/LeaverSystem'
 import type { TeamId, GameState, GameMode } from '~~/shared/types/game'
-import type { PlayerEndStats } from '~~/shared/types/protocol'
+import type { PlayerEndStats, ServerMessage } from '~~/shared/types/protocol'
 import type { NewMatch, NewMatchPlayer } from '~~/server/db/schema'
 import {
   isBot,
@@ -59,6 +59,7 @@ import {
   setPlayerGame,
   clearPlayerGame,
   getPlayerGame,
+  getGamePlayers,
 } from '~~/server/services/PeerRegistry'
 import { cleanupLobby } from '~~/server/game/matchmaking/lobby'
 import { calculateMmrChange, applyMmrChange, teamAverageMmr } from '~~/server/game/matchmaking/elo'
@@ -166,6 +167,24 @@ export function isEventVisibleToPlayer(
  */
 export function isPracticeGame(gameId: string, mode?: GameMode): boolean {
   return mode === 'tutorial' || gameId.startsWith('dev_')
+}
+
+/**
+ * Deliver a game's message to a player only while they are still assigned to
+ * THAT game.
+ *
+ * Every game callback below routes purely by playerId, and nothing in the
+ * client-facing protocol carries a gameId — `tick_state`, `announcement` and
+ * `game_over` are all indistinguishable between matches once they arrive. An
+ * abandoned game is not a hypothetical: a practice match keeps ticking with zero
+ * input and reaches its own game-over minutes later (the tutorial step deadlines
+ * carry the flow), by which time the player may be in a real match. Routing by
+ * playerId alone flooded that live match with a second game's board and ended it
+ * with a foreign scoreboard.
+ */
+export function sendToGamePeer(gameId: string, playerId: string, message: ServerMessage): void {
+  if (getPlayerGame(playerId) !== gameId) return
+  sendToPeer(playerId, message)
 }
 
 /**
@@ -417,13 +436,24 @@ export async function createTutorialGame(opts: {
  */
 export function stopDevGame(gameId: string): void {
   if (!gameId.startsWith('dev_')) return
-  const runtime = _runtime
-  if (!runtime) return
+  // Release the player→game assignments, mirroring onGameOver and the reaper.
+  // Dropping the liveGames entry without this leaves the player mapped to a game
+  // that no longer exists anywhere: `reconnect` passes the ownership check,
+  // getReconnectPayload finds nothing to send, and the HUD sits frozen on a board
+  // that will never tick again — with no way out, since queue/join and
+  // tutorial.post both read the same assignment. gamePlayers is the reverse index
+  // of exactly "still assigned to this game", so a player who has already moved
+  // to another match is not touched.
+  for (const pid of getGamePlayers(gameId)) {
+    clearPlayerGame(pid)
+    clearSentState(gameId, pid)
+  }
   liveGames.delete(gameId)
   cleanupGame(gameId)
   clearClientInput(gameId)
-  // Interrupt the running loop fiber (no-op if already stopped).
-  void runtime.managedRuntime.runPromise(stopGameLoop(gameId)).catch(() => {})
+  // Interrupt the running loop fiber (no-op if already stopped, or if the
+  // runtime never came up — the bookkeeping above still has to happen).
+  void _runtime?.managedRuntime.runPromise(stopGameLoop(gameId)).catch(() => {})
 }
 
 // ── Production liveGames reaper ──────────────────────────────────
@@ -455,9 +485,11 @@ function reapStaleLiveGames(): void {
       }
       // Release the player→game assignments too (mirrors onGameOver) —
       // otherwise still-connected clients of the dead game keep passing the
-      // "still assigned" guards (e.g. the WS presence stamp) forever.
+      // "still assigned" guards (e.g. the WS presence stamp) forever. Scoped to
+      // players still mapped HERE: a zombie game reaped long after its players
+      // moved on must not evict them from the match they are in now.
       for (const pid of Object.keys(state.players)) {
-        clearPlayerGame(pid)
+        if (getPlayerGame(pid) === gameId) clearPlayerGame(pid)
         clearSentState(gameId, pid)
       }
     } catch {
@@ -554,7 +586,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         // doesn't kill a live game that happens to produce no events for a while.
         touchLiveGame(gId)
         if (isBot(playerId)) return
-        sendToPeer(playerId, {
+        sendToGamePeer(gId, playerId, {
           type: 'tick_state',
           tick: filteredState.tick,
           state: filteredState,
@@ -579,18 +611,18 @@ export default defineNitroPlugin(async (nitroApp) => {
         }
       },
 
-      onActionRejected: (_gId, playerId, reason) => {
+      onActionRejected: (gId, playerId, reason) => {
         if (isBot(playerId)) return
-        sendToPeer(playerId, {
+        sendToGamePeer(gId, playerId, {
           type: 'announcement',
           message: reason,
           level: 'warning',
         })
       },
 
-      onNotice: (_gId, playerId, message) => {
+      onNotice: (gId, playerId, message) => {
         if (isBot(playerId)) return
-        sendToPeer(playerId, { type: 'announcement', message, level: 'info' })
+        sendToGamePeer(gId, playerId, { type: 'announcement', message, level: 'info' })
       },
 
       onTutorialCompleted: (_gId, playerId) => {
@@ -628,14 +660,14 @@ export default defineNitroPlugin(async (nitroApp) => {
               isEventVisibleToPlayer(e, p.playerId, playerTeam, visibleZones, state!),
             )
             if (visibleEvents.length > 0) {
-              sendToPeer(p.playerId, {
+              sendToGamePeer(gId, p.playerId, {
                 type: 'events' as const,
                 tick: visibleEvents[0]?.tick ?? 0,
                 events: visibleEvents.map(toGameEvent),
               })
             }
           } else {
-            sendToPeer(p.playerId, {
+            sendToGamePeer(gId, p.playerId, {
               type: 'events' as const,
               tick: events[0]?.tick ?? 0,
               events: events.map(toGameEvent),
@@ -686,15 +718,10 @@ export default defineNitroPlugin(async (nitroApp) => {
           }
         }
 
-        // Only tell a player about THIS game if they are still in it. An
-        // abandoned practice game keeps ticking and now reaches game-over on its
-        // own (the step deadlines carry the flow with zero input), so it can
-        // land minutes later — by which time the player may have moved on to a
-        // real match. Without this guard it would shove a stale post-game screen
-        // over their live game.
+        // Scoped to this game (see sendToGamePeer): a late-finishing abandoned
+        // match must not shove a stale post-game screen over the live one.
         for (const p of realPlayers) {
-          if (getPlayerGame(p.playerId) !== gId) continue
-          sendToPeer(p.playerId, {
+          sendToGamePeer(gId, p.playerId, {
             type: 'game_over',
             winner,
             stats: endStats,

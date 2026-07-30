@@ -127,6 +127,36 @@ afterEach(() => {
 })
 
 describe('replay page', () => {
+  it('explains an unavailable replay with the server sentence and truthful retention copy', async () => {
+    // REGRESSION: the notice said replays are "dropped on game-over", the exact
+    // opposite of the endpoint's rule (403 until `phase === 'ended'`), and the
+    // detail line read the FetchError's statusMessage — "Server Error" for any
+    // error Nitro didn't give one, which blames the backend for a 403.
+    fetchResults = [
+      {
+        data: ref(null),
+        error: ref({
+          statusCode: 403,
+          statusMessage: 'Server Error',
+          message: '[GET] "/api/replay/g1": 403',
+          data: { statusCode: 403, message: 'Replay available after the game ends' },
+        }),
+        pending: ref(false),
+      },
+      { data: ref(null) },
+    ]
+    const wrapper = await mountReplay()
+    const text = wrapper.text()
+
+    expect(text).toContain('REPLAY UNAVAILABLE')
+    expect(wrapper.find('[data-testid="replay-error-detail"]').text()).toBe(
+      'Replay available after the game ends',
+    )
+    expect(text).not.toContain('Server Error')
+    expect(text).not.toContain('dropped on game-over')
+    expect(text).toContain('written when the game ends')
+  })
+
   it('renders the score banner + a player row from the replay data', async () => {
     const wrapper = await mountReplay()
     const text = wrapper.text()

@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   dealDamage,
   dealAbilityDamage,
@@ -25,18 +26,18 @@ import {
 
 const Q_MAGIC_DAMAGE = [70, 110, 150, 190] as const
 const Q_PHYS_DAMAGE = [40, 55, 70, 85] as const
-const Q_MANA = [50, 65, 80, 95] as const
+const Q_MANA = abilityManaTable('cipher', 'q')
 const Q_COOLDOWN = 5
 
-const W_MANA = [80, 100, 120, 140] as const
+const W_MANA = abilityManaTable('cipher', 'w')
 const W_COOLDOWN = 14
 
-const E_MANA = [90, 110, 130, 150] as const
+const E_MANA = abilityManaTable('cipher', 'e')
 const E_COOLDOWN = 12
 
 const R_DAMAGE_PER_HIT = [55, 85, 115] as const
 const R_HITS = 6
-const R_MANA = [220, 320, 420] as const
+const R_MANA = abilityManaTable('cipher', 'r')
 const R_COOLDOWN = 45
 
 const ENCRYPTION_KEY_DEFENSE_REDUCTION = 2

@@ -11,6 +11,7 @@ import {
 import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
 import { getTalentTree } from '~~/shared/constants/talents'
 import { getAbilityLevel } from '~~/shared/constants/balance'
+import { abilityManaTable } from '~~/shared/utils/ability'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
@@ -109,6 +110,14 @@ function passiveCaresAboutEvent(heroId: string, eventType: GameEvent['type']): b
  * the engine and every hero module import it from this path.
  */
 export { getAbilityLevel }
+
+/**
+ * Per-rank mana costs, read from the hero registry. Re-exported here for the
+ * same reason as getAbilityLevel: every hero module reads its costs through
+ * this path, and the client has to be able to quote the same number before the
+ * cast is submitted. The resolvers kept private tables until the two diverged.
+ */
+export { abilityManaTable }
 
 /** Pick a scaled value from an array based on ability level. */
 export function scaleValue(values: readonly number[], level: number): number {

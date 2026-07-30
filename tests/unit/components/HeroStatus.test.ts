@@ -6,7 +6,12 @@ import { HEROES } from '../../../shared/constants/heroes'
 import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 
 const HERO_ID = 'echo'
-const Q_MANA_COST = HEROES[HERO_ID]!.abilities.q.manaCost
+// Echo Q costs [40, 50, 60, 70] across its four ranks; the fixture hero is
+// level 5, which is rank 3. The panel used to quote the registry's flat
+// rank-1 `manaCost` at every level — the number the engine stopped charging
+// the moment the ability ranked up.
+const Q_MANA_BY_RANK = HEROES[HERO_ID]!.abilities.q.manaCostByLevel!
+const Q_MANA_COST = Q_MANA_BY_RANK[2]!
 
 interface HeroOverrides {
   cooldowns?: { q: number; w: number; e: number; r: number }
@@ -277,6 +282,30 @@ describe('HeroStatus buff strip', () => {
     expect(treads.exists()).toBe(true)
     expect(treads.text()).not.toContain('999') // no misleading (999t) countdown
     wrapper.unmount()
+  })
+})
+
+describe('HeroStatus ability mana cost', () => {
+  const tooltipText = async (level: number) => {
+    mockPointer(false)
+    const wrapper = mountHeroStatus(makeHero({ level }))
+    await wrapper.find('[data-testid="ability-chip-q"]').trigger('mouseenter')
+    const text = wrapper.find('[data-testid="ability-tooltip-q"]').text()
+    wrapper.unmount()
+    return text
+  }
+
+  it('quotes the rank cost, which climbs with the hero level', async () => {
+    // Literal numbers on purpose: deriving them from the same helper the
+    // component uses would pass even if both agreed on the wrong rank.
+    expect(await tooltipText(1)).toContain('Mana: 40')
+    expect(await tooltipText(3)).toContain('Mana: 50')
+    expect(await tooltipText(7)).toContain('Mana: 70')
+  })
+
+  it('holds the cost flat across levels inside one rank', async () => {
+    expect(await tooltipText(3)).toContain('Mana: 50')
+    expect(await tooltipText(4)).toContain('Mana: 50')
   })
 })
 

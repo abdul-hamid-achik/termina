@@ -232,6 +232,22 @@ function fmtSavedAt(ts: number): string {
   return new Date(ts).toLocaleString()
 }
 
+// The endpoint's sentence ("Replay available after the game ends") travels in
+// the response body's `message`. The FetchError's own statusMessage is only the
+// HTTP status text, which Nitro leaves as "Server Error" for any error that
+// doesn't set one — so reading that first blames the backend for a 403/404 the
+// player can actually act on.
+function messageFromError(err: unknown): string {
+  const e = err as
+    | { data?: { message?: unknown }; statusMessage?: unknown; message?: unknown }
+    | undefined
+  for (const candidate of [e?.data?.message, e?.statusMessage, e?.message]) {
+    if (typeof candidate === 'string' && candidate.length > 0) return candidate
+  }
+  return 'unknown error'
+}
+const errorMessage = computed(() => messageFromError(error.value))
+
 function heroName(id: string | null): string {
   if (!id) return '???'
   return HEROES[id]?.name ?? id
@@ -278,11 +294,12 @@ watchEffect(() => {
 
       <div v-else-if="error" class="border border-dire bloom-dire p-4">
         <div class="t-h3 text-dire text-glow-dire">REPLAY UNAVAILABLE</div>
-        <div class="t-caption mt-1">
-          {{ String(error.statusMessage ?? error.message ?? 'unknown error') }}
+        <div class="t-caption mt-1" data-testid="replay-error-detail">
+          {{ errorMessage }}
         </div>
         <div class="mt-2 t-caption">
-          Replays are kept for ~8 hours after a game starts and are dropped on game-over.
+          A replay is written when the game ends — a match still in progress doesn't have one yet —
+          and is kept for about 8 hours after that.
         </div>
       </div>
 

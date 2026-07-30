@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealAbilityDamage,
@@ -26,20 +27,20 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [75, 110, 145, 180] as const
-const Q_MANA = [40, 50, 60, 70] as const
+const Q_MANA = abilityManaTable('lambda', 'q')
 const Q_COOLDOWN = 5
 
-const W_MANA = [70, 85, 100, 115] as const
+const W_MANA = abilityManaTable('lambda', 'w')
 const W_COOLDOWN = 14
 
 const E_DAMAGE = [70, 100, 130, 160] as const
-const E_MANA = [80, 95, 110, 125] as const
+const E_MANA = abilityManaTable('lambda', 'e')
 const E_COOLDOWN = 10
 const E_SLOW_PERCENT = 30
 const E_SLOW_DURATION = 2
 
 const R_DAMAGE = [300, 450, 600] as const
-const R_MANA = [250, 350, 450] as const
+const R_MANA = abilityManaTable('lambda', 'r')
 const R_COOLDOWN = 50
 
 const CLOSURE_CASTS_REQUIRED = 3

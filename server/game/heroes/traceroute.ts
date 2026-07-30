@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getAlliesInZone,
   getAllEnemyPlayers,
@@ -24,19 +25,19 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [100, 145, 190, 235] as const
-const Q_MANA = [50, 65, 80, 95] as const
+const Q_MANA = abilityManaTable('traceroute', 'q')
 const Q_COOLDOWN = 8
 const Q_ISOLATION_BONUS = 0.35
 
-const W_MANA = [70, 85, 100, 115] as const
+const W_MANA = abilityManaTable('traceroute', 'w')
 const W_COOLDOWN = 12
 const W_ROOT_DURATION = 2
 
-const E_MANA = [60, 75, 90, 105] as const
+const E_MANA = abilityManaTable('traceroute', 'e')
 const E_COOLDOWN = 12
 const E_SHADOW_DURATION = 2
 
-const R_MANA = [200, 280, 360] as const
+const R_MANA = abilityManaTable('traceroute', 'r')
 const R_COOLDOWN = 60
 const R_REVEAL_DURATION = 3
 const R_DAMAGE_BUFF_DURATION = 2

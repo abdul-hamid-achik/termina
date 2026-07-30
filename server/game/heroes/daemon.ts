@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   dealDamage,
   deductMana,
@@ -23,18 +24,18 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [60, 100, 140, 180] as const // total DoT damage
-const Q_MANA = [50, 70, 90, 110] as const
+const Q_MANA = abilityManaTable('daemon', 'q')
 const Q_COOLDOWN = 7
 
-const W_MANA = 100
+const W_MANA = abilityManaTable('daemon', 'w')
 const W_COOLDOWN = 18
 
 const E_DAMAGE = [300, 400, 500] as const
-const E_MANA = [150, 200, 250] as const
+const E_MANA = abilityManaTable('daemon', 'e')
 const E_COOLDOWN = 20
 const E_THRESHOLD = 0.3 // 30% HP
 
-const R_MANA = [200, 300, 400] as const
+const R_MANA = abilityManaTable('daemon', 'r')
 const R_COOLDOWN = 60
 
 const STEALTH_IDLE_TICKS = 2
@@ -52,7 +53,7 @@ function resolveHeroAbility(
     case 'q':
       return resolveQ(state, player, level, target)
     case 'w':
-      return resolveW(state, player, target)
+      return resolveW(state, player, level, target)
     case 'e':
       return resolveE(state, player, level, target)
     case 'r':
@@ -126,11 +127,15 @@ function resolveQ(
 function resolveW(
   state: GameState,
   player: PlayerState,
+  level: number,
   target?: TargetRef,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    if (player.mp < W_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
+    const manaCost = scaleValue(W_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
     const zoneId =
@@ -141,7 +146,7 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, W_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
 

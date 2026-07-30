@@ -25,6 +25,7 @@ import { LANE_ROUTES } from '~~/shared/constants/lanes'
 import { ANCIENT_ZONES } from '~~/server/game/engine/AncientSystem'
 import { fastGameFactor } from '~~/server/game/engine/fastGame'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
+import { getAbilityManaCost } from '~~/shared/utils/ability'
 import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
 
 // Item build orders now live in shared/constants/itemBuilds (the SINGLE source
@@ -403,8 +404,13 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
   // burns its one action per tick on a cast the resolver always rejects:
   // it never attacks, never earns XP, never levels — and a whole game of
   // bots in that state deadlocks the match forever.
+  // The cost has to be the RANK cost, not the registry's rank-1 headline: a
+  // levelled bot reading the flat number queues casts it cannot pay for (up to
+  // 2.2x short at rank 4) and the resolver rejects them, burning the tick.
   return (
-    getAbilityLevel(bot.level, slot) >= 1 && bot.cooldowns[slot] === 0 && bot.mp >= ability.manaCost
+    getAbilityLevel(bot.level, slot) >= 1 &&
+    bot.cooldowns[slot] === 0 &&
+    bot.mp >= getAbilityManaCost(ability, slot, bot.level)
   )
 }
 
@@ -501,7 +507,10 @@ function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: Game
           const ability = hero.abilities[slot]
           // R requires level 6+ to cast; if enemy hasn't hit it, skip.
           if (slot === 'r' && enemy.level < 6) continue
-          if (enemy.mp >= ability.manaCost) {
+          // Rank cost, not the rank-1 headline: an enemy who cannot pay for a
+          // cast is not threatening with it, and reading the headline had bots
+          // fleeing fights the enemy had no mana to win.
+          if (enemy.mp >= getAbilityManaCost(ability, slot, enemy.level)) {
             score += abilityDamageValue(ability)
           }
         }
@@ -533,7 +542,7 @@ function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: Game
   return score
 }
 
-function shouldRetreatFromThreat(
+export function shouldRetreatFromThreat(
   state: GameState,
   bot: PlayerState,
   config: BotDifficultyConfig,
@@ -716,14 +725,23 @@ export function getAbilityTarget(
 }
 
 /**
- * Total mana to cast a sequence of ability slots for a hero. Mana regen between
- * casts is ignored on purpose — a conservative "can I finish this combo?" check
- * so a bot never burns its opener on a combo it can't complete.
+ * Total mana to cast a sequence of ability slots for a hero at `playerLevel`.
+ * Mana regen between casts is ignored on purpose — a conservative "can I finish
+ * this combo?" check so a bot never burns its opener on a combo it can't
+ * complete. Costs are per-rank for the same reason `canCastAbility` uses them:
+ * summing the rank-1 headline made every levelled combo look affordable.
  */
-export function sequenceManaCost(heroId: string, slots: Array<'q' | 'w' | 'e' | 'r'>): number {
+export function sequenceManaCost(
+  heroId: string,
+  slots: Array<'q' | 'w' | 'e' | 'r'>,
+  playerLevel: number,
+): number {
   const abilities = HEROES[heroId]?.abilities
   if (!abilities) return 0
-  return slots.reduce((sum, slot) => sum + (abilities[slot]?.manaCost ?? 0), 0)
+  return slots.reduce((sum, slot) => {
+    const ability = abilities[slot]
+    return sum + (ability ? getAbilityManaCost(ability, slot, playerLevel) : 0)
+  }, 0)
 }
 
 function tryCombo(
@@ -792,6 +810,7 @@ function tryCombo(
       sequenceManaCost(
         heroId,
         combo.sequence.map((s) => s.ability),
+        bot.level,
       )
     )
       continue

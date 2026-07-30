@@ -165,6 +165,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllEnvs()
 })
 
 describe('ws route — open()', () => {
@@ -771,7 +772,8 @@ describe('ws route — close()', () => {
     })
   })
 
-  it('uses a short window for dev_ games and stops the seeded loop', async () => {
+  it('uses a short window for dev_ games under test hooks and stops the seeded loop', async () => {
+    vi.stubEnv('TERMINA_TEST_HOOKS', '1')
     vi.useFakeTimers()
     const { peer, runtime } = openPeerInGame('p_dev1', 'dev_1337_abcd')
     handler.close(peer, {})
@@ -786,6 +788,25 @@ describe('ws route — close()', () => {
     await vi.advanceTimersByTimeAsync(2_000)
     expect(runtime.wsService.removeConnection).toHaveBeenCalledWith('p_dev1')
     expect(stopDevGame).toHaveBeenCalledWith('dev_1337_abcd')
+  })
+
+  it('gives a dev_ game the full 60s window when test hooks are OFF (production tutorial)', async () => {
+    // REGRESSION: the short window keyed on the `dev_` prefix alone, but a
+    // production tutorial IS a dev_ game — so a real player learning the game
+    // had their match killed by any 3-second Wi-Fi blip. Only the e2e suite
+    // (TERMINA_TEST_HOOKS=1 via serve:test) wants the impatient window.
+    vi.stubEnv('TERMINA_TEST_HOOKS', '')
+    vi.useFakeTimers()
+    const { peer, runtime } = openPeerInGame('p_tut', 'dev_1337_tutorial')
+    handler.close(peer, {})
+
+    // Well past the 3s dev window: still recoverable.
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(runtime.wsService.removeConnection).not.toHaveBeenCalled()
+    expect(stopDevGame).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(stopDevGame).toHaveBeenCalledWith('dev_1337_tutorial')
   })
 
   it('cancels the in-game cleanup when the player reconnects within the window', async () => {

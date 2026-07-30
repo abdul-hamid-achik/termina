@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
@@ -24,19 +25,19 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [95, 140, 185, 230] as const
-const Q_MANA = [70, 90, 110, 130] as const
+const Q_MANA = abilityManaTable('firewall', 'q')
 const Q_COOLDOWN = 8
 
 const W_SHIELD = [200, 300, 400, 500] as const
-const W_MANA = [80, 100, 120, 140] as const
+const W_MANA = abilityManaTable('firewall', 'w')
 const W_COOLDOWN = 14
 const W_EXPLOSION_DAMAGE = 80 // DMZ explodes for this magical damage when it ends
 
-const E_MANA = [60, 80, 100, 120] as const
+const E_MANA = abilityManaTable('firewall', 'e')
 const E_COOLDOWN = 16
 
 const R_DOT_TOTAL = [120, 200, 280] as const
-const R_MANA = [250, 350, 450] as const
+const R_MANA = abilityManaTable('firewall', 'r')
 const R_COOLDOWN = 55
 
 const PACKET_INSPECTION_REFLECT = 0.08 // 8%

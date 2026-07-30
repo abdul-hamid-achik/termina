@@ -24,6 +24,7 @@ import {
 } from '~~/server/services/PeerRegistry'
 import { addSpectator, removeSpectator } from '~~/server/services/SpectatorRegistry'
 import { wsLog } from '~~/server/utils/log'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 import { verifyWsTicket } from '~~/server/utils/ws-ticket'
 import { checkRateLimit, checkScopedRateLimit, resetRateLimit } from '~~/server/utils/RateLimiter'
 import { clientMessageSchema } from '~~/server/utils/ws-schemas'
@@ -47,10 +48,17 @@ export function clearDisconnectTimers(): void {
 }
 
 const RECONNECT_WINDOW_MS = 60_000
-// Dev/e2e (`dev_*`) games get a much shorter window: the e2e browser disconnects
-// permanently at spec end and (almost) never reconnects, so a 60s window lets
-// every seeded game keep ticking through the whole suite (which runs in ~30s) and
-// pile up. 3s still tolerates an in-spec WS blip but stops the loop promptly after.
+// Dev/e2e (`dev_*`) games get a much shorter window UNDER TEST HOOKS ONLY: the
+// e2e browser disconnects permanently at spec end and (almost) never reconnects,
+// so a 60s window lets every seeded game keep ticking through the whole suite
+// (which runs in ~30s) and pile up. 3s still tolerates an in-spec WS blip but
+// stops the loop promptly after.
+//
+// The `dev_` prefix is NOT a test marker — production tutorials are `dev_` games
+// too (game-server.ts `_createDevGame`), so keying on the prefix alone gave a real
+// player learning the game a 3-second reconnect grace: any Wi-Fi blip ended their
+// practice match. `serve:test` sets TERMINA_TEST_HOOKS=1, so the e2e suite still
+// gets the short window.
 const DEV_GAME_RECONNECT_MS = 3_000
 
 // ── Server-side ping/pong (zombie-connection detection) ──────────
@@ -769,9 +777,9 @@ export default defineWebSocketHandler({
               Effect.gen(function* () {
                 yield* runtime.wsService.removeConnection(playerId)
                 // Notify the surviving players. removeConnection ran first, so the
-                // dropped player is already out of the connection set. (The old
-                // code published to a Redis channel nobody subscribed to, so the
-                // disconnect notice never actually reached anyone.)
+                // dropped player's peer is gone and this can't echo back to them.
+                // (The old code published to a Redis channel nobody subscribed to,
+                // so the disconnect notice never actually reached anyone.)
                 yield* runtime.wsService.broadcastToGame(gameId, {
                   type: 'player_disconnect',
                   playerId,
@@ -789,7 +797,9 @@ export default defineWebSocketHandler({
 
           peerState.delete(peer)
         },
-        gameId.startsWith('dev_') ? DEV_GAME_RECONNECT_MS : RECONNECT_WINDOW_MS,
+        gameId.startsWith('dev_') && testHooksEnabled()
+          ? DEV_GAME_RECONNECT_MS
+          : RECONNECT_WINDOW_MS,
       )
 
       disconnectTimers.set(playerId, timer)

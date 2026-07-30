@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getAlliesInZone,
   dealDamage,
@@ -22,23 +23,23 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = [65, 80, 95, 110] as const
+const Q_MANA = abilityManaTable('cron', 'q')
 const Q_COOLDOWN = 8
 const Q_ATK_BONUS = 15
 const Q_DEF_BONUS = 5
 const Q_DURATION = 3
 
 const W_SHIELD = [130, 170, 210, 250] as const
-const W_MANA = [90, 105, 120, 135] as const
+const W_MANA = abilityManaTable('cron', 'w')
 const W_COOLDOWN = 12
 const W_SHIELD_DURATION = 2
 
 const E_DAMAGE = [75, 110, 145, 180] as const
-const E_MANA = [55, 70, 85, 100] as const
+const E_MANA = abilityManaTable('cron', 'e')
 const E_COOLDOWN = 10
 
 const R_HEAL_PER_TICK = [75, 110, 145] as const
-const R_MANA = [250, 340, 430] as const
+const R_MANA = abilityManaTable('cron', 'r')
 const R_COOLDOWN = 55
 const R_DURATION = 4
 const R_MP_PER_TICK = 15

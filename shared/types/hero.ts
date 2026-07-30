@@ -52,7 +52,20 @@ export interface AbilityDef {
   id: string
   name: string
   description: string
+  /**
+   * Rank-1 cost — the headline number for surfaces with no player level (the
+   * hero grid, the draft picker) and the whole cost for abilities that don't
+   * scale. Always equals `manaCostByLevel[0]` when a table is present.
+   */
   manaCost: number
+  /**
+   * Cost per ability rank. The registry is the ONLY copy — the hero resolvers
+   * read it via `abilityManaTable` instead of keeping their own table. They
+   * used to keep one, and the client, which knows only `manaCost`, displayed
+   * and pre-validated the rank-1 cost of abilities the engine charged up to
+   * 2.2x for. Absent means the cost is flat.
+   */
+  manaCostByLevel?: readonly number[]
   cooldownTicks: number
   targetType: TargetType
   damageType?: DamageType

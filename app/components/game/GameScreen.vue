@@ -64,6 +64,7 @@ import { formatRoshan, ticksToClock } from '~/utils/strategy'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
+import { getAbilityManaCost } from '~~/shared/utils/ability'
 import { isTutorialComplete } from '~~/shared/constants/tutorial'
 
 const gameStore = useGameStore()
@@ -1395,7 +1396,7 @@ const abilityButtonState = computed(() => {
       continue
     }
     const ability = HEROES[p.heroId]?.abilities[slot]
-    if (ability && p.mp < ability.manaCost) {
+    if (ability && p.mp < getAbilityManaCost(ability, slot, p.level)) {
       result[upper] = { ready: false, label: upper, aria: `${upper} ${name}, not enough mana` }
       continue
     }
@@ -2045,6 +2046,7 @@ function handleReturnToMenu() {
         :tick="gameStore.tick"
         :mode="gameStore.mode"
         :neutrals="gameStore.neutrals"
+        :creeps="gameStore.creeps"
         @submit="handleCommand"
       />
     </div>

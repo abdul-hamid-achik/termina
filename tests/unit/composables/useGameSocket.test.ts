@@ -307,6 +307,46 @@ describe('useGameSocket', () => {
       expect(spy).toHaveBeenCalledWith('[ERROR] boom', 'error')
     })
 
+    it('bails out to the lobby on NOT_ASSIGNED instead of freezing the HUD', async () => {
+      // REGRESSION: NOT_ASSIGNED is terminal — the server no longer maps this
+      // player to this game, so join_game and reconnect answer it forever. It
+      // was only toasted, leaving the board frozen on state that will never
+      // update. `game_not_found` is the equivalent recovery but answers only
+      // `request_state`, which no client ever sends.
+      const store = await connectWithStore()
+      const socket = MockWebSocket.last!
+      socket._receive({
+        type: 'error',
+        code: 'NOT_ASSIGNED',
+        message: 'Not assigned to this game',
+      })
+
+      expect(store.announcements.at(-1)).toContain('no longer active')
+      // disconnect() ran: the socket is closed and the retry loop cancelled, so
+      // a NOT_ASSIGNED storm can't reopen it.
+      expect(socket.close).toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(MockWebSocket.last).toBe(socket)
+      expect(window.location.href).toBe('/lobby')
+    })
+
+    it('leaves the post-game screen alone — being unassigned there is normal', async () => {
+      // Cleanup releases the assignment the moment a match ends, so a socket
+      // blip on the post-game screen legitimately answers NOT_ASSIGNED. Bouncing
+      // to the lobby there would eat the scoreboard the player is reading.
+      const store = await connectWithStore()
+      store.setGameOver('radiant', {})
+      MockWebSocket.last!._receive({
+        type: 'error',
+        code: 'NOT_ASSIGNED',
+        message: 'Not assigned to this game',
+      })
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(window.location.href).toBeUndefined()
+      expect(store.announcements.at(-1)).toContain('Not assigned to this game')
+    })
+
     it('routes player_disconnect to a warning announcement (named, or a fallback)', async () => {
       const store = await connectWithStore()
       const spy = vi.spyOn(store, 'addAnnouncement')

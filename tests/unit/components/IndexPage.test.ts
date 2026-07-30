@@ -104,7 +104,10 @@ describe('index (landing) page', () => {
       await wrapper.get('[data-testid="start-tutorial"]').trigger('click')
       await flushPromises()
 
-      expect(mockNavigateTo).toHaveBeenCalledWith('/login')
+      expect(mockNavigateTo).toHaveBeenCalledWith({
+        path: '/login',
+        query: { next: 'practice' },
+      })
     })
 
     it('shows the reason on the page instead of redirecting away', async () => {

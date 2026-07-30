@@ -7,6 +7,7 @@ import {
   tryUseCombatItem,
   tryPanicDefensiveItem,
   tryPlaceWard,
+  shouldRetreatFromThreat,
 } from '../../../server/game/ai/BotAI'
 import { cleanupBotState } from '../../../server/game/ai/BotAI'
 import { registerBots, cleanupGame } from '../../../server/game/ai/BotManager'
@@ -486,6 +487,45 @@ describe('BotAI - decideBotAction', () => {
       const action = decideBotAction(state, bot, 'mid')
       // No mana, should attack
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
+    })
+
+    it('does not cast an ability it can only afford at rank 1', () => {
+      // Echo Q costs 40 at rank 1 and 70 at rank 4 (level 7). A bot holding 55
+      // mana used to read the registry's rank-1 headline, queue the cast, and
+      // have the resolver refuse it for insufficient mana — one wasted tick per
+      // tick, for the rest of the game. W/E/R are parked so Q is the only
+      // candidate and the outcome is unambiguous.
+      const bot = makePlayer({
+        heroId: 'echo',
+        level: 7,
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 55,
+        maxMp: 300,
+        cooldowns: { q: 0, w: 5, e: 5, r: 5 },
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
+      expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
+    })
+
+    it('casts once it holds the rank cost', () => {
+      const bot = makePlayer({
+        heroId: 'echo',
+        level: 7,
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 500,
+        mp: 70,
+        maxMp: 300,
+        cooldowns: { q: 0, w: 5, e: 5, r: 5 },
+      })
+      const enemy = makePlayer({ id: 'enemy1', team: 'dire', zone: 'mid-river', hp: 300 })
+      const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
+      const action = decideBotAction(state, bot, 'mid', alwaysCasts(bot.id))
+      expect(action).toMatchObject({ type: 'cast', ability: 'q' })
     })
 
     it('holds Cache Eviction (R) at low stored energy, casting a non-ult instead', () => {
@@ -1345,18 +1385,25 @@ describe('BotAI - decideBotAction', () => {
 describe('sequenceManaCost (combo affordability)', () => {
   it('sums the mana cost of every ability in the sequence', () => {
     const echo = HEROES.echo!.abilities
-    expect(sequenceManaCost('echo', ['e', 'q'])).toBe(echo.e.manaCost + echo.q.manaCost)
-    expect(sequenceManaCost('echo', ['q', 'w', 'r'])).toBe(
+    expect(sequenceManaCost('echo', ['e', 'q'], 1)).toBe(echo.e.manaCost + echo.q.manaCost)
+    expect(sequenceManaCost('echo', ['q', 'w', 'r'], 1)).toBe(
       echo.q.manaCost + echo.w.manaCost + echo.r.manaCost,
     )
   })
 
+  it('sums the RANK cost, not the rank-1 headline', () => {
+    // Echo Q [40,50,60,70] + W [50,60,70,80]: 90 at rank 1, 150 at rank 4. A
+    // level-7 bot summing the headline opens a rotation it cannot finish.
+    expect(sequenceManaCost('echo', ['q', 'w'], 1)).toBe(90)
+    expect(sequenceManaCost('echo', ['q', 'w'], 7)).toBe(150)
+  })
+
   it('returns 0 for an unknown hero', () => {
-    expect(sequenceManaCost('not_a_hero', ['q', 'w'])).toBe(0)
+    expect(sequenceManaCost('not_a_hero', ['q', 'w'], 1)).toBe(0)
   })
 
   it('is 0 for an empty sequence', () => {
-    expect(sequenceManaCost('echo', [])).toBe(0)
+    expect(sequenceManaCost('echo', [], 1)).toBe(0)
   })
 })
 
@@ -1371,6 +1418,49 @@ function makeConfig(overrides: Partial<BotDifficultyConfig> = {}): BotDifficulty
     ...overrides,
   }
 }
+
+describe('BotAI - threat assessment (shouldRetreatFromThreat)', () => {
+  // Both sides are level-7 Echo, and the enemy's only off-cooldown ability is
+  // Q — worth 120 threat if it can be paid for. Echo Q costs 40 at rank 1 and
+  // 70 at rank 4 (level 7), so an enemy holding 55 mana scores 50 or 170
+  // depending on which number the bot reads. The bot's own threat (50 attack,
+  // -25 for sitting under half HP, +50 for five kills = 75) puts the tier-2
+  // boundary at 75 x 1.35 = 101 — squarely between the two.
+  function scenario(enemyMp: number) {
+    const bot = makePlayer({
+      heroId: 'echo',
+      level: 7,
+      zone: 'mid-river',
+      hp: 175,
+      maxHp: 500,
+      mp: 0,
+      kills: 5,
+    })
+    const enemy = makePlayer({
+      id: 'enemy1',
+      name: 'enemy1',
+      team: 'dire',
+      heroId: 'echo',
+      level: 7,
+      zone: 'mid-river',
+      hp: 500,
+      maxHp: 500,
+      mp: enemyMp,
+      cooldowns: { q: 0, w: 5, e: 5, r: 5 },
+    })
+    return { state: makeGameState({ players: { [bot.id]: bot, enemy1: enemy } }), bot }
+  }
+
+  it('holds ground against an enemy who cannot afford the cast at its rank', () => {
+    const { state, bot } = scenario(55)
+    expect(shouldRetreatFromThreat(state, bot, makeConfig())).toBe(false)
+  })
+
+  it('retreats once the enemy holds the rank cost', () => {
+    const { state, bot } = scenario(70)
+    expect(shouldRetreatFromThreat(state, bot, makeConfig())).toBe(true)
+  })
+})
 
 /** Inventory of exactly the given item ids, padded to six slots. */
 function inv(...ids: string[]): PlayerState['items'] {

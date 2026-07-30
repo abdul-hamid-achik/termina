@@ -195,6 +195,95 @@ describe('login page', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith('/leaderboard')
     })
 
+    it('keeps the query string of a deep ?redirect target', async () => {
+      mockFetch.mockResolvedValue({ success: true })
+      mockRoute.query = { redirect: '/play?gameId=g7' }
+      const wrapper = mountLogin()
+
+      await wrapper.find('input[autocomplete="username"]').setValue('user')
+      await wrapper.find('input[type="password"]').setValue('secret')
+      await wrapper.find('form').trigger('submit')
+      await flush()
+
+      expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=g7')
+    })
+
+    // The middleware puts an attacker-influenceable value in ?redirect, so the
+    // page must not hand it to navigateTo unfiltered.
+    describe('open-redirect hardening', () => {
+      const hostile = [
+        '//evil.example.com/steal',
+        'https://evil.example.com',
+        'javascript:alert(1)',
+        'evil.example.com',
+      ]
+
+      for (const target of hostile) {
+        it(`refuses to follow ${target}`, async () => {
+          mockFetch.mockResolvedValue({ success: true })
+          mockRoute.query = { redirect: target }
+          const wrapper = mountLogin()
+
+          await wrapper.find('input[autocomplete="username"]').setValue('user')
+          await wrapper.find('input[type="password"]').setValue('secret')
+          await wrapper.find('form').trigger('submit')
+          await flush()
+
+          expect(mockNavigateTo).toHaveBeenCalledWith('/')
+        })
+      }
+
+      it('ignores a repeated ?redirect (an array, not a string)', async () => {
+        mockFetch.mockResolvedValue({ success: true })
+        mockRoute.query = { redirect: ['/lobby', '//evil.example.com'] }
+        const wrapper = mountLogin()
+
+        await wrapper.find('input[autocomplete="username"]').setValue('user')
+        await wrapper.find('input[type="password"]').setValue('secret')
+        await wrapper.find('form').trigger('submit')
+        await flush()
+
+        expect(mockNavigateTo).toHaveBeenCalledWith('/')
+      })
+    })
+
+    describe('?next=practice resumption', () => {
+      it('re-fires the practice launcher instead of going home', async () => {
+        mockFetch.mockImplementation((url: string) =>
+          url === '/api/game/tutorial'
+            ? Promise.resolve({ url: '/play?gameId=t1&tutorial=1' })
+            : Promise.resolve({ success: true }),
+        )
+        mockRoute.query = { next: 'practice' }
+        const wrapper = mountLogin()
+
+        await wrapper.find('input[autocomplete="username"]').setValue('user')
+        await wrapper.find('input[type="password"]').setValue('secret')
+        await wrapper.find('form').trigger('submit')
+        await flush()
+
+        expect(mockFetch).toHaveBeenCalledWith('/api/game/tutorial', { method: 'POST', body: {} })
+        expect(mockNavigateTo).toHaveBeenCalledWith('/play?gameId=t1&tutorial=1')
+      })
+
+      it('surfaces the reason when the resumed launch fails', async () => {
+        mockFetch.mockImplementation((url: string) =>
+          url === '/api/game/tutorial'
+            ? Promise.reject({ statusCode: 409, data: { message: "You're already in a match" } })
+            : Promise.resolve({ success: true }),
+        )
+        mockRoute.query = { next: 'practice' }
+        const wrapper = mountLogin()
+
+        await wrapper.find('input[autocomplete="username"]').setValue('user')
+        await wrapper.find('input[type="password"]').setValue('secret')
+        await wrapper.find('form').trigger('submit')
+        await flush()
+
+        expect(wrapper.text()).toContain("You're already in a match")
+      })
+    })
+
     it('surfaces the server error message on a failed login and does not navigate', async () => {
       mockFetch.mockRejectedValue({ data: { message: 'Invalid credentials' } })
       const wrapper = mountLogin()

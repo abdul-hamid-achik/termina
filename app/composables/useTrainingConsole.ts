@@ -2,6 +2,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { HeroDef } from '~~/shared/types/hero'
 import { abilitySummary, abilityImpact, abilityControls } from '~~/shared/abilityFormat'
+import { getAbilityManaCost } from '~~/shared/utils/ability'
 import {
   getAbilityLevel,
   BASIC_ABILITY_RANKS,
@@ -128,11 +129,15 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
       pushLog(`! ${ab.name} on cooldown (${cooldowns[slot]}t left)`)
       return
     }
-    if (mana.value < ab.manaCost) {
-      pushLog(`! not enough mana for ${ab.name} (need ${ab.manaCost}, have ${mana.value})`)
+    // The console has a level selector, so it must charge what a hero at THAT
+    // level actually pays — otherwise it teaches a rotation that is unaffordable
+    // in a real match.
+    const cost = getAbilityManaCost(ab, slot, level.value)
+    if (mana.value < cost) {
+      pushLog(`! not enough mana for ${ab.name} (need ${cost}, have ${mana.value})`)
       return
     }
-    mana.value -= ab.manaCost
+    mana.value -= cost
     cooldowns[slot] = ab.cooldownTicks
     castCount.value++
     pushLog(`> cast ${slot}`, `  ${hero.value.name} casts ${ab.name} — ${abilitySummary(ab)}`)
@@ -174,7 +179,9 @@ export function useTrainingConsole(hero: Ref<HeroDef>, dummyMax = 1000) {
 
   function castable(slot: ConsoleSlot): boolean {
     return (
-      !isLocked(slot) && cooldowns[slot] === 0 && mana.value >= hero.value.abilities[slot].manaCost
+      !isLocked(slot) &&
+      cooldowns[slot] === 0 &&
+      mana.value >= getAbilityManaCost(hero.value.abilities[slot], slot, level.value)
     )
   }
 

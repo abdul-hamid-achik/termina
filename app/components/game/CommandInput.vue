@@ -7,6 +7,7 @@ import type {
   ZoneRuntimeState,
   GameMode,
   NeutralCreepState,
+  CreepState,
 } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
 import type { ItemDef } from '~~/shared/types/items'
@@ -42,6 +43,13 @@ const props = withDefaults(
      * instance reject every legal neutral target.
      */
     neutrals?: NeutralCreepState[]
+    /**
+     * Lane creeps, for `attack creep:<i>` autocomplete and pre-flight. Same
+     * no-default rule as `neutrals`: validateCommand treats a PRESENT array as
+     * ground truth, so an empty default would make an unbound instance reject
+     * every legal creep target.
+     */
+    creeps?: CreepState[]
   }>(),
   {
     placeholder: 'Enter command...',
@@ -81,6 +89,7 @@ const gameContext = computed<GameContext>(() => ({
   tick: props.tick,
   mode: props.mode,
   neutrals: props.neutrals,
+  creeps: props.creeps,
 }))
 
 /**

@@ -60,7 +60,9 @@ describe('useStartTutorial', () => {
 
     await start()
 
-    expect(mockNavigateTo).toHaveBeenCalledWith('/login')
+    // `next=practice` is what lets login resume the launch — a bare '/login'
+    // sent the player home and made them hunt for the button again.
+    expect(mockNavigateTo).toHaveBeenCalledWith({ path: '/login', query: { next: 'practice' } })
     expect(error.value).toBeTruthy()
   })
 

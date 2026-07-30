@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
@@ -23,21 +24,21 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = [60, 80, 100, 120] as const
+const Q_MANA = abilityManaTable('malloc', 'q')
 const Q_COOLDOWN = 8
 
 const W_DAMAGE = [110, 160, 210, 260] as const
-const W_MANA = [70, 90, 110, 130] as const
+const W_MANA = abilityManaTable('malloc', 'w')
 const W_COOLDOWN = 7
 const W_LOW_HP_BONUS = 0.4 // 40% bonus below 30% HP
 const W_THRESHOLD = 0.3
 
 const E_DAMAGE = [75, 115, 155, 195] as const
-const E_MANA = [80, 100, 120, 140] as const
+const E_MANA = abilityManaTable('malloc', 'e')
 const E_COOLDOWN = 12
 
 const R_DAMAGE = [280, 420, 560] as const
-const R_MANA = [150, 250, 350] as const
+const R_MANA = abilityManaTable('malloc', 'r')
 const R_COOLDOWN = 50
 
 const HEAP_GROWTH_PER_100_GOLD = 1

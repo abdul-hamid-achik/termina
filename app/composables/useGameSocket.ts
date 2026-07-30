@@ -151,6 +151,25 @@ export function useGameSocket() {
           break
         case 'error':
           socketLog.warn('Server error', { code: msg.code, message: msg.message })
+          // NOT_ASSIGNED is terminal, not transient: the server no longer maps
+          // us to this game, so join_game and reconnect will answer the same
+          // forever and the HUD stays frozen on a board that will never tick
+          // again. `game_not_found` below is the equivalent recovery, but it
+          // only answers `request_state` — which no client ever sends — so this
+          // was the one path out and it merely toasted. Being unassigned on the
+          // post-game screen is normal (cleanup releases the assignment), so
+          // leave a finished match alone.
+          if (msg.code === 'NOT_ASSIGNED' && gameStore.phase !== 'ended') {
+            gameStore.addAnnouncement(
+              '[ERROR] This match is no longer active. Returning to lobby...',
+              'error',
+            )
+            disconnect()
+            setTimeout(() => {
+              window.location.href = '/lobby'
+            }, 2000)
+            break
+          }
           gameStore.addAnnouncement(`[ERROR] ${msg.message}`, 'error')
           break
         case 'game_over':

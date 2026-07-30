@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   getAlliesInZone,
@@ -23,20 +24,20 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_HEAL = [80, 120, 160, 200] as const
-const Q_MANA = 80
+const Q_MANA = abilityManaTable('sentry', 'q')
 const Q_COOLDOWN = [6, 5, 4, 3] as const
 
 const W_SHIELD = [100, 150, 200, 250] as const
-const W_MANA = 100
+const W_MANA = abilityManaTable('sentry', 'w')
 const W_COOLDOWN = [10, 9, 8, 7] as const
 const W_DURATION = 3
 
-const E_MANA = 70
+const E_MANA = abilityManaTable('sentry', 'e')
 const E_COOLDOWN = [12, 11, 10, 9] as const
 const E_SLOW_VALUE = 30
 const E_SLOW_DURATION = 2
 
-const R_MANA = 250
+const R_MANA = abilityManaTable('sentry', 'r')
 const R_COOLDOWN = [60, 55, 50] as const
 const R_SHIELD = 150
 const R_DEFENSE_BONUS = 3
@@ -77,8 +78,11 @@ function resolveQ(
       )
     }
 
-    if (player.mp < Q_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: Q_MANA, current: player.mp }))
+    const manaCost = scaleValue(Q_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
     const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
@@ -91,7 +95,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, Q_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const healAmount = scaleValue(Q_HEAL, level)
@@ -134,8 +138,11 @@ function resolveW(
       )
     }
 
-    if (player.mp < W_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: W_MANA, current: player.mp }))
+    const manaCost = scaleValue(W_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
     const targetPlayer = target.kind === 'self' ? player : findTargetPlayer(state, target)
@@ -148,7 +155,7 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, W_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'w', scaleValue(W_COOLDOWN, level))
 
     const shieldAmount = scaleValue(W_SHIELD, level)
@@ -211,11 +218,14 @@ function resolveE(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    if (player.mp < E_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: E_MANA, current: player.mp }))
+    const manaCost = scaleValue(E_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
-    let caster = deductMana(player, E_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
 
     const enemies = getEnemiesInZone(state, player)
@@ -256,11 +266,14 @@ function resolveR(
   level: number,
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
-    if (player.mp < R_MANA) {
-      return yield* Effect.fail(new InsufficientManaError({ required: R_MANA, current: player.mp }))
+    const manaCost = scaleValue(R_MANA, level)
+    if (player.mp < manaCost) {
+      return yield* Effect.fail(
+        new InsufficientManaError({ required: manaCost, current: player.mp }),
+      )
     }
 
-    let caster = deductMana(player, R_MANA)
+    let caster = deductMana(player, manaCost)
     caster = setCooldown(caster, 'r', scaleValue(R_COOLDOWN, level))
 
     const allies = getAlliesInZone(state, player)

@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
@@ -25,22 +26,22 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [90, 130, 170, 210] as const
-const Q_MANA = [60, 75, 90, 105] as const
+const Q_MANA = abilityManaTable('mutex', 'q')
 const Q_COOLDOWN = 8
 
 const W_SHIELD = [180, 240, 300, 360] as const
 const W_DEFENSE_BONUS = 10
-const W_MANA = [70, 85, 100, 115] as const
+const W_MANA = abilityManaTable('mutex', 'w')
 const W_COOLDOWN = 12
 
 const E_DAMAGE = [40, 55, 70, 85] as const
 const E_SLOW_PERCENT = 10
-const E_MANA = [50, 65, 80, 95] as const
+const E_MANA = abilityManaTable('mutex', 'e')
 const E_COOLDOWN = 10
 
 const R_DAMAGE = [150, 225, 300] as const
 const R_BONUS_PER_STACK = 30
-const R_MANA = [200, 280, 360] as const
+const R_MANA = abilityManaTable('mutex', 'r')
 const R_COOLDOWN = 50
 
 const DEADLOCK_MAX_STACKS = 5

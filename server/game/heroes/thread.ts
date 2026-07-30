@@ -9,6 +9,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getEnemiesInZone,
   getAlliesInZone,
@@ -24,21 +25,21 @@ import {
 // ── Scaling Values ────────────────────────────────────────────────
 
 const Q_DAMAGE = [85, 125, 165, 205] as const
-const Q_MANA = [55, 70, 85, 100] as const
+const Q_MANA = abilityManaTable('thread', 'q')
 const Q_COOLDOWN = 8
 const Q_ATK_BUFF = 20
 const Q_BUFF_DURATION = 3
 
 const W_SHIELD_BASE = [100, 150, 200, 250] as const
 const W_SHIELD_PER_ALLY = 40
-const W_MANA = [70, 85, 100, 115] as const
+const W_MANA = abilityManaTable('thread', 'w')
 const W_COOLDOWN = 12
 
-const E_MANA = [60, 75, 90, 105] as const
+const E_MANA = abilityManaTable('thread', 'e')
 const E_COOLDOWN = 10
 const E_DEBUFF_DURATION = 3
 
-const R_MANA = [250, 340, 430] as const
+const R_MANA = abilityManaTable('thread', 'r')
 const R_COOLDOWN = 55
 const R_BUFF_DURATION = 4
 

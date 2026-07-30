@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
+import { useStartTutorial } from '~/composables/useStartTutorial'
 
 const authStore = useAuthStore()
 const route = useRoute()
+const { start: startPractice, error: practiceError } = useStartTutorial()
 
 const mode = ref<'login' | 'register'>('login')
 const username = ref('')
@@ -51,6 +53,33 @@ const canSubmit = computed(() => {
   return true
 })
 
+/**
+ * Where to land after a successful auth. `?redirect=` arrives from the auth
+ * middleware and is therefore attacker-controllable via a crafted link, so only
+ * same-origin paths are honoured: `//evil.com` passes a bare `startsWith('/')`
+ * test and the browser resolves it as a protocol-relative absolute URL — an
+ * open redirect straight off a page that has just handled credentials.
+ */
+function safeRedirect(raw: unknown): string {
+  const value = typeof raw === 'string' ? raw : ''
+  return value.startsWith('/') && !value.startsWith('//') ? value : '/'
+}
+
+/**
+ * Resume whatever the player was trying to do. `next=practice` comes from the
+ * "practice vs bots" launcher's 401 branch — the intent was to play, not to
+ * read the home page, so re-fire the launcher rather than making them find the
+ * button again.
+ */
+async function resumeAfterAuth() {
+  if (route.query.next === 'practice') {
+    await startPractice()
+    if (practiceError.value) error.value = practiceError.value
+    return
+  }
+  await navigateTo(safeRedirect(route.query.redirect))
+}
+
 async function handleSubmit() {
   if (!canSubmit.value || loading.value) return
   error.value = ''
@@ -62,8 +91,7 @@ async function handleSubmit() {
     } else {
       await authStore.register(username.value, password.value, email.value || undefined)
     }
-    const redirect = (route.query.redirect as string) || '/'
-    navigateTo(redirect)
+    await resumeAfterAuth()
   } catch (err: unknown) {
     const fetchErr = err as { data?: { message?: string } }
     error.value = fetchErr?.data?.message || 'Something went wrong'

@@ -10,6 +10,7 @@ import {
   InvalidTargetError,
   registerHero,
   scaleValue,
+  abilityManaTable,
   findTargetPlayer,
   getAllEnemyPlayers,
   deductMana,
@@ -21,19 +22,19 @@ import {
 
 // ── Scaling Values ────────────────────────────────────────────────
 
-const Q_MANA = [80, 100, 120, 140] as const
+const Q_MANA = abilityManaTable('socket', 'q')
 const Q_COOLDOWN = 12
 
 const W_DAMAGE = [80, 120, 160, 200] as const
-const W_MANA = [60, 80, 100, 120] as const
+const W_MANA = abilityManaTable('socket', 'w')
 const W_COOLDOWN = 16
 const W_TRAP_LIFETIME = 30 // ticks the armed trap persists before expiring
 const W_TRAP_REVEAL = 2 // ticks the triggering enemy is revealed
 
-const E_MANA = [100, 130, 160, 190] as const
+const E_MANA = abilityManaTable('socket', 'e')
 const E_COOLDOWN = 20
 
-const R_MANA = [200, 300, 400] as const
+const R_MANA = abilityManaTable('socket', 'r')
 const R_COOLDOWN = 55
 // Global slow magnitude per rank: ActionResolver reads slow stacks as the
 // % chance an enemy's move fails each tick. (Was a flat stacks:1 = 1% — a

@@ -8,15 +8,20 @@ import { SURRENDER_MIN_TICK, SURRENDER_VOTE_THRESHOLD } from '~~/shared/constant
 import { isBot } from '~~/server/game/ai/BotManager'
 
 /**
- * Alive HUMAN players on a team — the surrender electorate. Bots never cast a
+ * The HUMAN players on a team — the surrender electorate. Bots never cast a
  * vote, so counting them in the denominator made surrender impossible in
  * solo-vs-bots play (1 human + 4 bots needed ceil(5 * 0.6) = 3 votes but only
  * one human could ever vote). Restricting the tally to humans means a lone
  * human's single vote concedes, while a full 5-human team still needs a 60%
  * majority.
+ *
+ * Deliberately NOT filtered on `alive`: death is the single most common moment
+ * a player wants to concede, and a death-varying denominator makes the vote
+ * incoherent — a teammate dying could retroactively pass a vote that had failed,
+ * or drop an already-counted voter out of the tally and un-pass it.
  */
-function aliveHumansOnTeam(state: GameState, team: TeamId): PlayerState[] {
-  return Object.values(state.players).filter((p) => p.team === team && p.alive && !isBot(p.id))
+function humansOnTeam(state: GameState, team: TeamId): PlayerState[] {
+  return Object.values(state.players).filter((p) => p.team === team && !isBot(p.id))
 }
 
 export interface SurrenderResult {
@@ -49,11 +54,11 @@ export function canSurrender(state: GameState, team: TeamId): { can: boolean; re
     return { can: false, reason: 'Invalid team' }
   }
 
-  // Count alive HUMAN players on team — bots don't vote
-  const aliveHumans = aliveHumansOnTeam(state, team)
+  // Count HUMAN players on team — bots don't vote
+  const electorate = humansOnTeam(state, team)
 
-  if (aliveHumans.length === 0) {
-    return { can: false, reason: 'No alive players to vote' }
+  if (electorate.length === 0) {
+    return { can: false, reason: 'No human players to vote' }
   }
 
   return { can: true }
@@ -69,10 +74,6 @@ export function voteSurrender(state: GameState, playerId: string): SurrenderResu
     return { success: false, reason: 'Player not found', state }
   }
 
-  if (!player.alive) {
-    return { success: false, reason: 'Dead players cannot vote', state }
-  }
-
   const can = canSurrender(state, player.team)
   if (!can.can) {
     return { success: false, reason: can.reason, state }
@@ -85,21 +86,21 @@ export function voteSurrender(state: GameState, playerId: string): SurrenderResu
   updatedVotes[player.team] = teamVotes
   const updatedState: GameState = { ...state, surrenderVotes: updatedVotes }
 
-  // Count votes against the alive HUMAN electorate (bots don't vote)
-  const aliveHumans = aliveHumansOnTeam(state, player.team)
+  // Count votes against the HUMAN electorate (bots don't vote)
+  const electorate = humansOnTeam(state, player.team)
 
-  const totalAlive = aliveHumans.length
-  // Only count votes from players still in the electorate (alive humans).
-  const votesFor = [...teamVotes].filter((id) => aliveHumans.some((p) => p.id === id)).length
-  const votesNeeded = Math.ceil(totalAlive * SURRENDER_VOTE_THRESHOLD)
+  const total = electorate.length
+  // Only count votes from players still in the electorate.
+  const votesFor = [...teamVotes].filter((id) => electorate.some((p) => p.id === id)).length
+  const votesNeeded = Math.ceil(total * SURRENDER_VOTE_THRESHOLD)
 
   return {
     success: true,
     surrendered: votesFor >= votesNeeded,
     votes: {
       for: votesFor,
-      against: totalAlive - votesFor,
-      total: totalAlive,
+      against: total - votesFor,
+      total,
       needed: votesNeeded,
     },
     state: updatedState,
@@ -133,25 +134,25 @@ export function getSurrenderStatus(
 ): {
   votesFor: number
   votesAgainst: number
-  totalAlive: number
+  electorate: number
   votesNeeded: number
   percentage: number
 } {
   const teamVotes = state.surrenderVotes[team]
-  const aliveHumans = aliveHumansOnTeam(state, team)
+  const humans = humansOnTeam(state, team)
 
-  const totalAlive = aliveHumans.length
+  const electorate = humans.length
   const votesFor = teamVotes
-    ? [...teamVotes].filter((id) => aliveHumans.some((p) => p.id === id)).length
+    ? [...teamVotes].filter((id) => humans.some((p) => p.id === id)).length
     : 0
-  const votesAgainst = totalAlive - votesFor
-  const votesNeeded = Math.ceil(totalAlive * SURRENDER_VOTE_THRESHOLD)
-  const percentage = totalAlive > 0 ? (votesFor / totalAlive) * 100 : 0
+  const votesAgainst = electorate - votesFor
+  const votesNeeded = Math.ceil(electorate * SURRENDER_VOTE_THRESHOLD)
+  const percentage = electorate > 0 ? (votesFor / electorate) * 100 : 0
 
   return {
     votesFor,
     votesAgainst,
-    totalAlive,
+    electorate,
     votesNeeded,
     percentage,
   }
