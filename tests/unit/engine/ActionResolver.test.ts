@@ -7,7 +7,7 @@ import {
 } from '~~/server/game/engine/ActionResolver'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
-import { NEUTRAL_UNITS } from '~~/shared/constants/balance'
+import { SILT_DWELLERS } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
@@ -349,7 +349,7 @@ describe('ActionResolver', () => {
             xp: 0,
           }),
         },
-        neutrals: [{ id: 'n1', zone: 'mid-river', type: 'kobold', hp: 1, maxHp: 250, alive: true }],
+        neutrals: [{ id: 'n1', zone: 'mid-river', type: 'stub', hp: 1, maxHp: 250, alive: true }],
       })
 
       const actions: PlayerAction[] = [
@@ -359,8 +359,8 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, actions))
 
       const killer = result.state.players['p1']!
-      expect(killer.gold).toBe(600 + NEUTRAL_UNITS.kobold.gold) // 600 + 20
-      expect(killer.xp).toBe(NEUTRAL_UNITS.kobold.xp) // 25
+      expect(killer.gold).toBe(600 + SILT_DWELLERS.stub.gold) // 600 + 20
+      expect(killer.xp).toBe(SILT_DWELLERS.stub.xp) // 25
       // dead neutral is pruned from the array (or left flagged not-alive)
       const n1 = result.state.neutrals?.find((n) => n.id === 'n1')
       expect(n1?.alive ?? false).toBe(false)
@@ -1567,7 +1567,7 @@ describe('ActionResolver', () => {
             zone: 'silt-chaff-top',
             hp: 0,
             maxHp: 100,
-            type: 'kobold',
+            type: 'stub',
             alive: false,
           },
         ],

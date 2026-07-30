@@ -32,7 +32,7 @@ import {
   type HeroPassiveResolver,
 } from '~~/server/game/heroes/_base'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import type { WaveUnitState, NeutralUnitState } from '~~/shared/types/game'
+import type { WaveUnitState, SiltDwellerState } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -819,12 +819,12 @@ describe('_base hero utilities', () => {
       type: 'line',
       ...over,
     })
-    const neutral = (over: Partial<NeutralUnitState> = {}): NeutralUnitState => ({
+    const neutral = (over: Partial<SiltDwellerState> = {}): SiltDwellerState => ({
       id: 'n1',
       zone: 'silt-chaff-top',
       hp: 250,
       maxHp: 250,
-      type: 'kobold',
+      type: 'stub',
       alive: true,
       ...over,
     })

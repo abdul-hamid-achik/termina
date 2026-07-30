@@ -65,7 +65,7 @@ const neutralKilled = (playerId: string, zone: string): GameEngineEvent =>
     tick: 1,
     playerId,
     neutralId: 'n0',
-    neutralType: 'kobold',
+    neutralType: 'stub',
     zone,
   }) as GameEngineEvent
 const talentSelected = (playerId: string): GameEngineEvent =>

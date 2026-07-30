@@ -4,7 +4,7 @@ import type {
   TeamId,
   WaveUnitState,
   IceState,
-  NeutralUnitState,
+  SiltDwellerState,
   CacheState,
 } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
@@ -309,7 +309,7 @@ function getEnemyIceInZone(state: GameState, bot: PlayerState): IceState | undef
   return state.ice.find((t) => t.zone === bot.zone && t.team !== bot.team && t.alive)
 }
 
-function getNeutralsInZone(state: GameState, zone: string): NeutralUnitState[] {
+function getNeutralsInZone(state: GameState, zone: string): SiltDwellerState[] {
   return state.neutrals.filter((n) => n.zone === zone && n.alive && n.hp > 0)
 }
 

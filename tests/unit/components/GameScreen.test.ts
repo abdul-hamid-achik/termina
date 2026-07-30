@@ -726,10 +726,10 @@ describe('GameScreen', () => {
     it('passes in-zone neutrals to the Zone panel tagged with their global index', () => {
       seedActiveGame({
         neutrals: [
-          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-          { id: 'n1', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-          { id: 'n2', zone: 'mid-river', hp: 140, maxHp: 200, type: 'centaur', alive: true },
-          { id: 'n3', zone: 'mid-river', hp: 0, maxHp: 200, type: 'centaur', alive: false },
+          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
+          { id: 'n1', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
+          { id: 'n2', zone: 'mid-river', hp: 140, maxHp: 200, type: 'warden', alive: true },
+          { id: 'n3', zone: 'mid-river', hp: 0, maxHp: 200, type: 'warden', alive: false },
         ],
       })
       const wrapper = mountGameScreen()
@@ -786,8 +786,8 @@ describe('GameScreen', () => {
     it('refuses attack neutral:<i> that names a camp outside the zone before it costs a tick', async () => {
       seedActiveGame({
         neutrals: [
-          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-          { id: 'n1', zone: 'mid-river', hp: 140, maxHp: 200, type: 'centaur', alive: true },
+          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
+          { id: 'n1', zone: 'mid-river', hp: 140, maxHp: 200, type: 'warden', alive: true },
         ],
       })
       const wrapper = mountGameScreen()
@@ -1242,7 +1242,7 @@ describe('GameScreen', () => {
         {
           tick: 240,
           type: 'neutral_killed',
-          payload: { playerId: 'p1', neutralId: 'n0', neutralType: 'kobold', zone: 'silt-chaff' },
+          payload: { playerId: 'p1', neutralId: 'n0', neutralType: 'stub', zone: 'silt-chaff' },
         },
       ])
 

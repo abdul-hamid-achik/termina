@@ -71,7 +71,7 @@ function makeState(players: PlayerState[]): GameState {
     },
     waves: {},
     ice: {},
-    neutralUnits: {},
+    siltDwellers: {},
     tenant: undefined,
     backup: undefined,
     caches: [],

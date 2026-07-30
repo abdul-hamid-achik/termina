@@ -5,7 +5,7 @@ import type {
   ZoneRuntimeState,
   TeamId,
   WaveUnitState,
-  NeutralUnitState,
+  SiltDwellerState,
 } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
@@ -35,7 +35,7 @@ export interface GameContext {
   items?: Record<string, ItemDef>
   /** The whole global neutrals array, in server order — `attack neutral:<i>`
    *  is resolved against that index, so it must not be pre-filtered here. */
-  neutrals?: NeutralUnitState[]
+  neutrals?: SiltDwellerState[]
   /** The whole global (vision-filtered) waves array, in server order.
    *  `wave:<i>` is ZONE-local, but the index is derived by counting within
    *  server order — so this must arrive unsorted and unfiltered. */

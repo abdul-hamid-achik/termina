@@ -96,12 +96,12 @@ export interface AncientState {
   vulnerable: boolean
 }
 
-export interface NeutralUnitState {
+export interface SiltDwellerState {
   id: string
   zone: string
   hp: number
   maxHp: number
-  type: string // 'kobold', 'ogre_mage', 'centaur', 'ancient_dragon', 'ancient_rock_golem'
+  type: string // 'stub', 'watchdog', 'warden', 'orphan', 'zombie'
   alive: boolean
 }
 
@@ -148,7 +148,7 @@ export interface GameState {
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
   waves: WaveUnitState[]
-  neutrals: NeutralUnitState[]
+  neutrals: SiltDwellerState[]
   ice: IceState[]
   ancients: { chaff: AncientState; audit: AncientState }
   caches: CacheState[]

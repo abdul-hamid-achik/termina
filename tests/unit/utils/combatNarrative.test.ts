@@ -425,7 +425,7 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['wave_burn', { playerId: 'me', waveType: 'line' }, 'burned'],
     ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
     ['item_purchased', { playerId: 'me', itemId: 'dagon', cost: 2700 }, 'acquired'],
-    ['neutral_killed', { playerId: 'me', neutralType: 'kobold' }, 'kobold camp'],
+    ['neutral_killed', { playerId: 'me', neutralType: 'stub' }, 'stub camp'],
     ['backup_used', { playerId: 'me' }, 'reincarnated'],
     ['talent_selected', { playerId: 'me', talentName: '+250 HP' }, 'learned +250 HP'],
     ['teleport_complete', { playerId: 'me', destination: 'mid-river' }, 'teleported to mid-river'],
@@ -636,7 +636,7 @@ describe('narration drift guard', () => {
     remainingTicks: 12,
     newLevel: 6,
     waveType: 'line',
-    neutralType: 'kobold',
+    neutralType: 'stub',
     cacheType: 'haste',
     wardType: 'observer',
     damageType: 'physical',
@@ -768,8 +768,8 @@ describe('eventToLine: remaining event-type lines', () => {
     expect(noTarget).not.toContain(' on ')
   })
   it('neutral_killed → camp cleared', () => {
-    expect(line('neutral_killed', { playerId: 'me', neutralType: 'kobold' })!.text).toContain(
-      'cleared a kobold camp',
+    expect(line('neutral_killed', { playerId: 'me', neutralType: 'stub' })!.text).toContain(
+      'cleared a stub camp',
     )
   })
   it('backup_used → reincarnation', () => {

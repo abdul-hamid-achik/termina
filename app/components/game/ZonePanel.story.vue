@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WaveUnitState, NeutralUnitState } from '~~/shared/types/game'
+import type { WaveUnitState, SiltDwellerState } from '~~/shared/types/game'
 import { SAMPLE_HEROES, makePlayer, makeIce } from '~/stories/fixtures'
 import ZonePanel from './ZonePanel.vue'
 
@@ -19,7 +19,7 @@ function wave(overrides: Partial<IndexedWave> = {}): IndexedWave {
 }
 
 /** A neutral plus its index in the GLOBAL neutrals array. */
-type IndexedNeutral = NeutralUnitState & { index: number }
+type IndexedNeutral = SiltDwellerState & { index: number }
 
 function neutral(overrides: Partial<IndexedNeutral> = {}): IndexedNeutral {
   return {
@@ -27,7 +27,7 @@ function neutral(overrides: Partial<IndexedNeutral> = {}): IndexedNeutral {
     zone: 'silt-chaff-top',
     hp: 250,
     maxHp: 250,
-    type: 'kobold',
+    type: 'stub',
     alive: true,
     index: 0,
     ...overrides,
@@ -121,7 +121,7 @@ const jungle = {
   zoneId: 'silt-chaff-top',
   neutrals: [
     neutral({ id: 'n1', hp: 250, index: 3 }),
-    neutral({ id: 'n2', hp: 90, type: 'ogre_mage', index: 4 }),
+    neutral({ id: 'n2', hp: 90, type: 'watchdog', index: 4 }),
     neutral({ id: 'n3', hp: 0, alive: false, index: 5 }),
   ] as IndexedNeutral[],
 }

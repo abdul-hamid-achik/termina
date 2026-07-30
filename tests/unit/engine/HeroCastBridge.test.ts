@@ -660,7 +660,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
     const camp = 'silt-chaff-top'
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: camp }) },
-      neutrals: [{ id: 'n1', zone: camp, hp: 100, maxHp: 250, type: 'kobold', alive: true }],
+      neutrals: [{ id: 'n1', zone: camp, hp: 100, maxHp: 250, type: 'stub', alive: true }],
     })
     const goldBefore = state.players['p1']!.gold
 
@@ -686,8 +686,8 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
         p2: makeHero('mutex', { id: 'p2', name: 'Caster', zone: camp }),
       },
       neutrals: [
-        { id: 'untouched', zone: camp, hp: 250, maxHp: 250, type: 'kobold', alive: true },
-        { id: 'attacked', zone: camp, hp: 250, maxHp: 250, type: 'kobold', alive: true },
+        { id: 'untouched', zone: camp, hp: 250, maxHp: 250, type: 'stub', alive: true },
+        { id: 'attacked', zone: camp, hp: 250, maxHp: 250, type: 'stub', alive: true },
       ],
     })
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
-  spawnNeutralUnits,
+  spawnSiltDwellers,
   runNeutralAI,
   applyNeutralActions,
   resetNeutralIdCounter,
@@ -70,21 +70,21 @@ describe('NeutralAI', () => {
     resetNeutralIdCounter()
   })
 
-  describe('spawnNeutralUnits', () => {
+  describe('spawnSiltDwellers', () => {
     it('should spawn neutrals at tick 60', () => {
-      const neutrals = spawnNeutralUnits(60)
+      const neutrals = spawnSiltDwellers(60)
       expect(neutrals.length).toBeGreaterThan(0)
     })
 
     it('should not spawn neutrals at non-interval ticks', () => {
-      const neutrals = spawnNeutralUnits(50)
+      const neutrals = spawnSiltDwellers(50)
       expect(neutrals.length).toBe(0)
     })
 
     it('should generate unique neutral IDs per game instance', () => {
-      const neutrals1 = spawnNeutralUnits(60)
+      const neutrals1 = spawnSiltDwellers(60)
       resetNeutralIdCounter()
-      const neutrals2 = spawnNeutralUnits(60)
+      const neutrals2 = spawnSiltDwellers(60)
 
       const ids1 = new Set(neutrals1.map((n) => n.id))
       const ids2 = new Set(neutrals2.map((n) => n.id))
@@ -97,7 +97,7 @@ describe('NeutralAI', () => {
     })
 
     it('should spawn neutrals in jungle zones', () => {
-      const neutrals = spawnNeutralUnits(60)
+      const neutrals = spawnSiltDwellers(60)
       const jungleZones = ['silt-chaff-top', 'silt-chaff-bot', 'silt-audit-top', 'silt-audit-bot']
 
       for (const neutral of neutrals) {
@@ -106,8 +106,8 @@ describe('NeutralAI', () => {
     })
 
     it('should spawn neutrals with valid types', () => {
-      const neutrals = spawnNeutralUnits(60)
-      const validTypes = ['kobold', 'ogre_mage', 'centaur', 'ancient_dragon', 'ancient_rock_golem']
+      const neutrals = spawnSiltDwellers(60)
+      const validTypes = ['stub', 'watchdog', 'warden', 'orphan', 'zombie']
 
       for (const neutral of neutrals) {
         expect(validTypes).toContain(neutral.type)
@@ -124,7 +124,7 @@ describe('NeutralAI', () => {
             zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
-            type: 'kobold',
+            type: 'stub',
             alive: true,
           },
         ],
@@ -147,7 +147,7 @@ describe('NeutralAI', () => {
             zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
-            type: 'kobold',
+            type: 'stub',
             alive: true,
           },
         ],
@@ -168,7 +168,7 @@ describe('NeutralAI', () => {
             zone: 'silt-chaff-top',
             hp: 0,
             maxHp: 100,
-            type: 'kobold',
+            type: 'stub',
             alive: false,
           },
         ],
@@ -191,7 +191,7 @@ describe('NeutralAI', () => {
             zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
-            type: 'kobold',
+            type: 'stub',
             alive: true,
           },
         ],
@@ -218,7 +218,7 @@ describe('NeutralAI', () => {
             zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
-            type: 'kobold',
+            type: 'stub',
             alive: true,
           },
         ],
@@ -254,7 +254,7 @@ describe('NeutralAI', () => {
             zone: 'silt-chaff-top',
             hp: 100,
             maxHp: 100,
-            type: 'kobold',
+            type: 'stub',
             alive: true,
           },
         ],

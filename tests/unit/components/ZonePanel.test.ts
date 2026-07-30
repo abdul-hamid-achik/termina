@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ZonePanel from '~~/app/components/game/ZonePanel.vue'
-import type { PlayerState, WaveUnitState, NeutralUnitState, IceState } from '~~/shared/types/game'
+import type { PlayerState, WaveUnitState, SiltDwellerState, IceState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -62,13 +62,13 @@ function makeIce(overrides: Partial<IceState> = {}): IceState {
   }
 }
 
-function makeNeutral(overrides: Partial<NeutralUnitState & { index: number }> = {}) {
+function makeNeutral(overrides: Partial<SiltDwellerState & { index: number }> = {}) {
   return {
     id: 'neutral_1',
     zone: 'mid-river',
     hp: 250,
     maxHp: 250,
-    type: 'kobold',
+    type: 'stub',
     alive: true,
     index: 0,
     ...overrides,

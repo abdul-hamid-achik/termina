@@ -92,18 +92,13 @@ export const WAVE_UNIT_LABELS: Record<TeamId, Record<WaveRole, string>> = {
   audit: { line: 'guard', sweep: 'sweeper', breach: 'auditor' },
 }
 
-export type NeutralCamp =
-  | 'kobold'
-  | 'ogre_mage'
-  | 'centaur'
-  | 'ancient_dragon'
-  | 'ancient_rock_golem'
+export type NeutralCamp = 'stub' | 'watchdog' | 'warden' | 'orphan' | 'zombie'
 
 /** The five neutral camps, renamed for the Silt. */
 export const CAMP_LABELS: Record<NeutralCamp, string> = {
-  kobold: 'STUB',
-  ogre_mage: 'WATCHDOG',
-  centaur: 'WARDEN',
-  ancient_dragon: 'ORPHAN',
-  ancient_rock_golem: 'ZOMBIE',
+  stub: 'STUB',
+  watchdog: 'WATCHDOG',
+  warden: 'WARDEN',
+  orphan: 'ORPHAN',
+  zombie: 'ZOMBIE',
 }

@@ -144,9 +144,9 @@ describe('objectives: jungle neutrals', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
-      // A kobold at 1 HP — one basic attack finishes it (bounty 20g / 25xp).
+      // A stub at 1 HP — one basic attack finishes it (bounty 20g / 25xp).
       neutrals: [
-        { id: 'camp0', zone: 'silt-chaff-top', hp: 1, maxHp: 250, type: 'kobold', alive: true },
+        { id: 'camp0', zone: 'silt-chaff-top', hp: 1, maxHp: 250, type: 'stub', alive: true },
       ],
     }))
 
@@ -170,7 +170,7 @@ describe('objectives: jungle neutrals', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
       neutrals: [
-        { id: 'camp0', zone: 'silt-chaff-top', hp: 100, maxHp: 250, type: 'kobold', alive: true },
+        { id: 'camp0', zone: 'silt-chaff-top', hp: 100, maxHp: 250, type: 'stub', alive: true },
       ],
     }))
 

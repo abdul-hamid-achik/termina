@@ -273,26 +273,26 @@ export function waveUnitAttack(type: WaveUnitState['type'], tick: number): numbe
 
 // ── Neutral Waves ─────────────────────────────────────────────────
 
-export const NEUTRAL_UNITS_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
+export const SILT_DWELLER_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
 
 /** Max live neutrals per jungle camp zone. Prevents unbounded accumulation
  *  if a camp is never cleared (unlike lane waves which have enforceWaveZoneCap). */
 export const MAX_NEUTRALS_PER_CAMP = 4
 
 // Neutral wave types with stats
-export const NEUTRAL_UNITS = {
+export const SILT_DWELLERS = {
   // Small camp
-  kobold: { hp: 250, attack: 10, gold: 20, xp: 25 },
+  stub: { hp: 250, attack: 10, gold: 20, xp: 25 },
   // Medium camp
-  ogre_mage: { hp: 550, attack: 25, gold: 40, xp: 50 },
+  watchdog: { hp: 550, attack: 25, gold: 40, xp: 50 },
   // Large camp
-  centaur: { hp: 900, attack: 40, gold: 60, xp: 80 },
+  warden: { hp: 900, attack: 40, gold: 60, xp: 80 },
   // Ancient
-  ancient_dragon: { hp: 1500, attack: 75, gold: 150, xp: 200 },
-  ancient_rock_golem: { hp: 2000, attack: 60, gold: 200, xp: 250 },
+  orphan: { hp: 1500, attack: 75, gold: 150, xp: 200 },
+  zombie: { hp: 2000, attack: 60, gold: 200, xp: 250 },
 } as const
 
-export type NeutralUnitType = keyof typeof NEUTRAL_UNITS
+export type SiltDwellerType = keyof typeof SILT_DWELLERS
 
 // ── ICE ───────────────────────────────────────────────────────
 

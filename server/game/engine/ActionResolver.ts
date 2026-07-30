@@ -8,7 +8,7 @@ import type {
   IceState,
   AncientState,
   ZoneRuntimeState,
-  NeutralUnitState,
+  SiltDwellerState,
   CacheState,
 } from '~~/shared/types/game'
 import type { DamageType } from '~~/shared/types/hero'
@@ -51,8 +51,8 @@ import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   WAVE_XP,
-  NEUTRAL_UNITS,
-  type NeutralUnitType,
+  SILT_DWELLERS,
+  type SiltDwellerType,
   WAVE_GOLD_MIN,
   WAVE_GOLD_MAX,
   waveUnitMaxHp,
@@ -483,7 +483,7 @@ function resolveInstantCastsPhase(
   zones: Record<string, ZoneRuntimeState>,
   waves: WaveUnitState[],
   ice: IceState[],
-  neutrals: NeutralUnitState[],
+  neutrals: SiltDwellerState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
@@ -496,7 +496,7 @@ function resolveInstantCastsPhase(
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
   waves: WaveUnitState[]
-  neutrals: NeutralUnitState[]
+  neutrals: SiltDwellerState[]
 } {
   const instantCasts = validActions.filter(
     (a) =>
@@ -599,7 +599,7 @@ function resolveAttackPhase(
   players: Record<string, PlayerState>,
   waves: WaveUnitState[],
   ice: IceState[],
-  neutrals: NeutralUnitState[],
+  neutrals: SiltDwellerState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
@@ -614,7 +614,7 @@ function resolveAttackPhase(
   players: Record<string, PlayerState>
   waves: WaveUnitState[]
   ice: IceState[]
-  neutrals: NeutralUnitState[]
+  neutrals: SiltDwellerState[]
   ancients: { chaff: AncientState; audit: AncientState }
 } {
   let playerUpdates: PlayerUpdates = {}
@@ -1489,7 +1489,7 @@ function resolvePostShopPhases(
   zones: Record<string, ZoneRuntimeState>,
   waves: WaveUnitState[],
   ice: IceState[],
-  neutrals: NeutralUnitState[],
+  neutrals: SiltDwellerState[],
   events: GameEngineEvent[],
   _rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; ice: number }>,
@@ -1501,7 +1501,7 @@ function resolvePostShopPhases(
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
   ice: IceState[]
-  neutrals: NeutralUnitState[]
+  neutrals: SiltDwellerState[]
   teams: { chaff: TeamState; audit: TeamState }
   backup: GameState['backup']
   caches: CacheState[]
@@ -1639,7 +1639,7 @@ function resolvePostShopPhases(
   for (const kill of neutralKills) {
     const neutral = neutrals.find((n) => n.id === kill.neutralId)
     if (!neutral) continue
-    const stats = NEUTRAL_UNITS[neutral.type as NeutralUnitType]
+    const stats = SILT_DWELLERS[neutral.type as SiltDwellerType]
     if (!stats) continue
     const killer = players[kill.playerId]
     if (killer) {
@@ -2179,7 +2179,7 @@ function resolveHeroCast(
   zones: GameState['zones'],
   waves: WaveUnitState[],
   ice: GameState['ice'],
-  neutrals: NeutralUnitState[],
+  neutrals: SiltDwellerState[],
   ancients: GameState['ancients'],
   action: PlayerAction,
   events: GameEngineEvent[],
@@ -2193,7 +2193,7 @@ function resolveHeroCast(
   players: Record<string, PlayerState>
   zones: GameState['zones']
   waves: WaveUnitState[]
-  neutrals: NeutralUnitState[]
+  neutrals: SiltDwellerState[]
 } {
   const cmd = action.command as { type: 'cast'; ability: AbilitySlot; target?: TargetRef }
   const caster = players[action.playerId]
@@ -2588,11 +2588,11 @@ function collectNeutralCastDamage(
   tick: number,
   casterId: string,
   damageType: DamageType,
-  pre: NeutralUnitState[],
-  post: NeutralUnitState[] | undefined,
+  pre: SiltDwellerState[],
+  post: SiltDwellerState[] | undefined,
   events: GameEngineEvent[],
   neutralKills: Array<{ playerId: string; neutralId: string }>,
-): NeutralUnitState[] {
+): SiltDwellerState[] {
   if (!post || post === pre) return pre
   const preHp = new Map(pre.map((n) => [n.id, n.hp]))
   for (const n of post) {

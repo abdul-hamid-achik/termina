@@ -66,7 +66,7 @@ describe('NPC damage is visible', () => {
           zone: 'silt-chaff-top',
           hp: 400,
           maxHp: 400,
-          type: 'centaur',
+          type: 'warden',
           alive: true,
         },
       ],

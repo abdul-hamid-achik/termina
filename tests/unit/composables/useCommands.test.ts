@@ -1185,7 +1185,7 @@ describe('useCommands', () => {
               zone: 'silt-audit-top',
               hp: 200,
               maxHp: 200,
-              type: 'kobold',
+              type: 'stub',
               alive: true,
             },
             {
@@ -1193,17 +1193,17 @@ describe('useCommands', () => {
               zone: 'silt-audit-top',
               hp: 200,
               maxHp: 200,
-              type: 'kobold',
+              type: 'stub',
               alive: true,
             },
-            { id: 'n2', zone: 'mid-t1-chaff', hp: 140, maxHp: 200, type: 'centaur', alive: true },
-            { id: 'n3', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'centaur', alive: false },
+            { id: 'n2', zone: 'mid-t1-chaff', hp: 140, maxHp: 200, type: 'warden', alive: true },
+            { id: 'n3', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'warden', alive: false },
           ],
         })
         const suggestions = autocomplete('attack neutral', context)
 
         expect(suggestions.map((s) => s.text)).toEqual(['neutral:2'])
-        expect(suggestions[0]!.description).toContain('centaur')
+        expect(suggestions[0]!.description).toContain('warden')
       })
 
       it('suggests tenant only from inside the pit', () => {
@@ -1980,8 +1980,8 @@ describe('validateCommand', () => {
   it('rejects a neutral index that names a camp in another zone', () => {
     const ctx = makeContext({
       neutrals: [
-        { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'kobold', alive: true },
-        { id: 'n1', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'kobold', alive: true },
+        { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
+        { id: 'n1', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'stub', alive: true },
       ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
@@ -1994,9 +1994,7 @@ describe('validateCommand', () => {
 
   it('rejects a neutral index with no camp behind it', () => {
     const ctx = makeContext({
-      neutrals: [
-        { id: 'n0', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'kobold', alive: false },
-      ],
+      neutrals: [{ id: 'n0', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'stub', alive: false }],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
       /No neutral wave at index 0/,

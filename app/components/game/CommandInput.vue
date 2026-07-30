@@ -6,7 +6,7 @@ import type {
   PlayerState,
   ZoneRuntimeState,
   GameMode,
-  NeutralUnitState,
+  SiltDwellerState,
   WaveUnitState,
 } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
@@ -42,7 +42,7 @@ const props = withDefaults(
      * PRESENT array as ground truth, and an empty one would make an unbound
      * instance reject every legal neutral target.
      */
-    neutrals?: NeutralUnitState[]
+    neutrals?: SiltDwellerState[]
     /**
      * Lane waves, for `attack wave:<i>` autocomplete and pre-flight. Same
      * no-default rule as `neutrals`: validateCommand treats a PRESENT array as

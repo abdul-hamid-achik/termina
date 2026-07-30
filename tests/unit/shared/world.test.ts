@@ -65,11 +65,11 @@ describe('world lexicon', () => {
 
   it('covers the five neutral camps', () => {
     expect(Object.keys(CAMP_LABELS).sort()).toEqual([
-      'ancient_dragon',
-      'ancient_rock_golem',
-      'centaur',
-      'kobold',
-      'ogre_mage',
+      'orphan',
+      'stub',
+      'warden',
+      'watchdog',
+      'zombie',
     ])
   })
 

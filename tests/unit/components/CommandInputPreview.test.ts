@@ -204,7 +204,7 @@ describe('CommandInput attack target labels', () => {
   it('names a neutral camp by its index rather than "self"', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'silt-chaff-top' }), {
       neutrals: [
-        { id: 'n0', zone: 'silt-chaff-top', hp: 100, maxHp: 100, type: 'kobold', alive: true },
+        { id: 'n0', zone: 'silt-chaff-top', hp: 100, maxHp: 100, type: 'stub', alive: true },
       ],
     })
     const preview = await previewFor(wrapper, 'attack neutral:0')

@@ -32,7 +32,7 @@ describe('digestFarmNoise', () => {
         goldAmount: 45,
       }),
       line({
-        text: 'Echo cleared a kobold camp in Chaff Jungle (North)',
+        text: 'Echo cleared a stub camp in Chaff Jungle (North)',
         type: 'gold',
         salience: 'ally',
         farmKind: 'camp',

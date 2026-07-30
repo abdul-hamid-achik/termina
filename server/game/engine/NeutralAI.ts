@@ -1,9 +1,9 @@
-import type { GameState, NeutralUnitState } from '~~/shared/types/game'
+import type { GameState, SiltDwellerState } from '~~/shared/types/game'
 import {
-  NEUTRAL_UNITS,
-  NEUTRAL_UNITS_INTERVAL_TICKS,
+  SILT_DWELLERS,
+  SILT_DWELLER_INTERVAL_TICKS,
   MAX_NEUTRALS_PER_CAMP,
-  type NeutralUnitType,
+  type SiltDwellerType,
 } from '~~/shared/constants/balance'
 import { resolvePhysicalHit } from './CombatResolver'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -33,13 +33,13 @@ const JUNGLE_ZONES = [
 /** Spawn neutral waves in jungle camps. `hasZone` skips camps a subset map
  *  doesn't have (one-lane has no jungle). `existingNeutrals` is used to enforce
  *  MAX_NEUTRALS_PER_CAMP — camps at cap are skipped (no new spawns). */
-export function spawnNeutralUnits(
+export function spawnSiltDwellers(
   tick: number,
   hasZone?: (zoneId: string) => boolean,
-  existingNeutrals: NeutralUnitState[] = [],
-): NeutralUnitState[] {
+  existingNeutrals: SiltDwellerState[] = [],
+): SiltDwellerState[] {
   // Spawn at tick 60, then every 60 ticks
-  if (tick === 0 || tick % NEUTRAL_UNITS_INTERVAL_TICKS !== 0) return []
+  if (tick === 0 || tick % SILT_DWELLER_INTERVAL_TICKS !== 0) return []
 
   // Count live neutrals per zone to enforce the cap
   const liveCountByZone = new Map<string, number>()
@@ -47,7 +47,7 @@ export function spawnNeutralUnits(
     if (n.alive) liveCountByZone.set(n.zone, (liveCountByZone.get(n.zone) ?? 0) + 1)
   }
 
-  const neutrals: NeutralUnitState[] = []
+  const neutrals: SiltDwellerState[] = []
 
   for (const zone of JUNGLE_ZONES) {
     if (hasZone && !hasZone(zone)) continue
@@ -62,21 +62,21 @@ export function spawnNeutralUnits(
     for (let i = 0; i < campSize; i++) {
       // Random wave type (weighted towards smaller ones)
       const roll = Math.random()
-      let waveType: NeutralUnitType
+      let waveType: SiltDwellerType
 
       if (roll < 0.4) {
-        waveType = 'kobold'
+        waveType = 'stub'
       } else if (roll < 0.7) {
-        waveType = 'ogre_mage'
+        waveType = 'watchdog'
       } else if (roll < 0.9) {
-        waveType = 'centaur'
+        waveType = 'warden'
       } else if (roll < 0.95) {
-        waveType = 'ancient_dragon'
+        waveType = 'orphan'
       } else {
-        waveType = 'ancient_rock_golem'
+        waveType = 'zombie'
       }
 
-      const stats = NEUTRAL_UNITS[waveType]!
+      const stats = SILT_DWELLERS[waveType]!
 
       neutrals.push({
         id: nextNeutralId(),
@@ -115,7 +115,7 @@ export function runNeutralAI(state: GameState): NeutralAction[] {
     if (enemies.length > 0) {
       // Attack a random enemy in range (always adjacent for neutrals)
       const target = enemies[Math.floor(Math.random() * enemies.length)]!
-      const stats = NEUTRAL_UNITS[neutral.type as NeutralUnitType]
+      const stats = SILT_DWELLERS[neutral.type as SiltDwellerType]
       if (stats) {
         actions.push({
           neutralId: neutral.id,

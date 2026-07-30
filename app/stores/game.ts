@@ -11,7 +11,7 @@ import type {
   IceState,
   AncientState,
   WaveUnitState,
-  NeutralUnitState,
+  SiltDwellerState,
   TenantState,
   CacheState,
 } from '~~/shared/types/game'
@@ -73,7 +73,7 @@ export const useGameStore = defineStore('game', () => {
   const ice = ref<IceState[]>([])
   const ancients = ref<{ chaff: AncientState; audit: AncientState } | null>(null)
   const waves = ref<WaveUnitState[]>([])
-  const neutrals = ref<NeutralUnitState[]>([])
+  const neutrals = ref<SiltDwellerState[]>([])
   // Objective layer — streamed in every tick payload (PlayerVisibleState) but
   // previously discarded by updateFromTick. Surfaced here for the War Room HUD.
   const tenant = ref<TenantState | null>(null)
@@ -263,7 +263,7 @@ export const useGameStore = defineStore('game', () => {
       ice?: IceState[]
       ancients?: { chaff: AncientState; audit: AncientState }
       waves?: WaveUnitState[]
-      neutrals?: NeutralUnitState[]
+      neutrals?: SiltDwellerState[]
       tenant?: TenantState
       caches?: CacheState[]
       backup?: { zone: string; tick: number; holderId: string | null } | null

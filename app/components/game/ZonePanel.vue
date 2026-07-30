@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type {
   PlayerState,
   WaveUnitState,
-  NeutralUnitState,
+  SiltDwellerState,
   TenantState,
   IceState,
   TeamId,
@@ -20,7 +20,7 @@ type IndexedWave = WaveUnitState & { index: number }
 
 /** A neutral plus its index in the GLOBAL neutrals array — the index the server
  *  resolves `attack neutral:<i>` against, so it must survive the zone filter. */
-type IndexedNeutral = NeutralUnitState & { index: number }
+type IndexedNeutral = SiltDwellerState & { index: number }
 
 const props = withDefaults(
   defineProps<{

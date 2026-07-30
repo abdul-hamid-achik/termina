@@ -33,7 +33,7 @@ import { removeExpiredCaches, processCacheBuffs } from './CacheAI'
 import { processTraps } from './TrapSystem'
 import { resolvePhysicalHit } from './CombatResolver'
 import { spawnWaveUnits, spawnCaches } from '~~/server/game/map/spawner'
-import { spawnNeutralUnits, runNeutralAI, applyNeutralActions } from './NeutralAI'
+import { spawnSiltDwellers, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
 import { filterStateForPlayer } from './VisionCalculator'
 import { computeDelta, recordSentState, clearGameSentStates, getSentState } from './StateDelta'
@@ -1268,7 +1268,7 @@ export function runSpawning(state: GameState): GameState {
   // Defensive cap: never let waves stack unboundedly in a zone
   s = enforceWaveZoneCap(s)
 
-  const newNeutrals = spawnNeutralUnits(s.tick, hasZone, s.neutrals ?? [])
+  const newNeutrals = spawnSiltDwellers(s.tick, hasZone, s.neutrals ?? [])
   if (newNeutrals.length > 0) {
     s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
   }
