@@ -97,7 +97,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Proxy Hero', () => {
   describe('Q: Packet Redirect (Magic Damage + Slow)', () => {
-    it('deals magical damage and slows target hero', () => {
+    it('deals code damage and slows target hero', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

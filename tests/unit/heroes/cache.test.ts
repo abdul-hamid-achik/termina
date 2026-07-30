@@ -176,7 +176,7 @@ describe('Cache Hero', () => {
   })
 
   describe('Q: Cache Hit (Physical Damage + Cached Bonus)', () => {
-    it('deals physical damage to target hero', () => {
+    it('deals kinetic damage to target hero', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -369,7 +369,7 @@ describe('Cache Hero', () => {
   })
 
   describe('E: Invalidate (Magic Damage + Anti-Heal)', () => {
-    it('deals magic damage and applies anti-heal debuff', () => {
+    it('deals code damage and applies anti-heal debuff', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -457,7 +457,7 @@ describe('Cache Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals pure AoE damage equal to cached energy', () => {
+    it('deals black AoE damage equal to cached energy', () => {
       let player = makePlayer({ level: 6, mp: 500 })
       player = applyBuff(player, {
         id: 'cachedEnergy',
@@ -471,7 +471,7 @@ describe('Cache Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
-      // Pure damage = 200 (full cached energy), no reduction
+      // Black damage = 200 (full cached energy), no reduction
       expect(result.state.players['e1']!.hp).toBeLessThan(enemy1.hp)
       expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
     })

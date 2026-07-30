@@ -84,7 +84,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Firewall Hero', () => {
   describe('Q: Port Block (Physical Damage + Stun)', () => {
-    it('deals physical damage and stuns target for 1 tick', () => {
+    it('deals kinetic damage and stuns target for 1 tick', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -397,7 +397,7 @@ describe('Firewall Hero', () => {
         payload: { targetId: 'p1', attackerId: 'e1', damage: 100 },
       })
 
-      // 8% of 100 = 8 magical damage reflected (mitigated by magic resist)
+      // 8% of 100 = 8 code damage reflected (mitigated by magic resist)
       expect(updated.players['e1']!.hp).toBeLessThan(enemy.hp)
     })
   })

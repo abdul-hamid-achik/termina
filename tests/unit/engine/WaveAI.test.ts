@@ -18,7 +18,7 @@ import {
   MAX_WAVE_UNITS_PER_ZONE_PER_TEAM,
   waveUnitAttack,
 } from '~~/shared/constants/balance'
-import { calculatePhysicalDamage } from '~~/server/game/engine/DamageCalculator'
+import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -439,7 +439,7 @@ describe('WaveAI', () => {
       const result = applyWaveActions(state, actions).state
       // resolvePhysicalHit routes through getEffectiveDefense (items + talents
       // + buffs), not the raw player.defense field.
-      const expectedDamage = calculatePhysicalDamage(LINE_UNIT_ATTACK, getEffectiveDefense(player))
+      const expectedDamage = calculateKineticDamage(LINE_UNIT_ATTACK, getEffectiveDefense(player))
       expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
@@ -477,7 +477,7 @@ describe('WaveAI', () => {
       ]
 
       const { state: after, events } = applyWaveActions(state, actions)
-      const expectedDamage = calculatePhysicalDamage(LINE_UNIT_ATTACK, getEffectiveDefense(player))
+      const expectedDamage = calculateKineticDamage(LINE_UNIT_ATTACK, getEffectiveDefense(player))
       expect(events).toEqual([
         {
           _tag: 'damage',
@@ -485,7 +485,7 @@ describe('WaveAI', () => {
           sourceId: 'c1',
           targetId: 'p1',
           amount: expectedDamage,
-          damageType: 'physical',
+          damageType: 'kinetic',
         },
       ])
       expect(500 - after.players['p1']!.hp).toBe(expectedDamage)

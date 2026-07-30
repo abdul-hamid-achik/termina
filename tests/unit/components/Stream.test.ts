@@ -159,7 +159,7 @@ describe('combatLog helpers', () => {
     function dmgLine(tick: number, source: string, target: string, amount: number): CombatLine {
       return {
         tick,
-        text: `${source} dealt ${amount} physical damage to ${target}`,
+        text: `${source} dealt ${amount} kinetic damage to ${target}`,
         type: 'damage',
         dedupKey: `dmg:${source}->${target}`,
         dmgAmount: amount,

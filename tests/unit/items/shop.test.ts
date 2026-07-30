@@ -546,7 +546,7 @@ describe('Shop', () => {
       )
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        // Magic immunity zeroes the 300 magical nuke; cooldown still applies.
+        // Magic immunity zeroes the 300 code nuke; cooldown still applies.
         expect(exit.value.players['enemy_1']!.hp).toBe(800)
         expect(exit.value.players['player_1']!.buffs.some((b) => b.id === 'item_cd_burnout')).toBe(
           true,
@@ -857,7 +857,7 @@ describe('Shop', () => {
       if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
     })
 
-    it('Phase Shim etherealizes a co-located enemy (physical-immune + magic vuln)', async () => {
+    it('Phase Shim etherealizes a co-located enemy (kinetic-immune + magic vuln)', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
@@ -1017,7 +1017,7 @@ describe('Shop', () => {
       )
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        // 300 magical (no resist) overkills the 120-HP target.
+        // 300 code (no resist) overkills the 120-HP target.
         expect(exit.value.players['enemy_1']!.hp).toBe(0)
         expect(exit.value.players['enemy_1']!.alive).toBe(false)
       }
@@ -1112,7 +1112,7 @@ describe('Shop', () => {
       const afterBurnout = await Effect.runPromise(
         useItem(afterEth, 'player_1', 'burnout', enemyRef),
       )
-      // 300 base magical (0 resist) × (1 + (25 + 40)/100) = 495 → 800 - 495 = 305.
+      // 300 base code (0 resist) × (1 + (25 + 40)/100) = 495 → 800 - 495 = 305.
       expect(afterBurnout.players['enemy_1']!.hp).toBe(305)
     })
   })

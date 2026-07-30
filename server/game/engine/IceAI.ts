@@ -147,7 +147,7 @@ export function applyIceActions(
           sourceId: `ice_${action.iceZone}`,
           targetId: action.targetId,
           amount: hit.damageDealt,
-          damageType: 'physical',
+          damageType: 'kinetic',
         })
       }
     } else {

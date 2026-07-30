@@ -281,7 +281,7 @@ describe('Cron Hero', () => {
   })
 
   describe('E: Kill Signal (Damage + Taunt)', () => {
-    it('deals physical damage and taunts target enemy', () => {
+    it('deals kinetic damage and taunts target enemy', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

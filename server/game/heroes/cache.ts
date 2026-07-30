@@ -67,7 +67,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Cache Hit — physical damage + bonus from cached energy (does NOT consume)
+// Q: Cache Hit — kinetic damage + bonus from cached energy (does NOT consume)
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -101,7 +101,7 @@ function resolveQ(
     const cached = getBuffStacks(player, 'cachedEnergy')
     const baseDamage = scaleValue(Q_DAMAGE, level)
     const totalDamage = baseDamage + Math.round(cached * Q_CACHED_BONUS)
-    const updatedTarget = dealDamage(targetPlayer, totalDamage, 'physical')
+    const updatedTarget = dealDamage(targetPlayer, totalDamage, 'kinetic')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -114,7 +114,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage: totalDamage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             cachedBonus: Math.round(cached * Q_CACHED_BONUS),
           },
         },
@@ -170,7 +170,7 @@ function resolveW(
   })
 }
 
-// E: Invalidate — magic damage + anti-heal debuff (50% reduced healing for 3 ticks)
+// E: Invalidate — code damage + anti-heal debuff (50% reduced healing for 3 ticks)
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -202,7 +202,7 @@ function resolveE(
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
-    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'antiHeal',
       stacks: 50, // 50% reduced healing
@@ -221,7 +221,7 @@ function resolveE(
             ability: 'e',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
             effect: 'antiHeal',
             duration: E_ANTIHEAL_DURATION,
           },
@@ -231,7 +231,7 @@ function resolveE(
   })
 }
 
-// R: Eviction — consume ALL cached energy, AoE pure damage + slow
+// R: Eviction — consume ALL cached energy, AoE black damage + slow
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -253,7 +253,7 @@ function resolveR(
 
     const enemies = getEnemiesInZone(state, player)
     const updatedEnemies = enemies.map((e) => {
-      let updated = cached > 0 ? dealDamage(e, cached, 'pure') : e
+      let updated = cached > 0 ? dealDamage(e, cached, 'black') : e
       updated = applyBuff(updated, {
         id: 'slow',
         stacks: 35, // 35% slow
@@ -270,7 +270,7 @@ function resolveR(
         updatePlayers(state, [caster, ...updatedEnemies]),
         caster,
         cached,
-        'pure',
+        'black',
       ),
       events: [
         {
@@ -280,7 +280,7 @@ function resolveR(
             playerId: player.id,
             ability: 'r',
             damage: cached,
-            damageType: 'pure',
+            damageType: 'black',
             effect: 'eviction',
             slowDuration: R_SLOW_DURATION,
             targets: enemies.map((e) => e.id),

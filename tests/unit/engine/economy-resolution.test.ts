@@ -399,7 +399,7 @@ describe('Economy through resolution', () => {
   })
 
   describe('Armor / magic-resist in real combat', () => {
-    it('higher armor → proportionally smaller physical attack damage (same attacker profile)', async () => {
+    it('higher armor → proportionally smaller kinetic attack damage (same attacker profile)', async () => {
       const gameId = uid('armor')
       const sm = await startGame(gameId, makePlayers('ar', 3))
 
@@ -440,26 +440,26 @@ describe('Economy through resolution', () => {
       const r = await runTick(sm, gameId)
 
       const dmgLow = r.events.find(
-        (e) => e._tag === 'damage' && e.targetId === 'ar_d0' && e.damageType === 'physical',
+        (e) => e._tag === 'damage' && e.targetId === 'ar_d0' && e.damageType === 'kinetic',
       ) as Extract<GameEngineEvent, { _tag: 'damage' }> | undefined
       const dmgHigh = r.events.find(
-        (e) => e._tag === 'damage' && e.targetId === 'ar_d1' && e.damageType === 'physical',
+        (e) => e._tag === 'damage' && e.targetId === 'ar_d1' && e.damageType === 'kinetic',
       ) as Extract<GameEngineEvent, { _tag: 'damage' }> | undefined
 
       expect(dmgLow).toBeTruthy()
       expect(dmgHigh).toBeTruthy()
-      // The +20-armor target took strictly less physical damage.
+      // The +20-armor target took strictly less kinetic damage.
       expect(dmgHigh!.amount).toBeLessThan(dmgLow!.amount)
       expect(dmgHigh!.amount).toBeGreaterThan(0)
     })
 
-    it('MKB on-hit magic: null_ref mrShred lowers effective MR → higher magical damage on the shredded target', async () => {
+    it('MKB on-hit magic: null_ref mrShred lowers effective MR → higher code damage on the shredded target', async () => {
       const gameId = uid('mr')
       const sm = await startGame(gameId, makePlayers('mr', 3))
 
       // Two identical MKB attackers; two identical targets except one carries a
       // mrShred debuff (null_ref's MR shred). MKB adds a flat TRUESTRIKE_RIG_BONUS_DAMAGE
-      // magical on-hit whose mitigated amount is emitted as its own magical
+      // code on-hit whose mitigated amount is emitted as its own code
       // damage event using getEffectiveMagicResist — so the events differ ONLY
       // by the mrShred.
       const SHRED = 30
@@ -504,13 +504,13 @@ describe('Economy through resolution', () => {
       const r = await runTick(sm, gameId)
 
       const magLow = r.events.find(
-        (e) => e._tag === 'damage' && e.targetId === 'mr_d0' && e.damageType === 'magical',
+        (e) => e._tag === 'damage' && e.targetId === 'mr_d0' && e.damageType === 'code',
       ) as Extract<GameEngineEvent, { _tag: 'damage' }> | undefined
       const magHigh = r.events.find(
-        (e) => e._tag === 'damage' && e.targetId === 'mr_d1' && e.damageType === 'magical',
+        (e) => e._tag === 'damage' && e.targetId === 'mr_d1' && e.damageType === 'code',
       ) as Extract<GameEngineEvent, { _tag: 'damage' }> | undefined
 
-      expect(magLow, 'MKB must emit a magical on-hit damage event').toBeTruthy()
+      expect(magLow, 'MKB must emit a code on-hit damage event').toBeTruthy()
       expect(magHigh).toBeTruthy()
       // mrShred → lower effective MR → the same TRUESTRIKE_RIG_BONUS_DAMAGE bleeds through
       // for MORE on the shredded target.

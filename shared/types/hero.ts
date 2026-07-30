@@ -1,4 +1,4 @@
-export type DamageType = 'physical' | 'magical' | 'pure'
+export type DamageType = 'kinetic' | 'code' | 'black'
 
 export type TargetType = 'none' | 'hero' | 'unit' | 'zone' | 'self' | 'ally'
 

@@ -430,7 +430,7 @@ const ROLE_DETAILS: ReadonlyArray<{ role: HeroRole; label: string; icon: string;
     role: 'mage',
     label: 'Mage',
     icon: '~~',
-    desc: 'Magic damage and crowd control. Strong mid-game spike with abilities.',
+    desc: 'Code damage and crowd control. Strong mid-game spike with abilities.',
   },
   {
     role: 'offlaner',

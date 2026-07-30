@@ -61,7 +61,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Packet Redirect — magic damage + slow
+// Q: Packet Redirect — code damage + slow
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -93,7 +93,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'slow',
       stacks: 25,
@@ -112,7 +112,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
           },
         },
       ],

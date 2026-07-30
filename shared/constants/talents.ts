@@ -710,7 +710,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'cipher_10_left',
           name: '+12 Attack Damage',
-          description: '+12 Attack — feeds the physical half of XOR Strike + right-clicks',
+          description: '+12 Attack — feeds the kinetic half of XOR Strike + right-clicks',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'attack', value: 12 },
@@ -1125,8 +1125,8 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
-  // Lambda — a combo-chaining magical-burst mage (Closure rewards rapid casting).
-  // Invoke (Q), Map (E) and Reduce (R) all deal INSTANT magical damage at cast, so
+  // Lambda — a combo-chaining code-burst mage (Closure rewards rapid casting).
+  // Invoke (Q), Map (E) and Reduce (R) all deal INSTANT code damage at cast, so
   // damage_boost lives on Q/E/R. Return (W) is a delayed self-teleport (no damage) —
   // it only ever gets cooldown_reduce / mana_cost_reduce, never damage_boost.
   lambda: {
@@ -1214,7 +1214,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
     },
   },
   // Cron — a clockwork support: Uptime (Q) ally buff, Purge (W) cleanse+shield,
-  // Kill Signal (E) physical nuke+taunt, Crontab (R) AoE heal/mana regen. Only
+  // Kill Signal (E) kinetic nuke+taunt, Crontab (R) AoE heal/mana regen. Only
   // Kill Signal (E) deals instant cast damage, so it carries the lone damage_boost;
   // the rest of the tree is cooldown/mana efficiency on the support kit + tanky stats.
   cron: {
@@ -1242,7 +1242,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'cron_15_left',
           name: '+35% Kill Signal Damage',
-          description: 'Kill Signal (E) deals 35% more physical burst',
+          description: 'Kill Signal (E) deals 35% more kinetic burst',
           type: 'damage_boost',
           tier: 15,
           abilityId: 'e',
@@ -1485,7 +1485,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'ping_10_left',
           name: '+30% ICMP Echo Damage',
-          description: 'ICMP Echo (Q) probes for 30% more magical damage',
+          description: 'ICMP Echo (Q) probes for 30% more code damage',
           type: 'damage_boost',
           tier: 10,
           abilityId: 'q',
@@ -1562,7 +1562,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   },
 
   // cache — a tank that converts damage taken into cached energy for burst
-  // abilities. Q Cache Hit (physical + cached energy) and R Eviction (pure AoE)
+  // abilities. Q Cache Hit (physical + cached energy) and R Eviction (black AoE)
   // both deal instant damage, so they carry damage_boost; W Flush (shield from
   // cached energy) and E Invalidate (magical + anti-heal) get cooldown/mana
   // efficiency. The stat tiers lean into tankiness (HP/defense/MR) to sustain the
@@ -1621,7 +1621,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'cache_20_right',
           name: '-3s Invalidate CD',
-          description: 'Invalidate (E) cooldown reduced — more anti-heal + magical burst',
+          description: 'Invalidate (E) cooldown reduced — more anti-heal + code burst',
           type: 'cooldown_reduce',
           tier: 20,
           abilityId: 'e',
@@ -1641,7 +1641,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'cache_25_right',
           name: '+22 Magic Resistance',
-          description: '+22 Magic Resistance — shrug off magical nukes',
+          description: '+22 Magic Resistance — shrug off code nukes',
           type: 'stat_bonus',
           tier: 25,
           statBonus: { stat: 'magicResist', value: 22 },

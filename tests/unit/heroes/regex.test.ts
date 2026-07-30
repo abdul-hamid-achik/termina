@@ -83,7 +83,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Regex Hero', () => {
   describe('Q: Match', () => {
-    it('deals magical damage to target hero', () => {
+    it('deals code damage to target hero', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

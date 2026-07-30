@@ -82,7 +82,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Null (null_ref) Hero', () => {
   describe('Q: Void Bolt', () => {
-    it('deals magic damage to target hero in same zone', () => {
+    it('deals code damage to target hero in same zone', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -337,7 +337,7 @@ describe('Null (null_ref) Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals AoE magic damage to all enemies in zone', () => {
+    it('deals AoE code damage to all enemies in zone', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })

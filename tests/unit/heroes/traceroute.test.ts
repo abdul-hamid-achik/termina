@@ -102,7 +102,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Traceroute Hero', () => {
   describe('Q: Probe (Physical Damage + Isolation Bonus)', () => {
-    it('deals physical damage to target enemy', () => {
+    it('deals kinetic damage to target enemy', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

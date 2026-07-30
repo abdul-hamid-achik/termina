@@ -238,7 +238,7 @@ describe('NeutralAI', () => {
           sourceId: 'neutral_1',
           targetId: 'p1',
           amount: 49,
-          damageType: 'physical',
+          damageType: 'kinetic',
         },
       ])
       expect(500 - after.players['p1']!.hp).toBe(49)

@@ -1,54 +1,59 @@
 version: 1
 name: game_hud_shell
 intent: >
-  The in-game HUD after the legibility overhaul: the combat-log theater header
-  is the game's ONLY tick clock (the old GameStateBar countdown is gone), the
-  map's [SHOW MAP OVERVIEW] toggle reveals the labeled mini overview with a
-  legend that explains its codes, and the War Room roster ships collapsed and
-  expands on tap. UI shell + interactions only — game truth (ticks, bots,
-  combat) is covered by `bun run test:gameplay`, not here.
+  The post-R3 terminal HUD: status lines carry the cycle clock and hop/threat
+  readout, the TRACE rail shows hop depth and terminals, the STREAM is present,
+  and the ActionRow/command prompt are the input surface. UI shell only —
+  engine truth is `bun run test:gameplay`.
 mode: normal
 metadata:
   feature: game-hud
   tags:
     - game
     - hud
-    - map
-    - war-room
+    - terminal
+    - trace
 imports:
   - ../actions/login.yml
 outcomes:
-  - id: single_tick_clock
-    description: the theater header renders and the removed GameStateBar countdown
-      does not — one clock on screen, not four
+  - id: status_clock_present
+    description: status lines render the cycle clock; old GameStateBar countdown is gone
     verify:
       script:
         run: >
-          const theater =
-          document.querySelector('[data-testid="theater-header"]');
+          const clock =
+          document.querySelector('[data-testid="status-clock"]');
 
           const barCountdown =
           document.querySelector('[data-testid="tick-countdown"]');
 
-          return { ok: !!theater && !barCountdown, evidence: 'theater=' +
-          !!theater + ' oldBarCountdown=' + !!barCountdown };
-  - id: map_overview_explains_codes
-    description: the opened mini overview carries the legend that explains its zone
-      codes (the old unlabeled letter-matrix was a core complaint)
-    verify:
-      text:
-        contains: tower zones
-        region: '[data-testid="compact-map"]'
-  - id: war_room_roster_expands
-    description: the collapsed-by-default War Room roster is open after tapping its
-      expand row
+          return { ok: !!clock && !barCountdown, evidence: 'clock=' + !!clock +
+          ' oldBarCountdown=' + !!barCountdown };
+  - id: trace_rail_present
+    description: the TRACE rail shows the current hop and both terminals
     verify:
       script:
         run: >
-          const roster =
-          document.querySelector('[data-testid="war-room-roster"]');
+          const rail =
+          document.querySelector('[data-testid="trace-rail"]');
 
-          return { ok: !!roster, evidence: 'roster rendered=' + !!roster };
+          const hop =
+          document.querySelector('[data-testid="trace-current"]');
+
+          const terminals =
+          document.querySelector('[data-testid="trace-terminals"]');
+
+          return { ok: !!rail && !!hop && !!terminals, evidence: 'rail=' +
+          !!rail + ' hop=' + !!hop + ' terminals=' + !!terminals };
+  - id: stream_present
+    description: the STREAM (combat log) owns the center column
+    verify:
+      script:
+        run: >
+          const stream =
+          document.querySelector('[data-testid="combat-log"]');
+
+          return { ok: !!stream, evidence: 'stream=' + !!stream };
 steps:
   - use: login
   - id: open_home
@@ -65,24 +70,16 @@ steps:
     wait:
       selector: '[data-testid="game-screen"]'
       timeoutMs: 20000
-  - id: await_theater_header
+  - id: await_status_lines
     wait:
-      selector: '[data-testid="theater-header"]'
+      selector: '[data-testid="status-lines"]'
       timeoutMs: 15000
-  - id: open_map_overview
-    click:
-      by: selector
-      selector: '[data-testid="overview-toggle"]'
-  - id: await_mini_overview
+  - id: await_trace_rail
     wait:
-      selector: '[data-testid="mini-overview"]'
+      selector: '[data-testid="trace-rail"]'
       timeoutMs: 10000
-  - id: expand_war_room_roster
-    click:
-      by: selector
-      selector: '[data-testid="war-room-roster-toggle"]'
-  - id: await_roster
+  - id: await_stream
     wait:
-      selector: '[data-testid="war-room-roster"]'
+      selector: '[data-testid="combat-log"]'
       timeoutMs: 10000
-contractHash: sha256:d7c9c1357d99219ae44ad7a9d538e67adb771b2b152075666e4c72ee773fb335
+contractHash: sha256:PENDING_RESTAMP

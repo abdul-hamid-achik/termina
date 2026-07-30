@@ -154,7 +154,7 @@ describe('Malloc Hero', () => {
   })
 
   describe('W: Free() (Physical Damage + Low HP Bonus)', () => {
-    it('deals physical damage to target hero', () => {
+    it('deals kinetic damage to target hero', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -219,7 +219,7 @@ describe('Malloc Hero', () => {
   })
 
   describe('E: Pointer Dereference (Dash + Stun)', () => {
-    it('deals physical damage and stuns target for 1 tick', () => {
+    it('deals kinetic damage and stuns target for 1 tick', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -296,7 +296,7 @@ describe('Malloc Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals AoE physical damage to all enemies in zone', () => {
+    it('deals AoE kinetic damage to all enemies in zone', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })

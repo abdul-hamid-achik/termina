@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { resolvePhysicalHit, computeSpitePlateReflect } from '~~/server/game/engine/CombatResolver'
 import type { PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
-import { calculatePhysicalDamage } from '~~/server/game/engine/DamageCalculator'
+import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -45,7 +45,7 @@ describe('CombatResolver', () => {
 
       const hit = resolvePhysicalHit(player, raw)
 
-      const expected = calculatePhysicalDamage(raw, getEffectiveDefense(player))
+      const expected = calculateKineticDamage(raw, getEffectiveDefense(player))
       expect(hit.immune).toBe(false)
       expect(hit.dodged).toBe(false)
       expect(hit.damageDealt).toBe(expected)
@@ -53,7 +53,7 @@ describe('CombatResolver', () => {
       expect(hit.player.alive).toBe(true)
     })
 
-    it('honors physical immunity (Ghost/Ethereal/invulnerable) — no HP lost', () => {
+    it('honors kinetic immunity (Ghost/Ethereal/invulnerable) — no HP lost', () => {
       for (const id of ['ghost_form', 'ethereal', 'invulnerable']) {
         const player = makePlayer({
           hp: 500,
@@ -86,7 +86,7 @@ describe('CombatResolver', () => {
       const raw = 100
       const hit = resolvePhysicalHit(player, raw)
 
-      const mitigated = calculatePhysicalDamage(raw, getEffectiveDefense(player))
+      const mitigated = calculateKineticDamage(raw, getEffectiveDefense(player))
       const expectedHpLoss = Math.max(0, mitigated - 40)
       expect(hit.damageDealt).toBe(expectedHpLoss)
       expect(hit.player.hp).toBe(500 - expectedHpLoss)

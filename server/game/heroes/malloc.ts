@@ -107,7 +107,7 @@ function resolveQ(
   })
 }
 
-// W: Free() — physical damage, 40% bonus if target below 30% HP
+// W: Free() — kinetic damage, 40% bonus if target below 30% HP
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -144,7 +144,7 @@ function resolveW(
       damage = Math.round(damage * (1 + W_LOW_HP_BONUS))
     }
 
-    const updatedTarget = dealDamage(targetPlayer, damage, 'physical')
+    const updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -157,7 +157,7 @@ function resolveW(
             ability: 'w',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             lowHpBonus: hpPercent < W_THRESHOLD,
           },
         },
@@ -166,7 +166,7 @@ function resolveW(
   })
 }
 
-// E: Pointer Dereference — dash to enemy, physical damage + stun 1 tick
+// E: Pointer Dereference — dash to enemy, kinetic damage + stun 1 tick
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -198,7 +198,7 @@ function resolveE(
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'physical')
+    let updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'stun',
       stacks: 1,
@@ -218,7 +218,7 @@ function resolveE(
             ability: 'e',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             effect: 'stun',
             duration: 1,
           },
@@ -228,7 +228,7 @@ function resolveE(
   })
 }
 
-// R: Stack Overflow — AoE physical damage to all enemies in zone
+// R: Stack Overflow — AoE kinetic damage to all enemies in zone
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -251,14 +251,14 @@ function resolveR(
 
     const enemies = getEnemiesInZone(state, player)
     const damage = scaleValue(R_DAMAGE, level)
-    const updatedEnemies = enemies.map((e) => dealDamage(e, damage, 'physical'))
+    const updatedEnemies = enemies.map((e) => dealDamage(e, damage, 'kinetic'))
 
     return {
       state: damageEnemyNpcsInZone(
         updatePlayers(state, [caster, ...updatedEnemies]),
         caster,
         damage,
-        'physical',
+        'kinetic',
       ),
       events: [
         {
@@ -268,7 +268,7 @@ function resolveR(
             playerId: player.id,
             ability: 'r',
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             targets: enemies.map((e) => e.id),
           },
         },

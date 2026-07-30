@@ -7,12 +7,12 @@ import type { AbilityDef, AbilityEffect, AbilityEffectType } from '~~/shared/typ
  * effect-to-text logic drifting across the UI.
  */
 
-/** Concise label for one ability effect, e.g. "40 magical dmg", "30% slow for 2t". */
+/** Concise label for one ability effect, e.g. "40 code dmg", "30% slow for 2t". */
 export function formatEffect(e: AbilityEffect): string {
   const dur = e.duration ? ` ${e.duration}t` : ''
   switch (e.type) {
     case 'damage':
-      return `${e.value} ${e.damageType ?? 'physical'} dmg`
+      return `${e.value} ${e.damageType ?? 'kinetic'} dmg`
     case 'heal':
       return `heal ${e.value}`
     case 'shield':

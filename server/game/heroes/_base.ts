@@ -310,7 +310,7 @@ export function dealDamage(
   damageType: DamageType,
 ): PlayerState {
   // Immunity (Proxy R / Eul's invulnerable; BKB magic_immune; Ethereal/Ghost
-  // physical) ignores the hit entirely — no HP lost, buff left for tickBuffs to
+  // kinetic) ignores the hit entirely — no HP lost, buff left for tickBuffs to
   // expire (NOT consumed like phaseShift).
   if (isDamageImmune(target, damageType)) return target
 
@@ -323,7 +323,7 @@ export function dealDamage(
   const hardenedReduction = hasBuff(target, 'hardened') ? 0.9 : 1
   let remaining = Math.round(effective * hardenedReduction)
 
-  // Target-side vuln debuffs amplify incoming damage (magic-vuln for magical:
+  // Target-side vuln debuffs amplify incoming damage (magic-vuln for code:
   // regex Q / Veil / Phase Shim; thread Yield for all types). Applied before
   // shield so the shield soaks the amplified amount ("takes more damage").
   remaining = Math.round(remaining * getIncomingDamageMultiplier(target, damageType))
@@ -350,18 +350,18 @@ export function dealDamage(
   return { ...target, hp: newHp, alive: newHp > 0 }
 }
 
-/** Amp Stack (Arcane Power): +15% to all magical damage the owner deals. */
+/** Amp Stack (Arcane Power): +15% to all code damage the owner deals. */
 const MYSTICAL_STAFF_MAGIC_AMP = 0.15
 
-/** Caster-side outgoing magical-damage multiplier from equipped items. */
+/** Caster-side outgoing code-damage multiplier from equipped items. */
 export function getMagicAmp(caster: PlayerState): number {
   return caster.items.includes('amp_stack') ? 1 + MYSTICAL_STAFF_MAGIC_AMP : 1
 }
 
 /**
  * Deal ability damage crediting the casting hero, so caster-side amplifiers
- * (currently Amp Stack's +15% magical) are applied before the target's
- * mitigation in dealDamage. Non-magical damage passes through unchanged. Hero
+ * (currently Amp Stack's +15% code) are applied before the target's
+ * mitigation in dealDamage. Non-code damage passes through unchanged. Hero
  * ability/passive damage should route through here; `dealDamage` remains the
  * lower-level target-only primitive.
  */
@@ -371,7 +371,7 @@ export function dealAbilityDamage(
   rawDamage: number,
   damageType: DamageType,
 ): PlayerState {
-  const amped = damageType === 'magical' ? Math.round(rawDamage * getMagicAmp(caster)) : rawDamage
+  const amped = damageType === 'code' ? Math.round(rawDamage * getMagicAmp(caster)) : rawDamage
   return dealDamage(target, amped, damageType)
 }
 
@@ -384,7 +384,7 @@ export function dealAbilityDamage(
  *
  * Waves carry no defense or magic-resist stat, so the target-side mitigation
  * in `dealDamage` has nothing to read — only the CASTER-side amplifier
- * (Amp Stack's +15% magical) applies, matching `dealAbilityDamage` so the
+ * (Amp Stack's +15% code) applies, matching `dealAbilityDamage` so the
  * two damage paths can't diverge on the same item.
  *
  * Dead NPCs are left in the array at 0 HP (`alive: false` for neutrals) rather
@@ -400,7 +400,7 @@ export function damageEnemyNpcsInZone(
   zones: readonly string[] = [caster.zone],
 ): GameState {
   const damage =
-    damageType === 'magical' ? Math.round(amount * getMagicAmp(caster)) : Math.round(amount)
+    damageType === 'code' ? Math.round(amount * getMagicAmp(caster)) : Math.round(amount)
   if (damage <= 0) return state
 
   const zoneIds = new Set(zones)
@@ -488,13 +488,13 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
     if (dotBuffs.length === 0) continue
     let target = player
     for (const dot of dotBuffs) {
-      const damageType: DamageType = dot.id.includes('phys') ? 'physical' : 'magical'
-      // Immunity skips the tick (e.g. BKB magic_immune ignores a magical DoT).
+      const damageType: DamageType = dot.id.includes('phys') ? 'kinetic' : 'code'
+      // Immunity skips the tick (e.g. BKB magic_immune ignores a code DoT).
       if (isDamageImmune(target, damageType)) continue
-      // Caster-side amplifiers (Amp Stack +15% magical) apply to DoTs
-      // too — the DoT is still the caster's outgoing magical damage.
+      // Caster-side amplifiers (Amp Stack +15% code) apply to DoTs
+      // too — the DoT is still the caster's outgoing code damage.
       const caster = dot.source ? state.players[dot.source] : undefined
-      const amp = damageType === 'magical' && caster ? getMagicAmp(caster) : 1
+      const amp = damageType === 'code' && caster ? getMagicAmp(caster) : 1
       const rawDamage = Math.round(dot.stacks * amp)
       const mitigated = calculateEffectiveDamage(rawDamage, damageType, {
         defense: getEffectiveDefense(target),
@@ -539,7 +539,7 @@ export function tickAllBuffs(state: GameState): GameState {
     // Return (returnMark). Both stash the origin zone in buff.destination.
     const returnShadow = player.buffs.find((b) => b.id === 'nextHopShadow' || b.id === 'returnMark')
     // Firewall DMZ: a marker riding alongside the W shield; when it ends it
-    // explodes for magical damage to enemies in the caster's zone.
+    // explodes for code damage to enemies in the caster's zone.
     const dmzExpiring = player.buffs.find((b) => b.id === 'dmz' && b.ticksRemaining === 1)
 
     if (tpChannelingBuff && tpChannelingBuff.ticksRemaining === 1 && tpDestBuff?.destination) {
@@ -607,7 +607,7 @@ export function tickAllBuffs(state: GameState): GameState {
     for (const enemy of Object.values(updated.players)) {
       if (enemy.team === caster.team || !enemy.alive || enemy.zone !== ex.zone) continue
       const preHp = enemy.hp
-      updated = updatePlayer(updated, dealAbilityDamage(caster, enemy, ex.damage, 'magical'))
+      updated = updatePlayer(updated, dealAbilityDamage(caster, enemy, ex.damage, 'code'))
       const hpLost = Math.max(0, preHp - (updated.players[enemy.id]?.hp ?? preHp))
       if (hpLost > 0) victims.push({ id: enemy.id, amount: hpLost })
       hitAny = true

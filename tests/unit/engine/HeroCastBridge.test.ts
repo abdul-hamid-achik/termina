@@ -135,7 +135,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       sourceId: 'p1',
       targetId: 'p2',
       amount: preHp - postHp,
-      damageType: 'physical',
+      damageType: 'kinetic',
     })
     // Root rider landed alongside the damage
     expect(result.state.players['p2']!.buffs.some((b) => b.id === 'root')).toBe(true)
@@ -485,7 +485,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     expect(ticked.state.players['p2']!.hp).toBeLessThan(preHp)
     const dmg = ticked.events.filter((e) => e._tag === 'damage')
     expect(dmg).toHaveLength(1)
-    expect(dmg[0]).toMatchObject({ sourceId: 'p1', targetId: 'p2', damageType: 'magical' })
+    expect(dmg[0]).toMatchObject({ sourceId: 'p1', targetId: 'p2', damageType: 'code' })
   })
 
   it('teleports the caster directly on a zone-target ultimate (daemon R)', () => {
@@ -731,7 +731,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
     // Damage event keeps the pre-shield amount so absorbed hits still grant
     // assist credit
     const dmg = result.events.find(
-      (e) => e._tag === 'damage' && e.targetId === 'p2' && e.damageType === 'physical',
+      (e) => e._tag === 'damage' && e.targetId === 'p2' && e.damageType === 'kinetic',
     )
     expect(dmg).toBeDefined()
     expect(dmg!._tag === 'damage' && dmg!.amount).toBeGreaterThan(0)

@@ -97,9 +97,9 @@ steps:
   - id: hop_to_base
     click:
       by: selector
-      selector: '[data-zone-cell="radiant-base"]'
+      selector: '[data-zone-cell="chaff-base"]'
   - id: await_hop_caption
     wait:
-      text: Standing in Radiant Base
+      text: Standing in Rookery Terminal
       timeoutMs: 10000
-contractHash: sha256:71f1eb204e934e3172d31842399b6ed82c674416990210a57c71f25313b9758c
+contractHash: sha256:PENDING_RESTAMP

@@ -3,7 +3,7 @@
  * zone; this pass detonates it. Each tick, for every armed trap:
  *   - if expired (tick >= expiryTick), disarm it silently;
  *   - else if an enemy hero occupies the zone, detonate on the first one —
- *     magical damage + a `revealed` buff (consumed by VisionCalculator) — and
+ *     code damage + a `revealed` buff (consumed by VisionCalculator) — and
  *     consume the trap;
  *   - otherwise leave it armed.
  *
@@ -41,7 +41,7 @@ export function processTraps(state: GameState): { state: GameState; events: Game
         continue
       }
 
-      const damaged = dealDamage(victim, trap.damage, 'magical')
+      const damaged = dealDamage(victim, trap.damage, 'code')
       const dealt = victim.hp - damaged.hp
       const revealed = applyBuff(damaged, {
         id: 'revealed',
@@ -57,7 +57,7 @@ export function processTraps(state: GameState): { state: GameState; events: Game
         sourceId: trap.owner,
         targetId: victim.id,
         amount: dealt,
-        damageType: 'magical',
+        damageType: 'code',
       })
       events.push({
         _tag: 'trap_triggered',

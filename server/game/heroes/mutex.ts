@@ -69,7 +69,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Lock — physical damage + root for 1 tick
+// Q: Lock — kinetic damage + root for 1 tick
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -101,7 +101,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'physical')
+    let updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'root',
       stacks: 1,
@@ -121,7 +121,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             effect: 'root',
             duration: 1,
           },
@@ -212,7 +212,7 @@ function resolveE(
       let target = e
       // Apply 3 hits with stacking slow
       for (let i = 1; i <= 3; i++) {
-        target = dealDamage(target, damagePerHit, 'physical')
+        target = dealDamage(target, damagePerHit, 'kinetic')
         target = applyBuff(target, {
           id: 'slow',
           stacks: E_SLOW_PERCENT * i,
@@ -230,7 +230,7 @@ function resolveE(
         updatePlayers(state, [caster, ...updatedEnemies]),
         caster,
         damagePerHit * 3,
-        'physical',
+        'kinetic',
       ),
       events: [
         {
@@ -241,7 +241,7 @@ function resolveE(
             ability: 'e',
             damagePerHit,
             hits: 3,
-            damageType: 'physical',
+            damageType: 'kinetic',
             effect: 'slow',
             targets: enemies.map((e) => e.id),
           },
@@ -251,7 +251,7 @@ function resolveE(
   })
 }
 
-// R: Priority Inversion — AoE fear 2 ticks + physical damage + bonus per Deadlock stack
+// R: Priority Inversion — AoE fear 2 ticks + kinetic damage + bonus per Deadlock stack
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -274,7 +274,7 @@ function resolveR(
     const totalDamage = baseDamage + deadlockStacks * R_BONUS_PER_STACK
 
     const updatedEnemies = enemies.map((e) => {
-      let target = dealDamage(e, totalDamage, 'physical')
+      let target = dealDamage(e, totalDamage, 'kinetic')
       target = applyBuff(target, {
         id: 'feared',
         stacks: 1,
@@ -289,7 +289,7 @@ function resolveR(
         updatePlayers(state, [caster, ...updatedEnemies]),
         caster,
         totalDamage,
-        'physical',
+        'kinetic',
       ),
       events: [
         {
@@ -299,7 +299,7 @@ function resolveR(
             playerId: player.id,
             ability: 'r',
             damage: totalDamage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             effect: 'fear',
             fearDuration: 2,
             deadlockStacks,

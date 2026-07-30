@@ -5,7 +5,7 @@ import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ICE_ATTACK } from '~~/shared/constants/balance'
-import { calculatePhysicalDamage } from '~~/server/game/engine/DamageCalculator'
+import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
 import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -180,7 +180,7 @@ describe('IceAI', () => {
           sourceId: 'attacker',
           targetId: 'ice_mid-t1-chaff',
           amount: 60,
-          damageType: 'physical',
+          damageType: 'kinetic',
         },
       ]
 
@@ -210,7 +210,7 @@ describe('IceAI', () => {
           sourceId: 'attacker',
           targetId: 'ice_top-t1-chaff',
           amount: 60,
-          damageType: 'physical',
+          damageType: 'kinetic',
         },
       ]
 
@@ -331,7 +331,7 @@ describe('IceAI', () => {
       const result = applyIceActions(state, actions).state
       // resolvePhysicalHit routes through getEffectiveDefense (items + talents
       // + buffs), not the raw player.defense field.
-      const expectedDamage = calculatePhysicalDamage(ICE_ATTACK, getEffectiveDefense(player))
+      const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectiveDefense(player))
       expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
@@ -366,7 +366,7 @@ describe('IceAI', () => {
       ]
 
       const { state: after, events } = applyIceActions(state, actions)
-      const expectedDamage = calculatePhysicalDamage(ICE_ATTACK, getEffectiveDefense(player))
+      const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectiveDefense(player))
       expect(events).toEqual([
         {
           _tag: 'damage',
@@ -375,7 +375,7 @@ describe('IceAI', () => {
           sourceId: 'ice_mid-t1-chaff',
           targetId: 'p1',
           amount: expectedDamage,
-          damageType: 'physical',
+          damageType: 'kinetic',
         },
       ])
       // The event amount is the HP actually lost, not the raw ICE_ATTACK.

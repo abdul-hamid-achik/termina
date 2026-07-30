@@ -247,7 +247,7 @@ export function applyWaveActions(
             sourceId: wave.id,
             targetId: action.targetId,
             amount: hit.damageDealt,
-            damageType: 'physical',
+            damageType: 'kinetic',
           })
         }
         break

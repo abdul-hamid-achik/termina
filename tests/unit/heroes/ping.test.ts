@@ -82,7 +82,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Ping Hero', () => {
   describe('Q: ICMP Echo (Magic Damage)', () => {
-    it('deals magic damage to target hero in same zone', () => {
+    it('deals code damage to target hero in same zone', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

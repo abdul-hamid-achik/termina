@@ -68,7 +68,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Probe — Physical damage to target. 35% bonus if target is isolated (no allies in zone).
+// Q: Probe — Kinetic damage to target. 35% bonus if target is isolated (no allies in zone).
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -112,7 +112,7 @@ function resolveQ(
     // (max 3 stacks = +60%). Previously the stacks built up but nothing read them.
     damage = Math.round(damage * getHopCountMultiplier(player))
 
-    const updatedTarget = dealDamage(targetPlayer, damage, 'physical')
+    const updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -125,7 +125,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             isolated,
           },
         },

@@ -12,10 +12,7 @@ import {
   getEffectiveMagicResist,
   getItemStatBonuses,
 } from '~~/server/game/engine/EffectiveStats'
-import {
-  calculatePhysicalDamage,
-  calculateMagicalDamage,
-} from '~~/server/game/engine/DamageCalculator'
+import { calculateKineticDamage, calculateCodeDamage } from '~~/server/game/engine/DamageCalculator'
 import {
   NULL_POINTER_CRIT_MULTIPLIER,
   FRACTURE_EDGE_CRIT_MULTIPLIER,
@@ -112,7 +109,7 @@ function run(state: GameState, actions: PlayerAction[]) {
   return Effect.runSync(resolveActions(state, actions))
 }
 
-/** Physical damage a duel attacker deals against a fixed-stat target. */
+/** Kinetic damage a duel attacker deals against a fixed-stat target. */
 function expectedPhysical(
   attackerItems: (string | null)[],
   targetItems: (string | null)[],
@@ -128,7 +125,7 @@ function expectedPhysical(
     0,
     getEffectiveDefense(tgt, getItemStatBonuses(targetItems)) - defenseShred,
   )
-  return calculatePhysicalDamage(attackDamage, defense)
+  return calculateKineticDamage(attackDamage, defense)
 }
 
 // ── CRIT multipliers (loop-50 RNG) ──────────────────────────────
@@ -196,7 +193,7 @@ describe('Item combat procs — crit multipliers', () => {
 // ── On-hit / proc passives ───────────────────────────────────────
 
 describe('Item combat procs — on-hit effects', () => {
-  it('truestrike_rig adds a separate magical on-hit damage event (+50 pre-mitigation)', () => {
+  it('truestrike_rig adds a separate code on-hit damage event (+50 pre-mitigation)', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
@@ -210,18 +207,18 @@ describe('Item combat procs — on-hit effects', () => {
     const start = state.players['p2']!.hp
     const r = run(state, [attack('p1', 'Enemy')])
     const events = r.events.filter((e) => e._tag === 'damage' && e.targetId === 'p2')
-    const magic = events.find((e) => e._tag === 'damage' && e.damageType === 'magical')!
-    const phys = events.find((e) => e._tag === 'damage' && e.damageType === 'physical')!
+    const magic = events.find((e) => e._tag === 'damage' && e.damageType === 'code')!
+    const phys = events.find((e) => e._tag === 'damage' && e.damageType === 'kinetic')!
     expect(magic).toBeDefined()
     expect(phys).toBeDefined()
-    // MKB magical = 50 reduced by the target's 15 MR.
+    // MKB code = 50 reduced by the target's 15 MR.
     const tgt = makePlayer({ heroId: 'echo' })
-    const expectedMagic = calculateMagicalDamage(
+    const expectedMagic = calculateCodeDamage(
       TRUESTRIKE_RIG_BONUS_DAMAGE,
       getEffectiveMagicResist(tgt, getItemStatBonuses([])),
     )
     expect((magic as { amount: number }).amount).toBe(expectedMagic)
-    // Total HP lost = physical + magical.
+    // Total HP lost = kinetic + code.
     const lost = start - r.state.players['p2']!.hp
     expect(lost).toBe((phys as { amount: number }).amount + (magic as { amount: number }).amount)
   })
@@ -250,9 +247,9 @@ describe('Item combat procs — on-hit effects', () => {
     expect(dmg).toBeGreaterThan(noShred)
   })
 
-  it('arc_coil chain lightning hits a SECOND nearby enemy for magical damage (loop-50)', () => {
+  it('arc_coil chain lightning hits a SECOND nearby enemy for code damage (loop-50)', () => {
     const tgt = makePlayer({ heroId: 'echo' })
-    const expectedChain = calculateMagicalDamage(
+    const expectedChain = calculateCodeDamage(
       60,
       getEffectiveMagicResist(tgt, getItemStatBonuses([])),
     )
@@ -276,7 +273,7 @@ describe('Item combat procs — on-hit effects', () => {
       if (chainDmg > 0) {
         expect(chainDmg).toBe(expectedChain)
         const chainEvent = r.events.find(
-          (e) => e._tag === 'damage' && e.targetId === 'p3' && e.damageType === 'magical',
+          (e) => e._tag === 'damage' && e.targetId === 'p3' && e.damageType === 'code',
         )
         expect(chainEvent).toBeDefined()
         sawChain = true
@@ -399,7 +396,7 @@ describe('Item combat procs — on-hit effects', () => {
 // ── Active-item nukes / debuffs (use → effect) ──────────────────
 
 describe('Item actives — direct effects', () => {
-  it('burnout nukes the target for 300 magical (reduced by MR) in one use', () => {
+  it('burnout nukes the target for 300 code (reduced by MR) in one use', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
@@ -418,15 +415,15 @@ describe('Item actives — direct effects', () => {
       },
     ])
     const lost = start - r.state.players['p2']!.hp
-    // 300 magical against echo's 15 MR.
-    const expected = calculateMagicalDamage(300, 15)
+    // 300 code against echo's 15 MR.
+    const expected = calculateCodeDamage(300, 15)
     expect(lost).toBe(expected)
     expect(expected).toBeGreaterThan(250) // ~261 — close to 300 before reduction.
     // caster gets the cooldown buff.
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_burnout')).toBe(true)
   })
 
-  it('phase_shim end-to-end: target becomes physical-immune AND takes +40% magical', () => {
+  it('phase_shim end-to-end: target becomes kinetic-immune AND takes +40% code', () => {
     // Tick 1: cast phase_shim on the enemy.
     const s1 = makeGameState({
       players: {
@@ -448,12 +445,12 @@ describe('Item actives — direct effects', () => {
     expect(target1.buffs.some((b) => b.id === 'ethereal')).toBe(true)
     expect(target1.buffs.find((b) => b.id === 'magic_vuln_40')?.stacks).toBe(40)
 
-    // Tick 2a: a basic (physical) attack into the ethereal target deals 0.
+    // Tick 2a: a basic (kinetic) attack into the ethereal target deals 0.
     const s2 = makeGameState({ players: { p1: r1.state.players['p1']!, p2: target1 }, tick: 2 })
     const physResult = run(s2, [attack('p1', 'Enemy')])
-    expect(physResult.state.players['p2']!.hp).toBe(target1.hp) // no physical damage
+    expect(physResult.state.players['p2']!.hp).toBe(target1.hp) // no kinetic damage
 
-    // Tick 2b: a magical nuke (burnout 300) into the ethereal target is amplified +40%.
+    // Tick 2b: a code nuke (burnout 300) into the ethereal target is amplified +40%.
     const magResult = run(s2, [
       {
         playerId: 'p1',
@@ -461,7 +458,7 @@ describe('Item actives — direct effects', () => {
       },
     ])
     const lost = target1.hp - magResult.state.players['p2']!.hp
-    const baseMagic = calculateMagicalDamage(300, 15)
+    const baseMagic = calculateCodeDamage(300, 15)
     const amped = Math.round(baseMagic * 1.4)
     expect(lost).toBe(amped)
     expect(lost).toBeGreaterThan(baseMagic) // the +40% really landed
@@ -636,7 +633,7 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
     expect(r.state.players['far']!.hp).toBe(farHp)
   })
 
-  it('deals no magical damage to a magic-immune (Hardshell) enemy, but still slows it', () => {
+  it('deals no code damage to a magic-immune (Hardshell) enemy, but still slows it', () => {
     const state = makeGameState({
       players: {
         p1: shiva(),

@@ -231,7 +231,7 @@ describe('Daemon Hero', () => {
   })
 
   describe('E: Sudo (Execute)', () => {
-    it('executes target below 30% HP with pure damage', () => {
+    it('executes target below 30% HP with black damage', () => {
       const player = makePlayer({ level: 6, mp: 500 }) // E level 3 (at player level 5), R level 1
       // Actually E is at level 3 at player level 5, level 4 at player level 7
       // But E_DAMAGE is only [300, 400, 500] — that's R-style scaling
@@ -245,7 +245,7 @@ describe('Daemon Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
-      // Should deal massive pure damage, likely killing the target
+      // Should deal massive black damage, likely killing the target
       expect(result.state.players['e1']!.hp).toBe(0)
       expect(result.state.players['e1']!.alive).toBe(false)
     })

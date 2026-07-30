@@ -87,9 +87,9 @@ describe('shop', () => {
     expect((await game.me()).zone).toBe('mid-t1-chaff')
   })
 
-  it('using Burnout nukes a targeted enemy for magical damage (offensive item active)', async () => {
+  it('using Burnout nukes a targeted enemy for code damage (offensive item active)', async () => {
     // The offensive-item path the auto-target resolves to: `use burnout hero:<id>`
-    // runs submitAction → resolveActions → useItem and applies 300 magical
+    // runs submitAction → resolveActions → useItem and applies 300 code
     // damage (reduced by magic resist) to a co-located enemy.
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
@@ -110,7 +110,7 @@ describe('shop', () => {
     await game.tick()
     const after = (await game.player(ENEMY)).hp
 
-    // 300 magical, reduced by magic resist (~15%) → ~255 — well above per-tick regen.
+    // 300 code, reduced by magic resist (~15%) → ~255 — well above per-tick regen.
     expect(after).toBeLessThan(before)
     expect(before - after).toBeGreaterThan(200)
   })
@@ -253,7 +253,7 @@ describe('shop', () => {
     expect((await game.me()).buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
   })
 
-  it('Cryo Routine novas every co-located enemy — magic damage + a slow', async () => {
+  it('Cryo Routine novas every co-located enemy — code damage + a slow', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxHp recompute
     await game.patch((s) => ({

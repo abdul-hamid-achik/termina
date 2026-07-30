@@ -14,11 +14,11 @@ describe('Hero Type Definitions', () => {
       const effect: AbilityEffect = {
         type: 'damage',
         value: 100,
-        damageType: 'physical',
+        damageType: 'kinetic',
       }
       expect(effect.type).toBe('damage')
       expect(effect.value).toBe(100)
-      expect(effect.damageType).toBe('physical')
+      expect(effect.damageType).toBe('kinetic')
     })
 
     it('should validate healing effect', () => {
@@ -43,17 +43,17 @@ describe('Hero Type Definitions', () => {
       const effect: AbilityEffect = {
         type: 'dot',
         value: 50,
-        damageType: 'magical',
+        damageType: 'code',
         duration: 3,
       }
       expect(effect.type).toBe('dot')
-      expect(effect.damageType).toBe('magical')
+      expect(effect.damageType).toBe('code')
     })
   })
 
   describe('DamageType', () => {
-    it('should have physical, magical, and pure types', () => {
-      const types: DamageType[] = ['physical', 'magical', 'pure']
+    it('should have kinetic, code, and black types', () => {
+      const types: DamageType[] = ['kinetic', 'code', 'black']
       expect(types.length).toBe(3)
     })
   })

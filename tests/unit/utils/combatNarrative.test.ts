@@ -42,7 +42,7 @@ function ev(type: string, payload: Record<string, unknown>, tick = 1): GameEvent
 describe('eventToLine: salience', () => {
   it('marks incoming damage to me as mine-in', () => {
     const line = eventToLine(
-      ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 80, damageType: 'physical' }),
+      ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 80, damageType: 'kinetic' }),
       ctx,
     )!
     expect(line.salience).toBe('mine-in')
@@ -51,21 +51,21 @@ describe('eventToLine: salience', () => {
   })
   it('marks my outgoing damage as mine-out', () => {
     const line = eventToLine(
-      ev('damage', { sourceId: 'me', targetId: 'enemy1', amount: 40, damageType: 'magical' }),
+      ev('damage', { sourceId: 'me', targetId: 'enemy1', amount: 40, damageType: 'code' }),
       ctx,
     )!
     expect(line.salience).toBe('mine-out')
   })
   it('marks teammate-involved as ally', () => {
     const line = eventToLine(
-      ev('damage', { sourceId: 'enemy1', targetId: 'ally1', amount: 20, damageType: 'physical' }),
+      ev('damage', { sourceId: 'enemy1', targetId: 'ally1', amount: 20, damageType: 'kinetic' }),
       ctx,
     )!
     expect(line.salience).toBe('ally')
   })
   it('marks pure bystander chip as world', () => {
     const line = eventToLine(
-      ev('damage', { sourceId: 'enemy1', targetId: 'enemy2', amount: 20, damageType: 'physical' }),
+      ev('damage', { sourceId: 'enemy1', targetId: 'enemy2', amount: 20, damageType: 'kinetic' }),
       ctx,
     )!
     expect(line.salience).toBe('world')
@@ -96,7 +96,7 @@ describe('eventToLine: structure damage collapses', () => {
         sourceId: 'me',
         targetId: 'ice_mid-t1-audit',
         amount: 70,
-        damageType: 'physical',
+        damageType: 'kinetic',
       }),
       ctx,
     )!
@@ -281,12 +281,12 @@ describe('buildCombatLines', () => {
     const events: GameEvent[] = [
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'physical' },
+        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'kinetic' },
         1,
       ),
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'physical' },
+        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'kinetic' },
         2,
       ),
       ev('gold_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }, 2),
@@ -542,7 +542,7 @@ describe('eventToLine: cause-before-effect salience', () => {
     const lines = buildCombatLines(
       [
         ev('ability_used', { playerId: 'enemy1', abilityId: 'q', targetId: 'me' }, 7),
-        ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 106, damageType: 'magical' }, 7),
+        ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 106, damageType: 'code' }, 7),
       ],
       ctx,
       collapseStructureDamage,
@@ -639,7 +639,7 @@ describe('narration drift guard', () => {
     neutralType: 'stub',
     cacheType: 'haste',
     wardType: 'observer',
-    damageType: 'physical',
+    damageType: 'kinetic',
     hp: 100,
     maxHp: 200,
     votesFor: 1,
@@ -846,7 +846,7 @@ describe('eventToLine: semantic hierarchy', () => {
 describe('eventToLine: damage metadata for the tick recap', () => {
   it('carries the amount and both labels on hero damage, not only structure chip', () => {
     const line = eventToLine(
-      ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 84, damageType: 'physical' }),
+      ev('damage', { sourceId: 'enemy1', targetId: 'me', amount: 84, damageType: 'kinetic' }),
       ctx,
     )!
     expect(line.dmgAmount).toBe(84)

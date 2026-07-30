@@ -34,8 +34,8 @@ import { isCommandAllowedInTutorial, tutorialLockMessage } from '~~/server/game/
 import { isBot } from '~~/server/game/ai/BotManager'
 import { isShopZoneFor } from '~~/shared/constants/zones'
 import {
-  calculatePhysicalDamage,
-  calculateMagicalDamage,
+  calculateKineticDamage,
+  calculateCodeDamage,
   getIncomingDamageMultiplier,
   isDamageImmune,
 } from './DamageCalculator'
@@ -213,7 +213,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'attack': {
       if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot attack while stunned'
       if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot attack while feared'
-      // Ghost Scepter: phased out — immune to physical damage, but cannot attack.
+      // Ghost Scepter: phased out — immune to kinetic damage, but cannot attack.
       if (player.buffs.some((b) => b.id === 'ghost_form')) {
         return 'Cannot attack while in ghost form'
       }
@@ -750,11 +750,11 @@ function resolveAttackPhase(
         )
         if (chainTargets.length > 0) {
           const chainTarget = chainTargets[Math.floor(Math.random() * chainTargets.length)]!
-          const chainDamage = isDamageImmune(chainTarget, 'magical')
+          const chainDamage = isDamageImmune(chainTarget, 'code')
             ? 0
             : Math.round(
-                calculateMagicalDamage(60, chainTarget.magicResist) *
-                  getIncomingDamageMultiplier(chainTarget, 'magical'),
+                calculateCodeDamage(60, chainTarget.magicResist) *
+                  getIncomingDamageMultiplier(chainTarget, 'code'),
               )
           if (chainDamage > 0) {
             const chainPendingHp =
@@ -771,7 +771,7 @@ function resolveAttackPhase(
               sourceId: action.playerId,
               targetId: chainTarget.id,
               amount: chainDamage,
-              damageType: 'magical',
+              damageType: 'code',
             })
           }
         }
@@ -824,13 +824,13 @@ function resolveAttackPhase(
         blockedDamage = BULWARK_PLATE_BLOCK_AMOUNT
       }
 
-      let damage = calculatePhysicalDamage(attackDamage, defense)
+      let damage = calculateKineticDamage(attackDamage, defense)
       damage = Math.max(0, damage - blockedDamage)
 
-      if (isDamageImmune(target, 'physical')) {
+      if (isDamageImmune(target, 'kinetic')) {
         damage = 0
       } else {
-        damage = Math.round(damage * getIncomingDamageMultiplier(target, 'physical'))
+        damage = Math.round(damage * getIncomingDamageMultiplier(target, 'kinetic'))
       }
 
       // A phaseShift dodge nullifies the whole hit — compute once and reuse so
@@ -839,12 +839,12 @@ function resolveAttackPhase(
       const dodged = targetPendingBuffs.some((b) => b.id === 'phaseShift')
 
       let totalDamage = damage
-      if (bonusMagicDamage > 0 && !isDamageImmune(target, 'magical') && !dodged) {
-        const rawMagic = calculateMagicalDamage(
+      if (bonusMagicDamage > 0 && !isDamageImmune(target, 'code') && !dodged) {
+        const rawMagic = calculateCodeDamage(
           bonusMagicDamage,
           getEffectiveMagicResist(target, targetItemStats),
         )
-        const magicDmg = Math.round(rawMagic * getIncomingDamageMultiplier(target, 'magical'))
+        const magicDmg = Math.round(rawMagic * getIncomingDamageMultiplier(target, 'code'))
         totalDamage += magicDmg
         events.push({
           _tag: 'damage',
@@ -852,7 +852,7 @@ function resolveAttackPhase(
           sourceId: action.playerId,
           targetId,
           amount: magicDmg,
-          damageType: 'magical',
+          damageType: 'code',
         })
       }
 
@@ -916,7 +916,7 @@ function resolveAttackPhase(
           sourceId: targetId,
           targetId: action.playerId,
           amount: returnDamage,
-          damageType: 'pure',
+          damageType: 'black',
         })
       }
 
@@ -941,7 +941,7 @@ function resolveAttackPhase(
           sourceId: action.playerId,
           targetId,
           amount: damage,
-          damageType: 'physical',
+          damageType: 'kinetic',
         })
       }
     } else if (cmd.target.kind === 'wave') {
@@ -990,7 +990,7 @@ function resolveAttackPhase(
         sourceId: action.playerId,
         targetId: wave.id,
         amount: attackDamage,
-        damageType: 'physical',
+        damageType: 'kinetic',
       })
     } else if (cmd.target.kind === 'ice') {
       const targetZone = cmd.target.zone
@@ -1041,7 +1041,7 @@ function resolveAttackPhase(
         sourceId: action.playerId,
         targetId: `ice_${iceTarget.zone}`,
         amount: attackDamage,
-        damageType: 'physical',
+        damageType: 'kinetic',
       })
     } else if (cmd.target.kind === 'tenant') {
       const tenant = state.tenant
@@ -1064,7 +1064,7 @@ function resolveAttackPhase(
         sourceId: action.playerId,
         targetId: 'tenant',
         amount: attackDamage,
-        damageType: 'physical',
+        damageType: 'kinetic',
       })
     } else if (cmd.target.kind === 'neutral') {
       const neutralIdx = cmd.target.index
@@ -1099,7 +1099,7 @@ function resolveAttackPhase(
         sourceId: action.playerId,
         targetId: neutral.id,
         amount: attackDamage,
-        damageType: 'physical',
+        damageType: 'kinetic',
       })
     } else if (cmd.target.kind === 'ancient') {
       const enemyTeam: TeamId = attacker.team === 'chaff' ? 'audit' : 'chaff'
@@ -1402,7 +1402,7 @@ function resolveItemActivesPhase(
           prePlayers,
           blockTargetId,
           action.playerId,
-          'magical',
+          'code',
           state.tick,
           events,
         )
@@ -1427,7 +1427,7 @@ function resolveItemActivesPhase(
             sourceId: action.playerId,
             targetId: pid,
             amount: delta,
-            damageType: 'magical',
+            damageType: 'code',
           })
           if (user && post.team !== user.team) {
             heroAttackers.set(action.playerId, pid)
@@ -1436,7 +1436,7 @@ function resolveItemActivesPhase(
             damageTracker.set(action.playerId, dt)
 
             // Spite Plate: an enemy hit by the item reflects the HP it lost back
-            // at the user as pure damage — same formula as the cast/attack path.
+            // at the user as black damage — same formula as the cast/attack path.
             if (post.buffs.some((b) => b.id === 'spite_plate')) {
               const userPost = players[action.playerId]
               if (userPost) {
@@ -1452,7 +1452,7 @@ function resolveItemActivesPhase(
                   sourceId: pid,
                   targetId: action.playerId,
                   amount: returnDamage,
-                  damageType: 'pure',
+                  damageType: 'black',
                 })
               }
             }
@@ -2273,7 +2273,7 @@ function resolveHeroCast(
     newPlayers = { ...newPlayers, [action.playerId]: restored }
   }
   const abilityDef = HEROES[caster.heroId]?.abilities[cmd.ability]
-  const damageType = abilityDef?.damageType ?? 'magical'
+  const damageType = abilityDef?.damageType ?? 'code'
 
   // Resolve the targeted hero id (used by the block check + ability_used event).
   // Uses the pre-built hero index (findHero) instead of a per-cast linear scan.
@@ -2342,7 +2342,7 @@ function resolveHeroCast(
         castDamageToEnemies += delta
 
         // Spite Plate: an enemy hero hit by this cast reflects the HP it lost
-        // back at the caster as pure damage — the same computeSpitePlateReflect
+        // back at the caster as black damage — the same computeSpitePlateReflect
         // formula as the basic-attack reflect, so the two paths can never
         // diverge.
         if (post.buffs.some((b) => b.id === 'spite_plate')) {
@@ -2360,7 +2360,7 @@ function resolveHeroCast(
               sourceId: pid,
               targetId: action.playerId,
               amount: returnDamage,
-              damageType: 'pure',
+              damageType: 'black',
             })
           }
         }

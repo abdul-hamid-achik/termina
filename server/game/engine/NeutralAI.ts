@@ -172,7 +172,7 @@ export function applyNeutralActions(
       sourceId: action.neutralId,
       targetId: action.targetId,
       amount: hit.damageDealt,
-      damageType: 'physical',
+      damageType: 'kinetic',
     })
   }
 

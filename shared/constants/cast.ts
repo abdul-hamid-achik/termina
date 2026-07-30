@@ -191,6 +191,6 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Stored data, released later. His passive is Write-Back: 15% of all damage taken, logged. The logging WAS the product.',
     kitReading:
-      'Write-Back stores 15% of all damage taken up to 30% of max HP: the logging, still running, years after the contract ended. He cannot start a fight — an empty cache makes Cache Hit, Flush and Eviction all do nothing, so a full-HP Sump who opens is doing his opponent a favour. He has to be hit first. Flush turns the log into armour. Cache Hit spends it on one person. Eviction returns the entire ledger at once as pure damage that nothing reduces, because the number was never negotiable.',
+      'Write-Back stores 15% of all damage taken up to 30% of max HP: the logging, still running, years after the contract ended. He cannot start a fight — an empty cache makes Cache Hit, Flush and Eviction all do nothing, so a full-HP Sump who opens is doing his opponent a favour. He has to be hit first. Flush turns the log into armour. Cache Hit spends it on one person. Eviction returns the entire ledger at once as black damage that nothing reduces, because the number was never negotiable.',
   },
 }

@@ -47,13 +47,13 @@ steps:
     wait:
       selector: '[data-testid="scoreboard-overlay"]'
       timeoutMs: 10000
-  - id: see_radiant_block
+  - id: see_chaff_block
     wait:
-      selector: '[data-testid="scoreboard-team-radiant"]'
+      selector: '[data-testid="scoreboard-team-chaff"]'
       timeoutMs: 5000
-  - id: see_dire_block
+  - id: see_audit_block
     wait:
-      selector: '[data-testid="scoreboard-team-dire"]'
+      selector: '[data-testid="scoreboard-team-audit"]'
       timeoutMs: 5000
   - id: close_scoreboard
     click:
@@ -64,4 +64,4 @@ steps:
     wait:
       notText: tap outside or here to close
       timeoutMs: 5000
-contractHash: sha256:77e0205934ddf5c51ca13c50e3ab0ba2242341f326c75eb7ae7a7b8fb216342e
+contractHash: sha256:PENDING_RESTAMP

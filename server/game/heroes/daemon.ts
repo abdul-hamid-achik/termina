@@ -115,7 +115,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             totalDamage,
-            damageType: 'magical',
+            damageType: 'code',
           },
         },
       ],
@@ -197,7 +197,7 @@ function resolveW(
   })
 }
 
-// E: Sudo — execute below 30% HP with pure damage; fail + refund if above
+// E: Sudo — execute below 30% HP with black damage; fail + refund if above
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -250,7 +250,7 @@ function resolveE(
     caster = removeBuff(caster, 'stealth')
 
     const damage = scaleValue(E_DAMAGE, level)
-    const updatedTarget = dealDamage(targetPlayer, damage, 'pure')
+    const updatedTarget = dealDamage(targetPlayer, damage, 'black')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -263,7 +263,7 @@ function resolveE(
             ability: 'e',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'pure',
+            damageType: 'black',
             execute: true,
           },
         },

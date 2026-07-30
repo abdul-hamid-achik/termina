@@ -22,7 +22,7 @@ import type { ItemDef, ItemCategory } from '~~/shared/types/items'
 //   STREET   = consumables and cheap fence goods (opening buys, camtaps, cans)
 //   CHROME   = implanted survivability — HP/defense/resist, mitigation
 //   HARDWARE = carried weapons and attachments — attack-stat, on-attack procs
-//   DECK     = software — magical damage, spell amp, cooldown manipulation
+//   DECK     = software — code damage, spell amp, cooldown manipulation
 //   WETWARE  = neural and reflex — mobility, control, disables, tempo
 
 // ── Street (cost <= 500 + consumables) ──────────────────────────────
@@ -185,7 +185,7 @@ const arc_coil: ItemDef = {
   passive: {
     id: 'arc_coil_passive',
     name: 'Chain Lightning',
-    description: '25% chance on attack to deal 60 magical damage to a nearby enemy.',
+    description: '25% chance on attack to deal 60 code damage to a nearby enemy.',
   },
 }
 
@@ -198,7 +198,7 @@ const monkeyKingBar: ItemDef = {
   passive: {
     id: 'truestrike_rig_passive',
     name: 'True Strike',
-    description: 'Attacks cannot miss and deal bonus 50 magical damage.',
+    description: 'Attacks cannot miss and deal bonus 50 code damage.',
   },
 }
 
@@ -253,7 +253,7 @@ const mysticalStaff: ItemDef = {
   passive: {
     id: 'amp_stack_passive',
     name: 'Arcane Power',
-    description: 'Increase all magical damage dealt by 15%.',
+    description: 'Increase all code damage dealt by 15%.',
   },
 }
 
@@ -266,7 +266,7 @@ const veilOfDiscord: ItemDef = {
   active: {
     id: 'discord_routine_active',
     name: 'Discord',
-    description: 'Enemies in zone take 25% more magical damage for 4 cycles.',
+    description: 'Enemies in zone take 25% more code damage for 4 cycles.',
     cooldownTicks: 15,
   },
 }
@@ -280,7 +280,7 @@ const shivasGuard: ItemDef = {
   active: {
     id: 'cryo_routine_active',
     name: 'Arctic Blast',
-    description: 'Deal 100 magical damage to enemies in zone and slow them for 2 cycles.',
+    description: 'Deal 100 code damage to enemies in zone and slow them for 2 cycles.',
     cooldownTicks: 20,
   },
 }
@@ -307,7 +307,7 @@ const burnout: ItemDef = {
   active: {
     id: 'dagon_active',
     name: 'Energy Burst',
-    description: 'Deal 300 magical damage to target hero in same or adjacent zone.',
+    description: 'Deal 300 code damage to target hero in same or adjacent zone.',
     cooldownTicks: 18,
     targetType: 'enemy',
   },
@@ -323,7 +323,7 @@ const etherealBlade: ItemDef = {
     id: 'phase_shim_active',
     name: 'Ether Blast',
     description:
-      'Target becomes ethereal for 2 cycles (immune to physical, vulnerable to magical +40%).',
+      'Target becomes ethereal for 2 cycles (immune to kinetic, vulnerable to code +40%).',
     cooldownTicks: 15,
   },
 }
@@ -365,7 +365,7 @@ const blackKingBar: ItemDef = {
   active: {
     id: 'hardshell_active',
     name: 'Avatar',
-    description: 'Become immune to magical damage and debuffs for 4 cycles.',
+    description: 'Become immune to code damage and debuffs for 4 cycles.',
     cooldownTicks: 25,
   },
 }
@@ -508,7 +508,7 @@ const ghostScepter: ItemDef = {
   active: {
     id: 'phase_shunt_active',
     name: 'Ghost Form',
-    description: 'Become immune to physical damage for 2 cycles. Cannot attack.',
+    description: 'Become immune to kinetic damage for 2 cycles. Cannot attack.',
     cooldownTicks: 20,
   },
 }
@@ -798,7 +798,7 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
   {
     id: 'deck',
     label: 'Deck',
-    blurb: 'Software — amplify magical damage, manipulate cooldowns, or nuke a target outright.',
+    blurb: 'Software — amplify code damage, manipulate cooldowns, or nuke a target outright.',
     ids: [
       'amp_stack',
       'discord_routine',

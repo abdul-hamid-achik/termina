@@ -15,7 +15,7 @@ const ability: AbilityDef = {
   cooldownTicks: 3,
   targetType: 'hero',
   effects: [
-    { type: 'damage', value: 40, damageType: 'magical' },
+    { type: 'damage', value: 40, damageType: 'code' },
     { type: 'slow', value: 30, duration: 2 },
   ],
 }
@@ -37,7 +37,7 @@ describe('AbilitySlot', () => {
     expect(text).toContain('Packet Storm')
     expect(text).toContain('Hurls a burst of packets at the target.')
     // effects are formatted through the shared helper — assert the wiring, not a literal
-    expect(text).toContain(formatEffect(ability.effects[0]!)) // "40 magical dmg"
+    expect(text).toContain(formatEffect(ability.effects[0]!)) // "40 code dmg"
     expect(text).toContain(formatEffect(ability.effects[1]!)) // "30% slow for 2t"
     // costs + target line
     expect(text).toContain('50') // mana cost

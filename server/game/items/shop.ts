@@ -20,7 +20,7 @@ import {
 } from '~~/server/game/heroes/_base'
 import { areAdjacent, getDistance } from '~~/server/game/map/topology'
 import {
-  calculateMagicalDamage,
+  calculateCodeDamage,
   getIncomingDamageMultiplier,
   isDamageImmune,
 } from '~~/server/game/engine/DamageCalculator'
@@ -647,12 +647,12 @@ function useBurnout(
       return yield* Effect.fail(new InvalidTargetError({ reason: 'Target out of range' }))
     }
 
-    // Deal 300 magical damage — blocked by magic immunity (Hardshell/invulnerable),
+    // Deal 300 code damage — blocked by magic immunity (Hardshell/invulnerable),
     // amplified by magic-vuln / Yield on the target.
-    const baseDamage = isDamageImmune(targetPlayer, 'magical')
+    const baseDamage = isDamageImmune(targetPlayer, 'code')
       ? 0
-      : calculateMagicalDamage(300, targetPlayer.magicResist)
-    const damage = Math.round(baseDamage * getIncomingDamageMultiplier(targetPlayer, 'magical'))
+      : calculateCodeDamage(300, targetPlayer.magicResist)
+    const damage = Math.round(baseDamage * getIncomingDamageMultiplier(targetPlayer, 'code'))
     const newHp = Math.max(0, targetPlayer.hp - damage)
 
     const updatedCaster = applyBuff(player, {
@@ -691,7 +691,7 @@ function useEtherealBlade(
       return yield* Effect.fail(new InvalidTargetError({ reason: 'Target not in same zone' }))
     }
 
-    // Apply ethereal form: immune to physical, +40% magic vuln
+    // Apply ethereal form: immune to kinetic, +40% magic vuln
     let updatedTarget = applyBuff(targetPlayer, {
       id: 'ethereal',
       stacks: 1,
@@ -957,14 +957,14 @@ function useScytheOfVyse(
 }
 
 function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
-  // "Enemies in zone take 25% more magical damage." The debuff belongs on the
+  // "Enemies in zone take 25% more code damage." The debuff belongs on the
   // enemies in the caster's zone — it was previously (wrongly) applied to the
   // caster. The magic-vuln amp is consumed by dealDamage's incoming-magic
   // multiplier.
   const enemies = getEnemiesInZone(state, player).map((e) =>
     applyBuff(e, {
       id: 'veil_discord',
-      stacks: 25, // +25% magical damage taken
+      stacks: 25, // +25% code damage taken
       ticksRemaining: 4,
       source: 'discord_routine',
     }),
@@ -980,17 +980,17 @@ function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
 }
 
 function useShivasGuard(state: GameState, player: PlayerState): GameState {
-  // Arctic Blast: a magical nova that DAMAGES and SLOWS every enemy in the
+  // Arctic Blast: a code nova that DAMAGES and SLOWS every enemy in the
   // caster's zone. (Previously applied shivas_blast/shivas_slow buffs to the
   // caster that nothing consumed — the active did nothing.)
   const BLAST_DAMAGE = 100
   const players = { ...state.players }
   for (const enemy of Object.values(state.players)) {
     if (enemy.team === player.team || !enemy.alive || enemy.zone !== player.zone) continue
-    const base = isDamageImmune(enemy, 'magical')
+    const base = isDamageImmune(enemy, 'code')
       ? 0
-      : calculateMagicalDamage(BLAST_DAMAGE, enemy.magicResist)
-    const dmg = Math.round(base * getIncomingDamageMultiplier(enemy, 'magical'))
+      : calculateCodeDamage(BLAST_DAMAGE, enemy.magicResist)
+    const dmg = Math.round(base * getIncomingDamageMultiplier(enemy, 'code'))
     // 'slow' (not the dead 'shivas_slow') is the id ActionResolver consumes:
     // total stacks = % chance a move fails this tick.
     const slowed = applyBuff(enemy, {

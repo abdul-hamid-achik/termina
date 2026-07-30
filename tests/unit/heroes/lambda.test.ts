@@ -89,7 +89,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Lambda Hero', () => {
   describe('Q: Invoke', () => {
-    it('deals magic damage to target hero in same zone', () => {
+    it('deals code damage to target hero in same zone', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -316,7 +316,7 @@ describe('Lambda Hero', () => {
   })
 
   describe('E: Map (AoE Slow + Damage)', () => {
-    it('deals AoE magic damage to all enemies in zone', () => {
+    it('deals AoE code damage to all enemies in zone', () => {
       const player = makePlayer({ level: 1 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
@@ -427,7 +427,7 @@ describe('Lambda Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals big single-target magic damage', () => {
+    it('deals big single-target code damage', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

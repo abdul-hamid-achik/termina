@@ -68,7 +68,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Invoke — magic damage to target
+// Q: Invoke — code damage to target
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -109,7 +109,7 @@ function resolveQ(
       caster = removeBuff(caster, 'closureCasts')
     }
 
-    const updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    const updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -122,7 +122,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
             closureActive,
           },
         },
@@ -184,7 +184,7 @@ function resolveW(
   })
 }
 
-// E: Map — AoE slow + magic damage to all enemies in zone
+// E: Map — AoE slow + code damage to all enemies in zone
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -213,7 +213,7 @@ function resolveE(
     }
 
     const updatedEnemies = enemies.map((e) => {
-      let updated = dealAbilityDamage(caster, e, damage, 'magical')
+      let updated = dealAbilityDamage(caster, e, damage, 'code')
       updated = applyBuff(updated, {
         id: 'slow',
         stacks: E_SLOW_PERCENT,
@@ -228,7 +228,7 @@ function resolveE(
         updatePlayers(state, [caster, ...updatedEnemies]),
         caster,
         damage,
-        'magical',
+        'code',
       ),
       events: [
         {
@@ -238,7 +238,7 @@ function resolveE(
             playerId: player.id,
             ability: 'e',
             damage,
-            damageType: 'magical',
+            damageType: 'code',
             targets: enemies.map((e) => e.id),
             slow: E_SLOW_PERCENT,
             slowDuration: E_SLOW_DURATION,
@@ -284,7 +284,7 @@ function resolveR(
     const baseDamage = scaleValue(R_DAMAGE, level)
     const damage = closureActive ? Math.round(baseDamage * (1 + CLOSURE_BONUS_DAMAGE)) : baseDamage
 
-    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
 
     // Stun for 1 tick if closureActive
     if (closureActive) {
@@ -314,7 +314,7 @@ function resolveR(
             ability: 'r',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
             closureActive,
             stun: closureActive,
           },

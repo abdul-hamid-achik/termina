@@ -12,12 +12,12 @@ const effect = (e: Partial<AbilityEffect>): AbilityEffect => ({ type: 'damage', 
 
 describe('formatEffect', () => {
   it('formats damage with its damage type', () => {
-    expect(formatEffect(effect({ type: 'damage', value: 40, damageType: 'magical' }))).toBe(
-      '40 magical dmg',
+    expect(formatEffect(effect({ type: 'damage', value: 40, damageType: 'code' }))).toBe(
+      '40 code dmg',
     )
   })
-  it('defaults damage type to physical', () => {
-    expect(formatEffect(effect({ type: 'damage', value: 25 }))).toBe('25 physical dmg')
+  it('defaults damage type to kinetic', () => {
+    expect(formatEffect(effect({ type: 'damage', value: 25 }))).toBe('25 kinetic dmg')
   })
   it('formats durations in ticks', () => {
     expect(formatEffect(effect({ type: 'slow', value: 30, duration: 2 }))).toBe('30% slow for 2t')
@@ -71,11 +71,11 @@ describe('abilitySummary', () => {
     expect(
       abilitySummary(
         ability([
-          effect({ type: 'damage', value: 40, damageType: 'magical' }),
+          effect({ type: 'damage', value: 40, damageType: 'code' }),
           effect({ type: 'slow', value: 30, duration: 2 }),
         ]),
       ),
-    ).toBe('40 magical dmg · 30% slow for 2t')
+    ).toBe('40 code dmg · 30% slow for 2t')
   })
   it('falls back to "utility" when there are no effects', () => {
     expect(abilitySummary(ability([]))).toBe('utility')
@@ -103,7 +103,7 @@ describe('abilityImpact', () => {
   it('sums immediate damage effects into burst', () => {
     const i = abilityImpact(
       ability([
-        effect({ type: 'damage', value: 40, damageType: 'magical' }),
+        effect({ type: 'damage', value: 40, damageType: 'code' }),
         effect({ type: 'damage', value: 25 }),
       ]),
     )

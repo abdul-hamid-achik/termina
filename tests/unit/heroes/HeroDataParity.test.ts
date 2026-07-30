@@ -160,7 +160,7 @@ function castAndMeasure(
       source: 'p1',
     })
   }
-  // Cache R (Eviction) deals pure damage = stored energy. With 0 energy it
+  // Cache R (Eviction) deals black damage = stored energy. With 0 energy it
   // applies only the slow, so we seed cachedEnergy to verify the damage path.
   if (heroId === 'cache' && slot === 'r') {
     caster = applyBuff(caster, {

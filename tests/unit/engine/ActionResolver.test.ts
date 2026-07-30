@@ -971,7 +971,7 @@ describe('ActionResolver', () => {
       expect(p1.buffs.some((b) => b.id === 'item_cd_hardshell')).toBe(true)
     })
 
-    it('ghost scepter buff blocks physical attack damage on later ticks', () => {
+    it('ghost scepter buff blocks kinetic attack damage on later ticks', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff' }),
@@ -1037,18 +1037,18 @@ describe('ActionResolver', () => {
         ]),
       )
 
-      const physical = tick2.events.find(
-        (e) => e._tag === 'damage' && e.targetId === 'p2' && e.damageType === 'physical',
+      const kinetic = tick2.events.find(
+        (e) => e._tag === 'damage' && e.targetId === 'p2' && e.damageType === 'kinetic',
       )
-      expect(physical).toBeDefined()
-      expect(physical!._tag === 'damage' && physical!.amount).toBeGreaterThan(0)
+      expect(kinetic).toBeDefined()
+      expect(kinetic!._tag === 'damage' && kinetic!.amount).toBeGreaterThan(0)
 
       const reflected = tick2.events.find(
         (e) =>
           e._tag === 'damage' &&
           e.sourceId === 'p2' &&
           e.targetId === 'p1' &&
-          e.damageType === 'pure',
+          e.damageType === 'black',
       )
       expect(reflected).toBeDefined()
       const reflectAmount = reflected!._tag === 'damage' ? reflected!.amount : 0

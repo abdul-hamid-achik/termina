@@ -197,7 +197,7 @@ describe('ability scaling', () => {
       expect(dmg1).toBeGreaterThan(0)
     })
 
-    // Proxy Q: single-target physical
+    // Proxy Q: single-target kinetic
     it('proxy Q deals more damage at ability level 2 than level 1', () => {
       const dmg1 = castAtLevel('proxy', 'q', 1).enemyHpLost
       const dmg2 = castAtLevel('proxy', 'q', 3).enemyHpLost

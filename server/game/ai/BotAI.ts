@@ -87,7 +87,7 @@ function deterministicRoll(id: string, tick: number): number {
   return ((hash >>> 0) % 10000) / 10000
 }
 
-/** Magic-immune / invulnerable targets negate the pure magical-burst items (Burnout, Ethereal). */
+/** Magic-immune / invulnerable targets negate the pure code-burst items (Burnout, Ethereal). */
 function isMagicImmuneTarget(p: PlayerState): boolean {
   return p.buffs.some(
     (b) => (b.id === 'magic_immune' || b.id === 'invulnerable') && b.ticksRemaining > 0,
@@ -421,7 +421,7 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
 // its one action per tick on a near-zero or auto-rejected cast instead of
 // building the resource (attacking / using its other abilities). Swept from the
 // hero resolvers, these are the only resource-gated casts:
-//   • cache R (Eviction): pure damage EQUALS stored energy; W (Flush): shield
+//   • cache R (Eviction): black damage EQUALS stored energy; W (Flush): shield
 //     equals it. At low energy R is a lone slow on a 50-tick cooldown and W a
 //     ~0 shield — hold until it's worth spending (Cache's build-then-burst).
 //   • echo E (Feedback Loop): the resolver HARD-FAILS at 0 stored stacks, so
@@ -1332,7 +1332,7 @@ function tryPickTalent(bot: PlayerState): Command | null {
  *  - Defensive (Hardshell magic-immunity, Spite Plate reflect) only when actually under
  *    pressure — hurt or outnumbered — not burned on a trivial skirmish.
  *  - Setup/control/burst on the kill target (lowest-HP enemy): Veil (zone magic-
- *    vuln) → Ethereal (physical-immune + 40% magic-vuln) → Hex (hard disable,
+ *    vuln) → Ethereal (kinetic-immune + 40% magic-vuln) → Hex (hard disable,
  *    still killable) → Burnout (300 magic nuke). Ethereal/Burnout are held if that
  *    target is magic-immune (they'd fizzle).
  *  - Cyclone (Eul's) is aimed at a SECONDARY enemy, never the kill target: it

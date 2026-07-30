@@ -214,7 +214,7 @@ function resolveW(
   })
 }
 
-// E: Kill Signal — Physical damage to target enemy + taunt for 1 tick
+// E: Kill Signal — Kinetic damage to target enemy + taunt for 1 tick
 function resolveE(
   state: GameState,
   player: PlayerState,
@@ -246,7 +246,7 @@ function resolveE(
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'physical')
+    let updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'taunt',
       stacks: 1,
@@ -266,7 +266,7 @@ function resolveE(
             ability: 'e',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             effect: 'taunt',
             duration: 1,
           },

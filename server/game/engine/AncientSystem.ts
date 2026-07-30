@@ -137,7 +137,7 @@ export function resolveAncientAttack(
       sourceId: attackerId,
       targetId: ancientTargetId(targetTeam),
       amount: damage,
-      damageType: 'physical',
+      damageType: 'kinetic',
     },
   ]
   if (destroyed) {

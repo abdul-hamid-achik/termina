@@ -19,8 +19,8 @@ const stream: CombatLine[] = [
     type: 'ability',
     salience: 'mine-out',
   },
-  { tick: 237, text: 'you hit regex_mid for 180 physical', type: 'damage', salience: 'mine-out' },
-  { tick: 237, text: 'regex_mid hit you for 95 magical', type: 'damage', salience: 'mine-in' },
+  { tick: 237, text: 'you hit regex_mid for 180 kinetic', type: 'damage', salience: 'mine-out' },
+  { tick: 237, text: 'regex_mid hit you for 95 code', type: 'damage', salience: 'mine-in' },
   { tick: 238, text: 'kernel_main restored 120 to you', type: 'healing', salience: 'ally' },
   {
     tick: 238,
@@ -58,11 +58,11 @@ const stream: CombatLine[] = [
 const farmDigest: CombatLine[] = [
   {
     tick: 260,
-    text: 'you hit daemon_carry for 140 physical',
+    text: 'you hit daemon_carry for 140 kinetic',
     type: 'damage',
     salience: 'mine-out',
   },
-  { tick: 260, text: 'daemon_carry hit you for 90 physical', type: 'damage', salience: 'mine-in' },
+  { tick: 260, text: 'daemon_carry hit you for 90 kinetic', type: 'damage', salience: 'mine-in' },
   {
     tick: 260,
     text: 'kernel_main last-hit a line wave',

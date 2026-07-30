@@ -2,27 +2,27 @@ import type { PlayerState } from '~~/shared/types/game'
 import type { DamageType } from '~~/shared/types/hero'
 
 /**
- * Physical damage formula: attack * (100 / (100 + defense))
- * Defense reduces physical damage logarithmically.
+ * Kinetic damage formula: attack * (100 / (100 + defense))
+ * Defense reduces kinetic damage logarithmically.
  */
-export function calculatePhysicalDamage(attack: number, defense: number): number {
+export function calculateKineticDamage(attack: number, defense: number): number {
   if (defense < 0) defense = 0
   return Math.round(attack * (100 / (100 + defense)))
 }
 
 /**
- * Magical damage formula: damage * (100 / (100 + magicResist))
+ * Code damage formula: damage * (100 / (100 + magicResist))
  * Same formula with magic resist.
  */
-export function calculateMagicalDamage(damage: number, magicResist: number): number {
+export function calculateCodeDamage(damage: number, magicResist: number): number {
   if (magicResist < 0) magicResist = 0
   return Math.round(damage * (100 / (100 + magicResist)))
 }
 
 /**
- * Pure damage: no reduction at all.
+ * Black damage: no reduction at all.
  */
-export function calculatePureDamage(damage: number): number {
+export function calculateBlackDamage(damage: number): number {
   return Math.round(damage)
 }
 
@@ -35,18 +35,18 @@ export function calculateEffectiveDamage(
   target: { defense: number; magicResist: number },
 ): number {
   switch (damageType) {
-    case 'physical':
-      return calculatePhysicalDamage(rawDamage, target.defense)
-    case 'magical':
-      return calculateMagicalDamage(rawDamage, target.magicResist)
-    case 'pure':
-      return calculatePureDamage(rawDamage)
+    case 'kinetic':
+      return calculateKineticDamage(rawDamage, target.defense)
+    case 'code':
+      return calculateCodeDamage(rawDamage, target.magicResist)
+    case 'black':
+      return calculateBlackDamage(rawDamage)
   }
 }
 
 // Target-side damage amplifiers. Each stores its percent in `stacks` and they
 // stack ADDITIVELY (the MOBA amplification convention). magic-vuln debuffs only
-// amplify MAGICAL damage (regex Q +15%, Veil of Discord +25%, Ethereal Blade
+// amplify CODE damage (regex Q +15%, Veil of Discord +25%, Ethereal Blade
 // +40%); thread Yield amplifies ALL damage types (+25%). Shared so every hero
 // damage path (dealDamage, DoTs, basic attacks) honors them consistently.
 const MAGIC_VULN_BUFF_IDS = ['magicVulnerability', 'veil_discord', 'magic_vuln_40']
@@ -57,7 +57,7 @@ export function getIncomingDamageMultiplier(target: PlayerState, damageType: Dam
   let pct = 0
   for (const b of target.buffs) {
     if (ALL_DAMAGE_VULN_BUFF_IDS.includes(b.id)) pct += b.stacks
-    else if (damageType === 'magical' && MAGIC_VULN_BUFF_IDS.includes(b.id)) pct += b.stacks
+    else if (damageType === 'code' && MAGIC_VULN_BUFF_IDS.includes(b.id)) pct += b.stacks
   }
   return 1 + pct / 100
 }
@@ -65,14 +65,14 @@ export function getIncomingDamageMultiplier(target: PlayerState, damageType: Dam
 /**
  * True when `target` ignores an incoming hit of `damageType` outright — used as
  * an early-skip so no HP is lost. invulnerable (Proxy R / Eul's Cyclone) blocks
- * everything; Black King Bar's magic_immune blocks magical; ethereal (Ethereal
- * Blade) and ghost_form (Ghost Scepter) block physical.
+ * everything; Black King Bar's magic_immune blocks code; ethereal (Ethereal
+ * Blade) and ghost_form (Ghost Scepter) block kinetic.
  */
 export function isDamageImmune(target: PlayerState, damageType: DamageType): boolean {
   const buffs = target.buffs
   if (buffs.some((b) => b.id === 'invulnerable')) return true
-  if (damageType === 'magical' && buffs.some((b) => b.id === 'magic_immune')) return true
-  if (damageType === 'physical' && buffs.some((b) => b.id === 'ethereal' || b.id === 'ghost_form'))
+  if (damageType === 'code' && buffs.some((b) => b.id === 'magic_immune')) return true
+  if (damageType === 'kinetic' && buffs.some((b) => b.id === 'ethereal' || b.id === 'ghost_form'))
     return true
   return false
 }

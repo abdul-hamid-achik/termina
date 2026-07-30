@@ -250,13 +250,13 @@ describe('_base hero utilities', () => {
   describe('dealDamage', () => {
     it('should reduce HP', () => {
       const player = makePlayer({ hp: 500 })
-      const result = dealDamage(player, 50, 'pure')
+      const result = dealDamage(player, 50, 'black')
       expect(result.hp).toBe(450)
     })
 
     it('should kill player when HP reaches 0', () => {
       const player = makePlayer({ hp: 50 })
-      const result = dealDamage(player, 100, 'pure')
+      const result = dealDamage(player, 100, 'black')
       expect(result.hp).toBe(0)
       expect(result.alive).toBe(false)
     })
@@ -266,7 +266,7 @@ describe('_base hero utilities', () => {
         hp: 500,
         buffs: [{ id: 'shield', stacks: 50, ticksRemaining: 5, source: 'test' }],
       })
-      const result = dealDamage(player, 30, 'pure')
+      const result = dealDamage(player, 30, 'black')
       expect(result.hp).toBe(500)
       expect(result.buffs.find((b) => b.id === 'shield')!.stacks).toBe(20)
     })
@@ -276,7 +276,7 @@ describe('_base hero utilities', () => {
         hp: 500,
         buffs: [{ id: 'shield', stacks: 20, ticksRemaining: 5, source: 'test' }],
       })
-      const result = dealDamage(player, 50, 'pure')
+      const result = dealDamage(player, 50, 'black')
       expect(result.hp).toBe(470)
       expect(result.buffs.find((b) => b.id === 'shield')).toBeUndefined()
     })
@@ -286,7 +286,7 @@ describe('_base hero utilities', () => {
         hp: 500,
         buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 5, source: 'test' }],
       })
-      const result = dealDamage(player, 100, 'pure')
+      const result = dealDamage(player, 100, 'black')
       expect(result.hp).toBe(500)
       expect(result.buffs.find((b) => b.id === 'phaseShift')).toBeUndefined()
     })
@@ -302,7 +302,7 @@ describe('_base hero utilities', () => {
           { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
         ],
       })
-      const result = dealDamage(player, 20, 'pure')
+      const result = dealDamage(player, 20, 'black')
       expect(result.hp).toBe(500)
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's1')?.stacks).toBe(10)
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's2')?.stacks).toBe(40)
@@ -320,7 +320,7 @@ describe('_base hero utilities', () => {
           { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
         ],
       })
-      const result = dealDamage(player, 50, 'pure')
+      const result = dealDamage(player, 50, 'black')
       expect(result.hp).toBe(500) // 50 < 70 pool → fully absorbed
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's1')).toBeUndefined()
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's2')?.stacks).toBe(20)
@@ -331,7 +331,7 @@ describe('_base hero utilities', () => {
         hp: 500,
         buffs: [{ id: 'hardened', stacks: 1, ticksRemaining: 5, source: 'test' }],
       })
-      const result = dealDamage(player, 100, 'pure')
+      const result = dealDamage(player, 100, 'black')
       expect(result.hp).toBe(410)
     })
   })
@@ -831,7 +831,7 @@ describe('_base hero utilities', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave()] })
 
-      const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
+      const result = damageEnemyNpcsInZone(state, caster, 150, 'code')
 
       expect(result.waves[0]!.hp).toBe(250)
     })
@@ -842,7 +842,7 @@ describe('_base hero utilities', () => {
         waves: [wave({ id: 'ally', team: 'chaff' }), wave({ id: 'elsewhere', zone: 'top-river' })],
       })
 
-      const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
+      const result = damageEnemyNpcsInZone(state, caster, 150, 'code')
 
       // Nothing was in range, so the same state object comes back untouched —
       // the cast bridge reads that reference equality to skip its kill diff.
@@ -853,7 +853,7 @@ describe('_base hero utilities', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave({ hp: 30 })] })
 
-      const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
+      const result = damageEnemyNpcsInZone(state, caster, 900, 'kinetic')
 
       expect(result.waves[0]!.hp).toBe(0)
     })
@@ -862,7 +862,7 @@ describe('_base hero utilities', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave({ hp: 30 })] })
 
-      const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
+      const result = damageEnemyNpcsInZone(state, caster, 900, 'kinetic')
 
       expect(result.waves).toHaveLength(1)
       expect(result.waves[0]!.id).toBe('c1')
@@ -873,7 +873,7 @@ describe('_base hero utilities', () => {
       const dead = wave({ hp: 0 })
       const state = makeGameState({ waves: [dead] })
 
-      const result = damageEnemyNpcsInZone(state, caster, 150, 'physical')
+      const result = damageEnemyNpcsInZone(state, caster, 150, 'kinetic')
 
       expect(result).toBe(state)
     })
@@ -882,40 +882,40 @@ describe('_base hero utilities', () => {
       const caster = makePlayer({ zone: 'silt-chaff-top', team: 'chaff' })
       const state = makeGameState({ neutrals: [neutral({ hp: 100 })] })
 
-      const chipped = damageEnemyNpcsInZone(state, caster, 40, 'magical')
+      const chipped = damageEnemyNpcsInZone(state, caster, 40, 'code')
       expect(chipped.neutrals[0]!.hp).toBe(60)
       expect(chipped.neutrals[0]!.alive).toBe(true)
 
-      const killed = damageEnemyNpcsInZone(state, caster, 100, 'magical')
+      const killed = damageEnemyNpcsInZone(state, caster, 100, 'code')
       expect(killed.neutrals[0]!.hp).toBe(0)
       expect(killed.neutrals[0]!.alive).toBe(false)
     })
 
-    it('applies the caster’s Mystical Staff amp to magical damage only', () => {
+    it('applies the caster’s Mystical Staff amp to code damage only', () => {
       const zone = 'mid-t1-chaff'
       const amped = makePlayer({ zone, items: ['amp_stack', null, null, null, null, null] })
       const plain = makePlayer({ zone })
       const state = makeGameState({ waves: [wave()] })
 
-      // 100 magical -> 115 with the +15% amp; physical is unamplified.
-      expect(damageEnemyNpcsInZone(state, amped, 100, 'magical').waves[0]!.hp).toBe(285)
-      expect(damageEnemyNpcsInZone(state, plain, 100, 'magical').waves[0]!.hp).toBe(300)
-      expect(damageEnemyNpcsInZone(state, amped, 100, 'physical').waves[0]!.hp).toBe(300)
+      // 100 code -> 115 with the +15% amp; kinetic is unamplified.
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'code').waves[0]!.hp).toBe(285)
+      expect(damageEnemyNpcsInZone(state, plain, 100, 'code').waves[0]!.hp).toBe(300)
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'kinetic').waves[0]!.hp).toBe(300)
     })
 
     it('no-ops on a zero-damage cast (cache R with nothing banked)', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff' })
       const state = makeGameState({ waves: [wave()] })
 
-      expect(damageEnemyNpcsInZone(state, caster, 0, 'pure')).toBe(state)
+      expect(damageEnemyNpcsInZone(state, caster, 0, 'black')).toBe(state)
     })
 
     it('reaches the widened zone list an AOE+ cast passes in', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({ waves: [wave({ id: 'next-door', zone: 'mid-river' })] })
 
-      expect(damageEnemyNpcsInZone(state, caster, 150, 'magical')).toBe(state)
-      const widened = damageEnemyNpcsInZone(state, caster, 150, 'magical', [
+      expect(damageEnemyNpcsInZone(state, caster, 150, 'code')).toBe(state)
+      const widened = damageEnemyNpcsInZone(state, caster, 150, 'code', [
         'mid-t1-chaff',
         'mid-river',
       ])

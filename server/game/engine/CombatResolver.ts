@@ -3,7 +3,7 @@ import { isDamageImmune } from './DamageCalculator'
 import { dealDamage, hasBuff } from '../heroes/_base'
 
 /**
- * Unified physical-hit resolution for NPC attackers (ice, waves, Tenant).
+ * Unified kinetic-hit resolution for NPC attackers (ice, waves, Tenant).
  *
  * Heroes defend themselves with the SAME mitigation chain regardless of who
  * swings at them: immunity (Ghost/Ethereal/invulnerable) → effective defense
@@ -17,7 +17,7 @@ import { dealDamage, hasBuff } from '../heroes/_base'
  * immunity. A hero with an armor item or a shield took more ice damage than
  * intended; a phaseShift hero couldn't dodge a ice shot.
  *
- * This wrapper routes every NPC→hero physical hit through `_base.dealDamage`
+ * This wrapper routes every NPC→hero kinetic hit through `_base.dealDamage`
  * (the single canonical mitigation implementation, also used by hero
  * abilities/passives) and reports how much HP was actually lost so callers can
  * emit accurate damage events. `_base.dealDamage` remains the lower-level
@@ -35,7 +35,7 @@ export interface PhysicalHitResult {
 }
 
 /**
- * Resolve a physical attack from an NPC against a hero, applying the full
+ * Resolve a kinetic attack from an NPC against a hero, applying the full
  * shared mitigation chain. Callers should skip emitting a damage event when
  * `immune` or `damageDealt === 0`.
  */
@@ -43,10 +43,10 @@ export function resolvePhysicalHit(target: PlayerState, rawDamage: number): Phys
   // Pre-check immunity/dodge so callers can skip event emission without
   // re-running the buff scan. dealDamage also checks these, but reporting
   // them here keeps the caller branch-free.
-  const immune = isDamageImmune(target, 'physical')
+  const immune = isDamageImmune(target, 'kinetic')
   const dodged = !immune && hasBuff(target, 'phaseShift')
 
-  const post = dealDamage(target, rawDamage, 'physical')
+  const post = dealDamage(target, rawDamage, 'kinetic')
   const damageDealt = immune || dodged ? 0 : target.hp - post.hp
 
   return { player: post, damageDealt, immune, dodged }
@@ -56,7 +56,7 @@ export function resolvePhysicalHit(target: PlayerState, rawDamage: number): Phys
  * Compute the Blade Mail reflect amount for a hit.
  *
  * Blade Mail returns a fixed fraction of the POST-mitigation, post-shield
- * physical damage the holder took back at the attacker as PURE damage (pure
+ * kinetic damage the holder took back at the attacker as BLACK damage (black
  * bypasses the attacker's armor). The same formula is used for both the
  * basic-attack reflect (ActionResolver attack phase) and the ability-cast
  * reflect (resolveHeroCast) so the two paths can never diverge.

@@ -67,7 +67,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Match — magic damage + magic vulnerability
+// Q: Match — code damage + magic vulnerability
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -99,7 +99,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'magicVulnerability',
       stacks: Q_VULNERABILITY,
@@ -118,7 +118,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
             vulnerability: Q_VULNERABILITY,
           },
         },
@@ -299,7 +299,7 @@ function resolveR(
     const damagePerMana = scaleValue(R_DAMAGE_PER_MANA, level)
     const damage = Math.floor((missingMana / 100) * damagePerMana)
 
-    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'silence',
       stacks: 1,
@@ -318,7 +318,7 @@ function resolveR(
             ability: 'r',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
             missingMana,
             silenceDuration: R_SILENCE_DURATION,
           },
@@ -354,7 +354,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     const bonusDamage = Math.round(damage * PATTERN_MATCH_BONUS)
     const targetPlayer = state.players[targetId]
     if (targetPlayer && targetPlayer.alive) {
-      const updatedTarget = dealAbilityDamage(player, targetPlayer, bonusDamage, 'magical')
+      const updatedTarget = dealAbilityDamage(player, targetPlayer, bonusDamage, 'code')
       return updatePlayer(state, updatedTarget)
     }
   }

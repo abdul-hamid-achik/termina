@@ -65,7 +65,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: XOR Strike — magical damage + physical damage
+// Q: XOR Strike — code damage + kinetic damage
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -100,8 +100,8 @@ function resolveQ(
 
     const magicDamage = scaleValue(Q_MAGIC_DAMAGE, level)
     const physDamage = scaleValue(Q_PHYS_DAMAGE, level)
-    let updatedTarget = dealAbilityDamage(caster, targetPlayer, magicDamage, 'magical')
-    updatedTarget = dealDamage(updatedTarget, physDamage, 'physical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, magicDamage, 'code')
+    updatedTarget = dealDamage(updatedTarget, physDamage, 'kinetic')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -224,7 +224,7 @@ function resolveE(
   })
 }
 
-// R: Brute Force — 6 rapid hits of magical damage + apply Encryption Key stacks
+// R: Brute Force — 6 rapid hits of code damage + apply Encryption Key stacks
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -259,7 +259,7 @@ function resolveR(
     const damagePerHit = scaleValue(R_DAMAGE_PER_HIT, level)
     let updatedTarget = targetPlayer
     for (let i = 0; i < R_HITS; i++) {
-      updatedTarget = dealAbilityDamage(caster, updatedTarget, damagePerHit, 'magical')
+      updatedTarget = dealAbilityDamage(caster, updatedTarget, damagePerHit, 'code')
     }
 
     // Apply Encryption Key stacks (max 4)
@@ -284,7 +284,7 @@ function resolveR(
             targetId: targetPlayer.id,
             totalDamage: damagePerHit * R_HITS,
             hits: R_HITS,
-            damageType: 'magical',
+            damageType: 'code',
           },
         },
       ],

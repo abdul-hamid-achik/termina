@@ -93,7 +93,7 @@ describe('Echo Hero', () => {
   })
 
   describe('Q: Resonance', () => {
-    it('deals physical damage to target hero in same zone', () => {
+    it('deals kinetic damage to target hero in same zone', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -381,7 +381,7 @@ describe('Echo Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals 6 hits of physical damage to target', () => {
+    it('deals 6 hits of kinetic damage to target', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const enemy = makeEnemy({ hp: 1000, maxHp: 1000 })
       const state = makeState([player, enemy])

@@ -498,7 +498,7 @@ export function processTick(
               sourceId: casterId,
               targetId: v.id,
               amount: v.amount,
-              damageType: 'magical',
+              damageType: 'code',
             })
           }
         }
@@ -1227,7 +1227,7 @@ export function runNPCAI(
         sourceId: 'tenant',
         targetId: action.targetId,
         amount: hit.damageDealt,
-        damageType: 'physical',
+        damageType: 'kinetic',
       })
     }
   }

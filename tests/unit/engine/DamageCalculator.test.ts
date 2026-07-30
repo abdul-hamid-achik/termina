@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  calculatePhysicalDamage,
-  calculateMagicalDamage,
-  calculatePureDamage,
+  calculateKineticDamage,
+  calculateCodeDamage,
+  calculateBlackDamage,
   calculateEffectiveDamage,
   getIncomingDamageMultiplier,
   isDamageImmune,
@@ -44,69 +44,69 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 }
 
 describe('DamageCalculator', () => {
-  describe('calculatePhysicalDamage', () => {
+  describe('calculateKineticDamage', () => {
     it('should reduce damage based on defense', () => {
       // 100 attack vs 0 defense = 100 damage
-      expect(calculatePhysicalDamage(100, 0)).toBe(100)
+      expect(calculateKineticDamage(100, 0)).toBe(100)
     })
 
     it('should reduce damage with defense', () => {
       // 100 attack vs 100 defense = 50 damage
-      expect(calculatePhysicalDamage(100, 100)).toBe(50)
+      expect(calculateKineticDamage(100, 100)).toBe(50)
     })
 
     it('should handle high defense', () => {
       // 100 attack vs 300 defense = 25 damage
-      expect(calculatePhysicalDamage(100, 300)).toBe(25)
+      expect(calculateKineticDamage(100, 300)).toBe(25)
     })
 
     it('should handle 0 attack', () => {
-      expect(calculatePhysicalDamage(0, 50)).toBe(0)
+      expect(calculateKineticDamage(0, 50)).toBe(0)
     })
 
     it('should treat negative defense as 0', () => {
-      expect(calculatePhysicalDamage(100, -10)).toBe(100)
+      expect(calculateKineticDamage(100, -10)).toBe(100)
     })
   })
 
-  describe('calculateMagicalDamage', () => {
+  describe('calculateCodeDamage', () => {
     it('should reduce damage based on magic resist', () => {
-      expect(calculateMagicalDamage(100, 0)).toBe(100)
+      expect(calculateCodeDamage(100, 0)).toBe(100)
     })
 
     it('should reduce with magic resist', () => {
-      expect(calculateMagicalDamage(100, 100)).toBe(50)
+      expect(calculateCodeDamage(100, 100)).toBe(50)
     })
 
     it('should handle 25 MR', () => {
       // 100 * (100 / 125) = 80
-      expect(calculateMagicalDamage(100, 25)).toBe(80)
+      expect(calculateCodeDamage(100, 25)).toBe(80)
     })
   })
 
-  describe('calculatePureDamage', () => {
-    it('should not reduce pure damage', () => {
-      expect(calculatePureDamage(100)).toBe(100)
+  describe('calculateBlackDamage', () => {
+    it('should not reduce black damage', () => {
+      expect(calculateBlackDamage(100)).toBe(100)
     })
 
     it('should round to nearest integer', () => {
-      expect(calculatePureDamage(99.7)).toBe(100)
+      expect(calculateBlackDamage(99.7)).toBe(100)
     })
   })
 
   describe('calculateEffectiveDamage', () => {
-    it('should route physical damage through defense', () => {
-      const result = calculateEffectiveDamage(100, 'physical', { defense: 100, magicResist: 0 })
+    it('should route kinetic damage through defense', () => {
+      const result = calculateEffectiveDamage(100, 'kinetic', { defense: 100, magicResist: 0 })
       expect(result).toBe(50)
     })
 
-    it('should route magical damage through magic resist', () => {
-      const result = calculateEffectiveDamage(100, 'magical', { defense: 100, magicResist: 100 })
+    it('should route code damage through magic resist', () => {
+      const result = calculateEffectiveDamage(100, 'code', { defense: 100, magicResist: 100 })
       expect(result).toBe(50)
     })
 
-    it('should pass pure damage through unmodified', () => {
-      const result = calculateEffectiveDamage(100, 'pure', { defense: 100, magicResist: 100 })
+    it('should pass black damage through unmodified', () => {
+      const result = calculateEffectiveDamage(100, 'black', { defense: 100, magicResist: 100 })
       expect(result).toBe(100)
     })
   })
@@ -191,45 +191,45 @@ describe('DamageCalculator', () => {
     })
 
     it('is 1.0 with no vuln debuffs', () => {
-      expect(getIncomingDamageMultiplier(makePlayer(), 'magical')).toBe(1)
+      expect(getIncomingDamageMultiplier(makePlayer(), 'code')).toBe(1)
     })
 
-    it('magic-vuln debuffs amplify MAGICAL only (regex +15%, Veil +25%, Ethereal +40%)', () => {
+    it('magic-vuln debuffs amplify CODE only (regex +15%, Veil +25%, Ethereal +40%)', () => {
       expect(
         getIncomingDamageMultiplier(
           makePlayer({ buffs: [vuln('magicVulnerability', 15)] }),
-          'magical',
+          'code',
         ),
       ).toBeCloseTo(1.15)
       expect(
-        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('veil_discord', 25)] }), 'magical'),
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('veil_discord', 25)] }), 'code'),
       ).toBeCloseTo(1.25)
-      // ...but NOT physical/pure
+      // ...but NOT kinetic/black
       expect(
-        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('magic_vuln_40', 40)] }), 'physical'),
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('magic_vuln_40', 40)] }), 'kinetic'),
       ).toBe(1)
     })
 
     it('thread Yield amplifies ALL damage types (+25%)', () => {
       expect(
-        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'magical'),
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'code'),
       ).toBeCloseTo(1.25)
       expect(
-        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'physical'),
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'kinetic'),
       ).toBeCloseTo(1.25)
       expect(
-        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'pure'),
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('yield', 25)] }), 'black'),
       ).toBeCloseTo(1.25)
     })
 
-    it('stacks magic-vuln + Yield additively for magical damage', () => {
+    it('stacks magic-vuln + Yield additively for code damage', () => {
       const p = makePlayer({ buffs: [vuln('veil_discord', 25), vuln('yield', 25)] })
-      expect(getIncomingDamageMultiplier(p, 'magical')).toBeCloseTo(1.5) // 1 + (25+25)/100
+      expect(getIncomingDamageMultiplier(p, 'code')).toBeCloseTo(1.5) // 1 + (25+25)/100
     })
 
     it('ignores unrelated buffs', () => {
       expect(
-        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('shield', 100)] }), 'magical'),
+        getIncomingDamageMultiplier(makePlayer({ buffs: [vuln('shield', 100)] }), 'code'),
       ).toBe(1)
     })
   })
@@ -239,25 +239,25 @@ describe('DamageCalculator', () => {
 
     it('invulnerable blocks every damage type', () => {
       const p = makePlayer({ buffs: [buff('invulnerable')] })
-      expect(isDamageImmune(p, 'physical')).toBe(true)
-      expect(isDamageImmune(p, 'magical')).toBe(true)
-      expect(isDamageImmune(p, 'pure')).toBe(true)
+      expect(isDamageImmune(p, 'kinetic')).toBe(true)
+      expect(isDamageImmune(p, 'code')).toBe(true)
+      expect(isDamageImmune(p, 'black')).toBe(true)
     })
 
-    it('magic_immune (BKB) blocks magical only', () => {
+    it('magic_immune (BKB) blocks code only', () => {
       const p = makePlayer({ buffs: [buff('magic_immune')] })
-      expect(isDamageImmune(p, 'magical')).toBe(true)
-      expect(isDamageImmune(p, 'physical')).toBe(false)
+      expect(isDamageImmune(p, 'code')).toBe(true)
+      expect(isDamageImmune(p, 'kinetic')).toBe(false)
     })
 
-    it('ethereal / ghost_form block physical only', () => {
-      expect(isDamageImmune(makePlayer({ buffs: [buff('ethereal')] }), 'physical')).toBe(true)
-      expect(isDamageImmune(makePlayer({ buffs: [buff('ghost_form')] }), 'physical')).toBe(true)
-      expect(isDamageImmune(makePlayer({ buffs: [buff('ethereal')] }), 'magical')).toBe(false)
+    it('ethereal / ghost_form block kinetic only', () => {
+      expect(isDamageImmune(makePlayer({ buffs: [buff('ethereal')] }), 'kinetic')).toBe(true)
+      expect(isDamageImmune(makePlayer({ buffs: [buff('ghost_form')] }), 'kinetic')).toBe(true)
+      expect(isDamageImmune(makePlayer({ buffs: [buff('ethereal')] }), 'code')).toBe(false)
     })
 
     it('is false with no immunity buffs', () => {
-      expect(isDamageImmune(makePlayer(), 'physical')).toBe(false)
+      expect(isDamageImmune(makePlayer(), 'kinetic')).toBe(false)
     })
   })
 })

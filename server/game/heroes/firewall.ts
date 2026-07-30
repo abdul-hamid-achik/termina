@@ -31,7 +31,7 @@ const Q_COOLDOWN = 8
 const W_SHIELD = [200, 300, 400, 500] as const
 const W_MANA = abilityManaTable('firewall', 'w')
 const W_COOLDOWN = 14
-const W_EXPLOSION_DAMAGE = 80 // DMZ explodes for this magical damage when it ends
+const W_EXPLOSION_DAMAGE = 80 // DMZ explodes for this code damage when it ends
 
 const E_MANA = abilityManaTable('firewall', 'e')
 const E_COOLDOWN = 16
@@ -63,7 +63,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Port Block — physical damage + stun 1 tick
+// Q: Port Block — kinetic damage + stun 1 tick
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -95,7 +95,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealDamage(targetPlayer, damage, 'physical')
+    let updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
     updatedTarget = applyBuff(updatedTarget, {
       id: 'stun',
       stacks: 1,
@@ -115,7 +115,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             effect: 'stun',
             duration: 1,
           },
@@ -282,7 +282,7 @@ function resolveR(
 }
 
 // ── Passive: Packet Inspection ──────────────────────────────────
-// Reflect 8% of damage taken as magical damage. Applied as a buff marker.
+// Reflect 8% of damage taken as code damage. Applied as a buff marker.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   const player = state.players[playerId]
@@ -309,7 +309,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     const reflectDamage = Math.round(damage * PACKET_INSPECTION_REFLECT)
     if (reflectDamage <= 0) return state
 
-    const updatedAttacker = dealAbilityDamage(player, attacker, reflectDamage, 'magical')
+    const updatedAttacker = dealAbilityDamage(player, attacker, reflectDamage, 'code')
     return updatePlayer(state, updatedAttacker)
   }
 

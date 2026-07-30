@@ -174,7 +174,7 @@ describe('abilities', () => {
   })
 
   it('magic immunity (BKB) fully blocks a magic ability — no damage to the target', async () => {
-    // regex Q (Match) is 70 magical damage on a hero target.
+    // regex Q (Match) is 70 code damage on a hero target.
     const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
 
     const magicHit = () =>
@@ -561,8 +561,8 @@ describe('abilities', () => {
     expect((await game.me()).cooldowns.w).toBe(0)
   })
 
-  it('Phase Shim makes the target physical-immune but amplifies magic damage', async () => {
-    // regex Q (Match) is 70 magical damage on a hero target.
+  it('Phase Shim makes the target kinetic-immune but amplifies code damage', async () => {
+    // regex Q (Match) is 70 code damage on a hero target.
     const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxHp recompute
 
@@ -606,8 +606,8 @@ describe('abilities', () => {
     await game.tick()
     expect(dmgToEnemy()).toBeGreaterThanOrEqual(Math.round(baseMagic * 1.3))
 
-    // The other half: a basic (physical) attack on the still-ethereal target is
-    // fully absorbed — no physical damage event.
+    // The other half: a basic (kinetic) attack on the still-ethereal target is
+    // fully absorbed — no kinetic damage event.
     game.attackHero(ENEMY)
     await game.tick()
     expect(dmgToEnemy()).toBe(0)
@@ -709,7 +709,7 @@ describe('abilities', () => {
     ).toBe(true)
   })
 
-  it("Firewall's DMZ shield explodes for magical damage to nearby enemies when it ends", async () => {
+  it("Firewall's DMZ shield explodes for code damage to nearby enemies when it ends", async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'firewall', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxHp recompute
     await game.patch((s) => ({
@@ -748,14 +748,14 @@ describe('abilities', () => {
 
     // Bug: the blast changed HP but emitted NO damage event, so a lethal blast
     // gave no kill credit/bounty/XP and the victim's damage_taken passives never
-    // fired. The only HUMAN→ENEMY magical damage this match is the explosion.
+    // fired. The only HUMAN→ENEMY code damage this match is the explosion.
     expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
     const blast = game.allEvents.find(
       (e) =>
         e._tag === 'damage' &&
         e.sourceId === HUMAN &&
         e.targetId === ENEMY &&
-        e.damageType === 'magical',
+        e.damageType === 'code',
     )
     expect(blast).toBeDefined()
     expect(blast!._tag === 'damage' && blast!.amount).toBeGreaterThan(0)

@@ -59,7 +59,7 @@ function castEvent(playerId: string, targetId: string, tick: number, damage: num
   return {
     tick,
     type: 'ability_cast',
-    payload: { playerId, ability: 'q', targetId, damage, damageType: 'magical' },
+    payload: { playerId, ability: 'q', targetId, damage, damageType: 'code' },
   } as GameEvent
 }
 
@@ -81,7 +81,7 @@ describe('Regex passive: Pattern Cache', () => {
     expect(tk?.stacks).toBe(10)
   })
 
-  it('SECOND cast on the SAME target within 3 ticks deals +15% bonus magical damage', () => {
+  it('SECOND cast on the SAME target within 3 ticks deals +15% bonus code damage', () => {
     const enemy = makePlayer({ id: 'e1', name: 'Enemy', team: 'audit', heroId: 'echo', level: 1 })
 
     // First cast arms the cache at tick 10.
@@ -98,7 +98,7 @@ describe('Regex passive: Pattern Cache', () => {
     const hpLost = enemy.hp - second.players['e1']!.hp
     expect(hpLost).toBeGreaterThan(0)
 
-    // Bonus is round(200 * 0.15) = 30 raw magical, then mitigated. Compare the
+    // Bonus is round(200 * 0.15) = 30 raw code, then mitigated. Compare the
     // realized HP loss to the HP loss the SAME mitigated path produces for a
     // round(100*0.15)=15 raw bonus from a hypothetical damage=100 cast: the
     // ratio of realized losses must equal the ratio of raw bonuses (200 vs 100).

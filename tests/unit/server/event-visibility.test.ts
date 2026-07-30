@@ -153,17 +153,15 @@ describe('isEventVisibleToPlayer — global events', () => {
 describe('isEventVisibleToPlayer — damage/heal', () => {
   it('shows a hit you are involved in (source or target)', () => {
     expect(
-      vis(ev('damage', { sourceId: 'enemy', targetId: 'me', amount: 50, damageType: 'physical' })),
+      vis(ev('damage', { sourceId: 'enemy', targetId: 'me', amount: 50, damageType: 'kinetic' })),
     ).toBe(true)
     expect(
-      vis(ev('damage', { sourceId: 'me', targetId: 'enemy', amount: 50, damageType: 'physical' })),
+      vis(ev('damage', { sourceId: 'me', targetId: 'enemy', amount: 50, damageType: 'kinetic' })),
     ).toBe(true)
   })
   it('shows a hit involving a teammate', () => {
     expect(
-      vis(
-        ev('damage', { sourceId: 'ally', targetId: 'enemy', amount: 50, damageType: 'physical' }),
-      ),
+      vis(ev('damage', { sourceId: 'ally', targetId: 'enemy', amount: 50, damageType: 'kinetic' })),
     ).toBe(true)
   })
   it('hides an enemy-vs-enemy hit in fog, reveals it when their zone is visible', () => {
@@ -171,7 +169,7 @@ describe('isEventVisibleToPlayer — damage/heal', () => {
       sourceId: 'enemy',
       targetId: 'enemy2',
       amount: 50,
-      damageType: 'physical',
+      damageType: 'kinetic',
     })
     expect(vis(e, ['mid-river'])).toBe(false)
     expect(vis(e, ['bot-river'])).toBe(true)

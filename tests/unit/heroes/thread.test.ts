@@ -82,7 +82,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Thread Hero', () => {
   describe('Q: Fork (Physical Damage + Attack Buff)', () => {
-    it('deals physical damage to target hero in same zone', () => {
+    it('deals kinetic damage to target hero in same zone', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

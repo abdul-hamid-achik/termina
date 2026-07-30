@@ -516,7 +516,7 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it('holds Cache Eviction (R) at low stored energy, casting a non-ult instead', () => {
-      // Cache's R deals pure damage EQUAL to stored energy; at ~0 energy it's a
+      // Cache's R deals black damage EQUAL to stored energy; at ~0 energy it's a
       // 50-tick cooldown spent on a lone slow. The bot must NOT open the fight
       // with R — it should cast a non-energy ability (Q) and build energy first.
       const bot = makePlayer({
@@ -1343,7 +1343,7 @@ describe('BotAI - decideBotAction', () => {
     })
 
     it("still aims a single-target 'hero' damage ability at the lowest-HP enemy", () => {
-      const ability = makeAbility('hero', [{ type: 'damage', value: 100, damageType: 'magical' }])
+      const ability = makeAbility('hero', [{ type: 'damage', value: 100, damageType: 'code' }])
       const target = getAbilityTarget(ability, bot(), [enemy(100), enemy(40)], [ally(120)])
       // lowest-HP enemy is the 40-HP one; both share id 'enemy1' here so just
       // assert it picked an enemy, not the ally.

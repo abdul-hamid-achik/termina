@@ -88,7 +88,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Mutex Hero', () => {
   describe('Q: Lock (Physical Damage + Root)', () => {
-    it('deals physical damage and roots target for 1 tick', () => {
+    it('deals kinetic damage and roots target for 1 tick', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -318,7 +318,7 @@ describe('Mutex Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals physical damage and applies fear for 2 ticks', () => {
+    it('deals kinetic damage and applies fear for 2 ticks', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

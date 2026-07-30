@@ -68,7 +68,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Void Bolt — magic damage to target hero + MR shred debuff
+// Q: Void Bolt — code damage to target hero + MR shred debuff
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -100,7 +100,7 @@ function resolveQ(
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
-    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    let updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
     // Apply MR shred debuff
     updatedTarget = applyBuff(updatedTarget, {
       id: 'mrShred',
@@ -120,7 +120,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
             debuff: 'mrShred',
           },
         },
@@ -232,7 +232,7 @@ function resolveE(
             playerId: player.id,
             ability: 'e',
             damagePerTick,
-            damageType: 'magical',
+            damageType: 'code',
             duration: E_DOT_DURATION,
             targets: enemies.map((e) => e.id),
           },
@@ -273,7 +273,7 @@ function resolveR(
         hpPercent < R_EXECUTE_THRESHOLD
           ? Math.round(baseDamage * (1 + R_EXECUTE_BONUS))
           : baseDamage
-      return dealAbilityDamage(caster, e, damage, 'magical')
+      return dealAbilityDamage(caster, e, damage, 'code')
     })
 
     return {
@@ -283,7 +283,7 @@ function resolveR(
         updatePlayers(state, [caster, ...updatedEnemies]),
         caster,
         baseDamage,
-        'magical',
+        'code',
         zonesInAbilityRange(player.zone, widened),
       ),
       events: [
@@ -294,7 +294,7 @@ function resolveR(
             playerId: player.id,
             ability: 'r',
             damage: baseDamage,
-            damageType: 'magical',
+            damageType: 'code',
             targets: enemies.map((e) => e.id),
           },
         },

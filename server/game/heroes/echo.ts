@@ -67,7 +67,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Resonance — physical damage to target hero, bounces to nearby enemy
+// Q: Resonance — kinetic damage to target hero, bounces to nearby enemy
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -101,7 +101,7 @@ function resolveQ(
     const primaryDamage = scaleValue(Q_DAMAGE, level)
     const bounceDamage = Math.round(primaryDamage * Q_BOUNCE_MULTIPLIER)
 
-    const damagedPrimary = dealDamage(targetPlayer, primaryDamage, 'physical')
+    const damagedPrimary = dealDamage(targetPlayer, primaryDamage, 'kinetic')
     const events: GameEvent[] = [
       {
         tick: state.tick,
@@ -111,7 +111,7 @@ function resolveQ(
           ability: 'q',
           targetId: targetPlayer.id,
           damage: primaryDamage,
-          damageType: 'physical',
+          damageType: 'kinetic',
         },
       },
     ]
@@ -122,7 +122,7 @@ function resolveQ(
     )
     if (enemiesInZone.length > 0) {
       const bounceTarget = enemiesInZone[0]!
-      const damagedBounce = dealDamage(bounceTarget, bounceDamage, 'physical') as PlayerState
+      const damagedBounce = dealDamage(bounceTarget, bounceDamage, 'kinetic') as PlayerState
       updatedTargets.push(damagedBounce)
       events.push({
         tick: state.tick,
@@ -132,7 +132,7 @@ function resolveQ(
           ability: 'q',
           targetId: bounceTarget.id,
           damage: bounceDamage,
-          damageType: 'physical',
+          damageType: 'kinetic',
           description: 'bounce',
         },
       })
@@ -221,7 +221,7 @@ function resolveE(
     })
 
     const burstDamage = stacks * E_DAMAGE_MULTIPLIER
-    const updatedTarget = dealDamage(targetPlayer, burstDamage, 'physical')
+    const updatedTarget = dealDamage(targetPlayer, burstDamage, 'kinetic')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -234,7 +234,7 @@ function resolveE(
             ability: 'e',
             targetId: targetPlayer.id,
             damage: burstDamage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             stacksConsumed: stacks,
           },
         },
@@ -243,7 +243,7 @@ function resolveE(
   })
 }
 
-// R: Cascade — 6 attacks over 3 ticks, each dealing physical damage
+// R: Cascade — 6 attacks over 3 ticks, each dealing kinetic damage
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -277,7 +277,7 @@ function resolveR(
     const damagePerHit = scaleValue(R_DAMAGE, level)
     let updatedTarget = targetPlayer
     for (let i = 0; i < R_HITS; i++) {
-      updatedTarget = dealDamage(updatedTarget, damagePerHit, 'physical')
+      updatedTarget = dealDamage(updatedTarget, damagePerHit, 'kinetic')
     }
 
     return {
@@ -291,7 +291,7 @@ function resolveR(
             ability: 'r',
             targetId: targetPlayer.id,
             damage: damagePerHit,
-            damageType: 'physical',
+            damageType: 'kinetic',
             hits: R_HITS,
           },
         },

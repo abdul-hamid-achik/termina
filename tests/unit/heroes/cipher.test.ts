@@ -88,7 +88,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
 
 describe('Cipher Hero', () => {
   describe('Q: XOR Strike (Magic + Physical Damage)', () => {
-    it('deals both magical and physical damage', () => {
+    it('deals both code and kinetic damage', () => {
       const player = makePlayer({ level: 1 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
@@ -301,7 +301,7 @@ describe('Cipher Hero', () => {
       expect(result._tag).toBe('Failure')
     })
 
-    it('deals massive magical damage (6 hits)', () => {
+    it('deals massive code damage (6 hits)', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])

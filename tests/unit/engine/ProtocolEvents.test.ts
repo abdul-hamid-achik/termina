@@ -16,7 +16,7 @@ describe('toGameEvent', () => {
       sourceId: 'github_1',
       targetId: 'wave-3',
       amount: 72,
-      damageType: 'physical',
+      damageType: 'kinetic',
     }
     expect(toGameEvent(ev)).toEqual({
       tick: 42,
@@ -25,7 +25,7 @@ describe('toGameEvent', () => {
         sourceId: 'github_1',
         targetId: 'wave-3',
         amount: 72,
-        damageType: 'physical',
+        damageType: 'kinetic',
       },
     })
   })

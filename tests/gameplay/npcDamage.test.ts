@@ -33,7 +33,7 @@ describe('NPC damage is visible', () => {
       _tag: 'damage',
       sourceId: 'ice_mid-t1-audit',
       targetId: HUMAN,
-      damageType: 'physical',
+      damageType: 'kinetic',
     })
     // The reported amount is real HP lost, so the float never reads "0".
     expect(hit._tag === 'damage' && hit.amount).toBeGreaterThan(0)
@@ -52,7 +52,7 @@ describe('NPC damage is visible', () => {
     await game.tick()
 
     expect(damageFrom(game.allEvents, 'wave-901')).toMatchObject([
-      { _tag: 'damage', sourceId: 'wave-901', targetId: HUMAN, damageType: 'physical' },
+      { _tag: 'damage', sourceId: 'wave-901', targetId: HUMAN, damageType: 'kinetic' },
     ])
   })
 
@@ -76,7 +76,7 @@ describe('NPC damage is visible', () => {
     await game.tick()
 
     expect(damageFrom(game.allEvents, 'neutral_camp_1')).toMatchObject([
-      { _tag: 'damage', sourceId: 'neutral_camp_1', targetId: HUMAN, damageType: 'physical' },
+      { _tag: 'damage', sourceId: 'neutral_camp_1', targetId: HUMAN, damageType: 'kinetic' },
     ])
   })
 

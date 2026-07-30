@@ -66,7 +66,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Fork — physical damage to target + self attack buff
+// Q: Fork — kinetic damage to target + self attack buff
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -104,7 +104,7 @@ function resolveQ(
     })
 
     const damage = scaleValue(Q_DAMAGE, level)
-    const updatedTarget = dealDamage(targetPlayer, damage, 'physical')
+    const updatedTarget = dealDamage(targetPlayer, damage, 'kinetic')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -117,7 +117,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'physical',
+            damageType: 'kinetic',
             buff: 'forkAtk',
           },
         },
@@ -294,7 +294,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const splashDamage = overclocked ? damage : Math.round(damage * SPLASH_RATIO)
   const splashTargets = overclocked ? enemies : enemies.slice(0, player.level >= 10 ? 2 : 1)
 
-  const updatedTargets = splashTargets.map((e) => dealDamage(e, splashDamage, 'physical'))
+  const updatedTargets = splashTargets.map((e) => dealDamage(e, splashDamage, 'kinetic'))
 
   return updatePlayers(state, updatedTargets)
 }

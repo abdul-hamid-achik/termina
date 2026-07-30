@@ -12,7 +12,7 @@ const base: ItemDef = {
   active: {
     id: 'dagon_active',
     name: 'Energy Burst',
-    description: 'Deal 300 magical damage to a target hero.',
+    description: 'Deal 300 code damage to a target hero.',
     cooldownTicks: 18,
     targetType: 'enemy',
   },
@@ -34,7 +34,7 @@ describe('ItemCard', () => {
   it('renders the active with name, description, cooldown (s) and target', () => {
     const text = mountCard().text()
     expect(text).toContain('Active · Energy Burst')
-    expect(text).toContain('Deal 300 magical damage')
+    expect(text).toContain('Deal 300 code damage')
     expect(text).toContain('72s') // 18 ticks * 4000ms / 1000
     expect(text.toLowerCase()).toContain('enemy')
   })

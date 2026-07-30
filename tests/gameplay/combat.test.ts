@@ -873,7 +873,7 @@ describe('combat', () => {
     expect(fromStealth).toBeLessThan(normal)
   })
 
-  it('physical immunity (Ghost) zeroes an incoming basic attack', async () => {
+  it('kinetic immunity (Ghost) zeroes an incoming basic attack', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
 
     const physDmg = () =>
@@ -894,7 +894,7 @@ describe('combat', () => {
     await game.tick()
     expect(physDmg()).toBeGreaterThan(0)
 
-    // With ghost_form the physical hit is zeroed (isDamageImmune → damage = 0).
+    // With ghost_form the kinetic hit is zeroed (isDamageImmune → damage = 0).
     await game.patch((s) => ({
       ...s,
       players: {
@@ -937,7 +937,7 @@ describe('combat', () => {
     ).toBe(false)
   })
 
-  it('Spite Plate reflects a basic attack back at the attacker as pure damage', async () => {
+  it('Spite Plate reflects a basic attack back at the attacker as black damage', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     // Settle the first-tick maxHp recompute, then strip the attacker's on-hit
     // items so the only cross-hit is the reflect.
@@ -983,7 +983,7 @@ describe('combat', () => {
     await game.tick()
     const ev = reflect()
     expect(ev?.amount).toBeGreaterThan(0)
-    expect(ev?.damageType).toBe('pure')
+    expect(ev?.damageType).toBe('black')
     expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
   })
 
@@ -1002,7 +1002,7 @@ describe('combat', () => {
       },
     }))
 
-    // The reflect rides a pure-damage event from the Spite Plate holder (ENEMY)
+    // The reflect rides a black-damage event from the Spite Plate holder (ENEMY)
     // back at the caster (HUMAN).
     const reflect = () =>
       game.lastEvents.find(
@@ -1010,7 +1010,7 @@ describe('combat', () => {
           e._tag === 'damage' &&
           e.sourceId === ENEMY &&
           e.targetId === HUMAN &&
-          e.damageType === 'pure',
+          e.damageType === 'black',
       )
 
     const casterBefore = (await game.me()).hp

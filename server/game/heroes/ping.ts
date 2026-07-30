@@ -59,7 +59,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: ICMP Echo — magic damage to target in same zone
+// Q: ICMP Echo — code damage to target in same zone
 function resolveQ(
   state: GameState,
   player: PlayerState,
@@ -102,7 +102,7 @@ function resolveQ(
 
     const baseDamage = scaleValue(Q_DAMAGE, level)
     const damage = sameZone ? baseDamage : Math.round(baseDamage * 0.6)
-    const updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'magical')
+    const updatedTarget = dealAbilityDamage(caster, targetPlayer, damage, 'code')
 
     return {
       state: updatePlayers(state, [caster, updatedTarget]),
@@ -115,7 +115,7 @@ function resolveQ(
             ability: 'q',
             targetId: targetPlayer.id,
             damage,
-            damageType: 'magical',
+            damageType: 'code',
           },
         },
       ],
