@@ -119,7 +119,7 @@ describe('browseSections', () => {
     expect(sections[0]!.id).toBe('attack')
   })
   it('filters items by a case-insensitive name search across categories', () => {
-    const sections = browseSections(cats, ITEMS, 'all', 'WARD')
+    const sections = browseSections(cats, ITEMS, 'all', 'CAMTAP')
     const ids = sections.flatMap((s) => s.items.map((i) => i.id))
     expect(ids).toContain('camtap')
     expect(ids).toContain('sniffer')
