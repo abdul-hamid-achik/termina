@@ -218,7 +218,8 @@ Expert in the server-side game loop and combat systems.
 - `ActionResolver.ts` — `validateAction`, `resolveActions` (phase-ordered: instant → move → attack → passive → buy)
 - `StateManager.ts` — `createPlayerState`, `createInitialGameState`, in-memory Effect service
 - `VisionCalculator.ts` — `filterStateForPlayer`, fog-of-war per team
-- `DamageCalculator.ts` — physical/magical/pure damage formulas
+- `DamageCalculator.ts` — kinetic/code/black damage formulas (plate/ice mitigation)
+- R4 combat lexicon: damage types kinetic/code/black; mitigation plate/ice; pools INTEG/BW; immunity AIRGAP; access state BREACH (code halved into closed targets; hard control fails until breached)
 - `CombatResolver.ts` — `resolvePhysicalHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeBladeMailReflect` single reflect formula
 - `StateDelta.ts` — per-player tick_state delta compression (reference-equality field diff)
 - `GoldDistributor.ts` — passive scrip, kill bounties, last-hit rewards
@@ -260,7 +261,7 @@ consume it — never surface it as the primary label. Operator portraits live in
 script (the no-scripts/ rule stands). Hero ids never change (B1a); typed forms
 are normalised (`nullref`/`null-ref` resolve to `null_ref`).
 
-**Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6 (tanks up to 8), magicResist 12–25. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
+**Balance ranges**: INTEG 400–800, BW 150–400, attack 30–70, plate 2–6 (tanks up to 8), ice 12–25. Each hero has `attackType: 'kinetic' | 'code'` (basic attack damage type). Abilities have cooldownTicks, manaCost (internal id; display BW), effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
 
 **Mechanics constants** (balance.ts): HARDEN_DURATION_TICKS = 5, HARDEN_COOLDOWN_TICKS = 300, DAY_DURATION_TICKS = 300, NIGHT_DURATION_TICKS = 240, NIGHT_VISION_PENALTY = 1, SNIFFER_DURATION_TICKS = 30.
 
