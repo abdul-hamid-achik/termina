@@ -259,7 +259,7 @@ function resolveE(
   })
 }
 
-// R: Fortify — all allies +3 defense, 150 shield
+// R: Fortify — all allies +3 plate, 150 shield
 function resolveR(
   state: GameState,
   player: PlayerState,
@@ -303,7 +303,7 @@ function resolveR(
             playerId: player.id,
             ability: 'r',
             shield: R_SHIELD,
-            defense: R_DEFENSE_BONUS,
+            plate: R_DEFENSE_BONUS,
             duration: R_DURATION,
             targets: allAffected.map((a) => a.id),
           },
@@ -316,10 +316,10 @@ function resolveR(
 // ── Passive: Overwatch ────────────────────────────────────────────
 // Vision of adjacent zones is provided by the Sentry ward (VisionCalculator).
 // The defensive half is an aura: the Sentry and allied heroes in its zone gain
-// OVERWATCH_DEFENSE_BONUS defense (read by getEffectiveDefense). Refreshed each
+// OVERWATCH_PLATE_BONUS plate (read by getEffectivePlate). Refreshed each
 // tick (via tick_end) with a short duration so it decays when an ally leaves.
 // Previously the +5 was applied only as a no-op marker on the Sentry himself.
-const OVERWATCH_DEFENSE_BONUS = 5
+const OVERWATCH_PLATE_BONUS = 5
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'tick_end') return state
@@ -329,7 +329,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   const beneficiaries = [sentry, ...getAlliesInZone(state, sentry)].map((p) =>
     applyBuff(p, {
       id: 'overwatch',
-      stacks: OVERWATCH_DEFENSE_BONUS,
+      stacks: OVERWATCH_PLATE_BONUS,
       ticksRemaining: 2,
       source: 'sentry_overwatch',
     }),

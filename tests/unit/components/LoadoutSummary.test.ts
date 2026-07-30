@@ -7,7 +7,7 @@ const bulwark_plate: ItemDef = {
   id: 'bulwark_plate',
   name: 'Bulwark Plate',
   cost: 2500,
-  stats: { hp: 250, defense: 5 },
+  stats: { hp: 250, plate: 5 },
   consumable: false,
   passive: { id: 'p', name: 'Damage Block', description: 'Block damage.' },
 }

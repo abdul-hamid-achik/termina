@@ -2,8 +2,8 @@ export interface ItemStats {
   hp?: number
   mp?: number
   attack?: number
-  defense?: number
-  magicResist?: number
+  plate?: number
+  ice?: number
 }
 
 export interface ItemActiveDef {

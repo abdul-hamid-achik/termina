@@ -5,7 +5,7 @@ import type { HeroRole } from '~~/shared/types/hero'
  * the bot AI (which buys them) and the shop UI (which recommends them to a human
  * player). Each list is cost-ascending: the bot buys the first affordable item
  * and STOPS, saving for the next core item, so order = priority. Every entry
- * grants an engine-consumed stat (attack/defense/hp/mp/magicResist) — no dead
+ * grants an engine-consumed stat (attack/plate/hp/mp/ice) — no dead
  */
 
 /** Fallback when a hero has no role-specific list — solid right-click + utility cores. */
@@ -49,7 +49,7 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
     'siege_lattice',
     'bulk_lattice',
   ],
-  // Mana + magic resist + the spell-amp/control cores.
+  // Mana + ice + the spell-amp/control cores.
   mage: ['clock_lens', 'discord_routine', 'amp_stack', 'hardshell', 'phase_shim', 'lockout_shunt'],
   // Cheap utility first, then team-saving items.
   support: [

@@ -137,7 +137,7 @@ describe('Items Registry', () => {
   })
 
   describe('data integrity (no silent typos / broken references)', () => {
-    const STAT_KEYS = ['hp', 'mp', 'attack', 'defense', 'magicResist']
+    const STAT_KEYS = ['hp', 'mp', 'attack', 'plate', 'ice']
     const TARGET_TYPES = ['enemy', 'ally', 'self', 'zone']
 
     it('stats use only known keys with finite numeric values', () => {

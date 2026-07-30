@@ -1209,7 +1209,7 @@ export function runNPCAI(
     const target = s.players[action.targetId]
     if (target && target.alive) {
       // Route through the shared mitigation chain so Tenant hits honor item
-      // defense, vuln amps, Kernel 'hardened', shields, and Echo phaseShift —
+      // plate, vuln amps, Kernel 'hardened', shields, and Echo phaseShift —
       // previously the inline path skipped everything but immunity and emitted
       // the RAW attack value as the damage amount.
       const hit = resolvePhysicalHit(target, action.damage)

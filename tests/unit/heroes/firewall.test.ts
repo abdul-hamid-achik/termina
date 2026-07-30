@@ -28,8 +28,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 7,
-    magicResist: 22,
+    plate: 7,
+    ice: 22,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -50,8 +50,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }
@@ -397,7 +397,7 @@ describe('Firewall Hero', () => {
         payload: { targetId: 'p1', attackerId: 'e1', damage: 100 },
       })
 
-      // 8% of 100 = 8 code damage reflected (mitigated by magic resist)
+      // 8% of 100 = 8 code damage reflected (mitigated by ice)
       expect(updated.players['e1']!.hp).toBeLessThan(enemy.hp)
     })
   })
@@ -485,11 +485,11 @@ describe('Firewall Hero', () => {
       expect(result.state.players['p1']!.mp).toBe(221)
     })
 
-    it('firewall_25_right grants +25 magic resistance via getTalentStatBonus (was the dead true_damage_burn no-op)', () => {
+    it('firewall_25_right grants +25 iceance via getTalentStatBonus (was the dead true_damage_burn no-op)', () => {
       const player = makePlayer({
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'firewall_25_right' },
       })
-      expect(getTalentStatBonus(player, 'magicResist')).toBe(25)
+      expect(getTalentStatBonus(player, 'ice')).toBe(25)
     })
 
     it('no firewall talent is a dead specialEffect no-op anymore', () => {

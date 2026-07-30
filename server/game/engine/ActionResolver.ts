@@ -22,8 +22,8 @@ import {
 } from '~~/server/game/heroes'
 import {
   getEffectiveAttack,
-  getEffectiveDefense,
-  getEffectiveMagicResist,
+  getEffectivePlate,
+  getEffectiveIce,
   getAttackMultiplier,
   getTalentStatBonus,
   getItemStatBonuses,
@@ -69,8 +69,8 @@ import {
   KILLSHOT_COIL_CRIT_MULTIPLIER,
   BULWARK_PLATE_BLOCK_CHANCE,
   BULWARK_PLATE_BLOCK_AMOUNT,
-  RUST_DRIVER_ARMOR_REDUCTION,
-  SIEGE_LATTICE_AURA_DEFENSE,
+  RUST_DRIVER_PLATE_REDUCTION,
+  SIEGE_LATTICE_AURA_PLATE,
   TRUESTRIKE_RIG_BONUS_DAMAGE,
   CLOT_RING_REGEN_PERCENT,
   DRIP_MASK_REGEN_PERCENT,
@@ -588,7 +588,7 @@ function resolveDenyPhase(
 /**
  * Phase 3b: Attacks — hero/wave/ice/Tenant/neutral/Ancient, all simultaneous.
  * This is the largest phase (~440 lines): crit stacking, item on-hit effects
- * (MKB magic, Maelstrom chain, Skull Basher stun), defense mitigation (Desolator
+ * (MKB magic, Maelstrom chain, Skull Basher stun), plate mitigation (Desolator
  * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Spite Plate
  * reflect, TP channeling cancel. Reads pending HP/buffs so simultaneous
  * focus-fire isn't last-write-wins.
@@ -630,8 +630,8 @@ function resolveAttackPhase(
       cuirassByZone.set(zonePlayer.zone, entry)
     }
     // Aura direction is relative to the TARGET, so we store both team flags.
-    // ally = at least one cuirass holder is on the target's team (defense buff)
-    // enemy = at least one holder is on the opposite team (armor shred)
+    // ally = at least one cuirass holder is on the target's team (plate buff)
+    // enemy = at least one holder is on the opposite team (plate shred)
     // We use chaff/audit presence flags and resolve per-target below.
     if (zonePlayer.team === 'chaff') {
       entry.ally = true // chaff has cuirass in this zone
@@ -753,7 +753,7 @@ function resolveAttackPhase(
           const chainDamage = isDamageImmune(chainTarget, 'code')
             ? 0
             : Math.round(
-                calculateCodeDamage(60, chainTarget.magicResist) *
+                calculateCodeDamage(60, chainTarget.ice) *
                   getIncomingDamageMultiplier(chainTarget, 'code'),
               )
           if (chainDamage > 0) {
@@ -802,10 +802,10 @@ function resolveAttackPhase(
         attackDamage = Math.round(attackDamage * 1.5)
       }
 
-      let defense = getEffectiveDefense(target, targetItemStats)
+      let plate = getEffectivePlate(target, targetItemStats)
 
       if (attacker.items.includes('rust_driver')) {
-        defense = Math.max(0, defense - RUST_DRIVER_ARMOR_REDUCTION)
+        plate = Math.max(0, plate - RUST_DRIVER_PLATE_REDUCTION)
       }
 
       // Assault Cuirass aura: O(1) zone lookup instead of O(players) scan per attack.
@@ -815,8 +815,8 @@ function resolveAttackPhase(
         // enemy = opposite team has a holder → -armor
         const allyCuirass = target.team === 'chaff' ? cuirass.ally : cuirass.enemy
         const enemyCuirass = target.team === 'chaff' ? cuirass.enemy : cuirass.ally
-        if (allyCuirass) defense += SIEGE_LATTICE_AURA_DEFENSE
-        if (enemyCuirass) defense = Math.max(0, defense - SIEGE_LATTICE_AURA_DEFENSE)
+        if (allyCuirass) plate += SIEGE_LATTICE_AURA_PLATE
+        if (enemyCuirass) plate = Math.max(0, plate - SIEGE_LATTICE_AURA_PLATE)
       }
 
       let blockedDamage = 0
@@ -824,7 +824,7 @@ function resolveAttackPhase(
         blockedDamage = BULWARK_PLATE_BLOCK_AMOUNT
       }
 
-      let damage = calculateKineticDamage(attackDamage, defense)
+      let damage = calculateKineticDamage(attackDamage, plate)
       damage = Math.max(0, damage - blockedDamage)
 
       if (isDamageImmune(target, 'kinetic')) {
@@ -842,7 +842,7 @@ function resolveAttackPhase(
       if (bonusMagicDamage > 0 && !isDamageImmune(target, 'code') && !dodged) {
         const rawMagic = calculateCodeDamage(
           bonusMagicDamage,
-          getEffectiveMagicResist(target, targetItemStats),
+          getEffectiveIce(target, targetItemStats),
         )
         const magicDmg = Math.round(rawMagic * getIncomingDamageMultiplier(target, 'code'))
         totalDamage += magicDmg

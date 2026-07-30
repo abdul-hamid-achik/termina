@@ -31,8 +31,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -45,18 +45,18 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 describe('DamageCalculator', () => {
   describe('calculateKineticDamage', () => {
-    it('should reduce damage based on defense', () => {
-      // 100 attack vs 0 defense = 100 damage
+    it('should reduce damage based on plate', () => {
+      // 100 attack vs 0 plate = 100 damage
       expect(calculateKineticDamage(100, 0)).toBe(100)
     })
 
-    it('should reduce damage with defense', () => {
-      // 100 attack vs 100 defense = 50 damage
+    it('should reduce damage with plate', () => {
+      // 100 attack vs 100 plate = 50 damage
       expect(calculateKineticDamage(100, 100)).toBe(50)
     })
 
-    it('should handle high defense', () => {
-      // 100 attack vs 300 defense = 25 damage
+    it('should handle high plate', () => {
+      // 100 attack vs 300 plate = 25 damage
       expect(calculateKineticDamage(100, 300)).toBe(25)
     })
 
@@ -64,17 +64,17 @@ describe('DamageCalculator', () => {
       expect(calculateKineticDamage(0, 50)).toBe(0)
     })
 
-    it('should treat negative defense as 0', () => {
+    it('should treat negative plate as 0', () => {
       expect(calculateKineticDamage(100, -10)).toBe(100)
     })
   })
 
   describe('calculateCodeDamage', () => {
-    it('should reduce damage based on magic resist', () => {
+    it('should reduce damage based on ice', () => {
       expect(calculateCodeDamage(100, 0)).toBe(100)
     })
 
-    it('should reduce with magic resist', () => {
+    it('should reduce with ice', () => {
       expect(calculateCodeDamage(100, 100)).toBe(50)
     })
 
@@ -95,18 +95,18 @@ describe('DamageCalculator', () => {
   })
 
   describe('calculateEffectiveDamage', () => {
-    it('should route kinetic damage through defense', () => {
-      const result = calculateEffectiveDamage(100, 'kinetic', { defense: 100, magicResist: 0 })
+    it('should route kinetic damage through plate', () => {
+      const result = calculateEffectiveDamage(100, 'kinetic', { plate: 100, ice: 0 })
       expect(result).toBe(50)
     })
 
-    it('should route code damage through magic resist', () => {
-      const result = calculateEffectiveDamage(100, 'code', { defense: 100, magicResist: 100 })
+    it('should route code damage through ice', () => {
+      const result = calculateEffectiveDamage(100, 'code', { plate: 100, ice: 100 })
       expect(result).toBe(50)
     })
 
     it('should pass black damage through unmodified', () => {
-      const result = calculateEffectiveDamage(100, 'black', { defense: 100, magicResist: 100 })
+      const result = calculateEffectiveDamage(100, 'black', { plate: 100, ice: 100 })
       expect(result).toBe(100)
     })
   })
@@ -163,22 +163,22 @@ describe('DamageCalculator', () => {
 
   describe('getHeroStatsAtLevel', () => {
     it('should return base stats at level 1', () => {
-      const base = { hp: 500, mp: 200, attack: 50, defense: 3, magicResist: 15 }
-      const growth = { hp: 50, mp: 20, attack: 5, defense: 1 }
+      const base = { hp: 500, mp: 200, attack: 50, plate: 3, ice: 15 }
+      const growth = { hp: 50, mp: 20, attack: 5, plate: 1 }
       const result = getHeroStatsAtLevel(base, growth, 1)
       expect(result.hp).toBe(500)
       expect(result.attack).toBe(50)
     })
 
     it('should apply growth per level', () => {
-      const base = { hp: 500, mp: 200, attack: 50, defense: 3, magicResist: 15 }
-      const growth = { hp: 50, mp: 20, attack: 5, defense: 1 }
+      const base = { hp: 500, mp: 200, attack: 50, plate: 3, ice: 15 }
+      const growth = { hp: 50, mp: 20, attack: 5, plate: 1 }
       const result = getHeroStatsAtLevel(base, growth, 5)
       // 4 levels of growth
       expect(result.hp).toBe(700)
       expect(result.attack).toBe(70)
-      expect(result.defense).toBe(7)
-      expect(result.magicResist).toBe(15) // no MR growth
+      expect(result.plate).toBe(7)
+      expect(result.ice).toBe(15) // no MR growth
     })
   })
 

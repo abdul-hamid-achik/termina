@@ -25,8 +25,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 4,
-    magicResist: 20,
+    plate: 4,
+    ice: 20,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -47,8 +47,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }
@@ -63,8 +63,8 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }
@@ -360,7 +360,7 @@ describe('Sentry Hero', () => {
       expect(allyShield!.stacks).toBe(150)
     })
 
-    it('applies defense buff to all allies in zone', () => {
+    it('applies plate buff to all allies in zone', () => {
       const player = makePlayer({ level: 6, mp: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
@@ -455,7 +455,7 @@ describe('Sentry Hero', () => {
   })
 
   describe('Passive: Overwatch aura', () => {
-    it('grants +5 defense to the Sentry and allies in its zone (read by EffectiveStats)', () => {
+    it('grants +5 plate to the Sentry and allies in its zone (read by EffectiveStats)', () => {
       const sentry = makePlayer({ id: 'p1', zone: 'mid-river' })
       const allyInZone = makeAlly({ id: 'a1', zone: 'mid-river' })
       const allyElsewhere = makeAlly({ id: 'a2', zone: 'top-river' })

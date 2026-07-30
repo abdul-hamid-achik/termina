@@ -424,7 +424,7 @@ const ROLE_DETAILS: ReadonlyArray<{ role: HeroRole; label: string; icon: string;
     role: 'tank',
     label: 'Tank',
     icon: '##',
-    desc: 'High HP and defense. Taunts enemies. Absorbs damage for the team.',
+    desc: 'High HP and plate. Taunts enemies. Absorbs damage for the team.',
   },
   {
     role: 'mage',

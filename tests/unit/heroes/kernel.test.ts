@@ -28,8 +28,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 8,
-    magicResist: 25,
+    plate: 8,
+    ice: 25,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -50,8 +50,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }
@@ -352,11 +352,11 @@ describe('Kernel Hero', () => {
       expect(result.state.players['p1']!.mp).toBe(202)
     })
 
-    it('kernel_25_right grants +20 magic resistance via getTalentStatBonus (was the dead double_root no-op)', () => {
+    it('kernel_25_right grants +20 iceance via getTalentStatBonus (was the dead double_root no-op)', () => {
       const player = makePlayer({
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'kernel_25_right' },
       })
-      expect(getTalentStatBonus(player, 'magicResist')).toBe(20)
+      expect(getTalentStatBonus(player, 'ice')).toBe(20)
     })
 
     it('no kernel talent is a dead specialEffect no-op anymore', () => {

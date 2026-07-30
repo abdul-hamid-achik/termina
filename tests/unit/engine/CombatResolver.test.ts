@@ -3,7 +3,7 @@ import { resolvePhysicalHit, computeSpitePlateReflect } from '~~/server/game/eng
 import type { PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
-import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
+import { getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const echo = HEROES.echo!
@@ -25,8 +25,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: echo.baseStats.defense,
-    magicResist: echo.baseStats.magicResist,
+    plate: echo.baseStats.plate,
+    ice: echo.baseStats.ice,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -39,13 +39,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 describe('CombatResolver', () => {
   describe('resolvePhysicalHit', () => {
-    it('applies full mitigation (effective defense) and reports the HP lost', () => {
+    it('applies full mitigation (effective plate) and reports the HP lost', () => {
       const player = makePlayer({ hp: 500 })
       const raw = 100
 
       const hit = resolvePhysicalHit(player, raw)
 
-      const expected = calculateKineticDamage(raw, getEffectiveDefense(player))
+      const expected = calculateKineticDamage(raw, getEffectivePlate(player))
       expect(hit.immune).toBe(false)
       expect(hit.dodged).toBe(false)
       expect(hit.damageDealt).toBe(expected)
@@ -86,7 +86,7 @@ describe('CombatResolver', () => {
       const raw = 100
       const hit = resolvePhysicalHit(player, raw)
 
-      const mitigated = calculateKineticDamage(raw, getEffectiveDefense(player))
+      const mitigated = calculateKineticDamage(raw, getEffectivePlate(player))
       const expectedHpLoss = Math.max(0, mitigated - 40)
       expect(hit.damageDealt).toBe(expectedHpLoss)
       expect(hit.player.hp).toBe(500 - expectedHpLoss)
@@ -114,7 +114,7 @@ describe('CombatResolver', () => {
       expect(hit.damageDealt).toBe(1)
     })
 
-    it('respects item defense (an armor item reduces damage vs a bare hero)', () => {
+    it('respects item plate (an armor item reduces damage vs a bare hero)', () => {
       const bare = makePlayer({ hp: 500 })
       const armored = makePlayer({ hp: 500, items: ['plate_weave', null, null, null, null, null] })
       const raw = 100

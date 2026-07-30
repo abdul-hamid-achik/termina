@@ -78,8 +78,8 @@ export interface HeroBaseStats {
   hp: number
   mp: number
   attack: number
-  defense: number
-  magicResist: number
+  plate: number
+  ice: number
 }
 
 export type HeroPosture = 'BREACH' | 'HOLD' | 'ROAM' | 'HARDLINE'

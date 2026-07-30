@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { getEffectiveAttack, getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
+import { getEffectiveAttack, getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
 import type { BuffState, PlayerState } from '~~/shared/types/game'
 
-// heroId null → getEffectiveAttack uses its 50 fallback and getEffectiveDefense
-// uses player.defense, so the buff math is isolated from hero growth tables.
+// heroId null → getEffectiveAttack uses its 50 fallback and getEffectivePlate
+// uses player.plate, so the buff math is isolated from hero growth tables.
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
     id: 'p1',
@@ -23,8 +23,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 10,
-    magicResist: 15,
+    plate: 10,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -68,25 +68,25 @@ describe('EffectiveStats — revived stat modifiers', () => {
     })
   })
 
-  describe('getEffectiveDefense: cipher Encryption Key shred + sentry Overwatch', () => {
-    it('subtracts 2 defense per Encryption Key stack', () => {
-      const base = getEffectiveDefense(makePlayer({ defense: 10 }))
-      const shredded = getEffectiveDefense(
-        makePlayer({ defense: 10, buffs: [buff('encryptionKey', 3)] }),
+  describe('getEffectivePlate: cipher Encryption Key shred + sentry Overwatch', () => {
+    it('subtracts 2 plate per Encryption Key stack', () => {
+      const base = getEffectivePlate(makePlayer({ plate: 10 }))
+      const shredded = getEffectivePlate(
+        makePlayer({ plate: 10, buffs: [buff('encryptionKey', 3)] }),
       )
       expect(base - shredded).toBe(6) // 3 stacks * 2
     })
 
-    it('adds the Overwatch aura defense', () => {
-      const base = getEffectiveDefense(makePlayer({ defense: 10 }))
-      const aura = getEffectiveDefense(makePlayer({ defense: 10, buffs: [buff('overwatch', 5)] }))
+    it('adds the Overwatch aura plate', () => {
+      const base = getEffectivePlate(makePlayer({ plate: 10 }))
+      const aura = getEffectivePlate(makePlayer({ plate: 10, buffs: [buff('overwatch', 5)] }))
       expect(aura - base).toBe(5)
     })
 
-    it('floors effective defense at 0 under heavy shred', () => {
-      expect(
-        getEffectiveDefense(makePlayer({ defense: 2, buffs: [buff('encryptionKey', 10)] })),
-      ).toBe(0)
+    it('floors effective plate at 0 under heavy shred', () => {
+      expect(getEffectivePlate(makePlayer({ plate: 2, buffs: [buff('encryptionKey', 10)] }))).toBe(
+        0,
+      )
     })
   })
 })

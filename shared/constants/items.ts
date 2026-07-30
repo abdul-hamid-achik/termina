@@ -20,7 +20,7 @@ import type { ItemDef, ItemCategory } from '~~/shared/types/items'
 //
 // The five classes:
 //   STREET   = consumables and cheap fence goods (opening buys, camtaps, cans)
-//   CHROME   = implanted survivability — HP/defense/resist, mitigation
+//   CHROME   = implanted survivability — HP/plate/resist, mitigation
 //   HARDWARE = carried weapons and attachments — attack-stat, on-attack procs
 //   DECK     = software — code damage, spell amp, cooldown manipulation
 //   WETWARE  = neural and reflex — mobility, control, disables, tempo
@@ -65,8 +65,8 @@ const ironBranch: ItemDef = {
     hp: 30,
     mp: 30,
     attack: 3,
-    defense: 3,
-    magicResist: 3,
+    plate: 3,
+    ice: 3,
   },
   consumable: false,
 }
@@ -123,7 +123,7 @@ const plate_weave: ItemDef = {
   id: 'plate_weave',
   name: 'Plate Weave',
   cost: 550,
-  stats: { defense: 5 },
+  stats: { plate: 5 },
   consumable: false,
 }
 
@@ -131,7 +131,7 @@ const field_damper: ItemDef = {
   id: 'field_damper',
   name: 'Field Damper',
   cost: 550,
-  stats: { magicResist: 15 },
+  stats: { ice: 15 },
   consumable: false,
 }
 
@@ -146,7 +146,7 @@ const rust_driver: ItemDef = {
   passive: {
     id: 'rust_driver_passive',
     name: 'Corruption',
-    description: "Your attacks ignore 5 of the target's defense.",
+    description: "Your attacks ignore 5 of the target's plate.",
   },
 }
 
@@ -248,7 +248,7 @@ const mysticalStaff: ItemDef = {
   id: 'amp_stack',
   name: 'Amp Stack',
   cost: 2700,
-  stats: { mp: 200, magicResist: 10 },
+  stats: { mp: 200, ice: 10 },
   consumable: false,
   passive: {
     id: 'amp_stack_passive',
@@ -261,7 +261,7 @@ const veilOfDiscord: ItemDef = {
   id: 'discord_routine',
   name: 'Discord Routine',
   cost: 2500,
-  stats: { mp: 150, magicResist: 10 },
+  stats: { mp: 150, ice: 10 },
   consumable: false,
   active: {
     id: 'discord_routine_active',
@@ -275,7 +275,7 @@ const shivasGuard: ItemDef = {
   id: 'cryo_routine',
   name: 'Cryo Routine',
   cost: 4700,
-  stats: { defense: 15, mp: 150 },
+  stats: { plate: 15, mp: 150 },
   consumable: false,
   active: {
     id: 'cryo_routine_active',
@@ -334,7 +334,7 @@ const bulwark_plate: ItemDef = {
   id: 'bulwark_plate',
   name: 'Bulwark Plate',
   cost: 2500,
-  stats: { hp: 250, defense: 5 },
+  stats: { hp: 250, plate: 5 },
   consumable: false,
   passive: {
     id: 'bulwark_plate_passive',
@@ -347,7 +347,7 @@ const linkensSphere: ItemDef = {
   id: 'intercept_shell',
   name: 'Intercept Shell',
   cost: 4600,
-  stats: { hp: 150, mp: 150, defense: 5, magicResist: 10 },
+  stats: { hp: 150, mp: 150, plate: 5, ice: 10 },
   consumable: false,
   passive: {
     id: 'intercept_shell_passive',
@@ -387,12 +387,12 @@ const assaultCuirass: ItemDef = {
   id: 'siege_lattice',
   name: 'Siege Lattice',
   cost: 4700,
-  stats: { defense: 15, hp: 200 },
+  stats: { plate: 15, hp: 200 },
   consumable: false,
   passive: {
     id: 'siege_lattice_passive',
     name: 'Assault Aura',
-    description: 'Allies in zone gain +5 defense. Enemies in zone have -5 defense.',
+    description: 'Allies in zone gain +5 plate. Enemies in zone have -5 plate.',
   },
 }
 
@@ -400,7 +400,7 @@ const lotusOrb: ItemDef = {
   id: 'mirror_shell',
   name: 'Mirror Shell',
   cost: 4000,
-  stats: { hp: 200, mp: 100, defense: 10 },
+  stats: { hp: 200, mp: 100, plate: 10 },
   consumable: false,
   active: {
     id: 'mirror_shell_active',
@@ -414,7 +414,7 @@ const bladeMail: ItemDef = {
   id: 'spite_plate',
   name: 'Spite Plate',
   cost: 2200,
-  stats: { attack: 15, defense: 5, hp: 100 },
+  stats: { attack: 15, plate: 5, hp: 100 },
   consumable: false,
   active: {
     id: 'spite_plate_active',
@@ -460,7 +460,7 @@ const scytheOfVyse: ItemDef = {
   id: 'lockout_shunt',
   name: 'Lockout Shunt',
   cost: 5675,
-  stats: { mp: 250, hp: 150, magicResist: 10 },
+  stats: { mp: 250, hp: 150, ice: 10 },
   consumable: false,
   active: {
     id: 'lockout_shunt_active',
@@ -586,7 +586,7 @@ const firewallItem: ItemDef = {
   id: 'ablative_shell',
   name: 'Ablative Shell',
   cost: 2800,
-  stats: { hp: 300, defense: 10 },
+  stats: { hp: 300, plate: 10 },
   consumable: false,
   active: {
     id: 'ablative_shell_active',
@@ -781,7 +781,7 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     id: 'hardware',
     label: 'Hardware',
     blurb:
-      'Carried weapons and attachments — attack damage, crits and armor shred for right-clickers.',
+      'Carried weapons and attachments — attack damage, crits and plate shred for right-clickers.',
     ids: [
       'rust_driver',
       'fracture_edge',

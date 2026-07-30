@@ -274,8 +274,8 @@ const {
           <span><span class="text-chaff">hp</span> {{ hero.baseStats.hp }}</span>
           <span><span class="text-ability">mp</span> {{ hero.baseStats.mp }}</span>
           <span><span class="text-gold">atk</span> {{ hero.baseStats.attack }}</span>
-          <span>def {{ hero.baseStats.defense }}</span>
-          <span>mres {{ hero.baseStats.magicResist }}</span>
+          <span>def {{ hero.baseStats.plate }}</span>
+          <span>mres {{ hero.baseStats.ice }}</span>
         </div>
         <!-- Kit identity at a glance — how this hero plays, beyond its role. -->
         <div class="flex flex-wrap gap-1" data-testid="hero-playstyle">
@@ -460,8 +460,8 @@ const {
           :statuses="statuses"
         />
         <p class="text-[0.6rem] leading-snug text-text-dim">
-          Impact shows each ability's rank-1 base values — no armor, magic resist or amp, and no
-          per-rank scaling. A feel for each kit, not a combat sim.
+          Impact shows each ability's rank-1 base values — no armor, ice or amp, and no per-rank
+          scaling. A feel for each kit, not a combat sim.
         </p>
 
         <!-- Announce only the latest line to AT, not the whole 50-line buffer. -->

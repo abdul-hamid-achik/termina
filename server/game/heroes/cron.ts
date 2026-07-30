@@ -70,7 +70,7 @@ function resolveHeroAbility(
   }
 }
 
-// Q: Uptime — Buff target ally: +15 attack, +5 defense for 3 ticks
+// Q: Uptime — Buff target ally: +15 attack, +5 plate for 3 ticks
 function resolveQ(
   state: GameState,
   player: PlayerState,

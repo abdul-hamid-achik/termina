@@ -53,8 +53,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -503,15 +503,15 @@ describe('_base hero utilities', () => {
       const player = makePlayer({ heroId: 'echo', level: 1 })
       const stats = getPlayerCombatStats(player)
       expect(stats.attack).toBeGreaterThan(0)
-      expect(stats.defense).toBeGreaterThanOrEqual(0)
+      expect(stats.plate).toBeGreaterThanOrEqual(0)
     })
 
     it('should return zero stats for invalid hero', () => {
       const player = makePlayer({ heroId: 'nonexistent' })
       const stats = getPlayerCombatStats(player)
       expect(stats.attack).toBe(0)
-      expect(stats.defense).toBe(0)
-      expect(stats.magicResist).toBe(0)
+      expect(stats.plate).toBe(0)
+      expect(stats.ice).toBe(0)
     })
   })
 

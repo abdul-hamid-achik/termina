@@ -651,7 +651,7 @@ function useBurnout(
     // amplified by magic-vuln / Yield on the target.
     const baseDamage = isDamageImmune(targetPlayer, 'code')
       ? 0
-      : calculateCodeDamage(300, targetPlayer.magicResist)
+      : calculateCodeDamage(300, targetPlayer.ice)
     const damage = Math.round(baseDamage * getIncomingDamageMultiplier(targetPlayer, 'code'))
     const newHp = Math.max(0, targetPlayer.hp - damage)
 
@@ -987,9 +987,7 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
   const players = { ...state.players }
   for (const enemy of Object.values(state.players)) {
     if (enemy.team === player.team || !enemy.alive || enemy.zone !== player.zone) continue
-    const base = isDamageImmune(enemy, 'code')
-      ? 0
-      : calculateCodeDamage(BLAST_DAMAGE, enemy.magicResist)
+    const base = isDamageImmune(enemy, 'code') ? 0 : calculateCodeDamage(BLAST_DAMAGE, enemy.ice)
     const dmg = Math.round(base * getIncomingDamageMultiplier(enemy, 'code'))
     // 'slow' (not the dead 'shivas_slow') is the id ActionResolver consumes:
     // total stacks = % chance a move fails this tick.

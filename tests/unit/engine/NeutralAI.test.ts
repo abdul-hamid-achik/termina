@@ -28,8 +28,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -204,7 +204,7 @@ describe('NeutralAI', () => {
       const result = applyNeutralActions(state, actions).state
 
       // Damage now goes through resolvePhysicalHit (full mitigation chain),
-      // not raw hp - damage. With defense 3: 50 * (100/(100+3)) ≈ 49 damage,
+      // not raw hp - damage. With plate 3: 50 * (100/(100+3)) ≈ 49 damage,
       // so 500 - 49 = 451.
       expect(result.players['p1']!.hp).toBe(451)
     })

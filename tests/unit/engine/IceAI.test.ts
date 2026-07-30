@@ -6,7 +6,7 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ICE_ATTACK } from '~~/shared/constants/balance'
 import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
-import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
+import { getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -27,8 +27,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -312,13 +312,13 @@ describe('IceAI', () => {
   })
 
   describe('applyIceActions', () => {
-    it('should apply damage to heroes with defense reduction', () => {
+    it('should apply damage to heroes with plate reduction', () => {
       const player = makePlayer({
         id: 'p1',
         team: 'audit',
         zone: 'mid-t1-chaff',
         hp: 500,
-        defense: 3,
+        plate: 3,
       })
       const state = makeGameState({
         players: { p1: player },
@@ -329,9 +329,9 @@ describe('IceAI', () => {
       ]
 
       const result = applyIceActions(state, actions).state
-      // resolvePhysicalHit routes through getEffectiveDefense (items + talents
-      // + buffs), not the raw player.defense field.
-      const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectiveDefense(player))
+      // resolvePhysicalHit routes through getEffectivePlate (items + talents
+      // + buffs), not the raw player.plate field.
+      const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectivePlate(player))
       expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
@@ -366,7 +366,7 @@ describe('IceAI', () => {
       ]
 
       const { state: after, events } = applyIceActions(state, actions)
-      const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectiveDefense(player))
+      const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectivePlate(player))
       expect(events).toEqual([
         {
           _tag: 'damage',

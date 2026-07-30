@@ -62,10 +62,10 @@ describe('Hero Definitions', () => {
         expect(s.mp).toBeLessThanOrEqual(450)
         expect(s.attack).toBeGreaterThanOrEqual(30)
         expect(s.attack).toBeLessThanOrEqual(70)
-        expect(s.defense).toBeGreaterThanOrEqual(1)
-        expect(s.defense).toBeLessThanOrEqual(10)
-        expect(s.magicResist).toBeGreaterThanOrEqual(10)
-        expect(s.magicResist).toBeLessThanOrEqual(30)
+        expect(s.plate).toBeGreaterThanOrEqual(1)
+        expect(s.plate).toBeLessThanOrEqual(10)
+        expect(s.ice).toBeGreaterThanOrEqual(10)
+        expect(s.ice).toBeLessThanOrEqual(30)
       })
 
       it('has growth per level stats', () => {

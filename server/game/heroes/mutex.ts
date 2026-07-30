@@ -45,7 +45,7 @@ const R_MANA = abilityManaTable('mutex', 'r')
 const R_COOLDOWN = 50
 
 const DEADLOCK_MAX_STACKS = 5
-const DEADLOCK_DEFENSE_PER_STACK = 1
+const DEADLOCK_PLATE_PER_STACK = 1
 const DEADLOCK_ATTACK_PER_STACK = 3
 
 // ── Ability Resolver ──────────────────────────────────────────────
@@ -131,7 +131,7 @@ function resolveQ(
   })
 }
 
-// W: Critical Section — self-shield + bonus defense + self-root for 2 ticks
+// W: Critical Section — self-shield + bonus plate + self-root for 2 ticks
 function resolveW(
   state: GameState,
   player: PlayerState,
@@ -312,7 +312,7 @@ function resolveR(
 }
 
 // ── Passive: Deadlock ─────────────────────────────────────────────
-// +1 defense +3 attack per tick in same zone, max 5 stacks.
+// +1 plate +3 attack per tick in same zone, max 5 stacks.
 // On 'move' event for this player, reset stacks to 0.
 // On 'tick_end' event, increment if player didn't move (check deadlockZone).
 
@@ -364,9 +364,9 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   return state
 }
 
-/** Get bonus defense from Deadlock stacks. */
-export function getDeadlockDefenseBonus(player: PlayerState): number {
-  return getBuffStacks(player, 'deadlock') * DEADLOCK_DEFENSE_PER_STACK
+/** Get bonus plate from Deadlock stacks. */
+export function getDeadlockPlateBonus(player: PlayerState): number {
+  return getBuffStacks(player, 'deadlock') * DEADLOCK_PLATE_PER_STACK
 }
 
 /** Get bonus attack from Deadlock stacks. */

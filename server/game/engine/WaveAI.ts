@@ -232,8 +232,8 @@ export function applyWaveActions(
       case 'attack_hero': {
         if (action.targetId && players[action.targetId] && players[action.targetId]!.alive) {
           // Route through the shared mitigation chain so wave hits honor item
-          // defense, vuln amps, Kernel 'hardened', shields, and Echo phaseShift
-          // — previously waves used raw target.defense and skipped the
+          // plate, vuln amps, Kernel 'hardened', shields, and Echo phaseShift
+          // — previously waves used raw target.plate and skipped the
           // multiplier, hardened, shield, and dodge.
           const hit = resolvePhysicalHit(players[action.targetId]!, action.damage ?? 0)
           if (hit.immune || hit.damageDealt === 0) break

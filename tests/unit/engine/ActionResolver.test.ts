@@ -35,8 +35,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -1312,7 +1312,7 @@ describe('ActionResolver', () => {
           const after = result.state.players['p2']!.hp
           const damage = before - after
           // echo base attack ~58 + crit item bonuses (+120) = ~178 effective.
-          // Non-crit damage vs defense 3 = ~173. Crits multiply by 1.5/1.75/
+          // Non-crit damage vs plate 3 = ~173. Crits multiply by 1.5/1.75/
           // 2.4, so the weakest crit (1.5x) yields ~260. Threshold 220 separates
           // non-crit from any crit cleanly.
           const rolledCrit = damage > 220

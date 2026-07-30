@@ -25,8 +25,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 1,
-    magicResist: 18,
+    plate: 1,
+    ice: 18,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -47,8 +47,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }

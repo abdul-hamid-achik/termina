@@ -42,7 +42,7 @@ export interface Talent {
   tier: TalentTier
   // Stat bonuses
   statBonus?: {
-    stat: 'hp' | 'mp' | 'attack' | 'defense' | 'magicResist' | 'attackSpeed'
+    stat: 'hp' | 'mp' | 'attack' | 'plate' | 'ice' | 'attackSpeed'
     value: number
   }
   // Ability modifications
@@ -165,11 +165,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'echo_20_right',
-          name: '+15% Magic Resistance',
-          description: 'Increases magic resistance by 15%',
+          name: '+15% Iceance',
+          description: 'Increases iceance by 15%',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'magicResist', value: 15 },
+          statBonus: { stat: 'ice', value: 15 },
         },
       ],
       25: [
@@ -203,7 +203,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           // Was '+12 Attack Speed' — attackSpeed is never consumed (tick-based
           // combat), so the talent did nothing. Retargeted to +12 Attack (a
           // functional, engine-consumed stat) to keep this the offensive choice
-          // opposite the +8 Magic Resistance option.
+          // opposite the +8 Iceance option.
           id: 'daemon_10_left',
           name: '+12 Attack',
           description: 'Increases attack damage by 12',
@@ -213,11 +213,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'daemon_10_right',
-          name: '+8 Magic Resistance',
-          description: 'Increases magic resistance by 8',
+          name: '+8 Iceance',
+          description: 'Increases iceance by 8',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'magicResist', value: 8 },
+          statBonus: { stat: 'ice', value: 8 },
         },
       ],
       15: [
@@ -301,7 +301,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+15 Defense',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'defense', value: 15 },
+          statBonus: { stat: 'plate', value: 15 },
         },
       ],
       15: [
@@ -355,11 +355,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'kernel_25_right',
-          name: '+20 Magic Resistance',
-          description: 'Increases magic resistance by 20',
+          name: '+20 Iceance',
+          description: 'Increases iceance by 20',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 20 },
+          statBonus: { stat: 'ice', value: 20 },
         },
       ],
     },
@@ -418,11 +418,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'regex_20_right',
-          name: '+20% Magic Resist',
-          description: '+20% Magic Resist',
+          name: '+20% Ice',
+          description: '+20% Ice',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'magicResist', value: 20 },
+          statBonus: { stat: 'ice', value: 20 },
         },
       ],
       25: [
@@ -469,7 +469,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+20 Defense',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'defense', value: 20 },
+          statBonus: { stat: 'plate', value: 20 },
         },
       ],
       15: [
@@ -523,11 +523,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'firewall_25_right',
-          name: '+25 Magic Resistance',
-          description: 'Increases magic resistance by 25',
+          name: '+25 Iceance',
+          description: 'Increases iceance by 25',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 25 },
+          statBonus: { stat: 'ice', value: 25 },
         },
       ],
     },
@@ -586,11 +586,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'proxy_20_right',
-          name: '+15% Magic Resist',
-          description: '+15% Magic Resist',
+          name: '+15% Ice',
+          description: '+15% Ice',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'magicResist', value: 15 },
+          statBonus: { stat: 'ice', value: 15 },
         },
       ],
       25: [
@@ -691,11 +691,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'malloc_25_right',
-          name: '+20 Magic Resistance',
-          description: '+20 Magic Resistance — survive enemy nukes',
+          name: '+20 Iceance',
+          description: '+20 Iceance — survive enemy nukes',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 20 },
+          statBonus: { stat: 'ice', value: 20 },
         },
       ],
     },
@@ -775,11 +775,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cipher_25_right',
-          name: '+18 Magic Resistance',
-          description: '+18 Magic Resistance',
+          name: '+18 Iceance',
+          description: '+18 Iceance',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 18 },
+          statBonus: { stat: 'ice', value: 18 },
         },
       ],
     },
@@ -802,11 +802,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'sentry_10_right',
-          name: '+15 Magic Resistance',
-          description: '+15 Magic Resistance',
+          name: '+15 Iceance',
+          description: '+15 Iceance',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'magicResist', value: 15 },
+          statBonus: { stat: 'ice', value: 15 },
         },
       ],
       15: [
@@ -860,11 +860,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'sentry_25_right',
-          name: '+10 Defense',
-          description: '+10 Defense — reinforces the Overwatch defense aura',
+          name: '+10 Plate',
+          description: '+10 Plate — reinforces the Overwatch plate aura',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'defense', value: 10 },
+          statBonus: { stat: 'plate', value: 10 },
         },
       ],
     },
@@ -927,11 +927,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'socket_20_right',
-          name: '+10 Defense',
-          description: '+10 Defense — tankier initiator',
+          name: '+10 Plate',
+          description: '+10 Plate — tankier initiator',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'defense', value: 10 },
+          statBonus: { stat: 'plate', value: 10 },
         },
       ],
       25: [
@@ -946,11 +946,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'socket_25_right',
-          name: '+18 Magic Resistance',
-          description: '+18 Magic Resistance',
+          name: '+18 Iceance',
+          description: '+18 Iceance',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 18 },
+          statBonus: { stat: 'ice', value: 18 },
         },
       ],
     },
@@ -1016,7 +1016,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+12 Defense — synergises with the Deadlock tank stacks',
           type: 'stat_bonus',
           tier: 20,
-          statBonus: { stat: 'defense', value: 12 },
+          statBonus: { stat: 'plate', value: 12 },
         },
       ],
       25: [
@@ -1031,11 +1031,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'mutex_25_right',
-          name: '+20 Magic Resistance',
-          description: '+20 Magic Resistance',
+          name: '+20 Iceance',
+          description: '+20 Iceance',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 20 },
+          statBonus: { stat: 'ice', value: 20 },
         },
       ],
     },
@@ -1116,11 +1116,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'thread_25_right',
-          name: '+18 Magic Resistance',
-          description: '+18 Magic Resistance',
+          name: '+18 Iceance',
+          description: '+18 Iceance',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 18 },
+          statBonus: { stat: 'ice', value: 18 },
         },
       ],
     },
@@ -1290,11 +1290,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cron_25_right',
-          name: '+18 Magic Resistance',
-          description: '+18 Magic Resistance — survive enemy nukes while channeling support',
+          name: '+18 Iceance',
+          description: '+18 Iceance — survive enemy nukes while channeling support',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 18 },
+          statBonus: { stat: 'ice', value: 18 },
         },
       ],
     },
@@ -1377,11 +1377,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'traceroute_25_right',
-          name: '+18 Magic Resistance',
-          description: '+18 Magic Resistance — survive enemy nukes on the dive',
+          name: '+18 Iceance',
+          description: '+18 Iceance — survive enemy nukes on the dive',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 18 },
+          statBonus: { stat: 'ice', value: 18 },
         },
       ],
     },
@@ -1551,11 +1551,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'ping_25_right',
-          name: '+18 Magic Resistance',
-          description: '+18 Magic Resistance — outlast enemy nukes',
+          name: '+18 Iceance',
+          description: '+18 Iceance — outlast enemy nukes',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 18 },
+          statBonus: { stat: 'ice', value: 18 },
         },
       ],
     },
@@ -1565,7 +1565,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   // abilities. Q Cache Hit (physical + cached energy) and R Eviction (black AoE)
   // both deal instant damage, so they carry damage_boost; W Flush (shield from
   // cached energy) and E Invalidate (magical + anti-heal) get cooldown/mana
-  // efficiency. The stat tiers lean into tankiness (HP/defense/MR) to sustain the
+  // efficiency. The stat tiers lean into tankiness (HP/plate/MR) to sustain the
   // damage-absorption playstyle.
   cache: {
     heroId: 'cache',
@@ -1585,7 +1585,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
           description: '+15 Defense — tank through enemy focus fire',
           type: 'stat_bonus',
           tier: 10,
-          statBonus: { stat: 'defense', value: 15 },
+          statBonus: { stat: 'plate', value: 15 },
         },
       ],
       15: [
@@ -1601,7 +1601,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'cache_15_right',
           name: '-3s Flush CD',
-          description: 'Flush (W) shield cooldown reduced — convert energy to defense more often',
+          description: 'Flush (W) shield cooldown reduced — convert energy to plate more often',
           type: 'cooldown_reduce',
           tier: 15,
           abilityId: 'w',
@@ -1640,11 +1640,11 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         },
         {
           id: 'cache_25_right',
-          name: '+22 Magic Resistance',
-          description: '+22 Magic Resistance — shrug off code nukes',
+          name: '+22 Iceance',
+          description: '+22 Iceance — shrug off code nukes',
           type: 'stat_bonus',
           tier: 25,
-          statBonus: { stat: 'magicResist', value: 22 },
+          statBonus: { stat: 'ice', value: 22 },
         },
       ],
     },

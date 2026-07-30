@@ -37,8 +37,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 0,
-    magicResist: 0,
+    plate: 0,
+    ice: 0,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -77,7 +77,7 @@ describe('getMagicAmp', () => {
 })
 
 describe('dealAbilityDamage', () => {
-  const target = () => makePlayer({ id: 't', heroId: null, magicResist: 0, defense: 0 })
+  const target = () => makePlayer({ id: 't', heroId: null, ice: 0, plate: 0 })
 
   it('amplifies code damage by the caster Amp Stack (+15%)', () => {
     const plain = dealDamage(target(), 100, 'code')
@@ -133,10 +133,10 @@ describe('dealDamage: target-side magic vulnerability', () => {
     makePlayer({
       id: 't',
       heroId: null,
-      magicResist: 0,
+      ice: 0,
       buffs: [{ id, stacks, ticksRemaining: 4, source: 'x' }],
     })
-  const plainTarget = () => makePlayer({ id: 't', heroId: null, magicResist: 0 })
+  const plainTarget = () => makePlayer({ id: 't', heroId: null, ice: 0 })
 
   it('amplifies incoming CODE damage by the target vuln debuff (Veil +25%)', () => {
     const plainLost = plainTarget().hp - dealDamage(plainTarget(), 100, 'code').hp
@@ -150,7 +150,7 @@ describe('dealDamage: target-side magic vulnerability', () => {
     const t = makePlayer({
       id: 't',
       heroId: null,
-      magicResist: 0,
+      ice: 0,
       buffs: [
         { id: 'magicVulnerability', stacks: 15, ticksRemaining: 3, source: 'x' },
         { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'x' },
@@ -185,8 +185,8 @@ describe('dealDamage: immunity', () => {
     makePlayer({
       id: 't',
       heroId: null,
-      magicResist: 0,
-      defense: 0,
+      ice: 0,
+      plate: 0,
       buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
     })
 

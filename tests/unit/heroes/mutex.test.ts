@@ -9,7 +9,7 @@ import {
   getBuffStacks,
 } from '~~/server/game/heroes/_base'
 // Register mutex hero and import helpers
-import { getDeadlockDefenseBonus, getDeadlockAttackBonus } from '~~/server/game/heroes/mutex'
+import { getDeadlockPlateBonus, getDeadlockAttackBonus } from '~~/server/game/heroes/mutex'
 
 // ── Test Helpers ──────────────────────────────────────────────────
 
@@ -32,8 +32,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 6,
-    magicResist: 20,
+    plate: 6,
+    ice: 20,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -54,8 +54,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }
@@ -190,7 +190,7 @@ describe('Mutex Hero', () => {
   })
 
   describe('W: Critical Section (Shield + Defense + Self-Root)', () => {
-    it('applies shield, defense bonus, and self-root', () => {
+    it('applies shield, plate bonus, and self-root', () => {
       const player = makePlayer({ level: 1 })
       const state = makeState([player])
 
@@ -496,7 +496,7 @@ describe('Mutex Hero', () => {
       expect(hasBuff(updated.players['p1']!, 'deadlockZone')).toBe(false)
     })
 
-    it('provides defense and attack bonuses via helper functions', () => {
+    it('provides plate and attack bonuses via helper functions', () => {
       let player = makePlayer()
       player = applyBuff(player, {
         id: 'deadlock',
@@ -505,13 +505,13 @@ describe('Mutex Hero', () => {
         source: 'p1',
       })
 
-      expect(getDeadlockDefenseBonus(player)).toBe(3) // 3 stacks * 1 def
+      expect(getDeadlockPlateBonus(player)).toBe(3) // 3 stacks * 1 def
       expect(getDeadlockAttackBonus(player)).toBe(9) // 3 stacks * 3 atk
     })
 
     it('returns 0 bonuses with no stacks', () => {
       const player = makePlayer()
-      expect(getDeadlockDefenseBonus(player)).toBe(0)
+      expect(getDeadlockPlateBonus(player)).toBe(0)
       expect(getDeadlockAttackBonus(player)).toBe(0)
     })
   })

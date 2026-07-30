@@ -19,7 +19,7 @@ import {
   waveUnitAttack,
 } from '~~/shared/constants/balance'
 import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
-import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
+import { getEffectivePlate } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -40,8 +40,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -425,8 +425,8 @@ describe('WaveAI', () => {
       expect(result.waves.find((c) => c.id === 'c2')).toBeUndefined()
     })
 
-    it('should apply damage to heroes with defense reduction', () => {
-      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', hp: 500, defense: 3 })
+    it('should apply damage to heroes with plate reduction', () => {
+      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', hp: 500, plate: 3 })
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
         players: { p1: player },
@@ -437,9 +437,9 @@ describe('WaveAI', () => {
       ]
 
       const result = applyWaveActions(state, actions).state
-      // resolvePhysicalHit routes through getEffectiveDefense (items + talents
-      // + buffs), not the raw player.defense field.
-      const expectedDamage = calculateKineticDamage(LINE_UNIT_ATTACK, getEffectiveDefense(player))
+      // resolvePhysicalHit routes through getEffectivePlate (items + talents
+      // + buffs), not the raw player.plate field.
+      const expectedDamage = calculateKineticDamage(LINE_UNIT_ATTACK, getEffectivePlate(player))
       expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
@@ -448,8 +448,8 @@ describe('WaveAI', () => {
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
         players: {
-          // hp:1 means any positive damage kills; defense override is ignored by
-          // getEffectiveDefense (echo base defense applies), but the lethal blow
+          // hp:1 means any positive damage kills; plate override is ignored by
+          // getEffectivePlate (echo base plate applies), but the lethal blow
           // lands regardless.
           p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', hp: 1 }),
         },
@@ -477,7 +477,7 @@ describe('WaveAI', () => {
       ]
 
       const { state: after, events } = applyWaveActions(state, actions)
-      const expectedDamage = calculateKineticDamage(LINE_UNIT_ATTACK, getEffectiveDefense(player))
+      const expectedDamage = calculateKineticDamage(LINE_UNIT_ATTACK, getEffectivePlate(player))
       expect(events).toEqual([
         {
           _tag: 'damage',

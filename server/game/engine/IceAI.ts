@@ -129,10 +129,10 @@ export function applyIceActions(
     if (action.targetType === 'hero') {
       const target = players[action.targetId]
       if (target && target.alive) {
-        // Route through the shared mitigation chain so item defense, Assault
+        // Route through the shared mitigation chain so item plate, Assault
         // Cuirass aura, thread Yield, Kernel 'hardened', shields, and Echo
         // phaseShift all apply to ice shots — previously ice used raw
-        // target.defense and skipped every one of these.
+        // target.plate and skipped every one of these.
         const hit = resolvePhysicalHit(target, action.damage)
         if (hit.immune || hit.damageDealt === 0) continue
         players = {

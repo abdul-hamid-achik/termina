@@ -34,8 +34,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 5,
-    magicResist: 5,
+    plate: 5,
+    ice: 5,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -1008,7 +1008,7 @@ describe('Shop', () => {
         zone: 'mid-river',
         hp: 120,
         maxHp: 800,
-        magicResist: 0,
+        ice: 0,
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
 
@@ -1094,7 +1094,7 @@ describe('Shop', () => {
         zone: 'mid-river',
         hp: 800,
         maxHp: 800,
-        magicResist: 0,
+        ice: 0,
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
       const enemyRef = { kind: 'hero', name: 'enemy_1' } as const

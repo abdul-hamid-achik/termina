@@ -128,7 +128,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'A pointer to nothing that crashes whatever dereferences it. Her implant is keyed to kills and does not negotiate.',
     kitReading:
-      "Void Drain is the dose — a kill restores 15% MP and cuts two ticks off every cooldown, so she is at her most capable in the moments immediately after a kill and degrading at all other times. Void Bolt shreds magic resist because the first thing the implant does is find what is thin. Null Pointer silences: it severs the target's link to their own body, which is precisely what she was built to do. Dereference's execute bonus is her finding the person in the room who is already dying.",
+      "Void Drain is the dose — a kill restores 15% MP and cuts two ticks off every cooldown, so she is at her most capable in the moments immediately after a kill and degrading at all other times. Void Bolt shreds ice because the first thing the implant does is find what is thin. Null Pointer silences: it severs the target's link to their own body, which is precisely what she was built to do. Dereference's execute bonus is her finding the person in the room who is already dying.",
   },
   lambda: {
     realName: 'Nadia Kaur',

@@ -656,7 +656,7 @@ describe('combat', () => {
 
     const before = (await game.me()).hp
     await game.tick()
-    // ICE_ATTACK (120, minus defense) far exceeds per-tick regen, so the
+    // ICE_ATTACK (120, minus plate) far exceeds per-tick regen, so the
     // exposed hero visibly loses HP.
     expect((await game.me()).hp).toBeLessThan(before)
   })
@@ -768,7 +768,7 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('armor from an item reduces incoming basic-attack damage (defense applies)', async () => {
+  it('plate from an item reduces incoming basic-attack damage (plate applies)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
 
     const dmgToHuman = () =>
@@ -791,7 +791,7 @@ describe('combat', () => {
     const before = dmgToHuman()
     expect(before).toBeGreaterThan(0)
 
-    // Plate Weave (+5 defense) raises getEffectiveDefense, so the same swing hurts less.
+    // Plate Weave (+5 plate) raises getEffectivePlate, so the same swing hurts less.
     await game.patch((s) => ({
       ...s,
       players: {

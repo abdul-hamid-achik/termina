@@ -52,8 +52,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 5,
-    magicResist: 15,
+    plate: 5,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -1331,7 +1331,7 @@ describe('useCommands', () => {
           id: 'scrap_lot',
           name: 'Scrap Lot',
           cost: 100,
-          stats: { hp: 30, mp: 30, attack: 3, defense: 3, magicResist: 3 },
+          stats: { hp: 30, mp: 30, attack: 3, plate: 3, ice: 3 },
           consumable: false,
         },
         jump_shunt: {
@@ -1401,7 +1401,7 @@ describe('useCommands', () => {
           id: 'scrap_lot',
           name: 'Scrap Lot',
           cost: 100,
-          stats: { hp: 30, mp: 30, attack: 3, defense: 3, magicResist: 3 },
+          stats: { hp: 30, mp: 30, attack: 3, plate: 3, ice: 3 },
           consumable: false,
         },
         trauma_patch: {
@@ -1471,7 +1471,7 @@ describe('useCommands', () => {
           id: 'scrap_lot',
           name: 'Scrap Lot',
           cost: 100,
-          stats: { hp: 30, mp: 30, attack: 3, defense: 3, magicResist: 3 },
+          stats: { hp: 30, mp: 30, attack: 3, plate: 3, ice: 3 },
           consumable: false,
         },
         jump_shunt: {

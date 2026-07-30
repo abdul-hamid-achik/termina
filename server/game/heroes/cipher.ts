@@ -40,7 +40,7 @@ const R_HITS = 6
 const R_MANA = abilityManaTable('cipher', 'r')
 const R_COOLDOWN = 45
 
-const ENCRYPTION_KEY_DEFENSE_REDUCTION = 2
+const ENCRYPTION_KEY_PLATE_REDUCTION = 2
 const ENCRYPTION_KEY_MAX_STACKS = 4
 const ENCRYPTION_KEY_DURATION = 3
 
@@ -293,7 +293,7 @@ function resolveR(
 }
 
 // ── Passive: Encryption Key ─────────────────────────────────────
-// Each attack reduces target defense by 2 for 3 ticks, stacking up to 4.
+// Each attack reduces target plate by 2 for 3 ticks, stacking up to 4.
 
 function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent): GameState {
   if (event.type !== 'attack' || event.payload['attackerId'] !== playerId) return state
@@ -318,9 +318,9 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   return updatePlayer(state, updated)
 }
 
-/** Get total defense reduction from Encryption Key stacks. */
+/** Get total plate reduction from Encryption Key stacks. */
 export function getEncryptionKeyReduction(player: PlayerState): number {
-  return getBuffStacks(player, 'encryptionKey') * ENCRYPTION_KEY_DEFENSE_REDUCTION
+  return getBuffStacks(player, 'encryptionKey') * ENCRYPTION_KEY_PLATE_REDUCTION
 }
 
 registerHero('cipher', resolveHeroAbility, resolveHeroPassive)

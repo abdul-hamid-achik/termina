@@ -16,7 +16,7 @@ import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import { processDoTs, resolveAbility, getBuffStacks } from '~~/server/game/heroes'
 import {
   getEffectiveAttack,
-  getEffectiveDefense,
+  getEffectivePlate,
   getTalentStatBonus,
   hasTalentCastEffect,
 } from '~~/server/game/engine/EffectiveStats'
@@ -33,8 +33,8 @@ function statsAtLevel(heroId: string, level: number) {
   return {
     maxHp: hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * lvl,
     maxMp: hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * lvl,
-    defense: hero.baseStats.defense + (hero.growthPerLevel.defense ?? 0) * lvl,
-    magicResist: hero.baseStats.magicResist + (hero.growthPerLevel.magicResist ?? 0) * lvl,
+    plate: hero.baseStats.plate + (hero.growthPerLevel.plate ?? 0) * lvl,
+    ice: hero.baseStats.ice + (hero.growthPerLevel.ice ?? 0) * lvl,
   }
 }
 
@@ -60,8 +60,8 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: s.defense,
-    magicResist: s.magicResist,
+    plate: s.plate,
+    ice: s.ice,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -937,14 +937,14 @@ describe('passive hook (processTick step 11.5)', () => {
     expect(getBuffStacks(state.players['p1']!, 'deadlock')).toBe(0)
   })
 
-  it('deadlock stacks raise effective attack and defense', () => {
+  it('deadlock stacks raise effective attack and plate', () => {
     const plain = makeHero('mutex', { id: 'p1' })
     const stacked = makeHero('mutex', {
       id: 'p1',
       buffs: [{ id: 'deadlock', stacks: 3, ticksRemaining: 9999, source: 'p1' }],
     })
     expect(getEffectiveAttack(stacked)).toBe(getEffectiveAttack(plain) + 9) // +3 per stack
-    expect(getEffectiveDefense(stacked)).toBe(getEffectiveDefense(plain) + 3) // +1 per stack
+    expect(getEffectivePlate(stacked)).toBe(getEffectivePlate(plain) + 3) // +1 per stack
   })
 })
 

@@ -8,7 +8,7 @@ import {
   getIncomingDamageMultiplier,
   isDamageImmune,
 } from '~~/server/game/engine/DamageCalculator'
-import { getEffectiveDefense, getEffectiveMagicResist } from '~~/server/game/engine/EffectiveStats'
+import { getEffectivePlate, getEffectiveIce } from '~~/server/game/engine/EffectiveStats'
 import { getTalentTree } from '~~/shared/constants/talents'
 import { getAbilityLevel } from '~~/shared/constants/balance'
 import { abilityManaTable } from '~~/shared/utils/ability'
@@ -47,8 +47,8 @@ export interface AbilityResult {
 
 export interface CombatStats {
   attack: number
-  defense: number
-  magicResist: number
+  plate: number
+  ice: number
 }
 
 // ── Hero Resolver Registry ────────────────────────────────────────
@@ -130,12 +130,12 @@ export function scaleValue(values: readonly number[], level: number): number {
 
 export function getPlayerCombatStats(player: PlayerState): CombatStats {
   const hero = HEROES[player.heroId ?? '']
-  if (!hero) return { attack: 0, defense: 0, magicResist: 0 }
+  if (!hero) return { attack: 0, plate: 0, ice: 0 }
   const lvl = player.level - 1
   return {
     attack: hero.baseStats.attack + (hero.growthPerLevel.attack ?? 0) * lvl,
-    defense: hero.baseStats.defense + (hero.growthPerLevel.defense ?? 0) * lvl,
-    magicResist: hero.baseStats.magicResist + (hero.growthPerLevel.magicResist ?? 0) * lvl,
+    plate: hero.baseStats.plate + (hero.growthPerLevel.plate ?? 0) * lvl,
+    ice: hero.baseStats.ice + (hero.growthPerLevel.ice ?? 0) * lvl,
   }
 }
 
@@ -316,8 +316,8 @@ export function dealDamage(
 
   // Effective stats include items, talents, and engine-consumed buffs
   const effective = calculateEffectiveDamage(rawDamage, damageType, {
-    defense: getEffectiveDefense(target),
-    magicResist: getEffectiveMagicResist(target),
+    plate: getEffectivePlate(target),
+    ice: getEffectiveIce(target),
   })
   // Check for Kernel passive (hardened: 10% reduction)
   const hardenedReduction = hasBuff(target, 'hardened') ? 0.9 : 1
@@ -382,7 +382,7 @@ export function dealAbilityDamage(
  * enemy hero present made all four of your abilities dead weight: no waveclear,
  * no jungle clearing, no securing a last hit with a nuke.
  *
- * Waves carry no defense or magic-resist stat, so the target-side mitigation
+ * Waves carry no plate or ice stat, so the target-side mitigation
  * in `dealDamage` has nothing to read — only the CASTER-side amplifier
  * (Amp Stack's +15% code) applies, matching `dealAbilityDamage` so the
  * two damage paths can't diverge on the same item.
@@ -497,8 +497,8 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
       const amp = damageType === 'code' && caster ? getMagicAmp(caster) : 1
       const rawDamage = Math.round(dot.stacks * amp)
       const mitigated = calculateEffectiveDamage(rawDamage, damageType, {
-        defense: getEffectiveDefense(target),
-        magicResist: getEffectiveMagicResist(target),
+        plate: getEffectivePlate(target),
+        ice: getEffectiveIce(target),
       })
       // Target-side vuln amps (magic-vuln / Yield) raise DoT damage too.
       const effectiveDamage = Math.round(

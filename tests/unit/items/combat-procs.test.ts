@@ -8,8 +8,8 @@ import { initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
   getEffectiveAttack,
-  getEffectiveDefense,
-  getEffectiveMagicResist,
+  getEffectivePlate,
+  getEffectiveIce,
   getItemStatBonuses,
 } from '~~/server/game/engine/EffectiveStats'
 import { calculateKineticDamage, calculateCodeDamage } from '~~/server/game/engine/DamageCalculator'
@@ -17,14 +17,14 @@ import {
   NULL_POINTER_CRIT_MULTIPLIER,
   FRACTURE_EDGE_CRIT_MULTIPLIER,
   KILLSHOT_COIL_CRIT_MULTIPLIER,
-  RUST_DRIVER_ARMOR_REDUCTION,
-  SIEGE_LATTICE_AURA_DEFENSE,
+  RUST_DRIVER_PLATE_REDUCTION,
+  SIEGE_LATTICE_AURA_PLATE,
   BULWARK_PLATE_BLOCK_AMOUNT,
   TRUESTRIKE_RIG_BONUS_DAMAGE,
 } from '~~/shared/constants/balance'
 
 // ── Harness ──────────────────────────────────────────────────────
-// heroId 'echo' (base attack 58, defense 3, magicResist 15 at level 1; no
+// heroId 'echo' (base attack 58, plate 3, ice 15 at level 1; no
 // combat buffs by default so getAttackMultiplier() === 1). All deltas are
 // asserted against the real EffectiveStats / DamageCalculator formulas so the
 // expected numbers track the production code, not magic constants.
@@ -59,8 +59,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -121,11 +121,8 @@ function expectedPhysical(
   const attackDamage = Math.round(
     Math.round(getEffectiveAttack(atk, getItemStatBonuses(attackerItems)) * 1) * critMult,
   )
-  const defense = Math.max(
-    0,
-    getEffectiveDefense(tgt, getItemStatBonuses(targetItems)) - defenseShred,
-  )
-  return calculateKineticDamage(attackDamage, defense)
+  const plate = Math.max(0, getEffectivePlate(tgt, getItemStatBonuses(targetItems)) - defenseShred)
+  return calculateKineticDamage(attackDamage, plate)
 }
 
 // ── CRIT multipliers (loop-50 RNG) ──────────────────────────────
@@ -215,7 +212,7 @@ describe('Item combat procs — on-hit effects', () => {
     const tgt = makePlayer({ heroId: 'echo' })
     const expectedMagic = calculateCodeDamage(
       TRUESTRIKE_RIG_BONUS_DAMAGE,
-      getEffectiveMagicResist(tgt, getItemStatBonuses([])),
+      getEffectiveIce(tgt, getItemStatBonuses([])),
     )
     expect((magic as { amount: number }).amount).toBe(expectedMagic)
     // Total HP lost = kinetic + code.
@@ -225,8 +222,8 @@ describe('Item combat procs — on-hit effects', () => {
 
   it('rust_driver shreds 5 armor so the hit lands harder than a no-item hit', () => {
     const noShred = expectedPhysical([], [])
-    const shredded = expectedPhysical(['rust_driver'], [], 1, RUST_DRIVER_ARMOR_REDUCTION)
-    // Even ignoring rust_driver's +50 attack, the armor shred alone raises the
+    const shredded = expectedPhysical(['rust_driver'], [], 1, RUST_DRIVER_PLATE_REDUCTION)
+    // Even ignoring rust_driver's +50 attack, the plate shred alone raises the
     // post-mitigation number — assert the real attack does at least the shred path.
     const state = makeGameState({
       players: {
@@ -249,10 +246,7 @@ describe('Item combat procs — on-hit effects', () => {
 
   it('arc_coil chain lightning hits a SECOND nearby enemy for code damage (loop-50)', () => {
     const tgt = makePlayer({ heroId: 'echo' })
-    const expectedChain = calculateCodeDamage(
-      60,
-      getEffectiveMagicResist(tgt, getItemStatBonuses([])),
-    )
+    const expectedChain = calculateCodeDamage(60, getEffectiveIce(tgt, getItemStatBonuses([])))
     let sawChain = false
     for (let i = 0; i < 50; i++) {
       const state = makeGameState({
@@ -333,16 +327,16 @@ describe('Item combat procs — on-hit effects', () => {
     const dmg = start - r.state.players['p2']!.hp
     // attacker carries siege_lattice (+15 def, +200 hp on attacker — irrelevant
     // to its own outgoing) and the aura shreds the target's 3 base armor by 5 → 0.
-    const expected = expectedPhysical(['siege_lattice'], [], 1, SIEGE_LATTICE_AURA_DEFENSE)
+    const expected = expectedPhysical(['siege_lattice'], [], 1, SIEGE_LATTICE_AURA_PLATE)
     expect(dmg).toBe(expected)
     // Sanity: shred makes it strictly more than the same attacker vs un-shredded armor.
     const unshredded = expectedPhysical(['siege_lattice'], [])
     expect(dmg).toBeGreaterThan(unshredded)
   })
 
-  it('siege_lattice aura grants an ALLY in the victim zone +5 defense (was dead)', () => {
+  it('siege_lattice aura grants an ALLY in the victim zone +5 plate (was dead)', () => {
     // p1 (no items) attacks p2; p3, an ALLY of p2 sharing its zone, carries
-    // siege_lattice — raising p2's defense by 5, so p2 takes LESS damage.
+    // siege_lattice — raising p2's plate by 5, so p2 takes LESS damage.
     const withAllyAura = makeGameState({
       players: {
         p1: makePlayer({ id: 'p1', team: 'chaff', name: 'Attacker' }),
@@ -359,7 +353,7 @@ describe('Item combat procs — on-hit effects', () => {
     const r = run(withAllyAura, [attack('p1', 'Victim')])
     const dmg = start - r.state.players['p2']!.hp
     // negative shred = bonus armor on the target.
-    const expected = expectedPhysical([], [], 1, -SIEGE_LATTICE_AURA_DEFENSE)
+    const expected = expectedPhysical([], [], 1, -SIEGE_LATTICE_AURA_PLATE)
     expect(dmg).toBe(expected)
     // Strictly less than the same attack with no aura present.
     const noAura = expectedPhysical([], [])

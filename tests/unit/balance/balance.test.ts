@@ -304,7 +304,7 @@ describe('Balance Constants', () => {
       expect(ICE_ATTACK).toBeGreaterThan(50)
     })
 
-    it('ice defense is positive', () => {
+    it('ICE structure plate is positive', () => {
       expect(ICE_DEFENSE).toBeGreaterThan(0)
     })
   })
@@ -345,14 +345,14 @@ describe('Balance Constants', () => {
           expect(hero.baseStats.attack).toBeLessThanOrEqual(70)
         })
 
-        it('has defense in valid range (1-10)', () => {
-          expect(hero.baseStats.defense).toBeGreaterThanOrEqual(1)
-          expect(hero.baseStats.defense).toBeLessThanOrEqual(10)
+        it('has plate in valid range (1-10)', () => {
+          expect(hero.baseStats.plate).toBeGreaterThanOrEqual(1)
+          expect(hero.baseStats.plate).toBeLessThanOrEqual(10)
         })
 
-        it('has magic resist in valid range (10-30)', () => {
-          expect(hero.baseStats.magicResist).toBeGreaterThanOrEqual(10)
-          expect(hero.baseStats.magicResist).toBeLessThanOrEqual(30)
+        it('has ice in valid range (10-30)', () => {
+          expect(hero.baseStats.ice).toBeGreaterThanOrEqual(10)
+          expect(hero.baseStats.ice).toBeLessThanOrEqual(30)
         })
 
         it('ability mana costs are affordable at level 1', () => {
@@ -390,7 +390,7 @@ describe('Balance Constants', () => {
       // getTalentStatBonus is only summed for these stats. attackSpeed is inert
       // in the tick model, so a stat_bonus talent granting it would do nothing
       // (the daemon +12 "Attack Speed" talent was exactly that).
-      const CONSUMED = new Set(['hp', 'mp', 'attack', 'defense', 'magicResist'])
+      const CONSUMED = new Set(['hp', 'mp', 'attack', 'plate', 'ice'])
       for (const tree of Object.values(TALENT_TREES)) {
         for (const tier of Object.values(tree.tiers)) {
           for (const talent of tier) {

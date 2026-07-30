@@ -34,8 +34,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 2,
-    magicResist: 14,
+    plate: 2,
+    ice: 14,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -56,8 +56,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }
@@ -538,11 +538,11 @@ describe('Malloc Hero', () => {
       expect(result.state.players['p1']!.cooldowns.r).toBe(40)
     })
 
-    it('malloc_25_right grants +20 magic resistance (was the dead double_cast_20 no-op)', () => {
+    it('malloc_25_right grants +20 iceance (was the dead double_cast_20 no-op)', () => {
       const player = makePlayer({
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'malloc_25_right' },
       })
-      expect(getTalentStatBonus(player, 'magicResist')).toBe(20)
+      expect(getTalentStatBonus(player, 'ice')).toBe(20)
     })
 
     it('no malloc talent is a dead/no-op (tailored tree)', () => {

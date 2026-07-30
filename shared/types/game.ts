@@ -32,8 +32,8 @@ export interface PlayerState {
   buffs: BuffState[]
   alive: boolean
   respawnTick: number | null
-  defense: number
-  magicResist: number
+  plate: number
+  ice: number
   kills: number
   deaths: number
   assists: number

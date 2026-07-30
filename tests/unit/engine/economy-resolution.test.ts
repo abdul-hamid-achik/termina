@@ -399,7 +399,7 @@ describe('Economy through resolution', () => {
   })
 
   describe('Armor / magic-resist in real combat', () => {
-    it('higher armor → proportionally smaller kinetic attack damage (same attacker profile)', async () => {
+    it('higher plate → proportionally smaller kinetic attack damage (same attacker profile)', async () => {
       const gameId = uid('armor')
       const sm = await startGame(gameId, makePlayers('ar', 3))
 
@@ -460,7 +460,7 @@ describe('Economy through resolution', () => {
       // Two identical MKB attackers; two identical targets except one carries a
       // mrShred debuff (null_ref's MR shred). MKB adds a flat TRUESTRIKE_RIG_BONUS_DAMAGE
       // code on-hit whose mitigated amount is emitted as its own code
-      // damage event using getEffectiveMagicResist — so the events differ ONLY
+      // damage event using getEffectiveIce — so the events differ ONLY
       // by the mrShred.
       const SHRED = 30
       await arrange(sm, gameId, (s) => {

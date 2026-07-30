@@ -1,6 +1,6 @@
 /**
  * Unified effective combat stats — the single authority for what a player's
- * attack / defense / magic resist are worth once hero growth, items, talents,
+ * attack / plate / ice are worth once hero growth, items, talents,
  * and engine-consumed buffs are accounted for.
  *
  * IMPORTANT: this module must NOT import hero modules or './_base' — _base
@@ -20,9 +20,9 @@ import { getTalentTree, type Talent, type CastEffect } from '~~/shared/constants
 
 // Mirrors mutex.ts DEADLOCK_* constants
 const DEADLOCK_ATTACK_PER_STACK = 3
-const DEADLOCK_DEFENSE_PER_STACK = 1
-// Mirrors cipher.ts ENCRYPTION_KEY_DEFENSE_REDUCTION (armor shred per stack)
-const ENCRYPTION_KEY_DEFENSE_REDUCTION = 2
+const DEADLOCK_PLATE_PER_STACK = 1
+// Mirrors cipher.ts ENCRYPTION_KEY_PLATE_REDUCTION (plate shred per stack)
+const ENCRYPTION_KEY_PLATE_REDUCTION = 2
 // Mirrors traceroute.ts HOP_COUNT_DAMAGE_PER_STACK
 const HOP_COUNT_DAMAGE_PER_STACK = 0.2
 // Mirrors echo.ts RESONANCE_BONUS_PER_STACK
@@ -34,8 +34,8 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
     hp: 0,
     mp: 0,
     attack: 0,
-    defense: 0,
-    magicResist: 0,
+    plate: 0,
+    ice: 0,
   }
   for (const itemId of items) {
     if (!itemId) continue
@@ -44,8 +44,8 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
     totals.hp += item.stats.hp ?? 0
     totals.mp += item.stats.mp ?? 0
     totals.attack += item.stats.attack ?? 0
-    totals.defense += item.stats.defense ?? 0
-    totals.magicResist += item.stats.magicResist ?? 0
+    totals.plate += item.stats.plate ?? 0
+    totals.ice += item.stats.ice ?? 0
   }
   return totals
 }
@@ -69,7 +69,7 @@ function getSelectedTalents(player: PlayerState): Talent[] {
 /** Sum the statBonus values of the player's selected talents for one stat. */
 export function getTalentStatBonus(
   player: PlayerState,
-  stat: 'hp' | 'mp' | 'attack' | 'defense' | 'magicResist' | 'attackSpeed',
+  stat: 'hp' | 'mp' | 'attack' | 'plate' | 'ice' | 'attackSpeed',
 ): number {
   let total = 0
   for (const talent of getSelectedTalents(player)) {
@@ -141,40 +141,40 @@ export function getAttackMultiplier(player: PlayerState): number {
 }
 
 /**
- * Effective defense: hero base + growth, plus item defense, plus talent
- * defense, plus defensive buffs (sentry Fortify + Overwatch aura, mutex Critical
- * Section / Deadlock, cron Uptime), minus cipher Encryption Key armor shred
+ * Effective plate: hero base + growth, plus item plate, plus talent
+ * plate, plus defensive buffs (sentry Fortify + Overwatch aura, mutex Critical
+ * Section / Deadlock, cron Uptime), minus cipher Encryption Key plate shred
  * (floored at 0).
  */
-export function getEffectiveDefense(player: PlayerState, itemStats?: ItemStats): number {
+export function getEffectivePlate(player: PlayerState, itemStats?: ItemStats): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
   const base = hero
-    ? hero.baseStats.defense + (hero.growthPerLevel.defense ?? 0) * (player.level - 1)
-    : player.defense
-  const itemBonus = itemStats?.defense ?? getItemStatBonuses(player.items).defense ?? 0
-  const talentBonus = getTalentStatBonus(player, 'defense')
+    ? hero.baseStats.plate + (hero.growthPerLevel.plate ?? 0) * (player.level - 1)
+    : player.plate
+  const itemBonus = itemStats?.plate ?? getItemStatBonuses(player.items).plate ?? 0
+  const talentBonus = getTalentStatBonus(player, 'plate')
   const buffBonus =
     getBuffStacks(player, 'defenseBuff') +
     getBuffStacks(player, 'criticalSectionDefense') +
-    getBuffStacks(player, 'deadlock') * DEADLOCK_DEFENSE_PER_STACK +
+    getBuffStacks(player, 'deadlock') * DEADLOCK_PLATE_PER_STACK +
     getBuffStacks(player, 'uptimeDef') +
-    getBuffStacks(player, 'overwatch') // sentry Overwatch ally-defense aura
+    getBuffStacks(player, 'overwatch') // sentry Overwatch ally-plate aura
   // cipher Encryption Key shreds armor (per-stack), floored at 0.
-  const shred = getBuffStacks(player, 'encryptionKey') * ENCRYPTION_KEY_DEFENSE_REDUCTION
+  const shred = getBuffStacks(player, 'encryptionKey') * ENCRYPTION_KEY_PLATE_REDUCTION
   return Math.max(0, base + itemBonus + talentBonus + buffBonus - shred)
 }
 
 /**
- * Effective magic resist: hero base + growth, plus item MR, plus talent MR,
+ * Effective ice: hero base + growth, plus item MR, plus talent MR,
  * minus null_ref's MR shred (floored at 0).
  */
-export function getEffectiveMagicResist(player: PlayerState, itemStats?: ItemStats): number {
+export function getEffectiveIce(player: PlayerState, itemStats?: ItemStats): number {
   const hero = player.heroId ? HEROES[player.heroId] : null
   const base = hero
-    ? hero.baseStats.magicResist + (hero.growthPerLevel.magicResist ?? 0) * (player.level - 1)
-    : player.magicResist
-  const itemBonus = itemStats?.magicResist ?? getItemStatBonuses(player.items).magicResist ?? 0
-  const talentBonus = getTalentStatBonus(player, 'magicResist')
+    ? hero.baseStats.ice + (hero.growthPerLevel.ice ?? 0) * (player.level - 1)
+    : player.ice
+  const itemBonus = itemStats?.ice ?? getItemStatBonuses(player.items).ice ?? 0
+  const talentBonus = getTalentStatBonus(player, 'ice')
   const shred = getBuffStacks(player, 'mrShred')
   return Math.max(0, base + itemBonus + talentBonus - shred)
 }

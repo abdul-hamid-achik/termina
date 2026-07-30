@@ -90,7 +90,7 @@ describe('shop', () => {
   it('using Burnout nukes a targeted enemy for code damage (offensive item active)', async () => {
     // The offensive-item path the auto-target resolves to: `use burnout hero:<id>`
     // runs submitAction → resolveActions → useItem and applies 300 code
-    // damage (reduced by magic resist) to a co-located enemy.
+    // damage (reduced by ice) to a co-located enemy.
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.patch((s) => ({
       ...s,
@@ -110,7 +110,7 @@ describe('shop', () => {
     await game.tick()
     const after = (await game.player(ENEMY)).hp
 
-    // 300 code, reduced by magic resist (~15%) → ~255 — well above per-tick regen.
+    // 300 code, reduced by ice (~15%) → ~255 — well above per-tick regen.
     expect(after).toBeLessThan(before)
     expect(before - after).toBeGreaterThan(200)
   })

@@ -6,12 +6,12 @@ import { dealDamage, hasBuff } from '../heroes/_base'
  * Unified kinetic-hit resolution for NPC attackers (ice, waves, Tenant).
  *
  * Heroes defend themselves with the SAME mitigation chain regardless of who
- * swings at them: immunity (Ghost/Ethereal/invulnerable) → effective defense
+ * swings at them: immunity (Ghost/Ethereal/invulnerable) → effective plate
  * (items + talents + buffs) → Kernel 'hardened' 10% reduction → target-side
  * vuln amps (thread Yield) → Echo 'phaseShift' dodge → shield absorption.
  *
  * Before this helper, each NPC site reimplemented a *slice* of that chain —
- * ice used raw `target.defense` (ignoring items, cuirass, vuln, hardened,
+ * ice used raw `target.plate` (ignoring items, cuirass, vuln, hardened,
  * shield, phaseShift), waves skipped the multiplier + hardened + shield +
  * phaseShift, and the inline Tenant path in GameLoop skipped everything but
  * immunity. A hero with an armor item or a shield took more ice damage than

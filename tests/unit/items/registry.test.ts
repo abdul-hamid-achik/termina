@@ -321,8 +321,8 @@ describe('Item Registry', () => {
       expect(item.stats.hp).toBe(30)
       expect(item.stats.mp).toBe(30)
       expect(item.stats.attack).toBe(3)
-      expect(item.stats.defense).toBe(3)
-      expect(item.stats.magicResist).toBe(3)
+      expect(item.stats.plate).toBe(3)
+      expect(item.stats.ice).toBe(3)
     })
 
     it('last_word provides massive attack', () => {
@@ -347,14 +347,14 @@ describe('Item Registry', () => {
 
     it('siege_lattice provides armor and HP', () => {
       const item = getItem('siege_lattice')!
-      expect(item.stats.defense).toBe(15)
+      expect(item.stats.plate).toBe(15)
       expect(item.stats.hp).toBe(200)
     })
 
-    it('ablative_shell provides hp and defense', () => {
+    it('ablative_shell provides hp and plate', () => {
       const item = getItem('ablative_shell')!
       expect(item.stats.hp).toBe(300)
-      expect(item.stats.defense).toBe(10)
+      expect(item.stats.plate).toBe(10)
     })
 
     it('garbage_collector provides hp', () => {
@@ -367,10 +367,10 @@ describe('Item Registry', () => {
       expect(item.stats.hp).toBe(100)
     })
 
-    it('amp_stack provides MP and magic resist', () => {
+    it('amp_stack provides MP and ice', () => {
       const item = getItem('amp_stack')!
       expect(item.stats.mp).toBe(200)
-      expect(item.stats.magicResist).toBe(10)
+      expect(item.stats.ice).toBe(10)
     })
   })
 

@@ -26,8 +26,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -48,8 +48,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     maxHp: 550,
     mp: 280,
     maxMp: 280,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     ...overrides,
   })
 }
@@ -392,7 +392,7 @@ describe('Thread Hero', () => {
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
 
-      // enemy2 should have taken splash damage (40% of 100 = 40, reduced by defense)
+      // enemy2 should have taken splash damage (40% of 100 = 40, reduced by plate)
       expect(updated.players['e2']!.hp).toBeLessThan(enemy2.hp)
     })
 

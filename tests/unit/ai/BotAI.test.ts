@@ -63,8 +63,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    defense: 3,
-    magicResist: 15,
+    plate: 3,
+    ice: 15,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -195,7 +195,7 @@ describe('BotAI - decideBotAction', () => {
       })
 
       it('every role-build item exists and grants an engine-consumed stat', () => {
-        const STAT_KEYS = ['hp', 'mp', 'attack', 'defense', 'magicResist']
+        const STAT_KEYS = ['hp', 'mp', 'attack', 'plate', 'ice']
         const roles = ['carry', 'assassin', 'tank', 'offlaner', 'mage', 'support'] as const
         for (const role of roles) {
           for (const id of buildOrderForRole(role)) {

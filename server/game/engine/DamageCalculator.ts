@@ -2,21 +2,21 @@ import type { PlayerState } from '~~/shared/types/game'
 import type { DamageType } from '~~/shared/types/hero'
 
 /**
- * Kinetic damage formula: attack * (100 / (100 + defense))
- * Defense reduces kinetic damage logarithmically.
+ * Kinetic damage formula: attack * (100 / (100 + plate))
+ * Plate reduces kinetic damage logarithmically.
  */
-export function calculateKineticDamage(attack: number, defense: number): number {
-  if (defense < 0) defense = 0
-  return Math.round(attack * (100 / (100 + defense)))
+export function calculateKineticDamage(attack: number, plate: number): number {
+  if (plate < 0) plate = 0
+  return Math.round(attack * (100 / (100 + plate)))
 }
 
 /**
- * Code damage formula: damage * (100 / (100 + magicResist))
- * Same formula with magic resist.
+ * Code damage formula: damage * (100 / (100 + ice))
+ * Same formula with ice.
  */
-export function calculateCodeDamage(damage: number, magicResist: number): number {
-  if (magicResist < 0) magicResist = 0
-  return Math.round(damage * (100 / (100 + magicResist)))
+export function calculateCodeDamage(damage: number, ice: number): number {
+  if (ice < 0) ice = 0
+  return Math.round(damage * (100 / (100 + ice)))
 }
 
 /**
@@ -32,13 +32,13 @@ export function calculateBlackDamage(damage: number): number {
 export function calculateEffectiveDamage(
   rawDamage: number,
   damageType: DamageType,
-  target: { defense: number; magicResist: number },
+  target: { plate: number; ice: number },
 ): number {
   switch (damageType) {
     case 'kinetic':
-      return calculateKineticDamage(rawDamage, target.defense)
+      return calculateKineticDamage(rawDamage, target.plate)
     case 'code':
-      return calculateCodeDamage(rawDamage, target.magicResist)
+      return calculateCodeDamage(rawDamage, target.ice)
     case 'black':
       return calculateBlackDamage(rawDamage)
   }
@@ -105,16 +105,16 @@ export function applyHeal(target: PlayerState, amount: number): PlayerState {
  * Calculate hero stats at a given level using base stats + growth.
  */
 export function getHeroStatsAtLevel(
-  base: { hp: number; mp: number; attack: number; defense: number; magicResist: number },
-  growth: Partial<{ hp: number; mp: number; attack: number; defense: number; magicResist: number }>,
+  base: { hp: number; mp: number; attack: number; plate: number; ice: number },
+  growth: Partial<{ hp: number; mp: number; attack: number; plate: number; ice: number }>,
   level: number,
-): { hp: number; mp: number; attack: number; defense: number; magicResist: number } {
+): { hp: number; mp: number; attack: number; plate: number; ice: number } {
   const levelsGained = level - 1
   return {
     hp: base.hp + (growth.hp ?? 0) * levelsGained,
     mp: base.mp + (growth.mp ?? 0) * levelsGained,
     attack: base.attack + (growth.attack ?? 0) * levelsGained,
-    defense: base.defense + (growth.defense ?? 0) * levelsGained,
-    magicResist: base.magicResist + (growth.magicResist ?? 0) * levelsGained,
+    plate: base.plate + (growth.plate ?? 0) * levelsGained,
+    ice: base.ice + (growth.ice ?? 0) * levelsGained,
   }
 }
