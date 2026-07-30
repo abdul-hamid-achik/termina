@@ -1,7 +1,8 @@
 version: 1
 name: heroes_to_lore_funnel
-intent: The funnel runs both ways — from the /heroes console (deep-linked to Daemon), the "> LORE"
-  link carries you to /lore anchored at that hero's lore card.
+intent: The funnel runs both ways — from the /heroes console (deep-linked to
+  Daemon), the "> LORE" link carries you to /lore anchored at that hero's lore
+  card.
 mode: normal
 metadata:
   feature: heroes
@@ -15,7 +16,7 @@ outcomes:
     description: following the console's LORE link lands on the lore page
     verify:
       text:
-        contains: THE GRID
+        contains: TERMINA
   - id: reverse_funnel_shows_hero
     description: the lore page shows the hero whose lore was requested (Daemon)
     verify:
@@ -34,6 +35,6 @@ steps:
       selector: a[href="/lore#lore-daemon"]
   - id: await_lore
     wait:
-      text: THE GRID
+      text: TERMINA
       timeoutMs: 10000
-contractHash: sha256:d7dfaac13e59a7813f89d0709b6527273c3c0a9e77c6d1dac547b2a4db0eb47d
+contractHash: sha256:42fbe05f3e22887afe40556a328cd66582e5f42a1ab8ca8a60d645509fd2d035

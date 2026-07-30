@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
 import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
+import { CITY, CREWS } from '~~/shared/constants/world'
 import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import HeroLoreCard from '~/components/lore/HeroLoreCard.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 
-useHead({ title: 'Lore · TERMINA' })
+useHead({ title: `Lore · ${CITY}` })
 
 const {
   starting: startingTutorial,
@@ -26,31 +27,46 @@ const roster = ROLE_ORDER.map((role) => ({
 <template>
   <article class="mx-auto mt-4 flex max-w-[850px] flex-col gap-5 pb-10">
     <header class="mb-1 border-b border-border pb-2">
-      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ THE GRID</h1>
-      <p class="mt-1 text-[0.75rem] text-text-dim">The world of Termina</p>
+      <h1 class="text-lg font-bold tracking-widest text-radiant">&gt;_ {{ CITY }}</h1>
+      <p class="mt-1 text-[0.75rem] text-text-dim">
+        A cable-landing city, and the clock it runs on.
+      </p>
     </header>
 
     <!-- Worldbuilding -->
     <section class="flex flex-col gap-3 text-[0.82rem] leading-relaxed text-text-dim">
       <p>
-        Beneath every terminal hums <span class="text-text-primary">the Grid</span> — a living
-        network of zones, each a node fought over by autonomous programs that woke up with a will of
-        their own. Two rival systems contest it: each fields a team of five
-        <span class="text-ability">operatives</span> and defends a single core structure — its
-        <span class="text-radiant">Mainframe</span>, the Ancient that keeps its system alive.
+        Twelve transoceanic trunks come out of the sea here and stop. Everything the world has to
+        say to this coast arrives at <span class="text-text-primary">{{ CITY }}</span> first, and
+        the city grew on top of the landing: LANDING on the cable heads, ROOKERY stacked above it,
+        COLDSTORE in the racks, SHALLOWS where the fibre thins out and the ground gets cheap.
       </p>
       <p>
-        Breach the enemy network, push through their defensive processes, and tear down their
-        Mainframe before they tear down yours. There is no map you can see in full — vision is
-        earned, zone by zone, ward by ward. Everything resolves to the
-        <span class="text-text-primary">Scheduler</span>: every four seconds the clock ticks, queued
-        commands execute at once, and the battle advances one deterministic step.
+        {{ CITY }} does not run in real time. The city commits every instruction at once, four
+        seconds wide, in no order. One commit is a <span class="text-text-primary">CYCLE</span>. It
+        was built that way to end a latency arms race that was killing people over ten metres of
+        ground — now nobody is faster than anybody. You get one instruction per cycle. So does
+        everyone else.
       </p>
       <p>
-        The operatives are not people. They are
-        <span class="text-text-primary">processes given form</span> — daemons, protocols,
-        allocators, and locks — each a fragment of the machine turned weapon. Learn them before you
-        deploy.
+        You are not in the city. You are on a terminal, and the terminal is your deck. Everything
+        you know about the ground arrives as text — a route, a depth, a list of contacts. Everything
+        you do leaves as one typed instruction, queued into the next cycle.
+      </p>
+      <p>
+        Two crews work the routes. <span class="text-radiant">{{ CREWS.chaff }}</span> came up off
+        the street and stayed there. <span class="text-radiant">{{ CREWS.audit }}</span> is Quorum's
+        corporate response division. Quorum is not just the other crew — it is the ground. The ICE
+        on the routes is Quorum's. The traffic is Quorum's. The clock is Quorum's.
+      </p>
+      <p>
+        Each crew keeps one core alive: its
+        <span class="text-radiant">Mainframe</span>. Bring the other crew's Mainframe down and the
+        ground is yours.
+      </p>
+      <p>
+        The units that walk the routes every cycle are traffic, not scenery. Every one of them is
+        carrying something worth taking, and nobody out there is a bystander.
       </p>
     </section>
 

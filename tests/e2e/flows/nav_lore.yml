@@ -1,7 +1,8 @@
 version: 1
 name: nav_lore
-intent: The public /lore page renders the worldbuilding intro (the Grid + the Mainframe) and the
-  role-grouped operative roster with at least one hero's lore.
+intent: The public /lore page renders the worldbuilding intro (the Grid + the
+  Mainframe) and the role-grouped operative roster with at least one hero's
+  lore.
 mode: normal
 metadata:
   feature: lore
@@ -30,6 +31,6 @@ steps:
     open: /lore
   - id: wait_for_heading
     wait:
-      text: THE GRID
+      text: TERMINA
       timeoutMs: 10000
 contractHash: sha256:200893b3f3fe1aa28f693c465ac4ea37e9aa30fb74f0698dd5021a23cfdb759d
