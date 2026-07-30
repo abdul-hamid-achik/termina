@@ -79,7 +79,7 @@ describe('world lexicon', () => {
     expect(OBJECTIVE_LABELS.tenant).toBe('THE TENANT')
     expect(OBJECTIVE_LABELS.backup).toBe('BACKUP')
     expect(WARD_LABELS).toEqual({ observer: 'CAMTAP', sentry: 'SNIFFER' })
-    expect(ACTION_LABELS).toEqual({ glyph: 'HARDEN', deny: 'BURN' })
+    expect(ACTION_LABELS).toEqual({ harden: 'HARDEN', deny: 'BURN' })
     expect(CURRENCY.label).toBe('scrip')
   })
 })

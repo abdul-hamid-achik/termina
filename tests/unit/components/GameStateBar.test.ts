@@ -57,8 +57,8 @@ describe('GameStateBar', () => {
 
   describe('macro strip', () => {
     const teams = {
-      chaff: { id: 'chaff', kills: 12, iceKills: 3, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 8, iceKills: 1, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 12, iceKills: 3, gold: 0, hardenUsedTick: null },
+      audit: { id: 'audit', kills: 8, iceKills: 1, gold: 0, hardenUsedTick: null },
     }
     const ancients = {
       chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },

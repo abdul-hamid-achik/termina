@@ -281,7 +281,7 @@ const miniRows = computed(() =>
       <span class="text-lg font-bold tracking-[0.3em] text-audit">AUDIT</span>
     </div>
 
-    <!-- Glyph key for new players (collapsed by default) -->
+    <!-- Harden key for new players (collapsed by default) -->
     <div class="flex justify-center border-b border-border/40 py-0.5">
       <MapLegend />
     </div>
@@ -500,7 +500,7 @@ const miniRows = computed(() =>
               :class="cell.classes"
             >
               <span>{{ cell.code }}</span>
-              <span v-if="cell.ice" :class="cell.ice.cls">{{ cell.ice.glyph }}</span>
+              <span v-if="cell.ice" :class="cell.ice.cls">{{ cell.ice.harden }}</span>
               <span v-if="cell.marks">{{ cell.marks }}</span>
             </div>
             <div v-else class="map-cell-compact h-7 bg-bg-primary/30" />

@@ -330,8 +330,8 @@ export const MAX_CREEPS_PER_ZONE_PER_TEAM = 12
 export const FOUNTAIN_HEAL_PER_TICK_PERCENT = 15
 export const FOUNTAIN_MANA_PER_TICK_PERCENT = 15
 
-export const GLYPH_DURATION_TICKS = 5
-export const GLYPH_COOLDOWN_TICKS = 300
+export const HARDEN_DURATION_TICKS = 5
+export const HARDEN_COOLDOWN_TICKS = 300
 
 // ── Day/Night Cycle ──────────────────────────────────────────────
 

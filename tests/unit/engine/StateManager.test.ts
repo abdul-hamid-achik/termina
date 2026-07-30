@@ -120,14 +120,14 @@ describe('StateManager', () => {
         kills: 0,
         iceKills: 0,
         gold: 0,
-        glyphUsedTick: null,
+        hardenUsedTick: null,
       })
       expect(state.teams.audit).toEqual({
         id: 'audit',
         kills: 0,
         iceKills: 0,
         gold: 0,
-        glyphUsedTick: null,
+        hardenUsedTick: null,
       })
     })
 

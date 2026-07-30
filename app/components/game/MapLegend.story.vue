@@ -3,7 +3,7 @@ import MapLegend from './MapLegend.vue'
 </script>
 
 <!--
-  The collapsible glyph key shown under the map header. Collapsed by default so it
+  The collapsible harden key shown under the map header. Collapsed by default so it
   doesn't clutter; expands to decode the terse map symbols for new players.
 -->
 <template>

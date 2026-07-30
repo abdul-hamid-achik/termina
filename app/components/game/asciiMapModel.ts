@@ -178,13 +178,13 @@ export function zoneShortCode(zoneId: string): string {
 }
 
 /** Per-cell model for the compact mini-overview grid: the ►-prefixed short code,
- *  an optional team-colored ice-state glyph, trailing markers (razed mainframe,
+ *  an optional team-colored ice-state harden, trailing markers (razed mainframe,
  *  enemy presence), and the cell's classes. Pure — unit-testable without a mount. */
 export interface MiniOverviewCell {
   /** Zone short code, ►-prefixed when the player is here. */
   code: string
-  /** Ice-state glyph (▲ standing / ✗ razed) + its color class, if the zone has a ice. */
-  ice: { glyph: string; cls: string } | null
+  /** Ice-state harden (▲ standing / ✗ razed) + its color class, if the zone has a ice. */
+  ice: { harden: string; cls: string } | null
   /** Trailing markers: '◈✗' razed mainframe, '!' enemies present. */
   marks: string
   /** Classes for the whole cell (territory color, player highlight, fog). */
@@ -202,8 +202,8 @@ export function miniOverviewCell(
   let ice: MiniOverviewCell['ice'] = null
   if (zone?.ice) {
     ice = zone.ice.alive
-      ? { glyph: '▲', cls: zone.ice.team === 'chaff' ? 'text-chaff' : 'text-audit' }
-      : { glyph: '✗', cls: 'text-text-dim' }
+      ? { harden: '▲', cls: zone.ice.team === 'chaff' ? 'text-chaff' : 'text-audit' }
+      : { harden: '✗', cls: 'text-text-dim' }
   }
 
   let marks = ''
@@ -237,7 +237,7 @@ export function ancientForZone(
 
 /**
  * Short HP readout for the Mainframe: '83%' while alive, '✗' once destroyed
- * (callers prepend the ◈ glyph → '◈✗'). Destroyed is ✗, NOT ☠ — ☠ is
+ * (callers prepend the ◈ harden → '◈✗'). Destroyed is ✗, NOT ☠ — ☠ is
  * reserved for the Tenant pit (see MapLegend), which previously collided.
  */
 export function ancientLabel(ancient: AncientState | null | undefined): string | null {
@@ -312,7 +312,7 @@ export function buildRouteMarkers(
   return markers
 }
 
-/** The side glyph pair for a zone record: RAD on top (▲), AUDIT below (▼). */
+/** The side harden pair for a zone record: RAD on top (▲), AUDIT below (▼). */
 function zoneSideGlyph(
   team: 'chaff' | 'audit' | 'neutral',
 ): { side: string; arrow: string } | null {

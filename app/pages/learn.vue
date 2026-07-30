@@ -39,8 +39,8 @@ import {
   SURRENDER_VOTE_THRESHOLD,
   CACHE_INTERVAL_TICKS,
   CACHE_DURATION_TICKS,
-  GLYPH_DURATION_TICKS,
-  GLYPH_COOLDOWN_TICKS,
+  HARDEN_DURATION_TICKS,
+  HARDEN_COOLDOWN_TICKS,
   RING_OF_HEALTH_REGEN_PERCENT,
   SOBI_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
@@ -72,7 +72,7 @@ const wardCost = ITEMS.camtap!.cost
 const surrenderMinutes = (SURRENDER_MIN_TICK * tickSeconds) / 60
 const surrenderPercent = Math.round(SURRENDER_VOTE_THRESHOLD * 100)
 const buybackCooldownMinutes = (BUYBACK_COOLDOWN_TICKS * tickSeconds) / 60
-const glyphCooldownMinutes = (GLYPH_COOLDOWN_TICKS * tickSeconds) / 60
+const glyphCooldownMinutes = (HARDEN_COOLDOWN_TICKS * tickSeconds) / 60
 
 /** Respawn time in ticks for a given level — mirrors GameLoop's formula. */
 function respawnTicks(level: number): number {
@@ -221,9 +221,9 @@ const commands = [
     shortcuts: '—',
   },
   {
-    cmd: 'glyph',
-    desc: `Make your ice invulnerable for ${GLYPH_DURATION_TICKS} cycles (one per team every ${glyphCooldownMinutes} min)`,
-    example: 'glyph',
+    cmd: 'harden',
+    desc: `Make your ice invulnerable for ${HARDEN_DURATION_TICKS} cycles (one per team every ${glyphCooldownMinutes} min)`,
+    example: 'harden',
     shortcuts: '—',
   },
   {
@@ -670,7 +670,7 @@ const heroRoles = ROLE_DETAILS.map((r) => ({
         that's what lets you type <span class="text-ability">sell</span>,
         <span class="text-ability">ward</span> or <span class="text-ability">surrender</span>. Press
         <span class="text-ability">Esc</span> on an empty prompt to hand the keyboard to the game:
-        the prompt glyph changes from <span class="text-ability">&gt;_</span> to
+        the prompt harden changes from <span class="text-ability">&gt;_</span> to
         <span class="text-ability">[KEYS]</span> and the keys below become live. Click the prompt to
         type again.
       </p>

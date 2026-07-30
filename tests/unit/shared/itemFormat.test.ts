@@ -119,11 +119,11 @@ describe('browseSections', () => {
     expect(sections[0]!.id).toBe('attack')
   })
   it('filters items by a case-insensitive name search across categories', () => {
-    const sections = browseSections(cats, ITEMS, 'all', 'CAMTAP')
-    const ids = sections.flatMap((s) => s.items.map((i) => i.id))
-    expect(ids).toContain('camtap')
-    expect(ids).toContain('sniffer')
-    expect(ids).not.toContain('dagon')
+    const byName = (q: string) =>
+      browseSections(cats, ITEMS, 'all', q).flatMap((s) => s.items.map((i) => i.id))
+    expect(byName('camtap')).toContain('camtap')
+    expect(byName('sniffer')).toContain('sniffer')
+    expect(byName('camtap')).not.toContain('dagon')
   })
   it('drops sections left empty by the search and returns [] on no match', () => {
     expect(browseSections(cats, ITEMS, 'all', 'zzzznotanitem')).toEqual([])

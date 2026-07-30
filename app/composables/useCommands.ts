@@ -294,7 +294,7 @@ export function formatHelpReadout(): string[] {
     '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
     '  Info:    status · map · scan · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
-    '  Special: cache · backup · glyph · buyback · talent <tier> <left|right>',
+    '  Special: cache · backup · harden · buyback · talent <tier> <left|right>',
     '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ss = missing · ? = help',
     'Goal: push a lane, raze the enemy ice, then destroy their Mainframe.',
   ]
@@ -801,8 +801,8 @@ export function useCommands() {
         return { command: { type: 'ping', zone: resolvedZone }, error: null }
       }
 
-      case 'glyph':
-        return { command: { type: 'glyph' }, error: null }
+      case 'harden':
+        return { command: { type: 'harden' }, error: null }
 
       case 'buyback':
         return { command: { type: 'buyback' }, error: null }
@@ -857,7 +857,7 @@ export function useCommands() {
         'missing',
         'chat',
         'ping',
-        'glyph',
+        'harden',
         'talent',
         'buyback',
         'surrender',

@@ -126,7 +126,7 @@ describe('learn page', () => {
     for (const cmd of [
       'cache',
       'backup',
-      'glyph',
+      'harden',
       'chat <team|all> <msg>',
       'ping <zone>',
       'buyback',

@@ -324,7 +324,7 @@ describe('AsciiMap', () => {
       // Razed chaff ice on the player's cell (✗ after the code), live audit ice (▲).
       expect(overview.text()).toContain('►M1✗')
       expect(overview.text()).toContain('M1▲')
-      // The standing ice's glyph is team-colored.
+      // The standing ice's harden is team-colored.
       const auditGlyph = overview
         .findAll('span')
         .find((s) => s.text() === '▲' && s.classes().includes('text-audit'))
@@ -450,7 +450,7 @@ describe('AsciiMap', () => {
       expect(text).toContain('AUDIT ▼')
     })
 
-    it('decodes the fog glyph and the ice pips in the legend', () => {
+    it('decodes the fog harden and the ice pips in the legend', () => {
       const text = mountFull().text()
       expect(text).toContain('? = No vision')
       expect(text).toContain('▲▲▲/✗ = Ice HP')

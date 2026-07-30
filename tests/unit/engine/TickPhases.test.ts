@@ -10,7 +10,7 @@ import {
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
-  GLYPH_DURATION_TICKS,
+  HARDEN_DURATION_TICKS,
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
   CREEP_WAVE_INTERVAL_TICKS,
@@ -26,7 +26,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
         kills: 0,
         iceKills: 0,
         gold: 0,
-        glyphUsedTick: null,
+        hardenUsedTick: null,
         glyphCooldown: 0,
       },
       audit: {
@@ -34,7 +34,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
         kills: 0,
         iceKills: 0,
         gold: 0,
-        glyphUsedTick: null,
+        hardenUsedTick: null,
         glyphCooldown: 0,
       },
     },
@@ -56,7 +56,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('expireGlyph', () => {
-  it('returns the same state object if no glyph is active', () => {
+  it('returns the same state object if no harden is active', () => {
     const state = makeState()
     expect(expireGlyph(state)).toBe(state)
   })
@@ -70,7 +70,7 @@ describe('expireGlyph', () => {
           kills: 0,
           iceKills: 0,
           gold: 0,
-          glyphUsedTick: 1,
+          hardenUsedTick: 1,
           glyphCooldown: 0,
         },
         audit: {
@@ -78,27 +78,27 @@ describe('expireGlyph', () => {
           kills: 0,
           iceKills: 0,
           gold: 0,
-          glyphUsedTick: null,
+          hardenUsedTick: null,
           glyphCooldown: 0,
         },
       },
       ice: initializeIce().map((t) => (t.team === 'chaff' ? { ...t, invulnerable: true } : t)),
     })
     const result = expireGlyph(state)
-    // tick=3, used=1, GLYPH_DURATION_TICKS=5 → 2 < 5, still invulnerable
+    // tick=3, used=1, HARDEN_DURATION_TICKS=5 → 2 < 5, still invulnerable
     expect(result.ice.find((t) => t.team === 'chaff')!.invulnerable).toBe(true)
   })
 
   it('drops chaff invulnerability when duration is up', () => {
     const state = makeState({
-      tick: GLYPH_DURATION_TICKS + 5,
+      tick: HARDEN_DURATION_TICKS + 5,
       teams: {
         chaff: {
           id: 'chaff',
           kills: 0,
           iceKills: 0,
           gold: 0,
-          glyphUsedTick: 5,
+          hardenUsedTick: 5,
           glyphCooldown: 0,
         },
         audit: {
@@ -106,7 +106,7 @@ describe('expireGlyph', () => {
           kills: 0,
           iceKills: 0,
           gold: 0,
-          glyphUsedTick: null,
+          hardenUsedTick: null,
           glyphCooldown: 0,
         },
       },
@@ -120,14 +120,14 @@ describe('expireGlyph', () => {
 
   it('expires both teams independently when both glyphs are up', () => {
     const state = makeState({
-      tick: GLYPH_DURATION_TICKS + 1,
+      tick: HARDEN_DURATION_TICKS + 1,
       teams: {
         chaff: {
           id: 'chaff',
           kills: 0,
           iceKills: 0,
           gold: 0,
-          glyphUsedTick: 1,
+          hardenUsedTick: 1,
           glyphCooldown: 0,
         },
         audit: {
@@ -135,7 +135,7 @@ describe('expireGlyph', () => {
           kills: 0,
           iceKills: 0,
           gold: 0,
-          glyphUsedTick: 1,
+          hardenUsedTick: 1,
           glyphCooldown: 0,
         },
       },

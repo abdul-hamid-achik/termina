@@ -267,10 +267,10 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     // Both are the server's answer to an action the player just spent a tick
     // on — swallowing them left the tick looking like it did nothing at all.
     const invuln = eventToLine(ev('ice_invulnerable', { zone: 'mid-t1-chaff' }), ctx)!
-    expect(invuln.text).toContain('Glyph')
+    expect(invuln.text).toContain('Harden')
     expect(invuln.text).toContain('mid-t1-chaff')
 
-    const cd = eventToLine(ev('glyph_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx)!
+    const cd = eventToLine(ev('harden_on_cooldown', { playerId: 'me', remainingTicks: 120 }), ctx)!
     expect(cd.text).toContain('120c')
     expect(cd.salience).toBe('mine-out')
   })
@@ -431,7 +431,7 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['teleport_complete', { playerId: 'me', destination: 'mid-river' }, 'teleported to mid-river'],
     ['trap_triggered', { owner: 'me', targetId: 'enemy1', zone: 'mid-river', damage: 100 }, 'trap'],
     ['teleport_cancelled', { playerId: 'me', reason: 'stunned' }, 'cancelled'],
-    ['glyph_used', { team: 'chaff' }, 'Glyph'],
+    ['harden_used', { team: 'chaff' }, 'Harden'],
     ['surrender_vote', { team: 'chaff', votesFor: 2, votesNeeded: 3 }, '2/3'],
     ['surrendered', { team: 'audit', winner: 'chaff' }, 'surrendered'],
     ['tenant_respawn', {}, 'respawned'],
@@ -797,8 +797,8 @@ describe('eventToLine: remaining event-type lines', () => {
       'cancelled (took damage)',
     )
   })
-  it('glyph_used → glyph activated', () => {
-    expect(line('glyph_used', { team: 'chaff' })!.text).toContain('activated the Glyph')
+  it('harden_used → harden activated', () => {
+    expect(line('harden_used', { team: 'chaff' })!.text).toContain('activated the Harden')
   })
   it('surrender_vote → vote tally', () => {
     expect(line('surrender_vote', { team: 'chaff', votesFor: 2, votesNeeded: 3 })!.text).toContain(

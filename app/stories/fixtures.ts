@@ -141,7 +141,7 @@ export function makeTeamState(id: TeamId, overrides: Partial<TeamState> = {}): T
     kills: id === 'chaff' ? 14 : 9,
     iceKills: id === 'chaff' ? 3 : 1,
     gold: id === 'chaff' ? 5100 : 4150,
-    glyphUsedTick: null,
+    hardenUsedTick: null,
     ...overrides,
   }
 }

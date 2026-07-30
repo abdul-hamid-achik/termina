@@ -362,7 +362,7 @@ describe('CommandInput', () => {
    * REGRESSION: the prompt auto-focuses and every in-game hotkey is suppressed
    * while it has focus, so the whole advertised keyboard layer (S, Q/W/E/R, 1-6,
    * arrows) was unreachable — pressing S typed an `s`. Escape is the release
-   * valve, and the glyph is how the player can tell which mode they are in.
+   * valve, and the harden is how the player can tell which mode they are in.
    */
   describe('keyboard mode', () => {
     function mountFocused() {
@@ -401,16 +401,16 @@ describe('CommandInput', () => {
     it('shows >_ while typing and [KEYS] once the keyboard belongs to the game', async () => {
       const { wrapper, input } = mountFocused()
       await wrapper.vm.$nextTick()
-      expect(wrapper.get('[data-testid="prompt-glyph"]').text()).toBe('>_')
+      expect(wrapper.get('[data-testid="prompt-harden"]').text()).toBe('>_')
 
       await input.trigger('keydown', { key: 'Escape' })
       await wrapper.vm.$nextTick()
-      expect(wrapper.get('[data-testid="prompt-glyph"]').text()).toBe('[KEYS]')
+      expect(wrapper.get('[data-testid="prompt-harden"]').text()).toBe('[KEYS]')
 
       // And back: clicking the prompt is the documented way to resume typing.
       await wrapper.find('.cmd-input-wrapper').trigger('click')
       await wrapper.vm.$nextTick()
-      expect(wrapper.get('[data-testid="prompt-glyph"]').text()).toBe('>_')
+      expect(wrapper.get('[data-testid="prompt-harden"]').text()).toBe('>_')
       wrapper.unmount()
     })
 

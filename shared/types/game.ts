@@ -125,7 +125,7 @@ export interface TeamState {
   kills: number
   iceKills: number
   gold: number
-  glyphUsedTick: number | null
+  hardenUsedTick: number | null
 }
 
 export interface CacheState {

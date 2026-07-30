@@ -271,14 +271,14 @@ export interface DayBreaksEvent {
   readonly tick: number
 }
 
-export interface GlyphUsedEvent {
-  readonly _tag: 'glyph_used'
+export interface HardenUsedEvent {
+  readonly _tag: 'harden_used'
   readonly tick: number
   readonly team: TeamId
 }
 
-export interface GlyphOnCooldownEvent {
-  readonly _tag: 'glyph_on_cooldown'
+export interface HardenOnCooldownEvent {
+  readonly _tag: 'harden_on_cooldown'
   readonly tick: number
   readonly playerId: string
   readonly remainingTicks: number
@@ -355,8 +355,8 @@ export type GameEngineEvent =
   | TeleportCancelledEvent
   | NightFallsEvent
   | DayBreaksEvent
-  | GlyphUsedEvent
-  | GlyphOnCooldownEvent
+  | HardenUsedEvent
+  | HardenOnCooldownEvent
   | IceInvulnerableEvent
   | SurrenderVoteEvent
   | SurrenderedEvent

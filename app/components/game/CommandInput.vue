@@ -490,7 +490,7 @@ defineExpose({ focus: focusInput })
 /**
  * Typing mode vs keyboard mode. The two behave completely differently — while
  * the prompt has focus every in-game hotkey is swallowed as text — so the
- * prompt glyph names the mode the player is actually in instead of always
+ * prompt harden names the mode the player is actually in instead of always
  * showing `>_`.
  */
 const focused = ref(false)
@@ -610,7 +610,7 @@ onUnmounted(() => {
       :class="{ 'opacity-50': disabled }"
     >
       <span
-        data-testid="prompt-glyph"
+        data-testid="prompt-harden"
         class="shrink-0 font-mono font-bold select-none"
         :class="focused ? 'text-chaff' : 'text-text-dim'"
         :title="promptTitle"
@@ -644,7 +644,7 @@ onUnmounted(() => {
       />
       <!-- The caret is drawn only in typing mode: in keyboard mode it would
            promise that the next letter lands in the box, when S opens the shop.
-           It is also positioned for the narrow `>_` glyph. -->
+           It is also positioned for the narrow `>_` harden. -->
       <span
         v-if="!input && canAct && focused"
         class="pointer-events-none absolute left-11 animate-blink text-sm text-chaff"

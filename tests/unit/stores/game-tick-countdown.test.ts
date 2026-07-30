@@ -9,8 +9,8 @@ import type { TeamState } from '~~/shared/types/game'
 
 function makeTeams(): { chaff: TeamState; audit: TeamState } {
   return {
-    chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
-    audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+    chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+    audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
   }
 }
 

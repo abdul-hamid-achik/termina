@@ -18,7 +18,7 @@ import {
   IN_COMBAT_BUFF_DURATION,
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
-  GLYPH_DURATION_TICKS,
+  HARDEN_DURATION_TICKS,
 } from '~~/shared/constants/balance'
 import type { StateManagerApi } from './StateManager'
 import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fastGame'
@@ -426,7 +426,7 @@ export function processTick(
     currentState = trapResult.state
     allEvents.push(...trapResult.events)
 
-    // 3.7. Expire glyph invulnerability
+    // 3.7. Expire harden invulnerability
     currentState = expireGlyph(currentState)
 
     // 4–5.6. NPC AI (creeps, neutrals, ice, Tenant)
@@ -1291,14 +1291,14 @@ export function runSpawning(state: GameState): GameState {
 }
 
 /**
- * Drop ice invulnerability for any team whose glyph effect has expired.
+ * Drop ice invulnerability for any team whose harden effect has expired.
  * Pure: returns a new state if anything changed, the same state otherwise.
  */
 export function expireGlyph(state: GameState): GameState {
-  const chaffUsed = state.teams.chaff.glyphUsedTick
-  const auditUsed = state.teams.audit.glyphUsedTick
-  const chaffExpired = chaffUsed !== null && state.tick - chaffUsed >= GLYPH_DURATION_TICKS
-  const auditExpired = auditUsed !== null && state.tick - auditUsed >= GLYPH_DURATION_TICKS
+  const chaffUsed = state.teams.chaff.hardenUsedTick
+  const auditUsed = state.teams.audit.hardenUsedTick
+  const chaffExpired = chaffUsed !== null && state.tick - chaffUsed >= HARDEN_DURATION_TICKS
+  const auditExpired = auditUsed !== null && state.tick - auditUsed >= HARDEN_DURATION_TICKS
 
   if (!chaffExpired && !auditExpired) return state
 

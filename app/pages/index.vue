@@ -33,7 +33,7 @@ const commandTicker = [
   'deny creep:1',
   'attack tenant',
   'cast r',
-  'glyph',
+  'harden',
   'attack ice:mid-t1-audit',
 ]
 
@@ -48,7 +48,7 @@ const pillars = [
 <template>
   <div class="flex flex-col gap-16 pb-16">
     <!-- ── Hero ──────────────────────────────────────────────────
-         Three depth layers. The glyph field sits furthest back and drifts
+         Three depth layers. The harden field sits furthest back and drifts
          least; the wordmark and the CTAs ride nearer the reader. Everything
          here is transform/opacity only — see ParallaxLayer for why this is not
          background-attachment: fixed. -->

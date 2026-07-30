@@ -58,7 +58,7 @@ export const commandSchema = z.discriminatedUnion('type', [
     tier: z.union([z.literal(10), z.literal(15), z.literal(20), z.literal(25)]),
     talentId: shortId,
   }),
-  z.object({ type: z.literal('glyph') }),
+  z.object({ type: z.literal('harden') }),
 ])
 
 export const clientMessageSchema = z.discriminatedUnion('type', [

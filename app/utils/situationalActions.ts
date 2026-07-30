@@ -1,4 +1,4 @@
-import { GLYPH_COOLDOWN_TICKS, SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
+import { HARDEN_COOLDOWN_TICKS, SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
 import { pickDenyTargetString } from '~/composables/useCommands'
 import type {
   PlayerState,
@@ -29,7 +29,7 @@ export interface SituationalContext {
 }
 
 /**
- * Which situational commands (ward / deny / backup / cache / glyph / surrender) a
+ * Which situational commands (ward / deny / backup / cache / harden / surrender) a
  * living player can take right now, given their items, zone and the world state.
  * Pure — extracted from GameScreen so the availability rules are unit-tested
  * independently of the in-game component. Returns [] when dead or no player.
@@ -54,10 +54,10 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   const teamState = ctx.teams?.[p.team] ?? null
   const glyphReady =
     !teamState ||
-    teamState.glyphUsedTick == null ||
-    ctx.tick - teamState.glyphUsedTick >= GLYPH_COOLDOWN_TICKS
+    teamState.hardenUsedTick == null ||
+    ctx.tick - teamState.hardenUsedTick >= HARDEN_COOLDOWN_TICKS
   if (glyphReady) {
-    out.push({ cmd: 'glyph', label: 'GLYPH', aria: 'Activate team glyph (fortify structures)' })
+    out.push({ cmd: 'harden', label: 'HARDEN', aria: 'Activate team harden (fortify structures)' })
   }
   // Mirrors SurrenderSystem.canSurrender: the tutorial has no tick gate, so a
   // learner always has a visible way out of a practice game.

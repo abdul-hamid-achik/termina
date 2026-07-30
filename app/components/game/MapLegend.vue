@@ -8,29 +8,29 @@
 // `open` lets a parent/story render it expanded; defaults to collapsed in-game.
 defineProps<{ open?: boolean }>()
 
-const LEGEND: { glyph: string; meaning: string }[] = [
-  { glyph: '►YOU', meaning: 'your hero' },
-  { glyph: '+N A', meaning: 'allies here' },
-  { glyph: '!N E', meaning: 'enemies here' },
-  { glyph: '✓ / ✗', meaning: 'ice up / razed' },
-  { glyph: '◈ %', meaning: 'Mainframe (HP)' },
-  { glyph: '◈✗', meaning: 'Mainframe razed' },
-  { glyph: '☠', meaning: 'Tenant pit' },
-  { glyph: '↻ Nt', meaning: 'Tenant respawn' },
-  { glyph: '✦', meaning: 'live cache' },
-  { glyph: '◉', meaning: 'your ward' },
-  { glyph: '☘ N', meaning: 'neutral camp' },
-  { glyph: 'cN', meaning: 'lane creeps' },
+const LEGEND: { harden: string; meaning: string }[] = [
+  { harden: '►YOU', meaning: 'your hero' },
+  { harden: '+N A', meaning: 'allies here' },
+  { harden: '!N E', meaning: 'enemies here' },
+  { harden: '✓ / ✗', meaning: 'ice up / razed' },
+  { harden: '◈ %', meaning: 'Mainframe (HP)' },
+  { harden: '◈✗', meaning: 'Mainframe razed' },
+  { harden: '☠', meaning: 'Tenant pit' },
+  { harden: '↻ Nt', meaning: 'Tenant respawn' },
+  { harden: '✦', meaning: 'live cache' },
+  { harden: '◉', meaning: 'your ward' },
+  { harden: '☘ N', meaning: 'neutral camp' },
+  { harden: 'cN', meaning: 'lane creeps' },
 ]
 
 // Zone codes used by the compact map's mini overview grid (see AsciiMap).
-const ZONE_CODES: { glyph: string; meaning: string }[] = [
-  { glyph: 'T1-3', meaning: 'ice zones (T/M/B lane)' },
-  { glyph: 'JG', meaning: 'jungle' },
-  { glyph: 'RN', meaning: 'cache spot' },
-  { glyph: 'ROS', meaning: 'Tenant pit' },
-  { glyph: 'RF/RB', meaning: 'fountain / base' },
-  { glyph: 'TR/MR/BR', meaning: 'river crossings' },
+const ZONE_CODES: { harden: string; meaning: string }[] = [
+  { harden: 'T1-3', meaning: 'ice zones (T/M/B lane)' },
+  { harden: 'JG', meaning: 'jungle' },
+  { harden: 'RN', meaning: 'cache spot' },
+  { harden: 'ROS', meaning: 'Tenant pit' },
+  { harden: 'RF/RB', meaning: 'fountain / base' },
+  { harden: 'TR/MR/BR', meaning: 'river crossings' },
 ]
 </script>
 
@@ -40,15 +40,15 @@ const ZONE_CODES: { glyph: string; meaning: string }[] = [
       legend
     </summary>
     <div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
-      <span v-for="item in LEGEND" :key="item.glyph" :data-testid="`legend-${item.glyph}`">
-        <span class="font-mono text-text-primary">{{ item.glyph }}</span> {{ item.meaning }}
+      <span v-for="item in LEGEND" :key="item.harden" :data-testid="`legend-${item.harden}`">
+        <span class="font-mono text-text-primary">{{ item.harden }}</span> {{ item.meaning }}
       </span>
     </div>
     <div class="mt-1 border-t border-border/40 pt-1">
       <div class="uppercase tracking-wider opacity-70">overview zone codes</div>
       <div class="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
-        <span v-for="item in ZONE_CODES" :key="item.glyph" :data-testid="`legend-${item.glyph}`">
-          <span class="font-mono text-text-primary">{{ item.glyph }}</span> {{ item.meaning }}
+        <span v-for="item in ZONE_CODES" :key="item.harden" :data-testid="`legend-${item.harden}`">
+          <span class="font-mono text-text-primary">{{ item.harden }}</span> {{ item.meaning }}
         </span>
       </div>
     </div>

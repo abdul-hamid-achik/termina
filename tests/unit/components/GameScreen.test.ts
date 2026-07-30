@@ -686,17 +686,17 @@ describe('GameScreen', () => {
   })
 
   describe('situational action bar (#11)', () => {
-    it('surfaces glyph as an on-screen button and runs it via the command path', async () => {
+    it('surfaces harden as an on-screen button and runs it via the command path', async () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
       expect(wrapper.find('[data-testid="situational-actions"]').exists()).toBe(true)
-      const glyph = wrapper.find('[data-testid="situational-glyph"]')
-      expect(glyph.exists()).toBe(true)
-      expect(glyph.attributes('aria-label')).toContain('glyph')
+      const harden = wrapper.find('[data-testid="situational-harden"]')
+      expect(harden.exists()).toBe(true)
+      expect(harden.attributes('aria-label')).toContain('harden')
 
       socketSpies.send.mockClear()
-      await glyph.trigger('click')
+      await harden.trigger('click')
       expect(socketSpies.send).toHaveBeenCalled()
       wrapper.unmount()
     })

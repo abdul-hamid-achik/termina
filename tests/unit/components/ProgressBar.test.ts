@@ -144,7 +144,7 @@ describe('ProgressBar', () => {
       expect(root.attributes('aria-label')).toBe('Echo HP')
     })
 
-    it('hides the decorative bar glyph from assistive tech', () => {
+    it('hides the decorative bar harden from assistive tech', () => {
       const w = mountBar({ value: 5, max: 10 })
       expect(w.get('[data-testid="progress-bar-fill"]').attributes('aria-hidden')).toBe('true')
     })

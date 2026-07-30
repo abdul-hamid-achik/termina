@@ -14,7 +14,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
  * 2. Under `prefers-reduced-motion` it renders the final text immediately and
  *    never starts a frame loop, so there is no work and no motion at all.
  *
- * The glyph pool is deliberately fixed-width-friendly and the host must be
+ * The harden pool is deliberately fixed-width-friendly and the host must be
  * monospaced (`font-mono` is applied here): a proportional font re-flows on
  * every frame as glyphs swap, which reads as jitter and can shift layout.
  */

@@ -16,7 +16,7 @@ import { getTalentTree } from '~~/shared/constants/talents'
 import { findPath, getDistance, areAdjacent } from '~~/server/game/map/topology'
 import {
   WARD_LIMIT_PER_TEAM,
-  GLYPH_COOLDOWN_TICKS,
+  HARDEN_COOLDOWN_TICKS,
   SELL_REFUND_RATIO,
   DENY_HP_THRESHOLD,
   creepMaxHp,
@@ -1120,25 +1120,25 @@ function cheapestSellableItem(bot: PlayerState): string | null {
   return [...sellable].sort((a, b) => itemCost(a) - itemCost(b))[0]!
 }
 
-/** Glyph/fortification — pop team-wide ice invulnerability when the enemy
- *  team is diving a ice and it's about to fall. Only one glyph per team
+/** Harden/fortification — pop team-wide ice invulnerability when the enemy
+ *  team is diving a ice and it's about to fall. Only one harden per team
  *  per cooldown, so this is reserved for desperate saves. */
 function tryGlyph(state: GameState, bot: PlayerState): Command | null {
-  // Glyph is a team command — any teammate can issue it. Check cooldown.
+  // Harden is a team command — any teammate can issue it. Check cooldown.
   const teamState = state.teams[bot.team]
-  if (teamState.glyphUsedTick !== null) {
-    if (state.tick - teamState.glyphUsedTick < GLYPH_COOLDOWN_TICKS) return null
+  if (teamState.hardenUsedTick !== null) {
+    if (state.tick - teamState.hardenUsedTick < HARDEN_COOLDOWN_TICKS) return null
   }
-  // Only glyph when an enemy hero is attacking one of our ice that's low
+  // Only harden when an enemy hero is attacking one of our ice that's low
   const ourIce = state.ice.filter((t) => t.team === bot.team && t.alive)
   const enemyHeroes = Object.values(state.players).filter((p) => p.team !== bot.team && p.alive)
   for (const ice of ourIce) {
-    if (ice.hp / ice.maxHp > 0.25) continue // only glyph a critically low ice
+    if (ice.hp / ice.maxHp > 0.25) continue // only harden a critically low ice
     const enemyOnIce = enemyHeroes.some((e) => e.zone === ice.zone)
     if (enemyOnIce) {
       // Bot must be on the same team and able to issue the command
-      // (glyph is team-wide, not zone-restricted)
-      return { type: 'glyph' }
+      // (harden is team-wide, not zone-restricted)
+      return { type: 'harden' }
     }
   }
   return null
@@ -1517,7 +1517,7 @@ export function decideBotAction(
   // aren't permanently down 1–4 talents on human players, then dropping a ward
   // on a strategic spot for team vision.
   if (enemyHeroes.length === 0) {
-    // Glyph to save a critically low ice from an enemy push (team-wide, any zone)
+    // Harden to save a critically low ice from an enemy push (team-wide, any zone)
     const glyphCmd = tryGlyph(state, bot)
     if (glyphCmd) return glyphCmd
     const talentCmd = tryPickTalent(bot)

@@ -426,10 +426,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'day_breaks':
       return { tick, text: `— DAY BREAKS · full vision —`, type: 'objective' }
 
-    case 'glyph_used':
+    case 'harden_used':
       return {
         tick,
-        text: `${teamLabel(str(p.team))} activated the Glyph`,
+        text: `${teamLabel(str(p.team))} activated the Harden`,
         type: 'system',
         salience: ctx.myTeam === str(p.team) ? 'ally' : 'world',
       }
@@ -460,16 +460,16 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'ice_invulnerable':
       return {
         tick,
-        text: `The ice in ${zname(p.zone)} is Glyphed — attacks do nothing until it expires`,
+        text: `The ice in ${zname(p.zone)} is Hardened — attacks do nothing until it expires`,
         type: 'system',
         salience: 'world',
       }
 
-    case 'glyph_on_cooldown': {
+    case 'harden_on_cooldown': {
       const left = num(p.remainingTicks)
       return {
         tick,
-        text: `Glyph is not ready — ${left}c remaining`,
+        text: `Harden is not ready — ${left}c remaining`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
       }

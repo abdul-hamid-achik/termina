@@ -542,7 +542,7 @@ describe('CreepAI', () => {
     })
 
     it('does NOT damage an invulnerable (glyphed) ice — the push bounces off', () => {
-      // Glyph must blunt the whole push, not just heroes. Hero attacks already
+      // Harden must blunt the whole push, not just heroes. Hero attacks already
       // bounce off an invulnerable ice; creep damage must too.
       const ice = initializeIce().map((t) =>
         t.zone === 'mid-t1-audit' ? { ...t, invulnerable: true } : t,
@@ -564,7 +564,7 @@ describe('CreepAI', () => {
 
       const result = applyCreepActions(state, actions).state
       const target = result.ice.find((t) => t.zone === 'mid-t1-audit')!
-      expect(target.hp).toBe(initialHp) // unchanged — glyph protects vs creeps too
+      expect(target.hp).toBe(initialHp) // unchanged — harden protects vs creeps too
     })
 
     it('should destroy ice when HP reaches 0', () => {

@@ -226,7 +226,7 @@ describe('asciiMapModel', () => {
       expect(cellText(many)).toContain('!3E')
     })
 
-    it('shows the dead-ice glyph, ally count, and neutral-camp count', () => {
+    it('shows the dead-ice harden, ally count, and neutral-camp count', () => {
       const zone = makeZone({
         ice: { team: 'chaff', alive: false, tier: 1, hp: 0, maxHp: 600 },
         allies: ['a1', 'a2'],
@@ -238,7 +238,7 @@ describe('asciiMapModel', () => {
       expect(text).toContain('☘ 3') // three neutral creeps
     })
 
-    it('marks own-team ward coverage with a vision glyph', () => {
+    it('marks own-team ward coverage with a vision harden', () => {
       expect(cellText(makeZone({ wardCount: 1 }))).toContain('◉')
       expect(cellText(makeZone({ wardCount: 0 }))).not.toContain('◉')
     })
@@ -341,7 +341,7 @@ describe('asciiMapModel', () => {
       expect(icePips({ team: 'audit', alive: true, tier: 3, hp: 0, maxHp: 0 })).toBe('▲▲▲')
     })
 
-    it('marks a razed ice with the razed glyph, not pips', () => {
+    it('marks a razed ice with the razed harden, not pips', () => {
       expect(icePips({ team: 'chaff', alive: false, tier: 1, hp: 0, maxHp: 900 })).toBe('✗')
     })
   })
@@ -458,7 +458,7 @@ describe('asciiMapModel', () => {
   })
 
   describe('compactIndicators', () => {
-    it('shows ice HP and team glyph', () => {
+    it('shows ice HP and team harden', () => {
       const zone = makeZone({
         ice: { team: 'chaff', alive: true, tier: 2, hp: 340, maxHp: 600 },
       })
@@ -646,13 +646,13 @@ describe('asciiMapModel', () => {
         makeZone({ ice: { team: 'chaff', alive: true, tier: 1 } }),
         null,
       )
-      expect(rad.ice).toEqual({ glyph: '▲', cls: 'text-chaff' })
+      expect(rad.ice).toEqual({ harden: '▲', cls: 'text-chaff' })
       const audit = miniOverviewCell(
         'mid-t1-audit',
         makeZone({ id: 'mid-t1-audit', ice: { team: 'audit', alive: true, tier: 1 } }),
         null,
       )
-      expect(audit.ice).toEqual({ glyph: '▲', cls: 'text-audit' })
+      expect(audit.ice).toEqual({ harden: '▲', cls: 'text-audit' })
     })
 
     it('appends a dim ✗ for a razed ice', () => {
@@ -661,7 +661,7 @@ describe('asciiMapModel', () => {
         makeZone({ ice: { team: 'chaff', alive: false, tier: 1 } }),
         null,
       )
-      expect(cell.ice).toEqual({ glyph: '✗', cls: 'text-text-dim' })
+      expect(cell.ice).toEqual({ harden: '✗', cls: 'text-text-dim' })
     })
 
     it('shows a standing ice through fog (global info)', () => {
@@ -674,7 +674,7 @@ describe('asciiMapModel', () => {
         }),
         null,
       )
-      expect(cell.ice).toEqual({ glyph: '▲', cls: 'text-audit' })
+      expect(cell.ice).toEqual({ harden: '▲', cls: 'text-audit' })
       expect(cell.classes).toContain('opacity-40')
     })
 

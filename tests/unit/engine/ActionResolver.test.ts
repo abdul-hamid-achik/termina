@@ -59,8 +59,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
@@ -665,15 +665,15 @@ describe('ActionResolver', () => {
     })
   })
 
-  describe('glyph', () => {
-    it('should make all friendly ice invulnerable when glyph is used', () => {
+  describe('harden', () => {
+    it('should make all friendly ice invulnerable when harden is used', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'chaff' }),
         },
       })
 
-      const actions: PlayerAction[] = [{ playerId: 'p1', command: { type: 'glyph' } }]
+      const actions: PlayerAction[] = [{ playerId: 'p1', command: { type: 'harden' } }]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
@@ -687,10 +687,10 @@ describe('ActionResolver', () => {
         expect(ice.invulnerable).toBe(false)
       }
 
-      expect(result.state.teams.chaff.glyphUsedTick).toBe(state.tick)
-      expect(result.state.teams.audit.glyphUsedTick).toBeNull()
+      expect(result.state.teams.chaff.hardenUsedTick).toBe(state.tick)
+      expect(result.state.teams.audit.hardenUsedTick).toBeNull()
 
-      const glyphEvents = result.events.filter((e) => e._tag === 'glyph_used')
+      const glyphEvents = result.events.filter((e) => e._tag === 'harden_used')
       expect(glyphEvents.length).toBe(1)
       expect(glyphEvents[0]!.team).toBe('chaff')
     })
@@ -774,19 +774,19 @@ describe('ActionResolver', () => {
       })
     })
 
-    it('should reject glyph when on cooldown', () => {
+    it('should reject harden when on cooldown', () => {
       const state = makeGameState({
         tick: 100,
         players: {
           p1: makePlayer({ id: 'p1', team: 'chaff' }),
         },
         teams: {
-          chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: 50 },
-          audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+          chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: 50 },
+          audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
         },
       })
 
-      const actions: PlayerAction[] = [{ playerId: 'p1', command: { type: 'glyph' } }]
+      const actions: PlayerAction[] = [{ playerId: 'p1', command: { type: 'harden' } }]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
@@ -795,7 +795,7 @@ describe('ActionResolver', () => {
         expect(ice.invulnerable).toBe(false)
       }
 
-      const cooldownEvents = result.events.filter((e) => e._tag === 'glyph_on_cooldown')
+      const cooldownEvents = result.events.filter((e) => e._tag === 'harden_on_cooldown')
       expect(cooldownEvents.length).toBe(1)
       expect(cooldownEvents[0]!.playerId).toBe('p1')
       expect(cooldownEvents[0]!.remainingTicks).toBeGreaterThan(0)

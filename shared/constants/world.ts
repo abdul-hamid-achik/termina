@@ -73,7 +73,7 @@ export const WARD_LABELS = {
 } as const
 
 export const ACTION_LABELS = {
-  glyph: 'HARDEN',
+  harden: 'HARDEN',
   deny: 'BURN',
 } as const
 

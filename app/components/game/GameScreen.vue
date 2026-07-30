@@ -1331,7 +1331,7 @@ function handleQuickAction(cmd: string) {
   handleCommand(cmd.toLowerCase())
 }
 
-// Situational actions (ward / deny / backup / cache / glyph / surrender) were
+// Situational actions (ward / deny / backup / cache / harden / surrender) were
 // command-line only — invisible + unusable on touch. Surface them as on-screen
 // buttons, shown only when actually available so the row stays contextual.
 // Which contextual actions the player can take now — pure rules extracted to a
@@ -1354,7 +1354,7 @@ function runSituational(cmd: string) {
   if (!p) return
   if (cmd === 'ward') handleCommand(`ward ${p.zone}`)
   else if (cmd === 'surrender') handleCommand('surrender confirm')
-  else handleCommand(cmd) // deny / backup / cache / glyph — bare commands (auto-resolved)
+  else handleCommand(cmd) // deny / backup / cache / harden — bare commands (auto-resolved)
 }
 
 // ── Quick action button availability ─────────────────────────
@@ -2011,7 +2011,7 @@ function handleReturnToMenu() {
         </button>
       </div>
       <!-- Situational actions — surfaced as buttons only when available, so the
-           command-only verbs (ward/deny/backup/cache/glyph/surrender) are usable
+           command-only verbs (ward/deny/backup/cache/harden/surrender) are usable
            on touch and discoverable to new players. -->
       <div
         v-if="situationalActions.length"

@@ -57,7 +57,7 @@ import {
   CREEP_GOLD_MAX,
   creepMaxHp,
   CREEP_XP_SHARED,
-  GLYPH_COOLDOWN_TICKS,
+  HARDEN_COOLDOWN_TICKS,
   DENY_HP_THRESHOLD,
   DENY_GOLD_RATIO,
   DENY_XP_RATIO,
@@ -296,7 +296,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       return null
     case 'select_talent':
       return null
-    case 'glyph':
+    case 'harden':
       return null
     default:
       return null
@@ -1478,7 +1478,7 @@ function resolveItemActivesPhase(
 }
 
 /**
- * Post-shop phases: glyph, backup/cache pickup, maxHp/maxMp recalc, gold/XP
+ * Post-shop phases: harden, backup/cache pickup, maxHp/maxMp recalc, gold/XP
  * awards (creep/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
@@ -1508,28 +1508,28 @@ function resolvePostShopPhases(
 } {
   let teams = { ...state.teams }
 
-  // Glyph commands
-  const glyphActions = validActions.filter((a) => a.command.type === 'glyph')
+  // Harden commands
+  const glyphActions = validActions.filter((a) => a.command.type === 'harden')
   for (const action of glyphActions) {
     const player = players[action.playerId]
     if (!player) continue
     const team = player.team
     const teamState = teams[team]
-    if (teamState.glyphUsedTick !== null) {
-      const ticksSinceUse = state.tick - teamState.glyphUsedTick
-      if (ticksSinceUse < GLYPH_COOLDOWN_TICKS) {
+    if (teamState.hardenUsedTick !== null) {
+      const ticksSinceUse = state.tick - teamState.hardenUsedTick
+      if (ticksSinceUse < HARDEN_COOLDOWN_TICKS) {
         events.push({
-          _tag: 'glyph_on_cooldown',
+          _tag: 'harden_on_cooldown',
           tick: state.tick,
           playerId: action.playerId,
-          remainingTicks: GLYPH_COOLDOWN_TICKS - ticksSinceUse,
+          remainingTicks: HARDEN_COOLDOWN_TICKS - ticksSinceUse,
         })
         continue
       }
     }
     ice = ice.map((t) => (t.team === team ? { ...t, invulnerable: true } : t))
-    teams = { ...teams, [team]: { ...teamState, glyphUsedTick: state.tick } }
-    events.push({ _tag: 'glyph_used', tick: state.tick, team })
+    teams = { ...teams, [team]: { ...teamState, hardenUsedTick: state.tick } }
+    events.push({ _tag: 'harden_used', tick: state.tick, team })
   }
 
   // Backup pickup
@@ -2014,7 +2014,7 @@ export function resolveActions(
       players = result.players
     }
 
-    // Handle glyph commands + pickups + statRecalc + awards + wards
+    // Handle harden commands + pickups + statRecalc + awards + wards
     let backupGround = state.backup
     let cachesGround = state.caches ?? []
     {

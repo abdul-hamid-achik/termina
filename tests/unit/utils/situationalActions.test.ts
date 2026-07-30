@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeSituationalActions, type SituationalContext } from '~~/app/utils/situationalActions'
-import { SURRENDER_MIN_TICK, GLYPH_COOLDOWN_TICKS } from '~~/shared/constants/balance'
+import { SURRENDER_MIN_TICK, HARDEN_COOLDOWN_TICKS } from '~~/shared/constants/balance'
 import type { PlayerState, CreepState } from '~~/shared/types/game'
 
 const player = (over: Partial<PlayerState> = {}): PlayerState =>
@@ -25,9 +25,9 @@ describe('computeSituationalActions', () => {
     expect(computeSituationalActions(baseCtx({ isAlive: false }))).toEqual([])
   })
 
-  it('offers only glyph in the empty base case (tick 0, nothing nearby)', () => {
-    // glyph is ready when there is no team state; surrender is gated by tick.
-    expect(cmds(baseCtx())).toEqual(['glyph'])
+  it('offers only harden in the empty base case (tick 0, nothing nearby)', () => {
+    // harden is ready when there is no team state; surrender is gated by tick.
+    expect(cmds(baseCtx())).toEqual(['harden'])
   })
 
   it('offers WARD only when carrying a ward item', () => {
@@ -62,17 +62,17 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ caches: [{ zone: 'top-t1-chaff' }] as never }))).not.toContain('cache')
   })
 
-  it('hides GLYPH while the team glyph is on cooldown', () => {
+  it('hides HARDEN while the team harden is on cooldown', () => {
     const onCd = baseCtx({
       tick: 10,
-      teams: { chaff: { glyphUsedTick: 10 }, audit: {} } as never,
+      teams: { chaff: { hardenUsedTick: 10 }, audit: {} } as never,
     })
-    expect(cmds(onCd)).not.toContain('glyph')
+    expect(cmds(onCd)).not.toContain('harden')
     const offCd = baseCtx({
-      tick: 10 + GLYPH_COOLDOWN_TICKS,
-      teams: { chaff: { glyphUsedTick: 10 }, audit: {} } as never,
+      tick: 10 + HARDEN_COOLDOWN_TICKS,
+      teams: { chaff: { hardenUsedTick: 10 }, audit: {} } as never,
     })
-    expect(cmds(offCd)).toContain('glyph')
+    expect(cmds(offCd)).toContain('harden')
   })
 
   it('offers SURRENDER only once the surrender window opens', () => {

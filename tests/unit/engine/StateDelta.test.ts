@@ -7,8 +7,8 @@ function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleSt
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
     },
     players: {},
     zones: {},
@@ -54,8 +54,8 @@ describe('StateDelta', () => {
 
     it('omits unchanged pass-through fields (teams, ice, ancients, tenant, etc.)', () => {
       const teams = {
-        chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
-        audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+        chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+        audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
       }
       const ice = [] as PlayerVisibleState['ice']
       const tenant = { alive: true, hp: 500, maxHp: 500, deathTick: null }
@@ -72,8 +72,8 @@ describe('StateDelta', () => {
     it('includes changed pass-through fields (teams, ice, etc.)', () => {
       const prev = makeState({ tick: 1 })
       const newTeams = {
-        chaff: { id: 'chaff', kills: 1, iceKills: 0, gold: 0, glyphUsedTick: null },
-        audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+        chaff: { id: 'chaff', kills: 1, iceKills: 0, gold: 0, hardenUsedTick: null },
+        audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
       }
       const current = makeState({ tick: 2, teams: newTeams })
       const delta = computeDelta(current, prev) as Partial<PlayerVisibleState>

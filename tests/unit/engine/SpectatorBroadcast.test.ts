@@ -20,7 +20,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
         kills: 0,
         iceKills: 0,
         gold: 0,
-        glyphUsedTick: null,
+        hardenUsedTick: null,
         glyphCooldown: 0,
       },
       audit: {
@@ -28,7 +28,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
         kills: 0,
         iceKills: 0,
         gold: 0,
-        glyphUsedTick: null,
+        hardenUsedTick: null,
         glyphCooldown: 0,
       },
     },

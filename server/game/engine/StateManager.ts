@@ -127,8 +127,8 @@ function createInitialGameState(
     tick: 0,
     phase: 'picking',
     teams: {
-      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
     },
     players: playerStates,
     zones: initializeZoneStates(zones),

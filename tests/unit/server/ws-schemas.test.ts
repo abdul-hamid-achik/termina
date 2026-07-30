@@ -234,7 +234,7 @@ describe('commandSchema', () => {
   })
 
   describe('bare commands', () => {
-    it.each(['backup', 'grab', 'scan', 'status', 'map', 'buyback', 'glyph'] as const)(
+    it.each(['backup', 'grab', 'scan', 'status', 'map', 'buyback', 'harden'] as const)(
       'accepts bare %s command',
       (type) => {
         ok(commandSchema, { type })

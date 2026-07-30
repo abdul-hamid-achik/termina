@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, ENEMY, HUMAN } from './harness'
 import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
-import { GLYPH_DURATION_TICKS } from '~~/shared/constants/balance'
+import { HARDEN_DURATION_TICKS } from '~~/shared/constants/balance'
 
 /**
  * Replaces tests/e2e/flows/game_attack_lands.yml — a human basic attack on a
@@ -685,45 +685,45 @@ describe('combat', () => {
     expect(creep && creep.hp < 300).toBe(true)
   })
 
-  it('using Glyph turns all of the team’s ice invulnerable', async () => {
+  it('using Harden turns all of the team’s ice invulnerable', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
 
-    game.submit({ type: 'glyph' })
+    game.submit({ type: 'harden' })
     await game.tick()
 
     const myIce = (await game.state()).ice.filter((t) => t.team === me.team)
     expect(myIce.length).toBeGreaterThan(0)
     expect(myIce.every((t) => t.invulnerable)).toBe(true)
-    expect(game.lastEvents.some((e) => e._tag === 'glyph_used')).toBe(true)
+    expect(game.lastEvents.some((e) => e._tag === 'harden_used')).toBe(true)
   })
 
-  it('Glyph cannot be reused while on cooldown', async () => {
+  it('Harden cannot be reused while on cooldown', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
 
-    // First glyph: sets the team's glyph cooldown.
-    game.submit({ type: 'glyph' })
+    // First harden: sets the team's harden cooldown.
+    game.submit({ type: 'harden' })
     await game.tick()
-    expect(game.lastEvents.some((e) => e._tag === 'glyph_used')).toBe(true)
+    expect(game.lastEvents.some((e) => e._tag === 'harden_used')).toBe(true)
 
-    // Second glyph one tick later: still on cooldown, so it's rejected.
-    game.submit({ type: 'glyph' })
+    // Second harden one tick later: still on cooldown, so it's rejected.
+    game.submit({ type: 'harden' })
     await game.tick()
-    expect(game.lastEvents.some((e) => e._tag === 'glyph_on_cooldown')).toBe(true)
+    expect(game.lastEvents.some((e) => e._tag === 'harden_on_cooldown')).toBe(true)
   })
 
-  it('Glyph wears off after GLYPH_DURATION_TICKS — ice become vulnerable again', async () => {
+  it('Harden wears off after HARDEN_DURATION_TICKS — ice become vulnerable again', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const team = me.team
 
-    // Simulate a glyph cast that's now exactly past its duration: invulnerable
-    // ice + a glyphUsedTick old enough that expireGlyph should lift it.
+    // Simulate a harden cast that's now exactly past its duration: invulnerable
+    // ice + a hardenUsedTick old enough that expireGlyph should lift it.
     await game.patch((s) => ({
       ...s,
       teams: {
         ...s.teams,
-        [team]: { ...s.teams[team]!, glyphUsedTick: s.tick - GLYPH_DURATION_TICKS },
+        [team]: { ...s.teams[team]!, hardenUsedTick: s.tick - HARDEN_DURATION_TICKS },
       },
       ice: s.ice.map((t) => (t.team === team ? { ...t, invulnerable: true } : t)),
     }))
