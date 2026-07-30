@@ -123,14 +123,14 @@ describe('browseSections', () => {
       browseSections(cats, ITEMS, 'all', q).flatMap((s) => s.items.map((i) => i.id))
     expect(byName('camtap')).toContain('camtap')
     expect(byName('sniffer')).toContain('sniffer')
-    expect(byName('camtap')).not.toContain('dagon')
+    expect(byName('camtap')).not.toContain('burnout')
   })
   it('drops sections left empty by the search and returns [] on no match', () => {
     expect(browseSections(cats, ITEMS, 'all', 'zzzznotanitem')).toEqual([])
   })
   it('ignores surrounding whitespace in the search', () => {
-    const a = browseSections(cats, ITEMS, 'all', '  dagon  ')
-    expect(a.flatMap((s) => s.items.map((i) => i.id))).toContain('dagon')
+    const a = browseSections(cats, ITEMS, 'all', '  burnout  ')
+    expect(a.flatMap((s) => s.items.map((i) => i.id))).toContain('burnout')
   })
 })
 

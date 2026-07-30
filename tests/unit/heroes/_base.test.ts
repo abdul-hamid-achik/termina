@@ -893,7 +893,7 @@ describe('_base hero utilities', () => {
 
     it('applies the caster’s Mystical Staff amp to magical damage only', () => {
       const zone = 'mid-t1-chaff'
-      const amped = makePlayer({ zone, items: ['mystical_staff', null, null, null, null, null] })
+      const amped = makePlayer({ zone, items: ['amp_stack', null, null, null, null, null] })
       const plain = makePlayer({ zone })
       const state = makeGameState({ waves: [wave()] })
 

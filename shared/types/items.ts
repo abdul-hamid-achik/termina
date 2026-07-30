@@ -45,7 +45,7 @@ export type ItemCategoryId = 'chrome' | 'deck' | 'hardware' | 'wetware' | 'stree
 
 /**
  * A thematic shop section for the items reference page. The grouping is
- * curated data (not derivable from stats — e.g. Dagon and Ethereal Blade both
+ * curated data (not derivable from stats — e.g. Burnout and Phase Shim both
  * carry attack+mp yet are Magic items) and is kept in sync with the ITEMS
  * registry by a structural test in tests/unit/shared/itemFormat.test.ts.
  */

@@ -191,7 +191,7 @@ const commands = [
   },
   {
     cmd: 'use <item>',
-    desc: 'Use an active/consumable item. Offensive actives (Dagon, Hex…) auto-hit the nearest enemy',
+    desc: 'Use an active/consumable item. Offensive actives (Burnout, Hex…) auto-hit the nearest enemy',
     example: 'use trauma_patch',
     shortcuts: '—',
   },

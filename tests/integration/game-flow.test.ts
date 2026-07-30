@@ -368,7 +368,7 @@ describe('Game Flow Integration', () => {
       const initial = await Effect.runPromise(sm.getState(gameId))
       const baseMaxMp = initial.players['imp_r0']!.maxMp
       expect(baseMaxMp).toBeGreaterThan(0)
-      const itemMp = getItem('aether_lens')!.stats.mp!
+      const itemMp = getItem('clock_lens')!.stats.mp!
       expect(itemMp).toBeGreaterThan(0)
 
       // Drain to ~50% MP first (inCombat blocks fountain mana regen)
@@ -382,11 +382,11 @@ describe('Game Flow Integration', () => {
       const pre = await Effect.runPromise(sm.getState(gameId))
       const mpPercent = pre.players['imp_r0']!.mp / pre.players['imp_r0']!.maxMp
 
-      submitAction(gameId, 'imp_r0', { type: 'buy', item: 'aether_lens' })
+      submitAction(gameId, 'imp_r0', { type: 'buy', item: 'clock_lens' })
       const result = await runTick(sm, gameId)
       const bought = result.state.players['imp_r0']!
 
-      expect(bought.items).toContain('aether_lens')
+      expect(bought.items).toContain('clock_lens')
       expect(bought.maxMp).toBe(baseMaxMp + itemMp)
       // The percentage — not the flat MP — carried over the max-MP increase
       expect(bought.mp).toBe(Math.floor((baseMaxMp + itemMp) * mpPercent))
@@ -399,7 +399,7 @@ describe('Game Flow Integration', () => {
       const sixItems = [
         'scrap_lot',
         'clot_ring',
-        'aether_lens',
+        'clock_lens',
         'trauma_patch',
         'charge_tab',
         'camtap',

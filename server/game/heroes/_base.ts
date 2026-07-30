@@ -324,7 +324,7 @@ export function dealDamage(
   let remaining = Math.round(effective * hardenedReduction)
 
   // Target-side vuln debuffs amplify incoming damage (magic-vuln for magical:
-  // regex Q / Veil / Ethereal Blade; thread Yield for all types). Applied before
+  // regex Q / Veil / Phase Shim; thread Yield for all types). Applied before
   // shield so the shield soaks the amplified amount ("takes more damage").
   remaining = Math.round(remaining * getIncomingDamageMultiplier(target, damageType))
 
@@ -350,17 +350,17 @@ export function dealDamage(
   return { ...target, hp: newHp, alive: newHp > 0 }
 }
 
-/** Mystical Staff (Arcane Power): +15% to all magical damage the owner deals. */
+/** Amp Stack (Arcane Power): +15% to all magical damage the owner deals. */
 const MYSTICAL_STAFF_MAGIC_AMP = 0.15
 
 /** Caster-side outgoing magical-damage multiplier from equipped items. */
 export function getMagicAmp(caster: PlayerState): number {
-  return caster.items.includes('mystical_staff') ? 1 + MYSTICAL_STAFF_MAGIC_AMP : 1
+  return caster.items.includes('amp_stack') ? 1 + MYSTICAL_STAFF_MAGIC_AMP : 1
 }
 
 /**
  * Deal ability damage crediting the casting hero, so caster-side amplifiers
- * (currently Mystical Staff's +15% magical) are applied before the target's
+ * (currently Amp Stack's +15% magical) are applied before the target's
  * mitigation in dealDamage. Non-magical damage passes through unchanged. Hero
  * ability/passive damage should route through here; `dealDamage` remains the
  * lower-level target-only primitive.
@@ -384,7 +384,7 @@ export function dealAbilityDamage(
  *
  * Waves carry no defense or magic-resist stat, so the target-side mitigation
  * in `dealDamage` has nothing to read — only the CASTER-side amplifier
- * (Mystical Staff's +15% magical) applies, matching `dealAbilityDamage` so the
+ * (Amp Stack's +15% magical) applies, matching `dealAbilityDamage` so the
  * two damage paths can't diverge on the same item.
  *
  * Dead NPCs are left in the array at 0 HP (`alive: false` for neutrals) rather
@@ -491,7 +491,7 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
       const damageType: DamageType = dot.id.includes('phys') ? 'physical' : 'magical'
       // Immunity skips the tick (e.g. BKB magic_immune ignores a magical DoT).
       if (isDamageImmune(target, damageType)) continue
-      // Caster-side amplifiers (Mystical Staff +15% magical) apply to DoTs
+      // Caster-side amplifiers (Amp Stack +15% magical) apply to DoTs
       // too — the DoT is still the caster's outgoing magical damage.
       const caster = dot.source ? state.players[dot.source] : undefined
       const amp = damageType === 'magical' && caster ? getMagicAmp(caster) : 1

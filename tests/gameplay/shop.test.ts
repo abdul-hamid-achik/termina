@@ -74,21 +74,21 @@ describe('shop', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['blink_module', null, null, null, null, null],
+          items: ['jump_shunt', null, null, null, null, null],
           buffs: [], // no item cooldown
         },
       },
     }))
 
     // mid-river is adjacent to mid-t1-chaff; blink takes a zone-id string target.
-    game.submit({ type: 'use', item: 'blink_module', target: 'mid-t1-chaff' })
+    game.submit({ type: 'use', item: 'jump_shunt', target: 'mid-t1-chaff' })
     await game.tick()
 
     expect((await game.me()).zone).toBe('mid-t1-chaff')
   })
 
-  it('using Dagon nukes a targeted enemy for magical damage (offensive item active)', async () => {
-    // The offensive-item path the auto-target resolves to: `use dagon hero:<id>`
+  it('using Burnout nukes a targeted enemy for magical damage (offensive item active)', async () => {
+    // The offensive-item path the auto-target resolves to: `use burnout hero:<id>`
     // runs submitAction → resolveActions → useItem and applies 300 magical
     // damage (reduced by magic resist) to a co-located enemy.
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
@@ -98,7 +98,7 @@ describe('shop', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['dagon', null, null, null, null, null],
+          items: ['burnout', null, null, null, null, null],
           buffs: [],
         },
         [ENEMY]: { ...s.players[ENEMY]!, hp: 1000, maxHp: 1000 },
@@ -106,7 +106,7 @@ describe('shop', () => {
     }))
 
     const before = (await game.player(ENEMY)).hp
-    game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: ENEMY } })
+    game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
     const after = (await game.player(ENEMY)).hp
 
@@ -132,7 +132,7 @@ describe('shop', () => {
     game.submit({ type: 'use', item: 'hardshell' })
     await game.tick()
 
-    // BKB applies a multi-tick magic_immune buff (still present after this tick).
+    // Hardshell applies a multi-tick magic_immune buff (still present after this tick).
     expect((await game.me()).buffs.some((b) => b.id === 'magic_immune')).toBe(true)
   })
 
@@ -147,7 +147,7 @@ describe('shop', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['refresher_orb', null, null, null, null, null],
+          items: ['redline_splice', null, null, null, null, null],
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [],
         },
@@ -160,7 +160,7 @@ describe('shop', () => {
     expect((await game.me()).cooldowns.w).toBeGreaterThan(0)
 
     // Pop Refresher — every ability cooldown is wiped back to zero.
-    game.submit({ type: 'use', item: 'refresher_orb' })
+    game.submit({ type: 'use', item: 'redline_splice' })
     await game.tick()
     expect((await game.me()).cooldowns.w).toBe(0)
 
@@ -253,7 +253,7 @@ describe('shop', () => {
     expect((await game.me()).buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
   })
 
-  it('Shiva’s Guard novas every co-located enemy — magic damage + a slow', async () => {
+  it('Cryo Routine novas every co-located enemy — magic damage + a slow', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxHp recompute
     await game.patch((s) => ({
@@ -262,13 +262,13 @@ describe('shop', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['shivas_guard', null, null, null, null, null],
+          items: ['cryo_routine', null, null, null, null, null],
         },
         [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
       },
     }))
 
-    game.submit({ type: 'use', item: 'shivas_guard' })
+    game.submit({ type: 'use', item: 'cryo_routine' })
     await game.tick()
 
     const foe = await game.player(ENEMY)
@@ -286,13 +286,13 @@ describe('shop', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['veil_of_discord', null, null, null, null, null],
+          items: ['discord_routine', null, null, null, null, null],
         },
         [ENEMY]: { ...s.players[ENEMY]!, buffs: [] },
       },
     }))
 
-    game.submit({ type: 'use', item: 'veil_of_discord' })
+    game.submit({ type: 'use', item: 'discord_routine' })
     await game.tick()
 
     // The amp lands on the ENEMY (not the caster) — the magic-vuln debuff that

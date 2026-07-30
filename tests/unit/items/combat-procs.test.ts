@@ -399,13 +399,13 @@ describe('Item combat procs — on-hit effects', () => {
 // ── Active-item nukes / debuffs (use → effect) ──────────────────
 
 describe('Item actives — direct effects', () => {
-  it('dagon nukes the target for 300 magical (reduced by MR) in one use', () => {
+  it('burnout nukes the target for 300 magical (reduced by MR) in one use', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          items: ['dagon', null, null, null, null, null],
+          items: ['burnout', null, null, null, null, null],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
@@ -414,7 +414,7 @@ describe('Item actives — direct effects', () => {
     const r = run(state, [
       {
         playerId: 'p1',
-        command: { type: 'use', item: 'dagon', target: { kind: 'hero', name: 'Enemy' } },
+        command: { type: 'use', item: 'burnout', target: { kind: 'hero', name: 'Enemy' } },
       },
     ])
     const lost = start - r.state.players['p2']!.hp
@@ -423,17 +423,17 @@ describe('Item actives — direct effects', () => {
     expect(lost).toBe(expected)
     expect(expected).toBeGreaterThan(250) // ~261 — close to 300 before reduction.
     // caster gets the cooldown buff.
-    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_dagon')).toBe(true)
+    expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_burnout')).toBe(true)
   })
 
-  it('ethereal_blade end-to-end: target becomes physical-immune AND takes +40% magical', () => {
-    // Tick 1: cast ethereal_blade on the enemy.
+  it('phase_shim end-to-end: target becomes physical-immune AND takes +40% magical', () => {
+    // Tick 1: cast phase_shim on the enemy.
     const s1 = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          items: ['ethereal_blade', 'dagon', null, null, null, null],
+          items: ['phase_shim', 'burnout', null, null, null, null],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
@@ -441,7 +441,7 @@ describe('Item actives — direct effects', () => {
     const r1 = run(s1, [
       {
         playerId: 'p1',
-        command: { type: 'use', item: 'ethereal_blade', target: { kind: 'hero', name: 'Enemy' } },
+        command: { type: 'use', item: 'phase_shim', target: { kind: 'hero', name: 'Enemy' } },
       },
     ])
     const target1 = r1.state.players['p2']!
@@ -453,11 +453,11 @@ describe('Item actives — direct effects', () => {
     const physResult = run(s2, [attack('p1', 'Enemy')])
     expect(physResult.state.players['p2']!.hp).toBe(target1.hp) // no physical damage
 
-    // Tick 2b: a magical nuke (dagon 300) into the ethereal target is amplified +40%.
+    // Tick 2b: a magical nuke (burnout 300) into the ethereal target is amplified +40%.
     const magResult = run(s2, [
       {
         playerId: 'p1',
-        command: { type: 'use', item: 'dagon', target: { kind: 'hero', name: 'Enemy' } },
+        command: { type: 'use', item: 'burnout', target: { kind: 'hero', name: 'Enemy' } },
       },
     ])
     const lost = target1.hp - magResult.state.players['p2']!.hp
@@ -471,18 +471,18 @@ describe('Item actives — direct effects', () => {
 // ── Forced-movement actives (zone change) ───────────────────────
 
 describe('Item actives — forced movement', () => {
-  it('force_staff disengages the caster one zone toward their own fountain (deterministic)', () => {
+  it('shove_splice disengages the caster one zone toward their own fountain (deterministic)', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
           zone: 'mid-river',
-          items: ['force_staff', null, null, null, null, null],
+          items: ['shove_splice', null, null, null, null, null],
         }),
       },
     })
-    const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'force_staff' } }])
+    const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'shove_splice' } }])
     const newZone = r.state.players['p1']!.zone
     expect(newZone).not.toBe('mid-river')
     expect(['mid-t1-chaff', 'mid-t1-audit', 'cache-top', 'cache-bot']).toContain(newZone)
@@ -494,14 +494,14 @@ describe('Item actives — forced movement', () => {
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_force_staff')).toBe(true)
   })
 
-  it('hurricane_pike pushes the caster away from a targeted enemy', () => {
+  it('kickback_splice pushes the caster away from a targeted enemy', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
           zone: 'mid-river',
-          items: ['hurricane_pike', null, null, null, null, null],
+          items: ['kickback_splice', null, null, null, null, null],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy', zone: 'mid-river' }),
       },
@@ -509,7 +509,7 @@ describe('Item actives — forced movement', () => {
     const r = run(state, [
       {
         playerId: 'p1',
-        command: { type: 'use', item: 'hurricane_pike', target: { kind: 'hero', name: 'Enemy' } },
+        command: { type: 'use', item: 'kickback_splice', target: { kind: 'hero', name: 'Enemy' } },
       },
     ])
     const newZone = r.state.players['p1']!.zone
@@ -523,7 +523,7 @@ describe('Item actives — forced movement', () => {
     expect(r.state.players['p2']!.zone).toBe('mid-river')
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_hurricane_pike')).toBe(true)
     // post-thrust attack steroid (read in getEffectiveAttack)
-    const steroid = r.state.players['p1']!.buffs.find((b) => b.id === 'hurricane_pike_attacks')
+    const steroid = r.state.players['p1']!.buffs.find((b) => b.id === 'kickback_splice_attacks')
     expect(steroid?.stacks).toBe(30)
   })
 })
@@ -595,15 +595,15 @@ describe('Backup pickup through resolveActions (was dropping ground-removal + ev
   })
 })
 
-describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", () => {
+describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', () => {
   const shiva = (overrides = {}) =>
     makePlayer({
       id: 'p1',
       team: 'chaff',
-      items: ['shivas_guard', null, null, null, null, null],
+      items: ['cryo_routine', null, null, null, null, null],
       ...overrides,
     })
-  const useShiva = { playerId: 'p1', command: { type: 'use' as const, item: 'shivas_guard' } }
+  const useShiva = { playerId: 'p1', command: { type: 'use' as const, item: 'cryo_routine' } }
 
   it('Arctic Blast damages AND slows every in-zone enemy', () => {
     const state = makeGameState({
@@ -636,7 +636,7 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
     expect(r.state.players['far']!.hp).toBe(farHp)
   })
 
-  it('deals no magical damage to a magic-immune (BKB) enemy, but still slows it', () => {
+  it('deals no magical damage to a magic-immune (Hardshell) enemy, but still slows it', () => {
     const state = makeGameState({
       players: {
         p1: shiva(),
@@ -653,7 +653,7 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
     const r = run(state, [useShiva])
     // Magical nova is fully absorbed by spell immunity...
     expect(r.state.players['bkb']!.hp).toBe(hp0)
-    // ...but the slow still lands (BKB lets you ACT through controls; it doesn't
+    // ...but the slow still lands (Hardshell lets you ACT through controls; it doesn't
     // block slow application in this engine — same as every other slow source).
     expect(r.state.players['bkb']!.buffs.some((b) => b.id === 'slow')).toBe(true)
   })
@@ -668,7 +668,7 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
       })
     const plain = mk([])
     const veiled = mk([
-      { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'veil_of_discord' },
+      { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'discord_routine' },
     ])
     const dmgPlain = plain.players['e']!.hp - run(plain, [useShiva]).state.players['e']!.hp
     const dmgVeiled = veiled.players['e']!.hp - run(veiled, [useShiva]).state.players['e']!.hp
@@ -743,18 +743,18 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
 })
 
 describe('Refresher Orb active resets all ability cooldowns', () => {
-  it('use refresher_orb zeroes q/w/e/r and goes on its own cooldown', () => {
+  it('use redline_splice zeroes q/w/e/r and goes on its own cooldown', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          items: ['refresher_orb', null, null, null, null, null],
+          items: ['redline_splice', null, null, null, null, null],
           cooldowns: { q: 5, w: 3, e: 8, r: 20 },
         }),
       },
     })
-    const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'refresher_orb' } }])
+    const r = run(state, [{ playerId: 'p1', command: { type: 'use', item: 'redline_splice' } }])
     expect(r.state.players['p1']!.cooldowns).toEqual({ q: 0, w: 0, e: 0, r: 0 })
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_refresher_orb')).toBe(true)
   })

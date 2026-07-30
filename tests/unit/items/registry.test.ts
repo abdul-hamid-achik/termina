@@ -17,7 +17,6 @@ describe('Item Registry', () => {
         'edge_kit',
         'plate_weave',
         'field_damper',
-        'boots_of_speed',
       ]
       for (const id of starterIds) {
         expect(ITEMS[id]).toBeDefined()
@@ -44,12 +43,12 @@ describe('Item Registry', () => {
 
     it('contains magic items', () => {
       const magicIds = [
-        'mystical_staff',
-        'veil_of_discord',
-        'shivas_guard',
-        'aether_lens',
-        'dagon',
-        'ethereal_blade',
+        'amp_stack',
+        'discord_routine',
+        'cryo_routine',
+        'clock_lens',
+        'burnout',
+        'phase_shim',
         'stack_overflow',
       ]
       for (const id of magicIds) {
@@ -76,13 +75,13 @@ describe('Item Registry', () => {
 
     it('contains utility items', () => {
       const utilityIds = [
-        'blink_module',
-        'force_staff',
-        'hurricane_pike',
-        'scythe_of_vyse',
-        'euls_scepter',
-        'refresher_orb',
-        'ghost_scepter',
+        'jump_shunt',
+        'shove_splice',
+        'kickback_splice',
+        'lockout_shunt',
+        'stasis_shunt',
+        'redline_splice',
+        'phase_shunt',
       ]
       for (const id of utilityIds) {
         expect(ITEMS[id]).toBeDefined()
@@ -217,7 +216,7 @@ describe('Item Registry', () => {
     })
 
     it('non-consumable items do not have maxStacks', () => {
-      const nonConsumable = ['boots_of_speed', 'null_pointer', 'killshot_coil', 'bulk_lattice']
+      const nonConsumable = ['null_pointer', 'killshot_coil', 'bulk_lattice']
       for (const id of nonConsumable) {
         const item = getItem(id)!
         expect(item.consumable).toBe(false)
@@ -227,10 +226,10 @@ describe('Item Registry', () => {
   })
 
   describe('item abilities', () => {
-    it('blink_module has an active ability with cooldown', () => {
-      const item = getItem('blink_module')!
+    it('jump_shunt has an active ability with cooldown', () => {
+      const item = getItem('jump_shunt')!
       expect(item.active).toBeDefined()
-      expect(item.active!.id).toBe('blink_module_active')
+      expect(item.active!.id).toBe('jump_shunt_active')
       expect(item.active!.cooldownTicks).toBe(12)
     })
 
@@ -284,8 +283,8 @@ describe('Item Registry', () => {
       expect(item.active!.cooldownTicks).toBe(30)
     })
 
-    it('dagon has an active damage ability', () => {
-      const item = getItem('dagon')!
+    it('burnout has an active damage ability', () => {
+      const item = getItem('burnout')!
       expect(item.active).toBeDefined()
       expect(item.active!.name).toBe('Energy Burst')
     })
@@ -296,23 +295,17 @@ describe('Item Registry', () => {
       expect(item.active!.name).toBe('Avatar')
     })
 
-    it('scythe_of_vyse has hex active', () => {
-      const item = getItem('scythe_of_vyse')!
+    it('lockout_shunt has hex active', () => {
+      const item = getItem('lockout_shunt')!
       expect(item.active).toBeDefined()
       expect(item.active!.name).toBe('Hex')
     })
 
-    it('refresher_orb resets cooldowns', () => {
-      const item = getItem('refresher_orb')!
+    it('redline_splice resets cooldowns', () => {
+      const item = getItem('redline_splice')!
       expect(item.active).toBeDefined()
       expect(item.active!.name).toBe('Reset Cooldowns')
       expect(item.active!.cooldownTicks).toBe(40)
-    })
-
-    it('boots_of_speed has no active or passive', () => {
-      const item = getItem('boots_of_speed')!
-      expect(item.active).toBeUndefined()
-      expect(item.passive).toBeUndefined()
     })
 
     it('scrap_lot has no active or passive', () => {
@@ -330,11 +323,6 @@ describe('Item Registry', () => {
       expect(item.stats.attack).toBe(3)
       expect(item.stats.defense).toBe(3)
       expect(item.stats.magicResist).toBe(3)
-    })
-
-    it('boots_of_speed provides moveSpeed', () => {
-      const item = getItem('boots_of_speed')!
-      expect(item.stats.moveSpeed).toBe(1)
     })
 
     it('last_word provides massive attack', () => {
@@ -379,8 +367,8 @@ describe('Item Registry', () => {
       expect(item.stats.hp).toBe(100)
     })
 
-    it('mystical_staff provides MP and magic resist', () => {
-      const item = getItem('mystical_staff')!
+    it('amp_stack provides MP and magic resist', () => {
+      const item = getItem('amp_stack')!
       expect(item.stats.mp).toBe(200)
       expect(item.stats.magicResist).toBe(10)
     })
@@ -391,7 +379,7 @@ describe('Item Registry', () => {
       const starterCosts = ['trauma_patch', 'charge_tab', 'scrap_lot'].map(
         (id) => getItem(id)!.cost,
       )
-      const coreCosts = ['blink_module', 'killshot_coil', 'bulk_lattice'].map(
+      const coreCosts = ['jump_shunt', 'killshot_coil', 'bulk_lattice'].map(
         (id) => getItem(id)!.cost,
       )
 
@@ -421,10 +409,10 @@ describe('Item Registry', () => {
       const legendaryItems = [
         'last_word',
         'killshot_coil',
-        'scythe_of_vyse',
+        'lockout_shunt',
         'bulk_lattice',
         'siege_lattice',
-        'shivas_guard',
+        'cryo_routine',
         'ghostwire_edge',
         'segfault_blade',
       ]
@@ -455,16 +443,37 @@ describe('Item Registry', () => {
       // therefore DO something else: a non-moveSpeed stat, an active, or a passive
       // — otherwise it's a gold sink that does nothing.
       //
-      // KNOWN_DEAD: boots_of_speed is a pure-moveSpeed item kept for its iconic
-      // name; it does nothing today (the bot AI already avoids it). Flagged for an
-      // owner balance pass — see the termina-dead-boots memory. This guard keeps a
-      // NEW dead item from slipping into the shop.
-      const KNOWN_DEAD = new Set(['boots_of_speed'])
+      // This guard keeps a dead item from slipping into the shop — an item
+      // whose only stat is the inert moveSpeed does nothing (boots_of_speed
+      // was deleted for exactly this).
       for (const def of Object.values(ITEMS)) {
-        if (def.consumable || KNOWN_DEAD.has(def.id)) continue
+        if (def.consumable) continue
         const functionalStats = Object.keys(def.stats).filter((k) => k !== 'moveSpeed')
         const functional = functionalStats.length > 0 || !!def.active || !!def.passive
         expect(functional, `${def.id} grants nothing the engine consumes`).toBe(true)
+      }
+    })
+  })
+
+  describe('the naming rule (R1 — the firewall_item law)', () => {
+    it('no item name carries an apostrophe, a possessive, or three+ tokens', () => {
+      for (const def of Object.values(ITEMS)) {
+        expect(def.name, `${def.id} name "${def.name}" has an apostrophe`).not.toMatch(/['’]/)
+        const tokens = def.name.split(/\s+/)
+        expect(
+          tokens.length,
+          `${def.id} name "${def.name}" exceeds <QUALIFIER> <NOUN>`,
+        ).toBeLessThanOrEqual(2)
+      }
+    })
+
+    it('every item id is the snake_case of its display name', () => {
+      for (const def of Object.values(ITEMS)) {
+        const expected = def.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+        expect(def.id, `${def.id} is not the snake_case of "${def.name}"`).toBe(expected)
       }
     })
   })

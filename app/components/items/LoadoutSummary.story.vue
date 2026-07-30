@@ -3,12 +3,12 @@ import LoadoutSummary from './LoadoutSummary.vue'
 import { ITEMS } from '~~/shared/constants/items'
 
 const empty: never[] = []
-const partial = [ITEMS.bulwark_plate!, ITEMS.dagon!]
+const partial = [ITEMS.bulwark_plate!, ITEMS.burnout!]
 const full = [
   ITEMS.killshot_coil!,
   ITEMS.hardshell!,
   ITEMS.bulk_lattice!,
-  ITEMS.scythe_of_vyse!,
+  ITEMS.lockout_shunt!,
   ITEMS.ghostwire_edge!,
   ITEMS.siege_lattice!,
 ]

@@ -182,7 +182,7 @@ describe('commandSchema', () => {
     it('accepts item with TargetRef target', () => {
       ok(commandSchema, {
         type: 'use',
-        item: 'dagon',
+        item: 'burnout',
         target: { kind: 'wave', index: 4 },
       })
     })

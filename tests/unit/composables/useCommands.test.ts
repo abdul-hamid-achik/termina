@@ -44,7 +44,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     level: 3,
     xp: 150,
     gold: 300,
-    items: ['boots', null, null, null, null, null],
+    items: ['scrap_lot', null, null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
@@ -405,10 +405,10 @@ describe('useCommands', () => {
     describe('use command', () => {
       it('parses use item without target', () => {
         const { parse } = useCommands()
-        const result = parse('use boots')
+        const result = parse('use scrap_lot')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'use', item: 'boots', target: undefined })
+        expect(result.command).toEqual({ type: 'use', item: 'scrap_lot', target: undefined })
       })
 
       it('parses use item with hero target', () => {
@@ -443,10 +443,10 @@ describe('useCommands', () => {
     describe('buy command', () => {
       it('parses buy item', () => {
         const { parse } = useCommands()
-        const result = parse('buy boots')
+        const result = parse('buy scrap_lot')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'buy', item: 'boots' })
+        expect(result.command).toEqual({ type: 'buy', item: 'scrap_lot' })
       })
 
       it('returns error without item', () => {
@@ -461,10 +461,10 @@ describe('useCommands', () => {
     describe('sell command', () => {
       it('parses sell item', () => {
         const { parse } = useCommands()
-        const result = parse('sell boots')
+        const result = parse('sell scrap_lot')
 
         expect(result.error).toBeNull()
-        expect(result.command).toEqual({ type: 'sell', item: 'boots' })
+        expect(result.command).toEqual({ type: 'sell', item: 'scrap_lot' })
       })
 
       it('returns error without item', () => {
@@ -844,10 +844,10 @@ describe('useCommands', () => {
 
     it('expands b → buy', () => {
       const { parse } = useCommands()
-      const result = parse('b boots')
+      const result = parse('b scrap_lot')
 
       expect(result.error).toBeNull()
-      expect(result.command).toEqual({ type: 'buy', item: 'boots' })
+      expect(result.command).toEqual({ type: 'buy', item: 'scrap_lot' })
     })
 
     it('shortcut q without target works', () => {
@@ -1324,16 +1324,16 @@ describe('useCommands', () => {
             cooldownTicks: 0,
           },
         },
-        boots_of_speed: {
-          id: 'boots_of_speed',
-          name: 'Boots of Speed',
-          cost: 500,
-          stats: { moveSpeed: 1 },
+        scrap_lot: {
+          id: 'scrap_lot',
+          name: 'Scrap Lot',
+          cost: 100,
+          stats: { hp: 30, mp: 30, attack: 3, defense: 3, magicResist: 3 },
           consumable: false,
         },
-        blink_module: {
-          id: 'blink_module',
-          name: 'Blink Module',
+        jump_shunt: {
+          id: 'jump_shunt',
+          name: 'Jump Shunt',
           cost: 2150,
           stats: { attack: 10 },
           consumable: false,
@@ -1376,11 +1376,11 @@ describe('useCommands', () => {
           player: makePlayer({ gold: 100 }),
           items: sampleItems,
         })
-        const suggestions = autocomplete('buy boots', context)
-        const boots = suggestions.find((s) => s.text === 'boots_of_speed')
+        const suggestions = autocomplete('buy jump', context)
+        const jump = suggestions.find((s) => s.text === 'jump_shunt')
 
-        expect(boots).toBeDefined()
-        expect(boots!.description).toContain('[need 400sc]')
+        expect(jump).toBeDefined()
+        expect(jump!.description).toContain('[need 2050sc]')
       })
 
       it('returns empty when no items in context', () => {
@@ -1394,11 +1394,11 @@ describe('useCommands', () => {
 
     describe('sell item completion', () => {
       const sampleItems: Record<string, ItemDef> = {
-        boots_of_speed: {
-          id: 'boots_of_speed',
-          name: 'Boots of Speed',
-          cost: 500,
-          stats: { moveSpeed: 1 },
+        scrap_lot: {
+          id: 'scrap_lot',
+          name: 'Scrap Lot',
+          cost: 100,
+          stats: { hp: 30, mp: 30, attack: 3, defense: 3, magicResist: 3 },
           consumable: false,
         },
         trauma_patch: {
@@ -1415,9 +1415,9 @@ describe('useCommands', () => {
             cooldownTicks: 0,
           },
         },
-        blink_module: {
-          id: 'blink_module',
-          name: 'Blink Module',
+        jump_shunt: {
+          id: 'jump_shunt',
+          name: 'Jump Shunt',
           cost: 2150,
           stats: { attack: 10 },
           consumable: false,
@@ -1429,34 +1429,34 @@ describe('useCommands', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           player: makePlayer({
-            items: ['boots_of_speed', 'trauma_patch', null, null, null, null],
+            items: ['scrap_lot', 'trauma_patch', null, null, null, null],
           }),
           items: sampleItems,
         })
-        const suggestions = autocomplete('sell boots', context)
+        const suggestions = autocomplete('sell scrap', context)
         const texts = suggestions.map((s) => s.text)
 
-        expect(texts).toContain('boots_of_speed')
-        expect(texts).not.toContain('blink_module')
+        expect(texts).toContain('scrap_lot')
+        expect(texts).not.toContain('jump_shunt')
       })
 
       it('includes sell price in description', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ items: ['boots_of_speed', null, null, null, null, null] }),
+          player: makePlayer({ items: ['scrap_lot', null, null, null, null, null] }),
           items: sampleItems,
         })
-        const suggestions = autocomplete('sell boots', context)
-        const boots = suggestions.find((s) => s.text === 'boots_of_speed')
+        const suggestions = autocomplete('sell scrap', context)
+        const boots = suggestions.find((s) => s.text === 'scrap_lot')
 
         expect(boots).toBeDefined()
-        expect(boots!.description).toContain('sell: 250g')
+        expect(boots!.description).toContain('sell: 50sc')
       })
 
       it('returns empty when no items in context', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
-        const suggestions = autocomplete('sell boots', context)
+        const suggestions = autocomplete('sell scrap', context)
 
         expect(suggestions).toEqual([])
       })
@@ -1464,16 +1464,16 @@ describe('useCommands', () => {
 
     describe('use item completion', () => {
       const sampleItems: Record<string, ItemDef> = {
-        boots_of_speed: {
-          id: 'boots_of_speed',
-          name: 'Boots of Speed',
-          cost: 500,
-          stats: { moveSpeed: 1 },
+        scrap_lot: {
+          id: 'scrap_lot',
+          name: 'Scrap Lot',
+          cost: 100,
+          stats: { hp: 30, mp: 30, attack: 3, defense: 3, magicResist: 3 },
           consumable: false,
         },
-        blink_module: {
-          id: 'blink_module',
-          name: 'Blink Module',
+        jump_shunt: {
+          id: 'jump_shunt',
+          name: 'Jump Shunt',
           cost: 2150,
           stats: { attack: 10 },
           consumable: false,
@@ -1489,25 +1489,25 @@ describe('useCommands', () => {
       it('suggests only active items owned by player', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ items: ['boots_of_speed', 'blink_module', null, null, null, null] }),
+          player: makePlayer({ items: ['scrap_lot', 'jump_shunt', null, null, null, null] }),
           items: sampleItems,
         })
         // Use a partial that matches both items' shared substring
-        const suggestions = autocomplete('use b', context)
+        const suggestions = autocomplete('use j', context)
         const texts = suggestions.map((s) => s.text)
 
-        expect(texts).toContain('blink_module')
-        expect(texts).not.toContain('boots_of_speed')
+        expect(texts).toContain('jump_shunt')
+        expect(texts).not.toContain('scrap_lot')
       })
 
       it('includes active ability description', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          player: makePlayer({ items: ['blink_module', null, null, null, null, null] }),
+          player: makePlayer({ items: ['jump_shunt', null, null, null, null, null] }),
           items: sampleItems,
         })
-        const suggestions = autocomplete('use blink', context)
-        const blink = suggestions.find((s) => s.text === 'blink_module')
+        const suggestions = autocomplete('use jump', context)
+        const blink = suggestions.find((s) => s.text === 'jump_shunt')
 
         expect(blink).toBeDefined()
         expect(blink!.description).toContain('Teleport to adjacent zone')
@@ -1516,7 +1516,7 @@ describe('useCommands', () => {
       it('returns empty when no items in context', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
-        const suggestions = autocomplete('use blink', context)
+        const suggestions = autocomplete('use jump', context)
 
         expect(suggestions).toEqual([])
       })
@@ -1838,7 +1838,7 @@ describe('validateCommand', () => {
     expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toMatch(/hexed/)
   })
 
-  it('lets a magic-immune (BKB) hero act through soft control debuffs', () => {
+  it('lets a magic-immune (Hardshell) hero act through soft control debuffs', () => {
     const ctx = makeContext({
       player: makePlayer({
         mp: 280,
@@ -1893,15 +1893,15 @@ describe('validateCommand', () => {
   it('rejects buy outside a shop zone', () => {
     // mid-t1-chaff has no shop
     const items: Record<string, ItemDef> = {
-      boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
+      scrap_lot: { id: 'scrap_lot', name: 'Scrap Lot', cost: 500, stats: {}, consumable: false },
     }
-    const err = validateCommand({ type: 'buy', item: 'boots' }, makeContext({ items }))
+    const err = validateCommand({ type: 'buy', item: 'scrap_lot' }, makeContext({ items }))
     expect(err).toMatch(/shop/)
   })
 
   it('rejects buy without enough gold in a shop zone', () => {
     const items: Record<string, ItemDef> = {
-      boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
+      scrap_lot: { id: 'scrap_lot', name: 'Scrap Lot', cost: 500, stats: {}, consumable: false },
     }
     const ctx = makeContext({
       player: makePlayer({
@@ -1911,20 +1911,20 @@ describe('validateCommand', () => {
       }),
       items,
     })
-    const err = validateCommand({ type: 'buy', item: 'boots' }, ctx)
+    const err = validateCommand({ type: 'buy', item: 'scrap_lot' }, ctx)
     expect(err).toMatch(/gold/)
     expect(err).toContain('400')
   })
 
   it('rejects duplicate unique item purchase', () => {
     const items: Record<string, ItemDef> = {
-      boots: { id: 'boots', name: 'Boots', cost: 500, stats: {}, consumable: false },
+      scrap_lot: { id: 'scrap_lot', name: 'Scrap Lot', cost: 500, stats: {}, consumable: false },
     }
     const ctx = makeContext({
       player: makePlayer({ zone: 'chaff-fountain', gold: 9999 }),
       items,
     })
-    expect(validateCommand({ type: 'buy', item: 'boots' }, ctx)).toMatch(/Already own/)
+    expect(validateCommand({ type: 'buy', item: 'scrap_lot' }, ctx)).toMatch(/Already own/)
   })
 
   it('rejects buy with a full inventory', () => {
@@ -2327,9 +2327,9 @@ describe('item active targetType annotations', () => {
       .filter((i) => i.active?.targetType === 'enemy')
       .map((i) => i.id)
       .sort()
-    // dagon / scythe / hurricane are enemy-only on the server; dual-use items
+    // burnout / scythe / hurricane are enemy-only on the server; dual-use items
     // (ethereal, eul's, force, lotus) are deliberately left unset.
-    expect(enemyTargeted).toEqual(['dagon', 'hurricane_pike', 'scythe_of_vyse'])
+    expect(enemyTargeted).toEqual(['burnout', 'kickback_splice', 'lockout_shunt'])
   })
 
   it('wards are zone-targeted so a bare use places one in your current zone', async () => {

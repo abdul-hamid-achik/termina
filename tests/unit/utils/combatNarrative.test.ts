@@ -235,12 +235,12 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   })
   it('confirms item buys and sells with the gold delta', () => {
     const buy = eventToLine(
-      ev('item_purchased', { playerId: 'me', itemId: 'blink_module', cost: 500 }),
+      ev('item_purchased', { playerId: 'me', itemId: 'jump_shunt', cost: 500 }),
       ctx,
     )!
     expect(buy.type).toBe('gold')
     expect(buy.text).toContain('acquired')
-    expect(buy.text).toContain('Item(blink_module)')
+    expect(buy.text).toContain('Item(jump_shunt)')
     expect(buy.text).toContain('-500')
 
     const sell = eventToLine(
@@ -424,7 +424,7 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['wave_strip', { playerId: 'me', waveType: 'line', goldAwarded: 40 }, 'last-hit'],
     ['wave_burn', { playerId: 'me', waveType: 'line' }, 'burned'],
     ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
-    ['item_purchased', { playerId: 'me', itemId: 'dagon', cost: 2700 }, 'acquired'],
+    ['item_purchased', { playerId: 'me', itemId: 'burnout', cost: 2700 }, 'acquired'],
     ['neutral_killed', { playerId: 'me', neutralType: 'stub' }, 'stub camp'],
     ['backup_used', { playerId: 'me' }, 'reincarnated'],
     ['talent_selected', { playerId: 'me', talentName: '+250 HP' }, 'learned +250 HP'],
@@ -628,7 +628,7 @@ describe('narration drift guard', () => {
     // content-based (see REDUNDANT_GOLD), never type-based.
     reason: 'hero kill',
     abilityId: 'q',
-    itemId: 'dagon',
+    itemId: 'burnout',
     talentName: 'Sharp Edge',
     message: 'power spike',
     status: 'stun',

@@ -1399,7 +1399,7 @@ describe('GameScreen', () => {
       const store = seedActiveGame() // in mid-river, no shop
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'buy boots_of_speed')
+      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'buy scrap_lot')
 
       expect(store.announcements.at(-1)).toContain('shop zone')
       expect(store.lastAnnouncementLevel).toBe('warning')

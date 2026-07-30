@@ -60,7 +60,7 @@ describe('buffKind', () => {
 
 describe('isInternalBuff', () => {
   it('flags item-cooldown markers and the tp destination pair', () => {
-    expect(isInternalBuff('item_cd_dagon')).toBe(true)
+    expect(isInternalBuff('item_cd_burnout')).toBe(true)
     expect(isInternalBuff('item_cd_hardshell')).toBe(true)
     expect(isInternalBuff('tp_destination')).toBe(true)
   })
@@ -136,6 +136,6 @@ describe('displayBuffs', () => {
   })
 
   it('returns an empty list when every buff is internal', () => {
-    expect(displayBuffs([buff('item_cd_dagon', 1, 18)])).toEqual([])
+    expect(displayBuffs([buff('item_cd_burnout', 1, 18)])).toEqual([])
   })
 })

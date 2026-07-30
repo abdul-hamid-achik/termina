@@ -56,7 +56,7 @@ const SELLABLE_ITEMS = new Set([
 
 // Combat item actives a bot uses mid-fight. Every one mirrors validateAction's
 // `use` gates via itemOffCooldown (owned + not on item_cd) and resolves cleanly:
-// the self-cast ones take no target; the targeted ones (Dagon/Ethereal/Hex/
+// the self-cast ones take no target; the targeted ones (Burnout/Ethereal/Hex/
 // Cyclone) all require an alive enemy hero in the same zone, which the in-combat
 // caller already has. Only items that appear in a build order are listed — a bot
 // never owns the rest. Defensive = survive a fight; offensive = control + burst.
@@ -87,7 +87,7 @@ function deterministicRoll(id: string, tick: number): number {
   return ((hash >>> 0) % 10000) / 10000
 }
 
-/** Magic-immune / invulnerable targets negate the pure magical-burst items (Dagon, Ethereal). */
+/** Magic-immune / invulnerable targets negate the pure magical-burst items (Burnout, Ethereal). */
 function isMagicImmuneTarget(p: PlayerState): boolean {
   return p.buffs.some(
     (b) => (b.id === 'magic_immune' || b.id === 'invulnerable') && b.ticksRemaining > 0,
@@ -520,10 +520,10 @@ function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: Game
 
     // Item actives add burst potential — count known combat items.
     for (const item of enemy.items) {
-      if (item === 'dagon') score += 300
-      else if (item === 'ethereal_blade') score += 150
-      else if (item === 'scythe_of_vyse') score += 80
-      else if (item === 'veil_of_discord') score += 40
+      if (item === 'burnout') score += 300
+      else if (item === 'phase_shim') score += 150
+      else if (item === 'lockout_shunt') score += 80
+      else if (item === 'discord_routine') score += 40
     }
   }
 
@@ -1333,7 +1333,7 @@ function tryPickTalent(bot: PlayerState): Command | null {
  *    pressure — hurt or outnumbered — not burned on a trivial skirmish.
  *  - Setup/control/burst on the kill target (lowest-HP enemy): Veil (zone magic-
  *    vuln) → Ethereal (physical-immune + 40% magic-vuln) → Hex (hard disable,
- *    still killable) → Dagon (300 magic nuke). Ethereal/Dagon are held if that
+ *    still killable) → Burnout (300 magic nuke). Ethereal/Burnout are held if that
  *    target is magic-immune (they'd fizzle).
  *  - Cyclone (Eul's) is aimed at a SECONDARY enemy, never the kill target: it
  *    makes its victim invulnerable, so it removes a second threat rather than
@@ -1362,24 +1362,24 @@ export function tryUseCombatItem(
   const killRef: TargetRef = { kind: 'hero', name: killTarget.id }
   const killImmune = isMagicImmuneTarget(killTarget)
 
-  if (itemOffCooldown(bot, 'veil_of_discord')) {
-    return { type: 'use', item: 'veil_of_discord' }
+  if (itemOffCooldown(bot, 'discord_routine')) {
+    return { type: 'use', item: 'discord_routine' }
   }
-  if (!killImmune && itemOffCooldown(bot, 'ethereal_blade')) {
-    return { type: 'use', item: 'ethereal_blade', target: killRef }
+  if (!killImmune && itemOffCooldown(bot, 'phase_shim')) {
+    return { type: 'use', item: 'phase_shim', target: killRef }
   }
-  if (itemOffCooldown(bot, 'scythe_of_vyse')) {
-    return { type: 'use', item: 'scythe_of_vyse', target: killRef }
+  if (itemOffCooldown(bot, 'lockout_shunt')) {
+    return { type: 'use', item: 'lockout_shunt', target: killRef }
   }
   // Cyclone a SECONDARY enemy (healthiest other threat) — never the kill target.
-  if (enemiesInZone.length >= 2 && itemOffCooldown(bot, 'euls_scepter')) {
+  if (enemiesInZone.length >= 2 && itemOffCooldown(bot, 'stasis_shunt')) {
     const secondary = enemiesInZone
       .filter((e) => e.id !== killTarget.id)
       .reduce((a, b) => (a.hp > b.hp ? a : b))
-    return { type: 'use', item: 'euls_scepter', target: { kind: 'hero', name: secondary.id } }
+    return { type: 'use', item: 'stasis_shunt', target: { kind: 'hero', name: secondary.id } }
   }
-  if (!killImmune && itemOffCooldown(bot, 'dagon')) {
-    return { type: 'use', item: 'dagon', target: killRef }
+  if (!killImmune && itemOffCooldown(bot, 'burnout')) {
+    return { type: 'use', item: 'burnout', target: killRef }
   }
 
   // Stack Overflow: double the next ability — only with an ability to spend it.
@@ -1496,18 +1496,18 @@ export function decideBotAction(
       // a slow gives it up to an 80% fail chance — either way the bot can die in
       // place. A mobility ITEM is resolved outside the movement phase, so it goes
       // through both. Prefer Blink (it lands on the exact retreat zone); else
-      // Force Staff, which auto-shoves toward our own fountain (same direction).
+      // Shove Splice, which auto-shoves toward our own fountain (same direction).
       // Unimpaired, a normal move is free — don't waste an item cooldown.
       const movementImpaired = bot.buffs.some((b) => b.id.includes('root') || b.id.includes('slow'))
       if (
         movementImpaired &&
-        itemOffCooldown(bot, 'blink_module') &&
+        itemOffCooldown(bot, 'jump_shunt') &&
         areAdjacent(bot.zone, path[1]!)
       ) {
-        return { type: 'use', item: 'blink_module', target: path[1]! }
+        return { type: 'use', item: 'jump_shunt', target: path[1]! }
       }
-      if (movementImpaired && itemOffCooldown(bot, 'force_staff')) {
-        return { type: 'use', item: 'force_staff' }
+      if (movementImpaired && itemOffCooldown(bot, 'shove_splice')) {
+        return { type: 'use', item: 'shove_splice' }
       }
       return { type: 'move', zone: path[1]! }
     }

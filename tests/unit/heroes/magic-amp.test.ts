@@ -11,7 +11,7 @@ import {
 import '../../../server/game/heroes/ping'
 
 /**
- * Mystical Staff (Arcane Power) — "+15% to all magical damage dealt" — was a
+ * Amp Stack (Arcane Power) — "+15% to all magical damage dealt" — was a
  * dead item passive: dealDamage never knew the caster, so the staff did nothing.
  * dealAbilityDamage now applies the CASTER's magic amp before mitigation. These
  * tests pin the amp to the caster (not the target) — a target/caster swap at any
@@ -49,7 +49,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   }
 }
 
-const STAFF = ['mystical_staff', null, null, null, null, null]
+const STAFF = ['amp_stack', null, null, null, null, null]
 
 function makeState(players: PlayerState[]): GameState {
   const playerMap: Record<string, PlayerState> = {}
@@ -70,7 +70,7 @@ function makeState(players: PlayerState[]): GameState {
 }
 
 describe('getMagicAmp', () => {
-  it('is 1.15 with Mystical Staff equipped, 1.0 without', () => {
+  it('is 1.15 with Amp Stack equipped, 1.0 without', () => {
     expect(getMagicAmp(makePlayer({ items: STAFF }))).toBeCloseTo(1.15)
     expect(getMagicAmp(makePlayer())).toBe(1)
   })
@@ -79,7 +79,7 @@ describe('getMagicAmp', () => {
 describe('dealAbilityDamage', () => {
   const target = () => makePlayer({ id: 't', heroId: null, magicResist: 0, defense: 0 })
 
-  it('amplifies magical damage by the caster Mystical Staff (+15%)', () => {
+  it('amplifies magical damage by the caster Amp Stack (+15%)', () => {
     const plain = dealDamage(target(), 100, 'magical')
     const amped = dealAbilityDamage(makePlayer({ items: STAFF }), target(), 100, 'magical')
     const plainLost = target().hp - plain.hp
@@ -116,7 +116,7 @@ describe('end-to-end: Ping ICMP Echo (magical Q)', () => {
     return victim.hp - result.state.players['v']!.hp
   }
 
-  it('caster Mystical Staff increases the spell damage dealt (~+15%)', () => {
+  it('caster Amp Stack increases the spell damage dealt (~+15%)', () => {
     const empty = [null, null, null, null, null, null]
     const base = damageDealtTo(empty, empty)
     const withStaff = damageDealtTo(STAFF, empty)

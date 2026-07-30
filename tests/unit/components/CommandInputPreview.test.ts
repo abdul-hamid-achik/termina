@@ -239,7 +239,7 @@ describe('CommandInput keyboard driving', () => {
   it('does not submit a command whose preview is an error', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
     const input = wrapper.find('input')
-    await input.setValue('use dagon') // not owned -> error preview
+    await input.setValue('use burnout') // not owned -> error preview
 
     const vm = wrapper.vm as unknown as { open: boolean }
     vm.open = false

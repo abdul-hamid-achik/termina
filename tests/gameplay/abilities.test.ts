@@ -381,14 +381,18 @@ describe('abilities', () => {
     expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'firewall_block')).toBe(false)
   })
 
-  it('Intercept Shell blocks a targeted ITEM active (Dagon), not just abilities', async () => {
+  it('Intercept Shell blocks a targeted ITEM active (Burnout), not just abilities', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick()
     await game.patch((s) => ({
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, items: [...s.players[HUMAN]!.items, 'dagon'], buffs: [] },
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: [...s.players[HUMAN]!.items, 'burnout'],
+          buffs: [],
+        },
         [ENEMY]: {
           ...s.players[ENEMY]!,
           buffs: [{ id: 'spellblock', stacks: 1, ticksRemaining: 5, source: ENEMY }],
@@ -397,7 +401,7 @@ describe('abilities', () => {
     }))
     const enemyBefore = (await game.player(ENEMY)).hp
 
-    game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: ENEMY } })
+    game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
 
     // The item nuke fizzles: spell_blocked(intercept_shell), no HP lost (reverted),
@@ -409,14 +413,18 @@ describe('abilities', () => {
     expect((await game.player(ENEMY)).buffs.find((b) => b.id === 'spellblock')?.stacks).toBe(0)
   })
 
-  it('Mirror Shell reflects a targeted ITEM nuke (Dagon) back at the user', async () => {
+  it('Mirror Shell reflects a targeted ITEM nuke (Burnout) back at the user', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick()
     await game.patch((s) => ({
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, items: [...s.players[HUMAN]!.items, 'dagon'], buffs: [] },
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          items: [...s.players[HUMAN]!.items, 'burnout'],
+          buffs: [],
+        },
         [ENEMY]: {
           ...s.players[ENEMY]!,
           buffs: [{ id: 'mirror_shell', stacks: 1, ticksRemaining: 5, source: ENEMY }],
@@ -425,7 +433,7 @@ describe('abilities', () => {
     }))
     const enemyBefore = (await game.player(ENEMY)).hp
 
-    game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: ENEMY } })
+    game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
 
     const blocked = game.lastEvents.find(
@@ -451,7 +459,7 @@ describe('abilities', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: [...s.players[HUMAN]!.items, 'scythe_of_vyse'],
+          items: [...s.players[HUMAN]!.items, 'lockout_shunt'],
           buffs: [],
         },
         [ENEMY]: {
@@ -461,7 +469,7 @@ describe('abilities', () => {
       },
     }))
 
-    game.submit({ type: 'use', item: 'scythe_of_vyse', target: { kind: 'hero', name: ENEMY } })
+    game.submit({ type: 'use', item: 'lockout_shunt', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
 
     // The hex is fully negated — no hex buff lands, the charge is spent, and the
@@ -524,7 +532,7 @@ describe('abilities', () => {
     ).toBe(false)
   })
 
-  it('a hexed hero (Scythe of Vyse) is fully disabled — no move AND no cast, with feedback', async () => {
+  it('a hexed hero (Lockout Shunt) is fully disabled — no move AND no cast, with feedback', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
@@ -553,7 +561,7 @@ describe('abilities', () => {
     expect((await game.me()).cooldowns.w).toBe(0)
   })
 
-  it('Ethereal Blade makes the target physical-immune but amplifies magic damage', async () => {
+  it('Phase Shim makes the target physical-immune but amplifies magic damage', async () => {
     // regex Q (Match) is 70 magical damage on a hero target.
     const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxHp recompute

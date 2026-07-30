@@ -240,10 +240,10 @@ describe('BotAI - decideBotAction', () => {
         maxHp: 500,
         gold: 0,
         items: [
-          'boots_of_speed',
+          'bulk_lattice',
           'null_pointer',
           'garbage_collector',
-          'blink_module',
+          'jump_shunt',
           'stack_overflow',
           'segfault_blade',
         ],
@@ -293,19 +293,19 @@ describe('BotAI - decideBotAction', () => {
       expect(decideBotAction(state, bot, 'mid')).toBeNull()
     })
 
-    it('blinks out of a slow when retreating with a Blink Module ready', () => {
+    it('blinks out of a slow when retreating with a Jump Shunt ready', () => {
       // A slowed retreat-move has up to an 80% chance to fizzle, leaving the bot
       // to die. Blink ignores the slow, so it should escape with the item instead.
       const bot = makePlayer({
         zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
-        items: ['blink_module', null, null, null, null, null],
+        items: ['jump_shunt', null, null, null, null, null],
         buffs: [{ id: 'slow', stacks: 40, ticksRemaining: 2, source: 'enemy1' }],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-chaff' })
+      expect(action).toEqual({ type: 'use', item: 'jump_shunt', target: 'mid-t2-chaff' })
     })
 
     it('walks (saving the Blink) when retreating unimpaired', () => {
@@ -315,7 +315,7 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
-        items: ['blink_module', null, null, null, null, null],
+        items: ['jump_shunt', null, null, null, null, null],
         buffs: [],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
@@ -323,32 +323,32 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'move', zone: 'mid-t2-chaff' })
     })
 
-    it('uses Force Staff to escape a slow when it has no Blink', () => {
-      // Force Staff auto-disengages toward our fountain — a second escape tool
+    it('uses Shove Splice to escape a slow when it has no Blink', () => {
+      // Shove Splice auto-disengages toward our fountain — a second escape tool
       // that, like Blink, ignores the slow. No target needed (it aims home).
       const bot = makePlayer({
         zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
-        items: ['force_staff', null, null, null, null, null],
+        items: ['shove_splice', null, null, null, null, null],
         buffs: [{ id: 'slow', stacks: 40, ticksRemaining: 2, source: 'enemy1' }],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'use', item: 'force_staff' })
+      expect(action).toEqual({ type: 'use', item: 'shove_splice' })
     })
 
-    it('prefers Blink over Force Staff when holding both (exact retreat zone)', () => {
+    it('prefers Blink over Shove Splice when holding both (exact retreat zone)', () => {
       const bot = makePlayer({
         zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
-        items: ['blink_module', 'force_staff', null, null, null, null],
+        items: ['jump_shunt', 'shove_splice', null, null, null, null],
         buffs: [{ id: 'slow', stacks: 40, ticksRemaining: 2, source: 'enemy1' }],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'use', item: 'blink_module', target: 'mid-t2-chaff' })
+      expect(action).toEqual({ type: 'use', item: 'jump_shunt', target: 'mid-t2-chaff' })
     })
   })
 
@@ -773,7 +773,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action).toEqual({ type: 'buy', item: 'edge_kit' })
     })
 
-    it('does not buy dead moveSpeed-only items (boots_of_speed)', () => {
+    it('does not buy dead moveSpeed-only items (deleted boots_of_speed precedent)', () => {
       const bot = makePlayer({
         zone: 'chaff-fountain',
         gold: 99999,
@@ -784,7 +784,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action).not.toBeNull()
       expect(action!.type).toBe('buy')
       if (action!.type === 'buy') {
-        expect(action!.item).not.toBe('boots_of_speed')
+        expect(action!.item).not.toBe('scrap_lot')
       }
     })
 
@@ -804,10 +804,10 @@ describe('BotAI - decideBotAction', () => {
         zone: 'chaff-fountain',
         gold: 10000,
         items: [
-          'boots_of_speed',
+          'bulk_lattice',
           'null_pointer',
           'garbage_collector',
-          'blink_module',
+          'jump_shunt',
           'stack_overflow',
           'segfault_blade',
         ],
@@ -1532,11 +1532,11 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
   })
 
-  it('pops Veil of Discord regardless of ability readiness', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, mp: 0, items: inv('veil_of_discord') })
+  it('pops Discord Routine regardless of ability readiness', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, mp: 0, items: inv('discord_routine') })
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'veil_of_discord',
+      item: 'discord_routine',
     })
   })
 
@@ -1570,33 +1570,33 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
   const highFoe = makePlayer({ id: 'high', name: 'high', team: 'audit', hp: 600, maxHp: 600 })
 
   it('hexes the kill target (lowest-HP enemy)', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('scythe_of_vyse') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('lockout_shunt') })
     expect(tryUseCombatItem(bot, [highFoe, lowFoe], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'scythe_of_vyse',
+      item: 'lockout_shunt',
       target: { kind: 'hero', name: 'low' },
     })
   })
 
   it('dagons the lowest-HP enemy', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('burnout') })
     expect(tryUseCombatItem(bot, [highFoe, lowFoe], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'dagon',
+      item: 'burnout',
       target: { kind: 'hero', name: 'low' },
     })
   })
 
-  it('ethereals the kill target before it would dagon', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon', 'ethereal_blade') })
+  it('ethereals the kill target before it would burnout', () => {
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('burnout', 'phase_shim') })
     expect(tryUseCombatItem(bot, [lowFoe], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'ethereal_blade',
+      item: 'phase_shim',
       target: { kind: 'hero', name: 'low' },
     })
   })
 
-  it('holds Dagon/Ethereal when the kill target is magic-immune (they would fizzle)', () => {
+  it('holds Burnout/Ethereal when the kill target is magic-immune (they would fizzle)', () => {
     const immune = makePlayer({
       id: 'bkb',
       name: 'bkb',
@@ -1605,39 +1605,39 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
       maxHp: 600,
       buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
     })
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon', 'ethereal_blade') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('burnout', 'phase_shim') })
     expect(tryUseCombatItem(bot, [immune], [], makeConfig())).toBeNull()
   })
 
   it('cyclones a SECONDARY enemy (healthiest other threat), never the kill target', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('euls_scepter') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('stasis_shunt') })
     expect(tryUseCombatItem(bot, [lowFoe, highFoe], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'euls_scepter',
+      item: 'stasis_shunt',
       target: { kind: 'hero', name: 'high' },
     })
   })
 
   it('does not cyclone in a 1v1 (no secondary enemy to remove)', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('euls_scepter') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('stasis_shunt') })
     expect(tryUseCombatItem(bot, [lowFoe], [], makeConfig())).toBeNull()
   })
 
   it('prioritises Veil (zone amp) ahead of the targeted nukes', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon', 'veil_of_discord') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('burnout', 'discord_routine') })
     expect(tryUseCombatItem(bot, [lowFoe], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'veil_of_discord',
+      item: 'discord_routine',
     })
   })
 
   it('decideBotAction wires targeted items in: a mage bot dagons the low enemy', () => {
-    const bot = makePlayer({ zone: 'mid-river', hp: 500, maxHp: 500, items: inv('dagon') })
+    const bot = makePlayer({ zone: 'mid-river', hp: 500, maxHp: 500, items: inv('burnout') })
     const foe = makePlayer({ id: 'low', name: 'low', team: 'audit', zone: 'mid-river', hp: 100 })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
     expect(decideBotAction(state, bot, 'mid')).toEqual({
       type: 'use',
-      item: 'dagon',
+      item: 'burnout',
       target: { kind: 'hero', name: 'low' },
     })
   })

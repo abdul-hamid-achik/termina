@@ -11,9 +11,9 @@ const bulwark_plate: ItemDef = {
   consumable: false,
   passive: { id: 'p', name: 'Damage Block', description: 'Block damage.' },
 }
-const dagon: ItemDef = {
-  id: 'dagon',
-  name: 'Dagon',
+const burnout: ItemDef = {
+  id: 'burnout',
+  name: 'Burnout',
   cost: 2750,
   stats: { mp: 150, attack: 15 },
   consumable: false,
@@ -37,14 +37,14 @@ describe('LoadoutSummary', () => {
   })
 
   it('shows the ≈ last-hits economy cue for a build (cost / avg wave bounty)', () => {
-    const wrapper = mountSummary([bulwark_plate, dagon]) // 5250g → ceil(5250/40) = 132
+    const wrapper = mountSummary([bulwark_plate, burnout]) // 5250g → ceil(5250/40) = 132
     const lh = wrapper.find('[data-testid="loadout-lasthits"]')
     expect(lh.exists()).toBe(true)
     expect(lh.text()).toContain('132')
   })
 
   it('aggregates cost, stats and slot count across the build', () => {
-    const wrapper = mountSummary([bulwark_plate, dagon])
+    const wrapper = mountSummary([bulwark_plate, burnout])
     expect(wrapper.find('[data-testid="loadout-slots"]').text()).toBe('2 / 6')
     expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('5250sc') // 2500 + 2750
     const text = wrapper.text()
@@ -55,8 +55,8 @@ describe('LoadoutSummary', () => {
   })
 
   it('lists only the actives the build grants (passive-only items excluded)', () => {
-    const wrapper = mountSummary([bulwark_plate, dagon])
-    expect(wrapper.text()).toContain('Energy Burst') // dagon's active
+    const wrapper = mountSummary([bulwark_plate, burnout])
+    expect(wrapper.text()).toContain('Energy Burst') // burnout's active
     // bulwark_plate is passive-only → exactly one active listed, not two
     expect(wrapper.findAll('.text-ability')).toHaveLength(1)
   })
@@ -68,12 +68,12 @@ describe('LoadoutSummary', () => {
   })
 
   it('emits clear when the clear button is clicked', async () => {
-    const wrapper = mountSummary([dagon])
+    const wrapper = mountSummary([burnout])
     await wrapper.find('[data-testid="loadout-clear"]').trigger('click')
     expect(wrapper.emitted('clear')).toHaveLength(1)
   })
 
   it('respects a custom slot count', () => {
-    expect(mountSummary([dagon], 3).find('[data-testid="loadout-slots"]').text()).toBe('1 / 3')
+    expect(mountSummary([burnout], 3).find('[data-testid="loadout-slots"]').text()).toBe('1 / 3')
   })
 })

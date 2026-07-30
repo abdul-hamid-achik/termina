@@ -3,17 +3,17 @@ import { seedGame, HUMAN, ENEMY } from './harness'
 
 /**
  * Engine-truth coverage for item-active DAMAGE through the real processTick.
- * Item nukes (Dagon, Shiva's Guard) change HP inside useItem but historically
+ * Item nukes (Burnout, Cryo Routine) change HP inside useItem but historically
  * emitted no `damage` event, so an item kill credited no one — no kill count,
  * no bounty, no `kill` event, and the damage-taken passives never fired. This
  * locks in that item damage is now a first-class damage source (same path as
  * casts/attacks): it emits a `damage` event and feeds kill/bounty credit.
  */
 describe('item-active combat credit', () => {
-  it('a Dagon kill credits the user — kill count, a kill event, and a damage event', async () => {
+  it('a Burnout kill credits the user — kill count, a kill event, and a damage event', async () => {
     const game = await seedGame('laning', { heroSelf: 'echo', heroEnemy: 'daemon' })
 
-    // Put both heroes in one zone, arm Dagon, and leave the enemy lethally low.
+    // Put both heroes in one zone, arm Burnout, and leave the enemy lethally low.
     await game.patch((s) => ({
       ...s,
       players: {
@@ -21,13 +21,13 @@ describe('item-active combat credit', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['dagon', null, null, null, null, null],
+          items: ['burnout', null, null, null, null, null],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river', hp: 40, alive: true },
       },
     }))
 
-    game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: 'daemon' } })
+    game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: 'daemon' } })
     await game.tick()
 
     const enemy = await game.player(ENEMY)
@@ -59,13 +59,13 @@ describe('item-active combat credit', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['scythe_of_vyse', null, null, null, null, null],
+          items: ['lockout_shunt', null, null, null, null, null],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river', alive: true },
       },
     }))
 
-    game.submit({ type: 'use', item: 'scythe_of_vyse', target: { kind: 'hero', name: 'daemon' } })
+    game.submit({ type: 'use', item: 'lockout_shunt', target: { kind: 'hero', name: 'daemon' } })
     await game.tick()
 
     const statuses = game.lastEvents.filter((e) => e._tag === 'status_applied')

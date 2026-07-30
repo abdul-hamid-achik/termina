@@ -227,7 +227,7 @@ describe('Game Store', () => {
 
       it('an item active consumes only the item slot', () => {
         const store = livePlayer()
-        store.markActionSent('use blink_module mid-river')
+        store.markActionSent('use jump_shunt mid-river')
 
         expect(store.canUseItem).toBe(false)
         expect(store.canAct).toBe(true)
@@ -243,7 +243,7 @@ describe('Game Store', () => {
 
       it('both slots reopen on the next tick', () => {
         const store = livePlayer()
-        store.markActionSent('use blink_module mid-river')
+        store.markActionSent('use jump_shunt mid-river')
         store.markActionSent('cast r')
         expect(store.canAct).toBe(false)
         expect(store.canUseItem).toBe(false)

@@ -245,26 +245,26 @@ const skullBasher: ItemDef = {
 // ── Magic Items ─────────────────────────────────────────────────────
 
 const mysticalStaff: ItemDef = {
-  id: 'mystical_staff',
-  name: 'Mystical Staff',
+  id: 'amp_stack',
+  name: 'Amp Stack',
   cost: 2700,
   stats: { mp: 200, magicResist: 10 },
   consumable: false,
   passive: {
-    id: 'mystical_staff_passive',
+    id: 'amp_stack_passive',
     name: 'Arcane Power',
     description: 'Increase all magical damage dealt by 15%.',
   },
 }
 
 const veilOfDiscord: ItemDef = {
-  id: 'veil_of_discord',
-  name: 'Veil of Discord',
+  id: 'discord_routine',
+  name: 'Discord Routine',
   cost: 2500,
   stats: { mp: 150, magicResist: 10 },
   consumable: false,
   active: {
-    id: 'veil_of_discord_active',
+    id: 'discord_routine_active',
     name: 'Discord',
     description: 'Enemies in zone take 25% more magical damage for 4 cycles.',
     cooldownTicks: 15,
@@ -272,13 +272,13 @@ const veilOfDiscord: ItemDef = {
 }
 
 const shivasGuard: ItemDef = {
-  id: 'shivas_guard',
-  name: "Shiva's Guard",
+  id: 'cryo_routine',
+  name: 'Cryo Routine',
   cost: 4700,
   stats: { defense: 15, mp: 150 },
   consumable: false,
   active: {
-    id: 'shivas_guard_active',
+    id: 'cryo_routine_active',
     name: 'Arctic Blast',
     description: 'Deal 100 magical damage to enemies in zone and slow them for 2 cycles.',
     cooldownTicks: 20,
@@ -286,21 +286,21 @@ const shivasGuard: ItemDef = {
 }
 
 const aetherLens: ItemDef = {
-  id: 'aether_lens',
-  name: 'Aether Lens',
+  id: 'clock_lens',
+  name: 'Clock Lens',
   cost: 2300,
   stats: { mp: 200, hp: 100 },
   consumable: false,
   passive: {
-    id: 'aether_lens_passive',
+    id: 'clock_lens_passive',
     name: 'Ethereal',
     description: 'Reduce all ability cooldowns by 1 cycle.',
   },
 }
 
-const dagon: ItemDef = {
-  id: 'dagon',
-  name: 'Dagon',
+const burnout: ItemDef = {
+  id: 'burnout',
+  name: 'Burnout',
   cost: 2750,
   stats: { mp: 150, attack: 15 },
   consumable: false,
@@ -314,13 +314,13 @@ const dagon: ItemDef = {
 }
 
 const etherealBlade: ItemDef = {
-  id: 'ethereal_blade',
-  name: 'Ethereal Blade',
+  id: 'phase_shim',
+  name: 'Phase Shim',
   cost: 4300,
   stats: { attack: 30, mp: 150 },
   consumable: false,
   active: {
-    id: 'ethereal_blade_active',
+    id: 'phase_shim_active',
     name: 'Ether Blast',
     description:
       'Target becomes ethereal for 2 cycles (immune to physical, vulnerable to magical +40%).',
@@ -427,13 +427,13 @@ const bladeMail: ItemDef = {
 // ── Utility Items ───────────────────────────────────────────────────
 
 const forceStaff: ItemDef = {
-  id: 'force_staff',
-  name: 'Force Staff',
+  id: 'shove_splice',
+  name: 'Shove Splice',
   cost: 2250,
   stats: { mp: 100, hp: 100 },
   consumable: false,
   active: {
-    id: 'force_staff_active',
+    id: 'shove_splice_active',
     name: 'Force',
     description: 'Push yourself or an ally one zone toward your fountain — a quick disengage.',
     cooldownTicks: 12,
@@ -441,13 +441,13 @@ const forceStaff: ItemDef = {
 }
 
 const hurricanePike: ItemDef = {
-  id: 'hurricane_pike',
-  name: 'Hurricane Pike',
+  id: 'kickback_splice',
+  name: 'Kickback Splice',
   cost: 4500,
   stats: { attack: 20, mp: 150, hp: 150 },
   consumable: false,
   active: {
-    id: 'hurricane_pike_active',
+    id: 'kickback_splice_active',
     name: 'Hurricane Thrust',
     description:
       'Push self to an adjacent zone away from a target enemy, gaining +30 attack for 2 cycles.',
@@ -457,13 +457,13 @@ const hurricanePike: ItemDef = {
 }
 
 const scytheOfVyse: ItemDef = {
-  id: 'scythe_of_vyse',
-  name: 'Scythe of Vyse',
+  id: 'lockout_shunt',
+  name: 'Lockout Shunt',
   cost: 5675,
   stats: { mp: 250, hp: 150, magicResist: 10 },
   consumable: false,
   active: {
-    id: 'scythe_of_vyse_active',
+    id: 'lockout_shunt_active',
     name: 'Hex',
     description: 'Transform target hero into a critter for 2 cycles (cannot attack or cast).',
     cooldownTicks: 20,
@@ -472,13 +472,13 @@ const scytheOfVyse: ItemDef = {
 }
 
 const eulsScepter: ItemDef = {
-  id: 'euls_scepter',
-  name: "Eul's Scepter",
+  id: 'stasis_shunt',
+  name: 'Stasis Shunt',
   cost: 2750,
   stats: { mp: 150, moveSpeed: 1 },
   consumable: false,
   active: {
-    id: 'euls_scepter_active',
+    id: 'stasis_shunt_active',
     name: 'Cyclone',
     description: 'Target is invulnerable and disabled for 2 cycles.',
     cooldownTicks: 15,
@@ -486,13 +486,13 @@ const eulsScepter: ItemDef = {
 }
 
 const refresherOrb: ItemDef = {
-  id: 'refresher_orb',
-  name: 'Refresher Orb',
+  id: 'redline_splice',
+  name: 'Redline Splice',
   cost: 5000,
   stats: { hp: 150, mp: 200 },
   consumable: false,
   active: {
-    id: 'refresher_orb_active',
+    id: 'redline_splice_active',
     name: 'Reset Cooldowns',
     description: 'Reset all ability cooldowns.',
     cooldownTicks: 40,
@@ -500,13 +500,13 @@ const refresherOrb: ItemDef = {
 }
 
 const ghostScepter: ItemDef = {
-  id: 'ghost_scepter',
-  name: 'Ghost Scepter',
+  id: 'phase_shunt',
+  name: 'Phase Shunt',
   cost: 1500,
   stats: { mp: 100 },
   consumable: false,
   active: {
-    id: 'ghost_scepter_active',
+    id: 'phase_shunt_active',
     name: 'Ghost Form',
     description: 'Become immune to physical damage for 2 cycles. Cannot attack.',
     cooldownTicks: 20,
@@ -515,22 +515,14 @@ const ghostScepter: ItemDef = {
 
 // ── Existing Core Items ─────────────────────────────────────────────
 
-const bootsOfSpeed: ItemDef = {
-  id: 'boots_of_speed',
-  name: 'Boots of Speed',
-  cost: 500,
-  stats: { moveSpeed: 1 },
-  consumable: false,
-}
-
 const blinkModule: ItemDef = {
-  id: 'blink_module',
-  name: 'Blink Module',
+  id: 'jump_shunt',
+  name: 'Jump Shunt',
   cost: 2150,
   stats: { attack: 10 },
   consumable: false,
   active: {
-    id: 'blink_module_active',
+    id: 'jump_shunt_active',
     name: 'Blink',
     description: 'Teleport to an adjacent zone instantly.',
     cooldownTicks: 12,
@@ -699,7 +691,6 @@ export const ITEMS: Record<string, ItemDef> = {
   edge_kit: bladesOfAttack,
   plate_weave: plate_weave,
   field_damper: field_damper,
-  boots_of_speed: bootsOfSpeed,
 
   // Attack
   rust_driver: rust_driver,
@@ -714,12 +705,12 @@ export const ITEMS: Record<string, ItemDef> = {
   segfault_blade: segfaultBlade,
 
   // Magic
-  mystical_staff: mysticalStaff,
-  veil_of_discord: veilOfDiscord,
-  shivas_guard: shivasGuard,
-  aether_lens: aetherLens,
-  dagon: dagon,
-  ethereal_blade: etherealBlade,
+  amp_stack: mysticalStaff,
+  discord_routine: veilOfDiscord,
+  cryo_routine: shivasGuard,
+  clock_lens: aetherLens,
+  burnout: burnout,
+  phase_shim: etherealBlade,
   stack_overflow: stackOverflow,
 
   // Defensive
@@ -734,13 +725,13 @@ export const ITEMS: Record<string, ItemDef> = {
   ablative_shell: firewallItem,
 
   // Utility
-  blink_module: blinkModule,
-  force_staff: forceStaff,
-  hurricane_pike: hurricanePike,
-  scythe_of_vyse: scytheOfVyse,
-  euls_scepter: eulsScepter,
-  refresher_orb: refresherOrb,
-  ghost_scepter: ghostScepter,
+  jump_shunt: blinkModule,
+  shove_splice: forceStaff,
+  kickback_splice: hurricanePike,
+  lockout_shunt: scytheOfVyse,
+  stasis_shunt: eulsScepter,
+  redline_splice: refresherOrb,
+  phase_shunt: ghostScepter,
 
   // Consumables
   camtap: camtapWard,
@@ -779,7 +770,6 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
       'edge_kit',
       'plate_weave',
       'field_damper',
-      'boots_of_speed',
       'camtap',
       'sniffer',
       'blackout_can',
@@ -810,12 +800,12 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     label: 'Deck',
     blurb: 'Software — amplify magical damage, manipulate cooldowns, or nuke a target outright.',
     ids: [
-      'mystical_staff',
-      'veil_of_discord',
-      'shivas_guard',
-      'aether_lens',
-      'dagon',
-      'ethereal_blade',
+      'amp_stack',
+      'discord_routine',
+      'cryo_routine',
+      'clock_lens',
+      'burnout',
+      'phase_shim',
       'stack_overflow',
     ],
   },
@@ -840,13 +830,13 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     label: 'Wetware',
     blurb: 'Neural and reflex — mobility, control, disables and tempo that swing fights.',
     ids: [
-      'blink_module',
-      'force_staff',
-      'hurricane_pike',
-      'scythe_of_vyse',
-      'euls_scepter',
-      'refresher_orb',
-      'ghost_scepter',
+      'jump_shunt',
+      'shove_splice',
+      'kickback_splice',
+      'lockout_shunt',
+      'stasis_shunt',
+      'redline_splice',
+      'phase_shunt',
     ],
   },
 ]

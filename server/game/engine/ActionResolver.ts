@@ -157,17 +157,17 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   const player = state.players[action.playerId]
   if (!player) return 'Player not found'
   if (!player.alive) return 'Player is dead'
-  // Eul's Cyclone lifts the target into a tornado — fully disabled (and
+  // Stasis Shunt Cyclone lifts the target into a tornado — fully disabled (and
   // invulnerable, enforced in the damage paths) until it expires.
   if (hasDebuff(player, 'cyclone')) return 'Cannot act while cycloned'
 
-  // Scythe of Vyse Hex is a hard disable — no move, attack, OR cast. (The
+  // Lockout Shunt Hex is a hard disable — no move, attack, OR cast. (The
   // co-applied 'silence' only gates casting, so without this a hexed hero could
   // still basic-attack.)
   if (hasDebuff(player, 'hex')) return 'Cannot act while hexed'
 
   // Black King Bar (magic_immune) grants debuff immunity ("immune to ... debuffs"):
-  // a BKB-active hero acts through the standard control debuffs — stun, silence,
+  // a Hardshell-active hero acts through the standard control debuffs — stun, silence,
   // root, fear, taunt. Cyclone and Hex are hard disables that pierce it (checked
   // above), matching the usual convention.
   const debuffImmune = player.buffs.some((b) => b.id === 'magic_immune')
@@ -203,7 +203,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       if (!reachable) {
         return 'No path to that zone'
       }
-      // Check for root/stun (taunt forces attacking — no fleeing). BKB bypasses.
+      // Check for root/stun (taunt forces attacking — no fleeing). Hardshell bypasses.
       if (!debuffImmune && (hasDebuff(player, 'root') || hasDebuff(player, 'stun'))) {
         return 'Cannot move while rooted or stunned'
       }
@@ -375,7 +375,7 @@ function emitStatusApplied(
  * Resolve all player actions for a tick.
  *
  * Priority-ordered resolution:
- * Phase 0: Item actives — blink/BKB/nukes, ahead of the ability they set up
+ * Phase 0: Item actives — blink/Hardshell/nukes, ahead of the ability they set up
  * Phase 1: Instant abilities (stuns, silences) — resolve simultaneously
  * Phase 2: Movement — all moves resolve at once
  * Phase 3: Attacks + targeted abilities — simultaneous
@@ -589,7 +589,7 @@ function resolveDenyPhase(
  * Phase 3b: Attacks — hero/wave/ice/Tenant/neutral/Ancient, all simultaneous.
  * This is the largest phase (~440 lines): crit stacking, item on-hit effects
  * (MKB magic, Maelstrom chain, Skull Basher stun), defense mitigation (Desolator
- * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Blade Mail
+ * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Spite Plate
  * reflect, TP channeling cancel. Reads pending HP/buffs so simultaneous
  * focus-fire isn't last-write-wins.
  */
@@ -1203,7 +1203,7 @@ function resolvePassivesPhase(
       }
     }
 
-    if (player.items.includes('aether_lens')) {
+    if (player.items.includes('clock_lens')) {
       for (const slot of ['q', 'w', 'e', 'r'] as const) {
         if (cooldowns[slot] > 0) {
           cooldowns[slot] = Math.max(0, cooldowns[slot] - 1)
@@ -1323,7 +1323,7 @@ function resolveShopPhase(
 }
 
 /**
- * Phase 0: Item actives — Blink, BKB, Blade Mail, Dagon, Eul's, wards, TP.
+ * Phase 0: Item actives — Jump Shunt, Hardshell, Spite Plate, Burnout, Stasis Shunt, wards, TP.
  *
  * Runs BEFORE instant casts and movement, and is fed by its own per-player
  * action slot (GameLoop keys the queue by main/item), so an item and an ability
@@ -1381,9 +1381,9 @@ function resolveItemActivesPhase(
       })
 
       // Intercept Shell / Ablative Shell / Mirror Shell block targeted item actives the
-      // same as targeted ability casts — Dagon/Scythe/Ethereal/Eul's all aim at
+      // same as targeted ability casts — Burnout/Scythe/Ethereal/Stasis Shunt all aim at
       // a single enemy hero. Resolve that hero from the use target (dual-use
-      // items like Eul's/Ethereal carry no active.targetType, so resolve the
+      // items like Stasis Shunt/Ethereal carry no active.targetType, so resolve the
       // explicit target rather than gating on it), and if it's an enemy, run the
       // shared block BEFORE the HP-diff synthesis below — a block reverts the
       // target to its pre-use state, so the diff then emits no damage for it.
@@ -1408,9 +1408,9 @@ function resolveItemActivesPhase(
         )
       }
 
-      // Item actives that change HP (Dagon, Shiva's Guard, …) mutate HP inside
+      // Item actives that change HP (Burnout, Cryo Routine, …) mutate HP inside
       // useItem but, historically, emitted NO damage/heal event — so an item
-      // kill gave no killer credit/bounty/assist, never reflected Blade Mail,
+      // kill gave no killer credit/bounty/assist, never reflected Spite Plate,
       // and never fired the damage-taken passives (daemon stealth-break,
       // cache/firewall/proxy). Diff pre→post HP and synthesise the same events
       // the cast path does (ActionResolver.resolveHeroCast), so item damage is a
@@ -1435,7 +1435,7 @@ function resolveItemActivesPhase(
             dt.hero += delta
             damageTracker.set(action.playerId, dt)
 
-            // Blade Mail: an enemy hit by the item reflects the HP it lost back
+            // Spite Plate: an enemy hit by the item reflects the HP it lost back
             // at the user as pure damage — same formula as the cast/attack path.
             if (post.buffs.some((b) => b.id === 'spite_plate')) {
               const userPost = players[action.playerId]
@@ -1468,7 +1468,7 @@ function resolveItemActivesPhase(
         }
       }
 
-      // Hex (Scythe of Vyse) and Cyclone (Eul's) are pure disables with no HP
+      // Hex (Lockout Shunt) and Cyclone (Stasis Shunt) are pure disables with no HP
       // delta — without this diff they landed completely silently.
       emitStatusApplied(prePlayers, players, action.playerId, state.tick, events)
     }
@@ -1836,7 +1836,7 @@ export function resolveActions(
     // "force enemies to attack me"). validateAction already blocked their move +
     // cast; here we OVERRIDE their action with an attack on the taunter so they
     // can't act freely — overriding bots too, so no separate bot-AI handling is
-    // needed. Skipped for BKB (magic_immune ignores the debuff) and for heroes
+    // needed. Skipped for Hardshell (magic_immune ignores the debuff) and for heroes
     // who couldn't attack anyway (stun/feared/ghost), and only when the taunter
     // is alive in the same zone (otherwise there's nothing to force-attack).
     const tauntForced = new Map<string, string>()
@@ -1875,7 +1875,7 @@ export function resolveActions(
       return cached
     }
 
-    // Phase 0: Item actives — first, so a blink/BKB/Ethereal lands BEFORE the
+    // Phase 0: Item actives — first, so a blink/Hardshell/Ethereal lands BEFORE the
     // ability cast in the same tick rather than after it.
     {
       const result = resolveItemActivesPhase(
@@ -2080,8 +2080,8 @@ function isInstantAbility(
 /**
  * Intercept Shell / Ablative Shell / Mirror Shell protection against a SINGLE-target
  * effect aimed at `targetId`. Shared by hero ability casts (resolveHeroCast) and
- * targeted item actives (the use-item loop), so Dagon / Scythe of Vyse /
- * Ethereal Blade / Eul's are blocked exactly like a targeted ability instead of
+ * targeted item actives (the use-item loop), so Burnout / Lockout Shunt /
+ * Phase Shim / Stasis Shunt are blocked exactly like a targeted ability instead of
  * slipping through unblocked.
  *
  * On an armed block charge the target is reverted to its pre-effect state
@@ -2282,7 +2282,7 @@ function resolveHeroCast(
   // Intercept Shell / Ablative Shell / Mirror Shell: a single-target ability on a
   // hero holding a charge fizzles — the caster still pays mana + cooldown, but
   // the target's effect is reverted and a charge consumed (shared with the
-  // targeted-item-active path so Dagon/Scythe/Ethereal/Eul's block identically).
+  // targeted-item-active path so Burnout/Scythe/Ethereal/Stasis Shunt block identically).
   if (targetId && abilityDef?.targetType === 'hero') {
     newPlayers = applyTargetedSpellBlock(
       newPlayers,
@@ -2332,7 +2332,7 @@ function resolveHeroCast(
         damageTracker.set(action.playerId, dt)
         castDamageToEnemies += delta
 
-        // Blade Mail: an enemy hero hit by this cast reflects the HP it lost
+        // Spite Plate: an enemy hero hit by this cast reflects the HP it lost
         // back at the caster as pure damage — the same computeSpitePlateReflect
         // formula as the basic-attack reflect, so the two paths can never
         // diverge.
@@ -2401,7 +2401,7 @@ function resolveHeroCast(
   // second time. Re-runs the hero resolver on the post-first-cast state with the
   // just-set cooldown cleared (so the echo isn't rejected); mana is paid again,
   // so the echo only happens if the caster can afford both casts. Emits plain
-  // damage/heal events from the echo's HP diff (no Blade Mail/Overclock recursion
+  // damage/heal events from the echo's HP diff (no Spite Plate/Overclock recursion
   // on the echo — deliberately simple).
   if (
     hasTalentCastEffect(caster, 'double_cast', cmd.ability) &&

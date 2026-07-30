@@ -4,8 +4,8 @@ import ItemCard from '~~/app/components/items/ItemCard.vue'
 import type { ItemDef } from '~~/shared/types/items'
 
 const base: ItemDef = {
-  id: 'dagon',
-  name: 'Dagon',
+  id: 'burnout',
+  name: 'Burnout',
   cost: 2750,
   stats: { mp: 150, attack: 15 },
   consumable: false,
@@ -25,7 +25,7 @@ function mountCard(item: Partial<ItemDef> = {}, props: Record<string, unknown> =
 describe('ItemCard', () => {
   it('renders name, cost and humanized stats', () => {
     const text = mountCard().text()
-    expect(text).toContain('Dagon')
+    expect(text).toContain('Burnout')
     expect(text).toContain('2750sc')
     expect(text).toContain('+150 Mana')
     expect(text).toContain('+15 Attack')

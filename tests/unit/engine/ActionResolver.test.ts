@@ -141,7 +141,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             zone: 'mid-t1-chaff',
-            buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 2, source: 'euls_scepter' }],
+            buffs: [{ id: 'cyclone', stacks: 1, ticksRemaining: 2, source: 'stasis_shunt' }],
           }),
         },
       })
@@ -902,7 +902,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             zone: 'mid-t1-chaff',
-            items: ['blink_module', null, null, null, null, null],
+            items: ['jump_shunt', null, null, null, null, null],
           }),
         },
       })
@@ -911,14 +911,14 @@ describe('ActionResolver', () => {
         resolveActions(state, [
           {
             playerId: 'p1',
-            command: { type: 'use', item: 'blink_module', target: 'mid-river' },
+            command: { type: 'use', item: 'jump_shunt', target: 'mid-river' },
           },
         ]),
       )
       const p1 = result.state.players['p1']!
       expect(p1.zone).toBe('mid-river')
       // Not a consumable — stays in inventory, goes on cooldown
-      expect(p1.items[0]).toBe('blink_module')
+      expect(p1.items[0]).toBe('jump_shunt')
       expect(p1.buffs.some((b) => b.id === 'item_cd_blink_module')).toBe(true)
     })
 
@@ -956,15 +956,13 @@ describe('ActionResolver', () => {
             maxHp: 550,
             mp: 380,
             maxMp: 380,
-            items: ['ghost_scepter', null, null, null, null, null],
+            items: ['phase_shunt', null, null, null, null, null],
           }),
         },
       })
 
       const tick1 = Effect.runSync(
-        resolveActions(state, [
-          { playerId: 'p2', command: { type: 'use', item: 'ghost_scepter' } },
-        ]),
+        resolveActions(state, [{ playerId: 'p2', command: { type: 'use', item: 'phase_shunt' } }]),
       )
       expect(tick1.state.players['p2']!.buffs.some((b) => b.id === 'ghost_form')).toBe(true)
 
@@ -1035,7 +1033,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             zone: 'mid-t1-chaff',
-            items: ['blink_module', null, null, null, null, null],
+            items: ['jump_shunt', null, null, null, null, null],
           }),
         },
       })
@@ -1045,13 +1043,13 @@ describe('ActionResolver', () => {
         resolveActions(state, [
           {
             playerId: 'p1',
-            command: { type: 'use', item: 'blink_module', target: 'audit-fountain' },
+            command: { type: 'use', item: 'jump_shunt', target: 'audit-fountain' },
           },
         ]),
       )
       const p1 = result.state.players['p1']!
       expect(p1.zone).toBe('mid-t1-chaff')
-      expect(p1.items[0]).toBe('blink_module')
+      expect(p1.items[0]).toBe('jump_shunt')
       expect(result.events.filter((e) => e._tag === 'ability_used')).toHaveLength(0)
     })
   })

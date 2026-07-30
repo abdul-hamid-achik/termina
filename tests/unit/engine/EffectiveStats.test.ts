@@ -62,7 +62,7 @@ describe('EffectiveStats — revived stat modifiers', () => {
     it('adds Hurricane Pike’s post-thrust attack steroid (was dead — no reader)', () => {
       const base = getEffectiveAttack(makePlayer()) // 50 fallback
       const boosted = getEffectiveAttack(
-        makePlayer({ buffs: [buff('hurricane_pike_attacks', 30)] }),
+        makePlayer({ buffs: [buff('kickback_splice_attacks', 30)] }),
       )
       expect(boosted).toBe(base + 30)
     })

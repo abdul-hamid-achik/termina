@@ -132,7 +132,7 @@ describe('Shop', () => {
       const player = makePlayer({ gold: 10 })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(buyItem(state, 'player_1', 'blink_module'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'jump_shunt'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -144,7 +144,7 @@ describe('Shop', () => {
     it('fails when inventory is full', async () => {
       // 6 distinct items so we hit InventoryFullError, not MaxStacksError
       const player = makePlayer({
-        items: ['blink_module', 'aether_lens', 'dagon', 'shivas_guard', 'rust_driver', 'arc_coil'],
+        items: ['jump_shunt', 'clock_lens', 'burnout', 'cryo_routine', 'rust_driver', 'arc_coil'],
         gold: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -176,14 +176,14 @@ describe('Shop', () => {
     })
 
     it('fails when buying a duplicate of a non-consumable unique item', async () => {
-      // aether_lens has no maxStacks set -> defaults to 1 for non-consumables
+      // clock_lens has no maxStacks set -> defaults to 1 for non-consumables
       const player = makePlayer({
-        items: ['aether_lens', null, null, null, null, null],
+        items: ['clock_lens', null, null, null, null, null],
         gold: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(buyItem(state, 'player_1', 'aether_lens'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'clock_lens'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -348,7 +348,7 @@ describe('Shop', () => {
 
     it('clears the correct inventory slot', async () => {
       const player = makePlayer({
-        items: ['scrap_lot', 'trauma_patch', 'boots_of_speed', null, null, null],
+        items: ['scrap_lot', 'trauma_patch', 'scrap_lot', null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -359,7 +359,7 @@ describe('Shop', () => {
         const items = exit.value.players['player_1']!.items
         expect(items[0]).toBe('scrap_lot')
         expect(items[1]).toBeNull()
-        expect(items[2]).toBe('boots_of_speed')
+        expect(items[2]).toBe('scrap_lot')
       }
     })
   })
@@ -461,11 +461,11 @@ describe('Shop', () => {
 
     it('fails when item has no active ability', async () => {
       const player = makePlayer({
-        items: ['boots_of_speed', null, null, null, null, null],
+        items: ['scrap_lot', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'boots_of_speed'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'scrap_lot'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -503,7 +503,7 @@ describe('Shop', () => {
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['veil_of_discord', null, null, null, null, null],
+        items: ['discord_routine', null, null, null, null, null],
       })
       const enemyInZone = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const enemyElsewhere = makePlayer({ id: 'enemy_2', team: 'audit', zone: 'mid-t1-audit' })
@@ -511,7 +511,7 @@ describe('Shop', () => {
         players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
       })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'veil_of_discord'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'discord_routine'))
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const s = exit.value
@@ -525,12 +525,12 @@ describe('Shop', () => {
       }
     })
 
-    it('Dagon deals no damage to a magic-immune (BKB) target', async () => {
+    it('Burnout deals no damage to a magic-immune (Hardshell) target', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['dagon', null, null, null, null, null],
+        items: ['burnout', null, null, null, null, null],
       })
       const target = makePlayer({
         id: 'enemy_1',
@@ -542,13 +542,13 @@ describe('Shop', () => {
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'dagon', { kind: 'hero', name: 'enemy_1' }),
+        useItem(state, 'player_1', 'burnout', { kind: 'hero', name: 'enemy_1' }),
       )
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         // Magic immunity zeroes the 300 magical nuke; cooldown still applies.
         expect(exit.value.players['enemy_1']!.hp).toBe(800)
-        expect(exit.value.players['player_1']!.buffs.some((b) => b.id === 'item_cd_dagon')).toBe(
+        expect(exit.value.players['player_1']!.buffs.some((b) => b.id === 'item_cd_burnout')).toBe(
           true,
         )
       }
@@ -582,9 +582,9 @@ describe('Shop', () => {
     })
 
     it('ItemOnCooldownError has itemId and ticksRemaining', () => {
-      const error = new ItemOnCooldownError({ itemId: 'blink_module', ticksRemaining: 5 })
+      const error = new ItemOnCooldownError({ itemId: 'jump_shunt', ticksRemaining: 5 })
       expect(error._tag).toBe('ItemOnCooldownError')
-      expect(error.itemId).toBe('blink_module')
+      expect(error.itemId).toBe('jump_shunt')
       expect(error.ticksRemaining).toBe(5)
     })
   })
@@ -662,11 +662,11 @@ describe('Shop', () => {
     it('Ghost Scepter puts the caster into ghost form', async () => {
       const player = makePlayer({
         id: 'player_1',
-        items: ['ghost_scepter', null, null, null, null, null],
+        items: ['phase_shunt', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'ghost_scepter'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'phase_shunt'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'ghost_form')).toBe(true)
@@ -675,12 +675,12 @@ describe('Shop', () => {
     it('Refresher Orb resets the caster ability cooldowns', async () => {
       const player = makePlayer({
         id: 'player_1',
-        items: ['refresher_orb', null, null, null, null, null],
+        items: ['redline_splice', null, null, null, null, null],
         cooldowns: { q: 5, w: 5, e: 5, r: 5 },
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'refresher_orb'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'redline_splice'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -688,18 +688,18 @@ describe('Shop', () => {
       }
     })
 
-    it("Eul's Scepter cyclones a co-located enemy (invulnerable + disabled)", async () => {
+    it('Stasis Shunt Scepter cyclones a co-located enemy (invulnerable + disabled)', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['euls_scepter', null, null, null, null, null],
+        items: ['stasis_shunt', null, null, null, null, null],
       })
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'euls_scepter', { kind: 'hero', name: 'enemy_1' }),
+        useItem(state, 'player_1', 'stasis_shunt', { kind: 'hero', name: 'enemy_1' }),
       )
 
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -709,18 +709,18 @@ describe('Shop', () => {
       }
     })
 
-    it('Scythe of Vyse hexes a co-located enemy (hex + silence)', async () => {
+    it('Lockout Shunt hexes a co-located enemy (hex + silence)', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['scythe_of_vyse', null, null, null, null, null],
+        items: ['lockout_shunt', null, null, null, null, null],
       })
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'scythe_of_vyse', { kind: 'hero', name: 'enemy_1' }),
+        useItem(state, 'player_1', 'lockout_shunt', { kind: 'hero', name: 'enemy_1' }),
       )
 
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -730,7 +730,7 @@ describe('Shop', () => {
       }
     })
 
-    it('Blade Mail puts the damage-return buff on the caster', async () => {
+    it('Spite Plate puts the damage-return buff on the caster', async () => {
       const player = makePlayer({
         id: 'player_1',
         items: ['spite_plate', null, null, null, null, null],
@@ -833,11 +833,11 @@ describe('Shop', () => {
       const player = makePlayer({
         id: 'player_1',
         zone: 'chaff-fountain', // only adjacent is chaff-base → deterministic push
-        items: ['force_staff', null, null, null, null, null],
+        items: ['shove_splice', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'force_staff'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'shove_splice'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
@@ -847,28 +847,28 @@ describe('Shop', () => {
       const player = makePlayer({
         id: 'player_1',
         zone: 'chaff-fountain', // adjacent: chaff-base
-        items: ['blink_module', null, null, null, null, null],
+        items: ['jump_shunt', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'blink_module', 'chaff-base'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'jump_shunt', 'chaff-base'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
     })
 
-    it('Ethereal Blade etherealizes a co-located enemy (physical-immune + magic vuln)', async () => {
+    it('Phase Shim etherealizes a co-located enemy (physical-immune + magic vuln)', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['ethereal_blade', null, null, null, null, null],
+        items: ['phase_shim', null, null, null, null, null],
       })
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'ethereal_blade', { kind: 'hero', name: 'enemy_1' }),
+        useItem(state, 'player_1', 'phase_shim', { kind: 'hero', name: 'enemy_1' }),
       )
 
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -883,13 +883,13 @@ describe('Shop', () => {
         id: 'player_1',
         team: 'chaff',
         zone: 'chaff-fountain', // adjacent chaff-base; enemy elsewhere → push to base
-        items: ['hurricane_pike', null, null, null, null, null],
+        items: ['kickback_splice', null, null, null, null, null],
       })
       const enemy = makePlayer({ id: 'enemy_1', team: 'audit', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, enemy_1: enemy } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'hurricane_pike', { kind: 'hero', name: 'enemy_1' }),
+        useItem(state, 'player_1', 'kickback_splice', { kind: 'hero', name: 'enemy_1' }),
       )
 
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -955,12 +955,12 @@ describe('Shop', () => {
   })
 
   describe('Item actives — reject + revived-item paths', () => {
-    it("Shiva's Guard blasts and slows enemies in the caster's zone only", async () => {
+    it("Cryo Routine blasts and slows enemies in the caster's zone only", async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['shivas_guard', null, null, null, null, null],
+        items: ['cryo_routine', null, null, null, null, null],
       })
       const enemyInZone = makePlayer({
         id: 'enemy_1',
@@ -980,7 +980,7 @@ describe('Shop', () => {
         players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
       })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'shivas_guard'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'cryo_routine'))
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const s = exit.value
@@ -995,12 +995,12 @@ describe('Shop', () => {
       }
     })
 
-    it('Dagon burns HP on a non-immune target and can kill it', async () => {
+    it('Burnout burns HP on a non-immune target and can kill it', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['dagon', null, null, null, null, null],
+        items: ['burnout', null, null, null, null, null],
       })
       const target = makePlayer({
         id: 'enemy_1',
@@ -1013,7 +1013,7 @@ describe('Shop', () => {
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'dagon', { kind: 'hero', name: 'enemy_1' }),
+        useItem(state, 'player_1', 'burnout', { kind: 'hero', name: 'enemy_1' }),
       )
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -1078,15 +1078,15 @@ describe('Shop', () => {
 
     it('Veil + Ethereal magic-vuln stack additively through the real resolvers (+65%)', async () => {
       // Composition test: each amp is unit-tested in isolation, but this drives
-      // the real veil -> ethereal -> dagon resolver CHAIN to prove the two
+      // the real veil -> ethereal -> burnout resolver CHAIN to prove the two
       // magic-vuln debuffs (veil_discord +25%, magic_vuln_40 +40%) co-exist on
-      // the target and that Dagon's nuke reads BOTH (additive, the MOBA
+      // the target and that Burnout's nuke reads BOTH (additive, the MOBA
       // convention) — a regression to multiplicative or last-wins would break it.
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['veil_of_discord', 'ethereal_blade', 'dagon', null, null, null],
+        items: ['discord_routine', 'phase_shim', 'burnout', null, null, null],
       })
       const target = makePlayer({
         id: 'enemy_1',
@@ -1100,18 +1100,20 @@ describe('Shop', () => {
       const enemyRef = { kind: 'hero', name: 'enemy_1' } as const
 
       // Veil debuffs every enemy in the caster's zone; Ethereal adds its own
-      // magic-vuln on the target; Dagon then nukes the doubly-amped target.
-      const afterVeil = await Effect.runPromise(useItem(state, 'player_1', 'veil_of_discord'))
+      // magic-vuln on the target; Burnout then nukes the doubly-amped target.
+      const afterVeil = await Effect.runPromise(useItem(state, 'player_1', 'discord_routine'))
       const afterEth = await Effect.runPromise(
-        useItem(afterVeil, 'player_1', 'ethereal_blade', enemyRef),
+        useItem(afterVeil, 'player_1', 'phase_shim', enemyRef),
       )
       const enemyMidCombo = afterEth.players['enemy_1']!
       expect(enemyMidCombo.buffs.some((b) => b.id === 'veil_discord')).toBe(true)
       expect(enemyMidCombo.buffs.some((b) => b.id === 'magic_vuln_40')).toBe(true)
 
-      const afterDagon = await Effect.runPromise(useItem(afterEth, 'player_1', 'dagon', enemyRef))
+      const afterBurnout = await Effect.runPromise(
+        useItem(afterEth, 'player_1', 'burnout', enemyRef),
+      )
       // 300 base magical (0 resist) × (1 + (25 + 40)/100) = 495 → 800 - 495 = 305.
-      expect(afterDagon.players['enemy_1']!.hp).toBe(305)
+      expect(afterBurnout.players['enemy_1']!.hp).toBe(305)
     })
   })
 
@@ -1132,57 +1134,57 @@ describe('Shop', () => {
       )
     let state: Record<string, PlayerState>
 
-    it('Dagon rejects a non-hero target, a dead target, and an out-of-range target', async () => {
-      state = { player_1: withItem('dagon') }
-      expect(await fail('dagon', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
+    it('Burnout rejects a non-hero target, a dead target, and an out-of-range target', async () => {
+      state = { player_1: withItem('burnout') }
+      expect(await fail('burnout', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
       state = {
-        player_1: withItem('dagon'),
+        player_1: withItem('burnout'),
         e1: makePlayer({ id: 'e1', team: 'audit', zone: 'chaff-fountain', alive: false, hp: 0 }),
       }
-      expect(await fail('dagon', { kind: 'hero', name: 'e1' })).toBe(true) // dead
+      expect(await fail('burnout', { kind: 'hero', name: 'e1' })).toBe(true) // dead
       state = {
-        player_1: withItem('dagon'),
+        player_1: withItem('burnout'),
         e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
       }
-      expect(await fail('dagon', { kind: 'hero', name: 'e1' })).toBe(true) // out of range
+      expect(await fail('burnout', { kind: 'hero', name: 'e1' })).toBe(true) // out of range
     })
 
-    it('Ethereal Blade rejects a target in a different zone', async () => {
+    it('Phase Shim rejects a target in a different zone', async () => {
       state = {
-        player_1: withItem('ethereal_blade'),
+        player_1: withItem('phase_shim'),
         e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
       }
-      expect(await fail('ethereal_blade', { kind: 'hero', name: 'e1' })).toBe(true)
+      expect(await fail('phase_shim', { kind: 'hero', name: 'e1' })).toBe(true)
     })
 
-    it('Scythe of Vyse rejects a non-hero target and an out-of-zone target', async () => {
+    it('Lockout Shunt rejects a non-hero target and an out-of-zone target', async () => {
       state = {
-        player_1: withItem('scythe_of_vyse'),
+        player_1: withItem('lockout_shunt'),
         e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
       }
-      expect(await fail('scythe_of_vyse', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
-      expect(await fail('scythe_of_vyse', { kind: 'hero', name: 'e1' })).toBe(true) // different zone
+      expect(await fail('lockout_shunt', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
+      expect(await fail('lockout_shunt', { kind: 'hero', name: 'e1' })).toBe(true) // different zone
     })
 
-    it("Eul's Scepter rejects an out-of-zone target that isn't the caster", async () => {
+    it("Stasis Shunt Scepter rejects an out-of-zone target that isn't the caster", async () => {
       state = {
-        player_1: withItem('euls_scepter'),
+        player_1: withItem('stasis_shunt'),
         e1: makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river' }),
       }
-      expect(await fail('euls_scepter', { kind: 'hero', name: 'e1' })).toBe(true)
+      expect(await fail('stasis_shunt', { kind: 'hero', name: 'e1' })).toBe(true)
     })
 
     it('Hurricane Pike rejects an ally target (must target an enemy)', async () => {
       state = {
-        player_1: withItem('hurricane_pike'),
+        player_1: withItem('kickback_splice'),
         a1: makePlayer({ id: 'a1', team: 'chaff', zone: 'chaff-fountain' }),
       }
-      expect(await fail('hurricane_pike', { kind: 'hero', name: 'a1' })).toBe(true)
+      expect(await fail('kickback_splice', { kind: 'hero', name: 'a1' })).toBe(true)
     })
 
     it('Blink Module rejects a non-adjacent destination', async () => {
-      state = { player_1: withItem('blink_module') }
-      expect(await fail('blink_module', { kind: 'zone', zone: 'mid-river' })).toBe(true)
+      state = { player_1: withItem('jump_shunt') }
+      expect(await fail('jump_shunt', { kind: 'zone', zone: 'mid-river' })).toBe(true)
     })
   })
 })

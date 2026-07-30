@@ -249,13 +249,13 @@ export function useItem(
         break
 
       // Movement items
-      case 'blink_module':
+      case 'jump_shunt':
         updatedState = yield* useBlinkModule(state, player, target)
         break
-      case 'force_staff':
+      case 'shove_splice':
         updatedState = yield* useForceStaff(state, player, target)
         break
-      case 'hurricane_pike':
+      case 'kickback_splice':
         updatedState = yield* useHurricanePike(state, player, target)
         break
 
@@ -263,10 +263,10 @@ export function useItem(
       case 'ghostwire_edge':
         updatedState = useSilverEdge(state, player)
         break
-      case 'dagon':
-        updatedState = yield* useDagon(state, player, target)
+      case 'burnout':
+        updatedState = yield* useBurnout(state, player, target)
         break
-      case 'ethereal_blade':
+      case 'phase_shim':
         updatedState = yield* useEtherealBlade(state, player, target)
         break
 
@@ -280,7 +280,7 @@ export function useItem(
       case 'spite_plate':
         updatedState = useBladeMail(state, player)
         break
-      case 'ghost_scepter':
+      case 'phase_shunt':
         updatedState = useGhostScepter(state, player)
         break
       case 'mirror_shell':
@@ -291,19 +291,19 @@ export function useItem(
       case 'stack_overflow':
         updatedState = useStackOverflow(state, player)
         break
-      case 'refresher_orb':
+      case 'redline_splice':
         updatedState = useRefresherOrb(state, player)
         break
-      case 'euls_scepter':
+      case 'stasis_shunt':
         updatedState = yield* useEulsScepter(state, player, target)
         break
-      case 'scythe_of_vyse':
+      case 'lockout_shunt':
         updatedState = yield* useScytheOfVyse(state, player, target)
         break
-      case 'veil_of_discord':
+      case 'discord_routine':
         updatedState = useVeilOfDiscord(state, player)
         break
-      case 'shivas_guard':
+      case 'cryo_routine':
         updatedState = useShivasGuard(state, player)
         break
 
@@ -474,7 +474,7 @@ function useBlinkModule(
     const zoneId =
       typeof target === 'string' ? target : target?.kind === 'hero' ? target.name : undefined
     if (!zoneId || !areAdjacent(player.zone, zoneId)) {
-      return yield* Effect.fail(new ItemNotFoundError({ itemId: 'blink_module' }))
+      return yield* Effect.fail(new ItemNotFoundError({ itemId: 'jump_shunt' }))
     }
 
     let updated: PlayerState = { ...player, zone: zoneId }
@@ -482,7 +482,7 @@ function useBlinkModule(
       id: 'item_cd_blink_module',
       stacks: 1,
       ticksRemaining: 12,
-      source: 'blink_module',
+      source: 'jump_shunt',
     })
 
     return updatePlayer(state, updated)
@@ -526,7 +526,7 @@ function useForceStaff(
         id: 'item_cd_force_staff',
         stacks: 1,
         ticksRemaining: 12,
-        source: 'force_staff',
+        source: 'shove_splice',
       })
       return updatePlayers(state, [caster, updated])
     }
@@ -535,7 +535,7 @@ function useForceStaff(
       id: 'item_cd_force_staff',
       stacks: 1,
       ticksRemaining: 12,
-      source: 'force_staff',
+      source: 'shove_splice',
     })
 
     return updatePlayer(state, updated)
@@ -572,7 +572,7 @@ function useHurricanePike(
     // Deterministic disengage: among the zones away from the target, thrust to
     // the one closest to our OWN fountain. Was a random pick that could fling the
     // caster toward the ENEMY base — and broke replay determinism (same fix as
-    // Force Staff).
+    // Shove Splice).
     const homeFountain = player.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
     const hasZone = (id: string) => id in state.zones
     const pushZone = [...safeZones].sort(
@@ -584,16 +584,16 @@ function useHurricanePike(
     // window. The flat bonus lives in `stacks` and is summed in getEffectiveAttack
     // (mirrors gait_rig_attack). Previously stacks:1 with no reader = dead.
     updated = applyBuff(updated, {
-      id: 'hurricane_pike_attacks',
+      id: 'kickback_splice_attacks',
       stacks: 30,
       ticksRemaining: 2,
-      source: 'hurricane_pike',
+      source: 'kickback_splice',
     })
     updated = applyBuff(updated, {
       id: 'item_cd_hurricane_pike',
       stacks: 1,
       ticksRemaining: 14,
-      source: 'hurricane_pike',
+      source: 'kickback_splice',
     })
 
     return updatePlayer(state, updated)
@@ -627,7 +627,7 @@ function useSilverEdge(state: GameState, player: PlayerState): GameState {
   return updatePlayer(state, updated)
 }
 
-function useDagon(
+function useBurnout(
   state: GameState,
   player: PlayerState,
   target?: TargetRef | string,
@@ -656,10 +656,10 @@ function useDagon(
     const newHp = Math.max(0, targetPlayer.hp - damage)
 
     const updatedCaster = applyBuff(player, {
-      id: 'item_cd_dagon',
+      id: 'item_cd_burnout',
       stacks: 1,
       ticksRemaining: 18,
-      source: 'dagon',
+      source: 'burnout',
     })
 
     const updatedTarget: PlayerState = {
@@ -696,20 +696,20 @@ function useEtherealBlade(
       id: 'ethereal',
       stacks: 1,
       ticksRemaining: 2,
-      source: 'ethereal_blade',
+      source: 'phase_shim',
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'magic_vuln_40',
       stacks: 40,
       ticksRemaining: 2,
-      source: 'ethereal_blade',
+      source: 'phase_shim',
     })
 
     const updatedCaster = applyBuff(player, {
       id: 'item_cd_ethereal_blade',
       stacks: 1,
       ticksRemaining: 15,
-      source: 'ethereal_blade',
+      source: 'phase_shim',
     })
 
     return updatePlayers(state, [updatedCaster, updatedTarget])
@@ -771,13 +771,13 @@ function useGhostScepter(state: GameState, player: PlayerState): GameState {
     id: 'ghost_form',
     stacks: 1,
     ticksRemaining: 2,
-    source: 'ghost_scepter',
+    source: 'phase_shunt',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_ghost_scepter',
     stacks: 1,
     ticksRemaining: 20,
-    source: 'ghost_scepter',
+    source: 'phase_shunt',
   })
   return updatePlayer(state, updated)
 }
@@ -852,7 +852,7 @@ function useRefresherOrb(state: GameState, player: PlayerState): GameState {
     id: 'item_cd_refresher_orb',
     stacks: 1,
     ticksRemaining: 40,
-    source: 'refresher_orb',
+    source: 'redline_splice',
   })
   return updatePlayer(state, updated)
 }
@@ -881,13 +881,13 @@ function useEulsScepter(
       id: 'cyclone',
       stacks: 1,
       ticksRemaining: 2,
-      source: 'euls_scepter',
+      source: 'stasis_shunt',
     })
     updated = applyBuff(updated, {
       id: 'invulnerable',
       stacks: 1,
       ticksRemaining: 2,
-      source: 'euls_scepter',
+      source: 'stasis_shunt',
     })
 
     // Apply cooldown to caster
@@ -896,7 +896,7 @@ function useEulsScepter(
         id: 'item_cd_euls_scepter',
         stacks: 1,
         ticksRemaining: 15,
-        source: 'euls_scepter',
+        source: 'stasis_shunt',
       })
       return updatePlayers(state, [caster, updated])
     }
@@ -905,7 +905,7 @@ function useEulsScepter(
       id: 'item_cd_euls_scepter',
       stacks: 1,
       ticksRemaining: 15,
-      source: 'euls_scepter',
+      source: 'stasis_shunt',
     })
 
     return updatePlayer(state, updated)
@@ -936,20 +936,20 @@ function useScytheOfVyse(
       id: 'hex',
       stacks: 1,
       ticksRemaining: 2,
-      source: 'scythe_of_vyse',
+      source: 'lockout_shunt',
     })
     updatedTarget = applyBuff(updatedTarget, {
       id: 'silence',
       stacks: 1,
       ticksRemaining: 2,
-      source: 'scythe_of_vyse',
+      source: 'lockout_shunt',
     })
 
     const updatedCaster = applyBuff(player, {
       id: 'item_cd_scythe_of_vyse',
       stacks: 1,
       ticksRemaining: 20,
-      source: 'scythe_of_vyse',
+      source: 'lockout_shunt',
     })
 
     return updatePlayers(state, [updatedCaster, updatedTarget])
@@ -966,7 +966,7 @@ function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
       id: 'veil_discord',
       stacks: 25, // +25% magical damage taken
       ticksRemaining: 4,
-      source: 'veil_of_discord',
+      source: 'discord_routine',
     }),
   )
   // Only the cooldown marker stays on the caster.
@@ -974,7 +974,7 @@ function useVeilOfDiscord(state: GameState, player: PlayerState): GameState {
     id: 'item_cd_veil_of_discord',
     stacks: 1,
     ticksRemaining: 15,
-    source: 'veil_of_discord',
+    source: 'discord_routine',
   })
   return updatePlayers(state, [caster, ...enemies])
 }
@@ -997,7 +997,7 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
       id: 'slow',
       stacks: 40,
       ticksRemaining: 2,
-      source: 'shivas_guard',
+      source: 'cryo_routine',
     })
     players[enemy.id] = { ...slowed, hp: Math.max(0, slowed.hp - dmg) }
   }
@@ -1005,7 +1005,7 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
     id: 'item_cd_shivas_guard',
     stacks: 1,
     ticksRemaining: 20,
-    source: 'shivas_guard',
+    source: 'cryo_routine',
   })
   return { ...state, players }
 }

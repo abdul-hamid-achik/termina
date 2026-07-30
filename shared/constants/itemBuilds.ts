@@ -6,7 +6,6 @@ import type { HeroRole } from '~~/shared/types/hero'
  * player). Each list is cost-ascending: the bot buys the first affordable item
  * and STOPS, saving for the next core item, so order = priority. Every entry
  * grants an engine-consumed stat (attack/defense/hp/mp/magicResist) — no dead
- * moveSpeed-only items like boots_of_speed.
  */
 
 /** Fallback when a hero has no role-specific list — solid right-click + utility cores. */
@@ -14,7 +13,7 @@ const CORE_BUILD_ORDER = [
   'edge_kit',
   'null_pointer',
   'garbage_collector',
-  'blink_module',
+  'jump_shunt',
   'stack_overflow',
   'segfault_blade',
 ]
@@ -27,7 +26,7 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
   assassin: [
     'edge_kit',
     'fracture_edge',
-    'blink_module',
+    'jump_shunt',
     'concussion_hammer',
     'hardshell',
     'killshot_coil',
@@ -44,28 +43,21 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
   // Durable initiator: blink in, blademail, then tanky cores.
   offlaner: [
     'clot_ring',
-    'blink_module',
+    'jump_shunt',
     'spite_plate',
     'hardshell',
     'siege_lattice',
     'bulk_lattice',
   ],
   // Mana + magic resist + the spell-amp/control cores.
-  mage: [
-    'aether_lens',
-    'veil_of_discord',
-    'mystical_staff',
-    'hardshell',
-    'ethereal_blade',
-    'scythe_of_vyse',
-  ],
+  mage: ['clock_lens', 'discord_routine', 'amp_stack', 'hardshell', 'phase_shim', 'lockout_shunt'],
   // Cheap utility first, then team-saving items.
   support: [
     'drip_mask',
     'clot_ring',
-    'force_staff',
-    'veil_of_discord',
-    'euls_scepter',
+    'shove_splice',
+    'discord_routine',
+    'stasis_shunt',
     'mirror_shell',
   ],
 }

@@ -1203,7 +1203,7 @@ export function useCommands() {
         const item = context.items![id]
         return {
           text: id,
-          description: item ? `${item.name} (sell: ${Math.floor(item.cost / 2)}g)` : id,
+          description: item ? `${item.name} (sell: ${Math.floor(item.cost / 2)}sc)` : id,
         }
       })
   }

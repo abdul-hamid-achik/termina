@@ -2,7 +2,7 @@
  * Player-facing presentation for engine buff/debuff ids.
  *
  * The engine stores effects by terse internal id (`magic_immune`, `veil_discord`,
- * `item_cd_dagon`, …). The HUD should NOT show those raw — it should show a
+ * `item_cd_burnout`, …). The HUD should NOT show those raw — it should show a
  * readable name, hide pure bookkeeping markers (item-cooldown trackers are already
  * surfaced on the item slots), and colour each chip by whether the effect helps or
  * hurts its bearer.
@@ -58,7 +58,7 @@ const BUFF_META: Record<string, BuffMeta> = {
   allocate: { label: 'Allocate', kind: 'positive' },
   heapGrowth: { label: 'Heap Growth', kind: 'positive', showStacks: true, permanent: true },
   stack_overflow_buff: { label: 'Overclocked', kind: 'positive' },
-  hurricane_pike_attacks: { label: 'Pike Volley', kind: 'positive' },
+  kickback_splice_attacks: { label: 'Pike Volley', kind: 'positive' },
   haste: { label: 'Haste', kind: 'positive' },
   dd: { label: 'Double Damage', kind: 'positive' },
   arcane: { label: 'Arcane', kind: 'positive' },

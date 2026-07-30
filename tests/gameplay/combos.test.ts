@@ -50,13 +50,13 @@ describe('same-tick combos', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-t1-chaff',
-          items: ['blink_module', null, null, null, null, null],
+          items: ['jump_shunt', null, null, null, null, null],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river' },
       },
     }))
 
-    game.submit({ type: 'use', item: 'blink_module', target: 'mid-river' })
+    game.submit({ type: 'use', item: 'jump_shunt', target: 'mid-river' })
     game.attackHero(ENEMY)
     await game.tick()
 
