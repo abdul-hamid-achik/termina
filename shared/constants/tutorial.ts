@@ -29,7 +29,7 @@ export interface TutorialStep {
  * enemy hero being in range, a creep wave having arrived), so any of them CAN
  * be unsatisfiable for a long stretch through no fault of the player.
  *
- * 15 ticks ≈ 60s at the standard 4s tick.
+ * 15 cycles ≈ 60s at the 4s batch clock.
  */
 export const TUTORIAL_STEP_DEADLINE_TICKS = 15
 
@@ -50,9 +50,9 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     // own creeps, and was stunned and killed inside ~12 ticks having landed
     // nothing. Standing behind your own tower is also just what the game wants
     // you to learn.
-    hint: '🎓 Walk to your tower — type `move mid-t1-rad`. You move one zone per tick, so this takes a few.',
+    hint: '🎓 Walk to your tower — type `move mid-t1-rad`. You move one zone per cycle, so this takes a few.',
     skipNote:
-      'Movement: `move <zone>` auto-paths one zone per tick. Stay behind your own tower — the river is contested.',
+      'Movement: `move <zone>` auto-paths one zone per cycle. Stay behind your own tower — the river is contested.',
   },
   {
     teaches: 'attack',

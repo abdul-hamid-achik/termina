@@ -24,8 +24,6 @@ export {
   TUTORIAL_STEP_COUNT,
   TUTORIAL_STEP_DEADLINE_TICKS,
   tutorialHint,
-  isTutorialComplete,
-  type TutorialStep,
 } from '~~/shared/constants/tutorial'
 
 /**
