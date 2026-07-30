@@ -950,7 +950,7 @@ describe('ActionResolver', () => {
       expect(p1.buffs.some((b) => b.id === 'item_cd_blink_module')).toBe(true)
     })
 
-    it('black king bar applies the magic_immune buff', () => {
+    it('black king bar applies the airgap buff', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -965,7 +965,7 @@ describe('ActionResolver', () => {
         resolveActions(state, [{ playerId: 'p1', command: { type: 'use', item: 'hardshell' } }]),
       )
       const p1 = result.state.players['p1']!
-      const immune = p1.buffs.find((b) => b.id === 'magic_immune')
+      const immune = p1.buffs.find((b) => b.id === 'airgap')
       expect(immune).toBeDefined()
       expect(immune!.ticksRemaining).toBe(4)
       expect(p1.buffs.some((b) => b.id === 'item_cd_hardshell')).toBe(true)

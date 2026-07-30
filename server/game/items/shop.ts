@@ -736,7 +736,7 @@ function useFirewallItem(state: GameState, player: PlayerState): GameState {
 
 function useBlackKingBar(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
-    id: 'magic_immune',
+    id: 'airgap',
     stacks: 1,
     ticksRemaining: 4,
     source: 'hardshell',

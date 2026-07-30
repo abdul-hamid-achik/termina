@@ -636,7 +636,7 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
           team: 'audit',
           name: 'Immune',
           zone: 'mid-river',
-          buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
+          buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
         }),
       },
     })

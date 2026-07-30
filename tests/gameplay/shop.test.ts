@@ -132,8 +132,8 @@ describe('shop', () => {
     game.submit({ type: 'use', item: 'hardshell' })
     await game.tick()
 
-    // Hardshell applies a multi-tick magic_immune buff (still present after this tick).
-    expect((await game.me()).buffs.some((b) => b.id === 'magic_immune')).toBe(true)
+    // Hardshell applies a multi-tick airgap buff (still present after this tick).
+    expect((await game.me()).buffs.some((b) => b.id === 'airgap')).toBe(true)
   })
 
   it('Refresher Orb resets a spent ability so it can be cast again (the double-cast combo)', async () => {

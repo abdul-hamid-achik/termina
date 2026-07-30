@@ -494,10 +494,10 @@ export function validateCommand(command: Command, context: GameContext): string 
   if (hasDebuff(player, 'hex') && command.type !== 'select_talent') {
     return 'Cannot act while hexed'
   }
-  // Black King Bar (magic_immune) lets a hero act through the SOFT control
+  // Hardshell (airgap) lets a hero act through the SOFT control
   // debuffs (stun/silence/root/fear/taunt). The client previously had no such
   // concept, so it falsely blocked BKB heroes that the server would let act.
-  const debuffImmune = player.buffs.some((b) => b.id === 'magic_immune')
+  const debuffImmune = player.buffs.some((b) => b.id === 'airgap')
 
   switch (command.type) {
     case 'buyback': {

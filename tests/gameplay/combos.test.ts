@@ -29,7 +29,7 @@ describe('same-tick combos', () => {
     await game.tick()
 
     const me = await game.me()
-    expect(me.buffs.some((b) => b.id === 'magic_immune')).toBe(true)
+    expect(me.buffs.some((b) => b.id === 'airgap')).toBe(true)
     expect(
       game.lastEvents.some(
         (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
@@ -120,7 +120,7 @@ describe('same-tick combos', () => {
     await game.tick()
 
     const me = await game.me()
-    expect(me.buffs.some((b) => b.id === 'magic_immune')).toBe(true)
+    expect(me.buffs.some((b) => b.id === 'airgap')).toBe(true)
     expect(me.attackTarget).toEqual({ kind: 'hero', name: ENEMY })
     expect(
       game.lastEvents.some(

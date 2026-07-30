@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { buffLabel, buffKind, isInternalBuff, displayBuffs } from '~~/app/utils/buffs'
+import {
+  buffLabel,
+  buffKind,
+  isInternalBuff,
+  displayBuffs,
+  hasBuffMeta,
+  ENGINE_BRANCHED_BUFF_IDS,
+} from '~~/app/utils/buffs'
 
 const buff = (id: string, stacks = 1, ticksRemaining = 3) => ({ id, stacks, ticksRemaining })
 
 describe('buffLabel', () => {
   it('maps known effect ids to readable names', () => {
-    expect(buffLabel('magic_immune')).toBe('Magic Immune')
+    expect(buffLabel('airgap')).toBe('AIRGAP')
     expect(buffLabel('veil_discord')).toBe('Discord')
     expect(buffLabel('ghostwire_edge_invis')).toBe('Invisible')
     expect(buffLabel('stun')).toBe('Stunned')
@@ -32,7 +39,7 @@ describe('buffLabel', () => {
 
 describe('buffKind', () => {
   it('classifies survival/steroid effects as positive', () => {
-    expect(buffKind('magic_immune')).toBe('positive')
+    expect(buffKind('airgap')).toBe('positive')
     expect(buffKind('stack_overflow_buff')).toBe('positive')
   })
 
@@ -81,7 +88,7 @@ describe('isInternalBuff', () => {
   })
 
   it('does not flag real player-facing effects', () => {
-    expect(isInternalBuff('magic_immune')).toBe(false)
+    expect(isInternalBuff('airgap')).toBe(false)
     expect(isInternalBuff('tp_channeling')).toBe(false)
     expect(isInternalBuff('stun')).toBe(false)
     expect(isInternalBuff('deadlock')).toBe(false) // the visible buff, not deadlockZone
@@ -89,17 +96,30 @@ describe('isInternalBuff', () => {
   })
 })
 
+describe('engine-branched buff ids have BUFF_META', () => {
+  it('every combat-branched buff id has an authored meta entry (no title-case fallback)', () => {
+    // A typo'd engine branch used to render as a silent title-case fallback chip
+    // while the branch itself no-op'd. Keep the two sets locked together.
+    for (const id of ENGINE_BRANCHED_BUFF_IDS) {
+      expect(hasBuffMeta(id), `${id} missing from BUFF_META`).toBe(true)
+    }
+    expect(hasBuffMeta('airgap')).toBe(true)
+    expect(buffLabel('airgap')).toBe('AIRGAP')
+    expect(hasBuffMeta('totally_unknown_buff_xyz')).toBe(false)
+  })
+})
+
 describe('displayBuffs', () => {
   it('drops internal bookkeeping markers from the strip', () => {
     const out = displayBuffs([
-      buff('magic_immune', 1, 4),
+      buff('airgap', 1, 4),
       buff('item_cd_hardshell', 1, 25),
       buff('tp_destination', 1, 4),
       buff('stealthIdle', 37, 99),
       buff('inCombat', 2, 2),
       buff('resonanceTarget', 30, 5),
     ])
-    expect(out.map((b) => b.id)).toEqual(['magic_immune'])
+    expect(out.map((b) => b.id)).toEqual(['airgap'])
   })
 
   it('maps label + kind and preserves a finite countdown', () => {

@@ -203,7 +203,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -506,7 +506,7 @@ describe('abilities', () => {
     ).toBe(true)
   })
 
-  it('a BKB (magic_immune) hero ignores taunt — not forced to attack the taunter', async () => {
+  it('a BKB (airgap) hero ignores taunt — not forced to attack the taunter', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick()
     await game.patch((s) => ({
@@ -517,7 +517,7 @@ describe('abilities', () => {
           ...s.players[ENEMY]!,
           buffs: [
             { id: 'taunt', stacks: 1, ticksRemaining: 2, source: HUMAN },
-            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: ENEMY },
+            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: ENEMY },
           ],
         },
       },
@@ -624,7 +624,7 @@ describe('abilities', () => {
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [
             { id: 'stun', stacks: 1, ticksRemaining: 5, source: ENEMY },
-            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
           ],
         },
       },
@@ -650,7 +650,7 @@ describe('abilities', () => {
           zone: 'mid-river',
           buffs: [
             { id: 'root', stacks: 1, ticksRemaining: 5, source: ENEMY },
-            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
           ],
         },
       },
@@ -669,7 +669,7 @@ describe('abilities', () => {
           zone: s.players[ENEMY]!.zone,
           buffs: [
             { id: 'stun', stacks: 1, ticksRemaining: 5, source: ENEMY },
-            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
           ],
         },
       },
@@ -694,7 +694,7 @@ describe('abilities', () => {
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [
             { id: 'cyclone', stacks: 1, ticksRemaining: 5, source: HUMAN },
-            { id: 'magic_immune', stacks: 1, ticksRemaining: 5, source: HUMAN },
+            { id: 'airgap', stacks: 1, ticksRemaining: 5, source: HUMAN },
           ],
         },
       },

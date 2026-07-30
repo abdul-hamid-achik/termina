@@ -1588,7 +1588,7 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
       team: 'audit',
       hp: 100,
       maxHp: 600,
-      buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
+      buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
     })
     const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('burnout', 'phase_shim') })
     expect(tryUseCombatItem(bot, [immune], [], makeConfig())).toBeNull()

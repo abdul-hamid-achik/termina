@@ -65,13 +65,13 @@ export function getIncomingDamageMultiplier(target: PlayerState, damageType: Dam
 /**
  * True when `target` ignores an incoming hit of `damageType` outright — used as
  * an early-skip so no HP is lost. invulnerable (Proxy R / Eul's Cyclone) blocks
- * everything; Black King Bar's magic_immune blocks code; ethereal (Ethereal
+ * everything; Hardshell's airgap blocks code; ethereal (Ethereal
  * Blade) and ghost_form (Ghost Scepter) block kinetic.
  */
 export function isDamageImmune(target: PlayerState, damageType: DamageType): boolean {
   const buffs = target.buffs
   if (buffs.some((b) => b.id === 'invulnerable')) return true
-  if (damageType === 'code' && buffs.some((b) => b.id === 'magic_immune')) return true
+  if (damageType === 'code' && buffs.some((b) => b.id === 'airgap')) return true
   if (damageType === 'kinetic' && buffs.some((b) => b.id === 'ethereal' || b.id === 'ghost_form'))
     return true
   return false

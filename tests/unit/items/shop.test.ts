@@ -537,7 +537,7 @@ describe('Shop', () => {
         team: 'audit',
         zone: 'mid-river',
         hp: 800,
-        buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'bkb' }],
+        buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'bkb' }],
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
 
@@ -656,7 +656,7 @@ describe('Shop', () => {
       const exit = await cacheEffect(useItem(state, 'player_1', 'hardshell'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
-      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'magic_immune')).toBe(true)
+      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'airgap')).toBe(true)
     })
 
     it('Ghost Scepter puts the caster into ghost form', async () => {

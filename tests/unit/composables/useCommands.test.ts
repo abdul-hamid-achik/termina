@@ -1845,7 +1845,7 @@ describe('validateCommand', () => {
     const ctx = makeContext({
       player: makePlayer({
         mp: 280,
-        buffs: [debuff('stun'), debuff('silence'), debuff('root'), debuff('magic_immune')],
+        buffs: [debuff('stun'), debuff('silence'), debuff('root'), debuff('airgap')],
       }),
     })
     expect(validateCommand({ type: 'move', zone: 'mid-river' }, ctx)).toBeNull()

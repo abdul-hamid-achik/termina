@@ -244,8 +244,8 @@ describe('DamageCalculator', () => {
       expect(isDamageImmune(p, 'black')).toBe(true)
     })
 
-    it('magic_immune (BKB) blocks code only', () => {
-      const p = makePlayer({ buffs: [buff('magic_immune')] })
+    it('airgap (BKB) blocks code only', () => {
+      const p = makePlayer({ buffs: [buff('airgap')] })
       expect(isDamageImmune(p, 'code')).toBe(true)
       expect(isDamageImmune(p, 'kinetic')).toBe(false)
     })

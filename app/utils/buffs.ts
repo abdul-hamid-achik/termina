@@ -1,7 +1,7 @@
 /**
  * Player-facing presentation for engine buff/debuff ids.
  *
- * The engine stores effects by terse internal id (`magic_immune`, `veil_discord`,
+ * The engine stores effects by terse internal id (`airgap`, `veil_discord`,
  * `item_cd_burnout`, …). The HUD should NOT show those raw — it should show a
  * readable name, hide pure bookkeeping markers (item-cooldown trackers are already
  * surfaced on the item slots), and colour each chip by whether the effect helps or
@@ -33,7 +33,7 @@ interface BuffMeta {
 // title-cased version of the id and `neutral` colouring (see buffLabel/buffKind).
 const BUFF_META: Record<string, BuffMeta> = {
   // ── Defensive / survival (good to have) ──
-  magic_immune: { label: 'Magic Immune', kind: 'positive' },
+  airgap: { label: 'AIRGAP', kind: 'positive' },
   spite_plate: { label: 'Spite Plate', kind: 'positive' },
   ghost_form: { label: 'Ghost Form', kind: 'positive' },
   mirror_shell: { label: 'Mirror Shell', kind: 'positive' },
@@ -150,6 +150,42 @@ function prettify(id: string): string {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
+
+/** True when `id` has an authored BUFF_META entry (not just the title-case fallback). */
+export function hasBuffMeta(id: string): boolean {
+  return Object.prototype.hasOwnProperty.call(BUFF_META, id)
+}
+
+/**
+ * Engine-branched buff ids whose presence changes combat resolution (immunity,
+ * hard control, reflect, dodge). A missing BUFF_META entry for one of these
+ * silently degrades the HUD chip to a title-cased fallback — the guard test
+ * in buffs.test.ts fails if any of these lack meta.
+ */
+export const ENGINE_BRANCHED_BUFF_IDS = [
+  'airgap',
+  'invulnerable',
+  'ethereal',
+  'ghost_form',
+  'phaseShift',
+  'hardened',
+  'spite_plate',
+  'mirror_shell',
+  'spellblock',
+  'firewall_block',
+  'shield',
+  'stun',
+  'silence',
+  'root',
+  'taunt',
+  'feared',
+  'hex',
+  'cyclone',
+  'stealth',
+  'haste',
+  'slow',
+  'backup',
+] as const
 
 /** Readable label for an effect id (title-cased fallback for unknown ids). */
 export function buffLabel(id: string): string {

@@ -166,11 +166,11 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   // still basic-attack.)
   if (hasDebuff(player, 'hex')) return 'Cannot act while hexed'
 
-  // Black King Bar (magic_immune) grants debuff immunity ("immune to ... debuffs"):
+  // Hardshell (airgap) grants debuff immunity ("immune to ... debuffs"):
   // a Hardshell-active hero acts through the standard control debuffs — stun, silence,
   // root, fear, taunt. Cyclone and Hex are hard disables that pierce it (checked
   // above), matching the usual convention.
-  const debuffImmune = player.buffs.some((b) => b.id === 'magic_immune')
+  const debuffImmune = player.buffs.some((b) => b.id === 'airgap')
 
   const cmd = action.command
 
@@ -1845,13 +1845,13 @@ export function resolveActions(
     // "force enemies to attack me"). validateAction already blocked their move +
     // cast; here we OVERRIDE their action with an attack on the taunter so they
     // can't act freely — overriding bots too, so no separate bot-AI handling is
-    // needed. Skipped for Hardshell (magic_immune ignores the debuff) and for heroes
+    // needed. Skipped for Hardshell (airgap ignores the debuff) and for heroes
     // who couldn't attack anyway (stun/feared/ghost), and only when the taunter
     // is alive in the same zone (otherwise there's nothing to force-attack).
     const tauntForced = new Map<string, string>()
     for (const [pid, p] of Object.entries(players)) {
       if (!p.alive) continue
-      if (p.buffs.some((b) => b.id === 'magic_immune')) continue
+      if (p.buffs.some((b) => b.id === 'airgap')) continue
       if (p.buffs.some((b) => b.id === 'stun' || b.id === 'feared' || b.id === 'ghost_form')) {
         continue
       }

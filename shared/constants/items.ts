@@ -365,7 +365,7 @@ const blackKingBar: ItemDef = {
   active: {
     id: 'hardshell_active',
     name: 'Avatar',
-    description: 'Become immune to code damage and debuffs for 4 cycles.',
+    description: 'Gain AIRGAP for 4 cycles — immune to code damage and debuffs.',
     cooldownTicks: 25,
   },
 }

@@ -88,10 +88,8 @@ function deterministicRoll(id: string, tick: number): number {
 }
 
 /** Magic-immune / invulnerable targets negate the pure code-burst items (Burnout, Ethereal). */
-function isMagicImmuneTarget(p: PlayerState): boolean {
-  return p.buffs.some(
-    (b) => (b.id === 'magic_immune' || b.id === 'invulnerable') && b.ticksRemaining > 0,
-  )
+function isAirgapTarget(p: PlayerState): boolean {
+  return p.buffs.some((b) => (b.id === 'airgap' || b.id === 'invulnerable') && b.ticksRemaining > 0)
 }
 
 /** Canonical shop cost; an unknown item is treated as unaffordable (never bought). */
@@ -1360,7 +1358,7 @@ export function tryUseCombatItem(
   // Offensive setup → control → burst, aimed at the kill target (lowest HP).
   const killTarget = enemiesInZone.reduce((a, b) => (a.hp < b.hp ? a : b))
   const killRef: TargetRef = { kind: 'hero', name: killTarget.id }
-  const killImmune = isMagicImmuneTarget(killTarget)
+  const killImmune = isAirgapTarget(killTarget)
 
   if (itemOffCooldown(bot, 'discord_routine')) {
     return { type: 'use', item: 'discord_routine' }

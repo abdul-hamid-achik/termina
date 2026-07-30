@@ -235,7 +235,7 @@ describe('Deck buff strip', () => {
     const wrapper = mountDeck(
       makeHero({
         buffs: [
-          { id: 'magic_immune', stacks: 1, ticksRemaining: 4 },
+          { id: 'airgap', stacks: 1, ticksRemaining: 4 },
           { id: 'veil_discord', stacks: 25, ticksRemaining: 4 },
           { id: 'item_cd_hardshell', stacks: 1, ticksRemaining: 25 },
         ],
@@ -243,10 +243,10 @@ describe('Deck buff strip', () => {
     )
 
     // Friendly label instead of the raw id.
-    const bkb = wrapper.find('[data-testid="buff-magic_immune"]')
+    const bkb = wrapper.find('[data-testid="buff-airgap"]')
     expect(bkb.exists()).toBe(true)
-    expect(bkb.text()).toContain('Magic Immune')
-    expect(wrapper.text()).not.toContain('magic_immune')
+    expect(bkb.text()).toContain('AIRGAP')
+    expect(wrapper.text()).not.toContain('airgap')
 
     // The enemy debuff renders in the danger colour, not the generic buff colour.
     const veil = wrapper.find('[data-testid="buff-veil_discord"]')

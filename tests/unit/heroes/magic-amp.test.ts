@@ -199,10 +199,10 @@ describe('dealDamage: immunity', () => {
     }
   })
 
-  it('magic_immune (BKB) blocks code but not kinetic', () => {
-    const t1 = immune('magic_immune')
+  it('airgap (BKB) blocks code but not kinetic', () => {
+    const t1 = immune('airgap')
     expect(dealDamage(t1, 200, 'code').hp).toBe(t1.hp)
-    const t2 = immune('magic_immune')
+    const t2 = immune('airgap')
     expect(dealDamage(t2, 200, 'kinetic').hp).toBeLessThan(t2.hp)
   })
 

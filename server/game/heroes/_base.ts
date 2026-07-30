@@ -309,7 +309,7 @@ export function dealDamage(
   rawDamage: number,
   damageType: DamageType,
 ): PlayerState {
-  // Immunity (Proxy R / Eul's invulnerable; BKB magic_immune; Ethereal/Ghost
+  // Immunity (Proxy R / Eul's invulnerable; BKB airgap; Ethereal/Ghost
   // kinetic) ignores the hit entirely — no HP lost, buff left for tickBuffs to
   // expire (NOT consumed like phaseShift).
   if (isDamageImmune(target, damageType)) return target
@@ -489,7 +489,7 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
     let target = player
     for (const dot of dotBuffs) {
       const damageType: DamageType = dot.id.includes('phys') ? 'kinetic' : 'code'
-      // Immunity skips the tick (e.g. BKB magic_immune ignores a code DoT).
+      // Immunity skips the tick (e.g. BKB airgap ignores a code DoT).
       if (isDamageImmune(target, damageType)) continue
       // Caster-side amplifiers (Amp Stack +15% code) apply to DoTs
       // too — the DoT is still the caster's outgoing code damage.
@@ -650,10 +650,10 @@ export function resolveAbility(
       )
     }
 
-    // Black King Bar (magic_immune) grants debuff immunity, so a BKB hero casts
+    // Hardshell (airgap) grants debuff immunity, so a BKB hero casts
     // through stun/silence (mirrors the validateAction bypass). Cyclone/Hex still
     // hard-disable via validateAction (they pierce magic immunity).
-    const debuffImmune = hasBuff(player, 'magic_immune')
+    const debuffImmune = hasBuff(player, 'airgap')
 
     if (!debuffImmune && hasBuff(player, 'stun')) {
       return yield* Effect.fail(new InvalidTargetError({ target: ability, reason: 'Stunned' }))
