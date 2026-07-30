@@ -5,7 +5,6 @@ import AnnouncementToast from '~/components/game/AnnouncementToast.vue'
 import AsciiMap from '~/components/game/AsciiMap.vue'
 import CommandInput from '~/components/game/CommandInput.vue'
 import DamageFloat, { type DamageFloatEntry } from '~/components/game/DamageFloat.vue'
-import FocusBanner from '~/components/game/FocusBanner.vue'
 import GameStateBar from '~/components/game/GameStateBar.vue'
 import HeroStatus from '~/components/game/HeroStatus.vue'
 import InventoryBar from '~/components/game/InventoryBar.vue'
@@ -752,7 +751,6 @@ const theaterStatus = computed(() => {
 // map a compact rail widget; 'map-centric' promotes the map to center and
 // demotes the log into the rail. The big center grid column is unchanged —
 // only its CONTENTS swap — so no grid-template surgery is needed.
-const layout = computed(() => settings.hud.layoutMode)
 
 const hpPct = computed(() => {
   const p = gameStore.player
@@ -1540,9 +1538,7 @@ function handleReturnToMenu() {
     :style="hudBarStyle"
     data-testid="game-screen"
     :data-game-id="gameStore.gameId ?? ''"
-    :data-layout="layout"
     :data-density="settings.hud.density"
-    :data-vitals="settings.hud.emphasizeVitals ? 'on' : 'off'"
   >
     <!-- Floating combat numbers, one lane each: what lands on you, and what you
          land on someone else -->
@@ -1706,7 +1702,6 @@ function handleReturnToMenu() {
       <TutorialHint v-if="gameStore.mode === 'tutorial'" :step="gameStore.tutorialStep ?? 0" />
 
       <!-- Action-focus banner (HUD setting B): at-a-glance threat + what to do -->
-      <FocusBanner v-if="settings.hud.focusBanner" />
     </div>
 
     <!-- Left column: current-zone tactics (top) + strategic War Room (below).
@@ -1738,14 +1733,9 @@ function handleReturnToMenu() {
       </TerminalPanel>
     </div>
 
-    <!-- Center stage. Classic: the combat narrative is the centerpiece.
-         Map-centric: the tactical map takes the center, full-size. -->
-    <TerminalPanel
-      :title="layout === 'map-centric' ? 'Tactical Map' : 'Combat Log'"
-      class="game-grid__log min-h-0"
-    >
+    <!-- Center stage: the combat narrative is the centerpiece. -->
+    <TerminalPanel title="Combat Log" class="game-grid__log min-h-0">
       <TickTheater
-        v-if="layout === 'classic'"
         :events="combatEvents"
         :status="theaterStatus"
         :bar="theaterBar"
@@ -1755,17 +1745,6 @@ function handleReturnToMenu() {
         :can-act="gameStore.canAct"
         :pulse-key="tickPulseKey"
       />
-      <div v-else class="h-full min-h-0 overflow-auto" data-testid="center-map">
-        <AsciiMap
-          :zones="mapZones"
-          :player-zone="playerZone"
-          :ancients="ancients"
-          :map-id="gameStore.mapId"
-          :move-target="walkDestination"
-          force-mode="full"
-          @zone-click="handleZoneClick"
-        />
-      </div>
     </TerminalPanel>
 
     <!-- Right rail: compact map + hero status (classic) or the
@@ -1784,7 +1763,7 @@ function handleReturnToMenu() {
            non-scrolling grid row (see .rail-map) and the panels beneath it share
            what is left and scroll — rather than the map itself scrolling, which
            is what a plain max-height produced. -->
-      <TerminalPanel v-if="layout === 'classic'" title="Map" class="rail-map">
+      <TerminalPanel title="Map" class="rail-map">
         <AsciiMap
           :zones="mapZones"
           :player-zone="playerZone"
@@ -1823,24 +1802,6 @@ function handleReturnToMenu() {
             />
             <div v-else class="p-2 text-[0.8rem] text-text-dim">&gt;_ awaiting hero data...</div>
           </div>
-        </TerminalPanel>
-
-        <TerminalPanel
-          v-if="layout === 'map-centric'"
-          title="Combat Log"
-          class="min-h-[8rem] flex-1"
-          data-testid="rail-log"
-        >
-          <TickTheater
-            :events="combatEvents"
-            :status="theaterStatus"
-            :bar="theaterBar"
-            :tick-imminent="tickImminent"
-            :next-tick-in="gameStore.nextTickIn"
-            :is-alive="gameStore.isAlive"
-            :can-act="gameStore.canAct"
-            :pulse-key="tickPulseKey"
-          />
         </TerminalPanel>
       </div>
     </div>
@@ -2156,27 +2117,6 @@ function handleReturnToMenu() {
      it still lands well above the 7.7px–8.1px this replaced. */
   --hud-text-xs: 0.6875rem;
   --hud-text-sm: 0.75rem;
-}
-
-/* Dim only the strategic War Room — never the Zone panel above it, which carries
-   the tutorial-critical last-hit / attack affordances and must stay legible. */
-.game-grid[data-vitals='on'] .game-grid__warroom {
-  opacity: 0.6;
-  transition: opacity 0.15s;
-}
-.game-grid[data-vitals='on'] .game-grid__warroom:hover {
-  opacity: 1;
-}
-.game-grid[data-vitals='on'] .hud-action-btn {
-  min-height: 52px;
-  font-size: 0.95rem;
-}
-
-@media (min-width: 1025px) {
-  /* Give the hero/ability rail more room, taken from the War Room column. */
-  .game-grid[data-vitals='on'] {
-    grid-template-columns: minmax(150px, 1.7fr) minmax(0, 4.6fr) minmax(290px, 3.8fr);
-  }
 }
 
 /* Overlay lanes, stacked below the measured HUD bar (--hud-bar-h, published from

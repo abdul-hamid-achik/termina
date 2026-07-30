@@ -81,9 +81,10 @@ describe('the phosphor contract (C3a)', () => {
       const prev = ramp[steps[i - 1]!]!
       const cur = ramp[steps[i]!]!
       const delta = luminance(cur) - luminance(prev)
-      expect(delta, `${steps[i - 1]} -> ${steps[i]} luminance delta ${delta.toFixed(1)}`).toBeGreaterThanOrEqual(
-        MIN_DELTA,
-      )
+      expect(
+        delta,
+        `${steps[i - 1]} -> ${steps[i]} luminance delta ${delta.toFixed(1)}`,
+      ).toBeGreaterThanOrEqual(MIN_DELTA)
     }
   })
 

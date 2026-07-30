@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '~/stores/game'
-import { useSettingsStore } from '~/stores/settings'
 import { HEROES } from '~~/shared/constants/heroes'
 import { goldLead, formatGoldShort, visionSummary, dayNightReadout } from '~/utils/strategy'
 import ObjectiveTicker from '~/components/game/ObjectiveTicker.vue'
@@ -17,18 +16,8 @@ import Sparkline from '~/components/game/Sparkline.vue'
  * pure/prop-based; this wires the store into them.
  */
 const store = useGameStore()
-const settings = useSettingsStore()
 
 const tick = computed(() => store.tick)
-
-// The ally roster is a HUD setting (collapsed on the simplified default
-// preset; the enemy threat sheet is unconditional). Toggling goes through
-// setHud so hudPreset re-derives to 'custom' when the player diverges from a
-// named preset — and the choice persists.
-const rosterExpanded = computed(() => settings.hud.rosterExpanded)
-function toggleRoster() {
-  settings.setHud('rosterExpanded', !settings.hud.rosterExpanded)
-}
 
 // The backup carrier is whoever holds the 'backup' buff (the engine clears the
 // ground backup to null on pickup), resolved to a readable name + countdown.
@@ -127,9 +116,8 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
 
     <!-- Enemy threat is always on: enemy cooldowns/respawn/last-seen is the one
          readout a text MOBA shows better than a graphical one, so it must not
-         start hidden behind a toggle. Only the ally roster stays collapsible
-         behind the rosterExpanded HUD setting (collapsed on the simplified
-         default preset) — the readouts above it stay pinned. -->
+         start hidden behind a toggle. The ally roster is always expanded too —
+         the roster toggle died with the HUD preset system (R3-10). -->
     <section
       data-testid="war-room-enemy-threat"
       class="flex min-h-0 flex-1 flex-col border-t border-border/50 pt-1.5"
@@ -142,30 +130,11 @@ const dayNight = computed(() => dayNightReadout(store.timeOfDay))
       </div>
     </section>
 
-    <button
-      v-if="!rosterExpanded"
-      type="button"
-      data-testid="war-room-roster-toggle"
-      aria-expanded="false"
-      class="min-h-[2rem] w-full shrink-0 border-t border-border/50 pt-1.5 text-left t-hud-xs font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
-      @click="toggleRoster"
-    >
-      [+] Allies
-    </button>
     <section
-      v-else
       data-testid="war-room-roster"
       class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto border-t border-border/50 pt-1.5"
     >
-      <button
-        type="button"
-        data-testid="war-room-roster-toggle"
-        aria-expanded="true"
-        class="min-h-[2rem] w-full shrink-0 text-left t-hud-xs font-bold tracking-wider text-text-dim uppercase transition-colors hover:text-text-primary"
-        @click="toggleRoster"
-      >
-        [−] Allies
-      </button>
+      <div class="t-hud-xs font-bold tracking-wider text-text-dim uppercase">Allies</div>
       <AllyStatusSheet :allies="store.allyPlayers" :tick="tick" />
     </section>
   </div>

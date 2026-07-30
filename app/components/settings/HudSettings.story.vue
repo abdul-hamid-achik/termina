@@ -3,45 +3,23 @@ import { useSettingsStore } from '~/stores/settings'
 import HudSettings from './HudSettings.vue'
 
 // histoire.setup.ts installs Pinia, so useSettingsStore() resolves. Each
-// Variant seeds the store via :setup-app to show a different HUD preset.
-function seedStandard() {
-  useSettingsStore().applyHudPreset('standard')
+// Variant seeds the surviving field (density) to show both states.
+function seedComfortable() {
+  useSettingsStore().setHud('density', 'comfortable')
 }
-function seedTactical() {
-  useSettingsStore().applyHudPreset('tactical')
-}
-function seedFocus() {
-  useSettingsStore().applyHudPreset('focus')
-}
-function seedCustom() {
-  const s = useSettingsStore()
-  s.applyHudPreset('standard')
-  s.setHud('layoutMode', 'map-centric')
-  s.setHud('emphasizeVitals', true)
+function seedCompact() {
+  useSettingsStore().setHud('density', 'compact')
 }
 </script>
 
 <template>
   <Story title="Settings/HudSettings">
-    <Variant title="standard (default)" :setup-app="seedStandard">
+    <Variant title="comfortable (default)" :setup-app="seedComfortable">
       <div class="bg-bg-primary p-3" style="width: 360px">
         <HudSettings />
       </div>
     </Variant>
-
-    <Variant title="tactical preset" :setup-app="seedTactical">
-      <div class="bg-bg-primary p-3" style="width: 360px">
-        <HudSettings />
-      </div>
-    </Variant>
-
-    <Variant title="focus preset" :setup-app="seedFocus">
-      <div class="bg-bg-primary p-3" style="width: 360px">
-        <HudSettings />
-      </div>
-    </Variant>
-
-    <Variant title="custom (mixed toggles)" :setup-app="seedCustom">
+    <Variant title="compact" :setup-app="seedCompact">
       <div class="bg-bg-primary p-3" style="width: 360px">
         <HudSettings />
       </div>

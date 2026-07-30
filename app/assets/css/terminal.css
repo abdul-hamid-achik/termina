@@ -27,12 +27,12 @@
      what they paint collapses to phosphor. Team identity is no longer
      carried by hue (R3-03 moves it to glyphs); the ramp carries only
      emphasis (dim → bright) and the one cold accent of C4a. */
-  --p-0: 8 20 14;      /* near-black ground */
-  --p-1: 22 60 40;     /* dim / system */
-  --p-2: 38 110 70;    /* muted */
-  --p-3: 64 180 108;   /* body */
-  --p-4: 104 240 156;  /* bright / self */
-  --p-5: 168 255 196;  /* hottest phosphor */
+  --p-0: 8 20 14; /* near-black ground */
+  --p-1: 22 60 40; /* dim / system */
+  --p-2: 38 110 70; /* muted */
+  --p-3: 64 180 108; /* body */
+  --p-4: 104 240 156; /* bright / self */
+  --p-5: 168 255 196; /* hottest phosphor */
   --p-accent: 210 250 235; /* the one cold accent (warn/alarm) */
 
   /* Semantic aliases — every --color-* the 391 class usages read, mapped
@@ -61,25 +61,6 @@
      overrides them for players who want the old density back. */
   --hud-text-xs: 0.75rem;
   --hud-text-sm: 0.8125rem;
-}
-
-/* Colorblind team palette — toggled by a `.palette-colorblind` class on <html>
-   (synced from the settings store). Swaps the green/red team colors for the
-   Okabe-Ito blue/orange pairing, distinguishable under red-green CVD. Defined
-   after :root so it wins the equal-specificity override. Self stays a bright
-   cyan (and is always symbol-marked ►YOU) so it reads distinct from team blue. */
-.palette-colorblind {
-  --color-chaff: 86 180 233;
-  --color-chaff-deep: 46 140 200;
-  --color-audit: 230 159 0;
-  --color-audit-deep: 185 125 0;
-  --color-self: 150 235 255;
-  /* Audit becoming Okabe-Ito orange lands it on top of the untouched gold and
-     warn ambers — the enemy team, your bank balance and every alarm painted
-     the same color for exactly the players who need them separated. Both move
-     off orange: gold to the Okabe-Ito yellow, warn to its reddish purple. */
-  --color-gold: 240 228 66;
-  --color-warn: 204 121 167;
 }
 
 /* ── Base Layer ────────────────────────────────────────────────── */

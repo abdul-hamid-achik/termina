@@ -244,14 +244,11 @@ describe('GameScreen', () => {
         wrapper.unmount()
       })
 
-      it('defaults to classic: combat log in the center, map a rail widget', () => {
+      it('the combat log is the centerpiece and the map a rail widget (one layout)', () => {
         localStorage.clear()
         seedActiveGame()
         const wrapper = mountGameScreen()
 
-        expect(wrapper.find('[data-testid="game-screen"]').attributes('data-layout')).toBe(
-          'classic',
-        )
         expect(wrapper.find('[data-testid="theater-header"]').exists()).toBe(true)
         expect(wrapper.find('[data-testid="center-map"]').exists()).toBe(false)
         expect(wrapper.find('[data-testid="rail-log"]').exists()).toBe(false)
@@ -284,33 +281,16 @@ describe('GameScreen', () => {
         expect(map!.compareDocumentPosition(hero!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
         wrapper.unmount()
       })
-
-      it('map-centric: map takes the center, the combat log demotes to the rail', () => {
-        localStorage.clear()
-        useSettingsStore().setHud('layoutMode', 'map-centric')
-        seedActiveGame()
-        const wrapper = mountGameScreen()
-
-        expect(wrapper.find('[data-testid="game-screen"]').attributes('data-layout')).toBe(
-          'map-centric',
-        )
-        expect(wrapper.find('[data-testid="center-map"]').exists()).toBe(true)
-        // The combat log still renders — now in the rail.
-        expect(wrapper.find('[data-testid="rail-log"]').exists()).toBe(true)
-        expect(wrapper.find('[data-testid="theater-header"]').exists()).toBe(true)
-        wrapper.unmount()
-      })
     })
 
     describe('HUD density & vitals (setting C)', () => {
-      it('defaults to comfortable density and vitals off', () => {
+      it('defaults to comfortable density', () => {
         localStorage.clear()
         seedActiveGame()
         const wrapper = mountGameScreen()
 
         const root = wrapper.find('[data-testid="game-screen"]')
         expect(root.attributes('data-density')).toBe('comfortable')
-        expect(root.attributes('data-vitals')).toBe('off')
         wrapper.unmount()
       })
 
@@ -323,16 +303,6 @@ describe('GameScreen', () => {
         expect(wrapper.find('[data-testid="game-screen"]').attributes('data-density')).toBe(
           'compact',
         )
-        wrapper.unmount()
-      })
-
-      it('reflects emphasize-vitals as data-vitals=on', () => {
-        localStorage.clear()
-        useSettingsStore().setHud('emphasizeVitals', true)
-        seedActiveGame()
-        const wrapper = mountGameScreen()
-
-        expect(wrapper.find('[data-testid="game-screen"]').attributes('data-vitals')).toBe('on')
         wrapper.unmount()
       })
     })

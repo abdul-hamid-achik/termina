@@ -60,23 +60,17 @@ export default {
           '0 0 6px rgb(var(--border-glow) / 0.6), inset 0 0 6px rgb(var(--border-glow) / 0.25)',
         // PHOSPHOR: the five team box-shadow tokens collapse onto the bloom
         // ramp — what glows is phosphor, not a team hue (C3a).
-        'glow-chaff':
-          '0 0 12px rgb(var(--p-4) / 0.55), 0 0 28px rgb(var(--p-4) / 0.25)',
-        'glow-audit':
-          '0 0 12px rgb(var(--p-accent) / 0.55), 0 0 28px rgb(var(--p-accent) / 0.25)',
+        'glow-chaff': '0 0 12px rgb(var(--p-4) / 0.55), 0 0 28px rgb(var(--p-4) / 0.25)',
+        'glow-audit': '0 0 12px rgb(var(--p-accent) / 0.55), 0 0 28px rgb(var(--p-accent) / 0.25)',
         'glow-audit-soft': '0 0 6px rgb(var(--p-accent) / 0.25)',
-        'glow-ability':
-          '0 0 12px rgb(var(--p-4) / 0.55), 0 0 28px rgb(var(--p-4) / 0.25)',
+        'glow-ability': '0 0 12px rgb(var(--p-4) / 0.55), 0 0 28px rgb(var(--p-4) / 0.25)',
         'glow-ability-soft': '0 0 8px rgb(var(--p-4) / 0.3)',
-        'glow-gold':
-          '0 0 12px rgb(var(--p-4) / 0.55), 0 0 28px rgb(var(--p-4) / 0.25)',
+        'glow-gold': '0 0 12px rgb(var(--p-4) / 0.55), 0 0 28px rgb(var(--p-4) / 0.25)',
         'glow-highlight': '0 0 8px rgb(var(--border-glow) / 0.5)',
-        'glow-chaff-lg':
-          '0 0 18px rgb(var(--p-4) / 0.65), 0 0 44px rgb(var(--p-4) / 0.35)',
+        'glow-chaff-lg': '0 0 18px rgb(var(--p-4) / 0.65), 0 0 44px rgb(var(--p-4) / 0.35)',
         'glow-audit-lg':
           '0 0 18px rgb(var(--p-accent) / 0.65), 0 0 44px rgb(var(--p-accent) / 0.35)',
-        'glow-ability-lg':
-          '0 0 18px rgb(var(--p-4) / 0.65), 0 0 44px rgb(var(--p-4) / 0.35)',
+        'glow-ability-lg': '0 0 18px rgb(var(--p-4) / 0.65), 0 0 44px rgb(var(--p-4) / 0.35)',
         'inset-ability': 'inset 3px 0 0 rgb(var(--color-ability))',
       },
       keyframes: {

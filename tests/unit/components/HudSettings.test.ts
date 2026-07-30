@@ -4,132 +4,59 @@ import { createPinia, setActivePinia } from 'pinia'
 import HudSettings from '~~/app/components/settings/HudSettings.vue'
 import { useSettingsStore } from '~~/app/stores/settings'
 
-// localStorage is touched by the store's load()/save(); stub it so the
-// component test runs in node/happy-dom without a real implementation.
-const mockStorage = new Map<string, string>()
-vi.stubGlobal('localStorage', {
-  getItem: vi.fn((k: string) => mockStorage.get(k) ?? null),
-  setItem: vi.fn((k: string, v: string) => void mockStorage.set(k, v)),
-  removeItem: vi.fn((k: string) => void mockStorage.delete(k)),
+function mountPanel() {
+  return mount(HudSettings)
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  setActivePinia(createPinia())
 })
 
-describe('HudSettings', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    mockStorage.clear()
-    vi.clearAllMocks()
-  })
-
-  it('renders all three presets and every direction control', () => {
-    const wrapper = mount(HudSettings)
-
-    expect(wrapper.find('[data-testid="hud-preset-standard"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="hud-preset-tactical"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="hud-preset-focus"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="hud-layout-classic"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="hud-layout-map-centric"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="hud-toggle-focusBanner"]').exists()).toBe(true)
+describe('HudSettings (post-R3: one layout, one preference)', () => {
+  it('renders only the density control — presets, layout, banner, roster and palette are gone', () => {
+    const wrapper = mountPanel()
     expect(wrapper.find('[data-testid="hud-density-comfortable"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="hud-density-compact"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="hud-toggle-emphasizeVitals"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="hud-toggle-rosterExpanded"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="hud-active-preset"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid^="hud-preset-"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid^="hud-layout-"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="hud-toggle-focusBanner"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="hud-toggle-rosterExpanded"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="hud-toggle-colorblind"]').exists()).toBe(false)
   })
 
-  it('marks the standard preset active by default', () => {
-    const wrapper = mount(HudSettings)
-
-    expect(wrapper.find('[data-testid="hud-active-preset"]').text()).toContain('Standard')
-    expect(wrapper.find('[data-testid="hud-preset-standard"]').attributes('aria-pressed')).toBe(
+  it('marks comfortable density active by default', () => {
+    const wrapper = mountPanel()
+    expect(wrapper.find('[data-testid="hud-density-comfortable"]').attributes('aria-pressed')).toBe(
       'true',
     )
-  })
-
-  it('applies a preset to the store on click', async () => {
-    const store = useSettingsStore()
-    const wrapper = mount(HudSettings)
-
-    await wrapper.find('[data-testid="hud-preset-tactical"]').trigger('click')
-
-    expect(store.hudPreset).toBe('tactical')
-    expect(store.hud.layoutMode).toBe('map-centric')
-    expect(store.hud.focusBanner).toBe(true)
-    expect(store.hud.density).toBe('compact')
-    // The active-preset readout reflects it.
-    expect(wrapper.find('[data-testid="hud-active-preset"]').text()).toContain('Tactical')
-  })
-
-  it('toggling a single field switches the preset readout to Custom', async () => {
-    const store = useSettingsStore()
-    const wrapper = mount(HudSettings)
-
-    // From standard, map-centric alone matches no preset (tactical also
-    // needs compact density + an expanded roster). NOTE: emphasizeVitals
-    // alone would land exactly on the focus preset now.
-    await wrapper.find('[data-testid="hud-layout-map-centric"]').trigger('click')
-
-    expect(store.hud.layoutMode).toBe('map-centric')
-    expect(store.hudPreset).toBe('custom')
-    expect(wrapper.find('[data-testid="hud-active-preset"]').text()).toContain('Custom')
-  })
-
-  it('selecting a layout updates the store and the pressed state', async () => {
-    const store = useSettingsStore()
-    const wrapper = mount(HudSettings)
-
-    await wrapper.find('[data-testid="hud-layout-map-centric"]').trigger('click')
-
-    expect(store.hud.layoutMode).toBe('map-centric')
-    expect(wrapper.find('[data-testid="hud-layout-map-centric"]').attributes('aria-pressed')).toBe(
-      'true',
-    )
-    expect(wrapper.find('[data-testid="hud-layout-classic"]').attributes('aria-pressed')).toBe(
+    expect(wrapper.find('[data-testid="hud-density-compact"]').attributes('aria-pressed')).toBe(
       'false',
     )
   })
 
-  it('selecting compact density updates the store', async () => {
-    const store = useSettingsStore()
-    const wrapper = mount(HudSettings)
+  it('selecting compact density updates the store and the pressed state', async () => {
+    const settings = useSettingsStore()
+    const wrapper = mountPanel()
 
     await wrapper.find('[data-testid="hud-density-compact"]').trigger('click')
 
-    expect(store.hud.density).toBe('compact')
+    expect(settings.hud.density).toBe('compact')
+    expect(wrapper.find('[data-testid="hud-density-compact"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
   })
 
-  it('the focus-banner toggle flips off then on (defaults on)', async () => {
-    const store = useSettingsStore()
-    const wrapper = mount(HudSettings)
-    const btn = () => wrapper.find('[data-testid="hud-toggle-focusBanner"]')
+  it('switching back to comfortable persists to localStorage', async () => {
+    const settings = useSettingsStore()
+    const wrapper = mountPanel()
 
-    // The simplified default HUD ships with the banner ON.
-    expect(store.hud.focusBanner).toBe(true)
-    expect(btn().text()).toContain('On')
+    await wrapper.find('[data-testid="hud-density-compact"]').trigger('click')
+    await wrapper.find('[data-testid="hud-density-comfortable"]').trigger('click')
 
-    await btn().trigger('click')
-    expect(store.hud.focusBanner).toBe(false)
-    expect(btn().text()).toContain('Off')
-
-    await btn().trigger('click')
-    expect(store.hud.focusBanner).toBe(true)
-    expect(btn().text()).toContain('On')
-  })
-
-  it('the War Room roster toggle flips on then off (defaults collapsed)', async () => {
-    const store = useSettingsStore()
-    const wrapper = mount(HudSettings)
-    const btn = () => wrapper.find('[data-testid="hud-toggle-rosterExpanded"]')
-
-    expect(store.hud.rosterExpanded).toBe(false)
-    expect(btn().text()).toContain('Off')
-
-    await btn().trigger('click')
-    expect(store.hud.rosterExpanded).toBe(true)
-    expect(store.hudPreset).toBe('custom')
-    expect(btn().text()).toContain('On')
-
-    await btn().trigger('click')
-    expect(store.hud.rosterExpanded).toBe(false)
-    expect(store.hudPreset).toBe('standard')
-    expect(btn().text()).toContain('Off')
+    expect(settings.hud.density).toBe('comfortable')
+    const blob = JSON.parse(localStorage.getItem('termina:settings')!)
+    expect(blob.hud.density).toBe('comfortable')
   })
 })
