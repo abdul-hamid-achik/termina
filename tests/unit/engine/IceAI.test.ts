@@ -329,7 +329,7 @@ describe('IceAI', () => {
       ]
 
       const result = applyIceActions(state, actions).state
-      // resolvePhysicalHit routes through getEffectivePlate (items + talents
+      // resolveKineticHit routes through getEffectivePlate (items + talents
       // + buffs), not the raw player.plate field.
       const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectivePlate(player))
       expect(result.players['p1']!.integ).toBe(500 - expectedDamage)

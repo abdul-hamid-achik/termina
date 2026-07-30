@@ -97,6 +97,11 @@ export interface OperatorBio {
   kitReading: string
 }
 
+/** Basic-attack damage type. Kinetic is mitigated by plate; code by ice (and
+ *  is halved into a closed target once BREACH is live). R4-08 interim mapping:
+ *  former melee → kinetic, former ranged → code. */
+export type AttackType = 'kinetic' | 'code'
+
 export interface HeroDef {
   id: string
   name: string
@@ -106,6 +111,8 @@ export interface HeroDef {
    * only because BotManager's lane priority and itemBuilds consume it.
    */
   posture: HeroPosture
+  /** What the hero's basic attack deals. Real — not a badge-only field. */
+  attackType: AttackType
   baseStats: HeroBaseStats
   growthPerLevel: Partial<HeroBaseStats>
   passive: AbilityDef

@@ -562,7 +562,11 @@ describe('abilities', () => {
   })
 
   it('Phase Shim makes the target kinetic-immune but amplifies code damage', async () => {
-    // regex Q (Match) is 70 code damage on a hero target.
+    // mutex = kinetic AA (ethereal blocks it); regex would be code and still hit.
+    // mutex Q also deals code? Use cast from a code ability via items instead.
+    // Pattern: cast code nuke (regex Q), then kinetic AA (daemon).
+    // Single human: daemon (kinetic) + cast is only kinetic abilities — use burnout item for code.
+    // Simpler: regex for code cast, and assert kinetic AA from ENEMY daemon instead.
     const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxInteg recompute
 
@@ -606,11 +610,30 @@ describe('abilities', () => {
     await game.tick()
     expect(dmgToEnemy()).toBeGreaterThanOrEqual(Math.round(baseMagic * 1.3))
 
-    // The other half: a basic (kinetic) attack on the still-ethereal target is
-    // fully absorbed — no kinetic damage event.
-    game.attackHero(ENEMY)
+    // Kinetic AA from daemon (ENEMY) into ethereal HUMAN is fully absorbed.
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: {
+          ...s.players[HUMAN]!,
+          buffs: [
+            { id: 'ethereal', stacks: 1, ticksRemaining: 6, source: ENEMY },
+            { id: 'magic_vuln_40', stacks: 40, ticksRemaining: 6, source: ENEMY },
+          ],
+        },
+      },
+    }))
+    game.attackHero(HUMAN, ENEMY)
     await game.tick()
-    expect(dmgToEnemy()).toBe(0)
+    const kin = game.lastEvents.find(
+      (e) =>
+        e._tag === 'damage' &&
+        e.sourceId === ENEMY &&
+        e.targetId === HUMAN &&
+        e.damageType === 'kinetic',
+    )
+    expect(kin?.amount ?? 0).toBe(0)
   })
 
   it('Black King Bar grants debuff immunity — a BKB hero acts through a stun', async () => {

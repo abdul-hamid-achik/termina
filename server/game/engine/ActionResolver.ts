@@ -834,7 +834,13 @@ function resolveAttackPhase(
         attackDamage = Math.round(attackDamage * 1.5)
       }
 
+      // R4-08: basic-attack damage type is per-hero (attackType). Kinetic is
+      // mitigated by plate; code by ice. NPCs stay kinetic via CombatResolver.
+      const attackType: DamageType =
+        (attacker.heroId ? HEROES[attacker.heroId]?.attackType : undefined) ?? 'kinetic'
+
       let plate = getEffectivePlate(target, targetItemStats)
+      let ice = getEffectiveIce(target, targetItemStats)
 
       if (attacker.items.includes('rust_driver')) {
         plate = Math.max(0, plate - RUST_DRIVER_PLATE_REDUCTION)
@@ -856,13 +862,16 @@ function resolveAttackPhase(
         blockedDamage = BULWARK_PLATE_BLOCK_AMOUNT
       }
 
-      let damage = calculateKineticDamage(attackDamage, plate)
+      let damage =
+        attackType === 'code'
+          ? calculateCodeDamage(attackDamage, ice)
+          : calculateKineticDamage(attackDamage, plate)
       damage = Math.max(0, damage - blockedDamage)
 
-      if (isDamageImmune(target, 'kinetic')) {
+      if (isDamageImmune(target, attackType)) {
         damage = 0
       } else {
-        damage = Math.round(damage * getIncomingDamageMultiplier(target, 'kinetic'))
+        damage = Math.round(damage * getIncomingDamageMultiplier(target, attackType))
       }
 
       // A phaseShift dodge nullifies the whole hit — compute once and reuse so
@@ -973,7 +982,7 @@ function resolveAttackPhase(
           sourceId: action.playerId,
           targetId,
           amount: damage,
-          damageType: 'kinetic',
+          damageType: attackType,
         })
       }
     } else if (cmd.target.kind === 'wave') {

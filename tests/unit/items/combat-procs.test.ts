@@ -33,19 +33,20 @@ import {
 // from hero base + item HP/MP and rescales hp/mp by percent if they differ — so
 // we must set maxInteg/maxBw to the TRUE value (and hp/mp to full) or the recalc
 // silently mutates our deltas. This helper derives both from the chosen items.
-const ECHO_BASE_HP = 550
-const ECHO_BASE_MP = 280
+// daemon (kinetic attackType) — R4-08 made echo a code AA.
+const DAEMON_BASE_HP = 480
+const DAEMON_BASE_MP = 300
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const items = overrides.items ?? [null, null, null, null, null, null]
   const itemStats = getItemStatBonuses(items)
-  const maxInteg = ECHO_BASE_HP + itemStats.integ
-  const maxBw = ECHO_BASE_MP + itemStats.bw
+  const maxInteg = DAEMON_BASE_HP + itemStats.integ
+  const maxBw = DAEMON_BASE_MP + itemStats.bw
   const player = {
     id: 'p1',
     name: 'Player1',
     team: 'chaff',
-    heroId: 'echo',
+    heroId: 'daemon',
     zone: 'mid-river',
     integ: maxInteg,
     maxInteg,
@@ -59,8 +60,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     buffs: [],
     alive: true,
     respawnTick: null,
-    plate: 3,
-    ice: 15,
+    plate: 2,
+    ice: 12,
     kills: 0,
     deaths: 0,
     assists: 0,
@@ -123,8 +124,8 @@ function expectedPhysical(
   critMult = 1,
   defenseShred = 0,
 ): number {
-  const atk = makePlayer({ heroId: 'echo', items: attackerItems })
-  const tgt = makePlayer({ heroId: 'echo', items: targetItems })
+  const atk = makePlayer({ heroId: 'daemon', items: attackerItems })
+  const tgt = makePlayer({ heroId: 'daemon', items: targetItems })
   const attackDamage = Math.round(
     Math.round(getEffectiveAttack(atk, getItemStatBonuses(attackerItems)) * 1) * critMult,
   )
@@ -216,7 +217,7 @@ describe('Item combat procs — on-hit effects', () => {
     expect(magic).toBeDefined()
     expect(phys).toBeDefined()
     // MKB code = 50 reduced by the target's 15 MR.
-    const tgt = makePlayer({ heroId: 'echo' })
+    const tgt = makePlayer({ heroId: 'daemon' })
     const expectedMagic = calculateCodeDamage(
       TRUESTRIKE_RIG_BONUS_DAMAGE,
       getEffectiveIce(tgt, getItemStatBonuses([])),
@@ -252,7 +253,7 @@ describe('Item combat procs — on-hit effects', () => {
   })
 
   it('arc_coil chain lightning hits a SECOND nearby enemy for code damage (loop-50)', () => {
-    const tgt = makePlayer({ heroId: 'echo' })
+    const tgt = makePlayer({ heroId: 'daemon' })
     const expectedChain = calculateCodeDamage(60, getEffectiveIce(tgt, getItemStatBonuses([])))
     let sawChain = false
     for (let i = 0; i < 50; i++) {
@@ -417,7 +418,7 @@ describe('Item actives — direct effects', () => {
     ])
     const lost = start - r.state.players['p2']!.integ
     // 300 code against echo's 15 MR.
-    const expected = calculateCodeDamage(300, 15)
+    const expected = calculateCodeDamage(300, getEffectiveIce(makePlayer({ heroId: 'daemon' })))
     expect(lost).toBe(expected)
     expect(expected).toBeGreaterThan(250) // ~261 — close to 300 before reduction.
     // caster gets the cooldown buff.
@@ -459,7 +460,7 @@ describe('Item actives — direct effects', () => {
       },
     ])
     const lost = target1.integ - magResult.state.players['p2']!.integ
-    const baseMagic = calculateCodeDamage(300, 15)
+    const baseMagic = calculateCodeDamage(300, getEffectiveIce(makePlayer({ heroId: 'daemon' })))
     const amped = Math.round(baseMagic * 1.4)
     expect(lost).toBe(amped)
     expect(lost).toBeGreaterThan(baseMagic) // the +40% really landed
@@ -545,7 +546,7 @@ describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', 
       players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_hp', 150)] }) },
     })
     const r = run(state, [])
-    expect(r.state.players['p1']!.maxInteg).toBe(ECHO_BASE_HP + 150)
+    expect(r.state.players['p1']!.maxInteg).toBe(DAEMON_BASE_HP + 150)
   })
 
   it('mp mode (gait_rig_mp) raises maxBw through the resolveActions recalc', () => {
@@ -553,7 +554,7 @@ describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', 
       players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_mp', 100)] }) },
     })
     const r = run(state, [])
-    expect(r.state.players['p1']!.maxBw).toBe(ECHO_BASE_MP + 100)
+    expect(r.state.players['p1']!.maxBw).toBe(DAEMON_BASE_MP + 100)
   })
 })
 

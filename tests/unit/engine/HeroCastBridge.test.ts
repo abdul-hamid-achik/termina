@@ -739,8 +739,9 @@ describe('basic-attack path: shield, phase shift, fear', () => {
     expect(shield!.stacks).toBeLessThan(500)
     // Damage event keeps the pre-shield amount so absorbed hits still grant
     // assist credit
+    // echo is a code attacker (R4-08); shield absorbs either type.
     const dmg = result.events.find(
-      (e) => e._tag === 'damage' && e.targetId === 'p2' && e.damageType === 'kinetic',
+      (e) => e._tag === 'damage' && e.targetId === 'p2' && e.damageType === 'code',
     )
     expect(dmg).toBeDefined()
     expect(dmg!._tag === 'damage' && dmg!.amount).toBeGreaterThan(0)

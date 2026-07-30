@@ -74,6 +74,10 @@ describe('Hero Definitions', () => {
         expect(g.attack).toBeGreaterThan(0)
       })
 
+      it('has an attackType of kinetic or code', () => {
+        expect(['kinetic', 'code']).toContain(hero.attackType)
+      })
+
       it('has a valid passive ability', () => {
         const p = hero.passive
         expect(p.id).toBeTruthy()
@@ -153,16 +157,13 @@ describe('Hero Definitions', () => {
     expect(counts).toEqual({ BREACH: 6, HOLD: 4, ROAM: 4, HARDLINE: 4 })
   })
 
-  it('has at least 5 line and 3 sweep heroes for team diversity', () => {
-    // attackRange is deleted (zero engine reads) — the cohort partition now
-    // reads the role the draft actually consumes (carry/assassin = line-like
-    // right-clickers, mage = sweep-like casters), which is what the old
-    // melee/ranged split approximated.
-    const line = Object.values(HEROES).filter((h: HeroDef) =>
-      ['carry', 'assassin', 'offlaner'].includes(h.role),
-    )
-    const sweep = Object.values(HEROES).filter((h: HeroDef) => h.role === 'mage')
-    expect(line.length).toBeGreaterThanOrEqual(5)
-    expect(sweep.length).toBeGreaterThanOrEqual(3)
+  it('splits the roster into kinetic and code attackers (R4-08 interim mapping)', () => {
+    // Former line (melee) → kinetic, former sweep (ranged) → code.
+    // Owner will rebalance which nine swing code; this guards the type is real.
+    const kinetic = Object.values(HEROES).filter((h: HeroDef) => h.attackType === 'kinetic')
+    const code = Object.values(HEROES).filter((h: HeroDef) => h.attackType === 'code')
+    expect(kinetic.length).toBe(8)
+    expect(code.length).toBe(10)
+    expect(kinetic.length + code.length).toBe(Object.keys(HEROES).length)
   })
 })

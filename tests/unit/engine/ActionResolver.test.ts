@@ -976,7 +976,8 @@ describe('ActionResolver', () => {
     it('ghost scepter buff blocks kinetic attack damage on later ticks', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff' }),
+          // daemon = kinetic AA so ghost_form (kinetic-immune) actually blocks it
+          p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'daemon' }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
@@ -1013,16 +1014,13 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            integ: 550,
-            maxInteg: 550,
+            heroId: 'daemon', // kinetic AA
           }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
             zone: 'mid-river',
             team: 'audit',
-            integ: 650,
-            maxInteg: 650,
             items: ['spite_plate', null, null, null, null, null],
           }),
         },
@@ -1033,6 +1031,7 @@ describe('ActionResolver', () => {
       )
       expect(tick1.state.players['p2']!.buffs.some((b) => b.id === 'spite_plate')).toBe(true)
 
+      const preAtk = tick1.state.players['p1']!.integ
       const tick2 = Effect.runSync(
         resolveActions(tick1.state, [
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'Enemy' } } },
@@ -1055,7 +1054,7 @@ describe('ActionResolver', () => {
       expect(reflected).toBeDefined()
       const reflectAmount = reflected!._tag === 'damage' ? reflected!.amount : 0
       expect(reflectAmount).toBeGreaterThan(0)
-      expect(tick2.state.players['p1']!.integ).toBe(550 - reflectAmount)
+      expect(tick2.state.players['p1']!.integ).toBe(preAtk - reflectAmount)
     })
 
     it('rejects an invalid item use without changing state or emitting events', () => {

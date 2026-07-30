@@ -23,7 +23,7 @@ import { dealDamage, hasBuff } from '../heroes/_base'
  * emit accurate damage events. `_base.dealDamage` remains the lower-level
  * target-only primitive; this is the NPC-facing convenience.
  */
-export interface PhysicalHitResult {
+export interface KineticHitResult {
   /** The post-hit player state (updated INTEG/alive/buffs). */
   player: PlayerState
   /** INTEG actually lost this hit (post-mitigation, post-shield). 0 if immune/dodged. */
@@ -39,7 +39,7 @@ export interface PhysicalHitResult {
  * shared mitigation chain. Callers should skip emitting a damage event when
  * `immune` or `damageDealt === 0`.
  */
-export function resolvePhysicalHit(target: PlayerState, rawDamage: number): PhysicalHitResult {
+export function resolveKineticHit(target: PlayerState, rawDamage: number): KineticHitResult {
   // Pre-check immunity/dodge so callers can skip event emission without
   // re-running the buff scan. dealDamage also checks these, but reporting
   // them here keeps the caller branch-free.
@@ -62,7 +62,7 @@ export function resolvePhysicalHit(target: PlayerState, rawDamage: number): Phys
  * reflect (resolveHeroCast) so the two paths can never diverge.
  *
  * `damageDealt` is the INTEG the Blade Mail holder actually lost (from
- * `PhysicalHitResult.damageDealt` or the ability INTEG-delta). `fraction` defaults
+ * `KineticHitResult.damageDealt` or the ability INTEG-delta). `fraction` defaults
  * to 1.0 (100% return, the live value for both paths).
  */
 export function computeSpitePlateReflect(damageDealt: number, fraction = 1): number {

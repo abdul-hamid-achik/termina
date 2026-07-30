@@ -271,11 +271,17 @@ const {
           </NuxtLink>
         </div>
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[0.68rem] text-text-dim">
-          <span><span class="text-chaff">hp</span> {{ hero.baseStats.integ }}</span>
-          <span><span class="text-ability">mp</span> {{ hero.baseStats.bw }}</span>
+          <span><span class="text-chaff">integ</span> {{ hero.baseStats.integ }}</span>
+          <span><span class="text-ability">bw</span> {{ hero.baseStats.bw }}</span>
           <span><span class="text-gold">atk</span> {{ hero.baseStats.attack }}</span>
-          <span>def {{ hero.baseStats.plate }}</span>
-          <span>mres {{ hero.baseStats.ice }}</span>
+          <span>plate {{ hero.baseStats.plate }}</span>
+          <span>ice {{ hero.baseStats.ice }}</span>
+          <span
+            class="uppercase tracking-wider"
+            :class="hero.attackType === 'code' ? 'text-ability' : 'text-gold'"
+            data-testid="hero-attack-type"
+            >{{ hero.attackType }}</span
+          >
         </div>
         <!-- Kit identity at a glance — how this hero plays, beyond its role. -->
         <div class="flex flex-wrap gap-1" data-testid="hero-playstyle">

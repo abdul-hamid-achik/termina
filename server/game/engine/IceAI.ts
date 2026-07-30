@@ -1,6 +1,6 @@
 import type { GameState, IceState } from '~~/shared/types/game'
 import { ICE_ATTACK } from '~~/shared/constants/balance'
-import { resolvePhysicalHit } from './CombatResolver'
+import { resolveKineticHit } from './CombatResolver'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 export interface IceAction {
@@ -133,7 +133,7 @@ export function applyIceActions(
         // Cuirass aura, thread Yield, Kernel 'hardened', shields, and Echo
         // phaseShift all apply to ice shots — previously ice used raw
         // target.plate and skipped every one of these.
-        const hit = resolvePhysicalHit(target, action.damage)
+        const hit = resolveKineticHit(target, action.damage)
         if (hit.immune || hit.damageDealt === 0) continue
         players = {
           ...players,

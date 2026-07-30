@@ -6,6 +6,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Echo',
     role: 'carry',
     posture: 'HARDLINE',
+    attackType: 'code',
     difficulty: 'medium',
     openingCombo: ['q', 'r'],
     oneLineTip:
@@ -101,6 +102,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Sentry',
     role: 'support',
     posture: 'HARDLINE',
+    attackType: 'code',
     difficulty: 'easy',
     openingCombo: ['w', 'q', 'e'],
     oneLineTip:
@@ -183,6 +185,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Daemon',
     role: 'assassin',
     posture: 'BREACH',
+    attackType: 'kinetic',
     difficulty: 'hard',
     openingCombo: ['q', 'e'],
     oneLineTip:
@@ -277,6 +280,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Kernel',
     role: 'tank',
     posture: 'HOLD',
+    attackType: 'kinetic',
     difficulty: 'easy',
     openingCombo: ['e', 'w', 'q'],
     oneLineTip:
@@ -356,6 +360,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Regex',
     role: 'mage',
     posture: 'BREACH',
+    attackType: 'code',
     difficulty: 'medium',
     openingCombo: ['q', 'w', 'r'],
     oneLineTip:
@@ -453,6 +458,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Socket',
     role: 'offlaner',
     posture: 'ROAM',
+    attackType: 'kinetic',
     difficulty: 'medium',
     openingCombo: ['e', 'q', 'w'],
     oneLineTip:
@@ -546,6 +552,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Proxy',
     role: 'support',
     posture: 'HOLD',
+    attackType: 'code',
     difficulty: 'medium',
     openingCombo: ['w', 'q', 'e'],
     oneLineTip:
@@ -634,6 +641,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Malloc',
     role: 'carry',
     posture: 'BREACH',
+    attackType: 'kinetic',
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'w'],
     oneLineTip:
@@ -727,6 +735,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Cipher',
     role: 'assassin',
     posture: 'BREACH',
+    attackType: 'kinetic',
     difficulty: 'medium',
     openingCombo: ['w', 'q', 'r'],
     oneLineTip:
@@ -821,6 +830,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Ablative Shell',
     role: 'tank',
     posture: 'HOLD',
+    attackType: 'kinetic',
     difficulty: 'easy',
     openingCombo: ['w', 'e', 'q'],
     oneLineTip:
@@ -917,6 +927,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Null',
     role: 'mage',
     posture: 'ROAM',
+    attackType: 'code',
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'r'],
     oneLineTip:
@@ -1018,6 +1029,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Lambda',
     role: 'mage',
     posture: 'BREACH',
+    attackType: 'code',
     difficulty: 'hard',
     openingCombo: ['q', 'e', 'w', 'r'],
     oneLineTip:
@@ -1109,6 +1121,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Mutex',
     role: 'offlaner',
     posture: 'HARDLINE',
+    attackType: 'kinetic',
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'r'],
     oneLineTip:
@@ -1214,6 +1227,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Ping',
     role: 'offlaner',
     posture: 'ROAM',
+    attackType: 'code',
     difficulty: 'easy',
     openingCombo: ['q', 'w', 'r'],
     oneLineTip:
@@ -1319,6 +1333,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Cron',
     role: 'support',
     posture: 'HOLD',
+    attackType: 'kinetic',
     difficulty: 'easy',
     openingCombo: ['q', 'w', 'r'],
     oneLineTip:
@@ -1416,6 +1431,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Traceroute',
     role: 'assassin',
     posture: 'BREACH',
+    attackType: 'code',
     difficulty: 'hard',
     openingCombo: ['e', 'w', 'q'],
     oneLineTip:
@@ -1507,6 +1523,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Thread',
     role: 'carry',
     posture: 'ROAM',
+    attackType: 'code',
     difficulty: 'easy',
     openingCombo: ['e', 'q', 'r'],
     oneLineTip:
@@ -1597,6 +1614,7 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Cache',
     role: 'tank',
     posture: 'HARDLINE',
+    attackType: 'code',
     difficulty: 'hard',
     openingCombo: ['e', 'q', 'r'],
     oneLineTip:

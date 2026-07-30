@@ -31,7 +31,7 @@ import { runIceAI, applyIceActions } from './IceAI'
 import { runTenantAI, processTenantDamage } from './TenantAI'
 import { removeExpiredCaches, processCacheBuffs } from './CacheAI'
 import { processTraps } from './TrapSystem'
-import { resolvePhysicalHit } from './CombatResolver'
+import { resolveKineticHit } from './CombatResolver'
 import { spawnWaveUnits, spawnCaches } from '~~/server/game/map/spawner'
 import { spawnSiltDwellers, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
@@ -1212,7 +1212,7 @@ export function runNPCAI(
       // plate, vuln amps, Kernel 'hardened', shields, and Echo phaseShift —
       // previously the inline path skipped everything but immunity and emitted
       // the RAW attack value as the damage amount.
-      const hit = resolvePhysicalHit(target, action.damage)
+      const hit = resolveKineticHit(target, action.damage)
       if (hit.immune || hit.damageDealt === 0) continue
       s = {
         ...s,

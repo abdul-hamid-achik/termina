@@ -203,7 +203,7 @@ describe('NeutralAI', () => {
       const actions = [{ neutralId: 'neutral_1', targetId: 'p1', damage: 50 }]
       const result = applyNeutralActions(state, actions).state
 
-      // Damage now goes through resolvePhysicalHit (full mitigation chain),
+      // Damage now goes through resolveKineticHit (full mitigation chain),
       // not raw hp - damage. With plate 3: 50 * (100/(100+3)) ≈ 49 damage,
       // so 500 - 49 = 451.
       expect(result.players['p1']!.integ).toBe(451)

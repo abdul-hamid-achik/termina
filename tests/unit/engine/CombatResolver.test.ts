@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolvePhysicalHit, computeSpitePlateReflect } from '~~/server/game/engine/CombatResolver'
+import { resolveKineticHit, computeSpitePlateReflect } from '~~/server/game/engine/CombatResolver'
 import type { PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import { calculateKineticDamage } from '~~/server/game/engine/DamageCalculator'
@@ -38,12 +38,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 }
 
 describe('CombatResolver', () => {
-  describe('resolvePhysicalHit', () => {
+  describe('resolveKineticHit', () => {
     it('applies full mitigation (effective plate) and reports the INTEG lost', () => {
       const player = makePlayer({ integ: 500 })
       const raw = 100
 
-      const hit = resolvePhysicalHit(player, raw)
+      const hit = resolveKineticHit(player, raw)
 
       const expected = calculateKineticDamage(raw, getEffectivePlate(player))
       expect(hit.immune).toBe(false)
@@ -59,7 +59,7 @@ describe('CombatResolver', () => {
           integ: 500,
           buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
         })
-        const hit = resolvePhysicalHit(player, 100)
+        const hit = resolveKineticHit(player, 100)
         expect(hit.immune).toBe(true)
         expect(hit.damageDealt).toBe(0)
         expect(hit.player.integ).toBe(500)
@@ -71,7 +71,7 @@ describe('CombatResolver', () => {
         integ: 500,
         buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 1, source: 'echo' }],
       })
-      const hit = resolvePhysicalHit(player, 100)
+      const hit = resolveKineticHit(player, 100)
       expect(hit.dodged).toBe(true)
       expect(hit.damageDealt).toBe(0)
       expect(hit.player.integ).toBe(500)
@@ -84,7 +84,7 @@ describe('CombatResolver', () => {
         buffs: [{ id: 'shield', stacks: 40, ticksRemaining: 3, source: 'x' }],
       })
       const raw = 100
-      const hit = resolvePhysicalHit(player, raw)
+      const hit = resolveKineticHit(player, raw)
 
       const mitigated = calculateKineticDamage(raw, getEffectivePlate(player))
       const expectedHpLoss = Math.max(0, mitigated - 40)
@@ -100,15 +100,15 @@ describe('CombatResolver', () => {
       const plain = makePlayer({ integ: 500 })
       const raw = 100
 
-      const hardenedHit = resolvePhysicalHit(hardened, raw)
-      const plainHit = resolvePhysicalHit(plain, raw)
+      const hardenedHit = resolveKineticHit(hardened, raw)
+      const plainHit = resolveKineticHit(plain, raw)
 
       expect(hardenedHit.damageDealt).toBe(Math.round(plainHit.damageDealt * 0.9))
     })
 
     it('floors INTEG at 0 and marks the target dead on a lethal hit', () => {
       const player = makePlayer({ integ: 1 })
-      const hit = resolvePhysicalHit(player, 200)
+      const hit = resolveKineticHit(player, 200)
       expect(hit.player.integ).toBe(0)
       expect(hit.player.alive).toBe(false)
       expect(hit.damageDealt).toBe(1)
@@ -122,8 +122,8 @@ describe('CombatResolver', () => {
       })
       const raw = 100
 
-      const bareHit = resolvePhysicalHit(bare, raw)
-      const armoredHit = resolvePhysicalHit(armored, raw)
+      const bareHit = resolveKineticHit(bare, raw)
+      const armoredHit = resolveKineticHit(armored, raw)
 
       expect(armoredHit.damageDealt).toBeLessThan(bareHit.damageDealt)
     })

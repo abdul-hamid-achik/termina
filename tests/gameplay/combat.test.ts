@@ -1040,3 +1040,44 @@ describe('BREACH access state', () => {
     expect(breached!.ticksRemaining).toBeGreaterThan(0)
   })
 })
+
+describe('attackType basic-attack mitigation (R4-08)', () => {
+  it('a code-attacking hero is mitigated by ice; a kinetic one by plate', async () => {
+    // ping = code AA, daemon = kinetic AA (interim mapping from old sweep/line).
+    // Seed both with identical attack and zero plate/ice on one target then
+    // raise ice vs plate to prove the route.
+    const codeGame = await seedGame('laning_combat', { heroSelf: 'ping', heroEnemy: 'daemon' })
+    await codeGame.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, plate: 0, ice: 0 },
+        [ENEMY]: { ...s.players[ENEMY]!, plate: 0, ice: 50, integ: 2000, maxInteg: 2000 },
+      },
+    }))
+    codeGame.attackHero(ENEMY)
+    await codeGame.tick()
+    const codeDmg = codeGame.lastEvents.find(
+      (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+    )
+    expect(codeDmg).toBeDefined()
+    expect(codeDmg!.damageType).toBe('code')
+
+    const kineticGame = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
+    await kineticGame.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, plate: 0, ice: 0 },
+        [ENEMY]: { ...s.players[ENEMY]!, plate: 50, ice: 0, integ: 2000, maxInteg: 2000 },
+      },
+    }))
+    kineticGame.attackHero(ENEMY)
+    await kineticGame.tick()
+    const kinDmg = kineticGame.lastEvents.find(
+      (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
+    )
+    expect(kinDmg).toBeDefined()
+    expect(kinDmg!.damageType).toBe('kinetic')
+  })
+})

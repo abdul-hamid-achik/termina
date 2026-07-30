@@ -5,7 +5,7 @@ import {
   MAX_NEUTRALS_PER_CAMP,
   type SiltDwellerType,
 } from '~~/shared/constants/balance'
-import { resolvePhysicalHit } from './CombatResolver'
+import { resolveKineticHit } from './CombatResolver'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 let neutralIdCounter = 0
@@ -148,11 +148,11 @@ export function applyNeutralActions(
     const target = players[action.targetId]
     if (!target || !target.alive) continue
 
-    // Route through resolvePhysicalHit for the full mitigation chain — same as
+    // Route through resolveKineticHit for the full mitigation chain — same as
     // ice, waves, and Tenant. Previously this did raw `hp - damage` with only
     // an immunity check, bypassing armor items, shields, hardened reduction,
     // vulnerability amplifiers, and phase shift dodge.
-    const hit = resolvePhysicalHit(target, action.damage)
+    const hit = resolveKineticHit(target, action.damage)
     if (hit.immune || hit.dodged) continue
 
     // Persist the mitigated hero BEFORE deciding whether to narrate it. A hit a

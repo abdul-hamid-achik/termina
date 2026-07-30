@@ -5,7 +5,7 @@ import {
   WAVE_XP_SHARED,
   MAX_WAVE_UNITS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
-import { resolvePhysicalHit } from './CombatResolver'
+import { resolveKineticHit } from './CombatResolver'
 import { awardZoneXp } from './XpDistributor'
 import { resolveAncientAttack } from './AncientSystem'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
@@ -235,7 +235,7 @@ export function applyWaveActions(
           // plate, vuln amps, Kernel 'hardened', shields, and Echo phaseShift
           // — previously waves used raw target.plate and skipped the
           // multiplier, hardened, shield, and dodge.
-          const hit = resolvePhysicalHit(players[action.targetId]!, action.damage ?? 0)
+          const hit = resolveKineticHit(players[action.targetId]!, action.damage ?? 0)
           if (hit.immune || hit.damageDealt === 0) break
           players = {
             ...players,
