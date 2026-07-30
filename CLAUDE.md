@@ -267,7 +267,7 @@ Expert in the queue, lobby, and hero pick systems.
 **Key files**:
 
 - `queue.ts` — `joinQueue`, `leaveQueue`, `startMatchmakingLoop` (Redis sorted set by MMR)
-- `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck`, `currentPickTurn` (snake pick order). (`seedDraftLobby` is now dead code — it backed the removed `/api/test/new-draft` hook; left in place for a future draft-seed harness.)
+- `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck`, `currentPickTurn` (snake pick order)
 - `server/api/queue/join.post.ts`, `status.get.ts`, `pick.post.ts` — HTTP endpoints
 
 **Flow**: Queue → match found → lobby created → snake hero picks (15s per pick, auto-random on timeout) → 1.5s delay → 3s countdown → `game_ready` published to Redis → game-server.ts creates game. Draft opens on a ban phase (2 bans per side, R,D,R,D) for the 5v5 mode; 1v1 and casual co-op skip bans. On lobby reconnect, `ws.ts` re-sends both `lobby_state` AND `pick_turn` so a refreshing/seeded client recovers whose turn it is.

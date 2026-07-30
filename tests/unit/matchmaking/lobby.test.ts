@@ -11,7 +11,6 @@ import {
   currentPickTurn,
   currentBanTurn,
   replacePlayerWithBot,
-  seedDraftLobby,
 } from '../../../server/game/matchmaking/lobby'
 import type { Lobby } from '../../../server/game/matchmaking/lobby'
 import type { QueueEntry } from '../../../server/game/matchmaking/queue'
@@ -799,39 +798,6 @@ describe('Lobby', () => {
         success: false,
         error: 'Player not found',
       })
-    })
-  })
-
-  describe('seedDraftLobby (dev/e2e draft hook)', () => {
-    it('seeds a 10-player draft frozen at the human final pick (prepick 9)', () => {
-      const lobby = seedDraftLobby({ humanId: 'human_x', humanUsername: 'Alice', prepick: 9 })
-      createdLobbyId = lobby.id
-
-      expect(lobby.players).toHaveLength(10)
-      expect(lobby.currentPickIndex).toBe(9)
-      const human = lobby.players.find((p) => p.playerId === 'human_x')
-      expect(human).toBeDefined()
-      expect(human!.heroId).toBeNull() // hasn't picked yet
-      expect(lobby.pickedHeroes.size).toBe(9) // the 9 bots ahead pre-picked
-      expect(currentPickTurn(lobby)!.playerId).toBe('human_x') // it's the human's turn
-    })
-
-    it('leaves the human first when prepick is 0 (no bots pre-pick)', () => {
-      const lobby = seedDraftLobby({ humanId: 'h0', humanUsername: 'Bob', prepick: 0 })
-      createdLobbyId = lobby.id
-      expect(lobby.currentPickIndex).toBe(0)
-      expect(lobby.pickedHeroes.size).toBe(0)
-      expect(currentPickTurn(lobby)!.playerId).toBe('h0')
-    })
-
-    it('clamps an out-of-range prepick and defaults to 9', () => {
-      const high = seedDraftLobby({ humanId: 'h2', humanUsername: 'Cara', prepick: 999 })
-      createdLobbyId = high.id
-      expect(high.currentPickIndex).toBe(9) // clamped to PICK_SEQUENCE_10.length - 1
-
-      const def = seedDraftLobby({ humanId: 'h3', humanUsername: 'Dee' })
-      cleanupLobby(def.id)
-      expect(def.currentPickIndex).toBe(9) // default prepick
     })
   })
 })
