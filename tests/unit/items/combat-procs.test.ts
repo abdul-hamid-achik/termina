@@ -41,7 +41,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const itemStats = getItemStatBonuses(items)
   const maxInteg = ECHO_BASE_HP + itemStats.integ
   const maxBw = ECHO_BASE_MP + itemStats.bw
-  return {
+  const player = {
     id: 'p1',
     name: 'Player1',
     team: 'chaff',
@@ -71,6 +71,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
     ...overrides,
   }
+  if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
+    return {
+      ...player,
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+    }
+  }
+  return player
 }
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {

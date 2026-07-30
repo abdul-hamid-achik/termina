@@ -62,6 +62,7 @@ export const commandSchema = z.discriminatedUnion('type', [
     talentId: shortId,
   }),
   z.object({ type: z.literal('harden') }),
+  z.object({ type: z.literal('breach'), target: targetRefSchema }),
 ])
 
 export const clientMessageSchema = z.discriminatedUnion('type', [

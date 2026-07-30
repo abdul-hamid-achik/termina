@@ -43,6 +43,7 @@ import { computeSpitePlateReflect } from './CombatResolver'
 import { placeWard, canAttackIce } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
+import { applyBuff, isBreached, hasBuff } from '~~/server/game/heroes/_base'
 import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
 import { awardLastHit, awardIceKill } from './GoldDistributor'
 import { pickupBackup } from './TenantAI'
@@ -58,6 +59,9 @@ import {
   waveUnitMaxHp,
   WAVE_XP_SHARED,
   HARDEN_COOLDOWN_TICKS,
+  BREACH_DURATION_TICKS,
+  BREACH_COOLDOWN_TICKS,
+  BREACH_BW_COST,
   BURN_HP_THRESHOLD,
   BURN_GOLD_RATIO,
   BURN_XP_RATIO,
@@ -298,6 +302,34 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       return null
     case 'harden':
       return null
+    case 'breach': {
+      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot breach while stunned'
+      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot breach while feared'
+      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot breach while taunted'
+      if (hasDebuff(player, 'cyclone')) return 'Cannot act while cycloned'
+      if (hasDebuff(player, 'hex')) return 'Cannot act while hexed'
+
+      // Early flush: breach self strips own breached buff (costs cycle + BW).
+      if (cmd.target.kind === 'self') {
+        if (!isBreached(player)) return 'You are not breached'
+        if (player.bw < BREACH_BW_COST) return `Need ${BREACH_BW_COST} BW to flush breach`
+        return null
+      }
+
+      if (cmd.target.kind !== 'hero') return 'Can only breach an enemy hero'
+      const target = findTargetPlayer(state, cmd.target)
+      if (!target) return `Unknown target "${cmd.target.name}"`
+      if (target.team === player.team) return 'Cannot breach an ally'
+      if (!target.alive) return 'Target is down'
+      if (target.zone !== player.zone) return 'Target not in your zone'
+      if (hasBuff(target, 'airgap')) return `${target.name} is AIRGAPPED — breach fails`
+      if (player.bw < BREACH_BW_COST) return `Need ${BREACH_BW_COST} BW to breach`
+      const cd = player.buffs.find((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)
+      if (cd) {
+        return `Breach on cooldown — ${cd.ticksRemaining} cycle${cd.ticksRemaining === 1 ? '' : 's'} left`
+      }
+      return null
+    }
     default:
       return null
   }
@@ -1516,6 +1548,68 @@ function resolvePostShopPhases(
   caches: CacheState[]
 } {
   let teams = { ...state.teams }
+
+  // Breach commands — open (or self-flush) the access window.
+  const breachActions = validActions.filter((a) => a.command.type === 'breach')
+  for (const action of breachActions) {
+    const caster = players[action.playerId]
+    if (!caster || action.command.type !== 'breach') continue
+    const cmd = action.command
+
+    if (cmd.target.kind === 'self') {
+      if (!isBreached(caster) || caster.bw < BREACH_BW_COST) continue
+      let updated = {
+        ...caster,
+        bw: Math.max(0, caster.bw - BREACH_BW_COST),
+        buffs: caster.buffs.filter((b) => b.id !== 'breached'),
+      }
+      players = { ...players, [action.playerId]: updated }
+      events.push({
+        _tag: 'breach_opened',
+        tick: state.tick,
+        playerId: action.playerId,
+        targetId: action.playerId,
+        durationTicks: 0, // flush
+      })
+      continue
+    }
+
+    if (cmd.target.kind !== 'hero') continue
+    const target = findTargetPlayer({ ...state, players }, cmd.target)
+    if (!target || target.team === caster.team || !target.alive || target.zone !== caster.zone)
+      continue
+    if (hasBuff(target, 'airgap') || caster.bw < BREACH_BW_COST) continue
+    if (caster.buffs.some((b) => b.id === 'item_cd_breach' && b.ticksRemaining > 0)) continue
+
+    let nextCaster = {
+      ...caster,
+      bw: Math.max(0, caster.bw - BREACH_BW_COST),
+    }
+    nextCaster = applyBuff(nextCaster, {
+      id: 'item_cd_breach',
+      stacks: 1,
+      ticksRemaining: BREACH_COOLDOWN_TICKS,
+      source: caster.id,
+    })
+    let nextTarget = applyBuff(target, {
+      id: 'breached',
+      stacks: 1,
+      ticksRemaining: BREACH_DURATION_TICKS,
+      source: caster.id,
+    })
+    players = {
+      ...players,
+      [action.playerId]: nextCaster,
+      [target.id]: nextTarget,
+    }
+    events.push({
+      _tag: 'breach_opened',
+      tick: state.tick,
+      playerId: action.playerId,
+      targetId: target.id,
+      durationTicks: BREACH_DURATION_TICKS,
+    })
+  }
 
   // Harden commands
   const glyphActions = validActions.filter((a) => a.command.type === 'harden')

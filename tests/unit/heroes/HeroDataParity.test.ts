@@ -34,7 +34,7 @@ const CASTER_ZONE = 'mid-river'
 const ADJACENT_ZONE = 'mid-t1-audit' // adjacent to mid-river per shared/constants/zones.ts
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
-  return {
+  const player = {
     id: 'p1',
     name: 'Caster',
     team: 'chaff',
@@ -62,6 +62,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     killStreak: 0,
     ...overrides,
   }
+  if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
+    return {
+      ...player,
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+    }
+  }
+  return player
 }
 
 function makeState(players: PlayerState[]): GameState {

@@ -69,9 +69,10 @@ function baseState(heroId: string): GameState {
       { id: 'cachedEnergy', stacks: 100, ticksRemaining: 999, source: 'caster' },
     ],
   })
-  const efull = mkPlayer('efull', 'audit', { heroId: 'kernel' })
-  const elow = mkPlayer('elow', 'audit', { heroId: 'kernel', integ: 50 })
-  const eadj = mkPlayer('eadj', 'audit', { heroId: 'kernel', zone: ADJ })
+  const breached = [{ id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }]
+  const efull = mkPlayer('efull', 'audit', { heroId: 'kernel', buffs: breached })
+  const elow = mkPlayer('elow', 'audit', { heroId: 'kernel', integ: 50, buffs: breached })
+  const eadj = mkPlayer('eadj', 'audit', { heroId: 'kernel', zone: ADJ, buffs: breached })
   const ally = mkPlayer('ally', 'chaff', { heroId: 'socket', integ: 1000 })
   const players: Record<string, PlayerState> = {}
   for (const p of [caster, efull, elow, eadj, ally]) players[p.id] = p

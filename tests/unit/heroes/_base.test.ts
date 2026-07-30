@@ -35,7 +35,7 @@ import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import type { WaveUnitState, SiltDwellerState } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
-  return {
+  const player = {
     id: 'p1',
     name: 'TestPlayer',
     team: 'chaff',
@@ -70,6 +70,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     },
     ...overrides,
   }
+  return player
 }
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
@@ -326,6 +327,29 @@ describe('_base hero utilities', () => {
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's2')?.stacks).toBe(20)
     })
 
+    it('halves code damage into a closed (non-breached) target', () => {
+      // heroId null so EffectiveStats falls back to player plate/ice (0).
+      const closed = makePlayer({ integ: 500, plate: 0, ice: 0, heroId: null })
+      const open = makePlayer({
+        integ: 500,
+        plate: 0,
+        ice: 0,
+        heroId: null,
+        buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 3, source: 'enemy' }],
+      })
+      const closedDmg = 500 - dealDamage(closed, 100, 'code').integ
+      const openDmg = 500 - dealDamage(open, 100, 'code').integ
+      expect(closedDmg).toBe(50) // 100 * 0.5
+      expect(openDmg).toBe(100)
+      expect(closedDmg * 2).toBe(openDmg)
+    })
+
+    it('does not halve kinetic or black damage on a closed target', () => {
+      const closed = makePlayer({ integ: 500, plate: 0, ice: 0, heroId: null })
+      expect(dealDamage(closed, 100, 'kinetic').integ).toBe(400)
+      expect(dealDamage(closed, 100, 'black').integ).toBe(400)
+    })
+
     it('should apply hardened reduction', () => {
       const player = makePlayer({
         integ: 500,
@@ -387,6 +411,72 @@ describe('_base hero utilities', () => {
       const buff: BuffState = { id: 'test', stacks: 1, ticksRemaining: 5, source: 'test' }
       const result = applyBuff(player, buff)
       expect(result.buffs[0]!.ticksRemaining).toBe(10)
+    })
+
+    it('fizzles hard control on a closed (non-breached) target', () => {
+      const closed = makePlayer({ id: 'victim' })
+      for (const id of ['stun', 'silence', 'root', 'taunt', 'feared', 'hex', 'cyclone'] as const) {
+        const result = applyBuff(closed, {
+          id,
+          stacks: 1,
+          ticksRemaining: 2,
+          source: 'enemy',
+        })
+        expect(
+          result.buffs.some((b) => b.id === id),
+          id,
+        ).toBe(false)
+      }
+    })
+
+    it('lands hard control on a breached target', () => {
+      const open = makePlayer({
+        id: 'victim',
+        buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 3, source: 'enemy' }],
+      })
+      const result = applyBuff(open, {
+        id: 'stun',
+        stacks: 1,
+        ticksRemaining: 2,
+        source: 'enemy',
+      })
+      expect(result.buffs.some((b) => b.id === 'stun')).toBe(true)
+    })
+
+    it('lands self-applied hard control even when closed (mutex self-root)', () => {
+      const self = makePlayer({ id: 'p1' })
+      const result = applyBuff(self, {
+        id: 'root',
+        stacks: 1,
+        ticksRemaining: 2,
+        source: 'p1',
+      })
+      expect(result.buffs.some((b) => b.id === 'root')).toBe(true)
+    })
+
+    it('applying airgap strips breached in the same call', () => {
+      const open = makePlayer({
+        buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 3, source: 'enemy' }],
+      })
+      const result = applyBuff(open, {
+        id: 'airgap',
+        stacks: 1,
+        ticksRemaining: 4,
+        source: 'hardshell',
+      })
+      expect(result.buffs.some((b) => b.id === 'breached')).toBe(false)
+      expect(result.buffs.some((b) => b.id === 'airgap')).toBe(true)
+    })
+
+    it('still applies non-control buffs to a closed target', () => {
+      const closed = makePlayer()
+      const result = applyBuff(closed, {
+        id: 'shield',
+        stacks: 100,
+        ticksRemaining: 3,
+        source: 'self',
+      })
+      expect(result.buffs.some((b) => b.id === 'shield')).toBe(true)
     })
   })
 

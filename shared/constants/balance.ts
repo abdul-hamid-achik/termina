@@ -333,6 +333,14 @@ export const FOUNTAIN_BW_PER_TICK_PERCENT = 15
 export const HARDEN_DURATION_TICKS = 5
 export const HARDEN_COOLDOWN_TICKS = 300
 
+// ── BREACH (access state) ────────────────────────────────────────
+// Closed by default. `breach <target>` opens a crew-wide window so code
+// damage is full and hard control can land. Numbers are R4 placeholders
+// (D1a ~3 cycles); R4-13 tunes from sim.
+export const BREACH_DURATION_TICKS = 3
+export const BREACH_COOLDOWN_TICKS = 8
+export const BREACH_BW_COST = 40
+
 // ── Day/Night Cycle ──────────────────────────────────────────────
 
 export const DAY_DURATION_TICKS = 300

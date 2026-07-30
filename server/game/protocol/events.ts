@@ -322,6 +322,14 @@ export interface DoubleCastEvent {
   readonly abilityId: string
 }
 
+export interface BreachOpenedEvent {
+  readonly _tag: 'breach_opened'
+  readonly tick: number
+  readonly playerId: string
+  readonly targetId: string
+  readonly durationTicks: number
+}
+
 export type GameEngineEvent =
   | DamageEvent
   | HealEvent
@@ -362,6 +370,7 @@ export type GameEngineEvent =
   | SurrenderedEvent
   | AfkTakeoverEvent
   | DoubleCastEvent
+  | BreachOpenedEvent
 
 /** Convert an engine event to the wire GameEvent format. */
 export function toGameEvent(event: GameEngineEvent): {

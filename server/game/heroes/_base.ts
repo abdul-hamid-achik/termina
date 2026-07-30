@@ -142,6 +142,38 @@ export function getPlayerCombatStats(player: PlayerState): CombatStats {
 // ── Buff Utilities ────────────────────────────────────────────────
 
 /**
+ * Hard-control buff ids that require the target to be BREACHED (or they fizzle).
+ * Shared with validateAction pre-rejection and BotAI so the three sites cannot drift.
+ * Do NOT broaden this to self-buffs that share a name fragment.
+ */
+export const HARD_CONTROL_BUFF_IDS = [
+  'stun',
+  'silence',
+  'root',
+  'taunt',
+  'feared',
+  'hex',
+  'cyclone',
+] as const
+
+export type HardControlBuffId = (typeof HARD_CONTROL_BUFF_IDS)[number]
+
+const HARD_CONTROL_SET: ReadonlySet<string> = new Set(HARD_CONTROL_BUFF_IDS)
+
+export function isHardControlBuffId(id: string): boolean {
+  return HARD_CONTROL_SET.has(id)
+}
+
+/**
+ * True when the hero is open to code damage / hard control. Friendly fire does
+ * not exist — only the breaching crew can damage a breached hero, so this needs
+ * no attacker-team parameter (invariant guarded by tests).
+ */
+export function isBreached(player: PlayerState): boolean {
+  return player.buffs.some((b) => b.id === 'breached' && b.ticksRemaining > 0)
+}
+
+/**
  * Why cast-applied control disables (stun/silence/root/taunt) use ticksRemaining
  * 2, not 1, to gate ONE future action: the debuff is applied during the resolve
  * phase, but the victim's action THIS tick was already validated at tick start,
@@ -151,6 +183,18 @@ export function getPlayerCombatStats(player: PlayerState): CombatStats {
  * action, then expires. (See the `ticksRemaining: 2 // one gated action` sites.)
  */
 export function applyBuff(player: PlayerState, buff: BuffState): PlayerState {
+  // AIRGAP closes a breach by definition — strip breached when airgap lands.
+  if (buff.id === 'airgap') {
+    player = removeBuff(player, 'breached')
+  }
+
+  // Hard control fails on a closed (non-breached) target. Kinetic never needs
+  // access; this gate is control-only. Self-applied control (source === target
+  // id) always lands — e.g. mutex Critical Section self-root. Non-control ids pass.
+  if (isHardControlBuffId(buff.id) && !isBreached(player) && buff.source !== player.id) {
+    return player
+  }
+
   const idx = player.buffs.findIndex((b) => b.id === buff.id && b.source === buff.source)
   const buffs = [...player.buffs]
   if (idx >= 0) {
@@ -314,8 +358,18 @@ export function dealDamage(
   // expire (NOT consumed like phaseShift).
   if (isDamageImmune(target, damageType)) return target
 
+  // BREACH access gate: code damage into a CLOSED target is halved. Kinetic and
+  // black never need access. Order: AFTER isDamageImmune, BEFORE plate/ice
+  // mitigation, so the half multiplies with vuln amps later in this chain
+  // (0.5 × 1.4 ethereal = 0.7× raw before mitigation). No attacker-team param —
+  // friendly fire does not exist (only the breaching crew can ever hit them).
+  let incoming = rawDamage
+  if (damageType === 'code' && !isBreached(target)) {
+    incoming = Math.round(rawDamage * 0.5)
+  }
+
   // Effective stats include items, talents, and engine-consumed buffs
-  const effective = calculateEffectiveDamage(rawDamage, damageType, {
+  const effective = calculateEffectiveDamage(incoming, damageType, {
     plate: getEffectivePlate(target),
     ice: getEffectiveIce(target),
   })

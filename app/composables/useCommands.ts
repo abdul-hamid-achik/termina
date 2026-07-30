@@ -370,12 +370,12 @@ export function formatLookReadout(
 export function formatHelpReadout(): string[] {
   return [
     'HELP · type a verb, e.g. `move mid` or `cast q` (most auto-pick a target):',
-    '  Fight:   move <zone> · attack <target> · burn · cast <q|w|e|r>',
+    '  Fight:   move <zone> · attack <target> · breach <hero|self> · burn · cast <q|w|e|r>',
     '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
     '  Info:    status · map · scan · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
     '  Special: cache · backup · harden · buyback · talent <tier> <left|right>',
-    '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ss = missing · ? = help',
+    '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · br = breach · b = buy · ss = missing · ? = help',
     'Goal: push a lane, raze the enemy ice, then destroy their Mainframe.',
   ]
 }
@@ -388,6 +388,7 @@ export const SHORTCUTS: Record<string, string> = {
   e: 'cast e',
   r: 'cast r',
   b: 'buy',
+  br: 'breach',
 }
 
 // Zone aliases for easier typing
@@ -594,6 +595,24 @@ export function validateCommand(command: Command, context: GameContext): string 
       }
       return null
     }
+    case 'breach': {
+      if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot breach while stunned'
+      if (!debuffImmune && hasDebuff(player, 'feared')) return 'Cannot breach while feared'
+      if (!debuffImmune && hasDebuff(player, 'taunt')) return 'Cannot breach while taunted'
+      const bt = command.target
+      if (bt.kind === 'self') {
+        if (!player.buffs.some((b) => b.id === 'breached')) return 'You are not breached'
+        return null
+      }
+      if (bt.kind !== 'hero') return 'Can only breach an enemy hero'
+      const bTarget = Object.values(context.allPlayers).find(
+        (p) => p.heroId === bt.name || p.name.toLowerCase() === bt.name.toLowerCase(),
+      )
+      if (!bTarget) return `Unknown target "${bt.name}"`
+      if (bTarget.team === player.team) return 'Cannot breach an ally'
+      if (!bTarget.alive || bTarget.zone !== player.zone) return `${bt.name} is not in your zone`
+      return null
+    }
     case 'cast': {
       if (!debuffImmune && hasDebuff(player, 'stun')) return 'Cannot cast while stunned'
       if (!debuffImmune && hasDebuff(player, 'silence')) return 'Cannot cast while silenced'
@@ -769,6 +788,26 @@ export function useCommands() {
         return { command: { type: 'attack', target }, error: null }
       }
 
+      case 'breach': {
+        const targetStr = tokens[1]
+        if (!targetStr)
+          return {
+            command: null,
+            error:
+              'Usage: breach <hero:name|self>  (open access on an enemy, or flush your own breach)',
+          }
+        if (targetStr === 'self') {
+          return { command: { type: 'breach', target: { kind: 'self' } }, error: null }
+        }
+        const target = parseTarget(targetStr.startsWith('hero:') ? targetStr : `hero:${targetStr}`)
+        if (!target || (target.kind !== 'hero' && target.kind !== 'self'))
+          return {
+            command: null,
+            error: `Invalid breach target "${targetStr}". Use hero:<name> or self`,
+          }
+        return { command: { type: 'breach', target }, error: null }
+      }
+
       case 'burn': {
         const targetStr = tokens[1]
         if (!targetStr)
@@ -936,6 +975,7 @@ export function useCommands() {
       const cmds = [
         'move',
         'attack',
+        'breach',
         'burn',
         'cast',
         'use',
@@ -964,6 +1004,7 @@ export function useCommands() {
       const descriptions: Record<string, string> = {
         help: 'List every command (and the goal of the game)',
         missing: 'Alert your team an enemy is missing (alias: ss)',
+        breach: 'Open access on an enemy (or flush your own with breach self)',
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (tiers 10/15/20/25)',

@@ -10,7 +10,7 @@ import '../../../server/game/heroes/kernel'
 // ── Test Helpers ──────────────────────────────────────────────────
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
-  return {
+  const player = {
     id: 'p1',
     name: 'TestKernel',
     team: 'chaff',
@@ -38,6 +38,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     killStreak: 0,
     ...overrides,
   }
+  if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
+    return {
+      ...player,
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+    }
+  }
+  return player
 }
 
 function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {

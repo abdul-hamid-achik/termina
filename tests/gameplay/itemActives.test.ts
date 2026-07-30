@@ -61,7 +61,13 @@ describe('item-active combat credit', () => {
           zone: 'mid-river',
           items: ['lockout_shunt', null, null, null, null, null],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river', alive: true },
+        [ENEMY]: {
+          ...s.players[ENEMY]!,
+          zone: 'mid-river',
+          alive: true,
+          // R4-09: hard control requires BREACHED.
+          buffs: [{ id: 'breached', stacks: 1, ticksRemaining: 5, source: 'test' }],
+        },
       },
     }))
 

@@ -34,6 +34,7 @@ interface BuffMeta {
 const BUFF_META: Record<string, BuffMeta> = {
   // ── Defensive / survival (good to have) ──
   airgap: { label: 'AIRGAP', kind: 'positive' },
+  breached: { label: 'BREACHED', kind: 'negative' },
   spite_plate: { label: 'Spite Plate', kind: 'positive' },
   ghost_form: { label: 'Ghost Form', kind: 'positive' },
   mirror_shell: { label: 'Mirror Shell', kind: 'positive' },
@@ -164,6 +165,7 @@ export function hasBuffMeta(id: string): boolean {
  */
 export const ENGINE_BRANCHED_BUFF_IDS = [
   'airgap',
+  'breached',
   'invulnerable',
   'ethereal',
   'ghost_form',

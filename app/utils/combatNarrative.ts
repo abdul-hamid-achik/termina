@@ -434,6 +434,24 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: ctx.myTeam === str(p.team) ? 'ally' : 'world',
       }
 
+    case 'breach_opened': {
+      const duration = num(p.durationTicks)
+      if (duration <= 0) {
+        return {
+          tick,
+          text: `${label(p.playerId)} flushed their own BREACH`,
+          type: 'system',
+          salience: actorSalience(p.playerId, ctx),
+        }
+      }
+      return {
+        tick,
+        text: `${label(p.playerId)} BREACHED ${label(p.targetId)} (${duration}c)`,
+        type: 'system',
+        salience: actorSalience(p.playerId, ctx),
+      }
+    }
+
     case 'surrender_vote':
       return {
         tick,

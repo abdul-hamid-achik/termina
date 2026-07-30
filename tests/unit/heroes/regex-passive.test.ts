@@ -3,7 +3,7 @@ import type { GameState, PlayerState, GameEvent } from '~~/shared/types/game'
 import { resolveHeroPassive } from '~~/server/game/heroes/regex'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
-  return {
+  const player = {
     id: 'p1',
     name: 'Regex',
     team: 'chaff',
@@ -31,6 +31,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     killStreak: 0,
     ...overrides,
   }
+  if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
+    return {
+      ...player,
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+    }
+  }
+  return player
 }
 
 function makeState(players: PlayerState[], tick: number): GameState {

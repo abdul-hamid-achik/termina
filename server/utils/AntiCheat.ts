@@ -101,6 +101,22 @@ export function validateVision(
     }
   }
 
+  // Breach requires vision of the target hero (same zone co-location as attack).
+  if (command.type === 'breach' && command.target.kind === 'hero') {
+    const targetName = command.target.name
+    const targetPlayer = findHeroByName(state.players, targetName)
+    if (targetPlayer) {
+      const target = state.players[targetPlayer]
+      if (target && target.zone !== player.zone) {
+        return createViolation(
+          playerId,
+          'VISION_BYPASS',
+          `Attempted breach on invisible hero ${targetName}`,
+        )
+      }
+    }
+  }
+
   return null
 }
 

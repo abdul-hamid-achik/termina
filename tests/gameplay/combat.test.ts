@@ -1021,3 +1021,22 @@ describe('combat', () => {
     expect((await game.me()).integ).toBeLessThan(casterBefore)
   })
 })
+
+describe('BREACH access state', () => {
+  it('breach opens a window on an enemy hero in zone', async () => {
+    const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
+    await game.patch((s) => ({
+      ...s,
+      players: {
+        ...s.players,
+        [HUMAN]: { ...s.players[HUMAN]!, bw: 200, maxBw: 200 },
+      },
+    }))
+    game.submit({ type: 'breach', target: { kind: 'hero', name: ENEMY } })
+    await game.tick()
+    const enemy = await game.player(ENEMY)
+    const breached = enemy.buffs.find((b) => b.id === 'breached')
+    expect(breached).toBeDefined()
+    expect(breached!.ticksRemaining).toBeGreaterThan(0)
+  })
+})

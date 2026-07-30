@@ -42,7 +42,7 @@ function statsAtLevel(heroId: string, level: number) {
  * maxInteg/maxBw recalculation doesn't shift values mid-test. */
 function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 1): PlayerState {
   const s = statsAtLevel(heroId, level)
-  return {
+  const player: PlayerState = {
     id: 'p1',
     name: 'Player1',
     team: 'chaff',
@@ -72,6 +72,13 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
     ...overrides,
   }
+  if (player.team === 'audit' && !player.buffs.some((b) => b.id === 'breached')) {
+    return {
+      ...player,
+      buffs: [...player.buffs, { id: 'breached', stacks: 1, ticksRemaining: 99, source: 'test' }],
+    }
+  }
+  return player
 }
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
