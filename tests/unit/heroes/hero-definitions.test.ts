@@ -40,6 +40,7 @@ describe('Hero Definitions', () => {
   })
 
   const VALID_ROLES = ['carry', 'support', 'assassin', 'tank', 'mage', 'offlaner'] as const
+  const VALID_POSTURES = ['BREACH', 'HOLD', 'ROAM', 'HARDLINE'] as const
   const VALID_DIFFICULTIES = ['easy', 'medium', 'hard'] as const
   const VALID_SLOTS = ['q', 'w', 'e', 'r'] as const
 
@@ -47,6 +48,10 @@ describe('Hero Definitions', () => {
     describe(`${hero.name} (${heroId})`, () => {
       it('has a valid role', () => {
         expect(VALID_ROLES).toContain(hero.role)
+      })
+
+      it('has a valid posture', () => {
+        expect(VALID_POSTURES).toContain(hero.posture)
       })
 
       it('has non-empty lore', () => {
@@ -139,6 +144,17 @@ describe('Hero Definitions', () => {
   it('gives every hero a distinct one-line tip', () => {
     const tips = Object.values(HEROES).map((h: HeroDef) => h.oneLineTip)
     expect(new Set(tips).size).toBe(tips.length)
+  })
+
+  it('splits the roster 6/4/4/4 across postures, with every posture held', () => {
+    const counts = Object.values(HEROES).reduce(
+      (acc, h: HeroDef) => {
+        acc[h.posture] = (acc[h.posture] ?? 0) + 1
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+    expect(counts).toEqual({ BREACH: 6, HOLD: 4, ROAM: 4, HARDLINE: 4 })
   })
 
   it('has at least 5 line and 3 sweep heroes for team diversity', () => {

@@ -82,10 +82,30 @@ export interface HeroBaseStats {
   magicResist: number
 }
 
+export type HeroPosture = 'BREACH' | 'HOLD' | 'ROAM' | 'HARDLINE'
+
+export type OperatorOrigin = 'street' | 'corp'
+
+export interface OperatorBio {
+  realName: string
+  origin: OperatorOrigin
+  /** The biography paragraph (canon, Cast.md). */
+  bio: string
+  /** Why the existing id already describes this person. */
+  handleRationale: string
+  /** How the kit reads as this person. */
+  kitReading: string
+}
+
 export interface HeroDef {
   id: string
   name: string
   role: HeroRole
+  /**
+   * The player-facing axis (B2a): what a player PICKS on. `role` is retained
+   * only because BotManager's lane priority and itemBuilds consume it.
+   */
+  posture: HeroPosture
   lore: string
   baseStats: HeroBaseStats
   growthPerLevel: Partial<HeroBaseStats>
