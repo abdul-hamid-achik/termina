@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { mount } from '@vue/test-utils'
-import EnemyThreatSheet from '~~/app/components/game/EnemyThreatSheet.vue'
+import { formatContactsReadout } from '~~/app/composables/useCommands'
+import type { PlayerState } from '~~/shared/types/game'
 
 /**
  * W2-7 — the in-game type floor.
@@ -65,33 +65,53 @@ describe('HUD type floor (W2-7)', () => {
     expect(compactXs).toBeGreaterThanOrEqual(11)
   })
 
-  it('sizes the enemy cooldown chips off the floor tier', () => {
-    const w = mount(EnemyThreatSheet, {
-      props: {
-        enemies: [
-          {
-            id: 'e1',
-            name: 'enemy_one',
-            team: 'audit',
-            heroId: 'null_ref',
-            zone: 'mid-river',
-            hp: 500,
-            maxHp: 1000,
-            mp: 200,
-            maxMp: 400,
-            level: 7,
-            alive: true,
-            cooldowns: { q: 0, w: 3, e: 0, r: 5 },
-            items: [],
-          },
-        ],
-        lastSeen: {},
-        tick: 10,
-      },
-    })
-
-    expect(w.get('[data-testid="threat-cd-e1-r"]').classes()).toContain('t-hud-xs')
-    w.unmount()
+  it('sizes the enemy cooldown text off the floor tier (the `who` readout)', () => {
+    // EnemyThreatSheet is gone (R3-08): its cooldown chips became the `who`
+    // command's `cd Q·Nc` segment — assert the readout still carries them.
+    const me = {
+      id: 'p1',
+      name: 'You',
+      team: 'chaff',
+      heroId: 'echo',
+      zone: 'mid-river',
+      hp: 500,
+      maxHp: 500,
+      mp: 200,
+      maxMp: 200,
+      level: 1,
+      xp: 0,
+      gold: 600,
+      items: [null, null, null, null, null, null],
+      cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+      buffs: [],
+      alive: true,
+      respawnTick: null,
+      defense: 3,
+      magicResist: 15,
+      kills: 0,
+      deaths: 0,
+      assists: 0,
+      damageDealt: 0,
+      iceDamageDealt: 0,
+      killStreak: 0,
+      buybackCost: 100,
+      talents: { tier10: null, tier15: null, tier20: null, tier25: null },
+    } as PlayerState
+    const enemy = {
+      ...me,
+      id: 'e1',
+      name: 'enemy_one',
+      team: 'audit' as const,
+      heroId: 'null_ref',
+      hp: 500,
+      maxHp: 1000,
+      mp: 200,
+      maxMp: 400,
+      level: 7,
+      cooldowns: { q: 0, w: 3, e: 0, r: 5 },
+    }
+    const lines = formatContactsReadout(me, { p1: me, e1: enemy }, {}, 10)
+    expect(lines.some((l) => l.includes('W·3c') && l.includes('R·5c'))).toBe(true)
   })
 })
 
@@ -102,10 +122,9 @@ describe('HUD type floor: no drift back below it', () => {
   const SWEPT = [
     'app/components/game/GameScreen.vue',
     'app/components/game/Stream.vue',
-    'app/components/game/WarRoom.vue',
-    'app/components/game/EnemyThreatSheet.vue',
-    'app/components/game/AllyStatusSheet.vue',
     'app/components/game/TraceRail.vue',
+    'app/components/game/StatusLines.vue',
+    'app/components/game/ActionRow.vue',
   ]
 
   // The trace rail's compact rows are the documented exemption: their column

@@ -10,7 +10,7 @@
  * Two usage modes:
  *  - props-driven stories pass `makePlayer()` / `makeScoreboardEntry()` etc.
  *    straight into a component's props.
- *  - store-coupled stories (see WarRoom.story.vue) seed the Pinia game store via
+ *  - store-coupled stories seed the Pinia game store via
  *    `store.updateFromTick(makeTickMessage(...))`, or assign the lighter
  *    `makeGameState()` pieces directly onto the store's refs.
  */

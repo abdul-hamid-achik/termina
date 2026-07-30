@@ -38,6 +38,9 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('backup') }),
   z.object({ type: z.literal('grab') }),
   z.object({ type: z.literal('scan') }),
+  z.object({ type: z.literal('who') }),
+  z.object({ type: z.literal('net') }),
+  z.object({ type: z.literal('look') }),
   z.object({ type: z.literal('status') }),
   z.object({ type: z.literal('map') }),
   z.object({

@@ -43,6 +43,9 @@ const props = withDefaults(
      * instance reject every legal neutral target.
      */
     neutrals?: SiltDwellerState[]
+    /** The Tenant's state — lets the pre-flight refuse `attack tenant` when he
+     *  is already down. Same no-default rule as `neutrals`. */
+    tenant?: { alive: boolean }
     /**
      * Lane waves, for `attack wave:<i>` autocomplete and pre-flight. Same
      * no-default rule as `neutrals`: validateCommand treats a PRESENT array as
@@ -89,6 +92,7 @@ const gameContext = computed<GameContext>(() => ({
   tick: props.tick,
   mode: props.mode,
   neutrals: props.neutrals,
+  tenant: props.tenant,
   waves: props.waves,
 }))
 

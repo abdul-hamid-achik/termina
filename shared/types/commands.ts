@@ -19,6 +19,9 @@ export type Command =
   | { type: 'backup' }
   | { type: 'grab' }
   | { type: 'scan' }
+  | { type: 'who' }
+  | { type: 'net' }
+  | { type: 'look' }
   | { type: 'status' }
   | { type: 'map' }
   | { type: 'help' }

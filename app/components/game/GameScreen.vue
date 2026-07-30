@@ -15,10 +15,7 @@ import KillFeed from '~/components/game/KillFeed.vue'
 import QuickBuy from '~/components/game/QuickBuy.vue'
 import Scoreboard from '~/components/game/Scoreboard.vue'
 import TalentPicker from '~/components/game/TalentPicker.vue'
-import TickTheater from '~/components/game/TickTheater.vue'
 import TutorialHint from '~/components/game/TutorialHint.vue'
-import WarRoom from '~/components/game/WarRoom.vue'
-import ZonePanel from '~/components/game/ZonePanel.vue'
 import PostGame from '~/components/lobby/PostGame.vue'
 import TerminalPanel from '~/components/ui/TerminalPanel.vue'
 import { useGameStore } from '~/stores/game'
@@ -35,8 +32,19 @@ import {
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
+  formatContactsReadout,
+  formatNetReadout,
+  formatLookReadout,
   formatHelpReadout,
 } from '~/composables/useCommands'
+import {
+  visionSummary,
+  dayNightReadout,
+  formatCaches,
+  formatBackup,
+  goldLead,
+  formatGoldShort,
+} from '~/utils/strategy'
 import { useAudio } from '~/composables/useAudio'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { WAVE_UNIT_LABELS, type WaveRole } from '~~/shared/constants/world'
@@ -1127,19 +1135,64 @@ function handleCommand(cmd: string) {
       }
       return
     }
-    // status/map/scan are informational: print a readout to the local log and
-    // return WITHOUT sending — the server ignores them, so submitting one would
-    // silently burn the player's one action this tick.
-    if (command.type === 'status' || command.type === 'map' || command.type === 'scan') {
+    // status/map/scan/who/net/look are informational: print a readout to the
+    // local log and return WITHOUT sending — the server ignores them, so
+    // submitting one would silently burn the player's one action this tick.
+    if (
+      command.type === 'status' ||
+      command.type === 'map' ||
+      command.type === 'scan' ||
+      command.type === 'who' ||
+      command.type === 'net' ||
+      command.type === 'look'
+    ) {
       const me = gameStore.player
       if (me) {
-        const text =
-          command.type === 'status'
-            ? formatStatusReadout(me)
-            : command.type === 'map'
-              ? formatMapReadout(me, gameStore.mapId)
-              : formatScanReadout(me, gameStore.allPlayers)
-        localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+        if (command.type === 'who') {
+          for (const line of formatContactsReadout(
+            me,
+            gameStore.allPlayers,
+            gameStore.lastSeen,
+            gameStore.tick,
+          )) {
+            localEvents.value.push({ tick: gameStore.tick, text: line, type: 'system' })
+          }
+        } else if (command.type === 'net') {
+          const myWards = Object.values(gameStore.visibleZones).flatMap((z) => z.wards ?? [])
+          const vision = visionSummary(
+            Object.keys(gameStore.visibleZones),
+            myWards.filter((w) => w.team === me.team),
+            gameStore.tick,
+          )
+          const dn = dayNightReadout(gameStore.timeOfDay)
+          const visionText =
+            `vision ${vision.visible}/${vision.total}` +
+            (vision.wardsActive
+              ? ` · wards ${vision.wardsActive}${vision.nextWardExpiry != null ? ` · ${vision.nextWardExpiry}c` : ''}`
+              : ' · no wards')
+          const objectives = formatObjectivesLine()
+          const text = formatNetReadout({
+            chaffNetWorth: gameStore.netWorth.chaff,
+            auditNetWorth: gameStore.netWorth.audit,
+            netWorthHistory: gameStore.netWorthHistory,
+            visionText,
+            dayNight: `${dn.label} · ${dn.meaning}`,
+            objectives,
+          })
+          localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+        } else if (command.type === 'look') {
+          for (const line of formatLookReadout(me, gameStore.waves, gameStore.neutrals)) {
+            localEvents.value.push({ tick: gameStore.tick, text: line, type: 'system' })
+          }
+        } else {
+          const text =
+            command.type === 'status'
+              ? formatStatusReadout(me)
+              : command.type === 'map'
+                ? formatMapReadout(me, gameStore.mapId)
+                : formatScanReadout(me, gameStore.allPlayers)
+          localEvents.value.push({ tick: gameStore.tick, text, type: 'system' })
+        }
       }
       return
     }
@@ -1177,6 +1230,7 @@ function handleCommand(cmd: string) {
       allPlayers: gameStore.allPlayers,
       items: ITEMS,
       neutrals: gameStore.neutrals,
+      tenant: gameStore.tenant ?? undefined,
       tick: gameStore.tick,
       mode: gameStore.mode,
     })
@@ -1516,10 +1570,54 @@ const rigRecommendation = computed(() => {
   return `${action} · HP ${hp} · ${threat.label}${enemyCount ? ` (${enemyCount} hostile)` : ''}`
 })
 
+// The status-line helpers — the same values the rig line reads, exposed for
+// StatusLines (one source, no drift).
+const rigEnemyCount = computed(() => {
+  const p = gameStore.player
+  return p ? gameStore.enemyPlayers.filter((e) => e.zone === p.zone && e.alive).length : 0
+})
+const rigAllyHeadcount = computed(() => {
+  const p = gameStore.player
+  return p ? gameStore.allyPlayers.filter((a) => a.zone === p.zone && a.alive).length + 1 : 1
+})
+const rigEnemyIcePresent = computed(() => {
+  const p = gameStore.player
+  return p ? gameStore.ice.some((t) => t.zone === p.zone && t.alive && t.team !== p.team) : false
+})
+const rigHasReadyAbility = computed(() =>
+  ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready),
+)
+const netLeadText = computed(() => {
+  const lead = goldLead(gameStore.netWorth.chaff, gameStore.netWorth.audit)
+  return lead.leader === null
+    ? 'even'
+    : `${lead.leader === 'chaff' ? 'CHF' : 'AUD'} +${formatGoldShort(lead.amount)}`
+})
+
 watch(rigRecommendation, (rec, prev) => {
   if (!rec || rec === prev) return
   localEvents.value.push({ tick: gameStore.tick, text: rec, type: 'rig' })
 })
+
+// The `net` command's objective segment — tenant / caches / backup in one
+// line, from the same pure formatters the ticker used (R3-08).
+const backupHolder = computed(() => {
+  for (const p of Object.values(gameStore.allPlayers)) {
+    const buff = (p.buffs ?? []).find((b) => b.id === 'backup')
+    if (buff) {
+      const name = (p.heroId && HEROES[p.heroId]?.name) || p.name
+      return { name, ticksRemaining: buff.ticksRemaining }
+    }
+  }
+  return null
+})
+
+function formatObjectivesLine(): string {
+  const t = gameStore.tenant ? formatTenant(gameStore.tenant, gameStore.tick).label : 'TENANT —'
+  const c = formatCaches(gameStore.caches, gameStore.tick).label
+  const b = formatBackup(gameStore.backup, backupHolder.value).label
+  return `${t} · ${c} · ${b}`
+}
 
 // ── Item use from inventory bar / keybinds ───────────────────
 function handleItemUse(_slotIndex: number, itemId: string) {
@@ -1808,42 +1906,31 @@ function handleReturnToMenu() {
          height between the fixed-size Hero Status and Map panels. It is capped
          (max-h) + shrink-0 so a busy zone scrolls internally instead of starving
          the War Room, and a quiet zone stays compact. -->
-    <div class="game-grid__war flex min-h-0 flex-col gap-1">
-      <TerminalPanel
-        :title="`HOP: ${currentZoneName}`"
-        :variant="zoneDanger ? 'danger' : 'default'"
-        class="max-h-[45%] shrink-0"
-      >
-        <ZonePanel
-          :zone-name="currentZoneName"
-          :zone-id="playerZone"
-          :player-team="gameStore.player?.team ?? 'chaff'"
-          :enemies="gameStore.nearbyEnemies"
-          :allies="gameStore.nearbyAllies"
-          :waves="zoneWaves"
-          :neutrals="zoneNeutrals"
-          :ice="zoneIce"
-          :tenant="zoneTenant"
-          @command="handleCommand"
-        />
-      </TerminalPanel>
-      <TerminalPanel title="NET" class="game-grid__warroom min-h-0 flex-1">
-        <WarRoom />
-      </TerminalPanel>
+    <!-- Status lines replaced the panel chrome (R3-08): hop + threat, net
+         lead, the tick clock — no borders. -->
+    <div class="game-grid__war">
+      <StatusLines
+        :trace="traceModel"
+        :hp-fraction="
+          gameStore.player && gameStore.player.maxHp > 0
+            ? gameStore.player.hp / gameStore.player.maxHp
+            : 0
+        "
+        :alive="gameStore.isAlive"
+        :net-lead="netLeadText"
+        :next-tick-in="gameStore.nextTickIn"
+        :tick="gameStore.tick"
+        :can-act="gameStore.canAct"
+        :enemy-count="rigEnemyCount"
+        :ally-headcount="rigAllyHeadcount"
+        :enemy-ice-present="rigEnemyIcePresent"
+        :has-ready-ability="rigHasReadyAbility"
+      />
     </div>
 
-    <!-- Center stage: the combat narrative is the centerpiece. -->
+    <!-- Center stage: the stream owns the full column. -->
     <TerminalPanel title="STREAM" class="game-grid__log min-h-0">
-      <TickTheater
-        :events="combatEvents"
-        :status="theaterStatus"
-        :bar="theaterBar"
-        :tick-imminent="tickImminent"
-        :next-tick-in="gameStore.nextTickIn"
-        :is-alive="gameStore.isAlive"
-        :can-act="gameStore.canAct"
-        :pulse-key="tickPulseKey"
-      />
+      <Stream :events="combatEvents" />
     </TerminalPanel>
 
     <!-- Right rail: compact map + hero status (classic) or the
@@ -2034,6 +2121,7 @@ function handleReturnToMenu() {
         :tick="gameStore.tick"
         :mode="gameStore.mode"
         :neutrals="gameStore.neutrals"
+        :tenant="gameStore.tenant ?? undefined"
         :waves="gameStore.waves"
         @submit="handleCommand"
       />

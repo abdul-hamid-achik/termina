@@ -1,4 +1,4 @@
-// Shared tactical derivations for the current zone — used by both ZonePanel
+// Shared tactical derivations for the current zone — used by the rig line and StatusLines
 // (the detailed unit list) and the rig line in the stream so the
 // threat verdict can never drift between the two surfaces.
 
@@ -30,7 +30,7 @@ export function computeThreat(
   return { label: 'FAVORED', tone: 'safe' }
 }
 
-/** Tailwind text-color class for a threat tone (matches ZonePanel's mapping). */
+/** Tailwind text-color class for a threat tone. */
 export function threatToneClass(tone: ThreatTone): string {
   switch (tone) {
     case 'danger':

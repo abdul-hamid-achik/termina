@@ -19,7 +19,7 @@ const TICK = 240
 <template>
   <Story title="Game/CommandInput">
     <!-- Live prompt: can act, full context for suggestions + inline preview.
-         (No countdown/WAITING footer here anymore — the TickTheater header is
+         (No countdown/WAITING footer here anymore — the status line is
          the game's single clock; waiting is conveyed via the placeholder and
          the queued/buffered states below.) -->
     <Variant title="ready (can act)">

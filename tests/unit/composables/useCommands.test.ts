@@ -12,6 +12,9 @@ import {
   formatStatusReadout,
   formatMapReadout,
   formatScanReadout,
+  formatContactsReadout,
+  formatNetReadout,
+  formatLookReadout,
   formatHelpReadout,
   type GameContext,
 } from '~~/app/composables/useCommands'
@@ -2339,5 +2342,129 @@ describe('item active targetType annotations', () => {
       .map((i) => i.id)
       .sort()
     expect(zoneTargeted).toEqual(['camtap', 'sniffer'])
+  })
+})
+
+describe('the R3-08 readouts (who / net / look)', () => {
+  function me(over: Partial<PlayerState> = {}): PlayerState {
+    return makePlayer({ zone: 'mid-river', ...over })
+  }
+
+  it('who lists visible heroes with side, hp and cooldowns, plus fogged last-seen', () => {
+    const player = me()
+    const all = {
+      p1: player,
+      e1: makePlayer({
+        id: 'e1',
+        name: 'Enemy1',
+        team: 'audit',
+        heroId: 'daemon',
+        zone: 'mid-t1-audit',
+        hp: 300,
+        maxHp: 500,
+        cooldowns: { q: 2, w: 0, e: 0, r: 0 },
+      }),
+      a1: makePlayer({
+        id: 'a1',
+        name: 'Ally1',
+        team: 'chaff',
+        heroId: 'kernel',
+        zone: 'mid-river',
+      }),
+    }
+    const lines = formatContactsReadout(player, all, { e2: { zone: 'top-river', tick: 100 } }, 140)
+    expect(
+      lines.some(
+        (l) => l.startsWith('WHO · ✕ Daemon') && l.includes('HP 300/500') && l.includes('Q·2c'),
+      ),
+    ).toBe(true)
+    expect(lines.some((l) => l.startsWith('WHO · ○ Kernel'))).toBe(true)
+    expect(lines.some((l) => l.includes('fogged @ Seawall Crossing · 40c ago'))).toBe(true)
+  })
+
+  it('who with empty vision prints the empty line', () => {
+    const player = me()
+    expect(formatContactsReadout(player, { p1: player }, {}, 10)).toEqual([
+      'WHO · no contacts in your vision',
+    ])
+  })
+
+  it('net carries lead, vision, day/night and objectives in one line', () => {
+    const text = formatNetReadout({
+      chaffNetWorth: 5000,
+      auditNetWorth: 3800,
+      netWorthHistory: { chaff: [4000, 4500, 5000], audit: [3800, 3800, 3800] },
+      visionText: 'vision 6/32 · no wards',
+      dayNight: 'DAY · full vision',
+      objectives: 'TENANT up · CACHE next 20c · BACKUP —',
+    })
+    expect(text).toContain('CHF +1.2k')
+    expect(text).toContain('vision 6/32')
+    expect(text).toContain('DAY · full vision')
+    expect(text).toContain('TENANT up')
+  })
+
+  it('net reads even when tied', () => {
+    const text = formatNetReadout({
+      chaffNetWorth: 1000,
+      auditNetWorth: 1000,
+      netWorthHistory: null,
+      visionText: 'vision 4/32',
+      dayNight: 'NIGHT · vision reduced',
+      objectives: 'TENANT dead 40c · CACHE haste @ Seawall Cache Drop · BACKUP in pit',
+    })
+    expect(text).toContain('even')
+    expect(text).toContain('NIGHT')
+  })
+
+  it('look lists hostile waves with their server index and camps', () => {
+    const player = me({ zone: 'mid-river' })
+    const waves = [
+      {
+        id: 'w0',
+        team: 'audit' as const,
+        zone: 'mid-river',
+        hp: 120,
+        maxHp: 400,
+        type: 'line' as const,
+      },
+      {
+        id: 'w1',
+        team: 'chaff' as const,
+        zone: 'mid-river',
+        hp: 400,
+        maxHp: 400,
+        type: 'line' as const,
+      },
+      {
+        id: 'w2',
+        team: 'audit' as const,
+        zone: 'mid-river',
+        hp: 0,
+        maxHp: 400,
+        type: 'line' as const,
+      },
+    ]
+    const lines = formatLookReadout(player, waves, [
+      { id: 'n0', zone: 'mid-river', alive: true, type: 'stub' },
+    ])
+    expect(lines[0]).toContain('1 hostile wave')
+    expect(lines[0]).toContain('wave:0 120hp')
+    expect(lines.some((l) => l.includes('1 friendly wave'))).toBe(true)
+    expect(lines.some((l) => l.includes('camp: stub'))).toBe(true)
+  })
+
+  it('look with nothing in zone prints the empty line', () => {
+    expect(formatLookReadout(me({ zone: 'mid-river' }), [], [])).toEqual([
+      'LOOK · nothing standing in Coldstore Crossing',
+    ])
+  })
+
+  it('tab-completion offers who/net/look', () => {
+    const { autocomplete } = useCommands()
+    const texts = autocomplete('w', makeContext()).map((s) => s.text)
+    expect(texts).toContain('who')
+    expect(autocomplete('ne', makeContext()).map((s) => s.text)).toContain('net')
+    expect(autocomplete('loo', makeContext()).map((s) => s.text)).toContain('look')
   })
 })

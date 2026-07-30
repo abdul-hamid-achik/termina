@@ -95,41 +95,21 @@ const stubs = {
     template: '<div data-testid="post-game-stub">post-game</div>',
   },
   GameStateBar: true,
-  WarRoom: true,
-  Stream: true,
-  // TickTheater (extracted) owns the theater-header now; surface its `status`
-  // prop so the header-text assertions still hold under shallow stubbing.
-  TickTheater: {
-    name: 'TickTheater',
-    props: [
-      'events',
-      'status',
-      'bar',
-      'tickImminent',
-      'nextTickIn',
-      'isAlive',
-      'canAct',
-      'pulseKey',
-    ],
-    template: '<div data-testid="theater-header">{{ status }}</div>',
+  // StatusLines replaced the panel chrome (R3-08); surface its status texts so
+  // the header assertions still hold under shallow stubbing.
+  StatusLines: {
+    name: 'StatusLines',
+    props: ['trace', 'canAct', 'nextTickIn', 'tick', 'netLead', 'alive'],
+    template:
+      "<div data-testid=\"theater-header\">{{ !alive ? 'DOWN' : canAct ? 'AWAITING ORDERS' : 'RESOLVING' }}</div>",
+  },
+  Stream: {
+    name: 'Stream',
+    props: ['events'],
+    template: '<div data-testid="stream" />',
   },
   KillFeed: true,
   Deck: true,
-  ZonePanel: {
-    name: 'ZonePanel',
-    props: [
-      'zoneName',
-      'zoneId',
-      'playerTeam',
-      'enemies',
-      'allies',
-      'waves',
-      'neutrals',
-      'ice',
-      'tenant',
-    ],
-    template: '<div data-testid="zone-panel" />',
-  },
   // The rail trace (hop depth + contacts + terminals) — the board is gone.
   TraceRail: {
     name: 'TraceRail',
@@ -232,12 +212,12 @@ describe('GameScreen', () => {
     })
 
     describe('HUD layout (setting A)', () => {
-      it('keeps the Zone panel in the left column instead of the right rail', () => {
+      it('keeps the status lines in the left column instead of the right rail', () => {
         localStorage.clear()
         seedActiveGame()
         const wrapper = mountGameScreen()
 
-        expect(wrapper.find('.game-grid__war [data-testid="zone-panel"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="theater-header"]').exists()).toBe(true)
         expect(wrapper.find('.game-grid__rail [data-testid="zone-panel"]').exists()).toBe(false)
         wrapper.unmount()
       })
@@ -685,64 +665,32 @@ describe('GameScreen', () => {
     })
   })
 
+  /** The narrative lines the Stream is handed (engine + local events). */
+  function feed(wrapper: ReturnType<typeof mountGameScreen>): string[] {
+    const events = wrapper.findComponent({ name: 'Stream' }).props('events') as Array<{
+      text: string
+    }>
+    return events.map((e) => e.text)
+  }
+
+  async function order(wrapper: ReturnType<typeof mountGameScreen>, cmd: string) {
+    // The zone panel is gone (R3-08): orders go through the command input,
+    // the same path a typed command takes.
+    wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', cmd)
+    await wrapper.vm.$nextTick()
+  }
+
   describe('jungle + Tenant targeting (W1-2)', () => {
     // `attack neutral:<i>` resolves against the WHOLE neutrals array server-side
-    // (it reaches the client unfiltered), unlike the zone-local wave index. If
-    // the zone filter ran before the index was captured, the panel would send
-    // the player at a camp in a different jungle.
-    it('passes in-zone neutrals to the Zone panel tagged with their global index', () => {
-      seedActiveGame({
-        neutrals: [
-          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
-          { id: 'n1', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
-          { id: 'n2', zone: 'mid-river', hp: 140, maxHp: 200, type: 'warden', alive: true },
-          { id: 'n3', zone: 'mid-river', hp: 0, maxHp: 200, type: 'warden', alive: false },
-        ],
-      })
-      const wrapper = mountGameScreen()
-
-      const passed = wrapper.findComponent({ name: 'ZonePanel' }).props('neutrals') as Array<{
-        id: string
-        index: number
-      }>
-      expect(passed).toHaveLength(1)
-      expect(passed[0]).toMatchObject({ id: 'n2', index: 2 })
-      wrapper.unmount()
-    })
-
-    it('passes Tenant to the Zone panel only from inside the pit', () => {
-      seedActiveGame({ players: rosterAt('mid-river') })
-      const outside = mountGameScreen()
-      expect(outside.findComponent({ name: 'ZonePanel' }).props('tenant')).toBeNull()
-      outside.unmount()
-
-      seedActiveGame({ players: rosterAt('hollow') })
-      const inPit = mountGameScreen()
-      expect(inPit.findComponent({ name: 'ZonePanel' }).props('tenant')).toMatchObject({
-        alive: true,
-      })
-      inPit.unmount()
-    })
-
-    it('withholds Tenant while he is dead, even standing in the pit', () => {
-      seedActiveGame({
-        players: rosterAt('hollow'),
-        tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: 200 },
-      })
-      const wrapper = mountGameScreen()
-
-      expect(wrapper.findComponent({ name: 'ZonePanel' }).props('tenant')).toBeNull()
-      wrapper.unmount()
-    })
-
+    // (it reaches the client unfiltered), unlike the zone-local wave index. With
+    // the zone panel gone (R3-08), targeting goes through the command path: the
+    // client pre-flight refuses an out-of-zone camp, the server is the backstop.
     it('sends attack tenant through the command path from the pit', async () => {
       seedActiveGame({ players: rosterAt('hollow') })
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack tenant')
-      await wrapper.vm.$nextTick()
-
+      await order(wrapper, 'attack tenant')
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
         command: { type: 'attack', target: { kind: 'tenant' } },
@@ -758,19 +706,29 @@ describe('GameScreen', () => {
         ],
       })
       const wrapper = mountGameScreen()
-      const panel = wrapper.findComponent({ name: 'ZonePanel' })
 
       socketSpies.send.mockClear()
-      panel.vm.$emit('command', 'attack neutral:0')
-      await wrapper.vm.$nextTick()
+      await order(wrapper, 'attack neutral:0')
       expect(socketSpies.send).not.toHaveBeenCalled()
 
-      panel.vm.$emit('command', 'attack neutral:1')
-      await wrapper.vm.$nextTick()
+      await order(wrapper, 'attack neutral:1')
       expect(socketSpies.send).toHaveBeenCalledWith({
         type: 'action',
         command: { type: 'attack', target: { kind: 'neutral', index: 1 } },
       })
+      wrapper.unmount()
+    })
+
+    it('withholds attack tenant while he is dead, even standing in the pit', async () => {
+      seedActiveGame({
+        players: rosterAt('hollow'),
+        tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: 200 },
+      })
+      const wrapper = mountGameScreen()
+
+      socketSpies.send.mockClear()
+      await order(wrapper, 'attack tenant')
+      expect(socketSpies.send).not.toHaveBeenCalled()
       wrapper.unmount()
     })
   })
@@ -804,19 +762,6 @@ describe('GameScreen', () => {
       for (const id of CORRIDOR) zones[id] = makeZone(id)
       store.updateFromTick(makeTickMessage({ tick, players, zones }))
       return store
-    }
-
-    /** The narrative lines the Tick Theater is handed (engine + local events). */
-    function feed(wrapper: ReturnType<typeof mountGameScreen>): string[] {
-      const events = wrapper.findComponent({ name: 'TickTheater' }).props('events') as Array<{
-        text: string
-      }>
-      return events.map((e) => e.text)
-    }
-
-    async function order(wrapper: ReturnType<typeof mountGameScreen>, cmd: string) {
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', cmd)
-      await wrapper.vm.$nextTick()
     }
 
     it('announces arrival after a single-hop move', async () => {
@@ -919,7 +864,7 @@ describe('GameScreen', () => {
     }
 
     function lines(wrapper: ReturnType<typeof mountGameScreen>): string[] {
-      const events = wrapper.findComponent({ name: 'TickTheater' }).props('events') as Array<{
+      const events = wrapper.findComponent({ name: 'Stream' }).props('events') as Array<{
         text: string
       }>
       return events.map((e) => e.text)
@@ -1079,7 +1024,7 @@ describe('GameScreen', () => {
       const wrapper = mountGameScreen()
       expect(wrapper.find('[data-testid="walk-strip"]').exists()).toBe(false)
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')
       await wrapper.vm.$nextTick()
 
       // chaff-base → mid-t3-chaff → mid-t2-chaff → mid-t1-chaff
@@ -1095,7 +1040,7 @@ describe('GameScreen', () => {
     it('[stop] cancels the walk by re-ordering a move to where you stand', async () => {
       seedMap('chaff-base')
       const wrapper = mountGameScreen()
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')
       await wrapper.vm.$nextTick()
 
       // One hop later, mid-walk — the tick that frees the player to act again.
@@ -1121,14 +1066,14 @@ describe('GameScreen', () => {
       seedMap('mid-t3-chaff')
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t3-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t3-chaff')
       await wrapper.vm.$nextTick()
 
       seedMap('mid-t2-chaff', { tick: 241 })
       await wrapper.vm.$nextTick()
 
       const feed = (
-        wrapper.findComponent({ name: 'TickTheater' }).props('events') as { text: string }[]
+        wrapper.findComponent({ name: 'Stream' }).props('events') as { text: string }[]
       ).map((e) => e.text)
       expect(feed.some((t) => t.includes('more to Mid Lane T3'))).toBe(false)
       wrapper.unmount()
@@ -1276,7 +1221,7 @@ describe('GameScreen', () => {
       expect(audio.playSound).toHaveBeenCalledWith('respawn')
       expect(wrapper.find('[data-testid="respawn-vignette"]').exists()).toBe(true)
       const feed = (
-        wrapper.findComponent({ name: 'TickTheater' }).props('events') as { text: string }[]
+        wrapper.findComponent({ name: 'Stream' }).props('events') as { text: string }[]
       ).map((e) => e.text)
       expect(feed.some((t) => t.includes('PROCESS RESTORED'))).toBe(true)
       wrapper.unmount()
@@ -1309,7 +1254,7 @@ describe('GameScreen', () => {
       store.updateFromTick(makeTickMessage({ tick: 240, zones }))
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'move mid-t1-chaff')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'move mid-t1-chaff')
       await wrapper.vm.$nextTick()
 
       expect(socketSpies.send).toHaveBeenCalled()
@@ -1321,7 +1266,7 @@ describe('GameScreen', () => {
       seedActiveGame({ players: rosterAt('hollow') })
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'attack tenant')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'attack tenant')
       await wrapper.vm.$nextTick()
 
       expect(audio.playSound).toHaveBeenCalledWith('cast')
@@ -1337,7 +1282,7 @@ describe('GameScreen', () => {
       const store = seedActiveGame() // in mid-river, no shop
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'buy scrap_lot')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'buy scrap_lot')
 
       expect(store.announcements.at(-1)).toContain('shop zone')
       expect(store.lastAnnouncementLevel).toBe('warning')
@@ -1349,7 +1294,7 @@ describe('GameScreen', () => {
       const store = seedActiveGame()
       const wrapper = mountGameScreen()
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'flibbertigibbet')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'flibbertigibbet')
 
       expect(store.announcements.at(-1)).toContain('Unknown command')
       wrapper.unmount()
@@ -1360,7 +1305,7 @@ describe('GameScreen', () => {
       const wrapper = mountGameScreen()
       const before = store.announcements.length
 
-      wrapper.findComponent({ name: 'ZonePanel' }).vm.$emit('command', 'status')
+      wrapper.findComponent({ name: 'CommandInput' }).vm.$emit('submit', 'status')
 
       expect(store.announcements).toHaveLength(before)
       wrapper.unmount()

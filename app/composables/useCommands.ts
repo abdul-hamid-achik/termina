@@ -13,6 +13,7 @@ import { isShopZoneFor, ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { findPath } from '~~/shared/pathfinding'
 import { HEROES, isHeroId } from '~~/shared/constants/heroes'
+import { goldLead, formatGoldShort, sparkline } from '~/utils/strategy'
 import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
 import { getAbilityManaCost } from '~~/shared/utils/ability'
 import {
@@ -36,6 +37,9 @@ export interface GameContext {
   /** The whole global neutrals array, in server order — `attack neutral:<i>`
    *  is resolved against that index, so it must not be pre-filtered here. */
   neutrals?: SiltDwellerState[]
+  /** The Tenant's state — lets the pre-flight refuse `attack tenant` when he is
+   *  already down (the server rejects with 'Tenant is already dead'). */
+  tenant?: { alive: boolean }
   /** The whole global (vision-filtered) waves array, in server order.
    *  `wave:<i>` is ZONE-local, but the index is derived by counting within
    *  server order — so this must arrive unsorted and unfiltered. */
@@ -283,6 +287,82 @@ export function formatScanReadout(
   return `SCAN · ${visible.length} enemy hero${visible.length === 1 ? '' : 'es'} visible: ${list}`
 }
 
+/** `who` — the contacts sheet: every visible hero, hostile and friendly, with
+ *  cooldowns and last-seen folded from the threat sheet (R3-08). */
+export function formatContactsReadout(
+  player: PlayerState,
+  allPlayers: Record<string, PlayerState>,
+  lastSeen: Record<string, { zone: string; tick: number }>,
+  tick: number,
+): string[] {
+  const lines: string[] = []
+  const visible = Object.values(allPlayers).filter((p) => p.id !== player.id && p.alive)
+  const fogged = Object.entries(lastSeen)
+  if (visible.length === 0 && fogged.length === 0) return ['WHO · no contacts in your vision']
+  for (const p of visible) {
+    const hero = HEROES[p.heroId ?? '']?.name ?? p.name
+    const side = p.team === player.team ? 'ally' : 'hostile'
+    const cds = (['q', 'w', 'e', 'r'] as const)
+      .filter((s) => p.cooldowns[s] > 0)
+      .map((s) => `${s.toUpperCase()}·${p.cooldowns[s]}c`)
+      .join(' ')
+    lines.push(
+      `WHO · ${side === 'hostile' ? '✕' : '○'} ${hero} @ ${zoneName(p.zone)}` +
+        ` · HP ${Math.floor(p.hp)}/${p.maxHp}${cds ? ` · cd ${cds}` : ''}`,
+    )
+  }
+  for (const [id, ls] of fogged) {
+    if (visible.some((p) => p.id === id)) continue
+    lines.push(`WHO · ✕ fogged @ ${zoneName(ls.zone)} · ${Math.max(0, tick - ls.tick)}c ago`)
+  }
+  return lines
+}
+
+/** `net` — the macro line: net-worth lead, vision, day/night, objectives. */
+export function formatNetReadout(input: {
+  chaffNetWorth: number
+  auditNetWorth: number
+  netWorthHistory: { chaff: number[]; audit: number[] } | null
+  visionText: string
+  dayNight: string
+  objectives: string
+}): string {
+  const lead = goldLead(input.chaffNetWorth, input.auditNetWorth)
+  const trend = input.netWorthHistory
+    ? sparkline(
+        input.netWorthHistory.chaff.map((v, i) => v - (input.netWorthHistory!.audit[i] ?? 0)),
+      )
+    : ''
+  const leadText =
+    lead.leader === null
+      ? 'even'
+      : `${lead.leader === 'chaff' ? 'CHF' : 'AUD'} +${formatGoldShort(lead.amount)}`
+  return `NET · ${leadText}${trend ? ` ${trend}` : ''} · ${input.visionText} · ${input.dayNight} · ${input.objectives}`
+}
+
+/** `look` — the unit list of your current zone (was the zone panel). */
+export function formatLookReadout(
+  player: PlayerState,
+  waves: WaveUnitState[],
+  neutrals: { id: string; zone: string; alive: boolean; type: string }[],
+): string[] {
+  const inZone = waves.filter((c) => c.zone === player.zone)
+  const hostile = inZone.filter((c) => c.team !== player.team && c.hp > 0)
+  const friendly = inZone.filter((c) => c.team === player.team && c.hp > 0)
+  const camps = neutrals.filter((n) => n.zone === player.zone && n.alive)
+  const lines: string[] = []
+  if (hostile.length)
+    lines.push(
+      `LOOK · ${hostile.length} hostile wave${hostile.length === 1 ? '' : 's'}: ` +
+        hostile.map((c, i) => `wave:${inZone.indexOf(c)} ${Math.floor(c.hp)}hp`).join(', '),
+    )
+  if (friendly.length)
+    lines.push(`LOOK · ${friendly.length} friendly wave${friendly.length === 1 ? '' : 's'}`)
+  if (camps.length) lines.push(`LOOK · camp: ${camps.map((c) => c.type).join(', ')}`)
+  if (!lines.length) lines.push(`LOOK · nothing standing in ${zoneName(player.zone)}`)
+  return lines
+}
+
 /**
  * The command reference for the `help` (or `?`) command — one log line per
  * group so it stays scannable. Pure/static so it can be unit-tested and reused.
@@ -493,6 +573,11 @@ export function validateCommand(command: Command, context: GameContext): string 
       }
       if (t.kind === 'tenant' && player.zone !== TENANT_ZONE) {
         return `Must be in the ${TENANT_ZONE} to attack Tenant`
+      }
+      // A dead Tenant is no target — the server rejects with 'Tenant is already
+      // dead', so warn ahead instead of burning the player's one action.
+      if (t.kind === 'tenant' && context.tenant && !context.tenant.alive) {
+        return 'Tenant is already dead'
       }
       // Only checkable when the caller supplied the neutrals array; without it
       // the server still enforces both rules, we just can't warn ahead of time.
@@ -759,6 +844,15 @@ export function useCommands() {
       case 'scan':
         return { command: { type: 'scan' }, error: null }
 
+      case 'who':
+        return { command: { type: 'who' }, error: null }
+
+      case 'net':
+        return { command: { type: 'net' }, error: null }
+
+      case 'look':
+        return { command: { type: 'look' }, error: null }
+
       case 'status':
         return { command: { type: 'status' }, error: null }
 
@@ -851,6 +945,9 @@ export function useCommands() {
         'backup',
         'grab',
         'scan',
+        'who',
+        'net',
+        'look',
         'status',
         'map',
         'help',
@@ -871,6 +968,9 @@ export function useCommands() {
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (tiers 10/15/20/25)',
         burn: 'Last-hit your own wave below 50% HP to burn the enemy',
+        who: 'Contacts sheet — every visible hero, hostile and friendly',
+        net: 'Macro line — net-worth lead, vision, day/night, objectives',
+        look: 'Unit list of your current zone',
       }
       return all
         .filter((c) => c.startsWith(parts[0]!))
