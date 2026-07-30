@@ -42,7 +42,16 @@ export default defineNuxtConfig({
         },
         { name: 'theme-color', content: '#0a0a0f' },
       ],
-      link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+      link: [
+        // SVG first: modern browsers prefer it and it stays crisp at every
+        // size. The .ico is the legacy/crawler fallback — it was declared here
+        // before but public/ did not exist, so every page load 404'd and the
+        // tab showed a blank icon.
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
+        { rel: 'manifest', href: '/site.webmanifest' },
+      ],
     },
   },
 
