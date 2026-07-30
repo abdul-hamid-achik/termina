@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
 import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import { cycleFrameLine } from '~~/shared/constants/world'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useAuthStore } from '~/stores/auth'
 
@@ -37,10 +38,10 @@ const commandTicker = [
 ]
 
 const pillars = [
-  { n: '01', text: 'Command your hero through a terminal. No mouse, no reflexes.' },
-  { n: '02', text: `Tick-based combat — every ${tickSeconds} seconds resolves at once.` },
+  { n: '01', text: 'You are on a terminal. The terminal is your deck — you type, you do not aim.' },
+  { n: '02', text: cycleFrameLine(tickSeconds) },
   { n: '03', text: `${heroCount} heroes: carries, supports, assassins, tanks, mages, offlaners.` },
-  { n: '04', text: 'Fog of war — ward the map or fight blind.' },
+  { n: '04', text: 'No feed off ground you do not hold — ward the routes, or move blind.' },
 ]
 </script>
 
@@ -140,7 +141,7 @@ const pillars = [
          the whole loop — you type one command, the scheduler resolves it. -->
     <section class="mx-auto w-full max-w-[620px] px-8 max-sm:px-4">
       <h2 class="mb-2 text-[0.7rem] uppercase tracking-widest text-text-dim">
-        // a turn, in plain text
+        // one cycle, in plain text
       </h2>
       <div
         class="border border-border bg-bg-secondary p-3 text-left font-mono text-[0.72rem] leading-relaxed"
@@ -150,17 +151,17 @@ const pillars = [
           <span class="text-ability">cast q hero:daemon</span>
         </p>
         <p class="text-text-dim">
-          &nbsp;&nbsp;⤷ tick 42 · Resonance hits Daemon — 80 dmg (+bounce)
+          &nbsp;&nbsp;⤷ cycle 42 · Resonance hits Daemon — 80 dmg (+bounce)
         </p>
         <p>
           <span class="text-radiant">&gt;</span> <span class="text-ability">move mid-river</span>
         </p>
-        <p class="text-text-dim">&nbsp;&nbsp;⤷ tick 43 · you advance to mid-river</p>
+        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 43 · you advance to mid-river</p>
         <p>
           <span class="text-radiant">&gt;</span>
           <span class="text-ability">attack tower:mid-t1-dire</span>
         </p>
-        <p class="text-text-dim">&nbsp;&nbsp;⤷ tick 44 · tower takes 55, your creeps pile in</p>
+        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 44 · tower takes 55, your creeps pile in</p>
       </div>
     </section>
 

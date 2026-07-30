@@ -70,9 +70,9 @@ describe('index (landing) page', () => {
     expect(text).not.toContain('scan')
   })
 
-  it('teaches fog of war and warding', () => {
+  it('teaches no feed and warding', () => {
     // Reworded freely over time; assert the concept is present, not the phrasing.
-    expect(mountIndex().text().toLowerCase()).toMatch(/fog of war/)
+    expect(mountIndex().text().toLowerCase()).toMatch(/no feed/)
     expect(mountIndex().text().toLowerCase()).toMatch(/ward/)
   })
 
