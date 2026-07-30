@@ -44,19 +44,19 @@ describe('Items Registry', () => {
       'boots_of_speed',
     ]
     const coreIds = [
-      'desolator',
-      'daedalus',
-      'heart_of_tarrasque',
+      'rust_driver',
+      'killshot_coil',
+      'bulk_lattice',
       'scythe_of_vyse',
-      'divine_rapier',
-      'black_king_bar',
-      'assault_cuirass',
+      'last_word',
+      'hardshell',
+      'siege_lattice',
       'blink_module',
       'null_pointer',
       'garbage_collector',
       'stack_overflow',
       'segfault_blade',
-      'firewall_item',
+      'ablative_shell',
     ]
     const consumableIds = [
       'trauma_patch',

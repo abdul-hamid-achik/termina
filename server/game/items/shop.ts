@@ -167,7 +167,7 @@ export function sellItem(
 
     // Divine Rapier cannot be sold — its defining drawback (you can only get rid
     // of it by dying, which hands it to your killer; see handleDeaths).
-    if (itemId === 'divine_rapier') {
+    if (itemId === 'last_word') {
       return yield* Effect.fail(new ItemNotSellableError({ itemId }))
     }
 
@@ -260,7 +260,7 @@ export function useItem(
         break
 
       // Offensive items
-      case 'silver_edge':
+      case 'ghostwire_edge':
         updatedState = useSilverEdge(state, player)
         break
       case 'dagon':
@@ -271,19 +271,19 @@ export function useItem(
         break
 
       // Defensive items
-      case 'firewall_item':
+      case 'ablative_shell':
         updatedState = useFirewallItem(state, player)
         break
-      case 'black_king_bar':
+      case 'hardshell':
         updatedState = useBlackKingBar(state, player)
         break
-      case 'blade_mail':
+      case 'spite_plate':
         updatedState = useBladeMail(state, player)
         break
       case 'ghost_scepter':
         updatedState = useGhostScepter(state, player)
         break
-      case 'lotus_orb':
+      case 'mirror_shell':
         updatedState = yield* useLotusOrb(state, player, target)
         break
 
@@ -604,25 +604,25 @@ function useHurricanePike(
 
 function useSilverEdge(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
-    id: 'silver_edge_invis',
+    id: 'ghostwire_edge_invis',
     stacks: 1,
     ticksRemaining: 3,
-    source: 'silver_edge',
+    source: 'ghostwire_edge',
   })
   updated = applyBuff(updated, {
-    id: 'silver_edge_bonus',
+    id: 'ghostwire_edge_bonus',
     // Matches the invis window (3 ticks) so the empowered hit can't linger past
     // stealth even if the holder never attacks; the attack-gate already requires
     // active invis, so this is belt-and-suspenders.
     stacks: 150,
     ticksRemaining: 3,
-    source: 'silver_edge',
+    source: 'ghostwire_edge',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_silver_edge',
     stacks: 1,
     ticksRemaining: 18,
-    source: 'silver_edge',
+    source: 'ghostwire_edge',
   })
   return updatePlayer(state, updated)
 }
@@ -647,7 +647,7 @@ function useDagon(
       return yield* Effect.fail(new InvalidTargetError({ reason: 'Target out of range' }))
     }
 
-    // Deal 300 magical damage — blocked by magic immunity (BKB/invulnerable),
+    // Deal 300 magical damage — blocked by magic immunity (Hardshell/invulnerable),
     // amplified by magic-vuln / Yield on the target.
     const baseDamage = isDamageImmune(targetPlayer, 'magical')
       ? 0
@@ -723,13 +723,13 @@ function useFirewallItem(state: GameState, player: PlayerState): GameState {
     id: 'firewall_block',
     stacks: 1,
     ticksRemaining: 30,
-    source: 'firewall_item',
+    source: 'ablative_shell',
   })
   updated = applyBuff(updated, {
     id: 'item_cd_firewall_item',
     stacks: 1,
     ticksRemaining: 30,
-    source: 'firewall_item',
+    source: 'ablative_shell',
   })
   return updatePlayer(state, updated)
 }
@@ -739,29 +739,29 @@ function useBlackKingBar(state: GameState, player: PlayerState): GameState {
     id: 'magic_immune',
     stacks: 1,
     ticksRemaining: 4,
-    source: 'black_king_bar',
+    source: 'hardshell',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_black_king_bar',
+    id: 'item_cd_hardshell',
     stacks: 1,
     ticksRemaining: 25,
-    source: 'black_king_bar',
+    source: 'hardshell',
   })
   return updatePlayer(state, updated)
 }
 
 function useBladeMail(state: GameState, player: PlayerState): GameState {
   let updated = applyBuff(player, {
-    id: 'blade_mail',
+    id: 'spite_plate',
     stacks: 100, // 100% return
     ticksRemaining: 3,
-    source: 'blade_mail',
+    source: 'spite_plate',
   })
   updated = applyBuff(updated, {
-    id: 'item_cd_blade_mail',
+    id: 'item_cd_spite_plate',
     stacks: 1,
     ticksRemaining: 18,
-    source: 'blade_mail',
+    source: 'spite_plate',
   })
   return updatePlayer(state, updated)
 }
@@ -797,10 +797,10 @@ function useLotusOrb(
   }
 
   let updated = applyBuff(targetPlayer, {
-    id: 'lotus_orb',
+    id: 'mirror_shell',
     stacks: 1,
     ticksRemaining: 5,
-    source: 'lotus_orb',
+    source: 'mirror_shell',
   })
 
   // Apply cooldown to caster
@@ -809,7 +809,7 @@ function useLotusOrb(
       id: 'item_cd_lotus_orb',
       stacks: 1,
       ticksRemaining: 15,
-      source: 'lotus_orb',
+      source: 'mirror_shell',
     })
     return Effect.succeed(updatePlayers(state, [caster, updated]))
   }
@@ -818,7 +818,7 @@ function useLotusOrb(
     id: 'item_cd_lotus_orb',
     stacks: 1,
     ticksRemaining: 15,
-    source: 'lotus_orb',
+    source: 'mirror_shell',
   })
 
   return Effect.succeed(updatePlayer(state, updated))

@@ -6,11 +6,11 @@ import { ZONE_IDS } from '~~/shared/constants/zones'
 
 /**
  * R1 naming law guard: no new identifier may collide with one of the 18 hero
- * handles (B1a — the ids never change). The `firewall_item` id existed ONLY to
+ * handles (B1a — the ids never change). The `ablative_shell` id existed ONLY to
  * dodge such a collision; this test makes the rule self-enforcing so the hack
  * can never come back.
  */
-describe('hero-id collision guard (the firewall_item law)', () => {
+describe('hero-id collision guard (the ablative_shell law)', () => {
   const heroes = new Set(HERO_IDS)
 
   it('no zone id is a hero handle', () => {

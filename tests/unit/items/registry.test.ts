@@ -26,14 +26,14 @@ describe('Item Registry', () => {
 
     it('contains attack items', () => {
       const attackIds = [
-        'desolator',
-        'crystalys',
-        'daedalus',
-        'maelstrom',
-        'monkey_king_bar',
-        'divine_rapier',
-        'silver_edge',
-        'skull_basher',
+        'rust_driver',
+        'fracture_edge',
+        'killshot_coil',
+        'arc_coil',
+        'truestrike_rig',
+        'last_word',
+        'ghostwire_edge',
+        'concussion_hammer',
         'null_pointer',
         'segfault_blade',
       ]
@@ -59,15 +59,15 @@ describe('Item Registry', () => {
 
     it('contains defensive items', () => {
       const defensiveIds = [
-        'vanguard',
-        'linkens_sphere',
-        'black_king_bar',
-        'heart_of_tarrasque',
-        'assault_cuirass',
-        'lotus_orb',
-        'blade_mail',
+        'bulwark_plate',
+        'intercept_shell',
+        'hardshell',
+        'bulk_lattice',
+        'siege_lattice',
+        'mirror_shell',
+        'spite_plate',
         'garbage_collector',
-        'firewall_item',
+        'ablative_shell',
       ]
       for (const id of defensiveIds) {
         expect(ITEMS[id]).toBeDefined()
@@ -217,7 +217,7 @@ describe('Item Registry', () => {
     })
 
     it('non-consumable items do not have maxStacks', () => {
-      const nonConsumable = ['boots_of_speed', 'null_pointer', 'daedalus', 'heart_of_tarrasque']
+      const nonConsumable = ['boots_of_speed', 'null_pointer', 'killshot_coil', 'bulk_lattice']
       for (const id of nonConsumable) {
         const item = getItem(id)!
         expect(item.consumable).toBe(false)
@@ -240,26 +240,26 @@ describe('Item Registry', () => {
       expect(item.passive!.id).toBe('null_pointer_passive')
     })
 
-    it('crystalys has a passive crit ability', () => {
-      const item = getItem('crystalys')!
+    it('fracture_edge has a passive crit ability', () => {
+      const item = getItem('fracture_edge')!
       expect(item.passive).toBeDefined()
       expect(item.passive!.name).toBe('Critical Strike')
     })
 
-    it('daedalus has a stronger passive crit', () => {
-      const item = getItem('daedalus')!
+    it('killshot_coil has a stronger passive crit', () => {
+      const item = getItem('killshot_coil')!
       expect(item.passive).toBeDefined()
-      expect(item.passive!.id).toBe('daedalus_passive')
+      expect(item.passive!.id).toBe('killshot_coil_passive')
     })
 
-    it('desolator has armor reduction passive', () => {
-      const item = getItem('desolator')!
+    it('rust_driver has armor reduction passive', () => {
+      const item = getItem('rust_driver')!
       expect(item.passive).toBeDefined()
       expect(item.passive!.name).toBe('Corruption')
     })
 
-    it('vanguard has damage block passive', () => {
-      const item = getItem('vanguard')!
+    it('bulwark_plate has damage block passive', () => {
+      const item = getItem('bulwark_plate')!
       expect(item.passive).toBeDefined()
       expect(item.passive!.name).toBe('Damage Block')
     })
@@ -277,10 +277,10 @@ describe('Item Registry', () => {
       expect(item.passive!.name).toBe('Segmentation Fault')
     })
 
-    it('firewall_item has an active ability', () => {
-      const item = getItem('firewall_item')!
+    it('ablative_shell has an active ability', () => {
+      const item = getItem('ablative_shell')!
       expect(item.active).toBeDefined()
-      expect(item.active!.id).toBe('firewall_item_active')
+      expect(item.active!.id).toBe('ablative_shell_active')
       expect(item.active!.cooldownTicks).toBe(30)
     })
 
@@ -290,8 +290,8 @@ describe('Item Registry', () => {
       expect(item.active!.name).toBe('Energy Burst')
     })
 
-    it('black_king_bar has magic immunity active', () => {
-      const item = getItem('black_king_bar')!
+    it('hardshell has magic immunity active', () => {
+      const item = getItem('hardshell')!
       expect(item.active).toBeDefined()
       expect(item.active!.name).toBe('Avatar')
     })
@@ -337,8 +337,8 @@ describe('Item Registry', () => {
       expect(item.stats.moveSpeed).toBe(1)
     })
 
-    it('divine_rapier provides massive attack', () => {
-      const item = getItem('divine_rapier')!
+    it('last_word provides massive attack', () => {
+      const item = getItem('last_word')!
       expect(item.stats.attack).toBe(100)
     })
 
@@ -347,24 +347,24 @@ describe('Item Registry', () => {
       expect(item.stats.attack).toBe(60)
     })
 
-    it('daedalus provides very high attack', () => {
-      const item = getItem('daedalus')!
+    it('killshot_coil provides very high attack', () => {
+      const item = getItem('killshot_coil')!
       expect(item.stats.attack).toBe(65)
     })
 
-    it('heart_of_tarrasque provides massive HP', () => {
-      const item = getItem('heart_of_tarrasque')!
+    it('bulk_lattice provides massive HP', () => {
+      const item = getItem('bulk_lattice')!
       expect(item.stats.hp).toBe(500)
     })
 
-    it('assault_cuirass provides armor and HP', () => {
-      const item = getItem('assault_cuirass')!
+    it('siege_lattice provides armor and HP', () => {
+      const item = getItem('siege_lattice')!
       expect(item.stats.defense).toBe(15)
       expect(item.stats.hp).toBe(200)
     })
 
-    it('firewall_item provides hp and defense', () => {
-      const item = getItem('firewall_item')!
+    it('ablative_shell provides hp and defense', () => {
+      const item = getItem('ablative_shell')!
       expect(item.stats.hp).toBe(300)
       expect(item.stats.defense).toBe(10)
     })
@@ -391,7 +391,7 @@ describe('Item Registry', () => {
       const starterCosts = ['trauma_patch', 'charge_tab', 'scrap_lot'].map(
         (id) => getItem(id)!.cost,
       )
-      const coreCosts = ['blink_module', 'daedalus', 'heart_of_tarrasque'].map(
+      const coreCosts = ['blink_module', 'killshot_coil', 'bulk_lattice'].map(
         (id) => getItem(id)!.cost,
       )
 
@@ -401,8 +401,8 @@ describe('Item Registry', () => {
       expect(maxStarter).toBeLessThan(minCore)
     })
 
-    it('divine_rapier is the most expensive item', () => {
-      const rapier = getItem('divine_rapier')!
+    it('last_word is the most expensive item', () => {
+      const rapier = getItem('last_word')!
       for (const item of Object.values(ITEMS)) {
         expect(rapier.cost).toBeGreaterThanOrEqual(item.cost)
       }
@@ -419,13 +419,13 @@ describe('Item Registry', () => {
 
     it('legendary items cost over 4500 gold', () => {
       const legendaryItems = [
-        'divine_rapier',
-        'daedalus',
+        'last_word',
+        'killshot_coil',
         'scythe_of_vyse',
-        'heart_of_tarrasque',
-        'assault_cuirass',
+        'bulk_lattice',
+        'siege_lattice',
         'shivas_guard',
-        'silver_edge',
+        'ghostwire_edge',
         'segfault_blade',
       ]
       for (const id of legendaryItems) {

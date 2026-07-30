@@ -19,7 +19,7 @@ import {
   HERO_KILL_XP_BASE,
   HERO_KILL_XP_PER_LEVEL,
   XP_PER_LEVEL,
-  MKB_BONUS_DAMAGE,
+  TRUESTRIKE_RIG_BONUS_DAMAGE,
   PASSIVE_GOLD_PER_TICK,
 } from '~~/shared/constants/balance'
 import { HERO_IDS } from '~~/shared/constants/heroes'
@@ -458,7 +458,7 @@ describe('Economy through resolution', () => {
       const sm = await startGame(gameId, makePlayers('mr', 3))
 
       // Two identical MKB attackers; two identical targets except one carries a
-      // mrShred debuff (null_ref's MR shred). MKB adds a flat MKB_BONUS_DAMAGE
+      // mrShred debuff (null_ref's MR shred). MKB adds a flat TRUESTRIKE_RIG_BONUS_DAMAGE
       // magical on-hit whose mitigated amount is emitted as its own magical
       // damage event using getEffectiveMagicResist — so the events differ ONLY
       // by the mrShred.
@@ -469,13 +469,13 @@ describe('Economy through resolution', () => {
           zone: 'mid-river',
           heroId: 'kernel',
           level: 5,
-          items: ['monkey_king_bar', null, null, null, null, null],
+          items: ['truestrike_rig', null, null, null, null, null],
         })
         next = setPlayer(next, 'mr_r1', {
           zone: 'mid-river',
           heroId: 'kernel',
           level: 5,
-          items: ['monkey_king_bar', null, null, null, null, null],
+          items: ['truestrike_rig', null, null, null, null, null],
         })
         next = setPlayer(next, 'mr_d0', {
           zone: 'mid-river',
@@ -512,11 +512,11 @@ describe('Economy through resolution', () => {
 
       expect(magLow, 'MKB must emit a magical on-hit damage event').toBeTruthy()
       expect(magHigh).toBeTruthy()
-      // mrShred → lower effective MR → the same MKB_BONUS_DAMAGE bleeds through
+      // mrShred → lower effective MR → the same TRUESTRIKE_RIG_BONUS_DAMAGE bleeds through
       // for MORE on the shredded target.
       expect(magHigh!.amount).toBeGreaterThan(magLow!.amount)
       // Sanity: the bonus magic can't exceed the raw MKB amount post-mitigation.
-      expect(magHigh!.amount).toBeLessThanOrEqual(MKB_BONUS_DAMAGE)
+      expect(magHigh!.amount).toBeLessThanOrEqual(TRUESTRIKE_RIG_BONUS_DAMAGE)
     })
   })
 })

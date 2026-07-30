@@ -521,7 +521,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            items: ['skull_basher', null, null, null, null, null],
+            items: ['concussion_hammer', null, null, null, null, null],
           }),
           p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', hp: 500 }),
         },
@@ -551,7 +551,7 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            items: ['linkens_sphere', null, null, null, null, null],
+            items: ['intercept_shell', null, null, null, null, null],
             buffs: [],
           }),
         },
@@ -807,9 +807,9 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            items: ['vanguard', 'blade_mail', null, null, null, null],
+            items: ['bulwark_plate', 'spite_plate', null, null, null, null],
             buffs: [
-              { id: 'item_cd_blade_mail', stacks: 1, ticksRemaining: 5, source: 'blade_mail' },
+              { id: 'item_cd_spite_plate', stacks: 1, ticksRemaining: 5, source: 'spite_plate' },
             ],
           }),
         },
@@ -818,14 +818,14 @@ describe('ActionResolver', () => {
       expect(
         validateAction(state, {
           playerId: 'p1',
-          command: { type: 'use', item: 'black_king_bar' },
+          command: { type: 'use', item: 'hardshell' },
         }),
       ).toBe('Item not owned')
       expect(
-        validateAction(state, { playerId: 'p1', command: { type: 'use', item: 'vanguard' } }),
+        validateAction(state, { playerId: 'p1', command: { type: 'use', item: 'bulwark_plate' } }),
       ).toBe('Item has no active ability')
       expect(
-        validateAction(state, { playerId: 'p1', command: { type: 'use', item: 'blade_mail' } }),
+        validateAction(state, { playerId: 'p1', command: { type: 'use', item: 'spite_plate' } }),
       ).toBe('Item on cooldown')
     })
 
@@ -928,21 +928,19 @@ describe('ActionResolver', () => {
           p1: makePlayer({
             hp: 750,
             maxHp: 750,
-            items: ['black_king_bar', null, null, null, null, null],
+            items: ['hardshell', null, null, null, null, null],
           }),
         },
       })
 
       const result = Effect.runSync(
-        resolveActions(state, [
-          { playerId: 'p1', command: { type: 'use', item: 'black_king_bar' } },
-        ]),
+        resolveActions(state, [{ playerId: 'p1', command: { type: 'use', item: 'hardshell' } }]),
       )
       const p1 = result.state.players['p1']!
       const immune = p1.buffs.find((b) => b.id === 'magic_immune')
       expect(immune).toBeDefined()
       expect(immune!.ticksRemaining).toBe(4)
-      expect(p1.buffs.some((b) => b.id === 'item_cd_black_king_bar')).toBe(true)
+      expect(p1.buffs.some((b) => b.id === 'item_cd_hardshell')).toBe(true)
     })
 
     it('ghost scepter buff blocks physical attack damage on later ticks', () => {
@@ -997,15 +995,15 @@ describe('ActionResolver', () => {
             team: 'audit',
             hp: 650,
             maxHp: 650,
-            items: ['blade_mail', null, null, null, null, null],
+            items: ['spite_plate', null, null, null, null, null],
           }),
         },
       })
 
       const tick1 = Effect.runSync(
-        resolveActions(state, [{ playerId: 'p2', command: { type: 'use', item: 'blade_mail' } }]),
+        resolveActions(state, [{ playerId: 'p2', command: { type: 'use', item: 'spite_plate' } }]),
       )
-      expect(tick1.state.players['p2']!.buffs.some((b) => b.id === 'blade_mail')).toBe(true)
+      expect(tick1.state.players['p2']!.buffs.some((b) => b.id === 'spite_plate')).toBe(true)
 
       const tick2 = Effect.runSync(
         resolveActions(tick1.state, [
@@ -1132,12 +1130,12 @@ describe('ActionResolver', () => {
       expect(castQ(state).state.players['p2']!.hp).toBeLessThan(550)
     })
 
-    it("Linken's Sphere blocks the spell, spares the target, and spends the charge", () => {
+    it('Intercept Shell blocks the spell, spares the target, and spends the charge', () => {
       const state = makeGameState({
         players: {
           p1: caster(),
           p2: enemy([
-            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'linkens_sphere' },
+            { id: 'spellblock', stacks: 1, ticksRemaining: 12, source: 'intercept_shell' },
           ]),
         },
       })
@@ -1149,12 +1147,12 @@ describe('ActionResolver', () => {
       expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(true)
     })
 
-    it('Firewall item block is a one-shot (removed on use)', () => {
+    it('Ablative Shell block is a one-shot (removed on use)', () => {
       const state = makeGameState({
         players: {
           p1: caster(),
           p2: enemy([
-            { id: 'firewall_block', stacks: 1, ticksRemaining: 30, source: 'firewall_item' },
+            { id: 'firewall_block', stacks: 1, ticksRemaining: 30, source: 'ablative_shell' },
           ]),
         },
       })
@@ -1167,7 +1165,9 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: caster(),
-          p2: enemy([{ id: 'spellblock', stacks: 0, ticksRemaining: 8, source: 'linkens_sphere' }]),
+          p2: enemy([
+            { id: 'spellblock', stacks: 0, ticksRemaining: 8, source: 'intercept_shell' },
+          ]),
         },
       })
       const result = castQ(state)
@@ -1175,19 +1175,19 @@ describe('ActionResolver', () => {
       expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(false)
     })
 
-    it('Lotus Orb negates the spell on the holder and bounces its damage to the caster', () => {
+    it('Mirror Shell negates the spell on the holder and bounces its damage to the caster', () => {
       const state = makeGameState({
         players: {
           p1: caster(),
-          p2: enemy([{ id: 'lotus_orb', stacks: 1, ticksRemaining: 5, source: 'lotus_orb' }]),
+          p2: enemy([{ id: 'mirror_shell', stacks: 1, ticksRemaining: 5, source: 'mirror_shell' }]),
         },
       })
       const result = castQ(state)
       expect(result.state.players['p2']!.hp).toBe(550) // holder unharmed (negated)
-      expect(result.state.players['p2']!.buffs.some((b) => b.id === 'lotus_orb')).toBe(false) // spent
+      expect(result.state.players['p2']!.buffs.some((b) => b.id === 'mirror_shell')).toBe(false) // spent
       expect(result.state.players['p1']!.hp).toBeLessThan(550) // caster took the reflected damage
       const ev = result.events.find((e) => e._tag === 'spell_blocked')
-      expect(ev && ev._tag === 'spell_blocked' ? ev.source : null).toBe('lotus_orb')
+      expect(ev && ev._tag === 'spell_blocked' ? ev.source : null).toBe('mirror_shell')
     })
   })
 
@@ -1296,15 +1296,22 @@ describe('ActionResolver', () => {
     }
 
     it('rolls the single highest-chance crit source when multiple are owned', () => {
-      // Owns null_pointer (15%), crystalys (20%), daedalus (30%).
-      // Highest chance = daedalus 30%. Return 0.29 < 0.30 → daedalus procs.
-      const { attack } = attackState(['null_pointer', 'crystalys', 'daedalus', null, null, null])
+      // Owns null_pointer (15%), fracture_edge (20%), killshot_coil (30%).
+      // Highest chance = killshot_coil 30%. Return 0.29 < 0.30 → killshot_coil procs.
+      const { attack } = attackState([
+        'null_pointer',
+        'fracture_edge',
+        'killshot_coil',
+        null,
+        null,
+        null,
+      ])
       const original = Math.random
       Math.random = () => 0.29
       try {
         const { rolledCrit, damage } = attack()
         expect(rolledCrit).toBe(true)
-        // daedalus multiplier is 2.4x — non-crit is ~173, crit ~415.
+        // killshot_coil multiplier is 2.4x — non-crit is ~173, crit ~415.
         expect(damage).toBeGreaterThan(300)
       } finally {
         Math.random = original
@@ -1312,10 +1319,17 @@ describe('ActionResolver', () => {
     })
 
     it('does not proc a crit when the roll exceeds the highest chance', () => {
-      const { attack } = attackState(['null_pointer', 'crystalys', 'daedalus', null, null, null])
+      const { attack } = attackState([
+        'null_pointer',
+        'fracture_edge',
+        'killshot_coil',
+        null,
+        null,
+        null,
+      ])
       const original = Math.random
-      // All calls return 0.31 (> 0.30 daedalus → no crit, > 0.25 maelstrom/basher
-      // → no proc, > 0.6 vanguard → no block). The crit roll is the first random
+      // All calls return 0.31 (> 0.30 killshot_coil → no crit, > 0.25 arc_coil/basher
+      // → no proc, > 0.6 bulwark_plate → no block). The crit roll is the first random
       // call in the attack path (no slow/stealth random before it).
       Math.random = () => 0.31
       try {
@@ -1327,13 +1341,13 @@ describe('ActionResolver', () => {
     })
 
     it('owning multiple crit items is never worse than owning the best one alone', () => {
-      // The old else-if chain meant owning null_pointer (15%) + daedalus (30%)
-      // could MISS on null_pointer's 15% and then skip daedalus entirely. The
-      // new highest-chance-wins logic rolls daedalus independently of the lower
-      // sources. Verify: at roll 0.16 (a hit on daedalus 30%), both the stacked
-      // build and the bare-daedalus build proc a crit.
-      const stacked = attackState(['null_pointer', 'daedalus', null, null, null, null])
-      const bare = attackState(['daedalus', null, null, null, null, null])
+      // The old else-if chain meant owning null_pointer (15%) + killshot_coil (30%)
+      // could MISS on null_pointer's 15% and then skip killshot_coil entirely. The
+      // new highest-chance-wins logic rolls killshot_coil independently of the lower
+      // sources. Verify: at roll 0.16 (a hit on killshot_coil 30%), both the stacked
+      // build and the bare-killshot_coil build proc a crit.
+      const stacked = attackState(['null_pointer', 'killshot_coil', null, null, null, null])
+      const bare = attackState(['killshot_coil', null, null, null, null, null])
       const original = Math.random
       Math.random = () => 0.16
       try {
@@ -1345,7 +1359,7 @@ describe('ActionResolver', () => {
     })
   })
 
-  describe('skull_basher bash narration', () => {
+  describe('concussion_hammer bash narration', () => {
     // The bash is applied deep inside the attack phase's staged buff list, so
     // it can't be recovered by the buff diff the cast/item paths use — it is
     // announced at the point of application instead. Without this the target
@@ -1357,7 +1371,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             team: 'chaff',
             zone: 'mid-river',
-            items: ['skull_basher', null, null, null, null, null],
+            items: ['concussion_hammer', null, null, null, null, null],
           }),
           p2: makePlayer({ id: 'p2', name: 'Enemy', team: 'audit', zone: 'mid-river' }),
         },

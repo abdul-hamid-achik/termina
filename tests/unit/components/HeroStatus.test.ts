@@ -237,7 +237,7 @@ describe('HeroStatus buff strip', () => {
         buffs: [
           { id: 'magic_immune', stacks: 1, ticksRemaining: 4 },
           { id: 'veil_discord', stacks: 25, ticksRemaining: 4 },
-          { id: 'item_cd_black_king_bar', stacks: 1, ticksRemaining: 25 },
+          { id: 'item_cd_hardshell', stacks: 1, ticksRemaining: 25 },
         ],
       }),
     )
@@ -253,7 +253,7 @@ describe('HeroStatus buff strip', () => {
     expect(veil.classes()).toContain('text-audit')
 
     // The item-cooldown bookkeeping marker never reaches the strip.
-    expect(wrapper.find('[data-testid="buff-item_cd_black_king_bar"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="buff-item_cd_hardshell"]').exists()).toBe(false)
     wrapper.unmount()
   })
 

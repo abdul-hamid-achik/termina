@@ -3,10 +3,10 @@ import ItemCard from './ItemCard.vue'
 import { ITEMS } from '~~/shared/constants/items'
 
 // One item per shape so the story shows every rendering branch.
-const statItem = ITEMS.vanguard! // stats + passive
+const statItem = ITEMS.bulwark_plate! // stats + passive
 const activeItem = ITEMS.dagon! // stats + targeted active (cd/mp/target)
 const consumable = ITEMS.camtap! // consumable + zone active, no stats
-const richest = ITEMS.divine_rapier! // big stats + passive, expensive
+const richest = ITEMS.last_word! // big stats + passive, expensive
 </script>
 
 <template>

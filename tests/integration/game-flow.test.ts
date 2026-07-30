@@ -331,15 +331,15 @@ describe('Game Flow Integration', () => {
       const sm = await startGame(gameId, makePlayers('ihp', 1))
       const initial = await Effect.runPromise(sm.getState(gameId))
       const baseMaxHp = initial.players['ihp_r0']!.maxHp
-      const itemHp = getItem('vanguard')!.stats.hp!
+      const itemHp = getItem('bulwark_plate')!.stats.hp!
       expect(itemHp).toBeGreaterThan(0)
 
       // Buy an HP item through the engine — maxHp grows by the item bonus
       await arrange(sm, gameId, (s) => setPlayer(s, 'ihp_r0', { gold: 5_000 }))
-      submitAction(gameId, 'ihp_r0', { type: 'buy', item: 'vanguard' })
+      submitAction(gameId, 'ihp_r0', { type: 'buy', item: 'bulwark_plate' })
       let result = await runTick(sm, gameId)
       const bought = result.state.players['ihp_r0']!
-      expect(bought.items).toContain('vanguard')
+      expect(bought.items).toContain('bulwark_plate')
       expect(bought.maxHp).toBe(baseMaxHp + itemHp)
 
       // Wound to ~50% (inCombat blocks fountain regen so HP stays put)
@@ -352,11 +352,11 @@ describe('Game Flow Integration', () => {
       const preSell = await Effect.runPromise(sm.getState(gameId))
       const hpPercent = preSell.players['ihp_r0']!.hp / preSell.players['ihp_r0']!.maxHp
 
-      submitAction(gameId, 'ihp_r0', { type: 'sell', item: 'vanguard' })
+      submitAction(gameId, 'ihp_r0', { type: 'sell', item: 'bulwark_plate' })
       result = await runTick(sm, gameId)
       const sold = result.state.players['ihp_r0']!
 
-      expect(sold.items).not.toContain('vanguard')
+      expect(sold.items).not.toContain('bulwark_plate')
       expect(sold.maxHp).toBe(baseMaxHp)
       // The percentage — not the flat HP — carried over the max-HP drop
       expect(sold.hp).toBe(Math.floor(baseMaxHp * hpPercent))
@@ -415,7 +415,7 @@ describe('Game Flow Integration', () => {
 
       // 7th purchase (an item NOT already owned, so the stack-cap check
       // can't reject it first) must fail with InventoryFullError
-      const error = await Effect.runPromise(Effect.flip(buyItem(state, 'inv_r0', 'vanguard')))
+      const error = await Effect.runPromise(Effect.flip(buyItem(state, 'inv_r0', 'bulwark_plate')))
       expect(error._tag).toBe('InventoryFullError')
 
       // and the state is untouched — no gold deducted, no item granted

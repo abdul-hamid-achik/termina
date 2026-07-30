@@ -49,10 +49,10 @@ const fullBuild = heroFrom(
     mp: 1100,
     maxMp: 1200,
     items: [
-      SAMPLE_ITEMS.daedalus,
+      SAMPLE_ITEMS.killshot_coil,
       SAMPLE_ITEMS.bkb,
       SAMPLE_ITEMS.treads,
-      SAMPLE_ITEMS.desolator,
+      SAMPLE_ITEMS.rust_driver,
       SAMPLE_ITEMS.blink,
       SAMPLE_ITEMS.forceStaff,
     ],
@@ -63,7 +63,7 @@ const fullBuild = heroFrom(
       { id: 'haste', stacks: 1, ticksRemaining: 3, source: 'cache', destination: 'p1' },
       { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'enemy', destination: 'p1' },
       {
-        id: 'item_cd_black_king_bar',
+        id: 'item_cd_hardshell',
         stacks: 1,
         ticksRemaining: 25,
         source: 'item',

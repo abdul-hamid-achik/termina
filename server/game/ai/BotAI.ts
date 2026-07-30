@@ -60,10 +60,10 @@ const SELLABLE_ITEMS = new Set([
 // Cyclone) all require an alive enemy hero in the same zone, which the in-combat
 // caller already has. Only items that appear in a build order are listed — a bot
 // never owns the rest. Defensive = survive a fight; offensive = control + burst.
-// All three are self-cast (no target): BKB (magic immunity) and Blade Mail
+// All three are self-cast (no target): Hardshell (magic immunity) and Spite Plate
 // (reflect) are carry/tank cores; Lotus Orb (spell-reflect shield) is the
 // support core — so under-pressure survival now fires across every role.
-const DEFENSIVE_COMBAT_ITEMS = ['black_king_bar', 'blade_mail', 'lotus_orb']
+const DEFENSIVE_COMBAT_ITEMS = ['hardshell', 'spite_plate', 'mirror_shell']
 
 /** Bot owns the item and its active is not on cooldown (mirrors validateAction). */
 function itemOffCooldown(bot: PlayerState, item: string): boolean {
@@ -1329,7 +1329,7 @@ function tryPickTalent(bot: PlayerState): Command | null {
  * gap. Every `use` returned here resolves: self-cast actives have no target, and
  * the targeted ones aim at an enemy already confirmed alive + in-zone.
  *
- *  - Defensive (BKB magic-immunity, Blade Mail reflect) only when actually under
+ *  - Defensive (Hardshell magic-immunity, Spite Plate reflect) only when actually under
  *    pressure — hurt or outnumbered — not burned on a trivial skirmish.
  *  - Setup/control/burst on the kill target (lowest-HP enemy): Veil (zone magic-
  *    vuln) → Ethereal (physical-immune + 40% magic-vuln) → Hex (hard disable,
@@ -1394,7 +1394,7 @@ export function tryUseCombatItem(
 }
 
 /**
- * A defensive panic item (BKB / Blade Mail) for a chased, RETREATING bot. The
+ * A defensive panic item (Hardshell / Spite Plate) for a chased, RETREATING bot. The
  * retreat branch returns before the combat block, so without this a low-HP bot
  * being chased flees to its death with its survival items unused. Gated on
  * threatAssessment; mirrors validateAction's `use` gates so it always resolves.
@@ -1485,7 +1485,7 @@ export function decideBotAction(
       return { type: 'use', item: 'recall_token' }
     }
     // Being chased (can't TP through combat): pop a survival item so the bot
-    // doesn't flee to its death with BKB/Blade Mail unused.
+    // doesn't flee to its death with Hardshell/Spite Plate unused.
     if (enemyHeroes.length > 0) {
       const panic = tryPanicDefensiveItem(bot, config)
       if (panic) return panic
@@ -1539,7 +1539,7 @@ export function decideBotAction(
   }
   const enemyWaves = getEnemyWavesInZone(state, bot)
   if (enemyHeroes.length > 0) {
-    // Pop a combat item (BKB/Blade Mail to survive, Stack Overflow/Veil to amp)
+    // Pop a combat item (Hardshell/Spite Plate to survive, Stack Overflow/Veil to amp)
     // before committing to a combo or right-click. One use per tick, naturally
     // rate-limited by each item's cooldown, so this can't starve the bot's
     // damage — it falls through to the combo/ability/attack below once items

@@ -3,14 +3,14 @@ import LoadoutSummary from './LoadoutSummary.vue'
 import { ITEMS } from '~~/shared/constants/items'
 
 const empty: never[] = []
-const partial = [ITEMS.vanguard!, ITEMS.dagon!]
+const partial = [ITEMS.bulwark_plate!, ITEMS.dagon!]
 const full = [
-  ITEMS.daedalus!,
-  ITEMS.black_king_bar!,
-  ITEMS.heart_of_tarrasque!,
+  ITEMS.killshot_coil!,
+  ITEMS.hardshell!,
+  ITEMS.bulk_lattice!,
   ITEMS.scythe_of_vyse!,
-  ITEMS.silver_edge!,
-  ITEMS.assault_cuirass!,
+  ITEMS.ghostwire_edge!,
+  ITEMS.siege_lattice!,
 ]
 </script>
 

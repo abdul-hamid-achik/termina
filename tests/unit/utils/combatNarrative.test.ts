@@ -459,22 +459,22 @@ describe('eventToLine: narration coverage for every event type', () => {
   it('narrates both spell_blocked sources distinctly', () => {
     const lotus = eventToLine(
       ev('spell_blocked', {
-        source: 'lotus_orb',
+        source: 'mirror_shell',
         targetId: 'enemy1',
         casterId: 'me',
         reflected: 50,
       }),
       ctx,
     )
-    expect(lotus!.text).toContain('Lotus Orb')
+    expect(lotus!.text).toContain('Mirror Shell')
     expect(lotus!.text).toContain('reflected')
     expect(lotus!.text).toContain('50') // the reflected damage is shown (-50)
 
     const linkens = eventToLine(
-      ev('spell_blocked', { source: 'linkens_sphere', targetId: 'enemy1', casterId: 'me' }),
+      ev('spell_blocked', { source: 'intercept_shell', targetId: 'enemy1', casterId: 'me' }),
       ctx,
     )
-    expect(linkens!.text).toContain("Linken's Sphere")
+    expect(linkens!.text).toContain('Intercept Shell')
     expect(linkens!.text).toContain('blocked')
     expect(linkens!.text).not.toContain('reflected') // a block isn't a reflect
   })
@@ -644,7 +644,7 @@ describe('narration drift guard', () => {
     maxHp: 200,
     votesFor: 1,
     votesNeeded: 3,
-    source: 'linkens_sphere',
+    source: 'intercept_shell',
     respawnTick: 5,
     heroId: 'echo',
   }
@@ -833,7 +833,7 @@ describe('eventToLine: semantic hierarchy', () => {
   it('types a negated spell as a spell beat, not a grey notice', () => {
     expect(
       eventToLine(
-        ev('spell_blocked', { source: 'linkens_sphere', targetId: 'me', casterId: 'enemy1' }),
+        ev('spell_blocked', { source: 'intercept_shell', targetId: 'me', casterId: 'enemy1' }),
         ctx,
       )!.type,
     ).toBe('ability')

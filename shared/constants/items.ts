@@ -14,7 +14,7 @@ import type { ItemDef, ItemCategory } from '~~/shared/types/items'
 //      street:   patch / tab / can / token / kit
 // 4. The QUALIFIER names the effect in fiction.
 // 5. HARD CONSTRAINT — no item id may contain any of the 18 hero ids as a
-//    whole token (this is why `firewall_item` existed; R1-20 deletes it).
+//    whole token (this is why `ablative_shell` existed; R1-20 deletes it).
 // 6. null_pointer, stack_overflow, segfault_blade and garbage_collector keep
 //    their ids — they were already on-register before the rule existed.
 //
@@ -137,92 +137,92 @@ const field_damper: ItemDef = {
 
 // ── Attack Items ────────────────────────────────────────────────────
 
-const desolator: ItemDef = {
-  id: 'desolator',
-  name: 'Desolator',
+const rust_driver: ItemDef = {
+  id: 'rust_driver',
+  name: 'Rust Driver',
   cost: 3500,
   stats: { attack: 50 },
   consumable: false,
   passive: {
-    id: 'desolator_passive',
+    id: 'rust_driver_passive',
     name: 'Corruption',
     description: "Your attacks ignore 5 of the target's defense.",
   },
 }
 
-const crystalys: ItemDef = {
-  id: 'crystalys',
-  name: 'Crystalys',
+const fracture_edge: ItemDef = {
+  id: 'fracture_edge',
+  name: 'Fracture Edge',
   cost: 1950,
   stats: { attack: 30 },
   consumable: false,
   passive: {
-    id: 'crystalys_passive',
+    id: 'fracture_edge_passive',
     name: 'Critical Strike',
     description: '20% chance to deal 1.75x damage on attack.',
   },
 }
 
-const daedalus: ItemDef = {
-  id: 'daedalus',
-  name: 'Daedalus',
+const killshot_coil: ItemDef = {
+  id: 'killshot_coil',
+  name: 'Killshot Coil',
   cost: 5300,
   stats: { attack: 65 },
   consumable: false,
   passive: {
-    id: 'daedalus_passive',
+    id: 'killshot_coil_passive',
     name: 'Critical Strike',
     description: '30% chance to deal 2.4x damage on attack.',
   },
 }
 
-const maelstrom: ItemDef = {
-  id: 'maelstrom',
-  name: 'Maelstrom',
+const arc_coil: ItemDef = {
+  id: 'arc_coil',
+  name: 'Arc Coil',
   cost: 2700,
   stats: { attack: 30, mp: 50 },
   consumable: false,
   passive: {
-    id: 'maelstrom_passive',
+    id: 'arc_coil_passive',
     name: 'Chain Lightning',
     description: '25% chance on attack to deal 60 magical damage to a nearby enemy.',
   },
 }
 
 const monkeyKingBar: ItemDef = {
-  id: 'monkey_king_bar',
-  name: 'Monkey King Bar',
+  id: 'truestrike_rig',
+  name: 'Truestrike Rig',
   cost: 4000,
   stats: { attack: 45 },
   consumable: false,
   passive: {
-    id: 'monkey_king_bar_passive',
+    id: 'truestrike_rig_passive',
     name: 'True Strike',
     description: 'Attacks cannot miss and deal bonus 50 magical damage.',
   },
 }
 
 const divineRapier: ItemDef = {
-  id: 'divine_rapier',
-  name: 'Divine Rapier',
+  id: 'last_word',
+  name: 'Last Word',
   cost: 6000,
   stats: { attack: 100 },
   consumable: false,
   passive: {
-    id: 'divine_rapier_passive',
+    id: 'last_word_passive',
     name: 'Divine Damage',
     description: 'Drops on death. Cannot be sold.',
   },
 }
 
 const silverEdge: ItemDef = {
-  id: 'silver_edge',
-  name: 'Silver Edge',
+  id: 'ghostwire_edge',
+  name: 'Ghostwire Edge',
   cost: 4700,
   stats: { attack: 40, moveSpeed: 1 },
   consumable: false,
   active: {
-    id: 'silver_edge_active',
+    id: 'ghostwire_edge_active',
     name: 'Shadow Walk',
     description: 'Become invisible for 3 cycles. Next attack from invis deals 150 bonus damage.',
     cooldownTicks: 18,
@@ -230,13 +230,13 @@ const silverEdge: ItemDef = {
 }
 
 const skullBasher: ItemDef = {
-  id: 'skull_basher',
-  name: 'Skull Basher',
+  id: 'concussion_hammer',
+  name: 'Concussion Hammer',
   cost: 2950,
   stats: { attack: 30, hp: 100 },
   consumable: false,
   passive: {
-    id: 'skull_basher_passive',
+    id: 'concussion_hammer_passive',
     name: 'Bash',
     description: '25% chance on attack to stun target for 1 cycle.',
   },
@@ -330,40 +330,40 @@ const etherealBlade: ItemDef = {
 
 // ── Defensive Items ─────────────────────────────────────────────────
 
-const vanguard: ItemDef = {
-  id: 'vanguard',
-  name: 'Vanguard',
+const bulwark_plate: ItemDef = {
+  id: 'bulwark_plate',
+  name: 'Bulwark Plate',
   cost: 2500,
   stats: { hp: 250, defense: 5 },
   consumable: false,
   passive: {
-    id: 'vanguard_passive',
+    id: 'bulwark_plate_passive',
     name: 'Damage Block',
     description: 'Block 50 damage from each attack (60% chance).',
   },
 }
 
 const linkensSphere: ItemDef = {
-  id: 'linkens_sphere',
-  name: "Linken's Sphere",
+  id: 'intercept_shell',
+  name: 'Intercept Shell',
   cost: 4600,
   stats: { hp: 150, mp: 150, defense: 5, magicResist: 10 },
   consumable: false,
   passive: {
-    id: 'linkens_sphere_passive',
+    id: 'intercept_shell_passive',
     name: 'Spellblock',
     description: 'Block one targeted ability every 12 cycles.',
   },
 }
 
 const blackKingBar: ItemDef = {
-  id: 'black_king_bar',
-  name: 'Black King Bar',
+  id: 'hardshell',
+  name: 'Hardshell',
   cost: 4050,
   stats: { hp: 200, attack: 15 },
   consumable: false,
   active: {
-    id: 'black_king_bar_active',
+    id: 'hardshell_active',
     name: 'Avatar',
     description: 'Become immune to magical damage and debuffs for 4 cycles.',
     cooldownTicks: 25,
@@ -371,39 +371,39 @@ const blackKingBar: ItemDef = {
 }
 
 const heartOfTarrasque: ItemDef = {
-  id: 'heart_of_tarrasque',
-  name: 'Heart of Tarrasque',
+  id: 'bulk_lattice',
+  name: 'Bulk Lattice',
   cost: 4800,
   stats: { hp: 500 },
   consumable: false,
   passive: {
-    id: 'heart_of_tarrasque_passive',
+    id: 'bulk_lattice_passive',
     name: 'Regeneration',
     description: 'Restore 5% max HP per cycle when out of combat for 3 cycles.',
   },
 }
 
 const assaultCuirass: ItemDef = {
-  id: 'assault_cuirass',
-  name: 'Assault Cuirass',
+  id: 'siege_lattice',
+  name: 'Siege Lattice',
   cost: 4700,
   stats: { defense: 15, hp: 200 },
   consumable: false,
   passive: {
-    id: 'assault_cuirass_passive',
+    id: 'siege_lattice_passive',
     name: 'Assault Aura',
     description: 'Allies in zone gain +5 defense. Enemies in zone have -5 defense.',
   },
 }
 
 const lotusOrb: ItemDef = {
-  id: 'lotus_orb',
-  name: 'Lotus Orb',
+  id: 'mirror_shell',
+  name: 'Mirror Shell',
   cost: 4000,
   stats: { hp: 200, mp: 100, defense: 10 },
   consumable: false,
   active: {
-    id: 'lotus_orb_active',
+    id: 'mirror_shell_active',
     name: 'Echo Shell',
     description: 'Target reflects the next ability cast on them back to the caster.',
     cooldownTicks: 15,
@@ -411,14 +411,14 @@ const lotusOrb: ItemDef = {
 }
 
 const bladeMail: ItemDef = {
-  id: 'blade_mail',
-  name: 'Blade Mail',
+  id: 'spite_plate',
+  name: 'Spite Plate',
   cost: 2200,
   stats: { attack: 15, defense: 5, hp: 100 },
   consumable: false,
   active: {
-    id: 'blade_mail_active',
-    name: 'Blade Mail',
+    id: 'spite_plate_active',
+    name: 'Spite Plate',
     description: 'Return 100% of damage taken to attackers for 3 cycles.',
     cooldownTicks: 18,
   },
@@ -591,13 +591,13 @@ const segfaultBlade: ItemDef = {
 }
 
 const firewallItem: ItemDef = {
-  id: 'firewall_item',
-  name: 'Firewall',
+  id: 'ablative_shell',
+  name: 'Ablative Shell',
   cost: 2800,
   stats: { hp: 300, defense: 10 },
   consumable: false,
   active: {
-    id: 'firewall_item_active',
+    id: 'ablative_shell_active',
     name: 'Block',
     description: 'Block the next incoming ability.',
     cooldownTicks: 30,
@@ -702,14 +702,14 @@ export const ITEMS: Record<string, ItemDef> = {
   boots_of_speed: bootsOfSpeed,
 
   // Attack
-  desolator: desolator,
-  crystalys: crystalys,
-  daedalus: daedalus,
-  maelstrom: maelstrom,
-  monkey_king_bar: monkeyKingBar,
-  divine_rapier: divineRapier,
-  silver_edge: silverEdge,
-  skull_basher: skullBasher,
+  rust_driver: rust_driver,
+  fracture_edge: fracture_edge,
+  killshot_coil: killshot_coil,
+  arc_coil: arc_coil,
+  truestrike_rig: monkeyKingBar,
+  last_word: divineRapier,
+  ghostwire_edge: silverEdge,
+  concussion_hammer: skullBasher,
   null_pointer: nullPointer,
   segfault_blade: segfaultBlade,
 
@@ -723,15 +723,15 @@ export const ITEMS: Record<string, ItemDef> = {
   stack_overflow: stackOverflow,
 
   // Defensive
-  vanguard: vanguard,
-  linkens_sphere: linkensSphere,
-  black_king_bar: blackKingBar,
-  heart_of_tarrasque: heartOfTarrasque,
-  assault_cuirass: assaultCuirass,
-  lotus_orb: lotusOrb,
-  blade_mail: bladeMail,
+  bulwark_plate: bulwark_plate,
+  intercept_shell: linkensSphere,
+  hardshell: blackKingBar,
+  bulk_lattice: heartOfTarrasque,
+  siege_lattice: assaultCuirass,
+  mirror_shell: lotusOrb,
+  spite_plate: bladeMail,
   garbage_collector: garbageCollector,
-  firewall_item: firewallItem,
+  ablative_shell: firewallItem,
 
   // Utility
   blink_module: blinkModule,
@@ -793,14 +793,14 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     blurb:
       'Carried weapons and attachments — attack damage, crits and armor shred for right-clickers.',
     ids: [
-      'desolator',
-      'crystalys',
-      'daedalus',
-      'maelstrom',
-      'monkey_king_bar',
-      'divine_rapier',
-      'silver_edge',
-      'skull_basher',
+      'rust_driver',
+      'fracture_edge',
+      'killshot_coil',
+      'arc_coil',
+      'truestrike_rig',
+      'last_word',
+      'ghostwire_edge',
+      'concussion_hammer',
       'null_pointer',
       'segfault_blade',
     ],
@@ -824,15 +824,15 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     label: 'Chrome',
     blurb: 'Implanted survivability — health, armor, resist and panic-button mitigation.',
     ids: [
-      'vanguard',
-      'linkens_sphere',
-      'black_king_bar',
-      'heart_of_tarrasque',
-      'assault_cuirass',
-      'lotus_orb',
-      'blade_mail',
+      'bulwark_plate',
+      'intercept_shell',
+      'hardshell',
+      'bulk_lattice',
+      'siege_lattice',
+      'mirror_shell',
+      'spite_plate',
       'garbage_collector',
-      'firewall_item',
+      'ablative_shell',
     ],
   },
   {

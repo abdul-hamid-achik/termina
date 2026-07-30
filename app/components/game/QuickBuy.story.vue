@@ -4,7 +4,7 @@ import { DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import QuickBuy from './QuickBuy.vue'
 
 // Real item ids — the component resolves names/costs from shared/constants/items.
-const PINNED = [SAMPLE_ITEMS.bkb, SAMPLE_ITEMS.blink, SAMPLE_ITEMS.daedalus]
+const PINNED = [SAMPLE_ITEMS.bkb, SAMPLE_ITEMS.blink, SAMPLE_ITEMS.killshot_coil]
 // What a brand-new player sees: the curated starter pins (no saved prefs yet).
 const STARTER = [...DEFAULT_QUICKBUY_ITEMS]
 </script>

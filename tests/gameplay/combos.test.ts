@@ -18,13 +18,13 @@ describe('same-tick combos', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['black_king_bar', null, null, null, null, null],
+          items: ['hardshell', null, null, null, null, null],
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
         },
       },
     }))
 
-    game.submit({ type: 'use', item: 'black_king_bar' })
+    game.submit({ type: 'use', item: 'hardshell' })
     game.cast('q', { kind: 'hero', name: ENEMY })
     await game.tick()
 
@@ -106,7 +106,7 @@ describe('same-tick combos', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['black_king_bar', null, null, null, null, null],
+          items: ['hardshell', null, null, null, null, null],
         },
       },
     }))
@@ -116,7 +116,7 @@ describe('same-tick combos', () => {
     expect((await game.me()).attackTarget).toEqual({ kind: 'hero', name: ENEMY })
 
     // Only an item this tick: the hero keeps swinging AND gains the buff.
-    game.submit({ type: 'use', item: 'black_king_bar' })
+    game.submit({ type: 'use', item: 'hardshell' })
     await game.tick()
 
     const me = await game.me()

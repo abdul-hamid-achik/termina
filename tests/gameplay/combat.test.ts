@@ -239,7 +239,7 @@ describe('combat', () => {
         [ENEMY]: {
           ...s.players[ENEMY]!,
           hp: 1,
-          items: ['divine_rapier', null, null, null, null, null],
+          items: ['last_word', null, null, null, null, null],
         },
       },
     }))
@@ -249,8 +249,8 @@ describe('combat', () => {
 
     expect((await game.player(ENEMY)).alive).toBe(false)
     // The Rapier left the victim and landed in the killer's inventory.
-    expect((await game.player(ENEMY)).items).not.toContain('divine_rapier')
-    expect((await game.me()).items).toContain('divine_rapier')
+    expect((await game.player(ENEMY)).items).not.toContain('last_word')
+    expect((await game.me()).items).toContain('last_word')
   })
 
   it('a damage-over-time debuff deals damage each tick and stops on expiry', async () => {
@@ -937,7 +937,7 @@ describe('combat', () => {
     ).toBe(false)
   })
 
-  it('Blade Mail reflects a basic attack back at the attacker as pure damage', async () => {
+  it('Spite Plate reflects a basic attack back at the attacker as pure damage', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     // Settle the first-tick maxHp recompute, then strip the attacker's on-hit
     // items so the only cross-hit is the reflect.
@@ -950,14 +950,14 @@ describe('combat', () => {
       },
     }))
 
-    // The reflect rides a damage event from the Blade Mail holder (HUMAN) back at
+    // The reflect rides a damage event from the Spite Plate holder (HUMAN) back at
     // the attacker (ENEMY) — the only HUMAN→ENEMY damage in the tick.
     const reflect = () =>
       game.lastEvents.find(
         (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
       )
 
-    // Baseline: no Blade Mail → the attacker takes nothing back.
+    // Baseline: no Spite Plate → the attacker takes nothing back.
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, buffs: [] } },
@@ -966,7 +966,7 @@ describe('combat', () => {
     await game.tick()
     expect(reflect()).toBeUndefined()
 
-    // With a Blade Mail shell up, the attacker eats its own hit back as PURE
+    // With a Spite Plate shell up, the attacker eats its own hit back as PURE
     // damage (bypasses armor) and loses HP.
     await game.patch((s) => ({
       ...s,
@@ -974,7 +974,7 @@ describe('combat', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          buffs: [{ id: 'blade_mail', stacks: 100, ticksRemaining: 3, source: HUMAN }],
+          buffs: [{ id: 'spite_plate', stacks: 100, ticksRemaining: 3, source: HUMAN }],
         },
       },
     }))
@@ -987,7 +987,7 @@ describe('combat', () => {
     expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
   })
 
-  it('Blade Mail reflects ABILITY damage too (not only basic attacks)', async () => {
+  it('Spite Plate reflects ABILITY damage too (not only basic attacks)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick() // settle the level-6 maxHp recompute
     await game.patch((s) => ({
@@ -997,12 +997,12 @@ describe('combat', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'blade_mail', stacks: 100, ticksRemaining: 3, source: ENEMY }],
+          buffs: [{ id: 'spite_plate', stacks: 100, ticksRemaining: 3, source: ENEMY }],
         },
       },
     }))
 
-    // The reflect rides a pure-damage event from the Blade Mail holder (ENEMY)
+    // The reflect rides a pure-damage event from the Spite Plate holder (ENEMY)
     // back at the caster (HUMAN).
     const reflect = () =>
       game.lastEvents.find(
@@ -1014,7 +1014,7 @@ describe('combat', () => {
       )
 
     const casterBefore = (await game.me()).hp
-    game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes the Blade Mail holder
+    game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes the Spite Plate holder
     await game.tick()
 
     expect(reflect()).toBeDefined()

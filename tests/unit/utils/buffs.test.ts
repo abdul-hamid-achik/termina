@@ -7,7 +7,7 @@ describe('buffLabel', () => {
   it('maps known effect ids to readable names', () => {
     expect(buffLabel('magic_immune')).toBe('Magic Immune')
     expect(buffLabel('veil_discord')).toBe('Discord')
-    expect(buffLabel('silver_edge_invis')).toBe('Invisible')
+    expect(buffLabel('ghostwire_edge_invis')).toBe('Invisible')
     expect(buffLabel('stun')).toBe('Stunned')
   })
 
@@ -61,7 +61,7 @@ describe('buffKind', () => {
 describe('isInternalBuff', () => {
   it('flags item-cooldown markers and the tp destination pair', () => {
     expect(isInternalBuff('item_cd_dagon')).toBe(true)
-    expect(isInternalBuff('item_cd_black_king_bar')).toBe(true)
+    expect(isInternalBuff('item_cd_hardshell')).toBe(true)
     expect(isInternalBuff('tp_destination')).toBe(true)
   })
 
@@ -93,7 +93,7 @@ describe('displayBuffs', () => {
   it('drops internal bookkeeping markers from the strip', () => {
     const out = displayBuffs([
       buff('magic_immune', 1, 4),
-      buff('item_cd_black_king_bar', 1, 25),
+      buff('item_cd_hardshell', 1, 25),
       buff('tp_destination', 1, 4),
       buff('stealthIdle', 37, 99),
       buff('inCombat', 2, 2),

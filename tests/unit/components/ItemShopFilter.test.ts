@@ -23,7 +23,7 @@ function catalog() {
     shopItem('scrap_lot', 'street'), // has stats
     shopItem('trauma_patch', 'street'), // active, 0-tick CD
     shopItem('clot_ring', 'street'), // has a passive
-    shopItem('silver_edge', 'hardware'), // active with a real cooldown
+    shopItem('ghostwire_edge', 'hardware'), // active with a real cooldown
   ]
 }
 
@@ -51,7 +51,7 @@ describe('ItemShop category tabs', () => {
     await hardwareTab.trigger('click')
 
     const ids = w.findAll('[data-testid^="shop-item-"]').map((el) => el.attributes('data-testid'))
-    expect(ids).toContain('shop-item-silver_edge')
+    expect(ids).toContain('shop-item-ghostwire_edge')
     expect(ids).not.toContain('shop-item-clot_ring')
     expect(ids).not.toContain('shop-item-scrap_lot')
     expect(ids).not.toContain('shop-item-trauma_patch')
@@ -94,7 +94,7 @@ describe('ItemShop item detail rendering', () => {
 
   it('shows an active description with the cooldown for active items that have one', () => {
     const w = mountShop()
-    const card = w.find('[data-testid="shop-item-silver_edge"]')
+    const card = w.find('[data-testid="shop-item-ghostwire_edge"]')
     expect(card.text()).toContain('Active:')
     expect(card.text()).toContain('18t CD')
   })

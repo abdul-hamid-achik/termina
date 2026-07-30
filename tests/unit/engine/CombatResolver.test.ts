@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolvePhysicalHit, computeBladeMailReflect } from '~~/server/game/engine/CombatResolver'
+import { resolvePhysicalHit, computeSpitePlateReflect } from '~~/server/game/engine/CombatResolver'
 import type { PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import { calculatePhysicalDamage } from '~~/server/game/engine/DamageCalculator'
@@ -126,20 +126,20 @@ describe('CombatResolver', () => {
     })
   })
 
-  describe('computeBladeMailReflect', () => {
+  describe('computeSpitePlateReflect', () => {
     it('returns the rounded HP loss as the reflect amount', () => {
-      expect(computeBladeMailReflect(0)).toBe(0)
-      expect(computeBladeMailReflect(47)).toBe(47)
-      expect(computeBladeMailReflect(47.6)).toBe(48)
+      expect(computeSpitePlateReflect(0)).toBe(0)
+      expect(computeSpitePlateReflect(47)).toBe(47)
+      expect(computeSpitePlateReflect(47.6)).toBe(48)
     })
 
     it('floors negative input at 0 (never heals the attacker)', () => {
-      expect(computeBladeMailReflect(-10)).toBe(0)
+      expect(computeSpitePlateReflect(-10)).toBe(0)
     })
 
     it('applies the fraction when provided', () => {
-      expect(computeBladeMailReflect(100, 0.5)).toBe(50)
-      expect(computeBladeMailReflect(100, 1)).toBe(100)
+      expect(computeSpitePlateReflect(100, 0.5)).toBe(50)
+      expect(computeSpitePlateReflect(100, 1)).toBe(100)
     })
   })
 })

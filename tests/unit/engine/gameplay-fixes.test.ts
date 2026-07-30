@@ -123,8 +123,8 @@ describe('gameplay-fixes: invisibility items fog the holder from enemies', () =>
     return enemy.fogged === true
   }
 
-  it('Silver Edge (silver_edge_invis) fogs the holder even in a shared zone', () => {
-    expect(viewerSeesEnemyFogged([buff('silver_edge_invis')])).toBe(true)
+  it('Silver Edge (ghostwire_edge_invis) fogs the holder even in a shared zone', () => {
+    expect(viewerSeesEnemyFogged([buff('ghostwire_edge_invis')])).toBe(true)
   })
 
   it('Blackout Can (smoke) fogs the holder', () => {

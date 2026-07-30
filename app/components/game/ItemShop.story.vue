@@ -25,8 +25,8 @@ const items: ShopItem[] = [
   shopItem(SAMPLE_ITEMS.salve, 'street'),
   shopItem(SAMPLE_ITEMS.blades, 'street'),
   shopItem(SAMPLE_ITEMS.treads, 'street'),
-  shopItem(SAMPLE_ITEMS.desolator, 'hardware'),
-  shopItem(SAMPLE_ITEMS.daedalus, 'hardware'),
+  shopItem(SAMPLE_ITEMS.rust_driver, 'hardware'),
+  shopItem(SAMPLE_ITEMS.killshot_coil, 'hardware'),
   shopItem(SAMPLE_ITEMS.bkb, 'chrome'),
   shopItem(SAMPLE_ITEMS.forceStaff, 'wetware'),
   shopItem(SAMPLE_ITEMS.blink, 'wetware'),
@@ -59,7 +59,7 @@ const ownedNone: (string | null)[] = [null, null, null, null, null, null]
           :items="items"
           :gold="9000"
           :owned-items="[SAMPLE_ITEMS.treads, SAMPLE_ITEMS.blades, null, null, null, null]"
-          :pinned-items="[SAMPLE_ITEMS.daedalus, SAMPLE_ITEMS.bkb]"
+          :pinned-items="[SAMPLE_ITEMS.killshot_coil, SAMPLE_ITEMS.bkb]"
         />
       </div>
     </Variant>
@@ -72,7 +72,7 @@ const ownedNone: (string | null)[] = [null, null, null, null, null, null]
           :gold="9000"
           :owned-items="ownedNone"
           :pinned-items="[]"
-          :recommended-items="[SAMPLE_ITEMS.bkb, SAMPLE_ITEMS.blink, SAMPLE_ITEMS.daedalus]"
+          :recommended-items="[SAMPLE_ITEMS.bkb, SAMPLE_ITEMS.blink, SAMPLE_ITEMS.killshot_coil]"
         />
       </div>
     </Variant>

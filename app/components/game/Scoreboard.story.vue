@@ -43,10 +43,10 @@ const stompTeams = {
   audit: makeTeamState('audit', { kills: 7, iceKills: 0, gold: 4100 }),
 }
 const fullBuild = [
-  SAMPLE_ITEMS.daedalus,
+  SAMPLE_ITEMS.killshot_coil,
   SAMPLE_ITEMS.bkb,
   SAMPLE_ITEMS.treads,
-  SAMPLE_ITEMS.desolator,
+  SAMPLE_ITEMS.rust_driver,
   SAMPLE_ITEMS.blink,
   SAMPLE_ITEMS.forceStaff,
 ]

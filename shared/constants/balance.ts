@@ -355,23 +355,23 @@ export const NULL_POINTER_CRIT_CHANCE = 0.15
 // 1.5x keeps the budget crit item below Crystalys (+15% expected damage at
 // 1950g) — at 2.0x it matched Crystalys' expected output for 550g less.
 export const NULL_POINTER_CRIT_MULTIPLIER = 1.5
-export const CRYSTALYS_CRIT_CHANCE = 0.2
-export const CRYSTALYS_CRIT_MULTIPLIER = 1.75
-export const DAEDALUS_CRIT_CHANCE = 0.3
-export const DAEDALUS_CRIT_MULTIPLIER = 2.4
-export const VANGUARD_BLOCK_CHANCE = 0.6
-export const VANGUARD_BLOCK_AMOUNT = 50
-export const DESOLATOR_ARMOR_REDUCTION = 5
+export const FRACTURE_EDGE_CRIT_CHANCE = 0.2
+export const FRACTURE_EDGE_CRIT_MULTIPLIER = 1.75
+export const KILLSHOT_COIL_CRIT_CHANCE = 0.3
+export const KILLSHOT_COIL_CRIT_MULTIPLIER = 2.4
+export const BULWARK_PLATE_BLOCK_CHANCE = 0.6
+export const BULWARK_PLATE_BLOCK_AMOUNT = 50
+export const RUST_DRIVER_ARMOR_REDUCTION = 5
 // Assault Cuirass aura: enemies in the holder's zone lose this much defense,
 // and allies (incl. self) gain it. Same magnitude as Desolator, distinct name.
-export const ASSAULT_CUIRASS_AURA_DEFENSE = 5
-export const MKB_BONUS_DAMAGE = 50
+export const SIEGE_LATTICE_AURA_DEFENSE = 5
+export const TRUESTRIKE_RIG_BONUS_DAMAGE = 50
 
 // ── Regeneration ─────────────────────────────────────────────────
 
 export const CLOT_RING_REGEN_PERCENT = 0.02
 export const DRIP_MASK_REGEN_PERCENT = 0.02
-export const HEART_REGEN_PERCENT = 0.05
+export const BULK_LATTICE_REGEN_PERCENT = 0.05
 export const REGEN_CACHE_HEAL_PERCENT = 0.05
 
 // ── Combat ───────────────────────────────────────────────────────

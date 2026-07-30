@@ -65,6 +65,6 @@ export function resolvePhysicalHit(target: PlayerState, rawDamage: number): Phys
  * `PhysicalHitResult.damageDealt` or the ability HP-delta). `fraction` defaults
  * to 1.0 (100% return, the live value for both paths).
  */
-export function computeBladeMailReflect(damageDealt: number, fraction = 1): number {
+export function computeSpitePlateReflect(damageDealt: number, fraction = 1): number {
   return Math.max(0, Math.round(damageDealt * fraction))
 }

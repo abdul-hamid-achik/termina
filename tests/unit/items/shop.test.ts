@@ -144,7 +144,7 @@ describe('Shop', () => {
     it('fails when inventory is full', async () => {
       // 6 distinct items so we hit InventoryFullError, not MaxStacksError
       const player = makePlayer({
-        items: ['blink_module', 'aether_lens', 'dagon', 'shivas_guard', 'desolator', 'maelstrom'],
+        items: ['blink_module', 'aether_lens', 'dagon', 'shivas_guard', 'rust_driver', 'arc_coil'],
         gold: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -290,7 +290,7 @@ describe('Shop', () => {
 
     it('cannot sell Divine Rapier (its defining drawback)', async () => {
       const player = makePlayer({
-        items: ['divine_rapier', null, null, null, null, null],
+        items: ['last_word', null, null, null, null, null],
         gold: 500,
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -302,7 +302,7 @@ describe('Shop', () => {
         expect(exit.cause.toString()).toContain('ItemNotSellableError')
       }
       // unchanged: still holds the Rapier, no gold gained
-      expect(state.players['player_1']!.items[0]).toBe('divine_rapier')
+      expect(state.players['player_1']!.items[0]).toBe('last_word')
     })
 
     it('fails when not in shop zone', async () => {
@@ -433,13 +433,13 @@ describe('Shop', () => {
       }
     })
 
-    it('uses firewall_item and applies block buff', async () => {
+    it('uses ablative_shell and applies block buff', async () => {
       const player = makePlayer({
-        items: ['firewall_item', null, null, null, null, null],
+        items: ['ablative_shell', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'firewall_item'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'ablative_shell'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -649,11 +649,11 @@ describe('Shop', () => {
     it('Black King Bar grants magic immunity to the caster', async () => {
       const player = makePlayer({
         id: 'player_1',
-        items: ['black_king_bar', null, null, null, null, null],
+        items: ['hardshell', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'black_king_bar'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'hardshell'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'magic_immune')).toBe(true)
@@ -733,28 +733,28 @@ describe('Shop', () => {
     it('Blade Mail puts the damage-return buff on the caster', async () => {
       const player = makePlayer({
         id: 'player_1',
-        items: ['blade_mail', null, null, null, null, null],
+        items: ['spite_plate', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'blade_mail'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'spite_plate'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
-      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'blade_mail')).toBe(true)
+      if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'spite_plate')).toBe(true)
     })
 
     it('Silver Edge grants invisibility to the caster', async () => {
       const player = makePlayer({
         id: 'player_1',
-        items: ['silver_edge', null, null, null, null, null],
+        items: ['ghostwire_edge', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'silver_edge'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'ghostwire_edge'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit))
-        expect(hasBuff(exit.value, 'player_1', 'silver_edge_invis')).toBe(true)
+        expect(hasBuff(exit.value, 'player_1', 'ghostwire_edge_invis')).toBe(true)
     })
 
     it('Gait Rig (first toggle) sets attack mode on the caster', async () => {
@@ -1028,20 +1028,20 @@ describe('Shop', () => {
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['lotus_orb', null, null, null, null, null],
+        items: ['mirror_shell', null, null, null, null, null],
       })
       const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'lotus_orb', { kind: 'hero', name: 'ally_1' }),
+        useItem(state, 'player_1', 'mirror_shell', { kind: 'hero', name: 'ally_1' }),
       )
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const s = exit.value
         // Reflect buff lands on the ally; the caster only carries the cooldown.
-        expect(s.players['ally_1']!.buffs.some((b) => b.id === 'lotus_orb')).toBe(true)
-        expect(s.players['player_1']!.buffs.some((b) => b.id === 'lotus_orb')).toBe(false)
+        expect(s.players['ally_1']!.buffs.some((b) => b.id === 'mirror_shell')).toBe(true)
+        expect(s.players['player_1']!.buffs.some((b) => b.id === 'mirror_shell')).toBe(false)
         expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_lotus_orb')).toBe(true)
       }
     })

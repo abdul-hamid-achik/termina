@@ -3,9 +3,9 @@ import { mount } from '@vue/test-utils'
 import LoadoutSummary from '~~/app/components/items/LoadoutSummary.vue'
 import type { ItemDef } from '~~/shared/types/items'
 
-const vanguard: ItemDef = {
-  id: 'vanguard',
-  name: 'Vanguard',
+const bulwark_plate: ItemDef = {
+  id: 'bulwark_plate',
+  name: 'Bulwark Plate',
   cost: 2500,
   stats: { hp: 250, defense: 5 },
   consumable: false,
@@ -37,14 +37,14 @@ describe('LoadoutSummary', () => {
   })
 
   it('shows the ≈ last-hits economy cue for a build (cost / avg wave bounty)', () => {
-    const wrapper = mountSummary([vanguard, dagon]) // 5250g → ceil(5250/40) = 132
+    const wrapper = mountSummary([bulwark_plate, dagon]) // 5250g → ceil(5250/40) = 132
     const lh = wrapper.find('[data-testid="loadout-lasthits"]')
     expect(lh.exists()).toBe(true)
     expect(lh.text()).toContain('132')
   })
 
   it('aggregates cost, stats and slot count across the build', () => {
-    const wrapper = mountSummary([vanguard, dagon])
+    const wrapper = mountSummary([bulwark_plate, dagon])
     expect(wrapper.find('[data-testid="loadout-slots"]').text()).toBe('2 / 6')
     expect(wrapper.find('[data-testid="loadout-cost"]').text()).toBe('5250sc') // 2500 + 2750
     const text = wrapper.text()
@@ -55,14 +55,14 @@ describe('LoadoutSummary', () => {
   })
 
   it('lists only the actives the build grants (passive-only items excluded)', () => {
-    const wrapper = mountSummary([vanguard, dagon])
+    const wrapper = mountSummary([bulwark_plate, dagon])
     expect(wrapper.text()).toContain('Energy Burst') // dagon's active
-    // vanguard is passive-only → exactly one active listed, not two
+    // bulwark_plate is passive-only → exactly one active listed, not two
     expect(wrapper.findAll('.text-ability')).toHaveLength(1)
   })
 
   it('omits the actives section entirely for a passive-only build', () => {
-    const wrapper = mountSummary([vanguard])
+    const wrapper = mountSummary([bulwark_plate])
     expect(wrapper.findAll('.text-ability')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('actives')
   })

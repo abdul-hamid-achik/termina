@@ -123,13 +123,13 @@ describe('shop', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['black_king_bar', null, null, null, null, null],
+          items: ['hardshell', null, null, null, null, null],
           buffs: [],
         },
       },
     }))
 
-    game.submit({ type: 'use', item: 'black_king_bar' })
+    game.submit({ type: 'use', item: 'hardshell' })
     await game.tick()
 
     // BKB applies a multi-tick magic_immune buff (still present after this tick).

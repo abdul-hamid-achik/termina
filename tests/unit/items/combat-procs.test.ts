@@ -18,12 +18,12 @@ import {
 } from '~~/server/game/engine/DamageCalculator'
 import {
   NULL_POINTER_CRIT_MULTIPLIER,
-  CRYSTALYS_CRIT_MULTIPLIER,
-  DAEDALUS_CRIT_MULTIPLIER,
-  DESOLATOR_ARMOR_REDUCTION,
-  ASSAULT_CUIRASS_AURA_DEFENSE,
-  VANGUARD_BLOCK_AMOUNT,
-  MKB_BONUS_DAMAGE,
+  FRACTURE_EDGE_CRIT_MULTIPLIER,
+  KILLSHOT_COIL_CRIT_MULTIPLIER,
+  RUST_DRIVER_ARMOR_REDUCTION,
+  SIEGE_LATTICE_AURA_DEFENSE,
+  BULWARK_PLATE_BLOCK_AMOUNT,
+  TRUESTRIKE_RIG_BONUS_DAMAGE,
 } from '~~/shared/constants/balance'
 
 // ── Harness ──────────────────────────────────────────────────────
@@ -162,12 +162,12 @@ describe('Item combat procs — crit multipliers', () => {
     expect(sawCrit).toBe(true)
   })
 
-  it('crystalys crits for 1.75x at least once over 50 attacks (20% chance)', () => {
-    const normal = expectedPhysical(['crystalys'], [])
-    const crit = expectedPhysical(['crystalys'], [], CRYSTALYS_CRIT_MULTIPLIER)
+  it('fracture_edge crits for 1.75x at least once over 50 attacks (20% chance)', () => {
+    const normal = expectedPhysical(['fracture_edge'], [])
+    const crit = expectedPhysical(['fracture_edge'], [], FRACTURE_EDGE_CRIT_MULTIPLIER)
     let sawCrit = false
     for (let i = 0; i < 50; i++) {
-      const state = duel('crystalys')
+      const state = duel('fracture_edge')
       const start = state.players['p2']!.hp
       const r = run(state, [attack('p1', 'Enemy')])
       const dmg = start - r.state.players['p2']!.hp
@@ -177,12 +177,12 @@ describe('Item combat procs — crit multipliers', () => {
     expect(sawCrit).toBe(true)
   })
 
-  it('daedalus crits for 2.4x at least once over 50 attacks (30% chance)', () => {
-    const normal = expectedPhysical(['daedalus'], [])
-    const crit = expectedPhysical(['daedalus'], [], DAEDALUS_CRIT_MULTIPLIER)
+  it('killshot_coil crits for 2.4x at least once over 50 attacks (30% chance)', () => {
+    const normal = expectedPhysical(['killshot_coil'], [])
+    const crit = expectedPhysical(['killshot_coil'], [], KILLSHOT_COIL_CRIT_MULTIPLIER)
     let sawCrit = false
     for (let i = 0; i < 50; i++) {
-      const state = duel('daedalus')
+      const state = duel('killshot_coil')
       const start = state.players['p2']!.hp
       const r = run(state, [attack('p1', 'Enemy')])
       const dmg = start - r.state.players['p2']!.hp
@@ -196,13 +196,13 @@ describe('Item combat procs — crit multipliers', () => {
 // ── On-hit / proc passives ───────────────────────────────────────
 
 describe('Item combat procs — on-hit effects', () => {
-  it('monkey_king_bar adds a separate magical on-hit damage event (+50 pre-mitigation)', () => {
+  it('truestrike_rig adds a separate magical on-hit damage event (+50 pre-mitigation)', () => {
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          items: ['monkey_king_bar', null, null, null, null, null],
+          items: ['truestrike_rig', null, null, null, null, null],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
@@ -217,7 +217,7 @@ describe('Item combat procs — on-hit effects', () => {
     // MKB magical = 50 reduced by the target's 15 MR.
     const tgt = makePlayer({ heroId: 'echo' })
     const expectedMagic = calculateMagicalDamage(
-      MKB_BONUS_DAMAGE,
+      TRUESTRIKE_RIG_BONUS_DAMAGE,
       getEffectiveMagicResist(tgt, getItemStatBonuses([])),
     )
     expect((magic as { amount: number }).amount).toBe(expectedMagic)
@@ -226,17 +226,17 @@ describe('Item combat procs — on-hit effects', () => {
     expect(lost).toBe((phys as { amount: number }).amount + (magic as { amount: number }).amount)
   })
 
-  it('desolator shreds 5 armor so the hit lands harder than a no-item hit', () => {
+  it('rust_driver shreds 5 armor so the hit lands harder than a no-item hit', () => {
     const noShred = expectedPhysical([], [])
-    const shredded = expectedPhysical(['desolator'], [], 1, DESOLATOR_ARMOR_REDUCTION)
-    // Even ignoring desolator's +50 attack, the armor shred alone raises the
+    const shredded = expectedPhysical(['rust_driver'], [], 1, RUST_DRIVER_ARMOR_REDUCTION)
+    // Even ignoring rust_driver's +50 attack, the armor shred alone raises the
     // post-mitigation number — assert the real attack does at least the shred path.
     const state = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          items: ['desolator', null, null, null, null, null],
+          items: ['rust_driver', null, null, null, null, null],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
@@ -250,7 +250,7 @@ describe('Item combat procs — on-hit effects', () => {
     expect(dmg).toBeGreaterThan(noShred)
   })
 
-  it('maelstrom chain lightning hits a SECOND nearby enemy for magical damage (loop-50)', () => {
+  it('arc_coil chain lightning hits a SECOND nearby enemy for magical damage (loop-50)', () => {
     const tgt = makePlayer({ heroId: 'echo' })
     const expectedChain = calculateMagicalDamage(
       60,
@@ -263,7 +263,7 @@ describe('Item combat procs — on-hit effects', () => {
           p1: makePlayer({
             id: 'p1',
             team: 'chaff',
-            items: ['maelstrom', null, null, null, null, null],
+            items: ['arc_coil', null, null, null, null, null],
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', name: 'Primary' }),
           p3: makePlayer({ id: 'p3', team: 'audit', name: 'Bystander' }),
@@ -286,9 +286,9 @@ describe('Item combat procs — on-hit effects', () => {
     expect(sawChain).toBe(true)
   })
 
-  it('vanguard blocks 50 damage on the proc (loop-50): a blocked hit lands lighter', () => {
-    const unblocked = expectedPhysical([], ['vanguard'])
-    const blocked = Math.max(0, unblocked - VANGUARD_BLOCK_AMOUNT)
+  it('bulwark_plate blocks 50 damage on the proc (loop-50): a blocked hit lands lighter', () => {
+    const unblocked = expectedPhysical([], ['bulwark_plate'])
+    const blocked = Math.max(0, unblocked - BULWARK_PLATE_BLOCK_AMOUNT)
     expect(blocked).toBeLessThan(unblocked)
     let sawBlock = false
     let sawFull = false
@@ -300,7 +300,7 @@ describe('Item combat procs — on-hit effects', () => {
             id: 'p2',
             team: 'audit',
             name: 'Tank',
-            items: ['vanguard', null, null, null, null, null],
+            items: ['bulwark_plate', null, null, null, null, null],
           }),
         },
       })
@@ -309,21 +309,24 @@ describe('Item combat procs — on-hit effects', () => {
       const dmg = start - r.state.players['p2']!.hp
       if (dmg === blocked) sawBlock = true
       else if (dmg === unblocked) sawFull = true
-      else throw new Error(`unexpected vanguard dmg ${dmg} (full=${unblocked} blocked=${blocked})`)
+      else
+        throw new Error(
+          `unexpected bulwark_plate dmg ${dmg} (full=${unblocked} blocked=${blocked})`,
+        )
     }
     expect(sawBlock).toBe(true)
     expect(sawFull).toBe(true)
   })
 
-  it('assault_cuirass aura shreds 5 armor off an enemy in the attacker zone', () => {
+  it('siege_lattice aura shreds 5 armor off an enemy in the attacker zone', () => {
     // p1 (no items) attacks p2; a SECOND enemy of p2 (its zone-mate aura source)
-    // carries assault_cuirass, shredding p2's armor by 5.
+    // carries siege_lattice, shredding p2's armor by 5.
     const withAura = makeGameState({
       players: {
         p1: makePlayer({
           id: 'p1',
           team: 'chaff',
-          items: ['assault_cuirass', null, null, null, null, null],
+          items: ['siege_lattice', null, null, null, null, null],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
@@ -331,18 +334,18 @@ describe('Item combat procs — on-hit effects', () => {
     const start = withAura.players['p2']!.hp
     const r = run(withAura, [attack('p1', 'Enemy')])
     const dmg = start - r.state.players['p2']!.hp
-    // attacker carries assault_cuirass (+15 def, +200 hp on attacker — irrelevant
+    // attacker carries siege_lattice (+15 def, +200 hp on attacker — irrelevant
     // to its own outgoing) and the aura shreds the target's 3 base armor by 5 → 0.
-    const expected = expectedPhysical(['assault_cuirass'], [], 1, ASSAULT_CUIRASS_AURA_DEFENSE)
+    const expected = expectedPhysical(['siege_lattice'], [], 1, SIEGE_LATTICE_AURA_DEFENSE)
     expect(dmg).toBe(expected)
     // Sanity: shred makes it strictly more than the same attacker vs un-shredded armor.
-    const unshredded = expectedPhysical(['assault_cuirass'], [])
+    const unshredded = expectedPhysical(['siege_lattice'], [])
     expect(dmg).toBeGreaterThan(unshredded)
   })
 
-  it('assault_cuirass aura grants an ALLY in the victim zone +5 defense (was dead)', () => {
+  it('siege_lattice aura grants an ALLY in the victim zone +5 defense (was dead)', () => {
     // p1 (no items) attacks p2; p3, an ALLY of p2 sharing its zone, carries
-    // assault_cuirass — raising p2's defense by 5, so p2 takes LESS damage.
+    // siege_lattice — raising p2's defense by 5, so p2 takes LESS damage.
     const withAllyAura = makeGameState({
       players: {
         p1: makePlayer({ id: 'p1', team: 'chaff', name: 'Attacker' }),
@@ -351,7 +354,7 @@ describe('Item combat procs — on-hit effects', () => {
           id: 'p3',
           team: 'audit',
           name: 'AuraAlly',
-          items: ['assault_cuirass', null, null, null, null, null],
+          items: ['siege_lattice', null, null, null, null, null],
         }),
       },
     })
@@ -359,14 +362,14 @@ describe('Item combat procs — on-hit effects', () => {
     const r = run(withAllyAura, [attack('p1', 'Victim')])
     const dmg = start - r.state.players['p2']!.hp
     // negative shred = bonus armor on the target.
-    const expected = expectedPhysical([], [], 1, -ASSAULT_CUIRASS_AURA_DEFENSE)
+    const expected = expectedPhysical([], [], 1, -SIEGE_LATTICE_AURA_DEFENSE)
     expect(dmg).toBe(expected)
     // Strictly less than the same attack with no aura present.
     const noAura = expectedPhysical([], [])
     expect(dmg).toBeLessThan(noAura)
   })
 
-  it('assault_cuirass ally +5 and enemy -5 auras cancel to net zero', () => {
+  it('siege_lattice ally +5 and enemy -5 auras cancel to net zero', () => {
     // Both an enemy holder (p1) and an ally holder (p3) share the victim's zone.
     const bothAuras = makeGameState({
       players: {
@@ -374,14 +377,14 @@ describe('Item combat procs — on-hit effects', () => {
           id: 'p1',
           team: 'chaff',
           name: 'Attacker',
-          items: ['assault_cuirass', null, null, null, null, null],
+          items: ['siege_lattice', null, null, null, null, null],
         }),
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Victim' }),
         p3: makePlayer({
           id: 'p3',
           team: 'audit',
           name: 'AuraAlly',
-          items: ['assault_cuirass', null, null, null, null, null],
+          items: ['siege_lattice', null, null, null, null, null],
         }),
       },
     })
@@ -389,7 +392,7 @@ describe('Item combat procs — on-hit effects', () => {
     const r = run(bothAuras, [attack('p1', 'Victim')])
     const dmg = start - r.state.players['p2']!.hp
     // +5 (ally) and -5 (enemy) cancel → same as the attacker's cuirass with no shred.
-    expect(dmg).toBe(expectedPhysical(['assault_cuirass'], []))
+    expect(dmg).toBe(expectedPhysical(['siege_lattice'], []))
   })
 })
 
@@ -642,7 +645,7 @@ describe("Shiva's Guard active (was a dead effect — buffs consumed nowhere)", 
           team: 'audit',
           name: 'Immune',
           zone: 'mid-river',
-          buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'black_king_bar' }],
+          buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
         }),
       },
     })

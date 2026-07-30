@@ -182,7 +182,7 @@ export interface SpellBlockedEvent {
   readonly tick: number
   readonly casterId: string
   readonly targetId: string
-  readonly source: 'linkens_sphere' | 'firewall_item' | 'lotus_orb'
+  readonly source: 'intercept_shell' | 'ablative_shell' | 'mirror_shell'
   /** For Lotus Orb: the damage bounced back to the caster (omitted for a pure block). */
   readonly reflected?: number
 }

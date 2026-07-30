@@ -281,7 +281,7 @@ describe('abilities', () => {
     expect(r?.reason).toContain('have 1')
   })
 
-  it('Lotus Orb reflects a single-target nuke back at the caster (charge spent)', async () => {
+  it('Mirror Shell reflects a single-target nuke back at the caster (charge spent)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     // Settle the first-tick recompute, zero the caster's cooldowns, and give the
     // TARGET (ENEMY) a Lotus shell to reflect the incoming nuke.
@@ -293,7 +293,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'lotus_orb', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'mirror_shell', stacks: 1, ticksRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -301,10 +301,10 @@ describe('abilities', () => {
     game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes the Lotus holder (echo Q — Resonance)
     await game.tick()
 
-    // The spell is reflected: a spell_blocked(lotus_orb) event carrying the bounced
+    // The spell is reflected: a spell_blocked(mirror_shell) event carrying the bounced
     // amount, a damage event from the holder back at the caster, and the charge spent.
     const blocked = game.lastEvents.find(
-      (e) => e._tag === 'spell_blocked' && e.source === 'lotus_orb',
+      (e) => e._tag === 'spell_blocked' && e.source === 'mirror_shell',
     )
     expect(blocked).toBeDefined()
     expect(blocked?._tag === 'spell_blocked' && blocked.reflected).toBeGreaterThan(0)
@@ -314,7 +314,7 @@ describe('abilities', () => {
       ),
     ).toBe(true)
     // The Lotus charge is consumed (one-shot), so it's gone afterwards.
-    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'lotus_orb')).toBe(false)
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'mirror_shell')).toBe(false)
   })
 
   it('Linken’s Sphere blocks a single-target spell (fizzles it, spends the charge to 0)', async () => {
@@ -335,10 +335,10 @@ describe('abilities', () => {
     game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes a Linken's holder
     await game.tick()
 
-    // The spell fizzles: a spell_blocked(linkens_sphere) event, NO damage to the
+    // The spell fizzles: a spell_blocked(intercept_shell) event, NO damage to the
     // holder (reverted to pre-cast), and the charge spent to stacks 0 (recharging).
     const blocked = game.lastEvents.find(
-      (e) => e._tag === 'spell_blocked' && e.source === 'linkens_sphere',
+      (e) => e._tag === 'spell_blocked' && e.source === 'intercept_shell',
     )
     expect(blocked).toBeDefined()
     expect(
@@ -350,7 +350,7 @@ describe('abilities', () => {
     expect(block?.stacks).toBe(0) // spent, not removed — Linken's auto-recharges
   })
 
-  it('Firewall item blocks a single-target spell (fizzles it, consumes the one-shot)', async () => {
+  it('Ablative Shell blocks a single-target spell (fizzles it, consumes the one-shot)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick()
     await game.patch((s) => ({
@@ -369,7 +369,7 @@ describe('abilities', () => {
     await game.tick()
 
     const blocked = game.lastEvents.find(
-      (e) => e._tag === 'spell_blocked' && e.source === 'firewall_item',
+      (e) => e._tag === 'spell_blocked' && e.source === 'ablative_shell',
     )
     expect(blocked).toBeDefined()
     expect(
@@ -381,7 +381,7 @@ describe('abilities', () => {
     expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'firewall_block')).toBe(false)
   })
 
-  it("Linken's Sphere blocks a targeted ITEM active (Dagon), not just abilities", async () => {
+  it('Intercept Shell blocks a targeted ITEM active (Dagon), not just abilities', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick()
     await game.patch((s) => ({
@@ -400,16 +400,16 @@ describe('abilities', () => {
     game.submit({ type: 'use', item: 'dagon', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
 
-    // The item nuke fizzles: spell_blocked(linkens_sphere), no HP lost (reverted),
+    // The item nuke fizzles: spell_blocked(intercept_shell), no HP lost (reverted),
     // charge spent to 0. Before the fix the block path only covered ability casts.
     expect(
-      game.lastEvents.some((e) => e._tag === 'spell_blocked' && e.source === 'linkens_sphere'),
+      game.lastEvents.some((e) => e._tag === 'spell_blocked' && e.source === 'intercept_shell'),
     ).toBe(true)
     expect((await game.player(ENEMY)).hp).toBe(enemyBefore)
     expect((await game.player(ENEMY)).buffs.find((b) => b.id === 'spellblock')?.stacks).toBe(0)
   })
 
-  it('Lotus Orb reflects a targeted ITEM nuke (Dagon) back at the user', async () => {
+  it('Mirror Shell reflects a targeted ITEM nuke (Dagon) back at the user', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick()
     await game.patch((s) => ({
@@ -419,7 +419,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, items: [...s.players[HUMAN]!.items, 'dagon'], buffs: [] },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          buffs: [{ id: 'lotus_orb', stacks: 1, ticksRemaining: 5, source: ENEMY }],
+          buffs: [{ id: 'mirror_shell', stacks: 1, ticksRemaining: 5, source: ENEMY }],
         },
       },
     }))
@@ -429,7 +429,7 @@ describe('abilities', () => {
     await game.tick()
 
     const blocked = game.lastEvents.find(
-      (e) => e._tag === 'spell_blocked' && e.source === 'lotus_orb',
+      (e) => e._tag === 'spell_blocked' && e.source === 'mirror_shell',
     )
     expect(blocked).toBeDefined()
     expect(blocked?._tag === 'spell_blocked' && blocked.reflected).toBeGreaterThan(0)
@@ -439,10 +439,10 @@ describe('abilities', () => {
       ),
     ).toBe(true)
     expect((await game.player(ENEMY)).hp).toBe(enemyBefore) // negated on the holder
-    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'lotus_orb')).toBe(false)
+    expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'mirror_shell')).toBe(false)
   })
 
-  it("Linken's Sphere negates a disable-only ITEM active (Scythe hex) with no damage", async () => {
+  it('Intercept Shell negates a disable-only ITEM active (Scythe hex) with no damage', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
     await game.tick()
     await game.patch((s) => ({
@@ -467,7 +467,7 @@ describe('abilities', () => {
     // The hex is fully negated — no hex buff lands, the charge is spent, and the
     // reflect is 0 (a disable carries no HP loss to bounce).
     const blocked = game.lastEvents.find(
-      (e) => e._tag === 'spell_blocked' && e.source === 'linkens_sphere',
+      (e) => e._tag === 'spell_blocked' && e.source === 'intercept_shell',
     )
     expect(blocked).toBeDefined()
     expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'hex')).toBe(false)
@@ -793,8 +793,13 @@ describe('abilities', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           buffs: [
-            { id: 'silver_edge_invis', stacks: 1, ticksRemaining: 3, source: 'silver_edge' },
-            { id: 'silver_edge_bonus', stacks: 150, ticksRemaining: 3, source: 'silver_edge' },
+            { id: 'ghostwire_edge_invis', stacks: 1, ticksRemaining: 3, source: 'ghostwire_edge' },
+            {
+              id: 'ghostwire_edge_bonus',
+              stacks: 150,
+              ticksRemaining: 3,
+              source: 'ghostwire_edge',
+            },
           ],
         },
       },
@@ -806,8 +811,8 @@ describe('abilities', () => {
     // Bug: the +bonus applied to EVERY attack and invis never broke. Now one
     // attack consumes both — so it can't keep empowering and stealth ends.
     const me = await game.me()
-    expect(me.buffs.some((b) => b.id === 'silver_edge_invis')).toBe(false)
-    expect(me.buffs.some((b) => b.id === 'silver_edge_bonus')).toBe(false)
+    expect(me.buffs.some((b) => b.id === 'ghostwire_edge_invis')).toBe(false)
+    expect(me.buffs.some((b) => b.id === 'ghostwire_edge_bonus')).toBe(false)
   })
 })
 

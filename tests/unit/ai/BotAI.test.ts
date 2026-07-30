@@ -1458,57 +1458,57 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
   const enemy = makePlayer({ id: 'enemy', name: 'enemy', team: 'audit' })
 
   it('returns null out of a fight (no enemy heroes in zone)', () => {
-    const bot = makePlayer({ hp: 100, maxHp: 500, items: inv('black_king_bar') })
+    const bot = makePlayer({ hp: 100, maxHp: 500, items: inv('hardshell') })
     expect(tryUseCombatItem(bot, [], [], makeConfig())).toBeNull()
   })
 
   it('is gated on threatAssessment — naive (easy) bots never micro items', () => {
-    const bot = makePlayer({ hp: 100, maxHp: 500, items: inv('black_king_bar') })
+    const bot = makePlayer({ hp: 100, maxHp: 500, items: inv('hardshell') })
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig({ threatAssessment: false }))).toBeNull()
   })
 
-  it('pops a defensive item (BKB) when hurt in a fight', () => {
-    const bot = makePlayer({ hp: 200, maxHp: 500, items: inv('black_king_bar') }) // 40%
+  it('pops a defensive item (Hardshell) when hurt in a fight', () => {
+    const bot = makePlayer({ hp: 200, maxHp: 500, items: inv('hardshell') }) // 40%
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'black_king_bar',
+      item: 'hardshell',
     })
   })
 
-  it('prefers BKB over Blade Mail (defensive priority order)', () => {
-    const bot = makePlayer({ hp: 200, maxHp: 500, items: inv('blade_mail', 'black_king_bar') })
+  it('prefers Hardshell over Spite Plate (defensive priority order)', () => {
+    const bot = makePlayer({ hp: 200, maxHp: 500, items: inv('spite_plate', 'hardshell') })
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'black_king_bar',
+      item: 'hardshell',
     })
-    const onlyMail = makePlayer({ hp: 200, maxHp: 500, items: inv('blade_mail') })
+    const onlyMail = makePlayer({ hp: 200, maxHp: 500, items: inv('spite_plate') })
     expect(tryUseCombatItem(onlyMail, [enemy], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'blade_mail',
+      item: 'spite_plate',
     })
   })
 
   it('pops a defensive item when outnumbered even at full HP', () => {
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('blade_mail') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('spite_plate') })
     const e2 = makePlayer({ id: 'enemy2', name: 'enemy2', team: 'audit' })
     // 2 enemies vs (0 allies + self) → outnumbered.
     expect(tryUseCombatItem(bot, [enemy, e2], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'blade_mail',
+      item: 'spite_plate',
     })
   })
 
   it('does NOT burn a defensive item on a healthy, even fight', () => {
     // Full HP, 1v1, only a defensive item → not under pressure, nothing offensive.
-    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('black_king_bar') })
+    const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('hardshell') })
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
   })
 
   it('a support bot pops Lotus Orb (spell-reflect) under pressure', () => {
-    const bot = makePlayer({ hp: 300, maxHp: 500, items: inv('lotus_orb') }) // 60%, hurt
+    const bot = makePlayer({ hp: 300, maxHp: 500, items: inv('mirror_shell') }) // 60%, hurt
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toEqual({
       type: 'use',
-      item: 'lotus_orb',
+      item: 'mirror_shell',
     })
   })
 
@@ -1544,8 +1544,8 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
     const bot = makePlayer({
       hp: 100,
       maxHp: 500,
-      items: inv('black_king_bar'),
-      buffs: [{ id: 'item_cd_black_king_bar', stacks: 1, ticksRemaining: 10, source: 'x' }],
+      items: inv('hardshell'),
+      buffs: [{ id: 'item_cd_hardshell', stacks: 1, ticksRemaining: 10, source: 'x' }],
     })
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
   })
@@ -1555,13 +1555,13 @@ describe('BotAI - combat item usage (tryUseCombatItem)', () => {
     expect(tryUseCombatItem(bot, [enemy], [], makeConfig())).toBeNull()
   })
 
-  it('decideBotAction wires it in: a hurt bot in a fight pops its BKB', () => {
+  it('decideBotAction wires it in: a hurt bot in a fight pops its Hardshell', () => {
     // 60% HP avoids the retreat threshold yet is under the defensive-pressure
     // cutoff; default difficulty (medium) has threatAssessment on.
-    const bot = makePlayer({ zone: 'mid-river', hp: 300, maxHp: 500, items: inv('black_king_bar') })
+    const bot = makePlayer({ zone: 'mid-river', hp: 300, maxHp: 500, items: inv('hardshell') })
     const foe = makePlayer({ id: 'foe', name: 'foe', team: 'audit', zone: 'mid-river' })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
-    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
+    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'hardshell' })
   })
 })
 
@@ -1603,7 +1603,7 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
       team: 'audit',
       hp: 100,
       maxHp: 600,
-      buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'black_king_bar' }],
+      buffs: [{ id: 'magic_immune', stacks: 1, ticksRemaining: 4, source: 'hardshell' }],
     })
     const bot = makePlayer({ hp: 500, maxHp: 500, items: inv('dagon', 'ethereal_blade') })
     expect(tryUseCombatItem(bot, [immune], [], makeConfig())).toBeNull()
@@ -1645,40 +1645,40 @@ describe('BotAI - targeted combat items (tryUseCombatItem)', () => {
 
 describe('BotAI - panic survival items (retreat branch)', () => {
   it('returns an owned, off-cooldown defensive item', () => {
-    const bot = makePlayer({ items: inv('blade_mail') })
-    expect(tryPanicDefensiveItem(bot, makeConfig())).toEqual({ type: 'use', item: 'blade_mail' })
+    const bot = makePlayer({ items: inv('spite_plate') })
+    expect(tryPanicDefensiveItem(bot, makeConfig())).toEqual({ type: 'use', item: 'spite_plate' })
   })
 
   it('a support bot can panic with Lotus Orb', () => {
-    const bot = makePlayer({ items: inv('lotus_orb') })
-    expect(tryPanicDefensiveItem(bot, makeConfig())).toEqual({ type: 'use', item: 'lotus_orb' })
+    const bot = makePlayer({ items: inv('mirror_shell') })
+    expect(tryPanicDefensiveItem(bot, makeConfig())).toEqual({ type: 'use', item: 'mirror_shell' })
   })
 
   it('is gated on threatAssessment (easy bots panic-walk instead)', () => {
-    const bot = makePlayer({ items: inv('black_king_bar') })
+    const bot = makePlayer({ items: inv('hardshell') })
     expect(tryPanicDefensiveItem(bot, makeConfig({ threatAssessment: false }))).toBeNull()
   })
 
   it('respects item cooldown', () => {
     const bot = makePlayer({
-      items: inv('black_king_bar'),
-      buffs: [{ id: 'item_cd_black_king_bar', stacks: 1, ticksRemaining: 8, source: 'x' }],
+      items: inv('hardshell'),
+      buffs: [{ id: 'item_cd_hardshell', stacks: 1, ticksRemaining: 8, source: 'x' }],
     })
     expect(tryPanicDefensiveItem(bot, makeConfig())).toBeNull()
   })
 
-  it('decideBotAction: a chased, low-HP bot pops BKB instead of fleeing to its death', () => {
+  it('decideBotAction: a chased, low-HP bot pops Hardshell instead of fleeing to its death', () => {
     // 20% HP (below the medium retreat threshold) with an enemy in zone → the
     // retreat branch runs; it can't TP through combat, so it pops the panic item.
     const bot = makePlayer({
       zone: 'mid-t1-chaff',
       hp: 100,
       maxHp: 500,
-      items: inv('black_king_bar'),
+      items: inv('hardshell'),
     })
     const foe = makePlayer({ id: 'chaser', name: 'chaser', team: 'audit', zone: 'mid-t1-chaff' })
     const state = makeGameState({ players: { [bot.id]: bot, [foe.id]: foe } })
-    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'black_king_bar' })
+    expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'use', item: 'hardshell' })
   })
 
   it('decideBotAction: a chased bot with no panic item still walks toward the fountain', () => {

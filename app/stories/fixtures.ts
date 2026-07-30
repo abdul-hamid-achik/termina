@@ -52,9 +52,9 @@ export const SAMPLE_HERO_ID = SAMPLE_HEROES.echo
 export const SAMPLE_ITEMS = {
   blades: 'edge_kit',
   treads: 'gait_rig',
-  bkb: 'black_king_bar',
-  daedalus: 'daedalus',
-  desolator: 'desolator',
+  bkb: 'hardshell',
+  killshot_coil: 'killshot_coil',
+  rust_driver: 'rust_driver',
   blink: 'blink_module',
   forceStaff: 'force_staff',
   salve: 'trauma_patch',
@@ -66,7 +66,7 @@ export const SAMPLE_ITEMS = {
 export const SAMPLE_INVENTORY: (string | null)[] = [
   SAMPLE_ITEMS.treads,
   SAMPLE_ITEMS.bkb,
-  SAMPLE_ITEMS.daedalus,
+  SAMPLE_ITEMS.killshot_coil,
   SAMPLE_ITEMS.blades,
   SAMPLE_ITEMS.salve,
   null,

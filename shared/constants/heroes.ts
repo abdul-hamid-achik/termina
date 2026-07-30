@@ -838,7 +838,7 @@ export const HEROES: Record<string, HeroDef> = {
 
   firewall: {
     id: 'firewall',
-    name: 'Firewall',
+    name: 'Ablative Shell',
     role: 'tank',
     lore: 'A sentient packet filter that stands between allies and destruction. Firewall blocks, reflects, and punishes all who dare breach its perimeter.',
     difficulty: 'easy',

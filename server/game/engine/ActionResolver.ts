@@ -39,7 +39,7 @@ import {
   getIncomingDamageMultiplier,
   isDamageImmune,
 } from './DamageCalculator'
-import { computeBladeMailReflect } from './CombatResolver'
+import { computeSpitePlateReflect } from './CombatResolver'
 import { placeWard, canAttackIce } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -63,18 +63,18 @@ import {
   BURN_XP_RATIO,
   NULL_POINTER_CRIT_CHANCE,
   NULL_POINTER_CRIT_MULTIPLIER,
-  CRYSTALYS_CRIT_CHANCE,
-  CRYSTALYS_CRIT_MULTIPLIER,
-  DAEDALUS_CRIT_CHANCE,
-  DAEDALUS_CRIT_MULTIPLIER,
-  VANGUARD_BLOCK_CHANCE,
-  VANGUARD_BLOCK_AMOUNT,
-  DESOLATOR_ARMOR_REDUCTION,
-  ASSAULT_CUIRASS_AURA_DEFENSE,
-  MKB_BONUS_DAMAGE,
+  FRACTURE_EDGE_CRIT_CHANCE,
+  FRACTURE_EDGE_CRIT_MULTIPLIER,
+  KILLSHOT_COIL_CRIT_CHANCE,
+  KILLSHOT_COIL_CRIT_MULTIPLIER,
+  BULWARK_PLATE_BLOCK_CHANCE,
+  BULWARK_PLATE_BLOCK_AMOUNT,
+  RUST_DRIVER_ARMOR_REDUCTION,
+  SIEGE_LATTICE_AURA_DEFENSE,
+  TRUESTRIKE_RIG_BONUS_DAMAGE,
   CLOT_RING_REGEN_PERCENT,
   DRIP_MASK_REGEN_PERCENT,
-  HEART_REGEN_PERCENT,
+  BULK_LATTICE_REGEN_PERCENT,
   SELL_REFUND_RATIO,
   DOUBLE_CAST_CHANCE,
   SPELL_LIFESTEAL_PERCENT,
@@ -85,7 +85,7 @@ import { wsLog } from '~~/server/utils/log'
 import { isRealProduction } from '~~/server/utils/testHooks'
 import { awardZoneXp } from './XpDistributor'
 
-/** Ticks before Linken's Sphere recharges its spell-block after spending one. */
+/** Ticks before Intercept Shell recharges its spell-block after spending one. */
 const LINKENS_RECHARGE_TICKS = 12
 
 // ── Types ──────────────────────────────────────────────────────
@@ -623,7 +623,7 @@ function resolveAttackPhase(
   // Previously this scanned all players on EVERY attack action — O(players × attacks).
   const cuirassByZone = new Map<string, { ally: boolean; enemy: boolean }>()
   for (const [, zonePlayer] of Object.entries(players)) {
-    if (!zonePlayer.items.includes('assault_cuirass')) continue
+    if (!zonePlayer.items.includes('siege_lattice')) continue
     let entry = cuirassByZone.get(zonePlayer.zone)
     if (!entry) {
       entry = { ally: false, enemy: false }
@@ -719,15 +719,15 @@ function resolveAttackPhase(
           chance: NULL_POINTER_CRIT_CHANCE,
           multiplier: NULL_POINTER_CRIT_MULTIPLIER,
         })
-      if (attacker.items.includes('crystalys'))
+      if (attacker.items.includes('fracture_edge'))
         ownedCrits.push({
-          chance: CRYSTALYS_CRIT_CHANCE,
-          multiplier: CRYSTALYS_CRIT_MULTIPLIER,
+          chance: FRACTURE_EDGE_CRIT_CHANCE,
+          multiplier: FRACTURE_EDGE_CRIT_MULTIPLIER,
         })
-      if (attacker.items.includes('daedalus'))
+      if (attacker.items.includes('killshot_coil'))
         ownedCrits.push({
-          chance: DAEDALUS_CRIT_CHANCE,
-          multiplier: DAEDALUS_CRIT_MULTIPLIER,
+          chance: KILLSHOT_COIL_CRIT_CHANCE,
+          multiplier: KILLSHOT_COIL_CRIT_MULTIPLIER,
         })
 
       let critMultiplier = 1
@@ -739,11 +739,11 @@ function resolveAttackPhase(
       attackDamage = Math.round(attackDamage * critMultiplier)
 
       let bonusMagicDamage = 0
-      if (attacker.items.includes('monkey_king_bar')) {
-        bonusMagicDamage = MKB_BONUS_DAMAGE
+      if (attacker.items.includes('truestrike_rig')) {
+        bonusMagicDamage = TRUESTRIKE_RIG_BONUS_DAMAGE
       }
 
-      if (attacker.items.includes('maelstrom') && Math.random() < 0.25) {
+      if (attacker.items.includes('arc_coil') && Math.random() < 0.25) {
         const chainTargets = Object.values(players).filter(
           (p) =>
             p.zone === attacker.zone && p.team !== attacker.team && p.alive && p.id !== target.id,
@@ -781,8 +781,8 @@ function resolveAttackPhase(
       // every stealth in the engine), not a permanent every-attack buff. Only
       // apply it while invis is active, and consume BOTH the bonus and the invis
       // on the attack — which also correctly breaks stealth on attacking.
-      const silverEdgeInvis = attacker.buffs.some((b) => b.id === 'silver_edge_invis')
-      const silverEdgeBonus = attacker.buffs.find((b) => b.id === 'silver_edge_bonus')
+      const silverEdgeInvis = attacker.buffs.some((b) => b.id === 'ghostwire_edge_invis')
+      const silverEdgeBonus = attacker.buffs.find((b) => b.id === 'ghostwire_edge_bonus')
       if (silverEdgeBonus && silverEdgeInvis) {
         attackDamage += silverEdgeBonus.stacks
       }
@@ -793,7 +793,7 @@ function resolveAttackPhase(
         playerUpdates[action.playerId] = {
           ...playerUpdates[action.playerId],
           buffs: attackerPendingBuffs.filter(
-            (b) => b.id !== 'silver_edge_invis' && b.id !== 'silver_edge_bonus',
+            (b) => b.id !== 'ghostwire_edge_invis' && b.id !== 'ghostwire_edge_bonus',
           ),
         }
       }
@@ -804,8 +804,8 @@ function resolveAttackPhase(
 
       let defense = getEffectiveDefense(target, targetItemStats)
 
-      if (attacker.items.includes('desolator')) {
-        defense = Math.max(0, defense - DESOLATOR_ARMOR_REDUCTION)
+      if (attacker.items.includes('rust_driver')) {
+        defense = Math.max(0, defense - RUST_DRIVER_ARMOR_REDUCTION)
       }
 
       // Assault Cuirass aura: O(1) zone lookup instead of O(players) scan per attack.
@@ -815,13 +815,13 @@ function resolveAttackPhase(
         // enemy = opposite team has a holder → -armor
         const allyCuirass = target.team === 'chaff' ? cuirass.ally : cuirass.enemy
         const enemyCuirass = target.team === 'chaff' ? cuirass.enemy : cuirass.ally
-        if (allyCuirass) defense += ASSAULT_CUIRASS_AURA_DEFENSE
-        if (enemyCuirass) defense = Math.max(0, defense - ASSAULT_CUIRASS_AURA_DEFENSE)
+        if (allyCuirass) defense += SIEGE_LATTICE_AURA_DEFENSE
+        if (enemyCuirass) defense = Math.max(0, defense - SIEGE_LATTICE_AURA_DEFENSE)
       }
 
       let blockedDamage = 0
-      if (target.items.includes('vanguard') && Math.random() < VANGUARD_BLOCK_CHANCE) {
-        blockedDamage = VANGUARD_BLOCK_AMOUNT
+      if (target.items.includes('bulwark_plate') && Math.random() < BULWARK_PLATE_BLOCK_CHANCE) {
+        blockedDamage = BULWARK_PLATE_BLOCK_AMOUNT
       }
 
       let damage = calculatePhysicalDamage(attackDamage, defense)
@@ -873,7 +873,7 @@ function resolveAttackPhase(
 
       const newHp = Math.max(0, targetPendingHp - hpLoss)
 
-      if (attacker.items.includes('skull_basher') && Math.random() < 0.25) {
+      if (attacker.items.includes('concussion_hammer') && Math.random() < 0.25) {
         // ticksRemaining 2 = one gated action: reaped same-tick by tickAllBuffs
         // (see the applyBuff note), so 1 would never reach the next validateAction.
         newBuffs.push({ id: 'stun', stacks: 1, ticksRemaining: 2, source: attacker.id })
@@ -900,8 +900,8 @@ function resolveAttackPhase(
         })
       }
 
-      if (target.buffs.some((b) => b.id === 'blade_mail')) {
-        const returnDamage = computeBladeMailReflect(hpLoss)
+      if (target.buffs.some((b) => b.id === 'spite_plate')) {
+        const returnDamage = computeSpitePlateReflect(hpLoss)
         const attackerPendingHp =
           (playerUpdates[action.playerId]?.hp as number | undefined) ?? attacker.hp
         const attackerNewHp = Math.max(0, attackerPendingHp - returnDamage)
@@ -1152,7 +1152,7 @@ function resolveAttackPhase(
 /**
  * Phase 4: Passive effects — cooldown ticks, item regen (Clot Ring, Sobi
  * Mask, Heart of Tarrasque, Garbage Collector), Aether Lens cooldown reduction,
- * Linken's Sphere re-arm, Trauma Patch buff regen.
+ * Intercept Shell re-arm, Trauma Patch buff regen.
  */
 function resolvePassivesPhase(
   players: Record<string, PlayerState>,
@@ -1186,11 +1186,11 @@ function resolvePassivesPhase(
       mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * DRIP_MASK_REGEN_PERCENT))
     }
 
-    if (player.items.includes('heart_of_tarrasque')) {
+    if (player.items.includes('bulk_lattice')) {
       const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
       const inCombat = player.buffs.some((b) => b.id === 'inCombat')
       if (!tookDamage && !inCombat) {
-        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
+        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * BULK_LATTICE_REGEN_PERCENT))
       }
     }
 
@@ -1199,7 +1199,7 @@ function resolvePassivesPhase(
       const dealtDamage = heroAttackers.has(pid)
       const inCombat = player.buffs.some((b) => b.id === 'inCombat')
       if (!tookDamage && !dealtDamage && !inCombat) {
-        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * HEART_REGEN_PERCENT))
+        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * BULK_LATTICE_REGEN_PERCENT))
       }
     }
 
@@ -1212,7 +1212,7 @@ function resolvePassivesPhase(
     }
 
     let buffs = player.buffs
-    if (player.items.includes('linkens_sphere')) {
+    if (player.items.includes('intercept_shell')) {
       const linkenBuff = player.buffs.find((b) => b.id === 'spellblock')
       if (!linkenBuff) {
         buffs = [
@@ -1221,7 +1221,7 @@ function resolvePassivesPhase(
             id: 'spellblock',
             stacks: 1,
             ticksRemaining: LINKENS_RECHARGE_TICKS,
-            source: 'linkens_sphere',
+            source: 'intercept_shell',
           },
         ]
       }
@@ -1380,7 +1380,7 @@ function resolveItemActivesPhase(
         abilityId: ITEMS[cmd.item]?.active?.id ?? cmd.item,
       })
 
-      // Linken's Sphere / Firewall / Lotus Orb block targeted item actives the
+      // Intercept Shell / Ablative Shell / Mirror Shell block targeted item actives the
       // same as targeted ability casts — Dagon/Scythe/Ethereal/Eul's all aim at
       // a single enemy hero. Resolve that hero from the use target (dual-use
       // items like Eul's/Ethereal carry no active.targetType, so resolve the
@@ -1437,10 +1437,10 @@ function resolveItemActivesPhase(
 
             // Blade Mail: an enemy hit by the item reflects the HP it lost back
             // at the user as pure damage — same formula as the cast/attack path.
-            if (post.buffs.some((b) => b.id === 'blade_mail')) {
+            if (post.buffs.some((b) => b.id === 'spite_plate')) {
               const userPost = players[action.playerId]
               if (userPost) {
-                const returnDamage = computeBladeMailReflect(delta)
+                const returnDamage = computeSpitePlateReflect(delta)
                 const userNewHp = Math.max(0, userPost.hp - returnDamage)
                 players = {
                   ...players,
@@ -2078,7 +2078,7 @@ function isInstantAbility(
 }
 
 /**
- * Linken's Sphere / Firewall item / Lotus Orb protection against a SINGLE-target
+ * Intercept Shell / Ablative Shell / Mirror Shell protection against a SINGLE-target
  * effect aimed at `targetId`. Shared by hero ability casts (resolveHeroCast) and
  * targeted item actives (the use-item loop), so Dagon / Scythe of Vyse /
  * Ethereal Blade / Eul's are blocked exactly like a targeted ability instead of
@@ -2087,7 +2087,7 @@ function isInstantAbility(
  * On an armed block charge the target is reverted to its pre-effect state
  * (undoing the damage/disable) and one charge is consumed (firewall_block is
  * removed; spellblock is spent to stacks 0 with a fresh recharge window). On
- * Lotus Orb the effect is negated on the holder and the HP it would have lost is
+ * Mirror Shell the effect is negated on the holder and the HP it would have lost is
  * reflected back at the caster (gated by the caster's own immunity). Emits
  * spell_blocked and returns the (possibly updated) players map.
  */
@@ -2120,16 +2120,16 @@ function applyTargetedSpellBlock(
       tick,
       casterId,
       targetId,
-      source: blockId === 'spellblock' ? 'linkens_sphere' : 'firewall_item',
+      source: blockId === 'spellblock' ? 'intercept_shell' : 'ablative_shell',
     })
     return { ...players, [targetId]: { ...pre, buffs } }
   }
 
-  if (post && pre.buffs.some((b) => b.id === 'lotus_orb')) {
+  if (post && pre.buffs.some((b) => b.id === 'mirror_shell')) {
     const reflected = pre.hp - post.hp
     let removed = false
     const buffs = pre.buffs.filter((b) => {
-      if (!removed && b.id === 'lotus_orb') {
+      if (!removed && b.id === 'mirror_shell') {
         removed = true
         return false
       }
@@ -2154,7 +2154,7 @@ function applyTargetedSpellBlock(
       tick,
       casterId,
       targetId,
-      source: 'lotus_orb',
+      source: 'mirror_shell',
       reflected: reflected > 0 ? reflected : 0,
     })
     return next
@@ -2279,7 +2279,7 @@ function resolveHeroCast(
   // its own damage prints the effect before the cause. Spliced back in here.
   const castEvtIdx = events.length
 
-  // Linken's Sphere / Firewall item / Lotus Orb: a single-target ability on a
+  // Intercept Shell / Ablative Shell / Mirror Shell: a single-target ability on a
   // hero holding a charge fizzles — the caster still pays mana + cooldown, but
   // the target's effect is reverted and a charge consumed (shared with the
   // targeted-item-active path so Dagon/Scythe/Ethereal/Eul's block identically).
@@ -2333,13 +2333,13 @@ function resolveHeroCast(
         castDamageToEnemies += delta
 
         // Blade Mail: an enemy hero hit by this cast reflects the HP it lost
-        // back at the caster as pure damage — the same computeBladeMailReflect
+        // back at the caster as pure damage — the same computeSpitePlateReflect
         // formula as the basic-attack reflect, so the two paths can never
         // diverge.
-        if (post.buffs.some((b) => b.id === 'blade_mail')) {
+        if (post.buffs.some((b) => b.id === 'spite_plate')) {
           const casterPost = newPlayers[action.playerId]
           if (casterPost) {
-            const returnDamage = computeBladeMailReflect(delta)
+            const returnDamage = computeSpitePlateReflect(delta)
             const casterNewHp = Math.max(0, casterPost.hp - returnDamage)
             newPlayers = {
               ...newPlayers,

@@ -22,33 +22,40 @@ const CORE_BUILD_ORDER = [
 /** Role-tilted build orders so each hero itemises like its archetype. */
 const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
   // Right-click damage + a survivability spike (BKB) mid-build.
-  carry: ['edge_kit', 'null_pointer', 'maelstrom', 'black_king_bar', 'daedalus', 'segfault_blade'],
+  carry: ['edge_kit', 'null_pointer', 'arc_coil', 'hardshell', 'killshot_coil', 'segfault_blade'],
   // Burst + pickoff tools (crit, blink, bash).
-  assassin: ['edge_kit', 'crystalys', 'blink_module', 'skull_basher', 'black_king_bar', 'daedalus'],
+  assassin: [
+    'edge_kit',
+    'fracture_edge',
+    'blink_module',
+    'concussion_hammer',
+    'hardshell',
+    'killshot_coil',
+  ],
   // Max HP / armor to soak for the team.
   tank: [
     'clot_ring',
     'garbage_collector',
-    'blade_mail',
-    'vanguard',
-    'assault_cuirass',
-    'heart_of_tarrasque',
+    'spite_plate',
+    'bulwark_plate',
+    'siege_lattice',
+    'bulk_lattice',
   ],
   // Durable initiator: blink in, blademail, then tanky cores.
   offlaner: [
     'clot_ring',
     'blink_module',
-    'blade_mail',
-    'black_king_bar',
-    'assault_cuirass',
-    'heart_of_tarrasque',
+    'spite_plate',
+    'hardshell',
+    'siege_lattice',
+    'bulk_lattice',
   ],
   // Mana + magic resist + the spell-amp/control cores.
   mage: [
     'aether_lens',
     'veil_of_discord',
     'mystical_staff',
-    'black_king_bar',
+    'hardshell',
     'ethereal_blade',
     'scythe_of_vyse',
   ],
@@ -59,7 +66,7 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
     'force_staff',
     'veil_of_discord',
     'euls_scepter',
-    'lotus_orb',
+    'mirror_shell',
   ],
 }
 

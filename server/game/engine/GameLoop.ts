@@ -1557,14 +1557,14 @@ function handleDeaths(
         // hands them +100 attack). No ground-pickup system: if the killer has no
         // free slot the Rapier is destroyed, but the victim loses it either way.
         const rapierVictim = players[pid]!
-        if (rapierVictim.items.includes('divine_rapier')) {
+        if (rapierVictim.items.includes('last_word')) {
           const victimItems = [...rapierVictim.items]
           const killerItems = [...players[killerId]!.items]
           for (let i = 0; i < victimItems.length; i++) {
-            if (victimItems[i] !== 'divine_rapier') continue
+            if (victimItems[i] !== 'last_word') continue
             victimItems[i] = null
             const freeSlot = killerItems.indexOf(null)
-            if (freeSlot !== -1) killerItems[freeSlot] = 'divine_rapier'
+            if (freeSlot !== -1) killerItems[freeSlot] = 'last_word'
           }
           players[pid] = { ...rapierVictim, items: victimItems }
           players[killerId] = { ...players[killerId]!, items: killerItems }

@@ -22,7 +22,7 @@ export type { FoggedPlayer, PlayerVisibleState }
 const INVISIBILITY_BUFF_IDS: ReadonlySet<string> = new Set([
   'invis', // Invisibility cache
   'invisible', // Legacy alias used in tests + some engine paths
-  'silver_edge_invis', // Silver Edge active
+  'ghostwire_edge_invis', // Silver Edge active
   'smoke', // Blackout Can
   'stealth', // Cipher W + Daemon passive
 ])
