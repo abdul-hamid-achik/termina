@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { formatTickClock } from '~/utils/gameClock'
 import AnnouncementToast from '~/components/game/AnnouncementToast.vue'
 import AsciiMap from '~/components/game/AsciiMap.vue'
+import ActionRow from '~/components/game/ActionRow.vue'
 import CommandInput from '~/components/game/CommandInput.vue'
 import DamageFloat, { type DamageFloatEntry } from '~/components/game/DamageFloat.vue'
 import GameStateBar from '~/components/game/GameStateBar.vue'
@@ -1267,6 +1268,37 @@ function pickMoveZone(zoneId: string) {
   handleZoneClick(zoneId)
 }
 
+// ActionRow emits raw command strings; the walk-stop and no-adjacent-zones
+// notices stay here (they write localEvents), everything else routes through
+// the same handlers the old strip used.
+function handleActionRowCommand(cmd: string) {
+  if (cmd === '__no-adjacent-zones__') {
+    localEvents.value.push({
+      tick: gameStore.tick,
+      text: 'No adjacent zones to move to from here.',
+      type: 'system',
+    })
+    return
+  }
+  if (cmd.startsWith('move ')) {
+    handleZoneClick(cmd.slice(5))
+    return
+  }
+  if (
+    cmd.startsWith('attack ') ||
+    cmd === 'burn' ||
+    cmd === 'ward' ||
+    cmd === 'backup' ||
+    cmd === 'cache' ||
+    cmd === 'harden' ||
+    cmd === 'surrender'
+  ) {
+    runSituational(cmd)
+    return
+  }
+  handleQuickAction(cmd)
+}
+
 function handleQuickAction(cmd: string) {
   uiLog.debug('Quick action', { cmd })
   const p = gameStore.player
@@ -1421,6 +1453,14 @@ function quickActionAria(cmd: string): string {
   }
   return labels[cmd] ?? cmd
 }
+
+// The accessible labels ActionRow renders per ability slot — same source as
+// quickActionAria so the aria never drifts from the button state.
+const abilityArias = computed(() => {
+  const out: Record<string, string> = {}
+  for (const slot of ['Q', 'W', 'E', 'R']) out[slot] = quickActionAria(slot)
+  return out
+})
 
 // ── Item use from inventory bar / keybinds ───────────────────
 function handleItemUse(_slotIndex: number, itemId: string) {
@@ -1903,61 +1943,16 @@ function handleReturnToMenu() {
           [SHOP]
         </button>
       </div>
-      <div class="flex gap-1 overflow-x-auto px-2 py-1.5">
-        <button
-          v-for="cmd in ['ATK', 'Q', 'W', 'E', 'R', 'MOVE', 'SHOP', 'SCORE']"
-          :key="cmd"
-          class="hud-action-btn min-h-[40px] min-w-[44px] whitespace-nowrap border border-border bg-bg-secondary px-2.5 py-1.5 font-mono t-hud-sm font-bold text-text-primary transition-all active:bg-border active:scale-95"
-          :class="{
-            'border-gold text-gold': cmd === 'SHOP' && gameStore.canBuy,
-            'border-ability text-ability shadow-glow-ability':
-              ['Q', 'W', 'E', 'R'].includes(cmd) && abilityButtonState[cmd]?.ready,
-            'cursor-not-allowed border-border/50 text-text-dim opacity-50':
-              ['Q', 'W', 'E', 'R'].includes(cmd) && !abilityButtonState[cmd]?.ready,
-            'border-self text-self': cmd === 'SCORE',
-          }"
-          :aria-label="quickActionAria(cmd)"
-          :aria-disabled="
-            ['Q', 'W', 'E', 'R'].includes(cmd) && !abilityButtonState[cmd]?.ready
-              ? 'true'
-              : undefined
-          "
-          :aria-pressed="
-            cmd === 'SHOP'
-              ? showShop
-              : cmd === 'SCORE'
-                ? showScoreboard
-                : cmd === 'MOVE'
-                  ? showMovePicker
-                  : undefined
-          "
-          @click="handleQuickAction(cmd)"
-        >
-          {{ ['Q', 'W', 'E', 'R'].includes(cmd) ? abilityButtonState[cmd]?.label : cmd }}
-        </button>
-      </div>
-
-      <!-- [MOVE] picker: one tap per adjacent zone, named as the rest of the UI
-           names them. Only this game's map contributes (mapZones). -->
-      <div
-        v-if="showMovePicker"
-        class="flex flex-wrap gap-1 px-2 pb-1.5"
-        data-testid="move-picker"
-        role="group"
-        aria-label="Move to an adjacent zone"
-      >
-        <button
-          v-for="z in movePickerZones"
-          :key="z.id"
-          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-chaff/50 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-chaff transition-all active:bg-border active:scale-95"
-          :class="{ 'opacity-60': z.fogged }"
-          :data-testid="`move-picker-${z.id}`"
-          :aria-label="`Move to ${z.name}`"
-          @click="pickMoveZone(z.id)"
-        >
-          ▸ {{ z.name }}
-        </button>
-      </div>
+      <ActionRow
+        :move-zones="movePickerZones"
+        :situational="situationalActions"
+        :abilities="abilityButtonState"
+        :ability-arias="abilityArias"
+        :shop-open="showShop"
+        :scoreboard-open="showScoreboard"
+        :can-buy="gameStore.canBuy"
+        @command="handleActionRowCommand"
+      />
 
       <!-- A queued walk is otherwise invisible: the order scrolls out of the log
            and the hero just drifts a zone per tick with no way to call it off. -->
@@ -1974,25 +1969,6 @@ function handleReturnToMenu() {
           @click="stopWalking"
         >
           [stop]
-        </button>
-      </div>
-      <!-- Situational actions — surfaced as buttons only when available, so the
-           command-only verbs (ward/burn/backup/cache/harden/surrender) are usable
-           on touch and discoverable to new players. -->
-      <div
-        v-if="situationalActions.length"
-        class="flex flex-wrap gap-1 px-2 pb-1.5"
-        data-testid="situational-actions"
-      >
-        <button
-          v-for="a in situationalActions"
-          :key="a.cmd"
-          class="hud-action-btn min-h-[36px] whitespace-nowrap border border-ability/40 bg-bg-secondary px-2 py-1 font-mono t-hud-sm text-ability transition-all active:bg-border active:scale-95"
-          :data-testid="`situational-${a.cmd}`"
-          :aria-label="a.aria"
-          @click="runSituational(a.cmd)"
-        >
-          {{ a.label }}
         </button>
       </div>
       <TalentPicker

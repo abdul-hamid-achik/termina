@@ -29,6 +29,24 @@ export interface SituationalContext {
 }
 
 /**
+ * The lowest-HP hostile wave in the player's zone as a `wave:<index>` string —
+ * the STRIP action (attack the easiest last-hit). Mirrors the server's
+ * waveInZoneByIndex ordering (position among ALL waves in the zone, corpses
+ * included, so the index matches what `attack wave:<i>` resolves to).
+ * Returns null when nothing hostile stands here.
+ */
+export function stripTargetString(player: PlayerState, waves: WaveUnitState[]): string | null {
+  const inZone = waves.filter((c) => c.zone === player.zone)
+  let best: { hp: number; index: number } | null = null
+  for (let index = 0; index < inZone.length; index++) {
+    const c = inZone[index]!
+    if (c.team === player.team || c.hp <= 0) continue
+    if (best === null || c.hp < best.hp) best = { hp: c.hp, index }
+  }
+  return best === null ? null : `wave:${best.index}`
+}
+
+/**
  * Which situational commands (ward / burn / backup / cache / harden / surrender) a
  * living player can take right now, given their items, zone and the world state.
  * Pure — extracted from GameScreen so the availability rules are unit-tested
@@ -41,6 +59,10 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
 
   if (p.items.some((i) => i === 'camtap' || i === 'sniffer')) {
     out.push({ cmd: 'ward', label: 'WARD', aria: `Place a ward in ${p.zone}` })
+  }
+  const strip = stripTargetString(p, ctx.waves)
+  if (strip !== null) {
+    out.push({ cmd: `attack ${strip}`, label: 'STRIP', aria: 'Attack the lowest-HP hostile wave' })
   }
   if (!('error' in pickDenyTargetString(p, ctx.waves))) {
     out.push({ cmd: 'burn', label: 'BURN', aria: 'Burn a low-HP allied wave' })
