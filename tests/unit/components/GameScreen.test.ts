@@ -1562,9 +1562,16 @@ describe('GameScreen responsive grid', () => {
     expect(allRowDecls.length).toBeGreaterThanOrEqual(3)
   })
 
-  it.each([0, 1, 2])('template %i puts no px floor on any content row', (i) => {
-    const pxFloors = [...allRowDecls[i]!.matchAll(/minmax\(\s*(\d+)px/g)].map((m) => Number(m[1]))
-    expect(pxFloors).toEqual([])
+  it('puts no px floor on any content row, at ANY breakpoint', () => {
+    // Select by owner, not by position: the rail added its own template and an
+    // index-based `it.each([0,1,2])` silently stopped covering the phone one.
+    const gridDecls = [...SFC.matchAll(/\.game-grid\s*\{[^}]*grid-template-rows:([^;]*);/gs)].map(
+      (m) => m[1]!,
+    )
+    expect(gridDecls.length).toBeGreaterThanOrEqual(3)
+    for (const decl of gridDecls) {
+      expect([...decl.matchAll(/minmax\(\s*(\d+)px/g)].map((m) => Number(m[1]))).toEqual([])
+    }
   })
 
   it('still lets every content region scroll internally, so nothing needs a floor', () => {
@@ -1582,11 +1589,20 @@ describe('GameScreen responsive grid', () => {
     // Losing sight of the map costs the player all spatial sense of the match,
     // so the board is the one region that must not be scrollable OR scrolled
     // away. A plain max-height (what this used to be) makes it do both.
+    // The cap lives on the TRACK. A percentage max-height on an `auto` track is
+    // cyclic and silently does nothing, and an `auto` track sized by the board's
+    // natural height ate the entire rail — Hero Status collapsed to 0px.
     expect(SFC).toMatch(
-      /\.game-grid__rail\s*\{[^}]*grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)/s,
+      /\.game-grid__rail\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*60%\)\s+minmax\(0,\s*1fr\)/s,
     )
-    expect(SFC).toMatch(/\.rail-map\s*\{[^}]*overflow:\s*visible/s)
-    // ...and the board shrinks to fit rather than overflowing a short viewport.
-    expect(SFC).toMatch(/\.rail-map :deep\(\.map-cell\)\s*\{[^}]*min-height:\s*clamp\(/s)
+    // Both children pinned, so the map being v-if'd out cannot shift the rows.
+    expect(SFC).toMatch(/\.rail-map\s*\{[^}]*grid-row:\s*1/s)
+    expect(SFC).toMatch(/\.rail-scroll\s*\{[^}]*grid-row:\s*2/s)
+    // Clipped, not visible: spilling let the board intercept taps on the action
+    // bar, SHOP and the talent picker.
+    expect(SFC).toMatch(/\.rail-map\s*\{[^}]*overflow:\s*hidden/s)
+    // ...and the board shrinks to fit. The hook must be the class the COMPACT
+    // overview renders (AsciiMap.test.ts asserts it exists in the DOM).
+    expect(SFC).toMatch(/\.rail-map :deep\(\.map-cell-compact\)\s*\{[^}]*height:\s*clamp\(/s)
   })
 })

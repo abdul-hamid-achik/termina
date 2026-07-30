@@ -2088,37 +2088,43 @@ function handleReturnToMenu() {
 .game-grid__rail {
   grid-column: 3;
   grid-row: 2;
-  /* Two rows: the board (always visible, never scrolls) and everything else
-     (shares the remainder, scrolls). A plain flex column with overflow-y:auto
-     let the map scroll out of view, which costs the player their read of the
-     whole match. */
+  /* Two rows: the board (always visible, never scrolled away) and everything
+     else (shares the remainder, scrolls). A plain flex column with
+     overflow-y:auto let the map scroll out of view, which costs the player
+     their read of the whole match.
+
+     The board's cap lives on the TRACK, not on the panel. A percentage
+     max-height on an `auto` track is cyclic and silently does nothing, and an
+     `auto` first track sized by the board's natural height ate the entire rail
+     — Hero Status collapsed to 0px with no scrollbar to reach it. */
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 60%) minmax(0, 1fr);
   gap: 0.25rem;
   min-height: 0;
 }
 
-/* The board sizes to its content and is never clipped or scrolled. It is capped
-   only so it cannot consume a short viewport outright; AsciiMap shrinks its own
-   cells to fit (see .rail-map :deep below). */
+/* Pinned to row 1 explicitly: the map is v-if'd out in the map-centric layout,
+   and without this the surviving child auto-places into row 1 and the empty
+   track absorbs the rail. `overflow: visible` let the board spill out and
+   intercept taps on the action bar, SHOP and the talent picker. */
 .rail-map {
-  max-height: 60%;
-  overflow: visible;
+  grid-row: 1;
+  overflow: hidden;
 }
 
-/* Let the board scale down instead of overflowing on short screens: the cell
-   floor is what made the panel ~740px tall regardless of available space. */
-.rail-map :deep(.map-cell) {
-  /* Overrides Tailwind's min-h-[70px] on the cells. That floor is what made the
-     panel ~740px tall regardless of the space available, which is why it used to
-     need a max-height and a scrollbar. */
-  min-height: clamp(26px, 5.5vh, 70px) !important;
+/* The rail renders AsciiMap in compact mode, whose cells carry a FIXED h-7 —
+   so the board could not shrink to its track and had to be scrolled. A
+   min-height override cannot shrink a fixed height; this sets `height`, and
+   !important is required to beat the Tailwind utility. */
+.rail-map :deep(.map-cell-compact) {
+  height: clamp(16px, 2.8vh, 28px) !important;
 }
 
 /* Everything below the board scrolls together. */
 /* Everything below the board shares the remaining height and scrolls together,
    so the board itself never has to. */
 .rail-scroll {
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;

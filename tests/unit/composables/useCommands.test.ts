@@ -1105,12 +1105,15 @@ describe('useCommands', () => {
       // REGRESSION: these read ZoneRuntimeState.creeps, a field the server
       // initialises to [] and never writes — the suggestion list had never once
       // been non-empty in a real game.
-      it('suggests the creeps standing in your zone', () => {
+      it('suggests the ENEMY creeps standing in your zone', () => {
         const { autocomplete } = useCommands()
         const suggestions = autocomplete('attack creep', makeContext())
 
+        // creep:1 is an ally — the server always refuses an attack on your own
+        // creep (that is what `deny` is for), and an offered target that cannot
+        // work costs the player their single action for the tick.
         const texts = suggestions.map((s) => s.text)
-        expect(texts).toEqual(['creep:0', 'creep:1', 'creep:3', 'creep:4'])
+        expect(texts).toEqual(['creep:0', 'creep:3'])
       })
 
       it('numbers creeps within the zone, not globally', () => {
@@ -1133,13 +1136,14 @@ describe('useCommands', () => {
         expect(texts).toContain('creep:3') // c3 keeps its slot behind it
       })
 
-      it('marks whose creep it is, so a last-hit is not mistaken for a deny', () => {
+      it('offers only enemies, and says so — a last-hit is not a deny', () => {
         const { autocomplete } = useCommands()
         const suggestions = autocomplete('attack creep', makeContext())
 
         const byRef = new Map(suggestions.map((s) => [s.text, s.description]))
         expect(byRef.get('creep:0')).toContain('enemy')
-        expect(byRef.get('creep:1')).toContain('ally')
+        // The ally keeps its slot in the numbering but is never offered.
+        expect(byRef.has('creep:1')).toBe(false)
       })
 
       it('offers no creeps when the zone is empty', () => {

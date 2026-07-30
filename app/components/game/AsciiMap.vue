@@ -498,14 +498,14 @@ const miniRows = computed(() =>
           <template v-for="(cell, ci) in row" :key="ci">
             <div
               v-if="cell"
-              class="flex h-7 items-center justify-center font-mono text-[0.6rem]"
+              class="map-cell-compact flex h-7 items-center justify-center font-mono text-[0.6rem]"
               :class="cell.classes"
             >
               <span>{{ cell.code }}</span>
               <span v-if="cell.tower" :class="cell.tower.cls">{{ cell.tower.glyph }}</span>
               <span v-if="cell.marks">{{ cell.marks }}</span>
             </div>
-            <div v-else class="h-7 bg-bg-primary/30" />
+            <div v-else class="map-cell-compact h-7 bg-bg-primary/30" />
           </template>
         </div>
         <div class="pt-0.5 text-center t-hud-xs font-bold tracking-widest text-dire">DIRE ▼</div>

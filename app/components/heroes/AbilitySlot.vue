@@ -14,13 +14,23 @@ const props = defineProps<{
   manaAvailable?: number
   /** Render as a clickable button that emits `cast`. */
   interactive?: boolean
+  /**
+   * The cost at the CURRENT level, when the caller knows it. The registry's
+   * `manaCost` is the rank-1 headline, and the training console charges the
+   * per-level figure — quoting the headline here recreated the exact "told it
+   * was affordable, then refused" contradiction on the teaching surface.
+   * A resolved number rather than a level, because the passive card passes
+   * slot-key '◆', which is not an ability slot.
+   */
+  manaCost?: number
 }>()
 
 const emit = defineEmits<{ cast: [] }>()
 
 const onCooldown = computed(() => (props.cooldownRemaining ?? 0) > 0)
+const cost = computed(() => props.manaCost ?? props.ability.manaCost)
 const unaffordable = computed(
-  () => props.manaAvailable !== undefined && props.manaAvailable < props.ability.manaCost,
+  () => props.manaAvailable !== undefined && props.manaAvailable < cost.value,
 )
 const disabled = computed(() => onCooldown.value || unaffordable.value)
 const cdSeconds = computed(() => cooldownSeconds(props.ability, TICK_DURATION_MS))
@@ -70,9 +80,7 @@ function onClick() {
     <p class="text-[0.72rem] leading-snug text-text-dim">{{ ability.description }}</p>
 
     <div class="flex gap-3 text-[0.65rem] text-text-dim">
-      <span v-if="ability.manaCost > 0"
-        ><span class="text-ability">mp</span> {{ ability.manaCost }}</span
-      >
+      <span v-if="cost > 0"><span class="text-ability">mp</span> {{ cost }}</span>
       <span v-if="ability.cooldownTicks > 0"
         ><span class="text-ability">cd</span> {{ cdSeconds }}s</span
       >

@@ -1111,12 +1111,17 @@ export function useCommands() {
     if (context.creeps) {
       for (const { creep, index } of creepsInZoneWithIndex(context.creeps, context.player.zone)) {
         if (creep.hp <= 0) continue
+        // Your OWN creeps are the `deny` command's business, never an attack
+        // target — the server refuses them, and in a one-action-per-tick game
+        // an offered target that always fails costs the player the whole tick.
+        // Indices are unaffected: creepsInZoneWithIndex numbers the zone's
+        // creeps, so skipping one here does not renumber the rest.
+        if (creep.team === context.player.team) continue
         const ref = `creep:${index}`
         if (!ref.includes(partial)) continue
-        const side = creep.team === context.player.team ? 'ally' : 'enemy'
         suggestions.push({
           text: ref,
-          description: `${creep.type} ${side} (HP: ${Math.ceil(creep.hp)}/${creepFullHp(creep)})`,
+          description: `${creep.type} enemy (HP: ${Math.ceil(creep.hp)}/${creepFullHp(creep)})`,
         })
       }
     }

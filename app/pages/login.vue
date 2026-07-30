@@ -62,7 +62,17 @@ const canSubmit = computed(() => {
  */
 function safeRedirect(raw: unknown): string {
   const value = typeof raw === 'string' ? raw : ''
-  return value.startsWith('/') && !value.startsWith('//') ? value : '/'
+  // Must start with exactly one slash, and the SECOND character must not be a
+  // slash or a backslash: browsers treat `/\evil.com` as protocol-relative too,
+  // so a `//` test alone is not enough. Leading whitespace and control
+  // characters are stripped by the URL parser before that check happens, which
+  // is how `/%09/evil.com` and a literal tab slip past a naive guard — reject
+  // anything containing one rather than trying to normalise it.
+  if (!value.startsWith('/')) return '/'
+  if (value.length > 1 && (value[1] === '/' || value[1] === '\\')) return '/'
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f\s]/.test(value)) return '/'
+  return value
 }
 
 /**

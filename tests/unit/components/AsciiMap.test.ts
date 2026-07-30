@@ -520,3 +520,23 @@ describe('AsciiMap', () => {
     })
   })
 })
+
+describe('compact overview cells expose a sizing hook', () => {
+  // REGRESSION: the in-game rail clamps the board's cell height so it fits its
+  // track instead of being scrolled. The first attempt targeted `.map-cell`,
+  // which ONLY the full grid carries — the rail renders compact mode, so the
+  // rule matched nothing, the board could not shrink, and Hero Status collapsed
+  // to 0px beneath it. A source-grep test stayed green through all of that, so
+  // this one asserts against the rendered DOM.
+  it('renders .map-cell-compact cells the rail rule can target', () => {
+    const wrapper = mount(AsciiMap, {
+      props: {
+        zones: [makeZone({ id: 'mid-river' }), makeZone({ id: 'mid-t1-rad' })],
+        playerZone: 'mid-river',
+        forceMode: 'compact',
+        overviewOpen: true,
+      },
+    })
+    expect(wrapper.findAll('.map-cell-compact').length).toBeGreaterThan(0)
+  })
+})

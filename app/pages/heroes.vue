@@ -6,6 +6,7 @@ import { heroPlaystyleTags, type PlaystyleTag } from '~~/shared/heroPlaystyle'
 import { filterHeroes, type RoleFilter, type PlaystyleFilter } from '~/utils/heroFilter'
 import type { HeroId, HeroRole, HeroDifficulty } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
+import { getAbilityManaCost } from '~~/shared/utils/ability'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
 import { useTrainingConsole } from '~/composables/useTrainingConsole'
@@ -329,6 +330,7 @@ const {
             :ability="hero.abilities[s]"
             :cooldown-remaining="cooldowns[s]"
             :mana-available="mana"
+            :mana-cost="getAbilityManaCost(hero.abilities[s], s, level)"
             interactive
             @cast="cast(s)"
           />

@@ -216,6 +216,15 @@ describe('login page', () => {
         'https://evil.example.com',
         'javascript:alert(1)',
         'evil.example.com',
+        // Browsers resolve a backslash after the leading slash as
+        // protocol-relative too, so a `//` test alone is not enough.
+        '/\\evil.example.com',
+        '/\\\\evil.example.com',
+        // The URL parser strips leading whitespace and control characters
+        // BEFORE the protocol-relative check, so these become `//evil…`.
+        '/\t/evil.example.com',
+        '/\n//evil.example.com',
+        '/ /evil.example.com',
       ]
 
       for (const target of hostile) {
