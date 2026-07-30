@@ -86,10 +86,10 @@ export function welcomeTemplate(username: string): Email {
     subject: 'Welcome to Termina',
     html: shell(
       `<p style="margin:0 0 12px;">Welcome, <span style="color:${RADIANT};">${username}</span> — your terminal is live.</p>
-       <p style="margin:0 0 12px;">Termina is a text-based 5v5 MOBA played through a terminal. Every command is a kill.</p>
+       <p style="margin:0 0 12px;">TERMINA is a cable-landing city that commits every instruction at once, four seconds wide. You are on a terminal, and the terminal is your deck. One instruction per cycle — same as everyone else.</p>
        ${button('PLAY NOW', 'https://terminamoba.com/lobby')}
        <p style="margin:0;color:${DIM};font-size:12px;">New here? Try Practice vs Bots from the home screen first.</p>`,
     ),
-    text: `Welcome to Termina, ${username}!\n\nTermina is a text-based 5v5 MOBA played through a terminal. Jump in: https://terminamoba.com/lobby`,
+    text: `Welcome to Termina, ${username}!\n\nTERMINA is a cable-landing city that commits every instruction at once, four seconds wide. You are on a terminal, and the terminal is your deck. One instruction per cycle — same as everyone else. Jump in: https://terminamoba.com/lobby`,
   }
 }
