@@ -8,6 +8,38 @@ This file provides guidance to Claude Code (claude.ai/code) and any other AI/con
 
 Termina is a text-based multiplayer MOBA (5v5) played through a terminal-inspired browser UI. Frontend is Nuxt 4 + Vue 3 + Pinia 3 (Tailwind 4). Backend is Nitro with Effect-TS for the game engine, PostgreSQL via Drizzle, and Redis. The game runs on 4-second ticks with deterministic action resolution. Tooling is oxc-based: **oxlint** (lint), **oxfmt** (format), **knip** (dead-code), with lefthook git hooks. Runtime is Bun.
 
+## WORLD (settled — do not invent lore)
+
+TERMINA is a cable-landing city. Twelve transoceanic trunks come out
+of the sea here and stop. Districts: LANDING, ROOKERY, COLDSTORE,
+SHALLOWS. The three routes across the ground are SEAWALL, COLDSTORE
+and SHALLOWS.
+
+THE BATCH CLOCK IS CANON. The city commits every instruction at once,
+four seconds wide, in no order. It was built that way to end a latency
+arms race that was killing people over ten metres of ground. The
+player-facing word is CYCLE. `tick` remains the internal identifier
+until the identifier-sweep release — do not rename it early.
+
+Two crews contest the routes. CHAFF came up off the street. AUDIT is
+Quorum's corporate response division. Quorum is both a team and the
+terrain: the ICE, the wave traffic and the clock are all Quorum's.
+
+Wave units go DOWN, not dead. A last hit is a strip — you take the
+payload, not a life. A deny is a burn. Keep the register dry and
+procedural. Nobody in a wave is a bystander.
+
+The 18 hero ids never change (echo, daemon, malloc, cron, mutex,
+socket, proxy, regex, kernel, lambda, cipher, cache, thread, sentry,
+firewall, ping, traceroute, null_ref). They are HANDLES, with a real
+person behind each. No id migration, no DB change.
+
+Art direction is PHOSPHOR: monochrome green CRT, scanlines, box
+drawing. The product IS a terminal and it should look like one.
+Operator portraits are inked, rendered monochrome green.
+
+English only. If a world fact is missing, raise it — do not fill it in.
+
 ## Commands
 
 ```bash
@@ -36,7 +68,7 @@ bun run test:e2e          # Cairntrace browser e2e (UI only). cairn's `webServer
                           #   scripts/e2e.mjs. Gameplay/engine truth now lives in test:gameplay.
 bun run test:api          # API tests (hitspec, requires running server)
 bun run test:coverage     # All vitest projects with v8 coverage; ENFORCES the thresholds
-                          #   in vitest.config.ts (lines 78 / branches 69 / funcs 76 / stmts 76)
+                          #   in vitest.config.ts (lines 79 / branches 70 / funcs 77 / stmts 77)
 npx vitest run tests/unit/engine/GameLoop.test.ts  # Single test file
 cairn run tests/e2e/flows/profile_view.yml --config tests/e2e/cairntrace.config.yml --cold-start  # Single e2e flow
 
@@ -153,7 +185,7 @@ Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
 - **`players` and `hero_stats` both have `games_played` + `wins`** — bare column refs in a join/upsert are ambiguous in Postgres; qualify them (e.g. `hero_stats.games_played` in `ON CONFLICT DO UPDATE`)
 - **vue-router stays aligned with Nuxt's requirement** — Nuxt 4.4.8 requires `vue-router@5` for the `vue-router/volar/sfc-route-blocks` plugin; pinning v4 reintroduces `ERR_PACKAGE_PATH_NOT_EXPORTED` during `vue-tsc`
 - **Histoire is PINNED to `1.0.0-beta.1`** (`histoire` + `@histoire/plugin-vue`) — the only line that supports Vite 7 (what Nuxt 4 ships); the default "latest stable" 0.17.x does NOT. Do not switch to a `^` range. It renders components in a standalone (non-Nuxt) Vite runtime, so `histoire.setup.ts` installs Pinia + stubs `<NuxtLink>`/global `navigateTo`, and `histoire.config.ts` adds `@vitejs/plugin-vue` + `@tailwindcss/vite` + the `~`/`~~`/`@` aliases and imports `terminal.css`. Story files are `app/**/*.story.vue`; shared mock factories live in `app/stories/fixtures.ts`; store-coupled stories seed via the store's refs/`updateFromTick`. Histoire's builtin `tailwind-tokens` plugin logs a HARMLESS non-fatal `[Plugin:builtin:tailwind-tokens]` error (it calls Tailwind v3's `resolveConfig`, gone in v4) — ignore it; the build still exits 0. `app/**/*.story.vue` + `histoire.config.ts`/`histoire.setup.ts` are knip entries; `.histoire/` is gitignored
-- **Coverage thresholds are ENFORCED** by `bun run test:coverage` (v8) at lines 78 / branches 69 / functions 76 / statements 76 in `vitest.config.ts` — set just under the achieved actuals (lines ~79 / branches ~70.5 / funcs ~77.4 / stmts ~77.6); raise as coverage climbs, never above what's earned
+- **Coverage thresholds are ENFORCED** by `bun run test:coverage` (v8) at lines 79 / branches 70 / functions 77 / statements 77 in `vitest.config.ts` — set just under the achieved actuals (lines ~79 / branches ~70.5 / funcs ~77.4 / stmts ~77.6); raise as coverage climbs, never above what's earned
 
 ## Agent Roles
 
@@ -238,7 +270,7 @@ Expert in the queue, lobby, and hero pick systems.
 - `lobby.ts` — `createLobby`, `pickHero`, `confirmPick`, `startReadyCheck`, `currentPickTurn` (snake pick order). (`seedDraftLobby` is now dead code — it backed the removed `/api/test/new-draft` hook; left in place for a future draft-seed harness.)
 - `server/api/queue/join.post.ts`, `status.get.ts`, `pick.post.ts` — HTTP endpoints
 
-**Flow**: Queue → match found → lobby created → snake hero picks (15s per pick, auto-random on timeout) → 1.5s delay → 3s countdown → `game_ready` published to Redis → game-server.ts creates game. (No ban phase.) On lobby reconnect, `ws.ts` re-sends both `lobby_state` AND `pick_turn` so a refreshing/seeded client recovers whose turn it is.
+**Flow**: Queue → match found → lobby created → snake hero picks (15s per pick, auto-random on timeout) → 1.5s delay → 3s countdown → `game_ready` published to Redis → game-server.ts creates game. Draft opens on a ban phase (2 bans per side, R,D,R,D) for the 5v5 mode; 1v1 and casual co-op skip bans. On lobby reconnect, `ws.ts` re-sends both `lobby_state` AND `pick_turn` so a refreshing/seeded client recovers whose turn it is.
 
 ### services
 
