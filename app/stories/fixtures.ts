@@ -85,10 +85,10 @@ export function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: SAMPLE_HERO_ID,
     zone: 'mid-river',
-    hp: 520,
-    maxHp: 620,
-    mp: 180,
-    maxMp: 300,
+    integ: 520,
+    maxInteg: 620,
+    bw: 180,
+    maxBw: 300,
     level: 9,
     xp: 1400,
     gold: 1400,
@@ -150,8 +150,8 @@ export function makeIce(team: TeamId, zone: string, overrides: Partial<IceState>
   return {
     team,
     zone,
-    hp: 1800,
-    maxHp: 1800,
+    integ: 1800,
+    maxInteg: 1800,
     alive: true,
     invulnerable: false,
     ...overrides,
@@ -161,8 +161,8 @@ export function makeIce(team: TeamId, zone: string, overrides: Partial<IceState>
 export function makeAncient(team: TeamId, overrides: Partial<AncientState> = {}): AncientState {
   return {
     team,
-    hp: 4500,
-    maxHp: 4500,
+    integ: 4500,
+    maxInteg: 4500,
     alive: true,
     vulnerable: false,
     ...overrides,
@@ -172,8 +172,8 @@ export function makeAncient(team: TeamId, overrides: Partial<AncientState> = {})
 export function makeTenant(overrides: Partial<TenantState> = {}): TenantState {
   return {
     alive: true,
-    hp: 3500,
-    maxHp: 5000,
+    integ: 3500,
+    maxInteg: 5000,
     deathTick: null,
     ...overrides,
   }
@@ -228,8 +228,8 @@ export function makeRoster(): Record<string, PlayerState> {
       heroId: SAMPLE_HEROES.kernel,
       zone: 'top-river',
       level: 8,
-      hp: 720,
-      maxHp: 980,
+      integ: 720,
+      maxInteg: 980,
     }),
     makePlayer({
       id: 'p3',
@@ -258,7 +258,7 @@ export function makeRoster(): Record<string, PlayerState> {
       level: 9,
       alive: false,
       respawnTick: 268,
-      hp: 0,
+      integ: 0,
     }),
   ]
   const audit: PlayerState[] = [
@@ -361,7 +361,7 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     waves: [],
     neutrals: [],
     ice: [
-      makeIce('audit', 'mid-t1-audit', { alive: false, hp: 0 }),
+      makeIce('audit', 'mid-t1-audit', { alive: false, integ: 0 }),
       makeIce('audit', 'mid-t2-audit'),
       makeIce('chaff', 'mid-t1-chaff'),
     ],

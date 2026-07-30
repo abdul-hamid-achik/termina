@@ -6,8 +6,8 @@ import type { AncientState, TeamId } from '~~/shared/types/game'
 function ancient(over: Partial<AncientState> = {}): AncientState {
   return {
     team: 'chaff',
-    hp: 6000,
-    maxHp: 6000,
+    integ: 6000,
+    maxInteg: 6000,
     alive: true,
     vulnerable: false,
     ...over,
@@ -16,7 +16,7 @@ function ancient(over: Partial<AncientState> = {}): AncientState {
 
 const ANCIENTS: Record<TeamId, AncientState> = {
   chaff: ancient({ team: 'chaff' }),
-  audit: ancient({ team: 'audit', vulnerable: true, hp: 4200 }),
+  audit: ancient({ team: 'audit', vulnerable: true, integ: 4200 }),
 }
 
 describe('traceModel', () => {
@@ -90,7 +90,7 @@ describe('traceModel', () => {
     expect(model.terminals).toHaveLength(2)
     const audit = model.terminals.find((t) => t.team === 'audit')!
     expect(audit.vulnerable).toBe(true)
-    expect(audit.hp).toBe(4200)
+    expect(audit.integ).toBe(4200)
     const chaff = model.terminals.find((t) => t.team === 'chaff')!
     expect(chaff.alive).toBe(true)
   })

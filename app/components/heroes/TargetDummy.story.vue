@@ -5,19 +5,19 @@ import TargetDummy from './TargetDummy.vue'
 <template>
   <Story title="Heroes/TargetDummy" :layout="{ type: 'grid', width: 320 }">
     <Variant title="Full HP">
-      <TargetDummy name="Target Dummy" :hp="1000" :max-hp="1000" />
+      <TargetDummy name="Target Dummy" :integ="1000" :max-integ="1000" />
     </Variant>
     <Variant title="Half (gold)">
-      <TargetDummy name="Target Dummy" :hp="480" :max-hp="1000" />
+      <TargetDummy name="Target Dummy" :integ="480" :max-integ="1000" />
     </Variant>
     <Variant title="Low (audit) + DoT">
-      <TargetDummy name="Target Dummy" :hp="180" :max-hp="1000" :dots="2" />
+      <TargetDummy name="Target Dummy" :integ="180" :max-integ="1000" :dots="2" />
     </Variant>
     <Variant title="Under control (stun + slow)">
       <TargetDummy
         name="Target Dummy"
-        :hp="620"
-        :max-hp="1000"
+        :integ="620"
+        :max-integ="1000"
         :statuses="[
           { label: 'STUNNED', ticksLeft: 2 },
           { label: 'SLOW 30%', ticksLeft: 3 },
@@ -25,7 +25,7 @@ import TargetDummy from './TargetDummy.vue'
       />
     </Variant>
     <Variant title="Destroyed">
-      <TargetDummy name="Target Dummy" :hp="0" :max-hp="1000" />
+      <TargetDummy name="Target Dummy" :integ="0" :max-integ="1000" />
     </Variant>
   </Story>
 </template>

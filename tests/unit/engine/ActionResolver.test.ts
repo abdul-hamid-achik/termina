@@ -23,10 +23,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -180,10 +180,10 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            mp: 10,
-            maxMp: 280,
-            hp: 550,
-            maxHp: 550,
+            bw: 10,
+            maxBw: 280,
+            integ: 550,
+            maxInteg: 550,
             zone: 'mid-river',
             team: 'chaff',
           }),
@@ -192,8 +192,8 @@ describe('ActionResolver', () => {
             name: 'Enemy',
             zone: 'mid-river',
             team: 'audit',
-            hp: 550,
-            maxHp: 550,
+            integ: 550,
+            maxInteg: 550,
           }),
         },
       })
@@ -213,8 +213,8 @@ describe('ActionResolver', () => {
       expect(result.rejected[0]!.playerId).toBe('p1')
       expect(result.rejected[0]!.reason).toMatch(/mana/i)
       // Target untouched, no mana spent, no cooldown set
-      expect(result.state.players['p2']!.hp).toBe(550)
-      expect(result.state.players['p1']!.mp).toBe(10)
+      expect(result.state.players['p2']!.integ).toBe(550)
+      expect(result.state.players['p1']!.bw).toBe(10)
       expect(result.state.players['p1']!.cooldowns.q).toBe(0)
     })
 
@@ -322,7 +322,7 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff', heroId: 'echo' }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', hp: 500 }),
+          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', integ: 500 }),
         },
       })
 
@@ -348,7 +348,7 @@ describe('ActionResolver', () => {
             zone: 'mid-river',
             team: 'audit',
             heroId: 'null_ref',
-            hp: 500,
+            integ: 500,
           }),
         },
       })
@@ -377,7 +377,9 @@ describe('ActionResolver', () => {
             xp: 0,
           }),
         },
-        neutrals: [{ id: 'n1', zone: 'mid-river', type: 'stub', hp: 1, maxHp: 250, alive: true }],
+        neutrals: [
+          { id: 'n1', zone: 'mid-river', type: 'stub', integ: 1, maxInteg: 250, alive: true },
+        ],
       })
 
       const actions: PlayerAction[] = [
@@ -551,7 +553,7 @@ describe('ActionResolver', () => {
             team: 'chaff',
             items: ['concussion_hammer', null, null, null, null, null],
           }),
-          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', hp: 500 }),
+          p2: makePlayer({ id: 'p2', zone: 'mid-river', team: 'audit', name: 'Enemy', integ: 500 }),
         },
       })
 
@@ -747,7 +749,7 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, actions))
 
       const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')
-      expect(ice?.hp).toBe(ice?.maxHp)
+      expect(ice?.integ).toBe(ice?.maxInteg)
 
       const invulnEvents = result.events.filter((e) => e._tag === 'ice_invulnerable')
       expect(invulnEvents.length).toBe(1)
@@ -768,14 +770,14 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, actions))
 
       const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')!
-      expect(ice.hp).toBeLessThan(ice.maxHp)
+      expect(ice.integ).toBeLessThan(ice.maxInteg)
       expect(result.state.players['p1']!.iceDamageDealt).toBeGreaterThan(0)
     })
 
     it('destroys a low-HP enemy ice and awards the ice-kill bounty', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff', gold: 600 }) },
-        ice: initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, hp: 1 } : t)),
+        ice: initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, integ: 1 } : t)),
       })
       const actions: PlayerAction[] = [
         {
@@ -861,10 +863,10 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            hp: 300,
-            maxHp: 550,
-            mp: 280,
-            maxMp: 280,
+            integ: 300,
+            maxInteg: 550,
+            bw: 280,
+            maxBw: 280,
             items: ['trauma_patch', null, null, null, null, null],
           }),
         },
@@ -888,10 +890,10 @@ describe('ActionResolver', () => {
       // so the passives phase later in the SAME tick already sees the regen
       // buff — drinking a salve heals on the tick you drink it. It used to
       // resolve after passives, in the shop phase, and do nothing until tick 2.
-      expect(p1.hp).toBe(350)
+      expect(p1.integ).toBe(350)
 
       const tick2 = Effect.runSync(resolveActions(tick1.state, []))
-      expect(tick2.state.players['p1']!.hp).toBe(400)
+      expect(tick2.state.players['p1']!.integ).toBe(400)
     })
 
     it('town portal scroll channels and then teleports to the fountain', () => {
@@ -899,10 +901,10 @@ describe('ActionResolver', () => {
         players: {
           p1: makePlayer({
             zone: 'mid-river',
-            maxHp: 550,
-            hp: 550,
-            mp: 280,
-            maxMp: 280,
+            maxInteg: 550,
+            integ: 550,
+            bw: 280,
+            maxBw: 280,
             items: ['recall_token', null, null, null, null, null],
           }),
         },
@@ -954,8 +956,8 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
-            hp: 750,
-            maxHp: 750,
+            integ: 750,
+            maxInteg: 750,
             items: ['hardshell', null, null, null, null, null],
           }),
         },
@@ -980,10 +982,10 @@ describe('ActionResolver', () => {
             name: 'Enemy',
             zone: 'mid-river',
             team: 'audit',
-            hp: 550,
-            maxHp: 550,
-            mp: 380,
-            maxMp: 380,
+            integ: 550,
+            maxInteg: 550,
+            bw: 380,
+            maxBw: 380,
             items: ['phase_shunt', null, null, null, null, null],
           }),
         },
@@ -999,7 +1001,7 @@ describe('ActionResolver', () => {
           { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'Enemy' } } },
         ]),
       )
-      expect(tick2.state.players['p2']!.hp).toBe(550)
+      expect(tick2.state.players['p2']!.integ).toBe(550)
       const dmgEvents = tick2.events.filter((e) => e._tag === 'damage' && e.targetId === 'p2')
       expect(dmgEvents.every((e) => e.amount === 0)).toBe(true)
     })
@@ -1011,16 +1013,16 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            hp: 550,
-            maxHp: 550,
+            integ: 550,
+            maxInteg: 550,
           }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
             zone: 'mid-river',
             team: 'audit',
-            hp: 650,
-            maxHp: 650,
+            integ: 650,
+            maxInteg: 650,
             items: ['spite_plate', null, null, null, null, null],
           }),
         },
@@ -1053,7 +1055,7 @@ describe('ActionResolver', () => {
       expect(reflected).toBeDefined()
       const reflectAmount = reflected!._tag === 'damage' ? reflected!.amount : 0
       expect(reflectAmount).toBeGreaterThan(0)
-      expect(tick2.state.players['p1']!.hp).toBe(550 - reflectAmount)
+      expect(tick2.state.players['p1']!.integ).toBe(550 - reflectAmount)
     })
 
     it('rejects an invalid item use without changing state or emitting events', () => {
@@ -1099,7 +1101,7 @@ describe('ActionResolver', () => {
         ]),
       )
 
-      expect(result.state.ancients.audit.hp).toBeLessThan(state.ancients.audit.hp)
+      expect(result.state.ancients.audit.integ).toBeLessThan(state.ancients.audit.integ)
       const dmg = result.events.find(
         (e) => e._tag === 'damage' && e.targetId === 'ancient_audit' && e.sourceId === 'p1',
       )
@@ -1116,7 +1118,7 @@ describe('ActionResolver', () => {
         ]),
       )
 
-      expect(result.state.ancients.audit.hp).toBe(state.ancients.audit.hp)
+      expect(result.state.ancients.audit.integ).toBe(state.ancients.audit.integ)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
     })
 
@@ -1128,14 +1130,14 @@ describe('ActionResolver', () => {
         ]),
       )
 
-      expect(result.state.ancients.audit.hp).toBe(state.ancients.audit.hp)
+      expect(result.state.ancients.audit.integ).toBe(state.ancients.audit.integ)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(0)
     })
   })
 
   describe('spell block (Linken / Firewall)', () => {
-    // echo Q is a single-target (targetType 'hero') damage spell. hp/maxHp/mp are
-    // set to echo's exact base (550/280) so the maxHp-sync phase is a no-op and
+    // echo Q is a single-target (targetType 'hero') damage spell. hp/maxInteg/mp are
+    // set to echo's exact base (550/280) so the maxInteg-sync phase is a no-op and
     // the spell's HP change isn't recomputed away.
     const castQ = (state: GameState) =>
       Effect.runSync(
@@ -1146,14 +1148,14 @@ describe('ActionResolver', () => {
           },
         ]),
       )
-    const echoStats = { heroId: 'echo', hp: 550, maxHp: 550, mp: 280, maxMp: 280 } as const
+    const echoStats = { heroId: 'echo', integ: 550, maxInteg: 550, bw: 280, maxBw: 280 } as const
     const enemy = (buffs: PlayerState['buffs']) =>
       makePlayer({ id: 'p2', name: 'Enemy', team: 'audit', zone: 'mid-river', ...echoStats, buffs })
     const caster = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', ...echoStats })
 
     it('control: the spell lands on an unbuffed target', () => {
       const state = makeGameState({ players: { p1: caster(), p2: enemy([]) } })
-      expect(castQ(state).state.players['p2']!.hp).toBeLessThan(550)
+      expect(castQ(state).state.players['p2']!.integ).toBeLessThan(550)
     })
 
     it('Intercept Shell blocks the spell, spares the target, and spends the charge', () => {
@@ -1166,9 +1168,9 @@ describe('ActionResolver', () => {
         },
       })
       const result = castQ(state)
-      expect(result.state.players['p2']!.hp).toBe(550) // unharmed
+      expect(result.state.players['p2']!.integ).toBe(550) // unharmed
       expect(result.state.players['p2']!.buffs.find((b) => b.id === 'spellblock')!.stacks).toBe(0)
-      expect(result.state.players['p1']!.mp).toBeLessThan(280) // caster still paid
+      expect(result.state.players['p1']!.bw).toBeLessThan(280) // caster still paid
       expect(result.state.players['p1']!.cooldowns.q).toBeGreaterThan(0)
       expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(true)
     })
@@ -1183,7 +1185,7 @@ describe('ActionResolver', () => {
         },
       })
       const result = castQ(state)
-      expect(result.state.players['p2']!.hp).toBe(550)
+      expect(result.state.players['p2']!.integ).toBe(550)
       expect(result.state.players['p2']!.buffs.some((b) => b.id === 'firewall_block')).toBe(false)
     })
 
@@ -1197,7 +1199,7 @@ describe('ActionResolver', () => {
         },
       })
       const result = castQ(state)
-      expect(result.state.players['p2']!.hp).toBeLessThan(550) // spell lands
+      expect(result.state.players['p2']!.integ).toBeLessThan(550) // spell lands
       expect(result.events.some((e) => e._tag === 'spell_blocked')).toBe(false)
     })
 
@@ -1209,16 +1211,16 @@ describe('ActionResolver', () => {
         },
       })
       const result = castQ(state)
-      expect(result.state.players['p2']!.hp).toBe(550) // holder unharmed (negated)
+      expect(result.state.players['p2']!.integ).toBe(550) // holder unharmed (negated)
       expect(result.state.players['p2']!.buffs.some((b) => b.id === 'mirror_shell')).toBe(false) // spent
-      expect(result.state.players['p1']!.hp).toBeLessThan(550) // caster took the reflected damage
+      expect(result.state.players['p1']!.integ).toBeLessThan(550) // caster took the reflected damage
       const ev = result.events.find((e) => e._tag === 'spell_blocked')
       expect(ev && ev._tag === 'spell_blocked' ? ev.source : null).toBe('mirror_shell')
     })
   })
 
   describe('Stack Overflow (Overclock 2x)', () => {
-    const echoStats = { heroId: 'echo', hp: 550, maxHp: 550, mp: 280, maxMp: 280 } as const
+    const echoStats = { heroId: 'echo', integ: 550, maxInteg: 550, bw: 280, maxBw: 280 } as const
     const castQ = (state: GameState) =>
       Effect.runSync(
         resolveActions(state, [
@@ -1249,7 +1251,7 @@ describe('ActionResolver', () => {
       })
 
     it('doubles the next ability damage and consumes the charge', () => {
-      const baseDmg = 550 - castQ(build([])).state.players['p2']!.hp
+      const baseDmg = 550 - castQ(build([])).state.players['p2']!.integ
       expect(baseDmg).toBeGreaterThan(0)
 
       const r = castQ(
@@ -1257,7 +1259,7 @@ describe('ActionResolver', () => {
           { id: 'stack_overflow_buff', stacks: 1, ticksRemaining: 10, source: 'stack_overflow' },
         ]),
       )
-      const ocDmg = 550 - r.state.players['p2']!.hp
+      const ocDmg = 550 - r.state.players['p2']!.integ
       expect(ocDmg).toBe(baseDmg * 2)
       // charge spent
       expect(r.state.players['p1']!.buffs.some((b) => b.id === 'stack_overflow_buff')).toBe(false)
@@ -1271,11 +1273,11 @@ describe('ActionResolver', () => {
       state: GameState
       attack: () => { rolledCrit: boolean; damage: number }
     } {
-      // Use the hero's REAL stats so the per-tick maxHp recalculation doesn't
+      // Use the hero's REAL stats so the per-tick maxInteg recalculation doesn't
       // collapse an inflated HP pool mid-tick and mask the actual attack damage.
       const echo = HEROES.echo!
-      const maxHp = echo.baseStats.hp
-      const maxMp = echo.baseStats.mp
+      const maxInteg = echo.baseStats.hp
+      const maxBw = echo.baseStats.mp
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -1283,33 +1285,33 @@ describe('ActionResolver', () => {
             team: 'chaff',
             zone: 'mid-river',
             items: attackerItems,
-            hp: maxHp,
-            maxHp,
-            mp: maxMp,
-            maxMp,
+            integ: maxInteg,
+            maxInteg,
+            bw: maxBw,
+            maxBw,
           }),
           p2: makePlayer({
             id: 'p2',
             name: 'Enemy',
             team: 'audit',
             zone: 'mid-river',
-            hp: maxHp,
-            maxHp,
-            mp: maxMp,
-            maxMp,
+            integ: maxInteg,
+            maxInteg,
+            bw: maxBw,
+            maxBw,
           }),
         },
       })
       return {
         state,
         attack: () => {
-          const before = maxHp
+          const before = maxInteg
           const result = Effect.runSync(
             resolveActions(state, [
               { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'p2' } } },
             ]),
           )
-          const after = result.state.players['p2']!.hp
+          const after = result.state.players['p2']!.integ
           const damage = before - after
           // echo base attack ~58 + crit item bonuses (+120) = ~178 effective.
           // Non-crit damage vs plate 3 = ~173. Crits multiply by 1.5/1.75/
@@ -1456,8 +1458,8 @@ describe('ActionResolver', () => {
         name: 'Enemy',
         team: 'audit',
         zone: 'mid-river',
-        hp: 9999,
-        maxHp: 9999,
+        integ: 9999,
+        maxInteg: 9999,
       })
       const state = makeGameState({ players: { p1: immuneButNotStunned, p2: enemy } })
       const result = Effect.runSync(
@@ -1468,7 +1470,7 @@ describe('ActionResolver', () => {
       // The attack resolved (not rejected) — stun_immune did not gate it.
       expect(result.rejected).toHaveLength(0)
       // Damage landed (hp dropped below 9999).
-      expect(result.state.players['p2']!.hp).toBeLessThan(9999)
+      expect(result.state.players['p2']!.integ).toBeLessThan(9999)
     })
   })
 
@@ -1518,7 +1520,7 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: {
           p1: attacker(),
-          p2: makePlayer({ id: 'p2', name: 'Buddy', team: 'chaff', zone: 'mid-river', hp: 500 }),
+          p2: makePlayer({ id: 'p2', name: 'Buddy', team: 'chaff', zone: 'mid-river', integ: 500 }),
         },
       })
       const result = attack(state, { kind: 'hero', name: 'p2' })
@@ -1526,7 +1528,7 @@ describe('ActionResolver', () => {
       expect(result.rejected[0]!.reason).toContain('Buddy')
       expect(result.rejected[0]!.reason).toMatch(/your team/i)
       // Assert on the damage channel, not raw hp — the stat recalc rescales hp
-      // when maxHp is recomputed, so a raw hp comparison is confounded.
+      // when maxInteg is recomputed, so a raw hp comparison is confounded.
       expect(result.events.some((e) => e._tag === 'damage' && e.targetId === 'p2')).toBe(false)
     })
 
@@ -1541,10 +1543,10 @@ describe('ActionResolver', () => {
       const state = makeGameState({
         players: { p1: attacker() },
         waves: [
-          { id: 'c0', team: 'audit', zone: 'mid-river', hp: 400, type: 'line' },
-          { id: 'c1', team: 'audit', zone: 'mid-river', hp: 400, type: 'line' },
+          { id: 'c0', team: 'audit', zone: 'mid-river', integ: 400, type: 'line' },
+          { id: 'c1', team: 'audit', zone: 'mid-river', integ: 400, type: 'line' },
           // A wave in another zone must not widen the quoted range.
-          { id: 'c2', team: 'audit', zone: 'top-river', hp: 400, type: 'line' },
+          { id: 'c2', team: 'audit', zone: 'top-river', integ: 400, type: 'line' },
         ],
       })
       const result = attack(state, { kind: 'wave', index: 4 })
@@ -1555,7 +1557,7 @@ describe('ActionResolver', () => {
     it('says the wave is already dead', () => {
       const state = makeGameState({
         players: { p1: attacker() },
-        waves: [{ id: 'c0', team: 'audit', zone: 'mid-river', hp: 0, type: 'line' }],
+        waves: [{ id: 'c0', team: 'audit', zone: 'mid-river', integ: 0, type: 'line' }],
       })
       const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
@@ -1567,12 +1569,12 @@ describe('ActionResolver', () => {
       // and banked the FULL last-hit bounty — the opposite of last-hitting.
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', gold: 600 }) },
-        waves: [{ id: 'ally0', team: 'chaff', zone: 'mid-river', hp: 5, type: 'line' }],
+        waves: [{ id: 'ally0', team: 'chaff', zone: 'mid-river', integ: 5, type: 'line' }],
       })
       const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
       expect(result.rejected[0]!.reason).toMatch(/own wave/i)
-      expect(result.state.waves[0]!.hp).toBe(5)
+      expect(result.state.waves[0]!.integ).toBe(5)
       expect(result.state.players['p1']!.gold).toBe(600)
       expect(result.state.players['p1']!.xp).toBe(0)
     })
@@ -1587,7 +1589,7 @@ describe('ActionResolver', () => {
     it('says Tenant is already dead', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'hollow' }) },
-        tenant: { alive: false, hp: 0, maxHp: 2000, deathTick: 1 },
+        tenant: { alive: false, integ: 0, maxInteg: 2000, deathTick: 1 },
       })
       const result = attack(state, { kind: 'tenant' })
       expect(result.rejected).toHaveLength(1)
@@ -1601,8 +1603,8 @@ describe('ActionResolver', () => {
           {
             id: 'n0',
             zone: 'silt-chaff-top',
-            hp: 0,
-            maxHp: 100,
+            integ: 0,
+            maxInteg: 100,
             type: 'stub',
             alive: false,
           },

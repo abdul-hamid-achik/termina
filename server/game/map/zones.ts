@@ -55,12 +55,12 @@ export function initializeIce(zones: readonly Zone[] = ZONES): IceState[] {
     if (!zone.ice) continue
     if (zone.team === 'neutral') continue // neutral zones don't have ice
     const tier = zone.tier ?? getIceTier(zone.id)
-    const maxHp = getIceMaxHp(tier)
+    const maxInteg = getIceMaxHp(tier)
     ice.push({
       team: zone.team,
       zone: zone.id,
-      hp: maxHp,
-      maxHp,
+      integ: maxInteg,
+      maxInteg,
       alive: true,
       invulnerable: false,
     })

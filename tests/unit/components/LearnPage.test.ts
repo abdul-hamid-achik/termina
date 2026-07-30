@@ -20,7 +20,7 @@ import {
   BASIC_ABILITY_RANKS,
   ULTIMATE_UNLOCK_LEVEL,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
-  FOUNTAIN_MANA_PER_TICK_PERCENT,
+  FOUNTAIN_BW_PER_TICK_PERCENT,
   CLOT_RING_REGEN_PERCENT,
   DRIP_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
@@ -283,7 +283,7 @@ describe('learn page', () => {
       expect(text).toContain('NO innate regeneration')
       // The rate is already on the page; the card names every actual source.
       expect(text).toContain(
-        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle`,
+        `${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_BW_PER_TICK_PERCENT}% MP per cycle`,
       )
       expect(text).toContain('out of combat')
       for (const source of [

@@ -16,7 +16,7 @@ import {
   zonesInAbilityRange,
   dealAbilityDamage,
   damageEnemyNpcsInZone,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   applyBuff,
   updatePlayer,
@@ -83,9 +83,9 @@ function resolveQ(
     }
 
     const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -96,7 +96,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
@@ -144,9 +144,9 @@ function resolveW(
     }
 
     const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -157,7 +157,7 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const updatedTarget = applyBuff(targetPlayer, {
@@ -194,13 +194,13 @@ function resolveE(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const enemies = getEnemiesInZone(state, player)
@@ -250,13 +250,13 @@ function resolveR(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     // AOE+ exotic: the tier-25 talent widens Dereference to enemies in adjacent
@@ -268,7 +268,7 @@ function resolveR(
     const baseDamage = scaleValue(R_DAMAGE, level)
 
     const updatedEnemies = enemies.map((e) => {
-      const hpPercent = e.hp / e.maxHp
+      const hpPercent = e.integ / e.maxInteg
       const damage =
         hpPercent < R_EXECUTE_THRESHOLD
           ? Math.round(baseDamage * (1 + R_EXECUTE_BONUS))
@@ -313,8 +313,8 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
   if (!player || !player.alive) return state
 
   // Restore 15% max MP
-  const manaRestore = Math.round(player.maxMp * 0.15)
-  let updated: PlayerState = { ...player, mp: Math.min(player.maxMp, player.mp + manaRestore) }
+  const manaRestore = Math.round(player.maxBw * 0.15)
+  let updated: PlayerState = { ...player, bw: Math.min(player.maxBw, player.bw + manaRestore) }
 
   // Reduce all cooldowns by 2
   updated = {

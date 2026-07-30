@@ -116,11 +116,11 @@ describe('Game Flow Integration', () => {
         return {
           ...sieged,
           ice: sieged.ice.map((t) =>
-            t.zone === 'mid-t3-audit' ? { ...t, alive: false, hp: 0 } : t,
+            t.zone === 'mid-t3-audit' ? { ...t, alive: false, integ: 0 } : t,
           ),
           ancients: {
             ...sieged.ancients,
-            audit: { ...sieged.ancients.audit, hp: 400 },
+            audit: { ...sieged.ancients.audit, integ: 400 },
           },
         }
       })
@@ -144,7 +144,7 @@ describe('Game Flow Integration', () => {
       expect(endState.phase).toBe('ended')
       expect(endState.winner).toBe('chaff')
       expect(endState.ancients.audit.alive).toBe(false)
-      expect(endState.ancients.audit.hp).toBe(0)
+      expect(endState.ancients.audit.integ).toBe(0)
       expect(endState.ancients.chaff.alive).toBe(true)
 
       // Hero damage was routed to the Ancient and its destruction was
@@ -209,11 +209,11 @@ describe('Game Flow Integration', () => {
       submitAction(gameId, 'tf_r1', { type: 'attack', target: { kind: 'hero', name: 'tf_d0' } })
       const r1 = await runTick(sm, gameId)
       const softened = r1.state.players['tf_d0']!
-      expect(softened.hp).toBeLessThan(softened.maxHp)
+      expect(softened.integ).toBeLessThan(softened.maxInteg)
       expect(softened.alive).toBe(true)
 
       // Arrange a lethal blow, snapshot gold, then the killer finishes
-      await arrange(sm, gameId, (s) => setPlayer(s, 'tf_d0', { hp: 1 }))
+      await arrange(sm, gameId, (s) => setPlayer(s, 'tf_d0', { integ: 1 }))
       const before = await Effect.runPromise(sm.getState(gameId))
 
       submitAction(gameId, 'tf_r0', { type: 'attack', target: { kind: 'hero', name: 'tf_d0' } })
@@ -253,7 +253,7 @@ describe('Game Flow Integration', () => {
       const sm = await startGame(gameId, makePlayers('mk', 2))
       await arrange(sm, gameId, (s) => {
         let next = setPlayer(s, 'mk_r0', { zone: 'mid-river' })
-        next = setPlayer(next, 'mk_d0', { zone: 'mid-river', hp: 1 })
+        next = setPlayer(next, 'mk_d0', { zone: 'mid-river', integ: 1 })
         next = setPlayer(next, 'mk_d1', { zone: 'mid-river' })
         return next
       })
@@ -278,7 +278,7 @@ describe('Game Flow Integration', () => {
       expect(delta1 - PASSIVE_GOLD_PER_TICK).toBeLessThanOrEqual(maxBounty)
 
       // Kill #2, next tick — the double kill
-      await arrange(sm, gameId, (s) => setPlayer(s, 'mk_d1', { hp: 1 }))
+      await arrange(sm, gameId, (s) => setPlayer(s, 'mk_d1', { integ: 1 }))
       const before2 = await Effect.runPromise(sm.getState(gameId))
       submitAction(gameId, 'mk_r0', { type: 'attack', target: { kind: 'hero', name: 'mk_d1' } })
       const r2 = await runTick(sm, gameId)
@@ -330,43 +330,43 @@ describe('Game Flow Integration', () => {
       const gameId = uid('hp')
       const sm = await startGame(gameId, makePlayers('ihp', 1))
       const initial = await Effect.runPromise(sm.getState(gameId))
-      const baseMaxHp = initial.players['ihp_r0']!.maxHp
+      const baseMaxHp = initial.players['ihp_r0']!.maxInteg
       const itemHp = getItem('bulwark_plate')!.stats.hp!
       expect(itemHp).toBeGreaterThan(0)
 
-      // Buy an HP item through the engine — maxHp grows by the item bonus
+      // Buy an HP item through the engine — maxInteg grows by the item bonus
       await arrange(sm, gameId, (s) => setPlayer(s, 'ihp_r0', { gold: 5_000 }))
       submitAction(gameId, 'ihp_r0', { type: 'buy', item: 'bulwark_plate' })
       let result = await runTick(sm, gameId)
       const bought = result.state.players['ihp_r0']!
       expect(bought.items).toContain('bulwark_plate')
-      expect(bought.maxHp).toBe(baseMaxHp + itemHp)
+      expect(bought.maxInteg).toBe(baseMaxHp + itemHp)
 
       // Wound to ~50% (inCombat blocks fountain regen so HP stays put)
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'ihp_r0', {
-          hp: Math.floor((baseMaxHp + itemHp) / 2),
+          integ: Math.floor((baseMaxHp + itemHp) / 2),
           buffs: [inCombatBuff()],
         }),
       )
       const preSell = await Effect.runPromise(sm.getState(gameId))
-      const hpPercent = preSell.players['ihp_r0']!.hp / preSell.players['ihp_r0']!.maxHp
+      const hpPercent = preSell.players['ihp_r0']!.integ / preSell.players['ihp_r0']!.maxInteg
 
       submitAction(gameId, 'ihp_r0', { type: 'sell', item: 'bulwark_plate' })
       result = await runTick(sm, gameId)
       const sold = result.state.players['ihp_r0']!
 
       expect(sold.items).not.toContain('bulwark_plate')
-      expect(sold.maxHp).toBe(baseMaxHp)
+      expect(sold.maxInteg).toBe(baseMaxHp)
       // The percentage — not the flat HP — carried over the max-HP drop
-      expect(sold.hp).toBe(Math.floor(baseMaxHp * hpPercent))
+      expect(sold.integ).toBe(Math.floor(baseMaxHp * hpPercent))
     })
 
     it('preserves MP percentage when buying MP items', async () => {
       const gameId = uid('mp')
       const sm = await startGame(gameId, makePlayers('imp', 1))
       const initial = await Effect.runPromise(sm.getState(gameId))
-      const baseMaxMp = initial.players['imp_r0']!.maxMp
+      const baseMaxMp = initial.players['imp_r0']!.maxBw
       expect(baseMaxMp).toBeGreaterThan(0)
       const itemMp = getItem('clock_lens')!.stats.mp!
       expect(itemMp).toBeGreaterThan(0)
@@ -375,21 +375,21 @@ describe('Game Flow Integration', () => {
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'imp_r0', {
           gold: 5_000,
-          mp: Math.floor(baseMaxMp / 2),
+          bw: Math.floor(baseMaxMp / 2),
           buffs: [inCombatBuff()],
         }),
       )
       const pre = await Effect.runPromise(sm.getState(gameId))
-      const mpPercent = pre.players['imp_r0']!.mp / pre.players['imp_r0']!.maxMp
+      const mpPercent = pre.players['imp_r0']!.bw / pre.players['imp_r0']!.maxBw
 
       submitAction(gameId, 'imp_r0', { type: 'buy', item: 'clock_lens' })
       const result = await runTick(sm, gameId)
       const bought = result.state.players['imp_r0']!
 
       expect(bought.items).toContain('clock_lens')
-      expect(bought.maxMp).toBe(baseMaxMp + itemMp)
+      expect(bought.maxBw).toBe(baseMaxMp + itemMp)
       // The percentage — not the flat MP — carried over the max-MP increase
-      expect(bought.mp).toBe(Math.floor((baseMaxMp + itemMp) * mpPercent))
+      expect(bought.bw).toBe(Math.floor((baseMaxMp + itemMp) * mpPercent))
     })
 
     it('rejects 7th item purchase when inventory is full', async () => {
@@ -438,7 +438,7 @@ describe('Game Flow Integration', () => {
             id: 'wave_fog_probe',
             team: 'audit' as const,
             zone: 'audit-base',
-            hp: 550,
+            integ: 550,
             type: 'line' as const,
           },
         ],

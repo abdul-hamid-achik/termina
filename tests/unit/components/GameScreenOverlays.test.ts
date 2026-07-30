@@ -197,7 +197,7 @@ describe('GameScreen overlays', () => {
         name: 'you',
         heroId: SAMPLE_HEROES.echo,
         alive: false,
-        hp: 0,
+        integ: 0,
         respawnTick: 270,
       })
       store.updateFromTick(makeTickMessage({ tick: 240, players: roster }))
@@ -281,7 +281,7 @@ describe('GameScreen overlays', () => {
         name: 'you',
         heroId: SAMPLE_HEROES.echo,
         alive: false,
-        hp: 0,
+        integ: 0,
         respawnTick: 252,
       })
       store.updateFromTick(makeTickMessage({ tick: 240, players: roster }))
@@ -302,7 +302,7 @@ describe('GameScreen overlays', () => {
         name: 'you',
         heroId: SAMPLE_HEROES.echo,
         alive: false,
-        hp: 0,
+        integ: 0,
         respawnTick: 270,
         buybackCooldown: 330, // 90 ticks out = 6 minutes
       })
@@ -570,7 +570,7 @@ describe('GameScreen overlays', () => {
       const wrapper = mountGameScreen()
 
       const dead = makeRoster()
-      dead.p1 = { ...dead.p1!, alive: false, hp: 0, respawnTick: 250 }
+      dead.p1 = { ...dead.p1!, alive: false, integ: 0, respawnTick: 250 }
       store.updateFromTick(makeTickMessage({ tick: 240, players: dead }))
       await wrapper.vm.$nextTick()
       audio.playSound.mockClear()

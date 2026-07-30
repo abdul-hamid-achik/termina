@@ -16,10 +16,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'proxy',
     zone: 'mid-river',
-    hp: 580,
-    maxHp: 580,
-    mp: 380,
-    maxMp: 380,
+    integ: 580,
+    maxInteg: 580,
+    bw: 380,
+    maxBw: 380,
     level: 7,
     xp: 0,
     gold: 600,
@@ -46,8 +46,8 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Ally',
     team: 'chaff',
     heroId: 'echo',
-    hp: 400,
-    maxHp: 550,
+    integ: 400,
+    maxInteg: 550,
     ...overrides,
   })
 }
@@ -58,10 +58,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -105,7 +105,7 @@ describe('Proxy Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(hasBuff(updatedEnemy, 'slow')).toBe(true)
       const slow = updatedEnemy.buffs.find((b) => b.id === 'slow')
       expect(slow!.stacks).toBe(25)
@@ -120,7 +120,7 @@ describe('Proxy Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(380 - 70) // Level 1 Q costs 70
+      expect(updated.bw).toBe(380 - 70) // Level 1 Q costs 70
       expect(updated.cooldowns.q).toBe(8)
     })
 
@@ -140,8 +140,8 @@ describe('Proxy Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -165,7 +165,7 @@ describe('Proxy Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -219,7 +219,7 @@ describe('Proxy Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(380 - 90) // Level 1 W costs 90
+      expect(updated.bw).toBe(380 - 90) // Level 1 W costs 90
       expect(updated.cooldowns.w).toBe(12)
     })
 
@@ -237,46 +237,46 @@ describe('Proxy Hero', () => {
 
   describe('E: Load Balance (Zone Heal)', () => {
     it('heals self when alone in zone', () => {
-      const player = makePlayer({ level: 1, hp: 400, maxHp: 580 })
+      const player = makePlayer({ level: 1, integ: 400, maxInteg: 580 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       // Total heal 180, only self → full 180
-      expect(result.state.players['p1']!.hp).toBe(580) // 400 + 180, capped at maxHp
+      expect(result.state.players['p1']!.integ).toBe(580) // 400 + 180, capped at maxInteg
     })
 
     it('splits healing among all allies in zone', () => {
-      const player = makePlayer({ level: 1, hp: 400, maxHp: 580 })
-      const ally = makeAlly({ hp: 300, maxHp: 550 })
+      const player = makePlayer({ level: 1, integ: 400, maxInteg: 580 })
+      const ally = makeAlly({ integ: 300, maxInteg: 550 })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       // Total 180, split between 2 → 90 each
-      expect(result.state.players['p1']!.hp).toBe(490) // 400 + 90
-      expect(result.state.players['a1']!.hp).toBe(390) // 300 + 90
+      expect(result.state.players['p1']!.integ).toBe(490) // 400 + 90
+      expect(result.state.players['a1']!.integ).toBe(390) // 300 + 90
     })
 
-    it('does not heal above maxHp', () => {
-      const player = makePlayer({ level: 7, hp: 570, maxHp: 580 })
+    it('does not heal above maxInteg', () => {
+      const player = makePlayer({ level: 7, integ: 570, maxInteg: 580 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
-      expect(result.state.players['p1']!.hp).toBe(580)
+      expect(result.state.players['p1']!.integ).toBe(580)
     })
 
     it('does not heal allies in different zone', () => {
-      const player = makePlayer({ level: 1, hp: 400, maxHp: 580 })
-      const ally = makeAlly({ hp: 300, zone: 'top-river' })
+      const player = makePlayer({ level: 1, integ: 400, maxInteg: 580 })
+      const ally = makeAlly({ integ: 300, zone: 'top-river' })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       // Only self → full 180
-      expect(result.state.players['p1']!.hp).toBe(580) // 400 + 180 capped
-      expect(result.state.players['a1']!.hp).toBe(300) // unchanged
+      expect(result.state.players['p1']!.integ).toBe(580) // 400 + 180 capped
+      expect(result.state.players['a1']!.integ).toBe(300) // unchanged
     })
 
     it('deducts mana and sets cooldown', () => {
@@ -286,12 +286,12 @@ describe('Proxy Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(380 - 100) // Level 1 E costs 100
+      expect(updated.bw).toBe(380 - 100) // Level 1 E costs 100
       expect(updated.cooldowns.e).toBe(10)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
@@ -301,7 +301,7 @@ describe('Proxy Hero', () => {
 
   describe('R: Reverse Proxy (Swap + Invulnerability)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
@@ -312,7 +312,7 @@ describe('Proxy Hero', () => {
     })
 
     it('swaps zones between caster and ally', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
 
@@ -323,7 +323,7 @@ describe('Proxy Hero', () => {
     })
 
     it('grants invulnerability to both for 1 tick', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
 
@@ -336,19 +336,19 @@ describe('Proxy Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 200) // R1 costs 200
+      expect(updated.bw).toBe(500 - 200) // R1 costs 200
       expect(updated.cooldowns.r).toBe(50)
     })
 
     it('fails when targeting an enemy', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -359,7 +359,7 @@ describe('Proxy Hero', () => {
     })
 
     it('requires hero target', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -481,10 +481,10 @@ describe('Proxy Hero', () => {
         id: 'p1',
         team: 'chaff',
         zone: 'mid-river',
-        hp: 500,
-        maxHp: 580,
+        integ: 500,
+        maxInteg: 580,
       })
-      const ally = makeAlly({ id: 'a1', zone: 'mid-river', hp: 400, maxHp: 600 }) // just took a hit
+      const ally = makeAlly({ id: 'a1', zone: 'mid-river', integ: 400, maxInteg: 600 }) // just took a hit
       const state = makeState([proxy, ally])
 
       const updated = resolvePassive(state, 'p1', {
@@ -493,8 +493,8 @@ describe('Proxy Hero', () => {
         payload: { targetId: 'a1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
       })
 
-      expect(updated.players['a1']!.hp).toBe(412) // 400 + round(100 * 0.12) = 12
-      expect(updated.players['p1']!.hp).toBe(488) // 500 − 12 soaked
+      expect(updated.players['a1']!.integ).toBe(412) // 400 + round(100 * 0.12) = 12
+      expect(updated.players['p1']!.integ).toBe(488) // 500 − 12 soaked
     })
 
     it('does not redirect Proxy’s own damage', () => {
@@ -502,8 +502,8 @@ describe('Proxy Hero', () => {
         id: 'p1',
         team: 'chaff',
         zone: 'mid-river',
-        hp: 500,
-        maxHp: 580,
+        integ: 500,
+        maxInteg: 580,
       })
       const state = makeState([proxy])
 
@@ -513,7 +513,7 @@ describe('Proxy Hero', () => {
         payload: { targetId: 'p1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
       })
 
-      expect(updated.players['p1']!.hp).toBe(500) // unchanged
+      expect(updated.players['p1']!.integ).toBe(500) // unchanged
     })
 
     it('does not redirect an ally in a different zone', () => {
@@ -521,10 +521,10 @@ describe('Proxy Hero', () => {
         id: 'p1',
         team: 'chaff',
         zone: 'mid-river',
-        hp: 500,
-        maxHp: 580,
+        integ: 500,
+        maxInteg: 580,
       })
-      const ally = makeAlly({ id: 'a1', zone: 'top-river', hp: 400, maxHp: 600 })
+      const ally = makeAlly({ id: 'a1', zone: 'top-river', integ: 400, maxInteg: 600 })
       const state = makeState([proxy, ally])
 
       const updated = resolvePassive(state, 'p1', {
@@ -533,8 +533,8 @@ describe('Proxy Hero', () => {
         payload: { targetId: 'a1', attackerId: 'e1', sourceId: 'e1', damage: 100, amount: 100 },
       })
 
-      expect(updated.players['a1']!.hp).toBe(400) // unchanged
-      expect(updated.players['p1']!.hp).toBe(500) // Proxy didn't soak
+      expect(updated.players['a1']!.integ).toBe(400) // unchanged
+      expect(updated.players['p1']!.integ).toBe(500) // Proxy didn't soak
     })
   })
 })

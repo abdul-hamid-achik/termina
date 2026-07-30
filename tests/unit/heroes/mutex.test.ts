@@ -20,10 +20,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'mutex',
     zone: 'mid-river',
-    hp: 680,
-    maxHp: 680,
-    mp: 260,
-    maxMp: 260,
+    integ: 680,
+    maxInteg: 680,
+    bw: 260,
+    maxBw: 260,
     level: 7,
     xp: 0,
     gold: 600,
@@ -50,10 +50,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -96,7 +96,7 @@ describe('Mutex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(hasBuff(updatedEnemy, 'root')).toBe(true)
       const root = updatedEnemy.buffs.find((b) => b.id === 'root')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
@@ -111,7 +111,7 @@ describe('Mutex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 60) // Level 1 Q costs 60
+      expect(updated.bw).toBe(260 - 60) // Level 1 Q costs 60
       expect(updated.cooldowns.q).toBe(8)
     })
 
@@ -123,7 +123,7 @@ describe('Mutex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 105) // Level 4 Q costs 105
+      expect(updated.bw).toBe(260 - 105) // Level 4 Q costs 105
     })
 
     it('scales damage with level', () => {
@@ -142,8 +142,8 @@ describe('Mutex Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -167,7 +167,7 @@ describe('Mutex Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -227,12 +227,12 @@ describe('Mutex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 70) // Level 1 W costs 70
+      expect(updated.bw).toBe(260 - 70) // Level 1 W costs 70
       expect(updated.cooldowns.w).toBe(12)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
@@ -249,8 +249,8 @@ describe('Mutex Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy1.hp)
-      expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy1.integ)
+      expect(result.state.players['e2']!.integ).toBeLessThan(enemy2.integ)
     })
 
     it('applies stacking slow (max 30% after 3 hits)', () => {
@@ -275,8 +275,8 @@ describe('Mutex Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
-      expect(result.state.players['a1']!.hp).toBe(ally.hp)
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
+      expect(result.state.players['a1']!.integ).toBe(ally.integ)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
     })
 
     it('deducts mana and sets cooldown', () => {
@@ -286,7 +286,7 @@ describe('Mutex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 50) // Level 1 E costs 50
+      expect(updated.bw).toBe(260 - 50) // Level 1 E costs 50
       expect(updated.cooldowns.e).toBe(10)
     })
 
@@ -297,11 +297,11 @@ describe('Mutex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 95) // Level 4 E costs 95
+      expect(updated.bw).toBe(260 - 95) // Level 4 E costs 95
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
@@ -311,7 +311,7 @@ describe('Mutex Hero', () => {
 
   describe('R: Priority Inversion (AoE Fear + Damage)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -319,22 +319,22 @@ describe('Mutex Hero', () => {
     })
 
     it('deals kinetic damage and applies fear for 2 ticks', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(hasBuff(updatedEnemy, 'feared')).toBe(true)
       const feared = updatedEnemy.buffs.find((b) => b.id === 'feared')
       expect(feared!.ticksRemaining).toBe(2)
     })
 
     it('deals bonus damage per Deadlock stack', () => {
-      const playerNoStacks = makePlayer({ level: 6, mp: 500 })
-      let playerWithStacks = makePlayer({ level: 6, mp: 500 })
+      const playerNoStacks = makePlayer({ level: 6, bw: 500 })
+      let playerWithStacks = makePlayer({ level: 6, bw: 500 })
       playerWithStacks = applyBuff(playerWithStacks, {
         id: 'deadlock',
         stacks: 5,
@@ -350,50 +350,50 @@ describe('Mutex Hero', () => {
       const result1 = Effect.runSync(resolveAbility(state1, 'p1', 'r'))
       const result2 = Effect.runSync(resolveAbility(state2, 'p1', 'r'))
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
     it('hits all enemies in zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
       const state = makeState([player, enemy1, enemy2])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy1.hp)
-      expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy1.integ)
+      expect(result.state.players['e2']!.integ).toBeLessThan(enemy2.integ)
       expect(hasBuff(result.state.players['e1']!, 'feared')).toBe(true)
       expect(hasBuff(result.state.players['e2']!, 'feared')).toBe(true)
     })
 
     it('does not damage allies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
-      expect(result.state.players['a1']!.hp).toBe(ally.hp)
+      expect(result.state.players['a1']!.integ).toBe(ally.integ)
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 200) // R1 costs 200
+      expect(updated.bw).toBe(500 - 200) // R1 costs 200
       expect(updated.cooldowns.r).toBe(50)
     })
 
     it('scales damage with R level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
 
@@ -403,8 +403,8 @@ describe('Mutex Hero', () => {
       const result1 = Effect.runSync(resolveAbility(state1, 'p1', 'r'))
       const result2 = Effect.runSync(resolveAbility(state2, 'p1', 'r'))
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
   })

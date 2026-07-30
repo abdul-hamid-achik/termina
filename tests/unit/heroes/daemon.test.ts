@@ -22,10 +22,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'daemon',
     zone: 'mid-river',
-    hp: 480,
-    maxHp: 480,
-    mp: 300,
-    maxMp: 300,
+    integ: 480,
+    maxInteg: 480,
+    bw: 300,
+    maxBw: 300,
     level: 7,
     xp: 0,
     gold: 600,
@@ -52,8 +52,8 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
+    integ: 550,
+    maxInteg: 550,
     ...overrides,
   })
 }
@@ -209,7 +209,7 @@ describe('Daemon Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(300 - 50) // Level 1 costs 50
+      expect(updated.bw).toBe(300 - 50) // Level 1 costs 50
       expect(updated.cooldowns.q).toBe(7)
     })
 
@@ -232,7 +232,7 @@ describe('Daemon Hero', () => {
 
   describe('E: Sudo (Execute)', () => {
     it('executes target below 30% HP with black damage', () => {
-      const player = makePlayer({ level: 6, mp: 500 }) // E level 3 (at player level 5), R level 1
+      const player = makePlayer({ level: 6, bw: 500 }) // E level 3 (at player level 5), R level 1
       // Actually E is at level 3 at player level 5, level 4 at player level 7
       // But E_DAMAGE is only [300, 400, 500] — that's R-style scaling
       // Wait, E_DAMAGE is defined with 3 values because it's "execute" tier
@@ -240,32 +240,32 @@ describe('Daemon Hero', () => {
       // At level 6, E level = 3 (learned at 1,3,5 → levels 1,2,3), hmm
       // getAbilityLevel(6, 'e') = level 3 (player level 5 → 3, 6 → 3)
       // So E at level 6 player = ability level 3 → E_DAMAGE[2] = 500
-      const enemy = makeEnemy({ hp: 100, maxHp: 550 }) // 100/550 ≈ 18% — below 30%
+      const enemy = makeEnemy({ integ: 100, maxInteg: 550 }) // 100/550 ≈ 18% — below 30%
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       // Should deal massive black damage, likely killing the target
-      expect(result.state.players['e1']!.hp).toBe(0)
+      expect(result.state.players['e1']!.integ).toBe(0)
       expect(result.state.players['e1']!.alive).toBe(false)
     })
 
     it('fails (no mana/CD cost) when target above 30% HP', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
-      const enemy = makeEnemy({ hp: 400, maxHp: 550 }) // 400/550 ≈ 73% — above 30%
+      const player = makePlayer({ level: 6, bw: 500 })
+      const enemy = makeEnemy({ integ: 400, maxInteg: 550 }) // 400/550 ≈ 73% — above 30%
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       // Ability fails but doesn't error — no mana deducted, no cooldown
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500) // Mana not deducted
+      expect(updated.bw).toBe(500) // Mana not deducted
       expect(updated.cooldowns.e).toBe(0) // No cooldown set
       expect(result.events[0]!.type).toBe('ability_failed')
     })
 
     it('requires hero target', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
@@ -298,7 +298,7 @@ describe('Daemon Hero', () => {
       )
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(300 - 100)
+      expect(updated.bw).toBe(300 - 100)
       expect(updated.cooldowns.w).toBe(18)
     })
 
@@ -321,7 +321,7 @@ describe('Daemon Hero', () => {
 
   describe('R: Root Access (Teleport)', () => {
     it('teleports to target zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(
@@ -332,7 +332,7 @@ describe('Daemon Hero', () => {
     })
 
     it('requires level 6+ for R', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(
@@ -343,7 +343,7 @@ describe('Daemon Hero', () => {
     })
 
     it('sets cooldown and deducts mana', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(
@@ -351,12 +351,12 @@ describe('Daemon Hero', () => {
       )
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 200) // Level 1 R costs 200
+      expect(updated.bw).toBe(500 - 200) // Level 1 R costs 200
       expect(updated.cooldowns.r).toBe(60)
     })
 
     it('breaks stealth on teleport', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
@@ -377,7 +377,7 @@ describe('Daemon Hero', () => {
     it('daemon_25_left reduces Root Access cooldown by 10 (was the dead invis_duration no-op)', () => {
       const player = makePlayer({
         level: 6,
-        mp: 500,
+        bw: 500,
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'daemon_25_left' },
       })
       const state = makeState([player])
@@ -393,10 +393,10 @@ describe('Daemon Hero', () => {
     it('daemon_20_left reduces Sudo cooldown by 3 (was the dead slow_plus_40 no-op)', () => {
       const player = makePlayer({
         level: 6,
-        mp: 500,
+        bw: 500,
         talents: { tier10: null, tier15: null, tier20: 'daemon_20_left', tier25: null },
       })
-      const enemy = makeEnemy({ hp: 100, maxHp: 550 }) // below 30% — Sudo executes
+      const enemy = makeEnemy({ integ: 100, maxInteg: 550 }) // below 30% — Sudo executes
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
@@ -408,7 +408,7 @@ describe('Daemon Hero', () => {
     it('daemon_15_left refunds 35% of Inject mana cost (was damage_boost on a DoT — a silent no-op)', () => {
       const player = makePlayer({
         level: 1,
-        mp: 300,
+        bw: 300,
         talents: { tier10: null, tier15: 'daemon_15_left', tier20: null, tier25: null },
       })
       const enemy = makeEnemy()
@@ -417,7 +417,7 @@ describe('Daemon Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       // 50 spent, then round(50 * 35%) = 18 refunded → 300 − 50 + 18
-      expect(result.state.players['p1']!.mp).toBe(268)
+      expect(result.state.players['p1']!.bw).toBe(268)
     })
 
     it('daemon_25_right grants the spell-lifesteal exotic (Soul Siphon)', () => {

@@ -27,8 +27,8 @@ const sample: TraceModel = {
     },
   ],
   terminals: [
-    { team: 'chaff', alive: true, vulnerable: false, hp: 3000, maxHp: 3000 },
-    { team: 'audit', alive: true, vulnerable: true, hp: 2100, maxHp: 3000 },
+    { team: 'chaff', alive: true, vulnerable: false, integ: 3000, maxInteg: 3000 },
+    { team: 'audit', alive: true, vulnerable: true, integ: 2100, maxInteg: 3000 },
   ],
 }
 </script>

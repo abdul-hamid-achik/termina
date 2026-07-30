@@ -14,10 +14,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'ping',
     zone: 'mid-river',
-    hp: 580,
-    maxHp: 580,
-    mp: 310,
-    maxMp: 310,
+    integ: 580,
+    maxInteg: 580,
+    bw: 310,
+    maxBw: 310,
     level: 7,
     xp: 0,
     gold: 600,
@@ -44,10 +44,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -90,7 +90,7 @@ describe('Ping Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(result.events.length).toBeGreaterThan(0)
       expect(result.events[0]!.type).toBe('ability_cast')
     })
@@ -103,7 +103,7 @@ describe('Ping Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(310 - 45) // Level 1 Q costs 45
+      expect(updated.bw).toBe(310 - 45) // Level 1 Q costs 45
       expect(updated.cooldowns.q).toBe(5)
     })
 
@@ -115,7 +115,7 @@ describe('Ping Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(310 - 90) // Level 4 Q costs 90
+      expect(updated.bw).toBe(310 - 90) // Level 4 Q costs 90
     })
 
     it('scales damage with level', () => {
@@ -134,8 +134,8 @@ describe('Ping Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -167,7 +167,7 @@ describe('Ping Hero', () => {
           name: 'e1',
         }),
       )
-      const fullDmg = inZone.hp - full.state.players['e1']!.hp
+      const fullDmg = inZone.integ - full.state.players['e1']!.integ
       expect(fullDmg).toBeGreaterThan(0)
 
       // mid-t1-audit is adjacent to the caster's mid-river → the Q reaches it but
@@ -179,13 +179,13 @@ describe('Ping Hero', () => {
           name: 'e1',
         }),
       )
-      const adjDmg = adjacent.hp - adj.state.players['e1']!.hp
+      const adjDmg = adjacent.integ - adj.state.players['e1']!.integ
       expect(adjDmg).toBeGreaterThan(0)
       expect(adjDmg).toBeLessThan(fullDmg)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -235,7 +235,7 @@ describe('Ping Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(310 - 75) // Level 1 W costs 75
+      expect(updated.bw).toBe(310 - 75) // Level 1 W costs 75
       expect(updated.cooldowns.w).toBe(12)
     })
 
@@ -247,7 +247,7 @@ describe('Ping Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(310 - 120) // Level 4 W costs 120
+      expect(updated.bw).toBe(310 - 120) // Level 4 W costs 120
     })
 
     it('requires hero target', () => {
@@ -270,7 +270,7 @@ describe('Ping Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -303,7 +303,7 @@ describe('Ping Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(310 - 60) // Level 1 E costs 60
+      expect(updated.bw).toBe(310 - 60) // Level 1 E costs 60
       expect(updated.cooldowns.e).toBe(14)
     })
 
@@ -314,11 +314,11 @@ describe('Ping Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(310 - 105) // Level 4 E costs 105
+      expect(updated.bw).toBe(310 - 105) // Level 4 E costs 105
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
@@ -328,7 +328,7 @@ describe('Ping Hero', () => {
 
   describe('R: Flood (AoE DoT + Slow)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -336,7 +336,7 @@ describe('Ping Hero', () => {
     })
 
     it('applies DoT and slow to all enemies in zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
       const state = makeState([player, enemy1, enemy2])
@@ -359,7 +359,7 @@ describe('Ping Hero', () => {
     })
 
     it('does not affect allies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
@@ -371,19 +371,19 @@ describe('Ping Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 200) // R1 costs 200
+      expect(updated.bw).toBe(500 - 200) // R1 costs 200
       expect(updated.cooldowns.r).toBe(50)
     })
 
     it('scales DoT damage with R level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
 
@@ -449,7 +449,7 @@ describe('Ping Hero', () => {
 
     it('does not apply to dead targets', () => {
       const player = makePlayer()
-      const enemy = makeEnemy({ alive: false, hp: 0 })
+      const enemy = makeEnemy({ alive: false, integ: 0 })
       const state = makeState([player, enemy])
 
       const updated = resolvePassive(state, 'p1', {

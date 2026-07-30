@@ -45,7 +45,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
@@ -164,10 +164,10 @@ describe('processSpecialActions', () => {
           team: 'chaff',
           heroId: 'echo',
           zone: 'chaff-fountain',
-          hp: 1000,
-          maxHp: 1000,
-          mp: 100,
-          maxMp: 100,
+          integ: 1000,
+          maxInteg: 1000,
+          bw: 100,
+          maxBw: 100,
           level: 5,
           xp: 0,
           gold: 5000,
@@ -236,7 +236,13 @@ describe('runNPCAI', () => {
   it('damages a hero in hollow when Tenant is alive', () => {
     const state = makeState({
       tick: 1,
-      tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null, zone: 'hollow' } as never,
+      tenant: {
+        alive: true,
+        integ: 5000,
+        maxInteg: 5000,
+        deathTick: null,
+        zone: 'hollow',
+      } as never,
       players: {
         p1: {
           id: 'p1',
@@ -244,10 +250,10 @@ describe('runNPCAI', () => {
           team: 'chaff',
           heroId: 'echo',
           zone: 'hollow',
-          hp: 1000,
-          maxHp: 1000,
-          mp: 100,
-          maxMp: 100,
+          integ: 1000,
+          maxInteg: 1000,
+          bw: 100,
+          maxBw: 100,
           level: 5,
           xp: 0,
           gold: 0,
@@ -271,7 +277,7 @@ describe('runNPCAI', () => {
     })
     const result = runNPCAI(state, { heroAttackers: new Set(), priorEvents: [] })
     // Hero should have taken some damage from Tenant (or none, if tenant isn't in pit; just sanity check no throw)
-    expect(result.state.players['p1']!.hp).toBeLessThanOrEqual(1000)
+    expect(result.state.players['p1']!.integ).toBeLessThanOrEqual(1000)
   })
 })
 

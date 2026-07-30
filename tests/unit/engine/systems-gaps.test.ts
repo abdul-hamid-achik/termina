@@ -28,10 +28,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -88,8 +88,8 @@ describe('systems-gaps: BUYBACK success', () => {
       deaths: 2,
       alive: false,
       respawnTick: 200,
-      hp: 0,
-      mp: 0,
+      integ: 0,
+      bw: 0,
       gold: 2000,
       zone: 'audit-base',
     })
@@ -103,8 +103,8 @@ describe('systems-gaps: BUYBACK success', () => {
     const after = result.newState!.players['p1']!
     expect(after.gold).toBe(2000 - cost)
     expect(after.alive).toBe(true)
-    expect(after.hp).toBe(after.maxHp)
-    expect(after.mp).toBe(after.maxMp)
+    expect(after.integ).toBe(after.maxInteg)
+    expect(after.bw).toBe(after.maxBw)
     expect(after.respawnTick).toBeNull()
     expect(after.zone).toBe('chaff-fountain')
     expect(after.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_TICKS)
@@ -126,8 +126,8 @@ describe('systems-gaps: BUYBACK success', () => {
       deaths: 2,
       alive: false,
       respawnTick: 200,
-      hp: 0,
-      mp: 0,
+      integ: 0,
+      bw: 0,
       gold: 2000,
     })
     const cost = calculateBuybackCost(player)
@@ -140,13 +140,13 @@ describe('systems-gaps: BUYBACK success', () => {
     const ap = after.players['p1']!
     expect(ap.alive).toBe(true)
     expect(ap.gold).toBe(2000 - cost)
-    expect(ap.hp).toBe(ap.maxHp)
+    expect(ap.integ).toBe(ap.maxInteg)
 
     const heal = events.find(
       (e) => e._tag === 'heal' && (e as { sourceId?: string }).sourceId === 'buyback',
     )
     expect(heal).toBeDefined()
-    expect((heal as { amount: number }).amount).toBe(ap.maxHp)
+    expect((heal as { amount: number }).amount).toBe(ap.maxInteg)
     const spike = events.find(
       (e) => e._tag === 'power_spike' && (e as { itemId?: string }).itemId === 'buyback',
     )
@@ -168,12 +168,12 @@ describe('systems-gaps: TALENT stat-bonus effect', () => {
     expect(getEffectiveAttack(withTalent) - getEffectiveAttack(base)).toBe(15)
   })
 
-  it('echo_10_right (+200 hp) is reported by getTalentStatBonus (consumed by maxHp recompute)', () => {
+  it('echo_10_right (+200 integ) is reported by getTalentStatBonus (consumed by maxInteg recompute)', () => {
     const withTalent = makePlayer({
       heroId: 'echo',
       talents: { tier10: 'echo_10_right', tier15: null, tier20: null, tier25: null },
     })
-    // ActionResolver recomputes maxHp as baseMaxHp + itemHp + getTalentStatBonus(player, 'hp')
+    // ActionResolver recomputes maxInteg as baseMaxHp + itemHp + getTalentStatBonus(player, 'hp')
     expect(getTalentStatBonus(withTalent, 'hp')).toBe(200)
     // and that selecting the hp talent does NOT spill into attack
     expect(getTalentStatBonus(withTalent, 'attack')).toBe(0)
@@ -217,12 +217,12 @@ describe('systems-gaps: TENANT respawn path', () => {
     const deathTick = 100
     const state = makeGameState({
       tick: deathTick + TENANT_RESPAWN_TICKS,
-      tenant: { alive: false, hp: 0, maxHp: 5000, deathTick } as TenantState,
+      tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick } as TenantState,
     })
     const result = processTenantDamage(state, new Map())
 
     expect(result.state.tenant.alive).toBe(true)
-    expect(result.state.tenant.hp).toBeGreaterThan(0)
+    expect(result.state.tenant.integ).toBeGreaterThan(0)
     expect(result.state.tenant.deathTick).toBeNull()
     const respawnEvt = result.events.find((e) => e._tag === 'tenant_respawn')
     expect(respawnEvt).toBeDefined()
@@ -232,7 +232,7 @@ describe('systems-gaps: TENANT respawn path', () => {
     const deathTick = 100
     const state = makeGameState({
       tick: deathTick + TENANT_RESPAWN_TICKS - 1,
-      tenant: { alive: false, hp: 0, maxHp: 5000, deathTick } as TenantState,
+      tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick } as TenantState,
     })
     const result = processTenantDamage(state, new Map())
     expect(result.state.tenant.alive).toBe(false)
@@ -280,7 +280,7 @@ describe('systems-gaps: VISION gaps', () => {
           team: 'audit',
           zone: 'audit-base',
           name: 'RevealedEnemy',
-          hp: 321,
+          integ: 321,
           buffs: [{ id: 'revealed', stacks: 1, ticksRemaining: 5, source: 'p1' }],
         }),
       },
@@ -289,7 +289,7 @@ describe('systems-gaps: VISION gaps', () => {
     const filtered = filterStateForPlayer(state, 'p1')
     const enemy = filtered.players['e1']!
     expect('fogged' in enemy).toBe(false)
-    expect((enemy as PlayerState).hp).toBe(321)
+    expect((enemy as PlayerState).integ).toBe(321)
     expect(filtered.visibleZones).toContain('audit-base')
   })
 
@@ -303,7 +303,7 @@ describe('systems-gaps: VISION gaps', () => {
           team: 'audit',
           zone: 'audit-base',
           name: 'HiddenEnemy',
-          hp: 321,
+          integ: 321,
         }),
       },
     })
@@ -336,7 +336,7 @@ describe('systems-gaps: VISION gaps', () => {
           team: 'audit',
           zone: neighbor,
           name: 'InvisAdj',
-          hp: 277,
+          integ: 277,
           buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
         }),
       },
@@ -346,7 +346,7 @@ describe('systems-gaps: VISION gaps', () => {
     const enemy = filtered.players['e1']!
     // neighbor is adjacent to mid-river (sentry radius 1) AND to the viewer => unfogged
     expect('fogged' in enemy).toBe(false)
-    expect((enemy as PlayerState).hp).toBe(277)
+    expect((enemy as PlayerState).integ).toBe(277)
   })
 })
 

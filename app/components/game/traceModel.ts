@@ -39,7 +39,7 @@ export interface TerminalState {
   alive: boolean
   vulnerable: boolean
   hp: number
-  maxHp: number
+  maxInteg: number
 }
 
 export interface TraceModel {
@@ -129,8 +129,8 @@ export function buildTrace(input: {
       team,
       alive: a.alive,
       vulnerable: a.vulnerable,
-      hp: a.hp,
-      maxHp: a.maxHp,
+      integ: a.integ,
+      maxInteg: a.maxInteg,
     }
   })
 
@@ -150,7 +150,7 @@ export interface ZoneDisplay {
     alive: boolean
     tier: number
     hp?: number
-    maxHp?: number
+    maxInteg?: number
   }
   fogged: boolean
   waveCount?: number

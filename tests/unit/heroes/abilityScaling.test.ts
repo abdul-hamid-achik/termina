@@ -29,10 +29,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: CASTER_ZONE,
-    hp: 5000,
-    maxHp: 5000,
-    mp: 5000,
-    maxMp: 5000,
+    integ: 5000,
+    maxInteg: 5000,
+    bw: 5000,
+    maxBw: 5000,
     level: 1,
     xp: 0,
     gold: 0,
@@ -103,8 +103,8 @@ function castAtLevel(
     team: 'audit',
     heroId: 'kernel',
     zone: CASTER_ZONE,
-    hp: 5000,
-    maxHp: 5000,
+    integ: 5000,
+    maxInteg: 5000,
   })
   const ally = makePlayer({ id: 'a1', team: 'chaff', heroId: 'sentry', zone: CASTER_ZONE })
   const adjEnemy = makePlayer({ id: 'e2', team: 'audit', heroId: 'kernel', zone: ADJACENT_ZONE })
@@ -146,7 +146,8 @@ function castAtLevel(
     target = { kind: 'hero', name: 'e2' }
   }
 
-  const execEnemy = heroId === 'daemon' && slot === 'e' ? { ...enemy, hp: 10, maxHp: 1000 } : enemy
+  const execEnemy =
+    heroId === 'daemon' && slot === 'e' ? { ...enemy, integ: 10, maxInteg: 1000 } : enemy
   const state = makeState([caster, execEnemy, ally, adjEnemy])
 
   const exit = Effect.runSyncExit(resolveAbility(state, 'p1', slot, target))
@@ -159,8 +160,8 @@ function castAtLevel(
   const resultCaster = exit.value.state.players['p1']!
 
   return {
-    enemyHpLost: resultTarget ? 5000 - resultTarget.hp : 0,
-    casterMpSpent: 5000 - resultCaster.mp,
+    enemyHpLost: resultTarget ? 5000 - resultTarget.integ : 0,
+    casterMpSpent: 5000 - resultCaster.bw,
     enemyBuffs: resultTarget?.buffs ?? [],
   }
 }

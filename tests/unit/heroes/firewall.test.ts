@@ -16,10 +16,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'firewall',
     zone: 'mid-river',
-    hp: 720,
-    maxHp: 720,
-    mp: 270,
-    maxMp: 270,
+    integ: 720,
+    maxInteg: 720,
+    bw: 270,
+    maxBw: 270,
     level: 7,
     xp: 0,
     gold: 600,
@@ -46,10 +46,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -92,7 +92,7 @@ describe('Firewall Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(hasBuff(updatedEnemy, 'stun')).toBe(true)
       const stun = updatedEnemy.buffs.find((b) => b.id === 'stun')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
@@ -107,7 +107,7 @@ describe('Firewall Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 70) // Level 1 Q costs 70
+      expect(updated.bw).toBe(270 - 70) // Level 1 Q costs 70
       expect(updated.cooldowns.q).toBe(8)
     })
 
@@ -127,8 +127,8 @@ describe('Firewall Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -152,7 +152,7 @@ describe('Firewall Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -194,12 +194,12 @@ describe('Firewall Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 80) // Level 1 W costs 80
+      expect(updated.bw).toBe(270 - 80) // Level 1 W costs 80
       expect(updated.cooldowns.w).toBe(14)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
@@ -259,12 +259,12 @@ describe('Firewall Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 60) // Level 1 E costs 60
+      expect(updated.bw).toBe(270 - 60) // Level 1 E costs 60
       expect(updated.cooldowns.e).toBe(16)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
@@ -274,7 +274,7 @@ describe('Firewall Hero', () => {
 
   describe('R: Deep Packet Inspection (Root + DoT)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -282,7 +282,7 @@ describe('Firewall Hero', () => {
     })
 
     it('roots all enemies in zone for 2 ticks', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
       const state = makeState([player, enemy1, enemy2])
@@ -296,7 +296,7 @@ describe('Firewall Hero', () => {
     })
 
     it('applies DoT debuff for 3 ticks', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -310,7 +310,7 @@ describe('Firewall Hero', () => {
     })
 
     it('does not affect allies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
@@ -322,18 +322,18 @@ describe('Firewall Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 250) // R1 costs 250
+      expect(updated.bw).toBe(500 - 250) // R1 costs 250
       expect(updated.cooldowns.r).toBe(55)
     })
 
     it('scales DoT damage with R level', () => {
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player18, enemy])
 
@@ -398,7 +398,7 @@ describe('Firewall Hero', () => {
       })
 
       // 8% of 100 = 8 code damage reflected (mitigated by ice)
-      expect(updated.players['e1']!.hp).toBeLessThan(enemy.hp)
+      expect(updated.players['e1']!.integ).toBeLessThan(enemy.integ)
     })
   })
 
@@ -442,7 +442,7 @@ describe('Firewall Hero', () => {
     })
 
     it('firewall_20_left boosts Port Block damage by 35%', () => {
-      const enemyOpts = { hp: 1000, maxHp: 1000 }
+      const enemyOpts = { integ: 1000, maxInteg: 1000 }
 
       const boosted = Effect.runSync(
         resolveAbility(
@@ -464,8 +464,8 @@ describe('Firewall Hero', () => {
         }),
       )
 
-      const dmgBoosted = 1000 - boosted.state.players['e1']!.hp
-      const dmgPlain = 1000 - plain.state.players['e1']!.hp
+      const dmgBoosted = 1000 - boosted.state.players['e1']!.integ
+      const dmgPlain = 1000 - plain.state.players['e1']!.integ
       expect(dmgPlain).toBeGreaterThan(0)
       expect(dmgBoosted).toBeGreaterThan(dmgPlain)
     })
@@ -473,7 +473,7 @@ describe('Firewall Hero', () => {
     it('firewall_15_left refunds 30% of Port Block mana cost (was the dead burn_plus_1 no-op)', () => {
       const player = makePlayer({
         level: 1,
-        mp: 270,
+        bw: 270,
         talents: { tier10: null, tier15: 'firewall_15_left', tier20: null, tier25: null },
       })
       const enemy = makeEnemy()
@@ -482,7 +482,7 @@ describe('Firewall Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       // Q_MANA[0] = 70 spent, then round(70 * 30%) = 21 refunded → 270 − 70 + 21
-      expect(result.state.players['p1']!.mp).toBe(221)
+      expect(result.state.players['p1']!.bw).toBe(221)
     })
 
     it('firewall_25_right grants +25 iceance via getTalentStatBonus (was the dead true_damage_burn no-op)', () => {

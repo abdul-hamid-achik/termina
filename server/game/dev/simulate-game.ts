@@ -42,7 +42,7 @@ function teamStats(state: GameState, team: TeamId) {
     avgLevel: players.reduce((sum, p) => sum + p.level, 0) / players.length,
     iceAlive: state.ice.filter((t) => t.team === team && t.alive).length,
     waves: state.waves.filter((c) => c.team === team).length,
-    ancientHp: state.ancients?.[team]?.hp ?? -1,
+    ancientHp: state.ancients?.[team]?.integ ?? -1,
     ancientAlive: state.ancients?.[team]?.alive ?? true,
   }
 }
@@ -120,7 +120,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
       if (process.env.SIM_DUMP_ZONES === '1') {
         for (const p of Object.values(state.players)) {
           console.log(
-            `      ${p.id} (${p.team}) zone=${p.zone} hp=${p.hp}/${p.maxHp} mp=${p.mp}/${p.maxMp} ` +
+            `      ${p.id} (${p.team}) zone=${p.zone} integ =${p.integ}/${p.maxInteg} bw =${p.bw}/${p.maxBw} ` +
               `gold=${p.gold} alive=${p.alive} buffs=[${p.buffs.map((b) => b.id).join(',')}]`,
           )
         }

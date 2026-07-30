@@ -19,10 +19,10 @@ function makePlayer(o: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
-    hp: 0,
-    maxHp: 600,
-    mp: 0,
-    maxMp: 300,
+    integ: 0,
+    maxInteg: 600,
+    bw: 0,
+    maxBw: 300,
     level: 6,
     xp: 0,
     gold: 2000,
@@ -82,14 +82,14 @@ describe('BuybackSystem', () => {
 
   describe('buyback (execution)', () => {
     it('instantly respawns at full HP/MP, deducts gold, sets cooldown, and sends to the fountain', () => {
-      const p = makePlayer({ alive: false, gold: 99999, hp: 0, mp: 0, team: 'chaff' })
+      const p = makePlayer({ alive: false, gold: 99999, integ: 0, bw: 0, team: 'chaff' })
       const res = buyback(makeState(p, 50), 'p1')
 
       expect(res.success).toBe(true)
       const np = res.newState!.players['p1']!
       expect(np.alive).toBe(true)
-      expect(np.hp).toBe(np.maxHp)
-      expect(np.mp).toBe(np.maxMp)
+      expect(np.integ).toBe(np.maxInteg)
+      expect(np.bw).toBe(np.maxBw)
       expect(np.respawnTick).toBeNull()
       expect(np.gold).toBe(99999 - calculateBuybackCost(p))
       expect(np.buybackCooldown).toBe(50 + BUYBACK_COOLDOWN_TICKS)

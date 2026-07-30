@@ -28,10 +28,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -57,7 +57,7 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
     id: 'c1',
     team: 'chaff',
     zone: 'mid-t1-chaff',
-    hp: 400,
+    integ: 400,
     type: 'line',
     ...overrides,
   }
@@ -203,7 +203,7 @@ describe('WaveAI', () => {
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', alive: false, hp: 0 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', alive: false, integ: 0 }),
         },
       })
 
@@ -257,7 +257,7 @@ describe('WaveAI', () => {
 
     it('should skip dead waves', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 0 })],
+        waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 0 })],
       })
 
       const actions = runWaveAI(state)
@@ -295,7 +295,7 @@ describe('WaveAI', () => {
       const state = makeGameState({
         waves: [
           makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 0 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 0 }),
         ],
       })
 
@@ -307,7 +307,7 @@ describe('WaveAI', () => {
 
     it('should not attack dead ice', () => {
       const ice = initializeIce().map((t) =>
-        t.zone === 'mid-t1-audit' ? { ...t, hp: 0, alive: false } : t,
+        t.zone === 'mid-t1-audit' ? { ...t, integ: 0, alive: false } : t,
       )
 
       const state = makeGameState({
@@ -337,8 +337,8 @@ describe('WaveAI', () => {
     it('should apply damage to enemy waves', () => {
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 400 }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 400 }),
+          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 400 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 400 }),
         ],
       })
 
@@ -348,15 +348,15 @@ describe('WaveAI', () => {
 
       const result = applyWaveActions(state, actions).state
       const c2 = result.waves.find((c) => c.id === 'c2')
-      expect(c2!.hp).toBe(400 - LINE_UNIT_ATTACK)
+      expect(c2!.integ).toBe(400 - LINE_UNIT_ATTACK)
     })
 
     it('shares XP with living lane-mates of the killing team when a wave dies', () => {
       const laner = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', xp: 0 })
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 400 }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 10 }),
+          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 400 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 10 }),
         ],
         players: { p1: laner },
       })
@@ -373,8 +373,8 @@ describe('WaveAI', () => {
       const laner = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', xp: 0 })
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 400 }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 400 }),
+          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 400 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 400 }),
         ],
         players: { p1: laner },
       })
@@ -393,8 +393,8 @@ describe('WaveAI', () => {
       const elsewhere = makePlayer({ id: 'p3', team: 'chaff', zone: 'mid-t1-chaff', xp: 0 })
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 400 }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 10 }),
+          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 400 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 10 }),
         ],
         players: { p1: owner, p2: dead, p3: elsewhere },
       })
@@ -412,8 +412,8 @@ describe('WaveAI', () => {
     it('should remove dead waves after applying actions', () => {
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 400 }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 10 }),
+          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 400 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 10 }),
         ],
       })
 
@@ -426,7 +426,13 @@ describe('WaveAI', () => {
     })
 
     it('should apply damage to heroes with plate reduction', () => {
-      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', hp: 500, plate: 3 })
+      const player = makePlayer({
+        id: 'p1',
+        team: 'audit',
+        zone: 'mid-river',
+        integ: 500,
+        plate: 3,
+      })
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
         players: { p1: player },
@@ -440,7 +446,7 @@ describe('WaveAI', () => {
       // resolvePhysicalHit routes through getEffectivePlate (items + talents
       // + buffs), not the raw player.plate field.
       const expectedDamage = calculateKineticDamage(LINE_UNIT_ATTACK, getEffectivePlate(player))
-      expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
+      expect(result.players['p1']!.integ).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
 
@@ -448,10 +454,10 @@ describe('WaveAI', () => {
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
         players: {
-          // hp:1 means any positive damage kills; plate override is ignored by
+          // integ:1 means any positive damage kills; plate override is ignored by
           // getEffectivePlate (echo base plate applies), but the lethal blow
           // lands regardless.
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', hp: 1 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', integ: 1 }),
         },
       })
 
@@ -460,12 +466,12 @@ describe('WaveAI', () => {
       ]
 
       const result = applyWaveActions(state, actions).state
-      expect(result.players['p1']!.hp).toBe(0)
+      expect(result.players['p1']!.integ).toBe(0)
       expect(result.players['p1']!.alive).toBe(false)
     })
 
     it('emits a damage event naming the wave that hit', () => {
-      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', hp: 500 })
+      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-river', integ: 500 })
       const state = makeGameState({
         tick: 12,
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river' })],
@@ -488,7 +494,7 @@ describe('WaveAI', () => {
           damageType: 'kinetic',
         },
       ])
-      expect(500 - after.players['p1']!.hp).toBe(expectedDamage)
+      expect(500 - after.players['p1']!.integ).toBe(expectedDamage)
     })
 
     it('emits no damage event when a shield absorbs the whole hit', () => {
@@ -499,7 +505,7 @@ describe('WaveAI', () => {
             id: 'p1',
             team: 'audit',
             zone: 'mid-river',
-            hp: 500,
+            integ: 500,
             buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
           }),
         },
@@ -510,7 +516,7 @@ describe('WaveAI', () => {
       ])
 
       expect(result.events).toEqual([])
-      expect(result.state.players['p1']!.hp).toBe(500)
+      expect(result.state.players['p1']!.integ).toBe(500)
     })
 
     it('should apply damage to ice', () => {
@@ -519,7 +525,7 @@ describe('WaveAI', () => {
       })
 
       const ice = state.ice.find((t) => t.zone === 'mid-t1-audit')!
-      const initialHp = ice.hp
+      const initialHp = ice.integ
 
       const actions: WaveAction[] = [
         {
@@ -532,7 +538,7 @@ describe('WaveAI', () => {
 
       const result = applyWaveActions(state, actions).state
       const updatedIce = result.ice.find((t) => t.zone === 'mid-t1-audit')!
-      expect(updatedIce.hp).toBe(initialHp - LINE_UNIT_ATTACK)
+      expect(updatedIce.integ).toBe(initialHp - LINE_UNIT_ATTACK)
     })
 
     it('does NOT damage an invulnerable (glyphed) ice — the push bounces off', () => {
@@ -545,7 +551,7 @@ describe('WaveAI', () => {
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' })],
         ice,
       })
-      const initialHp = state.ice.find((t) => t.zone === 'mid-t1-audit')!.hp
+      const initialHp = state.ice.find((t) => t.zone === 'mid-t1-audit')!.integ
 
       const actions: WaveAction[] = [
         {
@@ -558,11 +564,11 @@ describe('WaveAI', () => {
 
       const result = applyWaveActions(state, actions).state
       const target = result.ice.find((t) => t.zone === 'mid-t1-audit')!
-      expect(target.hp).toBe(initialHp) // unchanged — harden protects vs waves too
+      expect(target.integ).toBe(initialHp) // unchanged — harden protects vs waves too
     })
 
     it('should destroy ice when HP reaches 0', () => {
-      const ice = initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, hp: 10 } : t))
+      const ice = initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, integ: 10 } : t))
 
       const state = makeGameState({
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' })],
@@ -580,15 +586,15 @@ describe('WaveAI', () => {
 
       const result = applyWaveActions(state, actions).state
       const updatedIce = result.ice.find((t) => t.zone === 'mid-t1-audit')!
-      expect(updatedIce.hp).toBe(0)
+      expect(updatedIce.integ).toBe(0)
       expect(updatedIce.alive).toBe(false)
     })
 
     it('should not apply actions from dead waves', () => {
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 0 }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 400 }),
+          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 0 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 400 }),
         ],
       })
 
@@ -599,14 +605,14 @@ describe('WaveAI', () => {
       const result = applyWaveActions(state, actions).state
       // c1 is dead, so c2 should not take damage (c1 also removed)
       const c2 = result.waves.find((c) => c.id === 'c2')
-      expect(c2!.hp).toBe(400)
+      expect(c2!.integ).toBe(400)
     })
 
     it('should clamp wave HP to 0 (not negative)', () => {
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', hp: 400 }),
-          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', hp: 5 }),
+          makeWave({ id: 'c1', team: 'chaff', zone: 'mid-river', integ: 400 }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'mid-river', integ: 5 }),
         ],
       })
 
@@ -678,7 +684,7 @@ describe('WaveAI', () => {
       const state = makeGameState({
         ancients: {
           chaff: ancients.chaff,
-          audit: { ...ancients.audit, hp: 0, alive: false, vulnerable: true },
+          audit: { ...ancients.audit, integ: 0, alive: false, vulnerable: true },
         },
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
@@ -698,8 +704,8 @@ describe('WaveAI', () => {
       ]
 
       const result = applyWaveActions(state, actions)
-      expect(result.state.ancients.audit.hp).toBe(
-        result.state.ancients.audit.maxHp - LINE_UNIT_ATTACK,
+      expect(result.state.ancients.audit.integ).toBe(
+        result.state.ancients.audit.maxInteg - LINE_UNIT_ATTACK,
       )
       expect(result.events).toHaveLength(1)
       expect(result.events[0]!._tag).toBe('damage')
@@ -710,7 +716,7 @@ describe('WaveAI', () => {
       const state = makeGameState({
         ancients: {
           chaff: ancients.chaff,
-          audit: { ...ancients.audit, hp: 5, vulnerable: true },
+          audit: { ...ancients.audit, integ: 5, vulnerable: true },
         },
         waves: [makeWave({ id: 'c1', team: 'chaff', zone: 'audit-base' })],
       })
@@ -721,7 +727,7 @@ describe('WaveAI', () => {
 
       const result = applyWaveActions(state, actions)
       expect(result.state.ancients.audit.alive).toBe(false)
-      expect(result.state.ancients.audit.hp).toBe(0)
+      expect(result.state.ancients.audit.integ).toBe(0)
       expect(result.events.some((e) => e._tag === 'ice_kill')).toBe(false)
       const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
       expect(killEvent).toBeDefined()
@@ -738,7 +744,7 @@ describe('WaveAI', () => {
       ]
 
       const result = applyWaveActions(state, actions)
-      expect(result.state.ancients.audit.hp).toBe(result.state.ancients.audit.maxHp)
+      expect(result.state.ancients.audit.integ).toBe(result.state.ancients.audit.maxInteg)
       expect(result.events).toHaveLength(0)
     })
   })

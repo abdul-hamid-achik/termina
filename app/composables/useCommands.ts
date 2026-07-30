@@ -87,7 +87,7 @@ function isSupportiveAbility(ability: AbilityDef): boolean {
 }
 
 function hpPct(p: PlayerState): number {
-  return p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 0
+  return p.maxInteg > 0 ? (p.integ / p.maxInteg) * 100 : 0
 }
 
 /**
@@ -129,7 +129,7 @@ export function pickAbilityTargetString(
 
   if (targetType === 'hero' || targetType === 'unit') {
     if (enemies.length === 0) return { error: `No enemy in your zone for ${ability.name}` }
-    const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
+    const target = enemies.reduce((a, b) => (a.integ < b.integ ? a : b))
     return { target: `hero:${target.id}` }
   }
 
@@ -155,7 +155,7 @@ export function pickAttackTargetString(
   if (enemies.length === 0) {
     return { error: 'No enemy hero in your zone — target a wave (attack wave:0) or ice' }
   }
-  const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
+  const target = enemies.reduce((a, b) => (a.integ < b.integ ? a : b))
   return { target: `hero:${target.id}` }
 }
 
@@ -184,7 +184,7 @@ export function pickItemTargetString(
   // enemy
   const enemies = inZone.filter((p) => p.team !== player.team)
   if (enemies.length === 0) return { error: 'No enemy hero in your zone for that item' }
-  const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
+  const target = enemies.reduce((a, b) => (a.integ < b.integ ? a : b))
   return { target: `hero:${target.id}` }
 }
 
@@ -196,7 +196,7 @@ export function pickItemTargetString(
  * minute until the client stopped offering a burn the server would have allowed.
  */
 function waveFullHp(c: WaveUnitState): number {
-  return c.maxHp ?? waveUnitMaxHp(c.type, 0)
+  return c.maxInteg ?? waveUnitMaxHp(c.type, 0)
 }
 
 /**
@@ -228,9 +228,9 @@ export function pickDenyTargetString(
   let best: { hp: number; index: number } | null = null
   for (let index = 0; index < inZone.length; index++) {
     const c = inZone[index]!
-    if (c.team !== player.team || c.hp <= 0) continue
-    if (c.hp > waveFullHp(c) * BURN_HP_THRESHOLD) continue // not low enough to burn
-    if (best === null || c.hp < best.hp) best = { hp: c.hp, index }
+    if (c.team !== player.team || c.integ <= 0) continue
+    if (c.integ > waveFullHp(c) * BURN_HP_THRESHOLD) continue // not low enough to burn
+    if (best === null || c.integ < best.integ) best = { integ: c.integ, index }
   }
   if (best === null) {
     return { error: 'No denyable allied wave (below 50% HP) in your zone' }
@@ -251,7 +251,7 @@ export function formatStatusReadout(player: PlayerState): string {
   const kda = `${player.kills}/${player.deaths}/${player.assists}`
   return (
     `STATUS · ${hero} Lv${player.level} · ` +
-    `HP ${Math.floor(player.hp)}/${player.maxHp} MP ${Math.floor(player.mp)}/${player.maxMp} · ` +
+    `HP ${Math.floor(player.integ)}/${player.maxInteg} MP ${Math.floor(player.bw)}/${player.maxBw} · ` +
     `${player.gold}g · KDA ${kda} · @ ${zoneName(player.zone)}`
   )
 }
@@ -308,7 +308,7 @@ export function formatContactsReadout(
       .join(' ')
     lines.push(
       `WHO · ${side === 'hostile' ? '✕' : '○'} ${hero} @ ${zoneName(p.zone)}` +
-        ` · HP ${Math.floor(p.hp)}/${p.maxHp}${cds ? ` · cd ${cds}` : ''}`,
+        ` · HP ${Math.floor(p.integ)}/${p.maxInteg}${cds ? ` · cd ${cds}` : ''}`,
     )
   }
   for (const [id, ls] of fogged) {
@@ -347,14 +347,14 @@ export function formatLookReadout(
   neutrals: { id: string; zone: string; alive: boolean; type: string }[],
 ): string[] {
   const inZone = waves.filter((c) => c.zone === player.zone)
-  const hostile = inZone.filter((c) => c.team !== player.team && c.hp > 0)
-  const friendly = inZone.filter((c) => c.team === player.team && c.hp > 0)
+  const hostile = inZone.filter((c) => c.team !== player.team && c.integ > 0)
+  const friendly = inZone.filter((c) => c.team === player.team && c.integ > 0)
   const camps = neutrals.filter((n) => n.zone === player.zone && n.alive)
   const lines: string[] = []
   if (hostile.length)
     lines.push(
       `LOOK · ${hostile.length} hostile wave${hostile.length === 1 ? '' : 's'}: ` +
-        hostile.map((c) => `wave:${inZone.indexOf(c)} ${Math.floor(c.hp)}hp`).join(', '),
+        hostile.map((c) => `wave:${inZone.indexOf(c)} ${Math.floor(c.integ)}hp`).join(', '),
     )
   if (friendly.length)
     lines.push(`LOOK · ${friendly.length} friendly wave${friendly.length === 1 ? '' : 's'}`)
@@ -615,8 +615,8 @@ export function validateCommand(command: Command, context: GameContext): string 
       // affordable and then the server refused it — the pre-flight existed
       // precisely to stop that.
       const cost = getAbilityManaCost(ability, command.ability, player.level)
-      if (player.mp < cost) {
-        return `Not enough mana (need ${cost}, have ${player.mp})`
+      if (player.bw < cost) {
+        return `Not enough mana (need ${cost}, have ${player.bw})`
       }
       return null
     }
@@ -1003,13 +1003,13 @@ export function useCommands() {
       const out: Suggestion[] = []
       if (player && context.waves) {
         for (const { wave, index } of wavesInZoneWithIndex(context.waves, player.zone)) {
-          if (wave.team !== player.team || wave.hp <= 0) continue
+          if (wave.team !== player.team || wave.integ <= 0) continue
           const ref = `wave:${index}`
           if (!ref.includes(partial)) continue
-          const denyable = wave.hp <= waveFullHp(wave) * BURN_HP_THRESHOLD
+          const denyable = wave.integ <= waveFullHp(wave) * BURN_HP_THRESHOLD
           out.push({
             text: ref,
-            description: `${wave.type} (HP: ${Math.ceil(wave.hp)}/${waveFullHp(wave)})${
+            description: `${wave.type} (HP: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})${
               denyable ? ' — denyable' : ''
             }`,
           })
@@ -1216,7 +1216,7 @@ export function useCommands() {
     for (const e of enemies) {
       const ref = `hero:${e.heroId ?? e.name}`
       if (ref.includes(partial)) {
-        suggestions.push({ text: ref, description: `${e.name} (HP: ${e.hp}/${e.maxHp})` })
+        suggestions.push({ text: ref, description: `${e.name} (HP: ${e.integ}/${e.maxInteg})` })
       }
     }
 
@@ -1224,7 +1224,7 @@ export function useCommands() {
     // wavesInZoneWithIndex) but are never offered — the server rejects them.
     if (context.waves) {
       for (const { wave, index } of wavesInZoneWithIndex(context.waves, context.player.zone)) {
-        if (wave.hp <= 0) continue
+        if (wave.integ <= 0) continue
         // Your OWN waves are the `burn` command's business, never an attack
         // target — the server refuses them, and in a one-action-per-tick game
         // an offered target that always fails costs the player the whole tick.
@@ -1235,7 +1235,7 @@ export function useCommands() {
         if (!ref.includes(partial)) continue
         suggestions.push({
           text: ref,
-          description: `${wave.type} enemy (HP: ${Math.ceil(wave.hp)}/${waveFullHp(wave)})`,
+          description: `${wave.type} enemy (HP: ${Math.ceil(wave.integ)}/${waveFullHp(wave)})`,
         })
       }
     }
@@ -1249,7 +1249,7 @@ export function useCommands() {
         if (!n.alive || n.zone !== context.player.zone) continue
         const ref = `neutral:${i}`
         if (ref.includes(partial)) {
-          suggestions.push({ text: ref, description: `${n.type} (HP: ${n.hp}/${n.maxHp})` })
+          suggestions.push({ text: ref, description: `${n.type} (HP: ${n.integ}/${n.maxInteg})` })
         }
       }
     }

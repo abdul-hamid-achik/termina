@@ -65,7 +65,7 @@ const currentLine = computed(() => {
       >
         {{ FACTION_META[t.team].short }}
         <template v-if="t.alive">
-          {{ t.hp }}/{{ t.maxHp }}<template v-if="t.vulnerable"> ⚠</template></template
+          {{ t.integ }}/{{ t.maxInteg }}<template v-if="t.vulnerable"> ⚠</template></template
         >
         <template v-else> DOWN</template>
       </span>

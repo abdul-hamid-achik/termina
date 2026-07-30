@@ -84,14 +84,14 @@ describe('Zones', () => {
       for (const t of ice) {
         const tier = zoneMap[t.zone]?.tier
         if (tier === 1) {
-          expect(t.hp).toBe(ICE_HP_T1)
-          expect(t.maxHp).toBe(ICE_HP_T1)
+          expect(t.integ).toBe(ICE_HP_T1)
+          expect(t.maxInteg).toBe(ICE_HP_T1)
         } else if (tier === 2) {
-          expect(t.hp).toBe(ICE_HP_T2)
-          expect(t.maxHp).toBe(ICE_HP_T2)
+          expect(t.integ).toBe(ICE_HP_T2)
+          expect(t.maxInteg).toBe(ICE_HP_T2)
         } else if (tier === 3) {
-          expect(t.hp).toBe(ICE_HP_T3)
-          expect(t.maxHp).toBe(ICE_HP_T3)
+          expect(t.integ).toBe(ICE_HP_T3)
+          expect(t.maxInteg).toBe(ICE_HP_T3)
         }
       }
     })
@@ -199,7 +199,7 @@ describe('Zones', () => {
       const ice = initializeIce()
       const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
       t1.alive = false
-      t1.hp = 0
+      t1.integ = 0
       expect(canAttackIce(ice, 'mid-t2-chaff')).toBe(true)
     })
 

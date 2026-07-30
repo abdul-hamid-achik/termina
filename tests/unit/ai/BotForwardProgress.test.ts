@@ -30,10 +30,10 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'chaff-fountain',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     level: 1,
     xp: 0,
     gold: 600,
@@ -153,7 +153,7 @@ describe('BotAI - integrated forward progress', () => {
     const finalZones = chaffBots.map((b) => `${b.id}@${state.players[b.id]?.zone}`)
     const auditIceDmg = state.ice
       .filter((t) => t.team === 'audit')
-      .reduce((sum, t) => sum + (t.maxHp - t.hp), 0)
+      .reduce((sum, t) => sum + (t.maxInteg - t.integ), 0)
 
     // Bots must push out of their own half — and promptly. The frozen build
     // never left the frontier at all (crossedFrontierTick stays -1). Observed

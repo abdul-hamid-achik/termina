@@ -68,7 +68,7 @@ function selectIceTarget(
   )
 
   // Get enemy waves in the ice's zone
-  const enemyWaves = state.waves.filter((c) => c.zone === zone && c.team !== iceTeam && c.hp > 0)
+  const enemyWaves = state.waves.filter((c) => c.zone === zone && c.team !== iceTeam && c.integ > 0)
 
   // Priority 1: Enemy hero that drew aggro this tick — attacked an allied
   // hero in the ice zone, or attacked the ice itself.
@@ -153,15 +153,15 @@ export function applyIceActions(
     } else {
       const targetId = action.targetId
       const target = waves.find((c) => c.id === targetId)
-      if (target && target.hp > 0) {
-        const newHp = Math.max(0, target.hp - action.damage)
-        waves = waves.map((c) => (c.id === targetId ? { ...c, hp: newHp } : c))
+      if (target && target.integ > 0) {
+        const newInteg = Math.max(0, target.integ - action.damage)
+        waves = waves.map((c) => (c.id === targetId ? { ...c, integ: newInteg } : c))
       }
     }
   }
 
   // Remove dead waves
-  waves = waves.filter((c) => c.hp > 0)
+  waves = waves.filter((c) => c.integ > 0)
 
   return { state: { ...state, waves, players }, events }
 }

@@ -28,10 +28,10 @@ function makeBot(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 900,
-    maxHp: 900,
-    mp: 400,
-    maxMp: 400,
+    integ: 900,
+    maxInteg: 900,
+    bw: 400,
+    maxBw: 400,
     level: 8,
     xp: 0,
     gold: 0,
@@ -105,20 +105,27 @@ describe('BotAI - integrated teamplay', () => {
   it("a bot's burn actually resolves — the wave dies and wave_burn fires", () => {
     // The resolver drops a burn outside its window without a word, so a bot that
     // aims one wrong just loses the tick. This proves the bot mirrors
-    // resolveDenyPhase's gates (own team, <= BURN_HP_THRESHOLD of SPAWN hp) and
+    // resolveDenyPhase's gates (own team, <= BURN_HP_THRESHOLD of SPAWN integ) and
     // uses the zone-local index the resolver reads.
-    const bot = makeBot({ mp: 0, cooldowns: { q: 9, w: 9, e: 9, r: 9 } })
+    const bot = makeBot({ bw: 0, cooldowns: { q: 9, w: 9, e: 9, r: 9 } })
     const foe = makeBot({
       id: 'bot_foe',
       name: 'bot_foe',
       team: 'audit',
       heroId: 'kernel',
       zone: 'mid-t1-chaff',
-      mp: 0,
+      bw: 0,
       cooldowns: { q: 9, w: 9, e: 9, r: 9 },
     })
     const waves: WaveUnitState[] = [
-      { id: 'wave-own', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'line' },
+      {
+        id: 'wave-own',
+        team: 'chaff',
+        zone: 'mid-t1-chaff',
+        integ: 40,
+        maxInteg: 200,
+        type: 'line',
+      },
     ]
     registerBots(
       GAME_ID,
@@ -131,7 +138,7 @@ describe('BotAI - integrated teamplay', () => {
     )
 
     expect(result.events.some((e) => e._tag === 'wave_burn')).toBe(true)
-    expect(result.state.waves.find((c) => c.id === 'wave-own')?.hp ?? 0).toBe(0)
+    expect(result.state.waves.find((c) => c.id === 'wave-own')?.integ ?? 0).toBe(0)
   })
 
   it('a bot squad actually starts Tenant — his HP moves in a bots-only match', () => {
@@ -156,11 +163,11 @@ describe('BotAI - integrated teamplay', () => {
     )
 
     let state = makeState(players)
-    const startHp = state.tenant.hp
+    const startHp = state.tenant.integ
     for (let i = 0; i < 12; i++) {
       state = Effect.runSync(processTick(GAME_ID, state)).state
     }
 
-    expect(state.tenant.hp).toBeLessThan(startHp)
+    expect(state.tenant.integ).toBeLessThan(startHp)
   })
 })

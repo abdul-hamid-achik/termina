@@ -12,7 +12,7 @@ import {
   abilityManaTable,
   findTargetPlayer,
   dealAbilityDamage,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   applyBuff,
   removeBuff,
@@ -82,9 +82,9 @@ function resolveQ(
     }
 
     const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -95,7 +95,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const damage = scaleValue(Q_DAMAGE, level)
@@ -142,9 +142,9 @@ function resolveW(
     }
 
     const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -155,7 +155,7 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'w', scaleValue(W_COOLDOWN, level))
 
     const dotDamage = scaleValue(W_DOT_DAMAGE, level)
@@ -208,9 +208,9 @@ function resolveE(
     }
 
     const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -221,7 +221,7 @@ function resolveE(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
 
     const casterZone = caster.zone
@@ -279,9 +279,9 @@ function resolveR(
     }
 
     const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -292,10 +292,10 @@ function resolveR(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', scaleValue(R_COOLDOWN, level))
 
-    const missingMana = targetPlayer.maxMp - targetPlayer.mp
+    const missingMana = targetPlayer.maxBw - targetPlayer.bw
     const damagePerMana = scaleValue(R_DAMAGE_PER_MANA, level)
     const damage = Math.floor((missingMana / 100) * damagePerMana)
 

@@ -554,17 +554,17 @@ function resolveDenyPhase(
     const resolved = waveInZoneByIndex(waves, denier.zone, cmd.target.index)
     if (!resolved) continue
     const { wave, globalIdx: waveIdx } = resolved
-    if (wave.hp <= 0) continue
+    if (wave.integ <= 0) continue
 
     if (wave.team !== denier.team) continue
     // Read the max the wave SPAWNED with. Waves escalate with match time, so
     // neither the level-1 constant (the window shrinks every minute until
     // denying is impossible) nor the current tick's tier (the window widens past
     // the threshold for any wave that outlived an escalation boundary) is
-    // right. Fall back to the tick-0 base for fixtures that omit maxHp.
-    if (wave.hp > (wave.maxHp ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
+    // right. Fall back to the tick-0 base for fixtures that omit maxInteg.
+    if (wave.integ > (wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
 
-    waves[waveIdx] = { ...wave, hp: 0 }
+    waves[waveIdx] = { ...wave, integ: 0 }
 
     const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
     playerUpdates[action.playerId] = {
@@ -702,7 +702,7 @@ function resolveAttackPhase(
         continue
       }
 
-      const targetPendingHp = (playerUpdates[targetId]?.hp as number | undefined) ?? target.hp
+      const targetPendingHp = (playerUpdates[targetId]?.integ as number | undefined) ?? target.integ
       const targetPendingBuffs =
         (playerUpdates[targetId]?.buffs as typeof target.buffs | undefined) ?? target.buffs
 
@@ -758,11 +758,11 @@ function resolveAttackPhase(
               )
           if (chainDamage > 0) {
             const chainPendingHp =
-              (playerUpdates[chainTarget.id]?.hp as number | undefined) ?? chainTarget.hp
+              (playerUpdates[chainTarget.id]?.integ as number | undefined) ?? chainTarget.integ
             const chainNewHp = Math.max(0, chainPendingHp - chainDamage)
             playerUpdates[chainTarget.id] = {
               ...playerUpdates[chainTarget.id],
-              hp: chainNewHp,
+              integ: chainNewHp,
               alive: chainNewHp > 0,
             }
             events.push({
@@ -871,7 +871,7 @@ function resolveAttackPhase(
         hpLoss = absorbed.remaining
       }
 
-      const newHp = Math.max(0, targetPendingHp - hpLoss)
+      const newInteg = Math.max(0, targetPendingHp - hpLoss)
 
       if (attacker.items.includes('concussion_hammer') && Math.random() < 0.25) {
         // ticksRemaining 2 = one gated action: reaped same-tick by tickAllBuffs
@@ -903,11 +903,11 @@ function resolveAttackPhase(
       if (target.buffs.some((b) => b.id === 'spite_plate')) {
         const returnDamage = computeSpitePlateReflect(hpLoss)
         const attackerPendingHp =
-          (playerUpdates[action.playerId]?.hp as number | undefined) ?? attacker.hp
+          (playerUpdates[action.playerId]?.integ as number | undefined) ?? attacker.integ
         const attackerNewHp = Math.max(0, attackerPendingHp - returnDamage)
         playerUpdates[action.playerId] = {
           ...playerUpdates[action.playerId],
-          hp: attackerNewHp,
+          integ: attackerNewHp,
           alive: attackerNewHp > 0,
         }
         events.push({
@@ -922,8 +922,8 @@ function resolveAttackPhase(
 
       playerUpdates[targetId] = {
         ...playerUpdates[targetId],
-        hp: newHp,
-        alive: newHp > 0,
+        integ: newInteg,
+        alive: newInteg > 0,
         buffs: newBuffs,
       }
       holdTarget()
@@ -961,7 +961,7 @@ function resolveAttackPhase(
         continue
       }
       const { wave, globalIdx: waveIdx } = resolved
-      if (wave.hp <= 0) {
+      if (wave.integ <= 0) {
         miss('That wave is already dead')
         continue
       }
@@ -975,12 +975,12 @@ function resolveAttackPhase(
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
-      const newHp = Math.max(0, wave.hp - attackDamage)
+      const newInteg = Math.max(0, wave.integ - attackDamage)
 
-      waves[waveIdx] = { ...wave, hp: newHp }
+      waves[waveIdx] = { ...wave, integ: newInteg }
       holdTarget()
 
-      if (newHp <= 0) {
+      if (newInteg <= 0) {
         waveKills.push({ playerId: action.playerId, waveId: wave.id, waveType: wave.type })
       }
 
@@ -1018,15 +1018,15 @@ function resolveAttackPhase(
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
-      const newHp = Math.max(0, iceTarget.hp - attackDamage)
+      const newInteg = Math.max(0, iceTarget.integ - attackDamage)
 
       ice = ice.map((t) =>
         t.zone === iceTarget.zone && t.team === iceTarget.team
-          ? { ...t, hp: newHp, alive: newHp > 0 }
+          ? { ...t, integ: newInteg, alive: newInteg > 0 }
           : t,
       )
 
-      if (newHp <= 0) {
+      if (newInteg <= 0) {
         iceKills.push({ zone: iceTarget.zone, team: iceTarget.team })
       }
 
@@ -1084,12 +1084,12 @@ function resolveAttackPhase(
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
-      const newHp = Math.max(0, neutral.hp - attackDamage)
+      const newInteg = Math.max(0, neutral.integ - attackDamage)
 
-      neutrals[neutralIdx] = { ...neutral, hp: newHp, alive: newHp > 0 }
+      neutrals[neutralIdx] = { ...neutral, integ: newInteg, alive: newInteg > 0 }
       holdTarget()
 
-      if (newHp <= 0) {
+      if (newInteg <= 0) {
         neutralKills.push({ playerId: action.playerId, neutralId: neutral.id })
       }
 
@@ -1170,27 +1170,33 @@ function resolvePassivesPhase(
       }
     }
 
-    let hp = player.hp
-    let mp = player.mp
+    let integ = player.integ
+    let bw = player.bw
 
     const salveRegen = player.buffs.find((b) => b.id === 'trauma_patch_regen')
     if (salveRegen) {
-      hp = Math.min(player.maxHp, hp + salveRegen.stacks)
+      integ = Math.min(player.maxInteg, integ + salveRegen.stacks)
     }
 
     if (player.items.includes('clot_ring')) {
-      hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * CLOT_RING_REGEN_PERCENT))
+      integ = Math.min(
+        player.maxInteg,
+        integ + Math.floor(player.maxInteg * CLOT_RING_REGEN_PERCENT),
+      )
     }
 
     if (player.items.includes('drip_mask')) {
-      mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * DRIP_MASK_REGEN_PERCENT))
+      bw = Math.min(player.maxBw, bw + Math.floor(player.maxBw * DRIP_MASK_REGEN_PERCENT))
     }
 
     if (player.items.includes('bulk_lattice')) {
       const tookDamage = events.some((e) => e._tag === 'damage' && e.targetId === pid)
       const inCombat = player.buffs.some((b) => b.id === 'inCombat')
       if (!tookDamage && !inCombat) {
-        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * BULK_LATTICE_REGEN_PERCENT))
+        integ = Math.min(
+          player.maxInteg,
+          integ + Math.floor(player.maxInteg * BULK_LATTICE_REGEN_PERCENT),
+        )
       }
     }
 
@@ -1199,7 +1205,10 @@ function resolvePassivesPhase(
       const dealtDamage = heroAttackers.has(pid)
       const inCombat = player.buffs.some((b) => b.id === 'inCombat')
       if (!tookDamage && !dealtDamage && !inCombat) {
-        hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * BULK_LATTICE_REGEN_PERCENT))
+        integ = Math.min(
+          player.maxInteg,
+          integ + Math.floor(player.maxInteg * BULK_LATTICE_REGEN_PERCENT),
+        )
       }
     }
 
@@ -1227,7 +1236,7 @@ function resolvePassivesPhase(
       }
     }
 
-    playerUpdates[pid] = { hp, mp, cooldowns, buffs }
+    playerUpdates[pid] = { integ, bw, cooldowns, buffs }
   }
   return { players: applyPlayerUpdates(players, playerUpdates) }
 }
@@ -1419,7 +1428,7 @@ function resolveItemActivesPhase(
       for (const [pid, post] of Object.entries(players)) {
         const pre = prePlayers[pid]
         if (!pre) continue
-        const delta = pre.hp - post.hp
+        const delta = pre.integ - post.integ
         if (delta > 0) {
           events.push({
             _tag: 'damage',
@@ -1441,10 +1450,10 @@ function resolveItemActivesPhase(
               const userPost = players[action.playerId]
               if (userPost) {
                 const returnDamage = computeSpitePlateReflect(delta)
-                const userNewHp = Math.max(0, userPost.hp - returnDamage)
+                const userNewHp = Math.max(0, userPost.integ - returnDamage)
                 players = {
                   ...players,
-                  [action.playerId]: { ...userPost, hp: userNewHp, alive: userNewHp > 0 },
+                  [action.playerId]: { ...userPost, integ: userNewHp, alive: userNewHp > 0 },
                 }
                 events.push({
                   _tag: 'damage',
@@ -1478,7 +1487,7 @@ function resolveItemActivesPhase(
 }
 
 /**
- * Post-shop phases: harden, backup/cache pickup, maxHp/maxMp recalc, gold/XP
+ * Post-shop phases: harden, backup/cache pickup, maxInteg/maxBw recalc, gold/XP
  * awards (wave/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
@@ -1576,7 +1585,7 @@ function resolvePostShopPhases(
     }
   }
 
-  // Recalculate maxHp/maxMp
+  // Recalculate maxInteg/maxBw
   for (const [pid, player] of Object.entries(players)) {
     const hero = player.heroId ? HEROES[player.heroId] : null
     if (!hero) continue
@@ -1587,20 +1596,20 @@ function resolvePostShopPhases(
     const treadsMp = player.buffs.find((b) => b.id === 'gait_rig_mp')?.stacks ?? 0
     const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp') + treadsHp
     const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
-    if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {
+    if (newMaxHp !== player.maxInteg || newMaxMp !== player.maxBw) {
       // Preserve the hp/mp PERCENTAGE across any max change (item buy/sell,
       // talent, power-treads toggle): a full hero stays full, a half-hp hero
-      // stays at half. Level-ups don't reach here — levelUpHero reconciles maxHp
+      // stays at half. Level-ups don't reach here — levelUpHero reconciles maxInteg
       // with a flat gain, so the guard above is false for them. A live player is
       // never dropped to 0 by a max change (e.g. selling an HP item at low HP).
-      const hpRatio = player.maxHp > 0 ? player.hp / player.maxHp : 1
-      const mpRatio = player.maxMp > 0 ? player.mp / player.maxMp : 1
+      const hpRatio = player.maxInteg > 0 ? player.integ / player.maxInteg : 1
+      const mpRatio = player.maxBw > 0 ? player.bw / player.maxBw : 1
       const scaledHp = Math.min(newMaxHp, Math.floor(newMaxHp * hpRatio))
-      const newHp = player.hp > 0 ? Math.max(1, scaledHp) : scaledHp
-      const newMp = Math.min(newMaxMp, Math.floor(newMaxMp * mpRatio))
+      const newInteg = player.integ > 0 ? Math.max(1, scaledHp) : scaledHp
+      const newBw = Math.min(newMaxMp, Math.floor(newMaxMp * mpRatio))
       players = {
         ...players,
-        [pid]: { ...player, maxHp: newMaxHp, maxMp: newMaxMp, hp: newHp, mp: newMp },
+        [pid]: { ...player, maxInteg: newMaxHp, maxBw: newMaxMp, integ: newInteg, bw: newBw },
       }
     }
   }
@@ -2135,7 +2144,7 @@ function applyTargetedSpellBlock(
   }
 
   if (post && pre.buffs.some((b) => b.id === 'mirror_shell')) {
-    const reflected = pre.hp - post.hp
+    const reflected = pre.integ - post.integ
     let removed = false
     const buffs = pre.buffs.filter((b) => {
       if (!removed && b.id === 'mirror_shell') {
@@ -2147,8 +2156,8 @@ function applyTargetedSpellBlock(
     let next = { ...players, [targetId]: { ...pre, buffs } } // negate on holder
     const casterPost = next[casterId]
     if (reflected > 0 && casterPost && !isDamageImmune(casterPost, damageType)) {
-      const newHp = Math.max(0, casterPost.hp - reflected)
-      next = { ...next, [casterId]: { ...casterPost, hp: newHp, alive: newHp > 0 } }
+      const newInteg = Math.max(0, casterPost.integ - reflected)
+      next = { ...next, [casterId]: { ...casterPost, integ: newInteg, alive: newInteg > 0 } }
       events.push({
         _tag: 'damage',
         tick,
@@ -2253,7 +2262,7 @@ function resolveHeroCast(
       HEROES[caster.heroId]?.abilities[cmd.ability]?.name ?? cmd.ability.toUpperCase()
     let reason: string
     if (err._tag === 'InsufficientManaError') {
-      reason = `Not enough mana for ${abilityName}: need ${err.required}, have ${Math.floor(caster.mp)}`
+      reason = `Not enough mana for ${abilityName}: need ${err.required}, have ${Math.floor(caster.bw)}`
     } else if (err._tag === 'CooldownError') {
       const cd = caster.cooldowns[cmd.ability] ?? 0
       reason = `${abilityName} on cooldown — ${cd} tick${cd === 1 ? '' : 's'} left (ready T${state.tick + cd})`
@@ -2319,10 +2328,10 @@ function resolveHeroCast(
   for (const [pid, post] of Object.entries(newPlayers)) {
     const pre = players[pid]
     if (!pre) continue
-    let delta = pre.hp - post.hp
+    let delta = pre.integ - post.integ
     if (delta > 0 && hasOverclock && post.team !== caster.team) {
-      const doubledHp = Math.max(0, post.hp - delta)
-      newPlayers = { ...newPlayers, [pid]: { ...post, hp: doubledHp, alive: doubledHp > 0 } }
+      const doubledHp = Math.max(0, post.integ - delta)
+      newPlayers = { ...newPlayers, [pid]: { ...post, integ: doubledHp, alive: doubledHp > 0 } }
       delta *= 2
     }
     if (delta > 0) {
@@ -2349,10 +2358,10 @@ function resolveHeroCast(
           const casterPost = newPlayers[action.playerId]
           if (casterPost) {
             const returnDamage = computeSpitePlateReflect(delta)
-            const casterNewHp = Math.max(0, casterPost.hp - returnDamage)
+            const casterNewHp = Math.max(0, casterPost.integ - returnDamage)
             newPlayers = {
               ...newPlayers,
-              [action.playerId]: { ...casterPost, hp: casterNewHp, alive: casterNewHp > 0 },
+              [action.playerId]: { ...casterPost, integ: casterNewHp, alive: casterNewHp > 0 },
             }
             events.push({
               _tag: 'damage',
@@ -2449,7 +2458,7 @@ function resolveHeroCast(
         for (const [pid, post] of Object.entries(echoNewPlayers)) {
           const pre = echoPlayers[pid]
           if (!pre) continue
-          const delta = pre.hp - post.hp
+          const delta = pre.integ - post.integ
           if (delta > 0) {
             events.push({
               _tag: 'damage',
@@ -2506,12 +2515,12 @@ function resolveHeroCast(
     if (lc && lc.alive) {
       const healAmount = Math.min(
         Math.floor(SPELL_LIFESTEAL_PERCENT * castDamageToEnemies),
-        Math.max(0, lc.maxHp - lc.hp),
+        Math.max(0, lc.maxInteg - lc.integ),
       )
       if (healAmount > 0) {
         newPlayers = {
           ...newPlayers,
-          [action.playerId]: { ...lc, hp: lc.hp + healAmount },
+          [action.playerId]: { ...lc, integ: lc.integ + healAmount },
         }
         events.push({
           _tag: 'heal',
@@ -2572,19 +2581,19 @@ function collectNpcCastDamage(
   // Resolvers that don't touch waves return the buffer they were handed, so
   // reference equality means "nothing to diff" for the overwhelming majority.
   if (!post || post === pre) return pre
-  const preHp = new Map(pre.map((c) => [c.id, c.hp]))
+  const preInteg = new Map(pre.map((c) => [c.id, c.integ]))
   for (const c of post) {
-    const was = preHp.get(c.id)
-    if (was === undefined || was <= c.hp) continue
+    const was = preInteg.get(c.id)
+    if (was === undefined || was <= c.integ) continue
     events.push({
       _tag: 'damage',
       tick,
       sourceId: casterId,
       targetId: c.id,
-      amount: was - c.hp,
+      amount: was - c.integ,
       damageType,
     })
-    if (c.hp <= 0 && was > 0) {
+    if (c.integ <= 0 && was > 0) {
       waveKills.push({ playerId: casterId, waveId: c.id, waveType: c.type })
     }
   }
@@ -2603,19 +2612,19 @@ function collectNeutralCastDamage(
   neutralKills: Array<{ playerId: string; neutralId: string }>,
 ): SiltDwellerState[] {
   if (!post || post === pre) return pre
-  const preHp = new Map(pre.map((n) => [n.id, n.hp]))
+  const preInteg = new Map(pre.map((n) => [n.id, n.integ]))
   for (const n of post) {
-    const was = preHp.get(n.id)
-    if (was === undefined || was <= n.hp) continue
+    const was = preInteg.get(n.id)
+    if (was === undefined || was <= n.integ) continue
     events.push({
       _tag: 'damage',
       tick,
       sourceId: casterId,
       targetId: n.id,
-      amount: was - n.hp,
+      amount: was - n.integ,
       damageType,
     })
-    if (n.hp <= 0 && was > 0) {
+    if (n.integ <= 0 && was > 0) {
       neutralKills.push({ playerId: casterId, neutralId: n.id })
     }
   }

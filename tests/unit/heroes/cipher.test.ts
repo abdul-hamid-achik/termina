@@ -20,10 +20,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'cipher',
     zone: 'mid-river',
-    hp: 480,
-    maxHp: 480,
-    mp: 320,
-    maxMp: 320,
+    integ: 480,
+    maxInteg: 480,
+    bw: 320,
+    maxBw: 320,
     level: 7,
     xp: 0,
     gold: 600,
@@ -50,10 +50,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -96,7 +96,7 @@ describe('Cipher Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
@@ -108,7 +108,7 @@ describe('Cipher Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(320 - 50) // Level 1 Q costs 50
+      expect(updated.bw).toBe(320 - 50) // Level 1 Q costs 50
       expect(updated.cooldowns.q).toBe(5)
     })
 
@@ -128,8 +128,8 @@ describe('Cipher Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -169,7 +169,7 @@ describe('Cipher Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -200,7 +200,7 @@ describe('Cipher Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(320 - 80) // Level 1 W costs 80
+      expect(updated.bw).toBe(320 - 80) // Level 1 W costs 80
       expect(updated.cooldowns.w).toBe(14)
     })
 
@@ -211,11 +211,11 @@ describe('Cipher Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(320 - 140) // Level 4 W costs 140
+      expect(updated.bw).toBe(320 - 140) // Level 4 W costs 140
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
@@ -249,7 +249,7 @@ describe('Cipher Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(320 - 90) // Level 1 E costs 90
+      expect(updated.bw).toBe(320 - 90) // Level 1 E costs 90
       expect(updated.cooldowns.e).toBe(12)
     })
 
@@ -291,7 +291,7 @@ describe('Cipher Hero', () => {
 
   describe('R: Brute Force (6-Hit Burst + Encryption Key)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -302,18 +302,18 @@ describe('Cipher Hero', () => {
     })
 
     it('deals massive code damage (6 hits)', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
-      const dmg = enemy.hp - result.state.players['e1']!.hp
+      const dmg = enemy.integ - result.state.players['e1']!.integ
       expect(dmg).toBeGreaterThan(100) // 6 * 55 = 330 pre-mitigation
     })
 
     it('applies encryptionKey stacks (capped at 4)', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -326,19 +326,19 @@ describe('Cipher Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 220) // R1 costs 220
+      expect(updated.bw).toBe(500 - 220) // R1 costs 220
       expect(updated.cooldowns.r).toBe(45)
     })
 
     it('breaks stealth on cast', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'stealth',
         stacks: 1,
@@ -354,7 +354,7 @@ describe('Cipher Hero', () => {
     })
 
     it('requires hero target', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -362,8 +362,8 @@ describe('Cipher Hero', () => {
     })
 
     it('scales damage with R level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
 
@@ -377,8 +377,8 @@ describe('Cipher Hero', () => {
         resolveAbility(state2, 'p1', 'r', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
   })

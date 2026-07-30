@@ -34,7 +34,7 @@ import {
   ANCIENT_HP,
   TENANT_BASE_HP,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
-  FOUNTAIN_MANA_PER_TICK_PERCENT,
+  FOUNTAIN_BW_PER_TICK_PERCENT,
   SURRENDER_MIN_TICK,
   SURRENDER_VOTE_THRESHOLD,
   CACHE_INTERVAL_TICKS,
@@ -155,7 +155,7 @@ const movementGuide = [
   {
     title: 'Movement Tips',
     items: [
-      `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle — retreat there to recover`,
+      `Fountain heals ${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_BW_PER_TICK_PERCENT}% MP per cycle — retreat there to recover`,
       'Fountain is only adjacent to your base (must go through base first)',
       `You can't move while dead — respawn takes ${RESPAWN_BASE_TICKS} cycles plus ${RESPAWN_PER_LEVEL_TICKS} per level after level ${RESPAWN_FREE_LEVELS}`,
       'Team-relative shortcuts: move base / move fountain always go to YOUR side, whichever team you are',
@@ -352,7 +352,7 @@ const concepts = [
   {
     term: 'Sustain',
     icon: '+',
-    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max HP per cycle) and Drip Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_BW_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max HP per cycle) and Drip Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
     term: 'Last-Hitting & Burning',

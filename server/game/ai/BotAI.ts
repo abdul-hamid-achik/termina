@@ -296,11 +296,11 @@ function getAlliedHeroesInZone(state: GameState, bot: PlayerState): PlayerState[
 }
 
 function getEnemyWavesInZone(state: GameState, bot: PlayerState): WaveUnitState[] {
-  return state.waves.filter((c) => c.zone === bot.zone && c.team !== bot.team && c.hp > 0)
+  return state.waves.filter((c) => c.zone === bot.zone && c.team !== bot.team && c.integ > 0)
 }
 
 function getAlliedWavesInZone(state: GameState, bot: PlayerState): WaveUnitState[] {
-  return state.waves.filter((c) => c.zone === bot.zone && c.team === bot.team && c.hp > 0)
+  return state.waves.filter((c) => c.zone === bot.zone && c.team === bot.team && c.integ > 0)
 }
 
 function getEnemyIceInZone(state: GameState, bot: PlayerState): IceState | undefined {
@@ -308,7 +308,7 @@ function getEnemyIceInZone(state: GameState, bot: PlayerState): IceState | undef
 }
 
 function getNeutralsInZone(state: GameState, zone: string): SiltDwellerState[] {
-  return state.neutrals.filter((n) => n.zone === zone && n.alive && n.hp > 0)
+  return state.neutrals.filter((n) => n.zone === zone && n.alive && n.integ > 0)
 }
 
 function getCachesInZone(state: GameState, zone: string): CacheState[] {
@@ -324,11 +324,11 @@ function isInFountain(bot: PlayerState): boolean {
 }
 
 function getHpPercent(bot: PlayerState): number {
-  return bot.maxHp > 0 ? (bot.hp / bot.maxHp) * 100 : 0
+  return bot.maxInteg > 0 ? (bot.integ / bot.maxInteg) * 100 : 0
 }
 
 function getMpPercent(bot: PlayerState): number {
-  return bot.maxMp > 0 ? (bot.mp / bot.maxMp) * 100 : 0
+  return bot.maxBw > 0 ? (bot.bw / bot.maxBw) * 100 : 0
 }
 
 function getItemCount(bot: PlayerState): number {
@@ -409,7 +409,7 @@ function canCastAbility(bot: PlayerState, ability: AbilityDef, slot: AbilitySlot
   return (
     getAbilityLevel(bot.level, slot) >= 1 &&
     bot.cooldowns[slot] === 0 &&
-    bot.mp >= getAbilityManaCost(ability, slot, bot.level)
+    bot.bw >= getAbilityManaCost(ability, slot, bot.level)
   )
 }
 
@@ -500,7 +500,7 @@ function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: Game
     score += enemyAttack * 0.5
 
     // Sum actual damage of off-cooldown abilities the enemy can cast right now.
-    if (enemy.mp > 0) {
+    if (enemy.bw > 0) {
       for (const slot of ['q', 'w', 'e', 'r'] as const) {
         if (enemy.cooldowns[slot] === 0) {
           const ability = hero.abilities[slot]
@@ -509,7 +509,7 @@ function calculateThreatScore(enemy: PlayerState, bot: PlayerState, _state: Game
           // Rank cost, not the rank-1 headline: an enemy who cannot pay for a
           // cast is not threatening with it, and reading the headline had bots
           // fleeing fights the enemy had no mana to win.
-          if (enemy.mp >= getAbilityManaCost(ability, slot, enemy.level)) {
+          if (enemy.bw >= getAbilityManaCost(ability, slot, enemy.level)) {
             score += abilityDamageValue(ability)
           }
         }
@@ -711,7 +711,7 @@ export function getAbilityTarget(
         return pickAllyTarget(ability, bot, alliesInZone, true)
       }
       if (enemiesInZone.length === 0) return undefined
-      const target = enemiesInZone.reduce((a, b) => (a.hp < b.hp ? a : b))
+      const target = enemiesInZone.reduce((a, b) => (a.integ < b.integ ? a : b))
       return { kind: 'hero', name: target.id }
     }
     case 'zone': {
@@ -805,7 +805,7 @@ function tryCombo(
     // Don't open a combo we can't afford to finish — a half-combo wastes the
     // opener's mana and leaves the bot mid-rotation with nothing.
     if (
-      bot.mp <
+      bot.bw <
       sequenceManaCost(
         heroId,
         combo.sequence.map((s) => s.ability),
@@ -1021,7 +1021,7 @@ function tryTenant(
 
   const key = `${gameId}|${bot.team}`
   const phase = tenantAttemptPhase(key, state.tick)
-  const hpFraction = tenant.maxHp > 0 ? tenant.hp / tenant.maxHp : 0
+  const hpFraction = tenant.maxInteg > 0 ? tenant.integ / tenant.maxInteg : 0
   const snipe = hpFraction < TENANT_SNIPE_HP_FRACTION
 
   if (phase === 'committed') {
@@ -1131,7 +1131,7 @@ function tryGlyph(state: GameState, bot: PlayerState): Command | null {
   const ourIce = state.ice.filter((t) => t.team === bot.team && t.alive)
   const enemyHeroes = Object.values(state.players).filter((p) => p.team !== bot.team && p.alive)
   for (const ice of ourIce) {
-    if (ice.hp / ice.maxHp > 0.25) continue // only harden a critically low ice
+    if (ice.integ / ice.maxInteg > 0.25) continue // only harden a critically low ice
     const enemyOnIce = enemyHeroes.some((e) => e.zone === ice.zone)
     if (enemyOnIce) {
       // Bot must be on the same team and able to issue the command
@@ -1221,7 +1221,7 @@ function tryFarmJungle(
   if (!config.jungleFarming) return null
   const neutralsHere = getNeutralsInZone(state, bot.zone)
   if (neutralsHere.length > 0) {
-    const target = neutralsHere.reduce((a, b) => (a.hp < b.hp ? a : b))
+    const target = neutralsHere.reduce((a, b) => (a.integ < b.integ ? a : b))
     const neutralIdx = state.neutrals.indexOf(target)
     return { type: 'attack', target: { kind: 'neutral', index: neutralIdx } }
   }
@@ -1253,10 +1253,10 @@ function tryBurn(state: GameState, bot: PlayerState, config: BotDifficultyConfig
   let bestHp = Infinity
   for (let i = 0; i < zoneWaves.length; i++) {
     const wave = zoneWaves[i]!
-    if (wave.team !== bot.team || wave.hp <= 0) continue
-    if (wave.hp > (wave.maxHp ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
-    if (wave.hp < bestHp) {
-      bestHp = wave.hp
+    if (wave.team !== bot.team || wave.integ <= 0) continue
+    if (wave.integ > (wave.maxInteg ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
+    if (wave.integ < bestHp) {
+      bestHp = wave.integ
       bestIdx = i
     }
   }
@@ -1277,7 +1277,7 @@ function pickWaveTarget(
   tick: number,
   config: BotDifficultyConfig,
 ): WaveUnitState {
-  const byHp = [...enemyWaves].sort((a, b) => a.hp - b.hp)
+  const byHp = [...enemyWaves].sort((a, b) => a.integ - b.integ)
   const lowest = byHp[0]!
   if (byHp.length < 2) return lowest
   if (deterministicRoll(`lasthit_${bot.id}`, tick) < config.lastHitAccuracy) return lowest
@@ -1356,7 +1356,7 @@ export function tryUseCombatItem(
   }
 
   // Offensive setup → control → burst, aimed at the kill target (lowest HP).
-  const killTarget = enemiesInZone.reduce((a, b) => (a.hp < b.hp ? a : b))
+  const killTarget = enemiesInZone.reduce((a, b) => (a.integ < b.integ ? a : b))
   const killRef: TargetRef = { kind: 'hero', name: killTarget.id }
   const killImmune = isAirgapTarget(killTarget)
 
@@ -1373,7 +1373,7 @@ export function tryUseCombatItem(
   if (enemiesInZone.length >= 2 && itemOffCooldown(bot, 'stasis_shunt')) {
     const secondary = enemiesInZone
       .filter((e) => e.id !== killTarget.id)
-      .reduce((a, b) => (a.hp > b.hp ? a : b))
+      .reduce((a, b) => (a.integ > b.integ ? a : b))
     return { type: 'use', item: 'stasis_shunt', target: { kind: 'hero', name: secondary.id } }
   }
   if (!killImmune && itemOffCooldown(bot, 'burnout')) {
@@ -1552,7 +1552,7 @@ export function decideBotAction(
     // starves the laner opposite of gold + XP for the same one action.
     const denyCmd = tryBurn(state, bot, config)
     if (denyCmd) return denyCmd
-    const target = enemyHeroes.reduce((a, b) => (a.hp < b.hp ? a : b))
+    const target = enemyHeroes.reduce((a, b) => (a.integ < b.integ ? a : b))
     return { type: 'attack', target: { kind: 'hero', name: target.id } }
   }
   // Win condition: hit the enemy Ancient when standing in their base and it's exposed
@@ -1625,7 +1625,7 @@ export function decideBotAction(
     const advancingIntoEnemy = !isOwnSide(nextZone, bot.team)
     const hasLaneSupport =
       getAlliedWavesInZone(state, bot).length > 0 ||
-      state.waves.some((c) => c.zone === nextZone && c.team === bot.team && c.hp > 0) ||
+      state.waves.some((c) => c.zone === nextZone && c.team === bot.team && c.integ > 0) ||
       getAlliedHeroesInZone(state, bot).length > 0
     if (!advancingIntoEnemy || hasLaneSupport) {
       return { type: 'move', zone: nextZone }

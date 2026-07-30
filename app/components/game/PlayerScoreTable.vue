@@ -13,10 +13,10 @@ export interface PlayerScoreRow {
   /** Guild/clan tag (public identity) — shown next to the hero name. */
   guildTag?: string
   level: number
-  /** hp/maxHp are optional — the replay end-state snapshot (shown before frames
+  /** hp/maxInteg are optional — the replay end-state snapshot (shown before frames
    *  load) carries no HP, so the cell renders "?" when either is absent. */
   hp?: number
-  maxHp?: number
+  maxInteg?: number
   kills: number
   deaths: number
   assists: number
@@ -70,8 +70,8 @@ defineProps<{
           </th>
           <td class="px-2 py-1 text-gold">{{ p.level }}</td>
           <td class="px-2 py-1">
-            <template v-if="p.hp !== undefined && p.maxHp !== undefined"
-              >{{ p.hp }}<span class="text-text-muted">/{{ p.maxHp }}</span></template
+            <template v-if="p.integ !== undefined && p.maxInteg !== undefined"
+              >{{ p.integ }}<span class="text-text-muted">/{{ p.maxInteg }}</span></template
             >
             <span v-else class="text-text-muted">?</span>
           </td>

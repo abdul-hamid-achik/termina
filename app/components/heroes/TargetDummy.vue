@@ -4,7 +4,7 @@ import { computed } from 'vue'
 const props = defineProps<{
   name: string
   hp: number
-  maxHp: number
+  maxInteg: number
   /** Active damage-over-time stacks ticking on the dummy, for the status line. */
   dots?: number
   /** Control effects (stun/slow/…) on the dummy, shown as decaying chips. */
@@ -12,9 +12,11 @@ const props = defineProps<{
 }>()
 
 const pct = computed(() =>
-  props.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((props.hp / props.maxHp) * 100))) : 0,
+  props.maxInteg > 0
+    ? Math.max(0, Math.min(100, Math.round((props.integ / props.maxInteg) * 100)))
+    : 0,
 )
-const destroyed = computed(() => props.hp <= 0)
+const destroyed = computed(() => props.integ <= 0)
 // Health colour shifts chaff → gold → audit as the bar drains.
 const barColor = computed(() =>
   pct.value <= 25 ? 'bg-audit' : pct.value <= 50 ? 'bg-gold' : 'bg-chaff',
@@ -29,7 +31,7 @@ const barColor = computed(() =>
     <div class="flex items-center justify-between text-[0.72rem]">
       <span class="font-bold text-text-primary">{{ name }}</span>
       <span :class="destroyed ? 'text-audit' : 'text-text-dim'">
-        {{ destroyed ? 'DESTROYED' : `${Math.max(0, hp)} / ${maxHp} hp` }}
+        {{ destroyed ? 'DESTROYED' : `${Math.max(0, integ)} / ${maxInteg} hp` }}
       </span>
     </div>
     <div class="h-2 w-full bg-bg-primary">

@@ -31,7 +31,7 @@ export function runTenantAI(state: GameState): TenantAction[] {
 
   // Attack the lowest HP enemy hero in range
   if (enemyHeroes.length > 0) {
-    const target = enemyHeroes.reduce((lowest, hero) => (hero.hp < lowest.hp ? hero : lowest))
+    const target = enemyHeroes.reduce((lowest, hero) => (hero.integ < lowest.integ ? hero : lowest))
     actions.push({
       targetId: target.id,
       damage: TENANT_ATTACK,
@@ -63,8 +63,8 @@ export function processTenantDamage(
       events.push({
         _tag: 'tenant_respawn',
         tick: state.tick,
-        hp: tenant.hp,
-        maxHp: tenant.maxHp,
+        integ: tenant.integ,
+        maxInteg: tenant.maxInteg,
       } satisfies TenantRespawnEvent)
     }
     return {
@@ -82,27 +82,27 @@ export function processTenantDamage(
   }
 
   if (totalDamage > 0) {
-    const newHp = Math.max(0, tenant.hp - totalDamage)
-    tenant = { ...tenant, hp: newHp }
+    const newInteg = Math.max(0, tenant.integ - totalDamage)
+    tenant = { ...tenant, integ: newInteg }
 
     events.push({
       _tag: 'tenant_damage',
       tick: state.tick,
       damage: totalDamage,
-      hp: newHp,
-      maxHp: tenant.maxHp,
+      integ: newInteg,
+      maxInteg: tenant.maxInteg,
     } satisfies TenantDamageEvent)
 
     // Tenant died
-    if (newHp <= 0) {
+    if (newInteg <= 0) {
       tenantKilled = true
       backupDropped = true
 
       // Update Tenant state to dead
       tenant = {
         alive: false,
-        hp: 0,
-        maxHp: tenant.maxHp,
+        integ: 0,
+        maxInteg: tenant.maxInteg,
         deathTick: state.tick,
       }
 
@@ -134,8 +134,8 @@ export function processTenantDamage(
         for (const [playerId, damage] of damageDealt) {
           if (damage > 0) {
             const player = players[playerId]
-            if (player && player.hp < lowestHp) {
-              lowestHp = player.hp
+            if (player && player.integ < lowestHp) {
+              lowestHp = player.integ
               lowestDmgDealer = playerId
             }
           }

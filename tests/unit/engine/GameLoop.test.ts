@@ -22,10 +22,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     level: 1,
     xp: 0,
     gold: 600,
@@ -100,7 +100,7 @@ describe('GameLoop', () => {
     it('should not give passive gold to dead players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: 10 }),
+          p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnTick: 10 }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
@@ -144,10 +144,10 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'chaff-fountain',
-            hp: 100,
-            maxHp: 550,
-            mp: 50,
-            maxMp: 280,
+            integ: 100,
+            maxInteg: 550,
+            bw: 50,
+            maxBw: 280,
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
@@ -155,9 +155,9 @@ describe('GameLoop', () => {
 
       const result = Effect.runSync(processTick('game4', state))
       // Fountain heals 15% per tick: 550 * 0.15 = 82
-      expect(result.state.players['p1']!.hp).toBe(182)
+      expect(result.state.players['p1']!.integ).toBe(182)
       // Mana: echo base 280, 280 * 0.15 = 42; 50 + 42 = 92
-      expect(result.state.players['p1']!.mp).toBe(92)
+      expect(result.state.players['p1']!.bw).toBe(92)
     })
 
     it('should respawn dead players when respawn tick is reached', () => {
@@ -167,9 +167,9 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             alive: false,
-            hp: 0,
-            maxHp: 550,
-            maxMp: 280,
+            integ: 0,
+            maxInteg: 550,
+            maxBw: 280,
             respawnTick: 10,
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
@@ -180,7 +180,7 @@ describe('GameLoop', () => {
       expect(result.state.tick).toBe(10)
       const p1 = result.state.players['p1']!
       expect(p1.alive).toBe(true)
-      expect(p1.hp).toBe(550) // Full HP (echo base HP)
+      expect(p1.integ).toBe(550) // Full HP (echo base HP)
       expect(p1.zone).toBe('chaff-fountain')
     })
 
@@ -189,7 +189,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         ancients: {
           chaff: ancients.chaff,
-          audit: { ...ancients.audit, hp: 0, alive: false, vulnerable: true },
+          audit: { ...ancients.audit, integ: 0, alive: false, vulnerable: true },
         },
         players: {
           p1: makePlayer({ id: 'p1' }),
@@ -204,7 +204,7 @@ describe('GameLoop', () => {
 
     it('should NOT end the game when all enemy ice are destroyed but the Ancient stands', () => {
       const ice = initializeIce().map((t) =>
-        t.team === 'audit' ? { ...t, hp: 0, alive: false } : t,
+        t.team === 'audit' ? { ...t, integ: 0, alive: false } : t,
       )
 
       const state = makeGameState({
@@ -223,7 +223,7 @@ describe('GameLoop', () => {
 
     it('should mark an Ancient vulnerable when one of its T3 ice falls', () => {
       const ice = initializeIce().map((t) =>
-        t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
+        t.zone === 'mid-t3-audit' ? { ...t, integ: 0, alive: false } : t,
       )
 
       const state = makeGameState({ ice })
@@ -234,7 +234,9 @@ describe('GameLoop', () => {
 
     it('should keep Ancients invulnerable while only T1/T2 ice are down', () => {
       const ice = initializeIce().map((t) =>
-        t.zone === 'mid-t1-audit' || t.zone === 'mid-t2-audit' ? { ...t, hp: 0, alive: false } : t,
+        t.zone === 'mid-t1-audit' || t.zone === 'mid-t2-audit'
+          ? { ...t, integ: 0, alive: false }
+          : t,
       )
 
       const state = makeGameState({ ice })
@@ -262,7 +264,7 @@ describe('GameLoop', () => {
     it('should set death respawn timer for killed players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', alive: false, hp: 0, level: 1, respawnTick: null }),
+          p1: makePlayer({ id: 'p1', alive: false, integ: 0, level: 1, respawnTick: null }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
@@ -280,7 +282,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         tick: 5,
         players: {
-          p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: 10 }),
+          p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnTick: 10 }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
@@ -295,17 +297,17 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'chaff-fountain',
-            mp: 50,
-            maxMp: 280,
-            hp: 550,
-            maxHp: 550,
+            bw: 50,
+            maxBw: 280,
+            integ: 550,
+            maxInteg: 550,
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
       const result = Effect.runSync(processTick('game-mana', state))
-      expect(result.state.players['p1']!.mp).toBeGreaterThan(50)
+      expect(result.state.players['p1']!.bw).toBeGreaterThan(50)
     })
 
     it('should not heal players outside their fountain', () => {
@@ -314,8 +316,8 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'mid-river',
-            hp: 100,
-            maxHp: 550,
+            integ: 100,
+            maxInteg: 550,
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
@@ -323,7 +325,7 @@ describe('GameLoop', () => {
 
       const result = Effect.runSync(processTick('game-no-heal', state))
       // Player not in fountain should not be healed
-      expect(result.state.players['p1']!.hp).toBe(100)
+      expect(result.state.players['p1']!.integ).toBe(100)
     })
 
     it('should not heal chaff player in audit fountain', () => {
@@ -333,15 +335,15 @@ describe('GameLoop', () => {
             id: 'p1',
             team: 'chaff',
             zone: 'audit-fountain',
-            hp: 100,
-            maxHp: 550,
+            integ: 100,
+            maxInteg: 550,
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
       const result = Effect.runSync(processTick('game-wrong-fountain', state))
-      expect(result.state.players['p1']!.hp).toBe(100)
+      expect(result.state.players['p1']!.integ).toBe(100)
     })
 
     it('should cap fountain healing at max HP', () => {
@@ -350,18 +352,18 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'chaff-fountain',
-            hp: 540,
-            maxHp: 550,
-            mp: 275,
-            maxMp: 280,
+            integ: 540,
+            maxInteg: 550,
+            bw: 275,
+            maxBw: 280,
           }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
 
       const result = Effect.runSync(processTick('game-cap-heal', state))
-      expect(result.state.players['p1']!.hp).toBe(550)
-      expect(result.state.players['p1']!.mp).toBe(280)
+      expect(result.state.players['p1']!.integ).toBe(550)
+      expect(result.state.players['p1']!.bw).toBe(280)
     })
 
     it('auto-paths a distant move one hop per tick and stores the destination', () => {
@@ -386,7 +388,7 @@ describe('GameLoop', () => {
       const state = makeGameState({
         ancients: {
           chaff: ancients.chaff,
-          audit: { ...ancients.audit, hp: 0, alive: false, vulnerable: true },
+          audit: { ...ancients.audit, integ: 0, alive: false, vulnerable: true },
         },
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-t1-chaff' }),
@@ -402,7 +404,7 @@ describe('GameLoop', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
-          chaff: { ...ancients.chaff, hp: 0, alive: false, vulnerable: true },
+          chaff: { ...ancients.chaff, integ: 0, alive: false, vulnerable: true },
           audit: ancients.audit,
         },
         players: {
@@ -431,7 +433,7 @@ describe('GameLoop', () => {
     it('should return events from the tick', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: null }),
+          p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnTick: null }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
@@ -449,8 +451,8 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             alive: false,
-            hp: 0,
-            mp: 0,
+            integ: 0,
+            bw: 0,
             zone: 'mid-river',
             respawnTick: null,
             // Died mid-walk: the backup revive must ALSO cancel the auto-path
@@ -466,8 +468,8 @@ describe('GameLoop', () => {
       const p1 = result.state.players['p1']!
 
       expect(p1.alive).toBe(true)
-      expect(p1.hp).toBe(550)
-      expect(p1.mp).toBe(280)
+      expect(p1.integ).toBe(550)
+      expect(p1.bw).toBe(280)
       expect(p1.respawnTick).toBeNull()
       expect(p1.buffs).toEqual([])
       expect(p1.zone).toBe('mid-river')
@@ -480,7 +482,7 @@ describe('GameLoop', () => {
     it('should set respawn timer for player without backup', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', alive: false, hp: 0, respawnTick: null }),
+          p1: makePlayer({ id: 'p1', alive: false, integ: 0, respawnTick: null }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
         },
       })
@@ -498,8 +500,8 @@ describe('GameLoop', () => {
           p1: makePlayer({
             id: 'p1',
             alive: false,
-            hp: 0,
-            mp: 0,
+            integ: 0,
+            bw: 0,
             respawnTick: null,
             buffs: [
               { id: 'backup', stacks: 1, ticksRemaining: 999, source: 'tenant' },
@@ -587,17 +589,17 @@ describe('GameLoop', () => {
         },
         // Keep audit T3 mid dead so vulnerability stays true after recompute
         ice: initializeIce().map((t) =>
-          t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
+          t.zone === 'mid-t3-audit' ? { ...t, integ: 0, alive: false } : t,
         ),
         waves: [
-          { id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'line' },
-          { id: 'c2', team: 'chaff', zone: 'audit-base', hp: 250, type: 'sweep' },
+          { id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' },
+          { id: 'c2', team: 'chaff', zone: 'audit-base', integ: 250, type: 'sweep' },
         ],
       })
 
       const result = Effect.runSync(processTick('game-ancient-breach', state))
       const audit = result.state.ancients.audit
-      expect(audit.hp).toBeLessThan(audit.maxHp)
+      expect(audit.integ).toBeLessThan(audit.maxInteg)
       // Damage events against the ancient should be emitted
       const ancientDamage = result.events.filter(
         (e) => e._tag === 'damage' && e.targetId === 'ancient_audit',
@@ -610,12 +612,12 @@ describe('GameLoop', () => {
       const state = makeGameState({
         ancients: {
           chaff: ancients.chaff,
-          audit: { ...ancients.audit, hp: 10, vulnerable: true },
+          audit: { ...ancients.audit, integ: 10, vulnerable: true },
         },
         ice: initializeIce().map((t) =>
-          t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
+          t.zone === 'mid-t3-audit' ? { ...t, integ: 0, alive: false } : t,
         ),
-        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'line' }],
+        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' }],
       })
 
       const result = Effect.runSync(processTick('game-ancient-end', state))
@@ -626,7 +628,7 @@ describe('GameLoop', () => {
 
     it('waves idling in base with an invulnerable Ancient are garbage collected', () => {
       let state = makeGameState({
-        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'line' }],
+        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', integ: 400, type: 'line' }],
       })
 
       // Ancient is invulnerable (all ice alive), no heroes in base.
@@ -642,7 +644,7 @@ describe('GameLoop', () => {
         id: `stack_${i}`,
         team: 'chaff' as const,
         zone: 'mid-t2-chaff',
-        hp: 400,
+        integ: 400,
         type: 'line' as const,
       }))
       const state = makeGameState({ waves })

@@ -16,10 +16,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'kernel',
     zone: 'mid-river',
-    hp: 750,
-    maxHp: 750,
-    mp: 250,
-    maxMp: 250,
+    integ: 750,
+    maxInteg: 750,
+    bw: 250,
+    maxBw: 250,
     level: 7,
     xp: 0,
     gold: 600,
@@ -46,10 +46,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -107,7 +107,7 @@ describe('Kernel Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(250 - 80) // Level 1 Q costs 80
+      expect(updated.bw).toBe(250 - 80) // Level 1 Q costs 80
       expect(updated.cooldowns.q).toBe(10)
     })
 
@@ -119,7 +119,7 @@ describe('Kernel Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(250 - 110) // Level 4 Q costs 110
+      expect(updated.bw).toBe(250 - 110) // Level 4 Q costs 110
     })
 
     it('requires hero target', () => {
@@ -142,7 +142,7 @@ describe('Kernel Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -184,7 +184,7 @@ describe('Kernel Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(250 - 100) // Level 1 W costs 100
+      expect(updated.bw).toBe(250 - 100) // Level 1 W costs 100
       expect(updated.cooldowns.w).toBe(14)
     })
   })
@@ -223,7 +223,7 @@ describe('Kernel Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(250 - 120) // Level 1 E costs 120
+      expect(updated.bw).toBe(250 - 120) // Level 1 E costs 120
       expect(updated.cooldowns.e).toBe(18)
     })
   })
@@ -238,7 +238,7 @@ describe('Kernel Hero', () => {
     })
 
     it('displaces enemies to adjacent zones and applies feared buff', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -251,18 +251,18 @@ describe('Kernel Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 200) // Level 1 R costs 200
+      expect(updated.bw).toBe(500 - 200) // Level 1 R costs 200
       expect(updated.cooldowns.r).toBe(50)
     })
 
     it('does not displace allies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
@@ -340,7 +340,7 @@ describe('Kernel Hero', () => {
     it('kernel_15_left refunds 40% of Interrupt mana cost (was the dead root_duration_plus_1 no-op)', () => {
       const player = makePlayer({
         level: 1,
-        mp: 250,
+        bw: 250,
         talents: { tier10: null, tier15: 'kernel_15_left', tier20: null, tier25: null },
       })
       const enemy = makeEnemy()
@@ -349,7 +349,7 @@ describe('Kernel Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       // Q_MANA[0] = 80 spent, then round(80 * 40%) = 32 refunded → 250 − 80 + 32
-      expect(result.state.players['p1']!.mp).toBe(202)
+      expect(result.state.players['p1']!.bw).toBe(202)
     })
 
     it('kernel_25_right grants +20 iceance via getTalentStatBonus (was the dead double_root no-op)', () => {

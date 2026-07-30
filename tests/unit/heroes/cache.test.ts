@@ -14,10 +14,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'cache',
     zone: 'mid-river',
-    hp: 700,
-    maxHp: 700,
-    mp: 260,
-    maxMp: 260,
+    integ: 700,
+    maxInteg: 700,
+    bw: 260,
+    maxBw: 260,
     level: 7,
     xp: 0,
     gold: 600,
@@ -44,10 +44,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -118,7 +118,7 @@ describe('Cache Hero', () => {
     })
 
     it('caps cached energy at 30% of maxHP', () => {
-      const player = makePlayer({ maxHp: 700 })
+      const player = makePlayer({ maxInteg: 700 })
       const enemy = makeEnemy()
       let state = makeState([player, enemy])
 
@@ -184,7 +184,7 @@ describe('Cache Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
@@ -210,8 +210,8 @@ describe('Cache Hero', () => {
         resolveAbility(stateNoCache, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmgWithCache = enemy.hp - resultWithCache.state.players['e1']!.hp
-      const dmgNoCache = enemyNoCache.hp - resultNoCache.state.players['e2']!.hp
+      const dmgWithCache = enemy.integ - resultWithCache.state.players['e1']!.integ
+      const dmgNoCache = enemyNoCache.integ - resultNoCache.state.players['e2']!.integ
       expect(dmgWithCache).toBeGreaterThan(dmgNoCache)
     })
 
@@ -240,7 +240,7 @@ describe('Cache Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 55) // Level 1 Q costs 55
+      expect(updated.bw).toBe(260 - 55) // Level 1 Q costs 55
       expect(updated.cooldowns.q).toBe(8)
     })
 
@@ -260,8 +260,8 @@ describe('Cache Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -285,7 +285,7 @@ describe('Cache Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -347,12 +347,12 @@ describe('Cache Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 60) // Level 1 W costs 60
+      expect(updated.bw).toBe(260 - 60) // Level 1 W costs 60
       expect(updated.cooldowns.w).toBe(12)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
@@ -377,7 +377,7 @@ describe('Cache Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(hasBuff(updatedEnemy, 'antiHeal')).toBe(true)
       const debuff = updatedEnemy.buffs.find((b) => b.id === 'antiHeal')
       expect(debuff!.stacks).toBe(50) // 50% reduced healing
@@ -392,7 +392,7 @@ describe('Cache Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(260 - 65) // Level 1 E costs 65
+      expect(updated.bw).toBe(260 - 65) // Level 1 E costs 65
       expect(updated.cooldowns.e).toBe(10)
     })
 
@@ -412,8 +412,8 @@ describe('Cache Hero', () => {
         resolveAbility(state2, 'p1', 'e', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -437,7 +437,7 @@ describe('Cache Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -450,7 +450,7 @@ describe('Cache Hero', () => {
 
   describe('R: Eviction (AoE Pure Damage + Slow)', () => {
     it('requires level 6+ to cast', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -458,7 +458,7 @@ describe('Cache Hero', () => {
     })
 
     it('deals black AoE damage equal to cached energy', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 200,
@@ -472,12 +472,12 @@ describe('Cache Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       // Black damage = 200 (full cached energy), no reduction
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy1.hp)
-      expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy1.integ)
+      expect(result.state.players['e2']!.integ).toBeLessThan(enemy2.integ)
     })
 
     it('applies slow debuff to all enemies in zone', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 100,
@@ -498,7 +498,7 @@ describe('Cache Hero', () => {
     })
 
     it('consumes all cached energy', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 200,
@@ -513,19 +513,19 @@ describe('Cache Hero', () => {
     })
 
     it('still applies slow even with no cached energy (zero damage)', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       // No damage but slow still applied
-      expect(result.state.players['e1']!.hp).toBe(enemy.hp)
+      expect(result.state.players['e1']!.integ).toBe(enemy.integ)
       expect(hasBuff(result.state.players['e1']!, 'slow')).toBe(true)
     })
 
     it('does not damage allies', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'cachedEnergy',
         stacks: 200,
@@ -538,33 +538,33 @@ describe('Cache Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
-      expect(result.state.players['a1']!.hp).toBe(ally.hp)
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
+      expect(result.state.players['a1']!.integ).toBe(ally.integ)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 180) // R1 costs 180
+      expect(updated.bw).toBe(500 - 180) // R1 costs 180
       expect(updated.cooldowns.r).toBe(50)
     })
 
     it('scales mana cost with R level', () => {
-      const player = makePlayer({ level: 18, mp: 500 })
+      const player = makePlayer({ level: 18, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 320) // R3 costs 320
+      expect(updated.bw).toBe(500 - 320) // R3 costs 320
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ level: 6, mp: 100 })
+      const player = makePlayer({ level: 6, bw: 100 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))

@@ -15,10 +15,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -44,7 +44,7 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
     id: 'c1',
     team: 'chaff',
     zone: 'mid-t1-chaff',
-    hp: 400,
+    integ: 400,
     type: 'line',
     ...overrides,
   }
@@ -71,7 +71,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 describe('IceAI', () => {
   describe('runIceAI', () => {
     it('should not generate actions for dead ice', () => {
-      const ice = initializeIce().map((t) => ({ ...t, hp: 0, alive: false }))
+      const ice = initializeIce().map((t) => ({ ...t, integ: 0, alive: false }))
       const state = makeGameState({
         ice,
         players: {
@@ -252,7 +252,7 @@ describe('IceAI', () => {
     it('should not target dead enemy heroes', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', alive: false, hp: 0 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', alive: false, integ: 0 }),
         },
       })
 
@@ -263,7 +263,7 @@ describe('IceAI', () => {
 
     it('should not target dead waves', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 0 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 0 })],
       })
 
       const actions = runIceAI(state)
@@ -317,7 +317,7 @@ describe('IceAI', () => {
         id: 'p1',
         team: 'audit',
         zone: 'mid-t1-chaff',
-        hp: 500,
+        integ: 500,
         plate: 3,
       })
       const state = makeGameState({
@@ -332,7 +332,7 @@ describe('IceAI', () => {
       // resolvePhysicalHit routes through getEffectivePlate (items + talents
       // + buffs), not the raw player.plate field.
       const expectedDamage = calculateKineticDamage(ICE_ATTACK, getEffectivePlate(player))
-      expect(result.players['p1']!.hp).toBe(500 - expectedDamage)
+      expect(result.players['p1']!.integ).toBe(500 - expectedDamage)
       expect(result.players['p1']!.alive).toBe(true)
     })
 
@@ -344,7 +344,7 @@ describe('IceAI', () => {
               id: 'p1',
               team: 'audit',
               zone: 'mid-t1-chaff',
-              hp: 500,
+              integ: 500,
               buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
             }),
           },
@@ -353,12 +353,12 @@ describe('IceAI', () => {
           { iceZone: 'mid-t1-chaff', targetType: 'hero', targetId: 'p1', damage: ICE_ATTACK },
         ]
         const result = applyIceActions(state, actions).state
-        expect(result.players['p1']!.hp).toBe(500) // unscathed
+        expect(result.players['p1']!.integ).toBe(500) // unscathed
       }
     })
 
     it('emits a damage event naming the ice that fired', () => {
-      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 500 })
+      const player = makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 500 })
       const state = makeGameState({ tick: 7, players: { p1: player } })
 
       const actions: IceAction[] = [
@@ -379,7 +379,7 @@ describe('IceAI', () => {
         },
       ])
       // The event amount is the HP actually lost, not the raw ICE_ATTACK.
-      expect(500 - after.players['p1']!.hp).toBe(expectedDamage)
+      expect(500 - after.players['p1']!.integ).toBe(expectedDamage)
     })
 
     it('emits no damage event when a shield absorbs the whole shot', () => {
@@ -391,7 +391,7 @@ describe('IceAI', () => {
             id: 'p1',
             team: 'audit',
             zone: 'mid-t1-chaff',
-            hp: 500,
+            integ: 500,
             buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
           }),
         },
@@ -402,12 +402,12 @@ describe('IceAI', () => {
 
       const result = applyIceActions(state, actions)
       expect(result.events).toEqual([])
-      expect(result.state.players['p1']!.hp).toBe(500)
+      expect(result.state.players['p1']!.integ).toBe(500)
     })
 
     it('emits no damage event for a wave shot — only hero damage is narrated', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 400 })],
       })
       const actions: IceAction[] = [
         { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
@@ -419,7 +419,7 @@ describe('IceAI', () => {
     it('should kill heroes when HP drops to 0', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 50 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 50 }),
         },
       })
 
@@ -428,13 +428,13 @@ describe('IceAI', () => {
       ]
 
       const result = applyIceActions(state, actions).state
-      expect(result.players['p1']!.hp).toBe(0)
+      expect(result.players['p1']!.integ).toBe(0)
       expect(result.players['p1']!.alive).toBe(false)
     })
 
     it('should apply damage to waves', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 400 })],
       })
 
       const actions: IceAction[] = [
@@ -443,12 +443,12 @@ describe('IceAI', () => {
 
       const result = applyIceActions(state, actions).state
       const c1 = result.waves.find((c) => c.id === 'c1')
-      expect(c1!.hp).toBe(400 - ICE_ATTACK)
+      expect(c1!.integ).toBe(400 - ICE_ATTACK)
     })
 
     it('should remove dead waves after damage', () => {
       const state = makeGameState({
-        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 50 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 50 })],
       })
 
       const actions: IceAction[] = [
@@ -462,7 +462,7 @@ describe('IceAI', () => {
     it('should clamp hero HP to 0 (not negative)', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 1 }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 1 }),
         },
       })
 
@@ -471,14 +471,14 @@ describe('IceAI', () => {
       ]
 
       const result = applyIceActions(state, actions).state
-      expect(result.players['p1']!.hp).toBe(0)
+      expect(result.players['p1']!.integ).toBe(0)
     })
 
     it('should handle multiple ice actions', () => {
       const state = makeGameState({
         waves: [
-          makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 }),
-          makeWave({ id: 'c2', team: 'chaff', zone: 'mid-t1-audit', hp: 400 }),
+          makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', integ: 400 }),
+          makeWave({ id: 'c2', team: 'chaff', zone: 'mid-t1-audit', integ: 400 }),
         ],
       })
 
@@ -490,14 +490,14 @@ describe('IceAI', () => {
       const result = applyIceActions(state, actions).state
       const c1 = result.waves.find((c) => c.id === 'c1')
       const c2 = result.waves.find((c) => c.id === 'c2')
-      expect(c1!.hp).toBe(400 - ICE_ATTACK)
-      expect(c2!.hp).toBe(400 - ICE_ATTACK)
+      expect(c1!.integ).toBe(400 - ICE_ATTACK)
+      expect(c2!.integ).toBe(400 - ICE_ATTACK)
     })
 
     it('should not damage already dead heroes', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', hp: 0, alive: false }),
+          p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff', integ: 0, alive: false }),
         },
       })
 
@@ -506,7 +506,7 @@ describe('IceAI', () => {
       ]
 
       const result = applyIceActions(state, actions).state
-      expect(result.players['p1']!.hp).toBe(0)
+      expect(result.players['p1']!.integ).toBe(0)
     })
   })
 })

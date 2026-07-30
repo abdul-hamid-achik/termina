@@ -23,7 +23,10 @@ export function applyScenario(
     case 'tenant_dead':
       // Tenant slain at the current tick → the objective ticker shows a respawn
       // countdown (deathTick + TENANT_RESPAWN_TICKS).
-      return { ...state, tenant: { ...state.tenant, alive: false, hp: 0, deathTick: state.tick } }
+      return {
+        ...state,
+        tenant: { ...state.tenant, alive: false, integ: 0, deathTick: state.tick },
+      }
 
     case 'self_dead': {
       // The human player is dead with a pending respawn → GameScreen renders the
@@ -36,7 +39,7 @@ export function applyScenario(
         ...state,
         players: {
           ...state.players,
-          [humanId]: { ...human, alive: false, hp: 0, respawnTick: state.tick + 30 },
+          [humanId]: { ...human, alive: false, integ: 0, respawnTick: state.tick + 30 },
         },
       }
     }
@@ -67,10 +70,16 @@ export function applyScenario(
       const laneZone = 'mid-river'
       const players = {
         ...state.players,
-        [humanId]: { ...human, zone: laneZone, level: 6, mp: human.maxMp, hp: human.maxHp },
+        [humanId]: { ...human, zone: laneZone, level: 6, bw: human.maxBw, integ: human.maxInteg },
       }
       if (enemy) {
-        players[enemy.id] = { ...enemy, zone: laneZone, level: 6, hp: enemy.maxHp, mp: enemy.maxMp }
+        players[enemy.id] = {
+          ...enemy,
+          zone: laneZone,
+          level: 6,
+          integ: enemy.maxInteg,
+          bw: enemy.maxBw,
+        }
       }
       return { ...state, players }
     }
@@ -89,8 +98,8 @@ export function applyScenario(
           [humanId]: {
             ...human,
             level: 10,
-            mp: human.maxMp,
-            hp: human.maxHp,
+            bw: human.maxBw,
+            integ: human.maxInteg,
             talents: { tier10: null, tier15: null, tier20: null, tier25: null },
           },
         },

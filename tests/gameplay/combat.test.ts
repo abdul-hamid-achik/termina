@@ -7,7 +7,7 @@ import { HARDEN_DURATION_TICKS } from '~~/shared/constants/balance'
  * Replaces tests/e2e/flows/game_attack_lands.yml — a human basic attack on a
  * co-located enemy registers hero damage. damageDealt is the regen-independent
  * "the hit landed" signal the original flow used (raw enemy HP is confounded by
- * per-tick regen + the level-6 maxHp recompute).
+ * per-tick regen + the level-6 maxInteg recompute).
  */
 describe('combat', () => {
   it('attacking a co-located enemy deals hero damage after one tick', async () => {
@@ -47,7 +47,7 @@ describe('combat', () => {
       players: {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
-        [ENEMY]: { ...s.players[ENEMY]!, hp: 1, deaths: 3 },
+        [ENEMY]: { ...s.players[ENEMY]!, integ: 1, deaths: 3 },
       },
     }))
 
@@ -74,7 +74,7 @@ describe('combat', () => {
         players: {
           ...s.players,
           [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
-          [ENEMY]: { ...s.players[ENEMY]!, hp: 1, killStreak: victimStreak },
+          [ENEMY]: { ...s.players[ENEMY]!, integ: 1, killStreak: victimStreak },
         },
       }))
       const before = (await game.me()).gold
@@ -97,7 +97,7 @@ describe('combat', () => {
       players: {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, killStreak: 2 },
-        [ENEMY]: { ...s.players[ENEMY]!, hp: 1, killStreak: 5 },
+        [ENEMY]: { ...s.players[ENEMY]!, integ: 1, killStreak: 5 },
       },
     }))
 
@@ -122,7 +122,7 @@ describe('combat', () => {
           items: ['segfault_blade', null, null, null, null, null],
           cooldowns: { q: 5, w: 5, e: 5, r: 5 },
         },
-        [ENEMY]: { ...s.players[ENEMY]!, hp: 1 },
+        [ENEMY]: { ...s.players[ENEMY]!, integ: 1 },
       },
     }))
 
@@ -144,7 +144,7 @@ describe('combat', () => {
       players: {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] },
-        [ENEMY]: { ...s.players[ENEMY]!, hp: 1 },
+        [ENEMY]: { ...s.players[ENEMY]!, integ: 1 },
       },
     }))
 
@@ -189,7 +189,7 @@ describe('combat', () => {
         players: {
           ...s.players,
           [HUMAN]: { ...h, zone: 'mid-river' },
-          [ENEMY]: { ...e, zone: 'mid-river', hp: e.maxHp }, // healthy — survives the chip
+          [ENEMY]: { ...e, zone: 'mid-river', integ: e.maxInteg }, // healthy — survives the chip
           // A second chaff hero co-located with the enemy (distinct id/name so
           // attribution can't confuse it with the human).
           [ALLY]: {
@@ -213,7 +213,7 @@ describe('combat', () => {
     // Tick 2 (within the window): drop the enemy to 1 HP and let the HUMAN finish it.
     await game.patch((s) => ({
       ...s,
-      players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, hp: 1 } },
+      players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, integ: 1 } },
     }))
     const allyBefore = await game.player(ALLY)
     game.attackHero(ENEMY, HUMAN)
@@ -238,7 +238,7 @@ describe('combat', () => {
         [HUMAN]: { ...s.players[HUMAN]!, items: [null, null, null, null, null, null] }, // free slot
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          hp: 1,
+          integ: 1,
           items: ['last_word', null, null, null, null, null],
         },
       },
@@ -295,8 +295,8 @@ describe('combat', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           alive: false,
-          hp: 0,
-          mp: 0,
+          integ: 0,
+          bw: 0,
           respawnTick: startTick + 5,
         },
       },
@@ -308,7 +308,7 @@ describe('combat', () => {
     await game.tick(6) // now past the respawn tick
     const me = await game.me()
     expect(me.alive).toBe(true)
-    expect(me.hp).toBe(me.maxHp)
+    expect(me.integ).toBe(me.maxInteg)
     expect(me.respawnTick).toBeNull()
     expect(me.zone).toBe(me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain')
   })
@@ -323,8 +323,8 @@ describe('combat', () => {
       players: {
         ...s.players,
         // Both freshly dead this tick (respawnTick null → handleDeaths assigns it).
-        [HUMAN]: { ...s.players[HUMAN]!, level: 8, alive: false, hp: 0, respawnTick: null },
-        [ENEMY]: { ...s.players[ENEMY]!, level: 1, alive: false, hp: 0, respawnTick: null },
+        [HUMAN]: { ...s.players[HUMAN]!, level: 8, alive: false, integ: 0, respawnTick: null },
+        [ENEMY]: { ...s.players[ENEMY]!, level: 1, alive: false, integ: 0, respawnTick: null },
       },
     }))
 
@@ -346,7 +346,7 @@ describe('combat', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          hp: s.players[HUMAN]!.maxHp,
+          integ: s.players[HUMAN]!.maxInteg,
           buffs: [{ id: 'shield', stacks: 400, ticksRemaining: 5, source: HUMAN }],
         },
       },
@@ -356,7 +356,7 @@ describe('combat', () => {
     await game.tick()
 
     // The basic-attack path ran absorbShield: the shield ate the hit, so its
-    // stacks dropped. (Raw HP is confounded by the level-6 maxHp recompute on the
+    // stacks dropped. (Raw HP is confounded by the level-6 maxInteg recompute on the
     // first tick, so the shield-stack delta is the clean "it absorbed" signal.)
     const shield = (await game.me()).buffs.find((b) => b.id === 'shield')
     expect(shield).toBeDefined()
@@ -370,21 +370,21 @@ describe('combat', () => {
       const fountain = me.team === 'chaff' ? 'chaff-fountain' : 'audit-fountain'
       return {
         ...s,
-        players: { ...s.players, [HUMAN]: { ...me, zone: fountain, hp: 50, mp: 0, buffs: [] } },
+        players: { ...s.players, [HUMAN]: { ...me, zone: fountain, integ: 50, bw: 0, buffs: [] } },
       }
     })
 
-    const before = (await game.me()).hp
+    const before = (await game.me()).integ
     await game.tick()
     const afterOne = await game.me()
-    // Fountain heals ~15% of maxHp per tick — far more than base regen alone.
-    expect(afterOne.hp).toBeGreaterThan(before + Math.floor(afterOne.maxHp * 0.1))
+    // Fountain heals ~15% of maxInteg per tick — far more than base regen alone.
+    expect(afterOne.integ).toBeGreaterThan(before + Math.floor(afterOne.maxInteg * 0.1))
 
     // A handful of ticks tops the hero back off to full.
     await game.tick(8)
     const full = await game.me()
-    expect(full.hp).toBe(full.maxHp)
-    expect(full.mp).toBe(full.maxMp)
+    expect(full.integ).toBe(full.maxInteg)
+    expect(full.bw).toBe(full.maxBw)
   })
 
   it('an in-combat hero gets NO fountain healing (the inCombat guard holds)', async () => {
@@ -399,7 +399,7 @@ describe('combat', () => {
           [HUMAN]: {
             ...me,
             zone: fountain,
-            hp: 50,
+            integ: 50,
             // The soft combat flag the engine checks before fountain healing.
             buffs: [{ id: 'inCombat', stacks: 1, ticksRemaining: 5, source: HUMAN }],
           },
@@ -407,11 +407,11 @@ describe('combat', () => {
       }
     })
 
-    const before = (await game.me()).hp
+    const before = (await game.me()).integ
     await game.tick()
     const after = await game.me()
     // No 15% fountain heal — at most slow base regen, well under a 10% jump.
-    expect(after.hp).toBeLessThan(before + Math.floor(after.maxHp * 0.1))
+    expect(after.integ).toBeLessThan(before + Math.floor(after.maxInteg * 0.1))
   })
 
   it('a hero standing in the enemy base destroys a vulnerable Ancient and wins', async () => {
@@ -426,7 +426,7 @@ describe('combat', () => {
         ancients: {
           ...s.ancients,
           // Vulnerable (a T3 has fallen) and at 1 HP — any hit finishes it.
-          [enemyTeam]: { ...s.ancients[enemyTeam], hp: 1, alive: true, vulnerable: true },
+          [enemyTeam]: { ...s.ancients[enemyTeam], integ: 1, alive: true, vulnerable: true },
         },
       }
     })
@@ -457,7 +457,7 @@ describe('combat', () => {
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyBase } },
         ancients: {
           ...s.ancients,
-          [enemyTeam]: { ...s.ancients[enemyTeam], hp: 500, alive: true, vulnerable: false },
+          [enemyTeam]: { ...s.ancients[enemyTeam], integ: 500, alive: true, vulnerable: false },
         },
       }
     })
@@ -470,7 +470,7 @@ describe('combat', () => {
     const ancient = (await game.state()).ancients[enemyTeam]
     // Firewalled: the attack is rejected, so the Ancient takes no damage and lives.
     expect(ancient.alive).toBe(true)
-    expect(ancient.hp).toBe(500)
+    expect(ancient.integ).toBe(500)
     expect((await game.state()).winner).toBeFalsy()
     // The firewall reason now reaches the player (previously server-logged only),
     // so the endgame "why won't it take damage?" moment isn't a mystery.
@@ -536,7 +536,7 @@ describe('combat', () => {
     await game.patch((s) => ({
       ...s,
       ice: s.ice.map((t) =>
-        t.team === enemyTeam && t.zone.includes('-t3-') ? { ...t, alive: false, hp: 0 } : t,
+        t.team === enemyTeam && t.zone.includes('-t3-') ? { ...t, alive: false, integ: 0 } : t,
       ),
     }))
     await game.tick()
@@ -554,7 +554,7 @@ describe('combat', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           alive: false,
-          hp: 0,
+          integ: 0,
           respawnTick: startTick + 30, // genuinely dead, far from a natural respawn
           gold: 10_000, // plenty for the buyback cost
         },
@@ -582,7 +582,7 @@ describe('combat', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           alive: false,
-          hp: 0,
+          integ: 0,
           respawnTick: startTick + 30,
           gold: 0,
         },
@@ -607,7 +607,7 @@ describe('combat', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           alive: false,
-          hp: 0,
+          integ: 0,
           respawnTick: s.tick + 50,
           gold: 10_000,
           buybackCooldown: null, // no prior buyback
@@ -626,7 +626,7 @@ describe('combat', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, alive: false, hp: 0, respawnTick: s.tick + 50 },
+        [HUMAN]: { ...s.players[HUMAN]!, alive: false, integ: 0, respawnTick: s.tick + 50 },
       },
     }))
 
@@ -641,7 +641,7 @@ describe('combat', () => {
 
   it('a ice fires on a lone enemy hero diving it (no waves to tank)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    // Tick once up front so the level-6 maxHp recompute is already settled —
+    // Tick once up front so the level-6 maxInteg recompute is already settled —
     // otherwise the first-tick HP inflation masks the ice hit.
     await game.tick()
     await game.patch((s) => {
@@ -649,40 +649,40 @@ describe('combat', () => {
       const enemyIceZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
       return {
         ...s,
-        players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, hp: 400 } },
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, integ: 400 } },
         waves: [], // nothing to soak the ice
       }
     })
 
-    const before = (await game.me()).hp
+    const before = (await game.me()).integ
     await game.tick()
     // ICE_ATTACK (120, minus plate) far exceeds per-tick regen, so the
     // exposed hero visibly loses HP.
-    expect((await game.me()).hp).toBeLessThan(before)
+    expect((await game.me()).integ).toBeLessThan(before)
   })
 
   it('waves tank the ice — a hero behind its own wave takes no ice fire', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    await game.tick() // settle the maxHp recompute first
+    await game.tick() // settle the maxInteg recompute first
     await game.patch((s) => {
       const me = s.players[HUMAN]!
       const enemyIceZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
       return {
         ...s,
-        players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, hp: 400 } },
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, integ: 400 } },
         // An allied wave (same team as the hero) soaks the ice instead.
-        waves: [{ id: 'shield0', team: me.team, zone: enemyIceZone, hp: 300, type: 'line' }],
+        waves: [{ id: 'shield0', team: me.team, zone: enemyIceZone, integ: 300, type: 'line' }],
       }
     })
 
-    const before = (await game.me()).hp
+    const before = (await game.me()).integ
     await game.tick()
 
     // The hero is shielded — the ice shot the wave, not the hero (HP only
     // moves up via regen, never down).
-    expect((await game.me()).hp).toBeGreaterThanOrEqual(before)
+    expect((await game.me()).integ).toBeGreaterThanOrEqual(before)
     const wave = (await game.state()).waves.find((c) => c.id === 'shield0')
-    expect(wave && wave.hp < 300).toBe(true)
+    expect(wave && wave.integ < 300).toBe(true)
   })
 
   it('using Harden turns all of the team’s ice invulnerable', async () => {
@@ -807,7 +807,7 @@ describe('combat', () => {
 
   it("the Kernel 'hardened' passive reduces incoming attack damage (keeps more HP)", async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
 
     // Take one ENEMY swing at the HUMAN from full HP with the given HUMAN buffs,
     // and report the HUMAN's HP afterwards. (The hardened reduction lands on HP
@@ -819,13 +819,13 @@ describe('combat', () => {
         ...s,
         players: {
           ...s.players,
-          [HUMAN]: { ...s.players[HUMAN]!, hp: s.players[HUMAN]!.maxHp, buffs: humanBuffs },
+          [HUMAN]: { ...s.players[HUMAN]!, integ: s.players[HUMAN]!.maxInteg, buffs: humanBuffs },
           [ENEMY]: { ...s.players[ENEMY]!, items: [null, null, null, null, null, null] }, // no crit variance
         },
       }))
       game.attackHero(HUMAN, ENEMY) // ENEMY swings at HUMAN
       await game.tick()
-      return (await game.player(HUMAN)).hp
+      return (await game.player(HUMAN)).integ
     }
 
     const hpNoHardened = await hpAfterSwing([])
@@ -840,7 +840,7 @@ describe('combat', () => {
 
   it("Daemon's first attack from stealth deals +50% (Stealth Process)", async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'daemon', heroEnemy: 'echo' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
 
     // One HUMAN(daemon) swing at the ENEMY from full enemy HP, with the given
     // daemon buffs; report the enemy's HP afterwards (more damage → lower HP).
@@ -856,12 +856,12 @@ describe('combat', () => {
             items: [null, null, null, null, null, null], // no crit variance
             buffs: daemonBuffs,
           },
-          [ENEMY]: { ...s.players[ENEMY]!, hp: s.players[ENEMY]!.maxHp, buffs: [] },
+          [ENEMY]: { ...s.players[ENEMY]!, integ: s.players[ENEMY]!.maxInteg, buffs: [] },
         },
       }))
       game.attackHero(ENEMY) // HUMAN (daemon) swings at ENEMY
       await game.tick()
-      return (await game.player(ENEMY)).hp
+      return (await game.player(ENEMY)).integ
     }
 
     const normal = await enemyHpAfterSwing([])
@@ -939,7 +939,7 @@ describe('combat', () => {
 
   it('Spite Plate reflects a basic attack back at the attacker as black damage', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
-    // Settle the first-tick maxHp recompute, then strip the attacker's on-hit
+    // Settle the first-tick maxInteg recompute, then strip the attacker's on-hit
     // items so the only cross-hit is the reflect.
     await game.tick()
     await game.patch((s) => ({
@@ -978,18 +978,18 @@ describe('combat', () => {
         },
       },
     }))
-    const enemyBefore = (await game.player(ENEMY)).hp
+    const enemyBefore = (await game.player(ENEMY)).integ
     game.attackHero(HUMAN, ENEMY)
     await game.tick()
     const ev = reflect()
     expect(ev?.amount).toBeGreaterThan(0)
     expect(ev?.damageType).toBe('black')
-    expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
+    expect((await game.player(ENEMY)).integ).toBeLessThan(enemyBefore)
   })
 
   it('Spite Plate reflects ABILITY damage too (not only basic attacks)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
     await game.patch((s) => ({
       ...s,
       players: {
@@ -1013,11 +1013,11 @@ describe('combat', () => {
           e.damageType === 'black',
       )
 
-    const casterBefore = (await game.me()).hp
+    const casterBefore = (await game.me()).integ
     game.cast('q', { kind: 'hero', name: ENEMY }) // HUMAN nukes the Spite Plate holder
     await game.tick()
 
     expect(reflect()).toBeDefined()
-    expect((await game.me()).hp).toBeLessThan(casterBefore)
+    expect((await game.me()).integ).toBeLessThan(casterBefore)
   })
 })

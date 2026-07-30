@@ -16,10 +16,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -122,14 +122,14 @@ describe('NeutralAI', () => {
           {
             id: 'neutral_1',
             zone: 'silt-chaff-top',
-            hp: 100,
-            maxHp: 100,
+            integ: 100,
+            maxInteg: 100,
             type: 'stub',
             alive: true,
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', hp: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', integ: 500 }),
         },
       })
 
@@ -145,8 +145,8 @@ describe('NeutralAI', () => {
           {
             id: 'neutral_1',
             zone: 'silt-chaff-top',
-            hp: 100,
-            maxHp: 100,
+            integ: 100,
+            maxInteg: 100,
             type: 'stub',
             alive: true,
           },
@@ -166,8 +166,8 @@ describe('NeutralAI', () => {
           {
             id: 'neutral_1',
             zone: 'silt-chaff-top',
-            hp: 0,
-            maxHp: 100,
+            integ: 0,
+            maxInteg: 100,
             type: 'stub',
             alive: false,
           },
@@ -189,14 +189,14 @@ describe('NeutralAI', () => {
           {
             id: 'neutral_1',
             zone: 'silt-chaff-top',
-            hp: 100,
-            maxHp: 100,
+            integ: 100,
+            maxInteg: 100,
             type: 'stub',
             alive: true,
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', hp: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', integ: 500 }),
         },
       })
 
@@ -206,7 +206,7 @@ describe('NeutralAI', () => {
       // Damage now goes through resolvePhysicalHit (full mitigation chain),
       // not raw hp - damage. With plate 3: 50 * (100/(100+3)) ≈ 49 damage,
       // so 500 - 49 = 451.
-      expect(result.players['p1']!.hp).toBe(451)
+      expect(result.players['p1']!.integ).toBe(451)
     })
 
     it('emits a damage event naming the neutral that hit', () => {
@@ -216,14 +216,14 @@ describe('NeutralAI', () => {
           {
             id: 'neutral_1',
             zone: 'silt-chaff-top',
-            hp: 100,
-            maxHp: 100,
+            integ: 100,
+            maxInteg: 100,
             type: 'stub',
             alive: true,
           },
         ],
         players: {
-          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', hp: 500 }),
+          p1: makePlayer({ id: 'p1', zone: 'silt-chaff-top', integ: 500 }),
         },
       })
 
@@ -241,7 +241,7 @@ describe('NeutralAI', () => {
           damageType: 'kinetic',
         },
       ])
-      expect(500 - after.players['p1']!.hp).toBe(49)
+      expect(500 - after.players['p1']!.integ).toBe(49)
     })
 
     it('emits no damage event when a shield absorbs the whole hit', () => {
@@ -252,8 +252,8 @@ describe('NeutralAI', () => {
           {
             id: 'neutral_1',
             zone: 'silt-chaff-top',
-            hp: 100,
-            maxHp: 100,
+            integ: 100,
+            maxInteg: 100,
             type: 'stub',
             alive: true,
           },
@@ -262,7 +262,7 @@ describe('NeutralAI', () => {
           p1: makePlayer({
             id: 'p1',
             zone: 'silt-chaff-top',
-            hp: 500,
+            integ: 500,
             buffs: [{ id: 'shield', stacks: 999, ticksRemaining: 5, source: 'x' }],
           }),
         },
@@ -273,7 +273,7 @@ describe('NeutralAI', () => {
       ])
 
       expect(result.events).toEqual([])
-      expect(result.state.players['p1']!.hp).toBe(500)
+      expect(result.state.players['p1']!.integ).toBe(500)
       // ...but the shield MUST still have been spent. Suppressing the event by
       // skipping the whole player write left the stacks untouched, so a shielded
       // hero could stand in a camp indefinitely — the shield could never be worn

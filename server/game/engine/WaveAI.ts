@@ -45,7 +45,7 @@ function getNextZone(wave: WaveUnitState): string | null {
 
 /** Find enemy waves in the same zone. */
 function getEnemyWavesInZone(waves: WaveUnitState[], wave: WaveUnitState): WaveUnitState[] {
-  return waves.filter((c) => c.zone === wave.zone && c.team !== wave.team && c.hp > 0)
+  return waves.filter((c) => c.zone === wave.zone && c.team !== wave.team && c.integ > 0)
 }
 
 /** Find enemy heroes in the same zone. */
@@ -100,7 +100,7 @@ export function runWaveAI(state: GameState): WaveAction[] {
   const actions: WaveAction[] = []
 
   for (const wave of state.waves) {
-    if (wave.hp <= 0) continue
+    if (wave.integ <= 0) continue
 
     // Damage escalates with the CURRENT tick, not the wave's spawn wave:
     // WaveUnitState carries no per-wave stats, and a whole board that gets
@@ -201,7 +201,7 @@ export function applyWaveActions(
 
   for (const action of actions) {
     const wave = waves.find((c) => c.id === action.waveId)
-    if (!wave || wave.hp <= 0) continue
+    if (!wave || wave.integ <= 0) continue
 
     switch (action.action) {
       case 'move': {
@@ -214,10 +214,10 @@ export function applyWaveActions(
       }
       case 'attack_wave': {
         const target = waves.find((c) => c.id === action.targetId)
-        if (target && target.hp > 0) {
-          const newHp = Math.max(0, target.hp - (action.damage ?? 0))
-          waves = waves.map((c) => (c.id === action.targetId ? { ...c, hp: newHp } : c))
-          if (newHp === 0) {
+        if (target && target.integ > 0) {
+          const newInteg = Math.max(0, target.integ - (action.damage ?? 0))
+          waves = waves.map((c) => (c.id === action.targetId ? { ...c, integ: newInteg } : c))
+          if (newInteg === 0) {
             // Waves kill each other far more often than heroes kill them
             // (priority 1 above focuses enemy waves), so this is where the
             // MAJORITY of wave XP enters the game. Without it a laner who
@@ -260,8 +260,10 @@ export function applyWaveActions(
           // otherwise a glyphed ice still gets chewed down by the push. Hero
           // attacks already bounce off (ActionResolver), so mirror that here.
           if (!target.invulnerable) {
-            const newHp = Math.max(0, target.hp - (action.damage ?? 0))
-            ice = ice.map((t, i) => (i === iceIdx ? { ...t, hp: newHp, alive: newHp > 0 } : t))
+            const newInteg = Math.max(0, target.integ - (action.damage ?? 0))
+            ice = ice.map((t, i) =>
+              i === iceIdx ? { ...t, integ: newInteg, alive: newInteg > 0 } : t,
+            )
           }
         }
         break
@@ -292,7 +294,7 @@ export function applyWaveActions(
   }
 
   // Remove dead waves
-  waves = waves.filter((c) => c.hp > 0)
+  waves = waves.filter((c) => c.integ > 0)
 
   return { state: { ...state, waves, ice, players, ancients }, events }
 }

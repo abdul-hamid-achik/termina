@@ -13,10 +13,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 550,
-    mp: 200,
-    maxMp: 280,
+    integ: 500,
+    maxInteg: 550,
+    bw: 200,
+    maxBw: 280,
     level: 3,
     xp: 150,
     gold: 300,
@@ -473,11 +473,11 @@ describe('Game Store', () => {
         const store = useGameStore()
         store.playerId = 'p1'
 
-        const player = makePlayer({ hp: 123, gold: 999 })
+        const player = makePlayer({ integ: 123, gold: 999 })
         store.updateFromTick(makeTickMessage({ players: { p1: player } }))
 
         expect(store.player).not.toBeNull()
-        expect(store.player!.hp).toBe(123)
+        expect(store.player!.integ).toBe(123)
         expect(store.player!.gold).toBe(999)
       })
 
@@ -513,10 +513,10 @@ describe('Game Store', () => {
 
         const msg = makeTickMessage()
         ;(msg.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
         ]
         ;(msg.state as unknown as Record<string, unknown>).waves = [
-          { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 200, type: 'line' },
+          { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', integ: 200, type: 'line' },
         ]
 
         store.updateFromTick(msg)
@@ -530,8 +530,8 @@ describe('Game Store', () => {
 
         const msg1 = makeTickMessage({ tick: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
-          { team: 'audit', zone: 'mid-t1-audit', hp: 2000, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
+          { team: 'audit', zone: 'mid-t1-audit', integ: 2000, maxInteg: 2000, alive: true },
         ]
 
         store.updateFromTick(msg1)
@@ -546,21 +546,21 @@ describe('Game Store', () => {
 
         const msg1 = makeTickMessage({ tick: 1 })
         ;(msg1.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', hp: 2000, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', integ: 2000, maxInteg: 2000, alive: true },
         ]
 
         store.updateFromTick(msg1)
         expect(store.ice).toHaveLength(1)
-        expect(store.ice[0]!.hp).toBe(2000)
+        expect(store.ice[0]!.integ).toBe(2000)
 
         const msg2 = makeTickMessage({ tick: 2 })
         ;(msg2.state as unknown as Record<string, unknown>).ice = [
-          { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
+          { team: 'chaff', zone: 'mid-t1-chaff', integ: 1500, maxInteg: 2000, alive: true },
         ]
 
         store.updateFromTick(msg2)
         expect(store.ice).toHaveLength(1)
-        expect(store.ice[0]!.hp).toBe(1500)
+        expect(store.ice[0]!.integ).toBe(1500)
       })
 
       it('builds scoreboard from players', () => {
@@ -930,7 +930,7 @@ describe('Game Store — overhaul state (fog-safe lastSeen / net worth / objecti
     const store = useGameStore()
     const base = makeTickMessage({ tick: 10 })
     const s = base.state as unknown as Record<string, unknown>
-    s.tenant = { alive: false, hp: 0, maxHp: 5000, deathTick: 10 }
+    s.tenant = { alive: false, integ: 0, maxInteg: 5000, deathTick: 10 }
     s.caches = [{ zone: 'cache-top', type: 'haste', tick: 10 }]
     s.backup = { zone: 'hollow', tick: 10, holderId: null }
     store.updateFromTick(base)

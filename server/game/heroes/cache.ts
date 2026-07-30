@@ -15,7 +15,7 @@ import {
   dealDamage,
   dealAbilityDamage,
   damageEnemyNpcsInZone,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   applyBuff,
   removeBuff,
@@ -82,9 +82,9 @@ function resolveQ(
     }
 
     const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -95,7 +95,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const cached = getBuffStacks(player, 'cachedEnergy')
@@ -131,15 +131,15 @@ function resolveW(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
     const cached = getBuffStacks(player, 'cachedEnergy')
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
     caster = removeBuff(caster, 'cachedEnergy')
 
@@ -185,9 +185,9 @@ function resolveE(
     }
 
     const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -198,7 +198,7 @@ function resolveE(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
@@ -239,15 +239,15 @@ function resolveR(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
     const cached = getBuffStacks(player, 'cachedEnergy')
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
     caster = removeBuff(caster, 'cachedEnergy')
 
@@ -305,7 +305,7 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
 
   const energyGain = Math.round(damage * CACHED_ENERGY_RATIO)
   const currentEnergy = getBuffStacks(player, 'cachedEnergy')
-  const maxEnergy = Math.round(player.maxHp * CACHED_ENERGY_MAX_RATIO)
+  const maxEnergy = Math.round(player.maxInteg * CACHED_ENERGY_MAX_RATIO)
   const newEnergy = Math.min(currentEnergy + energyGain, maxEnergy)
 
   const updated = applyBuff(player, {

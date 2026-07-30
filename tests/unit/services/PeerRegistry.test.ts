@@ -122,9 +122,9 @@ describe('PeerRegistry', () => {
       registerPeer('p5', peer, rawWs)
       registered.push({ playerId: 'p5', peer })
 
-      sendToPeer('p5', { type: 'tick_state', tick: 42, state: { hp: 100 } })
+      sendToPeer('p5', { type: 'tick_state', tick: 42, state: { integ: 100 } })
       expect(peer.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'tick_state', tick: 42, state: { hp: 100 } }),
+        JSON.stringify({ type: 'tick_state', tick: 42, state: { integ: 100 } }),
       )
     })
 

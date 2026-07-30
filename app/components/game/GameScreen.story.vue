@@ -49,7 +49,7 @@ function seedDead() {
     heroId: SAMPLE_HEROES.echo,
     zone: 'chaff-base',
     alive: false,
-    hp: 0,
+    integ: 0,
     respawnTick: 252,
     gold: 1200,
     buybackCost: 900,

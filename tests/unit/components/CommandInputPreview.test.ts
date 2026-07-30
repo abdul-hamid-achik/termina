@@ -21,8 +21,8 @@ function makeShopPlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     heroId: SAMPLE_HEROES.echo,
     zone: 'chaff-fountain',
     gold: 5000,
-    mp: 400,
-    maxMp: 400,
+    bw: 400,
+    maxBw: 400,
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     items: [null, null, null, null, null, null],
     buffs: [],
@@ -138,7 +138,7 @@ describe('CommandInput preview line', () => {
 
   it('renders a buyback preview with the computed cost while dead', async () => {
     const wrapper = mountInput(
-      makeShopPlayer({ alive: false, hp: 0, buybackCost: 1200, gold: 5000 }),
+      makeShopPlayer({ alive: false, integ: 0, buybackCost: 1200, gold: 5000 }),
     )
     const preview = await previewFor(wrapper, 'buyback')
     expect(preview.text()).toContain('>> Buyback')
@@ -204,7 +204,7 @@ describe('CommandInput attack target labels', () => {
   it('names a neutral camp by its index rather than "self"', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'silt-chaff-top' }), {
       neutrals: [
-        { id: 'n0', zone: 'silt-chaff-top', hp: 100, maxHp: 100, type: 'stub', alive: true },
+        { id: 'n0', zone: 'silt-chaff-top', integ: 100, maxInteg: 100, type: 'stub', alive: true },
       ],
     })
     const preview = await previewFor(wrapper, 'attack neutral:0')

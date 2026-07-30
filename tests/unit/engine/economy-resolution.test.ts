@@ -108,7 +108,7 @@ describe('Economy through resolution', () => {
           id: 'deny_target',
           team: 'chaff',
           zone: 'mid-river',
-          hp: 100,
+          integ: 100,
           type: 'line',
         })
       })
@@ -121,7 +121,7 @@ describe('Economy through resolution', () => {
       const r = await runTick(sm, gameId)
 
       // The burned wave is dead (hp 0); the engine GCs dead waves so it is gone.
-      expect(r.state.waves.some((c) => c.id === 'deny_target' && c.hp > 0)).toBe(false)
+      expect(r.state.waves.some((c) => c.id === 'deny_target' && c.integ > 0)).toBe(false)
 
       const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
       const burnXp = Math.floor(WAVE_XP * BURN_XP_RATIO)
@@ -151,7 +151,7 @@ describe('Economy through resolution', () => {
           id: 'healthy_ally',
           team: 'chaff',
           zone: 'mid-river',
-          hp: 300,
+          integ: 300,
           type: 'line',
         })
       })
@@ -163,7 +163,7 @@ describe('Economy through resolution', () => {
       const r = await runTick(sm, gameId)
 
       // Wave survived; no burn event; no burn XP.
-      expect(r.state.waves.some((c) => c.id === 'healthy_ally' && c.hp > 0)).toBe(true)
+      expect(r.state.waves.some((c) => c.id === 'healthy_ally' && c.integ > 0)).toBe(true)
       expect(r.events.some((e) => e._tag === 'wave_burn')).toBe(false)
       expect(r.state.players['dg_r0']!.xp - xpBefore).toBe(0)
     })
@@ -182,7 +182,7 @@ describe('Economy through resolution', () => {
           id: 'enemy_breach',
           team: 'audit',
           zone: 'mid-river',
-          hp: 1,
+          integ: 1,
           type: 'breach',
         })
       })
@@ -194,7 +194,7 @@ describe('Economy through resolution', () => {
       submitAction(gameId, 'lh_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      expect(r.state.waves.some((c) => c.id === 'enemy_breach' && c.hp > 0)).toBe(false)
+      expect(r.state.waves.some((c) => c.id === 'enemy_breach' && c.integ > 0)).toBe(false)
       const after = r.state.players['lh_r0']!
       // XP for the kill is exactly WAVE_XP. Gold is at least the breach bounty
       // (passive gold may add on top, but the last-hit credit is the floor).
@@ -212,7 +212,7 @@ describe('Economy through resolution', () => {
           id: 'enemy_line',
           team: 'audit',
           zone: 'mid-river',
-          hp: 1,
+          integ: 1,
           type: 'line',
         })
       })
@@ -224,7 +224,7 @@ describe('Economy through resolution', () => {
       submitAction(gameId, 'lm_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      expect(r.state.waves.some((c) => c.id === 'enemy_line' && c.hp > 0)).toBe(false)
+      expect(r.state.waves.some((c) => c.id === 'enemy_line' && c.integ > 0)).toBe(false)
       const after = r.state.players['lm_r0']!
       expect(after.xp - xpBefore).toBe(WAVE_XP)
       // Fixed line last-hit gold is WAVE_GOLD (no RNG); passive income adds a
@@ -260,11 +260,11 @@ describe('Economy through resolution', () => {
       // Tick 1: assister lands a hit so they enter the assist/contributor window.
       submitAction(gameId, 'kx_r1', { type: 'attack', target: { kind: 'hero', name: 'kx_d0' } })
       const r1 = await runTick(sm, gameId)
-      expect(r1.state.players['kx_d0']!.hp).toBeLessThan(r1.state.players['kx_d0']!.maxHp)
+      expect(r1.state.players['kx_d0']!.integ).toBeLessThan(r1.state.players['kx_d0']!.maxInteg)
 
       // Pin the victim to a lethal 1 HP, snapshot XP, then the killer finishes.
       await arrange(sm, gameId, (s) =>
-        setPlayer(s, 'kx_d0', { hp: 1, level: VICTIM_LEVEL, buffs: [inCombatBuff()] }),
+        setPlayer(s, 'kx_d0', { integ: 1, level: VICTIM_LEVEL, buffs: [inCombatBuff()] }),
       )
       const before = await Effect.runPromise(sm.getState(gameId))
       const killerXpBefore = before.players['kx_r0']!.xp
@@ -304,7 +304,7 @@ describe('Economy through resolution', () => {
       submitAction(gameId, 'kg_r1', { type: 'attack', target: { kind: 'hero', name: 'kg_d0' } })
       await runTick(sm, gameId)
 
-      await arrange(sm, gameId, (s) => setPlayer(s, 'kg_d0', { hp: 1, buffs: [inCombatBuff()] }))
+      await arrange(sm, gameId, (s) => setPlayer(s, 'kg_d0', { integ: 1, buffs: [inCombatBuff()] }))
       const before = await Effect.runPromise(sm.getState(gameId))
       const killerGoldBefore = before.players['kg_r0']!.gold
       const assistGoldBefore = before.players['kg_r1']!.gold
@@ -349,7 +349,7 @@ describe('Economy through resolution', () => {
           id: 'levelup_wave',
           team: 'audit',
           zone: 'mid-river',
-          hp: 1,
+          integ: 1,
           type: 'line',
         })
       })
@@ -378,7 +378,7 @@ describe('Economy through resolution', () => {
           id: 'spike_wave',
           team: 'audit',
           zone: 'mid-river',
-          hp: 1,
+          integ: 1,
           type: 'line',
         })
       })
@@ -417,16 +417,16 @@ describe('Economy through resolution', () => {
           zone: 'mid-river',
           heroId: 'cipher',
           level: 5,
-          hp: 5000,
-          maxHp: 5000,
+          integ: 5000,
+          maxInteg: 5000,
           buffs: [inCombatBuff()],
         })
         next = setPlayer(next, 'ar_d1', {
           zone: 'mid-river',
           heroId: 'cipher',
           level: 5,
-          hp: 5000,
-          maxHp: 5000,
+          integ: 5000,
+          maxInteg: 5000,
           buffs: [
             inCombatBuff(),
             { id: 'defenseBuff', stacks: ARMOR_BONUS, ticksRemaining: 5, source: 'test' },
@@ -481,16 +481,16 @@ describe('Economy through resolution', () => {
           zone: 'mid-river',
           heroId: 'cipher',
           level: 5,
-          hp: 5000,
-          maxHp: 5000,
+          integ: 5000,
+          maxInteg: 5000,
           buffs: [inCombatBuff()],
         })
         next = setPlayer(next, 'mr_d1', {
           zone: 'mid-river',
           heroId: 'cipher',
           level: 5,
-          hp: 5000,
-          maxHp: 5000,
+          integ: 5000,
+          maxInteg: 5000,
           buffs: [
             inCombatBuff(),
             { id: 'mrShred', stacks: SHRED, ticksRemaining: 5, source: 'test' },

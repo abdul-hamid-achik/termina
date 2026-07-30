@@ -45,9 +45,9 @@ interface ReplayPayload {
 interface FramePlayer {
   id: string
   hp: number
-  maxHp: number
+  maxInteg: number
   mp: number
-  maxMp: number
+  maxBw: number
   level: number
   gold: number
   kills: number
@@ -170,7 +170,7 @@ function toScoreRow(p: {
   guildTag?: string
   level: number
   hp?: number
-  maxHp?: number
+  maxInteg?: number
   kills: number
   deaths: number
   assists: number
@@ -183,8 +183,8 @@ function toScoreRow(p: {
     heroName: heroName(heroIdForPlayer(p.id)),
     guildTag: p.guildTag,
     level: p.level,
-    hp: p.hp,
-    maxHp: p.maxHp,
+    integ: p.integ,
+    maxInteg: p.maxInteg,
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,

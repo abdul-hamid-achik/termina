@@ -21,10 +21,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'lambda',
     zone: 'mid-river',
-    hp: 460,
-    maxHp: 460,
-    mp: 400,
-    maxMp: 400,
+    integ: 460,
+    maxInteg: 460,
+    bw: 400,
+    maxBw: 400,
     level: 7,
     xp: 0,
     gold: 600,
@@ -51,10 +51,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -97,7 +97,7 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
@@ -109,7 +109,7 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400 - 40) // Level 1 Q costs 40
+      expect(updated.bw).toBe(400 - 40) // Level 1 Q costs 40
       expect(updated.cooldowns.q).toBe(5)
     })
 
@@ -129,8 +129,8 @@ describe('Lambda Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -148,7 +148,7 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400) // No mana deducted
+      expect(updated.bw).toBe(400) // No mana deducted
     })
 
     it('deals 30% bonus damage with closureActive buff', () => {
@@ -173,8 +173,8 @@ describe('Lambda Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -195,7 +195,7 @@ describe('Lambda Hero', () => {
     })
 
     it('fails with InsufficientManaError when no mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -285,7 +285,7 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400 - 70) // Level 1 W costs 70
+      expect(updated.bw).toBe(400 - 70) // Level 1 W costs 70
       expect(updated.cooldowns.w).toBe(14)
     })
 
@@ -302,12 +302,12 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400) // No mana deducted
+      expect(updated.bw).toBe(400) // No mana deducted
       expect(hasBuff(updated, 'closureActive')).toBe(false) // Consumed
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
@@ -324,8 +324,8 @@ describe('Lambda Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy1.hp)
-      expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy1.integ)
+      expect(result.state.players['e2']!.integ).toBeLessThan(enemy2.integ)
     })
 
     it('applies slow debuff to all enemies in zone', () => {
@@ -350,7 +350,7 @@ describe('Lambda Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
-      expect(result.state.players['a1']!.hp).toBe(ally.hp)
+      expect(result.state.players['a1']!.integ).toBe(ally.integ)
     })
 
     it('deducts mana and sets cooldown', () => {
@@ -361,7 +361,7 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400 - 80) // Level 1 E costs 80
+      expect(updated.bw).toBe(400 - 80) // Level 1 E costs 80
       expect(updated.cooldowns.e).toBe(10)
     })
 
@@ -377,8 +377,8 @@ describe('Lambda Hero', () => {
       const result1 = Effect.runSync(resolveAbility(state1, 'p1', 'e'))
       const result2 = Effect.runSync(resolveAbility(state2, 'p1', 'e'))
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -400,13 +400,13 @@ describe('Lambda Hero', () => {
       const result1 = Effect.runSync(resolveAbility(state1, 'p1', 'e'))
       const result2 = Effect.runSync(resolveAbility(state2, 'p1', 'e'))
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -428,18 +428,18 @@ describe('Lambda Hero', () => {
     })
 
     it('deals big single-target code damage', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
-      const dmg = enemy.hp - result.state.players['e1']!.hp
+      const dmg = enemy.integ - result.state.players['e1']!.integ
       expect(dmg).toBeGreaterThan(100) // 300 pre-mitigation at level 1 R
     })
 
     it('stuns for 1 tick when closureActive is present', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
@@ -459,7 +459,7 @@ describe('Lambda Hero', () => {
     })
 
     it('does not stun without closureActive', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -470,7 +470,7 @@ describe('Lambda Hero', () => {
     })
 
     it('costs no mana with closureActive', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
@@ -483,11 +483,11 @@ describe('Lambda Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500) // No mana deducted
+      expect(updated.bw).toBe(500) // No mana deducted
     })
 
     it('consumes closureActive after use', () => {
-      let player = makePlayer({ level: 6, mp: 500 })
+      let player = makePlayer({ level: 6, bw: 500 })
       player = applyBuff(player, {
         id: 'closureActive',
         stacks: 1,
@@ -503,20 +503,20 @@ describe('Lambda Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 250) // Level 1 R costs 250
+      expect(updated.bw).toBe(500 - 250) // Level 1 R costs 250
       expect(updated.cooldowns.r).toBe(50)
     })
 
     it('scales damage with R level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
 
@@ -530,13 +530,13 @@ describe('Lambda Hero', () => {
         resolveAbility(state2, 'p1', 'r', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
     it('requires hero target', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -544,7 +544,7 @@ describe('Lambda Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ level: 6, mp: 10 })
+      const player = makePlayer({ level: 6, bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -555,7 +555,7 @@ describe('Lambda Hero', () => {
     })
 
     it('fails when target is in different zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy({ zone: 'top-river' })
       const state = makeState([player, enemy])
 

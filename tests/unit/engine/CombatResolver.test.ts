@@ -13,10 +13,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
-    hp: echo.baseStats.hp,
-    maxHp: echo.baseStats.hp,
-    mp: echo.baseStats.mp,
-    maxMp: echo.baseStats.mp,
+    integ: echo.baseStats.hp,
+    maxInteg: echo.baseStats.hp,
+    bw: echo.baseStats.mp,
+    maxBw: echo.baseStats.mp,
     level: 1,
     xp: 0,
     gold: 600,
@@ -40,7 +40,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 describe('CombatResolver', () => {
   describe('resolvePhysicalHit', () => {
     it('applies full mitigation (effective plate) and reports the HP lost', () => {
-      const player = makePlayer({ hp: 500 })
+      const player = makePlayer({ integ: 500 })
       const raw = 100
 
       const hit = resolvePhysicalHit(player, raw)
@@ -49,38 +49,38 @@ describe('CombatResolver', () => {
       expect(hit.immune).toBe(false)
       expect(hit.dodged).toBe(false)
       expect(hit.damageDealt).toBe(expected)
-      expect(hit.player.hp).toBe(500 - expected)
+      expect(hit.player.integ).toBe(500 - expected)
       expect(hit.player.alive).toBe(true)
     })
 
     it('honors kinetic immunity (Ghost/Ethereal/invulnerable) — no HP lost', () => {
       for (const id of ['ghost_form', 'ethereal', 'invulnerable']) {
         const player = makePlayer({
-          hp: 500,
+          integ: 500,
           buffs: [{ id, stacks: 1, ticksRemaining: 2, source: 'x' }],
         })
         const hit = resolvePhysicalHit(player, 100)
         expect(hit.immune).toBe(true)
         expect(hit.damageDealt).toBe(0)
-        expect(hit.player.hp).toBe(500)
+        expect(hit.player.integ).toBe(500)
       }
     })
 
     it('reports a phaseShift dodge and consumes the buff (no HP lost)', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 1, source: 'echo' }],
       })
       const hit = resolvePhysicalHit(player, 100)
       expect(hit.dodged).toBe(true)
       expect(hit.damageDealt).toBe(0)
-      expect(hit.player.hp).toBe(500)
+      expect(hit.player.integ).toBe(500)
       expect(hit.player.buffs.some((b) => b.id === 'phaseShift')).toBe(false)
     })
 
     it('absorbs damage through a shield buff, reporting only the unabsorbed HP loss', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'shield', stacks: 40, ticksRemaining: 3, source: 'x' }],
       })
       const raw = 100
@@ -89,15 +89,15 @@ describe('CombatResolver', () => {
       const mitigated = calculateKineticDamage(raw, getEffectivePlate(player))
       const expectedHpLoss = Math.max(0, mitigated - 40)
       expect(hit.damageDealt).toBe(expectedHpLoss)
-      expect(hit.player.hp).toBe(500 - expectedHpLoss)
+      expect(hit.player.integ).toBe(500 - expectedHpLoss)
     })
 
     it('applies Kernel hardened 10% reduction before shield', () => {
       const hardened = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'hardened', stacks: 1, ticksRemaining: 99, source: 'kernel' }],
       })
-      const plain = makePlayer({ hp: 500 })
+      const plain = makePlayer({ integ: 500 })
       const raw = 100
 
       const hardenedHit = resolvePhysicalHit(hardened, raw)
@@ -107,16 +107,19 @@ describe('CombatResolver', () => {
     })
 
     it('floors HP at 0 and marks the target dead on a lethal hit', () => {
-      const player = makePlayer({ hp: 1 })
+      const player = makePlayer({ integ: 1 })
       const hit = resolvePhysicalHit(player, 200)
-      expect(hit.player.hp).toBe(0)
+      expect(hit.player.integ).toBe(0)
       expect(hit.player.alive).toBe(false)
       expect(hit.damageDealt).toBe(1)
     })
 
     it('respects item plate (an armor item reduces damage vs a bare hero)', () => {
-      const bare = makePlayer({ hp: 500 })
-      const armored = makePlayer({ hp: 500, items: ['plate_weave', null, null, null, null, null] })
+      const bare = makePlayer({ integ: 500 })
+      const armored = makePlayer({
+        integ: 500,
+        items: ['plate_weave', null, null, null, null, null],
+      })
       const raw = 100
 
       const bareHit = resolvePhysicalHit(bare, raw)

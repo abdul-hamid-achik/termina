@@ -16,11 +16,11 @@ function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleSt
     neutrals: [],
     ice: [],
     ancients: {
-      chaff: { team: 'chaff', hp: 750, maxHp: 750, alive: true, vulnerable: false },
-      audit: { team: 'audit', hp: 750, maxHp: 750, alive: true, vulnerable: false },
+      chaff: { team: 'chaff', integ: 750, maxInteg: 750, alive: true, vulnerable: false },
+      audit: { team: 'audit', integ: 750, maxInteg: 750, alive: true, vulnerable: false },
     },
     caches: [],
-    tenant: { alive: true, hp: 500, maxHp: 500, deathTick: null },
+    tenant: { alive: true, integ: 500, maxInteg: 500, deathTick: null },
     backup: null,
     events: [],
     visibleZones: [],
@@ -58,7 +58,7 @@ describe('StateDelta', () => {
         audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, hardenUsedTick: null },
       }
       const ice = [] as PlayerVisibleState['ice']
-      const tenant = { alive: true, hp: 500, maxHp: 500, deathTick: null }
+      const tenant = { alive: true, integ: 500, maxInteg: 500, deathTick: null }
       const prev = makeState({ tick: 1, teams, ice, tenant })
       const current = makeState({ tick: 2, teams, ice, tenant })
       const delta = computeDelta(current, prev) as Partial<PlayerVisibleState>

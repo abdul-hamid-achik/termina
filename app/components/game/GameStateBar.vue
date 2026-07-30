@@ -56,8 +56,8 @@ function formatTimeRemaining(tick: number, timeOfDay: string): string {
 const lead = computed(() => goldLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
 
 function corePct(a: AncientState | undefined): number {
-  if (!a || a.maxHp <= 0) return 0
-  return Math.round((a.hp / a.maxHp) * 100)
+  if (!a || a.maxInteg <= 0) return 0
+  return Math.round((a.integ / a.maxInteg) * 100)
 }
 </script>
 

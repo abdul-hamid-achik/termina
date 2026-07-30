@@ -13,10 +13,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'regex',
     zone: 'mid-river',
-    hp: 450,
-    maxHp: 450,
-    mp: 400,
-    maxMp: 400,
+    integ: 450,
+    maxInteg: 450,
+    bw: 400,
+    maxBw: 400,
     level: 7,
     xp: 0,
     gold: 600,
@@ -43,10 +43,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -74,7 +74,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
     backup: null,
     events: [],
     ...overrides,
@@ -90,7 +90,7 @@ describe('Regex Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
       expect(result.events[0]!.type).toBe('ability_cast')
     })
 
@@ -115,7 +115,7 @@ describe('Regex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400 - 60)
+      expect(updated.bw).toBe(400 - 60)
       expect(updated.cooldowns.q).toBe(5)
     })
 
@@ -135,8 +135,8 @@ describe('Regex Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -214,7 +214,7 @@ describe('Regex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400 - 90)
+      expect(updated.bw).toBe(400 - 90)
       expect(updated.cooldowns.w).toBe(10)
     })
 
@@ -284,7 +284,7 @@ describe('Regex Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(400 - 100)
+      expect(updated.bw).toBe(400 - 100)
       expect(updated.cooldowns.e).toBe(15)
     })
 
@@ -330,7 +330,7 @@ describe('Regex Hero', () => {
 
   describe('R: Catastrophic Backtracking', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -341,19 +341,19 @@ describe('Regex Hero', () => {
     })
 
     it('deals damage based on missing mana', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
-      const enemy = makeEnemy({ mp: 100, maxMp: 280 })
+      const player = makePlayer({ level: 6, bw: 500 })
+      const enemy = makeEnemy({ bw: 100, maxBw: 280 })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
       const _missingMana = 280 - 100
-      const actualDamage = enemy.hp - result.state.players['e1']!.hp
+      const actualDamage = enemy.integ - result.state.players['e1']!.integ
       expect(actualDamage).toBeGreaterThan(0)
     })
 
     it('silences target for 2 ticks', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -365,28 +365,28 @@ describe('Regex Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 300)
+      expect(updated.bw).toBe(500 - 300)
       expect(updated.cooldowns.r).toBe(60)
     })
 
     it('scales damage per missing mana with level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
-      const enemy1 = makeEnemy({ mp: 100, maxMp: 280, hp: 1000, maxHp: 1000 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
+      const enemy1 = makeEnemy({ bw: 100, maxBw: 280, integ: 1000, maxInteg: 1000 })
       const enemy2 = makeEnemy({
         id: 'e2',
         name: 'Enemy2',
-        mp: 100,
-        maxMp: 280,
-        hp: 1000,
-        maxHp: 1000,
+        bw: 100,
+        maxBw: 280,
+        integ: 1000,
+        maxInteg: 1000,
       })
 
       const state1 = makeState([player6, enemy1])
@@ -399,14 +399,14 @@ describe('Regex Hero', () => {
         resolveAbility(state2, 'p1', 'r', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
     it('scales cooldown with level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
 
@@ -425,7 +425,7 @@ describe('Regex Hero', () => {
     })
 
     it('requires hero target', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -481,21 +481,21 @@ describe('Regex Hero', () => {
     it('regex_25_right grants the global-ultimate exotic (Global Backtracking)', () => {
       const player = makePlayer({
         level: 6,
-        mp: 500,
+        bw: 500,
         talents: { tier10: null, tier15: null, tier20: null, tier25: 'regex_25_right' },
       })
       expect(hasTalentCastEffect(player, 'global_ultimate', 'r')).toBe(true)
     })
 
     it('regex_25_left boosts Backtracking damage (was the dead global_ultimate no-op)', () => {
-      const enemyOpts = { mp: 100, maxMp: 280, hp: 1000, maxHp: 1000 }
+      const enemyOpts = { bw: 100, maxBw: 280, integ: 1000, maxInteg: 1000 }
 
       const boosted = Effect.runSync(
         resolveAbility(
           makeState([
             makePlayer({
               level: 6,
-              mp: 500,
+              bw: 500,
               talents: { tier10: null, tier15: null, tier20: null, tier25: 'regex_25_left' },
             }),
             makeEnemy(enemyOpts),
@@ -507,15 +507,15 @@ describe('Regex Hero', () => {
       )
       const plain = Effect.runSync(
         resolveAbility(
-          makeState([makePlayer({ level: 6, mp: 500 }), makeEnemy(enemyOpts)]),
+          makeState([makePlayer({ level: 6, bw: 500 }), makeEnemy(enemyOpts)]),
           'p1',
           'r',
           { kind: 'hero', name: 'e1' },
         ),
       )
 
-      const dmgBoosted = 1000 - boosted.state.players['e1']!.hp
-      const dmgPlain = 1000 - plain.state.players['e1']!.hp
+      const dmgBoosted = 1000 - boosted.state.players['e1']!.integ
+      const dmgPlain = 1000 - plain.state.players['e1']!.integ
       expect(dmgPlain).toBeGreaterThan(0)
       expect(dmgBoosted).toBeGreaterThan(dmgPlain)
     })

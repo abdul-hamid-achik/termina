@@ -454,8 +454,8 @@ const {
 
         <TargetDummy
           :name="DUMMY_NAME"
-          :hp="dummyHp"
-          :max-hp="dummyMax"
+          :integ="dummyHp"
+          :max-integ="dummyMax"
           :dots="dots.length"
           :statuses="statuses"
         />

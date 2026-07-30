@@ -25,10 +25,10 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -56,8 +56,8 @@ function wave(over: Partial<WaveUnitState> = {}): WaveUnitState {
     id: 'w0',
     team: 'audit',
     zone: 'mid-t1-chaff',
-    hp: 100,
-    maxHp: 400,
+    integ: 100,
+    maxInteg: 400,
     type: 'line',
     ...over,
   }
@@ -96,9 +96,9 @@ describe('ActionRow', () => {
   it('STRIP emits attack wave:<index> for the lowest-HP HOSTILE unit', () => {
     const player = makePlayer()
     const waves = [
-      wave({ id: 'w-ally-low', team: 'chaff', hp: 30 }),
-      wave({ id: 'w-enemy-high', team: 'audit', hp: 300 }),
-      wave({ id: 'w-enemy-low', team: 'audit', hp: 60 }),
+      wave({ id: 'w-ally-low', team: 'chaff', integ: 30 }),
+      wave({ id: 'w-enemy-high', team: 'audit', integ: 300 }),
+      wave({ id: 'w-enemy-low', team: 'audit', integ: 60 }),
     ]
     // The lowest hostile is w-enemy-low at index 2.
     expect(stripTargetString(player, waves)).toBe('wave:2')
@@ -121,7 +121,7 @@ describe('ActionRow', () => {
     const healthy = computeSituationalActions({
       player,
       isAlive: true,
-      waves: [wave({ team: 'chaff', hp: 400, maxHp: 400 })],
+      waves: [wave({ team: 'chaff', integ: 400, maxInteg: 400 })],
       backup: null,
       caches: [],
       teams: null,
@@ -132,7 +132,7 @@ describe('ActionRow', () => {
     const burnable = computeSituationalActions({
       player,
       isAlive: true,
-      waves: [wave({ team: 'chaff', hp: 100, maxHp: 400 })],
+      waves: [wave({ team: 'chaff', integ: 100, maxInteg: 400 })],
       backup: null,
       caches: [],
       teams: null,

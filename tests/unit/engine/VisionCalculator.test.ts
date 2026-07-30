@@ -14,10 +14,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -170,7 +170,7 @@ describe('VisionCalculator', () => {
       const filtered = filterStateForPlayer(state, 'p1')
       const ally = filtered.players['p2'] as PlayerState
       expect(ally.zone).toBe('bot-t3-chaff')
-      expect(ally.hp).toBe(500)
+      expect(ally.integ).toBe(500)
       expect('fogged' in ally).toBe(false)
     })
 
@@ -216,7 +216,7 @@ describe('VisionCalculator', () => {
       const filtered = filterStateForPlayer(state, 'p1')
       const enemy = filtered.players['e1'] as PlayerState
       expect('fogged' in enemy).toBe(false) // visible, full combat state...
-      expect(enemy.hp).toBe(500)
+      expect(enemy.integ).toBe(500)
       expect('moveTarget' in enemy).toBe(false) // ...but never their intent
       const ally = filtered.players['p2'] as PlayerState
       expect(ally.moveTarget).toBe('audit-base')
@@ -292,7 +292,7 @@ describe('VisionCalculator', () => {
             team: 'audit',
             zone: 'mid-river',
             name: 'VisibleEnemy',
-            hp: 300,
+            integ: 300,
           }),
         },
       })
@@ -300,7 +300,7 @@ describe('VisionCalculator', () => {
       const filtered = filterStateForPlayer(state, 'p1')
       const enemy = filtered.players['e1'] as PlayerState
       expect(enemy.zone).toBe('mid-river')
-      expect(enemy.hp).toBe(300)
+      expect(enemy.integ).toBe(300)
       expect('fogged' in enemy).toBe(false)
     })
 
@@ -310,8 +310,8 @@ describe('VisionCalculator', () => {
           p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
         },
         waves: [
-          { id: 'c1', team: 'audit', zone: 'audit-fountain', hp: 400, type: 'line' },
-          { id: 'c2', team: 'chaff', zone: 'chaff-base', hp: 400, type: 'line' },
+          { id: 'c1', team: 'audit', zone: 'audit-fountain', integ: 400, type: 'line' },
+          { id: 'c2', team: 'chaff', zone: 'chaff-base', integ: 400, type: 'line' },
         ],
       })
 
@@ -360,7 +360,7 @@ describe('VisionCalculator', () => {
             team: 'audit',
             zone: 'mid-river',
             name: 'InvisEnemy',
-            hp: 300,
+            integ: 300,
             buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
           }),
         },
@@ -370,7 +370,7 @@ describe('VisionCalculator', () => {
       const filtered = filterStateForPlayer(state, 'p1')
       const enemy = filtered.players['e1']!
       expect('fogged' in enemy).toBe(false)
-      expect((enemy as PlayerState).hp).toBe(300)
+      expect((enemy as PlayerState).integ).toBe(300)
     })
 
     it('should not reveal invisible enemies outside true sight zones', () => {
@@ -390,7 +390,7 @@ describe('VisionCalculator', () => {
             team: 'audit',
             zone: 'mid-river',
             name: 'InvisEnemy',
-            hp: 300,
+            integ: 300,
             buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
           }),
         },
@@ -416,7 +416,7 @@ describe('VisionCalculator', () => {
             team: 'audit',
             zone: 'mid-river',
             name: 'InvisEnemy',
-            hp: 300,
+            integ: 300,
             buffs: [{ id: 'invisible', stacks: 1, ticksRemaining: 5, source: 'e1' }],
           }),
         },
@@ -425,7 +425,7 @@ describe('VisionCalculator', () => {
       const filtered = filterStateForPlayer(state, 'p1')
       const enemy = filtered.players['e1']!
       expect('fogged' in enemy).toBe(false)
-      expect((enemy as PlayerState).hp).toBe(300)
+      expect((enemy as PlayerState).integ).toBe(300)
     })
 
     it('Tracer Dust reveal extends to adjacent zones', () => {

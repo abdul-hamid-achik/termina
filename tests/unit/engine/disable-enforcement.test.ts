@@ -16,10 +16,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'regex',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 400,
-    maxMp: 400,
+    integ: 500,
+    maxInteg: 500,
+    bw: 400,
+    maxBw: 400,
     level: 7,
     xp: 0,
     gold: 600,
@@ -174,7 +174,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
   it('refunds exactly 15% of the mana spent on regex Q', () => {
     const startMp = 400
     const caster = makePlayer({
-      mp: startMp,
+      bw: startMp,
       talents: { tier10: null, tier15: 'regex_15_right', tier20: null, tier25: null },
     })
     const enemy = makePlayer({
@@ -188,12 +188,12 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
 
     const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
-    expect(result.state.players['p1']!.mp).toBe(startMp - Q_MANA + REFUND)
+    expect(result.state.players['p1']!.bw).toBe(startMp - Q_MANA + REFUND)
   })
 
   it('does NOT refund when the talent is not selected (baseline)', () => {
     const startMp = 400
-    const caster = makePlayer({ mp: startMp })
+    const caster = makePlayer({ bw: startMp })
     const enemy = makePlayer({
       id: 'e1',
       name: 'Enemy',
@@ -205,7 +205,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
 
     const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
-    expect(result.state.players['p1']!.mp).toBe(startMp - Q_MANA)
+    expect(result.state.players['p1']!.bw).toBe(startMp - Q_MANA)
   })
 
   it('refund nets exactly REFUND mana above the un-talented cast', () => {
@@ -219,10 +219,10 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
     })
 
     const withTalent = makePlayer({
-      mp: startMp,
+      bw: startMp,
       talents: { tier10: null, tier15: 'regex_15_right', tier20: null, tier25: null },
     })
-    const without = makePlayer({ mp: startMp })
+    const without = makePlayer({ bw: startMp })
 
     const r1 = Effect.runSync(
       resolveAbility(makeGameState({ players: { p1: withTalent, e1: enemy } }), 'p1', 'q', {
@@ -237,7 +237,7 @@ describe('Talent: manaCostReduction refunds mana on the boosted ability', () => 
       }),
     )
 
-    expect(r1.state.players['p1']!.mp - r2.state.players['p1']!.mp).toBe(REFUND)
+    expect(r1.state.players['p1']!.bw - r2.state.players['p1']!.bw).toBe(REFUND)
   })
 })
 
@@ -246,7 +246,7 @@ describe('Arcane cache refunds mana on cast (buff was applied but consumed nowhe
   const ARCANE_REFUND = Math.round(Q_MANA * 0.4) // 24
 
   const cast = (casterOverrides = {}) => {
-    const caster = makePlayer({ mp: 400, ...casterOverrides })
+    const caster = makePlayer({ bw: 400, ...casterOverrides })
     const enemy = makePlayer({
       id: 'e1',
       name: 'Enemy',
@@ -262,10 +262,10 @@ describe('Arcane cache refunds mana on cast (buff was applied but consumed nowhe
     const result = cast({
       buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 9999, source: 'cache_arcane' }],
     })
-    expect(result.state.players['p1']!.mp).toBe(400 - Q_MANA + ARCANE_REFUND)
+    expect(result.state.players['p1']!.bw).toBe(400 - Q_MANA + ARCANE_REFUND)
   })
 
   it('no refund without the arcane buff (baseline)', () => {
-    expect(cast().state.players['p1']!.mp).toBe(400 - Q_MANA)
+    expect(cast().state.players['p1']!.bw).toBe(400 - Q_MANA)
   })
 })

@@ -52,7 +52,7 @@ describe('talents', () => {
 
   it('a damage_boost talent amplifies a hero-tailored ability through the full tick (Cipher +30% XOR Strike)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'cipher', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
 
     const dmgToEnemy = () =>
       game.lastEvents
@@ -71,7 +71,7 @@ describe('talents', () => {
           buffs: [],
           talents: { tier10: null, tier15: null, tier20: null, tier25: null },
         },
-        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], integ: s.players[ENEMY]!.maxInteg },
       },
     }))
     game.cast('q', { kind: 'hero', name: ENEMY })
@@ -90,7 +90,7 @@ describe('talents', () => {
           buffs: [],
           talents: { tier10: null, tier15: 'cipher_15_left', tier20: null, tier25: null },
         },
-        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], integ: s.players[ENEMY]!.maxInteg },
       },
     }))
     game.cast('q', { kind: 'hero', name: ENEMY })
@@ -120,13 +120,13 @@ describe('exotic tier-25 cast effects', () => {
             ...s.players[HUMAN]!,
             zone: 'mid-river',
             level: 6,
-            mp: 500,
-            maxMp: 500,
+            bw: 500,
+            maxBw: 500,
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
           // top-river is NOT adjacent to mid-river → only a global ult can reach it.
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'top-river', mp: 100, maxMp: 500 },
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'top-river', bw: 100, maxBw: 500 },
         },
       }))
     const dmgFromMe = () =>
@@ -158,13 +158,13 @@ describe('exotic tier-25 cast effects', () => {
             ...s.players[HUMAN]!,
             zone: 'mid-river',
             level: 6,
-            mp: 500,
-            maxMp: 500,
+            bw: 500,
+            maxBw: 500,
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
           // mid-t1-audit IS adjacent to mid-river.
-          [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit', mp: 500, maxMp: 500 },
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t1-audit', bw: 500, maxBw: 500 },
         },
       }))
     const dmgFromMe = () =>
@@ -196,9 +196,9 @@ describe('exotic tier-25 cast effects', () => {
             ...s.players[HUMAN]!,
             zone: 'mid-river',
             level: 6,
-            hp: Math.floor(s.players[HUMAN]!.maxHp / 2), // room to heal
-            mp: 500,
-            maxMp: 500,
+            integ: Math.floor(s.players[HUMAN]!.maxInteg / 2), // room to heal
+            bw: 500,
+            maxBw: 500,
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
@@ -208,9 +208,9 @@ describe('exotic tier-25 cast effects', () => {
           [ENEMY]: {
             ...s.players[ENEMY]!,
             zone: 'mid-river',
-            hp: 100,
-            maxHp: 1000,
-            mp: 500,
+            integ: 100,
+            maxInteg: 1000,
+            bw: 500,
             alive: true,
             respawnTick: 0,
           },

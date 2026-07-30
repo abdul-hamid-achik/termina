@@ -82,22 +82,22 @@ export function isDamageImmune(target: PlayerState, damageType: DamageType): boo
  * Pure function, no Effect wrapper.
  */
 export function applyRawDamage(target: PlayerState, damage: number): PlayerState {
-  const newHp = Math.max(0, target.hp - damage)
-  const alive = newHp > 0
+  const newInteg = Math.max(0, target.integ - damage)
+  const alive = newInteg > 0
   return {
     ...target,
-    hp: newHp,
+    integ: newInteg,
     alive,
   }
 }
 
 /**
- * Heal a player. HP cannot exceed maxHp.
+ * Heal a player. HP cannot exceed maxInteg.
  */
 export function applyHeal(target: PlayerState, amount: number): PlayerState {
   return {
     ...target,
-    hp: Math.min(target.maxHp, target.hp + amount),
+    integ: Math.min(target.maxInteg, target.integ + amount),
   }
 }
 
@@ -109,6 +109,7 @@ export function getHeroStatsAtLevel(
   growth: Partial<{ hp: number; mp: number; attack: number; plate: number; ice: number }>,
   level: number,
 ): { hp: number; mp: number; attack: number; plate: number; ice: number } {
+  // Keys stay hp/mp until R4-06 renames HeroBaseStats/ItemStats bonuses to integ/bw.
   const levelsGained = level - 1
   return {
     hp: base.hp + (growth.hp ?? 0) * levelsGained,

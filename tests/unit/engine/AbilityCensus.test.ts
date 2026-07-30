@@ -35,10 +35,10 @@ function mkPlayer(
     team,
     heroId: 'echo',
     zone: ZONE,
-    hp: 2000,
-    maxHp: 2000,
-    mp: 5000,
-    maxMp: 5000,
+    integ: 2000,
+    maxInteg: 2000,
+    bw: 5000,
+    maxBw: 5000,
     level: 18,
     xp: 0,
     gold: 600,
@@ -70,9 +70,9 @@ function baseState(heroId: string): GameState {
     ],
   })
   const efull = mkPlayer('efull', 'audit', { heroId: 'kernel' })
-  const elow = mkPlayer('elow', 'audit', { heroId: 'kernel', hp: 50 })
+  const elow = mkPlayer('elow', 'audit', { heroId: 'kernel', integ: 50 })
   const eadj = mkPlayer('eadj', 'audit', { heroId: 'kernel', zone: ADJ })
-  const ally = mkPlayer('ally', 'chaff', { heroId: 'socket', hp: 1000 })
+  const ally = mkPlayer('ally', 'chaff', { heroId: 'socket', integ: 1000 })
   const players: Record<string, PlayerState> = {}
   for (const p of [caster, efull, elow, eadj, ally]) players[p.id] = p
   const zones: GameState['zones'] = {}
@@ -92,11 +92,11 @@ function baseState(heroId: string): GameState {
     neutrals: [],
     ice: [],
     ancients: {
-      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-      audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
     },
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
@@ -114,7 +114,7 @@ function hasObservableEffect(
   for (const [pid, postP] of Object.entries(post.players)) {
     const preP = pre.players[pid]
     if (!preP) continue
-    if (postP.hp !== preP.hp) return true
+    if (postP.integ !== preP.integ) return true
     if (postP.zone !== preP.zone) return true
     const preBuffs = preP.buffs
       .map((b) => `${b.id}:${b.stacks}`)
@@ -125,7 +125,7 @@ function hasObservableEffect(
       .sort()
       .join(',')
     if (preBuffs !== postBuffs) return true
-    if (pid !== 'caster' && postP.mp !== preP.mp) return true
+    if (pid !== 'caster' && postP.bw !== preP.bw) return true
   }
   for (const [zid, postZ] of Object.entries(post.zones)) {
     const preZ = pre.zones[zid]

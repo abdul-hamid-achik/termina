@@ -16,11 +16,11 @@ function baseState(): GameState {
     neutrals: [],
     ice: [],
     ancients: {
-      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-      audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
     },
     caches: [],
-    tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
@@ -33,7 +33,7 @@ describe('applyScenario (dev seed scenarios)', () => {
   it('tenant_dead kills Tenant and stamps deathTick at the current tick', () => {
     const s = applyScenario({ ...baseState(), tick: 7 }, 'tenant_dead')
     expect(s.tenant.alive).toBe(false)
-    expect(s.tenant.hp).toBe(0)
+    expect(s.tenant.integ).toBe(0)
     expect(s.tenant.deathTick).toBe(7)
   })
 
@@ -52,12 +52,12 @@ describe('applyScenario (dev seed scenarios)', () => {
       ...baseState(),
       tick: 5,
       players: {
-        human1: { id: 'human1', alive: true, hp: 600, maxHp: 600, respawnTick: null },
+        human1: { id: 'human1', alive: true, integ: 600, maxInteg: 600, respawnTick: null },
       },
     } as unknown as GameState
     const s = applyScenario(base, 'self_dead', { humanId: 'human1' })
     expect(s.players.human1!.alive).toBe(false)
-    expect(s.players.human1!.hp).toBe(0)
+    expect(s.players.human1!.integ).toBe(0)
     expect(s.players.human1!.respawnTick).toBe(35)
   })
 
@@ -75,10 +75,10 @@ describe('applyScenario (dev seed scenarios)', () => {
           id: 'human1',
           team: 'chaff',
           alive: true,
-          hp: 300,
-          maxHp: 600,
-          mp: 100,
-          maxMp: 300,
+          integ: 300,
+          maxInteg: 600,
+          bw: 100,
+          maxBw: 300,
           level: 1,
           zone: 'chaff-fountain',
         },
@@ -86,10 +86,10 @@ describe('applyScenario (dev seed scenarios)', () => {
           id: 'enemy1',
           team: 'audit',
           alive: true,
-          hp: 200,
-          maxHp: 500,
-          mp: 50,
-          maxMp: 250,
+          integ: 200,
+          maxInteg: 500,
+          bw: 50,
+          maxBw: 250,
           level: 1,
           zone: 'audit-fountain',
         },
@@ -100,8 +100,8 @@ describe('applyScenario (dev seed scenarios)', () => {
     expect(s.players.enemy1!.zone).toBe('mid-river')
     // levelled + topped off so abilities are unlocked and castable
     expect(s.players.human1!.level).toBe(6)
-    expect(s.players.human1!.mp).toBe(s.players.human1!.maxMp)
-    expect(s.players.enemy1!.hp).toBe(s.players.enemy1!.maxHp)
+    expect(s.players.human1!.bw).toBe(s.players.human1!.maxBw)
+    expect(s.players.enemy1!.integ).toBe(s.players.enemy1!.maxInteg)
   })
 
   it('laning_combat is a no-op without a matching humanId', () => {
@@ -117,10 +117,10 @@ describe('applyScenario (dev seed scenarios)', () => {
           id: 'human1',
           team: 'chaff',
           alive: true,
-          hp: 300,
-          maxHp: 600,
-          mp: 100,
-          maxMp: 300,
+          integ: 300,
+          maxInteg: 600,
+          bw: 100,
+          maxBw: 300,
           level: 1,
           talents: { tier10: 'stale', tier15: null, tier20: null, tier25: null },
         },
@@ -129,7 +129,7 @@ describe('applyScenario (dev seed scenarios)', () => {
     const s = applyScenario(base, 'talent_ready', { humanId: 'human1' })
     expect(s.players.human1!.level).toBe(10)
     expect(s.players.human1!.talents.tier10).toBeNull()
-    expect(s.players.human1!.hp).toBe(s.players.human1!.maxHp)
+    expect(s.players.human1!.integ).toBe(s.players.human1!.maxInteg)
   })
 
   it('talent_ready is a no-op without a matching humanId', () => {

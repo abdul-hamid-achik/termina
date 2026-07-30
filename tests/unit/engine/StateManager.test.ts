@@ -66,10 +66,10 @@ describe('StateManager', () => {
       const state = Effect.runSync(sm.createGame('game1', players))
       const p1 = state.players['p1']!
       // Echo has 550 HP, 280 MP base stats
-      expect(p1.hp).toBe(550)
-      expect(p1.maxHp).toBe(550)
-      expect(p1.mp).toBe(280)
-      expect(p1.maxMp).toBe(280)
+      expect(p1.integ).toBe(550)
+      expect(p1.maxInteg).toBe(550)
+      expect(p1.bw).toBe(280)
+      expect(p1.maxBw).toBe(280)
     })
 
     it('should initialize players at level 1 with 0 xp', () => {
@@ -168,8 +168,8 @@ describe('StateManager', () => {
 
       const state = Effect.runSync(sm.createGame('game1', players))
       // With null heroId, stats default to 0
-      expect(state.players['p1']!.hp).toBe(0)
-      expect(state.players['p1']!.maxHp).toBe(0)
+      expect(state.players['p1']!.integ).toBe(0)
+      expect(state.players['p1']!.maxInteg).toBe(0)
     })
   })
 

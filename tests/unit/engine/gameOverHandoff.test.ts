@@ -72,7 +72,7 @@ async function seedGameEndingOffSnapshotBeat(gameId: string) {
       ...s,
       tick: startTick,
       phase: 'playing' as const,
-      ancients: { ...s.ancients!, audit: { ...s.ancients!.audit, hp: 0, alive: false } },
+      ancients: { ...s.ancients!, audit: { ...s.ancients!.audit, integ: 0, alive: false } },
     })),
   )
   return sm
@@ -112,7 +112,7 @@ describe('game loop: final handoff', () => {
     const { winner } = await done
     expect(winner).toBe('chaff')
 
-    const snapshot = store.get(`gamesnap:${gameId}`)
+    const snapshot = store.get(`gamesnap2:${gameId}`)
     expect(snapshot).toBeDefined()
     const parsed = JSON.parse(snapshot!) as { state: { phase: string; tick: number } }
     expect(parsed.state.phase).toBe('ended')
@@ -138,7 +138,7 @@ describe('game loop: final handoff', () => {
         onTickState: () => {},
         onEvents: () => {},
         onGameOver: (_id, winner, farm) => {
-          snapshotAtGameOver = store.get(`gamesnap:${gameId}`)
+          snapshotAtGameOver = store.get(`gamesnap2:${gameId}`)
           resolve({ winner, farm })
         },
       },
@@ -192,7 +192,7 @@ describe('game loop: final handoff', () => {
       sm.updateState(gameId, (s) => ({
         ...s,
         players: { ...s.players, p1: { ...s.players.p1!, zone: 'mid-river' } },
-        waves: [{ id: 'c1', team: 'audit', zone: 'mid-river', hp: 5, type: 'line' as const }],
+        waves: [{ id: 'c1', team: 'audit', zone: 'mid-river', integ: 5, type: 'line' as const }],
       })),
     )
     submitAction(gameId, 'p1', { type: 'attack', target: { kind: 'wave', index: 0 } })

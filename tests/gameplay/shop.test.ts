@@ -101,14 +101,14 @@ describe('shop', () => {
           items: ['burnout', null, null, null, null, null],
           buffs: [],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, hp: 1000, maxHp: 1000 },
+        [ENEMY]: { ...s.players[ENEMY]!, integ: 1000, maxInteg: 1000 },
       },
     }))
 
-    const before = (await game.player(ENEMY)).hp
+    const before = (await game.player(ENEMY)).integ
     game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
-    const after = (await game.player(ENEMY)).hp
+    const after = (await game.player(ENEMY)).integ
 
     // 300 code, reduced by ice (~15%) → ~255 — well above per-tick regen.
     expect(after).toBeLessThan(before)
@@ -211,7 +211,7 @@ describe('shop', () => {
 
   it('Stack Overflow (Overclock) doubles the caster’s next ability damage, then spends the charge', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
 
     const dmgToEnemy = () =>
       game.lastEvents.find(
@@ -225,7 +225,7 @@ describe('shop', () => {
       players: {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
-        [ENEMY]: { ...s.players[ENEMY]!, hp: s.players[ENEMY]!.maxHp },
+        [ENEMY]: { ...s.players[ENEMY]!, integ: s.players[ENEMY]!.maxInteg },
       },
     }))
     game.cast('q', { kind: 'hero', name: ENEMY })
@@ -243,7 +243,7 @@ describe('shop', () => {
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
           buffs: [{ id: 'stack_overflow_buff', stacks: 1, ticksRemaining: 10, source: HUMAN }],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, hp: s.players[ENEMY]!.maxHp },
+        [ENEMY]: { ...s.players[ENEMY]!, integ: s.players[ENEMY]!.maxInteg },
       },
     }))
     game.cast('q', { kind: 'hero', name: ENEMY })
@@ -255,7 +255,7 @@ describe('shop', () => {
 
   it('Cryo Routine novas every co-located enemy — code damage + a slow', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
     await game.patch((s) => ({
       ...s,
       players: {
@@ -264,7 +264,7 @@ describe('shop', () => {
           ...s.players[HUMAN]!,
           items: ['cryo_routine', null, null, null, null, null],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], integ: s.players[ENEMY]!.maxInteg },
       },
     }))
 
@@ -273,7 +273,7 @@ describe('shop', () => {
 
     const foe = await game.player(ENEMY)
     // The nova both damages (HP cut below full) and slows the co-located enemy.
-    expect(foe.hp).toBeLessThan(foe.maxHp)
+    expect(foe.integ).toBeLessThan(foe.maxInteg)
     expect(foe.buffs.some((b) => b.id === 'slow')).toBe(true)
   })
 

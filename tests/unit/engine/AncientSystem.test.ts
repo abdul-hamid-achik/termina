@@ -21,10 +21,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'audit-base',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -52,7 +52,7 @@ function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
     id: 'c1',
     team: 'chaff',
     zone: 'audit-base',
-    hp: 400,
+    integ: 400,
     type: 'line',
     ...overrides,
   }
@@ -73,7 +73,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     ancients: initializeAncients(),
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
@@ -88,7 +88,7 @@ function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
   const zone = team === 'chaff' ? 'mid-t3-chaff' : 'mid-t3-audit'
   return {
     ...state,
-    ice: state.ice.map((t) => (t.zone === zone ? { ...t, hp: 0, alive: false } : t)),
+    ice: state.ice.map((t) => (t.zone === zone ? { ...t, integ: 0, alive: false } : t)),
   }
 }
 
@@ -98,8 +98,8 @@ describe('AncientSystem', () => {
       const ancients = initializeAncients()
       for (const team of ['chaff', 'audit'] as const) {
         expect(ancients[team].team).toBe(team)
-        expect(ancients[team].hp).toBe(ANCIENT_HP)
-        expect(ancients[team].maxHp).toBe(ANCIENT_HP)
+        expect(ancients[team].integ).toBe(ANCIENT_HP)
+        expect(ancients[team].maxInteg).toBe(ANCIENT_HP)
         expect(ancients[team].alive).toBe(true)
         expect(ancients[team].vulnerable).toBe(false)
       }
@@ -154,7 +154,7 @@ describe('AncientSystem', () => {
       const state = makeGameState({
         ice: initializeIce().map((t) =>
           t.zone === 'mid-t1-audit' || t.zone === 'top-t2-audit'
-            ? { ...t, hp: 0, alive: false }
+            ? { ...t, integ: 0, alive: false }
             : t,
         ),
       })
@@ -185,7 +185,7 @@ describe('AncientSystem', () => {
 
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.rejected).toBeDefined()
-      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP)
+      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP)
       expect(result.events).toHaveLength(0)
     })
 
@@ -196,7 +196,7 @@ describe('AncientSystem', () => {
 
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.rejected).toBeUndefined()
-      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP - 100)
+      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP - 100)
       expect(result.state.ancients.audit.alive).toBe(true)
       expect(result.events).toHaveLength(1)
       expect(result.events[0]!._tag).toBe('damage')
@@ -214,7 +214,7 @@ describe('AncientSystem', () => {
 
       const result = resolveAncientAttack(state, 'c9', 20)
       expect(result.rejected).toBeUndefined()
-      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP - 20)
+      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP - 20)
     })
 
     it('destroys the Ancient at 0 HP and emits a dedicated ancient_destroyed event', () => {
@@ -223,11 +223,11 @@ describe('AncientSystem', () => {
       })
       const state: GameState = {
         ...base,
-        ancients: { ...base.ancients, audit: { ...base.ancients.audit, hp: 50 } },
+        ancients: { ...base.ancients, audit: { ...base.ancients.audit, integ: 50 } },
       }
 
       const result = resolveAncientAttack(state, 'p1', 100)
-      expect(result.state.ancients.audit.hp).toBe(0)
+      expect(result.state.ancients.audit.integ).toBe(0)
       expect(result.state.ancients.audit.alive).toBe(false)
       // No ice_kill reuse — the Ancient has its own event so the UI does not
       // render a misleading "destroyed ice in <base>" line.
@@ -245,7 +245,7 @@ describe('AncientSystem', () => {
         ...base,
         ancients: {
           ...base.ancients,
-          audit: { ...base.ancients.audit, hp: 0, alive: false },
+          audit: { ...base.ancients.audit, integ: 0, alive: false },
         },
       }
 
@@ -268,8 +268,8 @@ describe('AncientSystem', () => {
       const state = updateAncientVulnerability(withDeadT3(base, 'chaff'))
 
       const result = resolveAncientAttack(state, 'p1', 100)
-      expect(result.state.ancients.chaff.hp).toBe(ANCIENT_HP - 100)
-      expect(result.state.ancients.audit.hp).toBe(ANCIENT_HP)
+      expect(result.state.ancients.chaff.integ).toBe(ANCIENT_HP - 100)
+      expect(result.state.ancients.audit.integ).toBe(ANCIENT_HP)
     })
   })
 
@@ -284,7 +284,7 @@ describe('AncientSystem', () => {
         ...state,
         ancients: {
           ...state.ancients,
-          audit: { ...state.ancients.audit, hp: 0, alive: false },
+          audit: { ...state.ancients.audit, integ: 0, alive: false },
         },
       }
       expect(checkAncientWin(auditDown)).toBe('chaff')
@@ -293,7 +293,7 @@ describe('AncientSystem', () => {
         ...state,
         ancients: {
           ...state.ancients,
-          chaff: { ...state.ancients.chaff, hp: 0, alive: false },
+          chaff: { ...state.ancients.chaff, integ: 0, alive: false },
         },
       }
       expect(checkAncientWin(chaffDown)).toBe('audit')

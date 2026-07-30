@@ -21,10 +21,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'traceroute',
     zone: 'mid-river',
-    hp: 470,
-    maxHp: 470,
-    mp: 290,
-    maxMp: 290,
+    integ: 470,
+    maxInteg: 470,
+    bw: 290,
+    maxBw: 290,
     level: 7,
     xp: 0,
     gold: 600,
@@ -51,10 +51,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -67,8 +67,8 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Ally',
     team: 'chaff',
     heroId: 'echo',
-    hp: 400,
-    maxHp: 550,
+    integ: 400,
+    maxInteg: 550,
     ...overrides,
   })
 }
@@ -109,7 +109,7 @@ describe('Traceroute Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
     })
 
     it('deals 35% bonus damage when target is isolated', () => {
@@ -170,8 +170,8 @@ describe('Traceroute Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e3' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e3']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e3']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -183,7 +183,7 @@ describe('Traceroute Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(290 - 50) // Level 1 costs 50
+      expect(updated.bw).toBe(290 - 50) // Level 1 costs 50
       expect(updated.cooldowns.q).toBe(8)
     })
 
@@ -207,7 +207,7 @@ describe('Traceroute Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -240,7 +240,7 @@ describe('Traceroute Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(290 - 70) // Level 1 costs 70
+      expect(updated.bw).toBe(290 - 70) // Level 1 costs 70
       expect(updated.cooldowns.w).toBe(12)
     })
 
@@ -252,7 +252,7 @@ describe('Traceroute Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(290 - 115) // Level 4 costs 115
+      expect(updated.bw).toBe(290 - 115) // Level 4 costs 115
     })
 
     it('requires hero target', () => {
@@ -275,7 +275,7 @@ describe('Traceroute Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -306,7 +306,7 @@ describe('Traceroute Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(290 - 60) // Level 1 costs 60
+      expect(updated.bw).toBe(290 - 60) // Level 1 costs 60
       expect(updated.cooldowns.e).toBe(12)
     })
 
@@ -317,11 +317,11 @@ describe('Traceroute Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(290 - 105) // Level 4 costs 105
+      expect(updated.bw).toBe(290 - 105) // Level 4 costs 105
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'e'))
@@ -384,7 +384,7 @@ describe('Traceroute Hero', () => {
 
   describe('R: Full Trace (Global Reveal + Damage Buff)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -392,7 +392,7 @@ describe('Traceroute Hero', () => {
     })
 
     it('applies revealed debuff to all enemy players', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'top-river' })
       const state = makeState([player, enemy1, enemy2])
@@ -406,7 +406,7 @@ describe('Traceroute Hero', () => {
     })
 
     it('reveals enemies in different zones (global)', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy({ zone: 'top-river' })
       const state = makeState([player, enemy])
 
@@ -416,7 +416,7 @@ describe('Traceroute Hero', () => {
     })
 
     it('applies self damage buff', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -430,7 +430,7 @@ describe('Traceroute Hero', () => {
     })
 
     it('does not affect allied players', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly()
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
@@ -441,19 +441,19 @@ describe('Traceroute Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 200) // R1 costs 200
+      expect(updated.bw).toBe(500 - 200) // R1 costs 200
       expect(updated.cooldowns.r).toBe(60)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ level: 6, mp: 50 })
+      const player = makePlayer({ level: 6, bw: 50 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))

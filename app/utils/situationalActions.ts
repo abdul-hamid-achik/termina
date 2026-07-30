@@ -40,8 +40,8 @@ export function stripTargetString(player: PlayerState, waves: WaveUnitState[]): 
   let best: { hp: number; index: number } | null = null
   for (let index = 0; index < inZone.length; index++) {
     const c = inZone[index]!
-    if (c.team === player.team || c.hp <= 0) continue
-    if (best === null || c.hp < best.hp) best = { hp: c.hp, index }
+    if (c.team === player.team || c.integ <= 0) continue
+    if (best === null || c.integ < best.integ) best = { integ: c.integ, index }
   }
   return best === null ? null : `wave:${best.index}`
 }

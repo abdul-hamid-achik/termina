@@ -411,9 +411,9 @@ const targetFloats = computed(() => damageFloats.value.filter((f) => f.anchor !=
 // impact alpha: a wave chip and a full combo used to paint identically.
 const hitIntensity = ref(1)
 
-function hitStrength(amount: number, maxHp: number): number {
-  if (!(maxHp > 0)) return 0.5
-  return Math.min(1, Math.max(0.25, (amount / maxHp) * 3))
+function hitStrength(amount: number, maxInteg: number): number {
+  if (!(maxInteg > 0)) return 0.5
+  return Math.min(1, Math.max(0.25, (amount / maxInteg) * 3))
 }
 
 // A hit used to translate the ENTIRE 100dvh grid root — including the command
@@ -437,7 +437,7 @@ function triggerImpact(level: 'light' | 'strong') {
 
 /** Taking damage: the localized panel flash, the screen flare, and the number. */
 function registerHit(amount: number) {
-  hitIntensity.value = hitStrength(amount, gameStore.player?.maxHp ?? 0)
+  hitIntensity.value = hitStrength(amount, gameStore.player?.maxInteg ?? 0)
   heroFlashKey.value++
   triggerImpact('light')
 }
@@ -674,10 +674,10 @@ const heroData = computed(() => {
     name: (p.heroId && HEROES[p.heroId]?.name) || p.name,
     level: p.level,
     zone: zoneLabel(p.zone),
-    hp: p.hp,
-    maxHp: p.maxHp,
-    mp: p.mp,
-    maxMp: p.maxMp,
+    integ: p.integ,
+    maxInteg: p.maxInteg,
+    bw: p.bw,
+    maxBw: p.maxBw,
     cooldowns: p.cooldowns,
     items: p.items,
     buffs: p.buffs,
@@ -784,7 +784,7 @@ const theaterStatus = computed(() => {
 
 const hpPct = computed(() => {
   const p = gameStore.player
-  return p && p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 100
+  return p && p.maxInteg > 0 ? (p.integ / p.maxInteg) * 100 : 100
 })
 /** Hero panel turns to the danger variant under 30% HP. */
 const heroDanger = computed(() => gameStore.isAlive && hpPct.value <= 30)
@@ -910,8 +910,8 @@ const mapZones = computed(() => {
           team: ice.team,
           alive: ice.alive,
           tier: zone.tier ?? getIceTier(zone.id),
-          hp: ice.hp,
-          maxHp: ice.maxHp,
+          integ: ice.integ,
+          maxInteg: ice.maxInteg,
         }
       : undefined
 
@@ -1333,8 +1333,8 @@ function handleZoneClick(zoneId: string) {
 // The trace the rail renders — rebuilt per tick from the store (C1a).
 const FALLBACK_ANCIENT: AncientState = {
   team: 'chaff',
-  hp: 0,
-  maxHp: 0,
+  integ: 0,
+  maxInteg: 0,
   alive: false,
   vulnerable: false,
 }
@@ -1534,7 +1534,7 @@ const abilityButtonState = computed(() => {
       continue
     }
     const ability = HEROES[p.heroId]?.abilities[slot]
-    if (ability && p.mp < getAbilityManaCost(ability, slot, p.level)) {
+    if (ability && p.bw < getAbilityManaCost(ability, slot, p.level)) {
       result[upper] = { ready: false, label: upper, aria: `${upper} ${name}, not enough mana` }
       continue
     }
@@ -1582,12 +1582,12 @@ const rigRecommendation = computed(() => {
   const hasReadyAbility = ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready)
   const action = recommendAction({
     alive: p.alive,
-    hpFraction: p.maxHp > 0 ? p.hp / p.maxHp : 0,
+    hpFraction: p.maxInteg > 0 ? p.integ / p.maxInteg : 0,
     threat,
     hasReadyAbility,
   })
-  const hp = `${p.hp}/${p.maxHp}`
-  return `${action} · HP ${hp} · ${threat.label}${enemyCount ? ` (${enemyCount} hostile)` : ''}`
+  const integ = `${p.integ}/${p.maxInteg}`
+  return `${action} · HP ${integ} · ${threat.label}${enemyCount ? ` (${enemyCount} hostile)` : ''}`
 })
 
 // The status-line helpers — the same values the rig line reads, exposed for
@@ -1932,8 +1932,8 @@ function handleReturnToMenu() {
       <StatusLines
         :trace="traceModel"
         :hp-fraction="
-          gameStore.player && gameStore.player.maxHp > 0
-            ? gameStore.player.hp / gameStore.player.maxHp
+          gameStore.player && gameStore.player.maxInteg > 0
+            ? gameStore.player.integ / gameStore.player.maxInteg
             : 0
         "
         :alive="gameStore.isAlive"

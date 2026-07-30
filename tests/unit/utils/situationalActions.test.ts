@@ -40,7 +40,7 @@ describe('computeSituationalActions', () => {
     const lowAllyWave = {
       zone: 'mid-river',
       team: 'chaff',
-      hp: 1,
+      integ: 1,
       type: 'line',
     } as unknown as WaveUnitState
     expect(cmds(baseCtx({ waves: [lowAllyWave] }))).toContain('burn')

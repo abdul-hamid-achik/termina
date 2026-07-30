@@ -15,9 +15,9 @@ interface HeroData {
   level: number
   zone: string
   hp: number
-  maxHp: number
+  maxInteg: number
   mp: number
-  maxMp: number
+  maxBw: number
   cooldowns: { q: number; w: number; e: number; r: number }
   items: (string | null)[]
   buffs: { id: string; stacks: number; ticksRemaining: number }[]
@@ -114,8 +114,8 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
       <div class="flex items-center gap-1.5">
         <span class="w-5 shrink-0 text-text-dim">HP</span>
         <ProgressBar
-          :value="hero.hp"
-          :max="hero.maxHp"
+          :value="hero.integ"
+          :max="hero.maxInteg"
           color="chaff"
           :width="16"
           :danger-below="0.25"
@@ -126,8 +126,8 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
       <div class="flex items-center gap-1.5">
         <span class="w-5 shrink-0 text-text-dim">MP</span>
         <ProgressBar
-          :value="hero.mp"
-          :max="hero.maxMp"
+          :value="hero.bw"
+          :max="hero.maxBw"
           color="mana"
           :width="16"
           :label="`${hero.name} MP`"

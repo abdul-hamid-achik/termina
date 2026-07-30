@@ -14,10 +14,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'cron',
     zone: 'mid-river',
-    hp: 620,
-    maxHp: 620,
-    mp: 380,
-    maxMp: 380,
+    integ: 620,
+    maxInteg: 620,
+    bw: 380,
+    maxBw: 380,
     level: 7,
     xp: 0,
     gold: 600,
@@ -44,8 +44,8 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Ally',
     team: 'chaff',
     heroId: 'echo',
-    hp: 400,
-    maxHp: 550,
+    integ: 400,
+    maxInteg: 550,
     ...overrides,
   })
 }
@@ -56,10 +56,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -121,7 +121,7 @@ describe('Cron Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(380 - 65) // Level 1 costs 65
+      expect(updated.bw).toBe(380 - 65) // Level 1 costs 65
       expect(updated.cooldowns.q).toBe(8)
     })
 
@@ -133,7 +133,7 @@ describe('Cron Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(380 - 110) // Level 4 costs 110
+      expect(updated.bw).toBe(380 - 110) // Level 4 costs 110
     })
 
     it('fails when targeting self', () => {
@@ -177,7 +177,7 @@ describe('Cron Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
@@ -264,12 +264,12 @@ describe('Cron Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(380 - 90) // Level 1 W costs 90
+      expect(updated.bw).toBe(380 - 90) // Level 1 W costs 90
       expect(updated.cooldowns.w).toBe(12)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
@@ -289,7 +289,7 @@ describe('Cron Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(hasBuff(updatedEnemy, 'taunt')).toBe(true)
       const taunt = updatedEnemy.buffs.find((b) => b.id === 'taunt')
       // raw 2 = one gated action: a cast-applied disable is reaped same-tick.
@@ -312,8 +312,8 @@ describe('Cron Hero', () => {
         resolveAbility(state2, 'p1', 'e', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -325,7 +325,7 @@ describe('Cron Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(380 - 55) // Level 1 E costs 55
+      expect(updated.bw).toBe(380 - 55) // Level 1 E costs 55
       expect(updated.cooldowns.e).toBe(10)
     })
 
@@ -349,7 +349,7 @@ describe('Cron Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -362,7 +362,7 @@ describe('Cron Hero', () => {
 
   describe('R: Crontab (AoE HoT)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -370,7 +370,7 @@ describe('Cron Hero', () => {
     })
 
     it('applies crontabHeal buff to self and allies in zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
@@ -384,7 +384,7 @@ describe('Cron Hero', () => {
     })
 
     it('also applies the crontabMana buff (the MP-over-time half) to self and allies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
@@ -398,7 +398,7 @@ describe('Cron Hero', () => {
     })
 
     it('does not affect allies in different zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly({ zone: 'top-river' })
       const state = makeState([player, ally])
 
@@ -409,7 +409,7 @@ describe('Cron Hero', () => {
     })
 
     it('scales heal per tick with R level', () => {
-      const player = makePlayer({ level: 12, mp: 500 }) // R level 2
+      const player = makePlayer({ level: 12, bw: 500 }) // R level 2
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
@@ -419,18 +419,18 @@ describe('Cron Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 250) // R1 costs 250
+      expect(updated.bw).toBe(500 - 250) // R1 costs 250
       expect(updated.cooldowns.r).toBe(55)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ level: 6, mp: 100 })
+      const player = makePlayer({ level: 6, bw: 100 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -441,8 +441,8 @@ describe('Cron Hero', () => {
   describe('Passive: Scheduled Task', () => {
     it('heals lowest HP ally on tick divisible by 4', () => {
       const player = makePlayer()
-      const ally1 = makeAlly({ hp: 300, maxHp: 550 })
-      const ally2 = makeAlly({ id: 'a2', name: 'Ally2', hp: 200, maxHp: 550 })
+      const ally1 = makeAlly({ integ: 300, maxInteg: 550 })
+      const ally2 = makeAlly({ id: 'a2', name: 'Ally2', integ: 200, maxInteg: 550 })
       const state = makeState([player, ally1, ally2], { tick: 8 })
 
       const updated = resolvePassive(state, 'p1', {
@@ -452,14 +452,14 @@ describe('Cron Hero', () => {
       })
 
       // Ally2 has lower HP so should be healed
-      expect(updated.players['a2']!.hp).toBe(240) // 200 + 40
+      expect(updated.players['a2']!.integ).toBe(240) // 200 + 40
       // Ally1 should not be healed
-      expect(updated.players['a1']!.hp).toBe(300)
+      expect(updated.players['a1']!.integ).toBe(300)
     })
 
     it('does not heal on ticks not divisible by 4', () => {
       const player = makePlayer()
-      const ally = makeAlly({ hp: 300, maxHp: 550 })
+      const ally = makeAlly({ integ: 300, maxInteg: 550 })
       const state = makeState([player, ally], { tick: 9 })
 
       const updated = resolvePassive(state, 'p1', {
@@ -468,7 +468,7 @@ describe('Cron Hero', () => {
         payload: {},
       })
 
-      expect(updated.players['a1']!.hp).toBe(300) // unchanged
+      expect(updated.players['a1']!.integ).toBe(300) // unchanged
     })
 
     it('does nothing when no allies in zone', () => {
@@ -481,12 +481,12 @@ describe('Cron Hero', () => {
         payload: {},
       })
 
-      expect(updated.players['p1']!.hp).toBe(620) // unchanged
+      expect(updated.players['p1']!.integ).toBe(620) // unchanged
     })
 
     it('does not heal allies in different zone', () => {
       const player = makePlayer()
-      const ally = makeAlly({ hp: 300, maxHp: 550, zone: 'top-river' })
+      const ally = makeAlly({ integ: 300, maxInteg: 550, zone: 'top-river' })
       const state = makeState([player, ally], { tick: 8 })
 
       const updated = resolvePassive(state, 'p1', {
@@ -495,12 +495,12 @@ describe('Cron Hero', () => {
         payload: {},
       })
 
-      expect(updated.players['a1']!.hp).toBe(300) // unchanged
+      expect(updated.players['a1']!.integ).toBe(300) // unchanged
     })
 
     it('does not trigger on non-tick_end events', () => {
       const player = makePlayer()
-      const ally = makeAlly({ hp: 300, maxHp: 550 })
+      const ally = makeAlly({ integ: 300, maxInteg: 550 })
       const state = makeState([player, ally], { tick: 8 })
 
       const updated = resolvePassive(state, 'p1', {
@@ -509,12 +509,12 @@ describe('Cron Hero', () => {
         payload: { attackerId: 'e1', targetId: 'p1' },
       })
 
-      expect(updated.players['a1']!.hp).toBe(300) // unchanged
+      expect(updated.players['a1']!.integ).toBe(300) // unchanged
     })
 
-    it('does not heal above maxHp', () => {
+    it('does not heal above maxInteg', () => {
       const player = makePlayer()
-      const ally = makeAlly({ hp: 540, maxHp: 550 })
+      const ally = makeAlly({ integ: 540, maxInteg: 550 })
       const state = makeState([player, ally], { tick: 8 })
 
       const updated = resolvePassive(state, 'p1', {
@@ -523,7 +523,7 @@ describe('Cron Hero', () => {
         payload: {},
       })
 
-      expect(updated.players['a1']!.hp).toBe(550) // capped at maxHp
+      expect(updated.players['a1']!.integ).toBe(550) // capped at maxInteg
     })
   })
 

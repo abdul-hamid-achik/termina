@@ -22,10 +22,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'chaff-fountain', // shop zone by default
-    hp: 500,
-    maxHp: 500,
-    mp: 300,
-    maxMp: 300,
+    integ: 500,
+    maxInteg: 500,
+    bw: 300,
+    maxBw: 300,
     level: 1,
     xp: 0,
     gold: 1000,
@@ -368,8 +368,8 @@ describe('Shop', () => {
     it('uses healing salve and removes it from inventory', async () => {
       const player = makePlayer({
         items: ['trauma_patch', null, null, null, null, null],
-        hp: 300,
-        maxHp: 500,
+        integ: 300,
+        maxInteg: 500,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -386,8 +386,8 @@ describe('Shop', () => {
     it('uses mana vial and restores MP', async () => {
       const player = makePlayer({
         items: ['charge_tab', null, null, null, null, null],
-        mp: 100,
-        maxMp: 300,
+        bw: 100,
+        maxBw: 300,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -396,7 +396,7 @@ describe('Shop', () => {
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const newPlayer = exit.value.players['player_1']!
-        expect(newPlayer.mp).toBe(250) // 100 + 150
+        expect(newPlayer.bw).toBe(250) // 100 + 150
         expect(newPlayer.items[0]).toBeNull() // consumed
       }
     })
@@ -404,8 +404,8 @@ describe('Shop', () => {
     it('mana vial does not exceed max MP', async () => {
       const player = makePlayer({
         items: ['charge_tab', null, null, null, null, null],
-        mp: 250,
-        maxMp: 300,
+        bw: 250,
+        maxBw: 300,
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -413,7 +413,7 @@ describe('Shop', () => {
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.players['player_1']!.mp).toBe(300)
+        expect(exit.value.players['player_1']!.bw).toBe(300)
       }
     })
 
@@ -536,7 +536,7 @@ describe('Shop', () => {
         id: 'enemy_1',
         team: 'audit',
         zone: 'mid-river',
-        hp: 800,
+        integ: 800,
         buffs: [{ id: 'airgap', stacks: 1, ticksRemaining: 4, source: 'bkb' }],
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
@@ -547,7 +547,7 @@ describe('Shop', () => {
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         // Magic immunity zeroes the 300 code nuke; cooldown still applies.
-        expect(exit.value.players['enemy_1']!.hp).toBe(800)
+        expect(exit.value.players['enemy_1']!.integ).toBe(800)
         expect(exit.value.players['player_1']!.buffs.some((b) => b.id === 'item_cd_burnout')).toBe(
           true,
         )
@@ -966,15 +966,15 @@ describe('Shop', () => {
         id: 'enemy_1',
         team: 'audit',
         zone: 'mid-river',
-        hp: 600,
-        maxHp: 600,
+        integ: 600,
+        maxInteg: 600,
       })
       const enemyElsewhere = makePlayer({
         id: 'enemy_2',
         team: 'audit',
         zone: 'mid-t1-audit',
-        hp: 600,
-        maxHp: 600,
+        integ: 600,
+        maxInteg: 600,
       })
       const state = makeGameState({
         players: { player_1: caster, enemy_1: enemyInZone, enemy_2: enemyElsewhere },
@@ -985,10 +985,10 @@ describe('Shop', () => {
       if (Exit.isSuccess(exit)) {
         const s = exit.value
         // In-zone enemy is blasted (HP down) and slowed.
-        expect(s.players['enemy_1']!.hp).toBeLessThan(600)
+        expect(s.players['enemy_1']!.integ).toBeLessThan(600)
         expect(s.players['enemy_1']!.buffs.some((b) => b.id === 'slow')).toBe(true)
         // Out-of-zone enemy is untouched.
-        expect(s.players['enemy_2']!.hp).toBe(600)
+        expect(s.players['enemy_2']!.integ).toBe(600)
         expect(s.players['enemy_2']!.buffs.some((b) => b.id === 'slow')).toBe(false)
         // Caster keeps only the cooldown marker.
         expect(s.players['player_1']!.buffs.some((b) => b.id === 'item_cd_shivas_guard')).toBe(true)
@@ -1006,8 +1006,8 @@ describe('Shop', () => {
         id: 'enemy_1',
         team: 'audit',
         zone: 'mid-river',
-        hp: 120,
-        maxHp: 800,
+        integ: 120,
+        maxInteg: 800,
         ice: 0,
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
@@ -1018,7 +1018,7 @@ describe('Shop', () => {
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         // 300 code (no resist) overkills the 120-HP target.
-        expect(exit.value.players['enemy_1']!.hp).toBe(0)
+        expect(exit.value.players['enemy_1']!.integ).toBe(0)
         expect(exit.value.players['enemy_1']!.alive).toBe(false)
       }
     })
@@ -1092,8 +1092,8 @@ describe('Shop', () => {
         id: 'enemy_1',
         team: 'audit',
         zone: 'mid-river',
-        hp: 800,
-        maxHp: 800,
+        integ: 800,
+        maxInteg: 800,
         ice: 0,
       })
       const state = makeGameState({ players: { player_1: caster, enemy_1: target } })
@@ -1113,7 +1113,7 @@ describe('Shop', () => {
         useItem(afterEth, 'player_1', 'burnout', enemyRef),
       )
       // 300 base code (0 resist) × (1 + (25 + 40)/100) = 495 → 800 - 495 = 305.
-      expect(afterBurnout.players['enemy_1']!.hp).toBe(305)
+      expect(afterBurnout.players['enemy_1']!.integ).toBe(305)
     })
   })
 
@@ -1139,7 +1139,7 @@ describe('Shop', () => {
       expect(await fail('burnout', { kind: 'zone', zone: 'mid-river' })).toBe(true) // non-hero
       state = {
         player_1: withItem('burnout'),
-        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'chaff-fountain', alive: false, hp: 0 }),
+        e1: makePlayer({ id: 'e1', team: 'audit', zone: 'chaff-fountain', alive: false, integ: 0 }),
       }
       expect(await fail('burnout', { kind: 'hero', name: 'e1' })).toBe(true) // dead
       state = {

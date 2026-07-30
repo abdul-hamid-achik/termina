@@ -13,7 +13,7 @@ import {
   findTargetPlayer,
   getEnemiesInZone,
   dealDamage,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   applyBuff,
   removeBuff,
@@ -82,9 +82,9 @@ function resolveQ(
     }
 
     const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -95,7 +95,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'q', scaleValue(Q_COOLDOWN, level))
 
     const primaryDamage = scaleValue(Q_DAMAGE, level)
@@ -154,13 +154,13 @@ function resolveW(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'w', scaleValue(W_COOLDOWN, level))
     caster = applyBuff(caster, {
       id: 'phaseShift',
@@ -211,7 +211,7 @@ function resolveE(
       )
     }
 
-    let caster = deductMana(player, scaleValue(E_MANA, level))
+    let caster = deductBandwidth(player, scaleValue(E_MANA, level))
     caster = setCooldown(caster, 'e', scaleValue(E_COOLDOWN, level))
     caster = applyBuff(caster, {
       id: 'feedbackLoop',
@@ -258,9 +258,9 @@ function resolveR(
     }
 
     const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -271,7 +271,7 @@ function resolveR(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', scaleValue(R_COOLDOWN, level))
 
     const damagePerHit = scaleValue(R_DAMAGE, level)

@@ -122,16 +122,19 @@ export function processCacheBuffs(state: GameState): GameState {
   for (const [playerId, player] of Object.entries(players)) {
     if (!player.alive) continue
 
-    let hp = player.hp
-    let mp = player.mp
+    let integ = player.integ
+    let bw = player.bw
 
     // Check for active cache buffs
     const hasRegen = player.buffs.some((b) => b.id === 'regen')
 
     // Regeneration cache: REGEN_CACHE_HEAL_PERCENT of max HP/MP per tick
     if (hasRegen) {
-      hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * REGEN_CACHE_HEAL_PERCENT))
-      mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * REGEN_CACHE_HEAL_PERCENT))
+      integ = Math.min(
+        player.maxInteg,
+        integ + Math.floor(player.maxInteg * REGEN_CACHE_HEAL_PERCENT),
+      )
+      bw = Math.min(player.maxBw, bw + Math.floor(player.maxBw * REGEN_CACHE_HEAL_PERCENT))
     }
 
     // Cron's Crontab (R): heal + mana regen over time on self + allies; the
@@ -139,18 +142,18 @@ export function processCacheBuffs(state: GameState): GameState {
     // processed; the mana half was advertised by the ability but unimplemented.)
     const crontab = player.buffs.find((b) => b.id === 'crontabHeal')
     if (crontab) {
-      hp = Math.min(player.maxHp, hp + crontab.stacks)
+      integ = Math.min(player.maxInteg, integ + crontab.stacks)
     }
     const crontabMana = player.buffs.find((b) => b.id === 'crontabMana')
     if (crontabMana) {
-      mp = Math.min(player.maxMp, mp + crontabMana.stacks)
+      bw = Math.min(player.maxBw, bw + crontabMana.stacks)
     }
 
     // Haste cache is handled via movement (can't be rooted/stunned)
     // This is processed in the movement validation
 
-    if (hp !== player.hp || mp !== player.mp) {
-      players[playerId] = { ...player, hp, mp }
+    if (integ !== player.integ || bw !== player.bw) {
+      players[playerId] = { ...player, integ, bw }
     }
   }
 

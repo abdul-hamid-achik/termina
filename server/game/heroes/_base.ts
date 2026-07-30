@@ -346,8 +346,8 @@ export function dealDamage(
     target = { ...target, buffs: absorbed.buffs }
   }
 
-  const newHp = Math.max(0, target.hp - remaining)
-  return { ...target, hp: newHp, alive: newHp > 0 }
+  const newInteg = Math.max(0, target.integ - remaining)
+  return { ...target, integ: newInteg, alive: newInteg > 0 }
 }
 
 /** Amp Stack (Arcane Power): +15% to all code damage the owner deals. */
@@ -407,16 +407,16 @@ export function damageEnemyNpcsInZone(
   let hitAny = false
 
   const waves = (state.waves ?? []).map((c) => {
-    if (c.team === caster.team || c.hp <= 0 || !zoneIds.has(c.zone)) return c
+    if (c.team === caster.team || c.integ <= 0 || !zoneIds.has(c.zone)) return c
     hitAny = true
-    return { ...c, hp: Math.max(0, c.hp - damage) }
+    return { ...c, integ: Math.max(0, c.integ - damage) }
   })
 
   const neutrals = (state.neutrals ?? []).map((n) => {
-    if (!n.alive || n.hp <= 0 || !zoneIds.has(n.zone)) return n
+    if (!n.alive || n.integ <= 0 || !zoneIds.has(n.zone)) return n
     hitAny = true
-    const hp = Math.max(0, n.hp - damage)
-    return { ...n, hp, alive: hp > 0 }
+    const integ = Math.max(0, n.integ - damage)
+    return { ...n, integ, alive: integ > 0 }
   })
 
   // Preserve reference equality when nothing was in range — the cast bridge
@@ -429,13 +429,13 @@ export function healPlayer(target: PlayerState, amount: number): PlayerState {
   // cache Invalidate (antiHeal) reduces incoming healing by its % (stored in stacks).
   const antiHealPct = Math.min(100, getBuffStacks(target, 'antiHeal'))
   const effective = Math.round(amount * (1 - antiHealPct / 100))
-  return { ...target, hp: Math.min(target.maxHp, target.hp + effective) }
+  return { ...target, integ: Math.min(target.maxInteg, target.integ + effective) }
 }
 
 // ── Mana & Cooldown ───────────────────────────────────────────────
 
-export function deductMana(player: PlayerState, amount: number): PlayerState {
-  return { ...player, mp: Math.max(0, player.mp - amount) }
+export function deductBandwidth(player: PlayerState, amount: number): PlayerState {
+  return { ...player, bw: Math.max(0, player.bw - amount) }
 }
 
 export function setCooldown(player: PlayerState, slot: AbilitySlot, ticks: number): PlayerState {
@@ -465,15 +465,16 @@ export function levelUpHero(player: PlayerState): PlayerState {
   const heroDef = HEROES[player.heroId ?? '']
   if (!heroDef) return player
   const g = heroDef.growthPerLevel
-  const newMaxHp = player.maxHp + (g.hp ?? 0)
-  const newMaxMp = player.maxMp + (g.mp ?? 0)
+  // growthPerLevel still uses hp/mp keys (HeroBaseStats) until R4-06.
+  const newMaxHp = player.maxInteg + (g.hp ?? 0)
+  const newMaxMp = player.maxBw + (g.mp ?? 0)
   return {
     ...player,
     level: player.level + 1,
-    maxHp: newMaxHp,
-    hp: Math.min(player.hp + (g.hp ?? 0), newMaxHp),
-    maxMp: newMaxMp,
-    mp: Math.min(player.mp + (g.mp ?? 0), newMaxMp),
+    maxInteg: newMaxHp,
+    integ: Math.min(player.integ + (g.hp ?? 0), newMaxHp),
+    maxBw: newMaxMp,
+    bw: Math.min(player.bw + (g.mp ?? 0), newMaxMp),
   }
 }
 
@@ -504,8 +505,8 @@ export function processDoTs(state: GameState): { state: GameState; events: GameE
       const effectiveDamage = Math.round(
         mitigated * getIncomingDamageMultiplier(target, damageType),
       )
-      const newHp = Math.max(0, target.hp - effectiveDamage)
-      target = { ...target, hp: newHp, alive: newHp > 0 }
+      const newInteg = Math.max(0, target.integ - effectiveDamage)
+      target = { ...target, integ: newInteg, alive: newInteg > 0 }
       // Emitting per-dot damage events feeds kill/assist credit and inCombat
       events.push({
         _tag: 'damage',
@@ -606,10 +607,10 @@ export function tickAllBuffs(state: GameState): GameState {
     const victims: { id: string; amount: number }[] = []
     for (const enemy of Object.values(updated.players)) {
       if (enemy.team === caster.team || !enemy.alive || enemy.zone !== ex.zone) continue
-      const preHp = enemy.hp
+      const preInteg = enemy.integ
       updated = updatePlayer(updated, dealAbilityDamage(caster, enemy, ex.damage, 'code'))
-      const hpLost = Math.max(0, preHp - (updated.players[enemy.id]?.hp ?? preHp))
-      if (hpLost > 0) victims.push({ id: enemy.id, amount: hpLost })
+      const integLost = Math.max(0, preInteg - (updated.players[enemy.id]?.integ ?? preInteg))
+      if (integLost > 0) victims.push({ id: enemy.id, amount: integLost })
       hitAny = true
     }
     if (hitAny) {
@@ -748,12 +749,12 @@ function applyAbilityTalents(
     }
     if (talent.manaCostReduction !== undefined && talent.manaCostReduction > 0) {
       const current = players[caster.id]!
-      const manaSpent = Math.max(0, caster.mp - current.mp)
+      const manaSpent = Math.max(0, caster.bw - current.bw)
       const refund = Math.round((manaSpent * talent.manaCostReduction) / 100)
       if (refund > 0) {
         players = {
           ...players,
-          [caster.id]: { ...current, mp: Math.min(current.maxMp, current.mp + refund) },
+          [caster.id]: { ...current, bw: Math.min(current.maxBw, current.bw + refund) },
         }
       }
     }
@@ -762,12 +763,12 @@ function applyAbilityTalents(
         if (pid === caster.id) continue
         const pre = preState.players[pid]
         if (!pre) continue
-        const hpLost = pre.hp - post.hp
-        if (hpLost <= 0) continue
-        const extra = Math.round((hpLost * talent.damageBoost) / 100)
+        const integLost = pre.integ - post.integ
+        if (integLost <= 0) continue
+        const extra = Math.round((integLost * talent.damageBoost) / 100)
         if (extra <= 0) continue
-        const newHp = Math.max(0, post.hp - extra)
-        players = { ...players, [pid]: { ...post, hp: newHp, alive: newHp > 0 } }
+        const newInteg = Math.max(0, post.integ - extra)
+        players = { ...players, [pid]: { ...post, integ: newInteg, alive: newInteg > 0 } }
       }
     }
     // 'special' / 'ability_boost' specialEffect-only talents: intentional no-op
@@ -817,7 +818,7 @@ function applyArcaneRefund(result: AbilityResult, caster: PlayerState): AbilityR
   if (!caster.buffs.some((b) => b.id === 'arcane')) return result
   const current = result.state.players[caster.id]
   if (!current) return result
-  const manaSpent = Math.max(0, caster.mp - current.mp)
+  const manaSpent = Math.max(0, caster.bw - current.bw)
   const refund = Math.round(manaSpent * 0.4)
   if (refund <= 0) return result
   return {
@@ -826,7 +827,7 @@ function applyArcaneRefund(result: AbilityResult, caster: PlayerState): AbilityR
       ...result.state,
       players: {
         ...result.state.players,
-        [caster.id]: { ...current, mp: Math.min(current.maxMp, current.mp + refund) },
+        [caster.id]: { ...current, bw: Math.min(current.maxBw, current.bw + refund) },
       },
     },
   }

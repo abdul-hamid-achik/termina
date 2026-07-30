@@ -85,8 +85,8 @@ describe('GameStateBar net-worth lead', () => {
 describe('GameStateBar core HP', () => {
   it('renders Core percentages from ancient HP, flagging the vulnerable team', () => {
     const ancients = {
-      chaff: makeAncient('chaff', { hp: 4500, maxHp: 4500, vulnerable: false }),
-      audit: makeAncient('audit', { hp: 2250, maxHp: 4500, vulnerable: true }),
+      chaff: makeAncient('chaff', { integ: 4500, maxInteg: 4500, vulnerable: false }),
+      audit: makeAncient('audit', { integ: 2250, maxInteg: 4500, vulnerable: true }),
     }
     const w = mountBar({
       teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },

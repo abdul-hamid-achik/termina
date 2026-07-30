@@ -34,10 +34,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -72,7 +72,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     ice: initializeIce(),
     neutrals: [],
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: null },
     backup: null,
     events: [],
     ...overrides,
@@ -97,7 +97,7 @@ describe('GoldDistributor', () => {
     it('should not give gold to dead players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', gold: 100, alive: false, hp: 0 }),
+          p1: makePlayer({ id: 'p1', gold: 100, alive: false, integ: 0 }),
           p2: makePlayer({ id: 'p2', gold: 200 }),
         },
       })

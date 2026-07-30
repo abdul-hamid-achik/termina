@@ -23,7 +23,7 @@ import {
   damageEnemyNpcsInZone,
   zonesInAbilityRange,
   healPlayer,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   resetAllCooldowns,
   registerHero,
@@ -41,10 +41,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -86,7 +86,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     caches: [],
-    tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(), audit: new Set() },
@@ -100,13 +100,13 @@ describe('_base hero utilities', () => {
   describe('processDoTs', () => {
     it('should apply damage from DoT buffs', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'phys_dot', stacks: 20, ticksRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.state.players['p1']!.hp).toBeLessThan(500)
+      expect(result.state.players['p1']!.integ).toBeLessThan(500)
       const dmgEvents = result.events.filter((e) => e._tag === 'damage')
       expect(dmgEvents).toHaveLength(1)
       expect(dmgEvents[0]!.targetId).toBe('p1')
@@ -115,7 +115,7 @@ describe('_base hero utilities', () => {
 
     it('should apply multiple DoT buffs', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [
           { id: 'phys_dot', stacks: 20, ticksRemaining: 5, source: 'test' },
           { id: 'magic_dot', stacks: 30, ticksRemaining: 5, source: 'test' },
@@ -124,40 +124,40 @@ describe('_base hero utilities', () => {
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.state.players['p1']!.hp).toBeLessThan(500)
+      expect(result.state.players['p1']!.integ).toBeLessThan(500)
       expect(result.events.filter((e) => e._tag === 'damage')).toHaveLength(2)
     })
 
     it('should not affect players without DoT buffs', () => {
-      const player = makePlayer({ hp: 500 })
+      const player = makePlayer({ integ: 500 })
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.state.players['p1']!.hp).toBe(500)
+      expect(result.state.players['p1']!.integ).toBe(500)
       expect(result.events).toHaveLength(0)
     })
 
     it('should not affect dead players', () => {
       const player = makePlayer({
-        hp: 0,
+        integ: 0,
         alive: false,
         buffs: [{ id: 'phys_dot', stacks: 20, ticksRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.state.players['p1']!.hp).toBe(0)
+      expect(result.state.players['p1']!.integ).toBe(0)
     })
 
     it('should kill player if DoT damage exceeds HP', () => {
       const player = makePlayer({
-        hp: 5,
+        integ: 5,
         buffs: [{ id: 'phys_dot', stacks: 100, ticksRemaining: 5, source: 'test' }],
       })
       const state = makeGameState({ players: { p1: player } })
 
       const result = processDoTs(state)
-      expect(result.state.players['p1']!.hp).toBe(0)
+      expect(result.state.players['p1']!.integ).toBe(0)
       expect(result.state.players['p1']!.alive).toBe(false)
     })
   })
@@ -217,27 +217,27 @@ describe('_base hero utilities', () => {
     })
 
     it('should increase max HP', () => {
-      const player = makePlayer({ level: 1, maxHp: 500 })
+      const player = makePlayer({ level: 1, maxInteg: 500 })
       const result = levelUpHero(player)
-      expect(result.maxHp).toBeGreaterThan(500)
+      expect(result.maxInteg).toBeGreaterThan(500)
     })
 
     it('should increase max MP', () => {
-      const player = makePlayer({ level: 1, maxMp: 200 })
+      const player = makePlayer({ level: 1, maxBw: 200 })
       const result = levelUpHero(player)
-      expect(result.maxMp).toBeGreaterThan(200)
+      expect(result.maxBw).toBeGreaterThan(200)
     })
 
     it('should heal HP on level up', () => {
-      const player = makePlayer({ level: 1, hp: 400, maxHp: 500 })
+      const player = makePlayer({ level: 1, integ: 400, maxInteg: 500 })
       const result = levelUpHero(player)
-      expect(result.hp).toBeGreaterThan(400)
+      expect(result.integ).toBeGreaterThan(400)
     })
 
     it('should not exceed max HP on level up', () => {
-      const player = makePlayer({ level: 1, hp: 500, maxHp: 500 })
+      const player = makePlayer({ level: 1, integ: 500, maxInteg: 500 })
       const result = levelUpHero(player)
-      expect(result.hp).toBe(result.maxHp)
+      expect(result.integ).toBe(result.maxInteg)
     })
 
     it('should handle hero without definition', () => {
@@ -249,45 +249,45 @@ describe('_base hero utilities', () => {
 
   describe('dealDamage', () => {
     it('should reduce HP', () => {
-      const player = makePlayer({ hp: 500 })
+      const player = makePlayer({ integ: 500 })
       const result = dealDamage(player, 50, 'black')
-      expect(result.hp).toBe(450)
+      expect(result.integ).toBe(450)
     })
 
     it('should kill player when HP reaches 0', () => {
-      const player = makePlayer({ hp: 50 })
+      const player = makePlayer({ integ: 50 })
       const result = dealDamage(player, 100, 'black')
-      expect(result.hp).toBe(0)
+      expect(result.integ).toBe(0)
       expect(result.alive).toBe(false)
     })
 
     it('should absorb damage with shield buff', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'shield', stacks: 50, ticksRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 30, 'black')
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
       expect(result.buffs.find((b) => b.id === 'shield')!.stacks).toBe(20)
     })
 
     it('should remove shield when depleted', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'shield', stacks: 20, ticksRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 50, 'black')
-      expect(result.hp).toBe(470)
+      expect(result.integ).toBe(470)
       expect(result.buffs.find((b) => b.id === 'shield')).toBeUndefined()
     })
 
     it('should dodge attack with phaseShift buff', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'phaseShift', stacks: 1, ticksRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 100, 'black')
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
       expect(result.buffs.find((b) => b.id === 'phaseShift')).toBeUndefined()
     })
 
@@ -296,14 +296,14 @@ describe('_base hero utilities', () => {
       // subtracted the damage from ALL shields (full-absorb) — a 20 hit against
       // a 30+40 pool wrongly drained both. It must spend the first shield first.
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [
           { id: 'shield', stacks: 30, ticksRemaining: 5, source: 's1' },
           { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
         ],
       })
       const result = dealDamage(player, 20, 'black')
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's1')?.stacks).toBe(10)
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's2')?.stacks).toBe(40)
     })
@@ -314,43 +314,43 @@ describe('_base hero utilities', () => {
       // shields AND dealt 20 to HP. It must keep the partially-spent second shield
       // and absorb the whole 50.
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [
           { id: 'shield', stacks: 30, ticksRemaining: 5, source: 's1' },
           { id: 'shield', stacks: 40, ticksRemaining: 5, source: 's2' },
         ],
       })
       const result = dealDamage(player, 50, 'black')
-      expect(result.hp).toBe(500) // 50 < 70 pool → fully absorbed
+      expect(result.integ).toBe(500) // 50 < 70 pool → fully absorbed
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's1')).toBeUndefined()
       expect(result.buffs.find((b) => b.id === 'shield' && b.source === 's2')?.stacks).toBe(20)
     })
 
     it('should apply hardened reduction', () => {
       const player = makePlayer({
-        hp: 500,
+        integ: 500,
         buffs: [{ id: 'hardened', stacks: 1, ticksRemaining: 5, source: 'test' }],
       })
       const result = dealDamage(player, 100, 'black')
-      expect(result.hp).toBe(410)
+      expect(result.integ).toBe(410)
     })
   })
 
   describe('healPlayer', () => {
-    it('heals up to maxHp', () => {
-      const player = makePlayer({ hp: 300, maxHp: 500 })
-      expect(healPlayer(player, 100).hp).toBe(400)
-      expect(healPlayer(player, 1000).hp).toBe(500)
+    it('heals up to maxInteg', () => {
+      const player = makePlayer({ integ: 300, maxInteg: 500 })
+      expect(healPlayer(player, 100).integ).toBe(400)
+      expect(healPlayer(player, 1000).integ).toBe(500)
     })
 
     it('reduces healing by the cache Invalidate antiHeal % (stored in stacks)', () => {
       const player = makePlayer({
-        hp: 300,
-        maxHp: 500,
+        integ: 300,
+        maxInteg: 500,
         buffs: [{ id: 'antiHeal', stacks: 50, ticksRemaining: 3, source: 'cache' }],
       })
       // 100 heal at 50% antiHeal → 50 effective.
-      expect(healPlayer(player, 100).hp).toBe(350)
+      expect(healPlayer(player, 100).integ).toBe(350)
     })
   })
 
@@ -620,29 +620,29 @@ describe('_base hero utilities', () => {
 
   describe('healPlayer', () => {
     it('should heal player', () => {
-      const player = makePlayer({ hp: 400, maxHp: 500 })
+      const player = makePlayer({ integ: 400, maxInteg: 500 })
       const result = healPlayer(player, 50)
-      expect(result.hp).toBe(450)
+      expect(result.integ).toBe(450)
     })
 
-    it('should not exceed maxHp', () => {
-      const player = makePlayer({ hp: 480, maxHp: 500 })
+    it('should not exceed maxInteg', () => {
+      const player = makePlayer({ integ: 480, maxInteg: 500 })
       const result = healPlayer(player, 50)
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
     })
   })
 
-  describe('deductMana', () => {
+  describe('deductBandwidth', () => {
     it('should deduct mana', () => {
-      const player = makePlayer({ mp: 200 })
-      const result = deductMana(player, 50)
-      expect(result.mp).toBe(150)
+      const player = makePlayer({ bw: 200 })
+      const result = deductBandwidth(player, 50)
+      expect(result.bw).toBe(150)
     })
 
     it('should not go below 0', () => {
-      const player = makePlayer({ mp: 30 })
-      const result = deductMana(player, 50)
-      expect(result.mp).toBe(0)
+      const player = makePlayer({ bw: 30 })
+      const result = deductBandwidth(player, 50)
+      expect(result.bw).toBe(0)
     })
   })
 
@@ -665,11 +665,11 @@ describe('_base hero utilities', () => {
   describe('updatePlayer', () => {
     it('should update player in state', () => {
       const state = makeGameState({
-        players: { p1: makePlayer({ id: 'p1', hp: 500 }) },
+        players: { p1: makePlayer({ id: 'p1', integ: 500 }) },
       })
-      const updatedPlayer = { ...state.players['p1']!, hp: 400 }
+      const updatedPlayer = { ...state.players['p1']!, integ: 400 }
       const result = updatePlayer(state, updatedPlayer)
-      expect(result.players['p1']!.hp).toBe(400)
+      expect(result.players['p1']!.integ).toBe(400)
     })
   })
 
@@ -677,17 +677,17 @@ describe('_base hero utilities', () => {
     it('should update multiple players', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', hp: 500 }),
-          p2: makePlayer({ id: 'p2', hp: 500 }),
+          p1: makePlayer({ id: 'p1', integ: 500 }),
+          p2: makePlayer({ id: 'p2', integ: 500 }),
         },
       })
       const updated = [
-        { ...state.players['p1']!, hp: 400 },
-        { ...state.players['p2']!, hp: 300 },
+        { ...state.players['p1']!, integ: 400 },
+        { ...state.players['p2']!, integ: 300 },
       ]
       const result = updatePlayers(state, updated)
-      expect(result.players['p1']!.hp).toBe(400)
-      expect(result.players['p2']!.hp).toBe(300)
+      expect(result.players['p1']!.integ).toBe(400)
+      expect(result.players['p2']!.integ).toBe(300)
     })
   })
 
@@ -812,16 +812,16 @@ describe('_base hero utilities', () => {
       id: 'c1',
       team: 'audit',
       zone: 'mid-t1-chaff',
-      hp: 400,
-      maxHp: 400,
+      integ: 400,
+      maxInteg: 400,
       type: 'line',
       ...over,
     })
     const neutral = (over: Partial<SiltDwellerState> = {}): SiltDwellerState => ({
       id: 'n1',
       zone: 'silt-chaff-top',
-      hp: 250,
-      maxHp: 250,
+      integ: 250,
+      maxInteg: 250,
       type: 'stub',
       alive: true,
       ...over,
@@ -833,7 +833,7 @@ describe('_base hero utilities', () => {
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'code')
 
-      expect(result.waves[0]!.hp).toBe(250)
+      expect(result.waves[0]!.integ).toBe(250)
     })
 
     it('spares allied waves and waves in every other zone', () => {
@@ -851,16 +851,16 @@ describe('_base hero utilities', () => {
 
     it('kills a wave to exactly 0 rather than negative HP', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const state = makeGameState({ waves: [wave({ hp: 30 })] })
+      const state = makeGameState({ waves: [wave({ integ: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'kinetic')
 
-      expect(result.waves[0]!.hp).toBe(0)
+      expect(result.waves[0]!.integ).toBe(0)
     })
 
     it('leaves a dead wave in the buffer so the caller can credit the kill', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const state = makeGameState({ waves: [wave({ hp: 30 })] })
+      const state = makeGameState({ waves: [wave({ integ: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'kinetic')
 
@@ -870,7 +870,7 @@ describe('_base hero utilities', () => {
 
     it('does not re-damage a wave already at 0 HP', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const dead = wave({ hp: 0 })
+      const dead = wave({ integ: 0 })
       const state = makeGameState({ waves: [dead] })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'kinetic')
@@ -880,14 +880,14 @@ describe('_base hero utilities', () => {
 
     it('damages neutrals, which are hostile to both teams, and flips alive on death', () => {
       const caster = makePlayer({ zone: 'silt-chaff-top', team: 'chaff' })
-      const state = makeGameState({ neutrals: [neutral({ hp: 100 })] })
+      const state = makeGameState({ neutrals: [neutral({ integ: 100 })] })
 
       const chipped = damageEnemyNpcsInZone(state, caster, 40, 'code')
-      expect(chipped.neutrals[0]!.hp).toBe(60)
+      expect(chipped.neutrals[0]!.integ).toBe(60)
       expect(chipped.neutrals[0]!.alive).toBe(true)
 
       const killed = damageEnemyNpcsInZone(state, caster, 100, 'code')
-      expect(killed.neutrals[0]!.hp).toBe(0)
+      expect(killed.neutrals[0]!.integ).toBe(0)
       expect(killed.neutrals[0]!.alive).toBe(false)
     })
 
@@ -898,9 +898,9 @@ describe('_base hero utilities', () => {
       const state = makeGameState({ waves: [wave()] })
 
       // 100 code -> 115 with the +15% amp; kinetic is unamplified.
-      expect(damageEnemyNpcsInZone(state, amped, 100, 'code').waves[0]!.hp).toBe(285)
-      expect(damageEnemyNpcsInZone(state, plain, 100, 'code').waves[0]!.hp).toBe(300)
-      expect(damageEnemyNpcsInZone(state, amped, 100, 'kinetic').waves[0]!.hp).toBe(300)
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'code').waves[0]!.integ).toBe(285)
+      expect(damageEnemyNpcsInZone(state, plain, 100, 'code').waves[0]!.integ).toBe(300)
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'kinetic').waves[0]!.integ).toBe(300)
     })
 
     it('no-ops on a zero-damage cast (cache R with nothing banked)', () => {
@@ -919,7 +919,7 @@ describe('_base hero utilities', () => {
         'mid-t1-chaff',
         'mid-river',
       ])
-      expect(widened.waves[0]!.hp).toBe(250)
+      expect(widened.waves[0]!.integ).toBe(250)
     })
   })
 

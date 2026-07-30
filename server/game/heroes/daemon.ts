@@ -12,7 +12,7 @@ import {
   abilityManaTable,
   findTargetPlayer,
   dealDamage,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   applyBuff,
   removeBuff,
@@ -76,9 +76,9 @@ function resolveQ(
     }
 
     const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -89,7 +89,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
     // Break stealth on action
     caster = removeBuff(caster, 'stealth')
@@ -132,9 +132,9 @@ function resolveW(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -146,7 +146,7 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
 
@@ -212,9 +212,9 @@ function resolveE(
     }
 
     const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -226,7 +226,7 @@ function resolveE(
     }
 
     // Check HP threshold — if above 30%, refund mana and don't set cooldown
-    const hpPercent = targetPlayer.hp / targetPlayer.maxHp
+    const hpPercent = targetPlayer.integ / targetPlayer.maxInteg
     if (hpPercent > E_THRESHOLD) {
       return {
         state,
@@ -245,7 +245,7 @@ function resolveE(
     }
 
     // Execute!
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
 
@@ -281,9 +281,9 @@ function resolveR(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -295,7 +295,7 @@ function resolveR(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
     caster = removeBuff(caster, 'stealth')
     caster = { ...caster, zone: zoneId }

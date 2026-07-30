@@ -40,10 +40,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: CASTER_ZONE,
-    hp: 5000,
-    maxHp: 5000,
-    mp: 5000,
-    maxMp: 5000,
+    integ: 5000,
+    maxInteg: 5000,
+    bw: 5000,
+    maxBw: 5000,
     level: 1,
     xp: 0,
     gold: 0,
@@ -173,7 +173,7 @@ function castAndMeasure(
   // Daemon E (Sudo) only spends mana / sets cooldown when the target is in
   // execute range (below 30% HP); otherwise it refunds and no-ops.
   const executeEnemy =
-    heroId === 'daemon' && slot === 'e' ? { ...enemy, hp: 10, maxHp: 1000 } : enemy
+    heroId === 'daemon' && slot === 'e' ? { ...enemy, integ: 10, maxInteg: 1000 } : enemy
 
   // Socket E pulls an enemy from an adjacent zone — retarget to e2.
   if (heroId === 'socket' && slot === 'e') {
@@ -197,10 +197,10 @@ function castAndMeasure(
   // "damage" but the resolver applied zero.
   const dmgTargetId = heroId === 'socket' && slot === 'e' ? 'e2' : 'e1'
   const resultTarget = exit.value.state.players[dmgTargetId]
-  const damageDealt = resultTarget ? 5000 - resultTarget.hp : 0
+  const damageDealt = resultTarget ? 5000 - resultTarget.integ : 0
 
   return {
-    manaSpent: caster.mp - resultCaster.mp,
+    manaSpent: caster.bw - resultCaster.bw,
     cooldownSet: resultCaster.cooldowns[slot],
     damageDealt,
   }
@@ -342,7 +342,7 @@ describe('Echo Q bounce', () => {
 
     const e1 = exit.value.state.players['e1']!
     const e2 = exit.value.state.players['e2']!
-    expect(e1.hp, 'primary target took no damage (bounce discarded it)').toBeLessThan(5000)
-    expect(e2.hp, 'bounce target took no damage').toBeLessThan(5000)
+    expect(e1.integ, 'primary target took no damage (bounce discarded it)').toBeLessThan(5000)
+    expect(e2.integ, 'bounce target took no damage').toBeLessThan(5000)
   })
 })

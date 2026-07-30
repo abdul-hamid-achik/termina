@@ -40,10 +40,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 550,
-    mp: 200,
-    maxMp: 280,
+    integ: 500,
+    maxInteg: 550,
+    bw: 200,
+    maxBw: 280,
     level: 3,
     xp: 150,
     gold: 300,
@@ -77,12 +77,12 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
  */
 function makeWaves(): WaveUnitState[] {
   return [
-    { id: 'elsewhere', team: 'audit', zone: 'mid-river', hp: 400, maxHp: 400, type: 'line' },
-    { id: 'c0', team: 'audit', zone: 'mid-t1-chaff', hp: 320, maxHp: 400, type: 'line' },
-    { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 90, maxHp: 400, type: 'line' },
-    { id: 'c2', team: 'audit', zone: 'mid-t1-chaff', hp: 0, maxHp: 250, type: 'sweep' },
-    { id: 'c3', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 250, type: 'sweep' },
-    { id: 'c4', team: 'chaff', zone: 'mid-t1-chaff', hp: 380, maxHp: 400, type: 'line' },
+    { id: 'elsewhere', team: 'audit', zone: 'mid-river', integ: 400, maxInteg: 400, type: 'line' },
+    { id: 'c0', team: 'audit', zone: 'mid-t1-chaff', integ: 320, maxInteg: 400, type: 'line' },
+    { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', integ: 90, maxInteg: 400, type: 'line' },
+    { id: 'c2', team: 'audit', zone: 'mid-t1-chaff', integ: 0, maxInteg: 250, type: 'sweep' },
+    { id: 'c3', team: 'audit', zone: 'mid-t1-chaff', integ: 200, maxInteg: 250, type: 'sweep' },
+    { id: 'c4', team: 'chaff', zone: 'mid-t1-chaff', integ: 380, maxInteg: 400, type: 'line' },
   ]
 }
 
@@ -1186,21 +1186,35 @@ describe('useCommands', () => {
             {
               id: 'n0',
               zone: 'silt-audit-top',
-              hp: 200,
-              maxHp: 200,
+              integ: 200,
+              maxInteg: 200,
               type: 'stub',
               alive: true,
             },
             {
               id: 'n1',
               zone: 'silt-audit-top',
-              hp: 200,
-              maxHp: 200,
+              integ: 200,
+              maxInteg: 200,
               type: 'stub',
               alive: true,
             },
-            { id: 'n2', zone: 'mid-t1-chaff', hp: 140, maxHp: 200, type: 'warden', alive: true },
-            { id: 'n3', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'warden', alive: false },
+            {
+              id: 'n2',
+              zone: 'mid-t1-chaff',
+              integ: 140,
+              maxInteg: 200,
+              type: 'warden',
+              alive: true,
+            },
+            {
+              id: 'n3',
+              zone: 'mid-t1-chaff',
+              integ: 0,
+              maxInteg: 200,
+              type: 'warden',
+              alive: false,
+            },
           ],
         })
         const suggestions = autocomplete('attack neutral', context)
@@ -1249,7 +1263,7 @@ describe('useCommands', () => {
       it('offers nothing when your waves are all dead', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          waves: makeWaves().map((c) => (c.team === 'chaff' ? { ...c, hp: 0 } : c)),
+          waves: makeWaves().map((c) => (c.team === 'chaff' ? { ...c, integ: 0 } : c)),
         })
 
         expect(autocomplete('burn wave', context)).toEqual([])
@@ -1710,9 +1724,9 @@ describe('validateCommand', () => {
       expect(lateCost).toBeGreaterThan(rank1)
 
       // Enough mana for the rank-1 cost, NOT for what a level-25 hero pays.
-      const mp = Math.floor((rank1 + lateCost) / 2)
+      const bw = Math.floor((rank1 + lateCost) / 2)
       const ctx = makeContext({
-        player: makePlayer({ heroId: hero!.id, level: 25, mp }),
+        player: makePlayer({ heroId: hero!.id, level: 25, bw }),
       })
       const err = validateCommand({ type: 'cast', ability: 'q' }, ctx)
       expect(err).toMatch(/not enough mana/i)
@@ -1725,7 +1739,7 @@ describe('validateCommand', () => {
       )
       const table = hero!.abilities.q.manaCostByLevel!
       const ctx = makeContext({
-        player: makePlayer({ heroId: hero!.id, level: 25, mp: table[table.length - 1]! + 10 }),
+        player: makePlayer({ heroId: hero!.id, level: 25, bw: table[table.length - 1]! + 10 }),
       })
       expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toBeNull()
     })
@@ -1844,7 +1858,7 @@ describe('validateCommand', () => {
   it('lets a magic-immune (Hardshell) hero act through soft control debuffs', () => {
     const ctx = makeContext({
       player: makePlayer({
-        mp: 280,
+        bw: 280,
         buffs: [debuff('stun'), debuff('silence'), debuff('root'), debuff('airgap')],
       }),
     })
@@ -1864,23 +1878,23 @@ describe('validateCommand', () => {
   it('rejects cast without enough mana', () => {
     // echo r costs 150 mana — level 6 so the ultimate is unlocked and the mana
     // check (not the level gate) is what rejects.
-    const ctx = makeContext({ player: makePlayer({ mp: 100, level: 6 }) })
+    const ctx = makeContext({ player: makePlayer({ bw: 100, level: 6 }) })
     const err = validateCommand({ type: 'cast', ability: 'r' }, ctx)
     expect(err).toMatch(/mana/)
   })
 
   it('rejects casting the ultimate before level 6', () => {
-    const ctx = makeContext({ player: makePlayer({ mp: 280, level: 5 }) })
+    const ctx = makeContext({ player: makePlayer({ bw: 280, level: 5 }) })
     expect(validateCommand({ type: 'cast', ability: 'r' }, ctx)).toMatch(/level 6/)
   })
 
   it('allows the ultimate at level 6 with mana', () => {
-    const ctx = makeContext({ player: makePlayer({ mp: 280, level: 6 }) })
+    const ctx = makeContext({ player: makePlayer({ bw: 280, level: 6 }) })
     expect(validateCommand({ type: 'cast', ability: 'r' }, ctx)).toBeNull()
   })
 
   it('allows cast with enough mana and no cooldown', () => {
-    const ctx = makeContext({ player: makePlayer({ mp: 280 }) })
+    const ctx = makeContext({ player: makePlayer({ bw: 280 }) })
     expect(validateCommand({ type: 'cast', ability: 'q' }, ctx)).toBeNull()
   })
 
@@ -1983,8 +1997,8 @@ describe('validateCommand', () => {
   it('rejects a neutral index that names a camp in another zone', () => {
     const ctx = makeContext({
       neutrals: [
-        { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
-        { id: 'n1', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'stub', alive: true },
+        { id: 'n0', zone: 'silt-audit-top', integ: 200, maxInteg: 200, type: 'stub', alive: true },
+        { id: 'n1', zone: 'mid-t1-chaff', integ: 150, maxInteg: 200, type: 'stub', alive: true },
       ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
@@ -1997,7 +2011,9 @@ describe('validateCommand', () => {
 
   it('rejects a neutral index with no camp behind it', () => {
     const ctx = makeContext({
-      neutrals: [{ id: 'n0', zone: 'mid-t1-chaff', hp: 0, maxHp: 200, type: 'stub', alive: false }],
+      neutrals: [
+        { id: 'n0', zone: 'mid-t1-chaff', integ: 0, maxInteg: 200, type: 'stub', alive: false },
+      ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
       /No neutral wave at index 0/,
@@ -2069,9 +2085,9 @@ describe('pickAbilityTargetString', () => {
 
   it('targets the lowest-HP enemy in zone for an offensive hero/unit ability', () => {
     const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', hp: 400 })
-    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', hp: 120 })
-    const offZone = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-t1-audit', hp: 10 })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 120 })
+    const offZone = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-t1-audit', integ: 10 })
     const all = { p1: caster, e1, e2, e3: offZone }
     expect(pickAbilityTargetString(makeAbility('hero', dmg), caster, all)).toEqual({
       target: 'hero:e2',
@@ -2088,8 +2104,14 @@ describe('pickAbilityTargetString', () => {
   })
 
   it('targets the lowest-HP ally for a supportive hero ability', () => {
-    const caster = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', hp: 500, maxHp: 500 })
-    const a1 = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', hp: 100, maxHp: 500 })
+    const caster = makePlayer({
+      id: 'p1',
+      team: 'chaff',
+      zone: 'mid-river',
+      integ: 500,
+      maxInteg: 500,
+    })
+    const a1 = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', integ: 100, maxInteg: 500 })
     const all = { p1: caster, a1 }
     // Heal targetType 'hero' but supportive effects -> ally, not enemy
     expect(pickAbilityTargetString(makeAbility('hero', heal), caster, all)).toEqual({
@@ -2122,23 +2144,23 @@ describe('pickAbilityTargetString', () => {
 describe('pickAttackTargetString', () => {
   it('targets the lowest-HP alive enemy hero in the player’s zone', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', hp: 400 })
-    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', hp: 90 })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 400 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 90 })
     expect(pickAttackTargetString(me, { p1: me, e1, e2 })).toEqual({ target: 'hero:e2' })
   })
 
   it('ignores allies, dead enemies, and enemies in other zones', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', hp: 10 })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', integ: 10 })
     const deadEnemy = makePlayer({
       id: 'e1',
       team: 'audit',
       zone: 'mid-river',
-      hp: 1,
+      integ: 1,
       alive: false,
     })
-    const offZone = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-t1-audit', hp: 5 })
-    const liveEnemy = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-river', hp: 300 })
+    const offZone = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-t1-audit', integ: 5 })
+    const liveEnemy = makePlayer({ id: 'e3', team: 'audit', zone: 'mid-river', integ: 300 })
     const result = pickAttackTargetString(me, {
       p1: me,
       a1: ally,
@@ -2163,10 +2185,10 @@ describe('informational readouts', () => {
     const me = makePlayer({
       heroId: 'echo',
       level: 7,
-      hp: 612.7,
-      maxHp: 900,
-      mp: 240.2,
-      maxMp: 400,
+      integ: 612.7,
+      maxInteg: 900,
+      bw: 240.2,
+      maxBw: 400,
       gold: 1850,
       kills: 4,
       deaths: 1,
@@ -2247,7 +2269,7 @@ describe('pickDenyTargetString', () => {
     id: 'c',
     team: 'chaff' as const,
     zone: 'mid-river',
-    hp: 100,
+    integ: 100,
     type: 'line' as const,
     ...overrides,
   })
@@ -2255,9 +2277,9 @@ describe('pickDenyTargetString', () => {
   it('targets the lowest-HP eligible allied wave, by zone index', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const waves = [
-      allied({ id: 'c0', hp: 180 }), // index 0 — eligible (<=200)
-      allied({ id: 'c1', hp: 120 }), // index 1 — eligible, lowest HP
-      allied({ id: 'c2', hp: 350 }), // index 2 — too healthy to burn
+      allied({ id: 'c0', integ: 180 }), // index 0 — eligible (<=200)
+      allied({ id: 'c1', integ: 120 }), // index 1 — eligible, lowest HP
+      allied({ id: 'c2', integ: 350 }), // index 2 — too healthy to burn
     ]
     expect(pickDenyTargetString(me, waves)).toEqual({ target: 'wave:1' })
   })
@@ -2265,8 +2287,8 @@ describe('pickDenyTargetString', () => {
   it('indexes within the player’s zone only (matches the server convention)', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const waves = [
-      allied({ id: 'x', zone: 'top-river', hp: 50 }), // other zone — not counted
-      allied({ id: 'c0', zone: 'mid-river', hp: 150 }), // zone index 0
+      allied({ id: 'x', zone: 'top-river', integ: 50 }), // other zone — not counted
+      allied({ id: 'c0', zone: 'mid-river', integ: 150 }), // zone index 0
     ]
     expect(pickDenyTargetString(me, waves)).toEqual({ target: 'wave:0' })
   })
@@ -2274,8 +2296,8 @@ describe('pickDenyTargetString', () => {
   it('ignores enemy waves and healthy allied waves', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const waves = [
-      allied({ id: 'e', team: 'audit', hp: 10 }), // enemy — you burn your OWN
-      allied({ id: 'healthy', hp: 399 }), // above 50% — not denyable
+      allied({ id: 'e', team: 'audit', integ: 10 }), // enemy — you burn your OWN
+      allied({ id: 'healthy', integ: 399 }), // above 50% — not denyable
     ]
     expect('error' in pickDenyTargetString(me, waves)).toBe(true)
   })
@@ -2285,8 +2307,8 @@ describe('pickDenyTargetString', () => {
     // Sweep max HP 250 → threshold 125. A sweep wave at 130 is NOT denyable,
     // but a line wave (max 400, threshold 200) at 130 IS.
     const waves = [
-      allied({ id: 'sweep', type: 'sweep', hp: 130 }),
-      allied({ id: 'line', type: 'line', hp: 130 }),
+      allied({ id: 'sweep', type: 'sweep', integ: 130 }),
+      allied({ id: 'line', type: 'line', integ: 130 }),
     ]
     expect(pickDenyTargetString(me, waves)).toEqual({ target: 'wave:1' })
   })
@@ -2294,11 +2316,11 @@ describe('pickDenyTargetString', () => {
 
 // ── pickItemTargetString (bare `use <item>` auto-target) ──────────
 describe('pickItemTargetString', () => {
-  const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', hp: 200 })
+  const me = () => makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', integ: 200 })
 
   it('enemy → lowest-HP enemy hero in the zone', () => {
-    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', hp: 500 })
-    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', hp: 120 })
+    const e1 = makePlayer({ id: 'e1', team: 'audit', zone: 'mid-river', integ: 500 })
+    const e2 = makePlayer({ id: 'e2', team: 'audit', zone: 'mid-river', integ: 120 })
     expect(pickItemTargetString('enemy', me(), { p1: me(), e1, e2 })).toEqual({ target: 'hero:e2' })
   })
 
@@ -2308,7 +2330,7 @@ describe('pickItemTargetString', () => {
   })
 
   it('ally → lowest-HP ally, falling back to self', () => {
-    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', hp: 60 })
+    const ally = makePlayer({ id: 'a1', team: 'chaff', zone: 'mid-river', integ: 60 })
     expect(pickItemTargetString('ally', me(), { p1: me(), a1: ally })).toEqual({
       target: 'hero:a1',
     })
@@ -2350,7 +2372,7 @@ describe('the R3-08 readouts (who / net / look)', () => {
     return makePlayer({ zone: 'mid-river', ...over })
   }
 
-  it('who lists visible heroes with side, hp and cooldowns, plus fogged last-seen', () => {
+  it('who lists visible heroes with side, integ and cooldowns, plus fogged last-seen', () => {
     const player = me()
     const all = {
       p1: player,
@@ -2360,8 +2382,8 @@ describe('the R3-08 readouts (who / net / look)', () => {
         team: 'audit',
         heroId: 'daemon',
         zone: 'mid-t1-audit',
-        hp: 300,
-        maxHp: 500,
+        integ: 300,
+        maxInteg: 500,
         cooldowns: { q: 2, w: 0, e: 0, r: 0 },
       }),
       a1: makePlayer({
@@ -2424,24 +2446,24 @@ describe('the R3-08 readouts (who / net / look)', () => {
         id: 'w0',
         team: 'audit' as const,
         zone: 'mid-river',
-        hp: 120,
-        maxHp: 400,
+        integ: 120,
+        maxInteg: 400,
         type: 'line' as const,
       },
       {
         id: 'w1',
         team: 'chaff' as const,
         zone: 'mid-river',
-        hp: 400,
-        maxHp: 400,
+        integ: 400,
+        maxInteg: 400,
         type: 'line' as const,
       },
       {
         id: 'w2',
         team: 'audit' as const,
         zone: 'mid-river',
-        hp: 0,
-        maxHp: 400,
+        integ: 0,
+        maxInteg: 400,
         type: 'line' as const,
       },
     ]

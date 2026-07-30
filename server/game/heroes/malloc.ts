@@ -14,7 +14,7 @@ import {
   getEnemiesInZone,
   dealDamage,
   damageEnemyNpcsInZone,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   applyBuff,
   getBuffStacks,
@@ -73,13 +73,13 @@ function resolveQ(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
     caster = applyBuff(caster, {
       id: 'allocate',
@@ -122,9 +122,9 @@ function resolveW(
     }
 
     const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -135,11 +135,11 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     let damage = scaleValue(W_DAMAGE, level)
-    const hpPercent = targetPlayer.hp / targetPlayer.maxHp
+    const hpPercent = targetPlayer.integ / targetPlayer.maxInteg
     if (hpPercent < W_THRESHOLD) {
       damage = Math.round(damage * (1 + W_LOW_HP_BONUS))
     }
@@ -181,9 +181,9 @@ function resolveE(
     }
 
     const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -194,7 +194,7 @@ function resolveE(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const damage = scaleValue(E_DAMAGE, level)
@@ -236,18 +236,18 @@ function resolveR(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
     // Stack Overflow is a self-sacrifice ult: it also burns 20% of current HP
     // (the standard mana cost above is its MP cost). 20% of current never kills.
-    const hpCost = Math.floor(player.hp * 0.2)
-    caster = { ...caster, hp: Math.max(1, caster.hp - hpCost) }
+    const hpCost = Math.floor(player.integ * 0.2)
+    caster = { ...caster, integ: Math.max(1, caster.integ - hpCost) }
 
     const enemies = getEnemiesInZone(state, player)
     const damage = scaleValue(R_DAMAGE, level)

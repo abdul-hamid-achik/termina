@@ -336,7 +336,7 @@ function useHealingSalve(state: GameState, player: PlayerState, slot: number): G
 function useManaVial(state: GameState, player: PlayerState, slot: number): GameState {
   let updated: PlayerState = {
     ...player,
-    mp: Math.min(player.maxMp, player.mp + 150),
+    bw: Math.min(player.maxBw, player.bw + 150),
   }
   updated = consumeItem(updated, slot)
   return updatePlayer(state, updated)
@@ -653,7 +653,7 @@ function useBurnout(
       ? 0
       : calculateCodeDamage(300, targetPlayer.ice)
     const damage = Math.round(baseDamage * getIncomingDamageMultiplier(targetPlayer, 'code'))
-    const newHp = Math.max(0, targetPlayer.hp - damage)
+    const newInteg = Math.max(0, targetPlayer.integ - damage)
 
     const updatedCaster = applyBuff(player, {
       id: 'item_cd_burnout',
@@ -664,8 +664,8 @@ function useBurnout(
 
     const updatedTarget: PlayerState = {
       ...targetPlayer,
-      hp: newHp,
-      alive: newHp > 0,
+      integ: newInteg,
+      alive: newInteg > 0,
     }
 
     return updatePlayers(state, [updatedCaster, updatedTarget])
@@ -997,7 +997,7 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
       ticksRemaining: 2,
       source: 'cryo_routine',
     })
-    players[enemy.id] = { ...slowed, hp: Math.max(0, slowed.hp - dmg) }
+    players[enemy.id] = { ...slowed, integ: Math.max(0, slowed.integ - dmg) }
   }
   players[player.id] = applyBuff(player, {
     id: 'item_cd_shivas_guard',

@@ -207,15 +207,15 @@ export interface TenantDamageEvent {
   readonly _tag: 'tenant_damage'
   readonly tick: number
   readonly damage: number
-  readonly hp: number
-  readonly maxHp: number
+  readonly integ: number
+  readonly maxInteg: number
 }
 
 export interface TenantRespawnEvent {
   readonly _tag: 'tenant_respawn'
   readonly tick: number
-  readonly hp: number
-  readonly maxHp: number
+  readonly integ: number
+  readonly maxInteg: number
 }
 
 export interface TenantKilledInternalEvent {

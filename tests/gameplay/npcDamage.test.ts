@@ -45,7 +45,7 @@ describe('NPC damage is visible', () => {
     // its "a wave" label off that prefix.
     await game.patch((s) => ({
       ...s,
-      waves: [{ id: 'wave-901', team: 'audit', zone: 'mid-river', hp: 400, type: 'line' }],
+      waves: [{ id: 'wave-901', team: 'audit', zone: 'mid-river', integ: 400, type: 'line' }],
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
     }))
 
@@ -64,8 +64,8 @@ describe('NPC damage is visible', () => {
         {
           id: 'neutral_camp_1',
           zone: 'silt-chaff-top',
-          hp: 400,
-          maxHp: 400,
+          integ: 400,
+          maxInteg: 400,
           type: 'warden',
           alive: true,
         },

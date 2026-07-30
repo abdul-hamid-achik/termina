@@ -27,9 +27,9 @@ import type { GameState } from '~~/shared/types/game'
 interface FramePlayer {
   id: string
   hp: number
-  maxHp: number
+  maxInteg: number
   mp: number
-  maxMp: number
+  maxBw: number
   level: number
   gold: number
   kills: number
@@ -55,10 +55,10 @@ function summarize(state: GameState): Frame {
   for (const [id, p] of Object.entries(state.players)) {
     players[id] = {
       id,
-      hp: p.hp,
-      maxHp: p.maxHp,
-      mp: p.mp,
-      maxMp: p.maxMp,
+      integ: p.integ,
+      maxInteg: p.maxInteg,
+      bw: p.bw,
+      maxBw: p.maxBw,
       level: p.level,
       gold: p.gold,
       kills: p.kills,

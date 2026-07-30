@@ -54,7 +54,7 @@ const base = {
             audit: makeTeamState('audit', { kills: 18, iceKills: 4 }),
           }"
           :ancients="{
-            chaff: makeAncient('chaff', { hp: 900, maxHp: 4500, vulnerable: true }),
+            chaff: makeAncient('chaff', { integ: 900, maxInteg: 4500, vulnerable: true }),
             audit: makeAncient('audit'),
           }"
         />

@@ -335,7 +335,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       // Chip on Tenant repeats every tick — collapse like structure damage.
       return {
         tick,
-        text: `Tenant takes ${num(p.damage)} (${num(p.hp)}/${num(p.maxHp)})`,
+        text: `Tenant takes ${num(p.damage)} (${num(p.integ)}/${num(p.maxInteg)})`,
         type: 'damage',
         salience: 'world',
         dedupKey: 'dmg:tenant',

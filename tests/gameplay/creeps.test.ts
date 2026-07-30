@@ -14,8 +14,8 @@ describe('waves: lane combat', () => {
     await game.patch((s) => ({
       ...s,
       waves: [
-        { id: 'rc', team: 'chaff', zone: 'top-river', hp: 400, type: 'line' },
-        { id: 'dc', team: 'audit', zone: 'top-river', hp: 400, type: 'line' },
+        { id: 'rc', team: 'chaff', zone: 'top-river', integ: 400, type: 'line' },
+        { id: 'dc', team: 'audit', zone: 'top-river', integ: 400, type: 'line' },
       ],
     }))
 
@@ -25,8 +25,8 @@ describe('waves: lane combat', () => {
     const rc = state.waves.find((c) => c.id === 'rc')
     const dc = state.waves.find((c) => c.id === 'dc')
     // Both traded blows — neither walked past the other untouched.
-    expect(rc && rc.hp < 400).toBe(true)
-    expect(dc && dc.hp < 400).toBe(true)
+    expect(rc && rc.integ < 400).toBe(true)
+    expect(dc && dc.integ < 400).toBe(true)
   })
 
   it('a wave at 1 HP is finished off by the opposing wave', async () => {
@@ -34,8 +34,8 @@ describe('waves: lane combat', () => {
     await game.patch((s) => ({
       ...s,
       waves: [
-        { id: 'rc', team: 'chaff', zone: 'top-river', hp: 400, type: 'line' },
-        { id: 'dc', team: 'audit', zone: 'top-river', hp: 1, type: 'line' },
+        { id: 'rc', team: 'chaff', zone: 'top-river', integ: 400, type: 'line' },
+        { id: 'dc', team: 'audit', zone: 'top-river', integ: 1, type: 'line' },
       ],
     }))
 
@@ -61,7 +61,7 @@ describe('waves: last-hit & burn economy', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
       // One enemy wave at a sliver of HP, co-located — a single swing finishes it.
-      waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', hp: 10, type: 'line' }],
+      waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
     }))
 
     const goldBefore = (await game.me()).gold
@@ -71,7 +71,7 @@ describe('waves: last-hit & burn economy', () => {
     // The wave is dead and its bounty is in the bank.
     expect((await game.me()).gold).toBeGreaterThan(goldBefore)
     const wave = (await game.state()).waves.find((c) => c.id === 'enemy_wave')
-    expect(!wave || wave.hp <= 0).toBe(true)
+    expect(!wave || wave.integ <= 0).toBe(true)
   })
 
   it('denying a low-HP allied wave kills it for a reduced bounty + a wave_burn event', async () => {
@@ -81,7 +81,7 @@ describe('waves: last-hit & burn economy', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
       // An ALLIED line wave below the 50%-of-400 burn threshold, co-located.
-      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', hp: 100, type: 'line' }],
+      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', integ: 100, type: 'line' }],
     }))
 
     const goldBefore = (await game.me()).gold
@@ -93,7 +93,7 @@ describe('waves: last-hit & burn economy', () => {
     expect(game.lastEvents.some((e) => e._tag === 'wave_burn' && e.playerId === HUMAN)).toBe(true)
     expect((await game.me()).gold).toBeGreaterThan(goldBefore)
     const wave = (await game.state()).waves.find((c) => c.id === 'ally_wave')
-    expect(!wave || wave.hp <= 0).toBe(true)
+    expect(!wave || wave.integ <= 0).toBe(true)
   })
 
   it('a healthy allied wave cannot be burned (above the HP threshold)', async () => {
@@ -103,7 +103,7 @@ describe('waves: last-hit & burn economy', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
       // 380 / 400 = 95% HP — well above the burn window.
-      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', hp: 380, type: 'line' }],
+      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', integ: 380, type: 'line' }],
     }))
 
     game.submit({ type: 'burn', target: { kind: 'wave', index: 0 } })
@@ -112,7 +112,7 @@ describe('waves: last-hit & burn economy', () => {
     // The burn is refused — no event, and the wave is still standing.
     expect(game.lastEvents.some((e) => e._tag === 'wave_burn')).toBe(false)
     const wave = (await game.state()).waves.find((c) => c.id === 'ally_wave')
-    expect(wave && wave.hp > 0).toBe(true)
+    expect(wave && wave.integ > 0).toBe(true)
   })
 
   it('a last-hit also pays lane-mates a share of the XP', async () => {
@@ -134,7 +134,7 @@ describe('waves: last-hit & burn economy', () => {
         [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river', xp: 0 },
         lanemate: { ...s.players['lanemate']!, zone: 'mid-river', alive: true, xp: 0 },
       },
-      waves: [{ id: 'enemy_wave', team: 'audit', zone: 'mid-river', hp: 10, type: 'line' }],
+      waves: [{ id: 'enemy_wave', team: 'audit', zone: 'mid-river', integ: 10, type: 'line' }],
     }))
 
     game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
@@ -153,7 +153,7 @@ describe('waves: last-hit & burn economy', () => {
     // match time. Judging the 50% burn threshold against the level-1 constant
     // makes denying steadily impossible; judging it against the CURRENT tick's
     // tier makes a wave that outlived an escalation boundary deniable well
-    // above half health. The wave's own spawn-time maxHp is the only correct
+    // above half health. The wave's own spawn-time maxInteg is the only correct
     // reference. Every other burn test sits at tick ~0 where the multiplier is
     // 1.0, so none of them can see this.
     const lateTick = WAVE_ESCALATION_INTERVAL_TICKS * 2
@@ -171,8 +171,8 @@ describe('waves: last-hit & burn economy', () => {
           zone: 'mid-river',
           // Just under half of what this wave actually spawned with. Against the
           // tick-0 constant this reads as ABOVE the threshold and is refused.
-          hp: Math.round(spawnMax * 0.45),
-          maxHp: spawnMax,
+          integ: Math.round(spawnMax * 0.45),
+          maxInteg: spawnMax,
           type: 'line',
         },
       ],
@@ -182,7 +182,7 @@ describe('waves: last-hit & burn economy', () => {
     await game.tick()
 
     const wave = (await game.state()).waves.find((c) => c.id === 'ally_wave')
-    expect(!wave || wave.hp <= 0, 'an escalated wave under half HP must be deniable').toBe(true)
+    expect(!wave || wave.integ <= 0, 'an escalated wave under half HP must be deniable').toBe(true)
   })
 
   it('an OLD wave at a late tick is judged by what IT spawned with, not the current tier', async () => {
@@ -205,8 +205,8 @@ describe('waves: last-hit & burn economy', () => {
           id: 'old_wave',
           team: me0.team,
           zone: 'mid-river',
-          hp: Math.round(baseMax * 0.6), // above ITS half, below the late tier's half
-          maxHp: baseMax,
+          integ: Math.round(baseMax * 0.6), // above ITS half, below the late tier's half
+          maxInteg: baseMax,
           type: 'line',
         },
       ],
@@ -216,7 +216,7 @@ describe('waves: last-hit & burn economy', () => {
     await game.tick()
 
     const wave = (await game.state()).waves.find((c) => c.id === 'old_wave')
-    expect(wave?.hp, 'a wave above ITS OWN half must not be deniable').toBeGreaterThan(0)
+    expect(wave?.integ, 'a wave above ITS OWN half must not be deniable').toBeGreaterThan(0)
   })
 
   it('`attack` on your OWN wave is refused — no kill, no bounty, and the player is told why', async () => {
@@ -227,7 +227,7 @@ describe('waves: last-hit & burn economy', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', hp: 10, type: 'line' }],
+      waves: [{ id: 'ally_wave', team: me0.team, zone: 'mid-river', integ: 10, type: 'line' }],
     }))
 
     const goldBefore = (await game.me()).gold
@@ -235,7 +235,7 @@ describe('waves: last-hit & burn economy', () => {
     await game.tick()
 
     const wave = (await game.state()).waves.find((c) => c.id === 'ally_wave')
-    expect(wave && wave.hp === 10).toBe(true)
+    expect(wave && wave.integ === 10).toBe(true)
     // Passive income can still tick in, so assert no LAST-HIT reward specifically.
     expect(game.lastEvents.some((e) => e._tag === 'wave_strip')).toBe(false)
     expect((await game.me()).gold - goldBefore).toBeLessThan(20)

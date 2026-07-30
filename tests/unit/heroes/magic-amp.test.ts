@@ -25,10 +25,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'ping',
     zone: 'mid-river',
-    hp: 2000,
-    maxHp: 2000,
-    mp: 600,
-    maxMp: 600,
+    integ: 2000,
+    maxInteg: 2000,
+    bw: 600,
+    maxBw: 600,
     level: 7,
     xp: 0,
     gold: 600,
@@ -82,8 +82,8 @@ describe('dealAbilityDamage', () => {
   it('amplifies code damage by the caster Amp Stack (+15%)', () => {
     const plain = dealDamage(target(), 100, 'code')
     const amped = dealAbilityDamage(makePlayer({ items: STAFF }), target(), 100, 'code')
-    const plainLost = target().hp - plain.hp
-    const ampedLost = target().hp - amped.hp
+    const plainLost = target().integ - plain.integ
+    const ampedLost = target().integ - amped.integ
     expect(ampedLost).toBeGreaterThan(plainLost)
     expect(ampedLost / plainLost).toBeCloseTo(1.15, 1)
   })
@@ -93,7 +93,7 @@ describe('dealAbilityDamage', () => {
     for (const type of ['kinetic', 'black'] as const) {
       const viaDeal = dealDamage(target(), 100, type)
       const viaAbility = dealAbilityDamage(caster, target(), 100, type)
-      expect(viaAbility.hp).toBe(viaDeal.hp)
+      expect(viaAbility.integ).toBe(viaDeal.integ)
     }
   })
 
@@ -103,7 +103,7 @@ describe('dealAbilityDamage', () => {
     // would instead make the caster-with-staff case below stop amplifying.)
     const viaDeal = dealDamage(target(), 100, 'code')
     const viaAbility = dealAbilityDamage(makePlayer(), target(), 100, 'code')
-    expect(viaAbility.hp).toBe(viaDeal.hp)
+    expect(viaAbility.integ).toBe(viaDeal.integ)
   })
 })
 
@@ -113,7 +113,7 @@ describe('end-to-end: Ping ICMP Echo (code Q)', () => {
     const victim = makePlayer({ id: 'v', team: 'audit', heroId: 'echo', items: targetItems })
     const state = makeState([caster, victim])
     const result = Effect.runSync(resolveAbility(state, 'c', 'q', { kind: 'hero', name: 'v' }))
-    return victim.hp - result.state.players['v']!.hp
+    return victim.integ - result.state.players['v']!.integ
   }
 
   it('caster Amp Stack increases the spell damage dealt (~+15%)', () => {
@@ -139,9 +139,9 @@ describe('dealDamage: target-side magic vulnerability', () => {
   const plainTarget = () => makePlayer({ id: 't', heroId: null, ice: 0 })
 
   it('amplifies incoming CODE damage by the target vuln debuff (Veil +25%)', () => {
-    const plainLost = plainTarget().hp - dealDamage(plainTarget(), 100, 'code').hp
+    const plainLost = plainTarget().integ - dealDamage(plainTarget(), 100, 'code').integ
     const veil = vulnTarget('veil_discord', 25)
-    const ampedLost = veil.hp - dealDamage(veil, 100, 'code').hp
+    const ampedLost = veil.integ - dealDamage(veil, 100, 'code').integ
     expect(ampedLost).toBeGreaterThan(plainLost)
     expect(ampedLost / plainLost).toBeCloseTo(1.25, 1)
   })
@@ -156,25 +156,25 @@ describe('dealDamage: target-side magic vulnerability', () => {
         { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'x' },
       ],
     })
-    const plainLost = plainTarget().hp - dealDamage(plainTarget(), 100, 'code').hp
-    const ampedLost = t.hp - dealDamage(t, 100, 'code').hp
+    const plainLost = plainTarget().integ - dealDamage(plainTarget(), 100, 'code').integ
+    const ampedLost = t.integ - dealDamage(t, 100, 'code').integ
     expect(ampedLost / plainLost).toBeCloseTo(1.4, 1)
   })
 
   it('does NOT amplify kinetic or black damage', () => {
     for (const type of ['kinetic', 'black'] as const) {
-      const plainLost = plainTarget().hp - dealDamage(plainTarget(), 100, type).hp
+      const plainLost = plainTarget().integ - dealDamage(plainTarget(), 100, type).integ
       const veil = vulnTarget('veil_discord', 25)
-      const lost = veil.hp - dealDamage(veil, 100, type).hp
+      const lost = veil.integ - dealDamage(veil, 100, type).integ
       expect(lost).toBe(plainLost)
     }
   })
 
   it('thread Yield amplifies ALL damage types (+25%)', () => {
     for (const type of ['kinetic', 'code', 'black'] as const) {
-      const plainLost = plainTarget().hp - dealDamage(plainTarget(), 100, type).hp
+      const plainLost = plainTarget().integ - dealDamage(plainTarget(), 100, type).integ
       const yielded = vulnTarget('yield', 25)
-      const lost = yielded.hp - dealDamage(yielded, 100, type).hp
+      const lost = yielded.integ - dealDamage(yielded, 100, type).integ
       expect(lost / plainLost).toBeCloseTo(1.25, 1)
     }
   })
@@ -194,24 +194,24 @@ describe('dealDamage: immunity', () => {
     for (const type of ['kinetic', 'code', 'black'] as const) {
       const t = immune('invulnerable')
       const after = dealDamage(t, 500, type)
-      expect(after.hp).toBe(t.hp) // no HP lost
+      expect(after.integ).toBe(t.integ) // no HP lost
       expect(after.buffs.some((b) => b.id === 'invulnerable')).toBe(true) // not consumed
     }
   })
 
   it('airgap (BKB) blocks code but not kinetic', () => {
     const t1 = immune('airgap')
-    expect(dealDamage(t1, 200, 'code').hp).toBe(t1.hp)
+    expect(dealDamage(t1, 200, 'code').integ).toBe(t1.integ)
     const t2 = immune('airgap')
-    expect(dealDamage(t2, 200, 'kinetic').hp).toBeLessThan(t2.hp)
+    expect(dealDamage(t2, 200, 'kinetic').integ).toBeLessThan(t2.integ)
   })
 
   it('ethereal / ghost_form block kinetic ability damage but not code', () => {
     for (const id of ['ethereal', 'ghost_form']) {
       const t1 = immune(id)
-      expect(dealDamage(t1, 200, 'kinetic').hp).toBe(t1.hp)
+      expect(dealDamage(t1, 200, 'kinetic').integ).toBe(t1.integ)
       const t2 = immune(id)
-      expect(dealDamage(t2, 200, 'code').hp).toBeLessThan(t2.hp)
+      expect(dealDamage(t2, 200, 'code').integ).toBeLessThan(t2.integ)
     }
   })
 })

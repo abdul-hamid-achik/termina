@@ -7,8 +7,8 @@ function row(overrides: Partial<PlayerScoreRow> = {}): PlayerScoreRow {
     id: 'p1',
     heroName: 'Daemon',
     level: 12,
-    hp: 800,
-    maxHp: 1200,
+    integ: 800,
+    maxInteg: 1200,
     kills: 5,
     deaths: 2,
     assists: 7,
@@ -36,12 +36,12 @@ describe('PlayerScoreTable', () => {
     expect(wrapper.text()).toContain('Socket')
   })
 
-  it('shows hp/maxHp when present and "?" when absent (replay snapshot)', () => {
-    const withHp = mountTable([row({ hp: 800, maxHp: 1200 })])
+  it('shows hp/maxInteg when present and "?" when absent (replay snapshot)', () => {
+    const withHp = mountTable([row({ integ: 800, maxInteg: 1200 })])
     expect(withHp.text()).toContain('800')
     expect(withHp.text()).toContain('/1200')
 
-    const noHp = mountTable([row({ hp: undefined, maxHp: undefined })])
+    const noHp = mountTable([row({ integ: undefined, maxInteg: undefined })])
     // No HP numbers, a literal "?" placeholder instead.
     expect(noHp.text()).toContain('?')
     expect(noHp.text()).not.toContain('/1200')

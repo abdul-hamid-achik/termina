@@ -13,10 +13,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'sentry',
     zone: 'mid-river',
-    hp: 600,
-    maxHp: 600,
-    mp: 350,
-    maxMp: 350,
+    integ: 600,
+    maxInteg: 600,
+    bw: 350,
+    maxBw: 350,
     level: 7,
     xp: 0,
     gold: 600,
@@ -43,10 +43,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -59,10 +59,10 @@ function makeAlly(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Ally',
     team: 'chaff',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -90,7 +90,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
     backup: null,
     events: [],
     ...overrides,
@@ -101,12 +101,12 @@ describe('Sentry Hero', () => {
   describe('Q: Mend Protocol', () => {
     it('heals target ally', () => {
       const player = makePlayer({ level: 1 })
-      const ally = makeAlly({ hp: 300 })
+      const ally = makeAlly({ integ: 300 })
       const state = makeState([player, ally])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }))
 
-      expect(result.state.players['a1']!.hp).toBeGreaterThan(300)
+      expect(result.state.players['a1']!.integ).toBeGreaterThan(300)
     })
 
     it('deducts mana and sets cooldown', () => {
@@ -117,15 +117,15 @@ describe('Sentry Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(350 - 80)
+      expect(updated.bw).toBe(350 - 80)
       expect(updated.cooldowns.q).toBe(6)
     })
 
     it('scales heal with level', () => {
       const player1 = makePlayer({ level: 1 })
       const player7 = makePlayer({ level: 7 })
-      const ally1 = makeAlly({ hp: 300 })
-      const ally2 = makeAlly({ id: 'a2', name: 'Ally2', hp: 300 })
+      const ally1 = makeAlly({ integ: 300 })
+      const ally2 = makeAlly({ id: 'a2', name: 'Ally2', integ: 300 })
 
       const state1 = makeState([player1, ally1])
       const state2 = makeState([player7, ally2])
@@ -137,8 +137,8 @@ describe('Sentry Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'a2' }),
       )
 
-      const heal1 = result1.state.players['a1']!.hp - 300
-      const heal2 = result2.state.players['a2']!.hp - 300
+      const heal1 = result1.state.players['a1']!.integ - 300
+      const heal2 = result2.state.players['a2']!.integ - 300
       expect(heal2).toBeGreaterThan(heal1)
     })
 
@@ -163,12 +163,12 @@ describe('Sentry Hero', () => {
     })
 
     it('can heal self', () => {
-      const player = makePlayer({ hp: 300 })
+      const player = makePlayer({ integ: 300 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'self' }))
 
-      expect(result.state.players['p1']!.hp).toBeGreaterThan(300)
+      expect(result.state.players['p1']!.integ).toBeGreaterThan(300)
     })
 
     it('requires hero target', () => {
@@ -213,7 +213,7 @@ describe('Sentry Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w', { kind: 'hero', name: 'a1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(350 - 100)
+      expect(updated.bw).toBe(350 - 100)
       expect(updated.cooldowns.w).toBe(10)
     })
 
@@ -309,7 +309,7 @@ describe('Sentry Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(350 - 70)
+      expect(updated.bw).toBe(350 - 70)
       expect(updated.cooldowns.e).toBe(12)
     })
 
@@ -346,7 +346,7 @@ describe('Sentry Hero', () => {
     })
 
     it('applies shield to all allies in zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
@@ -361,7 +361,7 @@ describe('Sentry Hero', () => {
     })
 
     it('applies plate buff to all allies in zone', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makeAlly()
       const state = makeState([player, ally])
 
@@ -376,7 +376,7 @@ describe('Sentry Hero', () => {
     })
 
     it('buffs last 4 ticks', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
@@ -388,19 +388,19 @@ describe('Sentry Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 250)
+      expect(updated.bw).toBe(500 - 250)
       expect(updated.cooldowns.r).toBe(60)
     })
 
     it('scales cooldown with level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
 
       const state1 = makeState([player6])
       const state2 = makeState([player18])
@@ -413,7 +413,7 @@ describe('Sentry Hero', () => {
     })
 
     it('does not buff enemies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 

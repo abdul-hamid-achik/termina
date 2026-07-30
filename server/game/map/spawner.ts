@@ -48,20 +48,20 @@ function spawnWave(
   const zone = spawnZone[team]
   const waves: WaveUnitState[] = []
 
-  // Stamp maxHp at spawn: this wave keeps this max for life, so anything
+  // Stamp maxInteg at spawn: this wave keeps this max for life, so anything
   // reasoning about a fraction of full health stays correct after the wave
   // outlives an escalation boundary.
   const line = waveUnitMaxHp('line', tick)
   for (let i = 0; i < LINE_UNITS_PER_WAVE; i++) {
-    waves.push({ id: nextWaveId(), team, zone, hp: line, maxHp: line, type: 'line' })
+    waves.push({ id: nextWaveId(), team, zone, integ: line, maxInteg: line, type: 'line' })
   }
   const sweep = waveUnitMaxHp('sweep', tick)
   for (let i = 0; i < SWEEP_UNITS_PER_WAVE; i++) {
-    waves.push({ id: nextWaveId(), team, zone, hp: sweep, maxHp: sweep, type: 'sweep' })
+    waves.push({ id: nextWaveId(), team, zone, integ: sweep, maxInteg: sweep, type: 'sweep' })
   }
   if (waveNumber > 0 && waveNumber % BREACH_WAVE_INTERVAL === 0) {
     const breach = waveUnitMaxHp('breach', tick)
-    waves.push({ id: nextWaveId(), team, zone, hp: breach, maxHp: breach, type: 'breach' })
+    waves.push({ id: nextWaveId(), team, zone, integ: breach, maxInteg: breach, type: 'breach' })
   }
 
   return waves
@@ -125,8 +125,8 @@ export function spawnCaches(
 /** Tenant tracking state. */
 export interface TenantState {
   alive: boolean
-  hp: number
-  maxHp: number
+  integ: number
+  maxInteg: number
   deathTick: number | null
 }
 
@@ -134,8 +134,8 @@ export interface TenantState {
 export function initializeTenant(): TenantState {
   return {
     alive: true,
-    hp: TENANT_BASE_HP,
-    maxHp: TENANT_BASE_HP,
+    integ: TENANT_BASE_HP,
+    maxInteg: TENANT_BASE_HP,
     deathTick: null,
   }
 }
@@ -153,8 +153,8 @@ export function respawnTenant(tenant: TenantState, currentTick: number): TenantS
   const scaledMaxHp = TENANT_BASE_HP + minutesElapsed * TENANT_HP_PER_MINUTE
   return {
     alive: true,
-    hp: scaledMaxHp,
-    maxHp: scaledMaxHp,
+    integ: scaledMaxHp,
+    maxInteg: scaledMaxHp,
     deathTick: null,
   }
 }

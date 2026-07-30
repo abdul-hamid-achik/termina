@@ -129,7 +129,10 @@ describe('tutorial mode', () => {
       // Put the enemy in the human's lane zone so the attack lands, then attack.
       await game.patch((s) => ({
         ...s,
-        players: { ...s.players, [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t3-chaff', hp: 800 } },
+        players: {
+          ...s.players,
+          [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-t3-chaff', integ: 800 },
+        },
       }))
       game.attackHero(ENEMY)
       await game.tick()

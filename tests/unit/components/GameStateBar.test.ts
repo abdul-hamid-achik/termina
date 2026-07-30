@@ -61,8 +61,8 @@ describe('GameStateBar', () => {
       audit: { id: 'audit', kills: 8, iceKills: 1, gold: 0, hardenUsedTick: null },
     }
     const ancients = {
-      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-      audit: { team: 'audit', hp: 3000, maxHp: 6000, alive: true, vulnerable: true },
+      chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', integ: 3000, maxInteg: 6000, alive: true, vulnerable: true },
     }
 
     it('is hidden without team data', () => {

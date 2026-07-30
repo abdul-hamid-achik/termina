@@ -12,8 +12,8 @@ const trace: TraceModel = {
   ],
   contacts: [],
   terminals: [
-    { team: 'chaff', alive: true, vulnerable: false, hp: 3000, maxHp: 3000 },
-    { team: 'audit', alive: true, vulnerable: false, hp: 3000, maxHp: 3000 },
+    { team: 'chaff', alive: true, vulnerable: false, integ: 3000, maxInteg: 3000 },
+    { team: 'audit', alive: true, vulnerable: false, integ: 3000, maxInteg: 3000 },
   ],
 }
 </script>

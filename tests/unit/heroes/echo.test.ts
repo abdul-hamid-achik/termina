@@ -12,10 +12,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     level: 7,
     xp: 0,
     gold: 600,
@@ -67,7 +67,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
     backup: null,
     events: [],
     ...overrides,
@@ -101,7 +101,7 @@ describe('Echo Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(result.events.length).toBeGreaterThan(0)
       expect(result.events[0]!.type).toBe('ability_cast')
     })
@@ -114,7 +114,7 @@ describe('Echo Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedPlayer = result.state.players['p1']!
-      expect(updatedPlayer.mp).toBe(280 - 40)
+      expect(updatedPlayer.bw).toBe(280 - 40)
       expect(updatedPlayer.cooldowns.q).toBe(6)
     })
 
@@ -126,7 +126,7 @@ describe('Echo Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
-      expect(result.state.players['e2']!.hp).toBeLessThan(enemy2.hp)
+      expect(result.state.players['e2']!.integ).toBeLessThan(enemy2.integ)
     })
 
     it('scales damage with level', () => {
@@ -145,8 +145,8 @@ describe('Echo Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -171,7 +171,7 @@ describe('Echo Hero', () => {
     })
 
     it('fails with InsufficientManaError when no mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -234,7 +234,7 @@ describe('Echo Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(280 - 80)
+      expect(updated.bw).toBe(280 - 80)
     })
 
     it('scales cooldown with level', () => {
@@ -312,7 +312,7 @@ describe('Echo Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(result.events[0]!.payload.stacksConsumed).toBe(50)
     })
 
@@ -329,7 +329,7 @@ describe('Echo Hero', () => {
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
-      const damage = enemy.hp - result.state.players['e1']!.hp
+      const damage = enemy.integ - result.state.players['e1']!.integ
       expect(damage).toBeGreaterThan(180)
     })
 
@@ -382,21 +382,21 @@ describe('Echo Hero', () => {
     })
 
     it('deals 6 hits of kinetic damage to target', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
-      const enemy = makeEnemy({ hp: 1000, maxHp: 1000 })
+      const player = makePlayer({ level: 6, bw: 500 })
+      const enemy = makeEnemy({ integ: 1000, maxInteg: 1000 })
       const state = makeState([player, enemy])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r', { kind: 'hero', name: 'e1' }))
 
-      expect(result.state.players['e1']!.hp).toBeLessThan(enemy.hp)
+      expect(result.state.players['e1']!.integ).toBeLessThan(enemy.integ)
       expect(result.events[0]!.payload.hits).toBe(6)
     })
 
     it('scales damage with R level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
-      const enemy1 = makeEnemy({ hp: 2000, maxHp: 2000 })
-      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', hp: 2000, maxHp: 2000 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
+      const enemy1 = makeEnemy({ integ: 2000, maxInteg: 2000 })
+      const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', integ: 2000, maxInteg: 2000 })
 
       const state1 = makeState([player6, enemy1])
       const state2 = makeState([player18, enemy2])
@@ -408,14 +408,14 @@ describe('Echo Hero', () => {
         resolveAbility(state2, 'p1', 'r', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
     it('scales cooldown with level', () => {
-      const player6 = makePlayer({ level: 6, mp: 500 })
-      const player18 = makePlayer({ level: 18, mp: 500 })
+      const player6 = makePlayer({ level: 6, bw: 500 })
+      const player18 = makePlayer({ level: 18, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2' })
 

@@ -40,7 +40,7 @@ describe('flushFinalSnapshots', () => {
       ['g2', entry(META)],
     ])
     await Effect.runPromise(flushFinalSnapshots(games, redis))
-    expect(setKeys.sort()).toEqual(['gamesnap:g1', 'gamesnap:g2'])
+    expect(setKeys.sort()).toEqual(['gamesnap2:g1', 'gamesnap2:g2'])
   })
 
   it('skips games without meta (a meta-less snapshot would break resume)', async () => {
@@ -50,7 +50,7 @@ describe('flushFinalSnapshots', () => {
       ['noMeta', entry(undefined)],
     ])
     await Effect.runPromise(flushFinalSnapshots(games, redis))
-    expect(setKeys).toEqual(['gamesnap:withMeta'])
+    expect(setKeys).toEqual(['gamesnap2:withMeta'])
   })
 
   it('swallows a getState failure and still flushes the other games', async () => {
@@ -60,7 +60,7 @@ describe('flushFinalSnapshots', () => {
       ['good', entry(META)],
     ])
     await expect(Effect.runPromise(flushFinalSnapshots(games, redis))).resolves.toBeUndefined()
-    expect(setKeys).toEqual(['gamesnap:good'])
+    expect(setKeys).toEqual(['gamesnap2:good'])
   })
 
   it('resolves to void on an empty game set', async () => {

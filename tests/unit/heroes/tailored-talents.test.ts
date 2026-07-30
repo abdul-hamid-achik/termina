@@ -10,7 +10,7 @@ import { HEROES } from '~~/shared/constants/heroes'
  * application itself is proven once in malloc.test.ts + tests/gameplay/talents).
  *
  * The sharpest check: a `damage_boost` talent only fires on an ability that deals
- * INSTANT damage during the cast (applyAbilityTalents keys on hpLost that tick).
+ * INSTANT damage during the cast (applyAbilityTalents keys on integLost that tick).
  * Put it on a self-buff / pure-disable / DoT and it silently does nothing — which
  * is exactly what the generic tree did by boosting Q on heroes whose Q isn't a
  * nuke. This asserts every tailored damage_boost sits on a real instant-damage

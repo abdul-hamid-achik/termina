@@ -29,9 +29,9 @@ import {
 // asserted against the real EffectiveStats / DamageCalculator formulas so the
 // expected numbers track the production code, not magic constants.
 
-// echo (level 1): base hp 550, mp 280. resolveActions recalculates maxHp/maxMp
+// echo (level 1): base hp 550, bw 280. resolveActions recalculates maxInteg/maxBw
 // from hero base + item HP/MP and rescales hp/mp by percent if they differ — so
-// we must set maxHp/maxMp to the TRUE value (and hp/mp to full) or the recalc
+// we must set maxInteg/maxBw to the TRUE value (and hp/mp to full) or the recalc
 // silently mutates our deltas. This helper derives both from the chosen items.
 const ECHO_BASE_HP = 550
 const ECHO_BASE_MP = 280
@@ -39,18 +39,18 @@ const ECHO_BASE_MP = 280
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const items = overrides.items ?? [null, null, null, null, null, null]
   const itemStats = getItemStatBonuses(items)
-  const maxHp = ECHO_BASE_HP + itemStats.hp
-  const maxMp = ECHO_BASE_MP + itemStats.mp
+  const maxInteg = ECHO_BASE_HP + itemStats.hp
+  const maxBw = ECHO_BASE_MP + itemStats.mp
   return {
     id: 'p1',
     name: 'Player1',
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-river',
-    hp: maxHp,
-    maxHp,
-    mp: maxMp,
-    maxMp,
+    integ: maxInteg,
+    maxInteg,
+    bw: maxBw,
+    maxBw,
     level: 1,
     xp: 0,
     gold: 600,
@@ -145,9 +145,9 @@ describe('Item combat procs — crit multipliers', () => {
     let sawNormal = false
     for (let i = 0; i < 50; i++) {
       const state = duel('null_pointer')
-      const start = state.players['p2']!.hp
+      const start = state.players['p2']!.integ
       const r = run(state, [attack('p1', 'Enemy')])
-      const dmg = start - r.state.players['p2']!.hp
+      const dmg = start - r.state.players['p2']!.integ
       if (dmg === crit) sawCrit = true
       else if (dmg === normal) sawNormal = true
       else throw new Error(`unexpected null_pointer damage ${dmg} (normal=${normal} crit=${crit})`)
@@ -162,9 +162,9 @@ describe('Item combat procs — crit multipliers', () => {
     let sawCrit = false
     for (let i = 0; i < 50; i++) {
       const state = duel('fracture_edge')
-      const start = state.players['p2']!.hp
+      const start = state.players['p2']!.integ
       const r = run(state, [attack('p1', 'Enemy')])
-      const dmg = start - r.state.players['p2']!.hp
+      const dmg = start - r.state.players['p2']!.integ
       expect([normal, crit]).toContain(dmg)
       if (dmg === crit) sawCrit = true
     }
@@ -177,9 +177,9 @@ describe('Item combat procs — crit multipliers', () => {
     let sawCrit = false
     for (let i = 0; i < 50; i++) {
       const state = duel('killshot_coil')
-      const start = state.players['p2']!.hp
+      const start = state.players['p2']!.integ
       const r = run(state, [attack('p1', 'Enemy')])
-      const dmg = start - r.state.players['p2']!.hp
+      const dmg = start - r.state.players['p2']!.integ
       expect([normal, crit]).toContain(dmg)
       if (dmg === crit) sawCrit = true
     }
@@ -201,7 +201,7 @@ describe('Item combat procs — on-hit effects', () => {
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
-    const start = state.players['p2']!.hp
+    const start = state.players['p2']!.integ
     const r = run(state, [attack('p1', 'Enemy')])
     const events = r.events.filter((e) => e._tag === 'damage' && e.targetId === 'p2')
     const magic = events.find((e) => e._tag === 'damage' && e.damageType === 'code')!
@@ -216,7 +216,7 @@ describe('Item combat procs — on-hit effects', () => {
     )
     expect((magic as { amount: number }).amount).toBe(expectedMagic)
     // Total HP lost = kinetic + code.
-    const lost = start - r.state.players['p2']!.hp
+    const lost = start - r.state.players['p2']!.integ
     expect(lost).toBe((phys as { amount: number }).amount + (magic as { amount: number }).amount)
   })
 
@@ -235,9 +235,9 @@ describe('Item combat procs — on-hit effects', () => {
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
-    const start = state.players['p2']!.hp
+    const start = state.players['p2']!.integ
     const r = run(state, [attack('p1', 'Enemy')])
-    const dmg = start - r.state.players['p2']!.hp
+    const dmg = start - r.state.players['p2']!.integ
     // Desolator carries +50 attack AND -5 armor, so it must exceed the bare hit
     // and exceed even a no-item hit against shredded armor.
     expect(dmg).toBe(shredded)
@@ -260,10 +260,10 @@ describe('Item combat procs — on-hit effects', () => {
           p3: makePlayer({ id: 'p3', team: 'audit', name: 'Bystander' }),
         },
       })
-      const startP3 = state.players['p3']!.hp
+      const startP3 = state.players['p3']!.integ
       const r = run(state, [attack('p1', 'Primary')])
       // chain damage lands on p3 (never the primary attack target).
-      const chainDmg = startP3 - r.state.players['p3']!.hp
+      const chainDmg = startP3 - r.state.players['p3']!.integ
       if (chainDmg > 0) {
         expect(chainDmg).toBe(expectedChain)
         const chainEvent = r.events.find(
@@ -295,9 +295,9 @@ describe('Item combat procs — on-hit effects', () => {
           }),
         },
       })
-      const start = state.players['p2']!.hp
+      const start = state.players['p2']!.integ
       const r = run(state, [attack('p1', 'Tank')])
-      const dmg = start - r.state.players['p2']!.hp
+      const dmg = start - r.state.players['p2']!.integ
       if (dmg === blocked) sawBlock = true
       else if (dmg === unblocked) sawFull = true
       else
@@ -322,9 +322,9 @@ describe('Item combat procs — on-hit effects', () => {
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
-    const start = withAura.players['p2']!.hp
+    const start = withAura.players['p2']!.integ
     const r = run(withAura, [attack('p1', 'Enemy')])
-    const dmg = start - r.state.players['p2']!.hp
+    const dmg = start - r.state.players['p2']!.integ
     // attacker carries siege_lattice (+15 def, +200 hp on attacker — irrelevant
     // to its own outgoing) and the aura shreds the target's 3 base armor by 5 → 0.
     const expected = expectedPhysical(['siege_lattice'], [], 1, SIEGE_LATTICE_AURA_PLATE)
@@ -349,9 +349,9 @@ describe('Item combat procs — on-hit effects', () => {
         }),
       },
     })
-    const start = withAllyAura.players['p2']!.hp
+    const start = withAllyAura.players['p2']!.integ
     const r = run(withAllyAura, [attack('p1', 'Victim')])
-    const dmg = start - r.state.players['p2']!.hp
+    const dmg = start - r.state.players['p2']!.integ
     // negative shred = bonus armor on the target.
     const expected = expectedPhysical([], [], 1, -SIEGE_LATTICE_AURA_PLATE)
     expect(dmg).toBe(expected)
@@ -379,9 +379,9 @@ describe('Item combat procs — on-hit effects', () => {
         }),
       },
     })
-    const start = bothAuras.players['p2']!.hp
+    const start = bothAuras.players['p2']!.integ
     const r = run(bothAuras, [attack('p1', 'Victim')])
-    const dmg = start - r.state.players['p2']!.hp
+    const dmg = start - r.state.players['p2']!.integ
     // +5 (ally) and -5 (enemy) cancel → same as the attacker's cuirass with no shred.
     expect(dmg).toBe(expectedPhysical(['siege_lattice'], []))
   })
@@ -401,14 +401,14 @@ describe('Item actives — direct effects', () => {
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'Enemy' }),
       },
     })
-    const start = state.players['p2']!.hp
+    const start = state.players['p2']!.integ
     const r = run(state, [
       {
         playerId: 'p1',
         command: { type: 'use', item: 'burnout', target: { kind: 'hero', name: 'Enemy' } },
       },
     ])
-    const lost = start - r.state.players['p2']!.hp
+    const lost = start - r.state.players['p2']!.integ
     // 300 code against echo's 15 MR.
     const expected = calculateCodeDamage(300, 15)
     expect(lost).toBe(expected)
@@ -442,7 +442,7 @@ describe('Item actives — direct effects', () => {
     // Tick 2a: a basic (kinetic) attack into the ethereal target deals 0.
     const s2 = makeGameState({ players: { p1: r1.state.players['p1']!, p2: target1 }, tick: 2 })
     const physResult = run(s2, [attack('p1', 'Enemy')])
-    expect(physResult.state.players['p2']!.hp).toBe(target1.hp) // no kinetic damage
+    expect(physResult.state.players['p2']!.integ).toBe(target1.integ) // no kinetic damage
 
     // Tick 2b: a code nuke (burnout 300) into the ethereal target is amplified +40%.
     const magResult = run(s2, [
@@ -451,7 +451,7 @@ describe('Item actives — direct effects', () => {
         command: { type: 'use', item: 'burnout', target: { kind: 'hero', name: 'Enemy' } },
       },
     ])
-    const lost = target1.hp - magResult.state.players['p2']!.hp
+    const lost = target1.integ - magResult.state.players['p2']!.integ
     const baseMagic = calculateCodeDamage(300, 15)
     const amped = Math.round(baseMagic * 1.4)
     expect(lost).toBe(amped)
@@ -533,20 +533,20 @@ describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', 
     expect(treaded - base).toBe(15)
   })
 
-  it('hp mode (gait_rig_hp) raises maxHp through the resolveActions recalc', () => {
+  it('hp mode (gait_rig_hp) raises maxInteg through the resolveActions recalc', () => {
     const state = makeGameState({
       players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_hp', 150)] }) },
     })
     const r = run(state, [])
-    expect(r.state.players['p1']!.maxHp).toBe(ECHO_BASE_HP + 150)
+    expect(r.state.players['p1']!.maxInteg).toBe(ECHO_BASE_HP + 150)
   })
 
-  it('mp mode (gait_rig_mp) raises maxMp through the resolveActions recalc', () => {
+  it('mp mode (gait_rig_mp) raises maxBw through the resolveActions recalc', () => {
     const state = makeGameState({
       players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_mp', 100)] }) },
     })
     const r = run(state, [])
-    expect(r.state.players['p1']!.maxMp).toBe(ECHO_BASE_MP + 100)
+    expect(r.state.players['p1']!.maxBw).toBe(ECHO_BASE_MP + 100)
   })
 })
 
@@ -604,10 +604,10 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
         p3: makePlayer({ id: 'p3', team: 'audit', name: 'E2', zone: 'mid-river' }),
       },
     })
-    const [s2, s3] = [state.players['p2']!.hp, state.players['p3']!.hp]
+    const [s2, s3] = [state.players['p2']!.integ, state.players['p3']!.integ]
     const r = run(state, [useShiva])
-    expect(r.state.players['p2']!.hp).toBeLessThan(s2)
-    expect(r.state.players['p3']!.hp).toBeLessThan(s3)
+    expect(r.state.players['p2']!.integ).toBeLessThan(s2)
+    expect(r.state.players['p3']!.integ).toBeLessThan(s3)
     expect(r.state.players['p2']!.buffs.some((b) => b.id === 'slow')).toBe(true)
     expect(r.state.players['p3']!.buffs.some((b) => b.id === 'slow')).toBe(true)
     expect(r.state.players['p1']!.buffs.some((b) => b.id === 'item_cd_shivas_guard')).toBe(true)
@@ -621,10 +621,10 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
         far: makePlayer({ id: 'far', team: 'audit', zone: 'audit-base' }),
       },
     })
-    const [allyHp, farHp] = [state.players['ally']!.hp, state.players['far']!.hp]
+    const [allyHp, farHp] = [state.players['ally']!.integ, state.players['far']!.integ]
     const r = run(state, [useShiva])
-    expect(r.state.players['ally']!.hp).toBe(allyHp)
-    expect(r.state.players['far']!.hp).toBe(farHp)
+    expect(r.state.players['ally']!.integ).toBe(allyHp)
+    expect(r.state.players['far']!.integ).toBe(farHp)
   })
 
   it('deals no code damage to a magic-immune (Hardshell) enemy, but still slows it', () => {
@@ -640,10 +640,10 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
         }),
       },
     })
-    const hp0 = state.players['bkb']!.hp
+    const hp0 = state.players['bkb']!.integ
     const r = run(state, [useShiva])
     // Magical nova is fully absorbed by spell immunity...
-    expect(r.state.players['bkb']!.hp).toBe(hp0)
+    expect(r.state.players['bkb']!.integ).toBe(hp0)
     // ...but the slow still lands (Hardshell lets you ACT through controls; it doesn't
     // block slow application in this engine — same as every other slow source).
     expect(r.state.players['bkb']!.buffs.some((b) => b.id === 'slow')).toBe(true)
@@ -661,8 +661,8 @@ describe('Cryo Routine active (was a dead effect — buffs consumed nowhere)', (
     const veiled = mk([
       { id: 'veil_discord', stacks: 25, ticksRemaining: 4, source: 'discord_routine' },
     ])
-    const dmgPlain = plain.players['e']!.hp - run(plain, [useShiva]).state.players['e']!.hp
-    const dmgVeiled = veiled.players['e']!.hp - run(veiled, [useShiva]).state.players['e']!.hp
+    const dmgPlain = plain.players['e']!.integ - run(plain, [useShiva]).state.players['e']!.integ
+    const dmgVeiled = veiled.players['e']!.integ - run(veiled, [useShiva]).state.players['e']!.integ
     expect(dmgVeiled).toBeGreaterThan(dmgPlain)
   })
 })
@@ -681,7 +681,8 @@ describe('Cache effects (dd / haste were applied but consumed nowhere)', () => {
         p2: makePlayer({ id: 'p2', team: 'audit', name: 'E' }),
       },
     })
-    const ddDmg = state.players['p2']!.hp - run(state, [attack('p1', 'E')]).state.players['p2']!.hp
+    const ddDmg =
+      state.players['p2']!.integ - run(state, [attack('p1', 'E')]).state.players['p2']!.integ
     // matches the production formula with a 2x attack multiplier, and exceeds a normal hit
     expect(ddDmg).toBe(expectedPhysical([], [], 2))
     expect(ddDmg).toBeGreaterThan(expectedPhysical([], []))

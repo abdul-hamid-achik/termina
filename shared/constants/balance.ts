@@ -282,14 +282,14 @@ export const MAX_NEUTRALS_PER_CAMP = 4
 // Neutral wave types with stats
 export const SILT_DWELLERS = {
   // Small camp
-  stub: { hp: 250, attack: 10, gold: 20, xp: 25 },
+  stub: { integ: 250, attack: 10, gold: 20, xp: 25 },
   // Medium camp
-  watchdog: { hp: 550, attack: 25, gold: 40, xp: 50 },
+  watchdog: { integ: 550, attack: 25, gold: 40, xp: 50 },
   // Large camp
-  warden: { hp: 900, attack: 40, gold: 60, xp: 80 },
+  warden: { integ: 900, attack: 40, gold: 60, xp: 80 },
   // Ancient
-  orphan: { hp: 1500, attack: 75, gold: 150, xp: 200 },
-  zombie: { hp: 2000, attack: 60, gold: 200, xp: 250 },
+  orphan: { integ: 1500, attack: 75, gold: 150, xp: 200 },
+  zombie: { integ: 2000, attack: 60, gold: 200, xp: 250 },
 } as const
 
 export type SiltDwellerType = keyof typeof SILT_DWELLERS
@@ -328,7 +328,7 @@ export const MAX_WAVE_UNITS_PER_ZONE_PER_TEAM = 12
 // ── Fountain ─────────────────────────────────────────────────────
 
 export const FOUNTAIN_HEAL_PER_TICK_PERCENT = 15
-export const FOUNTAIN_MANA_PER_TICK_PERCENT = 15
+export const FOUNTAIN_BW_PER_TICK_PERCENT = 15
 
 export const HARDEN_DURATION_TICKS = 5
 export const HARDEN_COOLDOWN_TICKS = 300

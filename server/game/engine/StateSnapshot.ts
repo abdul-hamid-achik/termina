@@ -22,7 +22,7 @@ export const SNAPSHOT_EVERY_N_TICKS = 15
 /** Snapshot TTL — long enough to survive a deploy + a few hours of debugging. */
 const SNAPSHOT_TTL_SECONDS = 60 * 60 * 8
 
-const KEY_PREFIX = 'gamesnap:'
+const KEY_PREFIX = 'gamesnap2:'
 
 function snapshotKey(gameId: string): string {
   return `${KEY_PREFIX}${gameId}`

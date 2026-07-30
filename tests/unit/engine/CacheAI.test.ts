@@ -20,10 +20,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'cache-top',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -67,7 +67,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     neutrals: [],
     ice: initializeIce(),
     caches: [],
-    tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
     backup: null,
     events: [],
     ...overrides,
@@ -356,18 +356,18 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            maxHp: 500,
-            mp: 100,
-            maxMp: 200,
+            integ: 400,
+            maxInteg: 500,
+            bw: 100,
+            maxBw: 200,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBeGreaterThan(400)
-      expect(result.players['p1']!.mp).toBeGreaterThan(100)
+      expect(result.players['p1']!.integ).toBeGreaterThan(400)
+      expect(result.players['p1']!.bw).toBeGreaterThan(100)
     })
 
     it('heals Cron’s crontabHeal buff by the per-tick amount in its stacks (was dead)', () => {
@@ -376,8 +376,8 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            maxHp: 1000,
+            integ: 400,
+            maxInteg: 1000,
             buffs: [{ id: 'crontabHeal', stacks: 110, ticksRemaining: 4, source: 'cron' }],
           }),
         },
@@ -385,7 +385,7 @@ describe('CacheAI', () => {
 
       const result = processCacheBuffs(state)
       // The buff was applied but never processed — now it heals `stacks` per tick.
-      expect(result.players['p1']!.hp).toBe(510)
+      expect(result.players['p1']!.integ).toBe(510)
     })
 
     it('restores mana from Cron’s crontabMana buff (the advertised MP half of Crontab)', () => {
@@ -394,8 +394,8 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            mp: 200,
-            maxMp: 1000,
+            bw: 200,
+            maxBw: 1000,
             buffs: [{ id: 'crontabMana', stacks: 15, ticksRemaining: 4, source: 'cron' }],
           }),
         },
@@ -404,45 +404,45 @@ describe('CacheAI', () => {
       const result = processCacheBuffs(state)
       // Crontab's mpPerTick (15) was advertised in the event + description but
       // never applied; the crontabMana buff now restores `stacks` MP per tick.
-      expect(result.players['p1']!.mp).toBe(215)
+      expect(result.players['p1']!.bw).toBe(215)
     })
 
     it('should heal REGEN_CACHE_HEAL_PERCENT of max HP per tick with regen', () => {
-      const maxHp = 500
-      const expectedHeal = Math.floor(maxHp * REGEN_CACHE_HEAL_PERCENT)
+      const maxInteg = 500
+      const expectedHeal = Math.floor(maxInteg * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
         tick: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            maxHp,
+            integ: 400,
+            maxInteg,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(400 + expectedHeal)
+      expect(result.players['p1']!.integ).toBe(400 + expectedHeal)
     })
 
     it('should heal REGEN_CACHE_HEAL_PERCENT of max MP per tick with regen', () => {
-      const maxMp = 200
-      const expectedHeal = Math.floor(maxMp * REGEN_CACHE_HEAL_PERCENT)
+      const maxBw = 200
+      const expectedHeal = Math.floor(maxBw * REGEN_CACHE_HEAL_PERCENT)
       const state = makeGameState({
         tick: 60,
         players: {
           p1: makePlayer({
             id: 'p1',
-            mp: 100,
-            maxMp,
+            bw: 100,
+            maxBw,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.mp).toBe(100 + expectedHeal)
+      expect(result.players['p1']!.bw).toBe(100 + expectedHeal)
     })
 
     it('should not exceed max HP with regen', () => {
@@ -451,15 +451,15 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 490,
-            maxHp: 500,
+            integ: 490,
+            maxInteg: 500,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(500)
+      expect(result.players['p1']!.integ).toBe(500)
     })
 
     it('should not exceed max MP with regen', () => {
@@ -468,15 +468,15 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            mp: 195,
-            maxMp: 200,
+            bw: 195,
+            maxBw: 200,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.mp).toBe(200)
+      expect(result.players['p1']!.bw).toBe(200)
     })
 
     it('should not affect players without regen buff', () => {
@@ -484,16 +484,16 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            mp: 100,
+            integ: 400,
+            bw: 100,
             buffs: [],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(400)
-      expect(result.players['p1']!.mp).toBe(100)
+      expect(result.players['p1']!.integ).toBe(400)
+      expect(result.players['p1']!.bw).toBe(100)
     })
 
     it('should not affect dead players', () => {
@@ -501,7 +501,7 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 0,
+            integ: 0,
             alive: false,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
@@ -509,7 +509,7 @@ describe('CacheAI', () => {
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(0)
+      expect(result.players['p1']!.integ).toBe(0)
     })
 
     it('should not modify state for haste buff', () => {
@@ -517,14 +517,14 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
+            integ: 400,
             buffs: [{ id: 'haste', stacks: 1, ticksRemaining: 15, source: 'cache_haste' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(400)
+      expect(result.players['p1']!.integ).toBe(400)
     })
 
     it('should not modify state for dd buff', () => {
@@ -532,14 +532,14 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
+            integ: 400,
             buffs: [{ id: 'dd', stacks: 1, ticksRemaining: 15, source: 'cache_dd' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(400)
+      expect(result.players['p1']!.integ).toBe(400)
     })
 
     it('should not modify state for arcane buff', () => {
@@ -547,16 +547,16 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            mp: 100,
+            integ: 400,
+            bw: 100,
             buffs: [{ id: 'arcane', stacks: 1, ticksRemaining: 15, source: 'cache_arcane' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(400)
-      expect(result.players['p1']!.mp).toBe(100)
+      expect(result.players['p1']!.integ).toBe(400)
+      expect(result.players['p1']!.bw).toBe(100)
     })
 
     it('should not modify state for invis buff', () => {
@@ -564,14 +564,14 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
+            integ: 400,
             buffs: [{ id: 'invis', stacks: 1, ticksRemaining: 15, source: 'cache_invis' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(400)
+      expect(result.players['p1']!.integ).toBe(400)
     })
 
     it('should handle multiple players with regen buff', () => {
@@ -579,22 +579,22 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            maxHp: 500,
+            integ: 400,
+            maxInteg: 500,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
           p2: makePlayer({
             id: 'p2',
-            hp: 300,
-            maxHp: 600,
+            integ: 300,
+            maxInteg: 600,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBeGreaterThan(400)
-      expect(result.players['p2']!.hp).toBeGreaterThan(300)
+      expect(result.players['p1']!.integ).toBeGreaterThan(400)
+      expect(result.players['p2']!.integ).toBeGreaterThan(300)
     })
 
     it('should handle player with multiple buffs including regen', () => {
@@ -602,10 +602,10 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            maxHp: 500,
-            mp: 100,
-            maxMp: 200,
+            integ: 400,
+            maxInteg: 500,
+            bw: 100,
+            maxBw: 200,
             buffs: [
               { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'cache_haste' },
               { id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' },
@@ -615,7 +615,7 @@ describe('CacheAI', () => {
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBeGreaterThan(400)
+      expect(result.players['p1']!.integ).toBeGreaterThan(400)
       expect(result.players['p1']!.buffs).toHaveLength(2)
     })
   })
@@ -640,18 +640,18 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 500,
-            maxHp: 500,
-            mp: 200,
-            maxMp: 200,
+            integ: 500,
+            maxInteg: 500,
+            bw: 200,
+            maxBw: 200,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(500)
-      expect(result.players['p1']!.mp).toBe(200)
+      expect(result.players['p1']!.integ).toBe(500)
+      expect(result.players['p1']!.bw).toBe(200)
     })
 
     it('should handle player with only HP missing', () => {
@@ -659,18 +659,18 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 400,
-            maxHp: 500,
-            mp: 200,
-            maxMp: 200,
+            integ: 400,
+            maxInteg: 500,
+            bw: 200,
+            maxBw: 200,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBeGreaterThan(400)
-      expect(result.players['p1']!.mp).toBe(200)
+      expect(result.players['p1']!.integ).toBeGreaterThan(400)
+      expect(result.players['p1']!.bw).toBe(200)
     })
 
     it('should handle player with only MP missing', () => {
@@ -678,18 +678,18 @@ describe('CacheAI', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 500,
-            maxHp: 500,
-            mp: 100,
-            maxMp: 200,
+            integ: 500,
+            maxInteg: 500,
+            bw: 100,
+            maxBw: 200,
             buffs: [{ id: 'regen', stacks: 1, ticksRemaining: 15, source: 'cache_regen' }],
           }),
         },
       })
 
       const result = processCacheBuffs(state)
-      expect(result.players['p1']!.hp).toBe(500)
-      expect(result.players['p1']!.mp).toBeGreaterThan(100)
+      expect(result.players['p1']!.integ).toBe(500)
+      expect(result.players['p1']!.bw).toBeGreaterThan(100)
     })
   })
 })

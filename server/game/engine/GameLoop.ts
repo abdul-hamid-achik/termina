@@ -8,7 +8,7 @@ import {
   RESPAWN_PER_LEVEL_TICKS,
   RESPAWN_FREE_LEVELS,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
-  FOUNTAIN_MANA_PER_TICK_PERCENT,
+  FOUNTAIN_BW_PER_TICK_PERCENT,
   XP_PER_LEVEL,
   MAX_LEVEL,
   HERO_KILL_XP_BASE,
@@ -543,8 +543,8 @@ export function processTick(
         gameId,
         tick: currentState.tick,
         ice: `R${iceUp('chaff')}:D${iceUp('audit')}`,
-        chaffAncient: `${anc?.chaff.hp ?? '?'}${anc?.chaff.vulnerable ? '!' : ''}`,
-        auditAncient: `${anc?.audit.hp ?? '?'}${anc?.audit.vulnerable ? '!' : ''}`,
+        chaffAncient: `${anc?.chaff.integ ?? '?'}${anc?.chaff.vulnerable ? '!' : ''}`,
+        auditAncient: `${anc?.audit.integ ?? '?'}${anc?.audit.vulnerable ? '!' : ''}`,
         winner: winner ?? 'none',
       })
     }
@@ -942,7 +942,7 @@ export function processSpecialActions(
             tick: currentState.tick,
             sourceId: 'buyback',
             targetId: action.playerId,
-            amount: player.maxHp,
+            amount: player.maxInteg,
           })
           events.push({
             _tag: 'power_spike',
@@ -1353,8 +1353,8 @@ function handleRespawns(state: GameState): GameState {
       players[pid] = {
         ...player,
         alive: true,
-        hp: player.maxHp,
-        mp: player.maxMp,
+        integ: player.maxInteg,
+        bw: player.maxBw,
         zone: spawnZone,
         respawnTick: null,
       }
@@ -1380,12 +1380,12 @@ function applyFountainHealing(state: GameState): GameState {
     // Skip healing if player is in combat (soft check — full combat tracking would need a separate system)
     const inCombat = player.buffs.some((b) => b.id === 'inCombat')
     if (isInFountain && !inCombat) {
-      const hpHeal = Math.floor((player.maxHp * FOUNTAIN_HEAL_PER_TICK_PERCENT) / 100)
-      const mpHeal = Math.floor((player.maxMp * FOUNTAIN_MANA_PER_TICK_PERCENT) / 100)
+      const hpHeal = Math.floor((player.maxInteg * FOUNTAIN_HEAL_PER_TICK_PERCENT) / 100)
+      const mpHeal = Math.floor((player.maxBw * FOUNTAIN_BW_PER_TICK_PERCENT) / 100)
       players[pid] = {
         ...player,
-        hp: Math.min(player.maxHp, player.hp + hpHeal),
-        mp: Math.min(player.maxMp, player.mp + mpHeal),
+        integ: Math.min(player.maxInteg, player.integ + hpHeal),
+        bw: Math.min(player.maxBw, player.bw + mpHeal),
       }
       changed = true
     }
@@ -1411,8 +1411,8 @@ function handleDeaths(
         players[pid] = {
           ...player,
           alive: true,
-          hp: player.maxHp,
-          mp: player.maxMp,
+          integ: player.maxInteg,
+          bw: player.maxBw,
           buffs: player.buffs.filter((b) => b.id !== 'backup'),
           // Death cancels the standing orders on this branch too — an backup
           // revive must not resume marching into, or swinging at, whoever just

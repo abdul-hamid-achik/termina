@@ -31,15 +31,15 @@ function statsAtLevel(heroId: string, level: number) {
   const hero = HEROES[heroId]!
   const lvl = level - 1
   return {
-    maxHp: hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * lvl,
-    maxMp: hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * lvl,
+    maxInteg: hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * lvl,
+    maxBw: hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * lvl,
     plate: hero.baseStats.plate + (hero.growthPerLevel.plate ?? 0) * lvl,
     ice: hero.baseStats.ice + (hero.growthPerLevel.ice ?? 0) * lvl,
   }
 }
 
 /** Player whose hp/mp pools match the hero's stats so the per-tick
- * maxHp/maxMp recalculation doesn't shift values mid-test. */
+ * maxInteg/maxBw recalculation doesn't shift values mid-test. */
 function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 1): PlayerState {
   const s = statsAtLevel(heroId, level)
   return {
@@ -48,10 +48,10 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
     team: 'chaff',
     heroId,
     zone: 'mid-river',
-    hp: s.maxHp,
-    maxHp: s.maxHp,
-    mp: s.maxMp,
-    maxMp: s.maxMp,
+    integ: s.maxInteg,
+    maxInteg: s.maxInteg,
+    bw: s.maxBw,
+    maxBw: s.maxBw,
     level,
     xp: 0,
     gold: 600,
@@ -115,7 +115,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
       },
     })
-    const preHp = state.players['p2']!.hp
+    const preInteg = state.players['p2']!.integ
 
     const result = run(state, [
       {
@@ -125,8 +125,8 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     ])
 
     expect(result.rejected).toHaveLength(0)
-    const postHp = result.state.players['p2']!.hp
-    expect(postHp).toBeLessThan(preHp)
+    const postInteg = result.state.players['p2']!.integ
+    expect(postInteg).toBeLessThan(preInteg)
 
     const dmg = result.events.filter((e) => e._tag === 'damage')
     expect(dmg).toHaveLength(1)
@@ -134,7 +134,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       _tag: 'damage',
       sourceId: 'p1',
       targetId: 'p2',
-      amount: preHp - postHp,
+      amount: preInteg - postInteg,
       damageType: 'kinetic',
     })
     // Root rider landed alongside the damage
@@ -245,8 +245,8 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
           id: 'p1',
           team: 'chaff',
           level: 5,
-          mp: 2000,
-          maxMp: 2000,
+          bw: 2000,
+          maxBw: 2000,
           talents: { tier10: null, tier15: null, tier20: null, tier25: 'echo_25_left' },
         })
       const target = () => makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'audit' })
@@ -282,7 +282,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     // (rather than an absolute value) so the assertion is robust to any other
     // HP changes in the tick.
     const target = () =>
-      makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'audit', hp: 100, maxHp: 1000 })
+      makeHero('mutex', { id: 'p2', name: 'Enemy', team: 'audit', integ: 100, maxInteg: 1000 })
     const castE: PlayerAction[] = [
       {
         playerId: 'p1',
@@ -294,10 +294,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         id: 'p1',
         team: 'chaff',
         level: 5,
-        hp: 200,
-        maxHp: 1000,
-        mp: 2000,
-        maxMp: 2000,
+        integ: 200,
+        maxInteg: 1000,
+        bw: 2000,
+        maxBw: 2000,
         talents: { tier10: null, tier15: null, tier20: null, tier25: talent25 },
       })
 
@@ -317,7 +317,9 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         castE,
       )
       const without = run(makeGameState({ players: { p1: daemon(null), p2: target() } }), castE)
-      expect(withTalent.state.players['p1']!.hp).toBeGreaterThan(without.state.players['p1']!.hp)
+      expect(withTalent.state.players['p1']!.integ).toBeGreaterThan(
+        without.state.players['p1']!.integ,
+      )
     })
   })
 
@@ -330,8 +332,8 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         team: 'chaff',
         level: 6,
         zone: 'mid-river',
-        mp: 2000,
-        maxMp: 2000,
+        bw: 2000,
+        maxBw: 2000,
         talents: { tier10: null, tier15: null, tier20: null, tier25: talent25 },
       })
     // Target in a DIFFERENT zone than the caster.
@@ -341,8 +343,8 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         name: 'Enemy',
         team: 'audit',
         zone: 'top-river',
-        mp: 100,
-        maxMp: 500,
+        bw: 100,
+        maxBw: 500,
       })
     const castR: PlayerAction[] = [
       {
@@ -399,14 +401,14 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
           p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
         },
       })
-      const pre = state.players['p2']!.hp
+      const pre = state.players['p2']!.integ
       const result = run(state, [
         {
           playerId: 'p1',
           command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
         },
       ])
-      return pre - result.state.players['p2']!.hp
+      return pre - result.state.players['p2']!.integ
     }
 
     const rank1 = cast(1)
@@ -439,10 +441,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     expect(
       validateAction(atLevel6, { playerId: 'p1', command: { type: 'cast', ability: 'r' } }),
     ).toBeNull()
-    const preHp = atLevel6.players['p2']!.hp
+    const preInteg = atLevel6.players['p2']!.integ
     const result = run(atLevel6, [{ playerId: 'p1', command: { type: 'cast', ability: 'r' } }])
     expect(result.rejected).toHaveLength(0)
-    expect(result.state.players['p2']!.hp).toBeLessThan(preHp)
+    expect(result.state.players['p2']!.integ).toBeLessThan(preInteg)
     // Fear rider applied — and fear blocks attack/cast via validateAction
     expect(result.state.players['p2']!.buffs.some((b) => b.id === 'feared')).toBe(true)
   })
@@ -456,7 +458,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     expect(result.rejected).toHaveLength(1)
     expect(result.rejected[0]!.reason).toMatch(/hero target/i)
     // Nothing was spent
-    expect(result.state.players['p1']!.mp).toBe(state.players['p1']!.mp)
+    expect(result.state.players['p1']!.bw).toBe(state.players['p1']!.bw)
     expect(result.state.players['p1']!.cooldowns.q).toBe(0)
   })
 
@@ -479,10 +481,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     expect(dot!.stacks).toBeGreaterThan(0)
     expect(dot!.source).toBe('p1')
     // Cast tick itself deals no direct damage
-    const preHp = result.state.players['p2']!.hp
+    const preInteg = result.state.players['p2']!.integ
 
     const ticked = processDoTs(result.state)
-    expect(ticked.state.players['p2']!.hp).toBeLessThan(preHp)
+    expect(ticked.state.players['p2']!.integ).toBeLessThan(preInteg)
     const dmg = ticked.events.filter((e) => e._tag === 'damage')
     expect(dmg).toHaveLength(1)
     expect(dmg[0]).toMatchObject({ sourceId: 'p1', targetId: 'p2', damageType: 'code' })
@@ -513,7 +515,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
           id: 'p2',
           name: 'Enemy',
           team: 'audit',
-          hp: Math.floor(echo.maxHp * 0.2),
+          integ: Math.floor(echo.maxInteg * 0.2),
         }),
       },
     })
@@ -523,10 +525,10 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
         command: { type: 'cast', ability: 'e', target: { kind: 'hero', name: 'p2' } },
       },
     ])
-    expect(killed.state.players['p2']!.hp).toBe(0)
+    expect(killed.state.players['p2']!.integ).toBe(0)
     expect(killed.state.players['p2']!.alive).toBe(false)
     // Mana was spent on the successful execute
-    expect(killed.state.players['p1']!.mp).toBeLessThan(daemon.maxMp)
+    expect(killed.state.players['p1']!.bw).toBeLessThan(daemon.maxBw)
 
     const highHp = makeGameState({
       players: {
@@ -535,7 +537,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
           id: 'p2',
           name: 'Enemy',
           team: 'audit',
-          hp: Math.floor(echo.maxHp * 0.9),
+          integ: Math.floor(echo.maxInteg * 0.9),
         }),
       },
     })
@@ -546,9 +548,9 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
       },
     ])
     expect(refused.state.players['p2']!.alive).toBe(true)
-    expect(refused.state.players['p2']!.hp).toBe(Math.floor(echo.maxHp * 0.9))
+    expect(refused.state.players['p2']!.integ).toBe(Math.floor(echo.maxInteg * 0.9))
     // Above threshold: mana refunded, no cooldown
-    expect(refused.state.players['p1']!.mp).toBe(daemon.maxMp)
+    expect(refused.state.players['p1']!.bw).toBe(daemon.maxBw)
     expect(refused.state.players['p1']!.cooldowns.e).toBe(0)
   })
 })
@@ -563,7 +565,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
   const LANE = 'mid-t1-chaff'
 
   function wave(over: Partial<WaveUnitState> = {}): WaveUnitState {
-    return { id: 'c1', team: 'audit', zone: LANE, hp: 400, maxHp: 400, type: 'line', ...over }
+    return { id: 'c1', team: 'audit', zone: LANE, integ: 400, maxInteg: 400, type: 'line', ...over }
   }
 
   it('a zone AoE cast damages enemy waves standing in the zone', () => {
@@ -576,7 +578,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
     expect(result.rejected).toHaveLength(0)
-    expect(result.state.waves[0]!.hp).toBe(280)
+    expect(result.state.waves[0]!.integ).toBe(280)
     expect(result.events).toContainEqual(
       expect.objectContaining({ _tag: 'damage', sourceId: 'p1', targetId: 'c1', amount: 120 }),
     )
@@ -593,20 +595,20 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
-    expect(result.state.waves.map((c) => c.hp)).toEqual([400, 400])
+    expect(result.state.waves.map((c) => c.integ)).toEqual([400, 400])
     expect(result.events.some((e) => e._tag === 'damage')).toBe(false)
   })
 
   it('an ability last hit pays the wave bounty through the same path a right-click does', () => {
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
-      waves: [wave({ hp: 30 })],
+      waves: [wave({ integ: 30 })],
     })
     const goldBefore = state.players['p1']!.gold
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
-    expect(result.state.waves[0]!.hp).toBe(0)
+    expect(result.state.waves[0]!.integ).toBe(0)
     const lastHit = result.events.find((e) => e._tag === 'wave_strip')
     expect(lastHit).toMatchObject({ playerId: 'p1', waveId: 'c1', waveType: 'line' })
     expect(result.state.players['p1']!.gold).toBeGreaterThan(goldBefore)
@@ -619,7 +621,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
         p1: makeHero('mutex', { id: 'p1', zone: LANE }),
         p2: makeHero('kernel', { id: 'p2', name: 'Mate', zone: LANE }),
       },
-      waves: [wave({ hp: 30 })],
+      waves: [wave({ integ: 30 })],
     })
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
@@ -635,7 +637,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
     // null_ref R (Dereference) is 240 / 360 / 480 at ranks 1-3, unlocked at
     // levels 6 / 12 / 18. Every other fixture in this file sits at level 1 or 6,
     // where a flat-damage implementation is indistinguishable from a scaled one.
-    const waveUnits = () => [wave({ hp: 300 })]
+    const waveUnits = () => [wave({ integ: 300 })]
     const atRank1 = makeGameState({
       players: { p1: makeHero('null_ref', { id: 'p1', zone: LANE }, 6) },
       waves: waveUnits(),
@@ -648,11 +650,11 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
 
     const chipped = run(atRank1, [{ playerId: 'p1', command: cast }])
     expect(chipped.rejected).toHaveLength(0)
-    expect(chipped.state.waves[0]!.hp).toBe(60)
+    expect(chipped.state.waves[0]!.integ).toBe(60)
     expect(chipped.events.some((e) => e._tag === 'wave_strip')).toBe(false)
 
     const cleared = run(atRank3, [{ playerId: 'p1', command: cast }])
-    expect(cleared.state.waves[0]!.hp).toBe(0)
+    expect(cleared.state.waves[0]!.integ).toBe(0)
     expect(cleared.events.some((e) => e._tag === 'wave_strip')).toBe(true)
   })
 
@@ -660,7 +662,7 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
     const camp = 'silt-chaff-top'
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: camp }) },
-      neutrals: [{ id: 'n1', zone: camp, hp: 100, maxHp: 250, type: 'stub', alive: true }],
+      neutrals: [{ id: 'n1', zone: camp, integ: 100, maxInteg: 250, type: 'stub', alive: true }],
     })
     const goldBefore = state.players['p1']!.gold
 
@@ -686,8 +688,8 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
         p2: makeHero('mutex', { id: 'p2', name: 'Caster', zone: camp }),
       },
       neutrals: [
-        { id: 'untouched', zone: camp, hp: 250, maxHp: 250, type: 'stub', alive: true },
-        { id: 'attacked', zone: camp, hp: 250, maxHp: 250, type: 'stub', alive: true },
+        { id: 'untouched', zone: camp, integ: 250, maxInteg: 250, type: 'stub', alive: true },
+        { id: 'attacked', zone: camp, integ: 250, maxInteg: 250, type: 'stub', alive: true },
       ],
     })
 
@@ -700,9 +702,9 @@ describe('cast bridge: abilities vs waves and neutrals', () => {
     const untouched = result.state.neutrals.find((n) => n.id === 'untouched')!
     const attacked = result.state.neutrals.find((n) => n.id === 'attacked')!
     // Only the cast reached the first camp member: 250 - (40 x 3).
-    expect(untouched.hp).toBe(130)
+    expect(untouched.integ).toBe(130)
     // The second took the cast AND the basic attack — the attack is not undone.
-    expect(attacked.hp).toBeLessThan(untouched.hp)
+    expect(attacked.integ).toBeLessThan(untouched.integ)
   })
 })
 
@@ -724,7 +726,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
       { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'Enemy' } } },
     ])
     const p2 = result.state.players['p2']!
-    expect(p2.hp).toBe(echo.maxHp) // fully absorbed
+    expect(p2.integ).toBe(echo.maxInteg) // fully absorbed
     const shield = p2.buffs.find((b) => b.id === 'shield')
     expect(shield).toBeDefined()
     expect(shield!.stacks).toBeLessThan(500)
@@ -755,7 +757,7 @@ describe('basic-attack path: shield, phase shift, fear', () => {
       { playerId: 'p1', command: { type: 'attack', target: { kind: 'hero', name: 'Enemy' } } },
     ])
     const p2 = result.state.players['p2']!
-    expect(p2.hp).toBe(echo.maxHp)
+    expect(p2.integ).toBe(echo.maxInteg)
     expect(p2.buffs.some((b) => b.id === 'phaseShift')).toBe(false)
   })
 
@@ -959,7 +961,7 @@ describe('talents', () => {
     expect(getEffectiveAttack(talented)).toBe(getEffectiveAttack(plain) + 15)
   })
 
-  it('a selected +HP talent raises maxHp through the per-tick recalc', () => {
+  it('a selected +HP talent raises maxInteg through the per-tick recalc', () => {
     const echo = statsAtLevel('echo', 1)
     const state = makeGameState({
       players: {
@@ -970,12 +972,12 @@ describe('talents', () => {
       },
     })
     const result = run(state, [])
-    expect(result.state.players['p1']!.maxHp).toBe(echo.maxHp + 200)
+    expect(result.state.players['p1']!.maxInteg).toBe(echo.maxInteg + 200)
     // Percentage-preserving: the per-tick recalc scales current HP to the same %
     // of the new max for ANY max change. This hero was at full HP, so it stays
     // full when the talent raises the ceiling — the same rule that scales current
     // HP when an HP item is bought/sold (see game-flow.test.ts).
-    expect(result.state.players['p1']!.hp).toBe(echo.maxHp + 200)
+    expect(result.state.players['p1']!.integ).toBe(echo.maxInteg + 200)
   })
 
   it('a cooldownReduction ability talent shortens the resolver-set cooldown', () => {
@@ -1000,14 +1002,14 @@ describe('talents', () => {
           p2: makeHero('echo', { id: 'p2', name: 'Enemy', team: 'audit' }),
         },
       })
-      const pre = state.players['p2']!.hp
+      const pre = state.players['p2']!.integ
       const result = run(state, [
         {
           playerId: 'p1',
           command: { type: 'cast', ability: 'q', target: { kind: 'hero', name: 'p2' } },
         },
       ])
-      return pre - result.state.players['p2']!.hp
+      return pre - result.state.players['p2']!.integ
     }
 
     const noTalent = castQ({ tier10: null, tier15: null, tier20: null, tier25: null })

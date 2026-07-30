@@ -30,12 +30,12 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
  * and nothing acts unless you `submit` it.
  *
  * Assertion gotchas (hard-won — read before writing HP / cast / buff checks):
- *  - First-tick maxHp recompute. Heroes seed at level 6 and their maxHp is
+ *  - First-tick maxInteg recompute. Heroes seed at level 6 and their maxInteg is
  *    recomputed on the FIRST tick, INFLATING hp. A raw `hp` delta across that
  *    first tick is therefore confounded — either `tick()` ONCE up front to settle
  *    it, or assert on a regen/recompute-independent signal (a `damage` event, a
- *    buff's `stacks`, a cooldown, or the maxHp cap) instead of raw hp.
- *  - Never set `mp` above `maxMp` to "guarantee" a cast — it silently breaks the
+ *    buff's `stacks`, a cooldown, or the maxInteg cap) instead of raw hp.
+ *  - Never set `mp` above `maxBw` to "guarantee" a cast — it silently breaks the
  *    cast (no resolution, no events, no cooldown). The seed already carries enough
  *    mana; just zero the cooldowns (`cooldowns: { q:0,w:0,e:0,r:0 }`) and cast.
  *  - A 1-tick disable (most stuns are duration 1) is gone by the time you assert:

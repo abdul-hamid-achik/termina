@@ -14,10 +14,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'thread',
     zone: 'mid-river',
-    hp: 530,
-    maxHp: 530,
-    mp: 270,
-    maxMp: 270,
+    integ: 530,
+    maxInteg: 530,
+    bw: 270,
+    maxBw: 270,
     level: 7,
     xp: 0,
     gold: 600,
@@ -44,10 +44,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -90,7 +90,7 @@ describe('Thread Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updatedEnemy = result.state.players['e1']!
-      expect(updatedEnemy.hp).toBeLessThan(enemy.hp)
+      expect(updatedEnemy.integ).toBeLessThan(enemy.integ)
       expect(result.events.length).toBeGreaterThan(0)
       expect(result.events[0]!.type).toBe('ability_cast')
     })
@@ -117,7 +117,7 @@ describe('Thread Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 55) // Level 1 Q costs 55
+      expect(updated.bw).toBe(270 - 55) // Level 1 Q costs 55
       expect(updated.cooldowns.q).toBe(8)
     })
 
@@ -137,8 +137,8 @@ describe('Thread Hero', () => {
         resolveAbility(state2, 'p1', 'q', { kind: 'hero', name: 'e2' }),
       )
 
-      const dmg1 = enemy1.hp - result1.state.players['e1']!.hp
-      const dmg2 = enemy2.hp - result2.state.players['e2']!.hp
+      const dmg1 = enemy1.integ - result1.state.players['e1']!.integ
+      const dmg2 = enemy2.integ - result2.state.players['e2']!.integ
       expect(dmg2).toBeGreaterThan(dmg1)
     })
 
@@ -150,11 +150,11 @@ describe('Thread Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 100) // Level 4 Q costs 100
+      expect(updated.bw).toBe(270 - 100) // Level 4 Q costs 100
     })
 
     it('fails with InsufficientManaError when no mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -238,12 +238,12 @@ describe('Thread Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 70) // Level 1 W costs 70
+      expect(updated.bw).toBe(270 - 70) // Level 1 W costs 70
       expect(updated.cooldowns.w).toBe(12)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
@@ -282,7 +282,7 @@ describe('Thread Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 60) // Level 1 E costs 60
+      expect(updated.bw).toBe(270 - 60) // Level 1 E costs 60
       expect(updated.cooldowns.e).toBe(10)
     })
 
@@ -294,7 +294,7 @@ describe('Thread Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(270 - 105) // Level 4 E costs 105
+      expect(updated.bw).toBe(270 - 105) // Level 4 E costs 105
     })
 
     it('requires hero target', () => {
@@ -317,7 +317,7 @@ describe('Thread Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -338,7 +338,7 @@ describe('Thread Hero', () => {
     })
 
     it('applies threadPool buff to self for 4 ticks', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
@@ -350,28 +350,28 @@ describe('Thread Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 250) // R1 costs 250
+      expect(updated.bw).toBe(500 - 250) // R1 costs 250
       expect(updated.cooldowns.r).toBe(55)
     })
 
     it('scales mana cost with R level', () => {
-      const player = makePlayer({ level: 18, mp: 500 })
+      const player = makePlayer({ level: 18, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 430) // R3 costs 430
+      expect(updated.bw).toBe(500 - 430) // R3 costs 430
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ level: 6, mp: 100 })
+      const player = makePlayer({ level: 6, bw: 100 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -393,7 +393,7 @@ describe('Thread Hero', () => {
       })
 
       // enemy2 should have taken splash damage (40% of 100 = 40, reduced by plate)
-      expect(updated.players['e2']!.hp).toBeLessThan(enemy2.hp)
+      expect(updated.players['e2']!.integ).toBeLessThan(enemy2.integ)
     })
 
     it('does not splash to the primary target', () => {
@@ -408,7 +408,7 @@ describe('Thread Hero', () => {
       })
 
       // With only one enemy (the target), no splash occurs — hp unchanged by passive
-      expect(updated.players['e1']!.hp).toBe(enemy1.hp)
+      expect(updated.players['e1']!.integ).toBe(enemy1.integ)
     })
 
     it('splashes to 2 enemies at level 10+', () => {
@@ -425,8 +425,8 @@ describe('Thread Hero', () => {
       })
 
       // Both e2 and e3 should take splash damage
-      expect(updated.players['e2']!.hp).toBeLessThan(enemy2.hp)
-      expect(updated.players['e3']!.hp).toBeLessThan(enemy3.hp)
+      expect(updated.players['e2']!.integ).toBeLessThan(enemy2.integ)
+      expect(updated.players['e3']!.integ).toBeLessThan(enemy3.integ)
     })
 
     it('does nothing when no other enemies are in zone', () => {
@@ -441,7 +441,7 @@ describe('Thread Hero', () => {
       })
 
       // No additional enemies to splash to
-      expect(updated.players['e1']!.hp).toBe(enemy.hp)
+      expect(updated.players['e1']!.integ).toBe(enemy.integ)
     })
 
     it('does not trigger on non-attack events', () => {
@@ -456,7 +456,7 @@ describe('Thread Hero', () => {
         payload: { playerId: 'p1' },
       })
 
-      expect(updated.players['e2']!.hp).toBe(enemy2.hp)
+      expect(updated.players['e2']!.integ).toBe(enemy2.integ)
     })
 
     it('does not trigger when another player attacks', () => {
@@ -471,7 +471,7 @@ describe('Thread Hero', () => {
         payload: { attackerId: 'e1', targetId: 'p1', damage: 100 },
       })
 
-      expect(updated.players['e2']!.hp).toBe(enemy2.hp)
+      expect(updated.players['e2']!.integ).toBe(enemy2.integ)
     })
 
     it('does not splash to enemies in different zone', () => {
@@ -486,7 +486,7 @@ describe('Thread Hero', () => {
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
 
-      expect(updated.players['e2']!.hp).toBe(enemy2.hp)
+      expect(updated.players['e2']!.integ).toBe(enemy2.integ)
     })
   })
 
@@ -506,8 +506,8 @@ describe('Thread Hero', () => {
         payload: { attackerId: 'p1', targetId: 'e1', damage: 100 },
       })
 
-      expect(updated.players['e2']!.hp).toBeLessThan(enemy2.hp)
-      expect(updated.players['e3']!.hp).toBeLessThan(enemy3.hp)
+      expect(updated.players['e2']!.integ).toBeLessThan(enemy2.integ)
+      expect(updated.players['e3']!.integ).toBeLessThan(enemy3.integ)
     })
 
     it('cleaves for full attack damage, not the 40% Multithread splash', () => {
@@ -516,7 +516,7 @@ describe('Thread Hero', () => {
           makeState([
             makePlayer({ level: 5, buffs: overclocked ? tpBuff : [] }),
             makeEnemy({ id: 'e1', name: 'Enemy1' }),
-            makeEnemy({ id: 'e2', name: 'Enemy2', hp: 1000, maxHp: 1000 }),
+            makeEnemy({ id: 'e2', name: 'Enemy2', integ: 1000, maxInteg: 1000 }),
           ]),
           'p1',
           {
@@ -526,8 +526,8 @@ describe('Thread Hero', () => {
           },
         )
 
-      const dmgOverclocked = 1000 - cleave(true).players['e2']!.hp
-      const dmgBase = 1000 - cleave(false).players['e2']!.hp
+      const dmgOverclocked = 1000 - cleave(true).players['e2']!.integ
+      const dmgBase = 1000 - cleave(false).players['e2']!.integ
       expect(dmgBase).toBeGreaterThan(0)
       expect(dmgOverclocked).toBeGreaterThan(dmgBase) // full vs 40%
     })

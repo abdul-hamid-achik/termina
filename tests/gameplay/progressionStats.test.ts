@@ -17,7 +17,7 @@ describe('progression: last hits and burns', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', hp: 10, type: 'line' }],
+      waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
     }))
 
     expect(getFarmStats(game.gameId)[HUMAN]?.lastHits ?? 0).toBe(0)
@@ -35,7 +35,7 @@ describe('progression: last hits and burns', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
       // Own wave under the burn window (LINE_UNIT_HP 400 × BURN_HP_THRESHOLD 0.5).
-      waves: [{ id: 'own_wave', team: me0.team, zone: 'mid-river', hp: 20, type: 'line' }],
+      waves: [{ id: 'own_wave', team: me0.team, zone: 'mid-river', integ: 20, type: 'line' }],
     }))
 
     game.submit({ type: 'burn', target: { kind: 'wave', index: 0 } })
@@ -53,7 +53,7 @@ describe('progression: last hits and burns', () => {
       await game.patch((s) => ({
         ...s,
         players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-        waves: [{ id: `ec${i}`, team: enemyTeam, zone: 'mid-river', hp: 10, type: 'line' }],
+        waves: [{ id: `ec${i}`, team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
       }))
       game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
       await game.tick()
@@ -70,7 +70,7 @@ describe('progression: last hits and burns', () => {
     await a.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      waves: [{ id: 'ec', team: enemyTeam, zone: 'mid-river', hp: 10, type: 'line' }],
+      waves: [{ id: 'ec', team: enemyTeam, zone: 'mid-river', integ: 10, type: 'line' }],
     }))
     a.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
     await a.tick()

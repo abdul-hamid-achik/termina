@@ -47,7 +47,7 @@ export function resolvePhysicalHit(target: PlayerState, rawDamage: number): Phys
   const dodged = !immune && hasBuff(target, 'phaseShift')
 
   const post = dealDamage(target, rawDamage, 'kinetic')
-  const damageDealt = immune || dodged ? 0 : target.hp - post.hp
+  const damageDealt = immune || dodged ? 0 : target.integ - post.integ
 
   return { player: post, damageDealt, immune, dodged }
 }

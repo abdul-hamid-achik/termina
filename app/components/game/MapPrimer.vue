@@ -42,8 +42,8 @@ const trace = computed(() =>
     playerTeam: 'chaff',
     contacts: [],
     ancients: {
-      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-      audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
     },
   }),
 )

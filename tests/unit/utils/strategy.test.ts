@@ -73,12 +73,12 @@ describe('strategy: formatting', () => {
 
 describe('strategy: tenant', () => {
   it('reports up with hp%', () => {
-    const r = formatTenant({ alive: true, hp: 2500, maxHp: 5000, deathTick: null }, 10)
+    const r = formatTenant({ alive: true, integ: 2500, maxInteg: 5000, deathTick: null }, 10)
     expect(r.status).toBe('up')
     expect(r.hpPct).toBe(50)
   })
   it('reports respawn countdown when dead', () => {
-    const r = formatTenant({ alive: false, hp: 0, maxHp: 5000, deathTick: 100 }, 120)
+    const r = formatTenant({ alive: false, integ: 0, maxInteg: 5000, deathTick: 100 }, 120)
     expect(r.status).toBe('dead')
     expect(r.respawnIn).toBe(100 + TENANT_RESPAWN_TICKS - 120)
     expect(r.label).toContain(`${r.respawnIn}c`)
@@ -86,13 +86,13 @@ describe('strategy: tenant', () => {
   it('handles unknown tenant', () => {
     expect(formatTenant(null, 5).status).toBe('unknown')
   })
-  it('falls back to 100% hp when maxHp is 0 (avoids divide-by-zero)', () => {
-    const r = formatTenant({ alive: true, hp: 0, maxHp: 0, deathTick: null }, 5)
+  it('falls back to 100% hp when maxInteg is 0 (avoids divide-by-zero)', () => {
+    const r = formatTenant({ alive: true, integ: 0, maxInteg: 0, deathTick: null }, 5)
     expect(r.status).toBe('up')
     expect(r.hpPct).toBe(100)
   })
   it('shows "respawning" for a dead tenant with no known death tick', () => {
-    const r = formatTenant({ alive: false, hp: 0, maxHp: 5000, deathTick: null }, 50)
+    const r = formatTenant({ alive: false, integ: 0, maxInteg: 5000, deathTick: null }, 50)
     expect(r.status).toBe('dead')
     expect(r.respawnIn).toBe(0)
     expect(r.label).toBe('TENANT respawning')

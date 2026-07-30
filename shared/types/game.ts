@@ -20,10 +20,10 @@ export interface PlayerState {
   team: TeamId
   heroId: string | null
   zone: string
-  hp: number
-  maxHp: number
-  mp: number
-  maxMp: number
+  integ: number
+  maxInteg: number
+  bw: number
+  maxBw: number
   level: number
   xp: number
   gold: number
@@ -65,15 +65,15 @@ export interface WaveUnitState {
   id: string
   team: TeamId
   zone: string
-  hp: number
+  integ: number
   /**
-   * The HP this wave spawned with. Waves escalate with match time, so their
+   * The integrity this wave spawned with. Waves escalate with match time, so their
    * max is a property of WHEN THEY SPAWNED, not of the current tick — anything
    * that reasons about a fraction of full health (the burn window, HP bars) has
    * to read it from here. Optional so fixtures can omit it; callers fall back to
    * the tick-0 base rather than the current tier.
    */
-  maxHp?: number
+  maxInteg?: number
   type: 'line' | 'sweep' | 'breach'
   /**
    * Ticks spent idle in a base zone (no target, invulnerable Ancient).
@@ -90,8 +90,8 @@ export interface WaveUnitState {
  */
 export interface AncientState {
   team: TeamId
-  hp: number
-  maxHp: number
+  integ: number
+  maxInteg: number
   alive: boolean
   vulnerable: boolean
 }
@@ -99,8 +99,8 @@ export interface AncientState {
 export interface SiltDwellerState {
   id: string
   zone: string
-  hp: number
-  maxHp: number
+  integ: number
+  maxInteg: number
   type: string // 'stub', 'watchdog', 'warden', 'orphan', 'zombie'
   alive: boolean
 }
@@ -108,8 +108,8 @@ export interface SiltDwellerState {
 export interface IceState {
   team: TeamId
   zone: string
-  hp: number
-  maxHp: number
+  integ: number
+  maxInteg: number
   alive: boolean
   invulnerable: boolean
 }
@@ -136,8 +136,8 @@ export interface CacheState {
 
 export interface TenantState {
   alive: boolean
-  hp: number
-  maxHp: number
+  integ: number
+  maxInteg: number
   deathTick: number | null
 }
 

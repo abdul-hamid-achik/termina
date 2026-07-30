@@ -14,7 +14,7 @@ import {
   getAlliesInZone,
   healPlayer,
   dealAbilityDamage,
-  deductMana,
+  deductBandwidth,
   setCooldown,
   applyBuff,
   updatePlayer,
@@ -76,9 +76,9 @@ function resolveQ(
     }
 
     const manaCost = scaleValue(Q_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -89,7 +89,7 @@ function resolveQ(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'q', Q_COOLDOWN)
 
     const damage = scaleValue(Q_DAMAGE, level)
@@ -135,9 +135,9 @@ function resolveW(
     }
 
     const manaCost = scaleValue(W_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -151,7 +151,7 @@ function resolveW(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'w', W_COOLDOWN)
 
     const shieldAmount = scaleValue(W_SHIELD, level)
@@ -199,13 +199,13 @@ function resolveE(
 ): Effect.Effect<AbilityResult, AbilityError> {
   return Effect.gen(function* () {
     const manaCost = scaleValue(E_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'e', E_COOLDOWN)
 
     const allies = getAlliesInZone(state, player)
@@ -251,9 +251,9 @@ function resolveR(
     }
 
     const manaCost = scaleValue(R_MANA, level)
-    if (player.mp < manaCost) {
+    if (player.bw < manaCost) {
       return yield* Effect.fail(
-        new InsufficientManaError({ required: manaCost, current: player.mp }),
+        new InsufficientManaError({ required: manaCost, current: player.bw }),
       )
     }
 
@@ -271,7 +271,7 @@ function resolveR(
       )
     }
 
-    let caster = deductMana(player, manaCost)
+    let caster = deductBandwidth(player, manaCost)
     caster = setCooldown(caster, 'r', R_COOLDOWN)
 
     // Swap zones
@@ -353,8 +353,8 @@ function resolveHeroPassive(state: GameState, playerId: string, event: GameEvent
     const redirect = Math.round(damage * MIDDLEMAN_REDIRECT)
     if (redirect <= 0) return working
     // Proxy soaks but never self-kills from the passive (floored at 1 HP).
-    const soaked = { ...proxy, hp: Math.max(1, proxy.hp - redirect) }
-    const healed = { ...victim, hp: Math.min(victim.maxHp, victim.hp + redirect) }
+    const soaked = { ...proxy, integ: Math.max(1, proxy.integ - redirect) }
+    const healed = { ...victim, integ: Math.min(victim.maxInteg, victim.integ + redirect) }
     return updatePlayers(working, [soaked, healed])
   }
 

@@ -49,7 +49,7 @@ import {
   ICE_ATTACK,
   ICE_DEFENSE,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
-  FOUNTAIN_MANA_PER_TICK_PERCENT,
+  FOUNTAIN_BW_PER_TICK_PERCENT,
   SURRENDER_MIN_TICK,
 } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -316,8 +316,8 @@ describe('Balance Constants', () => {
     })
 
     it('fountain mana rate is reasonable', () => {
-      expect(FOUNTAIN_MANA_PER_TICK_PERCENT).toBeGreaterThan(0)
-      expect(FOUNTAIN_MANA_PER_TICK_PERCENT).toBeLessThanOrEqual(100)
+      expect(FOUNTAIN_BW_PER_TICK_PERCENT).toBeGreaterThan(0)
+      expect(FOUNTAIN_BW_PER_TICK_PERCENT).toBeLessThanOrEqual(100)
     })
   })
 

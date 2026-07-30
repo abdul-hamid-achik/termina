@@ -77,10 +77,10 @@ function framesResult(): FetchResult {
           players: {
             p1: {
               id: 'p1',
-              hp: 600,
-              maxHp: 600,
-              mp: 300,
-              maxMp: 300,
+              integ: 600,
+              maxInteg: 600,
+              bw: 300,
+              maxBw: 300,
               level: 1,
               gold: 0,
               kills: 0,
@@ -230,10 +230,10 @@ describe('replay page', () => {
   it('shows the net-worth gold lead derived from the current frame', async () => {
     const fp = (id: string, gold: number) => ({
       id,
-      hp: 600,
-      maxHp: 600,
-      mp: 300,
-      maxMp: 300,
+      integ: 600,
+      maxInteg: 600,
+      bw: 300,
+      maxBw: 300,
       level: 6,
       gold,
       kills: 0,

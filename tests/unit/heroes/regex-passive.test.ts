@@ -9,10 +9,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'regex',
     zone: 'mid-river',
-    hp: 450,
-    maxHp: 450,
-    mp: 400,
-    maxMp: 400,
+    integ: 450,
+    maxInteg: 450,
+    bw: 400,
+    maxBw: 400,
     level: 7,
     xp: 0,
     gold: 600,
@@ -49,7 +49,7 @@ function makeState(players: PlayerState[], tick: number): GameState {
     neutrals: [],
     ice: [],
     caches: [],
-    tenant: { alive: false, hp: 0, maxHp: 0, deathTick: null },
+    tenant: { alive: false, integ: 0, maxInteg: 0, deathTick: null },
     backup: null,
     events: [],
   } as unknown as GameState
@@ -72,7 +72,7 @@ describe('Regex passive: Pattern Cache', () => {
     const after = resolveHeroPassive(state, 'p1', castEvent('p1', 'e1', 10, 100))
 
     // No bonus damage applied on the first cast.
-    expect(after.players['e1']!.hp).toBe(enemy.hp)
+    expect(after.players['e1']!.integ).toBe(enemy.integ)
     // Cache armed: target stored in `destination` (single buff, stable
     // source=p1 so it overwrites across target switches), tick stored as stacks.
     const tgt = after.players['p1']!.buffs.find((b) => b.id === 'patternCacheTarget')
@@ -90,13 +90,13 @@ describe('Regex passive: Pattern Cache', () => {
       'p1',
       castEvent('p1', 'e1', 10, 100),
     )
-    expect(armed.players['e1']!.hp).toBe(enemy.hp) // sanity: no bonus yet
+    expect(armed.players['e1']!.integ).toBe(enemy.integ) // sanity: no bonus yet
 
     // Second cast at tick 12 (within 3 ticks) on same target with damage=200.
     const second = resolveHeroPassive({ ...armed, tick: 12 }, 'p1', castEvent('p1', 'e1', 12, 200))
 
-    const hpLost = enemy.hp - second.players['e1']!.hp
-    expect(hpLost).toBeGreaterThan(0)
+    const integLost = enemy.integ - second.players['e1']!.integ
+    expect(integLost).toBeGreaterThan(0)
 
     // Bonus is round(200 * 0.15) = 30 raw code, then mitigated. Compare the
     // realized HP loss to the HP loss the SAME mitigated path produces for a
@@ -107,10 +107,10 @@ describe('Regex passive: Pattern Cache', () => {
       'p1',
       castEvent('p1', 'e1', 12, 100),
     )
-    const hpLostHalf = enemy.hp - secondHalf.players['e1']!.hp
+    const hpLostHalf = enemy.integ - secondHalf.players['e1']!.integ
     expect(hpLostHalf).toBeGreaterThan(0)
     // raw bonus 30 vs 15 → realized HP loss should be ~2x (mitigation is linear).
-    expect(hpLost).toBe(hpLostHalf * 2)
+    expect(integLost).toBe(hpLostHalf * 2)
   })
 
   it('does NOT bonus when the second cast targets a DIFFERENT hero', () => {
@@ -124,7 +124,7 @@ describe('Regex passive: Pattern Cache', () => {
     )
     // Second cast at tick 12 on e2 (different target) — no bonus to e2.
     const second = resolveHeroPassive({ ...armed, tick: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
-    expect(second.players['e2']!.hp).toBe(e2.hp)
+    expect(second.players['e2']!.integ).toBe(e2.integ)
   })
 
   it('STILL bonuses on a re-targeted hero after a switch (regression: never-expiring stale cache)', () => {
@@ -144,7 +144,7 @@ describe('Regex passive: Pattern Cache', () => {
     expect(targets[0]!.destination).toBe('e2')
     // Repeat e2 within the window → bonus fires (HP drops below the cast's normal hit).
     const repeat = resolveHeroPassive({ ...state, tick: 12 }, 'p1', castEvent('p1', 'e2', 12, 200))
-    expect(repeat.players['e2']!.hp).toBeLessThan(e2.hp)
+    expect(repeat.players['e2']!.integ).toBeLessThan(e2.integ)
   })
 
   it('does NOT bonus when the second cast is MORE than 3 ticks later', () => {
@@ -156,6 +156,6 @@ describe('Regex passive: Pattern Cache', () => {
     )
     // tick 14 → 14-10 = 4 > 3, stale cache, no bonus.
     const second = resolveHeroPassive({ ...armed, tick: 14 }, 'p1', castEvent('p1', 'e1', 14, 200))
-    expect(second.players['e1']!.hp).toBe(enemy.hp)
+    expect(second.players['e1']!.integ).toBe(enemy.integ)
   })
 })

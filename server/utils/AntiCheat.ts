@@ -193,20 +193,20 @@ export function validatePlayerStats(state: GameState, playerId: string): CheatDe
   if (!hero) return null
 
   // Check HP is within valid range
-  if (player.hp > player.maxHp) {
+  if (player.integ > player.maxInteg) {
     return createViolation(
       playerId,
       'STAT_MISMATCH',
-      `HP (${player.hp}) exceeds max HP (${player.maxHp})`,
+      `HP (${player.integ}) exceeds max HP (${player.maxInteg})`,
     )
   }
 
   // Check MP is within valid range
-  if (player.mp > player.maxMp) {
+  if (player.bw > player.maxBw) {
     return createViolation(
       playerId,
       'STAT_MISMATCH',
-      `MP (${player.mp}) exceeds max MP (${player.maxMp})`,
+      `MP (${player.bw}) exceeds max MP (${player.maxBw})`,
     )
   }
 

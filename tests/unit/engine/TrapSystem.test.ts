@@ -11,10 +11,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'socket',
     zone: 'mid-river',
-    hp: 650,
-    maxHp: 650,
-    mp: 300,
-    maxMp: 300,
+    integ: 650,
+    maxInteg: 650,
+    bw: 300,
+    maxBw: 300,
     level: 7,
     xp: 0,
     gold: 600,
@@ -77,7 +77,7 @@ describe('TrapSystem.processTraps', () => {
 
     // Victim took damage and was revealed by the trap owner.
     const victim = next.players['e1']!
-    expect(victim.hp).toBeLessThan(enemy.hp)
+    expect(victim.integ).toBeLessThan(enemy.integ)
     expect(victim.buffs.some((b) => b.id === 'revealed' && b.source === 'p1')).toBe(true)
 
     // Trap consumed.
@@ -110,7 +110,7 @@ describe('TrapSystem.processTraps', () => {
 
     const { state: next, events } = processTraps(state)
 
-    expect(next.players['a1']!.hp).toBe(ally.hp)
+    expect(next.players['a1']!.integ).toBe(ally.integ)
     expect(next.zones['mid-river']!.traps).toHaveLength(1)
     expect(events).toHaveLength(0)
   })
@@ -122,7 +122,7 @@ describe('TrapSystem.processTraps', () => {
 
     const { state: next, events } = processTraps(state)
 
-    expect(next.players['e1']!.hp).toBe(enemy.hp)
+    expect(next.players['e1']!.integ).toBe(enemy.integ)
     expect(next.zones['mid-river']!.traps).toHaveLength(0)
     expect(events).toHaveLength(0)
   })

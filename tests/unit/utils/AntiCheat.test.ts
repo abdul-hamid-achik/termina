@@ -21,10 +21,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -206,7 +206,7 @@ describe('AntiCheat', () => {
     it('should allow valid player stats', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', hp: 500, maxHp: 500, mp: 200, maxMp: 200 }),
+          p1: makePlayer({ id: 'p1', integ: 500, maxInteg: 500, bw: 200, maxBw: 200 }),
         },
       })
 
@@ -217,7 +217,7 @@ describe('AntiCheat', () => {
     it('should detect HP exceeding max', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', hp: 600, maxHp: 500 }),
+          p1: makePlayer({ id: 'p1', integ: 600, maxInteg: 500 }),
         },
       })
 
@@ -230,7 +230,7 @@ describe('AntiCheat', () => {
     it('should detect MP exceeding max', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', mp: 300, maxMp: 200 }),
+          p1: makePlayer({ id: 'p1', bw: 300, maxBw: 200 }),
         },
       })
 
@@ -288,8 +288,8 @@ describe('AntiCheat', () => {
         players: {
           p1: makePlayer({
             id: 'p1',
-            hp: 600,
-            maxHp: 500,
+            integ: 600,
+            maxInteg: 500,
             cooldowns: { q: 5, w: 0, e: 0, r: 0 },
           }),
         },
@@ -306,7 +306,7 @@ describe('AntiCheat', () => {
     it('should record violations for player', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', hp: 600, maxHp: 500 }),
+          p1: makePlayer({ id: 'p1', integ: 600, maxInteg: 500 }),
         },
       })
 
@@ -322,7 +322,7 @@ describe('AntiCheat', () => {
     it('should return players with critical or multiple high violations', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', hp: 600, maxHp: 500 }), // Critical
+          p1: makePlayer({ id: 'p1', integ: 600, maxInteg: 500 }), // Critical
           p2: makePlayer({ id: 'p2' }),
           p3: makePlayer({ id: 'p3' }),
         },
@@ -363,8 +363,8 @@ describe('AntiCheat', () => {
     it('should clear violations for specific player', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', hp: 600, maxHp: 500 }),
-          p2: makePlayer({ id: 'p2', hp: 600, maxHp: 500 }),
+          p1: makePlayer({ id: 'p1', integ: 600, maxInteg: 500 }),
+          p2: makePlayer({ id: 'p2', integ: 600, maxInteg: 500 }),
         },
       })
 
@@ -380,8 +380,8 @@ describe('AntiCheat', () => {
     it('should clear all violations on cleanup', () => {
       const state = makeGameState({
         players: {
-          p1: makePlayer({ id: 'p1', hp: 600, maxHp: 500 }),
-          p2: makePlayer({ id: 'p2', hp: 600, maxHp: 500 }),
+          p1: makePlayer({ id: 'p1', integ: 600, maxInteg: 500 }),
+          p2: makePlayer({ id: 'p2', integ: 600, maxInteg: 500 }),
         },
       })
 

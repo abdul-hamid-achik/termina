@@ -14,7 +14,7 @@ describe('objectives: Tenant & backup', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'hollow' } },
       // Tenant alive at 1 HP — any basic attack finishes it.
-      tenant: { ...s.tenant, alive: true, hp: 1 },
+      tenant: { ...s.tenant, alive: true, integ: 1 },
       backup: null,
     }))
 
@@ -33,7 +33,7 @@ describe('objectives: Tenant & backup', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      tenant: { ...s.tenant, alive: true, hp: 100 },
+      tenant: { ...s.tenant, alive: true, integ: 100 },
       backup: null,
     }))
 
@@ -42,7 +42,7 @@ describe('objectives: Tenant & backup', () => {
 
     const state = await game.state()
     expect(state.tenant.alive).toBe(true)
-    expect(state.tenant.hp).toBe(100) // untouched from the wrong zone
+    expect(state.tenant.integ).toBe(100) // untouched from the wrong zone
     expect(state.backup).toBeNull()
     // ...and the player is told why, rather than the attack vanishing silently.
     expect(
@@ -79,7 +79,7 @@ describe('objectives: Tenant & backup', () => {
             ...me,
             alive: false, // just died this tick…
             respawnTick: null, // …and not yet sent to the respawn queue
-            hp: 0,
+            integ: 0,
             buffs: [{ id: 'backup', stacks: 300, ticksRemaining: 300, source: 'tenant' }],
           },
         },
@@ -91,7 +91,7 @@ describe('objectives: Tenant & backup', () => {
     const me = await game.me()
     expect(me.alive).toBe(true) // reborn, not respawning
     expect(me.respawnTick).toBeNull()
-    expect(me.hp).toBe(me.maxHp) // back at full HP
+    expect(me.integ).toBe(me.maxInteg) // back at full HP
     expect(me.buffs.some((b) => b.id === 'backup')).toBe(false) // backup consumed
     expect(game.lastEvents.some((e) => e._tag === 'backup_used' && e.playerId === HUMAN)).toBe(true)
   })
@@ -146,7 +146,7 @@ describe('objectives: jungle neutrals', () => {
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'silt-chaff-top' } },
       // A stub at 1 HP — one basic attack finishes it (bounty 20g / 25xp).
       neutrals: [
-        { id: 'camp0', zone: 'silt-chaff-top', hp: 1, maxHp: 250, type: 'stub', alive: true },
+        { id: 'camp0', zone: 'silt-chaff-top', integ: 1, maxInteg: 250, type: 'stub', alive: true },
       ],
     }))
 
@@ -170,7 +170,14 @@ describe('objectives: jungle neutrals', () => {
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
       neutrals: [
-        { id: 'camp0', zone: 'silt-chaff-top', hp: 100, maxHp: 250, type: 'stub', alive: true },
+        {
+          id: 'camp0',
+          zone: 'silt-chaff-top',
+          integ: 100,
+          maxInteg: 250,
+          type: 'stub',
+          alive: true,
+        },
       ],
     }))
 
@@ -179,7 +186,7 @@ describe('objectives: jungle neutrals', () => {
 
     const n = (await game.state()).neutrals.find((x) => x.id === 'camp0')
     expect(n?.alive).toBe(true)
-    expect(n?.hp).toBe(100) // untouched from a different zone
+    expect(n?.integ).toBe(100) // untouched from a different zone
     // ...with feedback instead of a silent drop.
     expect(
       game.lastRejected.some((r) => r.playerId === HUMAN && r.reason.includes('not in your zone')),

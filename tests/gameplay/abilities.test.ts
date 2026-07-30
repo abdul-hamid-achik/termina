@@ -144,7 +144,7 @@ describe('abilities', () => {
     await game.tick()
 
     // A caster→enemy damage event is the regen-independent "the spell landed"
-    // signal (raw enemy HP is confounded by regen + the level-6 maxHp recompute).
+    // signal (raw enemy HP is confounded by regen + the level-6 maxInteg recompute).
     expect(
       game.lastEvents.some(
         (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === ENEMY,
@@ -268,7 +268,7 @@ describe('abilities', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, mp: 1, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
+        [HUMAN]: { ...s.players[HUMAN]!, bw: 1, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
       },
     }))
 
@@ -399,7 +399,7 @@ describe('abilities', () => {
         },
       },
     }))
-    const enemyBefore = (await game.player(ENEMY)).hp
+    const enemyBefore = (await game.player(ENEMY)).integ
 
     game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
@@ -409,7 +409,7 @@ describe('abilities', () => {
     expect(
       game.lastEvents.some((e) => e._tag === 'spell_blocked' && e.source === 'intercept_shell'),
     ).toBe(true)
-    expect((await game.player(ENEMY)).hp).toBe(enemyBefore)
+    expect((await game.player(ENEMY)).integ).toBe(enemyBefore)
     expect((await game.player(ENEMY)).buffs.find((b) => b.id === 'spellblock')?.stacks).toBe(0)
   })
 
@@ -431,7 +431,7 @@ describe('abilities', () => {
         },
       },
     }))
-    const enemyBefore = (await game.player(ENEMY)).hp
+    const enemyBefore = (await game.player(ENEMY)).integ
 
     game.submit({ type: 'use', item: 'burnout', target: { kind: 'hero', name: ENEMY } })
     await game.tick()
@@ -446,7 +446,7 @@ describe('abilities', () => {
         (e) => e._tag === 'damage' && e.sourceId === ENEMY && e.targetId === HUMAN,
       ),
     ).toBe(true)
-    expect((await game.player(ENEMY)).hp).toBe(enemyBefore) // negated on the holder
+    expect((await game.player(ENEMY)).integ).toBe(enemyBefore) // negated on the holder
     expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'mirror_shell')).toBe(false)
   })
 
@@ -564,7 +564,7 @@ describe('abilities', () => {
   it('Phase Shim makes the target kinetic-immune but amplifies code damage', async () => {
     // regex Q (Match) is 70 code damage on a hero target.
     const game = await seedGame('laning_combat', { heroSelf: 'regex', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
 
     const dmgToEnemy = () =>
       game.lastEvents.find(
@@ -578,7 +578,7 @@ describe('abilities', () => {
       players: {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
-        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], hp: s.players[ENEMY]!.maxHp },
+        [ENEMY]: { ...s.players[ENEMY]!, buffs: [], integ: s.players[ENEMY]!.maxInteg },
       },
     }))
     game.cast('q', { kind: 'hero', name: ENEMY })
@@ -594,7 +594,7 @@ describe('abilities', () => {
         [HUMAN]: { ...s.players[HUMAN]!, cooldowns: { q: 0, w: 0, e: 0, r: 0 }, buffs: [] },
         [ENEMY]: {
           ...s.players[ENEMY]!,
-          hp: s.players[ENEMY]!.maxHp,
+          integ: s.players[ENEMY]!.maxInteg,
           buffs: [
             { id: 'ethereal', stacks: 1, ticksRemaining: 6, source: HUMAN },
             { id: 'magic_vuln_40', stacks: 40, ticksRemaining: 6, source: HUMAN },
@@ -711,7 +711,7 @@ describe('abilities', () => {
 
   it("Firewall's DMZ shield explodes for code damage to nearby enemies when it ends", async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'firewall', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
     await game.patch((s) => ({
       ...s,
       players: {
@@ -723,16 +723,16 @@ describe('abilities', () => {
     // Cast DMZ (W) — applies the self-shield + the dmz marker (both 3 ticks).
     game.cast('w')
     await game.tick()
-    const enemyBefore = (await game.player(ENEMY)).hp
+    const enemyBefore = (await game.player(ENEMY)).integ
 
     // Advance until the DMZ marker expires → it explodes on the co-located enemy.
     await game.tick(3)
-    expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
+    expect((await game.player(ENEMY)).integ).toBeLessThan(enemyBefore)
   })
 
   it('DMZ explosion now emits a damage event from the caster (kill credit + damage_taken passives)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'firewall', heroEnemy: 'daemon' })
-    await game.tick() // settle the level-6 maxHp recompute
+    await game.tick() // settle the level-6 maxInteg recompute
     await game.patch((s) => ({
       ...s,
       players: {
@@ -743,13 +743,13 @@ describe('abilities', () => {
 
     game.cast('w')
     await game.tick()
-    const enemyBefore = (await game.player(ENEMY)).hp
+    const enemyBefore = (await game.player(ENEMY)).integ
     await game.tick(3) // dmz expires → explosion
 
     // Bug: the blast changed HP but emitted NO damage event, so a lethal blast
     // gave no kill credit/bounty/XP and the victim's damage_taken passives never
     // fired. The only HUMAN→ENEMY code damage this match is the explosion.
-    expect((await game.player(ENEMY)).hp).toBeLessThan(enemyBefore)
+    expect((await game.player(ENEMY)).integ).toBeLessThan(enemyBefore)
     const blast = game.allEvents.find(
       (e) =>
         e._tag === 'damage' &&
@@ -763,7 +763,7 @@ describe('abilities', () => {
 
   it('attacking a phase-shifted enemy deals no damage and emits no damage event (no false credit)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
-    await game.tick() // settle maxHp
+    await game.tick() // settle maxInteg
     await game.patch((s) => ({
       ...s,
       players: {
@@ -774,7 +774,7 @@ describe('abilities', () => {
         },
       },
     }))
-    const enemyBefore = (await game.player(ENEMY)).hp
+    const enemyBefore = (await game.player(ENEMY)).integ
 
     game.attackHero(ENEMY)
     await game.tick()
@@ -782,7 +782,7 @@ describe('abilities', () => {
     // Dodge: no HP lost (regen only ever adds), the phaseShift is consumed, and —
     // the fix — NO damage event is emitted, so the attacker gets no false
     // kill/assist credit and the victim's damage_taken passives don't fire.
-    expect((await game.player(ENEMY)).hp).toBeGreaterThanOrEqual(enemyBefore)
+    expect((await game.player(ENEMY)).integ).toBeGreaterThanOrEqual(enemyBefore)
     expect((await game.player(ENEMY)).buffs.some((b) => b.id === 'phaseShift')).toBe(false)
     expect(
       game.lastEvents.some(
@@ -793,7 +793,7 @@ describe('abilities', () => {
 
   it('Silver Edge empowers only the first attack from invis, then consumes the bonus + breaks stealth', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo', heroEnemy: 'daemon' })
-    await game.tick() // settle maxHp
+    await game.tick() // settle maxInteg
     await game.patch((s) => ({
       ...s,
       players: {
@@ -848,18 +848,18 @@ describe('abilities vs waves', () => {
           ...s.players[HUMAN]!,
           zone: LANE,
           level,
-          mp: 900,
-          maxMp: 900,
+          bw: 900,
+          maxBw: 900,
           cooldowns: { q: 0, w: 0, e: 0, r: 0 },
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-fountain' },
       },
-      waves: waveHp.map((hp, i) => ({
+      waves: waveHp.map((integ, i) => ({
         id: `wave_${i}`,
         team: enemyTeam,
         zone: LANE,
-        hp,
-        maxHp: hp,
+        integ,
+        maxInteg: integ,
         type: 'line' as const,
       })),
     }))
@@ -874,7 +874,7 @@ describe('abilities vs waves', () => {
 
     const waves = (await game.state()).waves.filter((c) => c.id.startsWith('wave_'))
     expect(waves).toHaveLength(3)
-    for (const c of waves) expect(c.hp).toBeLessThan(400)
+    for (const c of waves) expect(c.integ).toBeLessThan(400)
   })
 
   it('an ability that finishes a wave banks the bounty and emits wave_strip', async () => {
@@ -913,7 +913,7 @@ describe('abilities vs waves', () => {
     await late.tick()
     expect(late.lastEvents.some((e) => e._tag === 'wave_strip')).toBe(false)
     const survivor = (await late.state()).waves.find((c) => c.id === 'wave_0')
-    expect(survivor && survivor.hp > 0 && survivor.hp < lateMax).toBe(true)
+    expect(survivor && survivor.integ > 0 && survivor.integ < lateMax).toBe(true)
   })
 
   it('the AOE+ talent widens the cast over the NEXT lane’s wave too', async () => {
@@ -930,8 +930,8 @@ describe('abilities vs waves', () => {
             ...s.players[HUMAN]!,
             zone: 'mid-river',
             level: 6,
-            mp: 500,
-            maxMp: 500,
+            bw: 500,
+            maxBw: 500,
             cooldowns: { q: 0, w: 0, e: 0, r: 0 },
             talents: { tier10: null, tier15: null, tier20: null, tier25 },
           },
@@ -943,13 +943,14 @@ describe('abilities vs waves', () => {
             id: 'next_lane',
             team: 'audit',
             zone: 'mid-t1-audit',
-            hp: 400,
-            maxHp: 400,
+            integ: 400,
+            maxInteg: 400,
             type: 'line',
           },
         ],
       }))
-    const waveHp = async () => (await game.state()).waves.find((c) => c.id === 'next_lane')?.hp ?? 0
+    const waveHp = async () =>
+      (await game.state()).waves.find((c) => c.id === 'next_lane')?.integ ?? 0
 
     await setup(null)
     game.cast('r')
@@ -971,13 +972,13 @@ describe('abilities vs waves', () => {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, zone: LANE, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
       },
-      waves: [{ id: 'mine', team: me.team, zone: LANE, hp: 400, maxHp: 400, type: 'line' }],
+      waves: [{ id: 'mine', team: me.team, zone: LANE, integ: 400, maxInteg: 400, type: 'line' }],
     }))
 
     game.cast('e')
     await game.tick()
 
     const mine = (await game.state()).waves.find((c) => c.id === 'mine')
-    expect(mine?.hp).toBe(400)
+    expect(mine?.integ).toBe(400)
   })
 })

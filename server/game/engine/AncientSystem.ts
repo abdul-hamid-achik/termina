@@ -38,10 +38,10 @@ export function parseAncientTargetId(targetId: string): TeamId | null {
 export function initializeAncients(): { chaff: AncientState; audit: AncientState } {
   // scaledAncientHp is a no-op (returns ANCIENT_HP) unless the dev/test-only
   // TERMINA_TEST_FAST_GAME accelerator is active — see fastGame.ts.
-  const hp = scaledAncientHp(ANCIENT_HP)
+  const integ = scaledAncientHp(ANCIENT_HP)
   return {
-    chaff: { team: 'chaff', hp, maxHp: hp, alive: true, vulnerable: false },
-    audit: { team: 'audit', hp, maxHp: hp, alive: true, vulnerable: false },
+    chaff: { team: 'chaff', integ, maxInteg: integ, alive: true, vulnerable: false },
+    audit: { team: 'audit', integ, maxInteg: integ, alive: true, vulnerable: false },
   }
 }
 
@@ -127,8 +127,8 @@ export function resolveAncientAttack(
     }
   }
 
-  const newHp = Math.max(0, ancient.hp - damage)
-  const destroyed = newHp === 0
+  const newInteg = Math.max(0, ancient.integ - damage)
+  const destroyed = newInteg === 0
 
   const events: GameEngineEvent[] = [
     {
@@ -157,7 +157,7 @@ export function resolveAncientAttack(
       ...state,
       ancients: {
         ...state.ancients,
-        [targetTeam]: { ...ancient, hp: newHp, alive: !destroyed },
+        [targetTeam]: { ...ancient, integ: newInteg, alive: !destroyed },
       },
     },
     events,

@@ -71,9 +71,9 @@ describe('Spawner', () => {
       const waves = spawnWaveUnits(breachWaveTick)
 
       for (const c of waves) {
-        if (c.type === 'line') expect(c.hp).toBe(LINE_UNIT_HP)
-        else if (c.type === 'sweep') expect(c.hp).toBe(SWEEP_UNIT_HP)
-        else if (c.type === 'breach') expect(c.hp).toBe(BREACH_UNIT_HP)
+        if (c.type === 'line') expect(c.integ).toBe(LINE_UNIT_HP)
+        else if (c.type === 'sweep') expect(c.integ).toBe(SWEEP_UNIT_HP)
+        else if (c.type === 'breach') expect(c.integ).toBe(BREACH_UNIT_HP)
       }
     })
 
@@ -85,10 +85,10 @@ describe('Spawner', () => {
 
       expect(waves.length).toBeGreaterThan(0)
       for (const c of waves) {
-        expect(c.hp).toBe(waveUnitMaxHp(c.type, tick))
+        expect(c.integ).toBe(waveUnitMaxHp(c.type, tick))
       }
       const line = waves.find((c) => c.type === 'line')!
-      expect(line.hp).toBeGreaterThan(LINE_UNIT_HP)
+      expect(line.integ).toBeGreaterThan(LINE_UNIT_HP)
     })
 
     it('waves keep the HP of the tick they spawned on, so late waves are tougher', () => {
@@ -98,8 +98,8 @@ describe('Spawner', () => {
       const early = spawnWaveUnits(earlyTick).find((c) => c.type === 'line')!
       const late = spawnWaveUnits(lateTick).find((c) => c.type === 'line')!
 
-      expect(early.hp).toBe(LINE_UNIT_HP)
-      expect(late.hp).toBeGreaterThan(early.hp)
+      expect(early.integ).toBe(LINE_UNIT_HP)
+      expect(late.integ).toBeGreaterThan(early.integ)
     })
 
     it('assigns unique IDs to each wave', () => {
@@ -254,8 +254,8 @@ describe('Spawner', () => {
       it('starts alive with full HP', () => {
         const rosh = initializeTenant()
         expect(rosh.alive).toBe(true)
-        expect(rosh.hp).toBe(TENANT_BASE_HP)
-        expect(rosh.maxHp).toBe(TENANT_BASE_HP)
+        expect(rosh.integ).toBe(TENANT_BASE_HP)
+        expect(rosh.maxInteg).toBe(TENANT_BASE_HP)
         expect(rosh.deathTick).toBeNull()
       })
     })
@@ -267,41 +267,41 @@ describe('Spawner', () => {
       })
 
       it('returns false when deathTick is null', () => {
-        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: null }
+        const rosh = { alive: false, integ: 0, maxInteg: TENANT_BASE_HP, deathTick: null }
         expect(shouldTenantRespawn(rosh, 1000)).toBe(false)
       })
 
       it('returns false before respawn time', () => {
-        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        const rosh = { alive: false, integ: 0, maxInteg: TENANT_BASE_HP, deathTick: 100 }
         expect(shouldTenantRespawn(rosh, 100 + TENANT_RESPAWN_TICKS - 1)).toBe(false)
       })
 
       it('returns true at exactly respawn time', () => {
-        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        const rosh = { alive: false, integ: 0, maxInteg: TENANT_BASE_HP, deathTick: 100 }
         expect(shouldTenantRespawn(rosh, 100 + TENANT_RESPAWN_TICKS)).toBe(true)
       })
 
       it('returns true after respawn time', () => {
-        const rosh = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        const rosh = { alive: false, integ: 0, maxInteg: TENANT_BASE_HP, deathTick: 100 }
         expect(shouldTenantRespawn(rosh, 100 + TENANT_RESPAWN_TICKS + 50)).toBe(true)
       })
     })
 
     describe('respawnTenant', () => {
       it('restores alive status and full HP', () => {
-        const dead = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+        const dead = { alive: false, integ: 0, maxInteg: TENANT_BASE_HP, deathTick: 100 }
         const respawned = respawnTenant(dead, 0)
         expect(respawned.alive).toBe(true)
-        expect(respawned.hp).toBe(TENANT_BASE_HP)
+        expect(respawned.integ).toBe(TENANT_BASE_HP)
         expect(respawned.deathTick).toBeNull()
       })
 
-      it('scales maxHp with minutes elapsed', () => {
-        const dead = { alive: false, hp: 0, maxHp: TENANT_BASE_HP, deathTick: 100 }
+      it('scales maxInteg with minutes elapsed', () => {
+        const dead = { alive: false, integ: 0, maxInteg: TENANT_BASE_HP, deathTick: 100 }
         // 150 ticks * 4s = 600s = 10 minutes
         const respawned = respawnTenant(dead, 150)
-        expect(respawned.hp).toBe(TENANT_BASE_HP + 10 * 100)
-        expect(respawned.maxHp).toBe(TENANT_BASE_HP + 10 * 100)
+        expect(respawned.integ).toBe(TENANT_BASE_HP + 10 * 100)
+        expect(respawned.maxInteg).toBe(TENANT_BASE_HP + 10 * 100)
       })
     })
   })

@@ -46,8 +46,8 @@ describe('standing attack orders', () => {
           id: 'creep_hold_1',
           team: 'audit' as const,
           zone: 'mid-river',
-          hp: 500,
-          maxHp: 500,
+          integ: 500,
+          maxInteg: 500,
           type: 'line' as const,
         },
       ],
@@ -137,7 +137,7 @@ describe('standing attack orders', () => {
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, hp: 0, alive: false, respawnTick: null },
+        [HUMAN]: { ...s.players[HUMAN]!, integ: 0, alive: false, respawnTick: null },
       },
     }))
     await game.tick()

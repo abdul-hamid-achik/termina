@@ -34,7 +34,7 @@ describe('formatStats', () => {
     ])
   })
   it('skips zero / missing stats and returns [] when statless', () => {
-    expect(formatStats({ hp: 0, attack: 12 })).toEqual(['+12 Attack'])
+    expect(formatStats({ integ: 0, attack: 12 })).toEqual(['+12 Attack'])
     expect(formatStats({})).toEqual([])
   })
 })

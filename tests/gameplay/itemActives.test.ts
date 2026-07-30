@@ -23,7 +23,7 @@ describe('item-active combat credit', () => {
           zone: 'mid-river',
           items: ['burnout', null, null, null, null, null],
         },
-        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river', hp: 40, alive: true },
+        [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river', integ: 40, alive: true },
       },
     }))
 

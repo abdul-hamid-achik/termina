@@ -14,10 +14,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'socket',
     zone: 'mid-river',
-    hp: 650,
-    maxHp: 650,
-    mp: 300,
-    maxMp: 300,
+    integ: 650,
+    maxInteg: 650,
+    bw: 300,
+    maxBw: 300,
     level: 7,
     xp: 0,
     gold: 600,
@@ -44,10 +44,10 @@ function makeEnemy(overrides: Partial<PlayerState> = {}): PlayerState {
     name: 'Enemy',
     team: 'audit',
     heroId: 'echo',
-    hp: 550,
-    maxHp: 550,
-    mp: 280,
-    maxMp: 280,
+    integ: 550,
+    maxInteg: 550,
+    bw: 280,
+    maxBw: 280,
     plate: 3,
     ice: 15,
     ...overrides,
@@ -108,7 +108,7 @@ describe('Socket Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'q', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(300 - 80) // Level 1 Q costs 80
+      expect(updated.bw).toBe(300 - 80) // Level 1 Q costs 80
       expect(updated.cooldowns.q).toBe(12)
     })
 
@@ -132,7 +132,7 @@ describe('Socket Hero', () => {
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const enemy = makeEnemy()
       const state = makeState([player, enemy])
 
@@ -178,12 +178,12 @@ describe('Socket Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'w'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(300 - 60) // Level 1 W costs 60
+      expect(updated.bw).toBe(300 - 60) // Level 1 W costs 60
       expect(updated.cooldowns.w).toBe(16)
     })
 
     it('fails with insufficient mana', () => {
-      const player = makePlayer({ mp: 10 })
+      const player = makePlayer({ bw: 10 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'w'))
@@ -224,7 +224,7 @@ describe('Socket Hero', () => {
       const result = Effect.runSync(resolveAbility(state, 'p1', 'e', { kind: 'hero', name: 'e1' }))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(300 - 100) // Level 1 E costs 100
+      expect(updated.bw).toBe(300 - 100) // Level 1 E costs 100
       expect(updated.cooldowns.e).toBe(20)
     })
 
@@ -239,7 +239,7 @@ describe('Socket Hero', () => {
 
   describe('R: Broadcast (Global Slow)', () => {
     it('requires level 6+', () => {
-      const player = makePlayer({ level: 5, mp: 500 })
+      const player = makePlayer({ level: 5, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSyncExit(resolveAbility(state, 'p1', 'r'))
@@ -247,7 +247,7 @@ describe('Socket Hero', () => {
     })
 
     it('applies broadcast_slow to all enemies on the map', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const enemy1 = makeEnemy()
       const enemy2 = makeEnemy({ id: 'e2', name: 'Enemy2', zone: 'top-river' })
       const state = makeState([player, enemy1, enemy2])
@@ -265,7 +265,7 @@ describe('Socket Hero', () => {
     it('scales the global slow chance per rank (was a dead 1% flat)', () => {
       const slowStacksAtLevel = (level: number) => {
         const result = Effect.runSync(
-          resolveAbility(makeState([makePlayer({ level, mp: 999 }), makeEnemy()]), 'p1', 'r'),
+          resolveAbility(makeState([makePlayer({ level, bw: 999 }), makeEnemy()]), 'p1', 'r'),
         )
         return result.state.players['e1']!.buffs.find((b) => b.id === 'broadcast_slow')!.stacks
       }
@@ -275,7 +275,7 @@ describe('Socket Hero', () => {
     })
 
     it('does not affect allies', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const ally = makePlayer({ id: 'a1', name: 'Ally', team: 'chaff' })
       const enemy = makeEnemy()
       const state = makeState([player, ally, enemy])
@@ -286,13 +286,13 @@ describe('Socket Hero', () => {
     })
 
     it('deducts mana and sets cooldown', () => {
-      const player = makePlayer({ level: 6, mp: 500 })
+      const player = makePlayer({ level: 6, bw: 500 })
       const state = makeState([player])
 
       const result = Effect.runSync(resolveAbility(state, 'p1', 'r'))
 
       const updated = result.state.players['p1']!
-      expect(updated.mp).toBe(500 - 200) // R1 costs 200
+      expect(updated.bw).toBe(500 - 200) // R1 costs 200
       expect(updated.cooldowns.r).toBe(55)
     })
   })

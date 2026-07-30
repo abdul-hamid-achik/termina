@@ -81,8 +81,8 @@ export function spawnSiltDwellers(
       neutrals.push({
         id: nextNeutralId(),
         zone,
-        hp: stats.hp,
-        maxHp: stats.hp,
+        integ: stats.hp,
+        maxInteg: stats.hp,
         type: waveType,
         alive: true,
       })

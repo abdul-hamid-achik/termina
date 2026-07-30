@@ -397,7 +397,10 @@ describe('eventToLine: more orphaned events', () => {
   })
 
   it('dedups Tenant chip damage', () => {
-    const line = eventToLine(ev('tenant_damage', { damage: 120, hp: 4000, maxHp: 5000 }), ctx)!
+    const line = eventToLine(
+      ev('tenant_damage', { damage: 120, integ: 4000, maxInteg: 5000 }),
+      ctx,
+    )!
     expect(line.dedupKey).toBe('dmg:tenant')
     expect(line.dmgAmount).toBe(120)
   })
@@ -640,8 +643,8 @@ describe('narration drift guard', () => {
     cacheType: 'haste',
     wardType: 'observer',
     damageType: 'kinetic',
-    hp: 100,
-    maxHp: 200,
+    integ: 100,
+    maxInteg: 200,
     votesFor: 1,
     votesNeeded: 3,
     source: 'intercept_shell',

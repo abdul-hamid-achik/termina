@@ -84,7 +84,7 @@ export function formatTenant(
 ): TenantReadout {
   if (!tenant) return { status: 'unknown', respawnIn: 0, label: 'TENANT ?', hpPct: null }
   if (tenant.alive) {
-    const hpPct = tenant.maxHp > 0 ? Math.round((tenant.hp / tenant.maxHp) * 100) : 100
+    const hpPct = tenant.maxInteg > 0 ? Math.round((tenant.integ / tenant.maxInteg) * 100) : 100
     return { status: 'up', respawnIn: 0, label: 'TENANT up', hpPct }
   }
   const respawnIn =

@@ -19,10 +19,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     team: 'chaff',
     heroId: 'echo',
     zone: 'mid-t1-chaff',
-    hp: 500,
-    maxHp: 500,
-    mp: 200,
-    maxMp: 200,
+    integ: 500,
+    maxInteg: 500,
+    bw: 200,
+    maxBw: 200,
     level: 1,
     xp: 0,
     gold: 600,
@@ -113,56 +113,57 @@ describe('DamageCalculator', () => {
 
   describe('applyRawDamage', () => {
     it('should reduce HP', () => {
-      const player = makePlayer({ hp: 500 })
+      const player = makePlayer({ integ: 500 })
       const result = applyRawDamage(player, 100)
-      expect(result.hp).toBe(400)
+      expect(result.integ).toBe(400)
       expect(result.alive).toBe(true)
     })
 
     it('should not let HP go below 0', () => {
-      const player = makePlayer({ hp: 50 })
+      const player = makePlayer({ integ: 50 })
       const result = applyRawDamage(player, 100)
-      expect(result.hp).toBe(0)
+      expect(result.integ).toBe(0)
       expect(result.alive).toBe(false)
     })
 
     it('should mark player as dead when HP reaches 0', () => {
-      const player = makePlayer({ hp: 100 })
+      const player = makePlayer({ integ: 100 })
       const result = applyRawDamage(player, 100)
-      expect(result.hp).toBe(0)
+      expect(result.integ).toBe(0)
       expect(result.alive).toBe(false)
     })
 
     it('should handle 0 damage', () => {
-      const player = makePlayer({ hp: 500 })
+      const player = makePlayer({ integ: 500 })
       const result = applyRawDamage(player, 0)
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
       expect(result.alive).toBe(true)
     })
   })
 
   describe('applyHeal', () => {
     it('should increase HP', () => {
-      const player = makePlayer({ hp: 300, maxHp: 500 })
+      const player = makePlayer({ integ: 300, maxInteg: 500 })
       const result = applyHeal(player, 100)
-      expect(result.hp).toBe(400)
+      expect(result.integ).toBe(400)
     })
 
-    it('should not exceed maxHp', () => {
-      const player = makePlayer({ hp: 450, maxHp: 500 })
+    it('should not exceed maxInteg', () => {
+      const player = makePlayer({ integ: 450, maxInteg: 500 })
       const result = applyHeal(player, 100)
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
     })
 
     it('should handle healing at full HP', () => {
-      const player = makePlayer({ hp: 500, maxHp: 500 })
+      const player = makePlayer({ integ: 500, maxInteg: 500 })
       const result = applyHeal(player, 100)
-      expect(result.hp).toBe(500)
+      expect(result.integ).toBe(500)
     })
   })
 
   describe('getHeroStatsAtLevel', () => {
     it('should return base stats at level 1', () => {
+      // HeroBaseStats keys remain hp/mp until R4-06.
       const base = { hp: 500, mp: 200, attack: 50, plate: 3, ice: 15 }
       const growth = { hp: 50, mp: 20, attack: 5, plate: 1 }
       const result = getHeroStatsAtLevel(base, growth, 1)
@@ -178,7 +179,7 @@ describe('DamageCalculator', () => {
       expect(result.hp).toBe(700)
       expect(result.attack).toBe(70)
       expect(result.plate).toBe(7)
-      expect(result.ice).toBe(15) // no MR growth
+      expect(result.ice).toBe(15) // no ice growth
     })
   })
 

@@ -318,8 +318,15 @@ describe('GameScreen commands', () => {
     it('refuses attack neutral:<i> that names a camp outside the zone before it costs a tick', async () => {
       seedActiveGame({
         neutrals: [
-          { id: 'n0', zone: 'silt-audit-top', hp: 200, maxHp: 200, type: 'stub', alive: true },
-          { id: 'n1', zone: 'mid-river', hp: 140, maxHp: 200, type: 'warden', alive: true },
+          {
+            id: 'n0',
+            zone: 'silt-audit-top',
+            integ: 200,
+            maxInteg: 200,
+            type: 'stub',
+            alive: true,
+          },
+          { id: 'n1', zone: 'mid-river', integ: 140, maxInteg: 200, type: 'warden', alive: true },
         ],
       })
       const wrapper = mountGameScreen()
@@ -339,7 +346,7 @@ describe('GameScreen commands', () => {
     it('withholds attack tenant while he is dead, even standing in the pit', async () => {
       seedActiveGame({
         players: rosterAt('hollow'),
-        tenant: { alive: false, hp: 0, maxHp: 5000, deathTick: 200 },
+        tenant: { alive: false, integ: 0, maxInteg: 5000, deathTick: 200 },
       })
       const wrapper = mountGameScreen()
 
@@ -428,7 +435,7 @@ describe('GameScreen commands', () => {
 
       // Death cancels the walk server-side; the client must forget it too, or
       // the fountain respawn would read as reaching the abandoned destination.
-      seedWalkTick('mid-river', 241, { alive: false, hp: 0, respawnTick: 250 })
+      seedWalkTick('mid-river', 241, { alive: false, integ: 0, respawnTick: 250 })
       await wrapper.vm.$nextTick()
       seedWalkTick('chaff-fountain', 250)
       await wrapper.vm.$nextTick()
@@ -586,7 +593,7 @@ describe('GameScreen commands', () => {
     it('flashes the hero panel in team red, scaled by how hard the hit landed', async () => {
       // REGRESSION: a 30% WHITE wash — the brightest thing that ever appears on
       // a near-black palette — fired on the most frequent event in the game.
-      seedActiveGame() // fixture maxHp 620
+      seedActiveGame() // fixture maxInteg 620
       const wrapper = mountGameScreen()
       const flash = () => wrapper.find('[data-testid="hero-hit-flash"]')
       expect(flash().classes()).toContain('anim-flash-damage')

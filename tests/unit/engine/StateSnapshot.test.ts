@@ -19,7 +19,7 @@ function makeGameState(): GameState {
     neutrals: [],
     ice: initializeIce(),
     caches: [],
-    tenant: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
+    tenant: { alive: true, integ: 5000, maxInteg: 5000, deathTick: null },
     backup: null,
     events: [],
     surrenderVotes: { chaff: new Set(['p1', 'p2']), audit: new Set(['p3']) },
@@ -101,7 +101,7 @@ describe('StateSnapshot', () => {
 
   it('returns null when stored data is unparseable', async () => {
     const redis = makeMockRedis()
-    redis._store.set('gamesnap:bad', 'not-json{')
+    redis._store.set('gamesnap2:bad', 'not-json{')
     const result = await Effect.runPromise(readSnapshot(redis, 'bad'))
     expect(result).toBeNull()
   })
@@ -111,10 +111,10 @@ describe('StateSnapshot', () => {
     const state = makeGameState()
 
     await Effect.runPromise(writeSnapshot(redis, 'g1', state))
-    expect(redis._store.has('gamesnap:g1')).toBe(true)
+    expect(redis._store.has('gamesnap2:g1')).toBe(true)
 
     await Effect.runPromise(deleteSnapshot(redis, 'g1'))
-    expect(redis._store.has('gamesnap:g1')).toBe(false)
+    expect(redis._store.has('gamesnap2:g1')).toBe(false)
   })
 
   it('does not throw when redis.set fails — snapshot is best-effort', async () => {

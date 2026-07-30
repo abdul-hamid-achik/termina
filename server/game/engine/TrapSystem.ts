@@ -42,7 +42,7 @@ export function processTraps(state: GameState): { state: GameState; events: Game
       }
 
       const damaged = dealDamage(victim, trap.damage, 'code')
-      const dealt = victim.hp - damaged.hp
+      const dealt = victim.integ - damaged.integ
       const revealed = applyBuff(damaged, {
         id: 'revealed',
         stacks: 1,

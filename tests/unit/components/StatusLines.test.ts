@@ -5,8 +5,8 @@ import { buildTrace } from '~~/app/components/game/traceModel'
 import type { AncientState, TeamId } from '~~/shared/types/game'
 
 const ANCIENTS: Record<TeamId, AncientState> = {
-  chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
-  audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+  chaff: { team: 'chaff', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
+  audit: { team: 'audit', integ: 6000, maxInteg: 6000, alive: true, vulnerable: false },
 }
 
 function mountLines(over: Partial<Parameters<typeof mount>[0]> = {}) {
