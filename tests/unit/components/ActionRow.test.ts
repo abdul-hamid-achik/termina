@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ActionRow from '~~/app/components/game/ActionRow.vue'
-import type { ZoneDisplay } from '~~/app/components/game/asciiMapModel'
+import type { ZoneDisplay } from '~~/app/components/game/traceModel'
 import { computeSituationalActions, stripTargetString } from '~~/app/utils/situationalActions'
 import type { PlayerState, WaveUnitState } from '~~/shared/types/game'
 

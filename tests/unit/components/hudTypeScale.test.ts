@@ -105,10 +105,10 @@ describe('HUD type floor: no drift back below it', () => {
     'app/components/game/WarRoom.vue',
     'app/components/game/EnemyThreatSheet.vue',
     'app/components/game/AllyStatusSheet.vue',
-    'app/components/game/AsciiMap.vue',
+    'app/components/game/TraceRail.vue',
   ]
 
-  // AsciiMap's mini-overview thumbnail is the documented exemption: its column
+  // The trace rail's compact rows are the documented exemption: their column
   // headers and cells are grid geometry that has to fit the rail's width, not
   // prose. Nothing else may sit below the floor.
   const EXEMPT_LINES = /min-h-\[70px\]|font-bold uppercase tracking-wider text-text-dim|flex h-7/

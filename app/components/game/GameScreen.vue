@@ -2,7 +2,8 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { formatTickClock } from '~/utils/gameClock'
 import AnnouncementToast from '~/components/game/AnnouncementToast.vue'
-import AsciiMap from '~/components/game/AsciiMap.vue'
+import TraceRail from '~/components/game/TraceRail.vue'
+import { buildTrace } from '~/components/game/traceModel'
 import ActionRow from '~/components/game/ActionRow.vue'
 import CommandInput from '~/components/game/CommandInput.vue'
 import DamageFloat, { type DamageFloatEntry } from '~/components/game/DamageFloat.vue'
@@ -40,13 +41,13 @@ import { useAudio } from '~/composables/useAudio'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import { WAVE_UNIT_LABELS, type WaveRole } from '~~/shared/constants/world'
 import { zonesForMap } from '~~/shared/constants/maps'
-import { buildAdjacentZones } from '~/components/game/asciiMapModel'
+import { buildAdjacentZones } from '~/components/game/traceModel'
 import { HEROES } from '~~/shared/constants/heroes'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { ITEMS, ITEM_CATEGORIES, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import type { ItemCategoryId } from '~~/shared/types/items'
 import { getTalentTree } from '~~/shared/constants/talents'
-import type { IceState } from '~~/shared/types/game'
+import type { IceState, AncientState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
 import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
 import {
@@ -301,10 +302,9 @@ function handleArrowMove(direction: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'Arr
   const playerZone = ZONE_MAP[p.zone]
   if (!playerZone || !playerZone.adjacentTo.length) return
 
-  // Pick the adjacent zone in the pressed direction. The map id matters: the
-  // util resolves against the layout the player is looking at, and the subset
-  // maps prune zones this adjacency list still names.
-  const targetZone = arrowTargetZone(direction, p.zone, playerZone.adjacentTo, gameStore.mapId)
+  // Pick the adjacent zone in the pressed direction on the 1D trace: up/down
+  // are hops along your route, left/right switch routes at the same hop.
+  const targetZone = arrowTargetZone(direction, p.zone, playerZone.adjacentTo, p.team)
 
   // No blind fallback: if no adjacent zone clearly lies in the pressed
   // direction, do nothing rather than shoving the hero into an arbitrary
@@ -814,7 +814,7 @@ const iceByZone = computed(() => {
   return map
 })
 
-// Map zones for AsciiMap
+// Map zones for the trace and the move picker
 const mapZones = computed(() => {
   const playerZoneId = gameStore.player?.zone ?? ''
   const playerTeam = gameStore.player?.team ?? 'chaff'
@@ -1256,8 +1256,36 @@ function handleZoneClick(zoneId: string) {
   handleCommand(`move ${zoneId}`)
 }
 
+// The trace the rail renders — rebuilt per tick from the store (C1a).
+const FALLBACK_ANCIENT: AncientState = {
+  team: 'chaff',
+  hp: 0,
+  maxHp: 0,
+  alive: false,
+  vulnerable: false,
+}
+const traceModel = computed(() => {
+  const p = gameStore.player
+  const contacts = Object.values(gameStore.allPlayers)
+    .filter((c) => c.id !== p?.id)
+    .map((c) => ({
+      id: c.id,
+      name: (c.heroId && HEROES[c.heroId]?.name) || c.name,
+      zone: c.zone,
+      team: c.team,
+      alive: c.alive,
+      fogged: false,
+    }))
+  return buildTrace({
+    playerZone: p?.zone ?? '',
+    playerTeam: p?.team ?? 'chaff',
+    contacts,
+    ancients: ancients.value ?? { chaff: FALLBACK_ANCIENT, audit: FALLBACK_ANCIENT },
+  })
+})
+
 // ── [MOVE] picker ────────────────────────────────────────────
-// The same one-tap-to-move list the compact AsciiMap draws, reachable from the
+// The same one-tap-to-move list the trace era's picker draws, reachable from the
 // action bar (which is on screen at every breakpoint, unlike the map).
 const showMovePicker = ref(false)
 const movePickerZones = computed(() =>
@@ -1835,16 +1863,7 @@ function handleReturnToMenu() {
            what is left and scroll — rather than the map itself scrolling, which
            is what a plain max-height produced. -->
       <TerminalPanel title="TRACE" class="rail-map">
-        <AsciiMap
-          :zones="mapZones"
-          :player-zone="playerZone"
-          :ancients="ancients"
-          :map-id="gameStore.mapId"
-          :move-target="walkDestination"
-          force-mode="compact"
-          :overview-open="true"
-          @zone-click="handleZoneClick"
-        />
+        <TraceRail :trace="traceModel" />
       </TerminalPanel>
 
       <!-- Everything below the board shares the remaining height and scrolls
@@ -2081,7 +2100,7 @@ function handleReturnToMenu() {
   overflow: hidden;
 }
 
-/* The rail renders AsciiMap in compact mode, whose cells carry a FIXED h-7 —
+/* The rail renders the trace, whose rows carry their own height —
    so the board could not shrink to its track and had to be scrolled. A
    min-height override cannot shrink a fixed height; this sets `height`, and
    !important is required to beat the Tailwind utility. */

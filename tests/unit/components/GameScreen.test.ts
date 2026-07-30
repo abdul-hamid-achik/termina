@@ -130,13 +130,11 @@ const stubs = {
     ],
     template: '<div data-testid="zone-panel" />',
   },
-  // Surfaces the layout props GameScreen wires per instance (the rail map is
-  // forced compact AND ships its overview grid open; the center map is full).
-  AsciiMap: {
-    name: 'AsciiMap',
-    props: ['zones', 'playerZone', 'ancients', 'forceMode', 'mapId', 'overviewOpen', 'moveTarget'],
-    template:
-      '<div data-testid="ascii-map" :data-force-mode="forceMode" :data-overview-open="String(overviewOpen === true)" />',
+  // The rail trace (hop depth + contacts + terminals) — the board is gone.
+  TraceRail: {
+    name: 'TraceRail',
+    props: ['trace'],
+    template: '<div data-testid="trace-rail"><span data-testid="trace-current">hop</span></div>',
   },
   Scoreboard: true,
   ItemShop: true,
@@ -255,25 +253,24 @@ describe('GameScreen', () => {
         wrapper.unmount()
       })
 
-      it('classic: the rail map ships with its overview grid already open', () => {
+      it('classic: the rail carries the trace (your route as hop depth)', () => {
         localStorage.clear()
         seedActiveGame()
         const wrapper = mountGameScreen()
 
-        const map = wrapper.find('.game-grid__rail [data-testid="ascii-map"]')
-        expect(map.exists()).toBe(true)
-        expect(map.attributes('data-force-mode')).toBe('compact')
-        expect(map.attributes('data-overview-open')).toBe('true')
+        const trace = wrapper.find('.game-grid__rail [data-testid="trace-rail"]')
+        expect(trace.exists()).toBe(true)
+        expect(wrapper.find('[data-testid="trace-current"]').exists()).toBe(true)
         wrapper.unmount()
       })
 
-      it('classic: the map leads the rail, above Deck', () => {
+      it('classic: the trace leads the rail, above Deck', () => {
         localStorage.clear()
         seedActiveGame()
         const wrapper = mountGameScreen()
 
         const rail = wrapper.find('.game-grid__rail').element
-        const map = rail.querySelector('[data-testid="ascii-map"]')
+        const map = rail.querySelector('[data-testid="trace-rail"]')
         const hero = rail.querySelector('deck-stub')
         expect(map).not.toBeNull()
         expect(hero).not.toBeNull()
@@ -928,15 +925,15 @@ describe('GameScreen', () => {
       return events.map((e) => e.text)
     }
 
-    it('walks the lane forward, resolving the arrow against the drawn map', async () => {
-      // REGRESSION: resolved by zone-name substring, so a Chaff hero could not
-      // walk down mid at all — every forward neighbour is named `-chaff`. The fix
-      // needs the origin zone AND the map id, so this fails if either is dropped.
+    it('walks the lane forward, resolving the arrow against the 1D trace', async () => {
+      // The 1D model: ArrowUp is one hop FORWARD along your route (toward the
+      // enemy base), ArrowDown one hop back. No substring parsing — a Chaff
+      // hero at mid-t3 (hop 0) walks to mid-t2 on ArrowUp.
       seedAt('mid-t3-chaff')
       const wrapper = mountGameScreen()
 
       socketSpies.send.mockClear()
-      press('ArrowDown')
+      press('ArrowUp')
       await wrapper.vm.$nextTick()
 
       expect(socketSpies.send).toHaveBeenCalledWith({
@@ -1006,46 +1003,20 @@ describe('GameScreen', () => {
       return store
     }
 
-    const mapZoneIds = (wrapper: ReturnType<typeof mountGameScreen>) =>
-      (wrapper.findComponent({ name: 'AsciiMap' }).props('zones') as { id: string }[]).map(
-        (z) => z.id,
-      )
-
-    it('feeds the map the full 32 zones by default', () => {
+    it('renders the trace rail with the player route as hop depth', () => {
       seedMap('mid-river')
       const wrapper = mountGameScreen()
-      expect(mapZoneIds(wrapper)).toContain('bot-t1-audit')
-      expect(mapZoneIds(wrapper).length).toBe(32)
+      expect(wrapper.find('[data-testid="trace-rail"]').exists()).toBe(true)
+      expect(wrapper.get('[data-testid="trace-current"]').text()).toContain('hop')
       wrapper.unmount()
     })
 
-    it('drops zones the game map does not contain, killing the phantom move targets', () => {
-      // REGRESSION: built from the global ZONES regardless of mapId, so on the
-      // one-lane tutorial map the compact map's tap-to-move cards — derived from
-      // this list — offered cache-top and cache-bot, which `move` would reject.
+    it('the trace still renders on a subset map (no phantom zones in the picker)', () => {
+      // REGRESSION coverage moved to the [MOVE] picker test below — the picker
+      // only ever offers on-map adjacent zones. Here the rail simply must render.
       seedMap('mid-river', { mapId: 'one_lane' })
       const wrapper = mountGameScreen()
-      const ids = mapZoneIds(wrapper)
-      expect(ids).toHaveLength(11)
-      expect(ids).toContain('mid-river')
-      expect(ids).not.toContain('cache-top')
-      expect(ids.some((id) => id.startsWith('top-') || id.startsWith('bot-'))).toBe(false)
-      wrapper.unmount()
-    })
-
-    it('shows a live cache on the map even where the player has no vision', () => {
-      // Caches reach the client unfiltered and the War Room ticker already names
-      // the live one; gating the map marker on vision only made them disagree.
-      seedMap('mid-river', { caches: [{ zone: 'cache-bot', type: 'haste', tick: 240 }] })
-      const wrapper = mountGameScreen()
-      const zones = wrapper.findComponent({ name: 'AsciiMap' }).props('zones') as {
-        id: string
-        fogged: boolean
-        cacheType?: string
-      }[]
-      const cacheZone = zones.find((z) => z.id === 'cache-bot')!
-      expect(cacheZone.fogged).toBe(true)
-      expect(cacheZone.cacheType).toBe('haste')
+      expect(wrapper.find('[data-testid="trace-rail"]').exists()).toBe(true)
       wrapper.unmount()
     })
 
@@ -1115,9 +1086,6 @@ describe('GameScreen', () => {
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain(
         'WALKING → Coldstore T1 (CHAFF) · 3t',
       )
-      // The same destination is what the map draws its route from.
-      expect(wrapper.findComponent({ name: 'AsciiMap' }).props('moveTarget')).toBe('mid-t1-chaff')
-
       seedMap('mid-t3-chaff', { players: rosterWalking('mid-t3-chaff', 'mid-t1-chaff') })
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="walk-strip"]').text()).toContain('· 2t')
@@ -1572,7 +1540,7 @@ describe('GameScreen responsive grid', () => {
     // bar, SHOP and the talent picker.
     expect(SFC).toMatch(/\.rail-map\s*\{[^}]*overflow:\s*hidden/s)
     // ...and the board shrinks to fit. The hook must be the class the COMPACT
-    // overview renders (AsciiMap.test.ts asserts it exists in the DOM).
+    // overview renders (the trace rail test asserts it exists in the DOM).
     expect(SFC).toMatch(/\.rail-map :deep\(\.map-cell-compact\)\s*\{[^}]*height:\s*clamp\(/s)
   })
 })

@@ -1,44 +1,24 @@
-import { mapRowsFor } from '~/components/game/asciiMapModel'
+import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
+import type { TeamId } from '~~/shared/types/game'
+import { routeOfZone, hopIndexOf } from '~/components/game/traceModel'
 
 export type ArrowDirection = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight'
 
-/** [row, col] step for each arrow, in ASCII-map grid coordinates. */
-const VEC: Record<ArrowDirection, readonly [number, number]> = {
-  ArrowUp: [-1, 0],
-  ArrowDown: [1, 0],
-  ArrowLeft: [0, -1],
-  ArrowRight: [0, 1],
-}
-
-/** Grid coordinates of every zone drawn on a map's ASCII layout. */
-function zonePositions(mapId?: string): Map<string, [number, number]> {
-  const pos = new Map<string, [number, number]>()
-  mapRowsFor(mapId).forEach((row, r) =>
-    row.forEach((id, c) => {
-      if (id) pos.set(id, [r, c])
-    }),
-  )
-  return pos
-}
+const ROUTE_IDS = ['top', 'mid', 'bot'] as const
 
 /**
- * Pick the adjacent zone that lies in the pressed arrow direction, resolved
- * against the same grid the player is looking at (`mapRowsFor(mapId)`).
+ * 1D arrow movement on the trace (R3-07): with a route-as-depth rail there is
+ * no 2D grid to step through, so the arrows read as route operations —
  *
- * This used to match zone-name substrings ('rad' = up, 'audit' = down, …), which
- * agreed with the drawn map only by coincidence: over the 32 zones x 4 arrows,
- * 37 presses moved correctly, 60 silently did nothing (a Chaff hero could not
- * walk down mid — every forward neighbour is named `-rad`) and 31 moved somewhere
- * other than forward, 9 of them straight backwards.
+ *   ArrowUp    = one hop FORWARD along your route (toward the enemy base)
+ *   ArrowDown  = one hop BACK along your route (toward your own base)
+ *   ArrowLeft  = the same hop index on the route to the LEFT (top ← mid ← bot)
+ *   ArrowRight = the same hop index on the route to the RIGHT
  *
- * A candidate must lie inside a 45° cone around the pressed axis (`perp <=
- * along`), so a press can never move backwards or sideways. Among candidates,
- * straight-ahead wins before nearest: ranking by distance first would answer
- * ArrowUp from `mid-river` with the diagonal `cache-top` instead of walking the
- * lane to `mid-t1-chaff`.
- *
- * Returns null when nothing lies that way — the caller reports that rather than
- * shoving the hero into an arbitrary (often wrong) zone.
+ * Lateral moves clamp at the route edges and at the hop bounds (a river hop
+ * exists on every route; a T3 hop does too — bases/fountains/Silt have no
+ * lateral move and return null). Off-route zones return null — the caller
+ * reports "no zone that way" rather than inventing a move.
  *
  * Pure, so the mapping is unit-tested independently of GameScreen's key handling.
  */
@@ -46,32 +26,32 @@ export function arrowTargetZone(
   direction: ArrowDirection,
   from: string,
   adjacent: readonly string[],
-  mapId?: string,
+  team: TeamId,
 ): string | null {
-  const pos = zonePositions(mapId)
-  const origin = pos.get(from)
-  if (!origin) return null
+  const route = routeOfZone(from, team)
+  if (!route) return null
+  const hop = hopIndexOf(from, team)
+  if (hop < 0) return null
+  const path = LANE_ROUTES_CORE[route]![team]!
 
-  const [dr, dc] = VEC[direction]
-  let best: { id: string; along: number; perp: number } | null = null
-
-  for (const id of adjacent) {
-    const target = pos.get(id)
-    // Zones the active layout doesn't draw are unreachable by arrow: callers pass
-    // the full topology's `adjacentTo`, which on a subset map (one_lane/two_lane)
-    // still lists neighbours that map has pruned.
-    if (!target) continue
-
-    const ddr = target[0] - origin[0]
-    const ddc = target[1] - origin[1]
-    const along = ddr * dr + ddc * dc
-    const perp = Math.abs(dr !== 0 ? ddc : ddr)
-    if (along <= 0 || perp > along) continue
-
-    if (!best || perp < best.perp || (perp === best.perp && along < best.along)) {
-      best = { id, along, perp }
-    }
+  if (direction === 'ArrowUp' || direction === 'ArrowDown') {
+    const next = direction === 'ArrowUp' ? hop + 1 : hop - 1
+    if (next < 0 || next >= path.length) return null
+    const target = path[next]!
+    // The target must be legally adjacent (the route path is adjacency-ordered,
+    // but a caller on a subset map prunes neighbours).
+    return adjacent.includes(target) ? target : null
   }
 
-  return best?.id ?? null
+  // Lateral: same hop index on the neighbouring route.
+  const routeIdx = ROUTE_IDS.indexOf(route)
+  const nextRouteIdx = direction === 'ArrowLeft' ? routeIdx - 1 : routeIdx + 1
+  if (nextRouteIdx < 0 || nextRouteIdx >= ROUTE_IDS.length) return null
+  const otherPath = LANE_ROUTES_CORE[ROUTE_IDS[nextRouteIdx]!]![team]!
+  // Lateral hops exist only where BOTH routes share the same tier row —
+  // rivers cross (hop 3) and same-tier towers touch (e.g. top-t1-chaff next to
+  // mid-t1-chaff is NOT adjacent in this topology, so we only allow river).
+  const candidate = otherPath[hop]
+  if (!candidate) return null
+  return adjacent.includes(candidate) ? candidate : null
 }

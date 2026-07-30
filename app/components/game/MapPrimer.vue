@@ -1,57 +1,107 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import AsciiMap from './AsciiMap.vue'
-import { buildMapPrimerZones } from '~/utils/mapPrimer'
-import { ZONE_MAP } from '~~/shared/constants/zones'
+import TraceRail from './TraceRail.vue'
+import { buildTrace } from './traceModel'
+import { ZONE_MAP, ZONES } from '~~/shared/constants/zones'
 
 /**
- * An interactive, no-game map primer for /learn — renders the real in-game
- * AsciiMap over a static, fully-revealed topology so a newcomer can SEE the
- * zones, routes, crossings, the Silt, bases and the Tenant, and learn the movement rule
- * by feel: every zone is clickable (a real game auto-paths you there one zone
- * per tick), adjacent zones glow brighter because those arrive next tick. The
- * primer teleports the explorer to whatever they click — a real game walks.
+ * An interactive, no-game topology primer for /learn — the trace over the real
+ * zone records so a newcomer can read the routes as depth and learn the
+ * movement rule by feel: click any zone to hop there (a real game auto-paths
+ * one zone per tick). The primer teleports the explorer; a real game walks.
  */
-const zones = buildMapPrimerZones()
+
+// Every zone, browsable. Grouped by the zone record's own type.
+const BY_TYPE = computed(() => {
+  const groups: Record<string, string[]> = {}
+  for (const z of ZONES) {
+    const key =
+      z.type === 'fountain' || z.type === 'base'
+        ? 'terminals'
+        : z.type === 'river'
+          ? 'crossings & caches'
+          : z.type === 'objective'
+            ? 'objectives'
+            : z.type === 'jungle'
+              ? 'the Silt'
+              : `${z.lane ?? '?'} route`
+    ;(groups[key] ??= []).push(z.id)
+  }
+  return groups
+})
 
 // Start the explorer at the Chaff fountain (where a real game begins).
 const selected = ref('chaff-fountain')
-// Mark the explorer's current zone so AsciiMap highlights it + opens its
-// adjacent zones as clickable move targets.
-const displayZones = computed(() =>
-  zones.map((z) => (z.id === selected.value ? { ...z, playerHere: true } : z)),
+const selectedZone = computed(() => ZONE_MAP[selected.value]!)
+const selectedName = computed(() => selectedZone.value.name)
+const adjacent = computed(() => selectedZone.value.adjacentTo)
+
+const trace = computed(() =>
+  buildTrace({
+    playerZone: selected.value,
+    playerTeam: 'chaff',
+    contacts: [],
+    ancients: {
+      chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+      audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
+    },
+  }),
 )
-const selectedName = computed(() => ZONE_MAP[selected.value]?.name ?? selected.value)
-const adjacentCount = computed(() => ZONE_MAP[selected.value]?.adjacentTo.length ?? 0)
 
 function onZoneClick(id: string) {
-  // Any zone is a legal order (auto-path); the primer just jumps the explorer
-  // there so the topology can be browsed quickly.
   selected.value = id
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-2" data-testid="map-primer">
-    <!-- The full desktop grid is ~740px of cells plus header/legend chrome, so a
-         fixed 460px box showed a new player the Chaff half and cut the map in
-         two — the one surface on /learn whose entire job is "here is the board".
-         Viewport-relative with a ceiling so it still fits a laptop. -->
-    <div
-      class="h-[min(78vh,820px)] min-h-[420px] border border-border bg-bg-primary"
-      data-testid="map-primer-frame"
-    >
-      <AsciiMap
-        :zones="displayZones"
-        :player-zone="selected"
-        :ancients="null"
-        @zone-click="onZoneClick"
-      />
+    <div class="border border-border bg-bg-primary p-2" data-testid="map-primer-frame">
+      <TraceRail :trace="trace" />
     </div>
+
+    <!-- Adjacent zones: what arrives next tick — clickable to hop. -->
+    <div
+      class="flex flex-wrap gap-1"
+      data-testid="map-primer-adjacent"
+      role="group"
+      aria-label="Adjacent zones"
+    >
+      <button
+        v-for="id in adjacent"
+        :key="id"
+        type="button"
+        class="border border-chaff/50 bg-bg-secondary px-2 py-1 font-mono text-[0.72rem] text-chaff transition-all hover:border-chaff"
+        :data-testid="`primer-zone-${id}`"
+        @click="onZoneClick(id)"
+      >
+        ▸ {{ ZONE_MAP[id]?.name ?? id }}
+      </button>
+    </div>
+
+    <!-- The whole topology, grouped by zone type — every zone clickable. -->
+    <div class="flex flex-col gap-1 border-t border-border/50 pt-1.5">
+      <div v-for="(ids, group) in BY_TYPE" :key="group" class="flex flex-wrap items-baseline gap-1">
+        <span class="w-32 shrink-0 text-[0.62rem] uppercase tracking-wider text-text-muted">{{
+          group
+        }}</span>
+        <button
+          v-for="id in ids"
+          :key="id"
+          type="button"
+          class="px-1 font-mono text-[0.68rem] transition-colors"
+          :class="id === selected ? 'text-self font-bold' : 'text-text-dim hover:text-text-primary'"
+          :data-testid="`primer-all-${id}`"
+          @click="onZoneClick(id)"
+        >
+          {{ ZONE_MAP[id]?.name ?? id }}
+        </button>
+      </div>
+    </div>
+
     <p class="text-[0.75rem] text-text-dim" data-testid="map-primer-caption">
       Standing in <span class="text-self">{{ selectedName }}</span> —
-      <span class="text-chaff">{{ adjacentCount }}</span> adjacent zone{{
-        adjacentCount === 1 ? ' arrives' : 's arrive'
+      <span class="text-chaff">{{ adjacent.length }}</span> adjacent zone{{
+        adjacent.length === 1 ? ' arrives' : 's arrive'
       }}
       next tick (bright dashed). In a game you can order a move to ANY zone — your hero walks there
       one zone per tick.
