@@ -312,7 +312,7 @@ describe('systems-gaps: VISION gaps', () => {
     expect(enemy.fogged).toBe(true)
   })
 
-  it('sentry true-sight reveals invisible enemies in an ADJACENT zone (radius >= 1)', () => {
+  it('sniffer true-sight reveals invisible enemies in an ADJACENT zone (radius >= 1)', () => {
     // sentry placed in mid-river; invisible enemy stands in an ADJACENT zone.
     const zones = initializeZoneStates()
     const adjacentZone = zones['mid-river']!.id
@@ -322,7 +322,7 @@ describe('systems-gaps: VISION gaps', () => {
       team: 'chaff',
       placedTick: 0,
       expiryTick: 100,
-      type: 'sentry',
+      type: 'sniffer',
     })
 
     const state = makeGameState({

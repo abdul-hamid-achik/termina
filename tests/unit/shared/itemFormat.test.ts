@@ -121,8 +121,8 @@ describe('browseSections', () => {
   it('filters items by a case-insensitive name search across categories', () => {
     const sections = browseSections(cats, ITEMS, 'all', 'WARD')
     const ids = sections.flatMap((s) => s.items.map((i) => i.id))
-    expect(ids).toContain('observer_ward')
-    expect(ids).toContain('sentry_ward')
+    expect(ids).toContain('camtap')
+    expect(ids).toContain('sniffer')
     expect(ids).not.toContain('dagon')
   })
   it('drops sections left empty by the search and returns [] on no match', () => {

@@ -2340,6 +2340,6 @@ describe('item active targetType annotations', () => {
       .filter((i) => i.active?.targetType === 'zone')
       .map((i) => i.id)
       .sort()
-    expect(zoneTargeted).toEqual(['observer_ward', 'sentry_ward'])
+    expect(zoneTargeted).toEqual(['camtap', 'sniffer'])
   })
 })

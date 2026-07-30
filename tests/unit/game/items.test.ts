@@ -61,8 +61,8 @@ describe('Items Registry', () => {
     const consumableIds = [
       'healing_salve',
       'mana_vial',
-      'observer_ward',
-      'sentry_ward',
+      'camtap',
+      'sniffer',
       'smoke_of_deceit',
       'dust_of_appearance',
       'town_portal_scroll',

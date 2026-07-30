@@ -39,7 +39,7 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   if (!p || !ctx.isAlive) return []
   const out: SituationalAction[] = []
 
-  if (p.items.some((i) => i === 'observer_ward' || i === 'sentry_ward')) {
+  if (p.items.some((i) => i === 'camtap' || i === 'sniffer')) {
     out.push({ cmd: 'ward', label: 'WARD', aria: `Place a ward in ${p.zone}` })
   }
   if (!('error' in pickDenyTargetString(p, ctx.creeps))) {

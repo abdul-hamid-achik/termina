@@ -200,7 +200,7 @@ export interface WardState {
   team: TeamId
   placedTick: number
   expiryTick: number
-  type: 'observer' | 'sentry'
+  type: 'camtap' | 'sniffer'
 }
 
 export interface TrapState {

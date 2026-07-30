@@ -91,7 +91,7 @@ describe('Item Registry', () => {
 
     it('contains consumable items', () => {
       const consumableIds = [
-        'observer_ward',
+        'camtap',
         'smoke_of_deceit',
         'dust_of_appearance',
         'town_portal_scroll',
@@ -197,8 +197,8 @@ describe('Item Registry', () => {
       expect(item.maxStacks).toBe(3)
     })
 
-    it('observer_ward is consumable with max stacks', () => {
-      const item = getItem('observer_ward')!
+    it('camtap is consumable with max stacks', () => {
+      const item = getItem('camtap')!
       expect(item.consumable).toBe(true)
       expect(item.maxStacks).toBe(4)
     })

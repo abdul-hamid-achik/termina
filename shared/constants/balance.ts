@@ -166,10 +166,10 @@ export const MAX_ITEMS = 6
 
 // ── Wards ────────────────────────────────────────────────────────
 
-export const OBSERVER_WARD_DURATION_TICKS = 45
-export const SENTRY_WARD_DURATION_TICKS = 30
+export const CAMTAP_DURATION_TICKS = 45
+export const SNIFFER_DURATION_TICKS = 30
 export const WARD_LIMIT_PER_TEAM = 3
-export const SENTRY_WARD_TRUE_SIGHT_RADIUS = 1
+export const SNIFFER_TRUE_SIGHT_RADIUS = 1
 
 // ── Tenant ───────────────────────────────────────────────────────
 

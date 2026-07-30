@@ -156,7 +156,7 @@ export interface WardPlacedEvent {
   readonly playerId: string
   readonly zone: string
   readonly team: TeamId
-  readonly wardType: 'observer' | 'sentry'
+  readonly wardType: 'camtap' | 'sniffer'
 }
 
 export interface CachePickedEvent {

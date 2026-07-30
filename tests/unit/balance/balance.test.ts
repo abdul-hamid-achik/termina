@@ -20,8 +20,8 @@ import {
   RESPAWN_BASE_TICKS,
   RESPAWN_PER_LEVEL_TICKS,
   MAX_ITEMS,
-  OBSERVER_WARD_DURATION_TICKS,
-  SENTRY_WARD_DURATION_TICKS,
+  CAMTAP_DURATION_TICKS,
+  SNIFFER_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
   TENANT_RESPAWN_TICKS,
   TENANT_BASE_HP,
@@ -182,11 +182,11 @@ describe('Balance Constants', () => {
 
   describe('wards', () => {
     it('observer ward duration is positive', () => {
-      expect(OBSERVER_WARD_DURATION_TICKS).toBeGreaterThan(0)
+      expect(CAMTAP_DURATION_TICKS).toBeGreaterThan(0)
     })
 
     it('sentry ward duration is positive', () => {
-      expect(SENTRY_WARD_DURATION_TICKS).toBeGreaterThan(0)
+      expect(SNIFFER_DURATION_TICKS).toBeGreaterThan(0)
     })
 
     it('ward limit per team is reasonable', () => {

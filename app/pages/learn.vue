@@ -20,7 +20,7 @@ import {
   RESPAWN_PER_LEVEL_TICKS,
   RESPAWN_FREE_LEVELS,
   BUYBACK_COOLDOWN_TICKS,
-  OBSERVER_WARD_DURATION_TICKS,
+  CAMTAP_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
   CREEP_WAVE_INTERVAL_TICKS,
   MELEE_CREEP_HP,
@@ -68,7 +68,7 @@ const {
 const tickSeconds = TICK_DURATION_MS / 1000
 const actionWindowSeconds = ACTION_WINDOW_MS / 1000
 const heroCount = HERO_IDS.length
-const wardCost = ITEMS.observer_ward!.cost
+const wardCost = ITEMS.camtap!.cost
 const surrenderMinutes = (SURRENDER_MIN_TICK * tickSeconds) / 60
 const surrenderPercent = Math.round(SURRENDER_VOTE_THRESHOLD * 100)
 const buybackCooldownMinutes = (BUYBACK_COOLDOWN_TICKS * tickSeconds) / 60
@@ -367,7 +367,7 @@ const concepts = [
   {
     term: 'Wards',
     icon: 'o',
-    desc: `Observer wards (${wardCost}g) grant vision of a zone for ${OBSERVER_WARD_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
+    desc: `Observer wards (${wardCost}g) grant vision of a zone for ${CAMTAP_DURATION_TICKS} cycles. Max ${WARD_LIMIT_PER_TEAM} active per team. Place with: ward <zone>. Essential for map control.`,
   },
   {
     term: 'Tenant & Caches',

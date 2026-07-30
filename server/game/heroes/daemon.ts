@@ -162,7 +162,7 @@ function resolveW(
             team: caster.team,
             placedTick: state.tick,
             expiryTick: state.tick + 3,
-            type: 'observer',
+            type: 'camtap',
           },
         ],
       }

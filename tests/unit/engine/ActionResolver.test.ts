@@ -412,7 +412,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            items: ['observer_ward', null, null, null, null, null],
+            items: ['camtap', null, null, null, null, null],
           }),
         },
       })
@@ -433,7 +433,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            items: ['sentry_ward', null, null, null, null, null],
+            items: ['sniffer', null, null, null, null, null],
           }),
         },
       })
@@ -445,8 +445,8 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, actions))
       const wardEvents = result.events.filter((e) => e._tag === 'ward_placed')
       expect(wardEvents.length).toBe(1)
-      expect(wardEvents[0]!.wardType).toBe('sentry')
-      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('sentry')
+      expect(wardEvents[0]!.wardType).toBe('sniffer')
+      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('sniffer')
     })
 
     it('should store ward type correctly for observer wards', () => {
@@ -456,7 +456,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            items: ['observer_ward', null, null, null, null, null],
+            items: ['camtap', null, null, null, null, null],
           }),
         },
       })
@@ -466,7 +466,7 @@ describe('ActionResolver', () => {
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
-      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('observer')
+      expect(result.state.zones['mid-river']!.wards[0]!.type).toBe('camtap')
     })
 
     it('should use different durations for sentry and observer wards', () => {
@@ -476,7 +476,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            items: ['observer_ward', null, null, null, null, null],
+            items: ['camtap', null, null, null, null, null],
           }),
         },
       })
@@ -487,7 +487,7 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-river',
             team: 'chaff',
-            items: ['sentry_ward', null, null, null, null, null],
+            items: ['sniffer', null, null, null, null, null],
           }),
         },
       })
@@ -506,12 +506,12 @@ describe('ActionResolver', () => {
         ]),
       )
 
-      const observerWard = observerResult.state.zones['mid-river']!.wards[0]!
-      const sentryWard = sentryResult.state.zones['mid-river']!.wards[0]!
+      const camtapWard = observerResult.state.zones['mid-river']!.wards[0]!
+      const snifferWard = sentryResult.state.zones['mid-river']!.wards[0]!
 
-      expect(observerWard.type).toBe('observer')
-      expect(sentryWard.type).toBe('sentry')
-      expect(sentryWard.expiryTick).toBeLessThan(observerWard.expiryTick)
+      expect(camtapWard.type).toBe('camtap')
+      expect(snifferWard.type).toBe('sniffer')
+      expect(snifferWard.expiryTick).toBeLessThan(camtapWard.expiryTick)
     })
 
     it('should apply stun buff when Skull Basher bash procs', () => {

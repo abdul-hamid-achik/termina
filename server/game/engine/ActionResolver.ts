@@ -1704,9 +1704,9 @@ function resolvePostShopPhases(
     const cmd = action.command as { type: 'ward'; zone: string }
     const player = players[action.playerId]
     if (player) {
-      const wardSlot = player.items.findIndex((i) => i === 'observer_ward' || i === 'sentry_ward')
+      const wardSlot = player.items.findIndex((i) => i === 'camtap' || i === 'sniffer')
       if (wardSlot === -1) continue
-      const wardType = player.items[wardSlot] === 'sentry_ward' ? 'sentry' : 'observer'
+      const wardType = player.items[wardSlot] === 'sniffer' ? 'sniffer' : 'camtap'
       const placed = placeWard(zones, cmd.zone, player.team, state.tick, wardType)
       if (placed) {
         const newItems = [...player.items]

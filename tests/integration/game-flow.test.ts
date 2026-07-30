@@ -402,7 +402,7 @@ describe('Game Flow Integration', () => {
         'aether_lens',
         'healing_salve',
         'mana_vial',
-        'observer_ward',
+        'camtap',
       ]
       for (const id of sixItems) {
         expect(getItem(id), `fixture item ${id} must exist in the registry`).toBeTruthy()
@@ -485,7 +485,7 @@ describe('Game Flow Integration', () => {
       await arrange(sm, gameId, (s) =>
         setPlayer(s, 'ward_r0', {
           zone: 'mid-t1-audit',
-          items: ['observer_ward', null, null, null, null, null],
+          items: ['camtap', null, null, null, null, null],
         }),
       )
 
@@ -497,7 +497,7 @@ describe('Game Flow Integration', () => {
       )
       const wards = result.state.zones['mid-t2-audit']!.wards
       expect(wards).toHaveLength(1)
-      expect(wards[0]).toMatchObject({ team: 'chaff', type: 'observer' })
+      expect(wards[0]).toMatchObject({ team: 'chaff', type: 'camtap' })
       // The ward was consumed from the inventory
       expect(result.state.players['ward_r0']!.items.filter(Boolean)).toHaveLength(0)
 

@@ -4,8 +4,8 @@ import type { TargetRef } from '~~/shared/types/commands'
 import { ZONE_MAP } from '~~/shared/constants/zones'
 import {
   MAX_ITEMS,
-  OBSERVER_WARD_DURATION_TICKS,
-  SENTRY_WARD_DURATION_TICKS,
+  CAMTAP_DURATION_TICKS,
+  SNIFFER_DURATION_TICKS,
   SELL_REFUND_RATIO,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
@@ -232,11 +232,11 @@ export function useItem(
       case 'mana_vial':
         updatedState = useManaVial(state, player, slotIdx)
         break
-      case 'observer_ward':
-        updatedState = yield* usePlaceWard(state, player, slotIdx, target, 'observer')
+      case 'camtap':
+        updatedState = yield* usePlaceWard(state, player, slotIdx, target, 'camtap')
         break
-      case 'sentry_ward':
-        updatedState = yield* usePlaceWard(state, player, slotIdx, target, 'sentry')
+      case 'sniffer':
+        updatedState = yield* usePlaceWard(state, player, slotIdx, target, 'sniffer')
         break
       case 'smoke_of_deceit':
         updatedState = useSmokeOfDeceit(state, player, slotIdx)
@@ -343,15 +343,15 @@ function useManaVial(state: GameState, player: PlayerState, slot: number): GameS
 }
 
 // Handles both Observer (vision) and Sentry (vision + true-sight) wards. A sentry
-// ward's `type: 'sentry'` is what VisionCalculator reads to build its true-sight
-// zones — the only path that reveals invisible enemies. Previously sentry_ward
+// ward's `type: 'sniffer'` is what VisionCalculator reads to build its true-sight
+// zones — the only path that reveals invisible enemies. Previously sniffer
 // had no handler at all, so true-sight was unreachable.
 function usePlaceWard(
   state: GameState,
   player: PlayerState,
   slot: number,
   target: TargetRef | string | undefined,
-  wardType: 'observer' | 'sentry',
+  wardType: 'camtap' | 'sniffer',
 ): Effect.Effect<GameState, ItemError> {
   return Effect.gen(function* () {
     const itemId = `${wardType}_ward`
@@ -377,8 +377,7 @@ function usePlaceWard(
       return yield* Effect.fail(new ItemNotFoundError({ itemId }))
     }
 
-    const duration =
-      wardType === 'observer' ? OBSERVER_WARD_DURATION_TICKS : SENTRY_WARD_DURATION_TICKS
+    const duration = wardType === 'camtap' ? CAMTAP_DURATION_TICKS : SNIFFER_DURATION_TICKS
     const updated = consumeItem(player, slot)
     const updatedZones = {
       ...state.zones,

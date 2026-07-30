@@ -1711,7 +1711,7 @@ describe('BotAI - warding', () => {
     team: 'chaff' as const,
     placedTick: 0,
     expiryTick: 100,
-    type: 'observer' as const,
+    type: 'camtap' as const,
   }
   const zonesWith = (zoneId: string, count: number) => {
     const zones = initializeZoneStates()
@@ -1720,13 +1720,13 @@ describe('BotAI - warding', () => {
     return zones
   }
 
-  it('returns null without an Observer Ward in inventory', () => {
+  it('returns null without an CAMTAP in inventory', () => {
     const bot = makePlayer({ zone: 'cache-top', items: inv() })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toBeNull()
   })
 
   it('wards the strategic zone the bot is standing in', () => {
-    const bot = makePlayer({ zone: 'cache-top', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'cache-top', items: inv('camtap') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
       type: 'ward',
       zone: 'cache-top',
@@ -1734,7 +1734,7 @@ describe('BotAI - warding', () => {
   })
 
   it('wards an adjacent strategic zone (top-river → cache-top)', () => {
-    const bot = makePlayer({ zone: 'top-river', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'top-river', items: inv('camtap') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toEqual({
       type: 'ward',
       zone: 'cache-top',
@@ -1742,24 +1742,24 @@ describe('BotAI - warding', () => {
   })
 
   it('does not re-ward a strategic zone the team already covers', () => {
-    const bot = makePlayer({ zone: 'cache-top', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'cache-top', items: inv('camtap') })
     const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('cache-top', 1) })
     expect(tryPlaceWard(state, bot)).toBeNull()
   })
 
   it('holds the ward when the team is already at the ward limit', () => {
-    const bot = makePlayer({ zone: 'cache-top', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'cache-top', items: inv('camtap') })
     // 3 chaff wards parked elsewhere → at WARD_LIMIT_PER_TEAM.
     const state = makeGameState({ players: { [bot.id]: bot }, zones: zonesWith('cache-bot', 3) })
     expect(tryPlaceWard(state, bot)).toBeNull()
   })
 
   it('returns null when not in or next to a strategic zone', () => {
-    const bot = makePlayer({ zone: 'chaff-fountain', items: inv('observer_ward') })
+    const bot = makePlayer({ zone: 'chaff-fountain', items: inv('camtap') })
     expect(tryPlaceWard(makeGameState({ players: { [bot.id]: bot } }), bot)).toBeNull()
   })
 
-  it('a support bot buys an Observer Ward at the fountain', () => {
+  it('a support bot buys an CAMTAP at the fountain', () => {
     const bot = makePlayer({
       heroId: 'sentry', // role: support
       zone: 'chaff-fountain',
@@ -1768,7 +1768,7 @@ describe('BotAI - warding', () => {
     })
     expect(decideBotAction(makeGameState({ players: { [bot.id]: bot } }), bot, 'mid')).toEqual({
       type: 'buy',
-      item: 'observer_ward',
+      item: 'camtap',
     })
   })
 
@@ -1780,11 +1780,11 @@ describe('BotAI - warding', () => {
       items: inv('healing_salve', 'town_portal_scroll'),
     })
     const action = decideBotAction(makeGameState({ players: { [bot.id]: bot } }), bot, 'mid')
-    expect(action).not.toEqual({ type: 'buy', item: 'observer_ward' })
+    expect(action).not.toEqual({ type: 'buy', item: 'camtap' })
   })
 
   it('decideBotAction wires warding into a calm tick', () => {
-    const bot = makePlayer({ heroId: 'sentry', zone: 'cache-top', items: inv('observer_ward') })
+    const bot = makePlayer({ heroId: 'sentry', zone: 'cache-top', items: inv('camtap') })
     const state = makeGameState({ players: { [bot.id]: bot } })
     expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'ward', zone: 'cache-top' })
   })

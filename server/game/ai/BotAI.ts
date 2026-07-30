@@ -38,7 +38,7 @@ export const buildOrderForRole = recommendedItemsForRole
 // Defensive consumables bots keep stocked (one of each)
 const BOT_CONSUMABLES = ['healing_salve', 'town_portal_scroll']
 
-// Heroes with invisibility abilities — drives Sentry Ward purchasing.
+// Heroes with invisibility abilities — drives SNIFFER purchasing.
 // Only Cipher (W) and Daemon (passive) grant stealth; see VisionCalculator's
 // INVISIBILITY_BUFF_IDS for the authoritative buff list.
 const INVIS_HEROES = new Set(['cipher', 'daemon'])
@@ -47,8 +47,8 @@ const INVIS_HEROES = new Set(['cipher', 'daemon'])
 const SELLABLE_ITEMS = new Set([
   'healing_salve',
   'town_portal_scroll',
-  'observer_ward',
-  'sentry_ward',
+  'camtap',
+  'sniffer',
   'iron_branch',
   'boots',
   'quelling_blade',
@@ -852,15 +852,11 @@ function tryBuyItem(bot: PlayerState): Command | null {
       return { type: 'buy', item }
     }
   }
-  // Support bots keep an Observer Ward on hand for team vision (placed by
+  // Support bots keep an CAMTAP on hand for team vision (placed by
   // tryPlaceWard). Cheap, so bought before saving for the next core item.
   const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
-  if (
-    role === 'support' &&
-    !bot.items.includes('observer_ward') &&
-    bot.gold >= itemCost('observer_ward')
-  ) {
-    return { type: 'buy', item: 'observer_ward' }
+  if (role === 'support' && !bot.items.includes('camtap') && bot.gold >= itemCost('camtap')) {
+    return { type: 'buy', item: 'camtap' }
   }
   const buildOrder = buildOrderForRole(role)
   for (const itemId of buildOrder) {
@@ -891,14 +887,14 @@ function teamHasWardInZone(state: GameState, zoneId: string, team: TeamId): bool
 }
 
 /**
- * A ward-carrying bot (only supports buy Observer Wards) drops one on a
+ * A ward-carrying bot (only supports buy CAMTAPs) drops one on a
  * strategic cache/river zone it's standing in or next to — giving its team
  * (including any human ally) map vision where it matters. Mirrors placeWard's
  * gates (team under WARD_LIMIT, zone not already team-warded) and validateAction's
  * current-or-adjacent rule, so the `ward` lands instead of wasting the tick.
  */
 export function tryPlaceWard(state: GameState, bot: PlayerState): Command | null {
-  if (!bot.items.includes('observer_ward')) return null
+  if (!bot.items.includes('camtap')) return null
   if (teamWardCount(state, bot.team) >= WARD_LIMIT_PER_TEAM) return null
   for (const zone of STRATEGIC_WARD_ZONES) {
     if (zone !== bot.zone && !areAdjacent(bot.zone, zone)) continue
@@ -908,26 +904,26 @@ export function tryPlaceWard(state: GameState, bot: PlayerState): Command | null
   return null
 }
 
-/** Support bots also buy Sentry Wards for true-sight (reveals invisible enemies
+/** Support bots also buy SNIFFERs for true-sight (reveals invisible enemies
  *  in a zone). Only bought when the enemy team has invisibility heroes. */
 function tryBuySentryWard(bot: PlayerState, state: GameState): Command | null {
   if (getItemCount(bot) >= 6) return null
   const role = bot.heroId ? HEROES[bot.heroId]?.role : undefined
   if (role !== 'support') return null
-  if (bot.items.includes('sentry_ward')) return null
-  if (bot.gold < itemCost('sentry_ward')) return null
+  if (bot.items.includes('sniffer')) return null
+  if (bot.gold < itemCost('sniffer')) return null
   // Only buy sentries when the enemy has invisibility-capable heroes
   const hasInvisEnemy = Object.values(state.players).some(
     (p) => p.team !== bot.team && p.alive && p.heroId && INVIS_HEROES.has(p.heroId),
   )
   if (!hasInvisEnemy) return null
-  return { type: 'buy', item: 'sentry_ward' }
+  return { type: 'buy', item: 'sniffer' }
 }
 
 /** Place a sentry ward for true-sight in the current/adjacent zone when
  *  invisible enemies are likely nearby (enemy invis hero on the map). */
 function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null {
-  if (!bot.items.includes('sentry_ward')) return null
+  if (!bot.items.includes('sniffer')) return null
   if (teamWardCount(state, bot.team) >= WARD_LIMIT_PER_TEAM) return null
   const hasInvisEnemy = Object.values(state.players).some(
     (p) => p.team !== bot.team && p.alive && p.heroId && INVIS_HEROES.has(p.heroId),
@@ -942,7 +938,7 @@ function tryPlaceSentryWard(state: GameState, bot: PlayerState): Command | null 
   ]
   for (const zone of candidates) {
     const hasSentry = (state.zones[zone]?.wards ?? []).some(
-      (w) => w.team === bot.team && w.type === 'sentry',
+      (w) => w.team === bot.team && w.type === 'sniffer',
     )
     if (!hasSentry) return { type: 'ward', zone }
   }

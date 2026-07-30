@@ -92,7 +92,7 @@ describe('VisionCalculator', () => {
         team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
-        type: 'observer',
+        type: 'camtap',
       })
 
       const state = makeGameState({
@@ -328,7 +328,7 @@ describe('VisionCalculator', () => {
         team: 'audit',
         placedTick: 0,
         expiryTick: 100,
-        type: 'observer',
+        type: 'camtap',
       })
 
       const state = makeGameState({
@@ -349,7 +349,7 @@ describe('VisionCalculator', () => {
         team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
-        type: 'sentry',
+        type: 'sniffer',
       })
 
       const state = makeGameState({
@@ -379,7 +379,7 @@ describe('VisionCalculator', () => {
         team: 'chaff',
         placedTick: 0,
         expiryTick: 100,
-        type: 'observer',
+        type: 'camtap',
       })
 
       const state = makeGameState({

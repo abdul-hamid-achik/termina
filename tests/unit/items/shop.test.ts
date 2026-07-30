@@ -589,22 +589,22 @@ describe('Shop', () => {
     })
   })
 
-  describe('Sentry Ward (true-sight)', () => {
+  describe('SNIFFER (true-sight)', () => {
     it('places a type:"sentry" ward in the target zone (active was previously unhandled)', async () => {
       const player = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        items: ['sentry_ward', null, null, null, null, null],
+        items: ['sniffer', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'sniffer', 'mid-river'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const wards = exit.value.zones['mid-river']!.wards
         expect(wards).toHaveLength(1)
-        expect(wards[0]!.type).toBe('sentry')
+        expect(wards[0]!.type).toBe('sniffer')
         expect(wards[0]!.team).toBe('chaff')
         // the ward was consumed from the inventory
         expect(exit.value.players['player_1']!.items[0]).toBeNull()
@@ -616,7 +616,7 @@ describe('Shop', () => {
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['sentry_ward', null, null, null, null, null],
+        items: ['sniffer', null, null, null, null, null],
       })
       const invisEnemy = makePlayer({
         id: 'enemy_1',
@@ -632,7 +632,7 @@ describe('Shop', () => {
       const before = filterStateForPlayer(state, 'player_1')
       expect('fogged' in before.players['enemy_1']!).toBe(true)
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'sentry_ward', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'sniffer', 'mid-river'))
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         // After the sentry: true-sight in the zone reveals the enemy.
@@ -920,36 +920,36 @@ describe('Shop', () => {
       }
     })
 
-    it('Observer Ward places a vision ward in the target zone', async () => {
+    it('CAMTAP places a vision ward in the target zone', async () => {
       const player = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        items: ['observer_ward', null, null, null, null, null],
+        items: ['camtap', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'observer_ward', 'mid-river'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'camtap', 'mid-river'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const wards = exit.value.zones['mid-river']!.wards
         expect(wards).toHaveLength(1)
-        expect(wards[0]!.type).toBe('observer')
+        expect(wards[0]!.type).toBe('camtap')
       }
     })
 
     it('accepts a {kind:"zone"} target too (the bare-use auto-target form)', async () => {
-      // The client's `use observer_ward` auto-target resolves to a zone TargetRef
+      // The client's `use camtap` auto-target resolves to a zone TargetRef
       // (zone:<current>); usePlaceWard must read the zone from it, not just a string.
       const player = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        items: ['observer_ward', null, null, null, null, null],
+        items: ['camtap', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'observer_ward', { kind: 'zone', zone: 'mid-river' }),
+        useItem(state, 'player_1', 'camtap', { kind: 'zone', zone: 'mid-river' }),
       )
 
       expect(Exit.isSuccess(exit)).toBe(true)
@@ -1055,7 +1055,7 @@ describe('Shop', () => {
       const player = makePlayer({
         id: 'player_1',
         team: 'chaff',
-        items: ['observer_ward', null, null, null, null, null],
+        items: ['camtap', null, null, null, null, null],
       })
       // The team already has WARD_LIMIT_PER_TEAM (3) wards out across the map.
       const state = makeGameState({
@@ -1065,16 +1065,16 @@ describe('Shop', () => {
           'mid-river': makeZone('mid-river'),
           'mid-t1-chaff': makeZone('mid-t1-chaff', {
             wards: [
-              { team: 'chaff', placedTick: 1, expiryTick: 46, type: 'observer' },
-              { team: 'chaff', placedTick: 2, expiryTick: 47, type: 'observer' },
-              { team: 'chaff', placedTick: 3, expiryTick: 48, type: 'observer' },
+              { team: 'chaff', placedTick: 1, expiryTick: 46, type: 'camtap' },
+              { team: 'chaff', placedTick: 2, expiryTick: 47, type: 'camtap' },
+              { team: 'chaff', placedTick: 3, expiryTick: 48, type: 'camtap' },
             ],
           }),
         },
       })
 
       const exit = await cacheEffect(
-        useItem(state, 'player_1', 'observer_ward', { kind: 'zone', zone: 'mid-river' }),
+        useItem(state, 'player_1', 'camtap', { kind: 'zone', zone: 'mid-river' }),
       )
       // Over the cap → rejected, and no 4th ward is placed.
       expect(Exit.isFailure(exit)).toBe(true)

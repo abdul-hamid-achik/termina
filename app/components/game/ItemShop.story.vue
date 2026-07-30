@@ -32,7 +32,7 @@ const items: ShopItem[] = [
   shopItem(SAMPLE_ITEMS.bkb, 'core'),
   shopItem(SAMPLE_ITEMS.forceStaff, 'core'),
   shopItem(SAMPLE_ITEMS.blink, 'core'),
-  shopItem(SAMPLE_ITEMS.observerWard, 'consumable'),
+  shopItem(SAMPLE_ITEMS.camtapWard, 'consumable'),
 ]
 
 const ownedNone: (string | null)[] = [null, null, null, null, null, null]

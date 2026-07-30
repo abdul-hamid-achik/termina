@@ -581,15 +581,15 @@ const firewallItem: ItemDef = {
 
 // ── Consumables ─────────────────────────────────────────────────────
 
-const observerWard: ItemDef = {
-  id: 'observer_ward',
-  name: 'Observer Ward',
+const camtapWard: ItemDef = {
+  id: 'camtap',
+  name: 'CAMTAP',
   cost: 75,
   stats: {},
   consumable: true,
   maxStacks: 4,
   active: {
-    id: 'observer_ward_active',
+    id: 'camtap_active',
     name: 'Place Ward',
     description:
       'Place in a zone for vision lasting 45 cycles. Max 3 wards per team (shared with sentries).',
@@ -598,16 +598,16 @@ const observerWard: ItemDef = {
   },
 }
 
-const sentryWard: ItemDef = {
-  id: 'sentry_ward',
-  name: 'Sentry Ward',
+const snifferWard: ItemDef = {
+  id: 'sniffer',
+  name: 'SNIFFER',
   cost: 75,
   stats: {},
   consumable: true,
   maxStacks: 4,
   active: {
-    id: 'sentry_ward_active',
-    name: 'Place Sentry Ward',
+    id: 'sniffer_active',
+    name: 'Place SNIFFER',
     description:
       'Reveals invisible units in the area. Lasts 30 cycles. Max 3 wards per team (shared with observers).',
     cooldownTicks: 0,
@@ -718,8 +718,8 @@ export const ITEMS: Record<string, ItemDef> = {
   ghost_scepter: ghostScepter,
 
   // Consumables
-  observer_ward: observerWard,
-  sentry_ward: sentryWard,
+  camtap: camtapWard,
+  sniffer: snifferWard,
   smoke_of_deceit: smokeOfDeceit,
   dust_of_appearance: dustOfAppearance,
   town_portal_scroll: townPortalScroll,
@@ -822,13 +822,7 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     id: 'consumable',
     label: 'Consumables',
     blurb: 'Single-use tools — vision, healing, escape and detection. Restock often.',
-    ids: [
-      'observer_ward',
-      'sentry_ward',
-      'smoke_of_deceit',
-      'dust_of_appearance',
-      'town_portal_scroll',
-    ],
+    ids: ['camtap', 'sniffer', 'smoke_of_deceit', 'dust_of_appearance', 'town_portal_scroll'],
   },
 ]
 

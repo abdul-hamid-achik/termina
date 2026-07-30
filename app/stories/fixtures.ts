@@ -59,7 +59,7 @@ export const SAMPLE_ITEMS = {
   forceStaff: 'force_staff',
   salve: 'healing_salve',
   branch: 'iron_branch',
-  observerWard: 'observer_ward',
+  camtapWard: 'camtap',
 } as const
 
 /** A populated 6-slot inventory (real item ids + a trailing empty slot). */
@@ -241,7 +241,7 @@ export function makeRoster(): Record<string, PlayerState> {
       kills: 1,
       deaths: 2,
       assists: 9,
-      items: [SAMPLE_ITEMS.observerWard, null, null, null, null, null],
+      items: [SAMPLE_ITEMS.camtapWard, null, null, null, null, null],
     }),
     makePlayer({
       id: 'p4',

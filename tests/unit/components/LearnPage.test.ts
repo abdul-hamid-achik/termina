@@ -9,7 +9,7 @@ import {
   RESPAWN_BASE_TICKS,
   RESPAWN_PER_LEVEL_TICKS,
   RESPAWN_FREE_LEVELS,
-  OBSERVER_WARD_DURATION_TICKS,
+  CAMTAP_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
   CREEP_GOLD,
   KILL_BOUNTY_BASE,
@@ -146,8 +146,8 @@ describe('learn page', () => {
 
   it('quotes live ward and ice numbers', () => {
     const text = mountLearn().text()
-    expect(text).toContain(`(${ITEMS.observer_ward!.cost}g)`)
-    expect(text).toContain(`${OBSERVER_WARD_DURATION_TICKS} cycles`)
+    expect(text).toContain(`(${ITEMS.camtap!.cost}g)`)
+    expect(text).toContain(`${CAMTAP_DURATION_TICKS} cycles`)
     expect(text).toContain(`Max ${WARD_LIMIT_PER_TEAM} active per team`)
     expect(text).toContain(`T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP`)
     expect(text).toContain(`hit for ${ICE_ATTACK}`)

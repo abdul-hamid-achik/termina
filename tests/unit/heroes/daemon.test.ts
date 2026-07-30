@@ -314,7 +314,7 @@ describe('Daemon Hero', () => {
 
       const wards = result.state.zones['top-river']!.wards
       expect(wards).toHaveLength(1)
-      expect(wards[0]!.type).toBe('observer')
+      expect(wards[0]!.type).toBe('camtap')
       expect(wards[0]!.team).toBe(player.team)
     })
   })

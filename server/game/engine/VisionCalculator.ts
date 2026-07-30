@@ -7,7 +7,7 @@ import type {
   TeamId,
 } from '~~/shared/types/game'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { SENTRY_WARD_TRUE_SIGHT_RADIUS, NIGHT_VISION_PENALTY } from '~~/shared/constants/balance'
+import { SNIFFER_TRUE_SIGHT_RADIUS, NIGHT_VISION_PENALTY } from '~~/shared/constants/balance'
 
 export type { FoggedPlayer, PlayerVisibleState }
 
@@ -230,9 +230,9 @@ function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
 
   for (const zoneState of Object.values(state.zones)) {
     for (const ward of zoneState.wards) {
-      if (ward.team === team && ward.type === 'sentry') {
+      if (ward.team === team && ward.type === 'sniffer') {
         trueSightZones.add(zoneState.id)
-        if (SENTRY_WARD_TRUE_SIGHT_RADIUS >= 1) {
+        if (SNIFFER_TRUE_SIGHT_RADIUS >= 1) {
           const adjacent = ADJACENT_CACHE.get(zoneState.id)
           if (adjacent) {
             for (const z of adjacent) {

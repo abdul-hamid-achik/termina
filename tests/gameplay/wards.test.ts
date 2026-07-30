@@ -18,7 +18,7 @@ describe('wards', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['observer_ward', null, null, null, null, null],
+          items: ['camtap', null, null, null, null, null],
         },
       },
     }))
@@ -32,9 +32,9 @@ describe('wards', () => {
         (e) => e._tag === 'ward_placed' && e.playerId === HUMAN && e.zone === 'mid-river',
       ),
     ).toBe(true)
-    expect((await game.me()).items).not.toContain('observer_ward')
+    expect((await game.me()).items).not.toContain('camtap')
     const zoneWards = (await game.state()).zones['mid-river']?.wards ?? []
-    expect(zoneWards.some((w) => w.team === me0.team && w.type === 'observer')).toBe(true)
+    expect(zoneWards.some((w) => w.team === me0.team && w.type === 'camtap')).toBe(true)
   })
 
   it('a ward cannot be placed in a non-adjacent zone — rejected with feedback', async () => {
@@ -46,7 +46,7 @@ describe('wards', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['observer_ward', null, null, null, null, null],
+          items: ['camtap', null, null, null, null, null],
         },
       },
     }))
@@ -57,7 +57,7 @@ describe('wards', () => {
 
     // No ward placed, the charge is NOT spent, and the player is told why.
     expect((await game.state()).zones['audit-base']?.wards ?? []).toHaveLength(0)
-    expect((await game.me()).items).toContain('observer_ward') // not consumed
+    expect((await game.me()).items).toContain('camtap') // not consumed
     expect(
       game.lastRejected.some(
         (r) => r.playerId === HUMAN && r.reason.includes('current or adjacent'),

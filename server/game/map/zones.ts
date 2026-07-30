@@ -5,8 +5,8 @@ import {
   ICE_HP_T1,
   ICE_HP_T2,
   ICE_HP_T3,
-  OBSERVER_WARD_DURATION_TICKS,
-  SENTRY_WARD_DURATION_TICKS,
+  CAMTAP_DURATION_TICKS,
+  SNIFFER_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { scaledIceHp } from '~~/server/game/engine/fastGame'
@@ -74,7 +74,7 @@ export function placeWard(
   zoneId: string,
   team: TeamId,
   currentTick: number,
-  wardType: 'observer' | 'sentry' = 'observer',
+  wardType: 'camtap' | 'sniffer' = 'camtap',
 ): boolean {
   let teamWardCount = 0
   for (const zrs of Object.values(zones)) {
@@ -85,8 +85,7 @@ export function placeWard(
   const zoneState = zones[zoneId]
   if (!zoneState) return false
 
-  const duration =
-    wardType === 'observer' ? OBSERVER_WARD_DURATION_TICKS : SENTRY_WARD_DURATION_TICKS
+  const duration = wardType === 'camtap' ? CAMTAP_DURATION_TICKS : SNIFFER_DURATION_TICKS
 
   const ward: WardState = {
     team,

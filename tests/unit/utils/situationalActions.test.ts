@@ -31,8 +31,8 @@ describe('computeSituationalActions', () => {
   })
 
   it('offers WARD only when carrying a ward item', () => {
-    expect(cmds(baseCtx({ player: player({ items: ['observer_ward'] }) }))).toContain('ward')
-    expect(cmds(baseCtx({ player: player({ items: ['sentry_ward'] }) }))).toContain('ward')
+    expect(cmds(baseCtx({ player: player({ items: ['camtap'] }) }))).toContain('ward')
+    expect(cmds(baseCtx({ player: player({ items: ['sniffer'] }) }))).toContain('ward')
     expect(cmds(baseCtx({ player: player({ items: ['blink_dagger'] }) }))).not.toContain('ward')
   })
 
