@@ -41,7 +41,7 @@ export interface ItemDef {
   maxStacks?: number
 }
 
-export type ItemCategoryId = 'starter' | 'attack' | 'magic' | 'defensive' | 'utility' | 'consumable'
+export type ItemCategoryId = 'chrome' | 'deck' | 'hardware' | 'wetware' | 'street'
 
 /**
  * A thematic shop section for the items reference page. The grouping is

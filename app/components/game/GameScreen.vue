@@ -43,7 +43,8 @@ import { zonesForMap } from '~~/shared/constants/maps'
 import { buildAdjacentZones } from '~/components/game/asciiMapModel'
 import { HEROES } from '~~/shared/constants/heroes'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
-import { ITEMS, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
+import { ITEMS, ITEM_CATEGORIES, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
+import type { ItemCategoryId } from '~~/shared/types/items'
 import { getTalentTree } from '~~/shared/constants/talents'
 import type { IceState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
@@ -123,16 +124,12 @@ function unpinItem(itemId: string) {
   savePins()
 }
 
-// Categorize items for the shop
-function getItemCategory(item: {
-  id: string
-  cost: number
-  consumable: boolean
-}): 'starter' | 'core' | 'consumable' {
-  if (item.consumable) return 'consumable'
-  if (item.cost <= 500) return 'starter'
-  return 'core'
-}
+// Item → category lookup against the real five-class partition (ITEM_CATEGORIES)
+// — the shop must not invent its own grouping (the old cost/consumable ladder
+// said nothing about what an item IS, and /items already reads this map).
+const ITEM_CATEGORY_BY_ID: ReadonlyMap<string, ItemCategoryId> = new Map(
+  ITEM_CATEGORIES.flatMap((c) => c.ids.map((id) => [id, c.id] as const)),
+)
 
 // Format items from registry as ShopItem[] for ItemShop component
 const shopItems = computed(() => {
@@ -141,7 +138,7 @@ const shopItems = computed(() => {
     name: item.name,
     cost: item.cost,
     def: item,
-    category: getItemCategory(item),
+    category: ITEM_CATEGORY_BY_ID.get(item.id) ?? 'street',
   }))
 })
 

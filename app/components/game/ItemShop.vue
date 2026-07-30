@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { ItemDef } from '~~/shared/types/items'
+import type { ItemDef, ItemCategoryId } from '~~/shared/types/items'
+import { ITEM_CATEGORIES } from '~~/shared/constants/items'
 
-type Category = 'all' | 'starter' | 'core' | 'consumable'
+type Category = ItemCategoryId | 'all'
 type Tab = Category | 'rec'
 
 interface ShopItem {
@@ -10,7 +11,7 @@ interface ShopItem {
   name: string
   cost: number
   def: ItemDef
-  category: Category
+  category: ItemCategoryId
 }
 
 const props = defineProps<{
@@ -41,9 +42,7 @@ function isRecommended(itemId: string): boolean {
 const TABS = computed<{ key: Tab; label: string }[]>(() => [
   ...(recommended.value.length ? [{ key: 'rec' as Tab, label: '★ FOR YOU' }] : []),
   { key: 'all', label: 'ALL' },
-  { key: 'starter', label: 'STARTER' },
-  { key: 'core', label: 'CORE' },
-  { key: 'consumable', label: 'CONSUMABLE' },
+  ...ITEM_CATEGORIES.map((c) => ({ key: c.id as Tab, label: c.label.toUpperCase() })),
 ])
 
 const filtered = computed(() => {

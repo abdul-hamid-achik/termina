@@ -9,7 +9,8 @@ import { ITEMS } from '~~/shared/constants/items'
  * detail rendering (formatStats + the active-cooldown branch).
  */
 
-type Category = 'all' | 'starter' | 'core' | 'consumable'
+import type { ItemCategoryId } from '~~/shared/types/items'
+type Category = ItemCategoryId | 'all'
 
 function shopItem(id: string, category: Category) {
   const def = ITEMS[id]!
@@ -19,10 +20,10 @@ function shopItem(id: string, category: Category) {
 // A mixed catalog spanning every category so tab filtering is observable.
 function catalog() {
   return [
-    shopItem('iron_branch', 'starter'), // has stats
-    shopItem('healing_salve', 'consumable'), // active, 0-tick CD
-    shopItem('ring_of_health', 'core'), // has a passive
-    shopItem('silver_edge', 'core'), // active with a real cooldown
+    shopItem('iron_branch', 'street'), // has stats
+    shopItem('healing_salve', 'street'), // active, 0-tick CD
+    shopItem('ring_of_health', 'street'), // has a passive
+    shopItem('silver_edge', 'hardware'), // active with a real cooldown
   ]
 }
 
@@ -46,12 +47,12 @@ describe('ItemShop category tabs', () => {
 
   it('filters down to a single category when its tab is selected', async () => {
     const w = mountShop()
-    const coreTab = w.findAll('button').find((b) => b.text() === 'CORE')!
-    await coreTab.trigger('click')
+    const hardwareTab = w.findAll('button').find((b) => b.text() === 'HARDWARE')!
+    await hardwareTab.trigger('click')
 
     const ids = w.findAll('[data-testid^="shop-item-"]').map((el) => el.attributes('data-testid'))
-    expect(ids).toContain('shop-item-ring_of_health')
     expect(ids).toContain('shop-item-silver_edge')
+    expect(ids).not.toContain('shop-item-ring_of_health')
     expect(ids).not.toContain('shop-item-iron_branch')
     expect(ids).not.toContain('shop-item-healing_salve')
   })

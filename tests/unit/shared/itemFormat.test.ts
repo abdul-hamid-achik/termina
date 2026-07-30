@@ -114,9 +114,9 @@ describe('browseSections', () => {
     }
   })
   it('narrows to a single section when a category is selected', () => {
-    const sections = browseSections(cats, ITEMS, 'attack', '')
+    const sections = browseSections(cats, ITEMS, 'hardware', '')
     expect(sections).toHaveLength(1)
-    expect(sections[0]!.id).toBe('attack')
+    expect(sections[0]!.id).toBe('hardware')
   })
   it('filters items by a case-insensitive name search across categories', () => {
     const byName = (q: string) =>

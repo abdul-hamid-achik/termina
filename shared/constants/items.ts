@@ -1,6 +1,31 @@
 import type { ItemDef, ItemCategory } from '~~/shared/types/items'
 
-// ── Starter Items (cost <= 500) ─────────────────────────────────────
+// ── THE NAMING RULE (every item id/name obeys it) ───────────────────
+// 1. Vocabulary comes from computing, telecoms or street cargo — the
+//    register already set by null_pointer / stack_overflow / segfault_blade /
+//    garbage_collector. No fantasy bestiary, no Dota names.
+// 2. Two tokens maximum: <QUALIFIER> <NOUN>. The id is the snake_case of the
+//    display name. No possessives, no apostrophes, no proper nouns.
+// 3. The NOUN comes from the category's object set:
+//      chrome:   plate / weave / lattice / shell / mesh
+//      hardware: edge / driver / hammer / coil / rig
+//      deck:     routine / program / lens / stack / shim
+//      wetware:  shunt / splice / reflex / patch
+//      street:   patch / tab / can / token / kit
+// 4. The QUALIFIER names the effect in fiction.
+// 5. HARD CONSTRAINT — no item id may contain any of the 18 hero ids as a
+//    whole token (this is why `firewall_item` existed; R1-20 deletes it).
+// 6. null_pointer, stack_overflow, segfault_blade and garbage_collector keep
+//    their ids — they were already on-register before the rule existed.
+//
+// The five classes:
+//   STREET   = consumables and cheap fence goods (opening buys, wards, cans)
+//   CHROME   = implanted survivability — HP/defense/resist, mitigation
+//   HARDWARE = carried weapons and attachments — attack-stat, on-attack procs
+//   DECK     = software — magical damage, spell amp, cooldown manipulation
+//   WETWARE  = neural and reflex — mobility, control, disables, tempo
+
+// ── Street (cost <= 500 + consumables) ──────────────────────────────
 
 const healingSalve: ItemDef = {
   id: 'healing_salve',
@@ -740,9 +765,10 @@ export function getItem(id: string): ItemDef | undefined {
  */
 export const ITEM_CATEGORIES: ItemCategory[] = [
   {
-    id: 'starter',
-    label: 'Starter',
-    blurb: 'Cheap opening buys — lane sustain, regen and modest all-round stats to survive early.',
+    id: 'street',
+    label: 'Street',
+    blurb:
+      'Consumables and cheap fence goods — opening buys, wards, cans and tokens. Restock often.',
     ids: [
       'healing_salve',
       'mana_vial',
@@ -754,13 +780,18 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
       'chainmail',
       'cloak',
       'boots_of_speed',
+      'camtap',
+      'sniffer',
+      'smoke_of_deceit',
+      'dust_of_appearance',
+      'town_portal_scroll',
     ],
   },
   {
-    id: 'attack',
-    label: 'Attack',
+    id: 'hardware',
+    label: 'Hardware',
     blurb:
-      'Raw physical power — attack damage, crits and armor shred for carries and right-clickers.',
+      'Carried weapons and attachments — attack damage, crits and armor shred for right-clickers.',
     ids: [
       'desolator',
       'crystalys',
@@ -775,9 +806,9 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     ],
   },
   {
-    id: 'magic',
-    label: 'Magic',
-    blurb: 'Spell power and burst — amplify magical damage or nuke a target outright.',
+    id: 'deck',
+    label: 'Deck',
+    blurb: 'Software — amplify magical damage, manipulate cooldowns, or nuke a target outright.',
     ids: [
       'mystical_staff',
       'veil_of_discord',
@@ -789,9 +820,9 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     ],
   },
   {
-    id: 'defensive',
-    label: 'Defensive',
-    blurb: 'Staying alive — health, armor, magic resist and panic-button saves.',
+    id: 'chrome',
+    label: 'Chrome',
+    blurb: 'Implanted survivability — health, armor, resist and panic-button mitigation.',
     ids: [
       'vanguard',
       'linkens_sphere',
@@ -805,9 +836,9 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     ],
   },
   {
-    id: 'utility',
-    label: 'Utility',
-    blurb: 'Mobility, control and tempo — blinks, disables and cooldown resets that swing fights.',
+    id: 'wetware',
+    label: 'Wetware',
+    blurb: 'Neural and reflex — mobility, control, disables and tempo that swing fights.',
     ids: [
       'blink_module',
       'force_staff',
@@ -817,12 +848,6 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
       'refresher_orb',
       'ghost_scepter',
     ],
-  },
-  {
-    id: 'consumable',
-    label: 'Consumables',
-    blurb: 'Single-use tools — vision, healing, escape and detection. Restock often.',
-    ids: ['camtap', 'sniffer', 'smoke_of_deceit', 'dust_of_appearance', 'town_portal_scroll'],
   },
 ]
 

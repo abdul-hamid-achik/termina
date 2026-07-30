@@ -10,14 +10,14 @@ function shopItems() {
       name: ITEMS.healing_salve!.name,
       cost: ITEMS.healing_salve!.cost,
       def: ITEMS.healing_salve!,
-      category: 'starter' as const,
+      category: 'street' as const,
     },
     {
       id: 'iron_branch',
       name: ITEMS.iron_branch!.name,
       cost: ITEMS.iron_branch!.cost,
       def: ITEMS.iron_branch!,
-      category: 'starter' as const,
+      category: 'street' as const,
     },
   ]
 }

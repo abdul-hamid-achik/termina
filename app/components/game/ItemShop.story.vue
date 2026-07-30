@@ -1,38 +1,36 @@
 <script setup lang="ts">
-import type { ItemDef } from '~~/shared/types/items'
+import type { ItemDef, ItemCategoryId } from '~~/shared/types/items'
 import { ITEMS } from '~~/shared/constants/items'
 import { SAMPLE_ITEMS } from '~/stories/fixtures'
 import ItemShop from './ItemShop.vue'
-
-type Category = 'starter' | 'core' | 'consumable'
 
 interface ShopItem {
   id: string
   name: string
   cost: number
   def: ItemDef
-  category: Category
+  category: ItemCategoryId
 }
 
 /** Build a ShopItem from a real item id (the def carries name/cost/stats). */
-function shopItem(id: string, category: Category): ShopItem {
+function shopItem(id: string, category: ItemCategoryId): ShopItem {
   const def = ITEMS[id]!
   return { id, name: def.name, cost: def.cost, def, category }
 }
 
-// A realistic shop spread: cheap starters, expensive core items, consumables —
+// A realistic shop spread: cheap street goods, big hardware, consumables —
 // mixing stat-only, active, and passive defs so the cards show every facet.
 const items: ShopItem[] = [
-  shopItem(SAMPLE_ITEMS.branch, 'starter'),
-  shopItem(SAMPLE_ITEMS.salve, 'consumable'),
-  shopItem(SAMPLE_ITEMS.blades, 'starter'),
-  shopItem(SAMPLE_ITEMS.treads, 'core'),
-  shopItem(SAMPLE_ITEMS.desolator, 'core'),
-  shopItem(SAMPLE_ITEMS.daedalus, 'core'),
-  shopItem(SAMPLE_ITEMS.bkb, 'core'),
-  shopItem(SAMPLE_ITEMS.forceStaff, 'core'),
-  shopItem(SAMPLE_ITEMS.blink, 'core'),
-  shopItem(SAMPLE_ITEMS.camtapWard, 'consumable'),
+  shopItem(SAMPLE_ITEMS.branch, 'street'),
+  shopItem(SAMPLE_ITEMS.salve, 'street'),
+  shopItem(SAMPLE_ITEMS.blades, 'street'),
+  shopItem(SAMPLE_ITEMS.treads, 'street'),
+  shopItem(SAMPLE_ITEMS.desolator, 'hardware'),
+  shopItem(SAMPLE_ITEMS.daedalus, 'hardware'),
+  shopItem(SAMPLE_ITEMS.bkb, 'chrome'),
+  shopItem(SAMPLE_ITEMS.forceStaff, 'wetware'),
+  shopItem(SAMPLE_ITEMS.blink, 'wetware'),
+  shopItem(SAMPLE_ITEMS.camtapWard, 'street'),
 ]
 
 const ownedNone: (string | null)[] = [null, null, null, null, null, null]
