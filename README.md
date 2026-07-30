@@ -19,7 +19,7 @@ every tick is a decision.
 - **Talent Trees** - Binary choices at levels 10/15/20/25 for build diversity
 
 ### Strategic Mechanics
-- **Deny System** - Kill allied creeps below 50% HP to deny gold/XP
+- **Burn System** - Burn allied waves below 50% HP to deny the enemy scrip/XP
 - **Buyback** - Instant respawn for gold (100 + 25×level)
 - **Surrender Voting** - 60% majority required after 15 minutes
 - **Vision Game** - Ward placement + missing enemy detection
@@ -140,9 +140,9 @@ move <zone>          # Move to adjacent zone
 
 **Combat:**
 ```
-attack <target>      # Attack hero/creep/tower
+attack <target>      # Attack hero/wave/ice
 cast <q|w|e|r>       # Use ability
-deny <creep_index>   # Deny allied creep (<50% HP)
+burn <wave_index>   # Burn allied wave (<50% HP)
 ```
 
 **Items:**
@@ -170,9 +170,9 @@ chat team <message>  # Send to team only
 
 1. **Queue** - Join ranked_5v5, quick_3v3, or 1v1
 2. **Draft** - Alternating hero picks (snake draft)
-3. **Laning** - Last-hit creeps, deny, harass
-4. **Mid Game** - Team fights, objectives, towers
-5. **Late Game** - Roshan, mega creeps, base race
+3. **Laning** - Last-hit waves, burn, harass
+4. **Mid Game** - Team fights, objectives, ICE
+5. **Late Game** - the Tenant, stacked waves, base race
 
 ---
 
@@ -201,10 +201,10 @@ Level 25: Double Echo (Q casts twice, 25%) OR +250 Max HP
 
 ### Deny Mechanics
 
-- **When**: Allied creep below 50% HP
+- **When**: Allied wave below 50% HP
 - **Reward**: 50% gold + 50% XP
 - **Prevention**: Enemy gets nothing
-- **Command**: `deny <creep_index>`
+- **Command**: `burn <wave_index>`
 
 ### Buyback System
 

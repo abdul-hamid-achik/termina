@@ -40,6 +40,21 @@ Operator portraits are inked, rendered monochrome green.
 
 English only. If a world fact is missing, raise it — do not fill it in.
 
+## Lexicon (single source: shared/constants/world.ts)
+
+Player-facing names live in ONE module so copy cannot drift. TeamId is
+'chaff' | 'audit' (FACTION_META: CHAFF/AUDIT). Structures are ICE (T3 is
+BLACK ICE). Objectives: THE TENANT (its pit is the Hollow), BACKUP (the
+drop), caches (five buff types), CAMTAP/SNIFFER (vision), HARDEN (team ICE
+invulnerability), BURN (the last-hit-your-own wave verb), SCRIP (currency).
+The Silt holds five camps: STUB/WATCHDOG/WARDEN/ORPHAN/ZOMBIE. Wave
+units are asymmetric by crew — chaff fields mule/script/picket, audit
+fields guard/sweeper/auditor (WAVE_UNIT_LABELS keyed by team+role). Items
+partition into five cyberware classes: STREET / CHROME / HARDWARE / DECK /
+WETWARE (naming rule at the top of shared/constants/items.ts). The pickup
+verb is `grab` (cache is a hero handle). Engine modules: IceAI.ts,
+TenantAI.ts, CacheAI.ts, WaveAI.ts.
+
 ## Commands
 
 ```bash
@@ -111,8 +126,8 @@ Each tick (4s) runs this pipeline in `processTick`:
 2. Drain action queue (1 action per player per tick)
 3. Validate actions via `validateAction()` — rejected ones return with reason
 4. Resolve in phases: instant abilities → movement → attacks/casts → passives/cooldowns → buy/sell
-5. CreepAI + TowerAI
-6. Spawn waves, distribute gold, handle respawns, fountain healing, deaths, level ups
+5. WaveAI + IceAI
+6. Spawn waves, distribute scrip, handle respawns, fountain healing, deaths, level ups
 7. Check win condition
 8. Broadcast vision-filtered state to each player via `filterStateForPlayer()`
 
@@ -146,7 +161,7 @@ Zones are defined in `shared/constants/zones.ts` with `adjacentTo` arrays. Movem
 
 ### Vision System
 
-`VisionCalculator.filterStateForPlayer()` computes visible zones per player (own zone + adjacent, wards, towers, allies). Enemies outside vision are returned as `FoggedPlayer` (minimal info only).
+`VisionCalculator.filterStateForPlayer()` computes visible zones per player (own zone + adjacent, camtaps, ICE, allies). Enemies outside vision are returned as `FoggedPlayer` (minimal info only).
 
 ## Deployment
 
@@ -169,7 +184,7 @@ Production is a Vercel + DigitalOcean split (full runbook: `infra/README.md`):
 - **Imports**: server code uses the `~~/server/...` root alias, not `../../` (`~~` → repo root, `~`/`@` → `app/`); resolves in Nitro, vitest, and tsc
 - **No `scripts/` folder / no orchestration scripts** (owner preference): there is NO `scripts/` directory — do NOT create one or add `*.mjs|*.ts` glue for builds/tests/servers. Compose behavior from `package.json` scripts (chained with `&&`, env inline) + config + a small idiomatic dev dep. E.g. "boot a server → wait → test → tear down" is `start-server-and-test 'bun run serve:test' <url> 'bun run …'`, NOT a custom runner — this is exactly why the old `scripts/e2e.mjs` → cairntrace `webServer` and why there is no `test-all.mjs`. The one standalone manual *tool* (a bot-match balance simulator) lives in the code as `server/game/dev/simulate-game.ts` — run it via `bun run sim [matches] [maxTicks]` (or directly with `bun server/game/dev/simulate-game.ts …`). With `matches>1` it prints a BALANCE SUMMARY (side win-rate + 2σ significance, length spread, per-hero win-rate with a `*` for win-rates beyond small-sample noise) via the unit-tested `server/game/dev/simStats.ts`. NOT in a `scripts/` folder.
 - **Testing**: Vitest 4 for unit tests — projects live in `test.projects` in `vitest.config.ts` (`bun run test:unit|components|integration`), `vi.fn()` mocks, `describe/it`; hitspec for API tests (`.http` in `collections/`); Cairntrace BDD for E2E browser tests (`tests/e2e/`, YAML flows that drive the real app — register/log in through the UI, navigate, assert; NO test hooks. Game/engine truth lives in `bun run test:gameplay`. See the **End-to-end** section of `README.md`)
-- **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind 4 utilities extend them (e.g., `text-radiant`, `bg-bg-primary`, `text-dire`). Tailwind 4 is wired via `@tailwindcss/vite` + an `@config` directive in terminal.css that keeps the v3-style `tailwind.config.ts` theme
+- **CSS theming**: Custom properties in `:root` (terminal.css), Tailwind 4 utilities extend them (e.g., `text-chaff`, `bg-bg-primary`, `text-audit`). Tailwind 4 is wired via `@tailwindcss/vite` + an `@config` directive in terminal.css that keeps the v3-style `tailwind.config.ts` theme
 
 ## Important Gotchas
 
@@ -206,19 +221,19 @@ Expert in the server-side game loop and combat systems.
 - `DamageCalculator.ts` — physical/magical/pure damage formulas
 - `CombatResolver.ts` — `resolvePhysicalHit` unified NPC→hero damage path (wraps `_base.dealDamage`); `computeBladeMailReflect` single reflect formula
 - `StateDelta.ts` — per-player tick_state delta compression (reference-equality field diff)
-- `GoldDistributor.ts` — passive gold, kill bounties, last-hit rewards
-- `CreepAI.ts`, `TowerAI.ts` — NPC behavior each tick
-- `NeutralAI.ts` — neutral creep spawning in jungle, attacking heroes
-- `RoshanAI.ts` — Roshan attacks, death handling, aegis drops
-- `RuneAI.ts` — rune spawning, buffs, pickup
+- `GoldDistributor.ts` — passive scrip, kill bounties, last-hit rewards
+- `WaveAI.ts`, `IceAI.ts` — NPC behavior each tick
+- `NeutralAI.ts` — Silt dweller spawning, attacking heroes
+- `TenantAI.ts` — the Tenant's attacks, death handling, backup drops
+- `CacheAI.ts` — cache spawning, buffs, pickup
 
 **Mechanics**:
 
-- Glyph/Fortification — team-wide tower invulnerability (5 tick duration, 300 tick cooldown). Command: `glyph`. Key files: ActionResolver.ts (glyph phase), GameLoop.ts (expiration)
+- Harden/Fortification — team-wide ICE invulnerability (5 cycle duration, 300 cycle cooldown). Command: `harden`. Key files: ActionResolver.ts (harden phase), GameLoop.ts (expiration)
 - Day/Night Cycle — time-based vision system (Day: 300 ticks, Night: 240 ticks, night vision penalty: -1 zone). Key files: GameLoop.ts (time progression), VisionCalculator.ts (penalty)
 - TP Scroll Channeling — teleport with interrupt (2 tick channel, cancels on damage/movement). Key files: \_base.ts (channeling completion), ActionResolver.ts (cancellation)
-- Sentry Wards — true sight mechanic, reveals invisible units (75g cost, 240 tick duration). Key files: VisionCalculator.ts (true sight), zones.ts (ward types)
-- Aegis Resurrection — instant revive at death location with full HP/MP. Key files: GameLoop.ts (aegis check in handleDeaths)
+- Sniffers — true sight mechanic, reveals invisible units (75sc cost, 240 cycle duration). Key files: VisionCalculator.ts (true sight), zones.ts (ward types)
+- Backup Resurrection — instant revive at death location with full HP/MP. Key files: GameLoop.ts (backup check in handleDeaths)
 
 **Conventions**: Immutable state updates via spread. All engine functions return `Effect.Effect<...>`. Game state is `Record<string, PlayerState>` keyed by playerId. One action per player per tick.
 
@@ -236,7 +251,7 @@ Expert in hero definitions, abilities, and game balance.
 
 **Balance ranges**: HP 400–800, MP 150–400, attack 30–70, defense 2–6 (tanks up to 8), magicResist 12–25. Abilities have cooldownTicks, manaCost, effects array with damage/heal/stun/silence/root/slow/shield/dot/buff/debuff/teleport/reveal/taunt/fear/execute types.
 
-**Mechanics constants** (balance.ts): GLYPH_DURATION_TICKS = 5, GLYPH_COOLDOWN_TICKS = 300, DAY_DURATION_TICKS = 300, NIGHT_DURATION_TICKS = 240, NIGHT_VISION_PENALTY = 1, SENTRY_WARD_DURATION_TICKS = 30.
+**Mechanics constants** (balance.ts): HARDEN_DURATION_TICKS = 5, HARDEN_COOLDOWN_TICKS = 300, DAY_DURATION_TICKS = 300, NIGHT_DURATION_TICKS = 240, NIGHT_VISION_PENALTY = 1, SNIFFER_DURATION_TICKS = 30.
 
 ### frontend
 
@@ -256,7 +271,7 @@ Expert in the Vue 3 game UI, stores, and WebSocket integration.
 - `components/game/AsciiMap.vue` — zone grid with player/ally/enemy markers
 - `pages/lobby.vue` — matchmaking + hero picker + polling fallback
 
-**Conventions**: Terminal-themed UI. CSS vars in `assets/css/terminal.css`. Tailwind 4 (wired via `@tailwindcss/vite` + an `@config` directive that keeps the v3-style `tailwind.config.ts` theme) utility classes using custom colors (`text-radiant`, `text-dire`, `text-self`, `bg-bg-primary`). `<ClientOnly>` required around auth-conditional rendering.
+**Conventions**: Terminal-themed UI. CSS vars in `assets/css/terminal.css`. Tailwind 4 (wired via `@tailwindcss/vite` + an `@config` directive that keeps the v3-style `tailwind.config.ts` theme) utility classes using custom colors (`text-chaff`, `text-audit`, `text-self`, `bg-bg-primary`). `<ClientOnly>` required around auth-conditional rendering.
 
 ### matchmaking
 
@@ -324,7 +339,7 @@ Expert in NPC bot behavior and lane assignment.
 
 ### map-systems
 
-Expert in zone topology, creep spawning, towers, and wards.
+Expert in zone topology, wave spawning, ICE, and vision (camtaps/sniffers).
 
 **Owns**: `server/game/map/`, `shared/constants/zones.ts`, `shared/types/map.ts`
 
@@ -335,4 +350,4 @@ Expert in zone topology, creep spawning, towers, and wards.
 - `spawner.ts` — `spawnCreepWaves` (every 8 ticks: 3 melee + 1 ranged, siege every 5th wave), `spawnRunes` (every 60 ticks), `spawnNeutralCreeps` (every 60 ticks)
 - `zones.ts` — `initializeZoneStates`, `initializeTowers`, `placeWard`, `removeExpiredWards`
 
-**Map layout**: 3 lanes (top/mid/bot), 4 jungle zones, 2 rune spots, Roshan pit, 2 bases + fountains. Each lane has 3 tower tiers per side with a river crossing in between.
+**Map layout**: 3 routes (top/mid/bot), 4 Silt zones, 2 cache spots, the Hollow, 2 bases + fountains. Each route has 3 ICE tiers per side with a crossing in between.
