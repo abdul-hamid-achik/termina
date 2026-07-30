@@ -137,7 +137,7 @@ describe('combatLog helpers', () => {
       expect(isStructureTarget('ancient_chaff')).toBe(true)
     })
 
-    it('does not flag heroes, creeps, or non-strings', () => {
+    it('does not flag heroes, waves, or non-strings', () => {
       expect(isStructureTarget('github_1')).toBe(false)
       expect(isStructureTarget('creep_3')).toBe(false)
       expect(isStructureTarget(undefined)).toBe(false)
@@ -327,28 +327,28 @@ describe('CombatLog filters + density', () => {
         events: [
           {
             tick: 1,
-            text: 'Kernel hit a creep for 60',
+            text: 'Kernel hit a wave for 60',
             type: 'damage',
             salience: 'ally',
             farmKind: 'hit',
           },
           {
             tick: 1,
-            text: 'Ping hit a creep for 55',
+            text: 'Ping hit a wave for 55',
             type: 'damage',
             salience: 'ally',
             farmKind: 'hit',
           },
           {
             tick: 1,
-            text: 'Kernel last-hit a melee creep (+40g)',
+            text: 'Kernel last-hit a line wave (+40g)',
             type: 'gold',
             salience: 'ally',
             farmKind: 'lasthit',
           },
           {
             tick: 1,
-            text: 'You last-hit a melee creep (+38g)',
+            text: 'You last-hit a line wave (+38g)',
             type: 'gold',
             salience: 'mine-out',
             farmKind: 'lasthit',
@@ -359,10 +359,10 @@ describe('CombatLog filters + density', () => {
       },
     })
     // Raw farm lines are folded away…
-    expect(wrapper.text()).not.toContain('Kernel hit a creep')
-    expect(wrapper.text()).not.toContain('Ping hit a creep')
+    expect(wrapper.text()).not.toContain('Kernel hit a wave')
+    expect(wrapper.text()).not.toContain('Ping hit a wave')
     // …into one dim summary carrying my gold + the team tally…
-    expect(wrapper.text()).toContain('farm: you +38g (1 last-hit) · team 1 creep')
+    expect(wrapper.text()).toContain('farm: you +38g (1 last-hit) · team 1 wave')
     // …while the kill stays loud.
     expect(wrapper.text()).toContain('a kill happened')
   })
@@ -373,7 +373,7 @@ describe('CombatLog filters + density', () => {
         events: [
           {
             tick: 1,
-            text: 'Kernel hit a creep for 60',
+            text: 'Kernel hit a wave for 60',
             type: 'damage',
             salience: 'ally',
             farmKind: 'hit',
@@ -383,7 +383,7 @@ describe('CombatLog filters + density', () => {
       },
     })
     await wrapper.get('[data-testid="log-density-toggle"]').trigger('click') // story -> verbose
-    expect(wrapper.text()).toContain('Kernel hit a creep for 60')
+    expect(wrapper.text()).toContain('Kernel hit a wave for 60')
     expect(wrapper.text()).toContain('a kill happened')
     expect(wrapper.text()).not.toContain('farm:')
   })
@@ -508,7 +508,7 @@ describe('CombatLog semantic hierarchy', () => {
 
   it('ranks a headline above a notable event above ordinary chip', () => {
     // Nine line types used to render at two weights, so a hero death, a
-    // level-up and a creep's chip damage all read at the same emphasis.
+    // level-up and a wave's chip damage all read at the same emphasis.
     expect(lineClasses({ tick: 1, text: 'a death', type: 'kill' })).toContain('font-bold')
     const objective = lineClasses({ tick: 1, text: 'reached level 7', type: 'objective' })
     expect(objective).toContain('font-semibold')

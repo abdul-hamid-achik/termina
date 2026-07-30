@@ -84,8 +84,8 @@ describe('CommandInput preview line', () => {
 
   it('renders a valid attack preview against a hero target', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
-    const preview = await previewFor(wrapper, 'attack creep:0')
-    expect(preview.text()).toContain('>> Attack creep #0')
+    const preview = await previewFor(wrapper, 'attack wave:0')
+    expect(preview.text()).toContain('>> Attack wave #0')
     wrapper.unmount()
   })
 

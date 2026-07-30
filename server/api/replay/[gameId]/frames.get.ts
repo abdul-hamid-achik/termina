@@ -16,7 +16,7 @@ import type { GameState } from '~~/shared/types/game'
  * the "no registerBots" comment below.
  *
  * Caveats (deliberate trade-offs for V1):
- * - World-side AI (creep waves, neutrals, tenant, caches) uses Math.random
+ * - World-side AI (wave waves, neutrals, tenant, caches) uses Math.random
  *   and will diverge from the original game. Player-side evolution (HP,
  *   gold, items, K/D/A, position) follows the recorded action stream and
  *   is the only thing the scrubber UI relies on today.

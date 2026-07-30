@@ -52,11 +52,11 @@ describe('Zones', () => {
       }
     })
 
-    it('initializes zones with empty wards and creeps', () => {
+    it('initializes zones with empty wards and waves', () => {
       const states = initializeZoneStates()
       for (const state of Object.values(states)) {
         expect(state.wards).toEqual([])
-        expect(state.creeps).toEqual([])
+        expect(state.waves).toEqual([])
       }
     })
 

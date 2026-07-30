@@ -17,8 +17,8 @@ export interface ZoneDisplay {
     maxHp?: number
   }
   fogged: boolean
-  creepCount?: number
-  creepTypes?: string[]
+  waveCount?: number
+  waveTypes?: string[]
   neutralCount?: number
   /** Names of visible enemy heroes in the zone (shown on compact cards). */
   enemyNames?: string[]
@@ -394,8 +394,8 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     }
   }
 
-  if (zone.creepCount && zone.creepCount > 0) {
-    indicators.push(`c${zone.creepCount}`)
+  if (zone.waveCount && zone.waveCount > 0) {
+    indicators.push(`c${zone.waveCount}`)
   }
 
   if (zone.neutralCount && zone.neutralCount > 0) {
@@ -503,9 +503,9 @@ export function compactIndicators(
     })
   }
 
-  if (zone.creepCount && zone.creepCount > 0) {
+  if (zone.waveCount && zone.waveCount > 0) {
     out.push({
-      text: `${zone.creepCount} ${zone.creepCount === 1 ? 'creep' : 'creeps'}`,
+      text: `${zone.waveCount} ${zone.waveCount === 1 ? 'wave' : 'waves'}`,
       cls: 'text-text-dim',
     })
   }

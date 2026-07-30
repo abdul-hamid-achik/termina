@@ -13,7 +13,7 @@ import {
   HARDEN_DURATION_TICKS,
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
-  CREEP_WAVE_INTERVAL_TICKS,
+  WAVE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
@@ -40,7 +40,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
@@ -213,15 +213,15 @@ describe('runSpawning', () => {
   it('returns the same state when nothing spawns and nothing expires', () => {
     const state = makeState({ tick: 1 })
     const result = runSpawning(state)
-    // tick=1 isn't a creep-wave or cache tick; no caches/wards exist to expire
-    expect(result.creeps).toEqual([])
+    // tick=1 isn't a wave-wave or cache tick; no caches/wards exist to expire
+    expect(result.waves).toEqual([])
     expect(result.caches ?? []).toEqual([])
   })
 
-  it('spawns creeps on a wave tick', () => {
-    const state = makeState({ tick: CREEP_WAVE_INTERVAL_TICKS })
+  it('spawns waves on a wave tick', () => {
+    const state = makeState({ tick: WAVE_INTERVAL_TICKS })
     const result = runSpawning(state)
-    expect(result.creeps.length).toBeGreaterThan(0)
+    expect(result.waves.length).toBeGreaterThan(0)
   })
 })
 

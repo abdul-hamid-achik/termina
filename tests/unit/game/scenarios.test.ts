@@ -12,7 +12,7 @@ function baseState(): GameState {
     },
     players: {},
     zones: {},
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: [],
     ancients: {

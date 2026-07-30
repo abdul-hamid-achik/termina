@@ -1,6 +1,6 @@
 export type TargetRef =
   | { kind: 'hero'; name: string }
-  | { kind: 'creep'; index: number }
+  | { kind: 'wave'; index: number }
   | { kind: 'neutral'; index: number }
   | { kind: 'ice'; zone: string }
   | { kind: 'tenant' }
@@ -27,6 +27,6 @@ export type Command =
   | { type: 'buyback' }
   | { type: 'surrender'; vote: 'yes' | 'no' }
   | { type: 'missing'; enemyId: string }
-  | { type: 'burn'; target: { kind: 'creep'; index: number } }
+  | { type: 'burn'; target: { kind: 'wave'; index: number } }
   | { type: 'select_talent'; tier: 10 | 15 | 20 | 25; talentId: string }
   | { type: 'harden' }

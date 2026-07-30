@@ -10,7 +10,7 @@ import {
   resolveAncientAttack,
   checkAncientWin,
 } from '~~/server/game/engine/AncientSystem'
-import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ANCIENT_HP } from '~~/shared/constants/balance'
 
@@ -47,13 +47,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   }
 }
 
-function makeCreep(overrides: Partial<CreepState> = {}): CreepState {
+function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
   return {
     id: 'c1',
     team: 'chaff',
     zone: 'audit-base',
     hp: 400,
-    type: 'melee',
+    type: 'line',
     ...overrides,
   }
 }
@@ -68,7 +68,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
@@ -207,9 +207,9 @@ describe('AncientSystem', () => {
       })
     })
 
-    it('resolves creep attackers by creep team', () => {
+    it('resolves wave attackers by wave team', () => {
       const state = vulnerableState({
-        creeps: [makeCreep({ id: 'c9', team: 'chaff', zone: 'audit-base' })],
+        waves: [makeWave({ id: 'c9', team: 'chaff', zone: 'audit-base' })],
       })
 
       const result = resolveAncientAttack(state, 'c9', 20)

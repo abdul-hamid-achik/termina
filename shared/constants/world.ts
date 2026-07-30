@@ -80,7 +80,7 @@ export const ACTION_LABELS = {
 /** Gold is SCRIP on every player-facing surface. */
 export const CURRENCY = { label: 'scrip', short: 'sc' } as const
 
-export type WaveRole = 'melee' | 'ranged' | 'siege'
+export type WaveRole = 'line' | 'sweep' | 'breach'
 
 /**
  * Wave units are asymmetric by crew: AUDIT fields corporate security
@@ -88,8 +88,8 @@ export type WaveRole = 'melee' | 'ranged' | 'siege'
  * (mule / script / picket).
  */
 export const WAVE_UNIT_LABELS: Record<TeamId, Record<WaveRole, string>> = {
-  chaff: { melee: 'mule', ranged: 'script', siege: 'picket' },
-  audit: { melee: 'guard', ranged: 'sweeper', siege: 'auditor' },
+  chaff: { line: 'mule', sweep: 'script', breach: 'picket' },
+  audit: { line: 'guard', sweep: 'sweeper', breach: 'auditor' },
 }
 
 export type NeutralCamp =

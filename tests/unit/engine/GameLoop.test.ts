@@ -3,7 +3,7 @@ import { Effect } from 'effect'
 import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
+import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
   DAY_DURATION_TICKS,
@@ -12,7 +12,7 @@ import {
   RESPAWN_BASE_TICKS,
   RESPAWN_PER_LEVEL_TICKS,
   RESPAWN_FREE_LEVELS,
-  MAX_CREEPS_PER_ZONE_PER_TEAM,
+  MAX_WAVE_UNITS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -61,7 +61,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', name: 'Player2' }),
     },
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
@@ -78,7 +78,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 
 describe('GameLoop', () => {
   beforeEach(() => {
-    resetCreepIdCounter()
+    resetWaveIdCounter()
   })
 
   describe('processTick', () => {
@@ -122,20 +122,20 @@ describe('GameLoop', () => {
       expect(result.state.players['p1']!.zone).toBe('mid-river')
     })
 
-    it('should spawn creep waves at wave intervals', () => {
+    it('should spawn wave waves at wave intervals', () => {
       // Tick 7 -> tick 8 (first wave spawns at tick 8)
       const state = makeGameState({ tick: 7 })
       const result = Effect.runSync(processTick('game2', state))
       expect(result.state.tick).toBe(8)
-      // Should have spawned creeps (3 melee + 1 ranged per lane per team = 24 creeps)
-      expect(result.state.creeps.length).toBeGreaterThan(0)
+      // Should have spawned waves (3 line + 1 sweep per lane per team = 24 waves)
+      expect(result.state.waves.length).toBeGreaterThan(0)
     })
 
-    it('should not spawn creeps on non-wave ticks', () => {
+    it('should not spawn waves on non-wave ticks', () => {
       const state = makeGameState({ tick: 5 })
       const result = Effect.runSync(processTick('game3', state))
       expect(result.state.tick).toBe(6)
-      expect(result.state.creeps.length).toBe(0)
+      expect(result.state.waves.length).toBe(0)
     })
 
     it('should heal players in fountain', () => {
@@ -577,8 +577,8 @@ describe('GameLoop', () => {
     })
   })
 
-  describe('Ancient siege and creep cleanup', () => {
-    it('creeps in the enemy base damage a vulnerable Ancient via processTick', () => {
+  describe('Ancient breach and wave cleanup', () => {
+    it('waves in the enemy base damage a vulnerable Ancient via processTick', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
@@ -589,13 +589,13 @@ describe('GameLoop', () => {
         ice: initializeIce().map((t) =>
           t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
         ),
-        creeps: [
-          { id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' },
-          { id: 'c2', team: 'chaff', zone: 'audit-base', hp: 250, type: 'ranged' },
+        waves: [
+          { id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'line' },
+          { id: 'c2', team: 'chaff', zone: 'audit-base', hp: 250, type: 'sweep' },
         ],
       })
 
-      const result = Effect.runSync(processTick('game-ancient-siege', state))
+      const result = Effect.runSync(processTick('game-ancient-breach', state))
       const audit = result.state.ancients.audit
       expect(audit.hp).toBeLessThan(audit.maxHp)
       // Damage events against the ancient should be emitted
@@ -605,7 +605,7 @@ describe('GameLoop', () => {
       expect(ancientDamage.length).toBe(2)
     })
 
-    it('game ends via Ancient destruction by creeps', () => {
+    it('game ends via Ancient destruction by waves', () => {
       const ancients = initializeAncients()
       const state = makeGameState({
         ancients: {
@@ -615,7 +615,7 @@ describe('GameLoop', () => {
         ice: initializeIce().map((t) =>
           t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
         ),
-        creeps: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' }],
+        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'line' }],
       })
 
       const result = Effect.runSync(processTick('game-ancient-end', state))
@@ -624,38 +624,38 @@ describe('GameLoop', () => {
       expect(result.state.winner).toBe('chaff')
     })
 
-    it('creeps idling in base with an invulnerable Ancient are garbage collected', () => {
+    it('waves idling in base with an invulnerable Ancient are garbage collected', () => {
       let state = makeGameState({
-        creeps: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' }],
+        waves: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'line' }],
       })
 
       // Ancient is invulnerable (all ice alive), no heroes in base.
-      // Creep should idle and despawn after CREEP_BASE_IDLE_DESPAWN_TICKS.
+      // Wave should idle and despawn after WAVE_BASE_IDLE_DESPAWN_TICKS.
       for (let i = 0; i < 3; i++) {
-        state = Effect.runSync(processTick('game-creep-gc', state)).state
+        state = Effect.runSync(processTick('game-wave-gc', state)).state
       }
-      expect(state.creeps.find((c) => c.id === 'c1')).toBeUndefined()
+      expect(state.waves.find((c) => c.id === 'c1')).toBeUndefined()
     })
 
-    it('per-zone creep cap is enforced during processTick', () => {
-      const creeps = Array.from({ length: 30 }, (_, i) => ({
+    it('per-zone wave cap is enforced during processTick', () => {
+      const waves = Array.from({ length: 30 }, (_, i) => ({
         id: `stack_${i}`,
         team: 'chaff' as const,
         zone: 'mid-t2-chaff',
         hp: 400,
-        type: 'melee' as const,
+        type: 'line' as const,
       }))
-      const state = makeGameState({ creeps })
+      const state = makeGameState({ waves })
 
-      const result = Effect.runSync(processTick('game-creep-cap', state))
+      const result = Effect.runSync(processTick('game-wave-cap', state))
       // All 30 move together to the next zone; the cap trims them to 12
       const counts = new Map<string, number>()
-      for (const c of result.state.creeps) {
+      for (const c of result.state.waves) {
         const key = `${c.team}:${c.zone}`
         counts.set(key, (counts.get(key) ?? 0) + 1)
       }
       for (const count of counts.values()) {
-        expect(count).toBeLessThanOrEqual(MAX_CREEPS_PER_ZONE_PER_TEAM)
+        expect(count).toBeLessThanOrEqual(MAX_WAVE_UNITS_PER_ZONE_PER_TEAM)
       }
     })
 

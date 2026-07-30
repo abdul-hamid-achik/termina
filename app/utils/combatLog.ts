@@ -20,7 +20,7 @@ export type CombatLineType =
   | 'victory'
   | 'objective'
   // One dim roll-up line per tick summarizing everyone's farming (see
-  // digestFarmNoise) — the story-mode replacement for the creep-hit firehose.
+  // digestFarmNoise) — the story-mode replacement for the wave-hit firehose.
   | 'farm'
 
 /**
@@ -45,7 +45,7 @@ export interface CombatLine {
   count?: number
   /**
    * When set, consecutive lines sharing this key collapse into one running line.
-   * Only structure-damage lines (hero/creep → ice/ancient) set this; combat
+   * Only structure-damage lines (hero/wave → ice/ancient) set this; combat
    * between heroes, kills, abilities, etc. leave it undefined so they never merge.
    */
   dedupKey?: string
@@ -160,7 +160,7 @@ function storyPriority(line: CombatLine): number {
 
 /**
  * Fold every farm-tagged line of a tick into ONE dim summary line:
- * "· farm: you +38g (last-hit) · team 4 creeps, 1 camp · enemy farming in sight".
+ * "· farm: you +38g (last-hit) · team 4 waves, 1 camp · enemy farming in sight".
  * Untagged lines pass through untouched, in their original tick order.
  */
 export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
@@ -207,14 +207,14 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
     if (myLastHits > 0)
       parts.push(`you +${myGold}g (${myLastHits} last-hit${myLastHits === 1 ? '' : 's'})`)
     if (myCamps > 0) parts.push(`you cleared ${myCamps === 1 ? 'a camp' : `${myCamps} camps`}`)
-    if (myBurns > 0) parts.push(`you burned ${myBurns === 1 ? 'a creep' : `${myBurns} creeps`}`)
+    if (myBurns > 0) parts.push(`you burned ${myBurns === 1 ? 'a wave' : `${myBurns} waves`}`)
     const teamBits: string[] = []
-    if (teamLastHits > 0) teamBits.push(`${teamLastHits} creep${teamLastHits === 1 ? '' : 's'}`)
+    if (teamLastHits > 0) teamBits.push(`${teamLastHits} wave${teamLastHits === 1 ? '' : 's'}`)
     if (teamCamps > 0) teamBits.push(`${teamCamps} camp${teamCamps === 1 ? '' : 's'}`)
     if (teamBurns > 0) teamBits.push(`${teamBurns} burn${teamBurns === 1 ? '' : 's'}`)
     if (teamBits.length) parts.push(`team ${teamBits.join(', ')}`)
     const enemyBits: string[] = []
-    if (enemyLastHits > 0) enemyBits.push(`${enemyLastHits} creep${enemyLastHits === 1 ? '' : 's'}`)
+    if (enemyLastHits > 0) enemyBits.push(`${enemyLastHits} wave${enemyLastHits === 1 ? '' : 's'}`)
     if (enemyCamps > 0) enemyBits.push(`${enemyCamps} camp${enemyCamps === 1 ? '' : 's'}`)
     if (enemyBurns > 0) enemyBits.push(`${enemyBurns} burn${enemyBurns === 1 ? '' : 's'}`)
     if (enemyBits.length) parts.push(`enemy ${enemyBits.join(', ')}`)

@@ -5,12 +5,12 @@ import type { TeamId } from '~~/shared/types/game'
  *
  * This is the SINGLE source of truth for lane topology used by:
  *  - `BotAI.ts` — bot lane movement and advancing
- *  - `CreepAI.ts` — creep wave pathing
+ *  - `WaveAI.ts` — wave wave pathing
  *
  * Each route starts at the team's T3 ice and ends at the enemy base.
  * The `full` variant (used by BotAI) prepends the team's fountain + base so a
  * bot leaving the fountain can path all the way to the lane start. The `core`
- * variant (used by CreepAI) starts at T3 because creeps spawn at T3.
+ * variant (used by WaveAI) starts at T3 because waves spawn at T3.
  */
 
 /** Core lane routes: T3 → T2 → T1 → river → enemy T1 → T2 → T3 → enemy base. */

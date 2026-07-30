@@ -6,7 +6,7 @@ import {
   TICK_DURATION_MS,
   ACTION_WINDOW_MS,
   PASSIVE_GOLD_PER_TICK,
-  CREEP_GOLD,
+  WAVE_GOLD,
   KILL_BOUNTY_BASE,
   ASSIST_GOLD,
   ICE_GOLD,
@@ -22,11 +22,11 @@ import {
   BUYBACK_COOLDOWN_TICKS,
   CAMTAP_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
-  CREEP_WAVE_INTERVAL_TICKS,
-  MELEE_CREEP_HP,
-  MELEE_CREEPS_PER_WAVE,
-  RANGED_CREEPS_PER_WAVE,
-  SIEGE_CREEP_WAVE_INTERVAL,
+  WAVE_INTERVAL_TICKS,
+  LINE_UNIT_HP,
+  LINE_UNITS_PER_WAVE,
+  SWEEP_UNITS_PER_WAVE,
+  BREACH_WAVE_INTERVAL,
   ICE_HP_T1,
   ICE_HP_T2,
   ICE_HP_T3,
@@ -47,10 +47,10 @@ import {
   BURN_HP_THRESHOLD,
   BURN_GOLD_RATIO,
   BURN_XP_RATIO,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
-  CREEP_XP,
-  CREEP_XP_SHARED,
+  WAVE_GOLD_MIN,
+  WAVE_GOLD_MAX,
+  WAVE_XP,
+  WAVE_XP_SHARED,
 } from '~~/shared/constants/balance'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
 import { useStartTutorial } from '~/composables/useStartTutorial'
@@ -95,8 +95,8 @@ const ringRegenPercent = Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)
 const sobiRegenPercent = Math.round(SOBI_MASK_REGEN_PERCENT * 100)
 const cacheRegenPercent = Math.round(REGEN_CACHE_HEAL_PERCENT * 100)
 const burnHpPercent = Math.round(BURN_HP_THRESHOLD * 100)
-const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
-const burnXp = Math.floor(CREEP_XP * BURN_XP_RATIO)
+const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+const burnXp = Math.floor(WAVE_XP * BURN_XP_RATIO)
 
 const quickStart = [
   {
@@ -116,8 +116,8 @@ const quickStart = [
   },
   {
     step: '4',
-    title: 'Farm Creeps',
-    desc: `Creep waves spawn every ${CREEP_WAVE_INTERVAL_TICKS} cycles. Last-hit them with attack creep:0 to earn ${CREEP_GOLD}g and XP.`,
+    title: 'Farm Waves',
+    desc: `Wave waves spawn every ${WAVE_INTERVAL_TICKS} cycles. Last-hit them with attack wave:0 to earn ${WAVE_GOLD}g and XP.`,
   },
   {
     step: '5',
@@ -174,13 +174,13 @@ const commands = [
   {
     cmd: 'attack [target]',
     desc: 'Attack a target in your zone. Bare attack auto-hits the nearest enemy hero',
-    example: 'attack creep:0',
+    example: 'attack wave:0',
     shortcuts: 'atk',
   },
   {
-    cmd: 'burn [creep:N]',
-    desc: 'Last-hit your OWN low-HP creep to burn the enemy its gold. Bare burn auto-picks one',
-    example: 'burn creep:0',
+    cmd: 'burn [wave:N]',
+    desc: 'Last-hit your OWN low-HP wave to burn the enemy its gold. Bare burn auto-picks one',
+    example: 'burn wave:0',
     shortcuts: '—',
   },
   {
@@ -262,13 +262,13 @@ const commands = [
 const targeting = [
   { format: 'hero:<name>', desc: 'Target a hero by their hero ID', example: 'attack hero:daemon' },
   {
-    format: 'creep:<index>',
-    desc: 'Target a creep by index (0, 1, 2...)',
-    example: 'attack creep:0',
+    format: 'wave:<index>',
+    desc: 'Target a wave by index (0, 1, 2...)',
+    example: 'attack wave:0',
   },
   {
     format: 'neutral:<index>',
-    desc: 'Target a jungle camp creep standing in your zone',
+    desc: 'Target a jungle camp wave standing in your zone',
     example: 'attack neutral:0',
   },
   {
@@ -317,7 +317,7 @@ const concepts = [
   {
     term: 'Gold & Items',
     icon: '$',
-    desc: `Earn gold from creep last-hits (${CREEP_GOLD}g), hero kills (${KILL_BOUNTY_BASE}g base + streak and comeback bonuses), assists (${ASSIST_GOLD}g split), and passive income (${PASSIVE_GOLD_PER_TICK}g/cycle). Spend gold at the shop in your base. Max ${MAX_ITEMS} items.`,
+    desc: `Earn gold from wave last-hits (${WAVE_GOLD}g), hero kills (${KILL_BOUNTY_BASE}g base + streak and comeback bonuses), assists (${ASSIST_GOLD}g split), and passive income (${PASSIVE_GOLD_PER_TICK}g/cycle). Spend gold at the shop in your base. Max ${MAX_ITEMS} items.`,
   },
   {
     term: 'No Feed',
@@ -325,24 +325,24 @@ const concepts = [
     desc: 'You have no feed on ground you do not hold. You see your own zone and the zones next to it, your allies, your ice, and anywhere you have a ward. Enemies outside that are not on your screen at all.',
   },
   {
-    term: 'Creep Waves',
+    term: 'Wave Waves',
     icon: '#',
-    desc: `AI creeps spawn every ${CREEP_WAVE_INTERVAL_TICKS} cycles in each lane. ${MELEE_CREEPS_PER_WAVE} melee + ${RANGED_CREEPS_PER_WAVE} ranged per wave (siege every ${SIEGE_CREEP_WAVE_INTERVAL}th wave). Last-hit them for gold. They push lanes automatically.`,
+    desc: `AI waves spawn every ${WAVE_INTERVAL_TICKS} cycles in each lane. ${LINE_UNITS_PER_WAVE} line + ${SWEEP_UNITS_PER_WAVE} sweep per wave (breach every ${BREACH_WAVE_INTERVAL}th wave). Last-hit them for gold. They push lanes automatically.`,
   },
   {
     term: 'ICE',
     icon: '!',
-    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then creeps. A ice kill splits ${ICE_GOLD}g among allies in the zone.`,
+    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then waves. A ice kill splits ${ICE_GOLD}g among allies in the zone.`,
   },
   {
     term: 'The Mainframe',
     icon: '@',
-    desc: `Each base houses its team's core — the Mainframe (${ANCIENT_HP} HP). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and creeps in the base can attack it.`,
+    desc: `Each base houses its team's core — the Mainframe (${ANCIENT_HP} HP). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and waves in the base can attack it.`,
   },
   {
     term: 'Levels & XP',
     icon: '^',
-    desc: `Gain XP from creep kills and hero kills, up to level ${MAX_LEVEL}. Q/W/E are usable from level 1 and get stronger at levels ${BASIC_ABILITY_RANKS.join(', ')}. Your ultimate (R) unlocks at level ${ULTIMATE_UNLOCK_LEVEL} and strengthens at ${ULTIMATE_RANKS.slice(1).join(' and ')}. Reaching levels ${talentLevelList} each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`${talentTierNote}.`,
+    desc: `Gain XP from wave kills and hero kills, up to level ${MAX_LEVEL}. Q/W/E are usable from level 1 and get stronger at levels ${BASIC_ABILITY_RANKS.join(', ')}. Your ultimate (R) unlocks at level ${ULTIMATE_UNLOCK_LEVEL} and strengthens at ${ULTIMATE_RANKS.slice(1).join(' and ')}. Reaching levels ${talentLevelList} each grants a one-time talent choice (a left/right power pick): use \`talent <tier> <left|right>\`${talentTierNote}.`,
   },
   {
     term: 'Abilities',
@@ -357,7 +357,7 @@ const concepts = [
   {
     term: 'Last-Hitting & Burning',
     icon: '/',
-    desc: `Only the killing blow pays gold: chip a creep to 1 HP and a lane-mate takes it, you get nothing. A melee creep has ${MELEE_CREEP_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack creep:0 for ${CREEP_GOLD}g and ${CREEP_XP} XP (allies in the zone share ${CREEP_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR creeps drops below ${burnHpPercent}% HP, burn creep:0 kills it so the enemy gets nothing — you keep ${burnGold}g and ${burnXp} XP. Prefer tapping the creep group in the zone panel over typing an index: creep:N counts the living creeps in your zone, so N shifts every cycle as creeps die and waves spawn.`,
+    desc: `Only the killing blow pays gold: chip a wave to 1 HP and a lane-mate takes it, you get nothing. A line wave has ${LINE_UNIT_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack wave:0 for ${WAVE_GOLD}g and ${WAVE_XP} XP (allies in the zone share ${WAVE_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR waves drops below ${burnHpPercent}% HP, burn wave:0 kills it so the enemy gets nothing — you keep ${burnGold}g and ${burnXp} XP. Prefer tapping the wave group in the zone panel over typing an index: wave:N counts the living waves in your zone, so N shifts every cycle as waves die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',
@@ -406,7 +406,7 @@ const ROLE_DETAILS: ReadonlyArray<{ role: HeroRole; label: string; icon: string;
     role: 'carry',
     label: 'Carry',
     icon: '>>',
-    desc: 'Scales with items. Weak early, dominant late. Farm creeps and buy damage items.',
+    desc: 'Scales with items. Weak early, dominant late. Farm waves and buy damage items.',
   },
   {
     role: 'support',

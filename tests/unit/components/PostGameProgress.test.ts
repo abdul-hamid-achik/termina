@@ -148,7 +148,7 @@ describe('PostGame — what to work on', () => {
     expect(adviceIds(short)).not.toContain('last-hits')
     expect(adviceIds(long)).toContain('last-hits')
     expect(long.get('[data-advice="last-hits"]').text()).toContain('0.8/min')
-    expect(long.get('[data-advice="last-hits"]').text()).toContain('attack creep:0')
+    expect(long.get('[data-advice="last-hits"]').text()).toContain('attack wave:0')
   })
 
   it('teaches denying to a player who never burned', () => {
@@ -156,7 +156,7 @@ describe('PostGame — what to work on', () => {
       stats: { p1: cleanStats({ burns: 0 }), e1: cleanStats() },
     })
     expect(adviceIds(wrapper)).toContain('burns')
-    expect(wrapper.get('[data-advice="burns"]').text()).toContain('burn creep:0')
+    expect(wrapper.get('[data-advice="burns"]').text()).toContain('burn wave:0')
   })
 
   it('tells a hoarder to spend', () => {

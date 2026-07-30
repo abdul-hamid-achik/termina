@@ -5,7 +5,7 @@
  * Rules:
  * - One Ancient per team, located in the team's base zone.
  * - Invulnerable until at least one of the owning team's T3 ice is down.
- * - Once vulnerable, both heroes and creeps can attack it.
+ * - Once vulnerable, both heroes and waves can attack it.
  * - Destroying the enemy Ancient wins the game (see checkAncientWin).
  *
  * All functions are pure — no Effect, no I/O — so they can be called from
@@ -86,7 +86,7 @@ export function updateAncientVulnerability(state: GameState): GameState {
 
 /**
  * Resolve an attack against the enemy Ancient by a hero (player id) or a
- * creep (creep id). The attacker's team is resolved from state; the target
+ * wave (wave id). The attacker's team is resolved from state; the target
  * is always the opposing team's Ancient.
  *
  * Returns the (possibly unchanged) state, the events to emit, and an
@@ -94,7 +94,7 @@ export function updateAncientVulnerability(state: GameState): GameState {
  * surface it as player feedback.
  *
  * Wiring status (both live):
- * - Creep attacks: via CreepAI (`attack_ancient` action).
+ * - Wave attacks: via WaveAI (`attack_ancient` action).
  * - Hero attacks: the `attack` command with an ancient target calls this from
  *   ActionResolver.ts (imported at the top, invoked in the attack-resolution
  *   pipeline), so a hero standing in the enemy base can destroy the Ancient.
@@ -175,6 +175,6 @@ export function checkAncientWin(state: GameState): TeamId | null {
 function getAttackerTeam(state: GameState, attackerId: string): TeamId | null {
   const player = state.players[attackerId]
   if (player) return player.team
-  const creep = state.creeps.find((c) => c.id === attackerId)
-  return creep?.team ?? null
+  const wave = state.waves.find((c) => c.id === attackerId)
+  return wave?.team ?? null
 }

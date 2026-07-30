@@ -2,8 +2,8 @@ import type { GameState, PlayerState, TeamId } from '~~/shared/types/game'
 import { getItem } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
-  CREEP_GOLD,
-  SIEGE_CREEP_GOLD,
+  WAVE_GOLD,
+  BREACH_UNIT_GOLD,
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
@@ -92,17 +92,17 @@ export function distributePassiveGold(state: GameState): GameState {
   return { ...state, players: updatedPlayers }
 }
 
-/** Award gold for a last-hit on a creep. Melee/Ranged: CREEP_GOLD (fixed, no
- * RNG), Siege: SIEGE_CREEP_GOLD. */
+/** Award gold for a last-hit on a wave. Line/Sweep: WAVE_GOLD (fixed, no
+ * RNG), Breach: BREACH_UNIT_GOLD. */
 export function awardLastHit(
   state: GameState,
   playerId: string,
-  creepType: 'melee' | 'ranged' | 'siege',
+  waveType: 'line' | 'sweep' | 'breach',
 ): GameState {
   const player = state.players[playerId]
   if (!player) return state
 
-  const gold = creepType === 'siege' ? SIEGE_CREEP_GOLD : CREEP_GOLD
+  const gold = waveType === 'breach' ? BREACH_UNIT_GOLD : WAVE_GOLD
 
   return updatePlayerGold(state, playerId, gold)
 }

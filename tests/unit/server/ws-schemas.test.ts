@@ -32,27 +32,27 @@ describe('targetRefSchema (via commandSchema attack)', () => {
     })
   })
 
-  describe('creep', () => {
+  describe('wave', () => {
     it('accepts index 0 (lower bound)', () => {
-      ok(commandSchema, attack({ kind: 'creep', index: 0 }))
+      ok(commandSchema, attack({ kind: 'wave', index: 0 }))
     })
     it('accepts index 10000 (upper bound)', () => {
-      ok(commandSchema, attack({ kind: 'creep', index: 10_000 }))
+      ok(commandSchema, attack({ kind: 'wave', index: 10_000 }))
     })
     it('rejects index -1', () => {
-      bad(commandSchema, attack({ kind: 'creep', index: -1 }))
+      bad(commandSchema, attack({ kind: 'wave', index: -1 }))
     })
     it('rejects index 10001', () => {
-      bad(commandSchema, attack({ kind: 'creep', index: 10_001 }))
+      bad(commandSchema, attack({ kind: 'wave', index: 10_001 }))
     })
     it('rejects non-integer index', () => {
-      bad(commandSchema, attack({ kind: 'creep', index: 1.5 }))
+      bad(commandSchema, attack({ kind: 'wave', index: 1.5 }))
     })
     it('rejects missing index', () => {
-      bad(commandSchema, attack({ kind: 'creep' }))
+      bad(commandSchema, attack({ kind: 'wave' }))
     })
     it('rejects string index', () => {
-      bad(commandSchema, attack({ kind: 'creep', index: '3' }))
+      bad(commandSchema, attack({ kind: 'wave', index: '3' }))
     })
   })
 
@@ -183,7 +183,7 @@ describe('commandSchema', () => {
       ok(commandSchema, {
         type: 'use',
         item: 'dagon',
-        target: { kind: 'creep', index: 4 },
+        target: { kind: 'wave', index: 4 },
       })
     })
     it('accepts item with string target up to 64 chars', () => {
@@ -300,15 +300,15 @@ describe('commandSchema', () => {
   })
 
   describe('burn', () => {
-    it('accepts a creep burn within index bounds', () => {
-      ok(commandSchema, { type: 'burn', target: { kind: 'creep', index: 0 } })
-      ok(commandSchema, { type: 'burn', target: { kind: 'creep', index: 10_000 } })
+    it('accepts a wave burn within index bounds', () => {
+      ok(commandSchema, { type: 'burn', target: { kind: 'wave', index: 0 } })
+      ok(commandSchema, { type: 'burn', target: { kind: 'wave', index: 10_000 } })
     })
     it('rejects out-of-bounds index', () => {
-      bad(commandSchema, { type: 'burn', target: { kind: 'creep', index: -1 } })
-      bad(commandSchema, { type: 'burn', target: { kind: 'creep', index: 10_001 } })
+      bad(commandSchema, { type: 'burn', target: { kind: 'wave', index: -1 } })
+      bad(commandSchema, { type: 'burn', target: { kind: 'wave', index: 10_001 } })
     })
-    it('rejects non-creep targets (burn is creep-only)', () => {
+    it('rejects non-wave targets (burn is wave-only)', () => {
       bad(commandSchema, { type: 'burn', target: { kind: 'hero', name: 'axe' } })
       bad(commandSchema, { type: 'burn', target: { kind: 'ancient' } })
       bad(commandSchema, { type: 'burn', target: { kind: 'self' } })

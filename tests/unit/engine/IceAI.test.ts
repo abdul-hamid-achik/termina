@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { runIceAI, applyIceActions, type IceAction } from '~~/server/game/engine/IceAI'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
-import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ICE_ATTACK } from '~~/shared/constants/balance'
@@ -39,13 +39,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   }
 }
 
-function makeCreep(overrides: Partial<CreepState> = {}): CreepState {
+function makeWave(overrides: Partial<WaveUnitState> = {}): WaveUnitState {
   return {
     id: 'c1',
     team: 'chaff',
     zone: 'mid-t1-chaff',
     hp: 400,
-    type: 'melee',
+    type: 'line',
     ...overrides,
   }
 }
@@ -60,7 +60,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
     events: [],
@@ -110,33 +110,33 @@ describe('IceAI', () => {
       expect(midT1Action!.damage).toBe(ICE_ATTACK)
     })
 
-    it('should target enemy creeps in ice zone', () => {
+    it('should target enemy waves in ice zone', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const actions = runIceAI(state)
       const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
       expect(midT1Action).toBeDefined()
-      expect(midT1Action!.targetType).toBe('creep')
+      expect(midT1Action!.targetType).toBe('wave')
       expect(midT1Action!.targetId).toBe('c1')
     })
 
-    it('should prioritize creeps over a passive hero (MOBA aggro convention)', () => {
+    it('should prioritize waves over a passive hero (MOBA aggro convention)', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'audit', zone: 'mid-t1-chaff' }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const actions = runIceAI(state)
       const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
-      expect(midT1Action!.targetType).toBe('creep')
+      expect(midT1Action!.targetType).toBe('wave')
       expect(midT1Action!.targetId).toBe('c1')
     })
 
-    it('should prioritize a hero attacking an allied hero above creeps', () => {
+    it('should prioritize a hero attacking an allied hero above waves', () => {
       const state = makeGameState({
         players: {
           ally: makePlayer({ id: 'ally', team: 'chaff', zone: 'mid-t1-chaff' }),
@@ -147,7 +147,7 @@ describe('IceAI', () => {
             name: 'Attacker',
           }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const heroAttackers = new Map<string, string>()
@@ -159,7 +159,7 @@ describe('IceAI', () => {
       expect(midT1Action!.targetId).toBe('attacker')
     })
 
-    it('should prioritize a hero attacking the ice itself above creeps', () => {
+    it('should prioritize a hero attacking the ice itself above waves', () => {
       const state = makeGameState({
         players: {
           attacker: makePlayer({
@@ -169,7 +169,7 @@ describe('IceAI', () => {
             name: 'Attacker',
           }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       // Hero→ice damage events carry targetId `ice_${zone}`
@@ -200,7 +200,7 @@ describe('IceAI', () => {
             name: 'Attacker',
           }),
         },
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' })],
       })
 
       const priorEvents: GameEngineEvent[] = [
@@ -216,8 +216,8 @@ describe('IceAI', () => {
 
       const actions = runIceAI(state, undefined, priorEvents)
       const midT1Action = actions.find((a) => a.iceZone === 'mid-t1-chaff')
-      // Different ice attacked — creeps still tank this one
-      expect(midT1Action!.targetType).toBe('creep')
+      // Different ice attacked — waves still tank this one
+      expect(midT1Action!.targetType).toBe('wave')
     })
 
     it('should prioritize hero attacking allied hero in ice zone (priority 1)', () => {
@@ -261,9 +261,9 @@ describe('IceAI', () => {
       expect(midT1Action).toBeUndefined()
     })
 
-    it('should not target dead creeps', () => {
+    it('should not target dead waves', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 0 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 0 })],
       })
 
       const actions = runIceAI(state)
@@ -273,10 +273,10 @@ describe('IceAI', () => {
 
     it('should generate actions for multiple ice simultaneously', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' }),
-          makeCreep({ id: 'c2', team: 'audit', zone: 'top-t1-chaff' }),
-          makeCreep({ id: 'c3', team: 'chaff', zone: 'bot-t1-audit' }),
+        waves: [
+          makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff' }),
+          makeWave({ id: 'c2', team: 'audit', zone: 'top-t1-chaff' }),
+          makeWave({ id: 'c3', team: 'chaff', zone: 'bot-t1-audit' }),
         ],
       })
 
@@ -405,12 +405,12 @@ describe('IceAI', () => {
       expect(result.state.players['p1']!.hp).toBe(500)
     })
 
-    it('emits no damage event for a creep shot — only hero damage is narrated', () => {
+    it('emits no damage event for a wave shot — only hero damage is narrated', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
       })
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
       ]
 
       expect(applyIceActions(state, actions).events).toEqual([])
@@ -432,31 +432,31 @@ describe('IceAI', () => {
       expect(result.players['p1']!.alive).toBe(false)
     })
 
-    it('should apply damage to creeps', () => {
+    it('should apply damage to waves', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 })],
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
-      const c1 = result.creeps.find((c) => c.id === 'c1')
+      const c1 = result.waves.find((c) => c.id === 'c1')
       expect(c1!.hp).toBe(400 - ICE_ATTACK)
     })
 
-    it('should remove dead creeps after damage', () => {
+    it('should remove dead waves after damage', () => {
       const state = makeGameState({
-        creeps: [makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 50 })],
+        waves: [makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 50 })],
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
-      expect(result.creeps.find((c) => c.id === 'c1')).toBeUndefined()
+      expect(result.waves.find((c) => c.id === 'c1')).toBeUndefined()
     })
 
     it('should clamp hero HP to 0 (not negative)', () => {
@@ -476,20 +476,20 @@ describe('IceAI', () => {
 
     it('should handle multiple ice actions', () => {
       const state = makeGameState({
-        creeps: [
-          makeCreep({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 }),
-          makeCreep({ id: 'c2', team: 'chaff', zone: 'mid-t1-audit', hp: 400 }),
+        waves: [
+          makeWave({ id: 'c1', team: 'audit', zone: 'mid-t1-chaff', hp: 400 }),
+          makeWave({ id: 'c2', team: 'chaff', zone: 'mid-t1-audit', hp: 400 }),
         ],
       })
 
       const actions: IceAction[] = [
-        { iceZone: 'mid-t1-chaff', targetType: 'creep', targetId: 'c1', damage: ICE_ATTACK },
-        { iceZone: 'mid-t1-audit', targetType: 'creep', targetId: 'c2', damage: ICE_ATTACK },
+        { iceZone: 'mid-t1-chaff', targetType: 'wave', targetId: 'c1', damage: ICE_ATTACK },
+        { iceZone: 'mid-t1-audit', targetType: 'wave', targetId: 'c2', damage: ICE_ATTACK },
       ]
 
       const result = applyIceActions(state, actions).state
-      const c1 = result.creeps.find((c) => c.id === 'c1')
-      const c2 = result.creeps.find((c) => c.id === 'c2')
+      const c1 = result.waves.find((c) => c.id === 'c1')
+      const c2 = result.waves.find((c) => c.id === 'c2')
       expect(c1!.hp).toBe(400 - ICE_ATTACK)
       expect(c2!.hp).toBe(400 - ICE_ATTACK)
     })

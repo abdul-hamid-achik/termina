@@ -63,7 +63,7 @@ describe('ScrambleText', () => {
 })
 
 describe('MarqueeStrip', () => {
-  const ITEMS = ['move mid-river', 'attack creep:0', 'cast q']
+  const ITEMS = ['move mid-river', 'attack wave:0', 'cast q']
 
   it('duplicates the content EXACTLY twice', () => {
     // The track translates by -50%, so the loop is only seamless if the second

@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
 import { processTick } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
-import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
+import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 /**
@@ -67,7 +67,7 @@ function makeState(
     },
     players,
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
@@ -87,7 +87,7 @@ describe('BotAI - integrated teamplay', () => {
   let prevFastGame: string | undefined
 
   beforeEach(() => {
-    resetCreepIdCounter()
+    resetWaveIdCounter()
     prevNodeEnv = process.env.NODE_ENV
     prevFastGame = process.env.TERMINA_TEST_FAST_GAME
     process.env.NODE_ENV = 'production'
@@ -102,7 +102,7 @@ describe('BotAI - integrated teamplay', () => {
     else process.env.TERMINA_TEST_FAST_GAME = prevFastGame
   })
 
-  it("a bot's burn actually resolves — the creep dies and wave_burn fires", () => {
+  it("a bot's burn actually resolves — the wave dies and wave_burn fires", () => {
     // The resolver drops a burn outside its window without a word, so a bot that
     // aims one wrong just loses the tick. This proves the bot mirrors
     // resolveDenyPhase's gates (own team, <= BURN_HP_THRESHOLD of SPAWN hp) and
@@ -117,8 +117,8 @@ describe('BotAI - integrated teamplay', () => {
       mp: 0,
       cooldowns: { q: 9, w: 9, e: 9, r: 9 },
     })
-    const creeps: CreepState[] = [
-      { id: 'creep-own', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
+    const waves: WaveUnitState[] = [
+      { id: 'wave-own', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'line' },
     ]
     registerBots(
       GAME_ID,
@@ -127,11 +127,11 @@ describe('BotAI - integrated teamplay', () => {
     )
 
     const result = Effect.runSync(
-      processTick(GAME_ID, makeState({ [bot.id]: bot, [foe.id]: foe }, { creeps })),
+      processTick(GAME_ID, makeState({ [bot.id]: bot, [foe.id]: foe }, { waves })),
     )
 
     expect(result.events.some((e) => e._tag === 'wave_burn')).toBe(true)
-    expect(result.state.creeps.find((c) => c.id === 'creep-own')?.hp ?? 0).toBe(0)
+    expect(result.state.waves.find((c) => c.id === 'wave-own')?.hp ?? 0).toBe(0)
   })
 
   it('a bot squad actually starts Tenant — his HP moves in a bots-only match', () => {

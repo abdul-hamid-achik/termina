@@ -62,8 +62,8 @@ describe('totalCost', () => {
 })
 
 describe('lastHitsToAfford', () => {
-  // avg creep bounty = (30 + 50) / 2 = 40 gold
-  it('converts gold to creep last-hits at the average bounty, rounding up', () => {
+  // avg wave bounty = (30 + 50) / 2 = 40 gold
+  it('converts gold to wave last-hits at the average bounty, rounding up', () => {
     expect(lastHitsToAfford(40)).toBe(1)
     expect(lastHitsToAfford(80)).toBe(2)
     expect(lastHitsToAfford(100)).toBe(3) // 2.5 → 3

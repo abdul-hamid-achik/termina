@@ -1,25 +1,25 @@
 <script setup lang="ts">
-import type { CreepState, NeutralCreepState } from '~~/shared/types/game'
+import type { WaveUnitState, NeutralUnitState } from '~~/shared/types/game'
 import { SAMPLE_HEROES, makePlayer, makeIce } from '~/stories/fixtures'
 import ZonePanel from './ZonePanel.vue'
 
-/** A visible creep plus its index in the client's creeps array. */
-type IndexedCreep = CreepState & { index: number }
+/** A visible wave plus its index in the client's waves array. */
+type IndexedWave = WaveUnitState & { index: number }
 
-function creep(overrides: Partial<IndexedCreep> = {}): IndexedCreep {
+function wave(overrides: Partial<IndexedWave> = {}): IndexedWave {
   return {
     id: 'creep_0',
     team: 'audit',
     zone: 'mid-river',
     hp: 300,
-    type: 'melee',
+    type: 'line',
     index: 0,
     ...overrides,
   }
 }
 
 /** A neutral plus its index in the GLOBAL neutrals array. */
-type IndexedNeutral = NeutralCreepState & { index: number }
+type IndexedNeutral = NeutralUnitState & { index: number }
 
 function neutral(overrides: Partial<IndexedNeutral> = {}): IndexedNeutral {
   return {
@@ -90,29 +90,29 @@ const danger = {
   ],
 }
 
-// Pushing a lane with creep support + an enemy ice to siege.
-const laneSiege = {
+// Pushing a lane with wave support + an enemy ice to breach.
+const laneBreach = {
   zoneName: 'Mid T1 (Audit)',
   zoneId: 'mid-t1-audit',
   ice: makeIce('audit', 'mid-t1-audit', { hp: 720, maxHp: 1800 }),
-  creeps: [
-    creep({ id: 'rc1', team: 'chaff', hp: 240, index: 0 }),
-    creep({ id: 'rc2', team: 'chaff', hp: 300, type: 'ranged', index: 1 }),
-    creep({ id: 'dc1', team: 'audit', hp: 120, index: 2 }),
-    creep({ id: 'dc2', team: 'audit', hp: 55, type: 'siege', index: 3 }),
-  ] as IndexedCreep[],
+  waves: [
+    wave({ id: 'rc1', team: 'chaff', hp: 240, index: 0 }),
+    wave({ id: 'rc2', team: 'chaff', hp: 300, type: 'sweep', index: 1 }),
+    wave({ id: 'dc1', team: 'audit', hp: 120, index: 2 }),
+    wave({ id: 'dc2', team: 'audit', hp: 55, type: 'breach', index: 3 }),
+  ] as IndexedWave[],
 }
 
-// A burn window: an allied creep has dropped below 50% HP, so it can be
-// burned (the allied-creep group becomes a tappable [burn] action).
+// A burn window: an allied wave has dropped below 50% HP, so it can be
+// burned (the allied-wave group becomes a tappable [burn] action).
 const burnWindow = {
   zoneName: 'Mid Lane (Chaff)',
   zoneId: 'mid-t1-chaff',
-  creeps: [
-    creep({ id: 'rc1', team: 'chaff', hp: 140, index: 0 }), // melee, denyable (<200)
-    creep({ id: 'rc2', team: 'chaff', hp: 300, type: 'ranged', index: 1 }),
-    creep({ id: 'dc1', team: 'audit', hp: 110, index: 2 }),
-  ] as IndexedCreep[],
+  waves: [
+    wave({ id: 'rc1', team: 'chaff', hp: 140, index: 0 }), // line, denyable (<200)
+    wave({ id: 'rc2', team: 'chaff', hp: 300, type: 'sweep', index: 1 }),
+    wave({ id: 'dc1', team: 'audit', hp: 110, index: 2 }),
+  ] as IndexedWave[],
 }
 
 // A neutral jungle camp.
@@ -166,13 +166,13 @@ const tenantPit = {
       </div>
     </Variant>
 
-    <Variant title="lane siege (ice + creeps)">
+    <Variant title="lane breach (ice + waves)">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="laneSiege" player-team="chaff" />
+        <ZonePanel v-bind="laneBreach" player-team="chaff" />
       </div>
     </Variant>
 
-    <Variant title="burn window (allied creep <50%)">
+    <Variant title="burn window (allied wave <50%)">
       <div class="bg-bg-primary p-2" style="width: 300px">
         <ZonePanel v-bind="burnWindow" player-team="chaff" />
       </div>

@@ -146,11 +146,11 @@ describe('StateManager', () => {
       expect(Object.keys(state.zones).length).toBeGreaterThan(0)
     })
 
-    it('should start with empty creeps and events', () => {
+    it('should start with empty waves and events', () => {
       const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.creeps).toHaveLength(0)
+      expect(state.waves).toHaveLength(0)
       expect(state.events).toHaveLength(0)
     })
 

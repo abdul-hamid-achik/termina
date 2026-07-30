@@ -81,13 +81,13 @@ export interface BotDifficultyConfig {
    */
   abilityComboChance: number
   /**
-   * Chance the bot aims at the true lowest-HP creep in the wave. On a failed roll
+   * Chance the bot aims at the true lowest-HP wave in the wave. On a failed roll
    * it takes the SECOND-lowest instead — never nothing. Returning null here was
    * the original bot-standstill bug (bots idled in lane and never reached a
    * ice), so the miss costs last-hit gold without costing an action.
    */
   lastHitAccuracy: number
-  /** Bot burns its own low creeps to starve the enemy laner of gold + XP. */
+  /** Bot burns its own low waves to starve the enemy laner of gold + XP. */
   denyAwareness: boolean
   cacheAwareness: boolean
   jungleFarming: boolean

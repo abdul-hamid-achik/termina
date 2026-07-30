@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { seedGame, HUMAN, ENEMY } from './harness'
-import { CREEP_ESCALATION_INTERVAL_TICKS, creepMaxHp } from '~~/shared/constants/balance'
+import { WAVE_ESCALATION_INTERVAL_TICKS, waveUnitMaxHp } from '~~/shared/constants/balance'
 
 /**
  * Replaces tests/e2e/flows/game_cast_self_buff.yml — the same engine truth
@@ -814,16 +814,16 @@ describe('abilities', () => {
 /**
  * Waveclear. Standing in lane with a wave in front of you and no enemy hero in
  * the zone is the NORMAL early game, and until now every AoE ability was dead
- * weight there: no ability in the game could touch a creep or a neutral, so the
- * only verb that worked on the board in front of you was `attack creep:N`.
+ * weight there: no ability in the game could touch a wave or a neutral, so the
+ * only verb that worked on the board in front of you was `attack wave:N`.
  */
-describe('abilities vs creeps', () => {
+describe('abilities vs waves', () => {
   const LANE = 'mid-river'
 
-  /** Seed the human alone in a lane with `hp`-strong enemy creeps in front. The
+  /** Seed the human alone in a lane with `hp`-strong enemy waves in front. The
    *  mana pool is widened to the level being faked, since the per-tick recalc
    *  that would grow it only runs AFTER the cast phase. */
-  async function laneWithWave(heroSelf: 'mutex' | 'null_ref', creepHp: number[], level = 6) {
+  async function laneWithWave(heroSelf: 'mutex' | 'null_ref', waveHp: number[], level = 6) {
     const game = await seedGame('laning_combat', { heroSelf })
     const me = await game.me()
     const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
@@ -841,73 +841,71 @@ describe('abilities vs creeps', () => {
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-fountain' },
       },
-      creeps: creepHp.map((hp, i) => ({
+      waves: waveHp.map((hp, i) => ({
         id: `wave_${i}`,
         team: enemyTeam,
         zone: LANE,
         hp,
         maxHp: hp,
-        type: 'melee' as const,
+        type: 'line' as const,
       })),
     }))
     return game
   }
 
-  it('an AoE cast damages every enemy creep in the zone at once', async () => {
+  it('an AoE cast damages every enemy wave in the zone at once', async () => {
     const game = await laneWithWave('mutex', [400, 400, 400])
 
     game.cast('e')
     await game.tick()
 
-    const creeps = (await game.state()).creeps.filter((c) => c.id.startsWith('wave_'))
-    expect(creeps).toHaveLength(3)
-    for (const c of creeps) expect(c.hp).toBeLessThan(400)
+    const waves = (await game.state()).waves.filter((c) => c.id.startsWith('wave_'))
+    expect(waves).toHaveLength(3)
+    for (const c of waves) expect(c.hp).toBeLessThan(400)
   })
 
-  it('an ability that finishes a creep banks the bounty and emits creep_lasthit', async () => {
+  it('an ability that finishes a wave banks the bounty and emits wave_strip', async () => {
     const game = await laneWithWave('mutex', [30, 400])
     const goldBefore = (await game.me()).gold
 
     game.cast('e')
     await game.tick()
 
-    expect(game.lastEvents.some((e) => e._tag === 'creep_lasthit' && e.playerId === HUMAN)).toBe(
-      true,
-    )
+    expect(game.lastEvents.some((e) => e._tag === 'wave_strip' && e.playerId === HUMAN)).toBe(true)
     expect((await game.me()).gold).toBeGreaterThan(goldBefore)
-    // Reaped from the board by CreepAI the same tick, like any other creep death.
-    expect((await game.state()).creeps.some((c) => c.id === 'wave_0')).toBe(false)
+    // Reaped from the board by WaveAI the same tick, like any other wave death.
+    expect((await game.state()).waves.some((c) => c.id === 'wave_0')).toBe(false)
   })
 
   it('a wave that has escalated past the nuke survives it — the same cast, a later tick', async () => {
-    // Ability damage is flat while creep HP compounds with match time, so the
+    // Ability damage is flat while wave HP compounds with match time, so the
     // tick a cast lands on decides whether it clears the wave. Every other
     // ability fixture sits near tick 0 where the escalation multiplier is 1.0
     // and that relationship is invisible.
-    const lateTick = CREEP_ESCALATION_INTERVAL_TICKS * 3
-    const freshMax = creepMaxHp('melee', 0)
-    const lateMax = creepMaxHp('melee', lateTick)
+    const lateTick = WAVE_ESCALATION_INTERVAL_TICKS * 3
+    const freshMax = waveUnitMaxHp('line', 0)
+    const lateMax = waveUnitMaxHp('line', lateTick)
     expect(lateMax).toBeGreaterThan(freshMax * 1.5)
 
-    // null_ref R at rank 3 (level 18) is 480 — more than a fresh creep's 400,
+    // null_ref R at rank 3 (level 18) is 480 — more than a fresh wave's 400,
     // less than an escalated one's.
     const early = await laneWithWave('null_ref', [freshMax], 18)
     early.cast('r')
     await early.tick()
-    expect(early.lastEvents.some((e) => e._tag === 'creep_lasthit')).toBe(true)
+    expect(early.lastEvents.some((e) => e._tag === 'wave_strip')).toBe(true)
 
     const late = await laneWithWave('null_ref', [lateMax], 18)
     await late.patch((s) => ({ ...s, tick: lateTick }))
     late.cast('r')
     await late.tick()
-    expect(late.lastEvents.some((e) => e._tag === 'creep_lasthit')).toBe(false)
-    const survivor = (await late.state()).creeps.find((c) => c.id === 'wave_0')
+    expect(late.lastEvents.some((e) => e._tag === 'wave_strip')).toBe(false)
+    const survivor = (await late.state()).waves.find((c) => c.id === 'wave_0')
     expect(survivor && survivor.hp > 0 && survivor.hp < lateMax).toBe(true)
   })
 
   it('the AOE+ talent widens the cast over the NEXT lane’s wave too', async () => {
     // Mirrors the hero-facing aoe_bonus test in talents.test.ts: the widened
-    // footprint the talent grants has to reach creeps as well, or Cascading
+    // footprint the talent grants has to reach waves as well, or Cascading
     // Dereference reads as a talent that only works when a hero is standing there.
     const game = await seedGame('laning_combat', { heroSelf: 'null_ref' })
     const setup = (tier25: string | null) =>
@@ -927,29 +925,28 @@ describe('abilities vs creeps', () => {
           [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-fountain' },
         },
         // mid-t1-audit IS adjacent to mid-river.
-        creeps: [
+        waves: [
           {
             id: 'next_lane',
             team: 'audit',
             zone: 'mid-t1-audit',
             hp: 400,
             maxHp: 400,
-            type: 'melee',
+            type: 'line',
           },
         ],
       }))
-    const creepHp = async () =>
-      (await game.state()).creeps.find((c) => c.id === 'next_lane')?.hp ?? 0
+    const waveHp = async () => (await game.state()).waves.find((c) => c.id === 'next_lane')?.hp ?? 0
 
     await setup(null)
     game.cast('r')
     await game.tick()
-    expect(await creepHp()).toBe(400)
+    expect(await waveHp()).toBe(400)
 
     await setup('null_ref_25_right')
     game.cast('r')
     await game.tick()
-    expect(await creepHp()).toBeLessThan(400)
+    expect(await waveHp()).toBeLessThan(400)
   })
 
   it('an AoE cast leaves your own wave alone', async () => {
@@ -961,13 +958,13 @@ describe('abilities vs creeps', () => {
         ...s.players,
         [HUMAN]: { ...s.players[HUMAN]!, zone: LANE, cooldowns: { q: 0, w: 0, e: 0, r: 0 } },
       },
-      creeps: [{ id: 'mine', team: me.team, zone: LANE, hp: 400, maxHp: 400, type: 'melee' }],
+      waves: [{ id: 'mine', team: me.team, zone: LANE, hp: 400, maxHp: 400, type: 'line' }],
     }))
 
     game.cast('e')
     await game.tick()
 
-    const mine = (await game.state()).creeps.find((c) => c.id === 'mine')
+    const mine = (await game.state()).waves.find((c) => c.id === 'mine')
     expect(mine?.hp).toBe(400)
   })
 })

@@ -4,7 +4,7 @@ import { processTick } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame, getBotLane } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
+import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import { zonesForMap } from '~~/shared/constants/maps'
 
@@ -64,7 +64,7 @@ function oneLaneState(players: Record<string, PlayerState>): GameState {
     players,
     zones: initializeZoneStates(zones),
     neutrals: [],
-    creeps: [],
+    waves: [],
     ice: initializeIce(zones),
     ancients: initializeAncients(),
     caches: [],
@@ -83,7 +83,7 @@ describe('bots on the one-lane map', () => {
   let prevFastGame: string | undefined
 
   beforeEach(() => {
-    resetCreepIdCounter()
+    resetWaveIdCounter()
     prevNodeEnv = process.env.NODE_ENV
     prevFastGame = process.env.TERMINA_TEST_FAST_GAME
     process.env.NODE_ENV = 'production'
@@ -177,7 +177,7 @@ describe('bots on the one-lane map', () => {
 
     expect(offMapRejections).toBe(0)
     expect(crossedFrontier).toBe(true)
-    // And creeps stayed contained to the map the whole time.
-    expect(state.creeps.every((c) => validZones.has(c.zone))).toBe(true)
+    // And waves stayed contained to the map the whole time.
+    expect(state.waves.every((c) => validZones.has(c.zone))).toBe(true)
   })
 })

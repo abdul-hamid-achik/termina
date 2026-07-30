@@ -1,10 +1,10 @@
-import type { CreepState } from '~~/shared/types/game'
+import type { WaveUnitState } from '~~/shared/types/game'
 import {
-  CREEP_WAVE_INTERVAL_TICKS,
-  MELEE_CREEPS_PER_WAVE,
-  RANGED_CREEPS_PER_WAVE,
-  SIEGE_CREEP_WAVE_INTERVAL,
-  creepMaxHp,
+  WAVE_INTERVAL_TICKS,
+  LINE_UNITS_PER_WAVE,
+  SWEEP_UNITS_PER_WAVE,
+  BREACH_WAVE_INTERVAL,
+  waveUnitMaxHp,
   TENANT_RESPAWN_TICKS,
   TENANT_BASE_HP,
   TENANT_HP_PER_MINUTE,
@@ -12,15 +12,15 @@ import {
   CACHE_INTERVAL_TICKS,
 } from '~~/shared/constants/balance'
 
-let creepIdCounter = 0
+let waveIdCounter = 0
 
-function nextCreepId(): string {
-  return `creep-${++creepIdCounter}`
+function nextWaveId(): string {
+  return `wave-${++waveIdCounter}`
 }
 
 /** Reset the ID counter (useful for tests). */
-export function resetCreepIdCounter(): void {
-  creepIdCounter = 0
+export function resetWaveIdCounter(): void {
+  waveIdCounter = 0
 }
 
 /** Lane spawn points for each team. */
@@ -31,8 +31,8 @@ const LANE_SPAWN_ZONES: Record<string, { chaff: string; audit: string }> = {
 }
 
 /**
- * Spawn a wave of creeps for one team on one lane. Throws on unknown lane.
- * `tick` fixes the wave's escalation tier: creeps keep the HP they spawned
+ * Spawn a wave of waves for one team on one lane. Throws on unknown lane.
+ * `tick` fixes the wave's escalation tier: waves keep the HP they spawned
  * with for life, so a late wave is permanently tougher than an early one.
  */
 function spawnWave(
@@ -40,53 +40,56 @@ function spawnWave(
   lane: string,
   waveNumber: number,
   tick: number,
-): CreepState[] {
+): WaveUnitState[] {
   const spawnZone = LANE_SPAWN_ZONES[lane]
   if (!spawnZone) {
     throw new Error(`spawnWave: unknown lane '${lane}' — expected one of top/mid/bot`)
   }
   const zone = spawnZone[team]
-  const creeps: CreepState[] = []
+  const waves: WaveUnitState[] = []
 
-  // Stamp maxHp at spawn: this creep keeps this max for life, so anything
+  // Stamp maxHp at spawn: this wave keeps this max for life, so anything
   // reasoning about a fraction of full health stays correct after the wave
   // outlives an escalation boundary.
-  const melee = creepMaxHp('melee', tick)
-  for (let i = 0; i < MELEE_CREEPS_PER_WAVE; i++) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: melee, maxHp: melee, type: 'melee' })
+  const line = waveUnitMaxHp('line', tick)
+  for (let i = 0; i < LINE_UNITS_PER_WAVE; i++) {
+    waves.push({ id: nextWaveId(), team, zone, hp: line, maxHp: line, type: 'line' })
   }
-  const ranged = creepMaxHp('ranged', tick)
-  for (let i = 0; i < RANGED_CREEPS_PER_WAVE; i++) {
-    creeps.push({ id: nextCreepId(), team, zone, hp: ranged, maxHp: ranged, type: 'ranged' })
+  const sweep = waveUnitMaxHp('sweep', tick)
+  for (let i = 0; i < SWEEP_UNITS_PER_WAVE; i++) {
+    waves.push({ id: nextWaveId(), team, zone, hp: sweep, maxHp: sweep, type: 'sweep' })
   }
-  if (waveNumber > 0 && waveNumber % SIEGE_CREEP_WAVE_INTERVAL === 0) {
-    const siege = creepMaxHp('siege', tick)
-    creeps.push({ id: nextCreepId(), team, zone, hp: siege, maxHp: siege, type: 'siege' })
+  if (waveNumber > 0 && waveNumber % BREACH_WAVE_INTERVAL === 0) {
+    const breach = waveUnitMaxHp('breach', tick)
+    waves.push({ id: nextWaveId(), team, zone, hp: breach, maxHp: breach, type: 'breach' })
   }
 
-  return creeps
+  return waves
 }
 
 /**
- * Spawn creep waves if the current tick is a wave tick. Returns new creeps to add.
+ * Spawn wave waves if the current tick is a wave tick. Returns new waves to add.
  * `hasZone` (the game's live zone set) gates lanes to the current map — a subset
  * map like one-lane only has its lanes' spawn zones, so top/bot are skipped.
  * Omitted = full map (all three lanes).
  */
-export function spawnCreepWaves(tick: number, hasZone?: (zoneId: string) => boolean): CreepState[] {
-  if (tick === 0 || tick % CREEP_WAVE_INTERVAL_TICKS !== 0) return []
+export function spawnWaveUnits(
+  tick: number,
+  hasZone?: (zoneId: string) => boolean,
+): WaveUnitState[] {
+  if (tick === 0 || tick % WAVE_INTERVAL_TICKS !== 0) return []
 
-  const waveNumber = tick / CREEP_WAVE_INTERVAL_TICKS
-  const newCreeps: CreepState[] = []
+  const waveNumber = tick / WAVE_INTERVAL_TICKS
+  const newWaves: WaveUnitState[] = []
 
   for (const lane of ['top', 'mid', 'bot']) {
     const spawn = LANE_SPAWN_ZONES[lane]
     if (hasZone && spawn && (!hasZone(spawn.chaff) || !hasZone(spawn.audit))) continue
-    newCreeps.push(...spawnWave('chaff', lane, waveNumber, tick))
-    newCreeps.push(...spawnWave('audit', lane, waveNumber, tick))
+    newWaves.push(...spawnWave('chaff', lane, waveNumber, tick))
+    newWaves.push(...spawnWave('audit', lane, waveNumber, tick))
   }
 
-  return newCreeps
+  return newWaves
 }
 
 /** Cache spawn state. */

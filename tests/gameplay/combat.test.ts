@@ -639,7 +639,7 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('a ice fires on a lone enemy hero diving it (no creeps to tank)', async () => {
+  it('a ice fires on a lone enemy hero diving it (no waves to tank)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     // Tick once up front so the level-6 maxHp recompute is already settled —
     // otherwise the first-tick HP inflation masks the ice hit.
@@ -650,7 +650,7 @@ describe('combat', () => {
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, hp: 400 } },
-        creeps: [], // nothing to soak the ice
+        waves: [], // nothing to soak the ice
       }
     })
 
@@ -661,7 +661,7 @@ describe('combat', () => {
     expect((await game.me()).hp).toBeLessThan(before)
   })
 
-  it('creeps tank the ice — a hero behind its own creep takes no ice fire', async () => {
+  it('waves tank the ice — a hero behind its own wave takes no ice fire', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.tick() // settle the maxHp recompute first
     await game.patch((s) => {
@@ -670,19 +670,19 @@ describe('combat', () => {
       return {
         ...s,
         players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, hp: 400 } },
-        // An allied creep (same team as the hero) soaks the ice instead.
-        creeps: [{ id: 'shield0', team: me.team, zone: enemyIceZone, hp: 300, type: 'melee' }],
+        // An allied wave (same team as the hero) soaks the ice instead.
+        waves: [{ id: 'shield0', team: me.team, zone: enemyIceZone, hp: 300, type: 'line' }],
       }
     })
 
     const before = (await game.me()).hp
     await game.tick()
 
-    // The hero is shielded — the ice shot the creep, not the hero (HP only
+    // The hero is shielded — the ice shot the wave, not the hero (HP only
     // moves up via regen, never down).
     expect((await game.me()).hp).toBeGreaterThanOrEqual(before)
-    const creep = (await game.state()).creeps.find((c) => c.id === 'shield0')
-    expect(creep && creep.hp < 300).toBe(true)
+    const wave = (await game.state()).waves.find((c) => c.id === 'shield0')
+    expect(wave && wave.hp < 300).toBe(true)
   })
 
   it('using Harden turns all of the team’s ice invulnerable', async () => {

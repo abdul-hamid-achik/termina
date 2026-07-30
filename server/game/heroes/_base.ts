@@ -376,20 +376,20 @@ export function dealAbilityDamage(
 }
 
 /**
- * Ability damage to the NPCs standing in the caster's zone — enemy lane creeps
+ * Ability damage to the NPCs standing in the caster's zone — enemy lane waves
  * and neutrals, which are hostile to both teams. Until this existed no ability
- * could touch a creep, so standing in lane with a wave in front of you and no
+ * could touch a wave, so standing in lane with a wave in front of you and no
  * enemy hero present made all four of your abilities dead weight: no waveclear,
  * no jungle clearing, no securing a last hit with a nuke.
  *
- * Creeps carry no defense or magic-resist stat, so the target-side mitigation
+ * Waves carry no defense or magic-resist stat, so the target-side mitigation
  * in `dealDamage` has nothing to read — only the CASTER-side amplifier
  * (Mystical Staff's +15% magical) applies, matching `dealAbilityDamage` so the
  * two damage paths can't diverge on the same item.
  *
  * Dead NPCs are left in the array at 0 HP (`alive: false` for neutrals) rather
  * than filtered out: the cast bridge credits the kill by diffing HP against the
- * pre-cast buffer, and CreepAI reaps them at the end of the same tick. ICE,
+ * pre-cast buffer, and WaveAI reaps them at the end of the same tick. ICE,
  * Tenant and the Ancient are deliberately untouched — a second pass.
  */
 export function damageEnemyNpcsInZone(
@@ -406,7 +406,7 @@ export function damageEnemyNpcsInZone(
   const zoneIds = new Set(zones)
   let hitAny = false
 
-  const creeps = (state.creeps ?? []).map((c) => {
+  const waves = (state.waves ?? []).map((c) => {
     if (c.team === caster.team || c.hp <= 0 || !zoneIds.has(c.zone)) return c
     hitAny = true
     return { ...c, hp: Math.max(0, c.hp - damage) }
@@ -422,7 +422,7 @@ export function damageEnemyNpcsInZone(
   // Preserve reference equality when nothing was in range — the cast bridge
   // uses it to skip the diff, and StateDelta's field diff to skip a broadcast.
   if (!hitAny) return state
-  return { ...state, creeps, neutrals }
+  return { ...state, waves, neutrals }
 }
 
 export function healPlayer(target: PlayerState, amount: number): PlayerState {

@@ -48,7 +48,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     ice: initializeIce(),
     events: [],
     ...overrides,
@@ -304,22 +304,22 @@ describe('VisionCalculator', () => {
       expect('fogged' in enemy).toBe(false)
     })
 
-    it('should not reveal creeps in fogged zones', () => {
+    it('should not reveal waves in fogged zones', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
         },
-        creeps: [
-          { id: 'c1', team: 'audit', zone: 'audit-fountain', hp: 400, type: 'melee' },
-          { id: 'c2', team: 'chaff', zone: 'chaff-base', hp: 400, type: 'melee' },
+        waves: [
+          { id: 'c1', team: 'audit', zone: 'audit-fountain', hp: 400, type: 'line' },
+          { id: 'c2', team: 'chaff', zone: 'chaff-base', hp: 400, type: 'line' },
         ],
       })
 
       const filtered = filterStateForPlayer(state, 'p1')
       // c1 in audit-fountain should be hidden
-      expect(filtered.creeps.find((c) => c.id === 'c1')).toBeUndefined()
+      expect(filtered.waves.find((c) => c.id === 'c1')).toBeUndefined()
       // c2 in chaff-base should be visible
-      expect(filtered.creeps.find((c) => c.id === 'c2')).toBeDefined()
+      expect(filtered.waves.find((c) => c.id === 'c2')).toBeDefined()
     })
 
     it('should not reveal enemy wards in fogged zones', () => {

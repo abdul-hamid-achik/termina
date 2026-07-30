@@ -33,7 +33,7 @@ const stream: CombatLine[] = [
   { tick: 238, text: 'you earned 240g (hero kill)', type: 'gold', salience: 'mine-out' },
   {
     tick: 239,
-    text: 'a creep hit the Audit ice for 60',
+    text: 'a wave hit the Audit ice for 60',
     type: 'damage',
     salience: 'world',
     dedupKey: 'dmg:t',
@@ -52,8 +52,8 @@ const stream: CombatLine[] = [
 
 // Story mode's farm digest: the ally/world farm-tagged lines below fold into
 // one dim "farm: …" line per tick (mine/team/enemy attributed), while the kill
-// and my own trade stay loud. Tick 260 digests to "farm: team 1 creep, 1 camp ·
-// enemy farming in sight"; tick 261 to "farm: team 2 creeps · enemy 1 creep,
+// and my own trade stay loud. Tick 260 digests to "farm: team 1 wave, 1 camp ·
+// enemy farming in sight"; tick 261 to "farm: team 2 waves · enemy 1 wave,
 // 1 burn". Toggle ≡ to see the raw per-event stream these fold from.
 const farmDigest: CombatLine[] = [
   {
@@ -65,7 +65,7 @@ const farmDigest: CombatLine[] = [
   { tick: 260, text: 'daemon_carry hit you for 90 physical', type: 'damage', salience: 'mine-in' },
   {
     tick: 260,
-    text: 'kernel_main last-hit a melee creep',
+    text: 'kernel_main last-hit a line wave',
     type: 'gold',
     salience: 'ally',
     farmKind: 'lasthit',
@@ -79,7 +79,7 @@ const farmDigest: CombatLine[] = [
   },
   {
     tick: 260,
-    text: 'regex_mid hit a ranged creep for 48',
+    text: 'regex_mid hit a sweep wave for 48',
     type: 'damage',
     salience: 'world',
     farmKind: 'hit',
@@ -94,28 +94,28 @@ const farmDigest: CombatLine[] = [
   },
   {
     tick: 261,
-    text: 'cipher_off last-hit a siege creep',
+    text: 'cipher_off last-hit a breach wave',
     type: 'gold',
     salience: 'ally',
     farmKind: 'lasthit',
   },
   {
     tick: 261,
-    text: 'cipher_off last-hit a melee creep',
+    text: 'cipher_off last-hit a line wave',
     type: 'gold',
     salience: 'ally',
     farmKind: 'lasthit',
   },
   {
     tick: 261,
-    text: 'regex_mid last-hit a melee creep',
+    text: 'regex_mid last-hit a line wave',
     type: 'gold',
     salience: 'world',
     farmKind: 'lasthit',
   },
   {
     tick: 261,
-    text: 'cache_sup burned a ranged creep',
+    text: 'cache_sup burned a sweep wave',
     type: 'system',
     salience: 'world',
     farmKind: 'burn',
@@ -124,12 +124,12 @@ const farmDigest: CombatLine[] = [
 
 // My own farming folds too — but a digest carrying MY rewards keeps mine-out
 // salience (so the ME filter keeps it) and leads with my gold: tick 270 digests
-// to "farm: you +81g (2 last-hits) · team 1 creep", tick 271 to "farm: you
-// cleared a camp · you burned a creep · enemy farming in sight".
+// to "farm: you +81g (2 last-hits) · team 1 wave", tick 271 to "farm: you
+// cleared a camp · you burned a wave · enemy farming in sight".
 const myRewards: CombatLine[] = [
   {
     tick: 270,
-    text: 'you last-hit a melee creep (+38g)',
+    text: 'you last-hit a line wave (+38g)',
     type: 'gold',
     salience: 'mine-out',
     farmKind: 'lasthit',
@@ -137,7 +137,7 @@ const myRewards: CombatLine[] = [
   },
   {
     tick: 270,
-    text: 'you last-hit a ranged creep (+43g)',
+    text: 'you last-hit a sweep wave (+43g)',
     type: 'gold',
     salience: 'mine-out',
     farmKind: 'lasthit',
@@ -145,7 +145,7 @@ const myRewards: CombatLine[] = [
   },
   {
     tick: 270,
-    text: 'kernel_main last-hit a melee creep',
+    text: 'kernel_main last-hit a line wave',
     type: 'gold',
     salience: 'ally',
     farmKind: 'lasthit',
@@ -159,14 +159,14 @@ const myRewards: CombatLine[] = [
   },
   {
     tick: 271,
-    text: 'you burned a melee creep',
+    text: 'you burned a line wave',
     type: 'system',
     salience: 'mine-out',
     farmKind: 'burn',
   },
   {
     tick: 271,
-    text: 'daemon_carry hit a creep for 55',
+    text: 'daemon_carry hit a wave for 55',
     type: 'damage',
     salience: 'world',
     farmKind: 'hit',

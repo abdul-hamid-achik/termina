@@ -357,7 +357,7 @@ export const ZONE_IDS = ZONES.map((z) => z.id)
  *
  * Both bases became shops so a 430g purchase no longer costs ~9 near-inputless
  * ticks — but `shop` alone is not the rule. Every shop zone is team-owned, and a
- * base is the natural place a siege happens, so a bare `zone.shop` test let an
+ * base is the natural place a breach happens, so a bare `zone.shop` test let an
  * attacker restock from the defender's shop mid-fight.
  */
 export function isShopZoneFor(zoneId: string, team: TeamId): boolean {

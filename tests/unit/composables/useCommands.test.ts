@@ -15,7 +15,7 @@ import {
   formatHelpReadout,
   type GameContext,
 } from '~~/app/composables/useCommands'
-import type { PlayerState, ZoneRuntimeState, CreepState } from '~~/shared/types/game'
+import type { PlayerState, ZoneRuntimeState, WaveUnitState } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
 import { ZONE_IDS } from '~~/shared/constants/zones'
@@ -24,7 +24,7 @@ import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
 /** The full game zone set, as the client actually receives it (state.zones). */
 function allZones(): Record<string, ZoneRuntimeState> {
   const zones: Record<string, ZoneRuntimeState> = {}
-  for (const id of ZONE_IDS) zones[id] = { id, wards: [], creeps: [] }
+  for (const id of ZONE_IDS) zones[id] = { id, wards: [], waves: [] }
   return zones
 }
 
@@ -64,22 +64,22 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 }
 
 /**
- * A realistic slice of `state.creeps` as the client receives it: server order,
+ * A realistic slice of `state.waves` as the client receives it: server order,
  * mixed zones, mixed teams, and one corpse that has not been reaped yet.
  *
  * Zone-local indices for mid-t1-chaff are therefore 0=c0, 1=c1, 2=c2 (dead),
  * 3=c3, 4=c4 — deliberately offset from the global positions so anything that
- * numbers creeps globally, or that renumbers after dropping the corpse, is
+ * numbers waves globally, or that renumbers after dropping the corpse, is
  * caught.
  */
-function makeCreeps(): CreepState[] {
+function makeWaves(): WaveUnitState[] {
   return [
-    { id: 'elsewhere', team: 'audit', zone: 'mid-river', hp: 400, maxHp: 400, type: 'melee' },
-    { id: 'c0', team: 'audit', zone: 'mid-t1-chaff', hp: 320, maxHp: 400, type: 'melee' },
-    { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 90, maxHp: 400, type: 'melee' },
-    { id: 'c2', team: 'audit', zone: 'mid-t1-chaff', hp: 0, maxHp: 250, type: 'ranged' },
-    { id: 'c3', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 250, type: 'ranged' },
-    { id: 'c4', team: 'chaff', zone: 'mid-t1-chaff', hp: 380, maxHp: 400, type: 'melee' },
+    { id: 'elsewhere', team: 'audit', zone: 'mid-river', hp: 400, maxHp: 400, type: 'line' },
+    { id: 'c0', team: 'audit', zone: 'mid-t1-chaff', hp: 320, maxHp: 400, type: 'line' },
+    { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 90, maxHp: 400, type: 'line' },
+    { id: 'c2', team: 'audit', zone: 'mid-t1-chaff', hp: 0, maxHp: 250, type: 'sweep' },
+    { id: 'c3', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 250, type: 'sweep' },
+    { id: 'c4', team: 'chaff', zone: 'mid-t1-chaff', hp: 380, maxHp: 400, type: 'line' },
   ]
 }
 
@@ -89,7 +89,7 @@ function makeContext(overrides: Partial<GameContext> = {}): GameContext {
     // The client receives the full game zone set (state.zones), not just the
     // vision-visible ones — reflect that so move validation behaves realistically.
     visibleZones: allZones(),
-    creeps: makeCreeps(),
+    waves: makeWaves(),
     allPlayers: {
       p1: makePlayer(),
       e1: makePlayer({
@@ -223,14 +223,14 @@ describe('useCommands', () => {
         })
       })
 
-      it('parses attack creep target', () => {
+      it('parses attack wave target', () => {
         const { parse } = useCommands()
-        const result = parse('attack creep:2')
+        const result = parse('attack wave:2')
 
         expect(result.error).toBeNull()
         expect(result.command).toEqual({
           type: 'attack',
-          target: { kind: 'creep', index: 2 },
+          target: { kind: 'wave', index: 2 },
         })
       })
 
@@ -334,23 +334,23 @@ describe('useCommands', () => {
     })
 
     describe('burn command', () => {
-      it('parses burn creep target', () => {
+      it('parses burn wave target', () => {
         const { parse } = useCommands()
-        const result = parse('burn creep:3')
+        const result = parse('burn wave:3')
 
         expect(result.error).toBeNull()
         expect(result.command).toEqual({
           type: 'burn',
-          target: { kind: 'creep', index: 3 },
+          target: { kind: 'wave', index: 3 },
         })
       })
 
-      it('rejects denying a non-creep target (only creeps can be burned)', () => {
+      it('rejects denying a non-wave target (only waves can be burned)', () => {
         const { parse } = useCommands()
         const result = parse('burn hero:daemon')
 
         expect(result.command).toBeNull()
-        expect(result.error).toContain('Can only burn allied creeps')
+        expect(result.error).toContain('Can only burn allied waves')
       })
 
       it('returns usage error without a target', () => {
@@ -870,13 +870,13 @@ describe('useCommands', () => {
       })
     })
 
-    it('parses creep:index target', () => {
+    it('parses wave:index target', () => {
       const { parse } = useCommands()
-      const result = parse('attack creep:0')
+      const result = parse('attack wave:0')
 
       expect(result.command).toEqual({
         type: 'attack',
-        target: { kind: 'creep', index: 0 },
+        target: { kind: 'wave', index: 0 },
       })
     })
 
@@ -911,9 +911,9 @@ describe('useCommands', () => {
       })
     })
 
-    it('rejects invalid creep index', () => {
+    it('rejects invalid wave index', () => {
       const { parse } = useCommands()
-      const result = parse('attack creep:abc')
+      const result = parse('attack wave:abc')
 
       expect(result.command).toBeNull()
       expect(result.error).toContain('Invalid target')
@@ -1043,8 +1043,8 @@ describe('useCommands', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           visibleZones: {
-            'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], creeps: [] },
-            'mid-river': { id: 'mid-river', wards: [], creeps: [] },
+            'mid-t1-chaff': { id: 'mid-t1-chaff', wards: [], waves: [] },
+            'mid-river': { id: 'mid-river', wards: [], waves: [] },
           },
         })
 
@@ -1072,8 +1072,8 @@ describe('useCommands', () => {
         // top-river, which does not exist here — the reachable zones win.
         const context = makeContext({
           visibleZones: {
-            'top-t1-chaff': { id: 'top-t1-chaff', wards: [], creeps: [] },
-            'top-t2-chaff': { id: 'top-t2-chaff', wards: [], creeps: [] },
+            'top-t1-chaff': { id: 'top-t1-chaff', wards: [], waves: [] },
+            'top-t2-chaff': { id: 'top-t2-chaff', wards: [], waves: [] },
           },
         })
         const suggestions = autocomplete('move top', context)
@@ -1104,54 +1104,54 @@ describe('useCommands', () => {
         expect(texts.some((t) => t.includes('daemon'))).toBe(true)
       })
 
-      // REGRESSION: these read ZoneRuntimeState.creeps, a field the server
+      // REGRESSION: these read ZoneRuntimeState.waves, a field the server
       // initialises to [] and never writes — the suggestion list had never once
       // been non-empty in a real game.
-      it('suggests the ENEMY creeps standing in your zone', () => {
+      it('suggests the ENEMY waves standing in your zone', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('attack creep', makeContext())
+        const suggestions = autocomplete('attack wave', makeContext())
 
-        // creep:1 is an ally — the server always refuses an attack on your own
-        // creep (that is what `burn` is for), and an offered target that cannot
+        // wave:1 is an ally — the server always refuses an attack on your own
+        // wave (that is what `burn` is for), and an offered target that cannot
         // work costs the player their single action for the tick.
         const texts = suggestions.map((s) => s.text)
-        expect(texts).toEqual(['creep:0', 'creep:3'])
+        expect(texts).toEqual(['wave:0', 'wave:3'])
       })
 
-      it('numbers creeps within the zone, not globally', () => {
+      it('numbers waves within the zone, not globally', () => {
         const { autocomplete } = useCommands()
         // `elsewhere` sits at global index 0 but in another zone; if it counted,
         // every suggestion here would be one too high and the attack would land
-        // on the wrong creep.
-        const suggestions = autocomplete('attack creep', makeContext())
+        // on the wrong wave.
+        const suggestions = autocomplete('attack wave', makeContext())
 
-        expect(suggestions[0]!.text).toBe('creep:0')
+        expect(suggestions[0]!.text).toBe('wave:0')
         expect(suggestions[0]!.description).toContain('320/400')
       })
 
-      it('skips a dead-but-unreaped creep without renumbering the rest', () => {
+      it('skips a dead-but-unreaped wave without renumbering the rest', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('attack creep', makeContext())
+        const suggestions = autocomplete('attack wave', makeContext())
 
         const texts = suggestions.map((s) => s.text)
-        expect(texts).not.toContain('creep:2') // c2 is the corpse
-        expect(texts).toContain('creep:3') // c3 keeps its slot behind it
+        expect(texts).not.toContain('wave:2') // c2 is the corpse
+        expect(texts).toContain('wave:3') // c3 keeps its slot behind it
       })
 
       it('offers only enemies, and says so — a last-hit is not a burn', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('attack creep', makeContext())
+        const suggestions = autocomplete('attack wave', makeContext())
 
         const byRef = new Map(suggestions.map((s) => [s.text, s.description]))
-        expect(byRef.get('creep:0')).toContain('enemy')
+        expect(byRef.get('wave:0')).toContain('enemy')
         // The ally keeps its slot in the numbering but is never offered.
-        expect(byRef.has('creep:1')).toBe(false)
+        expect(byRef.has('wave:1')).toBe(false)
       })
 
-      it('offers no creeps when the zone is empty', () => {
+      it('offers no waves when the zone is empty', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({ player: makePlayer({ zone: 'top-t1-chaff' }) })
-        const suggestions = autocomplete('attack creep', context)
+        const suggestions = autocomplete('attack wave', context)
 
         expect(suggestions).toEqual([])
       })
@@ -1217,39 +1217,39 @@ describe('useCommands', () => {
     })
 
     describe('target completion for burn', () => {
-      it('offers only your own creeps, at the index the server resolves', () => {
+      it('offers only your own waves, at the index the server resolves', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('burn creep', makeContext())
+        const suggestions = autocomplete('burn wave', makeContext())
 
-        expect(suggestions.map((s) => s.text)).toEqual(['creep:1', 'creep:4'])
+        expect(suggestions.map((s) => s.text)).toEqual(['wave:1', 'wave:4'])
       })
 
-      it('flags which allied creep is actually low enough to burn', () => {
+      it('flags which allied wave is actually low enough to burn', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('burn creep', makeContext())
+        const suggestions = autocomplete('burn wave', makeContext())
 
         const byRef = new Map(suggestions.map((s) => [s.text, s.description]))
-        expect(byRef.get('creep:1')).toContain('denyable') // 90/400
-        expect(byRef.get('creep:4')).not.toContain('denyable') // 380/400
+        expect(byRef.get('wave:1')).toContain('denyable') // 90/400
+        expect(byRef.get('wave:4')).not.toContain('denyable') // 380/400
       })
 
       it('agrees with the bare-burn auto-target', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
-        const suggested = autocomplete('burn creep', context).map((s) => s.text)
+        const suggested = autocomplete('burn wave', context).map((s) => s.text)
 
         expect(suggested).toContain(
-          (pickDenyTargetString(context.player!, context.creeps!) as { target: string }).target,
+          (pickDenyTargetString(context.player!, context.waves!) as { target: string }).target,
         )
       })
 
-      it('offers nothing when your creeps are all dead', () => {
+      it('offers nothing when your waves are all dead', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
-          creeps: makeCreeps().map((c) => (c.team === 'chaff' ? { ...c, hp: 0 } : c)),
+          waves: makeWaves().map((c) => (c.team === 'chaff' ? { ...c, hp: 0 } : c)),
         })
 
-        expect(autocomplete('burn creep', context)).toEqual([])
+        expect(autocomplete('burn wave', context)).toEqual([])
       })
     })
 
@@ -1786,7 +1786,7 @@ describe('validateCommand', () => {
       'audit-base',
       'audit-fountain',
     ]) {
-      oneLaneZones[id] = { id, wards: [], creeps: [] }
+      oneLaneZones[id] = { id, wards: [], waves: [] }
     }
     const ctx = makeContext({
       player: makePlayer({ zone: 'chaff-base' }),
@@ -1999,10 +1999,10 @@ describe('validateCommand', () => {
       ],
     })
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 0 } }, ctx)).toMatch(
-      /No neutral creep at index 0/,
+      /No neutral wave at index 0/,
     )
     expect(validateCommand({ type: 'attack', target: { kind: 'neutral', index: 7 } }, ctx)).toMatch(
-      /No neutral creep at index 7/,
+      /No neutral wave at index 7/,
     )
   })
 
@@ -2148,11 +2148,11 @@ describe('pickAttackTargetString', () => {
     expect(result).toEqual({ target: 'hero:e3' })
   })
 
-  it('errors with a creep/ice hint when no enemy hero is in the zone', () => {
+  it('errors with a wave/ice hint when no enemy hero is in the zone', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const result = pickAttackTargetString(me, { p1: me })
     expect('error' in result && result.error).toMatch(/no enemy hero/i)
-    expect('error' in result && result.error).toMatch(/creep/i)
+    expect('error' in result && result.error).toMatch(/wave/i)
   })
 })
 
@@ -2241,53 +2241,53 @@ describe('informational readouts', () => {
 
 // ── pickDenyTargetString (bare `burn` auto-target) ────────────────
 describe('pickDenyTargetString', () => {
-  // Melee creep max HP is 400; the burn threshold is 50% (200).
-  const allied = (overrides: Partial<CreepState>): CreepState => ({
+  // Line wave max HP is 400; the burn threshold is 50% (200).
+  const allied = (overrides: Partial<WaveUnitState>): WaveUnitState => ({
     id: 'c',
     team: 'chaff' as const,
     zone: 'mid-river',
     hp: 100,
-    type: 'melee' as const,
+    type: 'line' as const,
     ...overrides,
   })
 
-  it('targets the lowest-HP eligible allied creep, by zone index', () => {
+  it('targets the lowest-HP eligible allied wave, by zone index', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const creeps = [
+    const waves = [
       allied({ id: 'c0', hp: 180 }), // index 0 — eligible (<=200)
       allied({ id: 'c1', hp: 120 }), // index 1 — eligible, lowest HP
       allied({ id: 'c2', hp: 350 }), // index 2 — too healthy to burn
     ]
-    expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:1' })
+    expect(pickDenyTargetString(me, waves)).toEqual({ target: 'wave:1' })
   })
 
   it('indexes within the player’s zone only (matches the server convention)', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const creeps = [
+    const waves = [
       allied({ id: 'x', zone: 'top-river', hp: 50 }), // other zone — not counted
       allied({ id: 'c0', zone: 'mid-river', hp: 150 }), // zone index 0
     ]
-    expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:0' })
+    expect(pickDenyTargetString(me, waves)).toEqual({ target: 'wave:0' })
   })
 
-  it('ignores enemy creeps and healthy allied creeps', () => {
+  it('ignores enemy waves and healthy allied waves', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    const creeps = [
+    const waves = [
       allied({ id: 'e', team: 'audit', hp: 10 }), // enemy — you burn your OWN
       allied({ id: 'healthy', hp: 399 }), // above 50% — not denyable
     ]
-    expect('error' in pickDenyTargetString(me, creeps)).toBe(true)
+    expect('error' in pickDenyTargetString(me, waves)).toBe(true)
   })
 
-  it('respects per-type max HP (ranged threshold is lower)', () => {
+  it('respects per-type max HP (sweep threshold is lower)', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
-    // Ranged max HP 250 → threshold 125. A ranged creep at 130 is NOT denyable,
-    // but a melee creep (max 400, threshold 200) at 130 IS.
-    const creeps = [
-      allied({ id: 'ranged', type: 'ranged', hp: 130 }),
-      allied({ id: 'melee', type: 'melee', hp: 130 }),
+    // Sweep max HP 250 → threshold 125. A sweep wave at 130 is NOT denyable,
+    // but a line wave (max 400, threshold 200) at 130 IS.
+    const waves = [
+      allied({ id: 'sweep', type: 'sweep', hp: 130 }),
+      allied({ id: 'line', type: 'line', hp: 130 }),
     ]
-    expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:1' })
+    expect(pickDenyTargetString(me, waves)).toEqual({ target: 'wave:1' })
   })
 })
 

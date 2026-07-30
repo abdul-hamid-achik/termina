@@ -45,7 +45,7 @@ function makeTeams(): { chaff: TeamState; audit: TeamState } {
 }
 
 function makeZone(id: string): ZoneRuntimeState {
-  return { id, wards: [], creeps: [] }
+  return { id, wards: [], waves: [] }
 }
 
 function makeTickMessage(
@@ -90,7 +90,7 @@ describe('Game Store', () => {
       expect(store.allPlayers).toEqual({})
       expect(store.teams).toBeNull()
       expect(store.ice).toEqual([])
-      expect(store.creeps).toEqual([])
+      expect(store.waves).toEqual([])
       expect(store.events).toEqual([])
       expect(store.announcements).toEqual([])
       expect(store.nextTickIn).toBe(0)
@@ -508,21 +508,21 @@ describe('Game Store', () => {
         expect(store.teams).toEqual(teams)
       })
 
-      it('updates ice and creeps when present', () => {
+      it('updates ice and waves when present', () => {
         const store = useGameStore()
 
         const msg = makeTickMessage()
         ;(msg.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
         ]
-        ;(msg.state as unknown as Record<string, unknown>).creeps = [
-          { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
+        ;(msg.state as unknown as Record<string, unknown>).waves = [
+          { id: 'c1', team: 'chaff', zone: 'mid-t1-chaff', hp: 200, type: 'line' },
         ]
 
         store.updateFromTick(msg)
 
         expect(store.ice).toHaveLength(1)
-        expect(store.creeps).toHaveLength(1)
+        expect(store.waves).toHaveLength(1)
       })
 
       it('stores ice in game store and persists across updates', () => {
@@ -794,7 +794,7 @@ describe('Game Store', () => {
         expect(store.allPlayers).toEqual({})
         expect(store.teams).toBeNull()
         expect(store.ice).toEqual([])
-        expect(store.creeps).toEqual([])
+        expect(store.waves).toEqual([])
         expect(store.events).toEqual([])
         expect(store.announcements).toEqual([])
         expect(store.nextTickIn).toBe(0)

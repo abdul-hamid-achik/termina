@@ -55,7 +55,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     ice: initializeIce(),
     events: [],
     ...overrides,

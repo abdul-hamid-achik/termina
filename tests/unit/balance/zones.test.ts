@@ -242,7 +242,7 @@ describe('Zone Constants', () => {
 
 describe('shop zones are team-gated', () => {
   // REGRESSION: both bases became shops so a 430g purchase stops costing ~9
-  // near-inputless ticks — but a base is exactly where a siege happens, and a
+  // near-inputless ticks — but a base is exactly where a breach happens, and a
   // bare `zone.shop` test let the attacker restock from the DEFENDER's shop
   // mid-fight.
   it('lets a team shop in its own base and fountain', () => {

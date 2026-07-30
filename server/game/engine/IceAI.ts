@@ -5,18 +5,18 @@ import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 export interface IceAction {
   iceZone: string
-  targetType: 'hero' | 'creep'
+  targetType: 'hero' | 'wave'
   targetId: string
   damage: number
 }
 
 /**
- * Ice targeting priority each tick (MOBA convention — creeps tank ice,
+ * Ice targeting priority each tick (MOBA convention — waves tank ice,
  * heroes draw aggro only by acting aggressively):
  * 1. Enemy hero that attacked an allied hero in the ice zone, or attacked
  *    the ice itself, this tick
- * 2. Enemy creeps in zone
- * 3. Enemy hero presence (only when there are no creeps to shoot)
+ * 2. Enemy waves in zone
+ * 3. Enemy hero presence (only when there are no waves to shoot)
  *
  * Ice damage: ICE_ATTACK per tick.
  *
@@ -49,7 +49,7 @@ export function runIceAI(
 }
 
 interface IceTarget {
-  type: 'hero' | 'creep'
+  type: 'hero' | 'wave'
   id: string
 }
 
@@ -67,8 +67,8 @@ function selectIceTarget(
     (p) => p.zone === zone && p.team !== iceTeam && p.alive,
   )
 
-  // Get enemy creeps in the ice's zone
-  const enemyCreeps = state.creeps.filter((c) => c.zone === zone && c.team !== iceTeam && c.hp > 0)
+  // Get enemy waves in the ice's zone
+  const enemyWaves = state.waves.filter((c) => c.zone === zone && c.team !== iceTeam && c.hp > 0)
 
   // Priority 1: Enemy hero that drew aggro this tick — attacked an allied
   // hero in the ice zone, or attacked the ice itself.
@@ -99,12 +99,12 @@ function selectIceTarget(
     }
   }
 
-  // Priority 2: Enemy creeps in zone — creeps tank the ice
-  if (enemyCreeps.length > 0) {
-    return { type: 'creep', id: enemyCreeps[0]!.id }
+  // Priority 2: Enemy waves in zone — waves tank the ice
+  if (enemyWaves.length > 0) {
+    return { type: 'wave', id: enemyWaves[0]!.id }
   }
 
-  // Priority 3: Enemy hero presence, only when no creeps remain
+  // Priority 3: Enemy hero presence, only when no waves remain
   if (enemyHeroes.length > 0) {
     return { type: 'hero', id: enemyHeroes[0]!.id }
   }
@@ -121,7 +121,7 @@ export function applyIceActions(
   state: GameState,
   actions: IceAction[],
 ): { state: GameState; events: GameEngineEvent[] } {
-  let creeps = state.creeps.map((c) => ({ ...c }))
+  let waves = state.waves.map((c) => ({ ...c }))
   let players = { ...state.players }
   const events: GameEngineEvent[] = []
 
@@ -152,16 +152,16 @@ export function applyIceActions(
       }
     } else {
       const targetId = action.targetId
-      const target = creeps.find((c) => c.id === targetId)
+      const target = waves.find((c) => c.id === targetId)
       if (target && target.hp > 0) {
         const newHp = Math.max(0, target.hp - action.damage)
-        creeps = creeps.map((c) => (c.id === targetId ? { ...c, hp: newHp } : c))
+        waves = waves.map((c) => (c.id === targetId ? { ...c, hp: newHp } : c))
       }
     }
   }
 
-  // Remove dead creeps
-  creeps = creeps.filter((c) => c.hp > 0)
+  // Remove dead waves
+  waves = waves.filter((c) => c.hp > 0)
 
-  return { state: { ...state, creeps, players }, events }
+  return { state: { ...state, waves, players }, events }
 }

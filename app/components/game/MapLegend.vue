@@ -20,7 +20,7 @@ const LEGEND: { harden: string; meaning: string }[] = [
   { harden: '✦', meaning: 'live cache' },
   { harden: '◉', meaning: 'your ward' },
   { harden: '☘ N', meaning: 'neutral camp' },
-  { harden: 'cN', meaning: 'lane creeps' },
+  { harden: 'cN', meaning: 'lane waves' },
 ]
 
 // Zone codes used by the compact map's mini overview grid (see AsciiMap).

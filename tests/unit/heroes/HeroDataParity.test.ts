@@ -76,11 +76,11 @@ function makeState(players: PlayerState[]): GameState {
     },
     players: playerMap,
     zones: {
-      [CASTER_ZONE]: { id: CASTER_ZONE, wards: [], creeps: [] },
-      [ADJACENT_ZONE]: { id: ADJACENT_ZONE, wards: [], creeps: [] },
-      'top-river': { id: 'top-river', wards: [], creeps: [] },
+      [CASTER_ZONE]: { id: CASTER_ZONE, wards: [], waves: [] },
+      [ADJACENT_ZONE]: { id: ADJACENT_ZONE, wards: [], waves: [] },
+      'top-river': { id: 'top-river', wards: [], waves: [] },
     },
-    creeps: [],
+    waves: [],
     ice: [],
     events: [],
   } as unknown as GameState

@@ -4,7 +4,7 @@ import { processTick } from '~~/server/game/engine/GameLoop'
 import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
+import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 /**
@@ -66,7 +66,7 @@ describe('BotAI - integrated forward progress', () => {
   let prevFastGame: string | undefined
 
   beforeEach(() => {
-    resetCreepIdCounter()
+    resetWaveIdCounter()
     prevNodeEnv = process.env.NODE_ENV
     prevFastGame = process.env.TERMINA_TEST_FAST_GAME
     process.env.NODE_ENV = 'production'
@@ -124,7 +124,7 @@ describe('BotAI - integrated forward progress', () => {
       },
       players,
       zones: initializeZoneStates(),
-      creeps: [],
+      waves: [],
       neutrals: [],
       ice: initializeIce(),
       ancients: initializeAncients(),

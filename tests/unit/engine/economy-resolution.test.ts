@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import {
   createInMemoryStateManager,
   type PlayerSetup,
@@ -9,11 +9,11 @@ import {
 import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import {
-  CREEP_XP,
-  CREEP_GOLD,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
-  SIEGE_CREEP_GOLD,
+  WAVE_XP,
+  WAVE_GOLD,
+  WAVE_GOLD_MIN,
+  WAVE_GOLD_MAX,
+  BREACH_UNIT_GOLD,
   BURN_GOLD_RATIO,
   BURN_XP_RATIO,
   HERO_KILL_XP_BASE,
@@ -86,30 +86,30 @@ function inCombatBuff() {
 }
 
 /**
- * Place exactly ONE creep in `zone` so its per-zone burn/attack index is a
- * deterministic 0. (A fresh game seeds creeps in lane zones, never in
+ * Place exactly ONE wave in `zone` so its per-zone burn/attack index is a
+ * deterministic 0. (A fresh game seeds waves in lane zones, never in
  * `mid-river`, which is where we stage these fixtures.)
  */
-function withSoloCreep(state: GameState, creep: CreepState): GameState {
-  const others = state.creeps.filter((c) => c.zone !== creep.zone)
-  return { ...state, creeps: [...others, creep] }
+function withSoloWave(state: GameState, wave: WaveUnitState): GameState {
+  const others = state.waves.filter((c) => c.zone !== wave.zone)
+  return { ...state, waves: [...others, wave] }
 }
 
 describe('Economy through resolution', () => {
-  describe('Creep burn', () => {
-    it('burns an allied creep below 50% HP → creep hp→0, denier gets burn gold + floor(CREEP_XP*0.5), wave_burn event', async () => {
+  describe('Wave burn', () => {
+    it('burns an allied wave below 50% HP → wave hp→0, denier gets burn gold + floor(WAVE_XP*0.5), wave_burn event', async () => {
       const gameId = uid('burn')
       const sm = await startGame(gameId, makePlayers('dn', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'dn_r0', { zone: 'mid-river' })
-        // Allied (chaff) melee creep at 100/400 HP — well under the 50% burn gate.
-        return withSoloCreep(moved, {
+        // Allied (chaff) line wave at 100/400 HP — well under the 50% burn gate.
+        return withSoloWave(moved, {
           id: 'deny_target',
           team: 'chaff',
           zone: 'mid-river',
           hp: 100,
-          type: 'melee',
+          type: 'line',
         })
       })
 
@@ -117,14 +117,14 @@ describe('Economy through resolution', () => {
       const goldBefore = before.players['dn_r0']!.gold
       const xpBefore = before.players['dn_r0']!.xp
 
-      submitAction(gameId, 'dn_r0', { type: 'burn', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'dn_r0', { type: 'burn', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      // The burned creep is dead (hp 0); the engine GCs dead creeps so it is gone.
-      expect(r.state.creeps.some((c) => c.id === 'deny_target' && c.hp > 0)).toBe(false)
+      // The burned wave is dead (hp 0); the engine GCs dead waves so it is gone.
+      expect(r.state.waves.some((c) => c.id === 'deny_target' && c.hp > 0)).toBe(false)
 
-      const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
-      const burnXp = Math.floor(CREEP_XP * BURN_XP_RATIO)
+      const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+      const burnXp = Math.floor(WAVE_XP * BURN_XP_RATIO)
       const after = r.state.players['dn_r0']!
       // Burn gold is exact; burn XP is exact. (No passive gold confound: passive
       // gold is distributed but we measure the burn-specific deltas as a floor.)
@@ -134,56 +134,56 @@ describe('Economy through resolution', () => {
       const denyEvent = r.events.find((e) => e._tag === 'wave_burn')
       expect(denyEvent).toMatchObject({
         playerId: 'dn_r0',
-        creepId: 'deny_target',
-        creepType: 'melee',
+        waveId: 'deny_target',
+        waveType: 'line',
         goldAwarded: burnGold,
       })
     })
 
-    it('rejects denying a creep still above the 50% HP gate (no kill, no gold/xp)', async () => {
+    it('rejects denying a wave still above the 50% HP gate (no kill, no gold/xp)', async () => {
       const gameId = uid('denygate')
       const sm = await startGame(gameId, makePlayers('dg', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'dg_r0', { zone: 'mid-river' })
         // 300/400 = 75% HP — above the 50% burn threshold; burn must no-op.
-        return withSoloCreep(moved, {
+        return withSoloWave(moved, {
           id: 'healthy_ally',
           team: 'chaff',
           zone: 'mid-river',
           hp: 300,
-          type: 'melee',
+          type: 'line',
         })
       })
 
       const before = await Effect.runPromise(sm.getState(gameId))
       const xpBefore = before.players['dg_r0']!.xp
 
-      submitAction(gameId, 'dg_r0', { type: 'burn', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'dg_r0', { type: 'burn', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      // Creep survived; no burn event; no burn XP.
-      expect(r.state.creeps.some((c) => c.id === 'healthy_ally' && c.hp > 0)).toBe(true)
+      // Wave survived; no burn event; no burn XP.
+      expect(r.state.waves.some((c) => c.id === 'healthy_ally' && c.hp > 0)).toBe(true)
       expect(r.events.some((e) => e._tag === 'wave_burn')).toBe(false)
       expect(r.state.players['dg_r0']!.xp - xpBefore).toBe(0)
     })
   })
 
-  describe('Creep last-hit', () => {
-    it('last-hits an enemy siege creep → killer gold += SIEGE_CREEP_GOLD AND xp += CREEP_XP', async () => {
+  describe('Wave last-hit', () => {
+    it('last-hits an enemy breach wave → killer gold += BREACH_UNIT_GOLD AND xp += WAVE_XP', async () => {
       const gameId = uid('lasthit')
       const sm = await startGame(gameId, makePlayers('lh', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'lh_r0', { zone: 'mid-river' })
-        // Enemy (audit) SIEGE creep at 1 HP — siege last-hit gold is the fixed
-        // SIEGE_CREEP_GOLD (melee/ranged is randomized; siege keeps it exact).
-        return withSoloCreep(moved, {
-          id: 'enemy_siege',
+        // Enemy (audit) BREACH wave at 1 HP — breach last-hit gold is the fixed
+        // BREACH_UNIT_GOLD (line/sweep is randomized; breach keeps it exact).
+        return withSoloWave(moved, {
+          id: 'enemy_breach',
           team: 'audit',
           zone: 'mid-river',
           hp: 1,
-          type: 'siege',
+          type: 'breach',
         })
       })
 
@@ -191,29 +191,29 @@ describe('Economy through resolution', () => {
       const goldBefore = before.players['lh_r0']!.gold
       const xpBefore = before.players['lh_r0']!.xp
 
-      submitAction(gameId, 'lh_r0', { type: 'attack', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'lh_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      expect(r.state.creeps.some((c) => c.id === 'enemy_siege' && c.hp > 0)).toBe(false)
+      expect(r.state.waves.some((c) => c.id === 'enemy_breach' && c.hp > 0)).toBe(false)
       const after = r.state.players['lh_r0']!
-      // XP for the kill is exactly CREEP_XP. Gold is at least the siege bounty
+      // XP for the kill is exactly WAVE_XP. Gold is at least the breach bounty
       // (passive gold may add on top, but the last-hit credit is the floor).
-      expect(after.xp - xpBefore).toBe(CREEP_XP)
-      expect(after.gold - goldBefore).toBeGreaterThanOrEqual(SIEGE_CREEP_GOLD)
+      expect(after.xp - xpBefore).toBe(WAVE_XP)
+      expect(after.gold - goldBefore).toBeGreaterThanOrEqual(BREACH_UNIT_GOLD)
     })
 
-    it('last-hits an enemy melee creep → gold delta lands in the [MIN,MAX] last-hit band, xp += CREEP_XP', async () => {
-      const gameId = uid('lasthitmelee')
+    it('last-hits an enemy line wave → gold delta lands in the [MIN,MAX] last-hit band, xp += WAVE_XP', async () => {
+      const gameId = uid('lasthitline')
       const sm = await startGame(gameId, makePlayers('lm', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'lm_r0', { zone: 'mid-river' })
-        return withSoloCreep(moved, {
-          id: 'enemy_melee',
+        return withSoloWave(moved, {
+          id: 'enemy_line',
           team: 'audit',
           zone: 'mid-river',
           hp: 1,
-          type: 'melee',
+          type: 'line',
         })
       })
 
@@ -221,16 +221,16 @@ describe('Economy through resolution', () => {
       const goldBefore = before.players['lm_r0']!.gold
       const xpBefore = before.players['lm_r0']!.xp
 
-      submitAction(gameId, 'lm_r0', { type: 'attack', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'lm_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      expect(r.state.creeps.some((c) => c.id === 'enemy_melee' && c.hp > 0)).toBe(false)
+      expect(r.state.waves.some((c) => c.id === 'enemy_line' && c.hp > 0)).toBe(false)
       const after = r.state.players['lm_r0']!
-      expect(after.xp - xpBefore).toBe(CREEP_XP)
-      // Fixed melee last-hit gold is CREEP_GOLD (no RNG); passive income adds a
+      expect(after.xp - xpBefore).toBe(WAVE_XP)
+      // Fixed line last-hit gold is WAVE_GOLD (no RNG); passive income adds a
       // bit more on top, so assert at least the last-hit amount.
       const goldDelta = after.gold - goldBefore
-      expect(goldDelta).toBeGreaterThanOrEqual(CREEP_GOLD)
+      expect(goldDelta).toBeGreaterThanOrEqual(WAVE_GOLD)
     })
   })
 
@@ -334,30 +334,30 @@ describe('Economy through resolution', () => {
   })
 
   describe('Level-up trigger', () => {
-    it('a creep last-hit that crosses XP_PER_LEVEL[2] fires checkLevelUps: level→2 + level_up event', async () => {
+    it('a wave last-hit that crosses XP_PER_LEVEL[2] fires checkLevelUps: level→2 + level_up event', async () => {
       const gameId = uid('levelup')
       const sm = await startGame(gameId, makePlayers('lu', 1))
 
-      // Park XP one CREEP_XP short of level 2 so a single creep kill tips it over.
+      // Park XP one WAVE_XP short of level 2 so a single wave kill tips it over.
       const threshold = XP_PER_LEVEL[2]!
-      const startXp = threshold - CREEP_XP
+      const startXp = threshold - WAVE_XP
       expect(startXp).toBeGreaterThanOrEqual(0)
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'lu_r0', { zone: 'mid-river', level: 1, xp: startXp })
-        return withSoloCreep(moved, {
-          id: 'levelup_creep',
+        return withSoloWave(moved, {
+          id: 'levelup_wave',
           team: 'audit',
           zone: 'mid-river',
           hp: 1,
-          type: 'melee',
+          type: 'line',
         })
       })
 
-      submitAction(gameId, 'lu_r0', { type: 'attack', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'lu_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      // Kill granted CREEP_XP → xp ≥ threshold → checkLevelUps promoted to L2.
+      // Kill granted WAVE_XP → xp ≥ threshold → checkLevelUps promoted to L2.
       expect(r.state.players['lu_r0']!.xp).toBeGreaterThanOrEqual(threshold)
       expect(r.state.players['lu_r0']!.level).toBe(2)
       expect(
@@ -369,21 +369,21 @@ describe('Economy through resolution', () => {
       const gameId = uid('spike6')
       const sm = await startGame(gameId, makePlayers('ps', 1))
 
-      // Sit at L5 with xp one CREEP_XP short of the L6 threshold.
+      // Sit at L5 with xp one WAVE_XP short of the L6 threshold.
       const threshold = XP_PER_LEVEL[6]!
-      const startXp = threshold - CREEP_XP
+      const startXp = threshold - WAVE_XP
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'ps_r0', { zone: 'mid-river', level: 5, xp: startXp })
-        return withSoloCreep(moved, {
-          id: 'spike_creep',
+        return withSoloWave(moved, {
+          id: 'spike_wave',
           team: 'audit',
           zone: 'mid-river',
           hp: 1,
-          type: 'melee',
+          type: 'line',
         })
       })
 
-      submitAction(gameId, 'ps_r0', { type: 'attack', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'ps_r0', { type: 'attack', target: { kind: 'wave', index: 0 } })
       const r = await runTick(sm, gameId)
 
       expect(r.state.players['ps_r0']!.level).toBe(6)

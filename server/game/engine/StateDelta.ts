@@ -9,7 +9,7 @@ import type { PlayerVisibleState } from '~~/shared/types/game'
  * timeOfDay, dayNightTick, mapId, mode, tutorialStep). By comparing each field
  * by reference (===, O(1)), we can skip re-sending fields that didn't change.
  *
- * Fields that are always new objects (players, zones, creeps, events,
+ * Fields that are always new objects (players, zones, waves, events,
  * visibleZones) are always sent — the engine rebuilds them each tick.
  *
  * On reconnect, the caller sends a full_state (not a delta) to resync.
@@ -28,7 +28,7 @@ export function computeDelta(
   // Always-changed fields: include unconditionally.
   delta.players = current.players
   delta.zones = current.zones
-  delta.creeps = current.creeps
+  delta.waves = current.waves
   delta.events = current.events
   delta.visibleZones = current.visibleZones
   hasChanges = true

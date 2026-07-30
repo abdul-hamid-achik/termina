@@ -100,7 +100,7 @@ export function isEventVisibleToPlayer(
       const tgtZone = state.players[event.targetId]?.zone
       return !!(srcZone && visibleZones.has(srcZone)) || !!(tgtZone && visibleZones.has(tgtZone))
     }
-    case 'creep_lasthit':
+    case 'wave_strip':
     case 'gold_change':
     case 'item_purchased':
     case 'item_sold':

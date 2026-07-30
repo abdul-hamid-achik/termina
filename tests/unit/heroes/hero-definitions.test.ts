@@ -67,7 +67,7 @@ describe('Hero Definitions', () => {
         expect(s.magicResist).toBeLessThanOrEqual(30)
         expect(s.moveSpeed).toBeGreaterThanOrEqual(1)
         expect(s.moveSpeed).toBeLessThanOrEqual(3)
-        expect(['melee', 'ranged']).toContain(s.attackRange)
+        expect(['line', 'sweep']).toContain(s.attackRange)
       })
 
       it('has growth per level stats', () => {
@@ -144,12 +144,10 @@ describe('Hero Definitions', () => {
     expect(new Set(tips).size).toBe(tips.length)
   })
 
-  it('has at least 5 melee and 3 ranged heroes for team diversity', () => {
-    const melee = Object.values(HEROES).filter((h: HeroDef) => h.baseStats.attackRange === 'melee')
-    const ranged = Object.values(HEROES).filter(
-      (h: HeroDef) => h.baseStats.attackRange === 'ranged',
-    )
-    expect(melee.length).toBeGreaterThanOrEqual(5)
-    expect(ranged.length).toBeGreaterThanOrEqual(3)
+  it('has at least 5 line and 3 sweep heroes for team diversity', () => {
+    const line = Object.values(HEROES).filter((h: HeroDef) => h.baseStats.attackRange === 'line')
+    const sweep = Object.values(HEROES).filter((h: HeroDef) => h.baseStats.attackRange === 'sweep')
+    expect(line.length).toBeGreaterThanOrEqual(5)
+    expect(sweep.length).toBeGreaterThanOrEqual(3)
   })
 })

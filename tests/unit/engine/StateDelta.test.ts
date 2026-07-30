@@ -12,7 +12,7 @@ function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleSt
     },
     players: {},
     zones: {},
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: [],
     ancients: {
@@ -39,7 +39,7 @@ describe('StateDelta', () => {
       expect(delta).toEqual(current)
     })
 
-    it('always includes tick and the always-changed fields (players, zones, creeps, events, visibleZones)', () => {
+    it('always includes tick and the always-changed fields (players, zones, waves, events, visibleZones)', () => {
       const prev = makeState({ tick: 1 })
       const current = makeState({ tick: 2 })
       const delta = computeDelta(current, prev) as Partial<PlayerVisibleState>
@@ -47,7 +47,7 @@ describe('StateDelta', () => {
       expect(delta.tick).toBe(2)
       expect(delta).toHaveProperty('players')
       expect(delta).toHaveProperty('zones')
-      expect(delta).toHaveProperty('creeps')
+      expect(delta).toHaveProperty('waves')
       expect(delta).toHaveProperty('events')
       expect(delta).toHaveProperty('visibleZones')
     })

@@ -192,7 +192,7 @@ export function makeZone(id: string, overrides: Partial<ZoneRuntimeState> = {}):
   return {
     id,
     wards: [],
-    creeps: [],
+    waves: [],
     ...overrides,
   }
 }
@@ -358,7 +358,7 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     teams: { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') },
     players,
     zones,
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: [
       makeIce('audit', 'mid-t1-audit', { alive: false, hp: 0 }),

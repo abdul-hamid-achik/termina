@@ -3,9 +3,9 @@ import type { CombatLine } from '~/utils/combatLog'
 import TickTheater from './TickTheater.vue'
 
 const events: CombatLine[] = [
-  { tick: 41, text: 'echo last-hit a melee creep (+38g)', type: 'gold' },
+  { tick: 41, text: 'echo last-hit a line wave (+38g)', type: 'gold' },
   { tick: 41, text: 'daemon cast Null Pointer on echo (120 magic)', type: 'damage' },
-  { tick: 42, text: 'echo burned a ranged creep', type: 'system' },
+  { tick: 42, text: 'echo burned a sweep wave', type: 'system' },
   { tick: 42, text: 'kernel healed echo (+90)', type: 'healing' },
   { tick: 43, text: 'echo killed daemon!', type: 'kill' },
 ]

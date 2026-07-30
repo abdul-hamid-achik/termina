@@ -41,7 +41,7 @@ describe('world lexicon', () => {
   })
 
   it('covers every wave role for both crews, asymmetrically', () => {
-    const roles = ['melee', 'ranged', 'siege'] as const
+    const roles = ['line', 'sweep', 'breach'] as const
     for (const team of ['chaff', 'audit'] as const) {
       for (const role of roles) {
         expect(WAVE_UNIT_LABELS[team][role].length).toBeGreaterThan(0)

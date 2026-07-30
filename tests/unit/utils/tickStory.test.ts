@@ -15,17 +15,17 @@ function line(overrides: Partial<CombatLine> & { text: string }): CombatLine {
 describe('digestFarmNoise', () => {
   it('folds all farm-tagged lines of a tick into one dim summary', () => {
     const out = digestFarmNoise([
-      line({ text: 'Kernel hit a creep for 60', salience: 'ally', farmKind: 'hit' }),
-      line({ text: 'Ping hit a creep for 55', salience: 'ally', farmKind: 'hit' }),
+      line({ text: 'Kernel hit a wave for 60', salience: 'ally', farmKind: 'hit' }),
+      line({ text: 'Ping hit a wave for 55', salience: 'ally', farmKind: 'hit' }),
       line({
-        text: 'You last-hit a melee creep (+38g)',
+        text: 'You last-hit a line wave (+38g)',
         type: 'gold',
         salience: 'mine-out',
         farmKind: 'lasthit',
         goldAmount: 38,
       }),
       line({
-        text: 'Kernel last-hit a ranged creep (+45g)',
+        text: 'Kernel last-hit a sweep wave (+45g)',
         type: 'gold',
         salience: 'ally',
         farmKind: 'lasthit',
@@ -42,7 +42,7 @@ describe('digestFarmNoise', () => {
 
     const farm = out.filter((l) => l.type === 'farm')
     expect(farm).toHaveLength(1)
-    expect(farm[0]!.text).toBe('farm: you +38g (1 last-hit) · team 1 creep, 1 camp')
+    expect(farm[0]!.text).toBe('farm: you +38g (1 last-hit) · team 1 wave, 1 camp')
     // Untagged lines survive untouched.
     expect(out.some((l) => l.text === 'a kill happened')).toBe(true)
     // No raw farm line survives.
@@ -51,7 +51,7 @@ describe('digestFarmNoise', () => {
 
   it('notes visible enemy farming without counting it as team farm', () => {
     const out = digestFarmNoise([
-      line({ text: 'Thread hit a creep for 161', salience: 'world', farmKind: 'hit' }),
+      line({ text: 'Thread hit a wave for 161', salience: 'world', farmKind: 'hit' }),
     ])
     expect(out).toHaveLength(1)
     expect(out[0]!.text).toBe('farm: enemy farming in sight')
@@ -60,22 +60,22 @@ describe('digestFarmNoise', () => {
   it('attributes visible ENEMY camp clears and burns to enemy, never to team', () => {
     const out = digestFarmNoise([
       line({ text: 'Thread cleared a camp', type: 'gold', salience: 'world', farmKind: 'camp' }),
-      line({ text: 'Thread burned a creep', type: 'system', salience: 'world', farmKind: 'burn' }),
+      line({ text: 'Thread burned a wave', type: 'system', salience: 'world', farmKind: 'burn' }),
       line({
-        text: 'Kernel last-hit a creep (+40g)',
+        text: 'Kernel last-hit a wave (+40g)',
         type: 'gold',
         salience: 'ally',
         farmKind: 'lasthit',
       }),
     ])
     expect(out).toHaveLength(1)
-    expect(out[0]!.text).toBe('farm: team 1 creep · enemy 1 camp, 1 burn')
+    expect(out[0]!.text).toBe('farm: team 1 wave · enemy 1 camp, 1 burn')
   })
 
   it('marks the digest mine-out when it carries MY rewards (so the ME filter keeps it)', () => {
     const mine = digestFarmNoise([
       line({
-        text: 'You last-hit a creep (+38g)',
+        text: 'You last-hit a wave (+38g)',
         type: 'gold',
         salience: 'mine-out',
         farmKind: 'lasthit',
@@ -86,7 +86,7 @@ describe('digestFarmNoise', () => {
 
     const others = digestFarmNoise([
       line({
-        text: 'Kernel last-hit a creep (+40g)',
+        text: 'Kernel last-hit a wave (+40g)',
         type: 'gold',
         salience: 'ally',
         farmKind: 'lasthit',
@@ -215,8 +215,8 @@ describe('buildTickRecaps', () => {
   })
 
   it('names a lone contributor inline rather than as a one-item breakdown', () => {
-    expect(buildTickRecaps([incoming(3, 'a creep', 40)]).get(3)!.takenText).toBe(
-      'You took 40 from a creep',
+    expect(buildTickRecaps([incoming(3, 'a wave', 40)]).get(3)!.takenText).toBe(
+      'You took 40 from a wave',
     )
   })
 
@@ -255,7 +255,7 @@ describe('buildTickRecaps', () => {
   it('counts a collapsed structure run at its RUN total, not its first hit', () => {
     // The ice/Core chip the player is dealing arrives as one line per tick and
     // is collapsed before it ever reaches the recap; reading the surviving
-    // line's original dmgAmount would report a fifth of the siege.
+    // line's original dmgAmount would report a fifth of the breach.
     const run = [1, 2, 3].map((tick) => ({
       ...outgoing(tick, 'ice (mid-t1-audit)', 70),
       dedupKey: 'dmg:me->ice_mid-t1-audit',

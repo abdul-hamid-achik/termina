@@ -274,7 +274,7 @@ function isRevealedToTeam(player: PlayerState, state: GameState, team: TeamId): 
 /**
  * Build a `PlayerVisibleState` for a spectator — same shape as
  * `filterStateForPlayer` but with no fog applied. All players, zones,
- * creeps, and events are exposed. Reuses the player-state shape so the
+ * waves, and events are exposed. Reuses the player-state shape so the
  * existing renderer can consume it without changes.
  */
 export function filterStateForSpectator(state: GameState): PlayerVisibleState {
@@ -284,7 +284,7 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
     teams: state.teams,
     players: { ...state.players },
     zones: { ...state.zones },
-    creeps: state.creeps,
+    waves: state.waves,
     neutrals: state.neutrals ?? [],
     ice: state.ice,
     ancients: state.ancients,
@@ -319,7 +319,7 @@ export function filterStateForPlayer(
       teams: state.teams,
       players: {},
       zones: {},
-      creeps: [],
+      waves: [],
       neutrals: [],
       ice: state.ice,
       ancients: state.ancients,
@@ -406,18 +406,18 @@ export function filterStateForPlayer(
     if (visible.has(zoneId)) {
       filteredZones[zoneId] = zs.traps ? { ...zs, traps: ownTraps } : zs
     } else {
-      // Show zone exists but strip wards and creep details for enemy info
+      // Show zone exists but strip wards and wave details for enemy info
       filteredZones[zoneId] = {
         id: zs.id,
         wards: zs.wards.filter((w) => w.team === team), // Only show own wards
-        creeps: [], // Don't reveal enemy creep positions in fog
+        waves: [], // Don't reveal enemy wave positions in fog
         ...(zs.traps ? { traps: ownTraps } : {}),
       }
     }
   }
 
-  // Filter creeps: only show creeps in visible zones
-  const filteredCreeps = state.creeps.filter((c) => visible.has(c.zone))
+  // Filter waves: only show waves in visible zones
+  const filteredWaves = state.waves.filter((c) => visible.has(c.zone))
 
   // Filter events: only show events relevant to visible zones or the player's team
   const filteredEvents = state.events.filter((e) => {
@@ -436,7 +436,7 @@ export function filterStateForPlayer(
     teams: state.teams,
     players: filteredPlayers,
     zones: filteredZones,
-    creeps: filteredCreeps,
+    waves: filteredWaves,
     neutrals: state.neutrals ?? [], // Neutrals are visible in their zones (public info)
     ice: state.ice, // ICE are always visible (global info)
     ancients: state.ancients, // Ancients are always visible (global info)

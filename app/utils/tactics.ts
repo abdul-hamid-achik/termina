@@ -69,7 +69,7 @@ export function recommendAction(ctx: RecommendationContext): string {
     case 'FAVORED':
       return 'You have the advantage — press it'
     case 'ICE':
-      return 'Enemy ice here — bring creeps before diving'
+      return 'Enemy ice here — bring waves before diving'
     case 'CLEAR':
     default:
       return 'Clear — farm, push, or rotate'

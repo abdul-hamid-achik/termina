@@ -6,8 +6,8 @@ import type {
   PlayerState,
   ZoneRuntimeState,
   GameMode,
-  NeutralCreepState,
-  CreepState,
+  NeutralUnitState,
+  WaveUnitState,
 } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
 import type { ItemDef } from '~~/shared/types/items'
@@ -42,14 +42,14 @@ const props = withDefaults(
      * PRESENT array as ground truth, and an empty one would make an unbound
      * instance reject every legal neutral target.
      */
-    neutrals?: NeutralCreepState[]
+    neutrals?: NeutralUnitState[]
     /**
-     * Lane creeps, for `attack creep:<i>` autocomplete and pre-flight. Same
+     * Lane waves, for `attack wave:<i>` autocomplete and pre-flight. Same
      * no-default rule as `neutrals`: validateCommand treats a PRESENT array as
      * ground truth, so an empty default would make an unbound instance reject
-     * every legal creep target.
+     * every legal wave target.
      */
-    creeps?: CreepState[]
+    waves?: WaveUnitState[]
   }>(),
   {
     placeholder: 'Enter command...',
@@ -89,7 +89,7 @@ const gameContext = computed<GameContext>(() => ({
   tick: props.tick,
   mode: props.mode,
   neutrals: props.neutrals,
-  creeps: props.creeps,
+  waves: props.waves,
 }))
 
 /**
@@ -146,8 +146,8 @@ function attackTargetLabel(t: TargetRef): string {
   switch (t.kind) {
     case 'hero':
       return `hero ${t.name}`
-    case 'creep':
-      return `creep #${t.index}`
+    case 'wave':
+      return `wave #${t.index}`
     case 'neutral':
       return `neutral #${t.index}`
     case 'ice':
@@ -213,7 +213,7 @@ const preview = computed(() => {
     const hints: Record<string, string> = {
       move: '-- move: specify a zone',
       attack: '-- attack: hits the nearest enemy, or specify a target',
-      burn: '-- burn: burns the lowest-HP allied creep, or specify creep:N',
+      burn: '-- burn: burns the lowest-HP allied wave, or specify wave:N',
       cast: '-- cast: specify ability (q/w/e/r)',
       buy: '-- buy: specify an item',
       sell: '-- sell: specify an item',

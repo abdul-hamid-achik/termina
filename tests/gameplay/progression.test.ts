@@ -50,7 +50,7 @@ describe('progression: leveling up', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, level: 1, xp: 0 } },
-      creeps: [], // no creep XP so the level stays put until we feed it
+      waves: [], // no wave XP so the level stays put until we feed it
     }))
 
     // Settle first: the seed's first-tick stat recompute lands, so the baseline
@@ -63,7 +63,7 @@ describe('progression: leveling up', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, xp: 100 } },
-      creeps: [],
+      waves: [],
     }))
     await game.tick()
 
@@ -78,9 +78,9 @@ describe('progression: leveling up', () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      // Well short of 100, and no creeps around to feed any XP.
+      // Well short of 100, and no waves around to feed any XP.
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, level: 1, xp: 10 } },
-      creeps: [],
+      waves: [],
     }))
 
     await game.tick()

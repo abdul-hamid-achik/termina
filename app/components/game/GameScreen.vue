@@ -38,6 +38,7 @@ import {
 } from '~/composables/useCommands'
 import { useAudio } from '~/composables/useAudio'
 import { ZONE_MAP } from '~~/shared/constants/zones'
+import { WAVE_UNIT_LABELS, type WaveRole } from '~~/shared/constants/world'
 import { zonesForMap } from '~~/shared/constants/maps'
 import { buildAdjacentZones } from '~/components/game/asciiMapModel'
 import { HEROES } from '~~/shared/constants/heroes'
@@ -186,7 +187,7 @@ onMounted(() => {
       const intro = [
         'Welcome to TERMINA — the city commits every four seconds. You queue ONE instruction per cycle.',
         'You start in the fountain. Move to a lane: type or tap  move mid-river',
-        'Last-hit enemy creeps (≈<50% HP) for gold — tap the creep group in the Zone panel.',
+        'Last-hit enemy waves (≈<50% HP) for gold — tap the wave group in the Zone panel.',
         'In the fountain/base click [SHOP] (or press Esc, then S) to buy; tap Q/W/E/R below to cast.',
         'Destroy the enemy Mainframe to win. Good luck!',
       ]
@@ -376,7 +377,7 @@ const selfFloats = computed(() => damageFloats.value.filter((f) => f.anchor === 
 const targetFloats = computed(() => damageFloats.value.filter((f) => f.anchor !== 'self'))
 
 // How hard the last hit landed, as a fraction of max HP, driving the flash and
-// impact alpha: a creep chip and a full combo used to paint identically.
+// impact alpha: a wave chip and a full combo used to paint identically.
 const hitIntensity = ref(1)
 
 function hitStrength(amount: number, maxHp: number): number {
@@ -537,7 +538,7 @@ watch(
         // Farming — the loop the player spends most of the match in. The gold
         // cue used to hang off `gold_change`, whose only emitter is a win
         // sentinel carrying an empty playerId, so last-hitting was silent.
-        case 'creep_lasthit':
+        case 'wave_strip':
         case 'wave_burn':
           if (e.payload.playerId === pid) {
             playSound('gold')
@@ -669,8 +670,8 @@ function entityLabel(id: unknown): string {
   if (id === gameStore.playerId) return 'You'
   const p = gameStore.allPlayers[id]
   if (p) return (p.heroId && HEROES[p.heroId]?.name) || p.name || id
-  if (id.startsWith('creep')) return 'a creep'
-  if (id.startsWith('neutral')) return 'a neutral creep'
+  if (id.startsWith('wave')) return 'a wave'
+  if (id.startsWith('neutral')) return 'a neutral wave'
   if (id.startsWith('ice')) {
     const zone = id.slice('ice_'.length)
     return `ice (${zone})`
@@ -856,10 +857,17 @@ const mapZones = computed(() => {
       }
     }
 
-    // Creeps in this zone
-    const creepsInZone = gameStore.creeps.filter((c) => c.zone === zone.id)
-    const creepCount = creepsInZone.length
-    const creepTypes = [...new Set(creepsInZone.map((c) => c.type))]
+    // Waves in this zone — types render as the crew's OWN unit names
+    // (mule/script/picket vs guard/sweeper/auditor), never the role slots.
+    const wavesInZone = gameStore.waves.filter((c) => c.zone === zone.id)
+    const waveCount = wavesInZone.length
+    const waveTypes = [
+      ...new Set(
+        wavesInZone.map(
+          (c) => WAVE_UNIT_LABELS[c.team]?.[c.type as WaveRole] ?? (c.type as string),
+        ),
+      ),
+    ]
 
     // Neutrals in this zone
     const neutralsInZone = gameStore.neutrals.filter((n) => n.zone === zone.id && n.alive)
@@ -891,8 +899,8 @@ const mapZones = computed(() => {
       enemyNames,
       ice: iceDisplay,
       fogged,
-      creepCount,
-      creepTypes,
+      waveCount,
+      waveTypes,
       neutralCount,
       wardCount,
       // Global, not vision-gated: the server sends caches unfiltered (see
@@ -939,15 +947,15 @@ function stopWalking() {
 // ── Zone panel data (who's in my zone) ────────────────────────
 const currentZoneName = computed(() => gameStore.currentZone?.name ?? playerZone.value)
 
-// Creeps in the player's zone, tagged with their zone-local index (Nth creep
-// in this zone) — the convention the server resolves `attack creep:<index>`
+// Waves in the player's zone, tagged with their zone-local index (Nth wave
+// in this zone) — the convention the server resolves `attack wave:<index>`
 // against. Index after filtering: global-array indices are vision-filtered
 // and don't survive the trip to the server.
-const zoneCreeps = computed(() =>
-  gameStore.creeps.filter((c) => c.zone === playerZone.value).map((c, index) => ({ ...c, index })),
+const zoneWaves = computed(() =>
+  gameStore.waves.filter((c) => c.zone === playerZone.value).map((c, index) => ({ ...c, index })),
 )
 
-// Neutrals in the player's zone, tagged with their GLOBAL index. Unlike creeps
+// Neutrals in the player's zone, tagged with their GLOBAL index. Unlike waves
 // the server resolves `attack neutral:<index>` against the whole neutrals array
 // (it reaches the client unfiltered), so the index must be taken before the
 // zone filter — re-indexing the survivors would attack a different camp.
@@ -1005,8 +1013,8 @@ function getIceTier(zoneId: string): number {
 
 function handleCommand(cmd: string) {
   // A bare `attack` / `atk` auto-targets the lowest-HP enemy hero in your zone
-  // (a MOBA right-click) so you don't have to type the full target. Creeps stay
-  // explicit (attack creep:N) so auto-target never steals a last-hit.
+  // (a MOBA right-click) so you don't have to type the full target. Waves stay
+  // explicit (attack wave:N) so auto-target never steals a last-hit.
   const bareCmd = cmd.trim().toLowerCase()
   if (bareCmd === 'attack' || bareCmd === 'atk') {
     const me = gameStore.player
@@ -1019,12 +1027,12 @@ function handleCommand(cmd: string) {
       cmd = `attack ${picked.target}`
     }
   }
-  // A bare `burn` targets the lowest-HP eligible allied creep in your zone, so
-  // you can snap-burn an about-to-die creep without hunting for its index.
+  // A bare `burn` targets the lowest-HP eligible allied wave in your zone, so
+  // you can snap-burn an about-to-die wave without hunting for its index.
   if (bareCmd === 'burn') {
     const me = gameStore.player
     if (me) {
-      const picked = pickDenyTargetString(me, gameStore.creeps)
+      const picked = pickDenyTargetString(me, gameStore.waves)
       if ('error' in picked) {
         localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
         return
@@ -1306,14 +1314,14 @@ function handleQuickAction(cmd: string) {
       handleCommand(`attack ${targetRef}`)
     } else {
       // Don't fail silently — guide the player. From the fountain/base there's
-      // nothing to fight; everywhere else, point at creeps + the explicit syntax.
+      // nothing to fight; everywhere else, point at waves + the explicit syntax.
       const zoneType = ZONE_MAP[p.zone]?.type
       const inBase = zoneType === 'fountain' || zoneType === 'base'
       localEvents.value.push({
         tick: gameStore.tick,
         text: inBase
           ? 'No targets here — move to a lane to fight (e.g.  move mid-river ).'
-          : 'No enemies in this zone — last-hit creeps in the Zone panel, or  attack <target> .',
+          : 'No enemies in this zone — last-hit waves in the Zone panel, or  attack <target> .',
         type: 'system',
       })
     }
@@ -1340,7 +1348,7 @@ const situationalActions = computed(() =>
   computeSituationalActions({
     player: gameStore.player,
     isAlive: gameStore.isAlive,
-    creeps: gameStore.creeps,
+    waves: gameStore.waves,
     backup: gameStore.backup,
     caches: gameStore.caches,
     teams: gameStore.teams,
@@ -1471,7 +1479,7 @@ const killerName = computed(() => {
       attributed = e.payload.killerId as string
       break
     }
-    // ICE, creeps and neutrals are not eligible killers (handleDeaths only
+    // ICE, waves and neutrals are not eligible killers (handleDeaths only
     // accepts a killerId that resolves to a player), so an NPC kill produces a
     // `death` with no `kill` at all. Since NPC hits now emit `damage`, the last
     // thing that hit us on the death tick is the honest answer — without it the
@@ -1721,7 +1729,7 @@ function handleReturnToMenu() {
           :player-team="gameStore.player?.team ?? 'chaff'"
           :enemies="gameStore.nearbyEnemies"
           :allies="gameStore.nearbyAllies"
-          :creeps="zoneCreeps"
+          :waves="zoneWaves"
           :neutrals="zoneNeutrals"
           :ice="zoneIce"
           :tenant="zoneTenant"
@@ -2046,7 +2054,7 @@ function handleReturnToMenu() {
         :tick="gameStore.tick"
         :mode="gameStore.mode"
         :neutrals="gameStore.neutrals"
-        :creeps="gameStore.creeps"
+        :waves="gameStore.waves"
         @submit="handleCommand"
       />
     </div>

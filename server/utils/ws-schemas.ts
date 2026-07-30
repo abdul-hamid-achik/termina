@@ -10,7 +10,7 @@ const shortId = z.string().min(1).max(128)
 
 const targetRefSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('hero'), name: z.string().min(1).max(64) }),
-  z.object({ kind: z.literal('creep'), index: z.number().int().min(0).max(10_000) }),
+  z.object({ kind: z.literal('wave'), index: z.number().int().min(0).max(10_000) }),
   z.object({ kind: z.literal('neutral'), index: z.number().int().min(0).max(10_000) }),
   z.object({ kind: z.literal('ice'), zone: zoneId }),
   z.object({ kind: z.literal('tenant') }),
@@ -51,7 +51,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('missing'), enemyId: shortId }),
   z.object({
     type: z.literal('burn'),
-    target: z.object({ kind: z.literal('creep'), index: z.number().int().min(0).max(10_000) }),
+    target: z.object({ kind: z.literal('wave'), index: z.number().int().min(0).max(10_000) }),
   }),
   z.object({
     type: z.literal('select_talent'),

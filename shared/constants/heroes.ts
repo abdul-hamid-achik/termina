@@ -17,7 +17,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 3,
       magicResist: 15,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 55,
@@ -114,7 +114,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 4,
       magicResist: 20,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 60,
@@ -198,7 +198,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 2,
       magicResist: 12,
       moveSpeed: 2,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 45,
@@ -294,7 +294,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 8,
       magicResist: 25,
       moveSpeed: 1,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 80,
@@ -375,7 +375,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 1,
       magicResist: 18,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 40,
@@ -474,7 +474,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 5,
       magicResist: 18,
       moveSpeed: 1,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 65,
@@ -569,7 +569,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 4,
       magicResist: 20,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 55,
@@ -659,7 +659,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 2,
       magicResist: 14,
       moveSpeed: 1,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 50,
@@ -756,7 +756,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 2,
       magicResist: 13,
       moveSpeed: 2,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 45,
@@ -852,7 +852,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 7,
       magicResist: 22,
       moveSpeed: 1,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 75,
@@ -952,7 +952,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 1,
       magicResist: 16,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 42,
@@ -1055,7 +1055,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 1,
       magicResist: 17,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 38,
@@ -1148,7 +1148,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 6,
       magicResist: 20,
       moveSpeed: 1,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 70,
@@ -1255,7 +1255,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 4,
       magicResist: 18,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 55,
@@ -1362,7 +1362,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 5,
       magicResist: 22,
       moveSpeed: 1,
-      attackRange: 'melee',
+      attackRange: 'line',
     },
     growthPerLevel: {
       hp: 60,
@@ -1461,7 +1461,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 2,
       magicResist: 14,
       moveSpeed: 2,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 44,
@@ -1554,7 +1554,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 3,
       magicResist: 15,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 52,
@@ -1646,7 +1646,7 @@ export const HEROES: Record<string, HeroDef> = {
       defense: 7,
       magicResist: 24,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {
       hp: 72,

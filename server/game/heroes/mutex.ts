@@ -224,7 +224,7 @@ function resolveE(
     })
 
     return {
-      // Creeps take all three hits at once — they have no slow to stack, so the
+      // Waves take all three hits at once — they have no slow to stack, so the
       // per-hit loop above would be three identical subtractions.
       state: damageEnemyNpcsInZone(
         updatePlayers(state, [caster, ...updatedEnemies]),

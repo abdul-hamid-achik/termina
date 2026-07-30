@@ -173,7 +173,7 @@ function typePrefix(type: CombatLineType): string {
 /**
  * Type → weight tier. Nine line types used to render at exactly two weights —
  * kill/victory loud, the other seven identical — so a hero death, a level-up, a
- * blocked spell and a creep's chip damage all carried the same emphasis.
+ * blocked spell and a wave's chip damage all carried the same emphasis.
  * Headline = a life or the match changed; notable = a power or map swing;
  * everything else stays at the reading weight.
  */

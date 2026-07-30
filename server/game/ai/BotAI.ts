@@ -2,9 +2,9 @@ import type {
   GameState,
   PlayerState,
   TeamId,
-  CreepState,
+  WaveUnitState,
   IceState,
-  NeutralCreepState,
+  NeutralUnitState,
   CacheState,
 } from '~~/shared/types/game'
 import type { Command, TargetRef } from '~~/shared/types/commands'
@@ -19,7 +19,7 @@ import {
   HARDEN_COOLDOWN_TICKS,
   SELL_REFUND_RATIO,
   BURN_HP_THRESHOLD,
-  creepMaxHp,
+  waveUnitMaxHp,
 } from '~~/shared/constants/balance'
 import { LANE_ROUTES } from '~~/shared/constants/lanes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
@@ -297,19 +297,19 @@ function getAlliedHeroesInZone(state: GameState, bot: PlayerState): PlayerState[
   )
 }
 
-function getEnemyCreepsInZone(state: GameState, bot: PlayerState): CreepState[] {
-  return state.creeps.filter((c) => c.zone === bot.zone && c.team !== bot.team && c.hp > 0)
+function getEnemyWavesInZone(state: GameState, bot: PlayerState): WaveUnitState[] {
+  return state.waves.filter((c) => c.zone === bot.zone && c.team !== bot.team && c.hp > 0)
 }
 
-function getAlliedCreepsInZone(state: GameState, bot: PlayerState): CreepState[] {
-  return state.creeps.filter((c) => c.zone === bot.zone && c.team === bot.team && c.hp > 0)
+function getAlliedWavesInZone(state: GameState, bot: PlayerState): WaveUnitState[] {
+  return state.waves.filter((c) => c.zone === bot.zone && c.team === bot.team && c.hp > 0)
 }
 
 function getEnemyIceInZone(state: GameState, bot: PlayerState): IceState | undefined {
   return state.ice.find((t) => t.zone === bot.zone && t.team !== bot.team && t.alive)
 }
 
-function getNeutralsInZone(state: GameState, zone: string): NeutralCreepState[] {
+function getNeutralsInZone(state: GameState, zone: string): NeutralUnitState[] {
   return state.neutrals.filter((n) => n.zone === zone && n.alive && n.hp > 0)
 }
 
@@ -1238,48 +1238,48 @@ function tryFarmJungle(
 }
 
 /**
- * Burn an allied creep out from under the enemy laner. Mirrors resolveDenyPhase's
+ * Burn an allied wave out from under the enemy laner. Mirrors resolveDenyPhase's
  * window exactly — own team, at or below BURN_HP_THRESHOLD of the HP it SPAWNED
  * with — so the command resolves instead of silently burning the tick, and uses
  * the zone-local index the resolver reads.
  *
  * Only fires with an enemy hero in the zone: with nobody to burn, killing your
- * own creep for half gold just weakens your wave. Callers therefore place it in
+ * own wave for half gold just weakens your wave. Callers therefore place it in
  * the combat branch, below abilities, as a better use of a tick than one more
  * right-click on a hero.
  */
 function tryBurn(state: GameState, bot: PlayerState, config: BotDifficultyConfig): Command | null {
   if (!config.denyAwareness) return null
-  const zoneCreeps = state.creeps.filter((c) => c.zone === bot.zone)
+  const zoneWaves = state.waves.filter((c) => c.zone === bot.zone)
   let bestIdx = -1
   let bestHp = Infinity
-  for (let i = 0; i < zoneCreeps.length; i++) {
-    const creep = zoneCreeps[i]!
-    if (creep.team !== bot.team || creep.hp <= 0) continue
-    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * BURN_HP_THRESHOLD) continue
-    if (creep.hp < bestHp) {
-      bestHp = creep.hp
+  for (let i = 0; i < zoneWaves.length; i++) {
+    const wave = zoneWaves[i]!
+    if (wave.team !== bot.team || wave.hp <= 0) continue
+    if (wave.hp > (wave.maxHp ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
+    if (wave.hp < bestHp) {
+      bestHp = wave.hp
       bestIdx = i
     }
   }
   if (bestIdx < 0) return null
-  return { type: 'burn', target: { kind: 'creep', index: bestIdx } }
+  return { type: 'burn', target: { kind: 'wave', index: bestIdx } }
 }
 
 /**
- * The creep a bot swings at. On a failed last-hit roll it drops to the
- * SECOND-lowest creep rather than to no action at all: same tick spent, same
+ * The wave a bot swings at. On a failed last-hit roll it drops to the
+ * SECOND-lowest wave rather than to no action at all: same tick spent, same
  * damage dealt into the wave, only the gold is missed. Returning null on a miss
  * was the original standstill bug — bots stopped out-clearing the incoming wave
  * and never reached a ice (pinned by BotForwardProgress).
  */
-function pickCreepTarget(
-  enemyCreeps: CreepState[],
+function pickWaveTarget(
+  enemyWaves: WaveUnitState[],
   bot: PlayerState,
   tick: number,
   config: BotDifficultyConfig,
-): CreepState {
-  const byHp = [...enemyCreeps].sort((a, b) => a.hp - b.hp)
+): WaveUnitState {
+  const byHp = [...enemyWaves].sort((a, b) => a.hp - b.hp)
   const lowest = byHp[0]!
   if (byHp.length < 2) return lowest
   if (deterministicRoll(`lasthit_${bot.id}`, tick) < config.lastHitAccuracy) return lowest
@@ -1537,7 +1537,7 @@ export function decideBotAction(
     const backupCmd = tryBackup(state, bot, config, hasZone)
     if (backupCmd) return backupCmd
   }
-  const enemyCreeps = getEnemyCreepsInZone(state, bot)
+  const enemyWaves = getEnemyWavesInZone(state, bot)
   if (enemyHeroes.length > 0) {
     // Pop a combat item (BKB/Blade Mail to survive, Stack Overflow/Veil to amp)
     // before committing to a combo or right-click. One use per tick, naturally
@@ -1550,7 +1550,7 @@ export function decideBotAction(
     if (comboCmd) return comboCmd
     const abilityCmd = tryGetAbilityCommand(state, bot, enemyHeroes, config)
     if (abilityCmd) return abilityCmd
-    // Below the burst, above the right-click: denying a dying allied creep
+    // Below the burst, above the right-click: denying a dying allied wave
     // starves the laner opposite of gold + XP for the same one action.
     const denyCmd = tryBurn(state, bot, config)
     if (denyCmd) return denyCmd
@@ -1562,7 +1562,7 @@ export function decideBotAction(
   if (ancientCmd) return ancientCmd
 
   // In fast-game/test mode the loop is sped up to make matches end in minutes,
-  // so bots push and siege DECISIVELY rather than last-hitting creeps forever —
+  // so bots push and breach DECISIVELY rather than last-hitting waves forever —
   // which keeps the play-to-the-end specs (game-over, smoke) fast. This is an
   // ADDITIONAL accelerator layered on top of the production pushing below; the
   // real game no longer depends on it for forward progress.
@@ -1581,8 +1581,8 @@ export function decideBotAction(
     }
   }
 
-  // Aggressive siege (test mode only): topple the enemy ice in this zone, else
-  // march toward the enemy base. Sits ABOVE creep farming so test games converge
+  // Aggressive breach (test mode only): topple the enemy ice in this zone, else
+  // march toward the enemy base. Sits ABOVE wave farming so test games converge
   // quickly; production bots fall through to the game-state-driven push below.
   if (aggressivePush) {
     const iceHere = getEnemyIceInZone(state, bot)
@@ -1591,17 +1591,17 @@ export function decideBotAction(
     if (advanceZone) return { type: 'move', zone: advanceZone }
   }
 
-  // Clear the creep wave. A failed last-hit roll re-aims at the second-lowest
-  // creep; it must never return null, which is what left production bots idling
+  // Clear the wave wave. A failed last-hit roll re-aims at the second-lowest
+  // wave; it must never return null, which is what left production bots idling
   // in lane instead of pushing — one half of the "bots look stuck" report.
-  if (enemyCreeps.length > 0) {
-    const creepTarget = pickCreepTarget(enemyCreeps, bot, state.tick, config)
-    // Creep targets use zone-local indices (Nth creep in the attacker's zone)
-    const creepIdx = state.creeps.filter((c) => c.zone === bot.zone).indexOf(creepTarget)
-    return { type: 'attack', target: { kind: 'creep', index: creepIdx } }
+  if (enemyWaves.length > 0) {
+    const waveTarget = pickWaveTarget(enemyWaves, bot, state.tick, config)
+    // Wave targets use zone-local indices (Nth wave in the attacker's zone)
+    const waveIdx = state.waves.filter((c) => c.zone === bot.zone).indexOf(waveTarget)
+    return { type: 'attack', target: { kind: 'wave', index: waveIdx } }
   }
   const enemyIce = getEnemyIceInZone(state, bot)
-  if (enemyIce && getAlliedCreepsInZone(state, bot).length > 0) {
+  if (enemyIce && getAlliedWavesInZone(state, bot).length > 0) {
     return { type: 'attack', target: { kind: 'ice', zone: enemyIce.zone } }
   }
   const cacheCmd = tryPickupRune(state, bot, config, hasZone)
@@ -1613,21 +1613,21 @@ export function decideBotAction(
 
   // Forward progress (production) is driven by GAME STATE, not the test
   // accelerator. A bot advances freely on its own half of the map; it pushes
-  // into enemy territory only with lane support — allied creeps in this zone or
+  // into enemy territory only with lane support — allied waves in this zone or
   // the next, or an ally hero alongside — so a lone level-1 hero never marches
-  // into the enemy base and feeds. Creep waves spawn continuously, so a bot
+  // into the enemy base and feeds. Wave waves spawn continuously, so a bot
   // holding at the frontier advances as soon as the next wave reaches it, and
   // the retreat-from-threat check above still pulls hurt/outnumbered bots back.
   // (The old code returned null here whenever the next zone was enemy-side with
-  // no co-located creeps, hard-freezing every production bot at the frontier so
+  // no co-located waves, hard-freezing every production bot at the frontier so
   // it never pushed, attacked, or — since buying only happens in the fountain —
   // bought again.)
   const nextZone = getNextLaneZone(bot, assignedLane, hasZone)
   if (nextZone) {
     const advancingIntoEnemy = !isOwnSide(nextZone, bot.team)
     const hasLaneSupport =
-      getAlliedCreepsInZone(state, bot).length > 0 ||
-      state.creeps.some((c) => c.zone === nextZone && c.team === bot.team && c.hp > 0) ||
+      getAlliedWavesInZone(state, bot).length > 0 ||
+      state.waves.some((c) => c.zone === nextZone && c.team === bot.team && c.hp > 0) ||
       getAlliedHeroesInZone(state, bot).length > 0
     if (!advancingIntoEnemy || hasLaneSupport) {
       return { type: 'move', zone: nextZone }

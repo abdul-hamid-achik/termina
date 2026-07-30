@@ -38,7 +38,7 @@ function makeHero(over: Partial<HeroDef> = {}): HeroDef {
       defense: 0,
       magicResist: 0,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {},
     passive: ability({ id: 'p', name: 'P' }),

@@ -186,16 +186,16 @@ describe('game loop: final handoff', () => {
     const { redis } = mockRedis()
     const { done, resolve } = gameOverPromise()
 
-    // A last hit banked on the final tick: the creep is already at a sliver and
+    // A last hit banked on the final tick: the wave is already at a sliver and
     // co-located with the hero.
     await Effect.runPromise(
       sm.updateState(gameId, (s) => ({
         ...s,
         players: { ...s.players, p1: { ...s.players.p1!, zone: 'mid-river' } },
-        creeps: [{ id: 'c1', team: 'audit', zone: 'mid-river', hp: 5, type: 'melee' as const }],
+        waves: [{ id: 'c1', team: 'audit', zone: 'mid-river', hp: 5, type: 'line' as const }],
       })),
     )
-    submitAction(gameId, 'p1', { type: 'attack', target: { kind: 'creep', index: 0 } })
+    submitAction(gameId, 'p1', { type: 'attack', target: { kind: 'wave', index: 0 } })
 
     started.push(gameId)
     startGameLoop(

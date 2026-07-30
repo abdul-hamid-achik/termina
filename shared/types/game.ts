@@ -50,7 +50,7 @@ export interface PlayerState {
   moveTarget?: string | null
   // Standing attack order: the hero keeps swinging at it every tick until it
   // dies, leaves the zone, or any new deliberate order lands. NEVER set for
-  // `kind: 'creep'` — last-hitting is a timing skill and stays a manual input.
+  // `kind: 'wave'` — last-hitting is a timing skill and stays a manual input.
   // Stripped from enemy views alongside moveTarget (it leaks the same intent).
   attackTarget?: TargetRef | null
   talents: {
@@ -61,26 +61,26 @@ export interface PlayerState {
   }
 }
 
-export interface CreepState {
+export interface WaveUnitState {
   id: string
   team: TeamId
   zone: string
   hp: number
   /**
-   * The HP this creep spawned with. Creeps escalate with match time, so their
+   * The HP this wave spawned with. Waves escalate with match time, so their
    * max is a property of WHEN THEY SPAWNED, not of the current tick — anything
    * that reasons about a fraction of full health (the burn window, HP bars) has
    * to read it from here. Optional so fixtures can omit it; callers fall back to
    * the tick-0 base rather than the current tier.
    */
   maxHp?: number
-  type: 'melee' | 'ranged' | 'siege'
+  type: 'line' | 'sweep' | 'breach'
   /**
    * Ticks spent idle in a base zone (no target, invulnerable Ancient).
-   * Once it reaches CREEP_BASE_IDLE_DESPAWN_TICKS the creep is garbage
+   * Once it reaches WAVE_BASE_IDLE_DESPAWN_TICKS the wave is garbage
    * collected. Optional so spawners/tests don't have to set it.
    */
-  baseIdleTicks?: number
+  baseIdleCycles?: number
 }
 
 /**
@@ -96,7 +96,7 @@ export interface AncientState {
   vulnerable: boolean
 }
 
-export interface NeutralCreepState {
+export interface NeutralUnitState {
   id: string
   zone: string
   hp: number
@@ -147,8 +147,8 @@ export interface GameState {
   teams: { chaff: TeamState; audit: TeamState }
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
-  creeps: CreepState[]
-  neutrals: NeutralCreepState[]
+  waves: WaveUnitState[]
+  neutrals: NeutralUnitState[]
   ice: IceState[]
   ancients: { chaff: AncientState; audit: AncientState }
   caches: CacheState[]
@@ -170,7 +170,7 @@ export interface GameState {
    *  Only meaningful when mode === 'tutorial'; drives command-gating + hints. */
   tutorialStep?: number
   /** Tick the current tutorial step became active. Server-only (not broadcast):
-   *  it exists so a step that the live match makes unsatisfiable — no creep wave
+   *  it exists so a step that the live match makes unsatisfiable — no wave wave
    *  yet, no enemy hero in range — eventually times out instead of dead-ending
    *  the player. See TUTORIAL_STEP_DEADLINE_TICKS. */
   tutorialStepSince?: number
@@ -186,11 +186,11 @@ export interface ZoneRuntimeState {
   /**
    * @deprecated Inert. Every construction site initialises it to `[]` and
    * nothing has ever written an id into it, so the one consumer (command
-   * autocomplete) silently offered zero creeps for the life of the field. Creep
-   * positions live in `GameState.creeps`; read that. Slated for removal once
-   * the ~30 fixtures that spell out `creeps: []` are swept.
+   * autocomplete) silently offered zero waves for the life of the field. Wave
+   * positions live in `GameState.waves`; read that. Slated for removal once
+   * the ~30 fixtures that spell out `waves: []` are swept.
    */
-  creeps: string[]
+  waves: string[]
   // Socket's Listen traps armed in this zone. Optional so existing zone-init
   // sites don't need updating; invisible to enemies (stripped in vision filter).
   traps?: TrapState[]
@@ -242,7 +242,7 @@ export type VisibleStateBase = Pick<
   | 'phase'
   | 'teams'
   | 'zones'
-  | 'creeps'
+  | 'waves'
   | 'neutrals'
   | 'ice'
   | 'ancients'

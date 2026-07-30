@@ -180,7 +180,7 @@ describe('isEventVisibleToPlayer — damage/heal', () => {
 
 describe('isEventVisibleToPlayer — economy is team-private', () => {
   it('shows your own and allied gold/last-hit/item events, hides the enemy', () => {
-    for (const tag of ['creep_lasthit', 'gold_change', 'item_purchased', 'item_sold']) {
+    for (const tag of ['wave_strip', 'gold_change', 'item_purchased', 'item_sold']) {
       expect(vis(ev(tag, { playerId: 'me' }))).toBe(true)
       expect(vis(ev(tag, { playerId: 'ally' }))).toBe(true)
       expect(vis(ev(tag, { playerId: 'enemy' }))).toBe(false) // even with vision — economy is private

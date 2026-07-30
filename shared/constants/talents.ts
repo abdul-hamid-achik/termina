@@ -616,7 +616,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
   },
 
   // Hero-tailored trees (replacing the bland generic menu, one hero at a time).
-  // Malloc — a melee carry built around its Free() execute, Pointer Dereference
+  // Malloc — a line carry built around its Free() execute, Pointer Dereference
   // gap-close, and Stack Overflow AoE ult. (Q Allocate is a self-buff with no
   // instant damage, so it carries NO damage_boost talent — that would be a no-op.)
   malloc: {
@@ -634,7 +634,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'malloc_10_right',
           name: '+250 HP',
-          description: '+250 HP for the melee dive',
+          description: '+250 HP for the line dive',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'hp', value: 250 },
@@ -1232,7 +1232,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
         {
           id: 'cron_10_right',
           name: '+250 HP',
-          description: '+250 HP for the front-line melee support',
+          description: '+250 HP for the front-line line support',
           type: 'stat_bonus',
           tier: 10,
           statBonus: { stat: 'hp', value: 250 },
@@ -1474,7 +1474,7 @@ export const TALENT_TREES: Record<HeroId, TalentTree> = {
       ],
     },
   },
-  // ping — a ranged disruptor offlaner built around ICMP Echo (Q) poke, Timeout (W) silence,
+  // ping — a sweep disruptor offlaner built around ICMP Echo (Q) poke, Timeout (W) silence,
   // Tracepath (E) vision/speed, and the Flood (R) AoE DoT ult. Q is the ONLY instant-damage
   // ability, so damage_boost sits on Q alone; W is a silence, E a self-buff, and R a DoT —
   // none deal instant cast damage, so they're rewarded via cooldown_reduce / mana / stats.

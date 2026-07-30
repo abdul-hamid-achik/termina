@@ -25,7 +25,7 @@ function buildGrid(palette: string[], rows: string[]): PixelGrid {
 // ── Hero Sprite Definitions ──────────────────────────────────────
 
 const sprites: Record<string, HeroSpriteData> = {
-  // ── Echo ── Carry, Ranged — Recursive signal, antenna, wave motif
+  // ── Echo ── Carry, Sweep — Recursive signal, antenna, wave motif
   // Cyan/teal energy waves
   echo: {
     palette: [
@@ -58,7 +58,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Sentry ── Support, Ranged — Watchpoint sentinel, big visor
+  // ── Sentry ── Support, Sweep — Watchpoint sentinel, big visor
   // Green body with gold visor
   sentry: {
     palette: [
@@ -92,7 +92,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Daemon ── Assassin, Melee — Shadow process, hooded
+  // ── Daemon ── Assassin, Line — Shadow process, hooded
   // Dark purple/black with red glowing eyes
   daemon: {
     palette: [
@@ -126,7 +126,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Kernel ── Tank, Melee — Core processor, heavy armor
+  // ── Kernel ── Tank, Line — Core processor, heavy armor
   // Amber/gold with circuit patterns
   kernel: {
     palette: [
@@ -160,7 +160,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Regex ── Mage, Ranged — Pattern matcher, wizard hat
+  // ── Regex ── Mage, Sweep — Pattern matcher, wizard hat
   // Blue/cyan with magical glow
   regex: {
     palette: [
@@ -193,7 +193,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Socket ── Offlaner, Melee — Network connector, cables
+  // ── Socket ── Offlaner, Line — Network connector, cables
   // Electric blue with white sparks
   socket: {
     palette: [
@@ -226,7 +226,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Proxy ── Support, Ranged — Intermediary, dual-faced
+  // ── Proxy ── Support, Sweep — Intermediary, dual-faced
   // Left half green, right half silver — split design
   proxy: {
     palette: [
@@ -260,7 +260,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Malloc ── Carry, Melee — Memory allocator, blocky
+  // ── Malloc ── Carry, Line — Memory allocator, blocky
   // Gold/amber with block patterns
   malloc: {
     palette: [
@@ -294,7 +294,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Cipher ── Assassin, Melee — Encryption, masked ninja
+  // ── Cipher ── Assassin, Line — Encryption, masked ninja
   // Dark green with matrix data lines
   cipher: {
     palette: [
@@ -327,7 +327,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Firewall ── Tank, Melee — Shield wall, flame barrier
+  // ── Firewall ── Tank, Line — Shield wall, flame barrier
   // Red/orange with flame effects
   firewall: {
     palette: [
@@ -361,7 +361,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Null ── Mage, Ranged — Void caster, dark energy
+  // ── Null ── Mage, Sweep — Void caster, dark energy
   // Dark purple/void black with magenta energy
   null_ref: {
     palette: [
@@ -395,7 +395,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Lambda ── Mage, Ranged — Functional caster, code brackets
+  // ── Lambda ── Mage, Sweep — Functional caster, code brackets
   // Neon green/lime with code motif
   lambda: {
     palette: [
@@ -429,7 +429,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Mutex ── Offlaner, Melee — Lock/padlock, bronze armor
+  // ── Mutex ── Offlaner, Line — Lock/padlock, bronze armor
   // Bronze/copper with lock shape
   mutex: {
     palette: [
@@ -463,7 +463,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Ping ── Offlaner, Ranged — Network ping, circular waves
+  // ── Ping ── Offlaner, Sweep — Network ping, circular waves
   // Bright yellow/electric with wave pattern
   ping: {
     palette: [
@@ -497,7 +497,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Cron ── Support, Melee — Clock/timer, blue armor
+  // ── Cron ── Support, Line — Clock/timer, blue armor
   // Blue/silver with clock motif
   cron: {
     palette: [
@@ -531,7 +531,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Traceroute ── Assassin, Ranged — Arrow/path trail
+  // ── Traceroute ── Assassin, Sweep — Arrow/path trail
   // Red/orange with arrow motif
   traceroute: {
     palette: [
@@ -565,7 +565,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Thread ── Carry, Ranged — Interweaving lines, multi-color
+  // ── Thread ── Carry, Sweep — Interweaving lines, multi-color
   // Multi-color with interwoven threads
   thread: {
     palette: [
@@ -599,7 +599,7 @@ const sprites: Record<string, HeroSpriteData> = {
     ],
   },
 
-  // ── Cache ── Tank, Ranged — Layered box/storage shape
+  // ── Cache ── Tank, Sweep — Layered box/storage shape
   // Teal/silver with stacked layers
   cache: {
     palette: [

@@ -5,7 +5,7 @@ import type {
   ItemCategory,
   ItemCategoryId,
 } from '~~/shared/types/items'
-import { CREEP_GOLD_MIN, CREEP_GOLD_MAX } from '~~/shared/constants/balance'
+import { WAVE_GOLD_MIN, WAVE_GOLD_MAX } from '~~/shared/constants/balance'
 
 /**
  * Pure, human-readable formatting + aggregation of item data for the items
@@ -57,17 +57,17 @@ export function totalCost(items: ItemDef[]): number {
   return items.reduce((sum, it) => sum + it.cost, 0)
 }
 
-/** Average gold from one creep last-hit (the in-game bounty range midpoint). */
-const AVG_CREEP_GOLD = (CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2
+/** Average gold from one wave last-hit (the in-game bounty range midpoint). */
+const AVG_WAVE_GOLD = (WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2
 
 /**
- * Roughly how many creep last-hits a gold amount represents — makes an abstract
+ * Roughly how many wave last-hits a gold amount represents — makes an abstract
  * build cost tangible for a newcomer ("this build ≈ N last-hits") and teaches
- * that last-hitting is how items get funded. Uses the average creep bounty.
+ * that last-hitting is how items get funded. Uses the average wave bounty.
  */
 export function lastHitsToAfford(gold: number): number {
   if (gold <= 0) return 0
-  return Math.ceil(gold / AVG_CREEP_GOLD)
+  return Math.ceil(gold / AVG_WAVE_GOLD)
 }
 
 /** Item active cooldown in whole seconds (0 ⇒ no cooldown), given the 4s batch clock ms. */

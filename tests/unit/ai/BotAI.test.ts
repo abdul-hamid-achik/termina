@@ -13,7 +13,7 @@ import {
 import { cleanupBotState } from '~~/server/game/ai/BotAI'
 import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
 import type { BotDifficultyConfig, BotDifficulty } from '~~/server/game/ai/BotManager'
-import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { GameState, PlayerState, WaveUnitState } from '~~/shared/types/game'
 import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getItem } from '~~/shared/constants/items'
@@ -87,7 +87,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
@@ -282,16 +282,16 @@ describe('BotAI - decideBotAction', () => {
 
     it('does not retreat when HP is above retreat threshold', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 180, maxHp: 500 }) // 36% HP
-      const allyCreep = {
+      const allyWave = {
         id: 'c1',
         team: 'chaff' as const,
         zone: 'mid-t1-chaff',
         hp: 300,
-        type: 'melee' as const,
+        type: 'line' as const,
       }
-      const state = makeGameState({ players: { [bot.id]: bot }, creeps: [allyCreep] })
+      const state = makeGameState({ players: { [bot.id]: bot }, waves: [allyWave] })
       const action = decideBotAction(state, bot, 'mid')
-      // 180/500 = 36% => above 30% retreat threshold, advances with creep support
+      // 180/500 = 36% => above 30% retreat threshold, advances with wave support
       expect(action).not.toBeNull()
       expect(action!.type).toBe('move')
       // Should advance along lane (forward), not retreat (backward toward base)
@@ -300,10 +300,10 @@ describe('BotAI - decideBotAction', () => {
       }
     })
 
-    it('holds position at the frontier without creep support', () => {
+    it('holds position at the frontier without wave support', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500 })
       const state = makeGameState({ players: { [bot.id]: bot } })
-      // Next zone is mid-river (neutral territory) and no allied creeps — wait
+      // Next zone is mid-river (neutral territory) and no allied waves — wait
       expect(decideBotAction(state, bot, 'mid')).toBeNull()
     })
 
@@ -611,88 +611,88 @@ describe('BotAI - decideBotAction', () => {
     })
   })
 
-  describe('combat - creep targeting', () => {
-    it('aims at the lowest-HP enemy creep when the last-hit roll lands', () => {
+  describe('combat - wave targeting', () => {
+    it('aims at the lowest-HP enemy wave when the last-hit roll lands', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
-      const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
-        { id: 'creep-2', team: 'audit', zone: 'mid-t1-chaff', hp: 50, type: 'ranged' },
+      const waves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'line' },
+        { id: 'wave-2', team: 'audit', zone: 'mid-t1-chaff', hp: 50, type: 'sweep' },
       ]
-      const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+      const state = makeGameState({ players: { [bot.id]: bot }, waves })
       // `unfair` is lastHitAccuracy 1.0 — the roll can never fail.
       const action = decideBotAction(state, bot, 'mid', atDifficulty('unfair', bot.id))
-      expect(action).toEqual({ type: 'attack', target: { kind: 'creep', index: 1 } })
+      expect(action).toEqual({ type: 'attack', target: { kind: 'wave', index: 1 } })
     })
 
-    it('a missed last hit re-aims at the SECOND-lowest creep — never at nothing', () => {
+    it('a missed last hit re-aims at the SECOND-lowest wave — never at nothing', () => {
       // The miss must cost the gold, not the tick. Returning null on a failed
       // roll was the original standstill bug: bots stopped out-clearing the
       // incoming wave and never reached a ice (see BotForwardProgress).
       // Tick 30's lasthit roll is 0.91, above every accuracy below `unfair`.
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
-      const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
-        { id: 'creep-2', team: 'audit', zone: 'mid-t1-chaff', hp: 50, type: 'ranged' },
-        { id: 'creep-3', team: 'audit', zone: 'mid-t1-chaff', hp: 120, type: 'melee' },
+      const waves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'line' },
+        { id: 'wave-2', team: 'audit', zone: 'mid-t1-chaff', hp: 50, type: 'sweep' },
+        { id: 'wave-3', team: 'audit', zone: 'mid-t1-chaff', hp: 120, type: 'line' },
       ]
-      const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
+      const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, waves })
       expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
         type: 'attack',
-        target: { kind: 'creep', index: 2 },
+        target: { kind: 'wave', index: 2 },
       })
       // Same tick, perfect accuracy → the true lowest.
       expect(decideBotAction(state, bot, 'mid', atDifficulty('unfair', bot.id))).toEqual({
         type: 'attack',
-        target: { kind: 'creep', index: 1 },
+        target: { kind: 'wave', index: 1 },
       })
     })
 
-    it('still swings at a lone creep on a missed roll (no second-lowest to fall back to)', () => {
+    it('still swings at a lone wave on a missed roll (no second-lowest to fall back to)', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
-      const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
+      const waves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'line' },
       ]
-      const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, creeps })
+      const state = makeGameState({ tick: 30, players: { [bot.id]: bot }, waves })
       expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
         type: 'attack',
-        target: { kind: 'creep', index: 0 },
+        target: { kind: 'wave', index: 0 },
       })
     })
 
-    it('ignores friendly creeps', () => {
+    it('ignores friendly waves', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
-      const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 100, type: 'melee' },
+      const waves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 100, type: 'line' },
       ]
-      const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+      const state = makeGameState({ players: { [bot.id]: bot }, waves })
       const action = decideBotAction(state, bot, 'mid')
       // No enemies, should move forward
       expect(action!.type).toBe('move')
     })
 
     it('attacks the wave even when it cannot secure the last hit', () => {
-      // A high-HP enemy creep (no guaranteed last hit) must still draw an
+      // A high-HP enemy wave (no guaranteed last hit) must still draw an
       // attack — the old code returned null on a failed last-hit roll, leaving
       // bots idling in lane instead of pushing the wave.
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
-      const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'melee' },
+      const waves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, type: 'line' },
       ]
-      const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+      const state = makeGameState({ players: { [bot.id]: bot }, waves })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'attack', target: { kind: 'creep', index: 0 } })
+      expect(action).toEqual({ type: 'attack', target: { kind: 'wave', index: 0 } })
     })
   })
 
   describe('ice targeting', () => {
-    it('attacks enemy ice when allied creeps are present', () => {
+    it('attacks enemy ice when allied waves are present', () => {
       const bot = makePlayer({ zone: 'mid-t1-audit', hp: 400, maxHp: 500, mp: 0 })
-      const alliedCreeps: CreepState[] = [
-        { id: 'creep-1', team: 'chaff', zone: 'mid-t1-audit', hp: 400, type: 'melee' },
+      const alliedWaves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'chaff', zone: 'mid-t1-audit', hp: 400, type: 'line' },
       ]
       const state = makeGameState({
         players: { [bot.id]: bot },
-        creeps: alliedCreeps,
+        waves: alliedWaves,
       })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).not.toBeNull()
@@ -702,26 +702,26 @@ describe('BotAI - decideBotAction', () => {
       }
     })
 
-    it('does not attack ice without allied creeps', () => {
+    it('does not attack ice without allied waves', () => {
       const bot = makePlayer({ zone: 'mid-t1-audit', hp: 400, maxHp: 500, mp: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      // No allied creeps -> holds position (deep in enemy territory, no support)
+      // No allied waves -> holds position (deep in enemy territory, no support)
       expect(action?.type ?? 'hold').not.toBe('attack')
     })
   })
 
   describe('movement - lane pathing', () => {
-    it('moves forward along assigned lane with creep support', () => {
+    it('moves forward along assigned lane with wave support', () => {
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
-      const allyCreep = {
+      const allyWave = {
         id: 'c1',
         team: 'chaff' as const,
         zone: 'mid-t1-chaff',
         hp: 300,
-        type: 'melee' as const,
+        type: 'line' as const,
       }
-      const state = makeGameState({ players: { [bot.id]: bot }, creeps: [allyCreep] })
+      const state = makeGameState({ players: { [bot.id]: bot }, waves: [allyWave] })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'move', zone: 'mid-river' })
     })
@@ -736,13 +736,13 @@ describe('BotAI - decideBotAction', () => {
     it('advances across the frontier to join a wave waiting one zone ahead', () => {
       // Frontier bot (own t1) with an allied wave in the NEXT zone (the river)
       // but none co-located. The old standstill only checked the bot's CURRENT
-      // zone for creep support, so it froze here; forward progress now follows
+      // zone for wave support, so it froze here; forward progress now follows
       // the wave ahead so the bot pushes out of its own half.
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
-      const creeps: CreepState[] = [
-        { id: 'wave-1', team: 'chaff', zone: 'mid-river', hp: 300, type: 'melee' },
+      const waves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'chaff', zone: 'mid-river', hp: 300, type: 'line' },
       ]
-      const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+      const state = makeGameState({ players: { [bot.id]: bot }, waves })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'move', zone: 'mid-river' })
     })
@@ -905,7 +905,7 @@ describe('BotAI - decideBotAction', () => {
       expect(action!.type).toBe('cast')
     })
 
-    it('prioritizes hero attacks over creep attacks', () => {
+    it('prioritizes hero attacks over wave attacks', () => {
       const bot = makePlayer({
         zone: 'mid-river',
         hp: 400,
@@ -919,12 +919,12 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-river',
         hp: 300,
       })
-      const creeps: CreepState[] = [
-        { id: 'creep-1', team: 'audit', zone: 'mid-river', hp: 100, type: 'melee' },
+      const waves: WaveUnitState[] = [
+        { id: 'wave-1', team: 'audit', zone: 'mid-river', hp: 100, type: 'line' },
       ]
       const state = makeGameState({
         players: { [bot.id]: bot, enemy1: enemy },
-        creeps,
+        waves,
       })
       const action = decideBotAction(state, bot, 'mid')
       expect(action).toEqual({ type: 'attack', target: { kind: 'hero', name: 'enemy1' } })
@@ -1829,25 +1829,25 @@ describe('BotAI - denying (medium+)', () => {
       cooldowns: { q: 5, w: 5, e: 5, r: 5 },
     })
 
-  it('burns the allied creep inside the resolver window, by zone-local index', () => {
+  it('burns the allied wave inside the resolver window, by zone-local index', () => {
     const bot = denier()
-    const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 200, type: 'melee' },
-      { id: 'creep-2', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
+    const waves: WaveUnitState[] = [
+      { id: 'wave-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 200, type: 'line' },
+      { id: 'wave-2', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'line' },
     ]
-    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
+    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, waves })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'burn',
-      target: { kind: 'creep', index: 1 },
+      target: { kind: 'wave', index: 1 },
     })
   })
 
-  it('leaves a healthy allied creep alone (outside BURN_HP_THRESHOLD the burn would no-op)', () => {
+  it('leaves a healthy allied wave alone (outside BURN_HP_THRESHOLD the burn would no-op)', () => {
     const bot = denier()
-    const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'melee' },
+    const waves: WaveUnitState[] = [
+      { id: 'wave-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'line' },
     ]
-    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
+    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, waves })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'attack',
       target: { kind: 'hero', name: 'enemy1' },
@@ -1856,10 +1856,10 @@ describe('BotAI - denying (medium+)', () => {
 
   it('easy bots do not burn (denyAwareness off)', () => {
     const bot = denier()
-    const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
+    const waves: WaveUnitState[] = [
+      { id: 'wave-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'line' },
     ]
-    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
+    const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, waves })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('easy', bot.id))).toEqual({
       type: 'attack',
       target: { kind: 'hero', name: 'enemy1' },
@@ -1868,10 +1868,10 @@ describe('BotAI - denying (medium+)', () => {
 
   it('never burns with no enemy hero around — that just throws away your own wave', () => {
     const bot = denier()
-    const creeps: CreepState[] = [
-      { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
+    const waves: WaveUnitState[] = [
+      { id: 'wave-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'line' },
     ]
-    const state = makeGameState({ players: { [bot.id]: bot }, creeps })
+    const state = makeGameState({ players: { [bot.id]: bot }, waves })
     const action = decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))
     expect(action?.type).not.toBe('burn')
   })
@@ -1880,7 +1880,7 @@ describe('BotAI - denying (medium+)', () => {
 describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
   const THREATENED = 'top-t1-chaff'
 
-  function siege(defenderIds: string[], attackers: number, botZone = 'top-t2-chaff') {
+  function breach(defenderIds: string[], attackers: number, botZone = 'top-t2-chaff') {
     const bot = makePlayer({ id: 'bot_alpha', zone: botZone, level: 1, hp: 500, maxHp: 500 })
     const players: Record<string, PlayerState> = { [bot.id]: bot }
     for (const id of defenderIds) {
@@ -1895,7 +1895,7 @@ describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
   }
 
   it('rotates to a teammate who is outnumbered at the ice', () => {
-    const { bot, state } = siege(['bot_bravo'], 2)
+    const { bot, state } = breach(['bot_bravo'], 2)
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'move',
       zone: THREATENED,
@@ -1905,7 +1905,7 @@ describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
   it('a HUMAN ally running back to defend still summons help', () => {
     // The old predicate was "is any ally already there?", so a human doing the
     // right thing was precisely what told the bots the ice was handled.
-    const { bot, state } = siege(['github_7379966'], 2)
+    const { bot, state } = breach(['github_7379966'], 2)
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'move',
       zone: THREATENED,
@@ -1913,13 +1913,13 @@ describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
   })
 
   it('does not rotate into an even fight (defenders match attackers)', () => {
-    const { bot, state } = siege(['bot_bravo'], 1)
+    const { bot, state } = breach(['bot_bravo'], 1)
     const action = decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))
     expect(action).not.toEqual({ type: 'move', zone: THREATENED })
   })
 
   it('still answers an undefended ice (no ally present at all)', () => {
-    const { bot, state } = siege([], 1)
+    const { bot, state } = breach([], 1)
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'move',
       zone: THREATENED,
@@ -1930,14 +1930,14 @@ describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
     // top-t1-chaff is 3 zones from mid-t1-chaff (inside the bound) and 4 from
     // bot-t1-chaff (outside it): a rescue that lands in five ticks is a lane
     // abandoned for a fight that is already over.
-    const near = siege(['bot_bravo'], 2, 'mid-t1-chaff')
+    const near = breach(['bot_bravo'], 2, 'mid-t1-chaff')
     expect(
       decideBotAction(near.state, near.bot, 'mid', atDifficulty('medium', near.bot.id)),
     ).toEqual({ type: 'move', zone: findPath('mid-t1-chaff', THREATENED)[1] })
 
     // Assigned to its own lane so its ordinary lane push can't be mistaken for
     // (or collide with) the first step of the rescue path.
-    const far = siege(['bot_bravo'], 2, 'bot-t1-chaff')
+    const far = breach(['bot_bravo'], 2, 'bot-t1-chaff')
     expect(
       decideBotAction(far.state, far.bot, 'bot', atDifficulty('medium', far.bot.id)),
     ).not.toEqual({ type: 'move', zone: findPath('bot-t1-chaff', THREATENED)[1] })

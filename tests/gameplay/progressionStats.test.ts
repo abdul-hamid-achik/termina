@@ -5,7 +5,7 @@ import { TALENT_TREES, TALENT_UNLOCK_LEVEL } from '~~/shared/constants/talents'
 
 /**
  * Engine truth for the two progression numbers the scoreboard never had. The
- * tally is derived from the emitted `creep_lasthit` / `wave_burn` events, so
+ * tally is derived from the emitted `wave_strip` / `wave_burn` events, so
  * these run through the real attack and burn phases rather than poking a
  * counter — a tally that disagreed with the feed would be worse than none.
  */
@@ -17,12 +17,12 @@ describe('progression: last hits and burns', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      creeps: [{ id: 'enemy_creep', team: enemyTeam, zone: 'mid-river', hp: 10, type: 'melee' }],
+      waves: [{ id: 'enemy_wave', team: enemyTeam, zone: 'mid-river', hp: 10, type: 'line' }],
     }))
 
     expect(getFarmStats(game.gameId)[HUMAN]?.lastHits ?? 0).toBe(0)
 
-    game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
     await game.tick()
 
     expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 1, burns: 0 })
@@ -34,11 +34,11 @@ describe('progression: last hits and burns', () => {
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      // Own creep under the burn window (MELEE_CREEP_HP 400 × BURN_HP_THRESHOLD 0.5).
-      creeps: [{ id: 'own_creep', team: me0.team, zone: 'mid-river', hp: 20, type: 'melee' }],
+      // Own wave under the burn window (LINE_UNIT_HP 400 × BURN_HP_THRESHOLD 0.5).
+      waves: [{ id: 'own_wave', team: me0.team, zone: 'mid-river', hp: 20, type: 'line' }],
     }))
 
-    game.submit({ type: 'burn', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'burn', target: { kind: 'wave', index: 0 } })
     await game.tick()
 
     expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 0, burns: 1 })
@@ -53,9 +53,9 @@ describe('progression: last hits and burns', () => {
       await game.patch((s) => ({
         ...s,
         players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-        creeps: [{ id: `ec${i}`, team: enemyTeam, zone: 'mid-river', hp: 10, type: 'melee' }],
+        waves: [{ id: `ec${i}`, team: enemyTeam, zone: 'mid-river', hp: 10, type: 'line' }],
       }))
-      game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+      game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
       await game.tick()
     }
 
@@ -70,9 +70,9 @@ describe('progression: last hits and burns', () => {
     await a.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      creeps: [{ id: 'ec', team: enemyTeam, zone: 'mid-river', hp: 10, type: 'melee' }],
+      waves: [{ id: 'ec', team: enemyTeam, zone: 'mid-river', hp: 10, type: 'line' }],
     }))
-    a.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+    a.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
     await a.tick()
 
     expect(getFarmStats(a.gameId)[HUMAN]?.lastHits).toBe(1)

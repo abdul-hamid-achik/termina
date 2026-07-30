@@ -3,7 +3,7 @@ import MarqueeStrip from './MarqueeStrip.vue'
 
 const commands = [
   'move mid-river',
-  'attack creep:0',
+  'attack wave:0',
   'cast q hero:daemon',
   'buy blades_of_attack',
   'ward mid-river',

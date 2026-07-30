@@ -15,7 +15,7 @@ function makeGameState(): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     caches: [],

@@ -140,10 +140,10 @@ describe('tutorial flow', () => {
       expect(tutorialHint(TUTORIAL_STEP_COUNT)).toBeNull()
     })
 
-    it('the last-hit hint teaches the explicit creep syntax, not bare attack', () => {
+    it('the last-hit hint teaches the explicit wave syntax, not bare attack', () => {
       // Bare `attack` auto-targets an enemy HERO, so the last-hit step must show
-      // `attack creep:N` — otherwise the hint contradicts what the command does.
-      expect(tutorialHint(1)).toContain('creep:')
+      // `attack wave:N` — otherwise the hint contradicts what the command does.
+      expect(tutorialHint(1)).toContain('wave:')
       expect(tutorialHint(1)).not.toMatch(/type `attack` on/)
     })
 
@@ -177,7 +177,7 @@ describe('tutorial flow', () => {
 
       // Safe: REGRESSION — the hint then said `move mid`, which aliases to
       // mid-river: neutral ground with no ice, bordering the AUDIT T1. Both
-      // enemy bots are pinned to mid and arrive there before the first creep
+      // enemy bots are pinned to mid and arrive there before the first wave
       // wave, so a level-1 player who obeyed the hint was killed in ~12 ticks
       // having done nothing. Send them somewhere their own ice covers.
       const zone = ZONE_MAP[target!]

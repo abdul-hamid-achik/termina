@@ -4,15 +4,15 @@ import { seedGame, HUMAN, ENEMY } from './harness'
 /**
  * W3-2 — a standing attack order. Walking is free (one `move` order and the
  * engine keeps walking you), so fighting must not cost one manual input every
- * four seconds: a resolved NON-creep attack is remembered and re-issued each
+ * four seconds: a resolved NON-wave attack is remembered and re-issued each
  * tick until the target dies, leaves, or a new deliberate order lands.
  *
- * Last-hitting is the deliberate exception — `kind: 'creep'` never holds.
+ * Last-hitting is the deliberate exception — `kind: 'wave'` never holds.
  */
 describe('standing attack orders', () => {
-  it('a ice siege keeps swinging with no further input', async () => {
+  it('a ice breach keeps swinging with no further input', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
-    // Mid-match tick, not tick 0: creep escalation and the wave/cache spawners
+    // Mid-match tick, not tick 0: wave escalation and the wave/cache spawners
     // are all live here, so the re-swing is exercised in a real tick, not in
     // the quiet first frame of a match.
     await game.patch((s) => ({
@@ -37,23 +37,23 @@ describe('standing attack orders', () => {
     expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
   })
 
-  it('last-hitting stays manual — a creep attack sets no standing order', async () => {
+  it('last-hitting stays manual — a wave attack sets no standing order', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      creeps: [
+      waves: [
         {
           id: 'creep_hold_1',
           team: 'audit' as const,
           zone: 'mid-river',
           hp: 500,
           maxHp: 500,
-          type: 'melee' as const,
+          type: 'line' as const,
         },
       ],
     }))
 
-    game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
     await game.tick()
 
     const hit = game.lastEvents.some(

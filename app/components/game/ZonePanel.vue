@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import type {
   PlayerState,
-  CreepState,
-  NeutralCreepState,
+  WaveUnitState,
+  NeutralUnitState,
   TenantState,
   IceState,
   TeamId,
@@ -11,16 +11,16 @@ import type {
 import type { TargetRef } from '~~/shared/types/commands'
 import { HEROES } from '~~/shared/constants/heroes'
 import { ZONE_MAP } from '~~/shared/constants/zones'
-import { creepMaxHp, BURN_HP_THRESHOLD } from '~~/shared/constants/balance'
+import { waveUnitMaxHp, BURN_HP_THRESHOLD } from '~~/shared/constants/balance'
 import { computeThreat, threatToneClass } from '~/utils/tactics'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 
-/** A visible creep plus its index in the client's creeps array (for `attack creep:<i>`). */
-type IndexedCreep = CreepState & { index: number }
+/** A visible wave plus its index in the client's waves array (for `attack wave:<i>`). */
+type IndexedWave = WaveUnitState & { index: number }
 
 /** A neutral plus its index in the GLOBAL neutrals array — the index the server
  *  resolves `attack neutral:<i>` against, so it must survive the zone filter. */
-type IndexedNeutral = NeutralCreepState & { index: number }
+type IndexedNeutral = NeutralUnitState & { index: number }
 
 const props = withDefaults(
   defineProps<{
@@ -30,7 +30,7 @@ const props = withDefaults(
     playerTeam: TeamId
     enemies?: PlayerState[]
     allies?: PlayerState[]
-    creeps?: IndexedCreep[]
+    waves?: IndexedWave[]
     neutrals?: IndexedNeutral[]
     ice?: IceState | null
     /** Tenant, passed only when the player stands in the pit and he is alive. */
@@ -43,7 +43,7 @@ const props = withDefaults(
     zoneId: '',
     enemies: () => [],
     allies: () => [],
-    creeps: () => [],
+    waves: () => [],
     neutrals: () => [],
     ice: null,
     tenant: null,
@@ -61,7 +61,7 @@ function heroName(p: PlayerState): string {
 
 // ── Standing attack order ──────────────────────────────────────
 // The engine keeps swinging at a held target every tick, so the row that owns
-// it says so — otherwise repeated damage lines look like a bug. Lane creeps
+// it says so — otherwise repeated damage lines look like a bug. Lane waves
 // never hold (last-hitting stays a manual, per-tick decision), so their rows
 // deliberately have no [hold] state to show.
 const heldIceZone = computed(() =>
@@ -83,47 +83,47 @@ function attackHero(p: PlayerState) {
   emit('command', `attack hero:${p.heroId ?? p.name}`)
 }
 
-// ── Creep groups ───────────────────────────────────────────────
-const enemyCreeps = computed(() =>
-  props.creeps.filter((c) => c.team !== props.playerTeam && c.hp > 0),
+// ── Wave groups ───────────────────────────────────────────────
+const enemyWaves = computed(() =>
+  props.waves.filter((c) => c.team !== props.playerTeam && c.hp > 0),
 )
-const alliedCreeps = computed(() =>
-  props.creeps.filter((c) => c.team === props.playerTeam && c.hp > 0),
+const alliedWaves = computed(() =>
+  props.waves.filter((c) => c.team === props.playerTeam && c.hp > 0),
 )
 
-function lowestHpCreep(group: IndexedCreep[]): IndexedCreep | null {
+function lowestHpWave(group: IndexedWave[]): IndexedWave | null {
   if (group.length === 0) return null
   return group.reduce((min, c) => (c.hp < min.hp ? c : min))
 }
 
-const lowestEnemyCreep = computed(() => lowestHpCreep(enemyCreeps.value))
-const lowestAlliedCreep = computed(() => lowestHpCreep(alliedCreeps.value))
+const lowestEnemyWave = computed(() => lowestHpWave(enemyWaves.value))
+const lowestAlliedWave = computed(() => lowestHpWave(alliedWaves.value))
 
-/** Last-hit helper: attack the lowest-HP enemy creep in the zone. */
-function attackLowestCreep() {
-  const target = lowestEnemyCreep.value
-  if (target) emit('command', `attack creep:${target.index}`)
+/** Last-hit helper: attack the lowest-HP enemy wave in the zone. */
+function attackLowestWave() {
+  const target = lowestEnemyWave.value
+  if (target) emit('command', `attack wave:${target.index}`)
 }
 
 // ── Burn ───────────────────────────────────────────────────────
-// An allied creep can only be burned once it drops below the burn HP
+// An allied wave can only be burned once it drops below the burn HP
 // threshold (mirrors the server's BURN_HP_THRESHOLD check). Surface the
-// affordance only when a denyable creep exists so the tap can't no-op.
-// Reads the HP the creep SPAWNED with, not a level-1 constant: creeps escalate
+// affordance only when a denyable wave exists so the tap can't no-op.
+// Reads the HP the wave SPAWNED with, not a level-1 constant: waves escalate
 // with match time, so a fixed max made this affordance vanish as the game ran.
-function creepFullHp(c: IndexedCreep): number {
-  return c.maxHp ?? creepMaxHp(c.type, 0)
+function waveFullHp(c: IndexedWave): number {
+  return c.maxHp ?? waveUnitMaxHp(c.type, 0)
 }
 
-const denyableAlliedCreep = computed<IndexedCreep | null>(() => {
-  const eligible = alliedCreeps.value.filter((c) => c.hp <= creepFullHp(c) * BURN_HP_THRESHOLD)
-  return lowestHpCreep(eligible)
+const burnableAlliedWave = computed<IndexedWave | null>(() => {
+  const eligible = alliedWaves.value.filter((c) => c.hp <= waveFullHp(c) * BURN_HP_THRESHOLD)
+  return lowestHpWave(eligible)
 })
 
-/** Burn helper: burn the lowest-HP eligible allied creep in the zone. */
-function denyLowestCreep() {
-  const target = denyableAlliedCreep.value
-  if (target) emit('command', `burn creep:${target.index}`)
+/** Burn helper: burn the lowest-HP eligible allied wave in the zone. */
+function burnLowestWave() {
+  const target = burnableAlliedWave.value
+  if (target) emit('command', `burn wave:${target.index}`)
 }
 
 // ── Ice ──────────────────────────────────────────────────────
@@ -211,7 +211,7 @@ const objective = computed<string | null>(() => {
     case 'jungle':
       return 'Farm neutral camps'
     case 'lane':
-      return alliedCreeps.value.length > 0 ? 'Push with your creeps' : 'Hold for your wave'
+      return alliedWaves.value.length > 0 ? 'Push with your waves' : 'Hold for your wave'
     default:
       return null
   }
@@ -221,8 +221,8 @@ const isEmpty = computed(
   () =>
     props.enemies.length === 0 &&
     props.allies.length === 0 &&
-    enemyCreeps.value.length === 0 &&
-    alliedCreeps.value.length === 0 &&
+    enemyWaves.value.length === 0 &&
+    alliedWaves.value.length === 0 &&
     aliveNeutrals.value.length === 0 &&
     iceHere.value === null &&
     tenantHere.value === null,
@@ -357,45 +357,43 @@ const isEmpty = computed(
       </div>
     </component>
 
-    <!-- Enemy creep group: tap to last-hit the lowest-HP creep -->
+    <!-- Enemy wave group: tap to last-hit the lowest-HP wave -->
     <button
-      v-if="enemyCreeps.length > 0"
+      v-if="enemyWaves.length > 0"
       class="block w-full border border-audit/30 px-2 py-1 text-left transition-all hover:bg-audit/10 active:scale-[0.99]"
-      data-testid="zone-creeps-enemy"
-      title="Attack the lowest-HP enemy creep"
-      @click="attackLowestCreep"
+      data-testid="zone-waves-enemy"
+      title="Attack the lowest-HP enemy wave"
+      @click="attackLowestWave"
     >
       <span class="text-audit"
-        >{{ enemyCreeps.length }}× enemy creep{{ enemyCreeps.length === 1 ? '' : 's' }}</span
+        >{{ enemyWaves.length }}× enemy wave{{ enemyWaves.length === 1 ? '' : 's' }}</span
       >
-      <span v-if="lowestEnemyCreep" class="text-text-dim">
-        · lowest {{ lowestEnemyCreep.hp }}hp</span
-      >
+      <span v-if="lowestEnemyWave" class="text-text-dim"> · lowest {{ lowestEnemyWave.hp }}hp</span>
       <span class="t-caption"> · [last-hit]</span>
     </button>
 
-    <!-- Allied creep group: tap to burn the lowest-HP creep once it's below
+    <!-- Allied wave group: tap to burn the lowest-HP wave once it's below
          the burn threshold (no-op affordance is hidden until then). -->
     <component
-      :is="denyableAlliedCreep ? 'button' : 'div'"
-      v-if="alliedCreeps.length > 0"
+      :is="burnableAlliedWave ? 'button' : 'div'"
+      v-if="alliedWaves.length > 0"
       class="block w-full border px-2 py-1 text-left"
       :class="
-        denyableAlliedCreep
+        burnableAlliedWave
           ? 'border-gold/40 transition-all hover:bg-gold/10 active:scale-[0.99]'
           : 'border-border/40'
       "
-      data-testid="zone-creeps-ally"
-      :title="denyableAlliedCreep ? 'Burn the lowest-HP allied creep (below 50% HP)' : undefined"
-      @click="denyLowestCreep"
+      data-testid="zone-waves-ally"
+      :title="burnableAlliedWave ? 'Burn the lowest-HP allied wave (below 50% HP)' : undefined"
+      @click="burnLowestWave"
     >
       <span class="text-chaff"
-        >{{ alliedCreeps.length }}× allied creep{{ alliedCreeps.length === 1 ? '' : 's' }}</span
+        >{{ alliedWaves.length }}× allied wave{{ alliedWaves.length === 1 ? '' : 's' }}</span
       >
-      <span v-if="lowestAlliedCreep" class="text-text-dim">
-        · lowest {{ lowestAlliedCreep.hp }}hp</span
+      <span v-if="lowestAlliedWave" class="text-text-dim">
+        · lowest {{ lowestAlliedWave.hp }}hp</span
       >
-      <span v-if="denyableAlliedCreep" class="t-caption text-gold"> · [burn]</span>
+      <span v-if="burnableAlliedWave" class="t-caption text-gold"> · [burn]</span>
     </component>
 
     <!-- Neutral camp: tap to attack the lowest-HP member -->
@@ -403,7 +401,7 @@ const isEmpty = computed(
       v-if="aliveNeutrals.length > 0"
       class="block w-full border border-gold/40 px-2 py-1 text-left transition-all hover:bg-gold/10 active:scale-[0.99]"
       data-testid="zone-neutrals"
-      title="Attack the lowest-HP neutral creep"
+      title="Attack the lowest-HP neutral wave"
       @click="attackLowestNeutral"
     >
       <span class="text-gold"

@@ -117,7 +117,7 @@ export interface TutorialAdvance {
  * has been active longer than TUTORIAL_STEP_DEADLINE_TICKS.
  *
  * The deadline is the load-bearing part. Every step's success condition depends
- * on the live match: "attack" wants a creep wave to have arrived, "cast" wants a
+ * on the live match: "attack" wants a wave wave to have arrived, "cast" wants a
  * legal target (most heroes' Q needs an enemy hero in your zone). Without a
  * deadline a player whose zone never produced a legal target sat on the same
  * step forever — and because tutorial mode gates the *later* commands behind the
@@ -146,7 +146,7 @@ export function advanceTutorialAfterTick(
 
   // The move step teaches "walk to the lane", not "take one step": from the
   // fountain the first hop only reaches base, where the next steps (last-hit a
-  // creep, cast on an enemy) have no targets. Hold the step until the human has
+  // wave, cast on an enemy) have no targets. Hold the step until the human has
   // actually left their base/fountain into the field — but SAY so, otherwise the
   // player who typed exactly what the hint said sees nothing happen at all.
   const stalledInBase =

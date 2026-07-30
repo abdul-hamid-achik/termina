@@ -28,7 +28,7 @@ function makeHero(role: HeroRole, effects: AbilityEffect[][]): HeroDef {
       defense: 0,
       magicResist: 0,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {},
     passive: ability([]),

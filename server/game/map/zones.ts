@@ -42,7 +42,7 @@ export function initializeZoneStates(
     states[zone.id] = {
       id: zone.id,
       wards: [],
-      creeps: [],
+      waves: [],
     }
   }
   return states

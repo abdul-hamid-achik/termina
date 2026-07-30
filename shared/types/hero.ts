@@ -81,7 +81,7 @@ export interface HeroBaseStats {
   defense: number
   magicResist: number
   moveSpeed: number
-  attackRange: 'melee' | 'ranged'
+  attackRange: 'line' | 'sweep'
 }
 
 export interface HeroDef {

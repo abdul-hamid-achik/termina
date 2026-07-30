@@ -6,7 +6,7 @@ import AsciiMap from './AsciiMap.vue'
 // AsciiMap renders the 5x10 zone grid (desktop) or a zone-centered card stack
 // (compact). It takes pre-computed ZoneDisplay rows + the player's zone +
 // ancients. We seed a realistic spread: player mid, allies/enemies scattered,
-// a downed ice, fogged enemy jungle, and creep/neutral counts.
+// a downed ice, fogged enemy jungle, and wave/neutral counts.
 function zone(id: string, name: string, overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return { id, name, playerHere: false, allies: [], enemyCount: 0, fogged: false, ...overrides }
 }
@@ -14,7 +14,7 @@ function zone(id: string, name: string, overrides: Partial<ZoneDisplay> = {}): Z
 const zones: ZoneDisplay[] = [
   zone('mid-river', 'Mid River', { playerHere: true, allies: ['kernel_main'] }),
   zone('top-river', 'Top River', { enemyCount: 2, enemyNames: ['daemon_carry', 'regex_mid'] }),
-  zone('bot-river', 'Bot River', { creepCount: 4, creepTypes: ['melee', 'ranged'] }),
+  zone('bot-river', 'Bot River', { waveCount: 4, waveTypes: ['line', 'sweep'] }),
   zone('cache-top', 'Top Cache', { wardCount: 1, cacheType: 'haste' }),
   zone('hollow', 'The Hollow', { neutralCount: 1, tenant: { alive: false, respawnIn: 48 } }),
   zone('mid-t1-audit', 'Audit Mid T1', {
@@ -49,7 +49,7 @@ const oneLaneZones: ZoneDisplay[] = [
     ice: { team: 'chaff', alive: false, tier: 1 },
     allies: ['kernel_main'],
   }),
-  zone('mid-river', 'Mid River', { playerHere: true, creepCount: 4 }),
+  zone('mid-river', 'Mid River', { playerHere: true, waveCount: 4 }),
   zone('mid-t1-audit', 'Audit Mid T1', {
     ice: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 2,
@@ -82,7 +82,7 @@ const twoLaneZones: ZoneDisplay[] = [
     ice: { team: 'chaff', alive: false, tier: 1 },
     allies: ['proxy_jg'],
   }),
-  zone('top-river', 'Top River', { creepCount: 4 }),
+  zone('top-river', 'Top River', { waveCount: 4 }),
   zone('top-t1-audit', 'Audit Top T1', {
     ice: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 1,

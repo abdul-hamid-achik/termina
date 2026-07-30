@@ -2,7 +2,7 @@ import { HARDEN_COOLDOWN_TICKS, SURRENDER_MIN_TICK } from '~~/shared/constants/b
 import { pickDenyTargetString } from '~/composables/useCommands'
 import type {
   PlayerState,
-  CreepState,
+  WaveUnitState,
   CacheState,
   TeamState,
   TeamId,
@@ -19,7 +19,7 @@ export interface SituationalAction {
 export interface SituationalContext {
   player: PlayerState | null
   isAlive: boolean
-  creeps: CreepState[]
+  waves: WaveUnitState[]
   backup: { zone: string; holderId: string | null } | null
   caches: CacheState[]
   teams: Record<TeamId, TeamState> | null
@@ -42,8 +42,8 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
   if (p.items.some((i) => i === 'camtap' || i === 'sniffer')) {
     out.push({ cmd: 'ward', label: 'WARD', aria: `Place a ward in ${p.zone}` })
   }
-  if (!('error' in pickDenyTargetString(p, ctx.creeps))) {
-    out.push({ cmd: 'burn', label: 'BURN', aria: 'Burn a low-HP allied creep' })
+  if (!('error' in pickDenyTargetString(p, ctx.waves))) {
+    out.push({ cmd: 'burn', label: 'BURN', aria: 'Burn a low-HP allied wave' })
   }
   if (ctx.backup && ctx.backup.zone === p.zone && !ctx.backup.holderId) {
     out.push({ cmd: 'backup', label: 'BACKUP', aria: 'Pick up the Backup of the Immortal' })

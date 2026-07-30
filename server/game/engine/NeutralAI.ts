@@ -1,9 +1,9 @@
-import type { GameState, NeutralCreepState } from '~~/shared/types/game'
+import type { GameState, NeutralUnitState } from '~~/shared/types/game'
 import {
-  NEUTRAL_CREEPS,
-  NEUTRAL_CREEPS_INTERVAL_TICKS,
+  NEUTRAL_UNITS,
+  NEUTRAL_UNITS_INTERVAL_TICKS,
   MAX_NEUTRALS_PER_CAMP,
-  type NeutralCreepType,
+  type NeutralUnitType,
 } from '~~/shared/constants/balance'
 import { resolvePhysicalHit } from './CombatResolver'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
@@ -30,16 +30,16 @@ const JUNGLE_ZONES = [
   'silt-audit-bot',
 ] as const
 
-/** Spawn neutral creeps in jungle camps. `hasZone` skips camps a subset map
+/** Spawn neutral waves in jungle camps. `hasZone` skips camps a subset map
  *  doesn't have (one-lane has no jungle). `existingNeutrals` is used to enforce
  *  MAX_NEUTRALS_PER_CAMP — camps at cap are skipped (no new spawns). */
-export function spawnNeutralCreeps(
+export function spawnNeutralUnits(
   tick: number,
   hasZone?: (zoneId: string) => boolean,
-  existingNeutrals: NeutralCreepState[] = [],
-): NeutralCreepState[] {
+  existingNeutrals: NeutralUnitState[] = [],
+): NeutralUnitState[] {
   // Spawn at tick 60, then every 60 ticks
-  if (tick === 0 || tick % NEUTRAL_CREEPS_INTERVAL_TICKS !== 0) return []
+  if (tick === 0 || tick % NEUTRAL_UNITS_INTERVAL_TICKS !== 0) return []
 
   // Count live neutrals per zone to enforce the cap
   const liveCountByZone = new Map<string, number>()
@@ -47,7 +47,7 @@ export function spawnNeutralCreeps(
     if (n.alive) liveCountByZone.set(n.zone, (liveCountByZone.get(n.zone) ?? 0) + 1)
   }
 
-  const neutrals: NeutralCreepState[] = []
+  const neutrals: NeutralUnitState[] = []
 
   for (const zone of JUNGLE_ZONES) {
     if (hasZone && !hasZone(zone)) continue
@@ -60,30 +60,30 @@ export function spawnNeutralCreeps(
     if (campSize <= 0) continue
 
     for (let i = 0; i < campSize; i++) {
-      // Random creep type (weighted towards smaller ones)
+      // Random wave type (weighted towards smaller ones)
       const roll = Math.random()
-      let creepType: NeutralCreepType
+      let waveType: NeutralUnitType
 
       if (roll < 0.4) {
-        creepType = 'kobold'
+        waveType = 'kobold'
       } else if (roll < 0.7) {
-        creepType = 'ogre_mage'
+        waveType = 'ogre_mage'
       } else if (roll < 0.9) {
-        creepType = 'centaur'
+        waveType = 'centaur'
       } else if (roll < 0.95) {
-        creepType = 'ancient_dragon'
+        waveType = 'ancient_dragon'
       } else {
-        creepType = 'ancient_rock_golem'
+        waveType = 'ancient_rock_golem'
       }
 
-      const stats = NEUTRAL_CREEPS[creepType]!
+      const stats = NEUTRAL_UNITS[waveType]!
 
       neutrals.push({
         id: nextNeutralId(),
         zone,
         hp: stats.hp,
         maxHp: stats.hp,
-        type: creepType,
+        type: waveType,
         alive: true,
       })
     }
@@ -99,7 +99,7 @@ export interface NeutralAction {
 }
 
 /**
- * Neutral creeps defend themselves - attack enemies in their zone
+ * Neutral waves defend themselves - attack enemies in their zone
  */
 export function runNeutralAI(state: GameState): NeutralAction[] {
   const actions: NeutralAction[] = []
@@ -115,7 +115,7 @@ export function runNeutralAI(state: GameState): NeutralAction[] {
     if (enemies.length > 0) {
       // Attack a random enemy in range (always adjacent for neutrals)
       const target = enemies[Math.floor(Math.random() * enemies.length)]!
-      const stats = NEUTRAL_CREEPS[neutral.type as NeutralCreepType]
+      const stats = NEUTRAL_UNITS[neutral.type as NeutralUnitType]
       if (stats) {
         actions.push({
           neutralId: neutral.id,
@@ -130,7 +130,7 @@ export function runNeutralAI(state: GameState): NeutralAction[] {
 }
 
 /**
- * Apply neutral creep attacks to players. Returns updated state plus a damage
+ * Apply neutral wave attacks to players. Returns updated state plus a damage
  * event per landed hit — jungling was previously silent, so a camp could chew
  * a hero down with no log line, float or kill attribution.
  */
@@ -149,7 +149,7 @@ export function applyNeutralActions(
     if (!target || !target.alive) continue
 
     // Route through resolvePhysicalHit for the full mitigation chain — same as
-    // ice, creeps, and Tenant. Previously this did raw `hp - damage` with only
+    // ice, waves, and Tenant. Previously this did raw `hp - damage` with only
     // an immunity check, bypassing armor items, shields, hardened reduction,
     // vulnerability amplifiers, and phase shift dodge.
     const hit = resolvePhysicalHit(target, action.damage)
@@ -180,7 +180,7 @@ export function applyNeutralActions(
 }
 
 /**
- * Handle neutral creep deaths from hero attacks
+ * Handle neutral wave deaths from hero attacks
  */
 // (Removed `handleNeutralDeaths` — it was never called: it hardcoded an empty
 // playerId and the real neutral-kill bounty is awarded inline in

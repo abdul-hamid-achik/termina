@@ -97,7 +97,7 @@ describe('terminal.css one-shot overlays under reduced motion', () => {
   })
 
   it('scales the hit flash and the light flare with --hit-intensity', () => {
-    // A creep chip and a full combo used to paint identically.
+    // A wave chip and a full combo used to paint identically.
     for (const name of ['flash-damage', 'impact']) {
       expect(blockBody(new RegExp(`@keyframes ${name}\\s*\\{`))).toContain('var(--hit-intensity')
     }

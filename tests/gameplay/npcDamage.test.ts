@@ -16,11 +16,11 @@ const damageFrom = (events: readonly GameEngineEvent[], prefix: string) =>
 describe('NPC damage is visible', () => {
   it('a ice shooting a diving hero emits a damage event naming the ice', async () => {
     const game = await seedGame('fresh', { heroSelf: 'echo' })
-    // Dive an enemy T1 with the lane empty — with no creeps to tank, the ice
+    // Dive an enemy T1 with the lane empty — with no waves to tank, the ice
     // falls through to its "enemy hero present" priority and shoots the hero.
     await game.patch((s) => ({
       ...s,
-      creeps: [],
+      waves: [],
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
     }))
 
@@ -39,20 +39,20 @@ describe('NPC damage is visible', () => {
     expect(hit._tag === 'damage' && hit.amount).toBeGreaterThan(0)
   })
 
-  it('a lane creep attacking a hero emits a damage event naming the creep', async () => {
+  it('a lane wave attacking a hero emits a damage event naming the wave', async () => {
     const game = await seedGame('fresh', { heroSelf: 'echo' })
-    // `creep-N` is the spawner's real id shape — the client's entityLabel keys
-    // its "a creep" label off that prefix.
+    // `wave-N` is the spawner's real id shape — the client's entityLabel keys
+    // its "a wave" label off that prefix.
     await game.patch((s) => ({
       ...s,
-      creeps: [{ id: 'creep-901', team: 'audit', zone: 'mid-river', hp: 400, type: 'melee' }],
+      waves: [{ id: 'wave-901', team: 'audit', zone: 'mid-river', hp: 400, type: 'line' }],
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
     }))
 
     await game.tick()
 
-    expect(damageFrom(game.allEvents, 'creep-901')).toMatchObject([
-      { _tag: 'damage', sourceId: 'creep-901', targetId: HUMAN, damageType: 'physical' },
+    expect(damageFrom(game.allEvents, 'wave-901')).toMatchObject([
+      { _tag: 'damage', sourceId: 'wave-901', targetId: HUMAN, damageType: 'physical' },
     ])
   })
 
@@ -84,7 +84,7 @@ describe('NPC damage is visible', () => {
     const game = await seedGame('fresh', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,
-      creeps: [],
+      waves: [],
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
     }))
 

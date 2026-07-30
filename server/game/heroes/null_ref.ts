@@ -277,8 +277,8 @@ function resolveR(
     })
 
     return {
-      // Creeps get the base damage: the execute bonus keys off a target's HP
-      // fraction, a hero-only notion (creeps have no respawn to shorten).
+      // Waves get the base damage: the execute bonus keys off a target's HP
+      // fraction, a hero-only notion (waves have no respawn to shorten).
       state: damageEnemyNpcsInZone(
         updatePlayers(state, [caster, ...updatedEnemies]),
         caster,

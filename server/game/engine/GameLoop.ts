@@ -25,15 +25,15 @@ import { scaledTickIntervalMs, scaledRespawnTicks, fastGameFactor } from './fast
 import { resolveActions, validateAction, type PlayerAction } from './ActionResolver'
 import { advanceTutorialAfterTick, TUTORIAL_STEP_COUNT } from '~~/server/game/modes/tutorial'
 import { distributePassiveGold, awardKill, xpComebackMultiplier } from './GoldDistributor'
-import { runCreepAI, applyCreepActions, enforceCreepZoneCap } from './CreepAI'
+import { runWaveAI, applyWaveActions, enforceWaveZoneCap } from './WaveAI'
 import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
 import { runIceAI, applyIceActions } from './IceAI'
 import { runTenantAI, processTenantDamage } from './TenantAI'
 import { removeExpiredCaches, processCacheBuffs } from './CacheAI'
 import { processTraps } from './TrapSystem'
 import { resolvePhysicalHit } from './CombatResolver'
-import { spawnCreepWaves, spawnCaches } from '~~/server/game/map/spawner'
-import { spawnNeutralCreeps, runNeutralAI, applyNeutralActions } from './NeutralAI'
+import { spawnWaveUnits, spawnCaches } from '~~/server/game/map/spawner'
+import { spawnNeutralUnits, runNeutralAI, applyNeutralActions } from './NeutralAI'
 import { removeExpiredWards } from '~~/server/game/map/zones'
 import { filterStateForPlayer } from './VisionCalculator'
 import { computeDelta, recordSentState, clearGameSentStates, getSentState } from './StateDelta'
@@ -75,8 +75,8 @@ const KEEPS_AUTOPATH = new Set(['move', 'surrender', 'select_talent', 'buyback']
 /** Command verbs that do NOT cancel a standing attack order: a new attack
  *  replaces the target in the resolver, an item active is a free action from
  *  its own slot, and the out-of-band verbs express no new target intent.
- *  Keeping `attack` here is also what lets a last hit interrupt a siege without
- *  ending it — a creep swing sets no order of its own, so the ice you were
+ *  Keeping `attack` here is also what lets a last hit interrupt a breach without
+ *  ending it — a wave swing sets no order of its own, so the ice you were
  *  hitting is still the one you resume on. */
 const KEEPS_ATTACK = new Set(['attack', 'use', 'surrender', 'select_talent', 'buyback'])
 
@@ -167,7 +167,7 @@ const gameFarm = new Map<string, Map<string, PlayerFarm>>()
 function tallyFarm(gameId: string, events: GameEngineEvent[]): void {
   let game = gameFarm.get(gameId)
   for (const e of events) {
-    if (e._tag !== 'creep_lasthit' && e._tag !== 'wave_burn') continue
+    if (e._tag !== 'wave_strip' && e._tag !== 'wave_burn') continue
     if (!game) {
       game = new Map()
       gameFarm.set(gameId, game)
@@ -177,7 +177,7 @@ function tallyFarm(gameId: string, events: GameEngineEvent[]): void {
       farm = { lastHits: 0, burns: 0 }
       game.set(e.playerId, farm)
     }
-    if (e._tag === 'creep_lasthit') farm.lastHits++
+    if (e._tag === 'wave_strip') farm.lastHits++
     else farm.burns++
   }
 }
@@ -429,7 +429,7 @@ export function processTick(
     // 3.7. Expire harden invulnerability
     currentState = expireGlyph(currentState)
 
-    // 4–5.6. NPC AI (creeps, neutrals, ice, Tenant)
+    // 4–5.6. NPC AI (waves, neutrals, ice, Tenant)
     const npcResult = runNPCAI(currentState, {
       heroAttackers: resolved.heroAttackers,
       priorEvents: allEvents,
@@ -437,14 +437,14 @@ export function processTick(
     currentState = npcResult.state
     allEvents.push(...npcResult.events)
 
-    // 5.65. Being shot by a ice, a creep wave or a jungle camp is combat too —
+    // 5.65. Being shot by a ice, a wave wave or a jungle camp is combat too —
     // it must gate fountain regen and the "out of combat" item passives exactly
     // as a hero attack does. Runs a second time (step 3.6 only sees the hero
     // phase, which resolves before NPCs act); the buff refresh is idempotent.
     currentState = applyInCombatBuffs(currentState, npcResult.events)
 
     // 5.7. Recompute Ancient vulnerability after all ice damage this tick
-    // (hero attacks in resolveActions + creep attacks in NPC AI).
+    // (hero attacks in resolveActions + wave attacks in NPC AI).
     currentState = updateAncientVulnerability(currentState)
 
     // 6–7. Spawn waves / neutrals / caches; expire caches + wards
@@ -1063,7 +1063,7 @@ export function processSpecialActions(
  *   move (mutex/traceroute), kill (null_ref),
  *   tick_end (cron/mutex/daemon/kernel/malloc/sentry/firewall/proxy).
  *
- * Keep the synthesized list lean (no per-creep events) — the fold is
+ * Keep the synthesized list lean (no per-wave events) — the fold is
  * O(players x events) immutable state copies per tick.
  */
 export function runHeroPassives(
@@ -1176,7 +1176,7 @@ export function runHeroPassives(
 }
 
 /**
- * Run all NPC AIs (creeps, neutrals, ice, Tenant) and apply their actions.
+ * Run all NPC AIs (waves, neutrals, ice, Tenant) and apply their actions.
  *
  * Ice AI needs `heroAttackers` from the prior `resolveActions` step so it
  * can prioritize heroes that recently attacked allies. Tenant damage is
@@ -1189,10 +1189,10 @@ export function runNPCAI(
   let s = state
   const events: GameEngineEvent[] = []
 
-  // Creeps (may damage/destroy the enemy Ancient — events carry that)
-  const creepResult = applyCreepActions(s, runCreepAI(s))
-  s = creepResult.state
-  events.push(...creepResult.events)
+  // Waves (may damage/destroy the enemy Ancient — events carry that)
+  const waveResult = applyWaveActions(s, runWaveAI(s))
+  s = waveResult.state
+  events.push(...waveResult.events)
 
   // Neutrals
   const neutralResult = applyNeutralActions(s, runNeutralAI(s))
@@ -1250,25 +1250,25 @@ export function runNPCAI(
 }
 
 /**
- * Spawn periodic content for the tick: creep waves, jungle neutrals, caches;
+ * Spawn periodic content for the tick: wave waves, jungle neutrals, caches;
  * and clean up expired caches and wards. Pure: same state object if nothing
  * spawned and nothing expired.
  */
 export function runSpawning(state: GameState): GameState {
   let s = state
-  // Gate creep/neutral/cache spawning to the zones THIS game's map actually has,
+  // Gate wave/neutral/cache spawning to the zones THIS game's map actually has,
   // so subset maps (one-lane) don't spawn into uninitialized top/bot/jungle zones.
   const hasZone = (zoneId: string) => zoneId in s.zones
 
-  const newCreeps = spawnCreepWaves(s.tick, hasZone)
-  if (newCreeps.length > 0) {
-    s = { ...s, creeps: [...s.creeps, ...newCreeps] }
+  const newWaves = spawnWaveUnits(s.tick, hasZone)
+  if (newWaves.length > 0) {
+    s = { ...s, waves: [...s.waves, ...newWaves] }
   }
 
-  // Defensive cap: never let creeps stack unboundedly in a zone
-  s = enforceCreepZoneCap(s)
+  // Defensive cap: never let waves stack unboundedly in a zone
+  s = enforceWaveZoneCap(s)
 
-  const newNeutrals = spawnNeutralCreeps(s.tick, hasZone, s.neutrals ?? [])
+  const newNeutrals = spawnNeutralUnits(s.tick, hasZone, s.neutrals ?? [])
   if (newNeutrals.length > 0) {
     s = { ...s, neutrals: [...(s.neutrals ?? []), ...newNeutrals] }
   }

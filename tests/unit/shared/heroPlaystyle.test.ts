@@ -28,7 +28,7 @@ function makeHero(q: AbilityDef, w: AbilityDef, e: AbilityDef, r: AbilityDef): H
       defense: 0,
       magicResist: 0,
       moveSpeed: 1,
-      attackRange: 'ranged',
+      attackRange: 'sweep',
     },
     growthPerLevel: {},
     passive: ability([]),

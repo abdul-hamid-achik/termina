@@ -13,8 +13,8 @@ import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
-  CREEP_GOLD,
-  SIEGE_CREEP_GOLD,
+  WAVE_GOLD,
+  BREACH_UNIT_GOLD,
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
@@ -68,7 +68,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     ice: initializeIce(),
     neutrals: [],
     caches: [],
@@ -115,33 +115,33 @@ describe('GoldDistributor', () => {
   })
 
   describe('awardLastHit', () => {
-    it('should award fixed gold for melee creep last hit (no RNG)', () => {
+    it('should award fixed gold for line wave last hit (no RNG)', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
       })
 
-      const result = awardLastHit(state, 'p1', 'melee')
+      const result = awardLastHit(state, 'p1', 'line')
       const goldGained = result.players['p1']!.gold - 100
-      expect(goldGained).toBe(CREEP_GOLD)
+      expect(goldGained).toBe(WAVE_GOLD)
     })
 
-    it('should award fixed gold for ranged creep last hit (no RNG)', () => {
+    it('should award fixed gold for sweep wave last hit (no RNG)', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
       })
 
-      const result = awardLastHit(state, 'p1', 'ranged')
+      const result = awardLastHit(state, 'p1', 'sweep')
       const goldGained = result.players['p1']!.gold - 100
-      expect(goldGained).toBe(CREEP_GOLD)
+      expect(goldGained).toBe(WAVE_GOLD)
     })
 
-    it('should award fixed gold for siege creep last hit', () => {
+    it('should award fixed gold for breach wave last hit', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
       })
 
-      const result = awardLastHit(state, 'p1', 'siege')
-      expect(result.players['p1']!.gold).toBe(100 + SIEGE_CREEP_GOLD)
+      const result = awardLastHit(state, 'p1', 'breach')
+      expect(result.players['p1']!.gold).toBe(100 + BREACH_UNIT_GOLD)
     })
 
     it('should return state unchanged for unknown player', () => {
@@ -149,22 +149,22 @@ describe('GoldDistributor', () => {
         players: { p1: makePlayer({ id: 'p1', gold: 100 }) },
       })
 
-      const result = awardLastHit(state, 'unknown', 'melee')
+      const result = awardLastHit(state, 'unknown', 'line')
       expect(result).toEqual(state)
     })
 
-    it('should produce consistent siege gold across multiple calls', () => {
+    it('should produce consistent breach gold across multiple calls', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', gold: 0 }) },
       })
 
       const results: number[] = []
       for (let i = 0; i < 10; i++) {
-        const result = awardLastHit(state, 'p1', 'siege')
+        const result = awardLastHit(state, 'p1', 'breach')
         results.push(result.players['p1']!.gold)
       }
-      // All siege creep gold should be exactly SIEGE_CREEP_GOLD
-      expect(results.every((g) => g === SIEGE_CREEP_GOLD)).toBe(true)
+      // All breach wave gold should be exactly BREACH_UNIT_GOLD
+      expect(results.every((g) => g === BREACH_UNIT_GOLD)).toBe(true)
     })
   })
 

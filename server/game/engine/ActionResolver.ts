@@ -1,6 +1,6 @@
 import { Effect, Either } from 'effect'
 import type {
-  CreepState,
+  WaveUnitState,
   GameState,
   PlayerState,
   TeamId,
@@ -8,7 +8,7 @@ import type {
   IceState,
   AncientState,
   ZoneRuntimeState,
-  NeutralCreepState,
+  NeutralUnitState,
   CacheState,
 } from '~~/shared/types/game'
 import type { DamageType } from '~~/shared/types/hero'
@@ -50,13 +50,13 @@ import { pickupCache } from './CacheAI'
 import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
 import { ITEMS } from '~~/shared/constants/items'
 import {
-  CREEP_XP,
-  NEUTRAL_CREEPS,
-  type NeutralCreepType,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
-  creepMaxHp,
-  CREEP_XP_SHARED,
+  WAVE_XP,
+  NEUTRAL_UNITS,
+  type NeutralUnitType,
+  WAVE_GOLD_MIN,
+  WAVE_GOLD_MAX,
+  waveUnitMaxHp,
+  WAVE_XP_SHARED,
   HARDEN_COOLDOWN_TICKS,
   BURN_HP_THRESHOLD,
   BURN_GOLD_RATIO,
@@ -129,22 +129,22 @@ function applyPlayerUpdates(
 }
 
 /**
- * Resolve a zone-local creep index to the creep and its global array index.
- * Clients (zone panel, autocomplete) count creeps within the player's zone —
- * the global creeps array is vision-filtered before broadcast, so global
+ * Resolve a zone-local wave index to the wave and its global array index.
+ * Clients (zone panel, autocomplete) count waves within the player's zone —
+ * the global waves array is vision-filtered before broadcast, so global
  * indices mean different things on each side. Filtering preserves order, so
- * "Nth creep in this zone" is identical for client and server.
+ * "Nth wave in this zone" is identical for client and server.
  */
-function creepInZoneByIndex(
-  creeps: CreepState[],
+function waveInZoneByIndex(
+  waves: WaveUnitState[],
   zone: string,
   index: number,
-): { creep: CreepState; globalIdx: number } | null {
+): { wave: WaveUnitState; globalIdx: number } | null {
   let seen = 0
-  for (let i = 0; i < creeps.length; i++) {
-    const c = creeps[i]!
+  for (let i = 0; i < waves.length; i++) {
+    const c = waves[i]!
     if (c.zone !== zone) continue
-    if (seen === index) return { creep: c, globalIdx: i }
+    if (seen === index) return { wave: c, globalIdx: i }
     seen++
   }
   return null
@@ -178,7 +178,7 @@ export function validateAction(state: GameState, action: PlayerAction): string |
   // one verb at a time. Informational commands always pass; everything else must
   // be unlocked by the current step (the gate is a no-op in normal games).
   // BOTS are exempt: gating them froze the whole tutorial world — no farming
-  // ally, no pushing creeps, a silent feed — until the human advanced the steps.
+  // ally, no pushing waves, a silent feed — until the human advanced the steps.
   // The learner should study a LIVE game; safety comes from the 'easy' bot
   // difficulty, not from paralysis.
   if (
@@ -290,8 +290,8 @@ export function validateAction(state: GameState, action: PlayerAction): string |
       // Ping system, always valid
       return null
     case 'burn':
-      if (cmd.target.kind !== 'creep') {
-        return 'Can only burn creeps'
+      if (cmd.target.kind !== 'wave') {
+        return 'Can only burn waves'
       }
       return null
     case 'select_talent':
@@ -481,22 +481,22 @@ function resolveInstantCastsPhase(
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
   zones: Record<string, ZoneRuntimeState>,
-  creeps: CreepState[],
+  waves: WaveUnitState[],
   ice: IceState[],
-  neutrals: NeutralCreepState[],
+  neutrals: NeutralUnitState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; ice: number }>,
-  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  waveKills: Array<{ playerId: string; waveId: string; waveType: 'line' | 'sweep' | 'breach' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
 ): {
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
-  creeps: CreepState[]
-  neutrals: NeutralCreepState[]
+  waves: WaveUnitState[]
+  neutrals: NeutralUnitState[]
 } {
   const instantCasts = validActions.filter(
     (a) =>
@@ -511,7 +511,7 @@ function resolveInstantCastsPhase(
       state,
       players,
       zones,
-      creeps,
+      waves,
       ice,
       neutrals,
       ancients,
@@ -520,73 +520,73 @@ function resolveInstantCastsPhase(
       heroAttackers,
       rejected,
       damageTracker,
-      creepKills,
+      waveKills,
       neutralKills,
       findHero,
     )
     players = result.players
     zones = result.zones
-    creeps = result.creeps
+    waves = result.waves
     neutrals = result.neutrals
   }
-  return { players, zones, creeps, neutrals }
+  return { players, zones, waves, neutrals }
 }
 
 /**
- * Phase 3a: Burns — allied creeps below 50% HP. The burner gets reduced gold
+ * Phase 3a: Burns — allied waves below 50% HP. The burner gets reduced gold
  * + XP for denying (preventing the enemy from last-hitting).
  */
 function resolveDenyPhase(
   tick: number,
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
-  creeps: CreepState[],
+  waves: WaveUnitState[],
   events: GameEngineEvent[],
-): { players: Record<string, PlayerState>; creeps: CreepState[] } {
+): { players: Record<string, PlayerState>; waves: WaveUnitState[] } {
   const burns = validActions.filter((a) => a.command.type === 'burn')
   let playerUpdates: PlayerUpdates = {}
 
   for (const action of burns) {
-    const cmd = action.command as { type: 'burn'; target: { kind: 'creep'; index: number } }
+    const cmd = action.command as { type: 'burn'; target: { kind: 'wave'; index: number } }
     const denier = players[action.playerId]
     if (!denier || !denier.alive) continue
 
-    const resolved = creepInZoneByIndex(creeps, denier.zone, cmd.target.index)
+    const resolved = waveInZoneByIndex(waves, denier.zone, cmd.target.index)
     if (!resolved) continue
-    const { creep, globalIdx: creepIdx } = resolved
-    if (creep.hp <= 0) continue
+    const { wave, globalIdx: waveIdx } = resolved
+    if (wave.hp <= 0) continue
 
-    if (creep.team !== denier.team) continue
-    // Read the max the creep SPAWNED with. Creeps escalate with match time, so
+    if (wave.team !== denier.team) continue
+    // Read the max the wave SPAWNED with. Waves escalate with match time, so
     // neither the level-1 constant (the window shrinks every minute until
     // denying is impossible) nor the current tick's tier (the window widens past
-    // the threshold for any creep that outlived an escalation boundary) is
+    // the threshold for any wave that outlived an escalation boundary) is
     // right. Fall back to the tick-0 base for fixtures that omit maxHp.
-    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * BURN_HP_THRESHOLD) continue
+    if (wave.hp > (wave.maxHp ?? waveUnitMaxHp(wave.type, 0)) * BURN_HP_THRESHOLD) continue
 
-    creeps[creepIdx] = { ...creep, hp: 0 }
+    waves[waveIdx] = { ...wave, hp: 0 }
 
-    const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+    const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
     playerUpdates[action.playerId] = {
       ...playerUpdates[action.playerId],
       gold: denier.gold + burnGold,
-      xp: denier.xp + Math.floor(CREEP_XP * BURN_XP_RATIO),
+      xp: denier.xp + Math.floor(WAVE_XP * BURN_XP_RATIO),
     }
 
     events.push({
       _tag: 'wave_burn',
       tick,
       playerId: action.playerId,
-      creepId: creep.id,
-      creepType: creep.type,
+      waveId: wave.id,
+      waveType: wave.type,
       goldAwarded: burnGold,
     })
   }
-  return { players: applyPlayerUpdates(players, playerUpdates), creeps }
+  return { players: applyPlayerUpdates(players, playerUpdates), waves }
 }
 
 /**
- * Phase 3b: Attacks — hero/creep/ice/Tenant/neutral/Ancient, all simultaneous.
+ * Phase 3b: Attacks — hero/wave/ice/Tenant/neutral/Ancient, all simultaneous.
  * This is the largest phase (~440 lines): crit stacking, item on-hit effects
  * (MKB magic, Maelstrom chain, Skull Basher stun), defense mitigation (Desolator
  * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Blade Mail
@@ -597,24 +597,24 @@ function resolveAttackPhase(
   state: GameState,
   attacks: PlayerAction[],
   players: Record<string, PlayerState>,
-  creeps: CreepState[],
+  waves: WaveUnitState[],
   ice: IceState[],
-  neutrals: NeutralCreepState[],
+  neutrals: NeutralUnitState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
   damageTracker: Map<string, { hero: number; ice: number }>,
-  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  waveKills: Array<{ playerId: string; waveId: string; waveType: 'line' | 'sweep' | 'breach' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   iceKills: Array<{ zone: string; team: TeamId }>,
   findHeroByName: (name: string) => string | null,
   getCachedItemStats: (playerId: string, items: (string | null)[]) => ItemStats,
 ): {
   players: Record<string, PlayerState>
-  creeps: CreepState[]
+  waves: WaveUnitState[]
   ice: IceState[]
-  neutrals: NeutralCreepState[]
+  neutrals: NeutralUnitState[]
   ancients: { chaff: AncientState; audit: AncientState }
 } {
   let playerUpdates: PlayerUpdates = {}
@@ -668,11 +668,11 @@ function resolveAttackPhase(
 
     // Remember a resolved attack so GameLoop re-issues it while it stays valid.
     // EVERY resolved attack routes through here so the exclusion below is the
-    // single place the rule lives: creeps never hold, because last-hitting is an
+    // single place the rule lives: waves never hold, because last-hitting is an
     // explicit timing decision (the contract the command parser documents), not
     // a standing order.
     const holdTarget = (): void => {
-      if (cmd.target.kind === 'creep') return
+      if (cmd.target.kind === 'wave') return
       playerUpdates[action.playerId] = {
         ...playerUpdates[action.playerId],
         attackTarget: cmd.target,
@@ -944,51 +944,51 @@ function resolveAttackPhase(
           damageType: 'physical',
         })
       }
-    } else if (cmd.target.kind === 'creep') {
-      const resolved = creepInZoneByIndex(creeps, attacker.zone, cmd.target.index)
+    } else if (cmd.target.kind === 'wave') {
+      const resolved = waveInZoneByIndex(waves, attacker.zone, cmd.target.index)
       if (!resolved) {
-        // Count the same index space creepInZoneByIndex walks (every creep in
+        // Count the same index space waveInZoneByIndex walks (every wave in
         // the zone, dead-but-unreaped included) so the quoted range is the one
         // the player can actually type this tick.
-        const creepsInZone = creeps.filter((c) => c.zone === attacker.zone).length
+        const wavesInZone = waves.filter((c) => c.zone === attacker.zone).length
         miss(
-          creepsInZone === 0
-            ? 'No creeps in this zone to attack'
-            : creepsInZone === 1
-              ? 'Only 1 creep here — use creep:0'
-              : `Only ${creepsInZone} creeps here — use creep:0-${creepsInZone - 1}`,
+          wavesInZone === 0
+            ? 'No waves in this zone to attack'
+            : wavesInZone === 1
+              ? 'Only 1 wave here — use wave:0'
+              : `Only ${wavesInZone} waves here — use wave:0-${wavesInZone - 1}`,
         )
         continue
       }
-      const { creep, globalIdx: creepIdx } = resolved
-      if (creep.hp <= 0) {
-        miss('That creep is already dead')
+      const { wave, globalIdx: waveIdx } = resolved
+      if (wave.hp <= 0) {
+        miss('That wave is already dead')
         continue
       }
-      // Without this guard an own-creep swing paid the FULL last-hit bounty,
-      // teaching the exact opposite of last-hitting. Killing your own creep is
+      // Without this guard an own-wave swing paid the FULL last-hit bounty,
+      // teaching the exact opposite of last-hitting. Killing your own wave is
       // the `burn` command, which has its own HP window and reduced reward.
-      if (creep.team === attacker.team) {
-        miss('That is your own creep — use `burn` instead')
+      if (wave.team === attacker.team) {
+        miss('That is your own wave — use `burn` instead')
         continue
       }
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
-      const newHp = Math.max(0, creep.hp - attackDamage)
+      const newHp = Math.max(0, wave.hp - attackDamage)
 
-      creeps[creepIdx] = { ...creep, hp: newHp }
+      waves[waveIdx] = { ...wave, hp: newHp }
       holdTarget()
 
       if (newHp <= 0) {
-        creepKills.push({ playerId: action.playerId, creepId: creep.id, creepType: creep.type })
+        waveKills.push({ playerId: action.playerId, waveId: wave.id, waveType: wave.type })
       }
 
       events.push({
         _tag: 'damage',
         tick: state.tick,
         sourceId: action.playerId,
-        targetId: creep.id,
+        targetId: wave.id,
         amount: attackDamage,
         damageType: 'physical',
       })
@@ -1070,7 +1070,7 @@ function resolveAttackPhase(
       const neutralIdx = cmd.target.index
       const neutral = neutrals[neutralIdx]
       if (!neutral) {
-        miss('No neutral creep at that index')
+        miss('No neutral wave at that index')
         continue
       }
       if (!neutral.alive) {
@@ -1112,7 +1112,7 @@ function resolveAttackPhase(
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
 
       const result = resolveAncientAttack(
-        { ...state, players, creeps, ice, ancients },
+        { ...state, players, waves, ice, ancients },
         action.playerId,
         attackDamage,
       )
@@ -1142,7 +1142,7 @@ function resolveAttackPhase(
 
   return {
     players: applyPlayerUpdates(players, playerUpdates),
-    creeps,
+    waves,
     ice,
     neutrals,
     ancients,
@@ -1243,7 +1243,7 @@ function resolveShopPhase(
   state: GameState,
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
-  creeps: CreepState[],
+  waves: WaveUnitState[],
   ice: IceState[],
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
@@ -1254,7 +1254,7 @@ function resolveShopPhase(
   const buys = validActions.filter((a) => a.command.type === 'buy')
   for (const action of buys) {
     const cmd = action.command as { type: 'buy'; item: string }
-    const tempState: GameState = { ...state, players, creeps, ice }
+    const tempState: GameState = { ...state, players, waves, ice }
     const result = Effect.runSync(
       buyItem(tempState, action.playerId, cmd.item).pipe(
         Effect.match({
@@ -1292,7 +1292,7 @@ function resolveShopPhase(
       rejected.push({ playerId: action.playerId, reason: `No ${cmd.item} in inventory to sell` })
       continue
     }
-    const tempState: GameState = { ...state, players, creeps, ice }
+    const tempState: GameState = { ...state, players, waves, ice }
     const result = Effect.runSync(
       sellItem(tempState, action.playerId, slotIdx).pipe(
         Effect.match({
@@ -1340,7 +1340,7 @@ function resolveItemActivesPhase(
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
   zones: Record<string, ZoneRuntimeState>,
-  creeps: CreepState[],
+  waves: WaveUnitState[],
   ice: IceState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
@@ -1354,7 +1354,7 @@ function resolveItemActivesPhase(
   const uses = validActions.filter((a) => a.command.type === 'use')
   for (const action of uses) {
     const cmd = action.command as { type: 'use'; item: string; target?: TargetRef | string }
-    const tempState: GameState = { ...state, players, zones, creeps, ice, ancients }
+    const tempState: GameState = { ...state, players, zones, waves, ice, ancients }
     const result = Effect.runSync(
       useItem(tempState, action.playerId, cmd.item, cmd.target).pipe(
         Effect.match({
@@ -1479,7 +1479,7 @@ function resolveItemActivesPhase(
 
 /**
  * Post-shop phases: harden, backup/cache pickup, maxHp/maxMp recalc, gold/XP
- * awards (creep/neutral/ice), damage tracking, ward placement. These all
+ * awards (wave/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
 function resolvePostShopPhases(
@@ -1487,13 +1487,13 @@ function resolvePostShopPhases(
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
   zones: Record<string, ZoneRuntimeState>,
-  creeps: CreepState[],
+  waves: WaveUnitState[],
   ice: IceState[],
-  neutrals: NeutralCreepState[],
+  neutrals: NeutralUnitState[],
   events: GameEngineEvent[],
   _rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; ice: number }>,
-  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  waveKills: Array<{ playerId: string; waveId: string; waveType: 'line' | 'sweep' | 'breach' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   iceKills: Array<{ zone: string; team: TeamId }>,
   getCachedItemStats: (playerId: string, items: (string | null)[]) => ItemStats,
@@ -1501,7 +1501,7 @@ function resolvePostShopPhases(
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
   ice: IceState[]
-  neutrals: NeutralCreepState[]
+  neutrals: NeutralUnitState[]
   teams: { chaff: TeamState; audit: TeamState }
   backup: GameState['backup']
   caches: CacheState[]
@@ -1539,7 +1539,7 @@ function resolvePostShopPhases(
     const tempState: GameState = {
       ...state,
       players,
-      creeps,
+      waves,
       ice,
       caches: state.caches ?? [],
       tenant: state.tenant,
@@ -1562,7 +1562,7 @@ function resolvePostShopPhases(
     const tempState: GameState = {
       ...state,
       players,
-      creeps,
+      waves,
       ice,
       caches: cachesGround,
       tenant: state.tenant,
@@ -1605,33 +1605,33 @@ function resolvePostShopPhases(
     }
   }
 
-  // Creep last-hit gold + XP
-  for (const kill of creepKills) {
-    const tempState: GameState = { ...state, players, creeps, ice }
+  // Wave last-hit gold + XP
+  for (const kill of waveKills) {
+    const tempState: GameState = { ...state, players, waves, ice }
     const goldBefore = players[kill.playerId]?.gold ?? 0
-    const awarded = awardLastHit(tempState, kill.playerId, kill.creepType)
+    const awarded = awardLastHit(tempState, kill.playerId, kill.waveType)
     players = { ...awarded.players }
     const killer = players[kill.playerId]
     if (killer) {
-      players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + CREEP_XP } }
+      players = { ...players, [kill.playerId]: { ...killer, xp: killer.xp + WAVE_XP } }
       // The reward line the feed shows ("last-hit +38g") — this event existed in
       // the protocol but was never emitted, so the player's own farming was the
       // one thing the combat log stayed silent about.
       events.push({
-        _tag: 'creep_lasthit',
+        _tag: 'wave_strip',
         tick: state.tick,
         playerId: kill.playerId,
-        creepId: kill.creepId,
-        creepType: kill.creepType,
+        waveId: kill.waveId,
+        waveType: kill.waveType,
         goldAwarded: killer.gold - goldBefore,
       })
       // Lane-mates standing here share a fraction. XP used to come exclusively
       // from last-hits, so a laner who mistimed their attacks earned literally
       // nothing and fell five levels behind. The last-hitter still keeps the
-      // full CREEP_XP above, so timing is rewarded — presence just stops being
-      // worth zero. The mirror of this for creep-on-creep deaths lives in
-      // CreepAI, and that is the path most creeps actually die on.
-      players = awardZoneXp(players, killer.zone, killer.team, CREEP_XP_SHARED, kill.playerId)
+      // full WAVE_XP above, so timing is rewarded — presence just stops being
+      // worth zero. The mirror of this for wave-on-wave deaths lives in
+      // WaveAI, and that is the path most waves actually die on.
+      players = awardZoneXp(players, killer.zone, killer.team, WAVE_XP_SHARED, kill.playerId)
     }
   }
 
@@ -1639,7 +1639,7 @@ function resolvePostShopPhases(
   for (const kill of neutralKills) {
     const neutral = neutrals.find((n) => n.id === kill.neutralId)
     if (!neutral) continue
-    const stats = NEUTRAL_CREEPS[neutral.type as NeutralCreepType]
+    const stats = NEUTRAL_UNITS[neutral.type as NeutralUnitType]
     if (!stats) continue
     const killer = players[kill.playerId]
     if (killer) {
@@ -1664,7 +1664,7 @@ function resolvePostShopPhases(
     const nearbyAllies = Object.entries(players)
       .filter(([, p]) => p.zone === kill.zone && p.team !== kill.team && p.alive)
       .map(([id]) => id)
-    const tempState: GameState = { ...state, players, creeps, ice }
+    const tempState: GameState = { ...state, players, waves, ice }
     const awarded = awardIceKill(tempState, kill.zone, nearbyAllies)
     // Read the payout back off the diff rather than recomputing the split — the
     // event can then never disagree with what the player's gold actually did.
@@ -1808,14 +1808,14 @@ export function resolveActions(
     const rejected: Array<{ playerId: string; reason: string }> = []
     let zones = { ...state.zones }
     let ancients = state.ancients
-    let creeps = [...state.creeps]
+    let waves = [...state.waves]
     let neutrals = [...(state.neutrals ?? [])]
     let ice = [...state.ice]
     let teams = { ...state.teams }
-    const creepKills: Array<{
+    const waveKills: Array<{
       playerId: string
-      creepId: string
-      creepType: 'melee' | 'ranged' | 'siege'
+      waveId: string
+      waveType: 'line' | 'sweep' | 'breach'
     }> = []
     const neutralKills: Array<{ playerId: string; neutralId: string }> = []
     const iceKills: Array<{ zone: string; team: TeamId }> = []
@@ -1883,7 +1883,7 @@ export function resolveActions(
         validActions,
         players,
         zones,
-        creeps,
+        waves,
         ice,
         ancients,
         events,
@@ -1902,7 +1902,7 @@ export function resolveActions(
         validActions,
         players,
         zones,
-        creeps,
+        waves,
         ice,
         neutrals,
         ancients,
@@ -1910,13 +1910,13 @@ export function resolveActions(
         heroAttackers,
         rejected,
         damageTracker,
-        creepKills,
+        waveKills,
         neutralKills,
         findHeroByNameCached,
       )
       players = result.players
       zones = result.zones
-      creeps = result.creeps
+      waves = result.waves
       neutrals = result.neutrals
     }
 
@@ -1936,9 +1936,9 @@ export function resolveActions(
 
     // Phase 3: Attacks + targeted abilities — simultaneous
     {
-      const result = resolveDenyPhase(state.tick, validActions, players, creeps, events)
+      const result = resolveDenyPhase(state.tick, validActions, players, waves, events)
       players = result.players
-      creeps = result.creeps
+      waves = result.waves
     }
 
     const attacks = validActions.filter((a) => a.command.type === 'attack')
@@ -1956,7 +1956,7 @@ export function resolveActions(
         state,
         attacks,
         players,
-        creeps,
+        waves,
         ice,
         neutrals,
         ancients,
@@ -1964,14 +1964,14 @@ export function resolveActions(
         rejected,
         heroAttackers,
         damageTracker,
-        creepKills,
+        waveKills,
         neutralKills,
         iceKills,
         findHeroByNameCached,
         getCachedItemStats,
       )
       players = result.players
-      creeps = result.creeps
+      waves = result.waves
       ice = result.ice
       neutrals = result.neutrals
       ancients = result.ancients
@@ -1983,7 +1983,7 @@ export function resolveActions(
         state,
         players,
         zones,
-        creeps,
+        waves,
         ice,
         neutrals,
         ancients,
@@ -1992,13 +1992,13 @@ export function resolveActions(
         heroAttackers,
         rejected,
         damageTracker,
-        creepKills,
+        waveKills,
         neutralKills,
         findHeroByNameCached,
       )
       players = result.players
       zones = result.zones
-      creeps = result.creeps
+      waves = result.waves
       neutrals = result.neutrals
     }
 
@@ -2010,7 +2010,7 @@ export function resolveActions(
 
     // Phase 5: Buy/Sell
     {
-      const result = resolveShopPhase(state, validActions, players, creeps, ice, events, rejected)
+      const result = resolveShopPhase(state, validActions, players, waves, ice, events, rejected)
       players = result.players
     }
 
@@ -2023,13 +2023,13 @@ export function resolveActions(
         validActions,
         players,
         zones,
-        creeps,
+        waves,
         ice,
         neutrals,
         events,
         rejected,
         damageTracker,
-        creepKills,
+        waveKills,
         neutralKills,
         iceKills,
         getCachedItemStats,
@@ -2047,7 +2047,7 @@ export function resolveActions(
       ...state,
       players,
       zones,
-      creeps,
+      waves,
       neutrals,
       ice,
       teams,
@@ -2177,27 +2177,27 @@ function resolveHeroCast(
   state: GameState,
   players: Record<string, PlayerState>,
   zones: GameState['zones'],
-  creeps: CreepState[],
+  waves: WaveUnitState[],
   ice: GameState['ice'],
-  neutrals: NeutralCreepState[],
+  neutrals: NeutralUnitState[],
   ancients: GameState['ancients'],
   action: PlayerAction,
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
   damageTracker: Map<string, { hero: number; ice: number }>,
-  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
+  waveKills: Array<{ playerId: string; waveId: string; waveType: 'line' | 'sweep' | 'breach' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
 ): {
   players: Record<string, PlayerState>
   zones: GameState['zones']
-  creeps: CreepState[]
-  neutrals: NeutralCreepState[]
+  waves: WaveUnitState[]
+  neutrals: NeutralUnitState[]
 } {
   const cmd = action.command as { type: 'cast'; ability: AbilitySlot; target?: TargetRef }
   const caster = players[action.playerId]
-  if (!caster?.heroId) return { players, zones, creeps, neutrals }
+  if (!caster?.heroId) return { players, zones, waves, neutrals }
 
   // Tier-25 exotic — global ultimate: the talented R can hit a hero in ANY zone.
   // The per-hero resolvers enforce a same-zone check, so we satisfy it by
@@ -2224,7 +2224,7 @@ function resolveHeroCast(
     ...state,
     players: castPlayers,
     zones,
-    creeps,
+    waves,
     ice,
     neutrals,
     ancients,
@@ -2252,7 +2252,7 @@ function resolveHeroCast(
       reason = err.reason
     }
     rejected.push({ playerId: action.playerId, reason })
-    return { players, zones, creeps, neutrals }
+    return { players, zones, waves, neutrals }
   }
 
   const newState = result.right.state
@@ -2378,14 +2378,14 @@ function resolveHeroCast(
 
   // NPCs the cast hit (damageEnemyNpcsInZone). Credited from the HP diff for the
   // same reason hero damage is: the resolvers' own wire events are discarded.
-  let castCreeps = collectNpcCastDamage(
+  let castWaves = collectNpcCastDamage(
     state.tick,
     action.playerId,
     damageType,
-    creeps,
-    newState.creeps,
+    waves,
+    newState.waves,
     events,
-    creepKills,
+    waveKills,
   )
   let castNeutrals = collectNeutralCastDamage(
     state.tick,
@@ -2420,7 +2420,7 @@ function resolveHeroCast(
         ...state,
         players: echoPlayers,
         zones,
-        creeps: castCreeps,
+        waves: castWaves,
         ice,
         neutrals: castNeutrals,
         ancients,
@@ -2466,14 +2466,14 @@ function resolveHeroCast(
             })
           }
         }
-        castCreeps = collectNpcCastDamage(
+        castWaves = collectNpcCastDamage(
           state.tick,
           action.playerId,
           damageType,
-          castCreeps,
-          echoResult.right.state.creeps,
+          castWaves,
+          echoResult.right.state.waves,
           events,
-          creepKills,
+          waveKills,
         )
         castNeutrals = collectNeutralCastDamage(
           state.tick,
@@ -2541,13 +2541,13 @@ function resolveHeroCast(
     readyAtTick: state.tick + actualCd,
   })
 
-  return { players: newPlayers, zones: newState.zones, creeps: castCreeps, neutrals: castNeutrals }
+  return { players: newPlayers, zones: newState.zones, waves: castWaves, neutrals: castNeutrals }
 }
 
 /**
- * Credit ability damage that landed on lane creeps: emit the same per-target
+ * Credit ability damage that landed on lane waves: emit the same per-target
  * `damage` events the attack phase emits, and queue any kill through the SAME
- * `creepKills` accumulator a right-click uses, so an ability last hit pays
+ * `waveKills` accumulator a right-click uses, so an ability last hit pays
  * exactly what a basic attack does — bounty, XP, and the lane-mate XP share in
  * resolvePostShopPhases. Returns the post buffer so the caller can carry it on.
  */
@@ -2555,12 +2555,12 @@ function collectNpcCastDamage(
   tick: number,
   casterId: string,
   damageType: DamageType,
-  pre: CreepState[],
-  post: CreepState[] | undefined,
+  pre: WaveUnitState[],
+  post: WaveUnitState[] | undefined,
   events: GameEngineEvent[],
-  creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
-): CreepState[] {
-  // Resolvers that don't touch creeps return the buffer they were handed, so
+  waveKills: Array<{ playerId: string; waveId: string; waveType: 'line' | 'sweep' | 'breach' }>,
+): WaveUnitState[] {
+  // Resolvers that don't touch waves return the buffer they were handed, so
   // reference equality means "nothing to diff" for the overwhelming majority.
   if (!post || post === pre) return pre
   const preHp = new Map(pre.map((c) => [c.id, c.hp]))
@@ -2576,7 +2576,7 @@ function collectNpcCastDamage(
       damageType,
     })
     if (c.hp <= 0 && was > 0) {
-      creepKills.push({ playerId: casterId, creepId: c.id, creepType: c.type })
+      waveKills.push({ playerId: casterId, waveId: c.id, waveType: c.type })
     }
   }
   return post
@@ -2588,11 +2588,11 @@ function collectNeutralCastDamage(
   tick: number,
   casterId: string,
   damageType: DamageType,
-  pre: NeutralCreepState[],
-  post: NeutralCreepState[] | undefined,
+  pre: NeutralUnitState[],
+  post: NeutralUnitState[] | undefined,
   events: GameEngineEvent[],
   neutralKills: Array<{ playerId: string; neutralId: string }>,
-): NeutralCreepState[] {
+): NeutralUnitState[] {
   if (!post || post === pre) return pre
   const preHp = new Map(pre.map((n) => [n.id, n.hp]))
   for (const n of post) {

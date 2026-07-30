@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
-  spawnNeutralCreeps,
+  spawnNeutralUnits,
   runNeutralAI,
   applyNeutralActions,
   resetNeutralIdCounter,
@@ -50,7 +50,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     caches: [],
@@ -70,21 +70,21 @@ describe('NeutralAI', () => {
     resetNeutralIdCounter()
   })
 
-  describe('spawnNeutralCreeps', () => {
+  describe('spawnNeutralUnits', () => {
     it('should spawn neutrals at tick 60', () => {
-      const neutrals = spawnNeutralCreeps(60)
+      const neutrals = spawnNeutralUnits(60)
       expect(neutrals.length).toBeGreaterThan(0)
     })
 
     it('should not spawn neutrals at non-interval ticks', () => {
-      const neutrals = spawnNeutralCreeps(50)
+      const neutrals = spawnNeutralUnits(50)
       expect(neutrals.length).toBe(0)
     })
 
     it('should generate unique neutral IDs per game instance', () => {
-      const neutrals1 = spawnNeutralCreeps(60)
+      const neutrals1 = spawnNeutralUnits(60)
       resetNeutralIdCounter()
-      const neutrals2 = spawnNeutralCreeps(60)
+      const neutrals2 = spawnNeutralUnits(60)
 
       const ids1 = new Set(neutrals1.map((n) => n.id))
       const ids2 = new Set(neutrals2.map((n) => n.id))
@@ -97,7 +97,7 @@ describe('NeutralAI', () => {
     })
 
     it('should spawn neutrals in jungle zones', () => {
-      const neutrals = spawnNeutralCreeps(60)
+      const neutrals = spawnNeutralUnits(60)
       const jungleZones = ['silt-chaff-top', 'silt-chaff-bot', 'silt-audit-top', 'silt-audit-bot']
 
       for (const neutral of neutrals) {
@@ -106,7 +106,7 @@ describe('NeutralAI', () => {
     })
 
     it('should spawn neutrals with valid types', () => {
-      const neutrals = spawnNeutralCreeps(60)
+      const neutrals = spawnNeutralUnits(60)
       const validTypes = ['kobold', 'ogre_mage', 'centaur', 'ancient_dragon', 'ancient_rock_golem']
 
       for (const neutral of neutrals) {

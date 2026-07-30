@@ -36,7 +36,7 @@ describe('LoadoutSummary', () => {
     expect(wrapper.find('[data-testid="loadout-lasthits"]').exists()).toBe(false)
   })
 
-  it('shows the ≈ last-hits economy cue for a build (cost / avg creep bounty)', () => {
+  it('shows the ≈ last-hits economy cue for a build (cost / avg wave bounty)', () => {
     const wrapper = mountSummary([vanguard, dagon]) // 5250g → ceil(5250/40) = 132
     const lh = wrapper.find('[data-testid="loadout-lasthits"]')
     expect(lh.exists()).toBe(true)

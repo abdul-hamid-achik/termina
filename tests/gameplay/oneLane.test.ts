@@ -56,15 +56,15 @@ describe('one-lane map', () => {
     ).toBe(true)
   })
 
-  it('spawns creep waves only on the mid lane (no top/bot leakage into dead zones)', async () => {
+  it('spawns wave waves only on the mid lane (no top/bot leakage into dead zones)', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
-    await game.tick(8) // CREEP_WAVE_INTERVAL_TICKS — the first wave spawns
+    await game.tick(8) // WAVE_INTERVAL_TICKS — the first wave spawns
     const s = await game.state()
 
-    expect(s.creeps.length).toBeGreaterThan(0)
-    // Every creep is in a zone that exists on THIS map (never a dropped top/bot zone).
-    expect(s.creeps.every((c) => s.zones[c.zone] !== undefined)).toBe(true)
-    expect(s.creeps.some((c) => c.zone.startsWith('top-') || c.zone.startsWith('bot-'))).toBe(false)
+    expect(s.waves.length).toBeGreaterThan(0)
+    // Every wave is in a zone that exists on THIS map (never a dropped top/bot zone).
+    expect(s.waves.every((c) => s.zones[c.zone] !== undefined)).toBe(true)
+    expect(s.waves.some((c) => c.zone.startsWith('top-') || c.zone.startsWith('bot-'))).toBe(false)
   })
 
   it('has no jungle neutrals or river caches, and ticks cleanly past their interval', async () => {
@@ -74,7 +74,7 @@ describe('one-lane map', () => {
 
     expect(s.neutrals.length).toBe(0)
     expect(s.caches.length).toBe(0)
-    // And creeps stayed contained to the map the whole time.
-    expect(s.creeps.every((c) => s.zones[c.zone] !== undefined)).toBe(true)
+    // And waves stayed contained to the map the whole time.
+    expect(s.waves.every((c) => s.zones[c.zone] !== undefined)).toBe(true)
   })
 })

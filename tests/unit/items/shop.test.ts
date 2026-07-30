@@ -50,7 +50,7 @@ function makeZone(id: string, overrides: Partial<ZoneRuntimeState> = {}): ZoneRu
   return {
     id,
     wards: [],
-    creeps: [],
+    waves: [],
     ...overrides,
   }
 }
@@ -72,7 +72,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       'mid-river': makeZone('mid-river'),
       'mid-t1-audit': makeZone('mid-t1-audit'),
     },
-    creeps: [],
+    waves: [],
     ice: [],
     events: [],
     ...overrides,

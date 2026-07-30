@@ -1,9 +1,9 @@
-import type { CreepState, GameState, TeamId, IceState, PlayerState } from '~~/shared/types/game'
+import type { WaveUnitState, GameState, TeamId, IceState, PlayerState } from '~~/shared/types/game'
 import {
-  creepAttack,
-  CREEP_BASE_IDLE_DESPAWN_TICKS,
-  CREEP_XP_SHARED,
-  MAX_CREEPS_PER_ZONE_PER_TEAM,
+  waveUnitAttack,
+  WAVE_BASE_IDLE_DESPAWN_TICKS,
+  WAVE_XP_SHARED,
+  MAX_WAVE_UNITS_PER_ZONE_PER_TEAM,
 } from '~~/shared/constants/balance'
 import { resolvePhysicalHit } from './CombatResolver'
 import { awardZoneXp } from './XpDistributor'
@@ -11,7 +11,7 @@ import { resolveAncientAttack } from './AncientSystem'
 import { LANE_ROUTES_CORE } from '~~/shared/constants/lanes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
-/** The enemy base zone for a creep team — the end of every lane route. */
+/** The enemy base zone for a wave team — the end of every lane route. */
 const ENEMY_BASE: Record<TeamId, string> = {
   chaff: 'audit-base',
   audit: 'chaff-base',
@@ -20,8 +20,8 @@ const ENEMY_BASE: Record<TeamId, string> = {
 /** Lane routes: ordered zone sequences from each base toward the enemy base. */
 const LANE_ROUTES = LANE_ROUTES_CORE
 
-/** Determine which lane a creep is on based on its zone. */
-function getCreepLane(zone: string): string | null {
+/** Determine which lane a wave is on based on its zone. */
+function getWaveLane(zone: string): string | null {
   if (zone === 'chaff-base' || zone === 'audit-base' || zone.includes('fountain')) return null
   if (zone.startsWith('top-')) return 'top'
   if (zone.startsWith('mid-')) return 'mid'
@@ -29,30 +29,30 @@ function getCreepLane(zone: string): string | null {
   return null
 }
 
-/** Get the next zone for a creep along its lane route. */
-function getNextZone(creep: CreepState): string | null {
-  const lane = getCreepLane(creep.zone)
+/** Get the next zone for a wave along its lane route. */
+function getNextZone(wave: WaveUnitState): string | null {
+  const lane = getWaveLane(wave.zone)
   if (!lane) return null
 
-  const route = LANE_ROUTES[lane]?.[creep.team]
+  const route = LANE_ROUTES[lane]?.[wave.team]
   if (!route) return null
 
-  const currentIndex = route.indexOf(creep.zone)
+  const currentIndex = route.indexOf(wave.zone)
   if (currentIndex === -1 || currentIndex >= route.length - 1) return null
 
   return route[currentIndex + 1]!
 }
 
-/** Find enemy creeps in the same zone. */
-function getEnemyCreepsInZone(creeps: CreepState[], creep: CreepState): CreepState[] {
-  return creeps.filter((c) => c.zone === creep.zone && c.team !== creep.team && c.hp > 0)
+/** Find enemy waves in the same zone. */
+function getEnemyWavesInZone(waves: WaveUnitState[], wave: WaveUnitState): WaveUnitState[] {
+  return waves.filter((c) => c.zone === wave.zone && c.team !== wave.team && c.hp > 0)
 }
 
 /** Find enemy heroes in the same zone. */
 function getEnemyHeroesInZone(
   players: Record<string, PlayerState>,
   zone: string,
-  team: CreepState['team'],
+  team: WaveUnitState['team'],
 ): PlayerState[] {
   return Object.values(players).filter((p) => p.zone === zone && p.team !== team && p.alive)
 }
@@ -61,16 +61,16 @@ function getEnemyHeroesInZone(
 function getEnemyIceInZone(
   ice: IceState[],
   zone: string,
-  team: CreepState['team'],
+  team: WaveUnitState['team'],
 ): IceState | undefined {
   return ice.find((t) => t.zone === zone && t.team !== team && t.alive)
 }
 
-export interface CreepAction {
-  creepId: string
+export interface WaveAction {
+  waveId: string
   action:
     | 'move'
-    | 'attack_creep'
+    | 'attack_wave'
     | 'attack_hero'
     | 'attack_ice'
     | 'attack_ancient'
@@ -82,49 +82,49 @@ export interface CreepAction {
 }
 
 /**
- * Run creep AI for all creeps. Returns a list of actions to apply.
+ * Run wave AI for all waves. Returns a list of actions to apply.
  *
- * Creep behavior:
- * - If enemy creeps in same zone: attack
- * - In the enemy base with a vulnerable Ancient: siege the Ancient
+ * Wave behavior:
+ * - If enemy waves in same zone: attack
+ * - In the enemy base with a vulnerable Ancient: breach the Ancient
  *   (above heroes — the wave commits to the objective, which also keeps
- *   base creeps from grinding down every respawning hero)
+ *   base waves from grinding down every respawning hero)
  * - If enemy heroes in same zone: attack
  * - If enemy ice in zone: attack ice
  * - Otherwise: move toward enemy base along lane (1 zone per tick)
  * - Stuck in the enemy base with an invulnerable Ancient and nothing to
  *   attack: idle, then get garbage collected after
- *   CREEP_BASE_IDLE_DESPAWN_TICKS idle ticks
+ *   WAVE_BASE_IDLE_DESPAWN_TICKS idle ticks
  */
-export function runCreepAI(state: GameState): CreepAction[] {
-  const actions: CreepAction[] = []
+export function runWaveAI(state: GameState): WaveAction[] {
+  const actions: WaveAction[] = []
 
-  for (const creep of state.creeps) {
-    if (creep.hp <= 0) continue
+  for (const wave of state.waves) {
+    if (wave.hp <= 0) continue
 
-    // Damage escalates with the CURRENT tick, not the creep's spawn wave:
-    // CreepState carries no per-creep stats, and a whole board that gets
+    // Damage escalates with the CURRENT tick, not the wave's spawn wave:
+    // WaveUnitState carries no per-wave stats, and a whole board that gets
     // stronger together is also the readable rule for the player.
-    const damage = creepAttack(creep.type, state.tick)
-    const inEnemyBase = creep.zone === ENEMY_BASE[creep.team]
-    const enemyAncient = creep.team === 'chaff' ? state.ancients?.audit : state.ancients?.chaff
+    const damage = waveUnitAttack(wave.type, state.tick)
+    const inEnemyBase = wave.zone === ENEMY_BASE[wave.team]
+    const enemyAncient = wave.team === 'chaff' ? state.ancients?.audit : state.ancients?.chaff
 
-    // Priority 1: attack enemy creeps in same zone
-    const enemyCreeps = getEnemyCreepsInZone(state.creeps, creep)
-    if (enemyCreeps.length > 0) {
+    // Priority 1: attack enemy waves in same zone
+    const enemyWaves = getEnemyWavesInZone(state.waves, wave)
+    if (enemyWaves.length > 0) {
       actions.push({
-        creepId: creep.id,
-        action: 'attack_creep',
-        targetId: enemyCreeps[0]!.id,
+        waveId: wave.id,
+        action: 'attack_wave',
+        targetId: enemyWaves[0]!.id,
         damage,
       })
       continue
     }
 
-    // Priority 2 (enemy base only): siege the Ancient when it's vulnerable
+    // Priority 2 (enemy base only): breach the Ancient when it's vulnerable
     if (inEnemyBase && enemyAncient && enemyAncient.alive && enemyAncient.vulnerable) {
       actions.push({
-        creepId: creep.id,
+        waveId: wave.id,
         action: 'attack_ancient',
         damage,
       })
@@ -132,10 +132,10 @@ export function runCreepAI(state: GameState): CreepAction[] {
     }
 
     // Priority 3: attack enemy heroes in same zone
-    const enemyHeroes = getEnemyHeroesInZone(state.players, creep.zone, creep.team)
+    const enemyHeroes = getEnemyHeroesInZone(state.players, wave.zone, wave.team)
     if (enemyHeroes.length > 0) {
       actions.push({
-        creepId: creep.id,
+        waveId: wave.id,
         action: 'attack_hero',
         targetId: enemyHeroes[0]!.id,
         damage,
@@ -144,10 +144,10 @@ export function runCreepAI(state: GameState): CreepAction[] {
     }
 
     // Priority 4: attack enemy ice in same zone
-    const enemyIce = getEnemyIceInZone(state.ice, creep.zone, creep.team)
+    const enemyIce = getEnemyIceInZone(state.ice, wave.zone, wave.team)
     if (enemyIce) {
       actions.push({
-        creepId: creep.id,
+        waveId: wave.id,
         action: 'attack_ice',
         targetZone: enemyIce.zone,
         damage,
@@ -156,24 +156,24 @@ export function runCreepAI(state: GameState): CreepAction[] {
     }
 
     // Priority 5: move forward along lane
-    const nextZone = getNextZone(creep)
+    const nextZone = getNextZone(wave)
     if (nextZone) {
       actions.push({
-        creepId: creep.id,
+        waveId: wave.id,
         action: 'move',
         targetZone: nextZone,
       })
       continue
     }
 
-    // No move possible — creep is parked in a base zone with nothing to do.
-    // Idle for a few ticks, then despawn ("garbage collected") so creeps
+    // No move possible — wave is parked in a base zone with nothing to do.
+    // Idle for a few ticks, then despawn ("garbage collected") so waves
     // never pile up unboundedly in base.
-    if (creep.zone === ENEMY_BASE[creep.team] || creep.zone === ENEMY_BASE[enemyTeam(creep.team)]) {
-      if ((creep.baseIdleTicks ?? 0) + 1 >= CREEP_BASE_IDLE_DESPAWN_TICKS) {
-        actions.push({ creepId: creep.id, action: 'despawn' })
+    if (wave.zone === ENEMY_BASE[wave.team] || wave.zone === ENEMY_BASE[enemyTeam(wave.team)]) {
+      if ((wave.baseIdleCycles ?? 0) + 1 >= WAVE_BASE_IDLE_DESPAWN_TICKS) {
+        actions.push({ waveId: wave.id, action: 'despawn' })
       } else {
-        actions.push({ creepId: creep.id, action: 'wait_in_base' })
+        actions.push({ waveId: wave.id, action: 'wait_in_base' })
       }
     }
   }
@@ -186,54 +186,54 @@ function enemyTeam(team: TeamId): TeamId {
 }
 
 /**
- * Apply creep actions to the game state. Returns updated state plus any
+ * Apply wave actions to the game state. Returns updated state plus any
  * events to emit (hero damage, Ancient damage / destruction).
  */
-export function applyCreepActions(
+export function applyWaveActions(
   state: GameState,
-  actions: CreepAction[],
+  actions: WaveAction[],
 ): { state: GameState; events: GameEngineEvent[] } {
-  let creeps = state.creeps.map((c) => ({ ...c }))
+  let waves = state.waves.map((c) => ({ ...c }))
   let ice = state.ice.map((t) => ({ ...t }))
   let players = { ...state.players }
   let ancients = state.ancients
   const events: GameEngineEvent[] = []
 
   for (const action of actions) {
-    const creep = creeps.find((c) => c.id === action.creepId)
-    if (!creep || creep.hp <= 0) continue
+    const wave = waves.find((c) => c.id === action.waveId)
+    if (!wave || wave.hp <= 0) continue
 
     switch (action.action) {
       case 'move': {
         if (action.targetZone) {
-          creeps = creeps.map((c) =>
-            c.id === action.creepId ? { ...c, zone: action.targetZone! } : c,
+          waves = waves.map((c) =>
+            c.id === action.waveId ? { ...c, zone: action.targetZone! } : c,
           )
         }
         break
       }
-      case 'attack_creep': {
-        const target = creeps.find((c) => c.id === action.targetId)
+      case 'attack_wave': {
+        const target = waves.find((c) => c.id === action.targetId)
         if (target && target.hp > 0) {
           const newHp = Math.max(0, target.hp - (action.damage ?? 0))
-          creeps = creeps.map((c) => (c.id === action.targetId ? { ...c, hp: newHp } : c))
+          waves = waves.map((c) => (c.id === action.targetId ? { ...c, hp: newHp } : c))
           if (newHp === 0) {
-            // Creeps kill each other far more often than heroes kill them
-            // (priority 1 above focuses enemy creeps), so this is where the
-            // MAJORITY of creep XP enters the game. Without it a laner who
+            // Waves kill each other far more often than heroes kill them
+            // (priority 1 above focuses enemy waves), so this is where the
+            // MAJORITY of wave XP enters the game. Without it a laner who
             // never last-hits earns nothing at all from a wave they stood in.
-            // The killing creep's team is by construction the dying creep's
-            // enemy — getEnemyCreepsInZone only ever targets across teams.
-            players = awardZoneXp(players, target.zone, creep.team, CREEP_XP_SHARED)
+            // The killing wave's team is by construction the dying wave's
+            // enemy — getEnemyWavesInZone only ever targets across teams.
+            players = awardZoneXp(players, target.zone, wave.team, WAVE_XP_SHARED)
           }
         }
         break
       }
       case 'attack_hero': {
         if (action.targetId && players[action.targetId] && players[action.targetId]!.alive) {
-          // Route through the shared mitigation chain so creep hits honor item
+          // Route through the shared mitigation chain so wave hits honor item
           // defense, vuln amps, Kernel 'hardened', shields, and Echo phaseShift
-          // — previously creeps used raw target.defense and skipped the
+          // — previously waves used raw target.defense and skipped the
           // multiplier, hardened, shield, and dodge.
           const hit = resolvePhysicalHit(players[action.targetId]!, action.damage ?? 0)
           if (hit.immune || hit.damageDealt === 0) break
@@ -244,7 +244,7 @@ export function applyCreepActions(
           events.push({
             _tag: 'damage',
             tick: state.tick,
-            sourceId: creep.id,
+            sourceId: wave.id,
             targetId: action.targetId,
             amount: hit.damageDealt,
             damageType: 'physical',
@@ -256,7 +256,7 @@ export function applyCreepActions(
         const iceIdx = ice.findIndex((t) => t.zone === action.targetZone && t.alive)
         if (iceIdx >= 0) {
           const target = ice[iceIdx]!
-          // Harden invulnerability blocks the creep wave too, not just heroes —
+          // Harden invulnerability blocks the wave wave too, not just heroes —
           // otherwise a glyphed ice still gets chewed down by the push. Hero
           // attacks already bounce off (ActionResolver), so mirror that here.
           if (!target.invulnerable) {
@@ -267,11 +267,11 @@ export function applyCreepActions(
         break
       }
       case 'attack_ancient': {
-        // Route through the shared helper so creep and hero attacks follow
+        // Route through the shared helper so wave and hero attacks follow
         // identical vulnerability/destruction rules.
         const result = resolveAncientAttack(
-          { ...state, creeps, ancients },
-          action.creepId,
+          { ...state, waves, ancients },
+          action.waveId,
           action.damage ?? 0,
         )
         ancients = result.state.ancients
@@ -279,40 +279,40 @@ export function applyCreepActions(
         break
       }
       case 'wait_in_base': {
-        creeps = creeps.map((c) =>
-          c.id === action.creepId ? { ...c, baseIdleTicks: (c.baseIdleTicks ?? 0) + 1 } : c,
+        waves = waves.map((c) =>
+          c.id === action.waveId ? { ...c, baseIdleCycles: (c.baseIdleCycles ?? 0) + 1 } : c,
         )
         break
       }
       case 'despawn': {
-        creeps = creeps.filter((c) => c.id !== action.creepId)
+        waves = waves.filter((c) => c.id !== action.waveId)
         break
       }
     }
   }
 
-  // Remove dead creeps
-  creeps = creeps.filter((c) => c.hp > 0)
+  // Remove dead waves
+  waves = waves.filter((c) => c.hp > 0)
 
-  return { state: { ...state, creeps, ice, players, ancients }, events }
+  return { state: { ...state, waves, ice, players, ancients }, events }
 }
 
 /**
- * Defensive guard: cap lane creeps at MAX_CREEPS_PER_ZONE_PER_TEAM per team
- * per zone, despawning the oldest first (creeps are appended in spawn order,
+ * Defensive guard: cap lane waves at MAX_WAVE_UNITS_PER_ZONE_PER_TEAM per team
+ * per zone, despawning the oldest first (waves are appended in spawn order,
  * so earliest in the array = oldest). Returns the same object when no zone
  * is over the cap.
  */
-export function enforceCreepZoneCap(state: GameState): GameState {
+export function enforceWaveZoneCap(state: GameState): GameState {
   const counts = new Map<string, number>()
-  for (const creep of state.creeps) {
-    const key = `${creep.team}:${creep.zone}`
+  for (const wave of state.waves) {
+    const key = `${wave.team}:${wave.zone}`
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
 
   let overCap = false
   for (const count of counts.values()) {
-    if (count > MAX_CREEPS_PER_ZONE_PER_TEAM) {
+    if (count > MAX_WAVE_UNITS_PER_ZONE_PER_TEAM) {
       overCap = true
       break
     }
@@ -321,18 +321,18 @@ export function enforceCreepZoneCap(state: GameState): GameState {
 
   // Walk newest → oldest keeping up to the cap per team+zone, then restore
   // original (spawn) order.
-  const kept: CreepState[] = []
+  const kept: WaveUnitState[] = []
   const keptCounts = new Map<string, number>()
-  for (let i = state.creeps.length - 1; i >= 0; i--) {
-    const creep = state.creeps[i]!
-    const key = `${creep.team}:${creep.zone}`
+  for (let i = state.waves.length - 1; i >= 0; i--) {
+    const wave = state.waves[i]!
+    const key = `${wave.team}:${wave.zone}`
     const keptSoFar = keptCounts.get(key) ?? 0
-    if (keptSoFar < MAX_CREEPS_PER_ZONE_PER_TEAM) {
-      kept.push(creep)
+    if (keptSoFar < MAX_WAVE_UNITS_PER_ZONE_PER_TEAM) {
+      kept.push(wave)
       keptCounts.set(key, keptSoFar + 1)
     }
   }
   kept.reverse()
 
-  return { ...state, creeps: kept }
+  return { ...state, waves: kept }
 }

@@ -21,7 +21,7 @@ import {
   hasTalentCastEffect,
 } from '~~/server/game/engine/EffectiveStats'
 import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
-import type { CreepState, GameState, PlayerState } from '~~/shared/types/game'
+import type { WaveUnitState, GameState, PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
@@ -84,7 +84,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
@@ -554,61 +554,61 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
 })
 
 /**
- * Abilities reaching lane creeps and neutrals. Before this the bridge returned
- * only `{ players, zones }`, so a resolver could damage a creep all it liked and
+ * Abilities reaching lane waves and neutrals. Before this the bridge returned
+ * only `{ players, zones }`, so a resolver could damage a wave all it liked and
  * the result was thrown away on the way out — in lane with a wave in front of
  * you and no enemy hero present, every AoE was dead weight.
  */
-describe('cast bridge: abilities vs creeps and neutrals', () => {
+describe('cast bridge: abilities vs waves and neutrals', () => {
   const LANE = 'mid-t1-chaff'
 
-  function creep(over: Partial<CreepState> = {}): CreepState {
-    return { id: 'c1', team: 'audit', zone: LANE, hp: 400, maxHp: 400, type: 'melee', ...over }
+  function wave(over: Partial<WaveUnitState> = {}): WaveUnitState {
+    return { id: 'c1', team: 'audit', zone: LANE, hp: 400, maxHp: 400, type: 'line', ...over }
   }
 
-  it('a zone AoE cast damages enemy creeps standing in the zone', () => {
+  it('a zone AoE cast damages enemy waves standing in the zone', () => {
     // mutex E (Spinlock) at rank 1: three 40-damage hits.
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
-      creeps: [creep()],
+      waves: [wave()],
     })
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
     expect(result.rejected).toHaveLength(0)
-    expect(result.state.creeps[0]!.hp).toBe(280)
+    expect(result.state.waves[0]!.hp).toBe(280)
     expect(result.events).toContainEqual(
       expect.objectContaining({ _tag: 'damage', sourceId: 'p1', targetId: 'c1', amount: 120 }),
     )
   })
 
-  it('spares your own creeps and the wave one zone over', () => {
+  it('spares your own waves and the wave one zone over', () => {
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
-      creeps: [
-        creep({ id: 'mine', team: 'chaff' }),
-        creep({ id: 'theirs-elsewhere', zone: 'mid-river' }),
+      waves: [
+        wave({ id: 'mine', team: 'chaff' }),
+        wave({ id: 'theirs-elsewhere', zone: 'mid-river' }),
       ],
     })
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
-    expect(result.state.creeps.map((c) => c.hp)).toEqual([400, 400])
+    expect(result.state.waves.map((c) => c.hp)).toEqual([400, 400])
     expect(result.events.some((e) => e._tag === 'damage')).toBe(false)
   })
 
-  it('an ability last hit pays the creep bounty through the same path a right-click does', () => {
+  it('an ability last hit pays the wave bounty through the same path a right-click does', () => {
     const state = makeGameState({
       players: { p1: makeHero('mutex', { id: 'p1', zone: LANE }) },
-      creeps: [creep({ hp: 30 })],
+      waves: [wave({ hp: 30 })],
     })
     const goldBefore = state.players['p1']!.gold
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
 
-    expect(result.state.creeps[0]!.hp).toBe(0)
-    const lastHit = result.events.find((e) => e._tag === 'creep_lasthit')
-    expect(lastHit).toMatchObject({ playerId: 'p1', creepId: 'c1', creepType: 'melee' })
+    expect(result.state.waves[0]!.hp).toBe(0)
+    const lastHit = result.events.find((e) => e._tag === 'wave_strip')
+    expect(lastHit).toMatchObject({ playerId: 'p1', waveId: 'c1', waveType: 'line' })
     expect(result.state.players['p1']!.gold).toBeGreaterThan(goldBefore)
     expect(result.state.players['p1']!.xp).toBeGreaterThan(0)
   })
@@ -619,7 +619,7 @@ describe('cast bridge: abilities vs creeps and neutrals', () => {
         p1: makeHero('mutex', { id: 'p1', zone: LANE }),
         p2: makeHero('kernel', { id: 'p2', name: 'Mate', zone: LANE }),
       },
-      creeps: [creep({ hp: 30 })],
+      waves: [wave({ hp: 30 })],
     })
 
     const result = run(state, [{ playerId: 'p1', command: { type: 'cast', ability: 'e' } }])
@@ -635,25 +635,25 @@ describe('cast bridge: abilities vs creeps and neutrals', () => {
     // null_ref R (Dereference) is 240 / 360 / 480 at ranks 1-3, unlocked at
     // levels 6 / 12 / 18. Every other fixture in this file sits at level 1 or 6,
     // where a flat-damage implementation is indistinguishable from a scaled one.
-    const wave = () => [creep({ hp: 300 })]
+    const waveUnits = () => [wave({ hp: 300 })]
     const atRank1 = makeGameState({
       players: { p1: makeHero('null_ref', { id: 'p1', zone: LANE }, 6) },
-      creeps: wave(),
+      waves: waveUnits(),
     })
     const atRank3 = makeGameState({
       players: { p1: makeHero('null_ref', { id: 'p1', zone: LANE }, 18) },
-      creeps: wave(),
+      waves: waveUnits(),
     })
     const cast = { type: 'cast', ability: 'r' } as const
 
     const chipped = run(atRank1, [{ playerId: 'p1', command: cast }])
     expect(chipped.rejected).toHaveLength(0)
-    expect(chipped.state.creeps[0]!.hp).toBe(60)
-    expect(chipped.events.some((e) => e._tag === 'creep_lasthit')).toBe(false)
+    expect(chipped.state.waves[0]!.hp).toBe(60)
+    expect(chipped.events.some((e) => e._tag === 'wave_strip')).toBe(false)
 
     const cleared = run(atRank3, [{ playerId: 'p1', command: cast }])
-    expect(cleared.state.creeps[0]!.hp).toBe(0)
-    expect(cleared.events.some((e) => e._tag === 'creep_lasthit')).toBe(true)
+    expect(cleared.state.waves[0]!.hp).toBe(0)
+    expect(cleared.events.some((e) => e._tag === 'wave_strip')).toBe(true)
   })
 
   it('clears a jungle camp and pays the neutral bounty', () => {

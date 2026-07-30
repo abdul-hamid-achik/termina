@@ -25,7 +25,7 @@ describe('teleport (town portal scroll)', () => {
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' }, // far off — can't interrupt
       },
-      creeps: [], // nothing to chip the channel and cancel it
+      waves: [], // nothing to chip the channel and cancel it
     }))
 
     game.submit({ type: 'use', item: 'town_portal_scroll' })
@@ -59,7 +59,7 @@ describe('teleport (town portal scroll)', () => {
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' },
       },
-      creeps: [],
+      waves: [],
     }))
 
     game.submit({ type: 'use', item: 'town_portal_scroll' })

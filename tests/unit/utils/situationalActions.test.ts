@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { computeSituationalActions, type SituationalContext } from '~~/app/utils/situationalActions'
 import { SURRENDER_MIN_TICK, HARDEN_COOLDOWN_TICKS } from '~~/shared/constants/balance'
-import type { PlayerState, CreepState } from '~~/shared/types/game'
+import type { PlayerState, WaveUnitState } from '~~/shared/types/game'
 
 const player = (over: Partial<PlayerState> = {}): PlayerState =>
   ({ items: [], zone: 'mid-river', team: 'chaff', ...over }) as unknown as PlayerState
@@ -9,7 +9,7 @@ const player = (over: Partial<PlayerState> = {}): PlayerState =>
 const baseCtx = (over: Partial<SituationalContext> = {}): SituationalContext => ({
   player: player(),
   isAlive: true,
-  creeps: [],
+  waves: [],
   backup: null,
   caches: [],
   teams: null,
@@ -36,15 +36,15 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ player: player({ items: ['blink_dagger'] }) }))).not.toContain('ward')
   })
 
-  it('offers BURN only when a low-HP allied creep is in the zone', () => {
-    const lowAllyCreep = {
+  it('offers BURN only when a low-HP allied wave is in the zone', () => {
+    const lowAllyWave = {
       zone: 'mid-river',
       team: 'chaff',
       hp: 1,
-      type: 'melee',
-    } as unknown as CreepState
-    expect(cmds(baseCtx({ creeps: [lowAllyCreep] }))).toContain('burn')
-    expect(cmds(baseCtx({ creeps: [] }))).not.toContain('burn')
+      type: 'line',
+    } as unknown as WaveUnitState
+    expect(cmds(baseCtx({ waves: [lowAllyWave] }))).toContain('burn')
+    expect(cmds(baseCtx({ waves: [] }))).not.toContain('burn')
   })
 
   it('offers BACKUP only when an unclaimed backup is in the zone', () => {

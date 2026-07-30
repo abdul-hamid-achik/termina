@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest'
  * The palette is the log's typography. Nine `CombatLineType` values, the map,
  * the HUD and every toast are separated ONLY by color, so two tokens sitting a
  * few RGB units apart silently erase a distinction the code believes it makes —
- * which is exactly how a hero death came to render in the same red as creep
+ * which is exactly how a hero death came to render in the same red as wave
  * chip damage, and how the colorblind palette put the enemy team, the gold
  * counter and every warning on the same orange.
  *

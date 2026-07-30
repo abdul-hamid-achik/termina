@@ -56,12 +56,12 @@ export interface AncientDestroyedEvent {
   readonly killerTeam: TeamId
 }
 
-export interface CreepLasthitEvent {
-  readonly _tag: 'creep_lasthit'
+export interface WaveStripEvent {
+  readonly _tag: 'wave_strip'
   readonly tick: number
   readonly playerId: string
-  readonly creepId: string
-  readonly creepType: 'melee' | 'ranged' | 'siege'
+  readonly waveId: string
+  readonly waveType: 'line' | 'sweep' | 'breach'
   readonly goldAwarded: number
 }
 
@@ -69,8 +69,8 @@ export interface WaveBurnEvent {
   readonly _tag: 'wave_burn'
   readonly tick: number
   readonly playerId: string
-  readonly creepId: string
-  readonly creepType: 'melee' | 'ranged' | 'siege'
+  readonly waveId: string
+  readonly waveType: 'line' | 'sweep' | 'breach'
   readonly goldAwarded: number
 }
 
@@ -329,7 +329,7 @@ export type GameEngineEvent =
   | DeathEvent
   | IceKillEvent
   | AncientDestroyedEvent
-  | CreepLasthitEvent
+  | WaveStripEvent
   | WaveBurnEvent
   | GoldChangeEvent
   | LevelUpEvent

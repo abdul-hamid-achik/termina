@@ -14,7 +14,7 @@ import { Effect } from 'effect'
 import { processTick } from '../engine/GameLoop'
 import { createInMemoryStateManager } from '../engine/StateManager'
 import { registerBots, cleanupGame } from '../ai/BotManager'
-import { resetCreepIdCounter } from '../map/spawner'
+import { resetWaveIdCounter } from '../map/spawner'
 import { playerNetWorth } from '../engine/GoldDistributor'
 import { summarizeSimResults, type SimResult } from './simStats'
 import { HERO_IDS } from '../../../shared/constants/heroes'
@@ -41,7 +41,7 @@ function teamStats(state: GameState, team: TeamId) {
     netWorth: players.reduce((sum, p) => sum + playerNetWorth(p), 0),
     avgLevel: players.reduce((sum, p) => sum + p.level, 0) / players.length,
     iceAlive: state.ice.filter((t) => t.team === team && t.alive).length,
-    creeps: state.creeps.filter((c) => c.team === team).length,
+    waves: state.waves.filter((c) => c.team === team).length,
     ancientHp: state.ancients?.[team]?.hp ?? -1,
     ancientAlive: state.ancients?.[team]?.alive ?? true,
   }
@@ -52,7 +52,7 @@ function fmtMin(tick: number): string {
 }
 
 async function simulateOne(matchIdx: number): Promise<SimResult> {
-  resetCreepIdCounter()
+  resetWaveIdCounter()
   const gameId = `sim_${matchIdx}_${Math.random().toString(36).slice(2, 8)}`
   const stateManager = createInMemoryStateManager()
 
@@ -114,7 +114,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
           `networth ${rad.netWorth}:${audit.netWorth} | ` +
           `lvl ${rad.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
           `ice ${rad.iceAlive}:${audit.iceAlive} | ` +
-          `creeps ${rad.creeps}:${audit.creeps} | ` +
+          `waves ${rad.waves}:${audit.waves} | ` +
           `ancient ${rad.ancientHp}:${audit.ancientHp}`,
       )
       if (process.env.SIM_DUMP_ZONES === '1') {
@@ -124,12 +124,12 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
               `gold=${p.gold} alive=${p.alive} buffs=[${p.buffs.map((b) => b.id).join(',')}]`,
           )
         }
-        const creepZones = new Map<string, number>()
-        for (const c of state.creeps) {
-          creepZones.set(`${c.team}:${c.zone}`, (creepZones.get(`${c.team}:${c.zone}`) ?? 0) + 1)
+        const waveZones = new Map<string, number>()
+        for (const c of state.waves) {
+          waveZones.set(`${c.team}:${c.zone}`, (waveZones.get(`${c.team}:${c.zone}`) ?? 0) + 1)
         }
         console.log(
-          `      creeps: ${[...creepZones.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`,
+          `      waves: ${[...waveZones.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`,
         )
       }
     }
@@ -149,7 +149,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
     `  final: kills ${rad.kills}:${audit.kills} (${totalKills} total) | ` +
       `deaths ${rad.deaths + audit.deaths} total | ` +
       `networth ${rad.netWorth}:${audit.netWorth} | ice ${rad.iceAlive}:${audit.iceAlive} | ` +
-      `creeps ${rad.creeps}:${audit.creeps} | ancient ${rad.ancientHp}:${audit.ancientHp}`,
+      `waves ${rad.waves}:${audit.waves} | ancient ${rad.ancientHp}:${audit.ancientHp}`,
   )
 
   // K/D/A spread per player

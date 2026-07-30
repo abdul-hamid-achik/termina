@@ -120,7 +120,7 @@ function createInitialGameState(
   }
 
   // A map's zone set drives which zones + ice exist; everything else (ice
-  // tiers, creep lanes, win condition) derives from the reused zone IDs.
+  // tiers, wave lanes, win condition) derives from the reused zone IDs.
   const zones = zonesForMap(mapId)
 
   return {
@@ -132,7 +132,7 @@ function createInitialGameState(
     },
     players: playerStates,
     zones: initializeZoneStates(zones),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(zones),
     ancients: initializeAncients(),

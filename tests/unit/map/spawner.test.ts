@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
-  spawnCreepWaves,
-  resetCreepIdCounter,
+  spawnWaveUnits,
+  resetWaveIdCounter,
   spawnCaches,
   initializeTenant,
   shouldTenantRespawn,
@@ -9,15 +9,15 @@ import {
 } from '~~/server/game/map/spawner'
 import { zonesForMap, ONE_LANE_MAP_ID, TWO_LANE_MAP_ID } from '~~/shared/constants/maps'
 import {
-  CREEP_WAVE_INTERVAL_TICKS,
-  MELEE_CREEPS_PER_WAVE,
-  RANGED_CREEPS_PER_WAVE,
-  SIEGE_CREEP_WAVE_INTERVAL,
-  MELEE_CREEP_HP,
-  RANGED_CREEP_HP,
-  SIEGE_CREEP_HP,
-  CREEP_ESCALATION_INTERVAL_TICKS,
-  creepMaxHp,
+  WAVE_INTERVAL_TICKS,
+  LINE_UNITS_PER_WAVE,
+  SWEEP_UNITS_PER_WAVE,
+  BREACH_WAVE_INTERVAL,
+  LINE_UNIT_HP,
+  SWEEP_UNIT_HP,
+  BREACH_UNIT_HP,
+  WAVE_ESCALATION_INTERVAL_TICKS,
+  waveUnitMaxHp,
   TENANT_RESPAWN_TICKS,
   TENANT_BASE_HP,
   CACHE_INTERVAL_TICKS,
@@ -26,102 +26,100 @@ import {
 
 describe('Spawner', () => {
   beforeEach(() => {
-    resetCreepIdCounter()
+    resetWaveIdCounter()
   })
 
-  describe('spawnCreepWaves', () => {
-    it('does not spawn creeps at tick 0', () => {
-      expect(spawnCreepWaves(0)).toEqual([])
+  describe('spawnWaveUnits', () => {
+    it('does not spawn waves at tick 0', () => {
+      expect(spawnWaveUnits(0)).toEqual([])
     })
 
-    it('does not spawn creeps on non-wave ticks', () => {
-      expect(spawnCreepWaves(1)).toEqual([])
-      expect(spawnCreepWaves(3)).toEqual([])
-      expect(spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS - 1)).toEqual([])
+    it('does not spawn waves on non-wave ticks', () => {
+      expect(spawnWaveUnits(1)).toEqual([])
+      expect(spawnWaveUnits(3)).toEqual([])
+      expect(spawnWaveUnits(WAVE_INTERVAL_TICKS - 1)).toEqual([])
     })
 
-    it('spawns creeps at the first wave tick', () => {
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      expect(creeps.length).toBeGreaterThan(0)
+    it('spawns waves at the first wave tick', () => {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS)
+      expect(waves.length).toBeGreaterThan(0)
     })
 
-    it('spawns correct number of creeps per wave (no siege)', () => {
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      // 3 lanes * 2 teams * (3 melee + 1 ranged) = 24
-      const expectedPerWave = 3 * 2 * (MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE)
-      expect(creeps.length).toBe(expectedPerWave)
+    it('spawns correct number of waves per wave (no breach)', () => {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS)
+      // 3 lanes * 2 teams * (3 line + 1 sweep) = 24
+      const expectedPerWave = 3 * 2 * (LINE_UNITS_PER_WAVE + SWEEP_UNITS_PER_WAVE)
+      expect(waves.length).toBe(expectedPerWave)
     })
 
-    it('spawns siege creeps on siege wave intervals', () => {
-      const siegeWaveTick = CREEP_WAVE_INTERVAL_TICKS * SIEGE_CREEP_WAVE_INTERVAL
-      const creeps = spawnCreepWaves(siegeWaveTick)
-      // 3 lanes * 2 teams * (3 melee + 1 ranged + 1 siege) = 30
-      const expectedWithSiege = 3 * 2 * (MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE + 1)
-      expect(creeps.length).toBe(expectedWithSiege)
+    it('spawns breach waves on breach wave intervals', () => {
+      const breachWaveTick = WAVE_INTERVAL_TICKS * BREACH_WAVE_INTERVAL
+      const waves = spawnWaveUnits(breachWaveTick)
+      // 3 lanes * 2 teams * (3 line + 1 sweep + 1 breach) = 30
+      const expectedWithBreach = 3 * 2 * (LINE_UNITS_PER_WAVE + SWEEP_UNITS_PER_WAVE + 1)
+      expect(waves.length).toBe(expectedWithBreach)
     })
 
-    it('does not spawn siege creeps on non-siege waves', () => {
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      const siegeCreeps = creeps.filter((c) => c.type === 'siege')
-      expect(siegeCreeps.length).toBe(0)
+    it('does not spawn breach waves on non-breach waves', () => {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS)
+      const breachWaves = waves.filter((c) => c.type === 'breach')
+      expect(breachWaves.length).toBe(0)
     })
 
-    it('assigns correct HP to each creep type', () => {
-      const siegeWaveTick = CREEP_WAVE_INTERVAL_TICKS * SIEGE_CREEP_WAVE_INTERVAL
-      const creeps = spawnCreepWaves(siegeWaveTick)
+    it('assigns correct HP to each wave type', () => {
+      const breachWaveTick = WAVE_INTERVAL_TICKS * BREACH_WAVE_INTERVAL
+      const waves = spawnWaveUnits(breachWaveTick)
 
-      for (const c of creeps) {
-        if (c.type === 'melee') expect(c.hp).toBe(MELEE_CREEP_HP)
-        else if (c.type === 'ranged') expect(c.hp).toBe(RANGED_CREEP_HP)
-        else if (c.type === 'siege') expect(c.hp).toBe(SIEGE_CREEP_HP)
+      for (const c of waves) {
+        if (c.type === 'line') expect(c.hp).toBe(LINE_UNIT_HP)
+        else if (c.type === 'sweep') expect(c.hp).toBe(SWEEP_UNIT_HP)
+        else if (c.type === 'breach') expect(c.hp).toBe(BREACH_UNIT_HP)
       }
     })
 
-    it('spawns escalated creeps once the game is past the first interval', () => {
+    it('spawns escalated waves once the game is past the first interval', () => {
       // First wave tick at or after two full escalation intervals.
       const tick =
-        Math.ceil((CREEP_ESCALATION_INTERVAL_TICKS * 2) / CREEP_WAVE_INTERVAL_TICKS) *
-        CREEP_WAVE_INTERVAL_TICKS
-      const creeps = spawnCreepWaves(tick)
+        Math.ceil((WAVE_ESCALATION_INTERVAL_TICKS * 2) / WAVE_INTERVAL_TICKS) * WAVE_INTERVAL_TICKS
+      const waves = spawnWaveUnits(tick)
 
-      expect(creeps.length).toBeGreaterThan(0)
-      for (const c of creeps) {
-        expect(c.hp).toBe(creepMaxHp(c.type, tick))
+      expect(waves.length).toBeGreaterThan(0)
+      for (const c of waves) {
+        expect(c.hp).toBe(waveUnitMaxHp(c.type, tick))
       }
-      const melee = creeps.find((c) => c.type === 'melee')!
-      expect(melee.hp).toBeGreaterThan(MELEE_CREEP_HP)
+      const line = waves.find((c) => c.type === 'line')!
+      expect(line.hp).toBeGreaterThan(LINE_UNIT_HP)
     })
 
     it('waves keep the HP of the tick they spawned on, so late waves are tougher', () => {
-      const earlyTick = CREEP_WAVE_INTERVAL_TICKS
+      const earlyTick = WAVE_INTERVAL_TICKS
       const lateTick =
-        Math.ceil((CREEP_ESCALATION_INTERVAL_TICKS * 3) / CREEP_WAVE_INTERVAL_TICKS) *
-        CREEP_WAVE_INTERVAL_TICKS
-      const early = spawnCreepWaves(earlyTick).find((c) => c.type === 'melee')!
-      const late = spawnCreepWaves(lateTick).find((c) => c.type === 'melee')!
+        Math.ceil((WAVE_ESCALATION_INTERVAL_TICKS * 3) / WAVE_INTERVAL_TICKS) * WAVE_INTERVAL_TICKS
+      const early = spawnWaveUnits(earlyTick).find((c) => c.type === 'line')!
+      const late = spawnWaveUnits(lateTick).find((c) => c.type === 'line')!
 
-      expect(early.hp).toBe(MELEE_CREEP_HP)
+      expect(early.hp).toBe(LINE_UNIT_HP)
       expect(late.hp).toBeGreaterThan(early.hp)
     })
 
-    it('assigns unique IDs to each creep', () => {
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      const ids = creeps.map((c) => c.id)
+    it('assigns unique IDs to each wave', () => {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS)
+      const ids = waves.map((c) => c.id)
       expect(new Set(ids).size).toBe(ids.length)
     })
 
-    it('spawns creeps for both teams', () => {
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      const chaff = creeps.filter((c) => c.team === 'chaff')
-      const audit = creeps.filter((c) => c.team === 'audit')
+    it('spawns waves for both teams', () => {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS)
+      const chaff = waves.filter((c) => c.team === 'chaff')
+      const audit = waves.filter((c) => c.team === 'audit')
       expect(chaff.length).toBe(audit.length)
       expect(chaff.length).toBeGreaterThan(0)
     })
 
-    it('spawns creeps in correct spawn zones', () => {
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      const chaffZones = new Set(creeps.filter((c) => c.team === 'chaff').map((c) => c.zone))
-      const auditZones = new Set(creeps.filter((c) => c.team === 'audit').map((c) => c.zone))
+    it('spawns waves in correct spawn zones', () => {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS)
+      const chaffZones = new Set(waves.filter((c) => c.team === 'chaff').map((c) => c.zone))
+      const auditZones = new Set(waves.filter((c) => c.team === 'audit').map((c) => c.zone))
 
       expect(chaffZones).toContain('top-t3-chaff')
       expect(chaffZones).toContain('mid-t3-chaff')
@@ -131,9 +129,9 @@ describe('Spawner', () => {
       expect(auditZones).toContain('bot-t3-audit')
     })
 
-    it('spawns creeps on consecutive wave ticks', () => {
-      const wave1 = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS)
-      const wave2 = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS * 2)
+    it('spawns waves on consecutive wave ticks', () => {
+      const wave1 = spawnWaveUnits(WAVE_INTERVAL_TICKS)
+      const wave2 = spawnWaveUnits(WAVE_INTERVAL_TICKS * 2)
       expect(wave1.length).toBeGreaterThan(0)
       expect(wave2.length).toBeGreaterThan(0)
       // IDs should not overlap
@@ -209,7 +207,7 @@ describe('Spawner', () => {
 
   // The spawner gates lane/cache spawns on a game's live zone set via the
   // `hasZone` callback. On a subset map (one-lane, two-lane) a lane whose spawn
-  // zones aren't in the game must be skipped entirely, or creeps would be
+  // zones aren't in the game must be skipped entirely, or waves would be
   // placed in zones that don't exist on this map.
   describe('subset-map spawning (hasZone gating)', () => {
     function hasZoneFor(mapId: string): (zoneId: string) => boolean {
@@ -217,12 +215,12 @@ describe('Spawner', () => {
       return (zoneId: string) => ids.has(zoneId)
     }
 
-    it('one-lane map: spawns only mid-lane creeps (no top or bot)', () => {
+    it('one-lane map: spawns only mid-lane waves (no top or bot)', () => {
       const hasZone = hasZoneFor(ONE_LANE_MAP_ID)
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS, hasZone)
-      // Only mid lane — 3 melee + 1 ranged per team = 8 creeps.
-      expect(creeps).toHaveLength((MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE) * 2)
-      for (const c of creeps) {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS, hasZone)
+      // Only mid lane — 3 line + 1 sweep per team = 8 waves.
+      expect(waves).toHaveLength((LINE_UNITS_PER_WAVE + SWEEP_UNITS_PER_WAVE) * 2)
+      for (const c of waves) {
         expect(c.zone).toMatch(/^mid-t3-(chaff|audit)$/)
       }
     })
@@ -233,12 +231,12 @@ describe('Spawner', () => {
       expect(caches).toEqual([])
     })
 
-    it('two-lane map: spawns top + mid creeps (no bot)', () => {
+    it('two-lane map: spawns top + mid waves (no bot)', () => {
       const hasZone = hasZoneFor(TWO_LANE_MAP_ID)
-      const creeps = spawnCreepWaves(CREEP_WAVE_INTERVAL_TICKS, hasZone)
-      // Top + mid lanes — 2 lanes × 2 teams × (3 melee + 1 ranged) = 16 creeps.
-      expect(creeps).toHaveLength((MELEE_CREEPS_PER_WAVE + RANGED_CREEPS_PER_WAVE) * 2 * 2)
-      for (const c of creeps) {
+      const waves = spawnWaveUnits(WAVE_INTERVAL_TICKS, hasZone)
+      // Top + mid lanes — 2 lanes × 2 teams × (3 line + 1 sweep) = 16 waves.
+      expect(waves).toHaveLength((LINE_UNITS_PER_WAVE + SWEEP_UNITS_PER_WAVE) * 2 * 2)
+      for (const c of waves) {
         expect(c.zone).not.toMatch(/^bot-/)
       }
     })

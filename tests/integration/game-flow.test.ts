@@ -429,17 +429,17 @@ describe('Game Flow Integration', () => {
     it('only shows visible zones to players — enemies outside vision are fogged', async () => {
       const gameId = uid('vis')
       const sm = await startGame(gameId, makePlayers('vis', 1))
-      // An enemy creep deep in audit territory must not leak through the fog
+      // An enemy wave deep in audit territory must not leak through the fog
       await arrange(sm, gameId, (s) => ({
         ...s,
-        creeps: [
-          ...s.creeps,
+        waves: [
+          ...s.waves,
           {
-            id: 'creep_fog_probe',
+            id: 'wave_fog_probe',
             team: 'audit' as const,
             zone: 'audit-base',
             hp: 550,
-            type: 'melee' as const,
+            type: 'line' as const,
           },
         ],
       }))
@@ -459,9 +459,9 @@ describe('Game Flow Integration', () => {
       expect('zone' in enemy).toBe(false)
       expect('gold' in enemy).toBe(false)
 
-      // Creeps in fogged zones are stripped from the payload
-      expect(view.creeps.some((c) => c.id === 'creep_fog_probe')).toBe(false)
-      expect(view.zones['audit-base']!.creeps).toEqual([])
+      // Waves in fogged zones are stripped from the payload
+      expect(view.waves.some((c) => c.id === 'wave_fog_probe')).toBe(false)
+      expect(view.zones['audit-base']!.waves).toEqual([])
 
       // Once the enemy steps into chaff vision they are fully revealed
       const revealed = filterStateForPlayer(

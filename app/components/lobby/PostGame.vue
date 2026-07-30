@@ -173,28 +173,28 @@ const advice = computed((): Advice[] => {
   if (rate !== null && rate < 2) {
     out.push({
       id: 'last-hits',
-      observation: `You last-hit ${cs} creeps (${rate.toFixed(1)}/min)`,
-      command: 'attack creep:0',
+      observation: `You last-hit ${cs} waves (${rate.toFixed(1)}/min)`,
+      command: 'attack wave:0',
       detail:
-        'Only the killing blow pays gold, so swing when a creep is nearly dead rather than every tick. Tap the creep in the zone panel — the numbers shift each tick.',
+        'Only the killing blow pays gold, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
     })
   } else if (rate === null && cs < 20) {
     out.push({
       id: 'last-hits',
-      observation: `You last-hit ${cs} creeps`,
-      command: 'attack creep:0',
+      observation: `You last-hit ${cs} waves`,
+      command: 'attack wave:0',
       detail:
-        'Only the killing blow pays gold, so swing when a creep is nearly dead rather than every tick. Tap the creep in the zone panel — the numbers shift each tick.',
+        'Only the killing blow pays gold, so swing when a wave is nearly dead rather than every tick. Tap the wave in the zone panel — the numbers shift each tick.',
     })
   }
 
   if ((s.burns ?? 0) === 0) {
     out.push({
       id: 'burns',
-      observation: 'You burned 0 creeps',
-      command: 'burn creep:0',
+      observation: 'You burned 0 waves',
+      command: 'burn wave:0',
       detail:
-        'When one of YOUR creeps drops below half health you can finish it yourself. The enemy laner gets no gold and less experience for it — it is the cheapest lead in the game.',
+        'When one of YOUR waves drops below half health you can finish it yourself. The enemy laner gets no gold and less experience for it — it is the cheapest lead in the game.',
     })
   }
 
@@ -432,7 +432,7 @@ const advice = computed((): Advice[] => {
                 <th
                   scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Creep last hits / burns"
+                  title="Wave last hits / burns"
                 >
                   CS
                 </th>
@@ -546,7 +546,7 @@ const advice = computed((): Advice[] => {
                 <th
                   scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Creep last hits / burns"
+                  title="Wave last hits / burns"
                 >
                   CS
                 </th>

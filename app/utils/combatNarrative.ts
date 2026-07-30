@@ -22,7 +22,7 @@ export interface NarrativeContext {
   playerId: string | null
   /** The local player's team (for ally salience). */
   myTeam?: string
-  /** Resolve any entity id to a readable label ("You", hero name, "a creep"…). */
+  /** Resolve any entity id to a readable label ("You", hero name, "a wave"…). */
   entityLabel: (id: unknown) => string
   /** Resolve an ability id to its display name. */
   abilityLabel: (id: unknown) => string
@@ -90,7 +90,7 @@ function actorSalience(playerId: unknown, ctx: NarrativeContext): Salience {
 }
 
 /** Gold-change reasons already narrated by a dedicated line — suppressed as noise. */
-const REDUNDANT_GOLD = /creep|last.?hit|burn|passive|neutral/i
+const REDUNDANT_GOLD = /wave|last.?hit|burn|passive|neutral/i
 
 /**
  * Map a single engine event to a combat-log line, or `null` to suppress it
@@ -123,11 +123,11 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       if (isStructureTarget(p.targetId)) {
         line.dedupKey = `dmg:${str(p.sourceId)}->${str(p.targetId)}`
       }
-      // Someone else's creep farming — story mode folds these into the per-tick
+      // Someone else's wave farming — story mode folds these into the per-tick
       // farm digest. My own hits stay explicit (they're my action's feedback).
       const target = str(p.targetId)
       if (
-        (target.startsWith('creep') || target.startsWith('neutral')) &&
+        (target.startsWith('wave') || target.startsWith('neutral')) &&
         (line.salience === 'ally' || line.salience === 'world')
       ) {
         line.farmKind = 'hit'
@@ -190,10 +190,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         type: 'victory',
       }
 
-    case 'creep_lasthit':
+    case 'wave_strip':
       return {
         tick,
-        text: `${label(p.playerId)} last-hit a ${str(p.creepType)} creep (+${num(p.goldAwarded)}g)`,
+        text: `${label(p.playerId)} last-hit a ${str(p.waveType)} wave (+${num(p.goldAwarded)}g)`,
         type: 'gold',
         salience: actorSalience(p.playerId, ctx),
         farmKind: 'lasthit',
@@ -203,7 +203,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
     case 'wave_burn':
       return {
         tick,
-        text: `${label(p.playerId)} burned a ${str(p.creepType)} creep`,
+        text: `${label(p.playerId)} burned a ${str(p.waveType)} wave`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
         farmKind: 'burn',

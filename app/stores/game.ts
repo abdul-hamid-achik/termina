@@ -10,8 +10,8 @@ import type {
   TeamId,
   IceState,
   AncientState,
-  CreepState,
-  NeutralCreepState,
+  WaveUnitState,
+  NeutralUnitState,
   TenantState,
   CacheState,
 } from '~~/shared/types/game'
@@ -72,8 +72,8 @@ export const useGameStore = defineStore('game', () => {
   const teams = ref<{ chaff: TeamState; audit: TeamState } | null>(null)
   const ice = ref<IceState[]>([])
   const ancients = ref<{ chaff: AncientState; audit: AncientState } | null>(null)
-  const creeps = ref<CreepState[]>([])
-  const neutrals = ref<NeutralCreepState[]>([])
+  const waves = ref<WaveUnitState[]>([])
+  const neutrals = ref<NeutralUnitState[]>([])
   // Objective layer — streamed in every tick payload (PlayerVisibleState) but
   // previously discarded by updateFromTick. Surfaced here for the War Room HUD.
   const tenant = ref<TenantState | null>(null)
@@ -262,8 +262,8 @@ export const useGameStore = defineStore('game', () => {
       teams: { chaff: TeamState; audit: TeamState }
       ice?: IceState[]
       ancients?: { chaff: AncientState; audit: AncientState }
-      creeps?: CreepState[]
-      neutrals?: NeutralCreepState[]
+      waves?: WaveUnitState[]
+      neutrals?: NeutralUnitState[]
       tenant?: TenantState
       caches?: CacheState[]
       backup?: { zone: string; tick: number; holderId: string | null } | null
@@ -302,7 +302,7 @@ export const useGameStore = defineStore('game', () => {
     if (state.teams) teams.value = state.teams
     if (state.ice) ice.value = state.ice
     if (state.ancients) ancients.value = state.ancients
-    if (state.creeps) creeps.value = state.creeps
+    if (state.waves) waves.value = state.waves
     if (state.neutrals) neutrals.value = state.neutrals
     if (state.tenant) tenant.value = state.tenant
     if (state.caches) caches.value = state.caches
@@ -445,7 +445,7 @@ export const useGameStore = defineStore('game', () => {
     teams.value = null
     ice.value = []
     ancients.value = null
-    creeps.value = []
+    waves.value = []
     neutrals.value = []
     tenant.value = null
     caches.value = []
@@ -489,7 +489,7 @@ export const useGameStore = defineStore('game', () => {
     teams,
     ice,
     ancients,
-    creeps,
+    waves,
     neutrals,
     tenant,
     caches,

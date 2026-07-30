@@ -3,13 +3,13 @@ import type { PlayerState, TeamId } from '~~/shared/types/game'
 /**
  * Pay `xp` to every living hero of `team` standing in `zone`.
  *
- * The lane-presence half of creep XP: being there when a creep dies pays,
+ * The lane-presence half of wave XP: being there when a wave dies pays,
  * whoever — or whatever — landed the killing blow. Peer of GoldDistributor,
- * shared so the two callers that mean "a creep died here" (a hero last-hit in
- * ActionResolver, a creep-on-creep kill in CreepAI) cannot drift apart.
+ * shared so the two callers that mean "a wave died here" (a hero last-hit in
+ * ActionResolver, a wave-on-wave kill in WaveAI) cannot drift apart.
  *
  * `excludePlayerId` skips the hero credited with the kill — the last-hit path
- * pays them the full CREEP_XP itself, so they must not also draw the share.
+ * pays them the full WAVE_XP itself, so they must not also draw the share.
  *
  * Returns the SAME object when nobody qualifies, which is the common case on a
  * per-tick path and keeps StateDelta's reference-equality diff quiet.

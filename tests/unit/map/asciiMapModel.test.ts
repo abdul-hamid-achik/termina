@@ -209,7 +209,7 @@ describe('asciiMapModel', () => {
     })
 
     it('is unchanged for zones without an ancient', () => {
-      const zone = makeZone({ playerHere: true, enemyCount: 2, creepCount: 3 })
+      const zone = makeZone({ playerHere: true, enemyCount: 2, waveCount: 3 })
       expect(cellText(zone)).toBe('▲ RAD ICE T1 ►YOU !2E c3')
     })
 
@@ -235,7 +235,7 @@ describe('asciiMapModel', () => {
       const text = cellText(zone)
       expect(text).toContain('✗') // razed ice
       expect(text).toContain('+2A') // two allies in zone
-      expect(text).toContain('☘ 3') // three neutral creeps
+      expect(text).toContain('☘ 3') // three neutral waves
     })
 
     it('marks own-team ward coverage with a vision harden', () => {
@@ -476,14 +476,14 @@ describe('asciiMapModel', () => {
       const zone = makeZone({
         ice: { team: 'audit', alive: true, tier: 3, hp: 500, maxHp: 1000 },
         allies: ['a1', 'a2'], // plural → "allies"
-        creepCount: 2, // plural → "creeps"
+        waveCount: 2, // plural → "waves"
         neutralCount: 1, // singular → "neutral"
       })
       const inds = compactIndicators(zone)
       const texts = inds.map((i) => i.text)
       expect(inds[0]).toEqual({ text: '▼ T3 500/1000', cls: 'text-audit' })
       expect(texts).toContain('+2 allies')
-      expect(texts).toContain('2 creeps')
+      expect(texts).toContain('2 waves')
       expect(texts).toContain('☘ 1 neutral')
     })
 
@@ -504,11 +504,11 @@ describe('asciiMapModel', () => {
     })
 
     it('pluralizes unit counts', () => {
-      const zone = makeZone({ allies: ['echo'], enemyCount: 2, creepCount: 1, neutralCount: 3 })
+      const zone = makeZone({ allies: ['echo'], enemyCount: 2, waveCount: 1, neutralCount: 3 })
       const texts = compactIndicators(zone).map((i) => i.text)
       expect(texts).toContain('+1 ally')
       expect(texts).toContain('!2 enemies')
-      expect(texts).toContain('1 creep')
+      expect(texts).toContain('1 wave')
       expect(texts).toContain('☘ 3 neutrals')
     })
 

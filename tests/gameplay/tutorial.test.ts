@@ -148,15 +148,15 @@ describe('tutorial mode', () => {
         tutorialStep: 1,
         // Refresh the deadline so the step can only advance on the action.
         tutorialStepSince: s.tick,
-        creeps: [],
+        waves: [],
       }))
 
-      game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
+      game.submit({ type: 'attack', target: { kind: 'wave', index: 0 } })
       await game.tick()
 
       expect((await game.state()).tutorialStep).toBe(1)
       expect(lockedThisTick(game.lastRejected)).toBe(false)
-      expect(game.lastRejected.some((r) => r.playerId === HUMAN && /creep/i.test(r.reason))).toBe(
+      expect(game.lastRejected.some((r) => r.playerId === HUMAN && /wave/i.test(r.reason))).toBe(
         true,
       )
     })

@@ -29,13 +29,13 @@ describe('lane routes integrity', () => {
         expect(bad, `unknown zones in ${name}: ${bad.join(', ')}`).toEqual([])
       })
 
-      // Only the real creep lanes are walked one-adjacent-zone-per-step; the
+      // Only the real wave lanes are walked one-adjacent-zone-per-step; the
       // "jungle" entry is a list of neutral-camp references, not a walked path.
-      const CREEP_LANES = new Set(['top', 'mid', 'bot'])
-      it('forms walkable creep paths — each lane step is to an adjacent zone', () => {
+      const WAVE_LANES = new Set(['top', 'mid', 'bot'])
+      it('forms walkable wave paths — each lane step is to an adjacent zone', () => {
         const breaks: string[] = []
         for (const { lane, team, path } of entries(routes)) {
-          if (!CREEP_LANES.has(lane)) continue
+          if (!WAVE_LANES.has(lane)) continue
           for (let i = 1; i < path.length; i++) {
             const from = path[i - 1]!
             const to = path[i]!

@@ -58,7 +58,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain', name: 'Player2' }),
     },
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     caches: [],

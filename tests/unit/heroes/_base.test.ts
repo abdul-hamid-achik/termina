@@ -32,7 +32,7 @@ import {
   type HeroPassiveResolver,
 } from '~~/server/game/heroes/_base'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import type { CreepState, NeutralCreepState } from '~~/shared/types/game'
+import type { WaveUnitState, NeutralUnitState } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -82,7 +82,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     caches: [],
@@ -810,16 +810,16 @@ describe('_base hero utilities', () => {
   })
 
   describe('damageEnemyNpcsInZone', () => {
-    const creep = (over: Partial<CreepState> = {}): CreepState => ({
+    const wave = (over: Partial<WaveUnitState> = {}): WaveUnitState => ({
       id: 'c1',
       team: 'audit',
       zone: 'mid-t1-chaff',
       hp: 400,
       maxHp: 400,
-      type: 'melee',
+      type: 'line',
       ...over,
     })
-    const neutral = (over: Partial<NeutralCreepState> = {}): NeutralCreepState => ({
+    const neutral = (over: Partial<NeutralUnitState> = {}): NeutralUnitState => ({
       id: 'n1',
       zone: 'silt-chaff-top',
       hp: 250,
@@ -829,22 +829,19 @@ describe('_base hero utilities', () => {
       ...over,
     })
 
-    it('damages enemy creeps standing in the caster’s zone', () => {
+    it('damages enemy waves standing in the caster’s zone', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const state = makeGameState({ creeps: [creep()] })
+      const state = makeGameState({ waves: [wave()] })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
 
-      expect(result.creeps[0]!.hp).toBe(250)
+      expect(result.waves[0]!.hp).toBe(250)
     })
 
-    it('spares allied creeps and creeps in every other zone', () => {
+    it('spares allied waves and waves in every other zone', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
       const state = makeGameState({
-        creeps: [
-          creep({ id: 'ally', team: 'chaff' }),
-          creep({ id: 'elsewhere', zone: 'top-river' }),
-        ],
+        waves: [wave({ id: 'ally', team: 'chaff' }), wave({ id: 'elsewhere', zone: 'top-river' })],
       })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'magical')
@@ -854,29 +851,29 @@ describe('_base hero utilities', () => {
       expect(result).toBe(state)
     })
 
-    it('kills a creep to exactly 0 rather than negative HP', () => {
+    it('kills a wave to exactly 0 rather than negative HP', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const state = makeGameState({ creeps: [creep({ hp: 30 })] })
+      const state = makeGameState({ waves: [wave({ hp: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
 
-      expect(result.creeps[0]!.hp).toBe(0)
+      expect(result.waves[0]!.hp).toBe(0)
     })
 
-    it('leaves a dead creep in the buffer so the caller can credit the kill', () => {
+    it('leaves a dead wave in the buffer so the caller can credit the kill', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const state = makeGameState({ creeps: [creep({ hp: 30 })] })
+      const state = makeGameState({ waves: [wave({ hp: 30 })] })
 
       const result = damageEnemyNpcsInZone(state, caster, 900, 'physical')
 
-      expect(result.creeps).toHaveLength(1)
-      expect(result.creeps[0]!.id).toBe('c1')
+      expect(result.waves).toHaveLength(1)
+      expect(result.waves[0]!.id).toBe('c1')
     })
 
-    it('does not re-damage a creep already at 0 HP', () => {
+    it('does not re-damage a wave already at 0 HP', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const dead = creep({ hp: 0 })
-      const state = makeGameState({ creeps: [dead] })
+      const dead = wave({ hp: 0 })
+      const state = makeGameState({ waves: [dead] })
 
       const result = damageEnemyNpcsInZone(state, caster, 150, 'physical')
 
@@ -900,31 +897,31 @@ describe('_base hero utilities', () => {
       const zone = 'mid-t1-chaff'
       const amped = makePlayer({ zone, items: ['mystical_staff', null, null, null, null, null] })
       const plain = makePlayer({ zone })
-      const state = makeGameState({ creeps: [creep()] })
+      const state = makeGameState({ waves: [wave()] })
 
       // 100 magical -> 115 with the +15% amp; physical is unamplified.
-      expect(damageEnemyNpcsInZone(state, amped, 100, 'magical').creeps[0]!.hp).toBe(285)
-      expect(damageEnemyNpcsInZone(state, plain, 100, 'magical').creeps[0]!.hp).toBe(300)
-      expect(damageEnemyNpcsInZone(state, amped, 100, 'physical').creeps[0]!.hp).toBe(300)
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'magical').waves[0]!.hp).toBe(285)
+      expect(damageEnemyNpcsInZone(state, plain, 100, 'magical').waves[0]!.hp).toBe(300)
+      expect(damageEnemyNpcsInZone(state, amped, 100, 'physical').waves[0]!.hp).toBe(300)
     })
 
     it('no-ops on a zero-damage cast (cache R with nothing banked)', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff' })
-      const state = makeGameState({ creeps: [creep()] })
+      const state = makeGameState({ waves: [wave()] })
 
       expect(damageEnemyNpcsInZone(state, caster, 0, 'pure')).toBe(state)
     })
 
     it('reaches the widened zone list an AOE+ cast passes in', () => {
       const caster = makePlayer({ zone: 'mid-t1-chaff', team: 'chaff' })
-      const state = makeGameState({ creeps: [creep({ id: 'next-door', zone: 'mid-river' })] })
+      const state = makeGameState({ waves: [wave({ id: 'next-door', zone: 'mid-river' })] })
 
       expect(damageEnemyNpcsInZone(state, caster, 150, 'magical')).toBe(state)
       const widened = damageEnemyNpcsInZone(state, caster, 150, 'magical', [
         'mid-t1-chaff',
         'mid-river',
       ])
-      expect(widened.creeps[0]!.hp).toBe(250)
+      expect(widened.waves[0]!.hp).toBe(250)
     })
   })
 

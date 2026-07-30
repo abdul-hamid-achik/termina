@@ -376,7 +376,7 @@ const miniRows = computed(() =>
         <span class="text-chaff">+NA = N Allies</span>
         <span class="text-audit">!NE = N Enemies</span>
         <span class="text-self">►YOU = You</span>
-        <span class="text-text-dim">cN = N Creeps</span>
+        <span class="text-text-dim">cN = N Waves</span>
         <span class="text-text-dim">☘N = N Neutrals</span>
         <span class="text-text-dim">▲▲▲/✗ = Ice HP</span>
         <span class="text-text-dim">◈ = Mainframe</span>

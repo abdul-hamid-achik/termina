@@ -11,7 +11,7 @@ import {
   RESPAWN_FREE_LEVELS,
   CAMTAP_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
-  CREEP_GOLD,
+  WAVE_GOLD,
   KILL_BOUNTY_BASE,
   ICE_HP_T1,
   ICE_HP_T2,
@@ -27,11 +27,11 @@ import {
   BURN_HP_THRESHOLD,
   BURN_GOLD_RATIO,
   BURN_XP_RATIO,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
-  CREEP_XP,
-  CREEP_XP_SHARED,
-  MELEE_CREEP_HP,
+  WAVE_GOLD_MIN,
+  WAVE_GOLD_MAX,
+  WAVE_XP,
+  WAVE_XP_SHARED,
+  LINE_UNIT_HP,
 } from '~~/shared/constants/balance'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
 import { getAbilityLevel } from '~~/server/game/heroes/_base'
@@ -90,7 +90,7 @@ describe('learn page', () => {
     const text = mountLearn().text()
     expect(text).toContain(`${PASSIVE_GOLD_PER_TICK}g/cycle`)
     expect(text).not.toContain('2g/tick')
-    expect(text).toContain(`${CREEP_GOLD}g`)
+    expect(text).toContain(`${WAVE_GOLD}g`)
     expect(text).toContain(`${KILL_BOUNTY_BASE}g base`)
   })
 
@@ -113,7 +113,7 @@ describe('learn page', () => {
     for (const cmd of [
       'move <zone>',
       'attack [target]',
-      'burn [creep:N]',
+      'burn [wave:N]',
       'cast <q|w|e|r> [target]',
       'use <item>',
       'buy <item>',
@@ -308,23 +308,23 @@ describe('learn page', () => {
       const text = mountLearn().text()
       expect(text).toContain('Last-Hitting & Burning')
       expect(text).toContain('Only the killing blow pays gold')
-      expect(text).toContain(`${MELEE_CREEP_HP} HP`)
+      expect(text).toContain(`${LINE_UNIT_HP} HP`)
       expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% HP`)
       // Burn reward is derived, not asserted as prose.
-      const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
-      expect(text).toContain(`${burnGold}g and ${Math.floor(CREEP_XP * BURN_XP_RATIO)} XP`)
+      const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+      expect(text).toContain(`${burnGold}g and ${Math.floor(WAVE_XP * BURN_XP_RATIO)} XP`)
     })
 
-    it('warns that creep indices are positional and shift each cycle', () => {
+    it('warns that wave indices are positional and shift each cycle', () => {
       const text = mountLearn().text()
-      expect(text).toContain('creep:N counts the living creeps in your zone')
+      expect(text).toContain('wave:N counts the living waves in your zone')
       expect(text).toMatch(/shifts every cycle/)
       expect(text).toContain('zone panel')
     })
 
     it('states lane presence still pays XP, so the advice is not "never miss"', () => {
       const text = mountLearn().text()
-      expect(text).toContain(`share ${CREEP_XP_SHARED} XP`)
+      expect(text).toContain(`share ${WAVE_XP_SHARED} XP`)
     })
   })
 

@@ -23,7 +23,7 @@
 
   /* Semantic colors. The three pairs below used to sit within ~20 units of RGB
      distance of each other, which put the log's most and least important lines
-     in visually identical paint: a hero death read as the same red as creep
+     in visually identical paint: a hero death read as the same red as wave
      chip, a heal as the same green as the team. Each pair is now separated on
      BOTH hue and lightness, and palette.test.ts pins the minimum distance. */
   --color-chaff: 64 240 144;

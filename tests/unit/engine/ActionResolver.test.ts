@@ -7,7 +7,7 @@ import {
 } from '~~/server/game/engine/ActionResolver'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
-import { NEUTRAL_CREEPS } from '~~/shared/constants/balance'
+import { NEUTRAL_UNITS } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeTenant } from '~~/server/game/map/spawner'
@@ -64,7 +64,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     },
     players: {},
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     ancients: initializeAncients(),
@@ -359,8 +359,8 @@ describe('ActionResolver', () => {
       const result = Effect.runSync(resolveActions(state, actions))
 
       const killer = result.state.players['p1']!
-      expect(killer.gold).toBe(600 + NEUTRAL_CREEPS.kobold.gold) // 600 + 20
-      expect(killer.xp).toBe(NEUTRAL_CREEPS.kobold.xp) // 25
+      expect(killer.gold).toBe(600 + NEUTRAL_UNITS.kobold.gold) // 600 + 20
+      expect(killer.xp).toBe(NEUTRAL_UNITS.kobold.xp) // 25
       // dead neutral is pruned from the array (or left flagged not-alive)
       const n1 = result.state.neutrals?.find((n) => n.id === 'n1')
       expect(n1?.alive ?? false).toBe(false)
@@ -1494,49 +1494,49 @@ describe('ActionResolver', () => {
       expect(result.events.some((e) => e._tag === 'damage' && e.targetId === 'p2')).toBe(false)
     })
 
-    it('says there are no creeps here when the zone is empty', () => {
+    it('says there are no waves here when the zone is empty', () => {
       const state = makeGameState({ players: { p1: attacker() } })
-      const result = attack(state, { kind: 'creep', index: 0 })
+      const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
-      expect(result.rejected[0]!.reason).toMatch(/no creeps/i)
+      expect(result.rejected[0]!.reason).toMatch(/no waves/i)
     })
 
-    it('quotes the usable creep index range when the index is out of bounds', () => {
+    it('quotes the usable wave index range when the index is out of bounds', () => {
       const state = makeGameState({
         players: { p1: attacker() },
-        creeps: [
-          { id: 'c0', team: 'audit', zone: 'mid-river', hp: 400, type: 'melee' },
-          { id: 'c1', team: 'audit', zone: 'mid-river', hp: 400, type: 'melee' },
-          // A creep in another zone must not widen the quoted range.
-          { id: 'c2', team: 'audit', zone: 'top-river', hp: 400, type: 'melee' },
+        waves: [
+          { id: 'c0', team: 'audit', zone: 'mid-river', hp: 400, type: 'line' },
+          { id: 'c1', team: 'audit', zone: 'mid-river', hp: 400, type: 'line' },
+          // A wave in another zone must not widen the quoted range.
+          { id: 'c2', team: 'audit', zone: 'top-river', hp: 400, type: 'line' },
         ],
       })
-      const result = attack(state, { kind: 'creep', index: 4 })
+      const result = attack(state, { kind: 'wave', index: 4 })
       expect(result.rejected).toHaveLength(1)
-      expect(result.rejected[0]!.reason).toContain('creep:0-1')
+      expect(result.rejected[0]!.reason).toContain('wave:0-1')
     })
 
-    it('says the creep is already dead', () => {
+    it('says the wave is already dead', () => {
       const state = makeGameState({
         players: { p1: attacker() },
-        creeps: [{ id: 'c0', team: 'audit', zone: 'mid-river', hp: 0, type: 'melee' }],
+        waves: [{ id: 'c0', team: 'audit', zone: 'mid-river', hp: 0, type: 'line' }],
       })
-      const result = attack(state, { kind: 'creep', index: 0 })
+      const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
       expect(result.rejected[0]!.reason).toMatch(/already dead/i)
     })
 
-    it('refuses an own-team creep and pays no last-hit gold', () => {
-      // The bug this pins: with no team guard the swing killed the ally creep
+    it('refuses an own-team wave and pays no last-hit gold', () => {
+      // The bug this pins: with no team guard the swing killed the ally wave
       // and banked the FULL last-hit bounty — the opposite of last-hitting.
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river', gold: 600 }) },
-        creeps: [{ id: 'ally0', team: 'chaff', zone: 'mid-river', hp: 5, type: 'melee' }],
+        waves: [{ id: 'ally0', team: 'chaff', zone: 'mid-river', hp: 5, type: 'line' }],
       })
-      const result = attack(state, { kind: 'creep', index: 0 })
+      const result = attack(state, { kind: 'wave', index: 0 })
       expect(result.rejected).toHaveLength(1)
-      expect(result.rejected[0]!.reason).toMatch(/own creep/i)
-      expect(result.state.creeps[0]!.hp).toBe(5)
+      expect(result.rejected[0]!.reason).toMatch(/own wave/i)
+      expect(result.state.waves[0]!.hp).toBe(5)
       expect(result.state.players['p1']!.gold).toBe(600)
       expect(result.state.players['p1']!.xp).toBe(0)
     })

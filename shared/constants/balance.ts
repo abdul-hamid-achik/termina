@@ -1,6 +1,6 @@
 // ── Tick & Timing ────────────────────────────────────────────────
 
-import type { CreepState, CacheState } from '../types/game'
+import type { WaveUnitState, CacheState } from '../types/game'
 
 export const TICK_DURATION_MS = 4000
 export const ACTION_WINDOW_MS = 3500
@@ -8,12 +8,12 @@ export const ACTION_WINDOW_MS = 3500
 // ── Gold ─────────────────────────────────────────────────────────
 
 export const PASSIVE_GOLD_PER_TICK = 4
-export const CREEP_GOLD_MIN = 30
-export const CREEP_GOLD_MAX = 50
-/** Fixed normal-creep last-hit gold (was random 30–50). Deterministic so farm
+export const WAVE_GOLD_MIN = 30
+export const WAVE_GOLD_MAX = 50
+/** Fixed normal-wave last-hit gold (was random 30–50). Deterministic so farm
  * reward doesn't swing on dice; equals the old average so economy is unchanged. */
-export const CREEP_GOLD = 40
-export const SIEGE_CREEP_GOLD = 75
+export const WAVE_GOLD = 40
+export const BREACH_UNIT_GOLD = 75
 export const KILL_BOUNTY_BASE = 200
 export const KILL_BOUNTY_PER_STREAK = 50
 export const ASSIST_GOLD = 100
@@ -103,22 +103,22 @@ export const XP_PER_LEVEL: readonly number[] = [
   9000, // 25
 ] as const
 
-export const CREEP_XP = 40
+export const WAVE_XP = 40
 export const HERO_KILL_XP_BASE = 100
 export const HERO_KILL_XP_PER_LEVEL = 20
 
 /**
- * Fraction of CREEP_XP paid to every living hero of the killing team standing
- * in the creep's zone, on top of the full CREEP_XP the last-hitter earns.
+ * Fraction of WAVE_XP paid to every living hero of the killing team standing
+ * in the wave's zone, on top of the full WAVE_XP the last-hitter earns.
  *
  * XP used to come exclusively from hero last-hits, so a laner who mistimed
  * their attacks earned literally zero and sat five levels behind — and since
- * creeps overwhelmingly die to other creeps (CreepAI focuses enemy creeps
- * first), most creep deaths paid nobody at all. Presence pays; timing still
+ * waves overwhelmingly die to other waves (WaveAI focuses enemy waves
+ * first), most wave deaths paid nobody at all. Presence pays; timing still
  * pays more.
  */
-export const CREEP_XP_SHARED_RATIO = 0.5
-export const CREEP_XP_SHARED = Math.floor(CREEP_XP * CREEP_XP_SHARED_RATIO)
+export const WAVE_XP_SHARED_RATIO = 0.5
+export const WAVE_XP_SHARED = Math.floor(WAVE_XP * WAVE_XP_SHARED_RATIO)
 
 /**
  * Comeback XP: kill XP is multiplied by a factor based on the average team
@@ -147,7 +147,7 @@ export const SPELL_LIFESTEAL_PERCENT = 0.3
 
 /**
  * Respawn time in ticks = base + max(0, level - freeLevels) * perLevel
- * Level 1 death = 3 ticks (12s) — roughly a creep wave, so a gank always
+ * Level 1 death = 3 ticks (12s) — roughly a wave wave, so a gank always
  * costs something. Scales smoothly: lvl 5 ≈ 28s, lvl 10 ≈ 48s, lvl 25 ≈ 108s.
  */
 export const RESPAWN_BASE_TICKS = 3
@@ -199,88 +199,88 @@ export const CACHE_BUFF_TICKS: Record<CacheState['type'], number> = {
 export const SURRENDER_MIN_TICK = 225 // 15 minutes at 4s/tick
 export const SURRENDER_VOTE_THRESHOLD = 0.6 // 60% majority required
 
-// ── Creep Waves ──────────────────────────────────────────────────
+// ── Wave Waves ──────────────────────────────────────────────────
 
-export const CREEP_WAVE_INTERVAL_TICKS = 8
-export const MELEE_CREEPS_PER_WAVE = 3
-export const RANGED_CREEPS_PER_WAVE = 1
-export const SIEGE_CREEP_WAVE_INTERVAL = 5 // every 5th wave includes a siege creep
+export const WAVE_INTERVAL_TICKS = 8
+export const LINE_UNITS_PER_WAVE = 3
+export const SWEEP_UNITS_PER_WAVE = 1
+export const BREACH_WAVE_INTERVAL = 5 // every 5th wave includes a breach wave
 
-export const MELEE_CREEP_HP = 400
-export const RANGED_CREEP_HP = 250
-export const SIEGE_CREEP_HP = 700
-export const MELEE_CREEP_ATTACK = 20
-export const RANGED_CREEP_ATTACK = 30
-export const SIEGE_CREEP_ATTACK = 50
+export const LINE_UNIT_HP = 400
+export const SWEEP_UNIT_HP = 250
+export const BREACH_UNIT_HP = 700
+export const LINE_UNIT_ATTACK = 20
+export const SWEEP_UNIT_ATTACK = 30
+export const BREACH_UNIT_ATTACK = 50
 
 /**
- * Creep escalation — the match-length lever.
+ * Wave escalation — the match-length lever.
  *
- * Ice and Ancient HP are fixed while creep output never scaled, so a wave
+ * Ice and Ancient HP are fixed while wave output never scaled, so a wave
  * that could not break a T1 at minute 5 still could not break it at minute 45:
  * `bun run sim 16` measured 31–73m, median 60m. Every
- * CREEP_ESCALATION_INTERVAL_TICKS, creep HP and creep damage each gain one
- * CREEP_ESCALATION_STEP of their base value, so lane pressure compounds and
+ * WAVE_ESCALATION_INTERVAL_TICKS, wave HP and wave damage each gain one
+ * WAVE_ESCALATION_STEP of their base value, so lane pressure compounds and
  * pushes eventually close the game. These values measured 14–38m (median 28m)
  * over 16 matches and 9–35m (median 24m) over 24.
  *
- * HP and damage scale by the SAME factor on purpose: creep-vs-creep
+ * HP and damage scale by the SAME factor on purpose: wave-vs-wave
  * time-to-kill is then unchanged (waves still meet and trade at the old rate,
- * so the laning texture survives) and only creep-vs-structure moves — which is
+ * so the laning texture survives) and only wave-vs-structure moves — which is
  * the thing that actually ends a match. It touches neither the XP/gold economy
  * nor hero stats.
  *
- * The cap exists so a stalled game does not degenerate into creeps that
+ * The cap exists so a stalled game does not degenerate into waves that
  * one-shot heroes. Tuning order: shorten the interval before growing the step —
  * the step compounds against the cap, the interval front-loads the mid game.
  */
-export const CREEP_ESCALATION_INTERVAL_TICKS = 50
-export const CREEP_ESCALATION_STEP = 0.35
-export const CREEP_ESCALATION_MAX_MULTIPLIER = 4
+export const WAVE_ESCALATION_INTERVAL_TICKS = 50
+export const WAVE_ESCALATION_STEP = 0.35
+export const WAVE_ESCALATION_MAX_MULTIPLIER = 4
 
-const CREEP_BASE_HP: Record<CreepState['type'], number> = {
-  melee: MELEE_CREEP_HP,
-  ranged: RANGED_CREEP_HP,
-  siege: SIEGE_CREEP_HP,
+const WAVE_BASE_HP: Record<WaveUnitState['type'], number> = {
+  line: LINE_UNIT_HP,
+  sweep: SWEEP_UNIT_HP,
+  breach: BREACH_UNIT_HP,
 }
 
-const CREEP_BASE_ATTACK: Record<CreepState['type'], number> = {
-  melee: MELEE_CREEP_ATTACK,
-  ranged: RANGED_CREEP_ATTACK,
-  siege: SIEGE_CREEP_ATTACK,
+const WAVE_BASE_ATTACK: Record<WaveUnitState['type'], number> = {
+  line: LINE_UNIT_ATTACK,
+  sweep: SWEEP_UNIT_ATTACK,
+  breach: BREACH_UNIT_ATTACK,
 }
 
-/** Creep stat multiplier at `tick`. 1.0 for the whole first interval. */
-export function creepEscalationMultiplier(tick: number): number {
-  const steps = Math.max(0, Math.floor(tick / CREEP_ESCALATION_INTERVAL_TICKS))
-  return Math.min(CREEP_ESCALATION_MAX_MULTIPLIER, 1 + steps * CREEP_ESCALATION_STEP)
+/** Wave stat multiplier at `tick`. 1.0 for the whole first interval. */
+export function waveEscalationMultiplier(tick: number): number {
+  const steps = Math.max(0, Math.floor(tick / WAVE_ESCALATION_INTERVAL_TICKS))
+  return Math.min(WAVE_ESCALATION_MAX_MULTIPLIER, 1 + steps * WAVE_ESCALATION_STEP)
 }
 
 /**
- * HP a creep of `type` spawns with at `tick` — and therefore its max HP, since
- * lane creeps never heal. Any surface that renders a creep HP bar or a
- * fraction-of-max threshold has to read this rather than MELEE_CREEP_HP &co,
+ * HP a wave of `type` spawns with at `tick` — and therefore its max HP, since
+ * lane waves never heal. Any surface that renders a wave HP bar or a
+ * fraction-of-max threshold has to read this rather than LINE_UNIT_HP &co,
  * which are only the tick-0 values once escalation starts.
  */
-export function creepMaxHp(type: CreepState['type'], tick: number): number {
-  return Math.round(CREEP_BASE_HP[type] * creepEscalationMultiplier(tick))
+export function waveUnitMaxHp(type: WaveUnitState['type'], tick: number): number {
+  return Math.round(WAVE_BASE_HP[type] * waveEscalationMultiplier(tick))
 }
 
-/** Damage a creep of `type` deals at `tick`. */
-export function creepAttack(type: CreepState['type'], tick: number): number {
-  return Math.round(CREEP_BASE_ATTACK[type] * creepEscalationMultiplier(tick))
+/** Damage a wave of `type` deals at `tick`. */
+export function waveUnitAttack(type: WaveUnitState['type'], tick: number): number {
+  return Math.round(WAVE_BASE_ATTACK[type] * waveEscalationMultiplier(tick))
 }
 
-// ── Neutral Creeps ─────────────────────────────────────────────────
+// ── Neutral Waves ─────────────────────────────────────────────────
 
-export const NEUTRAL_CREEPS_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
+export const NEUTRAL_UNITS_INTERVAL_TICKS = 60 // Spawn neutrals every 60 ticks
 
 /** Max live neutrals per jungle camp zone. Prevents unbounded accumulation
- *  if a camp is never cleared (unlike lane creeps which have enforceCreepZoneCap). */
+ *  if a camp is never cleared (unlike lane waves which have enforceWaveZoneCap). */
 export const MAX_NEUTRALS_PER_CAMP = 4
 
-// Neutral creep types with stats
-export const NEUTRAL_CREEPS = {
+// Neutral wave types with stats
+export const NEUTRAL_UNITS = {
   // Small camp
   kobold: { hp: 250, attack: 10, gold: 20, xp: 25 },
   // Medium camp
@@ -292,7 +292,7 @@ export const NEUTRAL_CREEPS = {
   ancient_rock_golem: { hp: 2000, attack: 60, gold: 200, xp: 250 },
 } as const
 
-export type NeutralCreepType = keyof typeof NEUTRAL_CREEPS
+export type NeutralUnitType = keyof typeof NEUTRAL_UNITS
 
 // ── ICE ───────────────────────────────────────────────────────
 
@@ -312,18 +312,18 @@ export const ICE_DEFENSE = 20
 export const ANCIENT_HP = 6000
 
 /**
- * Creeps stuck in a base zone with nothing to attack (Ancient still
+ * Waves stuck in a base zone with nothing to attack (Ancient still
  * invulnerable) are despawned ("garbage collected") after this many idle
- * ticks — prevents unbounded creep pileups in base.
+ * ticks — prevents unbounded wave pileups in base.
  */
-export const CREEP_BASE_IDLE_DESPAWN_TICKS = 3
+export const WAVE_BASE_IDLE_DESPAWN_TICKS = 3
 
 /**
- * Defensive cap on lane creeps per team per zone. When exceeded the
- * oldest creeps are despawned first. Guards against route bugs causing
+ * Defensive cap on lane waves per team per zone. When exceeded the
+ * oldest waves are despawned first. Guards against route bugs causing
  * unbounded stacking.
  */
-export const MAX_CREEPS_PER_ZONE_PER_TEAM = 12
+export const MAX_WAVE_UNITS_PER_ZONE_PER_TEAM = 12
 
 // ── Fountain ─────────────────────────────────────────────────────
 

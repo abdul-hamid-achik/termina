@@ -26,11 +26,11 @@ const tutorialDone = computed(() => authStore.user?.tutorialCompleted === true)
 const heroTicker = HERO_IDS.map((id) => HEROES[id]?.name ?? id)
 const commandTicker = [
   'move mid-river',
-  'attack creep:0',
+  'attack wave:0',
   'cast q hero:daemon',
   'buy blades_of_attack',
   'ward mid-river',
-  'burn creep:1',
+  'burn wave:1',
   'attack tenant',
   'cast r',
   'harden',
@@ -159,7 +159,7 @@ const pillars = [
           <span class="text-chaff">&gt;</span>
           <span class="text-ability">attack ice:mid-t1-audit</span>
         </p>
-        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 44 · ice takes 55, your creeps pile in</p>
+        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 44 · ice takes 55, your waves pile in</p>
       </div>
     </section>
 

@@ -10,7 +10,7 @@ import {
 } from '~~/server/game/engine/SurrenderSystem'
 import type { GameState, PlayerState } from '~~/shared/types/game'
 import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
-import { resetCreepIdCounter, initializeTenant } from '~~/server/game/map/spawner'
+import { resetWaveIdCounter, initializeTenant } from '~~/server/game/map/spawner'
 import { SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -61,7 +61,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
       d1: makePlayer({ id: 'd1', name: 'D1', team: 'audit', zone: 'audit-fountain' }),
     },
     zones: initializeZoneStates(),
-    creeps: [],
+    waves: [],
     neutrals: [],
     ice: initializeIce(),
     caches: [],
@@ -77,7 +77,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 
 describe('SurrenderSystem', () => {
   beforeEach(() => {
-    resetCreepIdCounter()
+    resetWaveIdCounter()
   })
 
   describe('voteSurrender', () => {

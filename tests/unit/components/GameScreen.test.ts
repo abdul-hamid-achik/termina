@@ -123,7 +123,7 @@ const stubs = {
       'playerTeam',
       'enemies',
       'allies',
-      'creeps',
+      'waves',
       'neutrals',
       'ice',
       'tenant',
@@ -366,7 +366,7 @@ describe('GameScreen', () => {
     }
 
     it('names the ice that killed you (W1-1: "why did I die?")', () => {
-      // ICE, creeps and neutrals are not eligible killers — handleDeaths only
+      // ICE, waves and neutrals are not eligible killers — handleDeaths only
       // accepts a killerId that resolves to a player — so an NPC kill emits a
       // `death` with no `kill` event at all. Before NPC damage events existed the
       // overlay had nothing to show after the single most instructive death in
@@ -391,7 +391,7 @@ describe('GameScreen', () => {
     })
 
     it('still prefers real kill credit over the last thing that hit you', () => {
-      // A hero kill must not be relabelled as "a creep" just because a creep got
+      // A hero kill must not be relabelled as "a wave" just because a wave got
       // the last chip in before the killing blow.
       const store = seedDeadPlayer()
       store.addEvents([
@@ -405,7 +405,7 @@ describe('GameScreen', () => {
       ] as never)
 
       const overlay = mountGameScreen().find('[data-testid="death-overlay"]')
-      expect(overlay.text()).not.toContain('a creep')
+      expect(overlay.text()).not.toContain('a wave')
     })
 
     it('renders the death overlay with the PROCESS TERMINATED headline', () => {
@@ -720,7 +720,7 @@ describe('GameScreen', () => {
 
   describe('jungle + Tenant targeting (W1-2)', () => {
     // `attack neutral:<i>` resolves against the WHOLE neutrals array server-side
-    // (it reaches the client unfiltered), unlike the zone-local creep index. If
+    // (it reaches the client unfiltered), unlike the zone-local wave index. If
     // the zone filter ran before the index was captured, the panel would send
     // the player at a camp in a different jungle.
     it('passes in-zone neutrals to the Zone panel tagged with their global index', () => {
@@ -1217,8 +1217,8 @@ describe('GameScreen', () => {
       await emit(wrapper, [
         {
           tick: 240,
-          type: 'creep_lasthit',
-          payload: { playerId: 'p1', creepId: 'c1', creepType: 'melee', goldAwarded: 41 },
+          type: 'wave_strip',
+          payload: { playerId: 'p1', waveId: 'c1', waveType: 'line', goldAwarded: 41 },
         },
       ])
 
@@ -1237,7 +1237,7 @@ describe('GameScreen', () => {
         {
           tick: 240,
           type: 'wave_burn',
-          payload: { playerId: 'p1', creepId: 'c2', creepType: 'ranged', goldAwarded: 12 },
+          payload: { playerId: 'p1', waveId: 'c2', waveType: 'sweep', goldAwarded: 12 },
         },
         {
           tick: 240,
@@ -1259,8 +1259,8 @@ describe('GameScreen', () => {
       await emit(wrapper, [
         {
           tick: 240,
-          type: 'creep_lasthit',
-          payload: { playerId: 'p2', creepId: 'c1', creepType: 'melee', goldAwarded: 41 },
+          type: 'wave_strip',
+          payload: { playerId: 'p2', waveId: 'c1', waveType: 'line', goldAwarded: 41 },
         },
       ])
 

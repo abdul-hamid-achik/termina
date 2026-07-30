@@ -4,8 +4,8 @@ import type {
   PlayerState,
   ZoneRuntimeState,
   TeamId,
-  CreepState,
-  NeutralCreepState,
+  WaveUnitState,
+  NeutralUnitState,
 } from '~~/shared/types/game'
 import type { ItemDef } from '~~/shared/types/items'
 import type { AbilityDef } from '~~/shared/types/hero'
@@ -20,7 +20,7 @@ import {
   BUYBACK_COST_PER_LEVEL,
   SURRENDER_MIN_TICK,
   BURN_HP_THRESHOLD,
-  creepMaxHp,
+  waveUnitMaxHp,
 } from '~~/shared/constants/balance'
 
 export interface Suggestion {
@@ -35,11 +35,11 @@ export interface GameContext {
   items?: Record<string, ItemDef>
   /** The whole global neutrals array, in server order — `attack neutral:<i>`
    *  is resolved against that index, so it must not be pre-filtered here. */
-  neutrals?: NeutralCreepState[]
-  /** The whole global (vision-filtered) creeps array, in server order.
-   *  `creep:<i>` is ZONE-local, but the index is derived by counting within
+  neutrals?: NeutralUnitState[]
+  /** The whole global (vision-filtered) waves array, in server order.
+   *  `wave:<i>` is ZONE-local, but the index is derived by counting within
    *  server order — so this must arrive unsorted and unfiltered. */
-  creeps?: CreepState[]
+  waves?: WaveUnitState[]
   /** Current game tick — enables cooldown/timing validation when provided. */
   tick?: number
   /** Game mode — the tutorial is exempt from the surrender tick gate. */
@@ -138,8 +138,8 @@ export function pickAbilityTargetString(
  * Pick a default target for a bare `attack` (no explicit target): the lowest-HP
  * alive enemy hero in the player's zone — a MOBA right-click on the obvious
  * threat. Returns `{ error }` with a hint when there's no enemy hero. We do NOT
- * auto-attack creeps: last-hitting must stay explicit (attack creep:N) so the
- * auto-target never steals a creep and ruins the player's last-hit timing.
+ * auto-attack waves: last-hitting must stay explicit (attack wave:N) so the
+ * auto-target never steals a wave and ruins the player's last-hit timing.
  */
 export function pickAttackTargetString(
   player: PlayerState,
@@ -149,7 +149,7 @@ export function pickAttackTargetString(
     (p) => p.zone === player.zone && p.alive && p.team !== player.team,
   )
   if (enemies.length === 0) {
-    return { error: 'No enemy hero in your zone — target a creep (attack creep:0) or ice' }
+    return { error: 'No enemy hero in your zone — target a wave (attack wave:0) or ice' }
   }
   const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
   return { target: `hero:${target.id}` }
@@ -185,53 +185,53 @@ export function pickItemTargetString(
 }
 
 /**
- * The HP a creep spawned with — mirrors the server's burn eligibility check.
+ * The HP a wave spawned with — mirrors the server's burn eligibility check.
  *
- * Reads the stamped value rather than a constant: creeps escalate with match
+ * Reads the stamped value rather than a constant: waves escalate with match
  * time, so a fixed level-1 max made the burn affordance silently shrink every
  * minute until the client stopped offering a burn the server would have allowed.
  */
-function creepFullHp(c: CreepState): number {
-  return c.maxHp ?? creepMaxHp(c.type, 0)
+function waveFullHp(c: WaveUnitState): number {
+  return c.maxHp ?? waveUnitMaxHp(c.type, 0)
 }
 
 /**
- * The creeps standing in a zone, paired with the index `creep:<i>` resolves to.
+ * The waves standing in a zone, paired with the index `wave:<i>` resolves to.
  *
- * Mirrors the server's creepInZoneByIndex: the index counts EVERY creep in the
+ * Mirrors the server's waveInZoneByIndex: the index counts EVERY wave in the
  * zone in server order — dead-but-unreaped ones included. Dropping corpses
- * before numbering would shift every later suggestion onto a different creep,
+ * before numbering would shift every later suggestion onto a different wave,
  * so callers skip what they don't want to offer and keep the position.
  */
-function creepsInZoneWithIndex(
-  creeps: CreepState[],
+function wavesInZoneWithIndex(
+  waves: WaveUnitState[],
   zone: string,
-): Array<{ creep: CreepState; index: number }> {
-  return creeps.filter((c) => c.zone === zone).map((creep, index) => ({ creep, index }))
+): Array<{ wave: WaveUnitState; index: number }> {
+  return waves.filter((c) => c.zone === zone).map((wave, index) => ({ wave, index }))
 }
 
 /**
- * Pick a default target for a bare `burn`: the lowest-HP ALLIED creep in your
+ * Pick a default target for a bare `burn`: the lowest-HP ALLIED wave in your
  * zone that's eligible to burn (at/below the burn HP threshold). Returns the
- * server's `creep:<index>` form, where the index is the creep's position among
- * your zone's creeps — the exact convention creepInZoneByIndex resolves.
+ * server's `wave:<index>` form, where the index is the wave's position among
+ * your zone's waves — the exact convention waveInZoneByIndex resolves.
  */
 export function pickDenyTargetString(
   player: PlayerState,
-  creeps: CreepState[],
+  waves: WaveUnitState[],
 ): { target: string } | { error: string } {
-  const inZone = creeps.filter((c) => c.zone === player.zone) // same order the server indexes
+  const inZone = waves.filter((c) => c.zone === player.zone) // same order the server indexes
   let best: { hp: number; index: number } | null = null
   for (let index = 0; index < inZone.length; index++) {
     const c = inZone[index]!
     if (c.team !== player.team || c.hp <= 0) continue
-    if (c.hp > creepFullHp(c) * BURN_HP_THRESHOLD) continue // not low enough to burn
+    if (c.hp > waveFullHp(c) * BURN_HP_THRESHOLD) continue // not low enough to burn
     if (best === null || c.hp < best.hp) best = { hp: c.hp, index }
   }
   if (best === null) {
-    return { error: 'No denyable allied creep (below 50% HP) in your zone' }
+    return { error: 'No denyable allied wave (below 50% HP) in your zone' }
   }
-  return { target: `creep:${best.index}` }
+  return { target: `wave:${best.index}` }
 }
 
 // ── Informational command readouts ────────────────────────────────
@@ -343,11 +343,11 @@ function parseTarget(raw: string): TargetRef | null {
   // The enemy team's core structure ("the Mainframe")
   if (raw === 'ancient' || raw === 'mainframe' || raw === 'core') return { kind: 'ancient' }
   if (raw.startsWith('hero:')) return { kind: 'hero', name: raw.slice(5) }
-  if (raw.startsWith('creep:')) {
-    const idx = Number.parseInt(raw.slice(6), 10)
-    if (!Number.isNaN(idx)) return { kind: 'creep', index: idx }
+  if (raw.startsWith('wave:')) {
+    const idx = Number.parseInt(raw.slice(5), 10)
+    if (!Number.isNaN(idx)) return { kind: 'wave', index: idx }
   }
-  // Unlike `creep:<i>` (zone-local), the index here is the position in the
+  // Unlike `wave:<i>` (zone-local), the index here is the position in the
   // GLOBAL neutrals array — that is what the server resolves it against, and
   // the array reaches the client unfiltered (neutrals are public info).
   if (raw.startsWith('neutral:')) {
@@ -498,7 +498,7 @@ export function validateCommand(command: Command, context: GameContext): string 
       // the server still enforces both rules, we just can't warn ahead of time.
       if (t.kind === 'neutral' && context.neutrals) {
         const neutral = context.neutrals[t.index]
-        if (!neutral || !neutral.alive) return `No neutral creep at index ${t.index}`
+        if (!neutral || !neutral.alive) return `No neutral wave at index ${t.index}`
         if (neutral.zone !== player.zone) return 'That neutral camp is not in your zone'
       }
       if (t.kind === 'ancient') {
@@ -673,13 +673,13 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack tenant, attack ice:mid-t1-chaff, attack ancient)',
+              'Usage: attack <target>  (e.g. attack hero:daemon, attack wave:0, attack neutral:0, attack tenant, attack ice:mid-t1-chaff, attack ancient)',
           }
         const target = parseTarget(targetStr)
         if (!target)
           return {
             command: null,
-            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, neutral:<index>, ice:<zone>, tenant, ancient, or self`,
+            error: `Invalid target "${targetStr}". Use hero:<name>, wave:<index>, neutral:<index>, ice:<zone>, tenant, ancient, or self`,
           }
         return { command: { type: 'attack', target }, error: null }
       }
@@ -690,13 +690,13 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: burn <creep:index>  (burn an allied creep below 50% HP to starve the enemy of gold/XP)',
+              'Usage: burn <wave:index>  (burn an allied wave below 50% HP to starve the enemy of gold/XP)',
           }
         const target = parseTarget(targetStr)
-        if (!target || target.kind !== 'creep')
+        if (!target || target.kind !== 'wave')
           return {
             command: null,
-            error: `Can only burn allied creeps. Use creep:<index> (e.g. burn creep:0)`,
+            error: `Can only burn allied waves. Use wave:<index> (e.g. burn wave:0)`,
           }
         return { command: { type: 'burn', target }, error: null }
       }
@@ -870,7 +870,7 @@ export function useCommands() {
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (tiers 10/15/20/25)',
-        burn: 'Last-hit your own creep below 50% HP to burn the enemy',
+        burn: 'Last-hit your own wave below 50% HP to burn the enemy',
       }
       return all
         .filter((c) => c.startsWith(parts[0]!))
@@ -895,21 +895,21 @@ export function useCommands() {
     }
 
     if (baseCmd === 'burn') {
-      // Burn only targets allied creeps in the current zone. The server enforces
+      // Burn only targets allied waves in the current zone. The server enforces
       // the HP rule, so healthy allies are still offered — with their HP, which
       // is the number the player is waiting on.
       const partial = parts.slice(1).join(' ')
       const player = context.player
       const out: Suggestion[] = []
-      if (player && context.creeps) {
-        for (const { creep, index } of creepsInZoneWithIndex(context.creeps, player.zone)) {
-          if (creep.team !== player.team || creep.hp <= 0) continue
-          const ref = `creep:${index}`
+      if (player && context.waves) {
+        for (const { wave, index } of wavesInZoneWithIndex(context.waves, player.zone)) {
+          if (wave.team !== player.team || wave.hp <= 0) continue
+          const ref = `wave:${index}`
           if (!ref.includes(partial)) continue
-          const denyable = creep.hp <= creepFullHp(creep) * BURN_HP_THRESHOLD
+          const denyable = wave.hp <= waveFullHp(wave) * BURN_HP_THRESHOLD
           out.push({
             text: ref,
-            description: `${creep.type} (HP: ${Math.ceil(creep.hp)}/${creepFullHp(creep)})${
+            description: `${wave.type} (HP: ${Math.ceil(wave.hp)}/${waveFullHp(wave)})${
               denyable ? ' — denyable' : ''
             }`,
           })
@@ -1120,22 +1120,22 @@ export function useCommands() {
       }
     }
 
-    // Suggest creep targets. Corpses keep their slot in the numbering (see
-    // creepsInZoneWithIndex) but are never offered — the server rejects them.
-    if (context.creeps) {
-      for (const { creep, index } of creepsInZoneWithIndex(context.creeps, context.player.zone)) {
-        if (creep.hp <= 0) continue
-        // Your OWN creeps are the `burn` command's business, never an attack
+    // Suggest wave targets. Corpses keep their slot in the numbering (see
+    // wavesInZoneWithIndex) but are never offered — the server rejects them.
+    if (context.waves) {
+      for (const { wave, index } of wavesInZoneWithIndex(context.waves, context.player.zone)) {
+        if (wave.hp <= 0) continue
+        // Your OWN waves are the `burn` command's business, never an attack
         // target — the server refuses them, and in a one-action-per-tick game
         // an offered target that always fails costs the player the whole tick.
-        // Indices are unaffected: creepsInZoneWithIndex numbers the zone's
-        // creeps, so skipping one here does not renumber the rest.
-        if (creep.team === context.player.team) continue
-        const ref = `creep:${index}`
+        // Indices are unaffected: wavesInZoneWithIndex numbers the zone's
+        // waves, so skipping one here does not renumber the rest.
+        if (wave.team === context.player.team) continue
+        const ref = `wave:${index}`
         if (!ref.includes(partial)) continue
         suggestions.push({
           text: ref,
-          description: `${creep.type} enemy (HP: ${Math.ceil(creep.hp)}/${creepFullHp(creep)})`,
+          description: `${wave.type} enemy (HP: ${Math.ceil(wave.hp)}/${waveFullHp(wave)})`,
         })
       }
     }

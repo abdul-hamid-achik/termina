@@ -3,9 +3,9 @@ import {
   TICK_DURATION_MS,
   ACTION_WINDOW_MS,
   PASSIVE_GOLD_PER_TICK,
-  CREEP_GOLD_MIN,
-  CREEP_GOLD_MAX,
-  SIEGE_CREEP_GOLD,
+  WAVE_GOLD_MIN,
+  WAVE_GOLD_MAX,
+  BREACH_UNIT_GOLD,
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
@@ -14,7 +14,7 @@ import {
   STARTING_GOLD,
   MAX_LEVEL,
   XP_PER_LEVEL,
-  CREEP_XP,
+  WAVE_XP,
   HERO_KILL_XP_BASE,
   HERO_KILL_XP_PER_LEVEL,
   RESPAWN_BASE_TICKS,
@@ -25,24 +25,24 @@ import {
   WARD_LIMIT_PER_TEAM,
   TENANT_RESPAWN_TICKS,
   TENANT_BASE_HP,
-  CREEP_WAVE_INTERVAL_TICKS,
-  MELEE_CREEPS_PER_WAVE,
-  RANGED_CREEPS_PER_WAVE,
-  SIEGE_CREEP_WAVE_INTERVAL,
-  MELEE_CREEP_HP,
-  RANGED_CREEP_HP,
-  SIEGE_CREEP_HP,
-  MELEE_CREEP_ATTACK,
-  RANGED_CREEP_ATTACK,
-  SIEGE_CREEP_ATTACK,
-  CREEP_ESCALATION_INTERVAL_TICKS,
-  CREEP_ESCALATION_STEP,
-  CREEP_ESCALATION_MAX_MULTIPLIER,
-  creepEscalationMultiplier,
-  creepMaxHp,
-  creepAttack,
-  CREEP_XP_SHARED,
-  CREEP_XP_SHARED_RATIO,
+  WAVE_INTERVAL_TICKS,
+  LINE_UNITS_PER_WAVE,
+  SWEEP_UNITS_PER_WAVE,
+  BREACH_WAVE_INTERVAL,
+  LINE_UNIT_HP,
+  SWEEP_UNIT_HP,
+  BREACH_UNIT_HP,
+  LINE_UNIT_ATTACK,
+  SWEEP_UNIT_ATTACK,
+  BREACH_UNIT_ATTACK,
+  WAVE_ESCALATION_INTERVAL_TICKS,
+  WAVE_ESCALATION_STEP,
+  WAVE_ESCALATION_MAX_MULTIPLIER,
+  waveEscalationMultiplier,
+  waveUnitMaxHp,
+  waveUnitAttack,
+  WAVE_XP_SHARED,
+  WAVE_XP_SHARED_RATIO,
   ICE_HP_T1,
   ICE_HP_T2,
   ICE_HP_T3,
@@ -72,17 +72,17 @@ describe('Balance Constants', () => {
       expect(PASSIVE_GOLD_PER_TICK).toBeGreaterThan(0)
     })
 
-    it('creep gold min <= max', () => {
-      expect(CREEP_GOLD_MIN).toBeLessThanOrEqual(CREEP_GOLD_MAX)
+    it('wave gold min <= max', () => {
+      expect(WAVE_GOLD_MIN).toBeLessThanOrEqual(WAVE_GOLD_MAX)
     })
 
-    it('creep gold values are positive', () => {
-      expect(CREEP_GOLD_MIN).toBeGreaterThan(0)
-      expect(CREEP_GOLD_MAX).toBeGreaterThan(0)
+    it('wave gold values are positive', () => {
+      expect(WAVE_GOLD_MIN).toBeGreaterThan(0)
+      expect(WAVE_GOLD_MAX).toBeGreaterThan(0)
     })
 
-    it('siege creep gold exceeds regular creep gold', () => {
-      expect(SIEGE_CREEP_GOLD).toBeGreaterThan(CREEP_GOLD_MAX)
+    it('breach wave gold exceeds regular wave gold', () => {
+      expect(BREACH_UNIT_GOLD).toBeGreaterThan(WAVE_GOLD_MAX)
     })
 
     it('kill bounty is positive and reasonable', () => {
@@ -136,8 +136,8 @@ describe('Balance Constants', () => {
       expect(XP_PER_LEVEL[MAX_LEVEL]).toBeGreaterThan(1000)
     })
 
-    it('creep XP is positive', () => {
-      expect(CREEP_XP).toBeGreaterThan(0)
+    it('wave XP is positive', () => {
+      expect(WAVE_XP).toBeGreaterThan(0)
     })
 
     it('hero kill XP scales with level', () => {
@@ -205,92 +205,92 @@ describe('Balance Constants', () => {
     })
   })
 
-  describe('creep waves', () => {
+  describe('wave waves', () => {
     it('wave interval is positive', () => {
-      expect(CREEP_WAVE_INTERVAL_TICKS).toBeGreaterThan(0)
+      expect(WAVE_INTERVAL_TICKS).toBeGreaterThan(0)
     })
 
-    it('melee creeps per wave is reasonable', () => {
-      expect(MELEE_CREEPS_PER_WAVE).toBeGreaterThanOrEqual(1)
-      expect(MELEE_CREEPS_PER_WAVE).toBeLessThanOrEqual(10)
+    it('line waves per wave is reasonable', () => {
+      expect(LINE_UNITS_PER_WAVE).toBeGreaterThanOrEqual(1)
+      expect(LINE_UNITS_PER_WAVE).toBeLessThanOrEqual(10)
     })
 
-    it('ranged creeps per wave is reasonable', () => {
-      expect(RANGED_CREEPS_PER_WAVE).toBeGreaterThanOrEqual(1)
-      expect(RANGED_CREEPS_PER_WAVE).toBeLessThanOrEqual(5)
+    it('sweep waves per wave is reasonable', () => {
+      expect(SWEEP_UNITS_PER_WAVE).toBeGreaterThanOrEqual(1)
+      expect(SWEEP_UNITS_PER_WAVE).toBeLessThanOrEqual(5)
     })
 
-    it('siege wave interval is greater than 1', () => {
-      expect(SIEGE_CREEP_WAVE_INTERVAL).toBeGreaterThan(1)
+    it('breach wave interval is greater than 1', () => {
+      expect(BREACH_WAVE_INTERVAL).toBeGreaterThan(1)
     })
 
-    it('creep HP values are ordered: melee < siege, ranged < melee', () => {
-      expect(RANGED_CREEP_HP).toBeLessThan(MELEE_CREEP_HP)
-      expect(MELEE_CREEP_HP).toBeLessThan(SIEGE_CREEP_HP)
+    it('wave HP values are ordered: line < breach, sweep < line', () => {
+      expect(SWEEP_UNIT_HP).toBeLessThan(LINE_UNIT_HP)
+      expect(LINE_UNIT_HP).toBeLessThan(BREACH_UNIT_HP)
     })
 
-    it('siege creep has highest attack', () => {
-      expect(SIEGE_CREEP_ATTACK).toBeGreaterThan(RANGED_CREEP_ATTACK)
-      expect(SIEGE_CREEP_ATTACK).toBeGreaterThan(MELEE_CREEP_ATTACK)
+    it('breach wave has highest attack', () => {
+      expect(BREACH_UNIT_ATTACK).toBeGreaterThan(SWEEP_UNIT_ATTACK)
+      expect(BREACH_UNIT_ATTACK).toBeGreaterThan(LINE_UNIT_ATTACK)
     })
 
-    it('ranged creep attack exceeds melee creep attack', () => {
-      expect(RANGED_CREEP_ATTACK).toBeGreaterThan(MELEE_CREEP_ATTACK)
+    it('sweep wave attack exceeds line wave attack', () => {
+      expect(SWEEP_UNIT_ATTACK).toBeGreaterThan(LINE_UNIT_ATTACK)
     })
   })
 
-  describe('creep escalation', () => {
+  describe('wave escalation', () => {
     it('is flat for the whole first interval', () => {
-      expect(creepEscalationMultiplier(0)).toBe(1)
-      expect(creepEscalationMultiplier(CREEP_ESCALATION_INTERVAL_TICKS - 1)).toBe(1)
-      expect(creepMaxHp('melee', CREEP_ESCALATION_INTERVAL_TICKS - 1)).toBe(MELEE_CREEP_HP)
-      expect(creepAttack('melee', CREEP_ESCALATION_INTERVAL_TICKS - 1)).toBe(MELEE_CREEP_ATTACK)
+      expect(waveEscalationMultiplier(0)).toBe(1)
+      expect(waveEscalationMultiplier(WAVE_ESCALATION_INTERVAL_TICKS - 1)).toBe(1)
+      expect(waveUnitMaxHp('line', WAVE_ESCALATION_INTERVAL_TICKS - 1)).toBe(LINE_UNIT_HP)
+      expect(waveUnitAttack('line', WAVE_ESCALATION_INTERVAL_TICKS - 1)).toBe(LINE_UNIT_ATTACK)
     })
 
     it('steps up once per interval', () => {
-      expect(creepEscalationMultiplier(CREEP_ESCALATION_INTERVAL_TICKS)).toBeCloseTo(
-        1 + CREEP_ESCALATION_STEP,
+      expect(waveEscalationMultiplier(WAVE_ESCALATION_INTERVAL_TICKS)).toBeCloseTo(
+        1 + WAVE_ESCALATION_STEP,
       )
-      expect(creepEscalationMultiplier(CREEP_ESCALATION_INTERVAL_TICKS * 2)).toBeCloseTo(
-        1 + CREEP_ESCALATION_STEP * 2,
+      expect(waveEscalationMultiplier(WAVE_ESCALATION_INTERVAL_TICKS * 2)).toBeCloseTo(
+        1 + WAVE_ESCALATION_STEP * 2,
       )
     })
 
-    it('scales both HP and damage of every creep type', () => {
-      const tick = CREEP_ESCALATION_INTERVAL_TICKS * 2
-      const mult = creepEscalationMultiplier(tick)
+    it('scales both HP and damage of every wave type', () => {
+      const tick = WAVE_ESCALATION_INTERVAL_TICKS * 2
+      const mult = waveEscalationMultiplier(tick)
       expect(mult).toBeGreaterThan(1)
-      expect(creepMaxHp('melee', tick)).toBe(Math.round(MELEE_CREEP_HP * mult))
-      expect(creepMaxHp('ranged', tick)).toBe(Math.round(RANGED_CREEP_HP * mult))
-      expect(creepMaxHp('siege', tick)).toBe(Math.round(SIEGE_CREEP_HP * mult))
-      expect(creepAttack('melee', tick)).toBe(Math.round(MELEE_CREEP_ATTACK * mult))
-      expect(creepAttack('ranged', tick)).toBe(Math.round(RANGED_CREEP_ATTACK * mult))
-      expect(creepAttack('siege', tick)).toBe(Math.round(SIEGE_CREEP_ATTACK * mult))
+      expect(waveUnitMaxHp('line', tick)).toBe(Math.round(LINE_UNIT_HP * mult))
+      expect(waveUnitMaxHp('sweep', tick)).toBe(Math.round(SWEEP_UNIT_HP * mult))
+      expect(waveUnitMaxHp('breach', tick)).toBe(Math.round(BREACH_UNIT_HP * mult))
+      expect(waveUnitAttack('line', tick)).toBe(Math.round(LINE_UNIT_ATTACK * mult))
+      expect(waveUnitAttack('sweep', tick)).toBe(Math.round(SWEEP_UNIT_ATTACK * mult))
+      expect(waveUnitAttack('breach', tick)).toBe(Math.round(BREACH_UNIT_ATTACK * mult))
     })
 
-    it('caps so a stalled game does not produce one-shot creeps', () => {
-      expect(creepEscalationMultiplier(100_000)).toBe(CREEP_ESCALATION_MAX_MULTIPLIER)
-      expect(creepAttack('siege', 100_000)).toBe(
-        SIEGE_CREEP_ATTACK * CREEP_ESCALATION_MAX_MULTIPLIER,
+    it('caps so a stalled game does not produce one-shot waves', () => {
+      expect(waveEscalationMultiplier(100_000)).toBe(WAVE_ESCALATION_MAX_MULTIPLIER)
+      expect(waveUnitAttack('breach', 100_000)).toBe(
+        BREACH_UNIT_ATTACK * WAVE_ESCALATION_MAX_MULTIPLIER,
       )
     })
 
-    it('scales HP and damage by the same factor, so creep-vs-creep trades are unchanged', () => {
-      const early = CREEP_ESCALATION_INTERVAL_TICKS - 1
-      const late = CREEP_ESCALATION_INTERVAL_TICKS * 4
-      const hitsEarly = creepMaxHp('melee', early) / creepAttack('melee', early)
-      const hitsLate = creepMaxHp('melee', late) / creepAttack('melee', late)
+    it('scales HP and damage by the same factor, so wave-vs-wave trades are unchanged', () => {
+      const early = WAVE_ESCALATION_INTERVAL_TICKS - 1
+      const late = WAVE_ESCALATION_INTERVAL_TICKS * 4
+      const hitsEarly = waveUnitMaxHp('line', early) / waveUnitAttack('line', early)
+      const hitsLate = waveUnitMaxHp('line', late) / waveUnitAttack('line', late)
       expect(hitsLate).toBeCloseTo(hitsEarly, 1)
     })
   })
 
-  describe('shared creep XP', () => {
+  describe('shared wave XP', () => {
     it('is a fraction of the last-hit reward, so timing still pays more', () => {
-      expect(CREEP_XP_SHARED_RATIO).toBeGreaterThan(0)
-      expect(CREEP_XP_SHARED_RATIO).toBeLessThan(1)
-      expect(CREEP_XP_SHARED).toBe(Math.floor(CREEP_XP * CREEP_XP_SHARED_RATIO))
-      expect(CREEP_XP_SHARED).toBeGreaterThan(0)
-      expect(CREEP_XP_SHARED).toBeLessThan(CREEP_XP)
+      expect(WAVE_XP_SHARED_RATIO).toBeGreaterThan(0)
+      expect(WAVE_XP_SHARED_RATIO).toBeLessThan(1)
+      expect(WAVE_XP_SHARED).toBe(Math.floor(WAVE_XP * WAVE_XP_SHARED_RATIO))
+      expect(WAVE_XP_SHARED).toBeGreaterThan(0)
+      expect(WAVE_XP_SHARED).toBeLessThan(WAVE_XP)
     })
   })
 

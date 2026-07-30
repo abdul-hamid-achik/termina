@@ -178,7 +178,7 @@ describe('eventToLine: kills', () => {
 describe('eventToLine: gold noise suppression', () => {
   it('drops redundant last-hit gold lines', () => {
     expect(
-      eventToLine(ev('gold_change', { playerId: 'me', amount: 40, reason: 'creep last hit' }), ctx),
+      eventToLine(ev('gold_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }), ctx),
     ).toBeNull()
     expect(
       eventToLine(ev('gold_change', { playerId: 'me', amount: 4, reason: 'passive' }), ctx),
@@ -289,7 +289,7 @@ describe('buildCombatLines', () => {
         { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'physical' },
         2,
       ),
-      ev('gold_change', { playerId: 'me', amount: 40, reason: 'creep last hit' }, 2),
+      ev('gold_change', { playerId: 'me', amount: 40, reason: 'wave last hit' }, 2),
       ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }, 3),
     ]
     const lines = buildCombatLines(events, ctx, collapseStructureDamage)
@@ -421,8 +421,8 @@ describe('eventToLine: narration coverage for every event type', () => {
   const cases: Array<[string, Record<string, unknown>, string]> = [
     ['death', { playerId: 'enemy1', respawnTick: 5 }, 'terminated'],
     ['heal', { sourceId: 'me', targetId: 'ally1', amount: 50 }, 'restored 50'],
-    ['creep_lasthit', { playerId: 'me', creepType: 'melee', goldAwarded: 40 }, 'last-hit'],
-    ['wave_burn', { playerId: 'me', creepType: 'melee' }, 'burned'],
+    ['wave_strip', { playerId: 'me', waveType: 'line', goldAwarded: 40 }, 'last-hit'],
+    ['wave_burn', { playerId: 'me', waveType: 'line' }, 'burned'],
     ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
     ['item_purchased', { playerId: 'me', itemId: 'dagon', cost: 2700 }, 'acquired'],
     ['neutral_killed', { playerId: 'me', neutralType: 'kobold' }, 'kobold camp'],
@@ -635,7 +635,7 @@ describe('narration drift guard', () => {
     ticksRemaining: 2,
     remainingTicks: 12,
     newLevel: 6,
-    creepType: 'melee',
+    waveType: 'line',
     neutralType: 'kobold',
     cacheType: 'haste',
     wardType: 'observer',
@@ -749,14 +749,14 @@ describe('eventToLine: remaining event-type lines', () => {
       'restored 50 to ally1',
     )
   })
-  it('creep_lasthit → last-hit with gold', () => {
+  it('wave_strip → last-hit with gold', () => {
     expect(
-      line('creep_lasthit', { playerId: 'me', creepType: 'melee', goldAwarded: 40 })!.text,
-    ).toContain('last-hit a melee creep (+40g)')
+      line('wave_strip', { playerId: 'me', waveType: 'line', goldAwarded: 40 })!.text,
+    ).toContain('last-hit a line wave (+40g)')
   })
   it('wave_burn → burn line', () => {
-    expect(line('wave_burn', { playerId: 'me', creepType: 'ranged' })!.text).toContain(
-      'burned a ranged creep',
+    expect(line('wave_burn', { playerId: 'me', waveType: 'sweep' })!.text).toContain(
+      'burned a sweep wave',
     )
   })
   it('ability_used → cast line with and without a target', () => {
@@ -816,7 +816,7 @@ describe('eventToLine: remaining event-type lines', () => {
 describe('eventToLine: semantic hierarchy', () => {
   it('types a hero death as a headline, not as chip damage', () => {
     // A hero dying used to render `damage` — the same red, the same weight as a
-    // creep taking 9 off a ice — and the OBJ filter dropped it entirely.
+    // wave taking 9 off a ice — and the OBJ filter dropped it entirely.
     const death = eventToLine(ev('death', { playerId: 'enemy1', respawnTick: 20 }), ctx)!
     expect(death.type).toBe('kill')
   })

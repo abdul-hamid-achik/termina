@@ -14,7 +14,7 @@ describe('toGameEvent', () => {
       _tag: 'damage',
       tick: 42,
       sourceId: 'github_1',
-      targetId: 'creep-3',
+      targetId: 'wave-3',
       amount: 72,
       damageType: 'physical',
     }
@@ -23,7 +23,7 @@ describe('toGameEvent', () => {
       type: 'damage',
       payload: {
         sourceId: 'github_1',
-        targetId: 'creep-3',
+        targetId: 'wave-3',
         amount: 72,
         damageType: 'physical',
       },

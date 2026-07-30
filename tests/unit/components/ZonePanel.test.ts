@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ZonePanel from '~~/app/components/game/ZonePanel.vue'
-import type { PlayerState, CreepState, NeutralCreepState, IceState } from '~~/shared/types/game'
+import type { PlayerState, WaveUnitState, NeutralUnitState, IceState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -38,13 +38,13 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   }
 }
 
-function makeCreep(overrides: Partial<CreepState & { index: number }> = {}) {
+function makeWave(overrides: Partial<WaveUnitState & { index: number }> = {}) {
   return {
     id: 'creep_1',
     team: 'audit' as const,
     zone: 'mid-river',
     hp: 300,
-    type: 'melee' as const,
+    type: 'line' as const,
     index: 0,
     ...overrides,
   }
@@ -62,7 +62,7 @@ function makeIce(overrides: Partial<IceState> = {}): IceState {
   }
 }
 
-function makeNeutral(overrides: Partial<NeutralCreepState & { index: number }> = {}) {
+function makeNeutral(overrides: Partial<NeutralUnitState & { index: number }> = {}) {
   return {
     id: 'neutral_1',
     zone: 'mid-river',
@@ -148,92 +148,92 @@ describe('ZonePanel', () => {
     })
   })
 
-  describe('creep groups', () => {
-    it('shows enemy creep count and lowest HP', () => {
-      const creeps = [
-        makeCreep({ id: 'c1', hp: 300, index: 0 }),
-        makeCreep({ id: 'c2', hp: 120, index: 2 }),
+  describe('wave groups', () => {
+    it('shows enemy wave count and lowest HP', () => {
+      const waves = [
+        makeWave({ id: 'c1', hp: 300, index: 0 }),
+        makeWave({ id: 'c2', hp: 120, index: 2 }),
       ]
-      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, waves } })
 
-      const group = wrapper.find('[data-testid="zone-creeps-enemy"]')
+      const group = wrapper.find('[data-testid="zone-waves-enemy"]')
       expect(group.exists()).toBe(true)
-      expect(group.text()).toContain('2× enemy creeps')
+      expect(group.text()).toContain('2× enemy waves')
       expect(group.text()).toContain('lowest 120hp')
     })
 
-    it('attacks the lowest-HP enemy creep by its visible index', async () => {
-      const creeps = [
-        makeCreep({ id: 'c1', hp: 300, index: 0 }),
-        makeCreep({ id: 'c2', hp: 120, index: 2 }),
-        makeCreep({ id: 'c3', hp: 250, index: 5 }),
+    it('attacks the lowest-HP enemy wave by its visible index', async () => {
+      const waves = [
+        makeWave({ id: 'c1', hp: 300, index: 0 }),
+        makeWave({ id: 'c2', hp: 120, index: 2 }),
+        makeWave({ id: 'c3', hp: 250, index: 5 }),
       ]
-      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, waves } })
 
-      await wrapper.find('[data-testid="zone-creeps-enemy"]').trigger('click')
+      await wrapper.find('[data-testid="zone-waves-enemy"]').trigger('click')
 
-      expect(wrapper.emitted('command')).toEqual([['attack creep:2']])
+      expect(wrapper.emitted('command')).toEqual([['attack wave:2']])
     })
 
-    it('separates allied creeps into a group; a healthy one is informational only', () => {
-      // 300hp melee (max 400) is above the 50% burn threshold → not denyable,
+    it('separates allied waves into a group; a healthy one is informational only', () => {
+      // 300hp line (max 400) is above the 50% burn threshold → not denyable,
       // so the group stays a plain informational DIV.
-      const creeps = [
-        makeCreep({ id: 'c1', team: 'chaff', hp: 300, index: 0 }),
-        makeCreep({ id: 'c2', team: 'audit', hp: 300, index: 1 }),
+      const waves = [
+        makeWave({ id: 'c1', team: 'chaff', hp: 300, index: 0 }),
+        makeWave({ id: 'c2', team: 'audit', hp: 300, index: 1 }),
       ]
-      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, waves } })
 
-      const allyGroup = wrapper.find('[data-testid="zone-creeps-ally"]')
+      const allyGroup = wrapper.find('[data-testid="zone-waves-ally"]')
       expect(allyGroup.exists()).toBe(true)
-      expect(allyGroup.text()).toContain('1× allied creep')
+      expect(allyGroup.text()).toContain('1× allied wave')
       expect(allyGroup.text()).toContain('lowest 300hp')
       // Above the burn threshold → informational, not a button
       expect(allyGroup.element.tagName).toBe('DIV')
       expect(allyGroup.text()).not.toContain('[burn]')
     })
 
-    it('offers a burn on an allied creep once it drops below 50% HP', async () => {
-      // 150hp melee (max 400) is below the 200hp burn threshold → denyable.
-      const creeps = [makeCreep({ id: 'c1', team: 'chaff', hp: 150, index: 4 })]
-      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+    it('offers a burn on an allied wave once it drops below 50% HP', async () => {
+      // 150hp line (max 400) is below the 200hp burn threshold → denyable.
+      const waves = [makeWave({ id: 'c1', team: 'chaff', hp: 150, index: 4 })]
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, waves } })
 
-      const allyGroup = wrapper.find('[data-testid="zone-creeps-ally"]')
+      const allyGroup = wrapper.find('[data-testid="zone-waves-ally"]')
       expect(allyGroup.element.tagName).toBe('BUTTON')
       expect(allyGroup.text()).toContain('[burn]')
 
       await allyGroup.trigger('click')
-      expect(wrapper.emitted('command')).toEqual([['burn creep:4']])
+      expect(wrapper.emitted('command')).toEqual([['burn wave:4']])
     })
 
-    it('burns the lowest-HP eligible allied creep by its visible index', async () => {
-      // Two denyable allied creeps; the lower-HP one (index 7) is the target.
-      const creeps = [
-        makeCreep({ id: 'c1', team: 'chaff', hp: 180, index: 3 }),
-        makeCreep({ id: 'c2', team: 'chaff', hp: 60, index: 7 }),
+    it('burns the lowest-HP eligible allied wave by its visible index', async () => {
+      // Two denyable allied waves; the lower-HP one (index 7) is the target.
+      const waves = [
+        makeWave({ id: 'c1', team: 'chaff', hp: 180, index: 3 }),
+        makeWave({ id: 'c2', team: 'chaff', hp: 60, index: 7 }),
       ]
-      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, waves } })
 
-      await wrapper.find('[data-testid="zone-creeps-ally"]').trigger('click')
-      expect(wrapper.emitted('command')).toEqual([['burn creep:7']])
+      await wrapper.find('[data-testid="zone-waves-ally"]').trigger('click')
+      expect(wrapper.emitted('command')).toEqual([['burn wave:7']])
     })
 
-    it('respects per-type max HP for the burn threshold (ranged creep)', async () => {
-      // Ranged max is 250 → threshold 125. A 130hp ranged creep is NOT denyable;
-      // a 200hp melee (max 400, threshold 200) IS. Only the melee should arm.
-      const creeps = [makeCreep({ id: 'c1', team: 'chaff', hp: 130, type: 'ranged', index: 0 })]
-      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+    it('respects per-type max HP for the burn threshold (sweep wave)', async () => {
+      // Sweep max is 250 → threshold 125. A 130hp sweep wave is NOT denyable;
+      // a 200hp line (max 400, threshold 200) IS. Only the line should arm.
+      const waves = [makeWave({ id: 'c1', team: 'chaff', hp: 130, type: 'sweep', index: 0 })]
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, waves } })
 
-      const allyGroup = wrapper.find('[data-testid="zone-creeps-ally"]')
+      const allyGroup = wrapper.find('[data-testid="zone-waves-ally"]')
       expect(allyGroup.element.tagName).toBe('DIV')
       expect(allyGroup.text()).not.toContain('[burn]')
     })
 
-    it('ignores dead creeps', () => {
-      const creeps = [makeCreep({ id: 'c1', hp: 0, index: 0 })]
-      const wrapper = mount(ZonePanel, { props: { ...baseProps, creeps } })
+    it('ignores dead waves', () => {
+      const waves = [makeWave({ id: 'c1', hp: 0, index: 0 })]
+      const wrapper = mount(ZonePanel, { props: { ...baseProps, waves } })
 
-      expect(wrapper.find('[data-testid="zone-creeps-enemy"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="zone-waves-enemy"]').exists()).toBe(false)
     })
   })
 
@@ -339,13 +339,13 @@ describe('ZonePanel', () => {
       expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('enemy ice')
     })
 
-    it('tells a laner to push when they have creep support', () => {
-      const creeps = [makeCreep({ id: 'c1', team: 'chaff', hp: 200, index: 0 })]
+    it('tells a laner to push when they have wave support', () => {
+      const waves = [makeWave({ id: 'c1', team: 'chaff', hp: 200, index: 0 })]
       const wrapper = mount(ZonePanel, {
-        props: { ...baseProps, zoneId: 'mid-t1-chaff', creeps },
+        props: { ...baseProps, zoneId: 'mid-t1-chaff', waves },
       })
       expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain(
-        'Push with your creeps',
+        'Push with your waves',
       )
     })
   })
