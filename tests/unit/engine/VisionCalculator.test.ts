@@ -5,7 +5,7 @@ import {
   type FoggedPlayer,
 } from '~~/server/game/engine/VisionCalculator'
 import type { GameState, PlayerState } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -32,7 +32,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...overrides,
   }
@@ -43,13 +43,13 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     events: [],
     ...overrides,
   }
@@ -109,7 +109,7 @@ describe('VisionCalculator', () => {
       expect(vision.has('bot-t1-audit')).toBe(true)
     })
 
-    it('should include tower vision for alive team towers', () => {
+    it('should include ice vision for alive team ice', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ team: 'chaff', zone: 'chaff-fountain' }),
@@ -117,7 +117,7 @@ describe('VisionCalculator', () => {
       })
 
       const vision = calculateVision(state, 'p1')
-      // Chaff T1 mid tower at mid-t1-chaff should grant vision
+      // Chaff T1 mid ice at mid-t1-chaff should grant vision
       expect(vision.has('mid-t1-chaff')).toBe(true)
     })
 
@@ -130,9 +130,9 @@ describe('VisionCalculator', () => {
 
       const vision = calculateVision(state, 'p1')
       // Dead player doesn't contribute base vision from their zone
-      // (but still has tower/base vision)
-      // hollow should not be visible unless a tower or ward covers it
-      // hollow is adjacent to cache-top only, and cache-top isn't a chaff tower
+      // (but still has ice/base vision)
+      // hollow should not be visible unless a ice or ward covers it
+      // hollow is adjacent to cache-top only, and cache-top isn't a chaff ice
       // However, base + fountain vision still applies
       expect(vision.has('chaff-base')).toBe(true)
     })
@@ -231,7 +231,7 @@ describe('VisionCalculator', () => {
             team: 'audit',
             zone: 'mid-river',
             name: 'Enemy',
-            attackTarget: { kind: 'tower', zone: 'mid-t1-chaff' },
+            attackTarget: { kind: 'ice', zone: 'mid-t1-chaff' },
           }),
           p2: makePlayer({
             id: 'p2',
@@ -601,7 +601,7 @@ describe('VisionCalculator', () => {
     it('does not share cache entries across games for the same playerId', () => {
       // Same player in two "games" at different river zones — the cache key
       // includes gameId so the second game's vision doesn't return the first's
-      // stale set. River zones aren't tower zones, so the only vision source is
+      // stale set. River zones aren't ice zones, so the only vision source is
       // the player's own sight (keeping the assertion clean).
       const stateA = makeGameState({
         players: { p1: makePlayer({ id: 'p1', zone: 'mid-river' }) },

@@ -9,7 +9,7 @@
  *   - runs the game loop at TICK_DURATION_MS / factor (engine logic is
  *     tick-based and deterministic, so nothing else changes),
  *   - divides Ancient HP by the factor, and
- *   - halves tower HP when the factor is >= 4,
+ *   - halves ice HP when the factor is >= 4,
  *
  * so a full bot game ends in ~2-4 minutes of real time. The hook is ignored
  * in production builds (NODE_ENV === 'production') and when the var is
@@ -42,16 +42,16 @@ export function scaledAncientHp(baseHp: number): number {
 }
 
 /**
- * Effective tower max HP. Towers gate the whole game — the enemy Ancient only
+ * Effective ice max HP. ICE gate the whole game — the enemy Ancient only
  * becomes vulnerable once a T3 falls, so slow sieging drags games out. In
  * dev/test the loop is CPU-bound (~1s/tick, not the nominal interval), so the
  * old flat /2 left games running 400-900 ticks (15-20 real minutes). We shrink
- * towers harder, but cap the divisor at 4 so games don't end TOO fast: at /8
+ * ice harder, but cap the divisor at 4 so games don't end TOO fast: at /8
  * a stomp finished by tick ~74, which can end a mid-game test before it has
  * finished interacting. /4 targets a ~120-220 tick window that suits both the
  * play-to-the-end specs (game-over, smoke) and the mid-game specs.
  */
-export function scaledTowerHp(baseHp: number): number {
+export function scaledIceHp(baseHp: number): number {
   return Math.max(1, Math.ceil(baseHp / Math.min(fastGameFactor(), 4)))
 }
 

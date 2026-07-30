@@ -52,7 +52,7 @@ function formatTimeRemaining(tick: number, timeOfDay: string): string {
   return formatSeconds(seconds)
 }
 
-// ── Macro row (team score / net worth / towers / Core HP) ──────
+// ── Macro row (team score / net worth / ice / Core HP) ──────
 const lead = computed(() => goldLead(props.netWorthChaff ?? 0, props.netWorthAudit ?? 0))
 
 function corePct(a: AncientState | undefined): number {
@@ -137,12 +137,12 @@ function corePct(a: AncientState | undefined): number {
         <span v-else class="text-text-dim">even</span>
       </span>
       <span class="text-border">|</span>
-      <!-- Towers destroyed -->
+      <!-- ICE destroyed -->
       <span class="inline-flex items-center gap-1">
         <span class="t-caption">TWR</span>
-        <span class="text-chaff">{{ teams.chaff.towerKills }}</span
+        <span class="text-chaff">{{ teams.chaff.iceKills }}</span
         ><span class="text-text-muted">/</span
-        ><span class="text-audit">{{ teams.audit.towerKills }}</span>
+        ><span class="text-audit">{{ teams.audit.iceKills }}</span>
       </span>
       <template v-if="ancients">
         <span class="text-border">|</span>

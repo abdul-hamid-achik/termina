@@ -61,7 +61,7 @@ export interface PlayerEndStats {
   gold: number
   items: (string | null)[]
   heroDamage: number
-  towerDamage: number
+  iceDamage: number
   /**
    * The four fields below are optional so the shared story/test fixtures and any
    * client running against an older server keep type-checking; the server sets

@@ -33,7 +33,7 @@ const stream: CombatLine[] = [
   { tick: 238, text: 'you earned 240g (hero kill)', type: 'gold', salience: 'mine-out' },
   {
     tick: 239,
-    text: 'a creep hit the Audit tower for 60',
+    text: 'a creep hit the Audit ice for 60',
     type: 'damage',
     salience: 'world',
     dedupKey: 'dmg:t',
@@ -42,7 +42,7 @@ const stream: CombatLine[] = [
   },
   {
     tick: 239,
-    text: 'CHAFF razed the AUDIT tower in mid-t1-audit',
+    text: 'CHAFF razed the AUDIT ice in mid-t1-audit',
     type: 'kill',
     salience: 'mine-out',
   },

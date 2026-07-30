@@ -3,7 +3,7 @@
 // threat verdict can never drift between the two surfaces.
 
 export type ThreatTone = 'safe' | 'warn' | 'danger'
-export type ThreatLabel = 'CLEAR' | 'TOWER' | 'DANGER' | 'CONTESTED' | 'FAVORED'
+export type ThreatLabel = 'CLEAR' | 'ICE' | 'DANGER' | 'CONTESTED' | 'FAVORED'
 
 export interface ZoneThreat {
   label: ThreatLabel
@@ -14,15 +14,15 @@ export interface ZoneThreat {
  * Color-coded threat verdict for the player's current zone.
  * @param enemyCount    enemy heroes present in the zone
  * @param allyHeadcount allied heroes present INCLUDING the local player
- * @param enemyTowerPresent an alive enemy tower is in the zone
+ * @param enemyIcePresent an alive enemy ice is in the zone
  */
 export function computeThreat(
   enemyCount: number,
   allyHeadcount: number,
-  enemyTowerPresent: boolean,
+  enemyIcePresent: boolean,
 ): ZoneThreat {
   if (enemyCount === 0) {
-    if (enemyTowerPresent) return { label: 'TOWER', tone: 'warn' }
+    if (enemyIcePresent) return { label: 'ICE', tone: 'warn' }
     return { label: 'CLEAR', tone: 'safe' }
   }
   if (enemyCount > allyHeadcount) return { label: 'DANGER', tone: 'danger' }
@@ -68,8 +68,8 @@ export function recommendAction(ctx: RecommendationContext): string {
         : 'Even fight — play it safe'
     case 'FAVORED':
       return 'You have the advantage — press it'
-    case 'TOWER':
-      return 'Enemy tower here — bring creeps before diving'
+    case 'ICE':
+      return 'Enemy ice here — bring creeps before diving'
     case 'CLEAR':
     default:
       return 'Clear — farm, push, or rotate'

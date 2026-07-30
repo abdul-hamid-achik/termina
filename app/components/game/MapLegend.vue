@@ -12,7 +12,7 @@ const LEGEND: { glyph: string; meaning: string }[] = [
   { glyph: '►YOU', meaning: 'your hero' },
   { glyph: '+N A', meaning: 'allies here' },
   { glyph: '!N E', meaning: 'enemies here' },
-  { glyph: '✓ / ✗', meaning: 'tower up / razed' },
+  { glyph: '✓ / ✗', meaning: 'ice up / razed' },
   { glyph: '◈ %', meaning: 'Mainframe (HP)' },
   { glyph: '◈✗', meaning: 'Mainframe razed' },
   { glyph: '☠', meaning: 'Roshan pit' },
@@ -25,7 +25,7 @@ const LEGEND: { glyph: string; meaning: string }[] = [
 
 // Zone codes used by the compact map's mini overview grid (see AsciiMap).
 const ZONE_CODES: { glyph: string; meaning: string }[] = [
-  { glyph: 'T1-3', meaning: 'tower zones (T/M/B lane)' },
+  { glyph: 'T1-3', meaning: 'ice zones (T/M/B lane)' },
   { glyph: 'JG', meaning: 'jungle' },
   { glyph: 'RN', meaning: 'rune spot' },
   { glyph: 'ROS', meaning: 'Roshan pit' },

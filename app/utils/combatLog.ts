@@ -45,7 +45,7 @@ export interface CombatLine {
   count?: number
   /**
    * When set, consecutive lines sharing this key collapse into one running line.
-   * Only structure-damage lines (hero/creep → tower/ancient) set this; combat
+   * Only structure-damage lines (hero/creep → ice/ancient) set this; combat
    * between heroes, kills, abilities, etc. leave it undefined so they never merge.
    */
   dedupKey?: string
@@ -88,11 +88,10 @@ export function ancientLabel(id: string): string | null {
   return `the ${team} Mainframe`
 }
 
-/** True when a damage target id names a structure (tower or ancient). */
+/** True when a damage target id names a structure (ice or ancient). */
 export function isStructureTarget(targetId: unknown): boolean {
   return (
-    typeof targetId === 'string' &&
-    (targetId.startsWith('tower') || targetId.startsWith('ancient_'))
+    typeof targetId === 'string' && (targetId.startsWith('ice') || targetId.startsWith('ancient_'))
   )
 }
 

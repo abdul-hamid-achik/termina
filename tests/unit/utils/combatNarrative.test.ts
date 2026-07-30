@@ -90,17 +90,17 @@ describe('eventToLine: double cast proc', () => {
 })
 
 describe('eventToLine: structure damage collapses', () => {
-  it('tags tower/core damage with a dedupKey + amount', () => {
+  it('tags ice/core damage with a dedupKey + amount', () => {
     const line = eventToLine(
       ev('damage', {
         sourceId: 'me',
-        targetId: 'tower_mid-t1-audit',
+        targetId: 'ice_mid-t1-audit',
         amount: 70,
         damageType: 'physical',
       }),
       ctx,
     )!
-    expect(line.dedupKey).toBe('dmg:me->tower_mid-t1-audit')
+    expect(line.dedupKey).toBe('dmg:me->ice_mid-t1-audit')
     expect(line.dmgAmount).toBe(70)
   })
 })
@@ -254,7 +254,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     const line = eventToLine(ev('ancient_destroyed', { team: 'audit', killerTeam: 'chaff' }), ctx)!
     expect(line.type).toBe('victory')
     expect(line.text).toBe('CHAFF destroyed the AUDIT Mainframe!')
-    expect(line.text).not.toContain('tower')
+    expect(line.text).not.toContain('ice')
   })
   it('suppresses internal/non-narrative events', () => {
     expect(eventToLine(ev('cooldown_used', { playerId: 'me', abilityId: 'q' }), ctx)).toBeNull()
@@ -264,7 +264,7 @@ describe('eventToLine: previously-orphaned events get real text', () => {
   it('explains the two failures that used to be emitted then silently dropped', () => {
     // Both are the server's answer to an action the player just spent a tick
     // on — swallowing them left the tick looking like it did nothing at all.
-    const invuln = eventToLine(ev('tower_invulnerable', { zone: 'mid-t1-chaff' }), ctx)!
+    const invuln = eventToLine(ev('ice_invulnerable', { zone: 'mid-t1-chaff' }), ctx)!
     expect(invuln.text).toContain('Glyph')
     expect(invuln.text).toContain('mid-t1-chaff')
 
@@ -279,23 +279,23 @@ describe('buildCombatLines', () => {
     const events: GameEvent[] = [
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'tower_mid-t1-audit', amount: 70, damageType: 'physical' },
+        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'physical' },
         1,
       ),
       ev(
         'damage',
-        { sourceId: 'me', targetId: 'tower_mid-t1-audit', amount: 70, damageType: 'physical' },
+        { sourceId: 'me', targetId: 'ice_mid-t1-audit', amount: 70, damageType: 'physical' },
         2,
       ),
       ev('gold_change', { playerId: 'me', amount: 40, reason: 'creep last hit' }, 2),
       ev('kill', { killerId: 'me', victimId: 'enemy1', assisters: [] }, 3),
     ]
     const lines = buildCombatLines(events, ctx, collapseStructureDamage)
-    // two tower hits collapse to one running line; the last-hit gold is dropped; kill remains
+    // two ice hits collapse to one running line; the last-hit gold is dropped; kill remains
     expect(lines).toHaveLength(2)
-    const tower = lines.find((l) => l.dedupKey)!
-    expect(tower.count).toBe(2)
-    expect(tower.text).toContain('×2')
+    const ice = lines.find((l) => l.dedupKey)!
+    expect(ice.count).toBe(2)
+    expect(ice.text).toContain('×2')
     expect(lines.some((l) => l.type === 'kill')).toBe(true)
   })
 })
@@ -345,16 +345,16 @@ describe('deriveKillFeed', () => {
     expect(feed.at(-1)!.text).toContain('SHUTDOWN')
   })
 
-  it('emits tower / roshan / core headline entries', () => {
+  it('emits ice / roshan / core headline entries', () => {
     const feed = deriveKillFeed(
       [
-        ev('tower_kill', { killerTeam: 'chaff', team: 'audit', zone: 'mid-t1-audit' }, 1),
+        ev('ice_kill', { killerTeam: 'chaff', team: 'audit', zone: 'mid-t1-audit' }, 1),
         ev('roshan_killed', { killerTeam: 'chaff', goldAwarded: 600 }, 2),
         ev('ancient_destroyed', { killerTeam: 'chaff', team: 'audit' }, 3),
       ],
       ctx,
     )
-    expect(feed.map((f) => f.category)).toEqual(['tower', 'roshan', 'core'])
+    expect(feed.map((f) => f.category)).toEqual(['ice', 'roshan', 'core'])
     expect(feed[2]!.text).toContain('CORE DUMPED')
   })
 
@@ -677,12 +677,12 @@ describe('combatLog label helpers', () => {
     expect(ancientLabel('ancient_audit')).toBe('the AUDIT Mainframe')
     // Unknown team falls back to a readable label rather than null/crash.
     expect(ancientLabel('ancient_neutral')).toBe('the neutral Mainframe')
-    expect(ancientLabel('tower_mid_t1_rad')).toBeNull()
+    expect(ancientLabel('ice_mid_t1_rad')).toBeNull()
     expect(ancientLabel('hero_echo')).toBeNull()
   })
 
-  it('isStructureTarget is true only for tower/ancient string ids', () => {
-    expect(isStructureTarget('tower_mid_t1_rad')).toBe(true)
+  it('isStructureTarget is true only for ice/ancient string ids', () => {
+    expect(isStructureTarget('ice_mid_t1_rad')).toBe(true)
     expect(isStructureTarget('ancient_audit')).toBe(true)
     expect(isStructureTarget('hero_echo')).toBe(false)
     expect(isStructureTarget('creep_3')).toBe(false)
@@ -814,7 +814,7 @@ describe('eventToLine: remaining event-type lines', () => {
 describe('eventToLine: semantic hierarchy', () => {
   it('types a hero death as a headline, not as chip damage', () => {
     // A hero dying used to render `damage` — the same red, the same weight as a
-    // creep taking 9 off a tower — and the OBJ filter dropped it entirely.
+    // creep taking 9 off a ice — and the OBJ filter dropped it entirely.
     const death = eventToLine(ev('death', { playerId: 'enemy1', respawnTick: 20 }), ctx)!
     expect(death.type).toBe('kill')
   })

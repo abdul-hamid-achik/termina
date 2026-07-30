@@ -3,12 +3,12 @@ import { computeThreat, threatToneClass, recommendAction } from '~~/app/utils/ta
 import type { ZoneThreat } from '~~/app/utils/tactics'
 
 describe('computeThreat', () => {
-  it('is CLEAR with no enemies and no enemy tower', () => {
+  it('is CLEAR with no enemies and no enemy ice', () => {
     expect(computeThreat(0, 1, false)).toEqual({ label: 'CLEAR', tone: 'safe' })
   })
 
-  it('is TOWER (warn) with no enemy heroes but an enemy tower present', () => {
-    expect(computeThreat(0, 1, true)).toEqual({ label: 'TOWER', tone: 'warn' })
+  it('is ICE (warn) with no enemy heroes but an enemy ice present', () => {
+    expect(computeThreat(0, 1, true)).toEqual({ label: 'ICE', tone: 'warn' })
   })
 
   it('is DANGER when enemies outnumber the allied headcount', () => {
@@ -24,7 +24,7 @@ describe('computeThreat', () => {
     expect(computeThreat(1, 2, false)).toEqual({ label: 'FAVORED', tone: 'safe' })
   })
 
-  it('ignores an enemy tower once enemy heroes are present (heroes drive the verdict)', () => {
+  it('ignores an enemy ice once enemy heroes are present (heroes drive the verdict)', () => {
     expect(computeThreat(2, 1, true)).toEqual({ label: 'DANGER', tone: 'danger' })
   })
 })

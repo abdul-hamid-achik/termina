@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { Effect } from 'effect'
 import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import type { GameState, PlayerState } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
@@ -40,7 +40,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -53,8 +53,8 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {
       p1: makePlayer({ id: 'p1', team: 'chaff', zone: 'chaff-fountain' }),
@@ -63,7 +63,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),
@@ -202,13 +202,13 @@ describe('GameLoop', () => {
       expect(result.state.winner).toBe('chaff')
     })
 
-    it('should NOT end the game when all enemy towers are destroyed but the Ancient stands', () => {
-      const towers = initializeTowers().map((t) =>
+    it('should NOT end the game when all enemy ice are destroyed but the Ancient stands', () => {
+      const ice = initializeIce().map((t) =>
         t.team === 'audit' ? { ...t, hp: 0, alive: false } : t,
       )
 
       const state = makeGameState({
-        towers,
+        ice,
         players: {
           p1: makePlayer({ id: 'p1' }),
           p2: makePlayer({ id: 'p2', team: 'audit', zone: 'audit-fountain' }),
@@ -221,23 +221,23 @@ describe('GameLoop', () => {
       expect(result.state.ancients.audit.vulnerable).toBe(true)
     })
 
-    it('should mark an Ancient vulnerable when one of its T3 towers falls', () => {
-      const towers = initializeTowers().map((t) =>
+    it('should mark an Ancient vulnerable when one of its T3 ice falls', () => {
+      const ice = initializeIce().map((t) =>
         t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
       )
 
-      const state = makeGameState({ towers })
+      const state = makeGameState({ ice })
       const result = Effect.runSync(processTick('game6c', state))
       expect(result.state.ancients.audit.vulnerable).toBe(true)
       expect(result.state.ancients.chaff.vulnerable).toBe(false)
     })
 
-    it('should keep Ancients invulnerable while only T1/T2 towers are down', () => {
-      const towers = initializeTowers().map((t) =>
+    it('should keep Ancients invulnerable while only T1/T2 ice are down', () => {
+      const ice = initializeIce().map((t) =>
         t.zone === 'mid-t1-audit' || t.zone === 'mid-t2-audit' ? { ...t, hp: 0, alive: false } : t,
       )
 
-      const state = makeGameState({ towers })
+      const state = makeGameState({ ice })
       const result = Effect.runSync(processTick('game6d', state))
       expect(result.state.ancients.audit.vulnerable).toBe(false)
       expect(result.state.ancients.chaff.vulnerable).toBe(false)
@@ -586,7 +586,7 @@ describe('GameLoop', () => {
           audit: { ...ancients.audit, vulnerable: true },
         },
         // Keep audit T3 mid dead so vulnerability stays true after recompute
-        towers: initializeTowers().map((t) =>
+        ice: initializeIce().map((t) =>
           t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
         ),
         creeps: [
@@ -612,7 +612,7 @@ describe('GameLoop', () => {
           chaff: ancients.chaff,
           audit: { ...ancients.audit, hp: 10, vulnerable: true },
         },
-        towers: initializeTowers().map((t) =>
+        ice: initializeIce().map((t) =>
           t.zone === 'mid-t3-audit' ? { ...t, hp: 0, alive: false } : t,
         ),
         creeps: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' }],
@@ -629,7 +629,7 @@ describe('GameLoop', () => {
         creeps: [{ id: 'c1', team: 'chaff', zone: 'audit-base', hp: 400, type: 'melee' }],
       })
 
-      // Ancient is invulnerable (all towers alive), no heroes in base.
+      // Ancient is invulnerable (all ice alive), no heroes in base.
       // Creep should idle and despawn after CREEP_BASE_IDLE_DESPAWN_TICKS.
       for (let i = 0; i < 3; i++) {
         state = Effect.runSync(processTick('game-creep-gc', state)).state

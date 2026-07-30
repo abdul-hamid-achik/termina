@@ -36,8 +36,8 @@ function replayResult(): FetchResult {
         tick: 50,
         phase: 'ended',
         teams: {
-          chaff: { kills: 10, towerKills: 2, gold: 0 },
-          audit: { kills: 5, towerKills: 1, gold: 0 },
+          chaff: { kills: 10, iceKills: 2, gold: 0 },
+          audit: { kills: 5, iceKills: 1, gold: 0 },
         },
         players: {
           p1: {
@@ -72,7 +72,7 @@ function framesResult(): FetchResult {
       frames: [
         {
           tick: 0,
-          teams: { chaff: { kills: 0, towerKills: 0 }, audit: { kills: 0, towerKills: 0 } },
+          teams: { chaff: { kills: 0, iceKills: 0 }, audit: { kills: 0, iceKills: 0 } },
           timeOfDay: 'day',
           players: {
             p1: {
@@ -196,10 +196,10 @@ describe('replay page', () => {
   })
 
   it('renders key-moment markers and jumps the scrubber when one is clicked', async () => {
-    // A multi-frame replay with a kill (tick 5) and a tower fall (tick 12).
+    // A multi-frame replay with a kill (tick 5) and a ice fall (tick 12).
     const frame = (tick: number, rk: number, dk: number, rt: number, dt: number) => ({
       tick,
-      teams: { chaff: { kills: rk, towerKills: rt }, audit: { kills: dk, towerKills: dt } },
+      teams: { chaff: { kills: rk, iceKills: rt }, audit: { kills: dk, iceKills: dt } },
       timeOfDay: 'day' as const,
       players: {},
     })
@@ -219,7 +219,7 @@ describe('replay page', () => {
     const strip = wrapper.find('[data-testid="replay-key-moments"]')
     expect(strip.exists()).toBe(true)
     expect(wrapper.find('[data-testid="key-moment-fight"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="key-moment-tower"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="key-moment-ice"]').exists()).toBe(true)
 
     // scrubber initialises to the final tick (12); clicking the fight jumps to 5
     expect(wrapper.text()).toContain('scrub: cycle 12')
@@ -260,7 +260,7 @@ describe('replay page', () => {
           frames: [
             {
               tick: 0,
-              teams: { chaff: { kills: 0, towerKills: 0 }, audit: { kills: 0, towerKills: 0 } },
+              teams: { chaff: { kills: 0, iceKills: 0 }, audit: { kills: 0, iceKills: 0 } },
               timeOfDay: 'day' as const,
               // chaff 3000g vs audit 1000g → chaff +2000 net worth
               players: { p1: fp('p1', 3000), d1: fp('d1', 1000) },

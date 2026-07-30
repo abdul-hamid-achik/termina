@@ -1,9 +1,9 @@
 export type ZoneType = 'base' | 'fountain' | 'lane' | 'jungle' | 'river' | 'objective'
 
-/** Tower tier (1 = outermost, 3 = innermost, 4 = base/ranged). Undefined = no tower. */
-export type TowerTier = 1 | 2 | 3 | 4
+/** Ice tier (1 = outermost, 3 = innermost, 4 = base/ranged). Undefined = no ice. */
+export type IceTier = 1 | 2 | 3 | 4
 
-/** Lane identifier for tower-bearing zones. Undefined = non-lane zone. */
+/** Lane identifier for ice-bearing zones. Undefined = non-lane zone. */
 export type Lane = 'top' | 'mid' | 'bot'
 
 export interface Zone {
@@ -12,10 +12,10 @@ export interface Zone {
   type: ZoneType
   adjacentTo: string[]
   team: 'chaff' | 'audit' | 'neutral'
-  tower: boolean
+  ice: boolean
   shop: boolean
-  /** Tower tier — required when `tower` is true. Absent on non-tower zones. */
-  tier?: TowerTier
-  /** Lane the zone belongs to — present on lane/tower zones. */
+  /** Ice tier — required when `ice` is true. Absent on non-ice zones. */
+  tier?: IceTier
+  /** Lane the zone belongs to — present on lane/ice zones. */
   lane?: Lane
 }

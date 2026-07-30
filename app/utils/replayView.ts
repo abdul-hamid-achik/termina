@@ -61,25 +61,25 @@ export function nextScrubTick(current: number, max: number): number {
   return Math.min(current + 1, max)
 }
 
-/** The minimal frame shape keyMoments needs (team kill/tower tallies per tick). */
+/** The minimal frame shape keyMoments needs (team kill/ice tallies per tick). */
 export interface ReplayFrameLite {
   tick: number
   teams: {
-    chaff: { kills: number; towerKills: number }
-    audit: { kills: number; towerKills: number }
+    chaff: { kills: number; iceKills: number }
+    audit: { kills: number; iceKills: number }
   }
 }
 
 /** A notable tick in a replay, for the jump-to-the-action markers. */
 export interface KeyMoment {
   tick: number
-  kind: 'fight' | 'tower'
+  kind: 'fight' | 'ice'
   label: string
 }
 
 /**
  * Notable ticks in a replay, derived from frame-to-frame score deltas, so a
- * learner can jump straight to the action instead of scrubbing blindly. A tower
+ * learner can jump straight to the action instead of scrubbing blindly. A ice
  * falling is its own marker; runs of consecutive kill ticks (within
  * `coalesceGap` ticks of each other) fold into ONE "fight" marker anchored at
  * the first kill and tallying the kills — so a teamfight reads as a single chip,
@@ -88,7 +88,7 @@ export interface KeyMoment {
 export function keyMoments(frames: ReplayFrameLite[], coalesceGap = 3): KeyMoment[] {
   const moments: KeyMoment[] = []
   const totalKills = (f: ReplayFrameLite) => f.teams.chaff.kills + f.teams.audit.kills
-  const totalTowers = (f: ReplayFrameLite) => f.teams.chaff.towerKills + f.teams.audit.towerKills
+  const totalIce = (f: ReplayFrameLite) => f.teams.chaff.iceKills + f.teams.audit.iceKills
 
   let fight: { tick: number; kills: number; lastTick: number } | null = null
   const flush = () => {
@@ -105,7 +105,7 @@ export function keyMoments(frames: ReplayFrameLite[], coalesceGap = 3): KeyMomen
     const prev = frames[i - 1]!
     const cur = frames[i]!
     const killDelta = totalKills(cur) - totalKills(prev)
-    const towerDelta = totalTowers(cur) - totalTowers(prev)
+    const iceDelta = totalIce(cur) - totalIce(prev)
 
     // A long lull since the last kill closes the current fight.
     if (fight && cur.tick - fight.lastTick > coalesceGap) flush()
@@ -118,7 +118,7 @@ export function keyMoments(frames: ReplayFrameLite[], coalesceGap = 3): KeyMomen
         fight = { tick: cur.tick, kills: killDelta, lastTick: cur.tick }
       }
     }
-    if (towerDelta > 0) moments.push({ tick: cur.tick, kind: 'tower', label: 'Tower' })
+    if (iceDelta > 0) moments.push({ tick: cur.tick, kind: 'ice', label: 'Ice' })
   }
   flush()
   return moments.sort((a, b) => a.tick - b.tick)

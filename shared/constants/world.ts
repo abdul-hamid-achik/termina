@@ -48,7 +48,7 @@ export const FACTION_META: Record<TeamId, FactionMeta> = {
   },
 }
 
-/** Towers are ICE. The T3 guarding the base is BLACK ICE. */
+/** ICE are ICE. The T3 guarding the base is BLACK ICE. */
 export const STRUCTURE_LABELS = {
   ice: { 1: 'ICE', 2: 'ICE', 3: 'BLACK ICE' },
   mainframe: 'Mainframe',

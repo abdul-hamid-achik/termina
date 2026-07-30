@@ -187,7 +187,7 @@ describe('strategy: sparkline', () => {
 })
 
 describe('strategy: shortZone', () => {
-  it('spaces out the id and upper-cases tower tiers', () => {
+  it('spaces out the id and upper-cases ice tiers', () => {
     expect(shortZone('mid-t1-chaff')).toBe('Coldstore T1 (CHAFF)')
     expect(shortZone('top-t2-audit')).toBe('Seawall T2 (AUDIT)')
   })

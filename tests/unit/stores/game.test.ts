@@ -31,7 +31,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 1,
     assists: 3,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...overrides,
   }
@@ -39,8 +39,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 function makeTeams(): { chaff: TeamState; audit: TeamState } {
   return {
-    chaff: { id: 'chaff', kills: 5, towerKills: 1, gold: 5000 },
-    audit: { id: 'audit', kills: 3, towerKills: 0, gold: 4200 },
+    chaff: { id: 'chaff', kills: 5, iceKills: 1, gold: 5000 },
+    audit: { id: 'audit', kills: 3, iceKills: 0, gold: 4200 },
   }
 }
 
@@ -89,7 +89,7 @@ describe('Game Store', () => {
       expect(store.visibleZones).toEqual({})
       expect(store.allPlayers).toEqual({})
       expect(store.teams).toBeNull()
-      expect(store.towers).toEqual([])
+      expect(store.ice).toEqual([])
       expect(store.creeps).toEqual([])
       expect(store.events).toEqual([])
       expect(store.announcements).toEqual([])
@@ -508,11 +508,11 @@ describe('Game Store', () => {
         expect(store.teams).toEqual(teams)
       })
 
-      it('updates towers and creeps when present', () => {
+      it('updates ice and creeps when present', () => {
         const store = useGameStore()
 
         const msg = makeTickMessage()
-        ;(msg.state as unknown as Record<string, unknown>).towers = [
+        ;(msg.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
         ]
         ;(msg.state as unknown as Record<string, unknown>).creeps = [
@@ -521,46 +521,46 @@ describe('Game Store', () => {
 
         store.updateFromTick(msg)
 
-        expect(store.towers).toHaveLength(1)
+        expect(store.ice).toHaveLength(1)
         expect(store.creeps).toHaveLength(1)
       })
 
-      it('stores towers in game store and persists across updates', () => {
+      it('stores ice in game store and persists across updates', () => {
         const store = useGameStore()
 
         const msg1 = makeTickMessage({ tick: 1 })
-        ;(msg1.state as unknown as Record<string, unknown>).towers = [
+        ;(msg1.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
           { team: 'audit', zone: 'mid-t1-audit', hp: 2000, maxHp: 2000, alive: true },
         ]
 
         store.updateFromTick(msg1)
 
-        expect(store.towers).toHaveLength(2)
-        expect(store.towers[0]!.zone).toBe('mid-t1-chaff')
-        expect(store.towers[1]!.zone).toBe('mid-t1-audit')
+        expect(store.ice).toHaveLength(2)
+        expect(store.ice[0]!.zone).toBe('mid-t1-chaff')
+        expect(store.ice[1]!.zone).toBe('mid-t1-audit')
       })
 
-      it('updates towers from tick_state', () => {
+      it('updates ice from tick_state', () => {
         const store = useGameStore()
 
         const msg1 = makeTickMessage({ tick: 1 })
-        ;(msg1.state as unknown as Record<string, unknown>).towers = [
+        ;(msg1.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', hp: 2000, maxHp: 2000, alive: true },
         ]
 
         store.updateFromTick(msg1)
-        expect(store.towers).toHaveLength(1)
-        expect(store.towers[0]!.hp).toBe(2000)
+        expect(store.ice).toHaveLength(1)
+        expect(store.ice[0]!.hp).toBe(2000)
 
         const msg2 = makeTickMessage({ tick: 2 })
-        ;(msg2.state as unknown as Record<string, unknown>).towers = [
+        ;(msg2.state as unknown as Record<string, unknown>).ice = [
           { team: 'chaff', zone: 'mid-t1-chaff', hp: 1500, maxHp: 2000, alive: true },
         ]
 
         store.updateFromTick(msg2)
-        expect(store.towers).toHaveLength(1)
-        expect(store.towers[0]!.hp).toBe(1500)
+        expect(store.ice).toHaveLength(1)
+        expect(store.ice[0]!.hp).toBe(1500)
       })
 
       it('builds scoreboard from players', () => {
@@ -659,16 +659,16 @@ describe('Game Store', () => {
         expect(normalEntry!.fogged).toBe(false)
       })
 
-      it('team stats (kills, towerKills, gold) are accessible', () => {
+      it('team stats (kills, iceKills, gold) are accessible', () => {
         const store = useGameStore()
         const teams = makeTeams()
         store.updateFromTick(makeTickMessage({ teams }))
 
         expect(store.teams!.chaff.kills).toBe(5)
-        expect(store.teams!.chaff.towerKills).toBe(1)
+        expect(store.teams!.chaff.iceKills).toBe(1)
         expect(store.teams!.chaff.gold).toBe(5000)
         expect(store.teams!.audit.kills).toBe(3)
-        expect(store.teams!.audit.towerKills).toBe(0)
+        expect(store.teams!.audit.iceKills).toBe(0)
         expect(store.teams!.audit.gold).toBe(4200)
       })
 
@@ -689,7 +689,7 @@ describe('Game Store', () => {
         const store = useGameStore()
         const events: GameEvent[] = [
           { tick: 1, type: 'kill', payload: { killer: 'p1', victim: 'p2' } },
-          { tick: 2, type: 'tower_destroy', payload: { zone: 'mid-t1-chaff' } },
+          { tick: 2, type: 'ice_destroy', payload: { zone: 'mid-t1-chaff' } },
         ]
 
         store.addEvents(events)
@@ -758,7 +758,7 @@ describe('Game Store', () => {
             gold: 5000,
             items: ['boots'],
             heroDamage: 8000,
-            towerDamage: 2000,
+            iceDamage: 2000,
           },
         }
 
@@ -793,7 +793,7 @@ describe('Game Store', () => {
         expect(store.visibleZones).toEqual({})
         expect(store.allPlayers).toEqual({})
         expect(store.teams).toBeNull()
-        expect(store.towers).toEqual([])
+        expect(store.ice).toEqual([])
         expect(store.creeps).toEqual([])
         expect(store.events).toEqual([])
         expect(store.announcements).toEqual([])
@@ -833,7 +833,7 @@ describe('Game Store', () => {
           gold: 3000,
           items: [],
           heroDamage: 5000,
-          towerDamage: 1000,
+          iceDamage: 1000,
         },
       })
       expect(store.phase).toBe('ended')

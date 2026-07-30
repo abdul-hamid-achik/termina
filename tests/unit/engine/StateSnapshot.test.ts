@@ -3,21 +3,21 @@ import { Effect } from 'effect'
 import type { GameState } from '~~/shared/types/game'
 import type { RedisServiceApi } from '~~/server/services/RedisService'
 import { writeSnapshot, readSnapshot, deleteSnapshot } from '~~/server/game/engine/StateSnapshot'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 
 function makeGameState(): GameState {
   return {
     tick: 42,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 1, towerKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 2, towerKills: 1, gold: 0 },
+      chaff: { id: 'chaff', kills: 1, iceKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 2, iceKills: 1, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     runes: [],
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
     aegis: null,

@@ -34,7 +34,7 @@ function player(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 1,
     assists: 6,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },

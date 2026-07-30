@@ -149,7 +149,7 @@ export function pickAttackTargetString(
     (p) => p.zone === player.zone && p.alive && p.team !== player.team,
   )
   if (enemies.length === 0) {
-    return { error: 'No enemy hero in your zone — target a creep (attack creep:0) or tower' }
+    return { error: 'No enemy hero in your zone — target a creep (attack creep:0) or ice' }
   }
   const target = enemies.reduce((a, b) => (a.hp < b.hp ? a : b))
   return { target: `hero:${target.id}` }
@@ -296,7 +296,7 @@ export function formatHelpReadout(): string[] {
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
     '  Special: rune · aegis · glyph · buyback · talent <tier> <left|right>',
     '  Shortcuts: q/w/e/r = cast · mv = move · atk = attack · b = buy · ss = missing · ? = help',
-    'Goal: push a lane, raze the enemy towers, then destroy their Mainframe.',
+    'Goal: push a lane, raze the enemy ice, then destroy their Mainframe.',
   ]
 }
 
@@ -354,7 +354,7 @@ function parseTarget(raw: string): TargetRef | null {
     const idx = Number.parseInt(raw.slice(8), 10)
     if (!Number.isNaN(idx)) return { kind: 'neutral', index: idx }
   }
-  if (raw.startsWith('tower:')) return { kind: 'tower', zone: raw.slice(6) }
+  if (raw.startsWith('ice:')) return { kind: 'ice', zone: raw.slice(4) }
   if (raw.startsWith('zone:')) return { kind: 'zone', zone: raw.slice(5) }
   if (raw === 'roshan' || raw === 'rosh') return { kind: 'roshan' }
   // If it looks like a hero name without prefix, try hero
@@ -488,8 +488,8 @@ export function validateCommand(command: Command, context: GameContext): string 
           return `${t.name} is not in your zone`
         }
       }
-      if (t.kind === 'tower' && t.zone !== player.zone) {
-        return 'Must be in the tower’s zone to attack it'
+      if (t.kind === 'ice' && t.zone !== player.zone) {
+        return 'Must be in the ice’s zone to attack it'
       }
       if (t.kind === 'roshan' && player.zone !== ROSHAN_ZONE) {
         return `Must be in the ${ROSHAN_ZONE} to attack Roshan`
@@ -673,13 +673,13 @@ export function useCommands() {
           return {
             command: null,
             error:
-              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack roshan, attack tower:mid-t1-chaff, attack ancient)',
+              'Usage: attack <target>  (e.g. attack hero:daemon, attack creep:0, attack neutral:0, attack roshan, attack ice:mid-t1-chaff, attack ancient)',
           }
         const target = parseTarget(targetStr)
         if (!target)
           return {
             command: null,
-            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, neutral:<index>, tower:<zone>, roshan, ancient, or self`,
+            error: `Invalid target "${targetStr}". Use hero:<name>, creep:<index>, neutral:<index>, ice:<zone>, roshan, ancient, or self`,
           }
         return { command: { type: 'attack', target }, error: null }
       }
@@ -1014,7 +1014,7 @@ export function useCommands() {
 
     // An exact alias outranks every prefix match: `mid` means the river, and
     // burying it under `mid-t3-chaff` (first in zone order) walked players into
-    // their OWN tier-3 tower the moment Enter accepted the top suggestion.
+    // their OWN tier-3 ice the moment Enter accepted the top suggestion.
     const exact = partial ? resolveZoneAlias(partial, team) : ''
     if (exact !== partial && zonePool.includes(exact) && ZONE_MAP[exact]) {
       suggestions.push({ text: partial, description: `→ ${ZONE_MAP[exact]!.name}` })
@@ -1070,7 +1070,7 @@ export function useCommands() {
     const adjacent = zone.adjacentTo
 
     // Same alias-first rule as _suggestZones, but only for a reachable zone —
-    // `ward mid` from a mid lane means the river, not the tower behind you.
+    // `ward mid` from a mid lane means the river, not the ice behind you.
     const exact = partial ? resolveZoneAlias(partial, context.player.team) : ''
     if (exact !== partial && adjacent.includes(exact) && ZONE_MAP[exact]) {
       suggestions.push({ text: partial, description: `→ ${ZONE_MAP[exact]!.name}` })
@@ -1159,11 +1159,11 @@ export function useCommands() {
       suggestions.push({ text: 'roshan', description: 'Roshan (drops the Aegis)' })
     }
 
-    // Suggest tower if present
-    if (ZONE_MAP[context.player.zone]?.tower) {
-      const ref = `tower:${context.player.zone}`
+    // Suggest ice if present
+    if (ZONE_MAP[context.player.zone]?.ice) {
+      const ref = `ice:${context.player.zone}`
       if (ref.includes(partial)) {
-        suggestions.push({ text: ref, description: 'Tower' })
+        suggestions.push({ text: ref, description: 'Ice' })
       }
     }
 

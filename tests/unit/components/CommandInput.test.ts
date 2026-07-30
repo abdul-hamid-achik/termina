@@ -28,7 +28,7 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -323,7 +323,7 @@ describe('CommandInput', () => {
       expect(wrapper.get('[data-testid="command-preview"]').text()).toContain('Cast W')
     })
 
-    it('submits `move mid` instead of completing it to the tier-3 tower', async () => {
+    it('submits `move mid` instead of completing it to the tier-3 ice', async () => {
       const wrapper = mount(CommandInput, { props: { canAct: true, player: makePlayer() } })
       const input = await typeAndEnter(wrapper, 'move mid')
       expect(wrapper.emitted('submit')?.[0]).toEqual(['move mid'])

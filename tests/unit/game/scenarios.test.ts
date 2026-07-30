@@ -7,14 +7,14 @@ function baseState(): GameState {
     tick: 0,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: {},
     creeps: [],
     neutrals: [],
-    towers: [],
+    ice: [],
     ancients: {
       chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
       audit: { team: 'audit', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },

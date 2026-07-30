@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import type { GameState, GameMode, PlayerState, TeamId } from '~~/shared/types/game'
 import { STARTING_GOLD } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from './AncientSystem'
 import { zonesForMap, DEFAULT_MAP_ID } from '~~/shared/constants/maps'
@@ -94,7 +94,7 @@ function createPlayerState(setup: PlayerSetup): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0, // Will be calculated on death
     buybackCooldown: undefined,
@@ -119,7 +119,7 @@ function createInitialGameState(
     playerStates[setup.id] = createPlayerState(setup)
   }
 
-  // A map's zone set drives which zones + towers exist; everything else (tower
+  // A map's zone set drives which zones + ice exist; everything else (ice
   // tiers, creep lanes, win condition) derives from the reused zone IDs.
   const zones = zonesForMap(mapId)
 
@@ -127,14 +127,14 @@ function createInitialGameState(
     tick: 0,
     phase: 'picking',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: playerStates,
     zones: initializeZoneStates(zones),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(zones),
+    ice: initializeIce(zones),
     ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),

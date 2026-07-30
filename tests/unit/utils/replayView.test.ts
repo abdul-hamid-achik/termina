@@ -8,11 +8,11 @@ import {
 } from '~~/app/utils/replayView'
 
 // Build a frame stream from per-tick cumulative [chaffKills, auditKills,
-// chaffTowers, auditTowers] tuples — terse fixtures for the delta logic.
+// chaffIce, auditIce] tuples — terse fixtures for the delta logic.
 function frames(rows: Array<[number, number, number, number, number]>): ReplayFrameLite[] {
   return rows.map(([tick, rk, dk, rt, dt]) => ({
     tick,
-    teams: { chaff: { kills: rk, towerKills: rt }, audit: { kills: dk, towerKills: dt } },
+    teams: { chaff: { kills: rk, iceKills: rt }, audit: { kills: dk, iceKills: dt } },
   }))
 }
 
@@ -137,17 +137,17 @@ describe('keyMoments', () => {
     ])
   })
 
-  it('marks tower falls as their own beat, in chronological order', () => {
+  it('marks ice falls as their own beat, in chronological order', () => {
     const m = keyMoments(
       frames([
         [0, 0, 0, 0, 0],
         [5, 1, 0, 0, 0], // kill
-        [12, 1, 0, 1, 0], // chaff takes a audit tower
+        [12, 1, 0, 1, 0], // chaff takes a audit ice
       ]),
     )
     expect(m).toEqual([
       { tick: 5, kind: 'fight', label: 'Kill' },
-      { tick: 12, kind: 'tower', label: 'Tower' },
+      { tick: 12, kind: 'ice', label: 'Ice' },
     ])
   })
 })

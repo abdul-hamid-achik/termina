@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { GameState, PlayerState, RoshanState } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 import { buyback, calculateBuybackCost, canBuyback } from '~~/server/game/engine/BuybackSystem'
 import { processSpecialActions, type PlayerAction } from '~~/server/game/engine/GameLoop'
@@ -46,7 +46,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...overrides,
   }
@@ -57,14 +57,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     runes: [],
     roshan: initializeRoshan(),
     aegis: null,
@@ -241,17 +241,17 @@ describe('systems-gaps: ROSHAN respawn path', () => {
 
 describe('systems-gaps: VISION gaps', () => {
   it('night-vision shrinks the adjacency set but KEEPS the own zone', () => {
-    // No towers (their zone reveals would swamp the dropped zones) and DISTINCT
+    // No ice (their zone reveals would swamp the dropped zones) and DISTINCT
     // player ids (calculateVision caches per playerId; reusing one id across the
     // two calls would serve a stale entry).
     const dayState = makeGameState({
       timeOfDay: 'day',
-      towers: [],
+      ice: [],
       players: { pDay: makePlayer({ id: 'pDay', zone: 'mid-river' }) },
     })
     const nightState = makeGameState({
       timeOfDay: 'night',
-      towers: [],
+      ice: [],
       players: { pNight: makePlayer({ id: 'pNight', zone: 'mid-river' }) },
     })
 

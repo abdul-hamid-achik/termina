@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import {
   initializeZoneStates,
-  initializeTowers,
+  initializeIce,
   placeWard,
   removeExpiredWards,
-  canAttackTower,
+  canAttackIce,
 } from '~~/server/game/map/zones'
 import { ZONES, ZONE_IDS } from '~~/shared/constants/zones'
 import {
-  TOWER_HP_T1,
-  TOWER_HP_T2,
-  TOWER_HP_T3,
+  ICE_HP_T1,
+  ICE_HP_T2,
+  ICE_HP_T3,
   OBSERVER_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
@@ -66,55 +66,55 @@ describe('Zones', () => {
     })
   })
 
-  describe('initializeTowers', () => {
-    it('creates towers only for zones with tower: true', () => {
-      const towers = initializeTowers()
-      const towerZones = ZONES.filter((z) => z.tower)
-      expect(towers.length).toBe(towerZones.length)
+  describe('initializeIce', () => {
+    it('creates ice only for zones with ice: true', () => {
+      const ice = initializeIce()
+      const iceZones = ZONES.filter((z) => z.ice)
+      expect(ice.length).toBe(iceZones.length)
     })
 
-    it('creates 18 towers total (3 lanes * 3 tiers * 2 teams)', () => {
-      const towers = initializeTowers()
-      expect(towers.length).toBe(18)
+    it('creates 18 ice total (3 lanes * 3 tiers * 2 teams)', () => {
+      const ice = initializeIce()
+      expect(ice.length).toBe(18)
     })
 
     it('assigns correct HP by tier', () => {
-      const towers = initializeTowers()
+      const ice = initializeIce()
       const zoneMap = Object.fromEntries(ZONES.map((z) => [z.id, z]))
-      for (const t of towers) {
+      for (const t of ice) {
         const tier = zoneMap[t.zone]?.tier
         if (tier === 1) {
-          expect(t.hp).toBe(TOWER_HP_T1)
-          expect(t.maxHp).toBe(TOWER_HP_T1)
+          expect(t.hp).toBe(ICE_HP_T1)
+          expect(t.maxHp).toBe(ICE_HP_T1)
         } else if (tier === 2) {
-          expect(t.hp).toBe(TOWER_HP_T2)
-          expect(t.maxHp).toBe(TOWER_HP_T2)
+          expect(t.hp).toBe(ICE_HP_T2)
+          expect(t.maxHp).toBe(ICE_HP_T2)
         } else if (tier === 3) {
-          expect(t.hp).toBe(TOWER_HP_T3)
-          expect(t.maxHp).toBe(TOWER_HP_T3)
+          expect(t.hp).toBe(ICE_HP_T3)
+          expect(t.maxHp).toBe(ICE_HP_T3)
         }
       }
     })
 
-    it('all towers start alive', () => {
-      const towers = initializeTowers()
-      for (const t of towers) {
+    it('all ice start alive', () => {
+      const ice = initializeIce()
+      for (const t of ice) {
         expect(t.alive).toBe(true)
       }
     })
 
-    it('assigns correct team to each tower', () => {
-      const towers = initializeTowers()
-      for (const t of towers) {
+    it('assigns correct team to each ice', () => {
+      const ice = initializeIce()
+      for (const t of ice) {
         if (t.zone.endsWith('-chaff')) expect(t.team).toBe('chaff')
         else if (t.zone.endsWith('-audit')) expect(t.team).toBe('audit')
       }
     })
 
-    it('each team has 9 towers (3 lanes * 3 tiers)', () => {
-      const towers = initializeTowers()
-      const chaff = towers.filter((t) => t.team === 'chaff')
-      const audit = towers.filter((t) => t.team === 'audit')
+    it('each team has 9 ice (3 lanes * 3 tiers)', () => {
+      const ice = initializeIce()
+      const chaff = ice.filter((t) => t.team === 'chaff')
+      const audit = ice.filter((t) => t.team === 'audit')
       expect(chaff.length).toBe(9)
       expect(audit.length).toBe(9)
     })
@@ -183,77 +183,77 @@ describe('Zones', () => {
     })
   })
 
-  describe('canAttackTower', () => {
-    it('T1 towers can always be attacked', () => {
-      const towers = initializeTowers()
-      expect(canAttackTower(towers, 'mid-t1-chaff')).toBe(true)
-      expect(canAttackTower(towers, 'top-t1-audit')).toBe(true)
+  describe('canAttackIce', () => {
+    it('T1 ice can always be attacked', () => {
+      const ice = initializeIce()
+      expect(canAttackIce(ice, 'mid-t1-chaff')).toBe(true)
+      expect(canAttackIce(ice, 'top-t1-audit')).toBe(true)
     })
 
     it('T2 cannot be attacked while T1 is alive', () => {
-      const towers = initializeTowers()
-      expect(canAttackTower(towers, 'mid-t2-chaff')).toBe(false)
+      const ice = initializeIce()
+      expect(canAttackIce(ice, 'mid-t2-chaff')).toBe(false)
     })
 
     it('T2 can be attacked when T1 is destroyed', () => {
-      const towers = initializeTowers()
-      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
+      const ice = initializeIce()
+      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
       t1.alive = false
       t1.hp = 0
-      expect(canAttackTower(towers, 'mid-t2-chaff')).toBe(true)
+      expect(canAttackIce(ice, 'mid-t2-chaff')).toBe(true)
     })
 
     it('T3 cannot be attacked while T2 is alive', () => {
-      const towers = initializeTowers()
+      const ice = initializeIce()
       // Destroy T1
-      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
+      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
       t1.alive = false
-      expect(canAttackTower(towers, 'mid-t3-chaff')).toBe(false)
+      expect(canAttackIce(ice, 'mid-t3-chaff')).toBe(false)
     })
 
     it('T3 can be attacked when T2 is destroyed', () => {
-      const towers = initializeTowers()
-      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
-      const t2 = towers.find((t) => t.zone === 'mid-t2-chaff')!
+      const ice = initializeIce()
+      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
+      const t2 = ice.find((t) => t.zone === 'mid-t2-chaff')!
       t1.alive = false
       t2.alive = false
-      expect(canAttackTower(towers, 'mid-t3-chaff')).toBe(true)
+      expect(canAttackIce(ice, 'mid-t3-chaff')).toBe(true)
     })
 
-    it('returns false for a dead tower', () => {
-      const towers = initializeTowers()
-      const t1 = towers.find((t) => t.zone === 'mid-t1-chaff')!
+    it('returns false for a dead ice', () => {
+      const ice = initializeIce()
+      const t1 = ice.find((t) => t.zone === 'mid-t1-chaff')!
       t1.alive = false
-      expect(canAttackTower(towers, 'mid-t1-chaff')).toBe(false)
+      expect(canAttackIce(ice, 'mid-t1-chaff')).toBe(false)
     })
 
-    it('returns false for zones without towers', () => {
-      const towers = initializeTowers()
-      expect(canAttackTower(towers, 'mid-river')).toBe(false)
-      expect(canAttackTower(towers, 'chaff-base')).toBe(false)
+    it('returns false for zones without ice', () => {
+      const ice = initializeIce()
+      expect(canAttackIce(ice, 'mid-river')).toBe(false)
+      expect(canAttackIce(ice, 'chaff-base')).toBe(false)
     })
   })
 
   describe('zone tier and lane fields', () => {
-    it('every tower zone has a tier field', () => {
-      const towerZones = ZONES.filter((z) => z.tower)
-      for (const z of towerZones) {
+    it('every ice zone has a tier field', () => {
+      const iceZones = ZONES.filter((z) => z.ice)
+      for (const z of iceZones) {
         expect(z.tier).toBeDefined()
         expect([1, 2, 3]).toContain(z.tier)
       }
     })
 
-    it('every tower zone has a lane field', () => {
-      const towerZones = ZONES.filter((z) => z.tower)
-      for (const z of towerZones) {
+    it('every ice zone has a lane field', () => {
+      const iceZones = ZONES.filter((z) => z.ice)
+      for (const z of iceZones) {
         expect(z.lane).toBeDefined()
         expect(['top', 'mid', 'bot']).toContain(z.lane)
       }
     })
 
     it('tier field matches the zone ID convention', () => {
-      const towerZones = ZONES.filter((z) => z.tower)
-      for (const z of towerZones) {
+      const iceZones = ZONES.filter((z) => z.ice)
+      for (const z of iceZones) {
         const idTier = z.id.includes('-t1-')
           ? 1
           : z.id.includes('-t2-')
@@ -265,9 +265,9 @@ describe('Zones', () => {
       }
     })
 
-    it('non-tower zones do not have a tier field', () => {
-      const nonTowerZones = ZONES.filter((z) => !z.tower)
-      for (const z of nonTowerZones) {
+    it('non-ice zones do not have a tier field', () => {
+      const nonIceZones = ZONES.filter((z) => !z.ice)
+      for (const z of nonIceZones) {
         expect(z.tier).toBeUndefined()
       }
     })

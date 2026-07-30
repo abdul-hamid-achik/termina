@@ -27,7 +27,7 @@ for (const p of ROSTER) {
     gold: p.gold,
     items: p.items.some(Boolean) ? p.items : SAMPLE_INVENTORY,
     heroDamage: 8_000 + p.kills * 2_500,
-    towerDamage: p.towerDamageDealt,
+    iceDamage: p.iceDamageDealt,
   })
 }
 STATS.p1 = makePlayerEndStats({
@@ -37,7 +37,7 @@ STATS.p1 = makePlayerEndStats({
   gold: 14_200,
   items: SAMPLE_INVENTORY,
   heroDamage: 38_400,
-  towerDamage: 6_100,
+  iceDamage: 6_100,
 })
 
 const CHAFF: TeamId = 'chaff'

@@ -19,8 +19,8 @@ const fogged = makeScoreboard().map((p) =>
 
 // Early game: everyone alive, low gold, no items yet, even kills.
 const earlyTeams = {
-  chaff: makeTeamState('chaff', { kills: 0, towerKills: 0, gold: 1800 }),
-  audit: makeTeamState('audit', { kills: 0, towerKills: 0, gold: 1800 }),
+  chaff: makeTeamState('chaff', { kills: 0, iceKills: 0, gold: 1800 }),
+  audit: makeTeamState('audit', { kills: 0, iceKills: 0, gold: 1800 }),
 }
 const earlyGame = makeScoreboard().map((p) =>
   makeScoreboardEntry({
@@ -39,8 +39,8 @@ const earlyGame = makeScoreboard().map((p) =>
 
 // A blowout where audit is being closed out (dead, full builds on chaff).
 const stompTeams = {
-  chaff: makeTeamState('chaff', { kills: 38, towerKills: 9, gold: 14_200 }),
-  audit: makeTeamState('audit', { kills: 7, towerKills: 0, gold: 4100 }),
+  chaff: makeTeamState('chaff', { kills: 38, iceKills: 9, gold: 14_200 }),
+  audit: makeTeamState('audit', { kills: 7, iceKills: 0, gold: 4100 }),
 }
 const fullBuild = [
   SAMPLE_ITEMS.daedalus,

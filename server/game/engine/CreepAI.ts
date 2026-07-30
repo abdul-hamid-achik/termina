@@ -1,4 +1,4 @@
-import type { CreepState, GameState, TeamId, TowerState, PlayerState } from '~~/shared/types/game'
+import type { CreepState, GameState, TeamId, IceState, PlayerState } from '~~/shared/types/game'
 import {
   creepAttack,
   CREEP_BASE_IDLE_DESPAWN_TICKS,
@@ -57,13 +57,13 @@ function getEnemyHeroesInZone(
   return Object.values(players).filter((p) => p.zone === zone && p.team !== team && p.alive)
 }
 
-/** Find enemy tower in the same zone. */
-function getEnemyTowerInZone(
-  towers: TowerState[],
+/** Find enemy ice in the same zone. */
+function getEnemyIceInZone(
+  ice: IceState[],
   zone: string,
   team: CreepState['team'],
-): TowerState | undefined {
-  return towers.find((t) => t.zone === zone && t.team !== team && t.alive)
+): IceState | undefined {
+  return ice.find((t) => t.zone === zone && t.team !== team && t.alive)
 }
 
 export interface CreepAction {
@@ -72,7 +72,7 @@ export interface CreepAction {
     | 'move'
     | 'attack_creep'
     | 'attack_hero'
-    | 'attack_tower'
+    | 'attack_ice'
     | 'attack_ancient'
     | 'wait_in_base'
     | 'despawn'
@@ -90,7 +90,7 @@ export interface CreepAction {
  *   (above heroes — the wave commits to the objective, which also keeps
  *   base creeps from grinding down every respawning hero)
  * - If enemy heroes in same zone: attack
- * - If enemy tower in zone: attack tower
+ * - If enemy ice in zone: attack ice
  * - Otherwise: move toward enemy base along lane (1 zone per tick)
  * - Stuck in the enemy base with an invulnerable Ancient and nothing to
  *   attack: idle, then get garbage collected after
@@ -143,13 +143,13 @@ export function runCreepAI(state: GameState): CreepAction[] {
       continue
     }
 
-    // Priority 4: attack enemy tower in same zone
-    const enemyTower = getEnemyTowerInZone(state.towers, creep.zone, creep.team)
-    if (enemyTower) {
+    // Priority 4: attack enemy ice in same zone
+    const enemyIce = getEnemyIceInZone(state.ice, creep.zone, creep.team)
+    if (enemyIce) {
       actions.push({
         creepId: creep.id,
-        action: 'attack_tower',
-        targetZone: enemyTower.zone,
+        action: 'attack_ice',
+        targetZone: enemyIce.zone,
         damage,
       })
       continue
@@ -194,7 +194,7 @@ export function applyCreepActions(
   actions: CreepAction[],
 ): { state: GameState; events: GameEngineEvent[] } {
   let creeps = state.creeps.map((c) => ({ ...c }))
-  let towers = state.towers.map((t) => ({ ...t }))
+  let ice = state.ice.map((t) => ({ ...t }))
   let players = { ...state.players }
   let ancients = state.ancients
   const events: GameEngineEvent[] = []
@@ -252,18 +252,16 @@ export function applyCreepActions(
         }
         break
       }
-      case 'attack_tower': {
-        const towerIdx = towers.findIndex((t) => t.zone === action.targetZone && t.alive)
-        if (towerIdx >= 0) {
-          const tower = towers[towerIdx]!
+      case 'attack_ice': {
+        const iceIdx = ice.findIndex((t) => t.zone === action.targetZone && t.alive)
+        if (iceIdx >= 0) {
+          const target = ice[iceIdx]!
           // Glyph invulnerability blocks the creep wave too, not just heroes —
-          // otherwise a glyphed tower still gets chewed down by the push. Hero
+          // otherwise a glyphed ice still gets chewed down by the push. Hero
           // attacks already bounce off (ActionResolver), so mirror that here.
-          if (!tower.invulnerable) {
-            const newHp = Math.max(0, tower.hp - (action.damage ?? 0))
-            towers = towers.map((t, i) =>
-              i === towerIdx ? { ...t, hp: newHp, alive: newHp > 0 } : t,
-            )
+          if (!target.invulnerable) {
+            const newHp = Math.max(0, target.hp - (action.damage ?? 0))
+            ice = ice.map((t, i) => (i === iceIdx ? { ...t, hp: newHp, alive: newHp > 0 } : t))
           }
         }
         break
@@ -296,7 +294,7 @@ export function applyCreepActions(
   // Remove dead creeps
   creeps = creeps.filter((c) => c.hp > 0)
 
-  return { state: { ...state, creeps, towers, players, ancients }, events }
+  return { state: { ...state, creeps, ice, players, ancients }, events }
 }
 
 /**

@@ -9,7 +9,7 @@ import {
   CREEP_GOLD,
   KILL_BOUNTY_BASE,
   ASSIST_GOLD,
-  TOWER_GOLD,
+  ICE_GOLD,
   STARTING_GOLD,
   MAX_ITEMS,
   MAX_LEVEL,
@@ -27,10 +27,10 @@ import {
   MELEE_CREEPS_PER_WAVE,
   RANGED_CREEPS_PER_WAVE,
   SIEGE_CREEP_WAVE_INTERVAL,
-  TOWER_HP_T1,
-  TOWER_HP_T2,
-  TOWER_HP_T3,
-  TOWER_ATTACK,
+  ICE_HP_T1,
+  ICE_HP_T2,
+  ICE_HP_T3,
+  ICE_ATTACK,
   ANCIENT_HP,
   ROSHAN_BASE_HP,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
@@ -127,7 +127,7 @@ const quickStart = [
   {
     step: '6',
     title: 'Fight & Push',
-    desc: 'Use abilities on enemies and raze a lane to its T3 tower — that exposes the enemy Mainframe. Destroy it to win.',
+    desc: 'Use abilities on enemies and raze a lane to its T3 ice — that exposes the enemy Mainframe. Destroy it to win.',
   },
 ]
 
@@ -217,7 +217,7 @@ const commands = [
   { cmd: 'aegis', desc: 'Pick up the Aegis in the Roshan pit', example: 'aegis', shortcuts: '—' },
   {
     cmd: 'glyph',
-    desc: `Make your towers invulnerable for ${GLYPH_DURATION_TICKS} cycles (one per team every ${glyphCooldownMinutes} min)`,
+    desc: `Make your ice invulnerable for ${GLYPH_DURATION_TICKS} cycles (one per team every ${glyphCooldownMinutes} min)`,
     example: 'glyph',
     shortcuts: '—',
   },
@@ -267,9 +267,9 @@ const targeting = [
     example: 'attack neutral:0',
   },
   {
-    format: 'tower:<zone>',
-    desc: 'Target the tower in a zone',
-    example: 'attack tower:mid-t1-audit',
+    format: 'ice:<zone>',
+    desc: 'Target the ice in a zone',
+    example: 'attack ice:mid-t1-audit',
   },
   {
     format: 'roshan',
@@ -317,7 +317,7 @@ const concepts = [
   {
     term: 'No Feed',
     icon: '?',
-    desc: 'You have no feed on ground you do not hold. You see your own zone and the zones next to it, your allies, your towers, and anywhere you have a ward. Enemies outside that are not on your screen at all.',
+    desc: 'You have no feed on ground you do not hold. You see your own zone and the zones next to it, your allies, your ice, and anywhere you have a ward. Enemies outside that are not on your screen at all.',
   },
   {
     term: 'Creep Waves',
@@ -325,14 +325,14 @@ const concepts = [
     desc: `AI creeps spawn every ${CREEP_WAVE_INTERVAL_TICKS} cycles in each lane. ${MELEE_CREEPS_PER_WAVE} melee + ${RANGED_CREEPS_PER_WAVE} ranged per wave (siege every ${SIEGE_CREEP_WAVE_INTERVAL}th wave). Last-hit them for gold. They push lanes automatically.`,
   },
   {
-    term: 'Towers',
+    term: 'ICE',
     icon: '!',
-    desc: `Each lane has 3 tower tiers per side: T1 ${TOWER_HP_T1} HP, T2 ${TOWER_HP_T2} HP, T3 ${TOWER_HP_T3} HP. Towers hit for ${TOWER_ATTACK} and prioritize heroes who attack under them, then creeps. A tower kill splits ${TOWER_GOLD}g among allies in the zone.`,
+    desc: `Each lane has 3 ice tiers per side: T1 ${ICE_HP_T1} HP, T2 ${ICE_HP_T2} HP, T3 ${ICE_HP_T3} HP. ICE hit for ${ICE_ATTACK} and prioritize heroes who attack under them, then creeps. A ice kill splits ${ICE_GOLD}g among allies in the zone.`,
   },
   {
     term: 'The Mainframe',
     icon: '@',
-    desc: `Each base houses its team's core — the Mainframe (${ANCIENT_HP} HP). It is invulnerable until at least one of that team's T3 towers falls; once exposed, heroes and creeps in the base can attack it.`,
+    desc: `Each base houses its team's core — the Mainframe (${ANCIENT_HP} HP). It is invulnerable until at least one of that team's T3 ice falls; once exposed, heroes and creeps in the base can attack it.`,
   },
   {
     term: 'Levels & XP',
@@ -372,7 +372,7 @@ const concepts = [
   {
     term: 'Win Condition',
     icon: 'W',
-    desc: `Destroying any of a team's T3 towers exposes their Mainframe (${ANCIENT_HP} HP) in their base. Destroy the enemy Mainframe to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
+    desc: `Destroying any of a team's T3 ice exposes their Mainframe (${ANCIENT_HP} HP) in their base. Destroy the enemy Mainframe to win. Teams may also surrender after ${surrenderMinutes} minutes with a ${surrenderPercent}% vote.`,
   },
   {
     term: 'Draft & Bans',

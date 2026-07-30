@@ -17,7 +17,7 @@ import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
 import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
 import { HEROES } from '~~/shared/constants/heroes'
 import { getItem } from '~~/shared/constants/items'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { findPath } from '~~/server/game/map/topology'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
@@ -69,7 +69,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -82,14 +82,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
     roshan: { alive: true, hp: 5000, maxHp: 5000, deathTick: null },
@@ -627,7 +627,7 @@ describe('BotAI - decideBotAction', () => {
     it('a missed last hit re-aims at the SECOND-lowest creep — never at nothing', () => {
       // The miss must cost the gold, not the tick. Returning null on a failed
       // roll was the original standstill bug: bots stopped out-clearing the
-      // incoming wave and never reached a tower (see BotForwardProgress).
+      // incoming wave and never reached a ice (see BotForwardProgress).
       // Tick 30's lasthit roll is 0.91, above every accuracy below `unfair`.
       const bot = makePlayer({ zone: 'mid-t1-chaff', hp: 400, maxHp: 500, mp: 0 })
       const creeps: CreepState[] = [
@@ -684,8 +684,8 @@ describe('BotAI - decideBotAction', () => {
     })
   })
 
-  describe('tower targeting', () => {
-    it('attacks enemy tower when allied creeps are present', () => {
+  describe('ice targeting', () => {
+    it('attacks enemy ice when allied creeps are present', () => {
       const bot = makePlayer({ zone: 'mid-t1-audit', hp: 400, maxHp: 500, mp: 0 })
       const alliedCreeps: CreepState[] = [
         { id: 'creep-1', team: 'chaff', zone: 'mid-t1-audit', hp: 400, type: 'melee' },
@@ -698,11 +698,11 @@ describe('BotAI - decideBotAction', () => {
       expect(action).not.toBeNull()
       expect(action!.type).toBe('attack')
       if (action!.type === 'attack') {
-        expect(action!.target).toEqual({ kind: 'tower', zone: 'mid-t1-audit' })
+        expect(action!.target).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
       }
     })
 
-    it('does not attack tower without allied creeps', () => {
+    it('does not attack ice without allied creeps', () => {
       const bot = makePlayer({ zone: 'mid-t1-audit', hp: 400, maxHp: 500, mp: 0 })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -1877,7 +1877,7 @@ describe('BotAI - denying (medium+)', () => {
   })
 })
 
-describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
+describe('BotAI - ice defence rotation (outnumbered, not undefended)', () => {
   const THREATENED = 'top-t1-chaff'
 
   function siege(defenderIds: string[], attackers: number, botZone = 'top-t2-chaff') {
@@ -1894,7 +1894,7 @@ describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
     return { bot, state: makeGameState({ players }) }
   }
 
-  it('rotates to a teammate who is outnumbered at the tower', () => {
+  it('rotates to a teammate who is outnumbered at the ice', () => {
     const { bot, state } = siege(['bot_bravo'], 2)
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'move',
@@ -1904,7 +1904,7 @@ describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
 
   it('a HUMAN ally running back to defend still summons help', () => {
     // The old predicate was "is any ally already there?", so a human doing the
-    // right thing was precisely what told the bots the tower was handled.
+    // right thing was precisely what told the bots the ice was handled.
     const { bot, state } = siege(['github_7379966'], 2)
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'move',
@@ -1918,7 +1918,7 @@ describe('BotAI - tower defence rotation (outnumbered, not undefended)', () => {
     expect(action).not.toEqual({ type: 'move', zone: THREATENED })
   })
 
-  it('still answers an undefended tower (no ally present at all)', () => {
+  it('still answers an undefended ice (no ally present at all)', () => {
     const { bot, state } = siege([], 1)
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
       type: 'move',

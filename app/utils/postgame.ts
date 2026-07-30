@@ -1,6 +1,6 @@
 /**
  * Post-game MVP selection — a pure, transparent "impact" score used only to crown
- * one standout player on the end screen. Takedowns weigh most, hero/tower damage
+ * one standout player on the end screen. Takedowns weigh most, hero/ice damage
  * add, deaths cost a little. Deliberately simple and unit-tested so the crown is
  * explainable, not a black box.
  */
@@ -12,7 +12,7 @@ export interface MvpInput {
   deaths: number
   assists: number
   heroDamage: number
-  towerDamage?: number
+  iceDamage?: number
 }
 
 /**
@@ -25,7 +25,7 @@ export function impactScore(p: MvpInput): number {
     p.kills * 4 +
     p.assists * 2 +
     Math.round(p.heroDamage / 500) +
-    Math.round((p.towerDamage ?? 0) / 500) -
+    Math.round((p.iceDamage ?? 0) / 500) -
     p.deaths * 2
   )
 }

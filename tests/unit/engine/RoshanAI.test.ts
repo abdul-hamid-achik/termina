@@ -3,7 +3,7 @@ import { Effect } from 'effect'
 import { resolveActions, type PlayerAction } from '~~/server/game/engine/ActionResolver'
 import { processRoshanDamage, runRoshanAI } from '~~/server/game/engine/RoshanAI'
 import type { GameState, PlayerState, RoshanState } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -31,7 +31,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...overrides,
   }
@@ -42,14 +42,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     runes: [],
     roshan: initializeRoshan(),
     aegis: null,

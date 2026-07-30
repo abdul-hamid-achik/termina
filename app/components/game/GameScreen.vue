@@ -44,7 +44,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { ITEMS, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
 import { getTalentTree } from '~~/shared/constants/talents'
-import type { TowerState } from '~~/shared/types/game'
+import type { IceState } from '~~/shared/types/game'
 import { uiLog } from '~/utils/logger'
 import { collapseStructureDamage, type CombatLine } from '~/utils/combatLog'
 import {
@@ -572,17 +572,17 @@ watch(
             kdaPopKey.value++
           }
           break
-        case 'tower_kill': {
-          // `killerId` was tested here, a field TowerKillEvent has never had, so
-          // every tower read identically regardless of whose it was.
+        case 'ice_kill': {
+          // `killerId` was tested here, a field IceKillEvent has never had, so
+          // every ice read identically regardless of whose it was.
           const myTeam = gameStore.player?.team
           if (myTeam && e.payload.team === myTeam) {
-            playSound('tower_lost')
+            playSound('ice_lost')
             const where = zoneLabel(String(e.payload.zone))
-            gameStore.addAnnouncement(`Tower lost — ${where}`, 'warning')
+            gameStore.addAnnouncement(`Ice lost — ${where}`, 'warning')
           } else {
-            // Audible to everyone — towers are global events.
-            playSound('tower_fall')
+            // Audible to everyone — ice are global events.
+            playSound('ice_fall')
             if (myTeam && e.payload.killerTeam === myTeam) triggerImpact('light')
           }
           break
@@ -654,7 +654,7 @@ const heroData = computed(() => {
   }
 })
 
-// Resolve raw entity IDs (github_*, bot_*, creep_3, tower_mid-t1-chaff…) to
+// Resolve raw entity IDs (github_*, bot_*, creep_3, ice_mid-t1-chaff…) to
 // readable names: hero name for players ("You" for self), short labels for units.
 const abilityNameById: Record<string, string> = {}
 for (const hero of Object.values(HEROES)) {
@@ -671,9 +671,9 @@ function entityLabel(id: unknown): string {
   if (p) return (p.heroId && HEROES[p.heroId]?.name) || p.name || id
   if (id.startsWith('creep')) return 'a creep'
   if (id.startsWith('neutral')) return 'a neutral creep'
-  if (id.startsWith('tower')) {
-    const zone = id.slice('tower_'.length)
-    return `tower (${zone})`
+  if (id.startsWith('ice')) {
+    const zone = id.slice('ice_'.length)
+    return `ice (${zone})`
   }
   if (id.startsWith('ancient_')) {
     const team = id.slice('ancient_'.length)
@@ -723,7 +723,7 @@ const combatEvents = computed<CombatLine[]>(() => {
   return [...lines, ...localEvents.value].sort((a, b) => a.tick - b.tick)
 })
 
-// Cinematic headline plays — first blood, multi-kills, shutdowns, tower/Roshan/Core.
+// Cinematic headline plays — first blood, multi-kills, shutdowns, ice/Roshan/Core.
 const killFeed = computed<KillFeedEntry[]>(() =>
   deriveKillFeed(gameStore.events, narrativeCtx.value),
 )
@@ -807,10 +807,10 @@ const unsubOnMessage = gameSocket.onMessage((msg) => {
   }
 })
 
-// Tower lookup: zoneId → TowerState (the store tracks towers from tick_state)
-const towersByZone = computed(() => {
-  const map = new Map<string, TowerState>()
-  for (const t of gameStore.towers) {
+// Ice lookup: zoneId → IceState (the store tracks ice from tick_state)
+const iceByZone = computed(() => {
+  const map = new Map<string, IceState>()
+  for (const t of gameStore.ice) {
     map.set(t.zone, t)
   }
   return map
@@ -870,15 +870,15 @@ const mapZones = computed(() => {
       (w) => w.team === playerTeam,
     ).length
 
-    // Tower info
-    const tower = towersByZone.value.get(zone.id)
-    const towerDisplay = tower
+    // Ice info
+    const ice = iceByZone.value.get(zone.id)
+    const iceDisplay = ice
       ? {
-          team: tower.team,
-          alive: tower.alive,
-          tier: zone.tier ?? getTowerTier(zone.id),
-          hp: tower.hp,
-          maxHp: tower.maxHp,
+          team: ice.team,
+          alive: ice.alive,
+          tier: zone.tier ?? getIceTier(zone.id),
+          hp: ice.hp,
+          maxHp: ice.maxHp,
         }
       : undefined
 
@@ -889,7 +889,7 @@ const mapZones = computed(() => {
       allies,
       enemyCount,
       enemyNames,
-      tower: towerDisplay,
+      ice: iceDisplay,
       fogged,
       creepCount,
       creepTypes,
@@ -962,7 +962,7 @@ const zoneRoshan = computed(() =>
   playerZone.value === 'hollow' && gameStore.roshan?.alive ? gameStore.roshan : null,
 )
 
-const zoneTower = computed(() => towersByZone.value.get(playerZone.value) ?? null)
+const zoneIce = computed(() => iceByZone.value.get(playerZone.value) ?? null)
 
 // ── Death overlay ─────────────────────────────────────────────
 
@@ -994,7 +994,7 @@ const buybackInfo = computed(() => {
   }
 })
 
-function getTowerTier(zoneId: string): number {
+function getIceTier(zoneId: string): number {
   if (zoneId.includes('t1')) return 1
   if (zoneId.includes('t2')) return 2
   if (zoneId.includes('t3')) return 3
@@ -1471,12 +1471,12 @@ const killerName = computed(() => {
       attributed = e.payload.killerId as string
       break
     }
-    // Towers, creeps and neutrals are not eligible killers (handleDeaths only
+    // ICE, creeps and neutrals are not eligible killers (handleDeaths only
     // accepts a killerId that resolves to a player), so an NPC kill produces a
     // `death` with no `kill` at all. Since NPC hits now emit `damage`, the last
     // thing that hit us on the death tick is the honest answer — without it the
     // overlay simply said nothing after the most instructive death in the game,
-    // the tower dive.
+    // the ice dive.
     if (lastDamaged === null && e.type === 'damage' && e.payload.targetId === pid) {
       lastDamaged = e.payload.sourceId as string
     }
@@ -1723,7 +1723,7 @@ function handleReturnToMenu() {
           :allies="gameStore.nearbyAllies"
           :creeps="zoneCreeps"
           :neutrals="zoneNeutrals"
-          :tower="zoneTower"
+          :ice="zoneIce"
           :roshan="zoneRoshan"
           @command="handleCommand"
         />

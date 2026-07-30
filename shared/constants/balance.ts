@@ -17,7 +17,7 @@ export const SIEGE_CREEP_GOLD = 75
 export const KILL_BOUNTY_BASE = 200
 export const KILL_BOUNTY_PER_STREAK = 50
 export const ASSIST_GOLD = 100
-export const TOWER_GOLD = 500
+export const ICE_GOLD = 500
 export const ROSHAN_GOLD = 600
 export const STARTING_GOLD = 600
 /** Fraction of an item's cost refunded when sold. */
@@ -216,7 +216,7 @@ export const SIEGE_CREEP_ATTACK = 50
 /**
  * Creep escalation — the match-length lever.
  *
- * Tower and Ancient HP are fixed while creep output never scaled, so a wave
+ * Ice and Ancient HP are fixed while creep output never scaled, so a wave
  * that could not break a T1 at minute 5 still could not break it at minute 45:
  * `bun run sim 16` measured 31–73m, median 60m. Every
  * CREEP_ESCALATION_INTERVAL_TICKS, creep HP and creep damage each gain one
@@ -294,20 +294,20 @@ export const NEUTRAL_CREEPS = {
 
 export type NeutralCreepType = keyof typeof NEUTRAL_CREEPS
 
-// ── Towers ───────────────────────────────────────────────────────
+// ── ICE ───────────────────────────────────────────────────────
 
-export const TOWER_HP_T1 = 1500
-export const TOWER_HP_T2 = 2000
-export const TOWER_HP_T3 = 2500
-export const TOWER_ATTACK = 120
-export const TOWER_DEFENSE = 20
+export const ICE_HP_T1 = 1500
+export const ICE_HP_T2 = 2000
+export const ICE_HP_T3 = 2500
+export const ICE_ATTACK = 120
+export const ICE_DEFENSE = 20
 
 // ── Ancients (core structures) ───────────────────────────────────
 
 /**
  * The Ancient ("Mainframe") — each team's win-condition structure in its
  * base zone. Invulnerable until at least one of the owning team's T3
- * towers is destroyed; the game ends when an Ancient falls.
+ * ice is destroyed; the game ends when an Ancient falls.
  */
 export const ANCIENT_HP = 6000
 

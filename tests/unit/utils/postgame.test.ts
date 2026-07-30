@@ -8,7 +8,7 @@ const p = (o: Partial<MvpInput> = {}): MvpInput => ({
   deaths: 0,
   assists: 0,
   heroDamage: 0,
-  towerDamage: 0,
+  iceDamage: 0,
   ...o,
 })
 
@@ -21,9 +21,9 @@ describe('impactScore', () => {
     expect(impactScore(p({ kills: 3 }))).toBeGreaterThan(impactScore(p({ kills: 3, deaths: 3 })))
   })
 
-  it('counts assists and tower damage', () => {
+  it('counts assists and ice damage', () => {
     expect(impactScore(p({ assists: 3 }))).toBe(6)
-    expect(impactScore(p({ towerDamage: 1000 }))).toBe(2)
+    expect(impactScore(p({ iceDamage: 1000 }))).toBe(2)
   })
 })
 

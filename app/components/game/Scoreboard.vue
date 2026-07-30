@@ -81,14 +81,10 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
           <span class="scoreboard__vs">vs</span>
           <span class="text-audit">{{ teams.audit.kills }}</span>
         </div>
-        <div class="scoreboard__tower-summary">
-          <span class="text-chaff" :title="`Chaff towers destroyed`"
-            >{{ teams.chaff.towerKills }}T</span
-          >
+        <div class="scoreboard__ice-summary">
+          <span class="text-chaff" :title="`Chaff ice destroyed`">{{ teams.chaff.iceKills }}T</span>
           <span class="scoreboard__separator">/</span>
-          <span class="text-audit" :title="`Audit towers destroyed`"
-            >{{ teams.audit.towerKills }}T</span
-          >
+          <span class="text-audit" :title="`Audit ice destroyed`">{{ teams.audit.iceKills }}T</span>
         </div>
       </div>
       <div class="scoreboard__team-label scoreboard__team-label--audit">AUDIT</div>
@@ -215,7 +211,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-chaff">{{ teams.chaff.kills }}K</span>
         <span class="text-gold">{{ formatGold(teamTotalGold('chaff')) }}g</span>
-        <span class="text-text-dim">{{ teams.chaff.towerKills }}T</span>
+        <span class="text-text-dim">{{ teams.chaff.iceKills }}T</span>
       </div>
       <div class="scoreboard__footer-center">
         <span class="text-text-dim text-[0.65rem]" data-testid="scoreboard-hint">{{
@@ -226,7 +222,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
         <span class="scoreboard__total-label">TOTAL</span>
         <span class="text-audit">{{ teams.audit.kills }}K</span>
         <span class="text-gold">{{ formatGold(teamTotalGold('audit')) }}g</span>
-        <span class="text-text-dim">{{ teams.audit.towerKills }}T</span>
+        <span class="text-text-dim">{{ teams.audit.iceKills }}T</span>
       </div>
     </div>
   </div>
@@ -312,7 +308,7 @@ const gameTimeFormatted = computed(() => formatTickClock(props.currentTick, true
   text-transform: uppercase;
 }
 
-.scoreboard__tower-summary {
+.scoreboard__ice-summary {
   font-size: 0.65rem;
   color: rgb(var(--text-dim));
 }

@@ -67,21 +67,21 @@ describe('targetRefSchema (via commandSchema attack)', () => {
     })
   })
 
-  describe('tower', () => {
-    it('accepts a tower target with a zone', () => {
-      ok(commandSchema, attack({ kind: 'tower', zone: 'top_t1' }))
+  describe('ice', () => {
+    it('accepts a ice target with a zone', () => {
+      ok(commandSchema, attack({ kind: 'ice', zone: 'top_t1' }))
     })
     it('accepts zone at max length 64', () => {
-      ok(commandSchema, attack({ kind: 'tower', zone: str(64) }))
+      ok(commandSchema, attack({ kind: 'ice', zone: str(64) }))
     })
     it('rejects empty zone', () => {
-      bad(commandSchema, attack({ kind: 'tower', zone: '' }))
+      bad(commandSchema, attack({ kind: 'ice', zone: '' }))
     })
     it('rejects zone over 64 chars', () => {
-      bad(commandSchema, attack({ kind: 'tower', zone: str(65) }))
+      bad(commandSchema, attack({ kind: 'ice', zone: str(65) }))
     })
     it('rejects missing zone', () => {
-      bad(commandSchema, attack({ kind: 'tower' }))
+      bad(commandSchema, attack({ kind: 'ice' }))
     })
   })
 

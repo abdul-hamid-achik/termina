@@ -120,18 +120,18 @@ describe('Zone Constants', () => {
     })
   })
 
-  describe('tower zones', () => {
-    it('all lane zones have towers', () => {
+  describe('ice zones', () => {
+    it('all lane zones have ice', () => {
       const lanes = ZONES.filter((z) => z.type === 'lane')
       for (const l of lanes) {
-        expect(l.tower).toBe(true)
+        expect(l.ice).toBe(true)
       }
     })
 
-    it('non-lane zones do not have towers', () => {
+    it('non-lane zones do not have ice', () => {
       const nonLanes = ZONES.filter((z) => z.type !== 'lane')
       for (const z of nonLanes) {
-        expect(z.tower).toBe(false)
+        expect(z.ice).toBe(false)
       }
     })
   })
@@ -211,7 +211,7 @@ describe('Zone Constants', () => {
 
   // A bot-vs-bot game (same AI both sides) should trend ~50/50 only if the two
   // halves of the map are structurally identical. Lock that fairness invariant —
-  // a missing tower, extra jungle, or lop-sided connection on one side would show
+  // a missing ice, extra jungle, or lop-sided connection on one side would show
   // up as a real side bias in the simulator, so guard it deterministically here.
   describe('chaff/audit structural symmetry (fairness)', () => {
     const teamZones = (team: 'chaff' | 'audit') => ZONES.filter((z) => z.team === team)

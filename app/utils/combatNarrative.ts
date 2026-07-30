@@ -119,7 +119,7 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         sourceLabel: source,
         targetLabel: victim,
       }
-      // Repeated chip on a tower/Core collapses into one running line.
+      // Repeated chip on a ice/Core collapses into one running line.
       if (isStructureTarget(p.targetId)) {
         line.dedupKey = `dmg:${str(p.sourceId)}->${str(p.targetId)}`
       }
@@ -174,10 +174,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
       }
     }
 
-    case 'tower_kill':
+    case 'ice_kill':
       return {
         tick,
-        text: `${teamLabel(str(p.killerTeam))} razed the ${teamLabel(str(p.team))} tower in ${zname(p.zone)}`,
+        text: `${teamLabel(str(p.killerTeam))} razed the ${teamLabel(str(p.team))} ice in ${zname(p.zone)}`,
         type: 'kill',
         salience: ctx.myTeam === str(p.killerTeam) ? 'mine-out' : 'mine-in',
       }
@@ -457,10 +457,10 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         salience: actorSalience(p.playerId, ctx),
       }
 
-    case 'tower_invulnerable':
+    case 'ice_invulnerable':
       return {
         tick,
-        text: `The tower in ${zname(p.zone)} is Glyphed — attacks do nothing until it expires`,
+        text: `The ice in ${zname(p.zone)} is Glyphed — attacks do nothing until it expires`,
         type: 'system',
         salience: 'world',
       }
@@ -508,7 +508,7 @@ export function buildCombatLines(
 
 // ── Kill feed ───────────────────────────────────────────────────────
 
-export type KillCategory = 'hero' | 'tower' | 'roshan' | 'core'
+export type KillCategory = 'hero' | 'ice' | 'roshan' | 'core'
 
 export interface KillFeedEntry {
   tick: number
@@ -546,7 +546,7 @@ const MULTI_LABEL: Record<number, string> = {
 
 /**
  * Replay the event stream to derive kill-feed headlines: first blood, multi-
- * kills, shutdowns, and ongoing streaks for hero kills, plus tower/roshan/core
+ * kills, shutdowns, and ongoing streaks for hero kills, plus ice/roshan/core
  * headline events. Pure — no store access.
  */
 export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): KillFeedEntry[] {
@@ -623,12 +623,12 @@ export function deriveKillFeed(events: GameEvent[], ctx: NarrativeContext): Kill
       continue
     }
 
-    if (e.type === 'tower_kill') {
+    if (e.type === 'ice_kill') {
       out.push({
         tick: e.tick,
-        category: 'tower',
+        category: 'ice',
         assisters: [],
-        text: `${teamLabel(str(p.killerTeam))} razed a ${teamLabel(str(p.team))} tower`,
+        text: `${teamLabel(str(p.killerTeam))} razed a ${teamLabel(str(p.team))} ice`,
       })
     }
   }

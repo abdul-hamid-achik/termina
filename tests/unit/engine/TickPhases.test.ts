@@ -7,7 +7,7 @@ import {
   runNPCAI,
   processSpecialActions,
 } from '~~/server/game/engine/GameLoop'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
   GLYPH_DURATION_TICKS,
@@ -24,7 +24,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       chaff: {
         id: 'chaff',
         kills: 0,
-        towerKills: 0,
+        iceKills: 0,
         gold: 0,
         glyphUsedTick: null,
         glyphCooldown: 0,
@@ -32,7 +32,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       audit: {
         id: 'audit',
         kills: 0,
-        towerKills: 0,
+        iceKills: 0,
         gold: 0,
         glyphUsedTick: null,
         glyphCooldown: 0,
@@ -42,7 +42,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
     roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
@@ -68,7 +68,7 @@ describe('expireGlyph', () => {
         chaff: {
           id: 'chaff',
           kills: 0,
-          towerKills: 0,
+          iceKills: 0,
           gold: 0,
           glyphUsedTick: 1,
           glyphCooldown: 0,
@@ -76,19 +76,17 @@ describe('expireGlyph', () => {
         audit: {
           id: 'audit',
           kills: 0,
-          towerKills: 0,
+          iceKills: 0,
           gold: 0,
           glyphUsedTick: null,
           glyphCooldown: 0,
         },
       },
-      towers: initializeTowers().map((t) =>
-        t.team === 'chaff' ? { ...t, invulnerable: true } : t,
-      ),
+      ice: initializeIce().map((t) => (t.team === 'chaff' ? { ...t, invulnerable: true } : t)),
     })
     const result = expireGlyph(state)
     // tick=3, used=1, GLYPH_DURATION_TICKS=5 → 2 < 5, still invulnerable
-    expect(result.towers.find((t) => t.team === 'chaff')!.invulnerable).toBe(true)
+    expect(result.ice.find((t) => t.team === 'chaff')!.invulnerable).toBe(true)
   })
 
   it('drops chaff invulnerability when duration is up', () => {
@@ -98,7 +96,7 @@ describe('expireGlyph', () => {
         chaff: {
           id: 'chaff',
           kills: 0,
-          towerKills: 0,
+          iceKills: 0,
           gold: 0,
           glyphUsedTick: 5,
           glyphCooldown: 0,
@@ -106,20 +104,18 @@ describe('expireGlyph', () => {
         audit: {
           id: 'audit',
           kills: 0,
-          towerKills: 0,
+          iceKills: 0,
           gold: 0,
           glyphUsedTick: null,
           glyphCooldown: 0,
         },
       },
-      towers: initializeTowers().map((t) =>
-        t.team === 'chaff' ? { ...t, invulnerable: true } : t,
-      ),
+      ice: initializeIce().map((t) => (t.team === 'chaff' ? { ...t, invulnerable: true } : t)),
     })
     const result = expireGlyph(state)
-    expect(result.towers.find((t) => t.team === 'chaff')!.invulnerable).toBe(false)
-    // Audit towers untouched
-    expect(result.towers.find((t) => t.team === 'audit')!.invulnerable).toBe(false)
+    expect(result.ice.find((t) => t.team === 'chaff')!.invulnerable).toBe(false)
+    // Audit ice untouched
+    expect(result.ice.find((t) => t.team === 'audit')!.invulnerable).toBe(false)
   })
 
   it('expires both teams independently when both glyphs are up', () => {
@@ -129,7 +125,7 @@ describe('expireGlyph', () => {
         chaff: {
           id: 'chaff',
           kills: 0,
-          towerKills: 0,
+          iceKills: 0,
           gold: 0,
           glyphUsedTick: 1,
           glyphCooldown: 0,
@@ -137,16 +133,16 @@ describe('expireGlyph', () => {
         audit: {
           id: 'audit',
           kills: 0,
-          towerKills: 0,
+          iceKills: 0,
           gold: 0,
           glyphUsedTick: 1,
           glyphCooldown: 0,
         },
       },
-      towers: initializeTowers().map((t) => ({ ...t, invulnerable: true })),
+      ice: initializeIce().map((t) => ({ ...t, invulnerable: true })),
     })
     const result = expireGlyph(state)
-    expect(result.towers.every((t) => !t.invulnerable)).toBe(true)
+    expect(result.ice.every((t) => !t.invulnerable)).toBe(true)
   })
 })
 
@@ -186,7 +182,7 @@ describe('processSpecialActions', () => {
           deaths: 0,
           assists: 0,
           damageDealt: 0,
-          towerDamageDealt: 0,
+          iceDamageDealt: 0,
           killStreak: 0,
           buybackCost: 0,
           talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -266,7 +262,7 @@ describe('runNPCAI', () => {
           deaths: 0,
           assists: 0,
           damageDealt: 0,
-          towerDamageDealt: 0,
+          iceDamageDealt: 0,
           killStreak: 0,
           buybackCost: 0,
           talents: { tier10: null, tier15: null, tier20: null, tier25: null },

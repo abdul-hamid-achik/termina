@@ -9,7 +9,7 @@ import {
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
-  TOWER_GOLD,
+  ICE_GOLD,
   ROSHAN_GOLD,
   STARTING_GOLD,
   MAX_LEVEL,
@@ -43,11 +43,11 @@ import {
   creepAttack,
   CREEP_XP_SHARED,
   CREEP_XP_SHARED_RATIO,
-  TOWER_HP_T1,
-  TOWER_HP_T2,
-  TOWER_HP_T3,
-  TOWER_ATTACK,
-  TOWER_DEFENSE,
+  ICE_HP_T1,
+  ICE_HP_T2,
+  ICE_HP_T3,
+  ICE_ATTACK,
+  ICE_DEFENSE,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
   FOUNTAIN_MANA_PER_TICK_PERCENT,
   SURRENDER_MIN_TICK,
@@ -98,12 +98,12 @@ describe('Balance Constants', () => {
       expect(ASSIST_GOLD).toBeLessThan(KILL_BOUNTY_BASE)
     })
 
-    it('tower gold is significant', () => {
-      expect(TOWER_GOLD).toBeGreaterThanOrEqual(200)
+    it('ice gold is significant', () => {
+      expect(ICE_GOLD).toBeGreaterThanOrEqual(200)
     })
 
     it('roshan gold is the highest single-kill reward', () => {
-      expect(ROSHAN_GOLD).toBeGreaterThanOrEqual(TOWER_GOLD)
+      expect(ROSHAN_GOLD).toBeGreaterThanOrEqual(ICE_GOLD)
     })
 
     it('starting gold is reasonable', () => {
@@ -294,18 +294,18 @@ describe('Balance Constants', () => {
     })
   })
 
-  describe('towers', () => {
-    it('tower HP increases by tier', () => {
-      expect(TOWER_HP_T1).toBeLessThan(TOWER_HP_T2)
-      expect(TOWER_HP_T2).toBeLessThan(TOWER_HP_T3)
+  describe('ice', () => {
+    it('ice HP increases by tier', () => {
+      expect(ICE_HP_T1).toBeLessThan(ICE_HP_T2)
+      expect(ICE_HP_T2).toBeLessThan(ICE_HP_T3)
     })
 
-    it('tower attack is significant', () => {
-      expect(TOWER_ATTACK).toBeGreaterThan(50)
+    it('ice attack is significant', () => {
+      expect(ICE_ATTACK).toBeGreaterThan(50)
     })
 
-    it('tower defense is positive', () => {
-      expect(TOWER_DEFENSE).toBeGreaterThan(0)
+    it('ice defense is positive', () => {
+      expect(ICE_DEFENSE).toBeGreaterThan(0)
     })
   })
 

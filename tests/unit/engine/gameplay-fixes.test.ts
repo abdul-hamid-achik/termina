@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { validateAction, type PlayerAction } from '~~/server/game/engine/ActionResolver'
 import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
 import type { GameState, PlayerState, Buff, FoggedPlayer } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
@@ -41,7 +41,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 100,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -54,14 +54,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),

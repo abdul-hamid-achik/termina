@@ -108,14 +108,14 @@ describe('Game Flow Integration', () => {
       const gameId = uid('full')
       const sm = await startGame(gameId, makePlayers('fg', 1))
 
-      // Arrange the end-game: a audit T3 tower is already down (which makes
+      // Arrange the end-game: a audit T3 ice is already down (which makes
       // the audit Ancient vulnerable), the chaff hero has sieged into the
       // enemy base, and the Ancient is low so the test stays fast.
       await arrange(sm, gameId, (s) => {
         const sieged = setPlayer(s, 'fg_r0', { zone: 'audit-base' })
         return {
           ...sieged,
-          towers: sieged.towers.map((t) =>
+          ice: sieged.ice.map((t) =>
             t.zone === 'mid-t3-audit' ? { ...t, alive: false, hp: 0 } : t,
           ),
           ancients: {
@@ -133,7 +133,7 @@ describe('Game Flow Integration', () => {
         allEvents.push(...result.events)
         final = result.state
         if (i === 0) {
-          // The engine recomputed vulnerability from the dead T3 tower
+          // The engine recomputed vulnerability from the dead T3 ice
           expect(result.state.ancients.audit.vulnerable).toBe(true)
         }
         if (result.state.phase === 'ended') break
@@ -149,7 +149,7 @@ describe('Game Flow Integration', () => {
 
       // Hero damage was routed to the Ancient and its destruction was
       // announced via the dedicated ancient_destroyed event (not a reused
-      // tower_kill, which would render a misleading "tower in <base>" line).
+      // ice_kill, which would render a misleading "ice in <base>" line).
       expect(allEvents.some((e) => e._tag === 'damage' && e.targetId === 'ancient_audit')).toBe(
         true,
       )
@@ -502,7 +502,7 @@ describe('Game Flow Integration', () => {
       expect(result.state.players['ward_r0']!.items.filter(Boolean)).toHaveLength(0)
 
       // Send the warder home — the warded zone stays visible to the team
-      // purely through the ward (no hero, tower, or ally anywhere near it)
+      // purely through the ward (no hero, ice, or ally anywhere near it)
       const homeState = setPlayer(result.state, 'ward_r0', { zone: 'chaff-fountain' })
       const viewAfter = filterStateForPlayer(homeState, 'ward_r0')
       expect(viewAfter.visibleZones).toContain('mid-t2-audit')

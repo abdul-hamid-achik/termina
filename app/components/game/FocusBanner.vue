@@ -20,7 +20,7 @@ const zoneName = computed(() => {
 })
 
 const threat = computed(() =>
-  // Tower nuance is the ZonePanel's job; the banner verdict is hero-vs-hero.
+  // Ice nuance is the ZonePanel's job; the banner verdict is hero-vs-hero.
   computeThreat(store.nearbyEnemies.length, store.nearbyAllies.length + 1, false),
 )
 

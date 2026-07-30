@@ -37,7 +37,7 @@ function makePlayer(o: Partial<PlayerState> = {}): PlayerState {
     deaths: 2,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...o,
   } as PlayerState

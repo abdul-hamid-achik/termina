@@ -3,7 +3,7 @@ import { SAMPLE_HERO_ID, makeAncient, makeTeamState } from '~/stories/fixtures'
 import GameStateBar from './GameStateBar.vue'
 
 // The top bar: self state (tick number, gold, KDA, connection) plus an
-// always-on macro row (team kills, net-worth lead, towers, Mainframe HP).
+// always-on macro row (team kills, net-worth lead, ice, Mainframe HP).
 // NOTE: the bar shows NO tick countdown — the TickTheater header is the game's
 // single clock (the countdown props were removed in the HUD declutter).
 const teams = { chaff: makeTeamState('chaff'), audit: makeTeamState('audit') }
@@ -50,8 +50,8 @@ const base = {
           :net-worth-chaff="4200"
           :net-worth-audit="6100"
           :teams="{
-            chaff: makeTeamState('chaff', { kills: 9, towerKills: 1 }),
-            audit: makeTeamState('audit', { kills: 18, towerKills: 4 }),
+            chaff: makeTeamState('chaff', { kills: 9, iceKills: 1 }),
+            audit: makeTeamState('audit', { kills: 18, iceKills: 4 }),
           }"
           :ancients="{
             chaff: makeAncient('chaff', { hp: 900, maxHp: 4500, vulnerable: true }),

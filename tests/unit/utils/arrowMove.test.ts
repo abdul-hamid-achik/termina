@@ -121,7 +121,7 @@ describe('arrowTargetZone walks lanes', () => {
   })
 
   // Started from the T3 rather than the base: the grid draws each base off-centre
-  // between its top and mid towers, so from `audit-base` both are exactly the same
+  // between its top and mid ice, so from `audit-base` both are exactly the same
   // diagonal step and the lane a press picks there is genuinely ambiguous.
   it('ArrowUp carries a Audit hero from their mid T3 to the Chaff base', () => {
     expect(walk('ArrowUp', 'mid-t3-audit', LAYOUTS[0]!)).toEqual([

@@ -4,7 +4,7 @@
  *   bun server/game/dev/simulate-game.ts [matches=1] [maxTicks=1500]
  *
  * Runs full 5v5 bot games through the real engine (processTick) and prints
- * per-match pacing stats (length, kills, gold, towers, winner); with matches>1
+ * per-match pacing stats (length, kills, gold, ice, winner); with matches>1
  * it also prints a BALANCE SUMMARY (side win-rate, length spread, per-hero
  * win-rate) aggregated by ./simStats. A standalone manual tool — run directly,
  * never imported, so its top-level loop only executes when you invoke it.
@@ -40,7 +40,7 @@ function teamStats(state: GameState, team: TeamId) {
     deaths: players.reduce((sum, p) => sum + p.deaths, 0),
     netWorth: players.reduce((sum, p) => sum + playerNetWorth(p), 0),
     avgLevel: players.reduce((sum, p) => sum + p.level, 0) / players.length,
-    towersAlive: state.towers.filter((t) => t.team === team && t.alive).length,
+    iceAlive: state.ice.filter((t) => t.team === team && t.alive).length,
     creeps: state.creeps.filter((c) => c.team === team).length,
     ancientHp: state.ancients?.[team]?.hp ?? -1,
     ancientAlive: state.ancients?.[team]?.alive ?? true,
@@ -113,7 +113,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
         `  [${fmtMin(state.tick)}] kills ${rad.kills}:${audit.kills} | ` +
           `networth ${rad.netWorth}:${audit.netWorth} | ` +
           `lvl ${rad.avgLevel.toFixed(1)}:${audit.avgLevel.toFixed(1)} | ` +
-          `towers ${rad.towersAlive}:${audit.towersAlive} | ` +
+          `ice ${rad.iceAlive}:${audit.iceAlive} | ` +
           `creeps ${rad.creeps}:${audit.creeps} | ` +
           `ancient ${rad.ancientHp}:${audit.ancientHp}`,
       )
@@ -148,7 +148,7 @@ async function simulateOne(matchIdx: number): Promise<SimResult> {
   console.log(
     `  final: kills ${rad.kills}:${audit.kills} (${totalKills} total) | ` +
       `deaths ${rad.deaths + audit.deaths} total | ` +
-      `networth ${rad.netWorth}:${audit.netWorth} | towers ${rad.towersAlive}:${audit.towersAlive} | ` +
+      `networth ${rad.netWorth}:${audit.netWorth} | ice ${rad.iceAlive}:${audit.iceAlive} | ` +
       `creeps ${rad.creeps}:${audit.creeps} | ancient ${rad.ancientHp}:${audit.ancientHp}`,
   )
 

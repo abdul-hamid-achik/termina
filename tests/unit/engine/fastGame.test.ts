@@ -3,7 +3,7 @@ import {
   fastGameFactor,
   scaledTickIntervalMs,
   scaledAncientHp,
-  scaledTowerHp,
+  scaledIceHp,
   scaledRespawnTicks,
 } from '~~/server/game/engine/fastGame'
 
@@ -74,8 +74,8 @@ describe('scaled helpers at factor 8', () => {
     expect(scaledAncientHp(6400)).toBe(800) // 6400/8
   })
 
-  it('scaledTowerHp caps the divisor at 4 (towers gate the game)', () => {
-    expect(scaledTowerHp(800)).toBe(200) // 800 / min(8,4)=4
+  it('scaledIceHp caps the divisor at 4 (ice gate the game)', () => {
+    expect(scaledIceHp(800)).toBe(200) // 800 / min(8,4)=4
   })
 
   it('scaledRespawnTicks MULTIPLIES by the factor (wall-clock parity)', () => {
@@ -84,7 +84,7 @@ describe('scaled helpers at factor 8', () => {
 
   it('every scaled value floors at 1', () => {
     expect(scaledAncientHp(1)).toBe(1)
-    expect(scaledTowerHp(1)).toBe(1)
+    expect(scaledIceHp(1)).toBe(1)
   })
 })
 
@@ -92,7 +92,7 @@ describe('scaled helpers at factor 1 (no acceleration)', () => {
   it('are identity transforms', () => {
     expect(scaledTickIntervalMs(4000)).toBe(4000)
     expect(scaledAncientHp(6400)).toBe(6400)
-    expect(scaledTowerHp(800)).toBe(800)
+    expect(scaledIceHp(800)).toBe(800)
     expect(scaledRespawnTicks(10)).toBe(10)
   })
 })

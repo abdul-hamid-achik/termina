@@ -7,7 +7,7 @@ import {
 } from '~~/server/game/engine/CreepAI'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import {
   MELEE_CREEP_ATTACK,
   RANGED_CREEP_ATTACK,
@@ -46,7 +46,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...overrides,
   }
@@ -68,13 +68,13 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     events: [],
     ...overrides,
@@ -212,15 +212,15 @@ describe('CreepAI', () => {
       expect(actions[0]!.action).not.toBe('attack_hero')
     })
 
-    it('should attack enemy tower in zone when no enemy creeps or heroes (priority 3)', () => {
-      // Place a chaff creep in a audit tower zone
+    it('should attack enemy ice in zone when no enemy creeps or heroes (priority 3)', () => {
+      // Place a chaff creep in a audit ice zone
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' })],
       })
 
       const actions = runCreepAI(state)
       expect(actions).toHaveLength(1)
-      expect(actions[0]!.action).toBe('attack_tower')
+      expect(actions[0]!.action).toBe('attack_ice')
       expect(actions[0]!.targetZone).toBe('mid-t1-audit')
     })
 
@@ -241,8 +241,8 @@ describe('CreepAI', () => {
       expect(c1Action!.targetId).toBe('c2')
     })
 
-    it('should prefer enemy creeps over enemy towers', () => {
-      // Chaff creep in audit tower zone with enemy creep
+    it('should prefer enemy creeps over enemy ice', () => {
+      // Chaff creep in audit ice zone with enemy creep
       const state = makeGameState({
         creeps: [
           makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' }),
@@ -305,19 +305,19 @@ describe('CreepAI', () => {
       expect(c1Action!.action).toBe('move')
     })
 
-    it('should not attack dead towers', () => {
-      const towers = initializeTowers().map((t) =>
+    it('should not attack dead ice', () => {
+      const ice = initializeIce().map((t) =>
         t.zone === 'mid-t1-audit' ? { ...t, hp: 0, alive: false } : t,
       )
 
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' })],
-        towers,
+        ice,
       })
 
       const actions = runCreepAI(state)
       const c1Action = actions.find((a) => a.creepId === 'c1')
-      // Tower is dead, creep should move forward
+      // Ice is dead, creep should move forward
       expect(c1Action!.action).toBe('move')
     })
   })
@@ -519,77 +519,75 @@ describe('CreepAI', () => {
       expect(result.state.players['p1']!.hp).toBe(500)
     })
 
-    it('should apply damage to towers', () => {
+    it('should apply damage to ice', () => {
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' })],
       })
 
-      const tower = state.towers.find((t) => t.zone === 'mid-t1-audit')!
-      const initialHp = tower.hp
+      const ice = state.ice.find((t) => t.zone === 'mid-t1-audit')!
+      const initialHp = ice.hp
 
       const actions: CreepAction[] = [
         {
           creepId: 'c1',
-          action: 'attack_tower',
+          action: 'attack_ice',
           targetZone: 'mid-t1-audit',
           damage: MELEE_CREEP_ATTACK,
         },
       ]
 
       const result = applyCreepActions(state, actions).state
-      const updatedTower = result.towers.find((t) => t.zone === 'mid-t1-audit')!
-      expect(updatedTower.hp).toBe(initialHp - MELEE_CREEP_ATTACK)
+      const updatedIce = result.ice.find((t) => t.zone === 'mid-t1-audit')!
+      expect(updatedIce.hp).toBe(initialHp - MELEE_CREEP_ATTACK)
     })
 
-    it('does NOT damage an invulnerable (glyphed) tower — the push bounces off', () => {
+    it('does NOT damage an invulnerable (glyphed) ice — the push bounces off', () => {
       // Glyph must blunt the whole push, not just heroes. Hero attacks already
-      // bounce off an invulnerable tower; creep damage must too.
-      const towers = initializeTowers().map((t) =>
+      // bounce off an invulnerable ice; creep damage must too.
+      const ice = initializeIce().map((t) =>
         t.zone === 'mid-t1-audit' ? { ...t, invulnerable: true } : t,
       )
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' })],
-        towers,
+        ice,
       })
-      const initialHp = state.towers.find((t) => t.zone === 'mid-t1-audit')!.hp
+      const initialHp = state.ice.find((t) => t.zone === 'mid-t1-audit')!.hp
 
       const actions: CreepAction[] = [
         {
           creepId: 'c1',
-          action: 'attack_tower',
+          action: 'attack_ice',
           targetZone: 'mid-t1-audit',
           damage: MELEE_CREEP_ATTACK,
         },
       ]
 
       const result = applyCreepActions(state, actions).state
-      const tower = result.towers.find((t) => t.zone === 'mid-t1-audit')!
-      expect(tower.hp).toBe(initialHp) // unchanged — glyph protects vs creeps too
+      const target = result.ice.find((t) => t.zone === 'mid-t1-audit')!
+      expect(target.hp).toBe(initialHp) // unchanged — glyph protects vs creeps too
     })
 
-    it('should destroy towers when HP reaches 0', () => {
-      const towers = initializeTowers().map((t) =>
-        t.zone === 'mid-t1-audit' ? { ...t, hp: 10 } : t,
-      )
+    it('should destroy ice when HP reaches 0', () => {
+      const ice = initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, hp: 10 } : t))
 
       const state = makeGameState({
         creeps: [makeCreep({ id: 'c1', team: 'chaff', zone: 'mid-t1-audit' })],
-        towers,
+        ice,
       })
 
       const actions: CreepAction[] = [
         {
           creepId: 'c1',
-          action: 'attack_tower',
+          action: 'attack_ice',
           targetZone: 'mid-t1-audit',
           damage: MELEE_CREEP_ATTACK,
         },
       ]
 
       const result = applyCreepActions(state, actions).state
-      const updatedTower = result.towers.find((t) => t.zone === 'mid-t1-audit')!
-      expect(updatedTower.hp).toBe(0)
-      expect(updatedTower.alive).toBe(false)
+      const updatedIce = result.ice.find((t) => t.zone === 'mid-t1-audit')!
+      expect(updatedIce.hp).toBe(0)
+      expect(updatedIce.alive).toBe(false)
     })
 
     it('should not apply actions from dead creeps', () => {
@@ -730,7 +728,7 @@ describe('CreepAI', () => {
       const result = applyCreepActions(state, actions)
       expect(result.state.ancients.audit.alive).toBe(false)
       expect(result.state.ancients.audit.hp).toBe(0)
-      expect(result.events.some((e) => e._tag === 'tower_kill')).toBe(false)
+      expect(result.events.some((e) => e._tag === 'ice_kill')).toBe(false)
       const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
       expect(killEvent).toBeDefined()
       expect(killEvent).toMatchObject({ team: 'audit', killerTeam: 'chaff' })

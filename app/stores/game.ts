@@ -8,7 +8,7 @@ import type {
   ZoneRuntimeState,
   TeamState,
   TeamId,
-  TowerState,
+  IceState,
   AncientState,
   CreepState,
   NeutralCreepState,
@@ -65,12 +65,12 @@ export const useGameStore = defineStore('game', () => {
   // lookups. NOT the fog list: `visibleZones` here is the map keyed by id.
   const visibleZones = ref<Record<string, ZoneRuntimeState>>({})
   // The server's fog list — the ids of zones THIS player can actually see this
-  // tick (own + adjacent + ward/tower vision). Distinct from the zones map
+  // tick (own + adjacent + ward/ice vision). Distinct from the zones map
   // (which carries all zones); drives map fog-dimming + the War Room vision %.
   const visibleZoneIds = ref<string[]>([])
   const allPlayers = ref<Record<string, PlayerState>>({})
   const teams = ref<{ chaff: TeamState; audit: TeamState } | null>(null)
-  const towers = ref<TowerState[]>([])
+  const ice = ref<IceState[]>([])
   const ancients = ref<{ chaff: AncientState; audit: AncientState } | null>(null)
   const creeps = ref<CreepState[]>([])
   const neutrals = ref<NeutralCreepState[]>([])
@@ -260,7 +260,7 @@ export const useGameStore = defineStore('game', () => {
       zones: Record<string, ZoneRuntimeState>
       visibleZones?: string[]
       teams: { chaff: TeamState; audit: TeamState }
-      towers?: TowerState[]
+      ice?: IceState[]
       ancients?: { chaff: AncientState; audit: AncientState }
       creeps?: CreepState[]
       neutrals?: NeutralCreepState[]
@@ -300,7 +300,7 @@ export const useGameStore = defineStore('game', () => {
     // all zone ids only for payloads that omit it (e.g. spectator full state).
     visibleZoneIds.value = state.visibleZones ?? Object.keys(state.zones)
     if (state.teams) teams.value = state.teams
-    if (state.towers) towers.value = state.towers
+    if (state.ice) ice.value = state.ice
     if (state.ancients) ancients.value = state.ancients
     if (state.creeps) creeps.value = state.creeps
     if (state.neutrals) neutrals.value = state.neutrals
@@ -443,7 +443,7 @@ export const useGameStore = defineStore('game', () => {
     visibleZoneIds.value = []
     allPlayers.value = {}
     teams.value = null
-    towers.value = []
+    ice.value = []
     ancients.value = null
     creeps.value = []
     neutrals.value = []
@@ -487,7 +487,7 @@ export const useGameStore = defineStore('game', () => {
     visibleZoneIds,
     allPlayers,
     teams,
-    towers,
+    ice,
     ancients,
     creeps,
     neutrals,

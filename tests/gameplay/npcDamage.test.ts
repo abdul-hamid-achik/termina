@@ -3,7 +3,7 @@ import { seedGame, HUMAN } from './harness'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 
 /**
- * NPC damage used to mutate hero HP with zero events: a tower could kill you in
+ * NPC damage used to mutate hero HP with zero events: a ice could kill you in
  * total silence — no combat-log line, no damage float, no shake, no sound, and
  * no killer to name on the death overlay. These specs pin the whole-tick
  * contract (processTick's event stream), not just the per-AI unit return, since
@@ -14,9 +14,9 @@ const damageFrom = (events: readonly GameEngineEvent[], prefix: string) =>
   events.filter((e) => e._tag === 'damage' && e.sourceId.startsWith(prefix))
 
 describe('NPC damage is visible', () => {
-  it('a tower shooting a diving hero emits a damage event naming the tower', async () => {
+  it('a ice shooting a diving hero emits a damage event naming the ice', async () => {
     const game = await seedGame('fresh', { heroSelf: 'echo' })
-    // Dive an enemy T1 with the lane empty — with no creeps to tank, the tower
+    // Dive an enemy T1 with the lane empty — with no creeps to tank, the ice
     // falls through to its "enemy hero present" priority and shoots the hero.
     await game.patch((s) => ({
       ...s,
@@ -26,12 +26,12 @@ describe('NPC damage is visible', () => {
 
     await game.tick(2)
 
-    const hits = damageFrom(game.allEvents, 'tower_')
+    const hits = damageFrom(game.allEvents, 'ice_')
     expect(hits.length).toBeGreaterThan(0)
     const hit = hits[0]!
     expect(hit).toMatchObject({
       _tag: 'damage',
-      sourceId: 'tower_mid-t1-audit',
+      sourceId: 'ice_mid-t1-audit',
       targetId: HUMAN,
       damageType: 'physical',
     })
@@ -80,7 +80,7 @@ describe('NPC damage is visible', () => {
     ])
   })
 
-  it('being shot by a tower puts the hero in combat (gates fountain regen)', async () => {
+  it('being shot by a ice puts the hero in combat (gates fountain regen)', async () => {
     const game = await seedGame('fresh', { heroSelf: 'echo' })
     await game.patch((s) => ({
       ...s,

@@ -5,7 +5,7 @@ import type {
   PlayerState,
   TeamId,
   TeamState,
-  TowerState,
+  IceState,
   AncientState,
   ZoneRuntimeState,
   NeutralCreepState,
@@ -40,11 +40,11 @@ import {
   isDamageImmune,
 } from './DamageCalculator'
 import { computeBladeMailReflect } from './CombatResolver'
-import { placeWard, canAttackTower } from '~~/server/game/map/zones'
+import { placeWard, canAttackIce } from '~~/server/game/map/zones'
 import { HEROES } from '~~/shared/constants/heroes'
 import type { GameEngineEvent } from '~~/server/game/protocol/events'
 import { buyItem, sellItem, useItem } from '~~/server/game/items/shop'
-import { awardLastHit, awardTowerKill } from './GoldDistributor'
+import { awardLastHit, awardIceKill } from './GoldDistributor'
 import { pickupAegis } from './RoshanAI'
 import { pickupRune } from './RuneAI'
 import { resolveAncientAttack, ANCIENT_ZONES } from './AncientSystem'
@@ -482,13 +482,13 @@ function resolveInstantCastsPhase(
   players: Record<string, PlayerState>,
   zones: Record<string, ZoneRuntimeState>,
   creeps: CreepState[],
-  towers: TowerState[],
+  ice: IceState[],
   neutrals: NeutralCreepState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
-  damageTracker: Map<string, { hero: number; tower: number }>,
+  damageTracker: Map<string, { hero: number; ice: number }>,
   creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
@@ -512,7 +512,7 @@ function resolveInstantCastsPhase(
       players,
       zones,
       creeps,
-      towers,
+      ice,
       neutrals,
       ancients,
       action,
@@ -586,7 +586,7 @@ function resolveDenyPhase(
 }
 
 /**
- * Phase 3b: Attacks — hero/creep/tower/Roshan/neutral/Ancient, all simultaneous.
+ * Phase 3b: Attacks — hero/creep/ice/Roshan/neutral/Ancient, all simultaneous.
  * This is the largest phase (~440 lines): crit stacking, item on-hit effects
  * (MKB magic, Maelstrom chain, Skull Basher stun), defense mitigation (Desolator
  * shred, Assault Cuirass aura, Vanguard block), shield/phaseShift, Blade Mail
@@ -598,22 +598,22 @@ function resolveAttackPhase(
   attacks: PlayerAction[],
   players: Record<string, PlayerState>,
   creeps: CreepState[],
-  towers: TowerState[],
+  ice: IceState[],
   neutrals: NeutralCreepState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
-  damageTracker: Map<string, { hero: number; tower: number }>,
+  damageTracker: Map<string, { hero: number; ice: number }>,
   creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
-  towerKills: Array<{ zone: string; team: TeamId }>,
+  iceKills: Array<{ zone: string; team: TeamId }>,
   findHeroByName: (name: string) => string | null,
   getCachedItemStats: (playerId: string, items: (string | null)[]) => ItemStats,
 ): {
   players: Record<string, PlayerState>
   creeps: CreepState[]
-  towers: TowerState[]
+  ice: IceState[]
   neutrals: NeutralCreepState[]
   ancients: { chaff: AncientState; audit: AncientState }
 } {
@@ -931,7 +931,7 @@ function resolveAttackPhase(
       if (!dodged) {
         heroAttackers.set(action.playerId, targetId)
 
-        const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+        const dt = damageTracker.get(action.playerId) ?? { hero: 0, ice: 0 }
         dt.hero += damage
         damageTracker.set(action.playerId, dt)
 
@@ -992,44 +992,46 @@ function resolveAttackPhase(
         amount: attackDamage,
         damageType: 'physical',
       })
-    } else if (cmd.target.kind === 'tower') {
+    } else if (cmd.target.kind === 'ice') {
       const targetZone = cmd.target.zone
-      const tower = towers.find((t) => t.zone === targetZone && t.alive)
-      if (!tower) {
-        miss(`No standing tower in ${targetZone}`)
+      let iceTarget = ice.find((t) => t.zone === targetZone && t.alive)
+      if (!iceTarget) {
+        miss(`No standing ice in ${targetZone}`)
         continue
       }
-      if (tower.zone !== attacker.zone) {
+      if (iceTarget.zone !== attacker.zone) {
         miss('Target is not in your zone')
         continue
       }
-      if (tower.invulnerable) {
+      if (iceTarget.invulnerable) {
         events.push({
-          _tag: 'tower_invulnerable',
+          _tag: 'ice_invulnerable',
           tick: state.tick,
-          zone: tower.zone,
+          zone: iceTarget.zone,
         })
         continue
       }
-      if (!canAttackTower(towers, targetZone)) {
-        miss('That tower is protected — destroy the one in front of it first')
+      if (!canAttackIce(ice, targetZone)) {
+        miss('That ice is protected — destroy the one in front of it first')
         continue
       }
 
       const attackerItemStats = getCachedItemStats(action.playerId, attacker.items)
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
-      const newHp = Math.max(0, tower.hp - attackDamage)
+      const newHp = Math.max(0, iceTarget.hp - attackDamage)
 
-      towers = towers.map((t) =>
-        t.zone === tower.zone && t.team === tower.team ? { ...t, hp: newHp, alive: newHp > 0 } : t,
+      ice = ice.map((t) =>
+        t.zone === iceTarget.zone && t.team === iceTarget.team
+          ? { ...t, hp: newHp, alive: newHp > 0 }
+          : t,
       )
 
       if (newHp <= 0) {
-        towerKills.push({ zone: tower.zone, team: tower.team })
+        iceKills.push({ zone: iceTarget.zone, team: iceTarget.team })
       }
 
-      const tdt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
-      tdt.tower += attackDamage
+      const tdt = damageTracker.get(action.playerId) ?? { hero: 0, ice: 0 }
+      tdt.ice += attackDamage
       damageTracker.set(action.playerId, tdt)
       holdTarget()
 
@@ -1037,7 +1039,7 @@ function resolveAttackPhase(
         _tag: 'damage',
         tick: state.tick,
         sourceId: action.playerId,
-        targetId: `tower_${tower.zone}`,
+        targetId: `ice_${iceTarget.zone}`,
         amount: attackDamage,
         damageType: 'physical',
       })
@@ -1110,7 +1112,7 @@ function resolveAttackPhase(
       const attackDamage = getEffectiveAttack(attacker, attackerItemStats)
 
       const result = resolveAncientAttack(
-        { ...state, players, creeps, towers, ancients },
+        { ...state, players, creeps, ice, ancients },
         action.playerId,
         attackDamage,
       )
@@ -1127,8 +1129,8 @@ function resolveAttackPhase(
       events.push(...result.events)
       holdTarget()
 
-      const adt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
-      adt.tower += attackDamage
+      const adt = damageTracker.get(action.playerId) ?? { hero: 0, ice: 0 }
+      adt.ice += attackDamage
       damageTracker.set(action.playerId, adt)
     } else {
       // TargetRef also carries 'zone' and 'self', which the wire schema accepts
@@ -1141,7 +1143,7 @@ function resolveAttackPhase(
   return {
     players: applyPlayerUpdates(players, playerUpdates),
     creeps,
-    towers,
+    ice,
     neutrals,
     ancients,
   }
@@ -1242,7 +1244,7 @@ function resolveShopPhase(
   validActions: PlayerAction[],
   players: Record<string, PlayerState>,
   creeps: CreepState[],
-  towers: TowerState[],
+  ice: IceState[],
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
 ): {
@@ -1252,7 +1254,7 @@ function resolveShopPhase(
   const buys = validActions.filter((a) => a.command.type === 'buy')
   for (const action of buys) {
     const cmd = action.command as { type: 'buy'; item: string }
-    const tempState: GameState = { ...state, players, creeps, towers }
+    const tempState: GameState = { ...state, players, creeps, ice }
     const result = Effect.runSync(
       buyItem(tempState, action.playerId, cmd.item).pipe(
         Effect.match({
@@ -1290,7 +1292,7 @@ function resolveShopPhase(
       rejected.push({ playerId: action.playerId, reason: `No ${cmd.item} in inventory to sell` })
       continue
     }
-    const tempState: GameState = { ...state, players, creeps, towers }
+    const tempState: GameState = { ...state, players, creeps, ice }
     const result = Effect.runSync(
       sellItem(tempState, action.playerId, slotIdx).pipe(
         Effect.match({
@@ -1339,12 +1341,12 @@ function resolveItemActivesPhase(
   players: Record<string, PlayerState>,
   zones: Record<string, ZoneRuntimeState>,
   creeps: CreepState[],
-  towers: TowerState[],
+  ice: IceState[],
   ancients: { chaff: AncientState; audit: AncientState },
   events: GameEngineEvent[],
   rejected: Array<{ playerId: string; reason: string }>,
   heroAttackers: Map<string, string>,
-  damageTracker: Map<string, { hero: number; tower: number }>,
+  damageTracker: Map<string, { hero: number; ice: number }>,
 ): {
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
@@ -1352,7 +1354,7 @@ function resolveItemActivesPhase(
   const uses = validActions.filter((a) => a.command.type === 'use')
   for (const action of uses) {
     const cmd = action.command as { type: 'use'; item: string; target?: TargetRef | string }
-    const tempState: GameState = { ...state, players, zones, creeps, towers, ancients }
+    const tempState: GameState = { ...state, players, zones, creeps, ice, ancients }
     const result = Effect.runSync(
       useItem(tempState, action.playerId, cmd.item, cmd.target).pipe(
         Effect.match({
@@ -1429,7 +1431,7 @@ function resolveItemActivesPhase(
           })
           if (user && post.team !== user.team) {
             heroAttackers.set(action.playerId, pid)
-            const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+            const dt = damageTracker.get(action.playerId) ?? { hero: 0, ice: 0 }
             dt.hero += delta
             damageTracker.set(action.playerId, dt)
 
@@ -1477,7 +1479,7 @@ function resolveItemActivesPhase(
 
 /**
  * Post-shop phases: glyph, aegis/rune pickup, maxHp/maxMp recalc, gold/XP
- * awards (creep/neutral/tower), damage tracking, ward placement. These all
+ * awards (creep/neutral/ice), damage tracking, ward placement. These all
  * run after the shop phase and before the final state assembly.
  */
 function resolvePostShopPhases(
@@ -1486,19 +1488,19 @@ function resolvePostShopPhases(
   players: Record<string, PlayerState>,
   zones: Record<string, ZoneRuntimeState>,
   creeps: CreepState[],
-  towers: TowerState[],
+  ice: IceState[],
   neutrals: NeutralCreepState[],
   events: GameEngineEvent[],
   _rejected: Array<{ playerId: string; reason: string }>,
-  damageTracker: Map<string, { hero: number; tower: number }>,
+  damageTracker: Map<string, { hero: number; ice: number }>,
   creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
-  towerKills: Array<{ zone: string; team: TeamId }>,
+  iceKills: Array<{ zone: string; team: TeamId }>,
   getCachedItemStats: (playerId: string, items: (string | null)[]) => ItemStats,
 ): {
   players: Record<string, PlayerState>
   zones: Record<string, ZoneRuntimeState>
-  towers: TowerState[]
+  ice: IceState[]
   neutrals: NeutralCreepState[]
   teams: { chaff: TeamState; audit: TeamState }
   aegis: GameState['aegis']
@@ -1525,7 +1527,7 @@ function resolvePostShopPhases(
         continue
       }
     }
-    towers = towers.map((t) => (t.team === team ? { ...t, invulnerable: true } : t))
+    ice = ice.map((t) => (t.team === team ? { ...t, invulnerable: true } : t))
     teams = { ...teams, [team]: { ...teamState, glyphUsedTick: state.tick } }
     events.push({ _tag: 'glyph_used', tick: state.tick, team })
   }
@@ -1538,7 +1540,7 @@ function resolvePostShopPhases(
       ...state,
       players,
       creeps,
-      towers,
+      ice,
       runes: state.runes ?? [],
       roshan: state.roshan,
       aegis: aegisGround,
@@ -1561,7 +1563,7 @@ function resolvePostShopPhases(
       ...state,
       players,
       creeps,
-      towers,
+      ice,
       runes: runesGround,
       roshan: state.roshan,
       aegis: state.aegis,
@@ -1605,7 +1607,7 @@ function resolvePostShopPhases(
 
   // Creep last-hit gold + XP
   for (const kill of creepKills) {
-    const tempState: GameState = { ...state, players, creeps, towers }
+    const tempState: GameState = { ...state, players, creeps, ice }
     const goldBefore = players[kill.playerId]?.gold ?? 0
     const awarded = awardLastHit(tempState, kill.playerId, kill.creepType)
     players = { ...awarded.players }
@@ -1657,13 +1659,13 @@ function resolvePostShopPhases(
     neutrals = neutrals.filter((n) => n.id !== kill.neutralId)
   }
 
-  // Tower kill gold
-  for (const kill of towerKills) {
+  // Ice kill gold
+  for (const kill of iceKills) {
     const nearbyAllies = Object.entries(players)
       .filter(([, p]) => p.zone === kill.zone && p.team !== kill.team && p.alive)
       .map(([id]) => id)
-    const tempState: GameState = { ...state, players, creeps, towers }
-    const awarded = awardTowerKill(tempState, kill.zone, nearbyAllies)
+    const tempState: GameState = { ...state, players, creeps, ice }
+    const awarded = awardIceKill(tempState, kill.zone, nearbyAllies)
     // Read the payout back off the diff rather than recomputing the split — the
     // event can then never disagree with what the player's gold actually did.
     for (const id of nearbyAllies) {
@@ -1674,7 +1676,7 @@ function resolvePostShopPhases(
           tick: state.tick,
           playerId: id,
           amount: gained,
-          reason: 'tower kill',
+          reason: 'ice kill',
         })
       }
     }
@@ -1690,7 +1692,7 @@ function resolvePostShopPhases(
         [pid]: {
           ...p,
           damageDealt: p.damageDealt + dmg.hero,
-          towerDamageDealt: p.towerDamageDealt + dmg.tower,
+          iceDamageDealt: p.iceDamageDealt + dmg.ice,
         },
       }
     }
@@ -1722,7 +1724,7 @@ function resolvePostShopPhases(
     }
   }
 
-  return { players, zones, towers, neutrals, teams, aegis: aegisGround, runes: runesGround }
+  return { players, zones, ice, neutrals, teams, aegis: aegisGround, runes: runesGround }
 }
 
 // ── Resolution Pipeline ────────────────────────────────────────────
@@ -1808,7 +1810,7 @@ export function resolveActions(
     let ancients = state.ancients
     let creeps = [...state.creeps]
     let neutrals = [...(state.neutrals ?? [])]
-    let towers = [...state.towers]
+    let ice = [...state.ice]
     let teams = { ...state.teams }
     const creepKills: Array<{
       playerId: string
@@ -1816,8 +1818,8 @@ export function resolveActions(
       creepType: 'melee' | 'ranged' | 'siege'
     }> = []
     const neutralKills: Array<{ playerId: string; neutralId: string }> = []
-    const towerKills: Array<{ zone: string; team: TeamId }> = []
-    const damageTracker = new Map<string, { hero: number; tower: number }>()
+    const iceKills: Array<{ zone: string; team: TeamId }> = []
+    const damageTracker = new Map<string, { hero: number; ice: number }>()
 
     // Build hero lookup index (once per resolveActions)
     const heroIndex = new Map<string, string>()
@@ -1882,7 +1884,7 @@ export function resolveActions(
         players,
         zones,
         creeps,
-        towers,
+        ice,
         ancients,
         events,
         rejected,
@@ -1901,7 +1903,7 @@ export function resolveActions(
         players,
         zones,
         creeps,
-        towers,
+        ice,
         neutrals,
         ancients,
         events,
@@ -1955,7 +1957,7 @@ export function resolveActions(
         attacks,
         players,
         creeps,
-        towers,
+        ice,
         neutrals,
         ancients,
         events,
@@ -1964,13 +1966,13 @@ export function resolveActions(
         damageTracker,
         creepKills,
         neutralKills,
-        towerKills,
+        iceKills,
         findHeroByNameCached,
         getCachedItemStats,
       )
       players = result.players
       creeps = result.creeps
-      towers = result.towers
+      ice = result.ice
       neutrals = result.neutrals
       ancients = result.ancients
     }
@@ -1982,7 +1984,7 @@ export function resolveActions(
         players,
         zones,
         creeps,
-        towers,
+        ice,
         neutrals,
         ancients,
         action,
@@ -2008,15 +2010,7 @@ export function resolveActions(
 
     // Phase 5: Buy/Sell
     {
-      const result = resolveShopPhase(
-        state,
-        validActions,
-        players,
-        creeps,
-        towers,
-        events,
-        rejected,
-      )
+      const result = resolveShopPhase(state, validActions, players, creeps, ice, events, rejected)
       players = result.players
     }
 
@@ -2030,19 +2024,19 @@ export function resolveActions(
         players,
         zones,
         creeps,
-        towers,
+        ice,
         neutrals,
         events,
         rejected,
         damageTracker,
         creepKills,
         neutralKills,
-        towerKills,
+        iceKills,
         getCachedItemStats,
       )
       players = result.players
       zones = result.zones
-      towers = result.towers
+      ice = result.ice
       neutrals = result.neutrals
       teams = result.teams
       aegisGround = result.aegis
@@ -2055,7 +2049,7 @@ export function resolveActions(
       zones,
       creeps,
       neutrals,
-      towers,
+      ice,
       teams,
       ancients,
       aegis: aegisGround,
@@ -2184,14 +2178,14 @@ function resolveHeroCast(
   players: Record<string, PlayerState>,
   zones: GameState['zones'],
   creeps: CreepState[],
-  towers: GameState['towers'],
+  ice: GameState['ice'],
   neutrals: NeutralCreepState[],
   ancients: GameState['ancients'],
   action: PlayerAction,
   events: GameEngineEvent[],
   heroAttackers: Map<string, string>,
   rejected: Array<{ playerId: string; reason: string }>,
-  damageTracker: Map<string, { hero: number; tower: number }>,
+  damageTracker: Map<string, { hero: number; ice: number }>,
   creepKills: Array<{ playerId: string; creepId: string; creepType: 'melee' | 'ranged' | 'siege' }>,
   neutralKills: Array<{ playerId: string; neutralId: string }>,
   findHero: (name: string) => string | null,
@@ -2231,7 +2225,7 @@ function resolveHeroCast(
     players: castPlayers,
     zones,
     creeps,
-    towers,
+    ice,
     neutrals,
     ancients,
   }
@@ -2333,7 +2327,7 @@ function resolveHeroCast(
       })
       if (post.team !== caster.team) {
         heroAttackers.set(action.playerId, pid)
-        const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+        const dt = damageTracker.get(action.playerId) ?? { hero: 0, ice: 0 }
         dt.hero += delta
         damageTracker.set(action.playerId, dt)
         castDamageToEnemies += delta
@@ -2427,7 +2421,7 @@ function resolveHeroCast(
         players: echoPlayers,
         zones,
         creeps: castCreeps,
-        towers,
+        ice,
         neutrals: castNeutrals,
         ancients,
       }
@@ -2457,7 +2451,7 @@ function resolveHeroCast(
               damageType,
             })
             if (post.team !== caster.team) {
-              const dt = damageTracker.get(action.playerId) ?? { hero: 0, tower: 0 }
+              const dt = damageTracker.get(action.playerId) ?? { hero: 0, ice: 0 }
               dt.hero += delta
               damageTracker.set(action.playerId, dt)
               castDamageToEnemies += delta

@@ -20,7 +20,7 @@ import type {
   TeamState,
   TeamId,
   ZoneRuntimeState,
-  TowerState,
+  IceState,
   AncientState,
   RoshanState,
   RuneState,
@@ -103,7 +103,7 @@ export function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 1,
     assists: 6,
     damageDealt: 12_400,
-    towerDamageDealt: 800,
+    iceDamageDealt: 800,
     killStreak: 2,
     buybackCost: 900,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -133,24 +133,20 @@ export function makeScoreboardEntry(overrides: Partial<ScoreboardEntry> = {}): S
   }
 }
 
-// ── Teams / towers / ancients / objectives ──────────────────────────────
+// ── Teams / ice / ancients / objectives ──────────────────────────────
 
 export function makeTeamState(id: TeamId, overrides: Partial<TeamState> = {}): TeamState {
   return {
     id,
     kills: id === 'chaff' ? 14 : 9,
-    towerKills: id === 'chaff' ? 3 : 1,
+    iceKills: id === 'chaff' ? 3 : 1,
     gold: id === 'chaff' ? 5100 : 4150,
     glyphUsedTick: null,
     ...overrides,
   }
 }
 
-export function makeTower(
-  team: TeamId,
-  zone: string,
-  overrides: Partial<TowerState> = {},
-): TowerState {
+export function makeIce(team: TeamId, zone: string, overrides: Partial<IceState> = {}): IceState {
   return {
     team,
     zone,
@@ -211,7 +207,7 @@ export function makePlayerEndStats(overrides: Partial<PlayerEndStats> = {}): Pla
     gold: 6200,
     items: SAMPLE_INVENTORY,
     heroDamage: 24_800,
-    towerDamage: 3400,
+    iceDamage: 3400,
     ...overrides,
   }
 }
@@ -343,7 +339,7 @@ export const SAMPLE_NET_WORTH_HISTORY: { chaff: number[]; audit: number[] } = {
 /** A few sample {@link GameEvent}s for combat-log / ticker stories. */
 export const SAMPLE_EVENTS: GameEvent[] = [
   { tick: 238, type: 'kill', payload: { killer: 'p1', victim: 'e2', zone: 'mid-river' } },
-  { tick: 239, type: 'tower_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
+  { tick: 239, type: 'ice_destroyed', payload: { team: 'audit', zone: 'mid-t1-audit' } },
   { tick: 240, type: 'rune_spawn', payload: { zone: 'cache-top', rune: 'dd' } },
 ]
 
@@ -364,10 +360,10 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     zones,
     creeps: [],
     neutrals: [],
-    towers: [
-      makeTower('audit', 'mid-t1-audit', { alive: false, hp: 0 }),
-      makeTower('audit', 'mid-t2-audit'),
-      makeTower('chaff', 'mid-t1-chaff'),
+    ice: [
+      makeIce('audit', 'mid-t1-audit', { alive: false, hp: 0 }),
+      makeIce('audit', 'mid-t2-audit'),
+      makeIce('chaff', 'mid-t1-chaff'),
     ],
     ancients: { chaff: makeAncient('chaff'), audit: makeAncient('audit') },
     runes: [makeRune()],

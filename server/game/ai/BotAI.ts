@@ -3,7 +3,7 @@ import type {
   PlayerState,
   TeamId,
   CreepState,
-  TowerState,
+  IceState,
   NeutralCreepState,
   RuneState,
 } from '~~/shared/types/game'
@@ -305,8 +305,8 @@ function getAlliedCreepsInZone(state: GameState, bot: PlayerState): CreepState[]
   return state.creeps.filter((c) => c.zone === bot.zone && c.team === bot.team && c.hp > 0)
 }
 
-function getEnemyTowerInZone(state: GameState, bot: PlayerState): TowerState | undefined {
-  return state.towers.find((t) => t.zone === bot.zone && t.team !== bot.team && t.alive)
+function getEnemyIceInZone(state: GameState, bot: PlayerState): IceState | undefined {
+  return state.ice.find((t) => t.zone === bot.zone && t.team !== bot.team && t.alive)
 }
 
 function getNeutralsInZone(state: GameState, zone: string): NeutralCreepState[] {
@@ -1124,8 +1124,8 @@ function cheapestSellableItem(bot: PlayerState): string | null {
   return [...sellable].sort((a, b) => itemCost(a) - itemCost(b))[0]!
 }
 
-/** Glyph/fortification — pop team-wide tower invulnerability when the enemy
- *  team is diving a tower and it's about to fall. Only one glyph per team
+/** Glyph/fortification — pop team-wide ice invulnerability when the enemy
+ *  team is diving a ice and it's about to fall. Only one glyph per team
  *  per cooldown, so this is reserved for desperate saves. */
 function tryGlyph(state: GameState, bot: PlayerState): Command | null {
   // Glyph is a team command — any teammate can issue it. Check cooldown.
@@ -1133,13 +1133,13 @@ function tryGlyph(state: GameState, bot: PlayerState): Command | null {
   if (teamState.glyphUsedTick !== null) {
     if (state.tick - teamState.glyphUsedTick < GLYPH_COOLDOWN_TICKS) return null
   }
-  // Only glyph when an enemy hero is attacking one of our towers that's low
-  const ourTowers = state.towers.filter((t) => t.team === bot.team && t.alive)
+  // Only glyph when an enemy hero is attacking one of our ice that's low
+  const ourIce = state.ice.filter((t) => t.team === bot.team && t.alive)
   const enemyHeroes = Object.values(state.players).filter((p) => p.team !== bot.team && p.alive)
-  for (const tower of ourTowers) {
-    if (tower.hp / tower.maxHp > 0.25) continue // only glyph a critically low tower
-    const enemyOnTower = enemyHeroes.some((e) => e.zone === tower.zone)
-    if (enemyOnTower) {
+  for (const ice of ourIce) {
+    if (ice.hp / ice.maxHp > 0.25) continue // only glyph a critically low ice
+    const enemyOnIce = enemyHeroes.some((e) => e.zone === ice.zone)
+    if (enemyOnIce) {
       // Bot must be on the same team and able to issue the command
       // (glyph is team-wide, not zone-restricted)
       return { type: 'glyph' }
@@ -1153,40 +1153,40 @@ function tryGlyph(state: GameState, bot: PlayerState): Command | null {
 const DEFEND_MAX_DISTANCE = 3
 
 /**
- * Defensive tower rotation. The trigger is OUTNUMBERED, not undefended: the old
- * "is any ally already at the tower?" test meant a single teammate caught 1-v-2
- * counted as the tower being handled, so nobody ever rotated to a fight already
+ * Defensive ice rotation. The trigger is OUTNUMBERED, not undefended: the old
+ * "is any ally already at the ice?" test meant a single teammate caught 1-v-2
+ * counted as the ice being handled, so nobody ever rotated to a fight already
  * in progress — and, perversely, a HUMAN doing the right thing (running back to
  * defend) was the thing that told the bots to stay in lane.
  *
- * Deliberately still tower-anchored: an ally outnumbered mid-jungle gets nothing
+ * Deliberately still ice-anchored: an ally outnumbered mid-jungle gets nothing
  * from this. Bounded by distance so a bot never crosses the map for it.
  */
-function tryDefendTower(
+function tryDefendIce(
   state: GameState,
   bot: PlayerState,
   hasZone?: (id: string) => boolean,
 ): Command | null {
-  const ourTowers = state.towers.filter((t) => t.team === bot.team && t.alive)
+  const ourIce = state.ice.filter((t) => t.team === bot.team && t.alive)
   const enemyHeroes = Object.values(state.players).filter((p) => p.team !== bot.team && p.alive)
   const allies = Object.values(state.players).filter(
     (p) => p.team === bot.team && p.alive && p.id !== bot.id,
   )
-  const threatened = ourTowers.filter((tower) => {
-    const enemiesHere = enemyHeroes.filter((e) => e.zone === tower.zone).length
+  const threatened = ourIce.filter((ice) => {
+    const enemiesHere = enemyHeroes.filter((e) => e.zone === ice.zone).length
     if (enemiesHere === 0) return false
-    const alliesHere = allies.filter((a) => a.zone === tower.zone).length
+    const alliesHere = allies.filter((a) => a.zone === ice.zone).length
     return alliesHere < enemiesHere
   })
   if (threatened.length === 0) return null
-  // Move to the nearest threatened tower
-  let closest: TowerState | null = null
+  // Move to the nearest threatened ice
+  let closest: IceState | null = null
   let minDist = Infinity
-  for (const tower of threatened) {
-    const dist = getDistance(bot.zone, tower.zone, hasZone)
+  for (const ice of threatened) {
+    const dist = getDistance(bot.zone, ice.zone, hasZone)
     if (dist < minDist) {
       minDist = dist
-      closest = tower
+      closest = ice
     }
   }
   if (minDist > DEFEND_MAX_DISTANCE) return null
@@ -1275,7 +1275,7 @@ function tryDeny(state: GameState, bot: PlayerState, config: BotDifficultyConfig
  * SECOND-lowest creep rather than to no action at all: same tick spent, same
  * damage dealt into the wave, only the gold is missed. Returning null on a miss
  * was the original standstill bug — bots stopped out-clearing the incoming wave
- * and never reached a tower (pinned by BotForwardProgress).
+ * and never reached a ice (pinned by BotForwardProgress).
  */
 function pickCreepTarget(
   enemyCreeps: CreepState[],
@@ -1521,7 +1521,7 @@ export function decideBotAction(
   // aren't permanently down 1–4 talents on human players, then dropping a ward
   // on a strategic spot for team vision.
   if (enemyHeroes.length === 0) {
-    // Glyph to save a critically low tower from an enemy push (team-wide, any zone)
+    // Glyph to save a critically low ice from an enemy push (team-wide, any zone)
     const glyphCmd = tryGlyph(state, bot)
     if (glyphCmd) return glyphCmd
     const talentCmd = tryPickTalent(bot)
@@ -1531,8 +1531,8 @@ export function decideBotAction(
     // Place sentry wards for true-sight against invisible enemies
     const sentryWardCmd = tryPlaceSentryWard(state, bot)
     if (sentryWardCmd) return sentryWardCmd
-    // Rotate to a tower where the defenders are outnumbered
-    const defendCmd = tryDefendTower(state, bot, hasZone)
+    // Rotate to a ice where the defenders are outnumbered
+    const defendCmd = tryDefendIce(state, bot, hasZone)
     if (defendCmd) return defendCmd
     // Start (or steal) Roshan — carry/tank/assassin/mage only, squad nearby
     const roshanCmd = tryRoshan(state, bot, config, gameId ?? '', hasZone)
@@ -1585,12 +1585,12 @@ export function decideBotAction(
     }
   }
 
-  // Aggressive siege (test mode only): topple the enemy tower in this zone, else
+  // Aggressive siege (test mode only): topple the enemy ice in this zone, else
   // march toward the enemy base. Sits ABOVE creep farming so test games converge
   // quickly; production bots fall through to the game-state-driven push below.
   if (aggressivePush) {
-    const towerHere = getEnemyTowerInZone(state, bot)
-    if (towerHere) return { type: 'attack', target: { kind: 'tower', zone: towerHere.zone } }
+    const iceHere = getEnemyIceInZone(state, bot)
+    if (iceHere) return { type: 'attack', target: { kind: 'ice', zone: iceHere.zone } }
     const advanceZone = getNextLaneZone(bot, assignedLane, hasZone)
     if (advanceZone) return { type: 'move', zone: advanceZone }
   }
@@ -1604,9 +1604,9 @@ export function decideBotAction(
     const creepIdx = state.creeps.filter((c) => c.zone === bot.zone).indexOf(creepTarget)
     return { type: 'attack', target: { kind: 'creep', index: creepIdx } }
   }
-  const enemyTower = getEnemyTowerInZone(state, bot)
-  if (enemyTower && getAlliedCreepsInZone(state, bot).length > 0) {
-    return { type: 'attack', target: { kind: 'tower', zone: enemyTower.zone } }
+  const enemyIce = getEnemyIceInZone(state, bot)
+  if (enemyIce && getAlliedCreepsInZone(state, bot).length > 0) {
+    return { type: 'attack', target: { kind: 'ice', zone: enemyIce.zone } }
   }
   const runeCmd = tryPickupRune(state, bot, config, hasZone)
   if (runeCmd) return runeCmd

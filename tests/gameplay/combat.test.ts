@@ -479,7 +479,7 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('attacking a tower from a different zone is rejected with feedback', async () => {
+  it('attacking a ice from a different zone is rejected with feedback', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const enemySuffix = me.team === 'chaff' ? 'audit' : 'chaff'
@@ -489,7 +489,7 @@ describe('combat', () => {
     }))
 
     // The enemy mid-T1 stands in mid-t1-<suffix>, not mid-river — out of reach.
-    game.submit({ type: 'attack', target: { kind: 'tower', zone: `mid-t1-${enemySuffix}` } })
+    game.submit({ type: 'attack', target: { kind: 'ice', zone: `mid-t1-${enemySuffix}` } })
     await game.tick()
 
     expect(
@@ -497,7 +497,7 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('a backdoor-protected tower (its front tower still up) tells the player it is protected', async () => {
+  it('a backdoor-protected ice (its front ice still up) tells the player it is protected', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const enemySuffix = me.team === 'chaff' ? 'audit' : 'chaff'
@@ -507,7 +507,7 @@ describe('combat', () => {
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: t2Zone } },
       // Standing at the T2 (attackable-shaped) while the T1 in front still stands,
       // so backdoor protection holds and the attack should bounce — with a reason.
-      towers: s.towers.map((t) =>
+      ice: s.ice.map((t) =>
         t.zone === t2Zone
           ? { ...t, alive: true, invulnerable: false }
           : t.zone === `mid-t1-${enemySuffix}`
@@ -516,7 +516,7 @@ describe('combat', () => {
       ),
     }))
 
-    game.submit({ type: 'attack', target: { kind: 'tower', zone: t2Zone } })
+    game.submit({ type: 'attack', target: { kind: 'ice', zone: t2Zone } })
     await game.tick()
 
     expect(
@@ -524,7 +524,7 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('destroying a T3 tower lifts the enemy Ancient firewall (vulnerable flips true)', async () => {
+  it('destroying a T3 ice lifts the enemy Ancient firewall (vulnerable flips true)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const enemyTeam = me.team === 'chaff' ? 'audit' : 'chaff'
@@ -532,10 +532,10 @@ describe('combat', () => {
     // Precondition: with every T3 standing, the enemy Ancient is firewalled.
     expect((await game.state()).ancients[enemyTeam].vulnerable).toBe(false)
 
-    // Drop one of the enemy's T3 towers; the next tick recomputes vulnerability.
+    // Drop one of the enemy's T3 ice; the next tick recomputes vulnerability.
     await game.patch((s) => ({
       ...s,
-      towers: s.towers.map((t) =>
+      ice: s.ice.map((t) =>
         t.team === enemyTeam && t.zone.includes('-t3-') ? { ...t, alive: false, hp: 0 } : t,
       ),
     }))
@@ -639,62 +639,62 @@ describe('combat', () => {
     ).toBe(true)
   })
 
-  it('a tower fires on a lone enemy hero diving it (no creeps to tank)', async () => {
+  it('a ice fires on a lone enemy hero diving it (no creeps to tank)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     // Tick once up front so the level-6 maxHp recompute is already settled —
-    // otherwise the first-tick HP inflation masks the tower hit.
+    // otherwise the first-tick HP inflation masks the ice hit.
     await game.tick()
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
+      const enemyIceZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
       return {
         ...s,
-        players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },
-        creeps: [], // nothing to soak the tower
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, hp: 400 } },
+        creeps: [], // nothing to soak the ice
       }
     })
 
     const before = (await game.me()).hp
     await game.tick()
-    // TOWER_ATTACK (120, minus defense) far exceeds per-tick regen, so the
+    // ICE_ATTACK (120, minus defense) far exceeds per-tick regen, so the
     // exposed hero visibly loses HP.
     expect((await game.me()).hp).toBeLessThan(before)
   })
 
-  it('creeps tank the tower — a hero behind its own creep takes no tower fire', async () => {
+  it('creeps tank the ice — a hero behind its own creep takes no ice fire', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     await game.tick() // settle the maxHp recompute first
     await game.patch((s) => {
       const me = s.players[HUMAN]!
-      const enemyTowerZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
+      const enemyIceZone = me.team === 'chaff' ? 'mid-t1-audit' : 'mid-t1-chaff'
       return {
         ...s,
-        players: { ...s.players, [HUMAN]: { ...me, zone: enemyTowerZone, hp: 400 } },
-        // An allied creep (same team as the hero) soaks the tower instead.
-        creeps: [{ id: 'shield0', team: me.team, zone: enemyTowerZone, hp: 300, type: 'melee' }],
+        players: { ...s.players, [HUMAN]: { ...me, zone: enemyIceZone, hp: 400 } },
+        // An allied creep (same team as the hero) soaks the ice instead.
+        creeps: [{ id: 'shield0', team: me.team, zone: enemyIceZone, hp: 300, type: 'melee' }],
       }
     })
 
     const before = (await game.me()).hp
     await game.tick()
 
-    // The hero is shielded — the tower shot the creep, not the hero (HP only
+    // The hero is shielded — the ice shot the creep, not the hero (HP only
     // moves up via regen, never down).
     expect((await game.me()).hp).toBeGreaterThanOrEqual(before)
     const creep = (await game.state()).creeps.find((c) => c.id === 'shield0')
     expect(creep && creep.hp < 300).toBe(true)
   })
 
-  it('using Glyph turns all of the team’s towers invulnerable', async () => {
+  it('using Glyph turns all of the team’s ice invulnerable', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
 
     game.submit({ type: 'glyph' })
     await game.tick()
 
-    const myTowers = (await game.state()).towers.filter((t) => t.team === me.team)
-    expect(myTowers.length).toBeGreaterThan(0)
-    expect(myTowers.every((t) => t.invulnerable)).toBe(true)
+    const myIce = (await game.state()).ice.filter((t) => t.team === me.team)
+    expect(myIce.length).toBeGreaterThan(0)
+    expect(myIce.every((t) => t.invulnerable)).toBe(true)
     expect(game.lastEvents.some((e) => e._tag === 'glyph_used')).toBe(true)
   })
 
@@ -712,27 +712,27 @@ describe('combat', () => {
     expect(game.lastEvents.some((e) => e._tag === 'glyph_on_cooldown')).toBe(true)
   })
 
-  it('Glyph wears off after GLYPH_DURATION_TICKS — towers become vulnerable again', async () => {
+  it('Glyph wears off after GLYPH_DURATION_TICKS — ice become vulnerable again', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me = await game.me()
     const team = me.team
 
     // Simulate a glyph cast that's now exactly past its duration: invulnerable
-    // towers + a glyphUsedTick old enough that expireGlyph should lift it.
+    // ice + a glyphUsedTick old enough that expireGlyph should lift it.
     await game.patch((s) => ({
       ...s,
       teams: {
         ...s.teams,
         [team]: { ...s.teams[team]!, glyphUsedTick: s.tick - GLYPH_DURATION_TICKS },
       },
-      towers: s.towers.map((t) => (t.team === team ? { ...t, invulnerable: true } : t)),
+      ice: s.ice.map((t) => (t.team === team ? { ...t, invulnerable: true } : t)),
     }))
 
     await game.tick()
 
-    const myTowers = (await game.state()).towers.filter((t) => t.team === team)
-    expect(myTowers.length).toBeGreaterThan(0)
-    expect(myTowers.every((t) => !t.invulnerable)).toBe(true)
+    const myIce = (await game.state()).ice.filter((t) => t.team === team)
+    expect(myIce.length).toBeGreaterThan(0)
+    expect(myIce.every((t) => !t.invulnerable)).toBe(true)
   })
 
   // Characterization test (documents current behaviour + a known gap). The

@@ -43,8 +43,8 @@ interface FramePlayer {
 interface Frame {
   tick: number
   teams: {
-    chaff: { kills: number; towerKills: number }
-    audit: { kills: number; towerKills: number }
+    chaff: { kills: number; iceKills: number }
+    audit: { kills: number; iceKills: number }
   }
   timeOfDay: 'day' | 'night'
   players: Record<string, FramePlayer>
@@ -74,11 +74,11 @@ function summarize(state: GameState): Frame {
     teams: {
       chaff: {
         kills: state.teams.chaff.kills,
-        towerKills: state.teams.chaff.towerKills,
+        iceKills: state.teams.chaff.iceKills,
       },
       audit: {
         kills: state.teams.audit.kills,
-        towerKills: state.teams.audit.towerKills,
+        iceKills: state.teams.audit.iceKills,
       },
     },
     timeOfDay: state.timeOfDay,

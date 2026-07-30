@@ -125,7 +125,7 @@ const stubs = {
       'allies',
       'creeps',
       'neutrals',
-      'tower',
+      'ice',
       'roshan',
     ],
     template: '<div data-testid="zone-panel" />',
@@ -365,12 +365,12 @@ describe('GameScreen', () => {
       return store
     }
 
-    it('names the tower that killed you (W1-1: "why did I die?")', () => {
-      // Towers, creeps and neutrals are not eligible killers — handleDeaths only
+    it('names the ice that killed you (W1-1: "why did I die?")', () => {
+      // ICE, creeps and neutrals are not eligible killers — handleDeaths only
       // accepts a killerId that resolves to a player — so an NPC kill emits a
       // `death` with no `kill` event at all. Before NPC damage events existed the
       // overlay had nothing to show after the single most instructive death in
-      // the game, the tower dive; worse, it scanned the 200-entry ring buffer
+      // the game, the ice dive; worse, it scanned the 200-entry ring buffer
       // unbounded, so it could name a killer from a totally unrelated earlier
       // death.
       const store = seedDeadPlayer()
@@ -379,13 +379,13 @@ describe('GameScreen', () => {
         {
           tick: 240,
           type: 'damage',
-          payload: { sourceId: 'tower_mid-t1-audit', targetId: 'p1', amount: 110 },
+          payload: { sourceId: 'ice_mid-t1-audit', targetId: 'p1', amount: 110 },
         },
         { tick: 240, type: 'death', payload: { playerId: 'p1', respawnTick: 270 } },
       ] as never)
 
       const overlay = mountGameScreen().find('[data-testid="death-overlay"]')
-      expect(overlay.text()).toContain('tower (mid-t1-audit)')
+      expect(overlay.text()).toContain('ice (mid-t1-audit)')
       // ...and NOT the stale killer from the death 140 ticks ago.
       expect(overlay.text()).not.toContain('Daemon')
     })
@@ -1269,9 +1269,9 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
 
-    it('tells your tower falling apart from your own push', async () => {
-      // REGRESSION: the branch tested `killerId`, a field TowerKillEvent has
-      // never carried, so every tower in the match read identically.
+    it('tells your ice falling apart from your own push', async () => {
+      // REGRESSION: the branch tested `killerId`, a field IceKillEvent has
+      // never carried, so every ice in the match read identically.
       seedActiveGame()
       const wrapper = mountGameScreen()
       const store = useGameStore()
@@ -1279,24 +1279,24 @@ describe('GameScreen', () => {
       await emit(wrapper, [
         {
           tick: 240,
-          type: 'tower_kill',
+          type: 'ice_kill',
           payload: { zone: 'mid-t1-chaff', team: 'chaff', killerTeam: 'audit' },
         },
       ])
-      expect(audio.playSound).toHaveBeenCalledWith('tower_lost')
-      expect(audio.playSound).not.toHaveBeenCalledWith('tower_fall')
-      expect(store.announcements.at(-1)).toContain('Tower lost')
+      expect(audio.playSound).toHaveBeenCalledWith('ice_lost')
+      expect(audio.playSound).not.toHaveBeenCalledWith('ice_fall')
+      expect(store.announcements.at(-1)).toContain('Ice lost')
 
       audio.playSound.mockClear()
       await emit(wrapper, [
         {
           tick: 241,
-          type: 'tower_kill',
+          type: 'ice_kill',
           payload: { zone: 'mid-t1-audit', team: 'audit', killerTeam: 'chaff' },
         },
       ])
-      expect(audio.playSound).toHaveBeenCalledWith('tower_fall')
-      expect(audio.playSound).not.toHaveBeenCalledWith('tower_lost')
+      expect(audio.playSound).toHaveBeenCalledWith('ice_fall')
+      expect(audio.playSound).not.toHaveBeenCalledWith('ice_lost')
       wrapper.unmount()
     })
 

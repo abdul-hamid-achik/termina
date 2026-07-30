@@ -10,7 +10,7 @@ import { seedGame, HUMAN, ENEMY } from './harness'
  * Last-hitting is the deliberate exception — `kind: 'creep'` never holds.
  */
 describe('standing attack orders', () => {
-  it('a tower siege keeps swinging with no further input', async () => {
+  it('a ice siege keeps swinging with no further input', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     // Mid-match tick, not tick 0: creep escalation and the wave/rune spawners
     // are all live here, so the re-swing is exercised in a real tick, not in
@@ -21,20 +21,20 @@ describe('standing attack orders', () => {
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-t1-audit' } },
     }))
 
-    const towerHits = () =>
+    const iceHits = () =>
       game.lastEvents.filter(
-        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === 'tower_mid-t1-audit',
+        (e) => e._tag === 'damage' && e.sourceId === HUMAN && e.targetId === 'ice_mid-t1-audit',
       ).length
 
-    game.submit({ type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } })
+    game.submit({ type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } })
     await game.tick()
-    expect(towerHits()).toBe(1)
-    expect((await game.me()).attackTarget).toEqual({ kind: 'tower', zone: 'mid-t1-audit' })
+    expect(iceHits()).toBe(1)
+    expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
 
     // Nothing submitted this tick — the order carries itself.
     await game.tick()
-    expect(towerHits()).toBe(1)
-    expect((await game.me()).attackTarget).toEqual({ kind: 'tower', zone: 'mid-t1-audit' })
+    expect(iceHits()).toBe(1)
+    expect((await game.me()).attackTarget).toEqual({ kind: 'ice', zone: 'mid-t1-audit' })
   })
 
   it('last-hitting stays manual — a creep attack sets no standing order', async () => {

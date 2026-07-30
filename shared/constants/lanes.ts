@@ -7,7 +7,7 @@ import type { TeamId } from '~~/shared/types/game'
  *  - `BotAI.ts` — bot lane movement and advancing
  *  - `CreepAI.ts` — creep wave pathing
  *
- * Each route starts at the team's T3 tower and ends at the enemy base.
+ * Each route starts at the team's T3 ice and ends at the enemy base.
  * The `full` variant (used by BotAI) prepends the team's fountain + base so a
  * bot leaving the fountain can path all the way to the lane start. The `core`
  * variant (used by CreepAI) starts at T3 because creeps spawn at T3.

@@ -217,7 +217,7 @@ function gameTime(tick: number): string {
             <div class="t-display t-mono-num text-chaff text-glow-chaff">
               {{ visibleState.teams.chaff.kills }}
             </div>
-            <div class="t-caption">{{ visibleState.teams.chaff.towerKills }} towers</div>
+            <div class="t-caption">{{ visibleState.teams.chaff.iceKills }} ice</div>
           </div>
           <div class="flex flex-col items-center justify-center p-3">
             <div class="t-caption">cycle · {{ visibleState.timeOfDay }}</div>
@@ -234,7 +234,7 @@ function gameTime(tick: number): string {
             <div class="t-display t-mono-num text-audit text-glow-audit">
               {{ visibleState.teams.audit.kills }}
             </div>
-            <div class="t-caption">{{ visibleState.teams.audit.towerKills }} towers</div>
+            <div class="t-caption">{{ visibleState.teams.audit.iceKills }} ice</div>
           </div>
         </div>
 

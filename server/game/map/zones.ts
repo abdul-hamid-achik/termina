@@ -1,33 +1,33 @@
-import type { ZoneRuntimeState, WardState, TowerState, TeamId } from '~~/shared/types/game'
+import type { ZoneRuntimeState, WardState, IceState, TeamId } from '~~/shared/types/game'
 import type { Zone } from '~~/shared/types/map'
 import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
 import {
-  TOWER_HP_T1,
-  TOWER_HP_T2,
-  TOWER_HP_T3,
+  ICE_HP_T1,
+  ICE_HP_T2,
+  ICE_HP_T3,
   OBSERVER_WARD_DURATION_TICKS,
   SENTRY_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
 } from '~~/shared/constants/balance'
-import { scaledTowerHp } from '~~/server/game/engine/fastGame'
+import { scaledIceHp } from '~~/server/game/engine/fastGame'
 
-/** Determine tower tier from a zone. Returns 0 if the zone has no tower or tier is unset. */
-function getTowerTier(zoneId: string): number {
+/** Determine ice tier from a zone. Returns 0 if the zone has no ice or tier is unset. */
+function getIceTier(zoneId: string): number {
   const zone = ZONE_MAP[zoneId]
   return zone?.tier ?? 0
 }
 
-/** Get tower max HP by tier. */
-function getTowerMaxHp(tier: number): number {
-  // scaledTowerHp is a no-op unless the dev/test-only TERMINA_TEST_FAST_GAME
+/** Get ice max HP by tier. */
+function getIceMaxHp(tier: number): number {
+  // scaledIceHp is a no-op unless the dev/test-only TERMINA_TEST_FAST_GAME
   // accelerator is active — see ../engine/fastGame.ts.
   switch (tier) {
     case 1:
-      return scaledTowerHp(TOWER_HP_T1)
+      return scaledIceHp(ICE_HP_T1)
     case 2:
-      return scaledTowerHp(TOWER_HP_T2)
+      return scaledIceHp(ICE_HP_T2)
     case 3:
-      return scaledTowerHp(TOWER_HP_T3)
+      return scaledIceHp(ICE_HP_T3)
     default:
       return 0
   }
@@ -48,15 +48,15 @@ export function initializeZoneStates(
   return states
 }
 
-/** Build the initial tower list from a zone graph (the full map by default). */
-export function initializeTowers(zones: readonly Zone[] = ZONES): TowerState[] {
-  const towers: TowerState[] = []
+/** Build the initial ice list from a zone graph (the full map by default). */
+export function initializeIce(zones: readonly Zone[] = ZONES): IceState[] {
+  const ice: IceState[] = []
   for (const zone of zones) {
-    if (!zone.tower) continue
-    if (zone.team === 'neutral') continue // neutral zones don't have towers
-    const tier = zone.tier ?? getTowerTier(zone.id)
-    const maxHp = getTowerMaxHp(tier)
-    towers.push({
+    if (!zone.ice) continue
+    if (zone.team === 'neutral') continue // neutral zones don't have ice
+    const tier = zone.tier ?? getIceTier(zone.id)
+    const maxHp = getIceMaxHp(tier)
+    ice.push({
       team: zone.team,
       zone: zone.id,
       hp: maxHp,
@@ -65,7 +65,7 @@ export function initializeTowers(zones: readonly Zone[] = ZONES): TowerState[] {
       invulnerable: false,
     })
   }
-  return towers
+  return ice
 }
 
 /** Place a ward in a zone. Returns false if the team has reached the ward limit. */
@@ -117,22 +117,22 @@ export function removeExpiredWards(
   return changed ? updated : zones
 }
 
-/** Check if a tower at a zone can be attacked (preceding tower must be destroyed). */
-export function canAttackTower(towers: TowerState[], zoneId: string): boolean {
-  const tower = towers.find((t) => t.zone === zoneId && t.alive)
-  if (!tower) return false
+/** Check if a ice at a zone can be attacked (preceding ice must be destroyed). */
+export function canAttackIce(ice: IceState[], zoneId: string): boolean {
+  const target = ice.find((t) => t.zone === zoneId && t.alive)
+  if (!target) return false
 
   const zone = ZONE_MAP[zoneId]
-  const tier = zone?.tier ?? getTowerTier(zoneId)
+  const tier = zone?.tier ?? getIceTier(zoneId)
   if (tier <= 1) return true // T1 can always be attacked
 
   // Determine the lane and team from the explicit zone fields (fall back to id parse for safety)
   const lane =
     zone?.lane ?? (zoneId.startsWith('top-') ? 'top' : zoneId.startsWith('mid-') ? 'mid' : 'bot')
-  const team = tower.team
+  const team = target.team
   const precedingTier = tier - 1
   const precedingZoneId = `${lane}-t${precedingTier}-${team}`
 
-  const precedingTower = towers.find((t) => t.zone === precedingZoneId)
-  return !precedingTower || !precedingTower.alive
+  const precedingIce = ice.find((t) => t.zone === precedingZoneId)
+  return !precedingIce || !precedingIce.alive
 }

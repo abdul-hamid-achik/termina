@@ -28,7 +28,7 @@ function makePlayer(id: string, team: 'chaff' | 'audit', overrides: EntryOverrid
 }
 
 function makeTeam(id: 'chaff' | 'audit'): TeamState {
-  return { id, kills: 5, towerKills: 2, gold: 6000, glyphUsedTick: null }
+  return { id, kills: 5, iceKills: 2, gold: 6000, glyphUsedTick: null }
 }
 
 function mountScoreboard(players = defaultPlayers()) {

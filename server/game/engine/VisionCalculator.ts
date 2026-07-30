@@ -39,7 +39,7 @@ interface VisionCacheEntry {
   playerAlive: boolean
   timeOfDay: 'day' | 'night'
   wardKey: string
-  towerKey: string
+  iceKey: string
   teammateKey: string
   tracepathKey: string
 }
@@ -61,8 +61,8 @@ function buildWardKey(state: GameState, team: TeamId): string {
   return wards.sort().join(',')
 }
 
-function buildTowerKey(state: GameState, team: TeamId): string {
-  return state.towers
+function buildIceKey(state: GameState, team: TeamId): string {
+  return state.ice
     .filter((t) => t.team === team && t.alive)
     .map((t) => t.zone)
     .sort()
@@ -95,7 +95,7 @@ export function calculateVision(state: GameState, playerId: string, gameId?: str
 
   const team = player.team
   const wardKey = buildWardKey(state, team)
-  const towerKey = buildTowerKey(state, team)
+  const iceKey = buildIceKey(state, team)
   const teammateKey = buildTeammateKey(state, team, playerId)
   const tracepathKey = buildTracepathKey(state, team)
   const timeOfDay = state.timeOfDay
@@ -111,7 +111,7 @@ export function calculateVision(state: GameState, playerId: string, gameId?: str
     cached.playerAlive === player.alive &&
     cached.timeOfDay === timeOfDay &&
     cached.wardKey === wardKey &&
-    cached.towerKey === towerKey &&
+    cached.iceKey === iceKey &&
     cached.teammateKey === teammateKey &&
     cached.tracepathKey === tracepathKey
   ) {
@@ -133,7 +133,7 @@ export function calculateVision(state: GameState, playerId: string, gameId?: str
     playerAlive: player.alive,
     timeOfDay,
     wardKey,
-    towerKey,
+    iceKey,
     teammateKey,
     tracepathKey,
   })
@@ -162,9 +162,9 @@ function calculateVisionUncached(state: GameState, player: PlayerState, team: Te
     }
   }
 
-  for (const tower of state.towers) {
-    if (tower.team === team && tower.alive) {
-      addZoneWithAdjacent(visible, tower.zone, isNight, team)
+  for (const ice of state.ice) {
+    if (ice.team === team && ice.alive) {
+      addZoneWithAdjacent(visible, ice.zone, isNight, team)
     }
   }
 
@@ -286,7 +286,7 @@ export function filterStateForSpectator(state: GameState): PlayerVisibleState {
     zones: { ...state.zones },
     creeps: state.creeps,
     neutrals: state.neutrals ?? [],
-    towers: state.towers,
+    ice: state.ice,
     ancients: state.ancients,
     runes: state.runes ?? [],
     roshan: state.roshan,
@@ -321,7 +321,7 @@ export function filterStateForPlayer(
       zones: {},
       creeps: [],
       neutrals: [],
-      towers: state.towers,
+      ice: state.ice,
       ancients: state.ancients,
       runes: state.runes ?? [],
       roshan: state.roshan,
@@ -438,7 +438,7 @@ export function filterStateForPlayer(
     zones: filteredZones,
     creeps: filteredCreeps,
     neutrals: state.neutrals ?? [], // Neutrals are visible in their zones (public info)
-    towers: state.towers, // Towers are always visible (global info)
+    ice: state.ice, // ICE are always visible (global info)
     ancients: state.ancients, // Ancients are always visible (global info)
     runes: state.runes ?? [],
     roshan: state.roshan,

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ZonePanel from '~~/app/components/game/ZonePanel.vue'
-import type { PlayerState, CreepState, NeutralCreepState, TowerState } from '~~/shared/types/game'
+import type { PlayerState, CreepState, NeutralCreepState, IceState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -50,7 +50,7 @@ function makeCreep(overrides: Partial<CreepState & { index: number }> = {}) {
   }
 }
 
-function makeTower(overrides: Partial<TowerState> = {}): TowerState {
+function makeIce(overrides: Partial<IceState> = {}): IceState {
   return {
     team: 'audit',
     zone: 'mid-river',
@@ -237,59 +237,59 @@ describe('ZonePanel', () => {
     })
   })
 
-  describe('tower', () => {
-    it('renders an enemy tower as an attackable button with HP', async () => {
+  describe('ice', () => {
+    it('renders an enemy ice as an attackable button with HP', async () => {
       const wrapper = mount(ZonePanel, {
-        props: { ...baseProps, tower: makeTower({ team: 'audit' }) },
+        props: { ...baseProps, ice: makeIce({ team: 'audit' }) },
       })
 
-      const tower = wrapper.find('[data-testid="zone-tower"]')
-      expect(tower.exists()).toBe(true)
-      expect(tower.element.tagName).toBe('BUTTON')
-      expect(tower.text()).toContain('1200/1500')
+      const ice = wrapper.find('[data-testid="zone-ice"]')
+      expect(ice.exists()).toBe(true)
+      expect(ice.element.tagName).toBe('BUTTON')
+      expect(ice.text()).toContain('1200/1500')
 
-      await tower.trigger('click')
-      expect(wrapper.emitted('command')).toEqual([['attack tower:mid-river']])
+      await ice.trigger('click')
+      expect(wrapper.emitted('command')).toEqual([['attack ice:mid-river']])
     })
 
-    it('renders an allied tower as informational only', async () => {
+    it('renders an allied ice as informational only', async () => {
       const wrapper = mount(ZonePanel, {
-        props: { ...baseProps, tower: makeTower({ team: 'chaff' }) },
+        props: { ...baseProps, ice: makeIce({ team: 'chaff' }) },
       })
 
-      const tower = wrapper.find('[data-testid="zone-tower"]')
-      expect(tower.exists()).toBe(true)
-      expect(tower.element.tagName).toBe('DIV')
-      expect(tower.text()).toContain('allied')
+      const ice = wrapper.find('[data-testid="zone-ice"]')
+      expect(ice.exists()).toBe(true)
+      expect(ice.element.tagName).toBe('DIV')
+      expect(ice.text()).toContain('allied')
 
-      await tower.trigger('click')
+      await ice.trigger('click')
       expect(wrapper.emitted('command')).toBeUndefined()
     })
 
-    it('hides destroyed towers', () => {
+    it('hides destroyed ice', () => {
       const wrapper = mount(ZonePanel, {
-        props: { ...baseProps, tower: makeTower({ alive: false }) },
+        props: { ...baseProps, ice: makeIce({ alive: false }) },
       })
 
-      expect(wrapper.find('[data-testid="zone-tower"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="zone-ice"]').exists()).toBe(false)
     })
 
-    it('paints a tower in ITS team colour, not in "mine vs theirs"', () => {
-      // The row prints the team name — "Tower (audit)" in the Chaff green was
+    it('paints a ice in ITS team colour, not in "mine vs theirs"', () => {
+      // The row prints the team name — "Ice (audit)" in the Chaff green was
       // the label and its colour contradicting each other inside one span, and
-      // it disagreed with the ▼ the map draws for the same tower.
+      // it disagreed with the ▼ the map draws for the same ice.
       const audit = mount(ZonePanel, {
-        props: { ...baseProps, playerTeam: 'audit' as const, tower: makeTower({ team: 'audit' }) },
+        props: { ...baseProps, playerTeam: 'audit' as const, ice: makeIce({ team: 'audit' }) },
       })
-      const towerLabel = audit.find('[data-testid="zone-tower"] span')
-      expect(towerLabel.text()).toContain('audit')
-      expect(towerLabel.classes()).toContain('text-audit')
-      expect(towerLabel.classes()).not.toContain('text-chaff')
+      const iceLabel = audit.find('[data-testid="zone-ice"] span')
+      expect(iceLabel.text()).toContain('audit')
+      expect(iceLabel.classes()).toContain('text-audit')
+      expect(iceLabel.classes()).not.toContain('text-chaff')
 
       const chaff = mount(ZonePanel, {
-        props: { ...baseProps, playerTeam: 'audit' as const, tower: makeTower({ team: 'chaff' }) },
+        props: { ...baseProps, playerTeam: 'audit' as const, ice: makeIce({ team: 'chaff' }) },
       })
-      expect(chaff.find('[data-testid="zone-tower"] span').classes()).toContain('text-chaff')
+      expect(chaff.find('[data-testid="zone-ice"] span').classes()).toContain('text-chaff')
     })
 
     it('paints the zone identity tag by the zone owner, matching the map', () => {
@@ -332,11 +332,11 @@ describe('ZonePanel', () => {
       expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('Contest runes')
     })
 
-    it('prioritises destroying an enemy tower as the objective', () => {
+    it('prioritises destroying an enemy ice as the objective', () => {
       const wrapper = mount(ZonePanel, {
-        props: { ...baseProps, zoneId: 'mid-t1-audit', tower: makeTower({ team: 'audit' }) },
+        props: { ...baseProps, zoneId: 'mid-t1-audit', ice: makeIce({ team: 'audit' }) },
       })
-      expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('enemy tower')
+      expect(wrapper.find('[data-testid="zone-objective"]').text()).toContain('enemy ice')
     })
 
     it('tells a laner to push when they have creep support', () => {
@@ -425,30 +425,30 @@ describe('ZonePanel', () => {
   // A standing order re-swings every tick with no input, so the row it belongs
   // to has to say so — otherwise repeat damage lines look like a bug.
   describe('standing attack order', () => {
-    const enemyTower = makeTower({ team: 'audit', zone: 'mid-river' })
+    const enemyIce = makeIce({ team: 'audit', zone: 'mid-river' })
 
-    it('marks the tower row [hold] while it is the standing target', () => {
+    it('marks the ice row [hold] while it is the standing target', () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
-          tower: enemyTower,
-          attackTarget: { kind: 'tower' as const, zone: 'mid-river' },
+          ice: enemyIce,
+          attackTarget: { kind: 'ice' as const, zone: 'mid-river' },
         },
       })
 
-      expect(wrapper.find('[data-testid="zone-tower-tag"]').text()).toBe('[hold]')
+      expect(wrapper.find('[data-testid="zone-ice-tag"]').text()).toBe('[hold]')
     })
 
-    it('leaves the tower row [ATK] when the order names a different tower', () => {
+    it('leaves the ice row [ATK] when the order names a different ice', () => {
       const wrapper = mount(ZonePanel, {
         props: {
           ...baseProps,
-          tower: enemyTower,
-          attackTarget: { kind: 'tower' as const, zone: 'top-t1-audit' },
+          ice: enemyIce,
+          attackTarget: { kind: 'ice' as const, zone: 'top-t1-audit' },
         },
       })
 
-      expect(wrapper.find('[data-testid="zone-tower-tag"]').text()).toBe('[ATK]')
+      expect(wrapper.find('[data-testid="zone-ice-tag"]').text()).toBe('[ATK]')
     })
 
     it('marks the Roshan row [hold]', () => {
@@ -482,7 +482,7 @@ describe('ZonePanel', () => {
     it('shows no hold anywhere without a standing order (the default)', () => {
       const enemy = makePlayer({ id: 'e1', heroId: 'daemon', team: 'audit' })
       const wrapper = mount(ZonePanel, {
-        props: { ...baseProps, enemies: [enemy], tower: enemyTower },
+        props: { ...baseProps, enemies: [enemy], ice: enemyIce },
       })
 
       expect(wrapper.text()).not.toContain('[hold]')

@@ -39,8 +39,8 @@ export interface DeathEvent {
   readonly respawnTick: number
 }
 
-export interface TowerKillEvent {
-  readonly _tag: 'tower_kill'
+export interface IceKillEvent {
+  readonly _tag: 'ice_kill'
   readonly tick: number
   readonly zone: string
   readonly team: TeamId
@@ -284,8 +284,8 @@ export interface GlyphOnCooldownEvent {
   readonly remainingTicks: number
 }
 
-export interface TowerInvulnerableEvent {
-  readonly _tag: 'tower_invulnerable'
+export interface IceInvulnerableEvent {
+  readonly _tag: 'ice_invulnerable'
   readonly tick: number
   readonly zone: string
 }
@@ -327,7 +327,7 @@ export type GameEngineEvent =
   | HealEvent
   | KillEvent
   | DeathEvent
-  | TowerKillEvent
+  | IceKillEvent
   | AncientDestroyedEvent
   | CreepLasthitEvent
   | CreepDenyEvent
@@ -357,7 +357,7 @@ export type GameEngineEvent =
   | DayBreaksEvent
   | GlyphUsedEvent
   | GlyphOnCooldownEvent
-  | TowerInvulnerableEvent
+  | IceInvulnerableEvent
   | SurrenderVoteEvent
   | SurrenderedEvent
   | AfkTakeoverEvent

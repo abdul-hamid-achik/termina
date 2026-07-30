@@ -118,25 +118,25 @@ describe('StateManager', () => {
       expect(state.teams.chaff).toEqual({
         id: 'chaff',
         kills: 0,
-        towerKills: 0,
+        iceKills: 0,
         gold: 0,
         glyphUsedTick: null,
       })
       expect(state.teams.audit).toEqual({
         id: 'audit',
         kills: 0,
-        towerKills: 0,
+        iceKills: 0,
         gold: 0,
         glyphUsedTick: null,
       })
     })
 
-    it('should initialize towers', () => {
+    it('should initialize ice', () => {
       const players: PlayerSetup[] = [makePlayerSetup({ id: 'p1' })]
 
       const state = Effect.runSync(sm.createGame('game1', players))
-      expect(state.towers.length).toBeGreaterThan(0)
-      expect(state.towers.every((t) => t.alive)).toBe(true)
+      expect(state.ice.length).toBeGreaterThan(0)
+      expect(state.ice.every((t) => t.alive)).toBe(true)
     })
 
     it('should initialize zones', () => {

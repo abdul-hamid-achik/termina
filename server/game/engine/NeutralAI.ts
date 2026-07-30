@@ -149,7 +149,7 @@ export function applyNeutralActions(
     if (!target || !target.alive) continue
 
     // Route through resolvePhysicalHit for the full mitigation chain — same as
-    // towers, creeps, and Roshan. Previously this did raw `hp - damage` with only
+    // ice, creeps, and Roshan. Previously this did raw `hp - damage` with only
     // an immunity check, bypassing armor items, shields, hardened reduction,
     // vulnerability amplifiers, and phase shift dodge.
     const hit = resolvePhysicalHit(target, action.damage)

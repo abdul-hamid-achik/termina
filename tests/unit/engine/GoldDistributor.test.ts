@@ -3,13 +3,13 @@ import {
   distributePassiveGold,
   awardLastHit,
   awardKill,
-  awardTowerKill,
+  awardIceKill,
   comebackMultiplier,
   xpComebackMultiplier,
   playerNetWorth,
 } from '~~/server/game/engine/GoldDistributor'
 import type { GameState, PlayerState } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
@@ -18,7 +18,7 @@ import {
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
-  TOWER_GOLD,
+  ICE_GOLD,
   COMEBACK_BONUS_MAX,
   COMEBACK_PENALTY_MAX,
   COMEBACK_FULL_GAP,
@@ -52,7 +52,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...overrides,
   }
@@ -63,13 +63,13 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     neutrals: [],
     runes: [],
     roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
@@ -338,8 +338,8 @@ describe('GoldDistributor', () => {
     })
   })
 
-  describe('awardTowerKill', () => {
-    it('should split tower gold evenly among nearby allies', () => {
+  describe('awardIceKill', () => {
+    it('should split ice gold evenly among nearby allies', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', gold: 100 }),
@@ -347,21 +347,21 @@ describe('GoldDistributor', () => {
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-audit', ['p1', 'p2'])
-      const goldEach = Math.floor(TOWER_GOLD / 2)
+      const result = awardIceKill(state, 'mid-t1-audit', ['p1', 'p2'])
+      const goldEach = Math.floor(ICE_GOLD / 2)
       expect(result.players['p1']!.gold).toBe(100 + goldEach)
       expect(result.players['p2']!.gold).toBe(200 + goldEach)
     })
 
-    it('should give all tower gold to a single ally', () => {
+    it('should give all ice gold to a single ally', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', gold: 100 }),
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-audit', ['p1'])
-      expect(result.players['p1']!.gold).toBe(100 + TOWER_GOLD)
+      const result = awardIceKill(state, 'mid-t1-audit', ['p1'])
+      expect(result.players['p1']!.gold).toBe(100 + ICE_GOLD)
     })
 
     it('should return state unchanged with no nearby allies', () => {
@@ -371,7 +371,7 @@ describe('GoldDistributor', () => {
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-audit', [])
+      const result = awardIceKill(state, 'mid-t1-audit', [])
       expect(result).toEqual(state)
     })
 
@@ -384,8 +384,8 @@ describe('GoldDistributor', () => {
         },
       })
 
-      const result = awardTowerKill(state, 'mid-t1-audit', ['p1', 'p2', 'p3'])
-      const goldEach = Math.floor(TOWER_GOLD / 3)
+      const result = awardIceKill(state, 'mid-t1-audit', ['p1', 'p2', 'p3'])
+      const goldEach = Math.floor(ICE_GOLD / 3)
       expect(result.players['p1']!.gold).toBe(goldEach)
       expect(result.players['p2']!.gold).toBe(goldEach)
       expect(result.players['p3']!.gold).toBe(goldEach)

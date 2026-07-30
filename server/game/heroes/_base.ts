@@ -389,7 +389,7 @@ export function dealAbilityDamage(
  *
  * Dead NPCs are left in the array at 0 HP (`alive: false` for neutrals) rather
  * than filtered out: the cast bridge credits the kill by diffing HP against the
- * pre-cast buffer, and CreepAI reaps them at the end of the same tick. Towers,
+ * pre-cast buffer, and CreepAI reaps them at the end of the same tick. ICE,
  * Roshan and the Ancient are deliberately untouched — a second pass.
  */
 export function damageEnemyNpcsInZone(

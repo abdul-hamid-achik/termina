@@ -30,7 +30,7 @@ describe('MapLegend', () => {
   it('decodes the mini-overview zone codes', () => {
     const text = mount(MapLegend, { props: { open: true } }).text()
     expect(text).toContain('T1-3')
-    expect(text).toContain('tower zones')
+    expect(text).toContain('ice zones')
     expect(text).toContain('JG')
     expect(text).toContain('jungle')
     expect(text).toContain('RN')

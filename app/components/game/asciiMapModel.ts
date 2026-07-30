@@ -9,7 +9,7 @@ export interface ZoneDisplay {
   playerHere: boolean
   allies: string[]
   enemyCount: number
-  tower?: {
+  ice?: {
     team: 'chaff' | 'audit'
     alive: boolean
     tier: number
@@ -178,13 +178,13 @@ export function zoneShortCode(zoneId: string): string {
 }
 
 /** Per-cell model for the compact mini-overview grid: the ►-prefixed short code,
- *  an optional team-colored tower-state glyph, trailing markers (razed mainframe,
+ *  an optional team-colored ice-state glyph, trailing markers (razed mainframe,
  *  enemy presence), and the cell's classes. Pure — unit-testable without a mount. */
 export interface MiniOverviewCell {
   /** Zone short code, ►-prefixed when the player is here. */
   code: string
-  /** Tower-state glyph (▲ standing / ✗ razed) + its color class, if the zone has a tower. */
-  tower: { glyph: string; cls: string } | null
+  /** Ice-state glyph (▲ standing / ✗ razed) + its color class, if the zone has a ice. */
+  ice: { glyph: string; cls: string } | null
   /** Trailing markers: '◈✗' razed mainframe, '!' enemies present. */
   marks: string
   /** Classes for the whole cell (territory color, player highlight, fog). */
@@ -198,11 +198,11 @@ export function miniOverviewCell(
 ): MiniOverviewCell {
   const code = (zone?.playerHere ? '►' : '') + zoneShortCode(zoneId)
 
-  // Towers are global info (like the desktop grid's ✓/✗) — shown through fog too.
-  let tower: MiniOverviewCell['tower'] = null
-  if (zone?.tower) {
-    tower = zone.tower.alive
-      ? { glyph: '▲', cls: zone.tower.team === 'chaff' ? 'text-chaff' : 'text-audit' }
+  // ICE are global info (like the desktop grid's ✓/✗) — shown through fog too.
+  let ice: MiniOverviewCell['ice'] = null
+  if (zone?.ice) {
+    ice = zone.ice.alive
+      ? { glyph: '▲', cls: zone.ice.team === 'chaff' ? 'text-chaff' : 'text-audit' }
       : { glyph: '✗', cls: 'text-text-dim' }
   }
 
@@ -221,7 +221,7 @@ export function miniOverviewCell(
   }
   if (zone?.fogged) classes.push('opacity-40')
 
-  return { code, tower, marks, classes }
+  return { code, ice, marks, classes }
 }
 
 /** The Ancient that lives in a given zone (base zones only). */
@@ -250,7 +250,7 @@ export function ancientLabel(ancient: AncientState | null | undefined): string |
 /**
  * The Mainframe readout a map surface shows: the HP percentage prefixed by
  * whether the core can actually be attacked yet ('LOCKED' until one of that
- * team's T3 towers falls). Whether the core is exposed decides whether a push
+ * team's T3 ice falls). Whether the core is exposed decides whether a push
  * can end the match, and it was previously carried only by a CSS pulse in the
  * top bar — nothing named the state.
  */
@@ -262,14 +262,14 @@ export function ancientStatusLabel(ancient: AncientState | null | undefined): st
 }
 
 /**
- * Tower state as three HP pips — '▲▲▲' full, '▲··' nearly down, '✗' razed.
- * Towers reach every client unfiltered (VisionCalculator), so this is the one
+ * Ice state as three HP pips — '▲▲▲' full, '▲··' nearly down, '✗' razed.
+ * ICE reach every client unfiltered (VisionCalculator), so this is the one
  * objective readout a player always has; a bare ✓ said "standing" but never
  * "one push from falling", which is the whole decision.
  */
-export function towerPips(tower: NonNullable<ZoneDisplay['tower']>): string {
-  if (!tower.alive) return '✗'
-  const { hp, maxHp } = tower
+export function icePips(ice: NonNullable<ZoneDisplay['ice']>): string {
+  if (!ice.alive) return '✗'
+  const { hp, maxHp } = ice
   if (hp == null || maxHp == null || maxHp <= 0) return '▲▲▲'
   const pips = Math.min(3, Math.max(1, Math.ceil((hp / maxHp) * 3)))
   return '▲'.repeat(pips) + '·'.repeat(3 - pips)
@@ -330,12 +330,16 @@ export function zoneRecordLabel(z: {
   id: string
   type: string
   team: 'chaff' | 'audit' | 'neutral'
-  tower?: boolean
+  ice?: boolean
   tier?: number
 }): string {
   const g = zoneSideGlyph(z.team)
   if (z.type === 'fountain' || z.type === 'base') return `★ ${g?.side ?? '???'}`
-  if (z.tower && z.tier !== undefined) return `${g?.arrow ?? '▼'} ${g?.side ?? '???'} T${z.tier}`
+  if (z.ice && z.tier !== undefined) {
+    // The tier-3 layer is BLACK ICE — the one the lexicon names separately.
+    const label = z.tier === 3 ? 'BLACK ICE' : `ICE T${z.tier}`
+    return `${g?.arrow ?? '▼'} ${g?.side ?? '???'} ${label}`
+  }
   // Objective/run spots outrank their zone type — rune spots are typed 'river'
   // in the data but must never render as the crossing.
   if (z.id === 'hollow') return '☠ HOLLOW'
@@ -353,9 +357,9 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
   const z = ZONE_MAP[zone.id]
   const name = z ? zoneRecordLabel(z) : zone.id.slice(0, 8).toUpperCase()
 
-  // Ancients and towers are global info (the server sends both unfiltered), so
+  // Ancients and ice are global info (the server sends both unfiltered), so
   // they are built BEFORE the fog return — this grid used to be the only one of
-  // the three renderers that dropped the tower the moment a zone went dark,
+  // the three renderers that dropped the ice the moment a zone went dark,
   // hiding exactly the objective a player is deciding whether to push.
   const indicators: string[] = []
 
@@ -364,8 +368,8 @@ export function cellText(zone: ZoneDisplay, ancient?: AncientState | null): stri
     indicators.push(`◈${aLabel}`)
   }
 
-  if (zone.tower) {
-    indicators.push(towerPips(zone.tower))
+  if (zone.ice) {
+    indicators.push(icePips(zone.ice))
   }
 
   if (zone.fogged) return [name, ...indicators, '?'].join(' ')
@@ -432,15 +436,15 @@ export function zoneAriaLabel(zone: ZoneDisplay, ancient?: AncientState | null):
         : 'ancient destroyed',
     )
   }
-  if (zone.tower) {
+  if (zone.ice) {
     parts.push(
-      zone.tower.alive
-        ? `tier ${zone.tower.tier} tower standing${
-            zone.tower.hp != null && zone.tower.maxHp != null
-              ? ` at ${Math.round((zone.tower.hp / zone.tower.maxHp) * 100)} percent`
+      zone.ice.alive
+        ? `tier ${zone.ice.tier} ice standing${
+            zone.ice.hp != null && zone.ice.maxHp != null
+              ? ` at ${Math.round((zone.ice.hp / zone.ice.maxHp) * 100)} percent`
               : ''
           }`
-        : `tier ${zone.tower.tier} tower destroyed`,
+        : `tier ${zone.ice.tier} ice destroyed`,
     )
   }
   if (zone.fogged) parts.push('fogged')
@@ -455,19 +459,17 @@ export function compactIndicators(
 ): CompactIndicator[] {
   const out: CompactIndicator[] = []
 
-  // Towers and Ancients are global info — shown even through fog.
-  if (zone.tower) {
-    if (zone.tower.alive) {
+  // ICE and Ancients are global info — shown even through fog.
+  if (zone.ice) {
+    if (zone.ice.alive) {
       const hp =
-        zone.tower.hp != null && zone.tower.maxHp != null
-          ? ` ${zone.tower.hp}/${zone.tower.maxHp}`
-          : ''
+        zone.ice.hp != null && zone.ice.maxHp != null ? ` ${zone.ice.hp}/${zone.ice.maxHp}` : ''
       out.push({
-        text: `${zone.tower.team === 'chaff' ? '▲' : '▼'} T${zone.tower.tier}${hp}`,
-        cls: zone.tower.team === 'chaff' ? 'text-chaff' : 'text-audit',
+        text: `${zone.ice.team === 'chaff' ? '▲' : '▼'} T${zone.ice.tier}${hp}`,
+        cls: zone.ice.team === 'chaff' ? 'text-chaff' : 'text-audit',
       })
     } else {
-      out.push({ text: `✗ T${zone.tower.tier} down`, cls: 'text-text-dim' })
+      out.push({ text: `✗ T${zone.ice.tier} down`, cls: 'text-text-dim' })
     }
   }
 

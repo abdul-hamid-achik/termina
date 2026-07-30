@@ -11,7 +11,7 @@ import {
   checkAncientWin,
 } from '~~/server/game/engine/AncientSystem'
 import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { ANCIENT_HP } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -39,7 +39,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -63,14 +63,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
     roshan: { alive: false, hp: 0, maxHp: 5000, deathTick: null },
@@ -83,12 +83,12 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-/** State where the named team's mid T3 tower is destroyed. */
+/** State where the named team's mid T3 ice is destroyed. */
 function withDeadT3(state: GameState, team: 'chaff' | 'audit'): GameState {
   const zone = team === 'chaff' ? 'mid-t3-chaff' : 'mid-t3-audit'
   return {
     ...state,
-    towers: state.towers.map((t) => (t.zone === zone ? { ...t, hp: 0, alive: false } : t)),
+    ice: state.ice.map((t) => (t.zone === zone ? { ...t, hp: 0, alive: false } : t)),
   }
 }
 
@@ -110,7 +110,7 @@ describe('AncientSystem', () => {
     it('round-trips ancient target ids', () => {
       expect(parseAncientTargetId(ancientTargetId('chaff'))).toBe('chaff')
       expect(parseAncientTargetId(ancientTargetId('audit'))).toBe('audit')
-      expect(parseAncientTargetId('tower_mid-t1-chaff')).toBeNull()
+      expect(parseAncientTargetId('ice_mid-t1-chaff')).toBeNull()
       expect(parseAncientTargetId('p1')).toBeNull()
     })
 
@@ -138,21 +138,21 @@ describe('AncientSystem', () => {
   })
 
   describe('vulnerability', () => {
-    it('is invulnerable while all own T3 towers stand', () => {
+    it('is invulnerable while all own T3 ice stand', () => {
       const state = makeGameState()
       expect(isAncientVulnerable(state, 'chaff')).toBe(false)
       expect(isAncientVulnerable(state, 'audit')).toBe(false)
     })
 
-    it('becomes vulnerable when one own T3 tower is dead', () => {
+    it('becomes vulnerable when one own T3 ice is dead', () => {
       const state = withDeadT3(makeGameState(), 'audit')
       expect(isAncientVulnerable(state, 'audit')).toBe(true)
       expect(isAncientVulnerable(state, 'chaff')).toBe(false)
     })
 
-    it('is not made vulnerable by dead T1/T2 towers', () => {
+    it('is not made vulnerable by dead T1/T2 ice', () => {
       const state = makeGameState({
-        towers: initializeTowers().map((t) =>
+        ice: initializeIce().map((t) =>
           t.zone === 'mid-t1-audit' || t.zone === 'top-t2-audit'
             ? { ...t, hp: 0, alive: false }
             : t,
@@ -229,9 +229,9 @@ describe('AncientSystem', () => {
       const result = resolveAncientAttack(state, 'p1', 100)
       expect(result.state.ancients.audit.hp).toBe(0)
       expect(result.state.ancients.audit.alive).toBe(false)
-      // No tower_kill reuse — the Ancient has its own event so the UI does not
-      // render a misleading "destroyed tower in <base>" line.
-      expect(result.events.some((e) => e._tag === 'tower_kill')).toBe(false)
+      // No ice_kill reuse — the Ancient has its own event so the UI does not
+      // render a misleading "destroyed ice in <base>" line.
+      expect(result.events.some((e) => e._tag === 'ice_kill')).toBe(false)
       const killEvent = result.events.find((e) => e._tag === 'ancient_destroyed')
       expect(killEvent).toBeDefined()
       expect(killEvent).toMatchObject({ team: 'audit', killerTeam: 'chaff' })

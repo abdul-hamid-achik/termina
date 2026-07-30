@@ -3,8 +3,8 @@ import { ZONES } from './zones'
 
 /**
  * Selectable maps. A game stamps its `mapId` and the engine initializes zones +
- * towers from the resolved zone set, so a smaller map "just works" as long as it
- * reuses the full map's zone IDs (tower tier / lane / creep-route derivation all
+ * ice from the resolved zone set, so a smaller map "just works" as long as it
+ * reuses the full map's zone IDs (ice tier / lane / creep-route derivation all
  * key off the ID strings).
  */
 

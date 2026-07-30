@@ -7,7 +7,7 @@ import {
   KILL_BOUNTY_BASE,
   KILL_BOUNTY_PER_STREAK,
   ASSIST_GOLD,
-  TOWER_GOLD,
+  ICE_GOLD,
   COMEBACK_BONUS_MAX,
   COMEBACK_PENALTY_MAX,
   COMEBACK_FULL_GAP,
@@ -154,12 +154,12 @@ export function awardKill(
   return updatedState
 }
 
-/** Award tower kill gold. Split evenly among all nearby allies. */
-export function awardTowerKill(state: GameState, _zone: string, nearbyAllies: string[]): GameState {
+/** Award ice kill gold. Split evenly among all nearby allies. */
+export function awardIceKill(state: GameState, _zone: string, nearbyAllies: string[]): GameState {
   if (nearbyAllies.length === 0) return state
 
   let updatedState = state
-  const goldEach = Math.floor(TOWER_GOLD / nearbyAllies.length)
+  const goldEach = Math.floor(ICE_GOLD / nearbyAllies.length)
   for (const playerId of nearbyAllies) {
     updatedState = updatePlayerGold(updatedState, playerId, goldEach)
   }

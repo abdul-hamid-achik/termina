@@ -125,15 +125,15 @@ describe('combatLog helpers', () => {
     })
 
     it('returns null for non-ancient ids', () => {
-      expect(ancientLabel('tower_mid-t1-chaff')).toBeNull()
+      expect(ancientLabel('ice_mid-t1-chaff')).toBeNull()
       expect(ancientLabel('github_7379966')).toBeNull()
       expect(ancientLabel('creep_3')).toBeNull()
     })
   })
 
   describe('isStructureTarget', () => {
-    it('flags towers and ancients', () => {
-      expect(isStructureTarget('tower_mid-t3-audit')).toBe(true)
+    it('flags ice and ancients', () => {
+      expect(isStructureTarget('ice_mid-t3-audit')).toBe(true)
       expect(isStructureTarget('ancient_chaff')).toBe(true)
     })
 
@@ -267,10 +267,10 @@ describe('combatLog helpers', () => {
       const kill: CombatLine = { tick: 5, text: 'a kill', type: 'kill', salience: 'world' }
       const struct: CombatLine = {
         tick: 5,
-        text: 'tower hit',
+        text: 'ice hit',
         type: 'damage',
         salience: 'world',
-        dedupKey: 'dmg:x->tower',
+        dedupKey: 'dmg:x->ice',
         dmgAmount: 10,
       }
       const result = digestTeamfightNoise([mine, kill, struct])
@@ -291,9 +291,9 @@ describe('CombatLog victory line', () => {
     const text = el.text()
     expect(text).toContain('[VICTORY]')
     expect(text).toContain('Chaff destroyed the Audit Core!')
-    // Exactly one bracket tag — no leftover [KILL] doubling, no "tower in base".
+    // Exactly one bracket tag — no leftover [KILL] doubling, no "ice in base".
     expect(text).not.toContain('[KILL]')
-    expect(text).not.toContain('tower')
+    expect(text).not.toContain('ice')
   })
 })
 

@@ -43,16 +43,16 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     // actually satisfies the step. Movement auto-paths one zone per tick, so a
     // single command walks the whole way.
     //
-    // Send them to their OWN T1 tower, not `mid` (which aliases to mid-river).
-    // The river is neutral, has no tower, and borders the AUDIT T1 — both enemy
+    // Send them to their OWN T1 ice, not `mid` (which aliases to mid-river).
+    // The river is neutral, has no ice, and borders the AUDIT T1 — both enemy
     // bots are pinned to mid, so they reach it before the first creep wave does.
     // A level-1 newcomer who followed the old hint arrived alone, ahead of their
     // own creeps, and was stunned and killed inside ~12 ticks having landed
-    // nothing. Standing behind your own tower is also just what the game wants
+    // nothing. Standing behind your own ice is also just what the game wants
     // you to learn.
-    hint: '🎓 Walk to your tower — type `move mid-t1-chaff`. You move one zone per cycle, so this takes a few.',
+    hint: '🎓 Walk to your ice — type `move mid-t1-chaff`. You move one zone per cycle, so this takes a few.',
     skipNote:
-      'Movement: `move <zone>` auto-paths one zone per cycle. Stay behind your own tower — the river is contested.',
+      'Movement: `move <zone>` auto-paths one zone per cycle. Stay behind your own ice — the river is contested.',
   },
   {
     teaches: 'attack',

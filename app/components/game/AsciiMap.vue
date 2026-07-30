@@ -378,7 +378,7 @@ const miniRows = computed(() =>
         <span class="text-self">►YOU = You</span>
         <span class="text-text-dim">cN = N Creeps</span>
         <span class="text-text-dim">☘N = N Neutrals</span>
-        <span class="text-text-dim">▲▲▲/✗ = Tower HP</span>
+        <span class="text-text-dim">▲▲▲/✗ = Ice HP</span>
         <span class="text-text-dim">◈ = Mainframe</span>
         <span class="text-self">⌖/N = Walk target / hop</span>
         <span class="text-text-dim">? = No vision</span>
@@ -500,7 +500,7 @@ const miniRows = computed(() =>
               :class="cell.classes"
             >
               <span>{{ cell.code }}</span>
-              <span v-if="cell.tower" :class="cell.tower.cls">{{ cell.tower.glyph }}</span>
+              <span v-if="cell.ice" :class="cell.ice.cls">{{ cell.ice.glyph }}</span>
               <span v-if="cell.marks">{{ cell.marks }}</span>
             </div>
             <div v-else class="map-cell-compact h-7 bg-bg-primary/30" />
@@ -508,14 +508,14 @@ const miniRows = computed(() =>
         </div>
         <div class="pt-0.5 text-center t-hud-xs font-bold tracking-widest text-audit">AUDIT ▼</div>
         <div class="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 t-hud-xs text-text-dim">
-          <span>T1-3 tower zones</span>
+          <span>T1-3 ice zones</span>
           <span>JG jungle</span>
           <span>RN rune</span>
           <span>ROS Roshan</span>
           <span>RF/RB fountain/base</span>
           <span class="text-self">► you</span>
           <span class="text-audit">! enemies</span>
-          <span>▲ tower up · ✗ razed</span>
+          <span>▲ ice up · ✗ razed</span>
           <span>◈✗ mainframe razed</span>
           <span>dimmed = no vision</span>
           <span

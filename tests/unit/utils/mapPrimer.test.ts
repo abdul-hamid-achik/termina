@@ -16,20 +16,20 @@ describe('buildMapPrimerZones', () => {
     }
   })
 
-  it('marks every tower zone with an alive tower on the right team + tier', () => {
-    const towerZones = ZONES.filter((z) => z.tower)
-    expect(towerZones.length).toBeGreaterThan(0)
-    for (const z of towerZones) {
+  it('marks every ice zone with an alive ice on the right team + tier', () => {
+    const iceZones = ZONES.filter((z) => z.ice)
+    expect(iceZones.length).toBeGreaterThan(0)
+    for (const z of iceZones) {
       const d = zones.find((x) => x.id === z.id)!
-      expect(d.tower).toBeDefined()
-      expect(d.tower!.alive).toBe(true)
-      expect(d.tower!.team).toBe(z.team)
-      expect(d.tower!.tier).toBe(z.tier ?? 1)
+      expect(d.ice).toBeDefined()
+      expect(d.ice!.alive).toBe(true)
+      expect(d.ice!.team).toBe(z.team)
+      expect(d.ice!.tier).toBe(z.tier ?? 1)
     }
   })
 
-  it('leaves non-tower zones (fountain) without a tower', () => {
-    expect(zones.find((z) => z.id === 'chaff-fountain')!.tower).toBeUndefined()
+  it('leaves non-ice zones (fountain) without a ice', () => {
+    expect(zones.find((z) => z.id === 'chaff-fountain')!.ice).toBeUndefined()
   })
 
   it('marks Roshan alive on the pit', () => {

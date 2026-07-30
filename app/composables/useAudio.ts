@@ -9,8 +9,8 @@ export type SoundName =
   | 'gold'
   | 'ready'
   | 'cast'
-  | 'tower_fall'
-  | 'tower_lost'
+  | 'ice_fall'
+  | 'ice_lost'
   | 'respawn'
   | 'victory'
   | 'defeat'
@@ -128,17 +128,17 @@ const SOUNDS: Record<SoundName, SoundDef> = {
     ],
     noise: { duration: 0.08, gain: 0.08, cutoff: 3500 },
   },
-  // Tower fall: heavy thud + crash
-  tower_fall: {
+  // Ice fall: heavy thud + crash
+  ice_fall: {
     oscs: [
       { type: 'sawtooth', freqStart: 80, freqEnd: 40, duration: 0.45, gain: 0.32, attack: 0.005 },
       { type: 'square', freqStart: 160, freqEnd: 60, duration: 0.4, gain: 0.18, attack: 0.005 },
     ],
     noise: { duration: 0.35, gain: 0.22, cutoff: 1400 },
   },
-  // Tower lost: the same collapse pitched into the basement with the bright
+  // Ice lost: the same collapse pitched into the basement with the bright
   // crash stripped out, so "ours fell" never reads as "we broke theirs".
-  tower_lost: {
+  ice_lost: {
     oscs: [
       { type: 'sawtooth', freqStart: 55, freqEnd: 26, duration: 0.6, gain: 0.28, attack: 0.008 },
       { type: 'sine', freqStart: 110, freqEnd: 38, duration: 0.55, gain: 0.2, attack: 0.008 },

@@ -33,7 +33,7 @@ const multiKill = [
   }),
 ]
 
-// A stacked cluster: a hero kill, a tower fall, and a Roshan slay together.
+// A stacked cluster: a hero kill, a ice fall, and a Roshan slay together.
 const cluster = [
   entry({
     tick: CURRENT - 1,
@@ -43,10 +43,10 @@ const cluster = [
   }),
   entry({
     tick: CURRENT,
-    category: 'tower',
+    category: 'ice',
     killerHeroId: undefined,
     victimHeroId: undefined,
-    text: 'CHAFF razed a AUDIT tower',
+    text: 'CHAFF razed a AUDIT ice',
   }),
   entry({
     tick: CURRENT,
@@ -81,7 +81,7 @@ const coreDown = [
       </div>
     </Variant>
 
-    <Variant title="cluster (hero · tower · roshan)">
+    <Variant title="cluster (hero · ice · roshan)">
       <div class="bg-bg-primary p-4" style="width: 440px">
         <KillFeed :entries="cluster" :current-tick="CURRENT" :max="3" />
       </div>

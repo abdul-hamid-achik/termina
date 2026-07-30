@@ -298,22 +298,22 @@ describe('AsciiMap', () => {
       expect(text).toContain('CHAFF ▲')
       expect(text).toContain('AUDIT ▼')
       // The legend line explains the zone codes.
-      expect(text).toContain('T1-3 tower zones')
+      expect(text).toContain('T1-3 ice zones')
       expect(text).toContain('JG jungle')
       expect(text).toContain('RN rune')
       expect(text).toContain('ROS Roshan')
       expect(text).toContain('RF/RB fountain/base')
-      expect(text).toContain('▲ tower up · ✗ razed')
+      expect(text).toContain('▲ ice up · ✗ razed')
     })
 
-    it('shows tower state glyphs in the mini overview lane cells', async () => {
+    it('shows ice state glyphs in the mini overview lane cells', async () => {
       const zones = [
         makeZone({
           id: 'mid-t1-chaff',
           playerHere: true,
-          tower: { team: 'chaff', alive: false, tier: 1 },
+          ice: { team: 'chaff', alive: false, tier: 1 },
         }),
-        makeZone({ id: 'mid-t1-audit', tower: { team: 'audit', alive: true, tier: 1 } }),
+        makeZone({ id: 'mid-t1-audit', ice: { team: 'audit', alive: true, tier: 1 } }),
       ]
       const wrapper = mount(AsciiMap, {
         props: { zones, playerZone: 'mid-t1-chaff', forceMode: 'compact' as const },
@@ -321,10 +321,10 @@ describe('AsciiMap', () => {
       await wrapper.find('[data-testid="overview-toggle"]').trigger('click')
 
       const overview = wrapper.find('[data-testid="mini-overview"]')
-      // Razed chaff tower on the player's cell (✗ after the code), live audit tower (▲).
+      // Razed chaff ice on the player's cell (✗ after the code), live audit ice (▲).
       expect(overview.text()).toContain('►M1✗')
       expect(overview.text()).toContain('M1▲')
-      // The standing tower's glyph is team-colored.
+      // The standing ice's glyph is team-colored.
       const auditGlyph = overview
         .findAll('span')
         .find((s) => s.text() === '▲' && s.classes().includes('text-audit'))
@@ -450,11 +450,11 @@ describe('AsciiMap', () => {
       expect(text).toContain('AUDIT ▼')
     })
 
-    it('decodes the fog glyph and the tower pips in the legend', () => {
+    it('decodes the fog glyph and the ice pips in the legend', () => {
       const text = mountFull().text()
       expect(text).toContain('? = No vision')
-      expect(text).toContain('▲▲▲/✗ = Tower HP')
-      expect(text).not.toContain('✓/✗ = Tower')
+      expect(text).toContain('▲▲▲/✗ = Ice HP')
+      expect(text).not.toContain('✓/✗ = Ice')
     })
   })
 

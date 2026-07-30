@@ -4,11 +4,11 @@ import { seedGame, HUMAN } from './harness'
 /**
  * One-lane map (slice 1): a self-contained mid-lane subgraph of the full 5v5
  * graph, selected via `mapId: 'one_lane'` at the createGame seam. Proves the map
- * initializes the right zones + towers and that movement is correctly contained
+ * initializes the right zones + ice and that movement is correctly contained
  * to the lane — all through the in-process gameplay harness, no server/DB.
  */
 describe('one-lane map', () => {
-  it('initializes only the 11 mid-lane zones and 6 towers (3 per team)', async () => {
+  it('initializes only the 11 mid-lane zones and 6 ice (3 per team)', async () => {
     const game = await seedGame('fresh', { mapId: 'one_lane' })
     const s = await game.state()
 
@@ -17,8 +17,8 @@ describe('one-lane map', () => {
     expect(s.zones['top-t3-chaff']).toBeUndefined() // dropped lanes don't exist
     expect(s.zones['hollow']).toBeUndefined()
 
-    expect(s.towers.length).toBe(6)
-    expect(s.towers.every((t) => t.zone.startsWith('mid-'))).toBe(true)
+    expect(s.ice.length).toBe(6)
+    expect(s.ice.every((t) => t.zone.startsWith('mid-'))).toBe(true)
   })
 
   it('spawns the human in its fountain and walks the lane one zone per tick', async () => {

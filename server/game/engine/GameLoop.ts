@@ -27,7 +27,7 @@ import { advanceTutorialAfterTick, TUTORIAL_STEP_COUNT } from '~~/server/game/mo
 import { distributePassiveGold, awardKill, xpComebackMultiplier } from './GoldDistributor'
 import { runCreepAI, applyCreepActions, enforceCreepZoneCap } from './CreepAI'
 import { ensureAncients, updateAncientVulnerability, checkAncientWin } from './AncientSystem'
-import { runTowerAI, applyTowerActions } from './TowerAI'
+import { runIceAI, applyIceActions } from './IceAI'
 import { runRoshanAI, processRoshanDamage } from './RoshanAI'
 import { removeExpiredRunes, processRuneBuffs } from './RuneAI'
 import { processTraps } from './TrapSystem'
@@ -76,7 +76,7 @@ const KEEPS_AUTOPATH = new Set(['move', 'surrender', 'select_talent', 'buyback']
  *  replaces the target in the resolver, an item active is a free action from
  *  its own slot, and the out-of-band verbs express no new target intent.
  *  Keeping `attack` here is also what lets a last hit interrupt a siege without
- *  ending it — a creep swing sets no order of its own, so the tower you were
+ *  ending it — a creep swing sets no order of its own, so the ice you were
  *  hitting is still the one you resume on. */
 const KEEPS_ATTACK = new Set(['attack', 'use', 'surrender', 'select_talent', 'buyback'])
 
@@ -370,7 +370,7 @@ export function processTick(
     }
 
     // 3. Resolve actions via ActionResolver
-    const preTowers = currentState.towers
+    const preIce = currentState.ice
     const resolved = yield* resolveActions(currentState, validActions)
     currentState = resolved.state
     allEvents.push(...resolved.events)
@@ -414,8 +414,8 @@ export function processTick(
       }
     }
 
-    // 3.5. Track tower kills and update team stats
-    currentState = trackTowerKills(currentState, preTowers, allEvents)
+    // 3.5. Track ice kills and update team stats
+    currentState = trackIceKills(currentState, preIce, allEvents)
 
     // 3.6. Apply inCombat buffs based on damage events
     currentState = applyInCombatBuffs(currentState, resolved.events)
@@ -429,7 +429,7 @@ export function processTick(
     // 3.7. Expire glyph invulnerability
     currentState = expireGlyph(currentState)
 
-    // 4–5.6. NPC AI (creeps, neutrals, towers, Roshan)
+    // 4–5.6. NPC AI (creeps, neutrals, ice, Roshan)
     const npcResult = runNPCAI(currentState, {
       heroAttackers: resolved.heroAttackers,
       priorEvents: allEvents,
@@ -437,13 +437,13 @@ export function processTick(
     currentState = npcResult.state
     allEvents.push(...npcResult.events)
 
-    // 5.65. Being shot by a tower, a creep wave or a jungle camp is combat too —
+    // 5.65. Being shot by a ice, a creep wave or a jungle camp is combat too —
     // it must gate fountain regen and the "out of combat" item passives exactly
     // as a hero attack does. Runs a second time (step 3.6 only sees the hero
     // phase, which resolves before NPCs act); the buff refresh is idempotent.
     currentState = applyInCombatBuffs(currentState, npcResult.events)
 
-    // 5.7. Recompute Ancient vulnerability after all tower damage this tick
+    // 5.7. Recompute Ancient vulnerability after all ice damage this tick
     // (hero attacks in resolveActions + creep attacks in NPC AI).
     currentState = updateAncientVulnerability(currentState)
 
@@ -533,16 +533,16 @@ export function processTick(
 
     // 13.1. Test-mode progress monitor. Only when the fast-game hook is active
     // (dev/test, never production) and every 25 ticks, log how the game is
-    // converging toward an Ancient kill — towers standing per team and Ancient
+    // converging toward an Ancient kill — ice standing per team and Ancient
     // HP/vulnerability — so a watcher can see whether games end on time.
     if (fastGameFactor() > 1 && currentState.tick % 25 === 0) {
-      const towersUp = (team: string) =>
-        currentState.towers.filter((t) => t.team === team && t.alive).length
+      const iceUp = (team: string) =>
+        currentState.ice.filter((t) => t.team === team && t.alive).length
       const anc = currentState.ancients
       engineLog.info('📊 Game progress', {
         gameId,
         tick: currentState.tick,
-        towers: `R${towersUp('chaff')}:D${towersUp('audit')}`,
+        ice: `R${iceUp('chaff')}:D${iceUp('audit')}`,
         chaffAncient: `${anc?.chaff.hp ?? '?'}${anc?.chaff.vulnerable ? '!' : ''}`,
         auditAncient: `${anc?.audit.hp ?? '?'}${anc?.audit.vulnerable ? '!' : ''}`,
         winner: winner ?? 'none',
@@ -812,7 +812,7 @@ function buildGameLoop(
       callbacks.onEvents(gameId, events)
     }
 
-    // Check win — phase is set to 'ended' by processTick (towers or surrender)
+    // Check win — phase is set to 'ended' by processTick (ice or surrender)
     if (newState.phase === 'ended') {
       const winner = newState.winner ?? checkWinCondition(newState)
       if (winner) {
@@ -1176,9 +1176,9 @@ export function runHeroPassives(
 }
 
 /**
- * Run all NPC AIs (creeps, neutrals, towers, Roshan) and apply their actions.
+ * Run all NPC AIs (creeps, neutrals, ice, Roshan) and apply their actions.
  *
- * Tower AI needs `heroAttackers` from the prior `resolveActions` step so it
+ * Ice AI needs `heroAttackers` from the prior `resolveActions` step so it
  * can prioritize heroes that recently attacked allies. Roshan damage is
  * tallied by scanning the events emitted earlier in the tick.
  */
@@ -1199,10 +1199,10 @@ export function runNPCAI(
   s = neutralResult.state
   events.push(...neutralResult.events)
 
-  // Towers — priorEvents lets towers aggro heroes that attacked them this tick
-  const towerResult = applyTowerActions(s, runTowerAI(s, ctx.heroAttackers, ctx.priorEvents))
-  s = towerResult.state
-  events.push(...towerResult.events)
+  // ICE — priorEvents lets ice aggro heroes that attacked them this tick
+  const iceResult = applyIceActions(s, runIceAI(s, ctx.heroAttackers, ctx.priorEvents))
+  s = iceResult.state
+  events.push(...iceResult.events)
 
   // Roshan attacks
   for (const action of runRoshanAI(s)) {
@@ -1291,7 +1291,7 @@ export function runSpawning(state: GameState): GameState {
 }
 
 /**
- * Drop tower invulnerability for any team whose glyph effect has expired.
+ * Drop ice invulnerability for any team whose glyph effect has expired.
  * Pure: returns a new state if anything changed, the same state otherwise.
  */
 export function expireGlyph(state: GameState): GameState {
@@ -1304,7 +1304,7 @@ export function expireGlyph(state: GameState): GameState {
 
   return {
     ...state,
-    towers: state.towers.map((t) => {
+    ice: state.ice.map((t) => {
       if (t.team === 'chaff' && chaffExpired) return { ...t, invulnerable: false }
       if (t.team === 'audit' && auditExpired) return { ...t, invulnerable: false }
       return t
@@ -1704,29 +1704,29 @@ function applyInCombatBuffs(state: GameState, events: GameEngineEvent[]): GameSt
   return { ...state, players }
 }
 
-/** Track tower kills by comparing pre-tick and post-tick tower state. */
-function trackTowerKills(
+/** Track ice kills by comparing pre-tick and post-tick ice state. */
+function trackIceKills(
   state: GameState,
-  preTowers: GameState['towers'],
+  preIce: GameState['ice'],
   events: GameEngineEvent[],
 ): GameState {
   let teams = { ...state.teams }
   let changed = false
 
-  for (let i = 0; i < state.towers.length; i++) {
-    const before = preTowers[i]
-    const after = state.towers[i]
+  for (let i = 0; i < state.ice.length; i++) {
+    const before = preIce[i]
+    const after = state.ice[i]
     if (before && after && before.alive && !after.alive) {
-      // Tower was destroyed — the killing team is the opposing team
+      // Ice was destroyed — the killing team is the opposing team
       const killerTeam = after.team === 'chaff' ? 'audit' : 'chaff'
       const teamState = teams[killerTeam]
       teams = {
         ...teams,
-        [killerTeam]: { ...teamState, towerKills: teamState.towerKills + 1 },
+        [killerTeam]: { ...teamState, iceKills: teamState.iceKills + 1 },
       }
 
       events.push({
-        _tag: 'tower_kill',
+        _tag: 'ice_kill',
         tick: state.tick,
         zone: after.zone,
         team: after.team,
@@ -1742,7 +1742,7 @@ function trackTowerKills(
 
 /**
  * A team wins by destroying the enemy Ancient ("the Mainframe"). The
- * Ancient becomes attackable once any of its team's T3 towers is down —
+ * Ancient becomes attackable once any of its team's T3 ice is down —
  * see AncientSystem for the vulnerability/attack rules.
  */
 function checkWinCondition(state: GameState): TeamId | null {

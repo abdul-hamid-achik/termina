@@ -5,7 +5,7 @@ import type { KillFeedEntry, KillCategory } from '~/utils/combatNarrative'
 
 /**
  * Cinematic kill-feed banner — the loudest element on screen. Shows the recent
- * headline plays (first blood, multi-kills, shutdowns, Roshan, tower & Core
+ * headline plays (first blood, multi-kills, shutdowns, Roshan, ice & Core
  * falls) for a few ticks, then they age out. Driven entirely by tick proximity
  * (no timers) so it's deterministic and test-friendly.
  */
@@ -30,7 +30,7 @@ const recent = computed(() => {
 
 const categoryClass: Record<KillCategory, string> = {
   hero: 'border-audit/60 text-audit bloom-audit',
-  tower: 'border-gold/50 text-gold',
+  ice: 'border-gold/50 text-gold',
   roshan: 'border-gold/70 text-gold bloom-gold',
   core: 'border-gold/80 text-gold bloom-gold',
 }

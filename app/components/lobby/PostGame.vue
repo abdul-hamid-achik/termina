@@ -73,7 +73,7 @@ interface ScoreRow {
   lastHits: number
   denies: number
   heroDamage: number
-  towerDamage: number
+  iceDamage: number
   items: (string | null)[]
   isCurrentPlayer: boolean
 }
@@ -114,7 +114,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
     lastHits: s?.lastHits ?? 0,
     denies: s?.denies ?? 0,
     heroDamage: s?.heroDamage ?? 0,
-    towerDamage: s?.towerDamage ?? 0,
+    iceDamage: s?.iceDamage ?? 0,
     items: s?.items ?? [],
     isCurrentPlayer: p.id === props.currentPlayerId,
   }
@@ -321,9 +321,9 @@ const advice = computed((): Advice[] => {
             }}</span>
           </div>
           <div class="flex flex-col gap-1">
-            <span class="t-caption uppercase">Tower Damage</span>
+            <span class="t-caption uppercase">Ice Damage</span>
             <span class="t-h1 text-text-primary text-glow-sm t-mono-num">{{
-              myStats.towerDamage.toLocaleString()
+              myStats.iceDamage.toLocaleString()
             }}</span>
           </div>
           <div v-if="mmrChange !== undefined" class="flex flex-col gap-1">

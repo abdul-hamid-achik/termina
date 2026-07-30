@@ -23,7 +23,7 @@ import {
 import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
 import type { CreepState, GameState, PlayerState } from '~~/shared/types/game'
 import { HEROES } from '~~/shared/constants/heroes'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
@@ -66,7 +66,7 @@ function makeHero(heroId: string, overrides: Partial<PlayerState> = {}, level = 
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 100,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -79,14 +79,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),
@@ -139,7 +139,7 @@ describe('hero cast bridge (resolveActions -> registry resolvers)', () => {
     })
     // Root rider landed alongside the damage
     expect(result.state.players['p2']!.buffs.some((b) => b.id === 'root')).toBe(true)
-    // heroAttackers feeds tower aggro
+    // heroAttackers feeds ice aggro
     expect(result.heroAttackers.get('p1')).toBe('p2')
     // Resolver-set cooldown carried on the events (not shared-constants value)
     const used = result.events.find((e) => e._tag === 'ability_used')

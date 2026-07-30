@@ -145,8 +145,8 @@ describe('useAudio', () => {
       'gold',
       'ready',
       'cast',
-      'tower_fall',
-      'tower_lost',
+      'ice_fall',
+      'ice_lost',
       'respawn',
       'victory',
       'defeat',
@@ -198,13 +198,13 @@ describe('useAudio', () => {
     expect(typeof result.playSound).toBe('function')
   })
 
-  it('defines the tower_lost and respawn cues', () => {
+  it('defines the ice_lost and respawn cues', () => {
     enableAudio()
     const { playSound } = useAudio()
 
-    playSound('tower_lost')
+    playSound('ice_lost')
     expect(mockAudioCtx.createOscillator).toHaveBeenCalled()
-    // Distinct from tower_fall: it is the low, crash-less variant, so it must
+    // Distinct from ice_fall: it is the low, crash-less variant, so it must
     // not be an alias that plays nothing.
     expect(mockAudioCtx.createBufferSource).toHaveBeenCalled()
 

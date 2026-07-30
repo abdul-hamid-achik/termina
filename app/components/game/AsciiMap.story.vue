@@ -6,7 +6,7 @@ import AsciiMap from './AsciiMap.vue'
 // AsciiMap renders the 5x10 zone grid (desktop) or a zone-centered card stack
 // (compact). It takes pre-computed ZoneDisplay rows + the player's zone +
 // ancients. We seed a realistic spread: player mid, allies/enemies scattered,
-// a downed tower, fogged enemy jungle, and creep/neutral counts.
+// a downed ice, fogged enemy jungle, and creep/neutral counts.
 function zone(id: string, name: string, overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return { id, name, playerHere: false, allies: [], enemyCount: 0, fogged: false, ...overrides }
 }
@@ -18,10 +18,10 @@ const zones: ZoneDisplay[] = [
   zone('cache-top', 'Top Rune', { wardCount: 1, runeType: 'haste' }),
   zone('hollow', 'The Hollow', { neutralCount: 1, roshan: { alive: false, respawnIn: 48 } }),
   zone('mid-t1-audit', 'Audit Mid T1', {
-    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+    ice: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
   }),
   zone('mid-t1-chaff', 'Chaff Mid T1', {
-    tower: { team: 'chaff', alive: false, tier: 1 },
+    ice: { team: 'chaff', alive: false, tier: 1 },
   }),
   zone('silt-chaff-top', 'Chaff Jungle (Top)', { neutralCount: 3, allies: ['proxy_jg'] }),
   zone('silt-audit-bot', 'Audit Jungle (Bot)', { fogged: true, enemyCount: 1 }),
@@ -40,27 +40,27 @@ const oneLaneZones: ZoneDisplay[] = [
   zone('chaff-fountain', 'Rookery Anchor', {}),
   zone('chaff-base', 'Rookery Terminal', {}),
   zone('mid-t3-chaff', 'Chaff Mid T3', {
-    tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    ice: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
   zone('mid-t2-chaff', 'Chaff Mid T2', {
-    tower: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
+    ice: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
   }),
   zone('mid-t1-chaff', 'Chaff Mid T1', {
-    tower: { team: 'chaff', alive: false, tier: 1 },
+    ice: { team: 'chaff', alive: false, tier: 1 },
     allies: ['kernel_main'],
   }),
   zone('mid-river', 'Mid River', { playerHere: true, creepCount: 4 }),
   zone('mid-t1-audit', 'Audit Mid T1', {
-    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+    ice: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 2,
     enemyNames: ['daemon_carry', 'regex_mid'],
   }),
   zone('mid-t2-audit', 'Audit Mid T2', {
-    tower: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+    ice: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
     fogged: true,
   }),
   zone('mid-t3-audit', 'Audit Mid T3', {
-    tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    ice: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
   zone('audit-base', 'Landing Terminal', { fogged: true }),
@@ -73,49 +73,49 @@ const twoLaneZones: ZoneDisplay[] = [
   zone('chaff-fountain', 'Rookery Anchor', {}),
   zone('chaff-base', 'Rookery Terminal', {}),
   zone('top-t3-chaff', 'Chaff Top T3', {
-    tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    ice: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
   zone('top-t2-chaff', 'Chaff Top T2', {
-    tower: { team: 'chaff', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+    ice: { team: 'chaff', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
   }),
   zone('top-t1-chaff', 'Chaff Top T1', {
-    tower: { team: 'chaff', alive: false, tier: 1 },
+    ice: { team: 'chaff', alive: false, tier: 1 },
     allies: ['proxy_jg'],
   }),
   zone('top-river', 'Top River', { creepCount: 4 }),
   zone('top-t1-audit', 'Audit Top T1', {
-    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+    ice: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 1,
   }),
   zone('top-t2-audit', 'Audit Top T2', {
-    tower: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+    ice: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
     fogged: true,
   }),
   zone('top-t3-audit', 'Audit Top T3', {
-    tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    ice: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
   zone('mid-t3-chaff', 'Chaff Mid T3', {
-    tower: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    ice: { team: 'chaff', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
   }),
   zone('mid-t2-chaff', 'Chaff Mid T2', {
-    tower: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
+    ice: { team: 'chaff', alive: true, tier: 2, hp: 1200, maxHp: 1900 },
   }),
   zone('mid-t1-chaff', 'Chaff Mid T1', {
-    tower: { team: 'chaff', alive: true, tier: 1, hp: 1500, maxHp: 1800 },
+    ice: { team: 'chaff', alive: true, tier: 1, hp: 1500, maxHp: 1800 },
   }),
   zone('mid-river', 'Mid River', { playerHere: true, allies: ['kernel_main'] }),
   zone('mid-t1-audit', 'Audit Mid T1', {
-    tower: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
+    ice: { team: 'audit', alive: true, tier: 1, hp: 720, maxHp: 1800 },
     enemyCount: 1,
     enemyNames: ['regex_mid'],
   }),
   zone('mid-t2-audit', 'Audit Mid T2', {
-    tower: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
+    ice: { team: 'audit', alive: true, tier: 2, hp: 1900, maxHp: 1900 },
     fogged: true,
   }),
   zone('mid-t3-audit', 'Audit Mid T3', {
-    tower: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
+    ice: { team: 'audit', alive: true, tier: 3, hp: 2000, maxHp: 2000 },
     fogged: true,
   }),
   zone('silt-chaff-top', 'Chaff Jungle (Top)', { neutralCount: 2 }),
@@ -149,7 +149,7 @@ const twoLaneZones: ZoneDisplay[] = [
     </Variant>
 
     <!-- Mini overview expanded: column headers, CHAFF/AUDIT half labels, and
-         tower-state glyphs (▲ standing team-colored, ✗ razed) in lane cells. -->
+         ice-state glyphs (▲ standing team-colored, ✗ razed) in lane cells. -->
     <Variant title="mini overview (compact)">
       <div class="bg-bg-primary p-2" style="width: 360px; height: 860px">
         <AsciiMap

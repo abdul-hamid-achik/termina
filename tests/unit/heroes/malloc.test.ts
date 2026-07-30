@@ -40,7 +40,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     ...overrides,
   }
@@ -71,8 +71,8 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
     tick: 10,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0 },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0 },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0 },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0 },
     },
     players: playerMap,
     zones: {
@@ -80,7 +80,7 @@ function makeState(players: PlayerState[], overrides: Partial<GameState> = {}): 
       'top-river': { id: 'top-river', wards: [], creeps: [] },
     },
     creeps: [],
-    towers: [],
+    ice: [],
     events: [],
     ...overrides,
   }

@@ -2,7 +2,7 @@ export type TargetRef =
   | { kind: 'hero'; name: string }
   | { kind: 'creep'; index: number }
   | { kind: 'neutral'; index: number }
-  | { kind: 'tower'; zone: string }
+  | { kind: 'ice'; zone: string }
   | { kind: 'roshan' }
   | { kind: 'ancient' }
   | { kind: 'zone'; zone: string }

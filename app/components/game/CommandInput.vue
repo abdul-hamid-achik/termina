@@ -150,8 +150,8 @@ function attackTargetLabel(t: TargetRef): string {
       return `creep #${t.index}`
     case 'neutral':
       return `neutral #${t.index}`
-    case 'tower':
-      return `tower in ${t.zone}`
+    case 'ice':
+      return `ice in ${t.zone}`
     case 'roshan':
       return 'Roshan'
     case 'ancient':

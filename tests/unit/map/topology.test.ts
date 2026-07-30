@@ -198,12 +198,12 @@ describe('Topology', () => {
   describe('lane structure', () => {
     for (const lane of ['top', 'mid', 'bot']) {
       describe(`${lane} lane`, () => {
-        it('has 3 tower tiers per team', () => {
+        it('has 3 ice tiers per team', () => {
           for (const team of ['chaff', 'audit']) {
             for (const tier of [1, 2, 3]) {
               const id = `${lane}-t${tier}-${team}`
               expect(getZone(id)).toBeDefined()
-              expect(getZone(id)!.tower).toBe(true)
+              expect(getZone(id)!.ice).toBe(true)
             }
           }
         })
@@ -215,7 +215,7 @@ describe('Topology', () => {
           expect(river!.team).toBe('neutral')
         })
 
-        it('tower zones connect in correct order (T3 → T2 → T1 → river → T1 → T2 → T3)', () => {
+        it('ice zones connect in correct order (T3 → T2 → T1 → river → T1 → T2 → T3)', () => {
           // Chaff side: t3 -> t2 -> t1 -> river
           expect(areAdjacent(`${lane}-t3-chaff`, `${lane}-t2-chaff`)).toBe(true)
           expect(areAdjacent(`${lane}-t2-chaff`, `${lane}-t1-chaff`)).toBe(true)

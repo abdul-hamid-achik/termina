@@ -38,7 +38,7 @@ export interface PlayerState {
   deaths: number
   assists: number
   damageDealt: number
-  towerDamageDealt: number
+  iceDamageDealt: number
   killStreak: number
   buybackCost: number
   buybackCooldown?: number // tick when buyback becomes available again
@@ -86,7 +86,7 @@ export interface CreepState {
 /**
  * A team's core structure — themed as "the Mainframe" in the terminal UI.
  * Lives in the team's base zone. Invulnerable until at least one of the
- * team's own T3 towers has fallen; destroying it wins the game.
+ * team's own T3 ice has fallen; destroying it wins the game.
  */
 export interface AncientState {
   team: TeamId
@@ -105,7 +105,7 @@ export interface NeutralCreepState {
   alive: boolean
 }
 
-export interface TowerState {
+export interface IceState {
   team: TeamId
   zone: string
   hp: number
@@ -123,7 +123,7 @@ export interface GameEvent {
 export interface TeamState {
   id: TeamId
   kills: number
-  towerKills: number
+  iceKills: number
   gold: number
   glyphUsedTick: number | null
 }
@@ -149,7 +149,7 @@ export interface GameState {
   zones: Record<string, ZoneRuntimeState>
   creeps: CreepState[]
   neutrals: NeutralCreepState[]
-  towers: TowerState[]
+  ice: IceState[]
   ancients: { chaff: AncientState; audit: AncientState }
   runes: RuneState[]
   roshan: RoshanState
@@ -160,7 +160,7 @@ export interface GameState {
   timeOfDay: 'day' | 'night'
   dayNightTick: number
   /** Which map this game runs on (see shared/constants/maps). Absent = full 5v5.
-   *  The actual playable graph is reflected in `zones`/`towers`; this is the
+   *  The actual playable graph is reflected in `zones`/`ice`; this is the
    *  label the client uses to pick a layout and the tutorial uses to gate. */
   mapId?: string
   /** Game mode. Absent/'normal' = a regular match; 'tutorial' = the guided
@@ -244,7 +244,7 @@ export type VisibleStateBase = Pick<
   | 'zones'
   | 'creeps'
   | 'neutrals'
-  | 'towers'
+  | 'ice'
   | 'ancients'
   | 'runes'
   | 'roshan'

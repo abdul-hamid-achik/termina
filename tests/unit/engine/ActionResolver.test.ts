@@ -9,7 +9,7 @@ import type { GameState, PlayerState } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
 import { NEUTRAL_CREEPS } from '~~/shared/constants/balance'
 import { HEROES } from '~~/shared/constants/heroes'
-import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeZoneStates, initializeIce } from '~~/server/game/map/zones'
 import { initializeRoshan } from '~~/server/game/map/spawner'
 import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import { tickAllBuffs } from '~~/server/game/heroes/_base'
@@ -41,7 +41,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 100,
     talents: {
@@ -59,14 +59,14 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     tick: 1,
     phase: 'playing',
     teams: {
-      chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
     },
     players: {},
     zones: initializeZoneStates(),
     creeps: [],
     neutrals: [],
-    towers: initializeTowers(),
+    ice: initializeIce(),
     ancients: initializeAncients(),
     runes: [],
     roshan: initializeRoshan(),
@@ -302,7 +302,7 @@ describe('ActionResolver', () => {
       expect(result.state.players['p2']!.zone).toBe('mid-river')
     })
 
-    it('should track hero attackers for tower AI', () => {
+    it('should track hero attackers for ice AI', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', zone: 'mid-river', team: 'chaff' }),
@@ -666,7 +666,7 @@ describe('ActionResolver', () => {
   })
 
   describe('glyph', () => {
-    it('should make all friendly towers invulnerable when glyph is used', () => {
+    it('should make all friendly ice invulnerable when glyph is used', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({ id: 'p1', team: 'chaff' }),
@@ -677,14 +677,14 @@ describe('ActionResolver', () => {
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const chaffTowers = result.state.towers.filter((t) => t.team === 'chaff')
-      const auditTowers = result.state.towers.filter((t) => t.team === 'audit')
+      const chaffIce = result.state.ice.filter((t) => t.team === 'chaff')
+      const auditIce = result.state.ice.filter((t) => t.team === 'audit')
 
-      for (const tower of chaffTowers) {
-        expect(tower.invulnerable).toBe(true)
+      for (const ice of chaffIce) {
+        expect(ice.invulnerable).toBe(true)
       }
-      for (const tower of auditTowers) {
-        expect(tower.invulnerable).toBe(false)
+      for (const ice of auditIce) {
+        expect(ice.invulnerable).toBe(false)
       }
 
       expect(result.state.teams.chaff.glyphUsedTick).toBe(state.tick)
@@ -695,7 +695,7 @@ describe('ActionResolver', () => {
       expect(glyphEvents[0]!.team).toBe('chaff')
     })
 
-    it('should block attack on invulnerable tower', () => {
+    it('should block attack on invulnerable ice', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -704,7 +704,7 @@ describe('ActionResolver', () => {
             team: 'chaff',
           }),
         },
-        towers: initializeTowers().map((t) =>
+        ice: initializeIce().map((t) =>
           t.zone === 'mid-t1-audit' ? { ...t, invulnerable: true } : t,
         ),
       })
@@ -712,64 +712,64 @@ describe('ActionResolver', () => {
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } },
+          command: { type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-audit')
-      expect(tower?.hp).toBe(tower?.maxHp)
+      const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')
+      expect(ice?.hp).toBe(ice?.maxHp)
 
-      const invulnEvents = result.events.filter((e) => e._tag === 'tower_invulnerable')
+      const invulnEvents = result.events.filter((e) => e._tag === 'ice_invulnerable')
       expect(invulnEvents.length).toBe(1)
       expect(invulnEvents[0]!.zone).toBe('mid-t1-audit')
     })
 
-    it('damages a vulnerable enemy tower on a basic attack and tracks tower damage', () => {
+    it('damages a vulnerable enemy ice on a basic attack and tracks ice damage', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff' }) },
       })
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } },
+          command: { type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-audit')!
-      expect(tower.hp).toBeLessThan(tower.maxHp)
-      expect(result.state.players['p1']!.towerDamageDealt).toBeGreaterThan(0)
+      const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')!
+      expect(ice.hp).toBeLessThan(ice.maxHp)
+      expect(result.state.players['p1']!.iceDamageDealt).toBeGreaterThan(0)
     })
 
-    it('destroys a low-HP enemy tower and awards the tower-kill bounty', () => {
+    it('destroys a low-HP enemy ice and awards the ice-kill bounty', () => {
       const state = makeGameState({
         players: { p1: makePlayer({ id: 'p1', zone: 'mid-t1-audit', team: 'chaff', gold: 600 }) },
-        towers: initializeTowers().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, hp: 1 } : t)),
+        ice: initializeIce().map((t) => (t.zone === 'mid-t1-audit' ? { ...t, hp: 1 } : t)),
       })
       const actions: PlayerAction[] = [
         {
           playerId: 'p1',
-          command: { type: 'attack', target: { kind: 'tower', zone: 'mid-t1-audit' } },
+          command: { type: 'attack', target: { kind: 'ice', zone: 'mid-t1-audit' } },
         },
       ]
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const tower = result.state.towers.find((t) => t.zone === 'mid-t1-audit')!
-      expect(tower.alive).toBe(false)
-      // awardTowerKill pays the in-zone attacker (tower_kill event itself is emitted by GameLoop)
+      const ice = result.state.ice.find((t) => t.zone === 'mid-t1-audit')!
+      expect(ice.alive).toBe(false)
+      // awardIceKill pays the in-zone attacker (ice_kill event itself is emitted by GameLoop)
       expect(result.state.players['p1']!.gold).toBeGreaterThan(600)
 
-      // …and says so. The payout was silent, so razing a tower read as a pure
+      // …and says so. The payout was silent, so razing a ice read as a pure
       // objective with no reward.
       const gold = result.events.filter((e) => e._tag === 'gold_change')
       expect(gold).toHaveLength(1)
       expect(gold[0]).toMatchObject({
         playerId: 'p1',
-        reason: 'tower kill',
+        reason: 'ice kill',
         amount: result.state.players['p1']!.gold - 600,
       })
     })
@@ -781,8 +781,8 @@ describe('ActionResolver', () => {
           p1: makePlayer({ id: 'p1', team: 'chaff' }),
         },
         teams: {
-          chaff: { id: 'chaff', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: 50 },
-          audit: { id: 'audit', kills: 0, towerKills: 0, gold: 0, glyphUsedTick: null },
+          chaff: { id: 'chaff', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: 50 },
+          audit: { id: 'audit', kills: 0, iceKills: 0, gold: 0, glyphUsedTick: null },
         },
       })
 
@@ -790,9 +790,9 @@ describe('ActionResolver', () => {
 
       const result = Effect.runSync(resolveActions(state, actions))
 
-      const chaffTowers = result.state.towers.filter((t) => t.team === 'chaff')
-      for (const tower of chaffTowers) {
-        expect(tower.invulnerable).toBe(false)
+      const chaffIce = result.state.ice.filter((t) => t.team === 'chaff')
+      for (const ice of chaffIce) {
+        expect(ice.invulnerable).toBe(false)
       }
 
       const cooldownEvents = result.events.filter((e) => e._tag === 'glyph_on_cooldown')
@@ -1085,7 +1085,7 @@ describe('ActionResolver', () => {
       )
       expect(dmg).toBeDefined()
       // Counts as structure damage on the scoreboard
-      expect(result.state.players['p1']!.towerDamageDealt).toBeGreaterThan(0)
+      expect(result.state.players['p1']!.iceDamageDealt).toBeGreaterThan(0)
     })
 
     it('does not damage an invulnerable ancient', () => {
@@ -1541,9 +1541,9 @@ describe('ActionResolver', () => {
       expect(result.state.players['p1']!.xp).toBe(0)
     })
 
-    it('says there is no standing tower in the targeted zone', () => {
+    it('says there is no standing ice in the targeted zone', () => {
       const state = makeGameState({ players: { p1: attacker() } })
-      const result = attack(state, { kind: 'tower', zone: 'mid-river' })
+      const result = attack(state, { kind: 'ice', zone: 'mid-river' })
       expect(result.rejected).toHaveLength(1)
       expect(result.rejected[0]!.reason).toContain('mid-river')
     })

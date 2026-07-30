@@ -55,7 +55,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     deaths: 0,
     assists: 0,
     damageDealt: 0,
-    towerDamageDealt: 0,
+    iceDamageDealt: 0,
     killStreak: 0,
     buybackCost: 0,
     talents: { tier10: null, tier15: null, tier20: null, tier25: null },
@@ -234,14 +234,14 @@ describe('useCommands', () => {
         })
       })
 
-      it('parses attack tower target', () => {
+      it('parses attack ice target', () => {
         const { parse } = useCommands()
-        const result = parse('attack tower:mid-t1-chaff')
+        const result = parse('attack ice:mid-t1-chaff')
 
         expect(result.error).toBeNull()
         expect(result.command).toEqual({
           type: 'attack',
-          target: { kind: 'tower', zone: 'mid-t1-chaff' },
+          target: { kind: 'ice', zone: 'mid-t1-chaff' },
         })
       })
 
@@ -880,13 +880,13 @@ describe('useCommands', () => {
       })
     })
 
-    it('parses tower:zone target', () => {
+    it('parses ice:zone target', () => {
       const { parse } = useCommands()
-      const result = parse('attack tower:top-t1-chaff')
+      const result = parse('attack ice:top-t1-chaff')
 
       expect(result.command).toEqual({
         type: 'attack',
-        target: { kind: 'tower', zone: 'top-t1-chaff' },
+        target: { kind: 'ice', zone: 'top-t1-chaff' },
       })
     })
 
@@ -1056,7 +1056,7 @@ describe('useCommands', () => {
       })
 
       // REGRESSION: zone order put `mid-t3-chaff` first, so accepting the top
-      // suggestion for `move mid` sent the player to their own tier-3 tower.
+      // suggestion for `move mid` sent the player to their own tier-3 ice.
       it('ranks an exact alias above every prefix match', () => {
         const { autocomplete } = useCommands()
         const suggestions = autocomplete('move mid', makeContext())
@@ -2150,7 +2150,7 @@ describe('pickAttackTargetString', () => {
     expect(result).toEqual({ target: 'hero:e3' })
   })
 
-  it('errors with a creep/tower hint when no enemy hero is in the zone', () => {
+  it('errors with a creep/ice hint when no enemy hero is in the zone', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const result = pickAttackTargetString(me, { p1: me })
     expect('error' in result && result.error).toMatch(/no enemy hero/i)
@@ -2193,7 +2193,7 @@ describe('informational readouts', () => {
 
   it('formatMapReadout lists only the neighbours this game map actually has', () => {
     // REGRESSION: read straight off the global 32-zone graph, so on the one-lane
-    // tutorial map it named the top/bot T3 towers — zones the game does not
+    // tutorial map it named the top/bot T3 ice — zones the game does not
     // contain and `move` would reject.
     const me = makePlayer({ zone: 'chaff-base' })
     const out = formatMapReadout(me, 'one_lane')

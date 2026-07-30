@@ -57,8 +57,8 @@ describe('GameStateBar', () => {
 
   describe('macro strip', () => {
     const teams = {
-      chaff: { id: 'chaff', kills: 12, towerKills: 3, gold: 0, glyphUsedTick: null },
-      audit: { id: 'audit', kills: 8, towerKills: 1, gold: 0, glyphUsedTick: null },
+      chaff: { id: 'chaff', kills: 12, iceKills: 3, gold: 0, glyphUsedTick: null },
+      audit: { id: 'audit', kills: 8, iceKills: 1, gold: 0, glyphUsedTick: null },
     }
     const ancients = {
       chaff: { team: 'chaff', hp: 6000, maxHp: 6000, alive: true, vulnerable: false },
@@ -69,7 +69,7 @@ describe('GameStateBar', () => {
       expect(mountBar(baseProps).find('[data-testid="macro-strip"]').exists()).toBe(false)
     })
 
-    it('shows team score, net-worth lead, towers, and Core HP', () => {
+    it('shows team score, net-worth lead, ice, and Core HP', () => {
       const w = mountBar({
         ...baseProps,
         teams,

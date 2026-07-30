@@ -34,7 +34,7 @@ const commandTicker = [
   'attack roshan',
   'cast r',
   'glyph',
-  'attack tower:mid-t1-audit',
+  'attack ice:mid-t1-audit',
 ]
 
 const pillars = [
@@ -157,9 +157,9 @@ const pillars = [
         <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 43 · you advance to mid-river</p>
         <p>
           <span class="text-chaff">&gt;</span>
-          <span class="text-ability">attack tower:mid-t1-audit</span>
+          <span class="text-ability">attack ice:mid-t1-audit</span>
         </p>
-        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 44 · tower takes 55, your creeps pile in</p>
+        <p class="text-text-dim">&nbsp;&nbsp;⤷ cycle 44 · ice takes 55, your creeps pile in</p>
       </div>
     </section>
 

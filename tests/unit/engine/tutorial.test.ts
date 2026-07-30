@@ -176,13 +176,13 @@ describe('tutorial flow', () => {
       expect(target).not.toMatch(/fountain|base/)
 
       // Safe: REGRESSION — the hint then said `move mid`, which aliases to
-      // mid-river: neutral ground with no tower, bordering the AUDIT T1. Both
+      // mid-river: neutral ground with no ice, bordering the AUDIT T1. Both
       // enemy bots are pinned to mid and arrive there before the first creep
       // wave, so a level-1 player who obeyed the hint was killed in ~12 ticks
-      // having done nothing. Send them somewhere their own tower covers.
+      // having done nothing. Send them somewhere their own ice covers.
       const zone = ZONE_MAP[target!]
       expect(zone?.team, `${target} is not friendly ground`).toBe('chaff')
-      expect(zone?.tower, `${target} has no friendly tower cover`).toBe(true)
+      expect(zone?.ice, `${target} has no friendly ice cover`).toBe(true)
     })
 
     it('the buy hint names a real, affordable item that actually does something', () => {

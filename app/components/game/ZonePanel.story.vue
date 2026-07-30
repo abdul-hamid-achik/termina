@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CreepState, NeutralCreepState } from '~~/shared/types/game'
-import { SAMPLE_HEROES, makePlayer, makeTower } from '~/stories/fixtures'
+import { SAMPLE_HEROES, makePlayer, makeIce } from '~/stories/fixtures'
 import ZonePanel from './ZonePanel.vue'
 
 /** A visible creep plus its index in the client's creeps array. */
@@ -90,11 +90,11 @@ const danger = {
   ],
 }
 
-// Pushing a lane with creep support + an enemy tower to siege.
+// Pushing a lane with creep support + an enemy ice to siege.
 const laneSiege = {
   zoneName: 'Mid T1 (Audit)',
   zoneId: 'mid-t1-audit',
-  tower: makeTower('audit', 'mid-t1-audit', { hp: 720, maxHp: 1800 }),
+  ice: makeIce('audit', 'mid-t1-audit', { hp: 720, maxHp: 1800 }),
   creeps: [
     creep({ id: 'rc1', team: 'chaff', hp: 240, index: 0 }),
     creep({ id: 'rc2', team: 'chaff', hp: 300, type: 'ranged', index: 1 }),
@@ -166,7 +166,7 @@ const roshanPit = {
       </div>
     </Variant>
 
-    <Variant title="lane siege (tower + creeps)">
+    <Variant title="lane siege (ice + creeps)">
       <div class="bg-bg-primary p-2" style="width: 300px">
         <ZonePanel v-bind="laneSiege" player-team="chaff" />
       </div>

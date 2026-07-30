@@ -4,7 +4,7 @@
  *
  * Rules:
  * - One Ancient per team, located in the team's base zone.
- * - Invulnerable until at least one of the owning team's T3 towers is down.
+ * - Invulnerable until at least one of the owning team's T3 ice is down.
  * - Once vulnerable, both heroes and creeps can attack it.
  * - Destroying the enemy Ancient wins the game (see checkAncientWin).
  *
@@ -54,14 +54,14 @@ export function ensureAncients(state: GameState): GameState {
   return { ...state, ancients: initializeAncients() }
 }
 
-/** A team's Ancient is vulnerable once any of its own T3 towers is dead. */
+/** A team's Ancient is vulnerable once any of its own T3 ice is dead. */
 export function isAncientVulnerable(state: GameState, team: TeamId): boolean {
-  return state.towers.some((t) => t.team === team && !t.alive && t.zone.includes('-t3-'))
+  return state.ice.some((t) => t.team === team && !t.alive && t.zone.includes('-t3-'))
 }
 
 /**
- * Recompute the `vulnerable` flag on both Ancients from current tower state.
- * Vulnerability never reverts (a dead tower stays dead), but recomputing is
+ * Recompute the `vulnerable` flag on both Ancients from current ice state.
+ * Vulnerability never reverts (a dead ice stays dead), but recomputing is
  * cheap and self-correcting. Returns the same object when nothing changed.
  */
 export function updateAncientVulnerability(state: GameState): GameState {
@@ -123,7 +123,7 @@ export function resolveAncientAttack(
     return {
       state,
       events: [],
-      rejected: 'The enemy Mainframe is firewalled — destroy a T3 tower first',
+      rejected: 'The enemy Mainframe is firewalled — destroy a T3 ice first',
     }
   }
 
@@ -141,9 +141,9 @@ export function resolveAncientAttack(
     },
   ]
   if (destroyed) {
-    // Dedicated victory announcement — the Ancient (Core) is not a tower, so it
-    // gets its own event instead of reusing the tower_kill shape (which would
-    // render a misleading "destroyed <team> tower in <team>-base" line).
+    // Dedicated victory announcement — the Ancient (Core) is not a ice, so it
+    // gets its own event instead of reusing the ice_kill shape (which would
+    // render a misleading "destroyed <team> ice in <team>-base" line).
     events.push({
       _tag: 'ancient_destroyed',
       tick: state.tick,

@@ -17,8 +17,8 @@ interface ReplayPayload {
     tick: number
     phase: string
     teams: {
-      chaff: { kills: number; towerKills: number; gold: number }
-      audit: { kills: number; towerKills: number; gold: number }
+      chaff: { kills: number; iceKills: number; gold: number }
+      audit: { kills: number; iceKills: number; gold: number }
     }
     players: Record<
       string,
@@ -61,8 +61,8 @@ interface FramePlayer {
 interface Frame {
   tick: number
   teams: {
-    chaff: { kills: number; towerKills: number }
-    audit: { kills: number; towerKills: number }
+    chaff: { kills: number; iceKills: number }
+    audit: { kills: number; iceKills: number }
   }
   timeOfDay: 'day' | 'night'
   players: Record<string, FramePlayer>
@@ -112,7 +112,7 @@ function togglePlayback() {
 }
 onUnmounted(stopPlayback)
 
-// Key moments (fights + tower falls) so a learner can jump to the action
+// Key moments (fights + ice falls) so a learner can jump to the action
 // instead of scrubbing blindly. Derived from the frame stream's score deltas.
 const moments = computed(() => keyMoments(framesData.value?.frames ?? []))
 
@@ -219,11 +219,11 @@ const teamScores = computed(() => {
   return {
     chaff: {
       kills: data.value.state.teams.chaff.kills,
-      towerKills: data.value.state.teams.chaff.towerKills,
+      iceKills: data.value.state.teams.chaff.iceKills,
     },
     audit: {
       kills: data.value.state.teams.audit.kills,
-      towerKills: data.value.state.teams.audit.towerKills,
+      iceKills: data.value.state.teams.audit.iceKills,
     },
   }
 })
@@ -311,7 +311,7 @@ watchEffect(() => {
             <div class="t-display t-mono-num text-chaff text-glow-chaff">
               {{ teamScores?.chaff.kills ?? 0 }}
             </div>
-            <div class="t-caption">{{ teamScores?.chaff.towerKills ?? 0 }} towers</div>
+            <div class="t-caption">{{ teamScores?.chaff.iceKills ?? 0 }} ice</div>
           </div>
           <div class="flex flex-col items-center justify-center p-3">
             <div class="t-caption">cycle</div>
@@ -338,7 +338,7 @@ watchEffect(() => {
             <div class="t-display t-mono-num text-audit text-glow-audit">
               {{ teamScores?.audit.kills ?? 0 }}
             </div>
-            <div class="t-caption">{{ teamScores?.audit.towerKills ?? 0 }} towers</div>
+            <div class="t-caption">{{ teamScores?.audit.iceKills ?? 0 }} ice</div>
           </div>
         </div>
 
@@ -372,7 +372,7 @@ watchEffect(() => {
             </div>
           </div>
 
-          <!-- Key moments — jump straight to the fights + tower falls -->
+          <!-- Key moments — jump straight to the fights + ice falls -->
           <div
             v-if="moments.length"
             class="flex flex-wrap items-center gap-1 border-b border-border bg-bg-secondary px-3 py-2"
@@ -385,7 +385,7 @@ watchEffect(() => {
               type="button"
               class="border px-1.5 py-0.5 text-[0.62rem] uppercase tracking-wider transition-colors hover:border-border-glow"
               :class="
-                m.kind === 'tower'
+                m.kind === 'ice'
                   ? 'border-gold/50 text-gold hover:text-gold'
                   : 'border-audit/50 text-audit hover:text-audit'
               "

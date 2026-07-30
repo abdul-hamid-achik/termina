@@ -5,7 +5,7 @@ import type {
   CreepState,
   NeutralCreepState,
   RoshanState,
-  TowerState,
+  IceState,
   TeamId,
 } from '~~/shared/types/game'
 import type { TargetRef } from '~~/shared/types/commands'
@@ -32,7 +32,7 @@ const props = withDefaults(
     allies?: PlayerState[]
     creeps?: IndexedCreep[]
     neutrals?: IndexedNeutral[]
-    tower?: TowerState | null
+    ice?: IceState | null
     /** Roshan, passed only when the player stands in the pit and he is alive. */
     roshan?: RoshanState | null
     /** The player's standing attack order, if any — the engine re-swings at it
@@ -45,7 +45,7 @@ const props = withDefaults(
     allies: () => [],
     creeps: () => [],
     neutrals: () => [],
-    tower: null,
+    ice: null,
     roshan: null,
     attackTarget: null,
   },
@@ -64,8 +64,8 @@ function heroName(p: PlayerState): string {
 // it says so — otherwise repeated damage lines look like a bug. Lane creeps
 // never hold (last-hitting stays a manual, per-tick decision), so their rows
 // deliberately have no [hold] state to show.
-const heldTowerZone = computed(() =>
-  props.attackTarget?.kind === 'tower' ? props.attackTarget.zone : null,
+const heldIceZone = computed(() =>
+  props.attackTarget?.kind === 'ice' ? props.attackTarget.zone : null,
 )
 const holdingRoshan = computed(() => props.attackTarget?.kind === 'roshan')
 
@@ -126,15 +126,13 @@ function denyLowestCreep() {
   if (target) emit('command', `deny creep:${target.index}`)
 }
 
-// ── Tower ──────────────────────────────────────────────────────
-const towerHere = computed(() => (props.tower?.alive ? props.tower : null))
-const towerIsEnemy = computed(
-  () => towerHere.value !== null && towerHere.value.team !== props.playerTeam,
-)
+// ── Ice ──────────────────────────────────────────────────────
+const iceHere = computed(() => (props.ice?.alive ? props.ice : null))
+const iceIsEnemy = computed(() => iceHere.value !== null && iceHere.value.team !== props.playerTeam)
 
-function attackTower() {
-  if (towerHere.value && towerIsEnemy.value) {
-    emit('command', `attack tower:${towerHere.value.zone}`)
+function attackIce() {
+  if (iceHere.value && iceIsEnemy.value) {
+    emit('command', `attack ice:${iceHere.value.zone}`)
   }
 }
 
@@ -168,8 +166,8 @@ const identityTag = computed(() => {
 
 /**
  * Team-IDENTITY color, for the two rows that print a team's name next to the
- * swatch (the zone's owner, the tower's team). Painting those by allegiance —
- * green when they are mine — meant a Audit player read "Tower (audit)" in the
+ * swatch (the zone's owner, the ice's team). Painting those by allegiance —
+ * green when they are mine — meant a Audit player read "Ice (audit)" in the
  * Chaff green while the map's ▼, the score header and the zone tag beside it
  * all said audit: the label and its color contradicted each other inside one
  * line. Hero rows below deliberately keep the allegiance convention (green =
@@ -193,7 +191,7 @@ const threat = computed(() =>
   computeThreat(
     props.enemies.length,
     allyHeadcount.value,
-    towerHere.value !== null && towerIsEnemy.value,
+    iceHere.value !== null && iceIsEnemy.value,
   ),
 )
 
@@ -201,7 +199,7 @@ const threatClass = computed(() => threatToneClass(threat.value.tone))
 
 const objective = computed<string | null>(() => {
   const m = zoneMeta.value
-  if (towerHere.value && towerIsEnemy.value) return 'Destroy the enemy tower'
+  if (iceHere.value && iceIsEnemy.value) return 'Destroy the enemy ice'
   if (!m) return null
   switch (m.type) {
     case 'fountain':
@@ -226,7 +224,7 @@ const isEmpty = computed(
     enemyCreeps.value.length === 0 &&
     alliedCreeps.value.length === 0 &&
     aliveNeutrals.value.length === 0 &&
-    towerHere.value === null &&
+    iceHere.value === null &&
     roshanHere.value === null,
 )
 </script>
@@ -327,35 +325,35 @@ const isEmpty = computed(
       </div>
     </div>
 
-    <!-- Tower -->
+    <!-- Ice -->
     <component
-      :is="towerIsEnemy ? 'button' : 'div'"
-      v-if="towerHere"
+      :is="iceIsEnemy ? 'button' : 'div'"
+      v-if="iceHere"
       class="block w-full border px-2 py-1 text-left"
       :class="
-        towerIsEnemy
+        iceIsEnemy
           ? 'border-audit/40 transition-all hover:bg-audit/15 active:scale-[0.99]'
           : 'border-border/60'
       "
-      data-testid="zone-tower"
-      @click="attackTower"
+      data-testid="zone-ice"
+      @click="attackIce"
     >
       <div class="flex items-baseline justify-between gap-2">
-        <span :class="teamTextClass(towerHere.team)"> Tower ({{ towerHere.team }}) </span>
-        <span class="shrink-0 t-caption" data-testid="zone-tower-tag">{{
-          towerIsEnemy ? (heldTowerZone === towerHere.zone ? '[hold]' : '[ATK]') : 'allied'
+        <span :class="teamTextClass(iceHere.team)"> Ice ({{ iceHere.team }}) </span>
+        <span class="shrink-0 t-caption" data-testid="zone-ice-tag">{{
+          iceIsEnemy ? (heldIceZone === iceHere.zone ? '[hold]' : '[ATK]') : 'allied'
         }}</span>
       </div>
       <div class="flex items-center gap-1">
         <span class="w-5 shrink-0 t-caption">HP</span>
         <ProgressBar
-          :value="towerHere.hp"
-          :max="towerHere.maxHp"
-          :color="towerHere.team === 'chaff' ? 'chaff' : 'audit'"
+          :value="iceHere.hp"
+          :max="iceHere.maxHp"
+          :color="iceHere.team === 'chaff' ? 'chaff' : 'audit'"
           :width="10"
-          :label="`Tower ${towerHere.team} HP`"
+          :label="`Ice ${iceHere.team} HP`"
         />
-        <span class="text-text-primary">{{ towerHere.hp }}/{{ towerHere.maxHp }}</span>
+        <span class="text-text-primary">{{ iceHere.hp }}/{{ iceHere.maxHp }}</span>
       </div>
     </component>
 

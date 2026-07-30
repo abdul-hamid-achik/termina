@@ -6,7 +6,7 @@ import { CREEP_ESCALATION_INTERVAL_TICKS, creepMaxHp } from '~~/shared/constants
  * Engine-truth coverage for lane creep combat (CreepAI). When opposing waves
  * meet in a zone they trade blows rather than walking past each other — the
  * basis of lane equilibrium. Creeps don't regen, so any HP drop is combat.
- * Placed in an empty river zone so no heroes/towers confound the trade.
+ * Placed in an empty river zone so no heroes/ice confound the trade.
  */
 describe('creeps: lane combat', () => {
   it('opposing creep waves fight when they meet in a lane', async () => {

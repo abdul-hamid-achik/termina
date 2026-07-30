@@ -78,7 +78,7 @@ export function isEventVisibleToPlayer(
   switch (event._tag) {
     case 'kill':
     case 'death':
-    case 'tower_kill':
+    case 'ice_kill':
     case 'roshan_killed':
     case 'level_up':
       return true
@@ -210,7 +210,7 @@ export function buildEndStats(
       gold: ps?.gold ?? 0,
       items: ps?.items ?? [],
       heroDamage: ps?.damageDealt ?? 0,
-      towerDamage: ps?.towerDamageDealt ?? 0,
+      iceDamage: ps?.iceDamageDealt ?? 0,
       lastHits: farm[playerId]?.lastHits ?? 0,
       denies: farm[playerId]?.denies ?? 0,
       // Gold spent on items is still gold farmed. Ranking the board by the
