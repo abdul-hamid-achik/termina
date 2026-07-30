@@ -138,6 +138,7 @@ const borderColors: Record<CombatLineType, string> = {
   victory: 'border-l-gold',
   objective: 'border-l-zone',
   farm: 'border-l-transparent',
+  rig: 'border-l-ability',
 }
 
 function typeColor(type: CombatLineType): string {
@@ -151,6 +152,7 @@ function typeColor(type: CombatLineType): string {
     victory: 'rgb(var(--color-gold))',
     objective: 'rgb(var(--color-zone))',
     farm: 'rgb(var(--text-dim))',
+    rig: 'rgb(var(--color-ability))',
   }
   return map[type] ?? 'rgb(var(--text-primary))'
 }
@@ -166,6 +168,7 @@ function typePrefix(type: CombatLineType): string {
     victory: '[VICTORY]',
     objective: '[OBJ]',
     farm: '·',
+    rig: '>',
   }
   return map[type] ?? ''
 }
@@ -181,6 +184,7 @@ const emphasisByType: Record<CombatLineType, string> = {
   kill: 'font-bold text-glow-sm',
   victory: 'font-bold text-glow-sm',
   objective: 'font-semibold',
+  rig: 'font-semibold',
   ability: '',
   damage: '',
   healing: '',

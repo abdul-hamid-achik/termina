@@ -22,6 +22,9 @@ export type CombatLineType =
   // One dim roll-up line per tick summarizing everyone's farming (see
   // digestFarmNoise) — the story-mode replacement for the wave-hit firehose.
   | 'farm'
+  // The rig's voice: the tactical recommendation FocusBanner used to pin above
+  // the grid, now a `> ` line in the scrollback (R3-06).
+  | 'rig'
 
 /**
  * How relevant a line is to the local player — drives visual salience so the

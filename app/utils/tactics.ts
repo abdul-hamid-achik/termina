@@ -1,5 +1,5 @@
 // Shared tactical derivations for the current zone — used by both ZonePanel
-// (the detailed unit list) and FocusBanner (the at-a-glance HUD banner) so the
+// (the detailed unit list) and the rig line in the stream so the
 // threat verdict can never drift between the two surfaces.
 
 export type ThreatTone = 'safe' | 'warn' | 'danger'

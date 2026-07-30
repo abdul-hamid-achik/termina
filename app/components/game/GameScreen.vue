@@ -63,6 +63,7 @@ import {
 } from '~~/shared/constants/balance'
 import { pathDistance } from '~~/shared/pathfinding'
 import { formatTenant, ticksToClock } from '~/utils/strategy'
+import { computeThreat, recommendAction } from '~/utils/tactics'
 import { arrowTargetZone } from '~/utils/arrowMove'
 import { computeSituationalActions } from '~/utils/situationalActions'
 import { routeGameKey } from '~/utils/gameKeys'
@@ -81,7 +82,7 @@ const localEvents = ref<
   Array<{
     tick: number
     text: string
-    type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability'
+    type: 'damage' | 'healing' | 'kill' | 'gold' | 'system' | 'ability' | 'rig'
   }>
 >([])
 
@@ -1460,6 +1461,36 @@ const abilityArias = computed(() => {
   const out: Record<string, string> = {}
   for (const slot of ['Q', 'W', 'E', 'R']) out[slot] = quickActionAria(slot)
   return out
+})
+
+// ── The rig's voice (R3-06) ─────────────────────────────────────
+// The recommendation FocusBanner used to pin above the grid, printed into the
+// scrollback as a `> ` line WHEN IT CHANGES (a per-tick repeat is noise). The
+// HP readout and threat verdict ride in the same line so nothing the banner
+// showed is lost.
+const rigRecommendation = computed(() => {
+  const p = gameStore.player
+  if (!p) return null
+  const enemyCount = gameStore.enemyPlayers.filter((e) => e.zone === p.zone && e.alive).length
+  const allyHeadcount = gameStore.allyPlayers.filter((a) => a.zone === p.zone && a.alive).length + 1
+  const enemyIcePresent = gameStore.ice.some(
+    (t) => t.zone === p.zone && t.alive && t.team !== p.team,
+  )
+  const threat = computeThreat(enemyCount, allyHeadcount, enemyIcePresent)
+  const hasReadyAbility = ['Q', 'W', 'E', 'R'].some((s) => abilityButtonState.value[s]?.ready)
+  const action = recommendAction({
+    alive: p.alive,
+    hpFraction: p.maxHp > 0 ? p.hp / p.maxHp : 0,
+    threat,
+    hasReadyAbility,
+  })
+  const hp = `${p.hp}/${p.maxHp}`
+  return `${action} · HP ${hp} · ${threat.label}${enemyCount ? ` (${enemyCount} hostile)` : ''}`
+})
+
+watch(rigRecommendation, (rec, prev) => {
+  if (!rec || rec === prev) return
+  localEvents.value.push({ tick: gameStore.tick, text: rec, type: 'rig' })
 })
 
 // ── Item use from inventory bar / keybinds ───────────────────
