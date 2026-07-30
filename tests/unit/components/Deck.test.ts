@@ -107,7 +107,7 @@ describe('Deck ability chips', () => {
       const castBtn = wrapper.find('[data-testid="ability-cast-q"]')
       expect(castBtn.exists()).toBe(true)
       expect(castBtn.text()).toContain('CAST Q')
-      expect(castBtn.text()).toContain(`${Q_MANA_COST}mp`)
+      expect(castBtn.text()).toContain(`${Q_MANA_COST}bw`)
       wrapper.unmount()
     })
 
@@ -306,6 +306,18 @@ describe('Deck ability BW cost', () => {
   it('holds the cost flat across levels inside one rank', async () => {
     expect(await tooltipText(3)).toContain('BW: 50')
     expect(await tooltipText(4)).toContain('BW: 50')
+  })
+
+  it('prints the cast button cost in bw, not mp (R4-07)', async () => {
+    mockPointer(true)
+    const wrapper = mountDeck(makeHero({ level: 1 }))
+    await wrapper.find('[data-testid="ability-chip-q"]').trigger('click')
+    const cast = wrapper.find('[data-testid="ability-cast-q"]')
+    expect(cast.exists()).toBe(true)
+    // Rank-1 Echo Q is 40 BW; unit is bw, never mp.
+    expect(cast.text()).toMatch(/CAST Q — 40bw/)
+    expect(cast.text()).not.toMatch(/mp/i)
+    wrapper.unmount()
   })
 })
 

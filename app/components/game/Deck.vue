@@ -200,7 +200,7 @@ function confirmCast(key: 'q' | 'w' | 'e' | 'r') {
                 :data-testid="`ability-cast-${key}`"
                 @click.stop="confirmCast(key)"
               >
-                [CAST {{ key.toUpperCase() }} — {{ manaCost(key) }}mp]
+                [CAST {{ key.toUpperCase() }} — {{ manaCost(key) }}bw]
               </button>
               <span v-else class="block w-full px-2 py-1 text-center text-text-dim">
                 [ON COOLDOWN — {{ cooldownText(hero.cooldowns[key]) }}]
