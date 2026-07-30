@@ -87,7 +87,7 @@ export interface BotDifficultyConfig {
    * ice), so the miss costs last-hit gold without costing an action.
    */
   lastHitAccuracy: number
-  /** Bot denies its own low creeps to starve the enemy laner of gold + XP. */
+  /** Bot burns its own low creeps to starve the enemy laner of gold + XP. */
   denyAwareness: boolean
   cacheAwareness: boolean
   jungleFarming: boolean

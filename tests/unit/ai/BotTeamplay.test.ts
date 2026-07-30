@@ -11,7 +11,7 @@ import { initializeAncients } from '~~/server/game/engine/AncientSystem'
  * Bot decisions driven through the REAL processTick → decideBotAction →
  * submitAction → resolveActions path, which BotAI.test.ts (decisions in
  * isolation) cannot reach. Both cases here are about a command the bot emits
- * actually LANDING: a `deny` outside the resolver's HP window and a Tenant
+ * actually LANDING: a `burn` outside the resolver's HP window and a Tenant
  * attempt nobody ever opens both look identical to a passing unit test — the
  * bot returns a command and the engine silently drops it.
  *
@@ -102,10 +102,10 @@ describe('BotAI - integrated teamplay', () => {
     else process.env.TERMINA_TEST_FAST_GAME = prevFastGame
   })
 
-  it("a bot's deny actually resolves — the creep dies and creep_deny fires", () => {
-    // The resolver drops a deny outside its window without a word, so a bot that
+  it("a bot's burn actually resolves — the creep dies and wave_burn fires", () => {
+    // The resolver drops a burn outside its window without a word, so a bot that
     // aims one wrong just loses the tick. This proves the bot mirrors
-    // resolveDenyPhase's gates (own team, <= DENY_HP_THRESHOLD of SPAWN hp) and
+    // resolveDenyPhase's gates (own team, <= BURN_HP_THRESHOLD of SPAWN hp) and
     // uses the zone-local index the resolver reads.
     const bot = makeBot({ mp: 0, cooldowns: { q: 9, w: 9, e: 9, r: 9 } })
     const foe = makeBot({
@@ -130,7 +130,7 @@ describe('BotAI - integrated teamplay', () => {
       processTick(GAME_ID, makeState({ [bot.id]: bot, [foe.id]: foe }, { creeps })),
     )
 
-    expect(result.events.some((e) => e._tag === 'creep_deny')).toBe(true)
+    expect(result.events.some((e) => e._tag === 'wave_burn')).toBe(true)
     expect(result.state.creeps.find((c) => c.id === 'creep-own')?.hp ?? 0).toBe(0)
   })
 

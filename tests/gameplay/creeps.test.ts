@@ -50,9 +50,9 @@ describe('creeps: lane combat', () => {
  * The laning creep economy — the skill floor of any MOBA. Last-hitting an enemy
  * creep banks its full bounty; denying your own low-HP creep robs the enemy of
  * that bounty for a reduced cut. Both run through the real processTick attack /
- * deny phases (MELEE_CREEP_HP 400, DENY_HP_THRESHOLD 0.5, DENY_GOLD_RATIO 0.5).
+ * burn phases (MELEE_CREEP_HP 400, BURN_HP_THRESHOLD 0.5, BURN_GOLD_RATIO 0.5).
  */
-describe('creeps: last-hit & deny economy', () => {
+describe('creeps: last-hit & burn economy', () => {
   it('last-hitting an enemy creep banks gold', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
@@ -74,43 +74,43 @@ describe('creeps: last-hit & deny economy', () => {
     expect(!creep || creep.hp <= 0).toBe(true)
   })
 
-  it('denying a low-HP allied creep kills it for a reduced bounty + a creep_deny event', async () => {
+  it('denying a low-HP allied creep kills it for a reduced bounty + a wave_burn event', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      // An ALLIED melee creep below the 50%-of-400 deny threshold, co-located.
+      // An ALLIED melee creep below the 50%-of-400 burn threshold, co-located.
       creeps: [{ id: 'ally_creep', team: me0.team, zone: 'mid-river', hp: 100, type: 'melee' }],
     }))
 
     const goldBefore = (await game.me()).gold
-    game.submit({ type: 'deny', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'burn', target: { kind: 'creep', index: 0 } })
     await game.tick()
 
-    // Denied: the creep dies, the denier pockets the reduced cut, and the lane
-    // sees a creep_deny event (so the enemy knows the last hit was stolen).
-    expect(game.lastEvents.some((e) => e._tag === 'creep_deny' && e.playerId === HUMAN)).toBe(true)
+    // Burned: the creep dies, the burner pockets the reduced cut, and the lane
+    // sees a wave_burn event (so the enemy knows the last hit was stolen).
+    expect(game.lastEvents.some((e) => e._tag === 'wave_burn' && e.playerId === HUMAN)).toBe(true)
     expect((await game.me()).gold).toBeGreaterThan(goldBefore)
     const creep = (await game.state()).creeps.find((c) => c.id === 'ally_creep')
     expect(!creep || creep.hp <= 0).toBe(true)
   })
 
-  it('a healthy allied creep cannot be denied (above the HP threshold)', async () => {
+  it('a healthy allied creep cannot be burned (above the HP threshold)', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      // 380 / 400 = 95% HP — well above the deny window.
+      // 380 / 400 = 95% HP — well above the burn window.
       creeps: [{ id: 'ally_creep', team: me0.team, zone: 'mid-river', hp: 380, type: 'melee' }],
     }))
 
-    game.submit({ type: 'deny', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'burn', target: { kind: 'creep', index: 0 } })
     await game.tick()
 
-    // The deny is refused — no event, and the creep is still standing.
-    expect(game.lastEvents.some((e) => e._tag === 'creep_deny')).toBe(false)
+    // The burn is refused — no event, and the creep is still standing.
+    expect(game.lastEvents.some((e) => e._tag === 'wave_burn')).toBe(false)
     const creep = (await game.state()).creeps.find((c) => c.id === 'ally_creep')
     expect(creep && creep.hp > 0).toBe(true)
   })
@@ -148,13 +148,13 @@ describe('creeps: last-hit & deny economy', () => {
     expect(theirs).toBeLessThan(mine)
   })
 
-  it("the deny window follows the creep's OWN max HP, not a level-1 constant", async () => {
+  it("the burn window follows the creep's OWN max HP, not a level-1 constant", async () => {
     // REGRESSION (survived mutation testing once already): creeps escalate with
-    // match time. Judging the 50% deny threshold against the level-1 constant
+    // match time. Judging the 50% burn threshold against the level-1 constant
     // makes denying steadily impossible; judging it against the CURRENT tick's
     // tier makes a creep that outlived an escalation boundary deniable well
     // above half health. The creep's own spawn-time maxHp is the only correct
-    // reference. Every other deny test sits at tick ~0 where the multiplier is
+    // reference. Every other burn test sits at tick ~0 where the multiplier is
     // 1.0, so none of them can see this.
     const lateTick = CREEP_ESCALATION_INTERVAL_TICKS * 2
     const spawnMax = creepMaxHp('melee', lateTick)
@@ -178,7 +178,7 @@ describe('creeps: last-hit & deny economy', () => {
       ],
     }))
 
-    game.submit({ type: 'deny', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'burn', target: { kind: 'creep', index: 0 } })
     await game.tick()
 
     const creep = (await game.state()).creeps.find((c) => c.id === 'ally_creep')
@@ -212,7 +212,7 @@ describe('creeps: last-hit & deny economy', () => {
       ],
     }))
 
-    game.submit({ type: 'deny', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'burn', target: { kind: 'creep', index: 0 } })
     await game.tick()
 
     const creep = (await game.state()).creeps.find((c) => c.id === 'old_creep')

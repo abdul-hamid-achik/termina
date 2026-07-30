@@ -67,10 +67,10 @@ export interface PlayerEndStats {
    * client running against an older server keep type-checking; the server sets
    * all of them on every game_over and the post-game screen falls back to 0.
    */
-  /** Creep kills ("CS") — with `denies`, the pair of numbers a new MOBA player
+  /** Creep kills ("CS") — with `burns`, the pair of numbers a new MOBA player
    * most needs to watch improve, and the only ones the old payload omitted. */
   lastHits?: number
-  denies?: number
+  burns?: number
   /** Unspent gold plus the full cost of every item owned. */
   netWorth?: number
   level?: number

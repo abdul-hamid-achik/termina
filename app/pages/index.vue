@@ -30,7 +30,7 @@ const commandTicker = [
   'cast q hero:daemon',
   'buy blades_of_attack',
   'ward mid-river',
-  'deny creep:1',
+  'burn creep:1',
   'attack tenant',
   'cast r',
   'harden',

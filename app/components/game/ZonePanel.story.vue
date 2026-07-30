@@ -103,9 +103,9 @@ const laneSiege = {
   ] as IndexedCreep[],
 }
 
-// A deny window: an allied creep has dropped below 50% HP, so it can be
-// denied (the allied-creep group becomes a tappable [deny] action).
-const denyWindow = {
+// A burn window: an allied creep has dropped below 50% HP, so it can be
+// burned (the allied-creep group becomes a tappable [burn] action).
+const burnWindow = {
   zoneName: 'Mid Lane (Chaff)',
   zoneId: 'mid-t1-chaff',
   creeps: [
@@ -172,9 +172,9 @@ const tenantPit = {
       </div>
     </Variant>
 
-    <Variant title="deny window (allied creep <50%)">
+    <Variant title="burn window (allied creep <50%)">
       <div class="bg-bg-primary p-2" style="width: 300px">
-        <ZonePanel v-bind="denyWindow" player-team="chaff" />
+        <ZonePanel v-bind="burnWindow" player-team="chaff" />
       </div>
     </Variant>
 

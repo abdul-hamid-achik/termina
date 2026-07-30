@@ -66,12 +66,12 @@ describe('buildEndStats', () => {
     const stats = buildEndStats(
       ['p1', 'p2'],
       stateWith({ p1: player(), p2: player({ id: 'p2' }) }),
-      { p1: { lastHits: 74, denies: 11 } },
+      { p1: { lastHits: 74, burns: 11 } },
     )
 
-    expect(stats.p1).toMatchObject({ lastHits: 74, denies: 11 })
+    expect(stats.p1).toMatchObject({ lastHits: 74, burns: 11 })
     // A player who never landed one is absent from the tally, not undefined.
-    expect(stats.p2).toMatchObject({ lastHits: 0, denies: 0 })
+    expect(stats.p2).toMatchObject({ lastHits: 0, burns: 0 })
   })
 
   it('carries the final level so a total can be read against it', () => {

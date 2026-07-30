@@ -107,7 +107,7 @@ export function awardLastHit(
   return updatePlayerGold(state, playerId, gold)
 }
 
-// (Removed `awardDeny` — dead duplicate: resolveActions computes deny gold
+// (Removed `awardDeny` — dead duplicate: resolveActions computes burn gold
 // inline and never called this.)
 
 /**

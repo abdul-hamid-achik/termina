@@ -116,7 +116,7 @@ describe('CORS middleware', () => {
     expect(capturedResHeaders['access-control-allow-origin']).toBe('https://termina.vercel.app')
   })
 
-  it('denies an origin not on the allow-list (no ACAO header set)', () => {
+  it('burns an origin not on the allow-list (no ACAO header set)', () => {
     runtimeCorsAllowed = 'https://termina.vercel.app'
     const event = makeEventFull('GET', '/api/health', 'https://evil.example.com')
     const result = corsHandler(event)

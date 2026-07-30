@@ -24,9 +24,9 @@ import {
   RING_OF_HEALTH_REGEN_PERCENT,
   SOBI_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
-  DENY_HP_THRESHOLD,
-  DENY_GOLD_RATIO,
-  DENY_XP_RATIO,
+  BURN_HP_THRESHOLD,
+  BURN_GOLD_RATIO,
+  BURN_XP_RATIO,
   CREEP_GOLD_MIN,
   CREEP_GOLD_MAX,
   CREEP_XP,
@@ -109,11 +109,11 @@ describe('learn page', () => {
 
   it('documents the full live command verb set from useCommands', () => {
     const text = mountLearn().text()
-    // Original 7 + deny
+    // Original 7 + burn
     for (const cmd of [
       'move <zone>',
       'attack [target]',
-      'deny [creep:N]',
+      'burn [creep:N]',
       'cast <q|w|e|r> [target]',
       'use <item>',
       'buy <item>',
@@ -304,15 +304,15 @@ describe('learn page', () => {
       expect(text).toContain(`${Math.round(REGEN_CACHE_HEAL_PERCENT * 100)}% of both per cycle`)
     })
 
-    it('teaches last-hitting as its own concept, with the deny mirror', () => {
+    it('teaches last-hitting as its own concept, with the burn mirror', () => {
       const text = mountLearn().text()
-      expect(text).toContain('Last-Hitting & Denying')
+      expect(text).toContain('Last-Hitting & Burning')
       expect(text).toContain('Only the killing blow pays gold')
       expect(text).toContain(`${MELEE_CREEP_HP} HP`)
-      expect(text).toContain(`${Math.round(DENY_HP_THRESHOLD * 100)}% HP`)
-      // Deny reward is derived, not asserted as prose.
-      const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
-      expect(text).toContain(`${denyGold}g and ${Math.floor(CREEP_XP * DENY_XP_RATIO)} XP`)
+      expect(text).toContain(`${Math.round(BURN_HP_THRESHOLD * 100)}% HP`)
+      // Burn reward is derived, not asserted as prose.
+      const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+      expect(text).toContain(`${burnGold}g and ${Math.floor(CREEP_XP * BURN_XP_RATIO)} XP`)
     })
 
     it('warns that creep indices are positional and shift each cycle', () => {

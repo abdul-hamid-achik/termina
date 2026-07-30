@@ -29,7 +29,7 @@ export interface SituationalContext {
 }
 
 /**
- * Which situational commands (ward / deny / backup / cache / harden / surrender) a
+ * Which situational commands (ward / burn / backup / cache / harden / surrender) a
  * living player can take right now, given their items, zone and the world state.
  * Pure — extracted from GameScreen so the availability rules are unit-tested
  * independently of the in-game component. Returns [] when dead or no player.
@@ -43,7 +43,7 @@ export function computeSituationalActions(ctx: SituationalContext): SituationalA
     out.push({ cmd: 'ward', label: 'WARD', aria: `Place a ward in ${p.zone}` })
   }
   if (!('error' in pickDenyTargetString(p, ctx.creeps))) {
-    out.push({ cmd: 'deny', label: 'DENY', aria: 'Deny a low-HP allied creep' })
+    out.push({ cmd: 'burn', label: 'BURN', aria: 'Burn a low-HP allied creep' })
   }
   if (ctx.backup && ctx.backup.zone === p.zone && !ctx.backup.holderId) {
     out.push({ cmd: 'backup', label: 'BACKUP', aria: 'Pick up the Backup of the Immortal' })

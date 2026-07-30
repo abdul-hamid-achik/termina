@@ -27,6 +27,6 @@ export type Command =
   | { type: 'buyback' }
   | { type: 'surrender'; vote: 'yes' | 'no' }
   | { type: 'missing'; enemyId: string }
-  | { type: 'deny'; target: { kind: 'creep'; index: number } }
+  | { type: 'burn'; target: { kind: 'creep'; index: number } }
   | { type: 'select_talent'; tier: 10 | 15 | 20 | 25; talentId: string }
   | { type: 'harden' }

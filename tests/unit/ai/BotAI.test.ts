@@ -1819,7 +1819,7 @@ describe('BotAI - difficulty actually bites (abilityComboChance)', () => {
 
 describe('BotAI - denying (medium+)', () => {
   const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-t1-chaff', hp: 300 })
-  /** No mana and every ability parked, so the deny competes with a right-click. */
+  /** No mana and every ability parked, so the burn competes with a right-click. */
   const denier = () =>
     makePlayer({
       zone: 'mid-t1-chaff',
@@ -1829,7 +1829,7 @@ describe('BotAI - denying (medium+)', () => {
       cooldowns: { q: 5, w: 5, e: 5, r: 5 },
     })
 
-  it('denies the allied creep inside the resolver window, by zone-local index', () => {
+  it('burns the allied creep inside the resolver window, by zone-local index', () => {
     const bot = denier()
     const creeps: CreepState[] = [
       { id: 'creep-1', team: 'audit', zone: 'mid-t1-chaff', hp: 200, maxHp: 200, type: 'melee' },
@@ -1837,12 +1837,12 @@ describe('BotAI - denying (medium+)', () => {
     ]
     const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy }, creeps })
     expect(decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))).toEqual({
-      type: 'deny',
+      type: 'burn',
       target: { kind: 'creep', index: 1 },
     })
   })
 
-  it('leaves a healthy allied creep alone (outside DENY_HP_THRESHOLD the deny would no-op)', () => {
+  it('leaves a healthy allied creep alone (outside BURN_HP_THRESHOLD the burn would no-op)', () => {
     const bot = denier()
     const creeps: CreepState[] = [
       { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 150, maxHp: 200, type: 'melee' },
@@ -1854,7 +1854,7 @@ describe('BotAI - denying (medium+)', () => {
     })
   })
 
-  it('easy bots do not deny (denyAwareness off)', () => {
+  it('easy bots do not burn (denyAwareness off)', () => {
     const bot = denier()
     const creeps: CreepState[] = [
       { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
@@ -1866,14 +1866,14 @@ describe('BotAI - denying (medium+)', () => {
     })
   })
 
-  it('never denies with no enemy hero around — that just throws away your own wave', () => {
+  it('never burns with no enemy hero around — that just throws away your own wave', () => {
     const bot = denier()
     const creeps: CreepState[] = [
       { id: 'creep-1', team: 'chaff', zone: 'mid-t1-chaff', hp: 40, maxHp: 200, type: 'melee' },
     ]
     const state = makeGameState({ players: { [bot.id]: bot }, creeps })
     const action = decideBotAction(state, bot, 'mid', atDifficulty('medium', bot.id))
-    expect(action?.type).not.toBe('deny')
+    expect(action?.type).not.toBe('burn')
   })
 })
 

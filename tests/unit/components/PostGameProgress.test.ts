@@ -41,7 +41,7 @@ function cleanStats(over: Partial<PlayerEndStats> = {}): PlayerEndStats {
     gold: 200,
     netWorth: 12_400,
     lastHits: 90,
-    denies: 6,
+    burns: 6,
     ...over,
   })
 }
@@ -101,9 +101,9 @@ describe('PostGame — net worth', () => {
 })
 
 describe('PostGame — CS', () => {
-  it('shows last hits and denies for the player and in every scoreboard row', () => {
+  it('shows last hits and burns for the player and in every scoreboard row', () => {
     const wrapper = mountPostGame({
-      stats: { p1: cleanStats({ lastHits: 87, denies: 12 }), e1: cleanStats({ lastHits: 41 }) },
+      stats: { p1: cleanStats({ lastHits: 87, burns: 12 }), e1: cleanStats({ lastHits: 41 }) },
     })
     const mine = wrapper.get('[data-testid="my-cs"]')
     expect(mine.text()).toContain('87')
@@ -151,12 +151,12 @@ describe('PostGame — what to work on', () => {
     expect(long.get('[data-advice="last-hits"]').text()).toContain('attack creep:0')
   })
 
-  it('teaches denying to a player who never denied', () => {
+  it('teaches denying to a player who never burned', () => {
     const wrapper = mountPostGame({
-      stats: { p1: cleanStats({ denies: 0 }), e1: cleanStats() },
+      stats: { p1: cleanStats({ burns: 0 }), e1: cleanStats() },
     })
-    expect(adviceIds(wrapper)).toContain('denies')
-    expect(wrapper.get('[data-advice="denies"]').text()).toContain('deny creep:0')
+    expect(adviceIds(wrapper)).toContain('burns')
+    expect(wrapper.get('[data-advice="burns"]').text()).toContain('burn creep:0')
   })
 
   it('tells a hoarder to spend', () => {
@@ -175,11 +175,11 @@ describe('PostGame — what to work on', () => {
     const wrapper = mountPostGame({
       durationTicks: 600,
       stats: {
-        p1: cleanStats({ deaths: 11, lastHits: 4, denies: 0, gold: 9000 }),
+        p1: cleanStats({ deaths: 11, lastHits: 4, burns: 0, gold: 9000 }),
         e1: cleanStats(),
       },
     })
-    expect(adviceIds(wrapper)).toEqual(['deaths', 'last-hits', 'denies'])
+    expect(adviceIds(wrapper)).toEqual(['deaths', 'last-hits', 'burns'])
   })
 
   it('links out to the basics', () => {

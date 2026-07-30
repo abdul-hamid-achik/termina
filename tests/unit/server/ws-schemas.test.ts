@@ -299,22 +299,22 @@ describe('commandSchema', () => {
     })
   })
 
-  describe('deny', () => {
-    it('accepts a creep deny within index bounds', () => {
-      ok(commandSchema, { type: 'deny', target: { kind: 'creep', index: 0 } })
-      ok(commandSchema, { type: 'deny', target: { kind: 'creep', index: 10_000 } })
+  describe('burn', () => {
+    it('accepts a creep burn within index bounds', () => {
+      ok(commandSchema, { type: 'burn', target: { kind: 'creep', index: 0 } })
+      ok(commandSchema, { type: 'burn', target: { kind: 'creep', index: 10_000 } })
     })
     it('rejects out-of-bounds index', () => {
-      bad(commandSchema, { type: 'deny', target: { kind: 'creep', index: -1 } })
-      bad(commandSchema, { type: 'deny', target: { kind: 'creep', index: 10_001 } })
+      bad(commandSchema, { type: 'burn', target: { kind: 'creep', index: -1 } })
+      bad(commandSchema, { type: 'burn', target: { kind: 'creep', index: 10_001 } })
     })
-    it('rejects non-creep targets (deny is creep-only)', () => {
-      bad(commandSchema, { type: 'deny', target: { kind: 'hero', name: 'axe' } })
-      bad(commandSchema, { type: 'deny', target: { kind: 'ancient' } })
-      bad(commandSchema, { type: 'deny', target: { kind: 'self' } })
+    it('rejects non-creep targets (burn is creep-only)', () => {
+      bad(commandSchema, { type: 'burn', target: { kind: 'hero', name: 'axe' } })
+      bad(commandSchema, { type: 'burn', target: { kind: 'ancient' } })
+      bad(commandSchema, { type: 'burn', target: { kind: 'self' } })
     })
     it('rejects missing target', () => {
-      bad(commandSchema, { type: 'deny' })
+      bad(commandSchema, { type: 'burn' })
     })
   })
 

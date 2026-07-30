@@ -62,7 +62,7 @@ export interface CombatLine {
    * (digestFarmNoise) folds all tagged lines of a tick into one dim summary
    * line; verbose mode shows them raw. Untagged lines are never folded.
    */
-  farmKind?: 'hit' | 'lasthit' | 'camp' | 'deny'
+  farmKind?: 'hit' | 'lasthit' | 'camp' | 'burn'
   /** Gold carried by a folded farm line (my last-hit reward in the summary). */
   goldAmount?: number
 }
@@ -173,17 +173,17 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
     let myGold = 0
     let myLastHits = 0
     let myCamps = 0
-    let myDenies = 0
+    let myBurns = 0
     let teamLastHits = 0
     let teamCamps = 0
-    let teamDenies = 0
+    let teamBurns = 0
     let enemyLastHits = 0
     let enemyCamps = 0
-    let enemyDenies = 0
+    let enemyBurns = 0
     let enemyHitsSeen = false
     for (const l of bucket) {
       // Three-way attribution: mine / team (ally) / enemy (world) — visible
-      // enemy camp clears and denies must not be counted as "team".
+      // enemy camp clears and burns must not be counted as "team".
       const side = l.salience === 'mine-out' ? 'mine' : l.salience === 'world' ? 'enemy' : 'team'
       if (l.farmKind === 'lasthit') {
         if (side === 'mine') {
@@ -195,10 +195,10 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
         if (side === 'mine') myCamps++
         else if (side === 'enemy') enemyCamps++
         else teamCamps++
-      } else if (l.farmKind === 'deny') {
-        if (side === 'mine') myDenies++
-        else if (side === 'enemy') enemyDenies++
-        else teamDenies++
+      } else if (l.farmKind === 'burn') {
+        if (side === 'mine') myBurns++
+        else if (side === 'enemy') enemyBurns++
+        else teamBurns++
       } else if (l.farmKind === 'hit') {
         if (side === 'enemy') enemyHitsSeen = true
       }
@@ -207,21 +207,21 @@ export function digestFarmNoise(lines: CombatLine[]): CombatLine[] {
     if (myLastHits > 0)
       parts.push(`you +${myGold}g (${myLastHits} last-hit${myLastHits === 1 ? '' : 's'})`)
     if (myCamps > 0) parts.push(`you cleared ${myCamps === 1 ? 'a camp' : `${myCamps} camps`}`)
-    if (myDenies > 0) parts.push(`you denied ${myDenies === 1 ? 'a creep' : `${myDenies} creeps`}`)
+    if (myBurns > 0) parts.push(`you burned ${myBurns === 1 ? 'a creep' : `${myBurns} creeps`}`)
     const teamBits: string[] = []
     if (teamLastHits > 0) teamBits.push(`${teamLastHits} creep${teamLastHits === 1 ? '' : 's'}`)
     if (teamCamps > 0) teamBits.push(`${teamCamps} camp${teamCamps === 1 ? '' : 's'}`)
-    if (teamDenies > 0) teamBits.push(`${teamDenies} den${teamDenies === 1 ? 'y' : 'ies'}`)
+    if (teamBurns > 0) teamBits.push(`${teamBurns} burn${teamBurns === 1 ? '' : 's'}`)
     if (teamBits.length) parts.push(`team ${teamBits.join(', ')}`)
     const enemyBits: string[] = []
     if (enemyLastHits > 0) enemyBits.push(`${enemyLastHits} creep${enemyLastHits === 1 ? '' : 's'}`)
     if (enemyCamps > 0) enemyBits.push(`${enemyCamps} camp${enemyCamps === 1 ? '' : 's'}`)
-    if (enemyDenies > 0) enemyBits.push(`${enemyDenies} den${enemyDenies === 1 ? 'y' : 'ies'}`)
+    if (enemyBurns > 0) enemyBits.push(`${enemyBurns} burn${enemyBurns === 1 ? '' : 's'}`)
     if (enemyBits.length) parts.push(`enemy ${enemyBits.join(', ')}`)
     else if (enemyHitsSeen) parts.push('enemy farming in sight')
     if (parts.length) {
       // The digest carrying MY rewards is mine — the ME filter must keep it.
-      const hasMine = myLastHits > 0 || myCamps > 0 || myDenies > 0
+      const hasMine = myLastHits > 0 || myCamps > 0 || myBurns > 0
       out.push({
         tick,
         text: `farm: ${parts.join(' · ')}`,

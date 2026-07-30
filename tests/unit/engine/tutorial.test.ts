@@ -98,7 +98,7 @@ describe('tutorial flow', () => {
 
     // Advanced actions stay gated until free play (they aren't part of the
     // verb-learning sequence and would only confuse a brand-new player).
-    const GATED_UNTIL_FREEPLAY = ['ward', 'use', 'deny', 'backup', 'harden', 'buyback'] as const
+    const GATED_UNTIL_FREEPLAY = ['ward', 'use', 'burn', 'backup', 'harden', 'buyback'] as const
 
     it('always allows informational / essential-progression commands', () => {
       for (const c of ALWAYS_ALLOWED) {

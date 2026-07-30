@@ -538,7 +538,7 @@ watch(
         // cue used to hang off `gold_change`, whose only emitter is a win
         // sentinel carrying an empty playerId, so last-hitting was silent.
         case 'creep_lasthit':
-        case 'creep_deny':
+        case 'wave_burn':
           if (e.payload.playerId === pid) {
             playSound('gold')
             pushDamageFloat(Number(e.payload.goldAwarded), 'gold')
@@ -1019,9 +1019,9 @@ function handleCommand(cmd: string) {
       cmd = `attack ${picked.target}`
     }
   }
-  // A bare `deny` targets the lowest-HP eligible allied creep in your zone, so
-  // you can snap-deny an about-to-die creep without hunting for its index.
-  if (bareCmd === 'deny') {
+  // A bare `burn` targets the lowest-HP eligible allied creep in your zone, so
+  // you can snap-burn an about-to-die creep without hunting for its index.
+  if (bareCmd === 'burn') {
     const me = gameStore.player
     if (me) {
       const picked = pickDenyTargetString(me, gameStore.creeps)
@@ -1029,7 +1029,7 @@ function handleCommand(cmd: string) {
         localEvents.value.push({ tick: gameStore.tick, text: picked.error, type: 'system' })
         return
       }
-      cmd = `deny ${picked.target}`
+      cmd = `burn ${picked.target}`
     }
   }
   // Pass the player's team so base/fountain resolve to THEIR side of the map.
@@ -1216,7 +1216,7 @@ function handleCommand(cmd: string) {
     // out rejects above, so this fires only on actions that will resolve; the
     // landing cues (damage floats, impact flare) still come from the tick events.
     // Offensive orders get the meatier `cast` whoosh; everything else — move,
-    // buy, ward, deny — used to send in total silence.
+    // buy, ward, burn — used to send in total silence.
     if (command.type === 'cast' || command.type === 'attack') playSound('cast')
     else playSound('submit')
   } else if (error) {
@@ -1331,7 +1331,7 @@ function handleQuickAction(cmd: string) {
   handleCommand(cmd.toLowerCase())
 }
 
-// Situational actions (ward / deny / backup / cache / harden / surrender) were
+// Situational actions (ward / burn / backup / cache / harden / surrender) were
 // command-line only — invisible + unusable on touch. Surface them as on-screen
 // buttons, shown only when actually available so the row stays contextual.
 // Which contextual actions the player can take now — pure rules extracted to a
@@ -1354,7 +1354,7 @@ function runSituational(cmd: string) {
   if (!p) return
   if (cmd === 'ward') handleCommand(`ward ${p.zone}`)
   else if (cmd === 'surrender') handleCommand('surrender confirm')
-  else handleCommand(cmd) // deny / backup / cache / harden — bare commands (auto-resolved)
+  else handleCommand(cmd) // burn / backup / cache / harden — bare commands (auto-resolved)
 }
 
 // ── Quick action button availability ─────────────────────────
@@ -2011,7 +2011,7 @@ function handleReturnToMenu() {
         </button>
       </div>
       <!-- Situational actions — surfaced as buttons only when available, so the
-           command-only verbs (ward/deny/backup/cache/harden/surrender) are usable
+           command-only verbs (ward/burn/backup/cache/harden/surrender) are usable
            on touch and discoverable to new players. -->
       <div
         v-if="situationalActions.length"

@@ -57,10 +57,10 @@ describe('digestFarmNoise', () => {
     expect(out[0]!.text).toBe('farm: enemy farming in sight')
   })
 
-  it('attributes visible ENEMY camp clears and denies to enemy, never to team', () => {
+  it('attributes visible ENEMY camp clears and burns to enemy, never to team', () => {
     const out = digestFarmNoise([
       line({ text: 'Thread cleared a camp', type: 'gold', salience: 'world', farmKind: 'camp' }),
-      line({ text: 'Thread denied a creep', type: 'system', salience: 'world', farmKind: 'deny' }),
+      line({ text: 'Thread burned a creep', type: 'system', salience: 'world', farmKind: 'burn' }),
       line({
         text: 'Kernel last-hit a creep (+40g)',
         type: 'gold',
@@ -69,7 +69,7 @@ describe('digestFarmNoise', () => {
       }),
     ])
     expect(out).toHaveLength(1)
-    expect(out[0]!.text).toBe('farm: team 1 creep · enemy 1 camp, 1 deny')
+    expect(out[0]!.text).toBe('farm: team 1 creep · enemy 1 camp, 1 burn')
   })
 
   it('marks the digest mine-out when it carries MY rewards (so the ME filter keeps it)', () => {

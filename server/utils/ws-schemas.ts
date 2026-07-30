@@ -50,7 +50,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('surrender'), vote: z.enum(['yes', 'no']) }),
   z.object({ type: z.literal('missing'), enemyId: shortId }),
   z.object({
-    type: z.literal('deny'),
+    type: z.literal('burn'),
     target: z.object({ kind: z.literal('creep'), index: z.number().int().min(0).max(10_000) }),
   }),
   z.object({

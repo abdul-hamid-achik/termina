@@ -90,7 +90,7 @@ function actorSalience(playerId: unknown, ctx: NarrativeContext): Salience {
 }
 
 /** Gold-change reasons already narrated by a dedicated line — suppressed as noise. */
-const REDUNDANT_GOLD = /creep|last.?hit|deny|passive|neutral/i
+const REDUNDANT_GOLD = /creep|last.?hit|burn|passive|neutral/i
 
 /**
  * Map a single engine event to a combat-log line, or `null` to suppress it
@@ -200,18 +200,18 @@ export function eventToLine(e: GameEvent, ctx: NarrativeContext): CombatLine | n
         goldAmount: num(p.goldAwarded),
       }
 
-    case 'creep_deny':
+    case 'wave_burn':
       return {
         tick,
-        text: `${label(p.playerId)} denied a ${str(p.creepType)} creep`,
+        text: `${label(p.playerId)} burned a ${str(p.creepType)} creep`,
         type: 'system',
         salience: actorSalience(p.playerId, ctx),
-        farmKind: 'deny',
+        farmKind: 'burn',
       }
 
     case 'gold_change': {
       const reason = str(p.reason)
-      // Drop gold lines a dedicated line already narrates (last-hits, denies,
+      // Drop gold lines a dedicated line already narrates (last-hits, burns,
       // passive trickle) — the dominant source of farming-phase noise.
       if (REDUNDANT_GOLD.test(reason)) return null
       const amt = num(p.amount)

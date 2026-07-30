@@ -14,8 +14,8 @@ import {
   CREEP_GOLD_MIN,
   CREEP_GOLD_MAX,
   SIEGE_CREEP_GOLD,
-  DENY_GOLD_RATIO,
-  DENY_XP_RATIO,
+  BURN_GOLD_RATIO,
+  BURN_XP_RATIO,
   HERO_KILL_XP_BASE,
   HERO_KILL_XP_PER_LEVEL,
   XP_PER_LEVEL,
@@ -86,7 +86,7 @@ function inCombatBuff() {
 }
 
 /**
- * Place exactly ONE creep in `zone` so its per-zone deny/attack index is a
+ * Place exactly ONE creep in `zone` so its per-zone burn/attack index is a
  * deterministic 0. (A fresh game seeds creeps in lane zones, never in
  * `mid-river`, which is where we stage these fixtures.)
  */
@@ -96,14 +96,14 @@ function withSoloCreep(state: GameState, creep: CreepState): GameState {
 }
 
 describe('Economy through resolution', () => {
-  describe('Creep deny', () => {
-    it('denies an allied creep below 50% HP → creep hp→0, denier gets deny gold + floor(CREEP_XP*0.5), creep_deny event', async () => {
-      const gameId = uid('deny')
+  describe('Creep burn', () => {
+    it('burns an allied creep below 50% HP → creep hp→0, denier gets burn gold + floor(CREEP_XP*0.5), wave_burn event', async () => {
+      const gameId = uid('burn')
       const sm = await startGame(gameId, makePlayers('dn', 1))
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'dn_r0', { zone: 'mid-river' })
-        // Allied (chaff) melee creep at 100/400 HP — well under the 50% deny gate.
+        // Allied (chaff) melee creep at 100/400 HP — well under the 50% burn gate.
         return withSoloCreep(moved, {
           id: 'deny_target',
           team: 'chaff',
@@ -117,26 +117,26 @@ describe('Economy through resolution', () => {
       const goldBefore = before.players['dn_r0']!.gold
       const xpBefore = before.players['dn_r0']!.xp
 
-      submitAction(gameId, 'dn_r0', { type: 'deny', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'dn_r0', { type: 'burn', target: { kind: 'creep', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      // The denied creep is dead (hp 0); the engine GCs dead creeps so it is gone.
+      // The burned creep is dead (hp 0); the engine GCs dead creeps so it is gone.
       expect(r.state.creeps.some((c) => c.id === 'deny_target' && c.hp > 0)).toBe(false)
 
-      const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
-      const denyXp = Math.floor(CREEP_XP * DENY_XP_RATIO)
+      const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+      const burnXp = Math.floor(CREEP_XP * BURN_XP_RATIO)
       const after = r.state.players['dn_r0']!
-      // Deny gold is exact; deny XP is exact. (No passive gold confound: passive
-      // gold is distributed but we measure the deny-specific deltas as a floor.)
-      expect(after.xp - xpBefore).toBe(denyXp)
-      expect(after.gold - goldBefore).toBeGreaterThanOrEqual(denyGold)
+      // Burn gold is exact; burn XP is exact. (No passive gold confound: passive
+      // gold is distributed but we measure the burn-specific deltas as a floor.)
+      expect(after.xp - xpBefore).toBe(burnXp)
+      expect(after.gold - goldBefore).toBeGreaterThanOrEqual(burnGold)
 
-      const denyEvent = r.events.find((e) => e._tag === 'creep_deny')
+      const denyEvent = r.events.find((e) => e._tag === 'wave_burn')
       expect(denyEvent).toMatchObject({
         playerId: 'dn_r0',
         creepId: 'deny_target',
         creepType: 'melee',
-        goldAwarded: denyGold,
+        goldAwarded: burnGold,
       })
     })
 
@@ -146,7 +146,7 @@ describe('Economy through resolution', () => {
 
       await arrange(sm, gameId, (s) => {
         const moved = setPlayer(s, 'dg_r0', { zone: 'mid-river' })
-        // 300/400 = 75% HP — above the 50% deny threshold; deny must no-op.
+        // 300/400 = 75% HP — above the 50% burn threshold; burn must no-op.
         return withSoloCreep(moved, {
           id: 'healthy_ally',
           team: 'chaff',
@@ -159,12 +159,12 @@ describe('Economy through resolution', () => {
       const before = await Effect.runPromise(sm.getState(gameId))
       const xpBefore = before.players['dg_r0']!.xp
 
-      submitAction(gameId, 'dg_r0', { type: 'deny', target: { kind: 'creep', index: 0 } })
+      submitAction(gameId, 'dg_r0', { type: 'burn', target: { kind: 'creep', index: 0 } })
       const r = await runTick(sm, gameId)
 
-      // Creep survived; no deny event; no deny XP.
+      // Creep survived; no burn event; no burn XP.
       expect(r.state.creeps.some((c) => c.id === 'healthy_ally' && c.hp > 0)).toBe(true)
-      expect(r.events.some((e) => e._tag === 'creep_deny')).toBe(false)
+      expect(r.events.some((e) => e._tag === 'wave_burn')).toBe(false)
       expect(r.state.players['dg_r0']!.xp - xpBefore).toBe(0)
     })
   })

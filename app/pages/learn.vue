@@ -44,9 +44,9 @@ import {
   RING_OF_HEALTH_REGEN_PERCENT,
   SOBI_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
-  DENY_HP_THRESHOLD,
-  DENY_GOLD_RATIO,
-  DENY_XP_RATIO,
+  BURN_HP_THRESHOLD,
+  BURN_GOLD_RATIO,
+  BURN_XP_RATIO,
   CREEP_GOLD_MIN,
   CREEP_GOLD_MAX,
   CREEP_XP,
@@ -94,9 +94,9 @@ const talentTierNote = talentLevels.some((lvl, i) => lvl !== TALENT_TIER_IDS[i])
 const ringRegenPercent = Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)
 const sobiRegenPercent = Math.round(SOBI_MASK_REGEN_PERCENT * 100)
 const cacheRegenPercent = Math.round(REGEN_CACHE_HEAL_PERCENT * 100)
-const denyHpPercent = Math.round(DENY_HP_THRESHOLD * 100)
-const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
-const denyXp = Math.floor(CREEP_XP * DENY_XP_RATIO)
+const burnHpPercent = Math.round(BURN_HP_THRESHOLD * 100)
+const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
+const burnXp = Math.floor(CREEP_XP * BURN_XP_RATIO)
 
 const quickStart = [
   {
@@ -178,9 +178,9 @@ const commands = [
     shortcuts: 'atk',
   },
   {
-    cmd: 'deny [creep:N]',
-    desc: 'Last-hit your OWN low-HP creep to deny the enemy its gold. Bare deny auto-picks one',
-    example: 'deny creep:0',
+    cmd: 'burn [creep:N]',
+    desc: 'Last-hit your OWN low-HP creep to burn the enemy its gold. Bare burn auto-picks one',
+    example: 'burn creep:0',
     shortcuts: '—',
   },
   {
@@ -355,9 +355,9 @@ const concepts = [
     desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Healing Salve and Mana Vial (consumables you carry), Ring of Health (${ringRegenPercent}% max HP per cycle) and Sobi's Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
-    term: 'Last-Hitting & Denying',
+    term: 'Last-Hitting & Burning',
     icon: '/',
-    desc: `Only the killing blow pays gold: chip a creep to 1 HP and a lane-mate takes it, you get nothing. A melee creep has ${MELEE_CREEP_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack creep:0 for ${CREEP_GOLD}g and ${CREEP_XP} XP (allies in the zone share ${CREEP_XP_SHARED} XP, so standing in lane is never worth zero). Denying is the mirror: once one of YOUR creeps drops below ${denyHpPercent}% HP, deny creep:0 kills it so the enemy gets nothing — you keep ${denyGold}g and ${denyXp} XP. Prefer tapping the creep group in the zone panel over typing an index: creep:N counts the living creeps in your zone, so N shifts every cycle as creeps die and waves spawn.`,
+    desc: `Only the killing blow pays gold: chip a creep to 1 HP and a lane-mate takes it, you get nothing. A melee creep has ${MELEE_CREEP_HP} HP and your hero hits for 30–70, so wait until its remaining HP is under one of your attacks, then take it with attack creep:0 for ${CREEP_GOLD}g and ${CREEP_XP} XP (allies in the zone share ${CREEP_XP_SHARED} XP, so standing in lane is never worth zero). Burning is the mirror: once one of YOUR creeps drops below ${burnHpPercent}% HP, burn creep:0 kills it so the enemy gets nothing — you keep ${burnGold}g and ${burnXp} XP. Prefer tapping the creep group in the zone panel over typing an index: creep:N counts the living creeps in your zone, so N shifts every cycle as creeps die and waves spawn.`,
   },
   {
     term: 'Death & Respawn',
@@ -382,7 +382,7 @@ const concepts = [
   {
     term: 'Draft & Bans',
     icon: 'D',
-    desc: "In 5v5 and 3v3, the draft opens with a ban phase: teams take turns removing heroes from the pool before the snake pick. Banned heroes can't be picked by either side — use bans to deny a matchup you don't want to face.",
+    desc: "In 5v5 and 3v3, the draft opens with a ban phase: teams take turns removing heroes from the pool before the snake pick. Banned heroes can't be picked by either side — use bans to burn a matchup you don't want to face.",
   },
   {
     term: 'Seasons & Ranks',

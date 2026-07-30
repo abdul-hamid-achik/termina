@@ -211,6 +211,6 @@ describe('game loop: final handoff', () => {
     )
 
     const { farm } = await done
-    expect(farm.p1).toEqual({ lastHits: 1, denies: 0 })
+    expect(farm.p1).toEqual({ lastHits: 1, burns: 0 })
   })
 })

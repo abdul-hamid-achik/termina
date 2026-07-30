@@ -166,7 +166,7 @@ describe('CommandInput', () => {
     it.each([
       ['move', 'specify a zone'],
       ['attack', 'nearest enemy'],
-      ['deny', 'lowest-HP allied creep'],
+      ['burn', 'lowest-HP allied creep'],
       ['cast', 'specify ability'],
       ['buy', 'specify an item'],
       ['sell', 'specify an item'],

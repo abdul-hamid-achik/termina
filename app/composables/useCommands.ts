@@ -19,7 +19,7 @@ import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
   SURRENDER_MIN_TICK,
-  DENY_HP_THRESHOLD,
+  BURN_HP_THRESHOLD,
   creepMaxHp,
 } from '~~/shared/constants/balance'
 
@@ -185,11 +185,11 @@ export function pickItemTargetString(
 }
 
 /**
- * The HP a creep spawned with — mirrors the server's deny eligibility check.
+ * The HP a creep spawned with — mirrors the server's burn eligibility check.
  *
  * Reads the stamped value rather than a constant: creeps escalate with match
- * time, so a fixed level-1 max made the deny affordance silently shrink every
- * minute until the client stopped offering a deny the server would have allowed.
+ * time, so a fixed level-1 max made the burn affordance silently shrink every
+ * minute until the client stopped offering a burn the server would have allowed.
  */
 function creepFullHp(c: CreepState): number {
   return c.maxHp ?? creepMaxHp(c.type, 0)
@@ -211,8 +211,8 @@ function creepsInZoneWithIndex(
 }
 
 /**
- * Pick a default target for a bare `deny`: the lowest-HP ALLIED creep in your
- * zone that's eligible to deny (at/below the deny HP threshold). Returns the
+ * Pick a default target for a bare `burn`: the lowest-HP ALLIED creep in your
+ * zone that's eligible to burn (at/below the burn HP threshold). Returns the
  * server's `creep:<index>` form, where the index is the creep's position among
  * your zone's creeps — the exact convention creepInZoneByIndex resolves.
  */
@@ -225,7 +225,7 @@ export function pickDenyTargetString(
   for (let index = 0; index < inZone.length; index++) {
     const c = inZone[index]!
     if (c.team !== player.team || c.hp <= 0) continue
-    if (c.hp > creepFullHp(c) * DENY_HP_THRESHOLD) continue // not low enough to deny
+    if (c.hp > creepFullHp(c) * BURN_HP_THRESHOLD) continue // not low enough to burn
     if (best === null || c.hp < best.hp) best = { hp: c.hp, index }
   }
   if (best === null) {
@@ -290,7 +290,7 @@ export function formatScanReadout(
 export function formatHelpReadout(): string[] {
   return [
     'HELP · type a verb, e.g. `move mid` or `cast q` (most auto-pick a target):',
-    '  Fight:   move <zone> · attack <target> · deny · cast <q|w|e|r>',
+    '  Fight:   move <zone> · attack <target> · burn · cast <q|w|e|r>',
     '  Items:   buy <item> · sell <item> · use <item> · ward <zone>',
     '  Info:    status · map · scan · missing <enemy>',
     '  Team:    chat <team|all> <msg> · ping <zone> · surrender confirm',
@@ -684,21 +684,21 @@ export function useCommands() {
         return { command: { type: 'attack', target }, error: null }
       }
 
-      case 'deny': {
+      case 'burn': {
         const targetStr = tokens[1]
         if (!targetStr)
           return {
             command: null,
             error:
-              'Usage: deny <creep:index>  (deny an allied creep below 50% HP to starve the enemy of gold/XP)',
+              'Usage: burn <creep:index>  (burn an allied creep below 50% HP to starve the enemy of gold/XP)',
           }
         const target = parseTarget(targetStr)
         if (!target || target.kind !== 'creep')
           return {
             command: null,
-            error: `Can only deny allied creeps. Use creep:<index> (e.g. deny creep:0)`,
+            error: `Can only burn allied creeps. Use creep:<index> (e.g. burn creep:0)`,
           }
-        return { command: { type: 'deny', target }, error: null }
+        return { command: { type: 'burn', target }, error: null }
       }
 
       case 'cast': {
@@ -842,7 +842,7 @@ export function useCommands() {
       const cmds = [
         'move',
         'attack',
-        'deny',
+        'burn',
         'cast',
         'use',
         'buy',
@@ -870,7 +870,7 @@ export function useCommands() {
         buyback: 'Pay gold to respawn instantly (while dead)',
         surrender: "Vote to forfeit — requires 'surrender confirm'",
         talent: 'Choose a talent (tiers 10/15/20/25)',
-        deny: 'Last-hit your own creep below 50% HP to deny the enemy',
+        burn: 'Last-hit your own creep below 50% HP to burn the enemy',
       }
       return all
         .filter((c) => c.startsWith(parts[0]!))
@@ -894,8 +894,8 @@ export function useCommands() {
       return _suggestTargets(parts.slice(1).join(' '), context)
     }
 
-    if (baseCmd === 'deny') {
-      // Deny only targets allied creeps in the current zone. The server enforces
+    if (baseCmd === 'burn') {
+      // Burn only targets allied creeps in the current zone. The server enforces
       // the HP rule, so healthy allies are still offered — with their HP, which
       // is the number the player is waiting on.
       const partial = parts.slice(1).join(' ')
@@ -906,7 +906,7 @@ export function useCommands() {
           if (creep.team !== player.team || creep.hp <= 0) continue
           const ref = `creep:${index}`
           if (!ref.includes(partial)) continue
-          const denyable = creep.hp <= creepFullHp(creep) * DENY_HP_THRESHOLD
+          const denyable = creep.hp <= creepFullHp(creep) * BURN_HP_THRESHOLD
           out.push({
             text: ref,
             description: `${creep.type} (HP: ${Math.ceil(creep.hp)}/${creepFullHp(creep)})${
@@ -1125,7 +1125,7 @@ export function useCommands() {
     if (context.creeps) {
       for (const { creep, index } of creepsInZoneWithIndex(context.creeps, context.player.zone)) {
         if (creep.hp <= 0) continue
-        // Your OWN creeps are the `deny` command's business, never an attack
+        // Your OWN creeps are the `burn` command's business, never an attack
         // target — the server refuses them, and in a one-action-per-tick game
         // an offered target that always fails costs the player the whole tick.
         // Indices are unaffected: creepsInZoneWithIndex numbers the zone's

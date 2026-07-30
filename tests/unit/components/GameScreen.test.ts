@@ -1229,14 +1229,14 @@ describe('GameScreen', () => {
       wrapper.unmount()
     })
 
-    it('pays a deny and a jungle camp the same cue', async () => {
+    it('pays a burn and a jungle camp the same cue', async () => {
       seedActiveGame()
       const wrapper = mountGameScreen()
 
       await emit(wrapper, [
         {
           tick: 240,
-          type: 'creep_deny',
+          type: 'wave_burn',
           payload: { playerId: 'p1', creepId: 'c2', creepType: 'ranged', goldAwarded: 12 },
         },
         {
@@ -1247,7 +1247,7 @@ describe('GameScreen', () => {
       ])
 
       expect(audio.playSound.mock.calls.filter(([n]) => n === 'gold')).toHaveLength(2)
-      // The camp's bounty isn't on the wire, so only the deny floats a number.
+      // The camp's bounty isn't on the wire, so only the burn floats a number.
       expect(wrapper.findAll('[data-testid="damage-float-gold"]')).toHaveLength(1)
       wrapper.unmount()
     })
@@ -1362,7 +1362,7 @@ describe('GameScreen', () => {
 
     it('confirms a plain move, which used to send in total silence', async () => {
       // The `submit` sound was fully designed with zero call sites: move, buy,
-      // ward and deny all went out with no confirmation at all.
+      // ward and burn all went out with no confirmation at all.
       const store = useGameStore()
       store.gameId = 'game_submit'
       store.playerId = 'p1'

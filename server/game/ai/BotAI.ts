@@ -18,7 +18,7 @@ import {
   WARD_LIMIT_PER_TEAM,
   HARDEN_COOLDOWN_TICKS,
   SELL_REFUND_RATIO,
-  DENY_HP_THRESHOLD,
+  BURN_HP_THRESHOLD,
   creepMaxHp,
 } from '~~/shared/constants/balance'
 import { LANE_ROUTES } from '~~/shared/constants/lanes'
@@ -1238,17 +1238,17 @@ function tryFarmJungle(
 }
 
 /**
- * Deny an allied creep out from under the enemy laner. Mirrors resolveDenyPhase's
- * window exactly — own team, at or below DENY_HP_THRESHOLD of the HP it SPAWNED
+ * Burn an allied creep out from under the enemy laner. Mirrors resolveDenyPhase's
+ * window exactly — own team, at or below BURN_HP_THRESHOLD of the HP it SPAWNED
  * with — so the command resolves instead of silently burning the tick, and uses
  * the zone-local index the resolver reads.
  *
- * Only fires with an enemy hero in the zone: with nobody to deny, killing your
+ * Only fires with an enemy hero in the zone: with nobody to burn, killing your
  * own creep for half gold just weakens your wave. Callers therefore place it in
  * the combat branch, below abilities, as a better use of a tick than one more
  * right-click on a hero.
  */
-function tryDeny(state: GameState, bot: PlayerState, config: BotDifficultyConfig): Command | null {
+function tryBurn(state: GameState, bot: PlayerState, config: BotDifficultyConfig): Command | null {
   if (!config.denyAwareness) return null
   const zoneCreeps = state.creeps.filter((c) => c.zone === bot.zone)
   let bestIdx = -1
@@ -1256,14 +1256,14 @@ function tryDeny(state: GameState, bot: PlayerState, config: BotDifficultyConfig
   for (let i = 0; i < zoneCreeps.length; i++) {
     const creep = zoneCreeps[i]!
     if (creep.team !== bot.team || creep.hp <= 0) continue
-    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * DENY_HP_THRESHOLD) continue
+    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * BURN_HP_THRESHOLD) continue
     if (creep.hp < bestHp) {
       bestHp = creep.hp
       bestIdx = i
     }
   }
   if (bestIdx < 0) return null
-  return { type: 'deny', target: { kind: 'creep', index: bestIdx } }
+  return { type: 'burn', target: { kind: 'creep', index: bestIdx } }
 }
 
 /**
@@ -1552,7 +1552,7 @@ export function decideBotAction(
     if (abilityCmd) return abilityCmd
     // Below the burst, above the right-click: denying a dying allied creep
     // starves the laner opposite of gold + XP for the same one action.
-    const denyCmd = tryDeny(state, bot, config)
+    const denyCmd = tryBurn(state, bot, config)
     if (denyCmd) return denyCmd
     const target = enemyHeroes.reduce((a, b) => (a.hp < b.hp ? a : b))
     return { type: 'attack', target: { kind: 'hero', name: target.id } }

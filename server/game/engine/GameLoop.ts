@@ -146,12 +146,12 @@ function getDamageContributors(gameId: string, victimId: string): string[] {
 }
 
 // ── Farm tracking ──────────────────────────────────────────────
-// Last hits and denies — the two numbers a new MOBA player watches improve, and
+// Last hits and burns — the two numbers a new MOBA player watches improve, and
 // the only scoreboard columns the engine never produced.
 
 export interface PlayerFarm {
   lastHits: number
-  denies: number
+  burns: number
 }
 
 /** gameId -> playerId -> farm tally for the whole match. */
@@ -167,18 +167,18 @@ const gameFarm = new Map<string, Map<string, PlayerFarm>>()
 function tallyFarm(gameId: string, events: GameEngineEvent[]): void {
   let game = gameFarm.get(gameId)
   for (const e of events) {
-    if (e._tag !== 'creep_lasthit' && e._tag !== 'creep_deny') continue
+    if (e._tag !== 'creep_lasthit' && e._tag !== 'wave_burn') continue
     if (!game) {
       game = new Map()
       gameFarm.set(gameId, game)
     }
     let farm = game.get(e.playerId)
     if (!farm) {
-      farm = { lastHits: 0, denies: 0 }
+      farm = { lastHits: 0, burns: 0 }
       game.set(e.playerId, farm)
     }
     if (e._tag === 'creep_lasthit') farm.lastHits++
-    else farm.denies++
+    else farm.burns++
   }
 }
 

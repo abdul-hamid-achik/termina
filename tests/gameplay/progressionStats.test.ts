@@ -5,11 +5,11 @@ import { TALENT_TREES, TALENT_UNLOCK_LEVEL } from '~~/shared/constants/talents'
 
 /**
  * Engine truth for the two progression numbers the scoreboard never had. The
- * tally is derived from the emitted `creep_lasthit` / `creep_deny` events, so
- * these run through the real attack and deny phases rather than poking a
+ * tally is derived from the emitted `creep_lasthit` / `wave_burn` events, so
+ * these run through the real attack and burn phases rather than poking a
  * counter — a tally that disagreed with the feed would be worse than none.
  */
-describe('progression: last hits and denies', () => {
+describe('progression: last hits and burns', () => {
   it('counts a last hit against the player who landed it', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
@@ -25,23 +25,23 @@ describe('progression: last hits and denies', () => {
     game.submit({ type: 'attack', target: { kind: 'creep', index: 0 } })
     await game.tick()
 
-    expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 1, denies: 0 })
+    expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 1, burns: 0 })
   })
 
-  it('counts a deny separately from a last hit', async () => {
+  it('counts a burn separately from a last hit', async () => {
     const game = await seedGame('laning_combat', { heroSelf: 'echo' })
     const me0 = await game.me()
     await game.patch((s) => ({
       ...s,
       players: { ...s.players, [HUMAN]: { ...s.players[HUMAN]!, zone: 'mid-river' } },
-      // Own creep under the deny window (MELEE_CREEP_HP 400 × DENY_HP_THRESHOLD 0.5).
+      // Own creep under the burn window (MELEE_CREEP_HP 400 × BURN_HP_THRESHOLD 0.5).
       creeps: [{ id: 'own_creep', team: me0.team, zone: 'mid-river', hp: 20, type: 'melee' }],
     }))
 
-    game.submit({ type: 'deny', target: { kind: 'creep', index: 0 } })
+    game.submit({ type: 'burn', target: { kind: 'creep', index: 0 } })
     await game.tick()
 
-    expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 0, denies: 1 })
+    expect(getFarmStats(game.gameId)[HUMAN]).toEqual({ lastHits: 0, burns: 1 })
   })
 
   it('accumulates across ticks rather than reporting only the last one', async () => {

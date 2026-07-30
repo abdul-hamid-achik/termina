@@ -71,7 +71,7 @@ interface ScoreRow {
   gold: number
   netWorth: number
   lastHits: number
-  denies: number
+  burns: number
   heroDamage: number
   iceDamage: number
   items: (string | null)[]
@@ -112,7 +112,7 @@ function toRow(p: { id: string; name: string; heroId: string; team: TeamId }): S
     // "Net Worth" heading would be a second wrong lesson, but 0 is worse.
     netWorth: s?.netWorth ?? s?.gold ?? 0,
     lastHits: s?.lastHits ?? 0,
-    denies: s?.denies ?? 0,
+    burns: s?.burns ?? 0,
     heroDamage: s?.heroDamage ?? 0,
     iceDamage: s?.iceDamage ?? 0,
     items: s?.items ?? [],
@@ -146,7 +146,7 @@ interface Advice {
 
 /**
  * "What to work on" — at most three items, worst first, each naming a real
- * command. Absolute thresholds only where the stat is absolute (deaths, denies);
+ * command. Absolute thresholds only where the stat is absolute (deaths, burns);
  * everything farm-shaped is rate-based, because a 40-CS game is strong at ten
  * minutes and weak at thirty.
  *
@@ -188,11 +188,11 @@ const advice = computed((): Advice[] => {
     })
   }
 
-  if ((s.denies ?? 0) === 0) {
+  if ((s.burns ?? 0) === 0) {
     out.push({
-      id: 'denies',
-      observation: 'You denied 0 creeps',
-      command: 'deny creep:0',
+      id: 'burns',
+      observation: 'You burned 0 creeps',
+      command: 'burn creep:0',
       detail:
         'When one of YOUR creeps drops below half health you can finish it yourself. The enemy laner gets no gold and less experience for it — it is the cheapest lead in the game.',
     })
@@ -293,11 +293,11 @@ const advice = computed((): Advice[] => {
             </span>
           </div>
           <div class="flex flex-col gap-1" data-testid="my-cs">
-            <span class="t-caption uppercase" title="Last hits / denies">CS</span>
+            <span class="t-caption uppercase" title="Last hits / burns">CS</span>
             <span class="t-h1 t-mono-num">
               <span class="text-text-primary text-glow-sm">{{ myStats.lastHits ?? 0 }}</span>
               <span class="mx-0.5 text-text-muted">/</span>
-              <span class="text-text-dim">{{ myStats.denies ?? 0 }}</span>
+              <span class="text-text-dim">{{ myStats.burns ?? 0 }}</span>
             </span>
             <span v-if="csPerMinute !== null" class="t-caption t-mono-num text-text-muted">
               {{ csPerMinute.toFixed(1) }}/min
@@ -432,7 +432,7 @@ const advice = computed((): Advice[] => {
                 <th
                   scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Creep last hits / denies"
+                  title="Creep last hits / burns"
                 >
                   CS
                 </th>
@@ -485,7 +485,7 @@ const advice = computed((): Advice[] => {
                   {{ p.assists }}
                 </td>
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                  {{ p.lastHits }}<span class="text-text-muted">/{{ p.denies }}</span>
+                  {{ p.lastHits }}<span class="text-text-muted">/{{ p.burns }}</span>
                 </td>
                 <td
                   class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"
@@ -546,7 +546,7 @@ const advice = computed((): Advice[] => {
                 <th
                   scope="col"
                   class="border-b border-border px-1.5 py-0.5 text-left font-normal text-text-dim"
-                  title="Creep last hits / denies"
+                  title="Creep last hits / burns"
                 >
                   CS
                 </th>
@@ -599,7 +599,7 @@ const advice = computed((): Advice[] => {
                   {{ p.assists }}
                 </td>
                 <td class="whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 text-text-dim">
-                  {{ p.lastHits }}<span class="text-text-muted">/{{ p.denies }}</span>
+                  {{ p.lastHits }}<span class="text-text-muted">/{{ p.burns }}</span>
                 </td>
                 <td
                   class="hidden whitespace-nowrap border-b border-border/50 px-1.5 py-0.5 md:table-cell"

@@ -422,7 +422,7 @@ describe('eventToLine: narration coverage for every event type', () => {
     ['death', { playerId: 'enemy1', respawnTick: 5 }, 'terminated'],
     ['heal', { sourceId: 'me', targetId: 'ally1', amount: 50 }, 'restored 50'],
     ['creep_lasthit', { playerId: 'me', creepType: 'melee', goldAwarded: 40 }, 'last-hit'],
-    ['creep_deny', { playerId: 'me', creepType: 'melee' }, 'denied'],
+    ['wave_burn', { playerId: 'me', creepType: 'melee' }, 'burned'],
     ['ability_used', { playerId: 'me', abilityId: 'q', targetId: 'enemy1' }, 'cast'],
     ['item_purchased', { playerId: 'me', itemId: 'dagon', cost: 2700 }, 'acquired'],
     ['neutral_killed', { playerId: 'me', neutralType: 'kobold' }, 'kobold camp'],
@@ -754,9 +754,9 @@ describe('eventToLine: remaining event-type lines', () => {
       line('creep_lasthit', { playerId: 'me', creepType: 'melee', goldAwarded: 40 })!.text,
     ).toContain('last-hit a melee creep (+40g)')
   })
-  it('creep_deny → deny line', () => {
-    expect(line('creep_deny', { playerId: 'me', creepType: 'ranged' })!.text).toContain(
-      'denied a ranged creep',
+  it('wave_burn → burn line', () => {
+    expect(line('wave_burn', { playerId: 'me', creepType: 'ranged' })!.text).toContain(
+      'burned a ranged creep',
     )
   })
   it('ability_used → cast line with and without a target', () => {

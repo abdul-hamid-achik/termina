@@ -36,15 +36,15 @@ describe('computeSituationalActions', () => {
     expect(cmds(baseCtx({ player: player({ items: ['blink_dagger'] }) }))).not.toContain('ward')
   })
 
-  it('offers DENY only when a low-HP allied creep is in the zone', () => {
+  it('offers BURN only when a low-HP allied creep is in the zone', () => {
     const lowAllyCreep = {
       zone: 'mid-river',
       team: 'chaff',
       hp: 1,
       type: 'melee',
     } as unknown as CreepState
-    expect(cmds(baseCtx({ creeps: [lowAllyCreep] }))).toContain('deny')
-    expect(cmds(baseCtx({ creeps: [] }))).not.toContain('deny')
+    expect(cmds(baseCtx({ creeps: [lowAllyCreep] }))).toContain('burn')
+    expect(cmds(baseCtx({ creeps: [] }))).not.toContain('burn')
   })
 
   it('offers BACKUP only when an unclaimed backup is in the zone', () => {

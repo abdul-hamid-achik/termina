@@ -179,7 +179,7 @@ const preview = computed(() => {
   const commands = [
     'move',
     'attack',
-    'deny',
+    'burn',
     'cast',
     'use',
     'buy',
@@ -213,7 +213,7 @@ const preview = computed(() => {
     const hints: Record<string, string> = {
       move: '-- move: specify a zone',
       attack: '-- attack: hits the nearest enemy, or specify a target',
-      deny: '-- deny: denies the lowest-HP allied creep, or specify creep:N',
+      burn: '-- burn: burns the lowest-HP allied creep, or specify creep:N',
       cast: '-- cast: specify ability (q/w/e/r)',
       buy: '-- buy: specify an item',
       sell: '-- sell: specify an item',

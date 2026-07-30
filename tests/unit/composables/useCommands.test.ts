@@ -333,32 +333,32 @@ describe('useCommands', () => {
       })
     })
 
-    describe('deny command', () => {
-      it('parses deny creep target', () => {
+    describe('burn command', () => {
+      it('parses burn creep target', () => {
         const { parse } = useCommands()
-        const result = parse('deny creep:3')
+        const result = parse('burn creep:3')
 
         expect(result.error).toBeNull()
         expect(result.command).toEqual({
-          type: 'deny',
+          type: 'burn',
           target: { kind: 'creep', index: 3 },
         })
       })
 
-      it('rejects denying a non-creep target (only creeps can be denied)', () => {
+      it('rejects denying a non-creep target (only creeps can be burned)', () => {
         const { parse } = useCommands()
-        const result = parse('deny hero:daemon')
+        const result = parse('burn hero:daemon')
 
         expect(result.command).toBeNull()
-        expect(result.error).toContain('Can only deny allied creeps')
+        expect(result.error).toContain('Can only burn allied creeps')
       })
 
       it('returns usage error without a target', () => {
         const { parse } = useCommands()
-        const result = parse('deny')
+        const result = parse('burn')
 
         expect(result.command).toBeNull()
-        expect(result.error).toContain('Usage: deny')
+        expect(result.error).toContain('Usage: burn')
       })
     })
 
@@ -1112,7 +1112,7 @@ describe('useCommands', () => {
         const suggestions = autocomplete('attack creep', makeContext())
 
         // creep:1 is an ally — the server always refuses an attack on your own
-        // creep (that is what `deny` is for), and an offered target that cannot
+        // creep (that is what `burn` is for), and an offered target that cannot
         // work costs the player their single action for the tick.
         const texts = suggestions.map((s) => s.text)
         expect(texts).toEqual(['creep:0', 'creep:3'])
@@ -1138,7 +1138,7 @@ describe('useCommands', () => {
         expect(texts).toContain('creep:3') // c3 keeps its slot behind it
       })
 
-      it('offers only enemies, and says so — a last-hit is not a deny', () => {
+      it('offers only enemies, and says so — a last-hit is not a burn', () => {
         const { autocomplete } = useCommands()
         const suggestions = autocomplete('attack creep', makeContext())
 
@@ -1216,27 +1216,27 @@ describe('useCommands', () => {
       })
     })
 
-    describe('target completion for deny', () => {
+    describe('target completion for burn', () => {
       it('offers only your own creeps, at the index the server resolves', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('deny creep', makeContext())
+        const suggestions = autocomplete('burn creep', makeContext())
 
         expect(suggestions.map((s) => s.text)).toEqual(['creep:1', 'creep:4'])
       })
 
-      it('flags which allied creep is actually low enough to deny', () => {
+      it('flags which allied creep is actually low enough to burn', () => {
         const { autocomplete } = useCommands()
-        const suggestions = autocomplete('deny creep', makeContext())
+        const suggestions = autocomplete('burn creep', makeContext())
 
         const byRef = new Map(suggestions.map((s) => [s.text, s.description]))
         expect(byRef.get('creep:1')).toContain('denyable') // 90/400
         expect(byRef.get('creep:4')).not.toContain('denyable') // 380/400
       })
 
-      it('agrees with the bare-deny auto-target', () => {
+      it('agrees with the bare-burn auto-target', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
-        const suggested = autocomplete('deny creep', context).map((s) => s.text)
+        const suggested = autocomplete('burn creep', context).map((s) => s.text)
 
         expect(suggested).toContain(
           (pickDenyTargetString(context.player!, context.creeps!) as { target: string }).target,
@@ -1249,7 +1249,7 @@ describe('useCommands', () => {
           creeps: makeCreeps().map((c) => (c.team === 'chaff' ? { ...c, hp: 0 } : c)),
         })
 
-        expect(autocomplete('deny creep', context)).toEqual([])
+        expect(autocomplete('burn creep', context)).toEqual([])
       })
     })
 
@@ -2239,9 +2239,9 @@ describe('informational readouts', () => {
   })
 })
 
-// ── pickDenyTargetString (bare `deny` auto-target) ────────────────
+// ── pickDenyTargetString (bare `burn` auto-target) ────────────────
 describe('pickDenyTargetString', () => {
-  // Melee creep max HP is 400; the deny threshold is 50% (200).
+  // Melee creep max HP is 400; the burn threshold is 50% (200).
   const allied = (overrides: Partial<CreepState>): CreepState => ({
     id: 'c',
     team: 'chaff' as const,
@@ -2256,7 +2256,7 @@ describe('pickDenyTargetString', () => {
     const creeps = [
       allied({ id: 'c0', hp: 180 }), // index 0 — eligible (<=200)
       allied({ id: 'c1', hp: 120 }), // index 1 — eligible, lowest HP
-      allied({ id: 'c2', hp: 350 }), // index 2 — too healthy to deny
+      allied({ id: 'c2', hp: 350 }), // index 2 — too healthy to burn
     ]
     expect(pickDenyTargetString(me, creeps)).toEqual({ target: 'creep:1' })
   })
@@ -2273,7 +2273,7 @@ describe('pickDenyTargetString', () => {
   it('ignores enemy creeps and healthy allied creeps', () => {
     const me = makePlayer({ id: 'p1', team: 'chaff', zone: 'mid-river' })
     const creeps = [
-      allied({ id: 'e', team: 'audit', hp: 10 }), // enemy — you deny your OWN
+      allied({ id: 'e', team: 'audit', hp: 10 }), // enemy — you burn your OWN
       allied({ id: 'healthy', hp: 399 }), // above 50% — not denyable
     ]
     expect('error' in pickDenyTargetString(me, creeps)).toBe(true)

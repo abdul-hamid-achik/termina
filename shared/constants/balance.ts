@@ -339,11 +339,11 @@ export const DAY_DURATION_TICKS = 300
 export const NIGHT_DURATION_TICKS = 240
 export const NIGHT_VISION_PENALTY = 1
 
-// ── Deny System ──────────────────────────────────────────────────
+// ── Burn System ──────────────────────────────────────────────────
 
-export const DENY_HP_THRESHOLD = 0.5
-export const DENY_GOLD_RATIO = 0.5
-export const DENY_XP_RATIO = 0.5
+export const BURN_HP_THRESHOLD = 0.5
+export const BURN_GOLD_RATIO = 0.5
+export const BURN_XP_RATIO = 0.5
 
 // ── Assist System ────────────────────────────────────────────────
 

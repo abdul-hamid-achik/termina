@@ -65,8 +65,8 @@ export interface CreepLasthitEvent {
   readonly goldAwarded: number
 }
 
-export interface CreepDenyEvent {
-  readonly _tag: 'creep_deny'
+export interface WaveBurnEvent {
+  readonly _tag: 'wave_burn'
   readonly tick: number
   readonly playerId: string
   readonly creepId: string
@@ -330,7 +330,7 @@ export type GameEngineEvent =
   | IceKillEvent
   | AncientDestroyedEvent
   | CreepLasthitEvent
-  | CreepDenyEvent
+  | WaveBurnEvent
   | GoldChangeEvent
   | LevelUpEvent
   | AbilityUsedEvent

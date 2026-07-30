@@ -74,7 +74,7 @@ export const WARD_LABELS = {
 
 export const ACTION_LABELS = {
   harden: 'HARDEN',
-  deny: 'BURN',
+  burn: 'BURN',
 } as const
 
 /** Gold is SCRIP on every player-facing surface. */

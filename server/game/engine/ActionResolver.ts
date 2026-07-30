@@ -58,9 +58,9 @@ import {
   creepMaxHp,
   CREEP_XP_SHARED,
   HARDEN_COOLDOWN_TICKS,
-  DENY_HP_THRESHOLD,
-  DENY_GOLD_RATIO,
-  DENY_XP_RATIO,
+  BURN_HP_THRESHOLD,
+  BURN_GOLD_RATIO,
+  BURN_XP_RATIO,
   NULL_POINTER_CRIT_CHANCE,
   NULL_POINTER_CRIT_MULTIPLIER,
   CRYSTALYS_CRIT_CHANCE,
@@ -289,9 +289,9 @@ export function validateAction(state: GameState, action: PlayerAction): string |
     case 'missing':
       // Ping system, always valid
       return null
-    case 'deny':
+    case 'burn':
       if (cmd.target.kind !== 'creep') {
-        return 'Can only deny creeps'
+        return 'Can only burn creeps'
       }
       return null
     case 'select_talent':
@@ -533,7 +533,7 @@ function resolveInstantCastsPhase(
 }
 
 /**
- * Phase 3a: Denies — allied creeps below 50% HP. The denier gets reduced gold
+ * Phase 3a: Burns — allied creeps below 50% HP. The burner gets reduced gold
  * + XP for denying (preventing the enemy from last-hitting).
  */
 function resolveDenyPhase(
@@ -543,11 +543,11 @@ function resolveDenyPhase(
   creeps: CreepState[],
   events: GameEngineEvent[],
 ): { players: Record<string, PlayerState>; creeps: CreepState[] } {
-  const denies = validActions.filter((a) => a.command.type === 'deny')
+  const burns = validActions.filter((a) => a.command.type === 'burn')
   let playerUpdates: PlayerUpdates = {}
 
-  for (const action of denies) {
-    const cmd = action.command as { type: 'deny'; target: { kind: 'creep'; index: number } }
+  for (const action of burns) {
+    const cmd = action.command as { type: 'burn'; target: { kind: 'creep'; index: number } }
     const denier = players[action.playerId]
     if (!denier || !denier.alive) continue
 
@@ -562,24 +562,24 @@ function resolveDenyPhase(
     // denying is impossible) nor the current tick's tier (the window widens past
     // the threshold for any creep that outlived an escalation boundary) is
     // right. Fall back to the tick-0 base for fixtures that omit maxHp.
-    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * DENY_HP_THRESHOLD) continue
+    if (creep.hp > (creep.maxHp ?? creepMaxHp(creep.type, 0)) * BURN_HP_THRESHOLD) continue
 
     creeps[creepIdx] = { ...creep, hp: 0 }
 
-    const denyGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * DENY_GOLD_RATIO)
+    const burnGold = Math.floor(((CREEP_GOLD_MIN + CREEP_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
     playerUpdates[action.playerId] = {
       ...playerUpdates[action.playerId],
-      gold: denier.gold + denyGold,
-      xp: denier.xp + Math.floor(CREEP_XP * DENY_XP_RATIO),
+      gold: denier.gold + burnGold,
+      xp: denier.xp + Math.floor(CREEP_XP * BURN_XP_RATIO),
     }
 
     events.push({
-      _tag: 'creep_deny',
+      _tag: 'wave_burn',
       tick,
       playerId: action.playerId,
       creepId: creep.id,
       creepType: creep.type,
-      goldAwarded: denyGold,
+      goldAwarded: burnGold,
     })
   }
   return { players: applyPlayerUpdates(players, playerUpdates), creeps }
@@ -967,9 +967,9 @@ function resolveAttackPhase(
       }
       // Without this guard an own-creep swing paid the FULL last-hit bounty,
       // teaching the exact opposite of last-hitting. Killing your own creep is
-      // the `deny` command, which has its own HP window and reduced reward.
+      // the `burn` command, which has its own HP window and reduced reward.
       if (creep.team === attacker.team) {
-        miss('That is your own creep — use `deny` instead')
+        miss('That is your own creep — use `burn` instead')
         continue
       }
 

@@ -212,7 +212,7 @@ export function buildEndStats(
       heroDamage: ps?.damageDealt ?? 0,
       iceDamage: ps?.iceDamageDealt ?? 0,
       lastHits: farm[playerId]?.lastHits ?? 0,
-      denies: farm[playerId]?.denies ?? 0,
+      burns: farm[playerId]?.burns ?? 0,
       // Gold spent on items is still gold farmed. Ranking the board by the
       // wallet balance puts the best farmer last, which is the opposite of the
       // lesson the screen is supposed to teach.

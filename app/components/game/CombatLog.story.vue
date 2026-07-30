@@ -54,7 +54,7 @@ const stream: CombatLine[] = [
 // one dim "farm: …" line per tick (mine/team/enemy attributed), while the kill
 // and my own trade stay loud. Tick 260 digests to "farm: team 1 creep, 1 camp ·
 // enemy farming in sight"; tick 261 to "farm: team 2 creeps · enemy 1 creep,
-// 1 deny". Toggle ≡ to see the raw per-event stream these fold from.
+// 1 burn". Toggle ≡ to see the raw per-event stream these fold from.
 const farmDigest: CombatLine[] = [
   {
     tick: 260,
@@ -115,17 +115,17 @@ const farmDigest: CombatLine[] = [
   },
   {
     tick: 261,
-    text: 'cache_sup denied a ranged creep',
+    text: 'cache_sup burned a ranged creep',
     type: 'system',
     salience: 'world',
-    farmKind: 'deny',
+    farmKind: 'burn',
   },
 ]
 
 // My own farming folds too — but a digest carrying MY rewards keeps mine-out
 // salience (so the ME filter keeps it) and leads with my gold: tick 270 digests
 // to "farm: you +81g (2 last-hits) · team 1 creep", tick 271 to "farm: you
-// cleared a camp · you denied a creep · enemy farming in sight".
+// cleared a camp · you burned a creep · enemy farming in sight".
 const myRewards: CombatLine[] = [
   {
     tick: 270,
@@ -159,10 +159,10 @@ const myRewards: CombatLine[] = [
   },
   {
     tick: 271,
-    text: 'you denied a melee creep',
+    text: 'you burned a melee creep',
     type: 'system',
     salience: 'mine-out',
-    farmKind: 'deny',
+    farmKind: 'burn',
   },
   {
     tick: 271,
