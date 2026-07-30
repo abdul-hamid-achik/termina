@@ -26,7 +26,7 @@ function player(over: Partial<PlayerState> = {}): PlayerState {
     level: 11,
     xp: 0,
     gold: 120,
-    items: ['blades_of_attack', 'town_portal_scroll', null, null, null, null],
+    items: ['edge_kit', 'recall_token', null, null, null, null],
     cooldowns: { q: 0, w: 0, e: 0, r: 0 },
     buffs: [],
     alive: true,
@@ -51,7 +51,7 @@ describe('buildEndStats', () => {
   it('reports net worth, not the unspent wallet balance', () => {
     // REGRESSION: the payload only carried `gold`, so the post-game screen
     // ranked the player who converted every coin into items LAST.
-    const owned = ITEMS.blades_of_attack!.cost + ITEMS.town_portal_scroll!.cost
+    const owned = ITEMS.edge_kit!.cost + ITEMS.recall_token!.cost
     const spender = player({ gold: 120 })
     const hoarder = player({ gold: 120 + owned, items: [null, null, null, null, null, null] })
     const stats = buildEndStats(['p1', 'p2'], stateWith({ p1: spender, p2: hoarder }), {})

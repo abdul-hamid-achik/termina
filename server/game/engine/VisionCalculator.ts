@@ -17,13 +17,13 @@ export type { FoggedPlayer, PlayerVisibleState }
  * Using a `ReadonlySet` with exact IDs avoids the fragile `b.id.includes('invis')`
  * substring match — a future buff like `not_invisible` or `invis_breaker` would
  * have wrongly matched the substring. Every ID here is a real buff applied by
- * production code (cache, Silver Edge, Smoke of Deceit, cipher/daemon stealth).
+ * production code (cache, Silver Edge, Blackout Can, cipher/daemon stealth).
  */
 const INVISIBILITY_BUFF_IDS: ReadonlySet<string> = new Set([
   'invis', // Invisibility cache
   'invisible', // Legacy alias used in tests + some engine paths
   'silver_edge_invis', // Silver Edge active
-  'smoke', // Smoke of Deceit
+  'smoke', // Blackout Can
   'stealth', // Cipher W + Daemon passive
 ])
 
@@ -244,7 +244,7 @@ function getZonesWithTrueSight(state: GameState, team: TeamId): Set<string> {
     }
   }
 
-  // Dust of Appearance: a carrier reveals invisible enemies in their current
+  // Tracer Dust: a carrier reveals invisible enemies in their current
   // and adjacent zones. (The item applies a `dust_reveal` buff that nothing
   // else consumed, so Dust was a dead anti-invis item.)
   for (const player of Object.values(state.players)) {

@@ -72,7 +72,7 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
     teaches: 'buy',
     // NB: Termina movement is a fixed 1 zone/tick, so the moveSpeed stat is
     // inert — suggest an item with a stat that actually does something (+attack).
-    hint: '🎓 Spend your gold — type `buy blades_of_attack` (you can buy from your base or fountain).',
+    hint: '🎓 Spend your gold — type `buy edge_kit` (you can buy from your base or fountain).',
     skipNote: 'Shopping: `buy <item>` works while you stand in your base or fountain.',
   },
 ]

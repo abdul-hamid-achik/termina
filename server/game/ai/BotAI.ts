@@ -36,7 +36,7 @@ import { getBotDifficultyConfig, type BotDifficultyConfig } from './BotManager'
 export const buildOrderForRole = recommendedItemsForRole
 
 // Defensive consumables bots keep stocked (one of each)
-const BOT_CONSUMABLES = ['healing_salve', 'town_portal_scroll']
+const BOT_CONSUMABLES = ['trauma_patch', 'recall_token']
 
 // Heroes with invisibility abilities — drives SNIFFER purchasing.
 // Only Cipher (W) and Daemon (passive) grant stealth; see VisionCalculator's
@@ -45,11 +45,11 @@ const INVIS_HEROES = new Set(['cipher', 'daemon'])
 
 // Items a bot will sell to make room for a higher-priority purchase
 const SELLABLE_ITEMS = new Set([
-  'healing_salve',
-  'town_portal_scroll',
+  'trauma_patch',
+  'recall_token',
   'camtap',
   'sniffer',
-  'iron_branch',
+  'scrap_lot',
   'boots',
   'quelling_blade',
 ])
@@ -1469,20 +1469,20 @@ export function decideBotAction(
   if (
     enemyHeroes.length === 0 &&
     getHpPercent(bot) < SALVE_HP_PERCENT &&
-    bot.items.includes('healing_salve') &&
-    !bot.buffs.some((b) => b.id === 'healing_salve_regen')
+    bot.items.includes('trauma_patch') &&
+    !bot.buffs.some((b) => b.id === 'trauma_patch_regen')
   ) {
-    return { type: 'use', item: 'healing_salve' }
+    return { type: 'use', item: 'trauma_patch' }
   }
   if (shouldRetreatFromThreat(state, bot, config)) {
     const fountain = getFountainZone(bot.team)
     // TP home instead of walking when retreating from deep positions
     if (
       enemyHeroes.length === 0 &&
-      bot.items.includes('town_portal_scroll') &&
+      bot.items.includes('recall_token') &&
       getDistance(bot.zone, fountain, hasZone) > TP_RETREAT_MIN_DISTANCE
     ) {
-      return { type: 'use', item: 'town_portal_scroll' }
+      return { type: 'use', item: 'recall_token' }
     }
     // Being chased (can't TP through combat): pop a survival item so the bot
     // doesn't flee to its death with BKB/Blade Mail unused.

@@ -8,15 +8,15 @@ describe('Item Registry', () => {
   describe('ITEMS', () => {
     it('contains starter items', () => {
       const starterIds = [
-        'healing_salve',
-        'mana_vial',
-        'iron_branch',
-        'power_treads',
-        'ring_of_health',
-        'sobi_mask',
-        'blades_of_attack',
-        'chainmail',
-        'cloak',
+        'trauma_patch',
+        'charge_tab',
+        'scrap_lot',
+        'gait_rig',
+        'clot_ring',
+        'drip_mask',
+        'edge_kit',
+        'plate_weave',
+        'field_damper',
         'boots_of_speed',
       ]
       for (const id of starterIds) {
@@ -90,12 +90,7 @@ describe('Item Registry', () => {
     })
 
     it('contains consumable items', () => {
-      const consumableIds = [
-        'camtap',
-        'smoke_of_deceit',
-        'dust_of_appearance',
-        'town_portal_scroll',
-      ]
+      const consumableIds = ['camtap', 'blackout_can', 'tracer_dust', 'recall_token']
       for (const id of consumableIds) {
         expect(ITEMS[id]).toBeDefined()
       }
@@ -145,10 +140,10 @@ describe('Item Registry', () => {
 
   describe('getItem', () => {
     it('returns item definition for valid ID', () => {
-      const item = getItem('healing_salve')
+      const item = getItem('trauma_patch')
       expect(item).toBeDefined()
-      expect(item!.id).toBe('healing_salve')
-      expect(item!.name).toBe('Healing Salve')
+      expect(item!.id).toBe('trauma_patch')
+      expect(item!.name).toBe('Trauma Patch')
     })
 
     it('returns undefined for unknown item ID', () => {
@@ -185,14 +180,14 @@ describe('Item Registry', () => {
   })
 
   describe('consumable items', () => {
-    it('healing_salve is consumable with max stacks', () => {
-      const item = getItem('healing_salve')!
+    it('trauma_patch is consumable with max stacks', () => {
+      const item = getItem('trauma_patch')!
       expect(item.consumable).toBe(true)
       expect(item.maxStacks).toBe(3)
     })
 
-    it('mana_vial is consumable with max stacks', () => {
-      const item = getItem('mana_vial')!
+    it('charge_tab is consumable with max stacks', () => {
+      const item = getItem('charge_tab')!
       expect(item.consumable).toBe(true)
       expect(item.maxStacks).toBe(3)
     })
@@ -203,20 +198,20 @@ describe('Item Registry', () => {
       expect(item.maxStacks).toBe(4)
     })
 
-    it('smoke_of_deceit is consumable', () => {
-      const item = getItem('smoke_of_deceit')!
+    it('blackout_can is consumable', () => {
+      const item = getItem('blackout_can')!
       expect(item.consumable).toBe(true)
       expect(item.maxStacks).toBe(3)
     })
 
-    it('dust_of_appearance is consumable', () => {
-      const item = getItem('dust_of_appearance')!
+    it('tracer_dust is consumable', () => {
+      const item = getItem('tracer_dust')!
       expect(item.consumable).toBe(true)
       expect(item.maxStacks).toBe(2)
     })
 
-    it('town_portal_scroll is consumable', () => {
-      const item = getItem('town_portal_scroll')!
+    it('recall_token is consumable', () => {
+      const item = getItem('recall_token')!
       expect(item.consumable).toBe(true)
       expect(item.maxStacks).toBe(3)
     })
@@ -320,16 +315,16 @@ describe('Item Registry', () => {
       expect(item.passive).toBeUndefined()
     })
 
-    it('iron_branch has no active or passive', () => {
-      const item = getItem('iron_branch')!
+    it('scrap_lot has no active or passive', () => {
+      const item = getItem('scrap_lot')!
       expect(item.active).toBeUndefined()
       expect(item.passive).toBeUndefined()
     })
   })
 
   describe('item stats', () => {
-    it('iron_branch provides all basic stats', () => {
-      const item = getItem('iron_branch')!
+    it('scrap_lot provides all basic stats', () => {
+      const item = getItem('scrap_lot')!
       expect(item.stats.hp).toBe(30)
       expect(item.stats.mp).toBe(30)
       expect(item.stats.attack).toBe(3)
@@ -379,8 +374,8 @@ describe('Item Registry', () => {
       expect(item.stats.hp).toBe(200)
     })
 
-    it('ring_of_health provides HP', () => {
-      const item = getItem('ring_of_health')!
+    it('clot_ring provides HP', () => {
+      const item = getItem('clot_ring')!
       expect(item.stats.hp).toBe(100)
     })
 
@@ -393,7 +388,7 @@ describe('Item Registry', () => {
 
   describe('item cost ordering', () => {
     it('starter items cost less than core items', () => {
-      const starterCosts = ['healing_salve', 'mana_vial', 'iron_branch'].map(
+      const starterCosts = ['trauma_patch', 'charge_tab', 'scrap_lot'].map(
         (id) => getItem(id)!.cost,
       )
       const coreCosts = ['blink_module', 'daedalus', 'heart_of_tarrasque'].map(
@@ -413,10 +408,10 @@ describe('Item Registry', () => {
       }
     })
 
-    it('iron_branch is the cheapest non-consumable item', () => {
-      const ironBranch = getItem('iron_branch')!
+    it('scrap_lot is the cheapest non-consumable item', () => {
+      const ironBranch = getItem('scrap_lot')!
       for (const item of Object.values(ITEMS)) {
-        if (!item.consumable && item.id !== 'iron_branch') {
+        if (!item.consumable && item.id !== 'scrap_lot') {
           expect(ironBranch.cost).toBeLessThanOrEqual(item.cost)
         }
       }

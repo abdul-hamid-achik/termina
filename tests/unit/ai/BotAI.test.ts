@@ -143,19 +143,12 @@ describe('BotAI - decideBotAction', () => {
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
       // Defensive consumables are stocked first
-      expect(action).toEqual({ type: 'buy', item: 'healing_salve' })
+      expect(action).toEqual({ type: 'buy', item: 'trauma_patch' })
     })
 
     it('sources build-item affordability from the canonical shop cost (no hardcoded map)', () => {
-      const bladesCost = getItem('blades_of_attack')!.cost
-      const stocked: (string | null)[] = [
-        'healing_salve',
-        'town_portal_scroll',
-        null,
-        null,
-        null,
-        null,
-      ]
+      const bladesCost = getItem('edge_kit')!.cost
+      const stocked: (string | null)[] = ['trauma_patch', 'recall_token', null, null, null, null]
 
       // Exactly the real cost → buys the first build item.
       const rich = makePlayer({
@@ -168,7 +161,7 @@ describe('BotAI - decideBotAction', () => {
       expect(decideBotAction(makeGameState({ players: { [rich.id]: rich } }), rich, 'mid')).toEqual(
         {
           type: 'buy',
-          item: 'blades_of_attack',
+          item: 'edge_kit',
         },
       )
 
@@ -182,7 +175,7 @@ describe('BotAI - decideBotAction', () => {
       })
       expect(
         decideBotAction(makeGameState({ players: { [poor.id]: poor } }), poor, 'mid'),
-      ).not.toEqual({ type: 'buy', item: 'blades_of_attack' })
+      ).not.toEqual({ type: 'buy', item: 'edge_kit' })
     })
 
     describe('role-aware itemisation', () => {
@@ -198,7 +191,7 @@ describe('BotAI - decideBotAction', () => {
       })
 
       it('falls back to the shared core build for an unknown role', () => {
-        expect(buildOrderForRole(undefined)[0]).toBe('blades_of_attack')
+        expect(buildOrderForRole(undefined)[0]).toBe('edge_kit')
       })
 
       it('every role-build item exists and grants an engine-consumed stat', () => {
@@ -217,26 +210,19 @@ describe('BotAI - decideBotAction', () => {
         }
       })
 
-      it('a tank bot itemises toward HP (ring_of_health, not blades_of_attack)', () => {
-        const stocked: (string | null)[] = [
-          'healing_salve',
-          'town_portal_scroll',
-          null,
-          null,
-          null,
-          null,
-        ]
+      it('a tank bot itemises toward HP (clot_ring, not edge_kit)', () => {
+        const stocked: (string | null)[] = ['trauma_patch', 'recall_token', null, null, null, null]
         const tank = makePlayer({
           heroId: 'kernel', // role: tank
           zone: 'chaff-fountain',
           hp: 500,
           maxHp: 500,
-          gold: getItem('ring_of_health')!.cost,
+          gold: getItem('clot_ring')!.cost,
           items: [...stocked] as PlayerState['items'],
         })
         expect(
           decideBotAction(makeGameState({ players: { [tank.id]: tank } }), tank, 'mid'),
-        ).toEqual({ type: 'buy', item: 'ring_of_health' })
+        ).toEqual({ type: 'buy', item: 'clot_ring' })
       })
     })
 
@@ -761,17 +747,17 @@ describe('BotAI - decideBotAction', () => {
     it('stocks defensive consumables before core items', () => {
       const bot = makePlayer({ zone: 'chaff-fountain', gold: 600 })
       const state = makeGameState({ players: { [bot.id]: bot } })
-      expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'buy', item: 'healing_salve' })
+      expect(decideBotAction(state, bot, 'mid')).toEqual({ type: 'buy', item: 'trauma_patch' })
 
       const withSalve = makePlayer({
         zone: 'chaff-fountain',
         gold: 450,
-        items: ['healing_salve', null, null, null, null, null],
+        items: ['trauma_patch', null, null, null, null, null],
       })
       const state2 = makeGameState({ players: { [withSalve.id]: withSalve } })
       expect(decideBotAction(state2, withSalve, 'mid')).toEqual({
         type: 'buy',
-        item: 'town_portal_scroll',
+        item: 'recall_token',
       })
     })
 
@@ -779,19 +765,19 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({
         zone: 'chaff-fountain',
         gold: 600,
-        items: ['healing_salve', 'town_portal_scroll', null, null, null, null],
+        items: ['trauma_patch', 'recall_token', null, null, null, null],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      // blades_of_attack: +12 attack — a stat the engine actually consumes
-      expect(action).toEqual({ type: 'buy', item: 'blades_of_attack' })
+      // edge_kit: +12 attack — a stat the engine actually consumes
+      expect(action).toEqual({ type: 'buy', item: 'edge_kit' })
     })
 
     it('does not buy dead moveSpeed-only items (boots_of_speed)', () => {
       const bot = makePlayer({
         zone: 'chaff-fountain',
         gold: 99999,
-        items: ['healing_salve', 'town_portal_scroll', null, null, null, null],
+        items: ['trauma_patch', 'recall_token', null, null, null, null],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -806,7 +792,7 @@ describe('BotAI - decideBotAction', () => {
       const bot = makePlayer({
         zone: 'chaff-fountain',
         gold: 1500,
-        items: ['healing_salve', 'town_portal_scroll', 'blades_of_attack', null, null, null],
+        items: ['trauma_patch', 'recall_token', 'edge_kit', null, null, null],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -1072,11 +1058,11 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-t1-chaff',
         hp: 250,
         maxHp: 500,
-        items: ['healing_salve', null, null, null, null, null],
+        items: ['trauma_patch', null, null, null, null, null],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'use', item: 'healing_salve' })
+      expect(action).toEqual({ type: 'use', item: 'trauma_patch' })
     })
 
     it('does not re-pop a salve while regen is already active', () => {
@@ -1084,9 +1070,9 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-t1-chaff',
         hp: 250,
         maxHp: 500,
-        items: ['healing_salve', null, null, null, null, null],
+        items: ['trauma_patch', null, null, null, null, null],
         buffs: [
-          { id: 'healing_salve_regen', stacks: 50, ticksRemaining: 3, source: 'healing_salve' },
+          { id: 'trauma_patch_regen', stacks: 50, ticksRemaining: 3, source: 'trauma_patch' },
         ],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
@@ -1099,7 +1085,7 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-river',
         hp: 250,
         maxHp: 500,
-        items: ['healing_salve', null, null, null, null, null],
+        items: ['trauma_patch', null, null, null, null, null],
       })
       const enemy = makePlayer({ id: 'enemy1', team: 'audit', zone: 'mid-river', hp: 400 })
       const state = makeGameState({ players: { [bot.id]: bot, enemy1: enemy } })
@@ -1112,11 +1098,11 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-t1-audit',
         hp: 100,
         maxHp: 500,
-        items: ['town_portal_scroll', null, null, null, null, null],
+        items: ['recall_token', null, null, null, null, null],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
-      expect(action).toEqual({ type: 'use', item: 'town_portal_scroll' })
+      expect(action).toEqual({ type: 'use', item: 'recall_token' })
     })
 
     it('walks home instead of TPing when already near the fountain', () => {
@@ -1124,7 +1110,7 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-t3-chaff',
         hp: 100,
         maxHp: 500,
-        items: ['town_portal_scroll', null, null, null, null, null],
+        items: ['recall_token', null, null, null, null, null],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       const action = decideBotAction(state, bot, 'mid')
@@ -1136,9 +1122,7 @@ describe('BotAI - decideBotAction', () => {
         zone: 'mid-t1-chaff',
         hp: 100,
         maxHp: 500,
-        buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
-        ],
+        buffs: [{ id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'recall_token' }],
       })
       const state = makeGameState({ players: { [bot.id]: bot } })
       expect(decideBotAction(state, bot, 'mid')).toBeNull()
@@ -1764,7 +1748,7 @@ describe('BotAI - warding', () => {
       heroId: 'sentry', // role: support
       zone: 'chaff-fountain',
       gold: 600,
-      items: inv('healing_salve', 'town_portal_scroll'),
+      items: inv('trauma_patch', 'recall_token'),
     })
     expect(decideBotAction(makeGameState({ players: { [bot.id]: bot } }), bot, 'mid')).toEqual({
       type: 'buy',
@@ -1777,7 +1761,7 @@ describe('BotAI - warding', () => {
       heroId: 'echo', // not support
       zone: 'chaff-fountain',
       gold: 600,
-      items: inv('healing_salve', 'town_portal_scroll'),
+      items: inv('trauma_patch', 'recall_token'),
     })
     const action = decideBotAction(makeGameState({ players: { [bot.id]: bot } }), bot, 'mid')
     expect(action).not.toEqual({ type: 'buy', item: 'camtap' })

@@ -129,7 +129,7 @@ describe('displayBuffs', () => {
   })
 
   it('nulls the countdown for near-permanent auras (>= 999t)', () => {
-    const [b] = displayBuffs([buff('power_treads_attack', 15, 999)])
+    const [b] = displayBuffs([buff('gait_rig_attack', 15, 999)])
     expect(b!.label).toBe('Treads: Attack')
     expect(b!.ticks).toBeNull()
     expect(b!.stacks).toBe(1) // treads' 15 is the stat bonus, not a count

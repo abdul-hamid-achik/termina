@@ -573,12 +573,12 @@ describe('ActionResolver', () => {
             id: 'p1',
             zone: 'mid-t1-chaff',
             buffs: [
-              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
+              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'recall_token' },
               {
                 id: 'tp_destination',
                 stacks: 1,
                 ticksRemaining: 3,
-                source: 'town_portal_scroll',
+                source: 'recall_token',
                 destination: 'chaff-fountain',
               },
             ],
@@ -608,12 +608,12 @@ describe('ActionResolver', () => {
             zone: 'mid-river',
             team: 'chaff',
             buffs: [
-              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
+              { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'recall_token' },
               {
                 id: 'tp_destination',
                 stacks: 1,
                 ticksRemaining: 3,
-                source: 'town_portal_scroll',
+                source: 'recall_token',
                 destination: 'chaff-fountain',
               },
             ],
@@ -837,25 +837,23 @@ describe('ActionResolver', () => {
             maxHp: 550,
             mp: 280,
             maxMp: 280,
-            items: ['healing_salve', null, null, null, null, null],
+            items: ['trauma_patch', null, null, null, null, null],
           }),
         },
       })
 
       const tick1 = Effect.runSync(
-        resolveActions(state, [
-          { playerId: 'p1', command: { type: 'use', item: 'healing_salve' } },
-        ]),
+        resolveActions(state, [{ playerId: 'p1', command: { type: 'use', item: 'trauma_patch' } }]),
       )
       const p1 = tick1.state.players['p1']!
       expect(p1.items[0]).toBeNull()
-      expect(p1.buffs.some((b) => b.id === 'healing_salve_regen')).toBe(true)
+      expect(p1.buffs.some((b) => b.id === 'trauma_patch_regen')).toBe(true)
       expect(
         tick1.events.some(
           (e) =>
             e._tag === 'ability_used' &&
             e.playerId === 'p1' &&
-            e.abilityId === 'healing_salve_active',
+            e.abilityId === 'trauma_patch_active',
         ),
       ).toBe(true)
       // Item actives resolve in Phase 0 now (ahead of the ability they set up),
@@ -877,15 +875,13 @@ describe('ActionResolver', () => {
             hp: 550,
             mp: 280,
             maxMp: 280,
-            items: ['town_portal_scroll', null, null, null, null, null],
+            items: ['recall_token', null, null, null, null, null],
           }),
         },
       })
 
       const result = Effect.runSync(
-        resolveActions(state, [
-          { playerId: 'p1', command: { type: 'use', item: 'town_portal_scroll' } },
-        ]),
+        resolveActions(state, [{ playerId: 'p1', command: { type: 'use', item: 'recall_token' } }]),
       )
       const p1 = result.state.players['p1']!
       expect(p1.items[0]).toBeNull()

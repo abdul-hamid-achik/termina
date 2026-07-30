@@ -28,7 +28,7 @@ const commandTicker = [
   'move mid-river',
   'attack wave:0',
   'cast q hero:daemon',
-  'buy blades_of_attack',
+  'buy edge_kit',
   'ward mid-river',
   'burn wave:1',
   'attack tenant',

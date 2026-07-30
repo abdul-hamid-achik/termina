@@ -119,7 +119,7 @@ export function getEffectiveAttack(player: PlayerState, itemStats?: ItemStats): 
     getBuffStacks(player, 'uptimeAtk') +
     getBuffStacks(player, 'heapGrowth') +
     getBuffStacks(player, 'allocate') +
-    getBuffStacks(player, 'power_treads_attack') +
+    getBuffStacks(player, 'gait_rig_attack') +
     getBuffStacks(player, 'hurricane_pike_attacks')
   const attack = baseAttack + itemBonus + talentBonus + buffBonus
   // ping Timeout (attackReduction) is a % reduction stored in the buff stacks.

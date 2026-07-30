@@ -5,8 +5,8 @@ import InventoryBar from '~~/app/components/game/InventoryBar.vue'
 import type { BuffState } from '~~/shared/types/game'
 import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 
-// healing_salve has an active ("Heal"), iron_branch is stats-only (no active)
-const DEFAULT_ITEMS: (string | null)[] = ['healing_salve', 'iron_branch', null, null, null, null]
+// trauma_patch has an active ("Heal"), scrap_lot is stats-only (no active)
+const DEFAULT_ITEMS: (string | null)[] = ['trauma_patch', 'scrap_lot', null, null, null, null]
 
 function mountBar(items = DEFAULT_ITEMS, buffs: BuffState[] = []) {
   return mount(InventoryBar, {
@@ -28,7 +28,7 @@ describe('InventoryBar', () => {
 
       await wrapper.find('[data-testid="inventory-slot-0"]').trigger('click')
 
-      expect(wrapper.emitted('use')).toEqual([[0, 'healing_salve']])
+      expect(wrapper.emitted('use')).toEqual([[0, 'trauma_patch']])
       wrapper.unmount()
     })
 
@@ -39,10 +39,10 @@ describe('InventoryBar', () => {
 
       expect(slot.attributes('role')).toBe('button')
       expect(slot.attributes('tabindex')).toBe('0')
-      expect(slot.attributes('aria-label')).toContain('Healing Salve')
+      expect(slot.attributes('aria-label')).toContain('Trauma Patch')
 
       await slot.trigger('keydown.enter')
-      expect(wrapper.emitted('use')).toEqual([[0, 'healing_salve']])
+      expect(wrapper.emitted('use')).toEqual([[0, 'trauma_patch']])
       wrapper.unmount()
     })
 
@@ -101,7 +101,7 @@ describe('InventoryBar', () => {
       await wrapper.find('[data-testid="inventory-slot-0"]').trigger('click')
       await wrapper.find('[data-testid="inventory-use-0"]').trigger('click')
 
-      expect(wrapper.emitted('use')).toEqual([[0, 'healing_salve']])
+      expect(wrapper.emitted('use')).toEqual([[0, 'trauma_patch']])
       expect(wrapper.find('[data-testid="inventory-tooltip-0"]').exists()).toBe(false)
       wrapper.unmount()
     })
@@ -121,7 +121,7 @@ describe('InventoryBar', () => {
     it('item on cooldown shows tooltip without [USE] and never emits', async () => {
       mockPointer(true)
       const buffs: BuffState[] = [
-        { id: 'item_cd_healing_salve', stacks: 1, ticksRemaining: 2, source: 'item' },
+        { id: 'item_cd_trauma_patch', stacks: 1, ticksRemaining: 2, source: 'item' },
       ]
       const wrapper = mountBar(DEFAULT_ITEMS, buffs)
 

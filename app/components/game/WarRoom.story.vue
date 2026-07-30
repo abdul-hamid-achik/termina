@@ -23,7 +23,7 @@ function player(overrides: Partial<PlayerState> = {}): PlayerState {
     level: 9,
     xp: 0,
     gold: 1400,
-    items: ['blades_of_attack', null, null, null, null, null],
+    items: ['edge_kit', null, null, null, null, null],
     cooldowns: { q: 0, w: 2, e: 0, r: 8 },
     buffs: [],
     alive: true,

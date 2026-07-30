@@ -202,7 +202,7 @@ const advice = computed((): Advice[] => {
     out.push({
       id: 'unspent',
       observation: `You finished holding ${s.gold.toLocaleString()} unspent gold`,
-      command: 'buy blades_of_attack',
+      command: 'buy edge_kit',
       detail:
         'Scrip in your pocket does nothing and half of it is lost when you die. Spend it the moment you can afford the next item in your build.',
     })

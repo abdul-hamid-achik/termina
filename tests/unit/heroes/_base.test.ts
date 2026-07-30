@@ -726,12 +726,12 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         zone: 'mid-t1-chaff',
         buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'recall_token' },
           {
             id: 'tp_destination',
             stacks: 1,
             ticksRemaining: 2,
-            source: 'town_portal_scroll',
+            source: 'recall_token',
             destination: 'chaff-fountain',
           },
         ],
@@ -751,12 +751,12 @@ describe('_base hero utilities', () => {
       const player = makePlayer({
         zone: 'mid-t1-chaff',
         buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'town_portal_scroll' },
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 2, source: 'recall_token' },
           {
             id: 'tp_destination',
             stacks: 1,
             ticksRemaining: 3,
-            source: 'town_portal_scroll',
+            source: 'recall_token',
             destination: 'chaff-fountain',
           },
         ],
@@ -775,12 +775,12 @@ describe('_base hero utilities', () => {
         team: 'audit',
         zone: 'mid-t1-audit',
         buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
+          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'recall_token' },
           {
             id: 'tp_destination',
             stacks: 1,
             ticksRemaining: 2,
-            source: 'town_portal_scroll',
+            source: 'recall_token',
             destination: 'audit-fountain',
           },
         ],
@@ -796,9 +796,7 @@ describe('_base hero utilities', () => {
     it('should handle missing destination buff gracefully', () => {
       const player = makePlayer({
         zone: 'mid-t1-chaff',
-        buffs: [
-          { id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'town_portal_scroll' },
-        ],
+        buffs: [{ id: 'tp_channeling', stacks: 1, ticksRemaining: 1, source: 'recall_token' }],
       })
       const state = makeGameState({ players: { p1: player } })
 

@@ -1189,7 +1189,7 @@ export function useCommands() {
       .slice(0, 10)
       .map((item) => ({
         text: item.id,
-        description: `${item.name} (${item.cost}g)${gold >= item.cost ? ' [affordable]' : ' [need ' + (item.cost - gold) + 'g]'}`,
+        description: `${item.name} (${item.cost}sc)${gold >= item.cost ? ' [affordable]' : ' [need ' + (item.cost - gold) + 'sc]'}`,
       }))
   }
 

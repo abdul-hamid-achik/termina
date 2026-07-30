@@ -179,7 +179,7 @@ export function sellItem(
       ...player,
       gold: player.gold + refund,
       items,
-      // Drop any effect the item was granting (e.g. Power Treads' near-permanent
+      // Drop any effect the item was granting (e.g. Gait Rig' near-permanent
       // mode buff, an item cooldown). Otherwise you could toggle Treads to +15
       // attack, sell it, and keep the stat forever — plus the refund.
       buffs: player.buffs.filter((b) => b.source !== itemId),
@@ -226,10 +226,10 @@ export function useItem(
     let updatedState = state
     switch (itemId) {
       // Consumables
-      case 'healing_salve':
+      case 'trauma_patch':
         updatedState = useHealingSalve(state, player, slotIdx)
         break
-      case 'mana_vial':
+      case 'charge_tab':
         updatedState = useManaVial(state, player, slotIdx)
         break
       case 'camtap':
@@ -238,13 +238,13 @@ export function useItem(
       case 'sniffer':
         updatedState = yield* usePlaceWard(state, player, slotIdx, target, 'sniffer')
         break
-      case 'smoke_of_deceit':
+      case 'blackout_can':
         updatedState = useSmokeOfDeceit(state, player, slotIdx)
         break
-      case 'dust_of_appearance':
+      case 'tracer_dust':
         updatedState = useDustOfAppearance(state, player, slotIdx)
         break
-      case 'town_portal_scroll':
+      case 'recall_token':
         updatedState = yield* useTownPortalScroll(state, player, slotIdx)
         break
 
@@ -307,8 +307,8 @@ export function useItem(
         updatedState = useShivasGuard(state, player)
         break
 
-      // Power Treads toggle
-      case 'power_treads':
+      // Gait Rig toggle
+      case 'gait_rig':
         updatedState = usePowerTreads(state, player)
         break
 
@@ -324,10 +324,10 @@ export function useItem(
 
 function useHealingSalve(state: GameState, player: PlayerState, slot: number): GameState {
   let updated = applyBuff(player, {
-    id: 'healing_salve_regen',
+    id: 'trauma_patch_regen',
     stacks: 50, // 200 HP / 4 ticks = 50 per tick
     ticksRemaining: 4,
-    source: 'healing_salve',
+    source: 'trauma_patch',
   })
   updated = consumeItem(updated, slot)
   return updatePlayer(state, updated)
@@ -419,10 +419,10 @@ function useSmokeOfDeceit(state: GameState, player: PlayerState, slot: number): 
 function useDustOfAppearance(state: GameState, player: PlayerState, slot: number): GameState {
   let updated = consumeItem(player, slot)
   updated = applyBuff(updated, {
-    id: 'item_cd_dust_of_appearance',
+    id: 'item_cd_tracer_dust',
     stacks: 1,
     ticksRemaining: 0, // No cooldown
-    source: 'dust_of_appearance',
+    source: 'tracer_dust',
   })
 
   // Apply reveal buff to self
@@ -449,14 +449,14 @@ function useTownPortalScroll(
     id: 'tp_channeling',
     stacks: 1,
     ticksRemaining: 3,
-    source: 'town_portal_scroll',
+    source: 'recall_token',
   })
 
   updated = applyBuff(updated, {
     id: 'tp_destination',
     stacks: 1,
     ticksRemaining: 4,
-    source: 'town_portal_scroll',
+    source: 'recall_token',
     destination: fountainZone,
   })
 
@@ -582,7 +582,7 @@ function useHurricanePike(
     let updated: PlayerState = { ...player, zone: pushZone }
     // "Can attack during push": a brief attack steroid for the 2-tick thrust
     // window. The flat bonus lives in `stacks` and is summed in getEffectiveAttack
-    // (mirrors power_treads_attack). Previously stacks:1 with no reader = dead.
+    // (mirrors gait_rig_attack). Previously stacks:1 with no reader = dead.
     updated = applyBuff(updated, {
       id: 'hurricane_pike_attacks',
       stacks: 30,
@@ -1012,43 +1012,43 @@ function useShivasGuard(state: GameState, player: PlayerState): GameState {
 
 function usePowerTreads(state: GameState, player: PlayerState): GameState {
   // Cycle through modes: attack -> hp -> mp -> attack
-  const currentMode = player.buffs.find((b) => b.id.startsWith('power_treads_'))?.id
+  const currentMode = player.buffs.find((b) => b.id.startsWith('gait_rig_'))?.id
 
   // Modes SWITCH, they don't stack — the three mode buffs have distinct ids, so
   // applyBuff wouldn't replace the old one. Strip any existing mode buff first,
   // otherwise toggling leaves attack+hp both active and the cycle gets stuck.
   const base: PlayerState = {
     ...player,
-    buffs: player.buffs.filter((b) => !b.id.startsWith('power_treads_')),
+    buffs: player.buffs.filter((b) => !b.id.startsWith('gait_rig_')),
   }
 
   let updated: PlayerState
   switch (currentMode) {
-    case 'power_treads_attack':
+    case 'gait_rig_attack':
       // Switch to HP mode
       updated = applyBuff(base, {
-        id: 'power_treads_hp',
+        id: 'gait_rig_hp',
         stacks: 150,
         ticksRemaining: 999,
-        source: 'power_treads',
+        source: 'gait_rig',
       })
       break
-    case 'power_treads_hp':
+    case 'gait_rig_hp':
       // Switch to MP mode
       updated = applyBuff(base, {
-        id: 'power_treads_mp',
+        id: 'gait_rig_mp',
         stacks: 100,
         ticksRemaining: 999,
-        source: 'power_treads',
+        source: 'gait_rig',
       })
       break
     default:
       // Default to attack mode
       updated = applyBuff(base, {
-        id: 'power_treads_attack',
+        id: 'gait_rig_attack',
         stacks: 15,
         ticksRemaining: 999,
-        source: 'power_treads',
+        source: 'gait_rig',
       })
   }
 

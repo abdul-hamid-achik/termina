@@ -689,7 +689,7 @@ function abilityLabel(id: unknown): string {
   if (typeof id !== 'string') return '?'
   if (abilityNameById[id]) return abilityNameById[id]
   // Item actives arrive as '<itemId>_active' — resolve to the item's name so
-  // the feed says "cast Town Portal Scroll", not "cast town_portal_scroll_active".
+  // the feed says "cast Recall Token", not "cast recall_token_active".
   if (id.endsWith('_active')) {
     const item = ITEMS[id.slice(0, -'_active'.length)]
     if (item) return item.name

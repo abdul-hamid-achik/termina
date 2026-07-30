@@ -20,9 +20,9 @@ function shopItem(id: string, category: Category) {
 // A mixed catalog spanning every category so tab filtering is observable.
 function catalog() {
   return [
-    shopItem('iron_branch', 'street'), // has stats
-    shopItem('healing_salve', 'street'), // active, 0-tick CD
-    shopItem('ring_of_health', 'street'), // has a passive
+    shopItem('scrap_lot', 'street'), // has stats
+    shopItem('trauma_patch', 'street'), // active, 0-tick CD
+    shopItem('clot_ring', 'street'), // has a passive
     shopItem('silver_edge', 'hardware'), // active with a real cooldown
   ]
 }
@@ -52,9 +52,9 @@ describe('ItemShop category tabs', () => {
 
     const ids = w.findAll('[data-testid^="shop-item-"]').map((el) => el.attributes('data-testid'))
     expect(ids).toContain('shop-item-silver_edge')
-    expect(ids).not.toContain('shop-item-ring_of_health')
-    expect(ids).not.toContain('shop-item-iron_branch')
-    expect(ids).not.toContain('shop-item-healing_salve')
+    expect(ids).not.toContain('shop-item-clot_ring')
+    expect(ids).not.toContain('shop-item-scrap_lot')
+    expect(ids).not.toContain('shop-item-trauma_patch')
   })
 })
 
@@ -65,7 +65,7 @@ describe('ItemShop search', () => {
 
     const items = w.findAll('[data-testid^="shop-item-"]')
     expect(items).toHaveLength(1)
-    expect(items[0]!.attributes('data-testid')).toBe('shop-item-ring_of_health')
+    expect(items[0]!.attributes('data-testid')).toBe('shop-item-clot_ring')
   })
 
   it('renders the empty state when nothing matches', async () => {
@@ -80,14 +80,14 @@ describe('ItemShop search', () => {
 describe('ItemShop item detail rendering', () => {
   it('lists each non-zero stat as a "+N key" chip', () => {
     const w = mountShop()
-    const card = w.find('[data-testid="shop-item-iron_branch"]')
+    const card = w.find('[data-testid="shop-item-scrap_lot"]')
     expect(card.text()).toContain('+30 hp')
     expect(card.text()).toContain('+3 attack')
   })
 
   it('shows a passive description for passive items', () => {
     const w = mountShop()
-    const card = w.find('[data-testid="shop-item-ring_of_health"]')
+    const card = w.find('[data-testid="shop-item-clot_ring"]')
     expect(card.text()).toContain('Passive:')
     expect(card.text()).toContain('Restore')
   })
@@ -101,7 +101,7 @@ describe('ItemShop item detail rendering', () => {
 
   it('shows an active description without a CD suffix when cooldown is zero', () => {
     const w = mountShop()
-    const card = w.find('[data-testid="shop-item-healing_salve"]')
+    const card = w.find('[data-testid="shop-item-trauma_patch"]')
     expect(card.text()).toContain('Active:')
     expect(card.text()).not.toContain('t CD)')
   })

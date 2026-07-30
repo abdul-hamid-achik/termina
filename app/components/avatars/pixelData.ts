@@ -117,9 +117,9 @@ const sprites: Record<string, HeroSpriteData> = {
       '0033221122330000', // 7  lower shadow
       '0003322223300000', // 8  chin
       '0000332223000000', // 9  neck
-      '0034543223454300', // 10 cloak shoulders
-      '0345554334555400', // 11 wide cloak
-      '0324545334545200', // 12 cloak body
+      '0034543223454300', // 10 field_damper shoulders
+      '0345554334555400', // 11 wide field_damper
+      '0324545334545200', // 12 field_damper body
       '0322345554322300', // 13 body
       '0322334553322300', // 14 body v-shape
       '0022333443322000', // 15 base

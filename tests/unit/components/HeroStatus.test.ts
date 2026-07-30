@@ -270,7 +270,7 @@ describe('HeroStatus buff strip', () => {
       makeHero({
         buffs: [
           { id: 'tp_channeling', stacks: 1, ticksRemaining: 3 }, // neutral → text-ability
-          { id: 'power_treads_attack', stacks: 15, ticksRemaining: 999 }, // permanent → no countdown
+          { id: 'gait_rig_attack', stacks: 15, ticksRemaining: 999 }, // permanent → no countdown
         ],
       }),
     )
@@ -278,7 +278,7 @@ describe('HeroStatus buff strip', () => {
     expect(neutral.exists()).toBe(true)
     expect(neutral.classes()).toContain('text-ability')
 
-    const treads = wrapper.find('[data-testid="buff-power_treads_attack"]')
+    const treads = wrapper.find('[data-testid="buff-gait_rig_attack"]')
     expect(treads.exists()).toBe(true)
     expect(treads.text()).not.toContain('999') // no misleading (999t) countdown
     wrapper.unmount()

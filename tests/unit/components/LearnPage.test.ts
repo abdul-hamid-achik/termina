@@ -21,8 +21,8 @@ import {
   ULTIMATE_UNLOCK_LEVEL,
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
   FOUNTAIN_MANA_PER_TICK_PERCENT,
-  RING_OF_HEALTH_REGEN_PERCENT,
-  SOBI_MASK_REGEN_PERCENT,
+  CLOT_RING_REGEN_PERCENT,
+  DRIP_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
   BURN_HP_THRESHOLD,
   BURN_GOLD_RATIO,
@@ -287,10 +287,10 @@ describe('learn page', () => {
       )
       expect(text).toContain('out of combat')
       for (const source of [
-        'Healing Salve',
-        'Mana Vial',
-        'Ring of Health',
-        "Sobi's Mask",
+        'Trauma Patch',
+        'Charge Tab',
+        'Clot Ring',
+        'Drip Mask',
         'regeneration cache',
       ]) {
         expect(text).toContain(source)
@@ -299,8 +299,8 @@ describe('learn page', () => {
 
     it('quotes live regen percentages rather than prose', () => {
       const text = mountLearn().text()
-      expect(text).toContain(`${Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)}% max HP per cycle`)
-      expect(text).toContain(`${Math.round(SOBI_MASK_REGEN_PERCENT * 100)}% max MP per cycle`)
+      expect(text).toContain(`${Math.round(CLOT_RING_REGEN_PERCENT * 100)}% max HP per cycle`)
+      expect(text).toContain(`${Math.round(DRIP_MASK_REGEN_PERCENT * 100)}% max MP per cycle`)
       expect(text).toContain(`${Math.round(REGEN_CACHE_HEAL_PERCENT * 100)}% of both per cycle`)
     })
 

@@ -402,7 +402,7 @@ describe('VisionCalculator', () => {
       expect('fogged' in enemy).toBe(true)
     })
 
-    it('reveals invisible enemies in a Dust of Appearance carrier’s zone (was dead)', () => {
+    it('reveals invisible enemies in a Tracer Dust carrier’s zone (was dead)', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -428,7 +428,7 @@ describe('VisionCalculator', () => {
       expect((enemy as PlayerState).hp).toBe(300)
     })
 
-    it('Dust of Appearance reveal extends to adjacent zones', () => {
+    it('Tracer Dust reveal extends to adjacent zones', () => {
       const state = makeGameState({
         players: {
           p1: makePlayer({
@@ -451,7 +451,7 @@ describe('VisionCalculator', () => {
       expect('fogged' in filtered.players['e1']!).toBe(false)
     })
 
-    it('Dust of Appearance truesight is team-scoped (does not reveal for the enemy team)', () => {
+    it('Tracer Dust truesight is team-scoped (does not reveal for the enemy team)', () => {
       const state = makeGameState({
         players: {
           // Chaff carrier is itself invisible AND holds Dust.

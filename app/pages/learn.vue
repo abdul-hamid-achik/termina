@@ -41,8 +41,8 @@ import {
   CACHE_DURATION_TICKS,
   HARDEN_DURATION_TICKS,
   HARDEN_COOLDOWN_TICKS,
-  RING_OF_HEALTH_REGEN_PERCENT,
-  SOBI_MASK_REGEN_PERCENT,
+  CLOT_RING_REGEN_PERCENT,
+  DRIP_MASK_REGEN_PERCENT,
   REGEN_CACHE_HEAL_PERCENT,
   BURN_HP_THRESHOLD,
   BURN_GOLD_RATIO,
@@ -91,8 +91,8 @@ const talentTierNote = talentLevels.some((lvl, i) => lvl !== TALENT_TIER_IDS[i])
   : ''
 
 // Sustain / last-hitting numbers, derived so the two cards below can't drift.
-const ringRegenPercent = Math.round(RING_OF_HEALTH_REGEN_PERCENT * 100)
-const sobiRegenPercent = Math.round(SOBI_MASK_REGEN_PERCENT * 100)
+const ringRegenPercent = Math.round(CLOT_RING_REGEN_PERCENT * 100)
+const sobiRegenPercent = Math.round(DRIP_MASK_REGEN_PERCENT * 100)
 const cacheRegenPercent = Math.round(REGEN_CACHE_HEAL_PERCENT * 100)
 const burnHpPercent = Math.round(BURN_HP_THRESHOLD * 100)
 const burnGold = Math.floor(((WAVE_GOLD_MIN + WAVE_GOLD_MAX) / 2) * BURN_GOLD_RATIO)
@@ -192,19 +192,19 @@ const commands = [
   {
     cmd: 'use <item>',
     desc: 'Use an active/consumable item. Offensive actives (Dagon, Hex…) auto-hit the nearest enemy',
-    example: 'use healing_salve',
+    example: 'use trauma_patch',
     shortcuts: '—',
   },
   {
     cmd: 'buy <item>',
     desc: 'Buy an item (must be in base/fountain)',
-    example: 'buy blades_of_attack',
+    example: 'buy edge_kit',
     shortcuts: 'b',
   },
   {
     cmd: 'sell <item>',
     desc: 'Sell an item for 50% value',
-    example: 'sell iron_branch',
+    example: 'sell scrap_lot',
     shortcuts: '—',
   },
   {
@@ -352,7 +352,7 @@ const concepts = [
   {
     term: 'Sustain',
     icon: '+',
-    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Healing Salve and Mana Vial (consumables you carry), Ring of Health (${ringRegenPercent}% max HP per cycle) and Sobi's Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
+    desc: `There is NO innate regeneration — an HP or MP bar you spend stays spent. The only recoveries are: your fountain (${FOUNTAIN_HEAL_PER_TICK_PERCENT}% HP / ${FOUNTAIN_MANA_PER_TICK_PERCENT}% MP per cycle, and only while out of combat), Trauma Patch and Charge Tab (consumables you carry), Clot Ring (${ringRegenPercent}% max HP per cycle) and Drip Mask (${sobiRegenPercent}% max MP per cycle), and the regeneration cache (${cacheRegenPercent}% of both per cycle). Buy one of those before you plan to hold a lane — otherwise every trade is one-way and the walk home costs you the wave.`,
   },
   {
     term: 'Last-Hitting & Burning',

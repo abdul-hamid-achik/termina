@@ -171,8 +171,8 @@ describe('PostGame', () => {
       }
       const wrapper = mountPostGame({ players, stats, currentPlayerId: 'p1' })
       const text = wrapper.text()
-      expect(text).toContain('Healing Salve')
-      expect(text).toContain('Power Treads')
+      expect(text).toContain('Trauma Patch')
+      expect(text).toContain('Gait Rig')
     })
 
     it('highlights the current player row', () => {

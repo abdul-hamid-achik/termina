@@ -28,26 +28,26 @@ describe('replay frames reconstruction', () => {
     const initial = await Effect.runPromise(sm.getState(gameId))
     const startGold = initial.players.p1!.gold
 
-    // Tick 1: p1 buys an iron_branch from the fountain.
-    submitAction(gameId, 'p1', { type: 'buy', item: 'iron_branch' })
+    // Tick 1: p1 buys an scrap_lot from the fountain.
+    submitAction(gameId, 'p1', { type: 'buy', item: 'scrap_lot' })
     const t1 = await Effect.runPromise(processTick(gameId, initial))
     await Effect.runPromise(sm.updateState(gameId, () => t1.state))
     expect(t1.state.tick).toBe(1)
     expect(t1.state.players.p1!.gold).toBeLessThan(startGold)
-    expect(t1.state.players.p1!.items.includes('iron_branch')).toBe(true)
+    expect(t1.state.players.p1!.items.includes('scrap_lot')).toBe(true)
 
     // Tick 2: no actions — state mostly carries forward (passive gold may
     // tick up; we only assert the buy persisted).
     const t2 = await Effect.runPromise(processTick(gameId, t1.state))
     expect(t2.state.tick).toBe(2)
-    expect(t2.state.players.p1!.items.includes('iron_branch')).toBe(true)
+    expect(t2.state.players.p1!.items.includes('scrap_lot')).toBe(true)
 
     // Tick 3: p1 sells the branch (the queued command is keyed by item id,
     // not slot — see ActionResolver.resolveActions's sell phase).
-    submitAction(gameId, 'p1', { type: 'sell', item: 'iron_branch' })
+    submitAction(gameId, 'p1', { type: 'sell', item: 'scrap_lot' })
     const t3 = await Effect.runPromise(processTick(gameId, t2.state))
     expect(t3.state.tick).toBe(3)
-    expect(t3.state.players.p1!.items.includes('iron_branch')).toBe(false)
+    expect(t3.state.players.p1!.items.includes('scrap_lot')).toBe(false)
   })
 
   it('does not inject bot actions when no bots are registered for the replay gameId', async () => {

@@ -313,13 +313,13 @@ describe('Game Flow Integration', () => {
 
       const s0 = await Effect.runPromise(sm.getState('g1'))
       const startGold = s0.players.p1!.gold
-      const afterBuy = await Effect.runPromise(buyItem(s0, 'p1', 'iron_branch'))
+      const afterBuy = await Effect.runPromise(buyItem(s0, 'p1', 'scrap_lot'))
       const branchCost = startGold - afterBuy.players.p1!.gold
       expect(branchCost).toBeGreaterThan(0)
-      expect(afterBuy.players.p1!.items.filter((i) => i === 'iron_branch')).toHaveLength(1)
+      expect(afterBuy.players.p1!.items.filter((i) => i === 'scrap_lot')).toHaveLength(1)
 
       // Sell it back — refund is 50% of cost (floored)
-      const slot = afterBuy.players.p1!.items.indexOf('iron_branch')
+      const slot = afterBuy.players.p1!.items.indexOf('scrap_lot')
       const afterSell = await Effect.runPromise(sellItem(afterBuy, 'p1', slot))
       const refunded = afterSell.players.p1!.gold - afterBuy.players.p1!.gold
       expect(refunded).toBe(Math.floor(branchCost * 0.5))
@@ -397,11 +397,11 @@ describe('Game Flow Integration', () => {
       const sm = await startGame(gameId, makePlayers('inv', 1))
 
       const sixItems = [
-        'iron_branch',
-        'ring_of_health',
+        'scrap_lot',
+        'clot_ring',
         'aether_lens',
-        'healing_salve',
-        'mana_vial',
+        'trauma_patch',
+        'charge_tab',
         'camtap',
       ]
       for (const id of sixItems) {

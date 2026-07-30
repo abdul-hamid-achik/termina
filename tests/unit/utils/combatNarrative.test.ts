@@ -244,12 +244,12 @@ describe('eventToLine: previously-orphaned events get real text', () => {
     expect(buy.text).toContain('-500')
 
     const sell = eventToLine(
-      ev('item_sold', { playerId: 'me', itemId: 'iron_branch', refund: 25 }),
+      ev('item_sold', { playerId: 'me', itemId: 'scrap_lot', refund: 25 }),
       ctx,
     )!
     expect(sell.type).toBe('gold')
     expect(sell.text).toContain('sold')
-    expect(sell.text).toContain('Item(iron_branch)')
+    expect(sell.text).toContain('Item(scrap_lot)')
     expect(sell.text).toContain('+25')
   })
   it('keeps the exact victory phrasing for the core', () => {

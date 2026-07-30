@@ -116,7 +116,7 @@ describe('CombatResolver', () => {
 
     it('respects item defense (an armor item reduces damage vs a bare hero)', () => {
       const bare = makePlayer({ hp: 500 })
-      const armored = makePlayer({ hp: 500, items: ['chainmail', null, null, null, null, null] })
+      const armored = makePlayer({ hp: 500, items: ['plate_weave', null, null, null, null, null] })
       const raw = 100
 
       const bareHit = resolvePhysicalHit(bare, raw)

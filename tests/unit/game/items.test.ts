@@ -32,15 +32,15 @@ describe('Items Registry', () => {
 
   describe('item categories', () => {
     const starterIds = [
-      'healing_salve',
-      'mana_vial',
-      'iron_branch',
-      'power_treads',
-      'ring_of_health',
-      'sobi_mask',
-      'blades_of_attack',
-      'chainmail',
-      'cloak',
+      'trauma_patch',
+      'charge_tab',
+      'scrap_lot',
+      'gait_rig',
+      'clot_ring',
+      'drip_mask',
+      'edge_kit',
+      'plate_weave',
+      'field_damper',
       'boots_of_speed',
     ]
     const coreIds = [
@@ -59,13 +59,13 @@ describe('Items Registry', () => {
       'firewall_item',
     ]
     const consumableIds = [
-      'healing_salve',
-      'mana_vial',
+      'trauma_patch',
+      'charge_tab',
       'camtap',
       'sniffer',
-      'smoke_of_deceit',
-      'dust_of_appearance',
-      'town_portal_scroll',
+      'blackout_can',
+      'tracer_dust',
+      'recall_token',
     ]
 
     it('starter items cost less than 600g', () => {

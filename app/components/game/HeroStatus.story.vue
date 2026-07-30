@@ -77,8 +77,8 @@ const fullBuild = heroFrom(
 //  - bookkeeping ids (stealthIdle, inCombat, …) NEVER render;
 //  - stacks show only for true ramping counters (Heap Growth x24) — for the
 //    rest, `stacks` encodes a magnitude and is hidden (Treads' 12 attack);
-//  - permanent/refreshing markers (power_treads_*, Resonance) show no
-//    countdown; genuinely timed effects (Stunned 2t, Healing Salve 4t) do.
+//  - permanent/refreshing markers (gait_rig_*, Resonance) show no
+//    countdown; genuinely timed effects (Stunned 2t, Trauma Patch 4t) do.
 const buffShowcase = heroFrom(
   makePlayer({
     name: 'buff_bearer',
@@ -88,7 +88,7 @@ const buffShowcase = heroFrom(
       { id: 'heapGrowth', stacks: 24, ticksRemaining: 999, source: 'ability', destination: 'p1' },
       { id: 'resonance', stacks: 5, ticksRemaining: 999, source: 'ability', destination: 'p1' },
       {
-        id: 'power_treads_attack',
+        id: 'gait_rig_attack',
         stacks: 12,
         ticksRemaining: 999,
         source: 'item',
@@ -96,7 +96,7 @@ const buffShowcase = heroFrom(
       },
       { id: 'stun', stacks: 1, ticksRemaining: 2, source: 'enemy', destination: 'p1' },
       {
-        id: 'healing_salve_regen',
+        id: 'trauma_patch_regen',
         stacks: 40,
         ticksRemaining: 4,
         source: 'item',

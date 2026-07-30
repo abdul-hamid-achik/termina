@@ -72,8 +72,8 @@ import {
   DESOLATOR_ARMOR_REDUCTION,
   ASSAULT_CUIRASS_AURA_DEFENSE,
   MKB_BONUS_DAMAGE,
-  RING_OF_HEALTH_REGEN_PERCENT,
-  SOBI_MASK_REGEN_PERCENT,
+  CLOT_RING_REGEN_PERCENT,
+  DRIP_MASK_REGEN_PERCENT,
   HEART_REGEN_PERCENT,
   SELL_REFUND_RATIO,
   DOUBLE_CAST_CHANCE,
@@ -1150,9 +1150,9 @@ function resolveAttackPhase(
 }
 
 /**
- * Phase 4: Passive effects — cooldown ticks, item regen (Ring of Health, Sobi
+ * Phase 4: Passive effects — cooldown ticks, item regen (Clot Ring, Sobi
  * Mask, Heart of Tarrasque, Garbage Collector), Aether Lens cooldown reduction,
- * Linken's Sphere re-arm, Healing Salve buff regen.
+ * Linken's Sphere re-arm, Trauma Patch buff regen.
  */
 function resolvePassivesPhase(
   players: Record<string, PlayerState>,
@@ -1173,17 +1173,17 @@ function resolvePassivesPhase(
     let hp = player.hp
     let mp = player.mp
 
-    const salveRegen = player.buffs.find((b) => b.id === 'healing_salve_regen')
+    const salveRegen = player.buffs.find((b) => b.id === 'trauma_patch_regen')
     if (salveRegen) {
       hp = Math.min(player.maxHp, hp + salveRegen.stacks)
     }
 
-    if (player.items.includes('ring_of_health')) {
-      hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * RING_OF_HEALTH_REGEN_PERCENT))
+    if (player.items.includes('clot_ring')) {
+      hp = Math.min(player.maxHp, hp + Math.floor(player.maxHp * CLOT_RING_REGEN_PERCENT))
     }
 
-    if (player.items.includes('sobi_mask')) {
-      mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * SOBI_MASK_REGEN_PERCENT))
+    if (player.items.includes('drip_mask')) {
+      mp = Math.min(player.maxMp, mp + Math.floor(player.maxMp * DRIP_MASK_REGEN_PERCENT))
     }
 
     if (player.items.includes('heart_of_tarrasque')) {
@@ -1583,8 +1583,8 @@ function resolvePostShopPhases(
     const baseMaxHp = hero.baseStats.hp + (hero.growthPerLevel.hp ?? 0) * (player.level - 1)
     const baseMaxMp = hero.baseStats.mp + (hero.growthPerLevel.mp ?? 0) * (player.level - 1)
     const itemBonuses = getCachedItemStats(pid, player.items)
-    const treadsHp = player.buffs.find((b) => b.id === 'power_treads_hp')?.stacks ?? 0
-    const treadsMp = player.buffs.find((b) => b.id === 'power_treads_mp')?.stacks ?? 0
+    const treadsHp = player.buffs.find((b) => b.id === 'gait_rig_hp')?.stacks ?? 0
+    const treadsMp = player.buffs.find((b) => b.id === 'gait_rig_mp')?.stacks ?? 0
     const newMaxHp = baseMaxHp + (itemBonuses.hp ?? 0) + getTalentStatBonus(player, 'hp') + treadsHp
     const newMaxMp = baseMaxMp + (itemBonuses.mp ?? 0) + getTalentStatBonus(player, 'mp') + treadsMp
     if (newMaxHp !== player.maxHp || newMaxMp !== player.maxMp) {

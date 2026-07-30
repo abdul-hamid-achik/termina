@@ -130,7 +130,7 @@ describe('EnemyThreatSheet', () => {
         props: {
           enemies: [
             visibleEnemy({
-              buffs: [{ id: 'power_treads_attack', stacks: 15, ticksRemaining: 999 }],
+              buffs: [{ id: 'gait_rig_attack', stacks: 15, ticksRemaining: 999 }],
             }),
           ],
           lastSeen: {},

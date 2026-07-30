@@ -20,7 +20,7 @@ describe('teleport (town portal scroll)', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['town_portal_scroll', null, null, null, null, null],
+          items: ['recall_token', null, null, null, null, null],
           buffs: [],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' }, // far off — can't interrupt
@@ -28,7 +28,7 @@ describe('teleport (town portal scroll)', () => {
       waves: [], // nothing to chip the channel and cancel it
     }))
 
-    game.submit({ type: 'use', item: 'town_portal_scroll' })
+    game.submit({ type: 'use', item: 'recall_token' })
     await game.tick()
 
     // The TP is not instant — mid-channel the hero is still at the origin.
@@ -54,7 +54,7 @@ describe('teleport (town portal scroll)', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['town_portal_scroll', null, null, null, null, null],
+          items: ['recall_token', null, null, null, null, null],
           buffs: [],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'audit-base' },
@@ -62,7 +62,7 @@ describe('teleport (town portal scroll)', () => {
       waves: [],
     }))
 
-    game.submit({ type: 'use', item: 'town_portal_scroll' })
+    game.submit({ type: 'use', item: 'recall_token' })
     await game.tick(5)
 
     expect((await game.me()).zone).toBe(fountain) // teleport landed
@@ -117,14 +117,14 @@ describe('teleport (town portal scroll)', () => {
         [HUMAN]: {
           ...s.players[HUMAN]!,
           zone: 'mid-river',
-          items: ['town_portal_scroll', null, null, null, null, null],
+          items: ['recall_token', null, null, null, null, null],
           buffs: [],
         },
         [ENEMY]: { ...s.players[ENEMY]!, zone: 'mid-river' }, // co-located — can interrupt
       },
     }))
 
-    game.submit({ type: 'use', item: 'town_portal_scroll' })
+    game.submit({ type: 'use', item: 'recall_token' })
     await game.tick() // channel starts
 
     // The enemy hits the channeling hero — that breaks the teleport.

@@ -11,7 +11,7 @@ import type { HeroRole } from '~~/shared/types/hero'
 
 /** Fallback when a hero has no role-specific list — solid right-click + utility cores. */
 const CORE_BUILD_ORDER = [
-  'blades_of_attack',
+  'edge_kit',
   'null_pointer',
   'garbage_collector',
   'blink_module',
@@ -22,26 +22,12 @@ const CORE_BUILD_ORDER = [
 /** Role-tilted build orders so each hero itemises like its archetype. */
 const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
   // Right-click damage + a survivability spike (BKB) mid-build.
-  carry: [
-    'blades_of_attack',
-    'null_pointer',
-    'maelstrom',
-    'black_king_bar',
-    'daedalus',
-    'segfault_blade',
-  ],
+  carry: ['edge_kit', 'null_pointer', 'maelstrom', 'black_king_bar', 'daedalus', 'segfault_blade'],
   // Burst + pickoff tools (crit, blink, bash).
-  assassin: [
-    'blades_of_attack',
-    'crystalys',
-    'blink_module',
-    'skull_basher',
-    'black_king_bar',
-    'daedalus',
-  ],
+  assassin: ['edge_kit', 'crystalys', 'blink_module', 'skull_basher', 'black_king_bar', 'daedalus'],
   // Max HP / armor to soak for the team.
   tank: [
-    'ring_of_health',
+    'clot_ring',
     'garbage_collector',
     'blade_mail',
     'vanguard',
@@ -50,7 +36,7 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
   ],
   // Durable initiator: blink in, blademail, then tanky cores.
   offlaner: [
-    'ring_of_health',
+    'clot_ring',
     'blink_module',
     'blade_mail',
     'black_king_bar',
@@ -68,8 +54,8 @@ const ROLE_BUILD_ORDERS: Record<HeroRole, string[]> = {
   ],
   // Cheap utility first, then team-saving items.
   support: [
-    'sobi_mask',
-    'ring_of_health',
+    'drip_mask',
+    'clot_ring',
     'force_staff',
     'veil_of_discord',
     'euls_scepter',

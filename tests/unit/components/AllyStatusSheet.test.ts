@@ -97,9 +97,7 @@ describe('AllyStatusSheet', () => {
     it('drops near-permanent stat auras from the status line', () => {
       const w = mount(AllyStatusSheet, {
         props: {
-          allies: [
-            ally({ buffs: [{ id: 'power_treads_attack', stacks: 15, ticksRemaining: 999 }] }),
-          ],
+          allies: [ally({ buffs: [{ id: 'gait_rig_attack', stacks: 15, ticksRemaining: 999 }] })],
           tick: 10,
         },
       })

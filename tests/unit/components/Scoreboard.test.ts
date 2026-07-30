@@ -19,7 +19,7 @@ function makePlayer(id: string, team: 'chaff' | 'audit', overrides: EntryOverrid
     assists: 3,
     gold: 1200,
     level: 7,
-    items: ['healing_salve', 'iron_branch', null, null, null, null] as (string | null)[],
+    items: ['trauma_patch', 'scrap_lot', null, null, null, null] as (string | null)[],
     alive: true,
     respawnTick: null,
     fogged: false,
@@ -87,8 +87,8 @@ describe('Scoreboard', () => {
 
       const expanded = wrapper.find('[data-testid="scoreboard-items-r1"]')
       expect(expanded.exists()).toBe(true)
-      expect(expanded.text()).toContain('Healing Salve')
-      expect(expanded.text()).toContain('Iron Branch')
+      expect(expanded.text()).toContain('Trauma Patch')
+      expect(expanded.text()).toContain('Scrap Lot')
     })
 
     it('clicking the row again collapses it', async () => {

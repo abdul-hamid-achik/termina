@@ -63,10 +63,10 @@ const BUFF_META: Record<string, BuffMeta> = {
   dd: { label: 'Double Damage', kind: 'positive' },
   arcane: { label: 'Arcane', kind: 'positive' },
   regen: { label: 'Regen', kind: 'positive' },
-  healing_salve_regen: { label: 'Healing Salve', kind: 'positive' },
-  power_treads_attack: { label: 'Treads: Attack', kind: 'positive' },
-  power_treads_hp: { label: 'Treads: HP', kind: 'positive' },
-  power_treads_mp: { label: 'Treads: MP', kind: 'positive' },
+  trauma_patch_regen: { label: 'Trauma Patch', kind: 'positive' },
+  gait_rig_attack: { label: 'Treads: Attack', kind: 'positive' },
+  gait_rig_hp: { label: 'Treads: HP', kind: 'positive' },
+  gait_rig_mp: { label: 'Treads: MP', kind: 'positive' },
   nextHopShadow: { label: 'Next Hop', kind: 'positive' },
   fullTraceDmg: { label: 'Full Trace', kind: 'positive' },
   hopCount: { label: 'Hop Count', kind: 'positive', showStacks: true },
@@ -118,7 +118,7 @@ const BUFF_META: Record<string, BuffMeta> = {
   voidZone_dot: { label: 'Void Zone', kind: 'negative' },
 }
 
-// ticksRemaining at/above this is a near-permanent aura (e.g. Power Treads' mode,
+// ticksRemaining at/above this is a near-permanent aura (e.g. Gait Rig' mode,
 // Malloc's Heap Growth) — show it without a misleading "(999t)" countdown.
 const PERMANENT_TICKS = 999
 

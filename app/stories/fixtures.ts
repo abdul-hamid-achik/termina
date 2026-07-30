@@ -50,15 +50,15 @@ export const SAMPLE_HERO_ID = SAMPLE_HEROES.echo
 
 /** Real item ids, useful for inventory / shop fixtures. */
 export const SAMPLE_ITEMS = {
-  blades: 'blades_of_attack',
-  treads: 'power_treads',
+  blades: 'edge_kit',
+  treads: 'gait_rig',
   bkb: 'black_king_bar',
   daedalus: 'daedalus',
   desolator: 'desolator',
   blink: 'blink_module',
   forceStaff: 'force_staff',
-  salve: 'healing_salve',
-  branch: 'iron_branch',
+  salve: 'trauma_patch',
+  branch: 'scrap_lot',
   camtapWard: 'camtap',
 } as const
 

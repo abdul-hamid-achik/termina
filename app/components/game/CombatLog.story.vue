@@ -178,7 +178,7 @@ const myRewards: CombatLine[] = [
 // preview of what those events render as in the log.
 const economy: CombatLine[] = [
   { tick: 245, text: 'you acquired Blink Module (-2,250g)', type: 'gold', salience: 'mine-out' },
-  { tick: 246, text: 'you sold Iron Branch (+25g)', type: 'gold', salience: 'mine-out' },
+  { tick: 246, text: 'you sold Scrap Lot (+25g)', type: 'gold', salience: 'mine-out' },
   { tick: 247, text: 'you grabbed the haste cache', type: 'objective', salience: 'mine-out' },
   { tick: 248, text: 'you cleared a stub camp', type: 'gold', salience: 'mine-out' },
   { tick: 248, text: 'daemon_carry sold Null Pointer (+700g)', type: 'gold', salience: 'world' },

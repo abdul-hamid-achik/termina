@@ -28,14 +28,14 @@ import type { ItemDef, ItemCategory } from '~~/shared/types/items'
 // ── Street (cost <= 500 + consumables) ──────────────────────────────
 
 const healingSalve: ItemDef = {
-  id: 'healing_salve',
-  name: 'Healing Salve',
+  id: 'trauma_patch',
+  name: 'Trauma Patch',
   cost: 150,
   stats: {},
   consumable: true,
   maxStacks: 3,
   active: {
-    id: 'healing_salve_active',
+    id: 'trauma_patch_active',
     name: 'Heal',
     description: 'Restore 200 HP over 4 cycles.',
     cooldownTicks: 0,
@@ -43,14 +43,14 @@ const healingSalve: ItemDef = {
 }
 
 const manaVial: ItemDef = {
-  id: 'mana_vial',
-  name: 'Mana Vial',
+  id: 'charge_tab',
+  name: 'Charge Tab',
   cost: 100,
   stats: {},
   consumable: true,
   maxStacks: 3,
   active: {
-    id: 'mana_vial_active',
+    id: 'charge_tab_active',
     name: 'Restore Mana',
     description: 'Instantly restore 150 MP.',
     cooldownTicks: 0,
@@ -58,8 +58,8 @@ const manaVial: ItemDef = {
 }
 
 const ironBranch: ItemDef = {
-  id: 'iron_branch',
-  name: 'Iron Branch',
+  id: 'scrap_lot',
+  name: 'Scrap Lot',
   cost: 50,
   stats: {
     hp: 30,
@@ -72,13 +72,13 @@ const ironBranch: ItemDef = {
 }
 
 const powerTreads: ItemDef = {
-  id: 'power_treads',
-  name: 'Power Treads',
+  id: 'gait_rig',
+  name: 'Gait Rig',
   cost: 500,
   stats: { attack: 10, moveSpeed: 1 },
   consumable: false,
   active: {
-    id: 'power_treads_active',
+    id: 'gait_rig_active',
     name: 'Toggle',
     description: 'Switch between +15 attack, +150 HP, or +100 MP.',
     cooldownTicks: 0,
@@ -86,50 +86,50 @@ const powerTreads: ItemDef = {
 }
 
 const ringOfHealth: ItemDef = {
-  id: 'ring_of_health',
-  name: 'Ring of Health',
+  id: 'clot_ring',
+  name: 'Clot Ring',
   cost: 450,
   stats: { hp: 100 },
   consumable: false,
   passive: {
-    id: 'ring_of_health_passive',
+    id: 'clot_ring_passive',
     name: 'Regeneration',
     description: 'Restore 2% max HP per cycle.',
   },
 }
 
 const sobiMask: ItemDef = {
-  id: 'sobi_mask',
-  name: "Sobi's Mask",
+  id: 'drip_mask',
+  name: 'Drip Mask',
   cost: 325,
   stats: { mp: 75 },
   consumable: false,
   passive: {
-    id: 'sobi_mask_passive',
+    id: 'drip_mask_passive',
     name: 'Mana Regen',
     description: 'Restore 2% max MP per cycle.',
   },
 }
 
 const bladesOfAttack: ItemDef = {
-  id: 'blades_of_attack',
-  name: 'Blades of Attack',
+  id: 'edge_kit',
+  name: 'Edge Kit',
   cost: 430,
   stats: { attack: 12 },
   consumable: false,
 }
 
-const chainmail: ItemDef = {
-  id: 'chainmail',
-  name: 'Chainmail',
+const plate_weave: ItemDef = {
+  id: 'plate_weave',
+  name: 'Plate Weave',
   cost: 550,
   stats: { defense: 5 },
   consumable: false,
 }
 
-const cloak: ItemDef = {
-  id: 'cloak',
-  name: 'Cloak',
+const field_damper: ItemDef = {
+  id: 'field_damper',
+  name: 'Field Damper',
   cost: 550,
   stats: { magicResist: 15 },
   consumable: false,
@@ -641,14 +641,14 @@ const snifferWard: ItemDef = {
 }
 
 const smokeOfDeceit: ItemDef = {
-  id: 'smoke_of_deceit',
-  name: 'Smoke of Deceit',
+  id: 'blackout_can',
+  name: 'Blackout Can',
   cost: 50,
   stats: {},
   consumable: true,
   maxStacks: 3,
   active: {
-    id: 'smoke_of_deceit_active',
+    id: 'blackout_can_active',
     name: 'Smoke',
     description:
       'Team becomes invisible to enemy wards for 3 cycles. Breaks on entering enemy zone with heroes.',
@@ -657,14 +657,14 @@ const smokeOfDeceit: ItemDef = {
 }
 
 const dustOfAppearance: ItemDef = {
-  id: 'dust_of_appearance',
-  name: 'Dust of Appearance',
+  id: 'tracer_dust',
+  name: 'Tracer Dust',
   cost: 80,
   stats: {},
   consumable: true,
   maxStacks: 2,
   active: {
-    id: 'dust_of_appearance_active',
+    id: 'tracer_dust_active',
     name: 'Reveal',
     description: 'Reveal all invisible enemies in current and adjacent zones for 2 cycles.',
     cooldownTicks: 0,
@@ -672,14 +672,14 @@ const dustOfAppearance: ItemDef = {
 }
 
 const townPortalScroll: ItemDef = {
-  id: 'town_portal_scroll',
-  name: 'Town Portal Scroll',
+  id: 'recall_token',
+  name: 'Recall Token',
   cost: 50,
   stats: {},
   consumable: true,
   maxStacks: 3,
   active: {
-    id: 'town_portal_scroll_active',
+    id: 'recall_token_active',
     name: 'Teleport',
     description: 'Teleport to friendly fountain after 2 cycle channel.',
     cooldownTicks: 0,
@@ -690,15 +690,15 @@ const townPortalScroll: ItemDef = {
 
 export const ITEMS: Record<string, ItemDef> = {
   // Starter
-  healing_salve: healingSalve,
-  mana_vial: manaVial,
-  iron_branch: ironBranch,
-  power_treads: powerTreads,
-  ring_of_health: ringOfHealth,
-  sobi_mask: sobiMask,
-  blades_of_attack: bladesOfAttack,
-  chainmail: chainmail,
-  cloak: cloak,
+  trauma_patch: healingSalve,
+  charge_tab: manaVial,
+  scrap_lot: ironBranch,
+  gait_rig: powerTreads,
+  clot_ring: ringOfHealth,
+  drip_mask: sobiMask,
+  edge_kit: bladesOfAttack,
+  plate_weave: plate_weave,
+  field_damper: field_damper,
   boots_of_speed: bootsOfSpeed,
 
   // Attack
@@ -745,9 +745,9 @@ export const ITEMS: Record<string, ItemDef> = {
   // Consumables
   camtap: camtapWard,
   sniffer: snifferWard,
-  smoke_of_deceit: smokeOfDeceit,
-  dust_of_appearance: dustOfAppearance,
-  town_portal_scroll: townPortalScroll,
+  blackout_can: smokeOfDeceit,
+  tracer_dust: dustOfAppearance,
+  recall_token: townPortalScroll,
 }
 
 export const ITEM_IDS = Object.keys(ITEMS)
@@ -770,21 +770,21 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     blurb:
       'Consumables and cheap fence goods — opening buys, wards, cans and tokens. Restock often.',
     ids: [
-      'healing_salve',
-      'mana_vial',
-      'iron_branch',
-      'power_treads',
-      'ring_of_health',
-      'sobi_mask',
-      'blades_of_attack',
-      'chainmail',
-      'cloak',
+      'trauma_patch',
+      'charge_tab',
+      'scrap_lot',
+      'gait_rig',
+      'clot_ring',
+      'drip_mask',
+      'edge_kit',
+      'plate_weave',
+      'field_damper',
       'boots_of_speed',
       'camtap',
       'sniffer',
-      'smoke_of_deceit',
-      'dust_of_appearance',
-      'town_portal_scroll',
+      'blackout_can',
+      'tracer_dust',
+      'recall_token',
     ],
   },
   {
@@ -854,12 +854,12 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
 /**
  * Default Quick-Buy pins for a player who has never customized them — cheap,
  * universally useful early buys so a new player's Quick-Buy bar isn't empty.
- * A TP scroll (mobility/safety), a salve (lane sustain), an Iron Branch (cheap
- * all-stats), and Blades of Attack (early damage — the tutorial's buy hint).
+ * A recall token (mobility/safety), a salve (lane sustain), an Scrap Lot (cheap
+ * all-stats), and Edge Kit (early damage — the tutorial's buy hint).
  */
 export const DEFAULT_QUICKBUY_ITEMS: readonly string[] = [
-  'town_portal_scroll',
-  'healing_salve',
-  'iron_branch',
-  'blades_of_attack',
+  'recall_token',
+  'trauma_patch',
+  'scrap_lot',
+  'edge_kit',
 ]

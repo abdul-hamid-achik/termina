@@ -369,8 +369,8 @@ export const MKB_BONUS_DAMAGE = 50
 
 // ── Regeneration ─────────────────────────────────────────────────
 
-export const RING_OF_HEALTH_REGEN_PERCENT = 0.02
-export const SOBI_MASK_REGEN_PERCENT = 0.02
+export const CLOT_RING_REGEN_PERCENT = 0.02
+export const DRIP_MASK_REGEN_PERCENT = 0.02
 export const HEART_REGEN_PERCENT = 0.05
 export const REGEN_CACHE_HEAL_PERCENT = 0.05
 

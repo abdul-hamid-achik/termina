@@ -1310,15 +1310,15 @@ describe('useCommands', () => {
 
     describe('buy item completion', () => {
       const sampleItems: Record<string, ItemDef> = {
-        healing_salve: {
-          id: 'healing_salve',
-          name: 'Healing Salve',
+        trauma_patch: {
+          id: 'trauma_patch',
+          name: 'Trauma Patch',
           cost: 150,
           stats: {},
           consumable: true,
           maxStacks: 3,
           active: {
-            id: 'healing_salve_active',
+            id: 'trauma_patch_active',
             name: 'Heal',
             description: 'Restore HP',
             cooldownTicks: 0,
@@ -1349,12 +1349,12 @@ describe('useCommands', () => {
       it('returns items matching partial with cost in description', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({ items: sampleItems })
-        const suggestions = autocomplete('buy heal', context)
+        const suggestions = autocomplete('buy trauma', context)
 
         expect(suggestions.length).toBeGreaterThan(0)
-        const salve = suggestions.find((s) => s.text === 'healing_salve')
+        const salve = suggestions.find((s) => s.text === 'trauma_patch')
         expect(salve).toBeDefined()
-        expect(salve!.description).toContain('150g')
+        expect(salve!.description).toContain('150sc')
       })
 
       it('shows [affordable] when player has enough gold', () => {
@@ -1363,8 +1363,8 @@ describe('useCommands', () => {
           player: makePlayer({ gold: 300 }),
           items: sampleItems,
         })
-        const suggestions = autocomplete('buy heal', context)
-        const salve = suggestions.find((s) => s.text === 'healing_salve')
+        const suggestions = autocomplete('buy trauma', context)
+        const salve = suggestions.find((s) => s.text === 'trauma_patch')
 
         expect(salve).toBeDefined()
         expect(salve!.description).toContain('[affordable]')
@@ -1380,13 +1380,13 @@ describe('useCommands', () => {
         const boots = suggestions.find((s) => s.text === 'boots_of_speed')
 
         expect(boots).toBeDefined()
-        expect(boots!.description).toContain('[need 400g]')
+        expect(boots!.description).toContain('[need 400sc]')
       })
 
       it('returns empty when no items in context', () => {
         const { autocomplete } = useCommands()
         const context = makeContext()
-        const suggestions = autocomplete('buy heal', context)
+        const suggestions = autocomplete('buy trauma', context)
 
         expect(suggestions).toEqual([])
       })
@@ -1401,15 +1401,15 @@ describe('useCommands', () => {
           stats: { moveSpeed: 1 },
           consumable: false,
         },
-        healing_salve: {
-          id: 'healing_salve',
-          name: 'Healing Salve',
+        trauma_patch: {
+          id: 'trauma_patch',
+          name: 'Trauma Patch',
           cost: 150,
           stats: {},
           consumable: true,
           maxStacks: 3,
           active: {
-            id: 'healing_salve_active',
+            id: 'trauma_patch_active',
             name: 'Heal',
             description: 'Restore HP',
             cooldownTicks: 0,
@@ -1429,7 +1429,7 @@ describe('useCommands', () => {
         const { autocomplete } = useCommands()
         const context = makeContext({
           player: makePlayer({
-            items: ['boots_of_speed', 'healing_salve', null, null, null, null],
+            items: ['boots_of_speed', 'trauma_patch', null, null, null, null],
           }),
           items: sampleItems,
         })

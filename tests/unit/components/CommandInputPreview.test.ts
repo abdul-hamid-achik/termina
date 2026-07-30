@@ -106,15 +106,15 @@ describe('CommandInput preview line', () => {
 
   it('renders a buy preview with the item name and cost from the items map', async () => {
     const wrapper = mountInput()
-    const preview = await previewFor(wrapper, 'buy healing_salve')
-    expect(preview.text()).toContain('>> Buy Healing Salve')
+    const preview = await previewFor(wrapper, 'buy trauma_patch')
+    expect(preview.text()).toContain('>> Buy Trauma Patch')
     expect(preview.text()).toContain('-150sc')
     wrapper.unmount()
   })
 
   it('errors a buy when outside a shop zone', async () => {
     const wrapper = mountInput(makeShopPlayer({ zone: 'mid-river' }))
-    const preview = await previewFor(wrapper, 'buy healing_salve')
+    const preview = await previewFor(wrapper, 'buy trauma_patch')
     expect(preview.text()).toContain('!!')
     expect(preview.text().toLowerCase()).toContain('shop')
     wrapper.unmount()
@@ -122,10 +122,10 @@ describe('CommandInput preview line', () => {
 
   it('renders a sell preview for an owned item', async () => {
     const wrapper = mountInput(
-      makeShopPlayer({ items: ['healing_salve', null, null, null, null, null] }),
+      makeShopPlayer({ items: ['trauma_patch', null, null, null, null, null] }),
     )
-    const preview = await previewFor(wrapper, 'sell healing_salve')
-    expect(preview.text()).toContain('>> Sell Healing Salve')
+    const preview = await previewFor(wrapper, 'sell trauma_patch')
+    expect(preview.text()).toContain('>> Sell Trauma Patch')
     wrapper.unmount()
   })
 

@@ -525,7 +525,7 @@ describe('Item actives — forced movement', () => {
   })
 })
 
-describe('Power Treads toggle (was cosmetic — the mode buffs were read nowhere)', () => {
+describe('Gait Rig toggle (was cosmetic — the mode buffs were read nowhere)', () => {
   const ptBuff = (id: string, stacks: number) => ({
     id,
     stacks,
@@ -533,23 +533,23 @@ describe('Power Treads toggle (was cosmetic — the mode buffs were read nowhere
     source: 'item',
   })
 
-  it('attack mode (power_treads_attack) raises effective attack by the buff stacks', () => {
+  it('attack mode (gait_rig_attack) raises effective attack by the buff stacks', () => {
     const base = getEffectiveAttack(makePlayer())
-    const treaded = getEffectiveAttack(makePlayer({ buffs: [ptBuff('power_treads_attack', 15)] }))
+    const treaded = getEffectiveAttack(makePlayer({ buffs: [ptBuff('gait_rig_attack', 15)] }))
     expect(treaded - base).toBe(15)
   })
 
-  it('hp mode (power_treads_hp) raises maxHp through the resolveActions recalc', () => {
+  it('hp mode (gait_rig_hp) raises maxHp through the resolveActions recalc', () => {
     const state = makeGameState({
-      players: { p1: makePlayer({ buffs: [ptBuff('power_treads_hp', 150)] }) },
+      players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_hp', 150)] }) },
     })
     const r = run(state, [])
     expect(r.state.players['p1']!.maxHp).toBe(ECHO_BASE_HP + 150)
   })
 
-  it('mp mode (power_treads_mp) raises maxMp through the resolveActions recalc', () => {
+  it('mp mode (gait_rig_mp) raises maxMp through the resolveActions recalc', () => {
     const state = makeGameState({
-      players: { p1: makePlayer({ buffs: [ptBuff('power_treads_mp', 100)] }) },
+      players: { p1: makePlayer({ buffs: [ptBuff('gait_rig_mp', 100)] }) },
     })
     const r = run(state, [])
     expect(r.state.players['p1']!.maxMp).toBe(ECHO_BASE_MP + 100)

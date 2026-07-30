@@ -89,28 +89,28 @@ describe('Shop', () => {
   describe('buyItem', () => {
     it('purchases an item and deducts gold', async () => {
       const state = makeGameState()
-      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'scrap_lot'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const newState = exit.value
         const player = newState.players['player_1']!
-        expect(player.gold).toBe(1000 - 50) // iron_branch costs 50
-        expect(player.items).toContain('iron_branch')
+        expect(player.gold).toBe(1000 - 50) // scrap_lot costs 50
+        expect(player.items).toContain('scrap_lot')
       }
     })
 
     it('places item in first empty slot', async () => {
-      const player = makePlayer({ items: ['healing_salve', null, null, null, null, null] })
+      const player = makePlayer({ items: ['trauma_patch', null, null, null, null, null] })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'scrap_lot'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const items = exit.value.players['player_1']!.items
-        expect(items[0]).toBe('healing_salve')
-        expect(items[1]).toBe('iron_branch')
+        expect(items[0]).toBe('trauma_patch')
+        expect(items[1]).toBe('scrap_lot')
       }
     })
 
@@ -118,7 +118,7 @@ describe('Shop', () => {
       const player = makePlayer({ zone: 'mid-t1-chaff' })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'scrap_lot'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -149,7 +149,7 @@ describe('Shop', () => {
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'scrap_lot'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -159,14 +159,14 @@ describe('Shop', () => {
     })
 
     it('fails when buying past maxStacks for a consumable', async () => {
-      // iron_branch has maxStacks: 3
+      // scrap_lot has maxStacks: 3
       const player = makePlayer({
-        items: ['iron_branch', 'iron_branch', 'iron_branch', null, null, null],
+        items: ['scrap_lot', 'scrap_lot', 'scrap_lot', null, null, null],
         gold: 5000,
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'player_1', 'scrap_lot'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -205,7 +205,7 @@ describe('Shop', () => {
 
     it('fails when player does not exist', async () => {
       const state = makeGameState()
-      const exit = await cacheEffect(buyItem(state, 'nonexistent_player', 'iron_branch'))
+      const exit = await cacheEffect(buyItem(state, 'nonexistent_player', 'scrap_lot'))
 
       expect(Exit.isFailure(exit)).toBe(true)
     })
@@ -216,18 +216,18 @@ describe('Shop', () => {
       })
 
       // Buy first item
-      let exit = await cacheEffect(buyItem(state, 'player_1', 'iron_branch'))
+      let exit = await cacheEffect(buyItem(state, 'player_1', 'scrap_lot'))
       expect(Exit.isSuccess(exit)).toBe(true)
       state = (exit as Exit.Success<GameState, never>).value
 
       // Buy second item
-      exit = await cacheEffect(buyItem(state, 'player_1', 'healing_salve'))
+      exit = await cacheEffect(buyItem(state, 'player_1', 'trauma_patch'))
       expect(Exit.isSuccess(exit)).toBe(true)
       state = (exit as Exit.Success<GameState, never>).value
 
       const player = state.players['player_1']!
-      expect(player.items[0]).toBe('iron_branch')
-      expect(player.items[1]).toBe('healing_salve')
+      expect(player.items[0]).toBe('scrap_lot')
+      expect(player.items[1]).toBe('trauma_patch')
       expect(player.gold).toBe(5000 - 50 - 150)
     })
 
@@ -247,7 +247,7 @@ describe('Shop', () => {
   describe('sellItem', () => {
     it('sells an item and refunds 50% gold', async () => {
       const player = makePlayer({
-        items: ['iron_branch', null, null, null, null, null],
+        items: ['scrap_lot', null, null, null, null, null],
         gold: 500,
       })
       const state = makeGameState({ players: { player_1: player } })
@@ -263,13 +263,13 @@ describe('Shop', () => {
     })
 
     it('selling an item drops its lingering buffs but keeps unrelated ones', async () => {
-      // Power Treads' mode buff is near-permanent (ticksRemaining 999); without
+      // Gait Rig' mode buff is near-permanent (ticksRemaining 999); without
       // cleanup you could toggle +15 attack, sell the boots, and keep the stat.
       const player = makePlayer({
-        items: ['power_treads', null, null, null, null, null],
+        items: ['gait_rig', null, null, null, null, null],
         gold: 500,
         buffs: [
-          { id: 'power_treads_attack', stacks: 15, ticksRemaining: 999, source: 'power_treads' },
+          { id: 'gait_rig_attack', stacks: 15, ticksRemaining: 999, source: 'gait_rig' },
           { id: 'haste', stacks: 1, ticksRemaining: 10, source: 'cache_haste' },
         ],
       })
@@ -282,7 +282,7 @@ describe('Shop', () => {
         const newPlayer = exit.value.players['player_1']!
         expect(newPlayer.items[0]).toBeNull()
         // The item's own buff is gone…
-        expect(newPlayer.buffs.some((b) => b.id === 'power_treads_attack')).toBe(false)
+        expect(newPlayer.buffs.some((b) => b.id === 'gait_rig_attack')).toBe(false)
         // …but an unrelated buff (a cache) survives.
         expect(newPlayer.buffs.some((b) => b.id === 'haste')).toBe(true)
       }
@@ -308,7 +308,7 @@ describe('Shop', () => {
     it('fails when not in shop zone', async () => {
       const player = makePlayer({
         zone: 'mid-river',
-        items: ['iron_branch', null, null, null, null, null],
+        items: ['scrap_lot', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -348,7 +348,7 @@ describe('Shop', () => {
 
     it('clears the correct inventory slot', async () => {
       const player = makePlayer({
-        items: ['iron_branch', 'healing_salve', 'boots_of_speed', null, null, null],
+        items: ['scrap_lot', 'trauma_patch', 'boots_of_speed', null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
@@ -357,7 +357,7 @@ describe('Shop', () => {
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const items = exit.value.players['player_1']!.items
-        expect(items[0]).toBe('iron_branch')
+        expect(items[0]).toBe('scrap_lot')
         expect(items[1]).toBeNull()
         expect(items[2]).toBe('boots_of_speed')
       }
@@ -367,31 +367,31 @@ describe('Shop', () => {
   describe('useItem', () => {
     it('uses healing salve and removes it from inventory', async () => {
       const player = makePlayer({
-        items: ['healing_salve', null, null, null, null, null],
+        items: ['trauma_patch', null, null, null, null, null],
         hp: 300,
         maxHp: 500,
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'healing_salve'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'trauma_patch'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
         const newPlayer = exit.value.players['player_1']!
         expect(newPlayer.items[0]).toBeNull() // consumed
-        expect(newPlayer.buffs.some((b) => b.id === 'healing_salve_regen')).toBe(true)
+        expect(newPlayer.buffs.some((b) => b.id === 'trauma_patch_regen')).toBe(true)
       }
     })
 
     it('uses mana vial and restores MP', async () => {
       const player = makePlayer({
-        items: ['mana_vial', null, null, null, null, null],
+        items: ['charge_tab', null, null, null, null, null],
         mp: 100,
         maxMp: 300,
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'mana_vial'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'charge_tab'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -403,13 +403,13 @@ describe('Shop', () => {
 
     it('mana vial does not exceed max MP', async () => {
       const player = makePlayer({
-        items: ['mana_vial', null, null, null, null, null],
+        items: ['charge_tab', null, null, null, null, null],
         mp: 250,
         maxMp: 300,
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'mana_vial'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'charge_tab'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -451,7 +451,7 @@ describe('Shop', () => {
     it('fails when item is not in inventory', async () => {
       const state = makeGameState()
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'healing_salve'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'trauma_patch'))
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
@@ -493,7 +493,7 @@ describe('Shop', () => {
     it('fails when player does not exist', async () => {
       const state = makeGameState()
 
-      const exit = await cacheEffect(useItem(state, 'nonexistent', 'healing_salve'))
+      const exit = await cacheEffect(useItem(state, 'nonexistent', 'trauma_patch'))
 
       expect(Exit.isFailure(exit)).toBe(true)
     })
@@ -757,75 +757,70 @@ describe('Shop', () => {
         expect(hasBuff(exit.value, 'player_1', 'silver_edge_invis')).toBe(true)
     })
 
-    it('Power Treads (first toggle) sets attack mode on the caster', async () => {
+    it('Gait Rig (first toggle) sets attack mode on the caster', async () => {
       const player = makePlayer({
         id: 'player_1',
-        items: ['power_treads', null, null, null, null, null],
+        items: ['gait_rig', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'power_treads'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'gait_rig'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit))
-        expect(hasBuff(exit.value, 'player_1', 'power_treads_attack')).toBe(true)
+        expect(hasBuff(exit.value, 'player_1', 'gait_rig_attack')).toBe(true)
     })
 
-    it('Power Treads cycles attack → hp → mp → attack with exactly one mode active', async () => {
+    it('Gait Rig cycles attack → hp → mp → attack with exactly one mode active', async () => {
       let state = makeGameState({
         players: {
           player_1: makePlayer({
             id: 'player_1',
-            items: ['power_treads', null, null, null, null, null],
+            items: ['gait_rig', null, null, null, null, null],
           }),
         },
       })
 
       // Modes must SWITCH, not stack — toggling four times wraps back to attack,
-      // and only ever one power_treads_* buff is present at a time.
-      const order = [
-        'power_treads_attack',
-        'power_treads_hp',
-        'power_treads_mp',
-        'power_treads_attack',
-      ]
+      // and only ever one gait_rig_* buff is present at a time.
+      const order = ['gait_rig_attack', 'gait_rig_hp', 'gait_rig_mp', 'gait_rig_attack']
       for (const expected of order) {
-        const exit = await cacheEffect(useItem(state, 'player_1', 'power_treads'))
+        const exit = await cacheEffect(useItem(state, 'player_1', 'gait_rig'))
         expect(Exit.isSuccess(exit)).toBe(true)
         if (!Exit.isSuccess(exit)) return
         state = exit.value
         const modeBuffs = state.players['player_1']!.buffs.filter((b) =>
-          b.id.startsWith('power_treads_'),
+          b.id.startsWith('gait_rig_'),
         )
         expect(modeBuffs).toHaveLength(1)
         expect(modeBuffs[0]!.id).toBe(expected)
       }
     })
 
-    it('Dust of Appearance applies the reveal buff to the caster', async () => {
+    it('Tracer Dust applies the reveal buff to the caster', async () => {
       const player = makePlayer({
         id: 'player_1',
-        items: ['dust_of_appearance', null, null, null, null, null],
+        items: ['tracer_dust', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'dust_of_appearance'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'tracer_dust'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) expect(hasBuff(exit.value, 'player_1', 'dust_reveal')).toBe(true)
     })
 
-    it('Smoke of Deceit smokes the caster and in-zone allies', async () => {
+    it('Blackout Can smokes the caster and in-zone allies', async () => {
       const caster = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['smoke_of_deceit', null, null, null, null, null],
+        items: ['blackout_can', null, null, null, null, null],
       })
       const ally = makePlayer({ id: 'ally_1', team: 'chaff', zone: 'mid-river' })
       const state = makeGameState({ players: { player_1: caster, ally_1: ally } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'smoke_of_deceit'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'blackout_can'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {
@@ -901,16 +896,16 @@ describe('Shop', () => {
       if (Exit.isSuccess(exit)) expect(exit.value.players['player_1']!.zone).toBe('chaff-base')
     })
 
-    it('Town Portal Scroll starts a channel toward the home fountain', async () => {
+    it('Recall Token starts a channel toward the home fountain', async () => {
       const player = makePlayer({
         id: 'player_1',
         team: 'chaff',
         zone: 'mid-river',
-        items: ['town_portal_scroll', null, null, null, null, null],
+        items: ['recall_token', null, null, null, null, null],
       })
       const state = makeGameState({ players: { player_1: player } })
 
-      const exit = await cacheEffect(useItem(state, 'player_1', 'town_portal_scroll'))
+      const exit = await cacheEffect(useItem(state, 'player_1', 'recall_token'))
 
       expect(Exit.isSuccess(exit)).toBe(true)
       if (Exit.isSuccess(exit)) {

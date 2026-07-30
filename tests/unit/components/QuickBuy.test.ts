@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import QuickBuy from '~~/app/components/game/QuickBuy.vue'
 import { ITEMS } from '~~/shared/constants/items'
 
-const SALVE_COST = ITEMS.healing_salve!.cost
+const SALVE_COST = ITEMS.trauma_patch!.cost
 
 function mountQuickBuy(
   overrides: Partial<{
@@ -15,7 +15,7 @@ function mountQuickBuy(
 ) {
   return mount(QuickBuy, {
     props: {
-      pinnedItems: ['healing_salve'],
+      pinnedItems: ['trauma_patch'],
       gold: SALVE_COST + 100,
       canBuy: true,
       ...overrides,
@@ -27,44 +27,44 @@ describe('QuickBuy', () => {
   it('emits buy when [BUY] is tapped', async () => {
     const wrapper = mountQuickBuy()
 
-    await wrapper.find('[data-testid="quickbuy-buy-healing_salve"]').trigger('click')
+    await wrapper.find('[data-testid="quickbuy-buy-trauma_patch"]').trigger('click')
 
-    expect(wrapper.emitted('buy')).toEqual([['healing_salve']])
+    expect(wrapper.emitted('buy')).toEqual([['trauma_patch']])
   })
 
   it('emits unpin when the unpin button is tapped (separate from buy)', async () => {
     const wrapper = mountQuickBuy()
 
-    await wrapper.find('[data-testid="quickbuy-unpin-healing_salve"]').trigger('click')
+    await wrapper.find('[data-testid="quickbuy-unpin-trauma_patch"]').trigger('click')
 
-    expect(wrapper.emitted('unpin')).toEqual([['healing_salve']])
+    expect(wrapper.emitted('unpin')).toEqual([['trauma_patch']])
     expect(wrapper.emitted('buy')).toBeUndefined()
   })
 
   it('hides [BUY] when unaffordable but keeps unpin reachable', () => {
     const wrapper = mountQuickBuy({ gold: 0 })
 
-    expect(wrapper.find('[data-testid="quickbuy-buy-healing_salve"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="quickbuy-unpin-healing_salve"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="quickbuy-buy-trauma_patch"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="quickbuy-unpin-trauma_patch"]').exists()).toBe(true)
     expect(wrapper.text()).toContain(`-${SALVE_COST}sc`)
   })
 
   it('hides [BUY] when buying is unavailable (e.g. away from base)', () => {
     const wrapper = mountQuickBuy({ canBuy: false })
 
-    expect(wrapper.find('[data-testid="quickbuy-buy-healing_salve"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="quickbuy-buy-trauma_patch"]').exists()).toBe(false)
   })
 
   it('buy and unpin are sized as touch targets with a coarse-pointer gap', () => {
     const wrapper = mountQuickBuy()
 
-    expect(wrapper.find('[data-testid="quickbuy-buy-healing_salve"]').classes()).toContain(
+    expect(wrapper.find('[data-testid="quickbuy-buy-trauma_patch"]').classes()).toContain(
       'touch-target',
     )
-    expect(wrapper.find('[data-testid="quickbuy-unpin-healing_salve"]').classes()).toContain(
+    expect(wrapper.find('[data-testid="quickbuy-unpin-trauma_patch"]').classes()).toContain(
       'touch-target',
     )
-    expect(wrapper.find('[data-testid="quickbuy-healing_salve"]').classes()).toContain('touch-gap')
+    expect(wrapper.find('[data-testid="quickbuy-trauma_patch"]').classes()).toContain('touch-gap')
   })
 
   describe('recommendation fallback (new-player funnel)', () => {
@@ -72,22 +72,22 @@ describe('QuickBuy', () => {
       const wrapper = mountQuickBuy({
         pinnedItems: [],
         gold: 99999,
-        recommendedItems: ['blades_of_attack', 'null_pointer'],
+        recommendedItems: ['edge_kit', 'null_pointer'],
       })
       expect(wrapper.text()).toContain('Suggested')
-      expect(wrapper.find('[data-testid="quickbuy-blades_of_attack"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="quickbuy-edge_kit"]').exists()).toBe(true)
       // Suggestions aren't pinned, so they expose no unpin control.
-      expect(wrapper.find('[data-testid="quickbuy-unpin-blades_of_attack"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="quickbuy-unpin-edge_kit"]').exists()).toBe(false)
     })
 
     it('prefers pinned items over suggestions when both exist', () => {
       const wrapper = mountQuickBuy({
-        pinnedItems: ['healing_salve'],
-        recommendedItems: ['blades_of_attack'],
+        pinnedItems: ['trauma_patch'],
+        recommendedItems: ['edge_kit'],
       })
       expect(wrapper.text()).toContain('Quick Buy')
-      expect(wrapper.find('[data-testid="quickbuy-healing_salve"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="quickbuy-blades_of_attack"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="quickbuy-trauma_patch"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="quickbuy-edge_kit"]').exists()).toBe(false)
     })
   })
 })

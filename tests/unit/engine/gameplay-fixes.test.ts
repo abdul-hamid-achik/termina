@@ -9,7 +9,7 @@ import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 /**
  * Effect-assertions for mechanics that were DEAD/BROKEN until fixed (the
  * audit + coverage pass surfaced these): Scythe of Vyse Hex did not gate basic
- * attacks, and Silver Edge / Smoke of Deceit granted no invisibility.
+ * attacks, and Silver Edge / Blackout Can granted no invisibility.
  */
 
 function buff(id: string): Buff {
@@ -127,7 +127,7 @@ describe('gameplay-fixes: invisibility items fog the holder from enemies', () =>
     expect(viewerSeesEnemyFogged([buff('silver_edge_invis')])).toBe(true)
   })
 
-  it('Smoke of Deceit (smoke) fogs the holder', () => {
+  it('Blackout Can (smoke) fogs the holder', () => {
     expect(viewerSeesEnemyFogged([buff('smoke')])).toBe(true)
   })
 

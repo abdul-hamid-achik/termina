@@ -18,7 +18,7 @@ describe('recommendedItemsForRole', () => {
     const core = recommendedItemsForRole(undefined)
     expect(core.length).toBeGreaterThan(0)
     // Core build leads with a right-click stat item (the bot/test contract).
-    expect(core[0]).toBe('blades_of_attack')
+    expect(core[0]).toBe('edge_kit')
   })
 
   it('recommends only real, buyable items (no typos / dead ids)', () => {

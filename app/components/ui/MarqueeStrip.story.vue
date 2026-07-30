@@ -5,7 +5,7 @@ const commands = [
   'move mid-river',
   'attack wave:0',
   'cast q hero:daemon',
-  'buy blades_of_attack',
+  'buy edge_kit',
   'ward mid-river',
   'attack tenant',
 ]

@@ -791,12 +791,12 @@ describe('combat', () => {
     const before = dmgToHuman()
     expect(before).toBeGreaterThan(0)
 
-    // Chainmail (+5 defense) raises getEffectiveDefense, so the same swing hurts less.
+    // Plate Weave (+5 defense) raises getEffectiveDefense, so the same swing hurts less.
     await game.patch((s) => ({
       ...s,
       players: {
         ...s.players,
-        [HUMAN]: { ...s.players[HUMAN]!, items: ['chainmail', null, null, null, null, null] },
+        [HUMAN]: { ...s.players[HUMAN]!, items: ['plate_weave', null, null, null, null, null] },
       },
     }))
     game.attackHero(HUMAN, ENEMY)

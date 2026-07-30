@@ -6,39 +6,39 @@ import { PASSIVE_GOLD_PER_TICK } from '~~/shared/constants/balance'
 /**
  * Replaces tests/e2e/flows/game_buy_resolves.yml — a buy action lands the item
  * in the player's inventory across a tick. The human spawns in the fountain (a
- * shop zone) with starting gold, so iron_branch is affordable.
+ * shop zone) with starting gold, so scrap_lot is affordable.
  */
 describe('shop', () => {
   it('buying an item resolves it into the inventory after one tick', async () => {
     const game = await seedGame('laning', { heroSelf: 'echo' })
 
-    game.buy('iron_branch')
+    game.buy('scrap_lot')
     await game.tick()
 
     const me = await game.me()
-    expect(me.items).toContain('iron_branch')
+    expect(me.items).toContain('scrap_lot')
   })
 
   it('buying deducts exactly the item cost (net of the tick passive income)', async () => {
     const game = await seedGame('laning', { heroSelf: 'echo' })
     const before = (await game.me()).gold
 
-    game.buy('iron_branch')
+    game.buy('scrap_lot')
     await game.tick()
 
     const me = await game.me()
     // The only gold movements this idle tick are the buy and passive income.
-    expect(me.gold).toBe(before - ITEMS.iron_branch!.cost + PASSIVE_GOLD_PER_TICK)
+    expect(me.gold).toBe(before - ITEMS.scrap_lot!.cost + PASSIVE_GOLD_PER_TICK)
   })
 
   it('buying emits an item_purchased event so the buy is confirmed in the log', async () => {
     const game = await seedGame('laning', { heroSelf: 'echo' })
 
-    game.buy('iron_branch')
+    game.buy('scrap_lot')
     await game.tick()
 
     const purchase = game.lastEvents.find(
-      (e) => e._tag === 'item_purchased' && e.playerId === HUMAN && e.itemId === 'iron_branch',
+      (e) => e._tag === 'item_purchased' && e.playerId === HUMAN && e.itemId === 'scrap_lot',
     )
     expect(purchase).toBeDefined()
     // The event carries the price for the "(-Ng)" confirmation line.
@@ -49,16 +49,16 @@ describe('shop', () => {
     const game = await seedGame('laning', { heroSelf: 'echo' })
 
     // Buy then sell the same item (the player stays in the shop zone).
-    game.buy('iron_branch')
+    game.buy('scrap_lot')
     await game.tick()
-    game.submit({ type: 'sell', item: 'iron_branch' })
+    game.submit({ type: 'sell', item: 'scrap_lot' })
     await game.tick()
 
     const me = await game.me()
-    expect(me.items).not.toContain('iron_branch')
+    expect(me.items).not.toContain('scrap_lot')
 
     const sale = game.lastEvents.find(
-      (e) => e._tag === 'item_sold' && e.playerId === HUMAN && e.itemId === 'iron_branch',
+      (e) => e._tag === 'item_sold' && e.playerId === HUMAN && e.itemId === 'scrap_lot',
     )
     expect(sale).toBeDefined()
     // The event carries the refund for the "(+Ng)" confirmation line.
@@ -191,7 +191,7 @@ describe('shop', () => {
     const before = lastHitDamage()
     expect(before).toBeGreaterThan(0)
 
-    // Give Blades of Attack (+12 attack), then swing again — getEffectiveAttack
+    // Give Edge Kit (+12 attack), then swing again — getEffectiveAttack
     // folds in the item's stat bonus, so the same hit lands for more.
     await game.patch((s) => ({
       ...s,
@@ -199,7 +199,7 @@ describe('shop', () => {
         ...s.players,
         [HUMAN]: {
           ...s.players[HUMAN]!,
-          items: ['blades_of_attack', null, null, null, null, null],
+          items: ['edge_kit', null, null, null, null, null],
         },
       },
     }))

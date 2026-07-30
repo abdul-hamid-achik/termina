@@ -5,7 +5,7 @@ import InventoryBar from './InventoryBar.vue'
 
 const empty: (string | null)[] = [null, null, null, null, null, null]
 
-// blades_of_attack (stats-only / passive), healing_salve + force_staff have actives.
+// edge_kit (stats-only / passive), trauma_patch + force_staff have actives.
 const mixed: (string | null)[] = [
   SAMPLE_ITEMS.salve,
   SAMPLE_ITEMS.forceStaff,
