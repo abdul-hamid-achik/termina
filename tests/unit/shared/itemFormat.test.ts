@@ -137,7 +137,7 @@ describe('browseSections', () => {
 describe('STAT_LABELS', () => {
   it('has a label for every ItemStats key', () => {
     expect(Object.keys(STAT_LABELS).sort()).toEqual(
-      ['attack', 'defense', 'hp', 'magicResist', 'moveSpeed', 'mp'].sort(),
+      ['attack', 'defense', 'hp', 'magicResist', 'mp'].sort(),
     )
   })
 })

@@ -75,7 +75,7 @@ const powerTreads: ItemDef = {
   id: 'gait_rig',
   name: 'Gait Rig',
   cost: 500,
-  stats: { attack: 10, moveSpeed: 1 },
+  stats: { attack: 10 },
   consumable: false,
   active: {
     id: 'gait_rig_active',
@@ -219,7 +219,7 @@ const silverEdge: ItemDef = {
   id: 'ghostwire_edge',
   name: 'Ghostwire Edge',
   cost: 4700,
-  stats: { attack: 40, moveSpeed: 1 },
+  stats: { attack: 40 },
   consumable: false,
   active: {
     id: 'ghostwire_edge_active',
@@ -475,7 +475,7 @@ const eulsScepter: ItemDef = {
   id: 'stasis_shunt',
   name: 'Stasis Shunt',
   cost: 2750,
-  stats: { mp: 150, moveSpeed: 1 },
+  stats: { mp: 150 },
   consumable: false,
   active: {
     id: 'stasis_shunt_active',

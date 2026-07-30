@@ -80,8 +80,6 @@ export interface HeroBaseStats {
   attack: number
   defense: number
   magicResist: number
-  moveSpeed: number
-  attackRange: 'line' | 'sweep'
 }
 
 export interface HeroDef {

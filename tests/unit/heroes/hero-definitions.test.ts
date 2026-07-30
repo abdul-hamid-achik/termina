@@ -65,9 +65,6 @@ describe('Hero Definitions', () => {
         expect(s.defense).toBeLessThanOrEqual(10)
         expect(s.magicResist).toBeGreaterThanOrEqual(10)
         expect(s.magicResist).toBeLessThanOrEqual(30)
-        expect(s.moveSpeed).toBeGreaterThanOrEqual(1)
-        expect(s.moveSpeed).toBeLessThanOrEqual(3)
-        expect(['line', 'sweep']).toContain(s.attackRange)
       })
 
       it('has growth per level stats', () => {
@@ -145,8 +142,14 @@ describe('Hero Definitions', () => {
   })
 
   it('has at least 5 line and 3 sweep heroes for team diversity', () => {
-    const line = Object.values(HEROES).filter((h: HeroDef) => h.baseStats.attackRange === 'line')
-    const sweep = Object.values(HEROES).filter((h: HeroDef) => h.baseStats.attackRange === 'sweep')
+    // attackRange is deleted (zero engine reads) — the cohort partition now
+    // reads the role the draft actually consumes (carry/assassin = line-like
+    // right-clickers, mage = sweep-like casters), which is what the old
+    // melee/ranged split approximated.
+    const line = Object.values(HEROES).filter((h: HeroDef) =>
+      ['carry', 'assassin', 'offlaner'].includes(h.role),
+    )
+    const sweep = Object.values(HEROES).filter((h: HeroDef) => h.role === 'mage')
     expect(line.length).toBeGreaterThanOrEqual(5)
     expect(sweep.length).toBeGreaterThanOrEqual(3)
   })

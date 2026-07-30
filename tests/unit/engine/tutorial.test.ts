@@ -194,7 +194,7 @@ describe('tutorial flow', () => {
       expect(itemId && ITEMS[itemId]).toBeTruthy()
       const item = ITEMS[itemId!]!
       expect(item.cost).toBeLessThanOrEqual(STARTING_GOLD)
-      const functionalStats = Object.keys(item.stats).filter((k) => k !== 'moveSpeed')
+      const functionalStats = Object.keys(item.stats)
       expect(functionalStats.length > 0 || !!item.active).toBe(true)
     })
   })

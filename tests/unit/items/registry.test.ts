@@ -440,7 +440,7 @@ describe('Item Registry', () => {
     it('every non-consumable item grants a functional benefit', () => {
       // Termina movement is a fixed 1 zone/tick, so the moveSpeed stat is inert
       // (summed in EffectiveStats but never read). A non-consumable item must
-      // therefore DO something else: a non-moveSpeed stat, an active, or a passive
+      // therefore DO something else: a real stat, an active, or a passive
       // — otherwise it's a gold sink that does nothing.
       //
       // This guard keeps a dead item from slipping into the shop — an item
@@ -448,7 +448,7 @@ describe('Item Registry', () => {
       // was deleted for exactly this).
       for (const def of Object.values(ITEMS)) {
         if (def.consumable) continue
-        const functionalStats = Object.keys(def.stats).filter((k) => k !== 'moveSpeed')
+        const functionalStats = Object.keys(def.stats)
         const functional = functionalStats.length > 0 || !!def.active || !!def.passive
         expect(functional, `${def.id} grants nothing the engine consumes`).toBe(true)
       }

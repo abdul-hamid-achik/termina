@@ -36,7 +36,6 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
     attack: 0,
     defense: 0,
     magicResist: 0,
-    moveSpeed: 0,
   }
   for (const itemId of items) {
     if (!itemId) continue
@@ -47,7 +46,6 @@ export function getItemStatBonuses(items: (string | null)[]): ItemStats {
     totals.attack += item.stats.attack ?? 0
     totals.defense += item.stats.defense ?? 0
     totals.magicResist += item.stats.magicResist ?? 0
-    totals.moveSpeed += item.stats.moveSpeed ?? 0
   }
   return totals
 }
@@ -71,7 +69,7 @@ function getSelectedTalents(player: PlayerState): Talent[] {
 /** Sum the statBonus values of the player's selected talents for one stat. */
 export function getTalentStatBonus(
   player: PlayerState,
-  stat: 'hp' | 'mp' | 'attack' | 'defense' | 'magicResist' | 'moveSpeed' | 'attackSpeed',
+  stat: 'hp' | 'mp' | 'attack' | 'defense' | 'magicResist' | 'attackSpeed',
 ): number {
   let total = 0
   for (const talent of getSelectedTalents(player)) {

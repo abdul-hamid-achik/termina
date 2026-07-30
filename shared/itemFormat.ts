@@ -22,18 +22,10 @@ export const STAT_LABELS: Record<keyof ItemStats, string> = {
   attack: 'Attack',
   defense: 'Defense',
   magicResist: 'Magic Resist',
-  moveSpeed: 'Move Speed',
 }
 
 // Stable display order so stat lines read consistently across items.
-const STAT_ORDER: (keyof ItemStats)[] = [
-  'hp',
-  'mp',
-  'attack',
-  'defense',
-  'magicResist',
-  'moveSpeed',
-]
+const STAT_ORDER: (keyof ItemStats)[] = ['hp', 'mp', 'attack', 'defense', 'magicResist']
 
 /** `["+250 HP", "+5 Defense"]` style stat lines; empty array if statless. */
 export function formatStats(stats: ItemStats): string[] {

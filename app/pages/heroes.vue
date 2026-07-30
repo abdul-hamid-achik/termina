@@ -267,7 +267,6 @@ const {
           <span><span class="text-gold">atk</span> {{ hero.baseStats.attack }}</span>
           <span>def {{ hero.baseStats.defense }}</span>
           <span>mres {{ hero.baseStats.magicResist }}</span>
-          <span class="uppercase">{{ hero.baseStats.attackRange }}</span>
         </div>
         <!-- Kit identity at a glance — how this hero plays, beyond its role. -->
         <div class="flex flex-wrap gap-1" data-testid="hero-playstyle">

@@ -42,7 +42,7 @@ export interface Talent {
   tier: TalentTier
   // Stat bonuses
   statBonus?: {
-    stat: 'hp' | 'mp' | 'attack' | 'defense' | 'magicResist' | 'moveSpeed' | 'attackSpeed'
+    stat: 'hp' | 'mp' | 'attack' | 'defense' | 'magicResist' | 'attackSpeed'
     value: number
   }
   // Ability modifications

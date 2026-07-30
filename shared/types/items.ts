@@ -4,7 +4,6 @@ export interface ItemStats {
   attack?: number
   defense?: number
   magicResist?: number
-  moveSpeed?: number
 }
 
 export interface ItemActiveDef {
