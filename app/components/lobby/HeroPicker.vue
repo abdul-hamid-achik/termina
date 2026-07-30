@@ -648,7 +648,7 @@ function initialOf(name: string | undefined | null): string {
         </div>
       </div>
       <div v-else class="min-w-0 flex-1 t-caption">
-        &gt;_ select a hero to {{ isBanMode ? 'ban' : 'deploy' }}...
+        &gt;_ select a handle to {{ isBanMode ? 'ban' : 'deploy' }}...
       </div>
       <div class="flex items-center justify-between gap-3 sm:justify-end">
         <!-- Mobile countdown (the desktop one lives in the VS column) -->

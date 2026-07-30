@@ -246,7 +246,7 @@ const filledCount = computed(() => {
 
             <template v-else-if="slot.type === 'typing'">
               <span class="flex-1 text-xs text-ability">
-                <span class="animate-pulse">connecting</span>
+                <span class="animate-pulse">syncing</span>
                 <span v-if="cursorVisible" aria-hidden="true" class="text-ability">█</span>
               </span>
             </template>

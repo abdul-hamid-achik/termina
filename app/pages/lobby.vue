@@ -403,7 +403,7 @@ onUnmounted(() => {
         <div class="flex w-full flex-col justify-center gap-4">
           <TerminalPanel title="Matchmaking">
             <div class="flex flex-col items-center gap-4 p-6">
-              <p class="text-base text-text-primary">&gt;_ ready to queue</p>
+              <p class="text-base text-text-primary">&gt;_ ready to work a route</p>
               <!-- Mode picker: the small maps exist and are the gentler entry —
                    without this the only reachable format is the 10-slot draft. -->
               <div
@@ -440,7 +440,7 @@ onUnmounted(() => {
               </div>
               <p class="text-[0.8rem] text-text-dim" data-testid="mode-blurb">
                 {{ modeOptions.find((m) => m.id === queueMode)?.blurb }}
-                Radiant vs Dire.
+                Two crews. Five each.
               </p>
               <div
                 v-if="lobbyStore.lastError"
@@ -496,7 +496,7 @@ onUnmounted(() => {
             <p class="text-base font-bold text-radiant text-glow">
               <span aria-hidden="true">&gt;_</span> MATCH FOUND
             </p>
-            <p class="text-[0.8rem] text-text-dim">Preparing hero selection...</p>
+            <p class="text-[0.8rem] text-text-dim">Opening the draft...</p>
           </div>
         </TerminalPanel>
       </template>
@@ -528,7 +528,7 @@ onUnmounted(() => {
               {{ lobbyStore.countdown }}
             </span>
             <p class="text-[0.8rem] text-text-dim" role="status" aria-live="polite">
-              {{ lobbyStore.countdown > 0 ? 'Preparing match...' : 'Loading into match...' }}
+              {{ lobbyStore.countdown > 0 ? 'Syncing to the clock...' : 'Entering TERMINA...' }}
             </p>
             <span aria-hidden="true" class="animate-blink text-2xl text-radiant">|</span>
           </div>

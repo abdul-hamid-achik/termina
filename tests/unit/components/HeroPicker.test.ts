@@ -244,7 +244,7 @@ describe('HeroPicker', () => {
     it('shows the select prompt and no passive panel before a hero is chosen', () => {
       const wrapper = mountPicker()
       expect(wrapper.find('[data-testid="picker-passive"]').exists()).toBe(false)
-      expect(wrapper.text()).toContain('select a hero')
+      expect(wrapper.text()).toContain('select a handle')
     })
 
     it('shows kit-identity playstyle tags for the selected hero', async () => {
