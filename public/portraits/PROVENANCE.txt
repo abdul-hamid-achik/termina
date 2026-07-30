@@ -1,0 +1,30 @@
+Termina operator portraits — provenance
+========================================
+
+Source: AI-generated (MiniMax image-01 via api.minimax.io)
+Date: 2026-07-30
+Generator: one-shot vault pipeline (not committed to the repo; no scripts/ folder)
+
+Treatment string (byte-identical for all 18 subjects):
+
+TREATMENT: high-contrast INK ILLUSTRATION portrait — bold black brush and pen linework, heavy spot
+blacks, minimal hatching, no soft shading or rendering. STRICTLY TWO TONES: deep near-black background
+and a single phosphor green for all light, as if printed on a monochrome CRT. Faint horizontal scanline
+texture across the whole image. Graphic-novel poster style, confident and economical, reads clearly at
+very small size. Head and shoulders, square crop, subject looking slightly off camera.
+
+Normalise (deterministic, post-API):
+  convert L, resize 512x512 LANCZOS, autocontrast cutoff=1, Contrast 1.15,
+  colorize black=(4,8,6) white=(130,255,168) mid=(26,152,96),
+  darken every third scanline to 60%.
+
+Polarity: light-ground generations (border luma > 127) were rejected and regenerated, never inverted.
+
+Files:
+  public/portraits/<heroId>.webp     512×512
+  public/portraits/64/<heroId>.webp  64×64
+
+Subjects are the eighteen operators in shared/constants/cast.ts (handles never change: B1a).
+
+Commercial/licence of MiniMax image-01 output for shipped product: owner decision before launch
+(see Rewrite vault Art Direction / R2-08 risk note).
