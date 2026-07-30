@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
-import { ROLE_META } from '~~/shared/constants/roles'
+import { POSTURE_META } from '~~/shared/constants/postures'
+import { CAST } from '~~/shared/constants/cast'
 import { getTalentTree, talentUnlockLevel, type TalentTier } from '~~/shared/constants/talents'
 import { heroPlaystyleTags, type PlaystyleTag } from '~~/shared/heroPlaystyle'
-import { filterHeroes, type RoleFilter, type PlaystyleFilter } from '~/utils/heroFilter'
-import type { HeroId, HeroRole, HeroDifficulty } from '~~/shared/types/hero'
+import { filterHeroes, type PostureFilter, type PlaystyleFilter } from '~/utils/heroFilter'
+import type { HeroId, HeroRole, HeroDifficulty, HeroPosture } from '~~/shared/types/hero'
 import AbilitySlot from '~/components/heroes/AbilitySlot.vue'
 import { getAbilityManaCost } from '~~/shared/utils/ability'
 import TargetDummy from '~/components/heroes/TargetDummy.vue'
@@ -32,11 +33,11 @@ const hero = computed(() => HEROES[selectedId.value]!)
 // Kit-identity tags (Burst/Control/Sustain/…) — a quick "how does this play".
 const playstyle = computed(() => heroPlaystyleTags(hero.value))
 
-// Two filter axes a newcomer can narrow the roster by: role (lane/job) and
-// playstyle (how the kit plays). 'all' on either passes everything through.
-const ROLE_FILTERS = ['all', 'carry', 'support', 'mage', 'assassin', 'tank', 'offlaner'] as const
+// Two filter axes a newcomer can narrow the roster by: posture (what you pick
+// on) and playstyle (how the kit plays). 'all' on either passes everything through.
+const POSTURE_FILTERS = ['all', 'BREACH', 'HOLD', 'ROAM', 'HARDLINE'] as const
 const PLAYSTYLE_TAGS = ['Burst', 'Damage over time', 'Control', 'Sustain', 'Mobility'] as const
-const selectedRole = ref<RoleFilter>('all')
+const selectedPosture = ref<PostureFilter>('all')
 const selectedPlaystyle = ref<PlaystyleFilter>('all')
 
 // Only offer playstyle filters that some hero actually has (e.g. drop a tag no
@@ -48,11 +49,11 @@ const availablePlaystyles = computed<PlaystyleFilter[]>(() => {
 })
 
 const filteredHeroes = computed(() =>
-  filterHeroes(allHeroes, selectedRole.value, selectedPlaystyle.value),
+  filterHeroes(allHeroes, selectedPosture.value, selectedPlaystyle.value),
 )
 
-function selectRole(role: RoleFilter) {
-  selectedRole.value = role
+function selectPosture(posture: PostureFilter) {
+  selectedPosture.value = posture
 }
 function selectPlaystyle(p: PlaystyleFilter) {
   selectedPlaystyle.value = p
@@ -154,32 +155,32 @@ const {
       </p>
     </header>
 
-    <!-- Role filter — narrow the roster to a role to learn -->
-    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Filter heroes by role">
+    <!-- Posture filter — narrow the roster to a posture to learn -->
+    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Filter heroes by posture">
       <button
-        v-for="r in ROLE_FILTERS"
-        :key="r"
+        v-for="p in POSTURE_FILTERS"
+        :key="p"
         type="button"
-        :data-testid="`role-filter-${r}`"
-        :aria-pressed="r === selectedRole"
+        :data-testid="`posture-filter-${p}`"
+        :aria-pressed="p === selectedPosture"
         class="border px-2 py-0.5 text-[0.65rem] uppercase tracking-wider transition-colors"
         :class="
-          r === selectedRole
+          p === selectedPosture
             ? 'border-ability bg-ability/10 text-ability'
             : 'border-border text-text-dim hover:border-border-glow hover:text-text-primary'
         "
-        @click="selectRole(r)"
+        @click="selectPosture(p)"
       >
-        {{ r }}
+        {{ p }}
       </button>
     </div>
-    <!-- What the filtered role does — a one-line primer for newcomers. -->
+    <!-- What the filtered posture does — a one-line primer for newcomers. -->
     <p
-      v-if="selectedRole !== 'all'"
+      v-if="selectedPosture !== 'all'"
       class="-mt-2 text-[0.72rem] text-text-dim"
-      data-testid="role-blurb"
+      data-testid="posture-blurb"
     >
-      {{ ROLE_META[selectedRole].blurb }}
+      {{ POSTURE_META[selectedPosture].blurb }}
     </p>
 
     <!-- Playstyle filter — narrow by how the kit plays (Burst/Control/…) -->
@@ -213,7 +214,7 @@ const {
       class="-mt-1 text-[0.72rem] text-warn"
       data-testid="hero-filter-empty"
     >
-      &gt;_ no {{ selectedRole === 'all' ? '' : selectedRole + ' ' }}hero plays
+      &gt;_ no {{ selectedPosture === 'all' ? '' : selectedPosture + ' ' }}hero plays
       {{ selectedPlaystyle }} — try another combination.
     </p>
 
@@ -224,7 +225,7 @@ const {
         :key="h.id"
         type="button"
         data-testid="hero-pick"
-        :data-role="h.role"
+        :data-posture="h.posture"
         :data-playstyle="heroPlaystyleTags(h).join(',')"
         :aria-pressed="h.id === selectedId"
         class="flex flex-col items-center gap-0.5 border px-1 py-1.5 transition-colors"
@@ -250,8 +251,16 @@ const {
       <!-- Kit -->
       <section class="flex flex-col gap-2">
         <div class="flex items-baseline gap-2 border-b border-border pb-1">
-          <h2 class="text-[0.95rem] font-bold text-text-primary">{{ hero.name }}</h2>
-          <span class="text-[0.65rem] uppercase tracking-widest text-ability">{{ hero.role }}</span>
+          <h2 class="text-[0.95rem] font-bold text-text-primary">
+            {{ CAST[selectedId as HeroId].realName }}
+          </h2>
+          <span class="text-[0.65rem] text-text-dim">`{{ selectedId }}`</span>
+          <span class="text-[0.65rem] uppercase tracking-widest text-chaff">{{
+            hero.posture
+          }}</span>
+          <span class="text-[0.62rem] uppercase tracking-widest text-text-dim">{{
+            hero.role
+          }}</span>
           <!-- Reverse funnel: jump to this hero's lore card on /lore. -->
           <NuxtLink
             :to="`/lore#lore-${selectedId}`"
@@ -278,7 +287,20 @@ const {
             {{ t }}
           </span>
         </div>
-        <p class="text-[0.75rem] italic leading-relaxed text-text-dim">{{ hero.lore }}</p>
+        <p class="text-[0.75rem] italic leading-relaxed text-text-dim">
+          {{ CAST[selectedId as HeroId].bio }}
+        </p>
+        <p class="text-[0.68rem] italic leading-relaxed text-text-dim">
+          why the handle: {{ CAST[selectedId as HeroId].handleRationale }}
+        </p>
+
+        <!-- How the kit reads as this person -->
+        <div class="border border-border bg-bg-secondary p-2.5" data-testid="hero-kit-reading">
+          <h3 class="mb-1 text-[0.75rem] font-bold tracking-wide text-chaff">HOW THE KIT READS</h3>
+          <p class="text-[0.72rem] leading-relaxed text-text-dim">
+            {{ CAST[selectedId as HeroId].kitReading }}
+          </p>
+        </div>
 
         <!-- How to play — the decision content a pick screen never has room for -->
         <div class="border border-border bg-bg-secondary p-2.5" data-testid="hero-how-to-play">

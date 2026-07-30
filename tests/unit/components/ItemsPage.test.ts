@@ -3,7 +3,8 @@ import { mount } from '@vue/test-utils'
 import { ref, computed } from 'vue'
 import ItemsPage from '~~/app/pages/items.vue'
 import { ITEMS } from '~~/shared/constants/items'
-import { ROLE_ORDER, ROLE_META } from '~~/shared/constants/roles'
+import type { HeroRole } from '~~/shared/types/hero'
+const ROLE_ORDER: HeroRole[] = ['carry', 'mage', 'assassin', 'tank', 'support', 'offlaner']
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 
 // items.vue leans on Nuxt auto-imports (ref/computed/useHead); the SFC compiler
@@ -67,7 +68,6 @@ describe('items page — build guidance', () => {
     recommendedItemsForRole(role).forEach((id, i) => {
       expect(steps[i]).toContain(ITEMS[id]!.name)
     })
-    expect(wrapper.find('[data-testid="build-role-blurb"]').text()).toBe(ROLE_META[role].blurb)
     expect(wrapper.find(`[data-testid="build-role-${role}"]`).attributes('aria-pressed')).toBe(
       'true',
     )

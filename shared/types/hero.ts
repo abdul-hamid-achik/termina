@@ -106,7 +106,6 @@ export interface HeroDef {
    * only because BotManager's lane priority and itemBuilds consume it.
    */
   posture: HeroPosture
-  lore: string
   baseStats: HeroBaseStats
   growthPerLevel: Partial<HeroBaseStats>
   passive: AbilityDef

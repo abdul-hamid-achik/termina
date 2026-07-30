@@ -3,7 +3,7 @@ import { HEROES } from '~~/shared/constants/heroes'
 import { TALENT_TREES } from '~~/server/game/heroes/index'
 import { ITEMS } from '~~/shared/constants/items'
 import { TUTORIAL_FLOW } from '~~/shared/constants/tutorial'
-import { ROLE_META } from '~~/shared/constants/roles'
+import { POSTURE_META } from '~~/shared/constants/postures'
 
 /**
  * The lexicon guard (R1-23's real deliverable): the OLD world vocabulary may
@@ -61,8 +61,8 @@ function* authoredStrings(): Generator<[string, string]> {
     yield [`tutorial ${step.teaches} hint`, step.hint]
     yield [`tutorial ${step.teaches} skipNote`, step.skipNote]
   }
-  for (const [role, meta] of Object.entries(ROLE_META)) {
-    yield [`role ${role} blurb`, meta.blurb]
+  for (const [posture, meta] of Object.entries(POSTURE_META)) {
+    yield [`posture ${posture} blurb`, meta.blurb]
   }
 }
 

@@ -267,30 +267,32 @@ describe('HeroPicker', () => {
   })
 
   describe('finding a hero in the grid', () => {
-    it('narrows the grid to one role when a role tab is active', async () => {
+    it('narrows the grid to one posture when a posture tab is active', async () => {
       const wrapper = mountPicker()
       expect(wrapper.find('[data-testid="hero-card-echo"]').exists()).toBe(true)
 
-      await wrapper.find('[data-testid="role-tab-support"]').trigger('click')
+      await wrapper.find('[data-testid="posture-tab-HOLD"]').trigger('click')
 
-      // sentry is a support; echo is a carry
-      expect(wrapper.find('[data-testid="hero-card-sentry"]').exists()).toBe(true)
+      // kernel is HOLD; echo is HARDLINE
+      expect(wrapper.find('[data-testid="hero-card-kernel"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="hero-card-echo"]').exists()).toBe(false)
-      const supports = HERO_IDS.filter((id) => HEROES[id]!.role === 'support').length
-      expect(wrapper.get('[data-testid="hero-count"]').text()).toBe(
-        `${supports}/${HERO_IDS.length}`,
-      )
+      const holds = HERO_IDS.filter((id) => HEROES[id]!.posture === 'HOLD').length
+      expect(wrapper.get('[data-testid="hero-count"]').text()).toBe(`${holds}/${HERO_IDS.length}`)
+      // every visible card carries the filtered posture
+      for (const card of wrapper.findAll('[data-posture]')) {
+        expect(card.attributes('data-posture')).toBe('HOLD')
+      }
     })
 
-    it('filters by typed text, case-insensitively, and stacks with the role tab', async () => {
+    it('filters by typed text, case-insensitively, and stacks with the posture tab', async () => {
       const wrapper = mountPicker()
 
       await wrapper.find('[data-testid="hero-search"]').setValue('KERN')
       expect(wrapper.find('[data-testid="hero-card-kernel"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="hero-card-echo"]').exists()).toBe(false)
 
-      // kernel is a tank, so a carry tab plus that text matches nothing
-      await wrapper.find('[data-testid="role-tab-carry"]').trigger('click')
+      // kernel is HOLD, so a BREACH tab plus that text matches nothing
+      await wrapper.find('[data-testid="posture-tab-BREACH"]').trigger('click')
       expect(wrapper.find('[data-testid="hero-card-kernel"]').exists()).toBe(false)
       expect(wrapper.find('[data-testid="hero-empty"]').exists()).toBe(true)
     })
@@ -341,7 +343,7 @@ describe('HeroPicker', () => {
         currentPicker: { playerId: 'me', username: 'Me' },
         pickedHeroes: taken,
       })
-      await wrapper.find('[data-testid="role-tab-tank"]').trigger('click')
+      await wrapper.find('[data-testid="posture-tab-HOLD"]').trigger('click')
 
       vi.spyOn(Math, 'random').mockReturnValue(0.999)
       await wrapper.find('[data-testid="hero-random"]').trigger('click')
@@ -372,7 +374,7 @@ describe('HeroPicker', () => {
 
     it('rolls within the active filter', async () => {
       const wrapper = mountPicker({ currentPicker: { playerId: 'me', username: 'Me' } })
-      await wrapper.find('[data-testid="role-tab-tank"]').trigger('click')
+      await wrapper.find('[data-testid="posture-tab-HOLD"]').trigger('click')
 
       vi.spyOn(Math, 'random').mockReturnValue(0)
       await wrapper.find('[data-testid="hero-random"]').trigger('click')

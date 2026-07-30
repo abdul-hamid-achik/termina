@@ -34,7 +34,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
   echo: {
     realName: 'Rosane Vieira',
     origin: 'street',
-    bio: "Rosane grew up on a scaffold crew, bolting cladding onto towers she would never be allowed inside, and she learned early that the only way to hit anything from four hundred metres up in a crosswind is to stop moving and start counting. She shoots a gun she built out of a rail jig: it feeds on its own recoil, so the first shot is nothing and the ninth takes a door off its hinges. Runners call her Tally because she keeps the count out loud on comms, and because she has never once been talked into switching targets mid-count. She has no exit plan. She has a firing line and a number.",
+    bio: 'Rosane grew up on a scaffold crew, bolting cladding onto towers she would never be allowed inside, and she learned early that the only way to hit anything from four hundred metres up in a crosswind is to stop moving and start counting. She shoots a gun she built out of a rail jig: it feeds on its own recoil, so the first shot is nothing and the ninth takes a door off its hinges. Runners call her Tally because she keeps the count out loud on comms, and because she has never once been talked into switching targets mid-count. She has no exit plan. She has a firing line and a number.',
     handleRationale:
       'A signal that repeats and builds. Her passive is Resonance — +8% per consecutive hit on the same target. The handle IS the count.',
     kitReading:
@@ -182,7 +182,7 @@ export const CAST: Record<HeroId, OperatorBio> = {
     handleRationale:
       'Concurrency. Multithread, Fork, Sync Barrier — a harness built so one body could tend the machines four used to.',
     kitReading:
-      'Multithread splashes to a second target, and a third at level 10, because the harness was built to do several things at once and does not care that the things are now people. Fork is him spinning up another line. Sync Barrier scales with allies in the zone — a man off a shop floor, whose safety was always other workers standing near him. Yield marks a target so the whole TEAM hits it harder: a foreman\'s call. Thread Pool is the harness fully open, four ticks of him not picking targets at all, just working the room at rate.',
+      "Multithread splashes to a second target, and a third at level 10, because the harness was built to do several things at once and does not care that the things are now people. Fork is him spinning up another line. Sync Barrier scales with allies in the zone — a man off a shop floor, whose safety was always other workers standing near him. Yield marks a target so the whole TEAM hits it harder: a foreman's call. Thread Pool is the harness fully open, four ticks of him not picking targets at all, just working the room at rate.",
   },
   cache: {
     realName: 'Idris Faruq',

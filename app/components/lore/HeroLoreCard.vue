@@ -1,22 +1,20 @@
 <script setup lang="ts">
-import type { HeroDef, HeroRole } from '~~/shared/types/hero'
+import type { HeroDef, HeroPosture, OperatorOrigin } from '~~/shared/types/hero'
 import type { PlaystyleTag } from '~~/shared/heroPlaystyle'
 
 defineProps<{
-  hero: Pick<HeroDef, 'id' | 'name' | 'role' | 'lore'>
+  hero: Pick<HeroDef, 'id' | 'name' | 'role' | 'posture'>
+  /** The operator's real name (from CAST). */
+  realName: string
+  /** The operator's origin (street/corp). */
+  origin: OperatorOrigin
+  /** The operator's biography (from CAST). */
+  bio: string
+  /** Why the existing handle already fits (from CAST). */
+  handleRationale: string
   /** Kit-identity tags (Burst/Control/…) from heroPlaystyleTags — optional. */
   tags?: PlaystyleTag[]
 }>()
-
-// Role → theme colour, so the roster reads at a glance.
-const roleColor: Record<HeroRole, string> = {
-  carry: 'text-gold',
-  mage: 'text-ability',
-  assassin: 'text-audit',
-  tank: 'text-chaff',
-  support: 'text-chaff',
-  offlaner: 'text-ability',
-}
 </script>
 
 <template>
@@ -27,15 +25,24 @@ const roleColor: Record<HeroRole, string> = {
     class="flex h-full scroll-mt-20 flex-col gap-1.5 border border-border bg-bg-secondary p-3"
   >
     <div class="flex items-baseline justify-between gap-2">
-      <span class="text-[0.95rem] font-bold text-text-primary">{{ hero.name }}</span>
+      <span class="text-[0.95rem] font-bold text-text-primary">{{ realName }}</span>
+      <span class="t-caption text-text-dim">`{{ hero.id }}`</span>
+    </div>
+    <div class="flex flex-wrap gap-1">
       <span
-        class="text-[0.62rem] uppercase tracking-widest"
-        :class="roleColor[hero.role] ?? 'text-text-dim'"
+        class="border border-chaff/40 bg-chaff/10 px-1 py-0.5 text-[0.58rem] uppercase tracking-wider text-chaff"
+        :data-posture="hero.posture"
       >
-        {{ hero.role }}
+        {{ hero.posture }}
+      </span>
+      <span
+        class="border border-border px-1 py-0.5 text-[0.58rem] uppercase tracking-wider text-text-dim"
+        :data-origin="origin"
+      >
+        {{ origin }}
       </span>
     </div>
-    <!-- Kit identity at a glance — how the hero plays beyond its role label. -->
+    <!-- Kit identity at a glance — how the hero plays beyond its posture. -->
     <div v-if="tags && tags.length" class="flex flex-wrap gap-1" data-testid="lore-playstyle">
       <span
         v-for="t in tags"
@@ -45,15 +52,18 @@ const roleColor: Record<HeroRole, string> = {
         {{ t }}
       </span>
     </div>
-    <p class="text-[0.78rem] leading-relaxed text-text-dim">{{ hero.lore }}</p>
-    <!-- Funnel: read the lore → train this exact hero's kit (deep-links the
+    <p class="text-[0.78rem] leading-relaxed text-text-dim">{{ bio }}</p>
+    <p class="text-[0.68rem] italic leading-relaxed text-text-dim">
+      why the handle: {{ handleRationale }}
+    </p>
+    <!-- Funnel: read the bio → train this exact hero's kit (deep-links the
          /heroes console to this operative via ?hero=). -->
     <NuxtLink
       :to="`/heroes?hero=${hero.id}`"
       class="mt-auto pt-1 text-[0.7rem] text-ability no-underline hover:text-chaff"
       :aria-label="`Train ${hero.name} in the hero console`"
     >
-      &gt; TRAIN {{ hero.name }}
+      TRAIN {{ hero.name.toUpperCase() }} →
     </NuxtLink>
   </div>
 </template>

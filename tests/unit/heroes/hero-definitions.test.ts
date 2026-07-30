@@ -54,10 +54,6 @@ describe('Hero Definitions', () => {
         expect(VALID_POSTURES).toContain(hero.posture)
       })
 
-      it('has non-empty lore', () => {
-        expect(hero.lore.length).toBeGreaterThan(0)
-      })
-
       it('has valid base stats', () => {
         const s = hero.baseStats
         expect(s.hp).toBeGreaterThanOrEqual(400)

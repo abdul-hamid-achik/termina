@@ -2,7 +2,6 @@
 import { ITEMS, ITEM_CATEGORIES } from '~~/shared/constants/items'
 import type { ItemCategoryId } from '~~/shared/types/items'
 import type { HeroRole } from '~~/shared/types/hero'
-import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
 import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 import { browseSections } from '~~/shared/itemFormat'
 import ItemCard from '~/components/items/ItemCard.vue'
@@ -30,7 +29,8 @@ const visibleSections = computed(() =>
 // in-match shop recommends — it was only ever readable mid-match, which is the
 // one moment a player has no time to read it. The list is cost-ascending, so
 // its order is the buy order and the running total is what you save toward.
-const buildRole = ref<HeroRole>(ROLE_ORDER[0]!)
+const BUILD_ROLES: HeroRole[] = ['carry', 'mage', 'assassin', 'tank', 'support', 'offlaner']
+const buildRole = ref<HeroRole>(BUILD_ROLES[0]!)
 const recommendedBuild = computed(() => {
   let running = 0
   return recommendedItemsForRole(buildRole.value)
@@ -85,7 +85,7 @@ const {
       </div>
       <div class="flex flex-wrap gap-1.5" role="group" aria-label="Recommended build by role">
         <button
-          v-for="r in ROLE_ORDER"
+          v-for="r in BUILD_ROLES"
           :key="r"
           type="button"
           class="border px-2 py-0.5 text-[0.68rem] uppercase tracking-wider transition-colors"
@@ -101,9 +101,7 @@ const {
           {{ r }}
         </button>
       </div>
-      <p class="text-[0.72rem] text-text-dim" data-testid="build-role-blurb">
-        {{ ROLE_META[buildRole].blurb }}
-      </p>
+
       <ol class="flex flex-wrap items-stretch gap-1.5" data-testid="build-order">
         <li
           v-for="s in recommendedBuild"

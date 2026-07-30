@@ -34,7 +34,10 @@ describe('cast.ts — the eighteen operators', () => {
     const names = Object.values(CAST).map((c) => c.realName)
     expect(new Set(names).size).toBe(names.length)
     for (const name of names) {
-      expect(name.trim().split(/\s+/).length, `"${name}" is not a full name`).toBeGreaterThanOrEqual(2)
+      expect(
+        name.trim().split(/\s+/).length,
+        `"${name}" is not a full name`,
+      ).toBeGreaterThanOrEqual(2)
     }
   })
 

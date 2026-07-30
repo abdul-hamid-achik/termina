@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { heroMatchesFilters, filterHeroes } from '~~/app/utils/heroFilter'
 import { HEROES } from '~~/shared/constants/heroes'
-import type { AbilityDef, AbilityEffect, HeroDef, HeroRole } from '~~/shared/types/hero'
+import type { AbilityDef, AbilityEffect, HeroDef, HeroPosture } from '~~/shared/types/hero'
 
 const ability = (effects: AbilityEffect[]): AbilityDef => ({
   id: 'x',
@@ -14,13 +14,13 @@ const ability = (effects: AbilityEffect[]): AbilityDef => ({
 })
 
 // Synthetic heroes give the filter clean, data-independent semantics.
-function makeHero(role: HeroRole, effects: AbilityEffect[][]): HeroDef {
+function makeHero(posture: HeroPosture, effects: AbilityEffect[][]): HeroDef {
   const [q, w, e, r] = effects.map(ability)
   return {
     id: 't',
     name: 'T',
-    role,
-    lore: '',
+    role: 'carry',
+    posture,
     baseStats: {
       hp: 600,
       mp: 200,
@@ -34,13 +34,13 @@ function makeHero(role: HeroRole, effects: AbilityEffect[][]): HeroDef {
   }
 }
 
-const burstCarry = makeHero('carry', [
+const burstBreach = makeHero('BREACH', [
   [{ type: 'damage', value: 100 }],
   [{ type: 'damage', value: 80 }],
   [],
   [],
 ])
-const sustainSupport = makeHero('support', [
+const sustainHold = makeHero('HOLD', [
   [{ type: 'heal', value: 80 }],
   [{ type: 'shield', value: 100 }],
   [],
@@ -49,24 +49,24 @@ const sustainSupport = makeHero('support', [
 
 describe('heroMatchesFilters (synthetic, clean semantics)', () => {
   it('passes everything when both axes are "all"', () => {
-    expect(heroMatchesFilters(burstCarry, 'all', 'all')).toBe(true)
-    expect(heroMatchesFilters(sustainSupport, 'all', 'all')).toBe(true)
+    expect(heroMatchesFilters(burstBreach, 'all', 'all')).toBe(true)
+    expect(heroMatchesFilters(sustainHold, 'all', 'all')).toBe(true)
   })
 
-  it('gates on role independently', () => {
-    expect(heroMatchesFilters(burstCarry, 'carry', 'all')).toBe(true)
-    expect(heroMatchesFilters(burstCarry, 'support', 'all')).toBe(false)
+  it('gates on posture independently', () => {
+    expect(heroMatchesFilters(burstBreach, 'BREACH', 'all')).toBe(true)
+    expect(heroMatchesFilters(burstBreach, 'HOLD', 'all')).toBe(false)
   })
 
   it('gates on playstyle independently', () => {
-    expect(heroMatchesFilters(burstCarry, 'all', 'Burst')).toBe(true)
-    expect(heroMatchesFilters(burstCarry, 'all', 'Sustain')).toBe(false)
-    expect(heroMatchesFilters(sustainSupport, 'all', 'Sustain')).toBe(true)
+    expect(heroMatchesFilters(burstBreach, 'all', 'Burst')).toBe(true)
+    expect(heroMatchesFilters(burstBreach, 'all', 'Sustain')).toBe(false)
+    expect(heroMatchesFilters(sustainHold, 'all', 'Sustain')).toBe(true)
   })
 
-  it('ANDs the two axes — a sustain support is not a burst carry', () => {
-    expect(heroMatchesFilters(sustainSupport, 'support', 'Burst')).toBe(false)
-    expect(filterHeroes([burstCarry, sustainSupport], 'support', 'Burst')).toHaveLength(0)
+  it('ANDs the two axes — a sustain HOLD is not a burst BREACH', () => {
+    expect(heroMatchesFilters(sustainHold, 'HOLD', 'Burst')).toBe(false)
+    expect(filterHeroes([burstBreach, sustainHold], 'HOLD', 'Burst')).toHaveLength(0)
   })
 })
 
@@ -77,10 +77,10 @@ describe('filterHeroes over the real roster', () => {
     expect(filterHeroes(all, 'all', 'all')).toHaveLength(all.length)
   })
 
-  it('role filter returns only that role', () => {
-    const supports = filterHeroes(all, 'support', 'all')
-    expect(supports.length).toBeGreaterThan(0)
-    for (const h of supports) expect(h.role).toBe('support')
+  it('posture filter returns only that posture', () => {
+    const holds = filterHeroes(all, 'HOLD', 'all')
+    expect(holds.length).toBeGreaterThan(0)
+    for (const h of holds) expect(h.posture).toBe('HOLD')
   })
 
   it('playstyle filter returns only heroes carrying that tag', () => {
@@ -90,11 +90,11 @@ describe('filterHeroes over the real roster', () => {
   })
 
   it('combined filter is a subset of each single-axis filter', () => {
-    const both = filterHeroes(all, 'carry', 'Burst').map((h) => h.id)
-    const roleOnly = filterHeroes(all, 'carry', 'all').map((h) => h.id)
+    const both = filterHeroes(all, 'BREACH', 'Burst').map((h) => h.id)
+    const postureOnly = filterHeroes(all, 'BREACH', 'all').map((h) => h.id)
     const playOnly = filterHeroes(all, 'all', 'Burst').map((h) => h.id)
     for (const id of both) {
-      expect(roleOnly).toContain(id)
+      expect(postureOnly).toContain(id)
       expect(playOnly).toContain(id)
     }
   })

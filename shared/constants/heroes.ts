@@ -6,7 +6,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Echo',
     role: 'carry',
     posture: 'HARDLINE',
-    lore: 'A recursive signal that grows stronger with each reflection. Echo feeds on combat, amplifying damage the longer a fight persists.',
     difficulty: 'medium',
     openingCombo: ['q', 'r'],
     oneLineTip:
@@ -102,7 +101,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Sentry',
     role: 'support',
     posture: 'HARDLINE',
-    lore: 'An autonomous watchpoint that protects allies through surveillance and force fields. Sentry sees all and shields the worthy.',
     difficulty: 'easy',
     openingCombo: ['w', 'q', 'e'],
     oneLineTip:
@@ -185,7 +183,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Daemon',
     role: 'assassin',
     posture: 'BREACH',
-    lore: 'A background process that lurks unseen, striking from the shadows. Daemon deletes targets before they know what hit them.',
     difficulty: 'hard',
     openingCombo: ['q', 'e'],
     oneLineTip:
@@ -280,7 +277,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Kernel',
     role: 'tank',
     posture: 'HOLD',
-    lore: 'The core process that refuses to die. Kernel absorbs punishment meant for others and grows more dangerous the more damage it takes.',
     difficulty: 'easy',
     openingCombo: ['e', 'w', 'q'],
     oneLineTip:
@@ -360,7 +356,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Regex',
     role: 'mage',
     posture: 'BREACH',
-    lore: 'A pattern matcher of terrifying power. Regex weaves spells from syntax, matching enemies to their doom with arcane expressions.',
     difficulty: 'medium',
     openingCombo: ['q', 'w', 'r'],
     oneLineTip:
@@ -458,7 +453,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Socket',
     role: 'offlaner',
     posture: 'ROAM',
-    lore: 'A persistent connection that binds enemies together. Socket thrives in chaos, linking foes to share damage and disrupting formations.',
     difficulty: 'medium',
     openingCombo: ['e', 'q', 'w'],
     oneLineTip:
@@ -552,7 +546,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Proxy',
     role: 'support',
     posture: 'HOLD',
-    lore: 'A network intermediary that intercepts traffic and redirects harm. Proxy shields allies by absorbing and rerouting damage through cached connections.',
     difficulty: 'medium',
     openingCombo: ['w', 'q', 'e'],
     oneLineTip:
@@ -641,7 +634,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Malloc',
     role: 'carry',
     posture: 'BREACH',
-    lore: 'A memory allocator that grows in power the more resources it claims. Malloc scales relentlessly, converting scrip into raw destructive force.',
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'w'],
     oneLineTip:
@@ -737,7 +729,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Cipher',
     role: 'assassin',
     posture: 'BREACH',
-    lore: 'An encryption algorithm given form. Cipher strikes from encrypted obscurity, decrypting enemies to expose their weaknesses before delivering lethal bursts of data.',
     difficulty: 'medium',
     openingCombo: ['w', 'q', 'r'],
     oneLineTip:
@@ -832,7 +823,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Ablative Shell',
     role: 'tank',
     posture: 'HOLD',
-    lore: 'A sentient packet filter that stands between allies and destruction. Firewall blocks, reflects, and punishes all who dare breach its perimeter.',
     difficulty: 'easy',
     openingCombo: ['w', 'e', 'q'],
     oneLineTip:
@@ -931,7 +921,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Null',
     role: 'mage',
     posture: 'ROAM',
-    lore: 'A void reference that consumes all it touches. Null drains the essence from enemies, growing stronger with each deletion it causes.',
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'r'],
     oneLineTip:
@@ -1033,7 +1022,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Lambda',
     role: 'mage',
     posture: 'BREACH',
-    lore: 'An anonymous function of pure destruction. Lambda chains abilities into devastating combos, rewarding rapid casting with amplified power.',
     difficulty: 'hard',
     openingCombo: ['q', 'e', 'w', 'r'],
     oneLineTip:
@@ -1125,7 +1113,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Mutex',
     role: 'offlaner',
     posture: 'HARDLINE',
-    lore: 'A mutual exclusion lock given form. Mutex thrives in contested space, growing harder to move and more dangerous the longer it holds its ground.',
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'r'],
     oneLineTip:
@@ -1231,7 +1218,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Ping',
     role: 'offlaner',
     posture: 'ROAM',
-    lore: 'A relentless ICMP echo that probes enemy defenses from afar. Ping disrupts timing, delays responses, and controls space through persistent harassment.',
     difficulty: 'easy',
     openingCombo: ['q', 'w', 'r'],
     oneLineTip:
@@ -1337,7 +1323,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Cron',
     role: 'support',
     posture: 'HOLD',
-    lore: 'A scheduled task daemon that executes healing protocols on a precise timer. Cron maintains the team with clockwork efficiency, cleansing corruption and rallying allies.',
     difficulty: 'easy',
     openingCombo: ['q', 'w', 'r'],
     oneLineTip:
@@ -1435,7 +1420,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Traceroute',
     role: 'assassin',
     posture: 'BREACH',
-    lore: 'A roaming hunter that traces the path between nodes, gaining momentum with each hop. Traceroute strikes hardest when targets are isolated and far from help.',
     difficulty: 'hard',
     openingCombo: ['e', 'w', 'q'],
     oneLineTip:
@@ -1527,7 +1511,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Thread',
     role: 'carry',
     posture: 'ROAM',
-    lore: 'A parallel execution unit that multiplies its strikes across targets. Thread starts slow but becomes an unstoppable force in teamfights, weaving destruction through every enemy.',
     difficulty: 'easy',
     openingCombo: ['e', 'q', 'r'],
     oneLineTip:
@@ -1618,7 +1601,6 @@ export const HEROES: Record<string, HeroDef> = {
     name: 'Cache',
     role: 'tank',
     posture: 'HARDLINE',
-    lore: 'A memory cache that absorbs and stores incoming data. Cache converts the punishment it endures into explosive offensive power, punishing enemies who dare attack it.',
     difficulty: 'hard',
     openingCombo: ['e', 'q', 'r'],
     oneLineTip:

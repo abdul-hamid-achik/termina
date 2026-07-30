@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { HEROES } from '~~/shared/constants/heroes'
-import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
+import { POSTURE_META, POSTURE_ORDER } from '~~/shared/constants/postures'
+import { CAST } from '~~/shared/constants/cast'
 import { CITY, CREWS } from '~~/shared/constants/world'
 import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import HeroLoreCard from '~/components/lore/HeroLoreCard.vue'
 import { useStartTutorial } from '~/composables/useStartTutorial'
+
+type HeroId = keyof typeof CAST
 
 useHead({ title: `Lore · ${CITY}` })
 
@@ -14,13 +17,13 @@ const {
   start: startTutorial,
 } = useStartTutorial()
 
-// Roster grouped by role — labels/blurbs from the shared ROLE_META, heroes
+// Roster grouped by posture — labels/blurbs from POSTURE_META, heroes
 // data-driven from HEROES, so neither can drift.
-const roster = ROLE_ORDER.map((role) => ({
-  role,
-  label: ROLE_META[role].label,
-  blurb: ROLE_META[role].blurb,
-  heroes: Object.values(HEROES).filter((h) => h.role === role),
+const roster = POSTURE_ORDER.map((posture) => ({
+  posture,
+  label: POSTURE_META[posture].label,
+  blurb: POSTURE_META[posture].blurb,
+  heroes: Object.values(HEROES).filter((h) => h.posture === posture),
 })).filter((r) => r.heroes.length > 0)
 </script>
 
@@ -70,8 +73,8 @@ const roster = ROLE_ORDER.map((role) => ({
       </p>
     </section>
 
-    <!-- Roster by role -->
-    <section v-for="group in roster" :key="group.role" class="flex flex-col gap-2">
+    <!-- Roster by posture -->
+    <section v-for="group in roster" :key="group.posture" class="flex flex-col gap-2">
       <div class="border-b border-border pb-1">
         <h2 class="text-[0.9rem] font-bold tracking-wide text-ability">{{ group.label }}</h2>
         <p class="text-[0.72rem] text-text-dim">{{ group.blurb }}</p>
@@ -81,6 +84,10 @@ const roster = ROLE_ORDER.map((role) => ({
           v-for="h in group.heroes"
           :key="h.id"
           :hero="h"
+          :real-name="CAST[h.id as HeroId].realName"
+          :origin="CAST[h.id as HeroId].origin"
+          :bio="CAST[h.id as HeroId].bio"
+          :handle-rationale="CAST[h.id as HeroId].handleRationale"
           :tags="heroPlaystyleTags(h)"
         />
       </div>

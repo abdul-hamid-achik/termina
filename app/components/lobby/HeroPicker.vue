@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
-import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
+import { POSTURE_META, POSTURE_ORDER } from '~~/shared/constants/postures'
+import { CAST } from '~~/shared/constants/cast'
 import { heroPlaystyleTags } from '~~/shared/heroPlaystyle'
 import type { TeamId } from '~~/shared/types/game'
-import type { HeroRole } from '~~/shared/types/hero'
+import type { HeroPosture } from '~~/shared/types/hero'
 
 const props = withDefaults(
   defineProps<{
@@ -112,23 +113,29 @@ const heroList = computed(() =>
   }),
 )
 
-const roleFilter = ref<HeroRole | 'all'>('all')
+const postureFilter = ref<HeroPosture | 'all'>('all')
 const search = ref('')
 
-/** Role tabs, in the canonical order, limited to roles the roster actually has. */
-const roleTabs = computed(() =>
-  ROLE_ORDER.filter((role) => heroList.value.some((h) => h.role === role)).map((role) => ({
-    role,
-    label: ROLE_META[role].label,
+/** Posture tabs, in the canonical order, limited to postures the roster has. */
+const postureTabs = computed(() =>
+  POSTURE_ORDER.filter((p) => heroList.value.some((h) => h.posture === p)).map((p) => ({
+    posture: p,
+    label: POSTURE_META[p].label,
   })),
 )
 
 const filteredHeroes = computed(() => {
   const q = search.value.trim().toLowerCase()
   return heroList.value.filter((h) => {
-    if (roleFilter.value !== 'all' && h.role !== roleFilter.value) return false
+    if (postureFilter.value !== 'all' && h.posture !== postureFilter.value) return false
     if (!q) return true
-    return h.name.toLowerCase().includes(q) || h.role.includes(q)
+    const op = CAST[h.id as HeroId]
+    return (
+      h.name.toLowerCase().includes(q) ||
+      h.posture.toLowerCase().includes(q) ||
+      h.role.includes(q) ||
+      (op?.realName.toLowerCase().includes(q) ?? false)
+    )
   })
 })
 
@@ -216,15 +223,6 @@ watch(
   },
 )
 
-const ROLE_ICONS: Record<string, string> = {
-  carry: '>>',
-  support: '++',
-  assassin: '**',
-  tank: '##',
-  mage: '~~',
-  offlaner: '<>',
-}
-
 function selectHero(id: string) {
   if (lockedIn.value) return
   const hero = heroList.value.find((h) => h.id === id)
@@ -247,7 +245,7 @@ function pickRandom() {
 }
 
 function clearFilters() {
-  roleFilter.value = 'all'
+  postureFilter.value = 'all'
   search.value = ''
 }
 
@@ -447,31 +445,31 @@ function initialOf(name: string | undefined | null): string {
     <div class="mb-2 flex flex-wrap items-center gap-1" data-testid="picker-filters">
       <button
         type="button"
-        data-testid="role-tab-all"
-        :aria-pressed="roleFilter === 'all'"
+        data-testid="posture-tab-all"
+        :aria-pressed="postureFilter === 'all'"
         class="border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
         :class="
-          roleFilter === 'all'
+          postureFilter === 'all'
             ? 'border-ability bg-ability/10 text-ability'
             : 'border-border text-text-dim hover:border-border-glow'
         "
-        @click="roleFilter = 'all'"
+        @click="postureFilter = 'all'"
       >
         All
       </button>
       <button
-        v-for="tab in roleTabs"
-        :key="tab.role"
+        v-for="tab in postureTabs"
+        :key="tab.posture"
         type="button"
-        :data-testid="'role-tab-' + tab.role"
-        :aria-pressed="roleFilter === tab.role"
+        :data-testid="'posture-tab-' + tab.posture"
+        :aria-pressed="postureFilter === tab.posture"
         class="border px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide transition-colors"
         :class="
-          roleFilter === tab.role
+          postureFilter === tab.posture
             ? 'border-ability bg-ability/10 text-ability'
             : 'border-border text-text-dim hover:border-border-glow'
         "
-        @click="roleFilter = tab.role"
+        @click="postureFilter = tab.posture"
       >
         {{ tab.label }}
       </button>
@@ -528,8 +526,9 @@ function initialOf(name: string | undefined | null): string {
               ? `${hero.name}, banned`
               : hero.picked
                 ? `${hero.name}, already picked`
-                : `${hero.name}, ${hero.role}${hero.beginner ? ', beginner friendly' : ''}`
+                : `${hero.name}, ${hero.posture} ${hero.role}${hero.beginner ? ', beginner friendly' : ''}`
           "
+          :data-posture="hero.posture"
           class="relative cursor-pointer border border-border bg-bg-panel p-2 transition-all duration-150"
           :class="{
             'border-ability bloom-ability scale-[1.02]': selectedHero === hero.id && !lockedIn,
@@ -546,8 +545,8 @@ function initialOf(name: string | undefined | null): string {
             <HeroAvatar :hero-id="hero.id" :size="32" />
             <div class="min-w-0 flex-1">
               <div class="mb-0.5 flex items-center gap-1">
-                <span class="text-[0.75rem] font-bold text-ability">{{
-                  ROLE_ICONS[hero.role] || '??'
+                <span class="text-[0.65rem] font-bold uppercase tracking-wider text-chaff">{{
+                  hero.posture
                 }}</span>
                 <span class="truncate text-[0.75rem] font-bold uppercase text-text-primary">{{
                   hero.name
@@ -590,7 +589,11 @@ function initialOf(name: string | undefined | null): string {
     >
       <div v-if="selectedHeroDef" class="anim-fade-in-up min-w-0 flex-1">
         <div class="t-h2 mb-1 text-ability text-glow-ability">
-          {{ selectedHeroDef.name }}
+          {{ CAST[selectedHeroDef.id as HeroId].realName }}
+          <span class="t-caption text-text-dim">`{{ selectedHeroDef.id }}`</span>
+          <span class="t-caption uppercase tracking-wider text-chaff">{{
+            selectedHeroDef.posture
+          }}</span>
         </div>
         <!-- Kit identity at a glance — how this hero plays, beyond its role. -->
         <div
