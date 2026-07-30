@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AllyStatusSheet from '../../../app/components/game/AllyStatusSheet.vue'
+import AllyStatusSheet from '~~/app/components/game/AllyStatusSheet.vue'
 
 function ally(overrides: Record<string, unknown> = {}) {
   return {

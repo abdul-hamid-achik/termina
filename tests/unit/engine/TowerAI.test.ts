@@ -1,16 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import {
-  runTowerAI,
-  applyTowerActions,
-  type TowerAction,
-} from '../../../server/game/engine/TowerAI'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
-import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
-import type { GameEngineEvent } from '../../../server/game/protocol/events'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { TOWER_ATTACK } from '../../../shared/constants/balance'
-import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
-import { getEffectiveDefense } from '../../../server/game/engine/EffectiveStats'
+import { runTowerAI, applyTowerActions, type TowerAction } from '~~/server/game/engine/TowerAI'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { GameEngineEvent } from '~~/server/game/protocol/events'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { TOWER_ATTACK } from '~~/shared/constants/balance'
+import { calculatePhysicalDamage } from '~~/server/game/engine/DamageCalculator'
+import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

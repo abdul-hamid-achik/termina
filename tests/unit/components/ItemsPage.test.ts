@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, computed } from 'vue'
-import ItemsPage from '../../../app/pages/items.vue'
-import { ITEMS } from '../../../shared/constants/items'
-import { ROLE_ORDER, ROLE_META } from '../../../shared/constants/roles'
-import { recommendedItemsForRole } from '../../../shared/constants/itemBuilds'
+import ItemsPage from '~~/app/pages/items.vue'
+import { ITEMS } from '~~/shared/constants/items'
+import { ROLE_ORDER, ROLE_META } from '~~/shared/constants/roles'
+import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
 
 // items.vue leans on Nuxt auto-imports (ref/computed/useHead); the SFC compiler
 // leaves them as globals under plain @vitejs/plugin-vue, so stub them — the

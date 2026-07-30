@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import type { GameState, PlayerState, TrapState } from '../../../shared/types/game'
-import { processTraps } from '../../../server/game/engine/TrapSystem'
+import type { GameState, PlayerState, TrapState } from '~~/shared/types/game'
+import { processTraps } from '~~/server/game/engine/TrapSystem'
 
 // ── Test Helpers ──────────────────────────────────────────────────
 

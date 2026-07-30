@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useLobbyStore } from '../../../app/stores/lobby'
+import { useLobbyStore } from '~~/app/stores/lobby'
 
 // ── Mocks ─────────────────────────────────────────────────────────
 

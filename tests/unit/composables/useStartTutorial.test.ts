@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { useStartTutorial } from '../../../app/composables/useStartTutorial'
+import { useStartTutorial } from '~~/app/composables/useStartTutorial'
 
 // The composable uses Nuxt auto-imports ($fetch, navigateTo) as globals — stub
 // them the same way IndexPage.test.ts does.

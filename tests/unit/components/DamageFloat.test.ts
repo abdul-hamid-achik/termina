@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import DamageFloat from '../../../app/components/game/DamageFloat.vue'
+import DamageFloat from '~~/app/components/game/DamageFloat.vue'
 
 describe('DamageFloat', () => {
   it('renders taken damage as a negative dire-red number', () => {

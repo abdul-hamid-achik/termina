@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { resolveAbility, resolvePassive, hasBuff } from '../../../server/game/heroes/_base'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { resolveAbility, resolvePassive, hasBuff } from '~~/server/game/heroes/_base'
 // Register null_ref hero (side-effect import)
 import '../../../server/game/heroes/null_ref'
 

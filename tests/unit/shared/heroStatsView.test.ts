@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { topHeroStats } from '../../../shared/heroStatsView'
-import type { HeroStatRow } from '../../../shared/heroStatsView'
+import { topHeroStats } from '~~/shared/heroStatsView'
+import type { HeroStatRow } from '~~/shared/heroStatsView'
 
 const row = (over: Partial<HeroStatRow>): HeroStatRow => ({
   heroId: 'x',

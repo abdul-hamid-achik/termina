@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick } from '../../../server/game/engine/GameLoop'
-import { registerBots, cleanupGame, getBotLane } from '../../../server/game/ai/BotManager'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
-import { zonesForMap } from '../../../shared/constants/maps'
+import { processTick } from '~~/server/game/engine/GameLoop'
+import { registerBots, cleanupGame, getBotLane } from '~~/server/game/ai/BotManager'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { zonesForMap } from '~~/shared/constants/maps'
 
 /**
  * Bots on the one-lane (tutorial) map. The map is a strict subset of the full

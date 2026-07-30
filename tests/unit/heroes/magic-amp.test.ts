@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '~~/shared/types/game'
 import {
   dealDamage,
   dealAbilityDamage,
   getMagicAmp,
   resolveAbility,
-} from '../../../server/game/heroes/_base'
+} from '~~/server/game/heroes/_base'
 // Register a magical-damage hero for the end-to-end check.
 import '../../../server/game/heroes/ping'
 

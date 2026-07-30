@@ -4,10 +4,10 @@ import {
   applyCreepActions,
   enforceCreepZoneCap,
   type CreepAction,
-} from '../../../server/game/engine/CreepAI'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
-import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+} from '~~/server/game/engine/CreepAI'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
 import {
   MELEE_CREEP_ATTACK,
   RANGED_CREEP_ATTACK,
@@ -17,9 +17,9 @@ import {
   CREEP_XP_SHARED,
   MAX_CREEPS_PER_ZONE_PER_TEAM,
   creepAttack,
-} from '../../../shared/constants/balance'
-import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
-import { getEffectiveDefense } from '../../../server/game/engine/EffectiveStats'
+} from '~~/shared/constants/balance'
+import { calculatePhysicalDamage } from '~~/server/game/engine/DamageCalculator'
+import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

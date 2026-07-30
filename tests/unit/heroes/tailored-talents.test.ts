@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { TALENT_TREES } from '../../../shared/constants/talents'
-import { HEROES } from '../../../shared/constants/heroes'
+import { TALENT_TREES } from '~~/shared/constants/talents'
+import { HEROES } from '~~/shared/constants/heroes'
 
 /**
  * Structural guard for the HERO-TAILORED talent trees (replacing the bland

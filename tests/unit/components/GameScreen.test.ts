@@ -4,8 +4,8 @@ import { resolve } from 'node:path'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { useGameStore } from '../../../app/stores/game'
-import { useSettingsStore } from '../../../app/stores/settings'
+import { useGameStore } from '~~/app/stores/game'
+import { useSettingsStore } from '~~/app/stores/settings'
 import {
   makeTickMessage,
   makeRoster,
@@ -13,8 +13,8 @@ import {
   makePlayerEndStats,
   makeZone,
   SAMPLE_HEROES,
-} from '../../../app/stories/fixtures'
-import type { GameState, PlayerState, ZoneRuntimeState } from '../../../shared/types/game'
+} from '~~/app/stories/fixtures'
+import type { GameState, PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 
 // ── useGameSocket mock ────────────────────────────────────────────────
 // GameScreen calls useGameSocket() at setup and opens a real WebSocket in
@@ -76,7 +76,7 @@ vi.stubGlobal('localStorage', {
   clear: vi.fn(() => void mockStorage.clear()),
 })
 
-import GameScreen from '../../../app/components/game/GameScreen.vue'
+import GameScreen from '~~/app/components/game/GameScreen.vue'
 import { ULTIMATE_UNLOCK_LEVEL } from '~~/shared/constants/balance'
 
 // Stubs for every Nuxt auto-imported child (vitest has no auto-import). The

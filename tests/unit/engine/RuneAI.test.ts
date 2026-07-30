@@ -4,14 +4,14 @@ import {
   pickupRune,
   removeExpiredRunes,
   processRuneBuffs,
-} from '../../../server/game/engine/RuneAI'
-import type { GameState, PlayerState, RuneState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+} from '~~/server/game/engine/RuneAI'
+import type { GameState, PlayerState, RuneState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
 import {
   RUNE_BUFF_TICKS,
   RUNE_DURATION_TICKS,
   REGEN_RUNE_HEAL_PERCENT,
-} from '../../../shared/constants/balance'
+} from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import HeroAvatar from '../../../app/components/avatars/HeroAvatar.vue'
-import { SAMPLE_HEROES } from '../../../app/stories/fixtures'
+import HeroAvatar from '~~/app/components/avatars/HeroAvatar.vue'
+import { SAMPLE_HEROES } from '~~/app/stories/fixtures'
 
 function mountAvatar(props: { heroId: string; size?: number }) {
   return mount(HeroAvatar, { props, attachTo: document.body })

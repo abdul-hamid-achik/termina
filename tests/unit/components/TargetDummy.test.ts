@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import TargetDummy from '../../../app/components/heroes/TargetDummy.vue'
+import TargetDummy from '~~/app/components/heroes/TargetDummy.vue'
 
 function mountDummy(props: Record<string, unknown> = {}) {
   return mount(TargetDummy, { props: { name: 'Target Dummy', hp: 1000, maxHp: 1000, ...props } })

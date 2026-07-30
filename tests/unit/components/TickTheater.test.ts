@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import TickTheater from '../../../app/components/game/TickTheater.vue'
-import type { CombatLine } from '../../../app/utils/combatLog'
+import TickTheater from '~~/app/components/game/TickTheater.vue'
+import type { CombatLine } from '~~/app/utils/combatLog'
 
 const CombatLogStub = {
   name: 'CombatLog',

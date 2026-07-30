@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import { resolveActions, type PlayerAction } from '../../../server/game/engine/ActionResolver'
-import { processRoshanDamage, runRoshanAI } from '../../../server/game/engine/RoshanAI'
-import type { GameState, PlayerState, RoshanState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { initializeRoshan } from '../../../server/game/map/spawner'
+import { resolveActions, type PlayerAction } from '~~/server/game/engine/ActionResolver'
+import { processRoshanDamage, runRoshanAI } from '~~/server/game/engine/RoshanAI'
+import type { GameState, PlayerState, RoshanState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeRoshan } from '~~/server/game/map/spawner'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

@@ -5,8 +5,8 @@ import {
   RedisService,
   makeRedisServiceLive,
   type RedisServiceApi,
-} from '../../server/services/RedisService'
-import { joinQueue, leaveQueue, type QueueEntry } from '../../server/game/matchmaking/queue'
+} from '~~/server/services/RedisService'
+import { joinQueue, leaveQueue, type QueueEntry } from '~~/server/game/matchmaking/queue'
 
 /**
  * Real-Redis verification of the mode-agnostic queue dedup sentinel — the unit

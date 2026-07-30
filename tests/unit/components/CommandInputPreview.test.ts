@@ -1,9 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import CommandInput from '../../../app/components/game/CommandInput.vue'
-import { makePlayer, SAMPLE_HEROES } from '../../../app/stories/fixtures'
-import { ITEMS } from '../../../shared/constants/items'
-import type { PlayerState } from '../../../shared/types/game'
+import CommandInput from '~~/app/components/game/CommandInput.vue'
+import { makePlayer, SAMPLE_HEROES } from '~~/app/stories/fixtures'
+import { ITEMS } from '~~/shared/constants/items'
+import type { PlayerState } from '~~/shared/types/game'
 
 /**
  * Focused coverage for CommandInput's rich `preview` computed and keyboard

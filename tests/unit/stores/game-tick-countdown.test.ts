@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useGameStore } from '../../../app/stores/game'
-import { TICK_DURATION_MS } from '../../../shared/constants/balance'
-import type { TickStateMessage } from '../../../shared/types/protocol'
-import type { TeamState } from '../../../shared/types/game'
+import { useGameStore } from '~~/app/stores/game'
+import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import type { TickStateMessage } from '~~/shared/types/protocol'
+import type { TeamState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 

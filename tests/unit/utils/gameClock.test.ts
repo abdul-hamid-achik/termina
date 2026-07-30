@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatTickClock, formatSeconds } from '../../../app/utils/gameClock'
+import { formatTickClock, formatSeconds } from '~~/app/utils/gameClock'
 
 describe('formatTickClock', () => {
   it('formats ticks as M:SS (unpadded minutes) by default', () => {

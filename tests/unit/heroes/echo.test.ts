@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { resolveAbility, getAbilityLevel, applyBuff } from '../../../server/game/heroes/_base'
-import { getResonanceMultiplier, resolveHeroPassive } from '../../../server/game/heroes/echo'
-import type { GameEvent } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { resolveAbility, getAbilityLevel, applyBuff } from '~~/server/game/heroes/_base'
+import { getResonanceMultiplier, resolveHeroPassive } from '~~/server/game/heroes/echo'
+import type { GameEvent } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

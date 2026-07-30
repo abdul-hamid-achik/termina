@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AbilitySlot from '../../../app/components/heroes/AbilitySlot.vue'
-import { formatEffect, cooldownSeconds } from '../../../shared/abilityFormat'
-import { TICK_DURATION_MS } from '../../../shared/constants/balance'
-import type { AbilityDef } from '../../../shared/types/hero'
+import AbilitySlot from '~~/app/components/heroes/AbilitySlot.vue'
+import { formatEffect, cooldownSeconds } from '~~/shared/abilityFormat'
+import { TICK_DURATION_MS } from '~~/shared/constants/balance'
+import type { AbilityDef } from '~~/shared/types/hero'
 
 // A representative targeted nuke with two effects, a mana cost and a cooldown —
 // exercises every conditional branch the slot renders.

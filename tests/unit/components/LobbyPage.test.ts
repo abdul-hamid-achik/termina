@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { useLobbyStore } from '../../../app/stores/lobby'
+import { useLobbyStore } from '~~/app/stores/lobby'
 
 // ── useGameSocket / useAudio doubles ──────────────────────────────────
 // lobby.vue opens a real WebSocket in onMounted and plays through the Web
@@ -23,7 +23,7 @@ vi.mock('~/composables/useAudio', () => ({
   useAudio: () => ({ playSound }),
 }))
 
-import LobbyPage from '../../../app/pages/lobby.vue'
+import LobbyPage from '~~/app/pages/lobby.vue'
 
 const MY_ID = 'github_me'
 

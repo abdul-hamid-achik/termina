@@ -4,13 +4,13 @@ import {
   canBuyback,
   buyback,
   updateBuybackCost,
-} from '../../../server/game/engine/BuybackSystem'
+} from '~~/server/game/engine/BuybackSystem'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
   BUYBACK_COOLDOWN_TICKS,
-} from '../../../shared/constants/balance'
-import type { GameState, PlayerState } from '../../../shared/types/game'
+} from '~~/shared/constants/balance'
+import type { GameState, PlayerState } from '~~/shared/types/game'
 
 function makePlayer(o: Partial<PlayerState> = {}): PlayerState {
   return {

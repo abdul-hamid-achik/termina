@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { resolveAbility } from '../../../server/game/heroes/_base'
-import { TALENT_TREES } from '../../../shared/constants/talents'
-import { hasTalentCastEffect } from '../../../server/game/engine/EffectiveStats'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { resolveAbility } from '~~/server/game/heroes/_base'
+import { TALENT_TREES } from '~~/shared/constants/talents'
+import { hasTalentCastEffect } from '~~/server/game/engine/EffectiveStats'
 import '../../../server/game/heroes/regex'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {

@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '~~/shared/types/game'
 import {
   resolveAbility,
   resolvePassive,
   applyBuff,
   hasBuff,
   getBuffStacks,
-} from '../../../server/game/heroes/_base'
-import { hasTalentCastEffect } from '../../../server/game/engine/EffectiveStats'
-import { TALENT_TREES } from '../../../shared/constants/talents'
+} from '~~/server/game/heroes/_base'
+import { hasTalentCastEffect } from '~~/server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 // Register daemon hero
 import '../../../server/game/heroes/daemon'
 

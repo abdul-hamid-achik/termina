@@ -1,12 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import {
-  resolvePhysicalHit,
-  computeBladeMailReflect,
-} from '../../../server/game/engine/CombatResolver'
-import type { PlayerState } from '../../../shared/types/game'
-import { HEROES } from '../../../shared/constants/heroes'
-import { calculatePhysicalDamage } from '../../../server/game/engine/DamageCalculator'
-import { getEffectiveDefense } from '../../../server/game/engine/EffectiveStats'
+import { resolvePhysicalHit, computeBladeMailReflect } from '~~/server/game/engine/CombatResolver'
+import type { PlayerState } from '~~/shared/types/game'
+import { HEROES } from '~~/shared/constants/heroes'
+import { calculatePhysicalDamage } from '~~/server/game/engine/DamageCalculator'
+import { getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const echo = HEROES.echo!

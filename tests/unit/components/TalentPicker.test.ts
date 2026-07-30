@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { talentUnlockLevel } from '~~/shared/constants/talents'
-import TalentPicker from '../../../app/components/game/TalentPicker.vue'
-import { TALENT_TREES } from '../../../shared/constants/talents'
-import type { PlayerState } from '../../../shared/types/game'
+import TalentPicker from '~~/app/components/game/TalentPicker.vue'
+import { TALENT_TREES } from '~~/shared/constants/talents'
+import type { PlayerState } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

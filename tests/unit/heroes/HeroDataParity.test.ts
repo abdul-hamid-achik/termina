@@ -20,14 +20,14 @@
  */
 import { describe, it, expect } from 'vitest'
 import { Effect, Exit } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import type { TargetRef } from '../../../shared/types/commands'
-import type { AbilitySlot } from '../../../server/game/heroes/_base'
-import { resolveAbility, applyBuff } from '../../../server/game/heroes/_base'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import type { TargetRef } from '~~/shared/types/commands'
+import type { AbilitySlot } from '~~/server/game/heroes/_base'
+import { resolveAbility, applyBuff } from '~~/server/game/heroes/_base'
 // Importing the barrel runs every registerHero() side effect.
 import '../../../server/game/heroes/index'
-import { HEROES } from '../../../shared/constants/heroes'
-import { getAbilityManaCost } from '../../../shared/utils/ability'
+import { HEROES } from '~~/shared/constants/heroes'
+import { getAbilityManaCost } from '~~/shared/utils/ability'
 
 const SLOTS: AbilitySlot[] = ['q', 'w', 'e', 'r']
 const CASTER_ZONE = 'mid-river'

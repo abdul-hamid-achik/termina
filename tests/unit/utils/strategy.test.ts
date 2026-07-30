@@ -12,14 +12,14 @@ import {
   dayNightReadout,
   sparkline,
   shortZone,
-} from '../../../app/utils/strategy'
-import { ITEMS } from '../../../shared/constants/items'
+} from '~~/app/utils/strategy'
+import { ITEMS } from '~~/shared/constants/items'
 import {
   ROSHAN_RESPAWN_TICKS,
   RUNE_DURATION_TICKS,
   RUNE_INTERVAL_TICKS,
-} from '../../../shared/constants/balance'
-import { ZONES } from '../../../shared/constants/zones'
+} from '~~/shared/constants/balance'
+import { ZONES } from '~~/shared/constants/zones'
 
 const [sampleItemId, sampleItem] = Object.entries(ITEMS)[0]!
 

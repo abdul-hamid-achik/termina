@@ -6,13 +6,13 @@ import {
   getQueueSize,
   startMatchmakingLoop,
   isPlayerInQueue,
-} from '../../../server/game/matchmaking/queue'
-import type { QueueEntry } from '../../../server/game/matchmaking/queue'
-import { createLobby } from '../../../server/game/matchmaking/lobby'
+} from '~~/server/game/matchmaking/queue'
+import type { QueueEntry } from '~~/server/game/matchmaking/queue'
+import { createLobby } from '~~/server/game/matchmaking/lobby'
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
-vi.mock('../../../server/game/matchmaking/lobby', () => ({
+vi.mock('~~/server/game/matchmaking/lobby', () => ({
   createLobby: vi.fn((entries: QueueEntry[]) => {
     const sorted = [...entries].sort((a, b) => b.mmr - a.mmr)
     const snakeOrder = [0, 1, 1, 0, 0, 1, 1, 0, 0, 1]
@@ -37,7 +37,7 @@ vi.mock('../../../server/game/matchmaking/lobby', () => ({
   cleanupLobby: vi.fn(),
 }))
 
-vi.mock('../../../server/game/ai/BotManager', () => ({
+vi.mock('~~/server/game/ai/BotManager', () => ({
   isBot: (id: string) => id.startsWith('bot_'),
   createBotPlayers: (count: number, _existingIds: string[]) =>
     Array.from({ length: count }, (_, i) => ({
@@ -48,7 +48,7 @@ vi.mock('../../../server/game/ai/BotManager', () => ({
     })),
 }))
 
-vi.mock('../../../server/services/PeerRegistry', () => ({
+vi.mock('~~/server/services/PeerRegistry', () => ({
   sendToPeer: vi.fn(),
 }))
 

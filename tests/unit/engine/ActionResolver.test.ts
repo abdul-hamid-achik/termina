@@ -4,15 +4,15 @@ import {
   resolveActions,
   validateAction,
   type PlayerAction,
-} from '../../../server/game/engine/ActionResolver'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import type { TargetRef } from '../../../shared/types/commands'
-import { NEUTRAL_CREEPS } from '../../../shared/constants/balance'
-import { HEROES } from '../../../shared/constants/heroes'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { initializeRoshan } from '../../../server/game/map/spawner'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
-import { tickAllBuffs } from '../../../server/game/heroes/_base'
+} from '~~/server/game/engine/ActionResolver'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import type { TargetRef } from '~~/shared/types/commands'
+import { NEUTRAL_CREEPS } from '~~/shared/constants/balance'
+import { HEROES } from '~~/shared/constants/heroes'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
+import { tickAllBuffs } from '~~/server/game/heroes/_base'
 // Register echo so its Q resolver runs (the spell-block tests cast a real spell).
 import '../../../server/game/heroes/echo'
 

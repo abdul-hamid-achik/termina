@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import CombatLog from '../../../app/components/game/CombatLog.vue'
+import CombatLog from '~~/app/components/game/CombatLog.vue'
 import {
   ancientLabel,
   isStructureTarget,
@@ -8,7 +8,7 @@ import {
   collapseStructureDamage,
   digestTeamfightNoise,
   type CombatLine,
-} from '../../../app/utils/combatLog'
+} from '~~/app/utils/combatLog'
 
 interface LogEvent {
   tick: number

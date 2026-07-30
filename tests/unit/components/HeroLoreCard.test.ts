@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import HeroLoreCard from '../../../app/components/lore/HeroLoreCard.vue'
-import type { HeroRole } from '../../../shared/types/hero'
+import HeroLoreCard from '~~/app/components/lore/HeroLoreCard.vue'
+import type { HeroRole } from '~~/shared/types/hero'
 
 // HeroLoreCard renders a <NuxtLink> for its TRAIN deep-link; the component
 // vitest project has no Nuxt auto-import, so stub it as a real anchor mirroring

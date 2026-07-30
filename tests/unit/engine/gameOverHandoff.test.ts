@@ -6,16 +6,16 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import type { RedisServiceApi } from '../../../server/services/RedisService'
-import type { TeamId } from '../../../shared/types/game'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
+import type { TeamId } from '~~/shared/types/game'
 import {
   startGameLoop,
   stopGameLoop,
   submitAction,
   type PlayerFarm,
-} from '../../../server/game/engine/GameLoop'
-import { createInMemoryStateManager } from '../../../server/game/engine/StateManager'
-import { SNAPSHOT_EVERY_N_TICKS } from '../../../server/game/engine/StateSnapshot'
+} from '~~/server/game/engine/GameLoop'
+import { createInMemoryStateManager } from '~~/server/game/engine/StateManager'
+import { SNAPSHOT_EVERY_N_TICKS } from '~~/server/game/engine/StateSnapshot'
 
 /**
  * `setLatencyMs` makes the write genuinely asynchronous — a synchronous mock

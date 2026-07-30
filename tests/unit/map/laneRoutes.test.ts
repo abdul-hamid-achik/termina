@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { LANE_ROUTES_CORE, LANE_ROUTES } from '../../../shared/constants/lanes'
-import { ZONE_IDS, ZONE_MAP } from '../../../shared/constants/zones'
+import { LANE_ROUTES_CORE, LANE_ROUTES } from '~~/shared/constants/lanes'
+import { ZONE_IDS, ZONE_MAP } from '~~/shared/constants/zones'
 
 const zoneSet = new Set<string>(ZONE_IDS)
 

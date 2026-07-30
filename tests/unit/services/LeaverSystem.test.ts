@@ -1,16 +1,16 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
+import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import {
   detectAFKPlayers,
   shouldConvertAFK,
   markClientInput,
   msSinceClientInput,
   clearClientInput,
-} from '../../../server/services/LeaverSystem'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { initializeRoshan } from '../../../server/game/map/spawner'
+} from '~~/server/services/LeaverSystem'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeRoshan } from '~~/server/game/map/spawner'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

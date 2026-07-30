@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import Sparkline from '../../../app/components/game/Sparkline.vue'
+import Sparkline from '~~/app/components/game/Sparkline.vue'
 
 describe('Sparkline', () => {
   it('renders a sparkline for a rising series', () => {

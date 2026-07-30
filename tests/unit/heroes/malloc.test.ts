@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '~~/shared/types/game'
 import {
   resolveAbility,
   resolvePassive,
   applyBuff,
   hasBuff,
   getBuffStacks,
-} from '../../../server/game/heroes/_base'
+} from '~~/server/game/heroes/_base'
 // Register malloc hero and import helpers
-import { getHeapGrowthBonus } from '../../../server/game/heroes/malloc'
-import { getEffectiveAttack, getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
-import { TALENT_TREES } from '../../../shared/constants/talents'
+import { getHeapGrowthBonus } from '~~/server/game/heroes/malloc'
+import { getEffectiveAttack, getTalentStatBonus } from '~~/server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 
 // ── Test Helpers ──────────────────────────────────────────────────
 

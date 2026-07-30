@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import TutorialHint from '../../../app/components/game/TutorialHint.vue'
-import { TUTORIAL_STEP_COUNT, tutorialHint } from '../../../shared/constants/tutorial'
+import TutorialHint from '~~/app/components/game/TutorialHint.vue'
+import { TUTORIAL_STEP_COUNT, tutorialHint } from '~~/shared/constants/tutorial'
 
 describe('TutorialHint', () => {
   // Assert against the shared flow rather than literal copy: the hints ARE the

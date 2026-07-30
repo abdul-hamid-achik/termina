@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { heroPlaystyleTags, type PlaystyleTag } from '../../../shared/heroPlaystyle'
-import { HEROES } from '../../../shared/constants/heroes'
-import type { AbilityDef, AbilityEffect, HeroDef } from '../../../shared/types/hero'
+import { heroPlaystyleTags, type PlaystyleTag } from '~~/shared/heroPlaystyle'
+import { HEROES } from '~~/shared/constants/heroes'
+import type { AbilityDef, AbilityEffect, HeroDef } from '~~/shared/types/hero'
 
 const ability = (effects: AbilityEffect[]): AbilityDef => ({
   id: 'x',

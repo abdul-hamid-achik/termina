@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick } from '../../../server/game/engine/GameLoop'
-import { registerBots, cleanupGame } from '../../../server/game/ai/BotManager'
-import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
+import { processTick } from '~~/server/game/engine/GameLoop'
+import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
+import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 /**
  * Bot decisions driven through the REAL processTick → decideBotAction →

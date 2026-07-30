@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { computeDelta } from '../../../server/game/engine/StateDelta'
-import type { PlayerVisibleState } from '../../../shared/types/game'
+import { computeDelta } from '~~/server/game/engine/StateDelta'
+import type { PlayerVisibleState } from '~~/shared/types/game'
 
 function makeState(overrides: Partial<PlayerVisibleState> = {}): PlayerVisibleState {
   return {

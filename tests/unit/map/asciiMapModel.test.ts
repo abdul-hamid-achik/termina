@@ -21,10 +21,10 @@ import {
   zoneAriaLabel,
   zoneShortCode,
   zoneTeam,
-} from '../../../app/components/game/asciiMapModel'
-import type { ZoneDisplay } from '../../../app/components/game/asciiMapModel'
-import type { AncientState } from '../../../shared/types/game'
-import { ZONE_IDS } from '../../../shared/constants/zones'
+} from '~~/app/components/game/asciiMapModel'
+import type { ZoneDisplay } from '~~/app/components/game/asciiMapModel'
+import type { AncientState } from '~~/shared/types/game'
+import { ZONE_IDS } from '~~/shared/constants/zones'
 
 function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return {

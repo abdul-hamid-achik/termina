@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ITEMS, ITEM_IDS, getItem, DEFAULT_QUICKBUY_ITEMS } from '~~/shared/constants/items'
-import type { ItemDef } from '../../../shared/types/items'
+import type { ItemDef } from '~~/shared/types/items'
 
 // ── Tests ──────────────────────────────────────────────────────────
 

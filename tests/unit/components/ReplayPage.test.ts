@@ -7,9 +7,9 @@ import { ref, defineComponent, Suspense, h, nextTick, watchEffect } from 'vue'
 // watchEffect (Nuxt auto-imports). ref/computed/onUnmounted it imports from vue
 // directly, so only the three auto-imports below need stubbing. (Mirrors the
 // LeaderboardPage component-test pattern.)
-import ReplayPage from '../../../app/pages/replay/[gameId].vue'
+import ReplayPage from '~~/app/pages/replay/[gameId].vue'
 // Auto-imported by Nuxt in-app; register it explicitly for the test mount.
-import PlayerScoreTable from '../../../app/components/game/PlayerScoreTable.vue'
+import PlayerScoreTable from '~~/app/components/game/PlayerScoreTable.vue'
 
 interface FetchResult {
   data: ReturnType<typeof ref>

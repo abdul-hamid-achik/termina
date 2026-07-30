@@ -13,7 +13,7 @@ import { ref, computed, defineComponent, Suspense, h, onMounted, onUnmounted } f
 // Globals are stubbed in beforeEach and removed via vi.unstubAllGlobals()
 // in afterEach so they don't bleed into sibling component-project files.
 
-import LeaderboardPage from '../../../app/pages/leaderboard.vue'
+import LeaderboardPage from '~~/app/pages/leaderboard.vue'
 
 interface FetchResult {
   data: ReturnType<typeof ref>

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import PostGame from '../../../app/components/lobby/PostGame.vue'
-import { makePlayerEndStats, SAMPLE_HEROES } from '../../../app/stories/fixtures'
-import type { TeamId } from '../../../shared/types/game'
-import type { PlayerEndStats } from '../../../shared/types/protocol'
+import PostGame from '~~/app/components/lobby/PostGame.vue'
+import { makePlayerEndStats, SAMPLE_HEROES } from '~~/app/stories/fixtures'
+import type { TeamId } from '~~/shared/types/game'
+import type { PlayerEndStats } from '~~/shared/types/protocol'
 
 /**
  * The progression half of the post-game screen: net worth (not the wallet

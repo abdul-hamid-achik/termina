@@ -11,21 +11,21 @@ import {
   resolveActions,
   validateAction,
   type PlayerAction,
-} from '../../../server/game/engine/ActionResolver'
-import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
-import { processDoTs, resolveAbility, getBuffStacks } from '../../../server/game/heroes'
+} from '~~/server/game/engine/ActionResolver'
+import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import { processDoTs, resolveAbility, getBuffStacks } from '~~/server/game/heroes'
 import {
   getEffectiveAttack,
   getEffectiveDefense,
   getTalentStatBonus,
   hasTalentCastEffect,
-} from '../../../server/game/engine/EffectiveStats'
-import { filterStateForPlayer } from '../../../server/game/engine/VisionCalculator'
-import type { CreepState, GameState, PlayerState } from '../../../shared/types/game'
-import { HEROES } from '../../../shared/constants/heroes'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { initializeRoshan } from '../../../server/game/map/spawner'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
+} from '~~/server/game/engine/EffectiveStats'
+import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
+import type { CreepState, GameState, PlayerState } from '~~/shared/types/game'
+import { HEROES } from '~~/shared/constants/heroes'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 function statsAtLevel(heroId: string, level: number) {
   const hero = HEROES[heroId]!

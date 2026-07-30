@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { ref, nextTick } from 'vue'
-import { useTrainingConsole, CONSOLE_LEVELS } from '../../../app/composables/useTrainingConsole'
-import type { HeroDef, AbilityDef } from '../../../shared/types/hero'
-import { ULTIMATE_UNLOCK_LEVEL } from '../../../shared/constants/balance'
+import { useTrainingConsole, CONSOLE_LEVELS } from '~~/app/composables/useTrainingConsole'
+import type { HeroDef, AbilityDef } from '~~/shared/types/hero'
+import { ULTIMATE_UNLOCK_LEVEL } from '~~/shared/constants/balance'
 
 /** Move the console to a non-default hero level (the watcher resets on flush). */
 async function atLevel<T extends { level: { value: number } }>(c: T, lvl: number): Promise<T> {

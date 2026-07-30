@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import {
-  resolveAbility,
-  resolvePassive,
-  applyBuff,
-  hasBuff,
-} from '../../../server/game/heroes/_base'
-import { getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
-import { TALENT_TREES } from '../../../shared/constants/talents'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { resolveAbility, resolvePassive, applyBuff, hasBuff } from '~~/server/game/heroes/_base'
+import { getTalentStatBonus } from '~~/server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 // Register firewall hero
 import '../../../server/game/heroes/firewall'
 

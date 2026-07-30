@@ -14,12 +14,12 @@ import {
   formatScanReadout,
   formatHelpReadout,
   type GameContext,
-} from '../../../app/composables/useCommands'
-import type { PlayerState, ZoneRuntimeState, CreepState } from '../../../shared/types/game'
-import type { ItemDef } from '../../../shared/types/items'
-import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
-import { ZONE_IDS } from '../../../shared/constants/zones'
-import { calculateBuybackCost } from '../../../server/game/engine/BuybackSystem'
+} from '~~/app/composables/useCommands'
+import type { PlayerState, ZoneRuntimeState, CreepState } from '~~/shared/types/game'
+import type { ItemDef } from '~~/shared/types/items'
+import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
+import { ZONE_IDS } from '~~/shared/constants/zones'
+import { calculateBuybackCost } from '~~/server/game/engine/BuybackSystem'
 
 /** The full game zone set, as the client actually receives it (state.zones). */
 function allZones(): Record<string, ZoneRuntimeState> {

@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '~~/shared/types/game'
 import {
   resolveAbility,
   resolvePassive,
   applyBuff,
   hasBuff,
   getBuffStacks,
-} from '../../../server/game/heroes/_base'
+} from '~~/server/game/heroes/_base'
 // Register mutex hero and import helpers
-import { getDeadlockDefenseBonus, getDeadlockAttackBonus } from '../../../server/game/heroes/mutex'
+import { getDeadlockDefenseBonus, getDeadlockAttackBonus } from '~~/server/game/heroes/mutex'
 
 // ── Test Helpers ──────────────────────────────────────────────────
 

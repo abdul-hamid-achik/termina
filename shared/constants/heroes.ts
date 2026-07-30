@@ -243,7 +243,8 @@ export const HEROES: Record<string, HeroDef> = {
       w: {
         id: 'daemon-w',
         name: 'Fork Bomb',
-        description: 'Create a decoy in the target zone for 3 cycles, granting vision of that zone.',
+        description:
+          'Create a decoy in the target zone for 3 cycles, granting vision of that zone.',
         manaCost: 100,
         cooldownTicks: 18,
         targetType: 'zone',
@@ -1401,7 +1402,8 @@ export const HEROES: Record<string, HeroDef> = {
       w: {
         id: 'cron-w',
         name: 'Purge',
-        description: 'Cleanse all debuffs from an allied hero and grant them a shield for 2 cycles.',
+        description:
+          'Cleanse all debuffs from an allied hero and grant them a shield for 2 cycles.',
         manaCost: 90,
         manaCostByLevel: [90, 105, 120, 135],
         cooldownTicks: 12,

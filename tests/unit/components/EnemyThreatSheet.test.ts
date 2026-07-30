@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import EnemyThreatSheet from '../../../app/components/game/EnemyThreatSheet.vue'
+import EnemyThreatSheet from '~~/app/components/game/EnemyThreatSheet.vue'
 
 function visibleEnemy(overrides: Record<string, unknown> = {}) {
   return {

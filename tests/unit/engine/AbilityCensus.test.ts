@@ -16,10 +16,10 @@
  */
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import type { TargetRef } from '../../../shared/types/commands'
-import { resolveAbility } from '../../../server/game/heroes'
-import { HEROES } from '../../../shared/constants/heroes'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import type { TargetRef } from '~~/shared/types/commands'
+import { resolveAbility } from '~~/server/game/heroes'
+import { HEROES } from '~~/shared/constants/heroes'
 
 const ZONE = 'mid-river'
 const ADJ = 'mid-t1-rad'

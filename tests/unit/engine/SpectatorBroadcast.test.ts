@@ -5,10 +5,10 @@
  */
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState } from '../../../shared/types/game'
-import { processTick } from '../../../server/game/engine/GameLoop'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { filterStateForSpectator } from '../../../server/game/engine/VisionCalculator'
+import type { GameState } from '~~/shared/types/game'
+import { processTick } from '~~/server/game/engine/GameLoop'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { filterStateForSpectator } from '~~/server/game/engine/VisionCalculator'
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
   return {

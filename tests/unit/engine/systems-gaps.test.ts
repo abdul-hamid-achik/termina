@@ -1,21 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import type { GameState, PlayerState, RoshanState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { initializeRoshan } from '../../../server/game/map/spawner'
-import {
-  buyback,
-  calculateBuybackCost,
-  canBuyback,
-} from '../../../server/game/engine/BuybackSystem'
-import { processSpecialActions, type PlayerAction } from '../../../server/game/engine/GameLoop'
-import { getEffectiveAttack, getTalentStatBonus } from '../../../server/game/engine/EffectiveStats'
-import { TALENT_TREES } from '../../../shared/constants/talents'
-import { pickupAegis, processRoshanDamage } from '../../../server/game/engine/RoshanAI'
+import type { GameState, PlayerState, RoshanState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeRoshan } from '~~/server/game/map/spawner'
+import { buyback, calculateBuybackCost, canBuyback } from '~~/server/game/engine/BuybackSystem'
+import { processSpecialActions, type PlayerAction } from '~~/server/game/engine/GameLoop'
+import { getEffectiveAttack, getTalentStatBonus } from '~~/server/game/engine/EffectiveStats'
+import { TALENT_TREES } from '~~/shared/constants/talents'
+import { pickupAegis, processRoshanDamage } from '~~/server/game/engine/RoshanAI'
 import {
   calculateVision,
   filterStateForPlayer,
   type FoggedPlayer,
-} from '../../../server/game/engine/VisionCalculator'
+} from '~~/server/game/engine/VisionCalculator'
 import {
   BUYBACK_BASE_COST,
   BUYBACK_COST_PER_LEVEL,
@@ -23,7 +19,7 @@ import {
   ROSHAN_AEGIS_TICKS,
   ROSHAN_RESPAWN_TICKS,
   NIGHT_VISION_PENALTY,
-} from '../../../shared/constants/balance'
+} from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

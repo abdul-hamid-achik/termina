@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import HudSettings from '../../../app/components/settings/HudSettings.vue'
-import { useSettingsStore } from '../../../app/stores/settings'
+import HudSettings from '~~/app/components/settings/HudSettings.vue'
+import { useSettingsStore } from '~~/app/stores/settings'
 
 // localStorage is touched by the store's load()/save(); stub it so the
 // component test runs in node/happy-dom without a real implementation.

@@ -51,9 +51,9 @@ import {
   FOUNTAIN_HEAL_PER_TICK_PERCENT,
   FOUNTAIN_MANA_PER_TICK_PERCENT,
   SURRENDER_MIN_TICK,
-} from '../../../shared/constants/balance'
-import { HEROES } from '../../../shared/constants/heroes'
-import { TALENT_TREES } from '../../../shared/constants/talents'
+} from '~~/shared/constants/balance'
+import { HEROES } from '~~/shared/constants/heroes'
+import { TALENT_TREES } from '~~/shared/constants/talents'
 
 describe('Balance Constants', () => {
   describe('timing', () => {

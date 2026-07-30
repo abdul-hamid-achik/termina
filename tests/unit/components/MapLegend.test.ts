@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import MapLegend from '../../../app/components/game/MapLegend.vue'
+import MapLegend from '~~/app/components/game/MapLegend.vue'
 
 describe('MapLegend', () => {
   it('renders a collapsible "legend" summary', () => {

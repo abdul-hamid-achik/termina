@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarizeSimResults, type SimResult } from '../../../server/game/dev/simStats'
+import { summarizeSimResults, type SimResult } from '~~/server/game/dev/simStats'
 
 const r = (
   winner: SimResult['winner'],

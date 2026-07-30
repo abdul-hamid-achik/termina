@@ -1,13 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState } from '../../../shared/types/game'
-import type { RedisServiceApi } from '../../../server/services/RedisService'
-import {
-  writeSnapshot,
-  readSnapshot,
-  deleteSnapshot,
-} from '../../../server/game/engine/StateSnapshot'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+import type { GameState } from '~~/shared/types/game'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
+import { writeSnapshot, readSnapshot, deleteSnapshot } from '~~/server/game/engine/StateSnapshot'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
 
 function makeGameState(): GameState {
   return {

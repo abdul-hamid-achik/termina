@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ProgressBar from '../../../app/components/ui/ProgressBar.vue'
+import ProgressBar from '~~/app/components/ui/ProgressBar.vue'
 
 const FILLED = '█'
 const EMPTY = '░'

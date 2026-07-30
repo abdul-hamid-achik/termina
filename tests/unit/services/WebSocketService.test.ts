@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { Effect } from 'effect'
-import { WebSocketService, WebSocketServiceLive } from '../../../server/services/WebSocketService'
-import { wsLog } from '../../../server/utils/log'
-import { peerLog } from '../../../server/utils/log'
+import { WebSocketService, WebSocketServiceLive } from '~~/server/services/WebSocketService'
+import { wsLog } from '~~/server/utils/log'
+import { peerLog } from '~~/server/utils/log'
 
 // Clear PeerRegistry state between tests — it's a module-level singleton.
-import { clearPlayerGame as _clearPG } from '../../../server/services/PeerRegistry'
+import { clearPlayerGame as _clearPG } from '~~/server/services/PeerRegistry'
 
 const TEST_PLAYERS = [
   'player_1',

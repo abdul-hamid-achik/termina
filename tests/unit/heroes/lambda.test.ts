@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState, PlayerState } from '../../../shared/types/game'
+import type { GameState, PlayerState } from '~~/shared/types/game'
 import {
   resolveAbility,
   resolvePassive,
@@ -8,7 +8,7 @@ import {
   hasBuff,
   getBuffStacks,
   tickAllBuffs,
-} from '../../../server/game/heroes/_base'
+} from '~~/server/game/heroes/_base'
 // Register lambda hero (side-effect import)
 import '../../../server/game/heroes/lambda'
 

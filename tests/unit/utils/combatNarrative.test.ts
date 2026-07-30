@@ -6,7 +6,7 @@ import {
   buildCombatLines,
   deriveKillFeed,
   type NarrativeContext,
-} from '../../../app/utils/combatNarrative'
+} from '~~/app/utils/combatNarrative'
 import {
   collapseStructureDamage,
   buildTickStoryView,
@@ -14,8 +14,8 @@ import {
   isStructureTarget,
   teamLabel,
   type CombatLine,
-} from '../../../app/utils/combatLog'
-import type { GameEvent } from '../../../shared/types/game'
+} from '~~/app/utils/combatLog'
+import type { GameEvent } from '~~/shared/types/game'
 
 const teams: Record<string, string> = {
   me: 'radiant',

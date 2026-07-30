@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSpectatorMessage } from '../../../app/utils/spectatorMessage'
+import { parseSpectatorMessage } from '~~/app/utils/spectatorMessage'
 
 describe('parseSpectatorMessage', () => {
   it('parses a spectator_ack', () => {

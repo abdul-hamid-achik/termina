@@ -10,7 +10,7 @@ vi.mock('~/stores/auth', () => ({
   useAuthStore: () => ({ user: { id: viewerId } }),
 }))
 
-import ProfilePage from '../../../app/pages/profile/[id].vue'
+import ProfilePage from '~~/app/pages/profile/[id].vue'
 
 interface FetchResult {
   data: ReturnType<typeof ref>

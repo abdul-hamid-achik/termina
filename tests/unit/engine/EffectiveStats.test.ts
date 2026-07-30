@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { getEffectiveAttack, getEffectiveDefense } from '../../../server/game/engine/EffectiveStats'
-import type { BuffState, PlayerState } from '../../../shared/types/game'
+import { getEffectiveAttack, getEffectiveDefense } from '~~/server/game/engine/EffectiveStats'
+import type { BuffState, PlayerState } from '~~/shared/types/game'
 
 // heroId null → getEffectiveAttack uses its 50 fallback and getEffectiveDefense
 // uses player.defense, so the buff math is isolated from hero growth tables.

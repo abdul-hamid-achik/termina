@@ -4,8 +4,8 @@ import {
   createInMemoryStateManager,
   type PlayerSetup,
   type StateManagerApi,
-} from '../../../server/game/engine/StateManager'
-import { STARTING_GOLD } from '../../../shared/constants/balance'
+} from '~~/server/game/engine/StateManager'
+import { STARTING_GOLD } from '~~/shared/constants/balance'
 
 function makePlayerSetup(overrides: Partial<PlayerSetup> = {}): PlayerSetup {
   return {

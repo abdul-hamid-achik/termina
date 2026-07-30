@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import PlayerScoreTable, {
-  type PlayerScoreRow,
-} from '../../../app/components/game/PlayerScoreTable.vue'
+import PlayerScoreTable, { type PlayerScoreRow } from '~~/app/components/game/PlayerScoreTable.vue'
 
 function row(overrides: Partial<PlayerScoreRow> = {}): PlayerScoreRow {
   return {

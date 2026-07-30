@@ -16,7 +16,7 @@ import { ref, computed } from 'vue'
 // component-project test files (several of which also unstub globals).
 
 import { createPinia, setActivePinia } from 'pinia'
-import LoginPage from '../../../app/pages/login.vue'
+import LoginPage from '~~/app/pages/login.vue'
 
 const mockNavigateTo = vi.fn()
 const mockRoute = { query: {} as Record<string, unknown> }

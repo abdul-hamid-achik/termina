@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
+import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
@@ -13,7 +13,7 @@ import {
   RESPAWN_PER_LEVEL_TICKS,
   RESPAWN_FREE_LEVELS,
   MAX_CREEPS_PER_ZONE_PER_TEAM,
-} from '../../../shared/constants/balance'
+} from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

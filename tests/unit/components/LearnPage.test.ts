@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import LearnPage from '../../../app/pages/learn.vue'
-import { HEROES, HERO_IDS, isHeroId } from '../../../shared/constants/heroes'
+import LearnPage from '~~/app/pages/learn.vue'
+import { HEROES, HERO_IDS, isHeroId } from '~~/shared/constants/heroes'
 import { ITEMS } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
@@ -32,11 +32,11 @@ import {
   CREEP_XP,
   CREEP_XP_SHARED,
   MELEE_CREEP_HP,
-} from '../../../shared/constants/balance'
-import { talentUnlockLevel } from '../../../shared/constants/talents'
-import { getAbilityLevel } from '../../../server/game/heroes/_base'
-import { useCommands } from '../../../app/composables/useCommands'
-import { routeGameKey } from '../../../app/utils/gameKeys'
+} from '~~/shared/constants/balance'
+import { talentUnlockLevel } from '~~/shared/constants/talents'
+import { getAbilityLevel } from '~~/server/game/heroes/_base'
+import { useCommands } from '~~/app/composables/useCommands'
+import { routeGameKey } from '~~/app/utils/gameKeys'
 
 // TerminalPanel renders its default slot; NuxtLink/AsciiButton are
 // Nuxt auto-imports stubbed out for plain vitest mounting.

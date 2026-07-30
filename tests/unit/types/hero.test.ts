@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { HeroRole, AbilityEffect, DamageType } from '../../../shared/types/hero'
+import type { HeroRole, AbilityEffect, DamageType } from '~~/shared/types/hero'
 
 describe('Hero Type Definitions', () => {
   describe('HeroRole', () => {

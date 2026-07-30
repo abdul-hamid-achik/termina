@@ -30,9 +30,9 @@ import {
   getHeroResolver,
   type HeroAbilityResolver,
   type HeroPassiveResolver,
-} from '../../../server/game/heroes/_base'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import type { CreepState, NeutralCreepState } from '../../../shared/types/game'
+} from '~~/server/game/heroes/_base'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import type { CreepState, NeutralCreepState } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

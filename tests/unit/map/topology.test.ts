@@ -7,10 +7,10 @@ import {
   getDistance,
   getZonesByType,
   getTeamZones,
-} from '../../../server/game/map/topology'
-import { ZONES, ZONE_MAP, ZONE_IDS } from '../../../shared/constants/zones'
-import { zonesForMap } from '../../../shared/constants/maps'
-import type { Zone } from '../../../shared/types/map'
+} from '~~/server/game/map/topology'
+import { ZONES, ZONE_MAP, ZONE_IDS } from '~~/shared/constants/zones'
+import { zonesForMap } from '~~/shared/constants/maps'
+import type { Zone } from '~~/shared/types/map'
 
 describe('Topology', () => {
   describe('getZone', () => {

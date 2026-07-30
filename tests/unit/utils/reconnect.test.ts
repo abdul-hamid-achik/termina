@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reconnectDelay } from '../../../app/utils/reconnect'
+import { reconnectDelay } from '~~/app/utils/reconnect'
 
 describe('reconnectDelay', () => {
   it('doubles each attempt starting from the base interval', () => {

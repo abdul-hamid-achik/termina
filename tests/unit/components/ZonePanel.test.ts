@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ZonePanel from '../../../app/components/game/ZonePanel.vue'
-import type {
-  PlayerState,
-  CreepState,
-  NeutralCreepState,
-  TowerState,
-} from '../../../shared/types/game'
+import ZonePanel from '~~/app/components/game/ZonePanel.vue'
+import type { PlayerState, CreepState, NeutralCreepState, TowerState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 

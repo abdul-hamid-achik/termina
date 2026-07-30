@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { testHooksEnabled } from '../../../server/utils/testHooks'
+import { testHooksEnabled } from '~~/server/utils/testHooks'
 
 /**
  * Locks the production-safety gate for the dangerous `server/api/test/*` hooks

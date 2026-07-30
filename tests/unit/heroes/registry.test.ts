@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { registerAllHeroes, getHeroResolver } from '../../../server/game/heroes'
-import { HEROES, HERO_IDS, isHeroId, type HeroId } from '../../../shared/constants/heroes'
-import { TALENT_TREES, getTalentTree } from '../../../shared/constants/talents'
+import { registerAllHeroes, getHeroResolver } from '~~/server/game/heroes'
+import { HEROES, HERO_IDS, isHeroId, type HeroId } from '~~/shared/constants/heroes'
+import { TALENT_TREES, getTalentTree } from '~~/shared/constants/talents'
 
 /**
  * Guards the hero ability registry. The production build once tree-shook the

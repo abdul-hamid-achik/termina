@@ -1,13 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useGameStore } from '../../../app/stores/game'
-import type { TickStateMessage, PlayerEndStats } from '../../../shared/types/protocol'
-import type {
-  PlayerState,
-  GameEvent,
-  TeamState,
-  ZoneRuntimeState,
-} from '../../../shared/types/game'
+import { useGameStore } from '~~/app/stores/game'
+import type { TickStateMessage, PlayerEndStats } from '~~/shared/types/protocol'
+import type { PlayerState, GameEvent, TeamState, ZoneRuntimeState } from '~~/shared/types/game'
 
 // ── Helpers ───────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import {
   nextScrubTick,
   keyMoments,
   type ReplayFrameLite,
-} from '../../../app/utils/replayView'
+} from '~~/app/utils/replayView'
 
 // Build a frame stream from per-tick cumulative [radiantKills, direKills,
 // radiantTowers, direTowers] tuples — terse fixtures for the delta logic.

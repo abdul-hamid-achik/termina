@@ -3,8 +3,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
-import { useTapInspect, usePointerCoarse } from '../../../app/composables/useTapInspect'
-import type { TapInspect } from '../../../app/composables/useTapInspect'
+import { useTapInspect, usePointerCoarse } from '~~/app/composables/useTapInspect'
+import type { TapInspect } from '~~/app/composables/useTapInspect'
 import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 
 function mountHarness() {

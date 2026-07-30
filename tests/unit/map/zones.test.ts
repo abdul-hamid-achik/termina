@@ -5,15 +5,15 @@ import {
   placeWard,
   removeExpiredWards,
   canAttackTower,
-} from '../../../server/game/map/zones'
-import { ZONES, ZONE_IDS } from '../../../shared/constants/zones'
+} from '~~/server/game/map/zones'
+import { ZONES, ZONE_IDS } from '~~/shared/constants/zones'
 import {
   TOWER_HP_T1,
   TOWER_HP_T2,
   TOWER_HP_T3,
   OBSERVER_WARD_DURATION_TICKS,
   WARD_LIMIT_PER_TEAM,
-} from '../../../shared/constants/balance'
+} from '~~/shared/constants/balance'
 
 describe('Zones', () => {
   describe('initializeZoneStates', () => {

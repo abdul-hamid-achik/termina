@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref, computed, defineComponent, Suspense, h } from 'vue'
-import { HEROES } from '../../../shared/constants/heroes'
+import { HEROES } from '~~/shared/constants/heroes'
 
 // ── Nuxt auto-import + composable stubs ────────────────────────────
 //
@@ -15,7 +15,7 @@ import { HEROES } from '../../../shared/constants/heroes'
 // in afterEach so they don't bleed into sibling component-project files.
 
 import { createPinia, setActivePinia } from 'pinia'
-import SettingsPage from '../../../app/pages/profile/settings.vue'
+import SettingsPage from '~~/app/pages/profile/settings.vue'
 
 const mockNavigateTo = vi.fn()
 const mockFetch = vi.fn()

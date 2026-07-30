@@ -1,12 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Effect } from 'effect'
-import type { GameState } from '../../../shared/types/game'
-import type { RedisServiceApi } from '../../../server/services/RedisService'
-import type { SnapshotMeta } from '../../../server/game/engine/StateSnapshot'
-import {
-  flushFinalSnapshots,
-  type ShutdownGameEntry,
-} from '../../../server/game/engine/gracefulShutdown'
+import type { GameState } from '~~/shared/types/game'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
+import type { SnapshotMeta } from '~~/server/game/engine/StateSnapshot'
+import { flushFinalSnapshots, type ShutdownGameEntry } from '~~/server/game/engine/gracefulShutdown'
 
 const META: SnapshotMeta = {
   players: [{ playerId: 'p1', team: 'radiant', heroId: 'malloc', mmr: 1000 }],

@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import Scoreboard from '../../../app/components/game/Scoreboard.vue'
+import Scoreboard from '~~/app/components/game/Scoreboard.vue'
 import { mockPointer, restorePointer } from './helpers/pointer'
-import type { TeamState } from '../../../shared/types/game'
+import type { TeamState } from '~~/shared/types/game'
 
 interface EntryOverrides {
   [key: string]: unknown

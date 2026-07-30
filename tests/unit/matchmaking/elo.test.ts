@@ -4,7 +4,7 @@ import {
   calculateMmrChange,
   applyMmrChange,
   teamAverageMmr,
-} from '../../../server/game/matchmaking/elo'
+} from '~~/server/game/matchmaking/elo'
 
 describe('Elo rating', () => {
   describe('expectedScore', () => {

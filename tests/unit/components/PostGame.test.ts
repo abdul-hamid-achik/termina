@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import PostGame from '../../../app/components/lobby/PostGame.vue'
-import { makePlayerEndStats, SAMPLE_HEROES, SAMPLE_ITEMS } from '../../../app/stories/fixtures'
-import type { TeamId } from '../../../shared/types/game'
-import type { PlayerEndStats } from '../../../shared/types/protocol'
+import PostGame from '~~/app/components/lobby/PostGame.vue'
+import { makePlayerEndStats, SAMPLE_HEROES, SAMPLE_ITEMS } from '~~/app/stories/fixtures'
+import type { TeamId } from '~~/shared/types/game'
+import type { PlayerEndStats } from '~~/shared/types/protocol'
 
 // PostGame renders end-of-game stats. It auto-imports TerminalPanel /
 // AsciiButton / NuxtLink in the live app; the components vitest project has no

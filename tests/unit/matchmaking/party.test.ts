@@ -8,7 +8,7 @@ import {
   disbandParty,
   clearAllParties,
   MAX_PARTY_SIZE,
-} from '../../../server/game/matchmaking/party'
+} from '~~/server/game/matchmaking/party'
 
 const member = (id: string) => ({ playerId: id, username: id, mmr: 1000 })
 

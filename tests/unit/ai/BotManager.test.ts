@@ -12,9 +12,9 @@ import {
   difficultyForMmr,
   parseBotDifficulty,
   BOT_DIFFICULTY_CONFIGS,
-} from '../../../server/game/ai/BotManager'
-import type { BotDifficulty } from '../../../server/game/ai/BotManager'
-import * as BotAI from '../../../server/game/ai/BotAI'
+} from '~~/server/game/ai/BotManager'
+import type { BotDifficulty } from '~~/server/game/ai/BotManager'
+import * as BotAI from '~~/server/game/ai/BotAI'
 
 describe('BotManager', () => {
   describe('isBot', () => {

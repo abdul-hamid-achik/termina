@@ -5,7 +5,7 @@ import {
   scaledAncientHp,
   scaledTowerHp,
   scaledRespawnTicks,
-} from '../../../server/game/engine/fastGame'
+} from '~~/server/game/engine/fastGame'
 
 /**
  * fastGame.ts is the dev/test accelerator that paces the play-to-the-end e2e

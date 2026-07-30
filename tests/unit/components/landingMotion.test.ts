@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ScrambleText from '../../../app/components/ui/ScrambleText.vue'
-import MarqueeStrip from '../../../app/components/ui/MarqueeStrip.vue'
-import ParallaxLayer from '../../../app/components/ui/ParallaxLayer.vue'
+import ScrambleText from '~~/app/components/ui/ScrambleText.vue'
+import MarqueeStrip from '~~/app/components/ui/MarqueeStrip.vue'
+import ParallaxLayer from '~~/app/components/ui/ParallaxLayer.vue'
 
 /**
  * The landing page's three motion primitives. Every assertion here is about the

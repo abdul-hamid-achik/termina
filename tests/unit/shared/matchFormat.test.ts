@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatGameMode, matchResult, GAME_MODE_LABELS } from '../../../shared/matchFormat'
+import { formatGameMode, matchResult, GAME_MODE_LABELS } from '~~/shared/matchFormat'
 
 describe('formatGameMode', () => {
   it('maps every known mode to a friendly label', () => {

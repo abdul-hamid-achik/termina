@@ -8,17 +8,17 @@ import {
   tryPanicDefensiveItem,
   tryPlaceWard,
   shouldRetreatFromThreat,
-} from '../../../server/game/ai/BotAI'
-import { cleanupBotState } from '../../../server/game/ai/BotAI'
-import { registerBots, cleanupGame } from '../../../server/game/ai/BotManager'
-import type { BotDifficultyConfig, BotDifficulty } from '../../../server/game/ai/BotManager'
-import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
-import type { AbilityDef, AbilityEffect } from '../../../shared/types/hero'
-import { HEROES } from '../../../shared/constants/heroes'
-import { getItem } from '../../../shared/constants/items'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { findPath } from '../../../server/game/map/topology'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
+} from '~~/server/game/ai/BotAI'
+import { cleanupBotState } from '~~/server/game/ai/BotAI'
+import { registerBots, cleanupGame } from '~~/server/game/ai/BotManager'
+import type { BotDifficultyConfig, BotDifficulty } from '~~/server/game/ai/BotManager'
+import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import type { AbilityDef, AbilityEffect } from '~~/shared/types/hero'
+import { HEROES } from '~~/shared/constants/heroes'
+import { getItem } from '~~/shared/constants/items'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { findPath } from '~~/server/game/map/topology'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 
 /**
  * Build a synthetic ability def for targeting tests. `targetType` is widened to

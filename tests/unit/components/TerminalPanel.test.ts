@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import TerminalPanel from '../../../app/components/ui/TerminalPanel.vue'
+import TerminalPanel from '~~/app/components/ui/TerminalPanel.vue'
 
 function mountPanel(props: Record<string, unknown> = {}, slot = '<p class="body">content</p>') {
   return mount(TerminalPanel, { props, slots: { default: slot } })

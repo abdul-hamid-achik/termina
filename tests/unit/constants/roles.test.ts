@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ROLE_META, ROLE_ORDER } from '../../../shared/constants/roles'
-import { HEROES } from '../../../shared/constants/heroes'
+import { ROLE_META, ROLE_ORDER } from '~~/shared/constants/roles'
+import { HEROES } from '~~/shared/constants/heroes'
 
 describe('ROLE_META', () => {
   it('ROLE_ORDER lists exactly the ROLE_META keys', () => {

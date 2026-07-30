@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
-import AsciiMap from '../../../app/components/game/AsciiMap.vue'
-import type { ZoneDisplay } from '../../../app/components/game/asciiMapModel'
-import type { AncientState } from '../../../shared/types/game'
+import AsciiMap from '~~/app/components/game/AsciiMap.vue'
+import type { ZoneDisplay } from '~~/app/components/game/asciiMapModel'
+import type { AncientState } from '~~/shared/types/game'
 
 function makeZone(overrides: Partial<ZoneDisplay> = {}): ZoneDisplay {
   return {

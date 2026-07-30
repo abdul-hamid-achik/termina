@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import FocusBanner from '../../../app/components/game/FocusBanner.vue'
-import { useGameStore } from '../../../app/stores/game'
-import type { PlayerState } from '../../../shared/types/game'
+import FocusBanner from '~~/app/components/game/FocusBanner.vue'
+import { useGameStore } from '~~/app/stores/game'
+import type { PlayerState } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import HeroStatus from '../../../app/components/game/HeroStatus.vue'
-import { HEROES } from '../../../shared/constants/heroes'
+import HeroStatus from '~~/app/components/game/HeroStatus.vue'
+import { HEROES } from '~~/shared/constants/heroes'
 import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 
 const HERO_ID = 'echo'

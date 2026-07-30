@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import KillFeed from '../../../app/components/game/KillFeed.vue'
-import type { KillFeedEntry } from '../../../app/utils/combatNarrative'
+import KillFeed from '~~/app/components/game/KillFeed.vue'
+import type { KillFeedEntry } from '~~/app/utils/combatNarrative'
 
 function entry(overrides: Partial<KillFeedEntry> = {}): KillFeedEntry {
   return {

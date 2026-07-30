@@ -8,9 +8,9 @@ import {
   MAPS,
   zonesForMap,
   mapIdForMode,
-} from '../../../shared/constants/maps'
-import { ZONES, ZONE_MAP } from '../../../shared/constants/zones'
-import type { Zone } from '../../../shared/types/map'
+} from '~~/shared/constants/maps'
+import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
+import type { Zone } from '~~/shared/types/map'
 
 describe('maps', () => {
   describe('map registry', () => {

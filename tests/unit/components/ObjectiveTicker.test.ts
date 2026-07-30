@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ObjectiveTicker from '../../../app/components/game/ObjectiveTicker.vue'
-import { ROSHAN_RESPAWN_TICKS } from '../../../shared/constants/balance'
-import { ticksToClock } from '../../../app/utils/strategy'
+import ObjectiveTicker from '~~/app/components/game/ObjectiveTicker.vue'
+import { ROSHAN_RESPAWN_TICKS } from '~~/shared/constants/balance'
+import { ticksToClock } from '~~/app/utils/strategy'
 
 function mountTicker(props: Record<string, unknown>) {
   return mount(ObjectiveTicker, {

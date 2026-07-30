@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { heroMatchesFilters, filterHeroes } from '../../../app/utils/heroFilter'
-import { HEROES } from '../../../shared/constants/heroes'
-import type { AbilityDef, AbilityEffect, HeroDef, HeroRole } from '../../../shared/types/hero'
+import { heroMatchesFilters, filterHeroes } from '~~/app/utils/heroFilter'
+import { HEROES } from '~~/shared/constants/heroes'
+import type { AbilityDef, AbilityEffect, HeroDef, HeroRole } from '~~/shared/types/hero'
 
 const ability = (effects: AbilityEffect[]): AbilityDef => ({
   id: 'x',

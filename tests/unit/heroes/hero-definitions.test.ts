@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { HEROES, HERO_IDS } from '../../../shared/constants/heroes'
-import type { HeroDef } from '../../../shared/types/hero'
+import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
+import type { HeroDef } from '~~/shared/types/hero'
 
 describe('Hero Definitions', () => {
   it('should have exactly 18 heroes', () => {

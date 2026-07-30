@@ -23,9 +23,9 @@ vi.stubGlobal('useUserSession', () => ({
 }))
 
 // eslint-disable-next-line import/first
-import { useAuthStore } from '../../../app/stores/auth'
+import { useAuthStore } from '~~/app/stores/auth'
 // eslint-disable-next-line import/first
-import { useGameStore } from '../../../app/stores/game'
+import { useGameStore } from '~~/app/stores/game'
 
 // ── Tests ─────────────────────────────────────────────────────────
 

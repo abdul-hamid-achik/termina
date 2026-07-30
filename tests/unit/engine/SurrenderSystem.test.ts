@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Effect } from 'effect'
-import { processTick, submitAction } from '../../../server/game/engine/GameLoop'
+import { processTick, submitAction } from '~~/server/game/engine/GameLoop'
 import {
   voteSurrender,
   removeSurrenderVote,
   getSurrenderStatus,
   canSurrender,
   clearSurrenderVotes,
-} from '../../../server/game/engine/SurrenderSystem'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { resetCreepIdCounter, initializeRoshan } from '../../../server/game/map/spawner'
-import { SURRENDER_MIN_TICK } from '../../../shared/constants/balance'
+} from '~~/server/game/engine/SurrenderSystem'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { resetCreepIdCounter, initializeRoshan } from '~~/server/game/map/spawner'
+import { SURRENDER_MIN_TICK } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

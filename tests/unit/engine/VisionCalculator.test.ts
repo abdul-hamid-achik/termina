@@ -3,9 +3,9 @@ import {
   calculateVision,
   filterStateForPlayer,
   type FoggedPlayer,
-} from '../../../server/game/engine/VisionCalculator'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
+} from '~~/server/game/engine/VisionCalculator'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

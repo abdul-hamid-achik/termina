@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { impactScore, computeMvp, type MvpInput } from '../../../app/utils/postgame'
+import { impactScore, computeMvp, type MvpInput } from '~~/app/utils/postgame'
 
 const p = (o: Partial<MvpInput> = {}): MvpInput => ({
   id: 'x',

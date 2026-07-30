@@ -4,10 +4,10 @@ import {
   runNeutralAI,
   applyNeutralActions,
   resetNeutralIdCounter,
-} from '../../../server/game/engine/NeutralAI'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { initializeRoshan } from '../../../server/game/map/spawner'
+} from '~~/server/game/engine/NeutralAI'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeRoshan } from '~~/server/game/map/spawner'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

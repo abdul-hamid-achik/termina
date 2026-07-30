@@ -9,9 +9,9 @@ import {
   InventoryFullError,
   ItemNotFoundError,
   ItemOnCooldownError,
-} from '../../../server/game/items/shop'
-import { filterStateForPlayer } from '../../../server/game/engine/VisionCalculator'
-import type { GameState, PlayerState, ZoneRuntimeState } from '../../../shared/types/game'
+} from '~~/server/game/items/shop'
+import { filterStateForPlayer } from '~~/server/game/engine/VisionCalculator'
+import type { GameState, PlayerState, ZoneRuntimeState } from '~~/shared/types/game'
 
 // ── Helpers ────────────────────────────────────────────────────────
 

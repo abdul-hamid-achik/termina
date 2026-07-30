@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { recommendedItemsForRole } from '../../../shared/constants/itemBuilds'
-import { getItem } from '../../../shared/constants/items'
-import { HEROES, HERO_IDS } from '../../../shared/constants/heroes'
-import type { HeroRole } from '../../../shared/types/hero'
+import { recommendedItemsForRole } from '~~/shared/constants/itemBuilds'
+import { getItem } from '~~/shared/constants/items'
+import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
+import type { HeroRole } from '~~/shared/types/hero'
 
 const ROLES: HeroRole[] = ['carry', 'support', 'tank', 'assassin', 'mage', 'offlaner']
 

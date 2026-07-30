@@ -6,7 +6,7 @@ import {
   spectatorCount,
   clearGameSpectators,
   _resetSpectatorRegistry,
-} from '../../../server/services/SpectatorRegistry'
+} from '~~/server/services/SpectatorRegistry'
 
 function makePeer() {
   return { send: vi.fn() }

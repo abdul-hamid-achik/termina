@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import HeroesPage from '../../../app/pages/heroes.vue'
-import { HEROES } from '../../../shared/constants/heroes'
-import { getTalentTree, talentUnlockLevel } from '../../../shared/constants/talents'
-import { ULTIMATE_UNLOCK_LEVEL } from '../../../shared/constants/balance'
+import HeroesPage from '~~/app/pages/heroes.vue'
+import { HEROES } from '~~/shared/constants/heroes'
+import { getTalentTree, talentUnlockLevel } from '~~/shared/constants/talents'
+import { ULTIMATE_UNLOCK_LEVEL } from '~~/shared/constants/balance'
 
 // heroes.vue leans on Nuxt auto-imports (ref/computed/watch/lifecycle hooks,
 // useHead, useRoute, $fetch, navigateTo); the SFC compiler leaves them as

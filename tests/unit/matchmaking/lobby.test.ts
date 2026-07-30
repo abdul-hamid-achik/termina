@@ -11,21 +11,21 @@ import {
   currentPickTurn,
   currentBanTurn,
   replacePlayerWithBot,
-} from '../../../server/game/matchmaking/lobby'
-import type { Lobby } from '../../../server/game/matchmaking/lobby'
-import type { QueueEntry } from '../../../server/game/matchmaking/queue'
-import { HERO_IDS } from '../../../shared/constants/heroes'
-import { sendToPeer } from '../../../server/services/PeerRegistry'
+} from '~~/server/game/matchmaking/lobby'
+import type { Lobby } from '~~/server/game/matchmaking/lobby'
+import type { QueueEntry } from '~~/server/game/matchmaking/queue'
+import { HERO_IDS } from '~~/shared/constants/heroes'
+import { sendToPeer } from '~~/server/services/PeerRegistry'
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
 // Mock PeerRegistry to prevent actual sends
-vi.mock('../../../server/services/PeerRegistry', () => ({
+vi.mock('~~/server/services/PeerRegistry', () => ({
   sendToPeer: vi.fn(),
 }))
 
 // Mock BotManager to control bot detection
-vi.mock('../../../server/game/ai/BotManager', () => ({
+vi.mock('~~/server/game/ai/BotManager', () => ({
   isBot: (id: string) => id.startsWith('bot_'),
 }))
 

@@ -1,20 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import type { GameState } from '../../../shared/types/game'
+import type { GameState } from '~~/shared/types/game'
 import {
   expireGlyph,
   progressDayNight,
   runSpawning,
   runNPCAI,
   processSpecialActions,
-} from '../../../server/game/engine/GameLoop'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { initializeAncients } from '../../../server/game/engine/AncientSystem'
+} from '~~/server/game/engine/GameLoop'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { initializeAncients } from '~~/server/game/engine/AncientSystem'
 import {
   GLYPH_DURATION_TICKS,
   DAY_DURATION_TICKS,
   NIGHT_DURATION_TICKS,
   CREEP_WAVE_INTERVAL_TICKS,
-} from '../../../shared/constants/balance'
+} from '~~/shared/constants/balance'
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
   return {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ErrorPage from '../../../app/error.vue'
+import ErrorPage from '~~/app/error.vue'
 
 // error.vue calls Nuxt's auto-imported clearError; stub it + the components it
 // renders (the component vitest project has no Nuxt auto-import).

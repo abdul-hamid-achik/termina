@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import MatchQueue from '../../../app/components/lobby/MatchQueue.vue'
+import MatchQueue from '~~/app/components/lobby/MatchQueue.vue'
 
 // MatchQueue auto-imports TerminalPanel + AsciiButton in the live app. The
 // components vitest project has no Nuxt auto-import, so we stub them. AsciiButton

@@ -8,8 +8,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Effect } from 'effect'
 import { createServer, type Server } from 'node:http'
 import { WebSocketServer, WebSocket as NodeWebSocket } from 'ws'
-import { WebSocketService, WebSocketServiceLive } from '../../server/services/WebSocketService'
-import type { ServerMessage } from '../../shared/types/protocol'
+import { WebSocketService, WebSocketServiceLive } from '~~/server/services/WebSocketService'
+import type { ServerMessage } from '~~/shared/types/protocol'
 
 interface Harness {
   port: number

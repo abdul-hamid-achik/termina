@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { useLoadout } from '../../../app/composables/useLoadout'
-import type { ItemDef } from '../../../shared/types/items'
+import { useLoadout } from '~~/app/composables/useLoadout'
+import type { ItemDef } from '~~/shared/types/items'
 
 const mk = (id: string): ItemDef => ({ id, name: id, cost: 100, stats: {}, consumable: false })
 

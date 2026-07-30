@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
-import WarRoom from '../../../app/components/game/WarRoom.vue'
-import { useGameStore } from '../../../app/stores/game'
-import { useSettingsStore } from '../../../app/stores/settings'
-import { makeTickMessage, makeRoster, makePlayer, makeZone } from '../../../app/stories/fixtures'
-import type { ZoneRuntimeState } from '../../../shared/types/game'
+import WarRoom from '~~/app/components/game/WarRoom.vue'
+import { useGameStore } from '~~/app/stores/game'
+import { useSettingsStore } from '~~/app/stores/settings'
+import { makeTickMessage, makeRoster, makePlayer, makeZone } from '~~/app/stories/fixtures'
+import type { ZoneRuntimeState } from '~~/shared/types/game'
 
 // WarRoom now reads useSettingsStore (the collapsible roster is a HUD
 // setting that auto-persists); stub localStorage so no state leaks between

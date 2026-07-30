@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import InventoryBar from '../../../app/components/game/InventoryBar.vue'
-import type { BuffState } from '../../../shared/types/game'
+import InventoryBar from '~~/app/components/game/InventoryBar.vue'
+import type { BuffState } from '~~/shared/types/game'
 import { mockPointer, restorePointer, tapOutside } from './helpers/pointer'
 
 // healing_salve has an active ("Heal"), iron_branch is stats-only (no active)

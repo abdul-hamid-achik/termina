@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buffLabel, buffKind, isInternalBuff, displayBuffs } from '../../../app/utils/buffs'
+import { buffLabel, buffKind, isInternalBuff, displayBuffs } from '~~/app/utils/buffs'
 
 const buff = (id: string, stacks = 1, ticksRemaining = 3) => ({ id, stacks, ticksRemaining })
 

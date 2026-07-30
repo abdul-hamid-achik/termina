@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { applyScenario, KNOWN_SCENARIOS } from '../../../server/game/dev/scenarios'
-import type { GameState } from '../../../shared/types/game'
+import { applyScenario, KNOWN_SCENARIOS } from '~~/server/game/dev/scenarios'
+import type { GameState } from '~~/shared/types/game'
 
 function baseState(): GameState {
   return {

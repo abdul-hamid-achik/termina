@@ -6,8 +6,8 @@ import {
   setPlayerGame,
   getPlayerGame,
   clearPlayerGame,
-} from '../../../server/services/PeerRegistry'
-import { peerLog } from '../../../server/utils/log'
+} from '~~/server/services/PeerRegistry'
+import { peerLog } from '~~/server/utils/log'
 
 function makePeer() {
   return { send: vi.fn() }

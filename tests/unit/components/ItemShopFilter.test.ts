@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ItemShop from '../../../app/components/game/ItemShop.vue'
+import ItemShop from '~~/app/components/game/ItemShop.vue'
 import { ITEMS } from '~~/shared/constants/items'
 
 /**

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Effect } from 'effect'
-import type { RedisServiceApi } from '../../../server/services/RedisService'
-import { appendActions, readActions, deleteActionLog } from '../../../server/game/engine/ActionLog'
+import type { RedisServiceApi } from '~~/server/services/RedisService'
+import { appendActions, readActions, deleteActionLog } from '~~/server/game/engine/ActionLog'
 
 function makeMockRedis(): RedisServiceApi & { _list: Map<string, string[]> } {
   const lists = new Map<string, string[]>()

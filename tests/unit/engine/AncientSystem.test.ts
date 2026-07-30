@@ -9,10 +9,10 @@ import {
   updateAncientVulnerability,
   resolveAncientAttack,
   checkAncientWin,
-} from '../../../server/game/engine/AncientSystem'
-import type { GameState, PlayerState, CreepState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { ANCIENT_HP } from '../../../shared/constants/balance'
+} from '~~/server/game/engine/AncientSystem'
+import type { GameState, PlayerState, CreepState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { ANCIENT_HP } from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

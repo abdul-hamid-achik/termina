@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import CommandInput from '../../../app/components/game/CommandInput.vue'
-import type { PlayerState } from '../../../shared/types/game'
+import CommandInput from '~~/app/components/game/CommandInput.vue'
+import type { PlayerState } from '~~/shared/types/game'
 
 function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
   return {

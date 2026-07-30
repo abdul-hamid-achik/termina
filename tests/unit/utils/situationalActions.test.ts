@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import {
-  computeSituationalActions,
-  type SituationalContext,
-} from '../../../app/utils/situationalActions'
-import { SURRENDER_MIN_TICK, GLYPH_COOLDOWN_TICKS } from '../../../shared/constants/balance'
-import type { PlayerState, CreepState } from '../../../shared/types/game'
+import { computeSituationalActions, type SituationalContext } from '~~/app/utils/situationalActions'
+import { SURRENDER_MIN_TICK, GLYPH_COOLDOWN_TICKS } from '~~/shared/constants/balance'
+import type { PlayerState, CreepState } from '~~/shared/types/game'
 
 const player = (over: Partial<PlayerState> = {}): PlayerState =>
   ({ items: [], zone: 'mid-river', team: 'radiant', ...over }) as unknown as PlayerState

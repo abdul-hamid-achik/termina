@@ -7,10 +7,10 @@ import {
   comebackMultiplier,
   xpComebackMultiplier,
   playerNetWorth,
-} from '../../../server/game/engine/GoldDistributor'
-import type { GameState, PlayerState } from '../../../shared/types/game'
-import { initializeZoneStates, initializeTowers } from '../../../server/game/map/zones'
-import { ITEMS } from '../../../shared/constants/items'
+} from '~~/server/game/engine/GoldDistributor'
+import type { GameState, PlayerState } from '~~/shared/types/game'
+import { initializeZoneStates, initializeTowers } from '~~/server/game/map/zones'
+import { ITEMS } from '~~/shared/constants/items'
 import {
   PASSIVE_GOLD_PER_TICK,
   CREEP_GOLD,
@@ -25,7 +25,7 @@ import {
   XP_COMEBACK_BONUS_MAX,
   XP_COMEBACK_PENALTY_MAX,
   XP_COMEBACK_FULL_LEVEL_GAP,
-} from '../../../shared/constants/balance'
+} from '~~/shared/constants/balance'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

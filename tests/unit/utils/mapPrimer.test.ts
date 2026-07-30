@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildMapPrimerZones } from '../../../app/utils/mapPrimer'
-import { ZONES } from '../../../shared/constants/zones'
+import { buildMapPrimerZones } from '~~/app/utils/mapPrimer'
+import { ZONES } from '~~/shared/constants/zones'
 
 describe('buildMapPrimerZones', () => {
   const zones = buildMapPrimerZones()

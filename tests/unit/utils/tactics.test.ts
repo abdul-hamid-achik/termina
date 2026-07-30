@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { computeThreat, threatToneClass, recommendAction } from '../../../app/utils/tactics'
-import type { ZoneThreat } from '../../../app/utils/tactics'
+import { computeThreat, threatToneClass, recommendAction } from '~~/app/utils/tactics'
+import type { ZoneThreat } from '~~/app/utils/tactics'
 
 describe('computeThreat', () => {
   it('is CLEAR with no enemies and no enemy tower', () => {

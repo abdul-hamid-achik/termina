@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ItemCard from '../../../app/components/items/ItemCard.vue'
-import type { ItemDef } from '../../../shared/types/items'
+import ItemCard from '~~/app/components/items/ItemCard.vue'
+import type { ItemDef } from '~~/shared/types/items'
 
 const base: ItemDef = {
   id: 'dagon',

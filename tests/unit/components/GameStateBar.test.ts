@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import GameStateBar from '../../../app/components/game/GameStateBar.vue'
+import GameStateBar from '~~/app/components/game/GameStateBar.vue'
 
 const baseProps = {
   tick: 42,

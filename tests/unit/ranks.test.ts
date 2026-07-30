@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getRankTier, RANK_TIERS } from '../../shared/constants/ranks'
+import { getRankTier, RANK_TIERS } from '~~/shared/constants/ranks'
 
 describe('getRankTier', () => {
   it('returns the lowest tier for very low MMR', () => {

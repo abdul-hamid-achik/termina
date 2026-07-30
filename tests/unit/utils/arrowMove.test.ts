@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { arrowTargetZone } from '../../../app/utils/arrowMove'
-import type { ArrowDirection } from '../../../app/utils/arrowMove'
-import { mapRowsFor } from '../../../app/components/game/asciiMapModel'
-import { ZONES, ZONE_MAP } from '../../../shared/constants/zones'
-import { ONE_LANE_ZONES, TWO_LANE_ZONES } from '../../../shared/constants/maps'
-import type { Zone } from '../../../shared/types/map'
+import { arrowTargetZone } from '~~/app/utils/arrowMove'
+import type { ArrowDirection } from '~~/app/utils/arrowMove'
+import { mapRowsFor } from '~~/app/components/game/asciiMapModel'
+import { ZONES, ZONE_MAP } from '~~/shared/constants/zones'
+import { ONE_LANE_ZONES, TWO_LANE_ZONES } from '~~/shared/constants/maps'
+import type { Zone } from '~~/shared/types/map'
 
 const DIRECTIONS: ArrowDirection[] = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
 

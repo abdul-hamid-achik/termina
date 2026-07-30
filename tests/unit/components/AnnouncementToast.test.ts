@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AnnouncementToast from '../../../app/components/game/AnnouncementToast.vue'
+import AnnouncementToast from '~~/app/components/game/AnnouncementToast.vue'
 
 describe('AnnouncementToast', () => {
   beforeEach(() => {

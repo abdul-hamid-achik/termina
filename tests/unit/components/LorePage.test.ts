@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, computed } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import LorePage from '../../../app/pages/lore.vue'
+import LorePage from '~~/app/pages/lore.vue'
 
 // lore.vue uses Nuxt auto-imports (useHead, $fetch, navigateTo) via the
 // useStartTutorial composable; the SFC compiler leaves these as globals under

@@ -6,8 +6,8 @@ import {
   initializeRoshan,
   shouldRoshanRespawn,
   respawnRoshan,
-} from '../../../server/game/map/spawner'
-import { zonesForMap, ONE_LANE_MAP_ID, TWO_LANE_MAP_ID } from '../../../shared/constants/maps'
+} from '~~/server/game/map/spawner'
+import { zonesForMap, ONE_LANE_MAP_ID, TWO_LANE_MAP_ID } from '~~/shared/constants/maps'
 import {
   CREEP_WAVE_INTERVAL_TICKS,
   MELEE_CREEPS_PER_WAVE,
@@ -22,7 +22,7 @@ import {
   ROSHAN_BASE_HP,
   RUNE_INTERVAL_TICKS,
   RUNE_DURATION_TICKS,
-} from '../../../shared/constants/balance'
+} from '~~/shared/constants/balance'
 
 describe('Spawner', () => {
   beforeEach(() => {

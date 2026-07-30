@@ -5,7 +5,7 @@ import {
   buildTickRecaps,
   collapseStructureDamage,
   type CombatLine,
-} from '../../../app/utils/combatLog'
+} from '~~/app/utils/combatLog'
 
 /** Shorthand line factory. */
 function line(overrides: Partial<CombatLine> & { text: string }): CombatLine {

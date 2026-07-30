@@ -9,8 +9,8 @@ import {
   applyRawDamage,
   applyHeal,
   getHeroStatsAtLevel,
-} from '../../../server/game/engine/DamageCalculator'
-import type { BuffState, PlayerState } from '../../../shared/types/game'
+} from '~~/server/game/engine/DamageCalculator'
+import type { BuffState, PlayerState } from '~~/shared/types/game'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {

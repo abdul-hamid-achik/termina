@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import GameStateBar from '../../../app/components/game/GameStateBar.vue'
-import { makeTeamState, makeAncient } from '../../../app/stories/fixtures'
+import GameStateBar from '~~/app/components/game/GameStateBar.vue'
+import { makeTeamState, makeAncient } from '~~/app/stories/fixtures'
 
 /**
  * Covers GameStateBar branches the existing test skips: the day/night clock

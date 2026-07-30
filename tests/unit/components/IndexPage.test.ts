@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref, computed } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import IndexPage from '../../../app/pages/index.vue'
-import InlineError from '../../../app/components/ui/InlineError.vue'
-import ParallaxLayer from '../../../app/components/ui/ParallaxLayer.vue'
-import ScrambleText from '../../../app/components/ui/ScrambleText.vue'
-import MarqueeStrip from '../../../app/components/ui/MarqueeStrip.vue'
-import { HERO_IDS, HEROES } from '../../../shared/constants/heroes'
+import IndexPage from '~~/app/pages/index.vue'
+import InlineError from '~~/app/components/ui/InlineError.vue'
+import ParallaxLayer from '~~/app/components/ui/ParallaxLayer.vue'
+import ScrambleText from '~~/app/components/ui/ScrambleText.vue'
+import MarqueeStrip from '~~/app/components/ui/MarqueeStrip.vue'
+import { HERO_IDS, HEROES } from '~~/shared/constants/heroes'
 
 // index.vue uses Nuxt auto-imports ($fetch, navigateTo) in startTutorial; the
 // SFC compiler leaves these as globals under plain @vitejs/plugin-vue, so we

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import LoadoutSummary from '../../../app/components/items/LoadoutSummary.vue'
-import type { ItemDef } from '../../../shared/types/items'
+import LoadoutSummary from '~~/app/components/items/LoadoutSummary.vue'
+import type { ItemDef } from '~~/shared/types/items'
 
 const vanguard: ItemDef = {
   id: 'vanguard',

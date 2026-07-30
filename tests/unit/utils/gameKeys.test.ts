@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { routeGameKey, type GameKeyContext } from '../../../app/utils/gameKeys'
+import { routeGameKey, type GameKeyContext } from '~~/app/utils/gameKeys'
 
 const ctx = (over: Partial<GameKeyContext> = {}): GameKeyContext => ({
   isInputFocused: false,

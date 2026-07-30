@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import HeroPicker from '../../../app/components/lobby/HeroPicker.vue'
-import { HEROES, HERO_IDS } from '../../../shared/constants/heroes'
-import type { TeamId } from '../../../shared/types/game'
+import HeroPicker from '~~/app/components/lobby/HeroPicker.vue'
+import { HEROES, HERO_IDS } from '~~/shared/constants/heroes'
+import type { TeamId } from '~~/shared/types/game'
 
 // Stubs for Nuxt auto-imported components
 const AsciiButtonStub = {

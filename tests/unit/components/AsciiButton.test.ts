@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AsciiButton from '../../../app/components/ui/AsciiButton.vue'
+import AsciiButton from '~~/app/components/ui/AsciiButton.vue'
 
 function mountButton(props: Record<string, unknown> = {}) {
   return mount(AsciiButton, { props: { label: 'Start', ...props } })

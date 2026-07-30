@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
-import MapPrimer from '../../../app/components/game/MapPrimer.vue'
+import MapPrimer from '~~/app/components/game/MapPrimer.vue'
 
 // Stub the heavy in-game AsciiMap (window/viewport/grid). It only needs to
 // surface the props MapPrimer feeds it and re-emit a zoneClick on demand, so we

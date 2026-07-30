@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ZONES, ZONE_MAP, ZONE_IDS, isShopZoneFor } from '../../../shared/constants/zones'
+import { ZONES, ZONE_MAP, ZONE_IDS, isShopZoneFor } from '~~/shared/constants/zones'
 
 describe('Zone Constants', () => {
   describe('zone count and structure', () => {
