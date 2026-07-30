@@ -21,31 +21,35 @@
   --text-dim: 138 148 160;
   --text-muted: 90 100 115;
 
-  /* Semantic colors. The three pairs below used to sit within ~20 units of RGB
-     distance of each other, which put the log's most and least important lines
-     in visually identical paint: a hero death read as the same red as wave
-     chip, a heal as the same green as the team. Each pair is now separated on
-     BOTH hue and lightness, and palette.test.ts pins the minimum distance. */
-  --color-chaff: 64 240 144;
-  --color-chaff-deep: 24 180 100;
-  --color-audit: 255 78 110;
-  --color-audit-deep: 200 40 70;
-  /* Azure, pushed off the ability cyan — the two sit side by side on every log
-     line (the ►YOU marker next to the [ABILITY] tag). */
-  --color-self: 108 164 255;
-  --color-gold: 255 196 48;
-  --color-mana: 178 110 240;
-  /* Chip damage: a duller, browner red than the audit alarm red, so bright red
-     means "someone died" and dim red means "someone is being worn down". */
-  --color-damage: 198 88 72;
-  /* Mint rather than a second team green. */
-  --color-healing: 120 246 214;
-  --color-system: 138 148 160;
-  --color-zone: 56 220 200;
-  --color-ability: 64 224 255;
-  /* A hotter orange than gold, which it used to sit ~29 units from: the bank
-     balance and the "your Mainframe is exposed" alarm shared one amber. */
-  --color-warn: 255 138 24;
+  /* ── PHOSPHOR (C3a) ─────────────────────────────────────────────
+     One hue: monochrome green CRT. The semantic tokens below are ALIASES
+     onto a six-step luminance ramp — the class names keep resolving while
+     what they paint collapses to phosphor. Team identity is no longer
+     carried by hue (R3-03 moves it to glyphs); the ramp carries only
+     emphasis (dim → bright) and the one cold accent of C4a. */
+  --p-0: 8 20 14;      /* near-black ground */
+  --p-1: 22 60 40;     /* dim / system */
+  --p-2: 38 110 70;    /* muted */
+  --p-3: 64 180 108;   /* body */
+  --p-4: 104 240 156;  /* bright / self */
+  --p-5: 168 255 196;  /* hottest phosphor */
+  --p-accent: 210 250 235; /* the one cold accent (warn/alarm) */
+
+  /* Semantic aliases — every --color-* the 391 class usages read, mapped
+     onto the ramp. What changed is WHAT they paint, not their names. */
+  --color-chaff: var(--p-3);
+  --color-chaff-deep: var(--p-2);
+  --color-audit: var(--p-accent);
+  --color-audit-deep: var(--p-4);
+  --color-self: var(--p-5);
+  --color-gold: var(--p-4);
+  --color-mana: var(--p-4);
+  --color-damage: var(--p-2);
+  --color-healing: var(--p-4);
+  --color-system: var(--p-1);
+  --color-zone: var(--p-3);
+  --color-ability: var(--p-4);
+  --color-warn: var(--p-accent);
 
   --font-mono: 'JetBrains Mono', monospace;
 

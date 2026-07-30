@@ -3,15 +3,19 @@ import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 
 /**
- * The palette is the log's typography. Nine `CombatLineType` values, the map,
- * the HUD and every toast are separated ONLY by color, so two tokens sitting a
- * few RGB units apart silently erase a distinction the code believes it makes —
- * which is exactly how a hero death came to render in the same red as wave
- * chip damage, and how the colorblind palette put the enemy team, the gold
- * counter and every warning on the same orange.
+ * The PHOSPHOR contract (C3a). One hue, separated by luminance. The old
+ * pairwise hue-distance test is mathematically unsatisfiable inside a single
+ * hue, so the guard changes shape:
  *
- * These tests read the shipped CSS rather than a duplicated table, so a future
- * edit to terminal.css is what they actually guard.
+ *  (a) every semantic --color-* token resolves onto a DEFINED ramp step;
+ *  (b) adjacent ramp steps are separated by a minimum LUMINANCE delta (a dim
+ *      line and a bright one must never read as the same row);
+ *  (c) the pairs the combat log renders side by side (damage vs the accent,
+ *      healing vs a team line, self vs ability, gold vs warn) must NOT land
+ *      on the SAME ramp step.
+ *
+ * Reads the shipped CSS rather than a duplicated table, so a future edit to
+ * terminal.css is what it actually guards.
  */
 const CSS = readFileSync(
   fileURLToPath(new URL('../../../app/assets/css/terminal.css', import.meta.url)),
@@ -20,91 +24,81 @@ const CSS = readFileSync(
 
 type Rgb = [number, number, number]
 
-/** Pull the `--color-*: R G B;` declarations out of one CSS rule block. */
-function paletteOf(selector: string): Record<string, Rgb> {
-  const start = CSS.indexOf(`${selector} {`)
-  expect(start, `${selector} block missing from terminal.css`).toBeGreaterThan(-1)
+/** Pull `--name: R G B;` declarations out of the :root block for a prefix. */
+function tokensOf(prefix: string): Record<string, Rgb> {
+  const start = CSS.indexOf(':root {')
+  expect(start, ':root block missing from terminal.css').toBeGreaterThan(-1)
   const end = CSS.indexOf('\n}', start)
   const block = CSS.slice(start, end)
   const out: Record<string, Rgb> = {}
-  for (const m of block.matchAll(/--color-([\w-]+):\s*(\d+)\s+(\d+)\s+(\d+);/g)) {
+  const re = new RegExp(`--(${prefix}[\\w-]*):\\s*(\\d+)\\s+(\\d+)\\s+(\\d+);`, 'g')
+  for (const m of block.matchAll(re)) {
     out[m[1]!] = [Number(m[2]), Number(m[3]), Number(m[4])]
   }
   return out
 }
 
-const base = paletteOf(':root')
-const colorblind = { ...base, ...paletteOf('.palette-colorblind') }
-
-/**
- * Semantic tokens that can appear side by side on one screen. The `-deep`
- * variants are deliberately near their parent (gradient siblings), so they are
- * not part of the set.
- */
-const SEMANTIC = [
-  'chaff',
-  'audit',
-  'self',
-  'gold',
-  'mana',
-  'damage',
-  'healing',
-  'system',
-  'zone',
-  'ability',
-  'warn',
-] as const
-
-/** Straight RGB distance — crude, but it is what "these look the same" means. */
-function distance(a: Rgb, b: Rgb): number {
-  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
-}
-
-/** Below this two tokens read as the same color at HUD type sizes. */
-const MIN_DISTANCE = 45
-
-function closestPair(palette: Record<string, Rgb>): { pair: string; d: number } {
-  let worst = { pair: '', d: Number.POSITIVE_INFINITY }
-  for (let i = 0; i < SEMANTIC.length; i++) {
-    for (let j = i + 1; j < SEMANTIC.length; j++) {
-      const a = SEMANTIC[i]!
-      const b = SEMANTIC[j]!
-      const ca = palette[a]
-      const cb = palette[b]
-      expect(ca, `--color-${a} is not defined`).toBeDefined()
-      expect(cb, `--color-${b} is not defined`).toBeDefined()
-      const d = distance(ca!, cb!)
-      if (d < worst.d) worst = { pair: `${a}/${b}`, d }
-    }
+/** Resolve a `--color-x: var(--p-y);` alias to its ramp step name. */
+function semanticTargets(): Record<string, string> {
+  const start = CSS.indexOf(':root {')
+  const end = CSS.indexOf('\n}', start)
+  const block = CSS.slice(start, end)
+  const out: Record<string, string> = {}
+  for (const m of block.matchAll(/--color-([\w-]+):\s*var\((--p-[\w-]+)\);/g)) {
+    out[m[1]!] = m[2]!.replace(/^--/, '')
   }
-  return worst
+  return out
 }
 
-describe('terminal palette', () => {
-  it('keeps every semantic color distinguishable in the default palette', () => {
-    const worst = closestPair(base)
-    expect(worst.d, `closest pair: ${worst.pair}`).toBeGreaterThanOrEqual(MIN_DISTANCE)
+const ramp = tokensOf('p-')
+const aliases = semanticTargets()
+
+/** Rec.601 luma — what "this row is brighter than that one" means. */
+function luminance([r, g, b]: Rgb): number {
+  return 0.299 * r + 0.587 * g + 0.114 * b
+}
+
+const RAMP_ORDER = ['p-0', 'p-1', 'p-2', 'p-3', 'p-4', 'p-5', 'p-accent'] as const
+
+describe('the phosphor contract (C3a)', () => {
+  it('declares every ramp step', () => {
+    for (const step of RAMP_ORDER) {
+      expect(ramp[step], `ramp step ${step} missing`).toBeDefined()
+    }
   })
 
-  it('keeps them distinguishable in the colorblind palette too', () => {
-    // The Okabe-Ito remap moves audit onto orange; gold and warn have to move
-    // with it or the swap trades one collision for three.
-    const worst = closestPair(colorblind)
-    expect(worst.d, `closest pair: ${worst.pair}`).toBeGreaterThanOrEqual(MIN_DISTANCE)
+  it('every semantic --color-* token aliases a defined ramp step', () => {
+    expect(Object.keys(aliases).length).toBeGreaterThan(0)
+    for (const [name, target] of Object.entries(aliases)) {
+      expect(ramp[target], `--color-${name} aliases undefined ${target}`).toBeDefined()
+    }
   })
 
-  it('separates the pairs the combat log renders next to each other', () => {
-    // Chip damage vs a death, a heal vs the team, the ►YOU marker vs a spell.
-    for (const [a, b] of [
-      ['damage', 'audit'],
-      ['healing', 'chaff'],
-      ['self', 'ability'],
-      ['gold', 'warn'],
-    ] as const) {
-      expect(distance(base[a]!, base[b]!), `${a} vs ${b}`).toBeGreaterThanOrEqual(MIN_DISTANCE)
-      expect(distance(colorblind[a]!, colorblind[b]!), `${a} vs ${b} (cvd)`).toBeGreaterThanOrEqual(
-        MIN_DISTANCE,
+  it('adjacent ramp steps differ by a minimum luminance delta', () => {
+    const MIN_DELTA = 30
+    const steps = RAMP_ORDER.filter((s) => s !== 'p-accent')
+    for (let i = 1; i < steps.length; i++) {
+      const prev = ramp[steps[i - 1]!]!
+      const cur = ramp[steps[i]!]!
+      const delta = luminance(cur) - luminance(prev)
+      expect(delta, `${steps[i - 1]} -> ${steps[i]} luminance delta ${delta.toFixed(1)}`).toBeGreaterThanOrEqual(
+        MIN_DELTA,
       )
+    }
+  })
+
+  it('no pair the log renders side by side lands on the same ramp step', () => {
+    const pairs: Array<[string, string]> = [
+      ['damage', 'audit'], // chip vs death/alarm
+      ['healing', 'chaff'], // heal vs a team line
+      ['self', 'ability'], // ►YOU vs the [ABILITY] tag
+      ['gold', 'warn'], // bank balance vs the alarm
+      ['system', 'chaff'], // dim system line vs a team line
+    ]
+    for (const [a, b] of pairs) {
+      expect(aliases[a], `--color-${a} missing`).toBeDefined()
+      expect(aliases[b], `--color-${b} missing`).toBeDefined()
+      expect(aliases[a], `--color-${a} and --color-${b} share ${aliases[a]}`).not.toBe(aliases[b])
     }
   })
 })
