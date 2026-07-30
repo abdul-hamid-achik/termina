@@ -8,27 +8,27 @@ import type { HeroRole } from '~~/shared/types/hero'
 export const ROLE_META: Record<HeroRole, { label: string; blurb: string }> = {
   carry: {
     label: 'Carries',
-    blurb: 'Fragile early, unstoppable if fed — they scale into late-game wreckers.',
+    blurb: 'Squishy on the first cycles, unstoppable if funded — they scale into closers.',
   },
   mage: {
     label: 'Mages',
-    blurb: 'Burst casters who delete targets with ability combos.',
+    blurb: 'Burst casters who burn targets down with ability combos.',
   },
   assassin: {
     label: 'Assassins',
-    blurb: 'Pick off isolated targets from stealth and reposition before the answer lands.',
+    blurb: 'Strike isolated operators from stealth and are gone before the response lands.',
   },
   tank: {
     label: 'Tanks',
-    blurb: 'Front-line cores that soak punishment and start the fights.',
+    blurb: 'Front-line shells that soak the damage and start the fights.',
   },
   support: {
     label: 'Supports',
-    blurb: 'Enable the team — heals, shields, vision, and utility.',
+    blurb: 'Keep the crew running — heals, shields, vision, and utility.',
   },
   offlaner: {
     label: 'Offlaners',
-    blurb: 'Durable disruptors who thrive in contested space.',
+    blurb: 'Durable disruptors who thrive in contested ground.',
   },
 }
 

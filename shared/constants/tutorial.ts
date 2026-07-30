@@ -56,8 +56,8 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
   },
   {
     teaches: 'attack',
-    hint: '🎓 Attack something — type `attack` to hit the nearest enemy, or `attack wave:0` to last-hit a wave for gold.',
-    skipNote: 'Attacking: `attack` auto-targets; `attack wave:0` last-hits a wave for gold.',
+    hint: '🎓 Attack something — type `attack` to hit the nearest enemy, or `attack wave:0` to last-hit a wave for scrip.',
+    skipNote: 'Attacking: `attack` auto-targets; `attack wave:0` last-hits a wave for scrip.',
   },
   {
     teaches: 'cast',
@@ -70,7 +70,7 @@ export const TUTORIAL_FLOW: readonly TutorialStep[] = [
   },
   {
     teaches: 'buy',
-    hint: '🎓 Spend your gold — type `buy edge_kit` (you can buy from your base or fountain).',
+    hint: '🎓 Spend your scrip — type `buy edge_kit` (you can buy from your base or fountain).',
     skipNote: 'Shopping: `buy <item>` works while you stand in your base or fountain.',
   },
 ]

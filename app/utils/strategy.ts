@@ -1,7 +1,7 @@
 /**
  * Strategic-legibility helpers — pure functions that turn the game state the
- * store already holds (team gold, items, tenant/caches/backup, vision) into the
- * glanceable macro readouts a MOBA player needs: net worth, gold lead,
+ * store already holds (team scrip, items, tenant/caches/backup, vision) into the
+ * glanceable macro readouts a MOBA player needs: net worth, scrip lead,
  * objective timers, vision coverage, day/night meaning, and sparkline trends.
  *
  * Everything here is pure and unit-tested; the War Room components are thin
@@ -24,7 +24,7 @@ export interface NetWorthInput {
   fogged?: boolean
 }
 
-/** True net worth = liquid gold + the buy cost of every item carried. */
+/** True net worth = liquid scrip + the buy cost of every item carried. */
 export function playerNetWorth(p: NetWorthInput): number {
   if (p.fogged) return 0
   let nw = p.gold ?? 0
@@ -54,7 +54,7 @@ export function goldLead(chaffNetWorth: number, auditNetWorth: number): GoldLead
   return diff > 0 ? { leader: 'chaff', amount: diff } : { leader: 'audit', amount: -diff }
 }
 
-/** Compact gold: 4200 -> "4.2k", 950 -> "950". */
+/** Compact scrip: 4200 -> "4.2k", 950 -> "950". */
 export function formatGoldShort(n: number): string {
   const abs = Math.abs(n)
   if (abs >= 1000) return `${(n / 1000).toFixed(1)}k`

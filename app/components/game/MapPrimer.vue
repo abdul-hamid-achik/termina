@@ -7,7 +7,7 @@ import { ZONE_MAP } from '~~/shared/constants/zones'
 /**
  * An interactive, no-game map primer for /learn — renders the real in-game
  * AsciiMap over a static, fully-revealed topology so a newcomer can SEE the
- * zones, lanes, river, jungle, bases and Tenant, and learn the movement rule
+ * zones, routes, crossings, the Silt, bases and the Tenant, and learn the movement rule
  * by feel: every zone is clickable (a real game auto-paths you there one zone
  * per tick), adjacent zones glow brighter because those arrive next tick. The
  * primer teleports the explorer to whatever they click — a real game walks.

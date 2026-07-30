@@ -19,7 +19,7 @@ import type { ItemDef, ItemCategory } from '~~/shared/types/items'
 //    their ids — they were already on-register before the rule existed.
 //
 // The five classes:
-//   STREET   = consumables and cheap fence goods (opening buys, wards, cans)
+//   STREET   = consumables and cheap fence goods (opening buys, camtaps, cans)
 //   CHROME   = implanted survivability — HP/defense/resist, mitigation
 //   HARDWARE = carried weapons and attachments — attack-stat, on-attack procs
 //   DECK     = software — magical damage, spell amp, cooldown manipulation
@@ -609,7 +609,7 @@ const camtapWard: ItemDef = {
     id: 'camtap_active',
     name: 'Place Ward',
     description:
-      'Place in a zone for vision lasting 45 cycles. Max 3 wards per team (shared with sentries).',
+      'Place in a zone for vision lasting 45 cycles. Max 3 active per team (shared with sniffers).',
     cooldownTicks: 0,
     targetType: 'zone',
   },
@@ -626,7 +626,7 @@ const snifferWard: ItemDef = {
     id: 'sniffer_active',
     name: 'Place SNIFFER',
     description:
-      'Reveals invisible units in the area. Lasts 30 cycles. Max 3 wards per team (shared with observers).',
+      'Reveals invisible units in the area. Lasts 30 cycles. Max 3 active per team (shared with camtaps).',
     cooldownTicks: 0,
     targetType: 'zone',
   },
@@ -643,7 +643,7 @@ const smokeOfDeceit: ItemDef = {
     id: 'blackout_can_active',
     name: 'Smoke',
     description:
-      'Team becomes invisible to enemy wards for 3 cycles. Breaks on entering enemy zone with heroes.',
+      'Team becomes invisible to enemy vision for 3 cycles. Breaks on entering enemy zone with heroes.',
     cooldownTicks: 0,
   },
 }
@@ -759,7 +759,7 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
     id: 'street',
     label: 'Street',
     blurb:
-      'Consumables and cheap fence goods — opening buys, wards, cans and tokens. Restock often.',
+      'Consumables and cheap fence goods — opening buys, camtaps, cans and tokens. Restock often.',
     ids: [
       'trauma_patch',
       'charge_tab',

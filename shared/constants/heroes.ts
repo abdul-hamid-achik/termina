@@ -633,7 +633,7 @@ export const HEROES: Record<string, HeroDef> = {
     id: 'malloc',
     name: 'Malloc',
     role: 'carry',
-    lore: 'A memory allocator that grows in power the more resources it claims. Malloc scales relentlessly, converting gold into raw destructive force.',
+    lore: 'A memory allocator that grows in power the more resources it claims. Malloc scales relentlessly, converting scrip into raw destructive force.',
     difficulty: 'medium',
     openingCombo: ['q', 'e', 'w'],
     oneLineTip:
@@ -656,11 +656,11 @@ export const HEROES: Record<string, HeroDef> = {
       id: 'malloc-passive',
       name: 'Heap Growth',
       description:
-        'Gain +1 bonus attack damage for every 100 gold currently held, up to +40 (at 4000 gold).',
+        'Gain +1 bonus attack damage for every 100 scrip currently held, up to +40 (at 4000 scrip).',
       manaCost: 0,
       cooldownTicks: 0,
       targetType: 'none',
-      effects: [{ type: 'buff', value: 1, description: 'Attack per 100 gold' }],
+      effects: [{ type: 'buff', value: 1, description: 'Attack per 100 scrip' }],
     },
     abilities: {
       q: {
